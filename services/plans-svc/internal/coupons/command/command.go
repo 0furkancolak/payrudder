@@ -49,10 +49,21 @@ var durationToDB = map[plansv1.CouponDuration]string{
 	plansv1.CouponDuration_COUPON_DURATION_FOREVER:   subscription.CouponForever,
 }
 
+// AfterRedeem is told, in the transaction of a checkout, that a customer redeemed a promotion code (its text). The affiliate program uses it to attribute the
+// customer to the affiliate the code belongs to.
+type AfterRedeem func(ctx context.Context, q *sqlc.Queries, customerID uuid.UUID, promotionCode string, now time.Time) error
+
 // Commands changes coupons.
 type Commands struct {
-	db  *store.DB
-	now func() time.Time
+	db       *store.DB
+	now      func() time.Time
+	onRedeem AfterRedeem
+}
+
+// WithRedeemHook sets what happens after a customer redeems a promotion code.
+func (c *Commands) WithRedeemHook(h AfterRedeem) *Commands {
+	c.onRedeem = h
+	return c
 }
 
 // New returns the coupon commands.
@@ -512,7 +523,13 @@ func (c *Commands) RedeemPromotion(ctx context.Context, req *plansv1.RedeemPromo
 		}
 		var err error
 		got, err = Claim(ctx, q, in)
-		return err
+		if err != nil {
+			return err
+		}
+		if c.onRedeem != nil && !in.Preview && got.Applied && got.PromotionCode != "" && in.CustomerID != uuid.Nil {
+			return c.onRedeem(ctx, q, in.CustomerID, got.PromotionCode, in.Now)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, convert.Err(err, "coupon")
@@ -608,12 +625,18 @@ func (c *Commands) GrantCustomerCoupon(ctx context.Context, req *plansv1.GrantCu
 		if err != nil {
 			return err
 		}
-		n, err := q.InsertCustomerCoupon(ctx, sqlc.InsertCustomerCouponParams{CustomerID: cu.ID, CouponID: cp.ID, Source: req.GetSource(), SourceRef: req.GetSourceRef()})
-		granted = n == 1
+		granted, err = GrantToCustomer(ctx, q, cu.ID, cp.ID, req.GetSource(), req.GetSourceRef())
 		return err
 	})
 	if err != nil {
 		return false, convert.Err(err, "customer")
 	}
 	return granted, nil
+}
+
+// GrantToCustomer puts a coupon in wait for a customer in the caller's transaction: the customer's next eligible checkout without a typed code uses it. The same
+// (customer, source, ref) grants once; it reports whether this call was the one that did. The affiliate program uses it for the customers it brings.
+func GrantToCustomer(ctx context.Context, q *sqlc.Queries, customerID, couponID uuid.UUID, source, ref string) (bool, error) {
+	n, err := q.InsertCustomerCoupon(ctx, sqlc.InsertCustomerCouponParams{CustomerID: customerID, CouponID: couponID, Source: source, SourceRef: ref})
+	return n == 1, err
 }

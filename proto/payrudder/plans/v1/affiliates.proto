@@ -1,0 +1,197 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// AffiliateService is the partner program of a tenant (phase 47): the program's rules, its affiliates, who they brought. The tenant comes from gRPC metadata,
+// so a sandbox key sees the sandbox program and a live key the live one.
+service AffiliateService {
+  // GetAffiliateProgram returns the program, or NotFound (affiliate.program.not_set) before one is set.
+  rpc GetAffiliateProgram(GetAffiliateProgramRequest) returns (GetAffiliateProgramResponse);
+  // SetAffiliateProgram creates or replaces the program. Changing it affects commissions earned from then on, never those already earned.
+  rpc SetAffiliateProgram(SetAffiliateProgramRequest) returns (SetAffiliateProgramResponse);
+  rpc CreateAffiliate(CreateAffiliateRequest) returns (CreateAffiliateResponse);
+  rpc ListAffiliates(ListAffiliatesRequest) returns (ListAffiliatesResponse);
+  rpc GetAffiliate(GetAffiliateRequest) returns (GetAffiliateResponse);
+  // UpdateAffiliate changes the name, payout details and status (approve a pending one, suspend, reinstate).
+  rpc UpdateAffiliate(UpdateAffiliateRequest) returns (UpdateAffiliateResponse);
+  // LinkAffiliatePromotionCode makes a promotion code the affiliate's: a customer who redeems it is attributed to them.
+  rpc LinkAffiliatePromotionCode(LinkAffiliatePromotionCodeRequest) returns (LinkAffiliatePromotionCodeResponse);
+  // AttributeCustomer says that a customer came through an affiliate's link or code. First touch wins: a customer who has an attribution keeps it.
+  // Idempotent; a refusal is a normal answer (attributed=false and a reason), not an error.
+  rpc AttributeCustomer(AttributeCustomerRequest) returns (AttributeCustomerResponse);
+  rpc ListAffiliateReferrals(ListAffiliateReferralsRequest) returns (ListAffiliateReferralsResponse);
+}
+
+// AffiliatePublicService is for the public link and cookie of the hosted pages. It holds no tenant: the code finds it. Only the gateway calls it.
+service AffiliatePublicService {
+  // TrackAffiliateClick counts one visit on the link of a code (aggregated per day, no visitor kept) and says what the page should do about it.
+  rpc TrackAffiliateClick(TrackAffiliateClickRequest) returns (TrackAffiliateClickResponse);
+}
+
+message AffiliateProgram {
+  // draft (not live yet), active, paused (no new attributions or commissions).
+  string status = 1;
+  // percent_bps or fixed.
+  string commission_kind = 2;
+  // Basis points (1000 = 10 %) of the net, pre-tax amount paid, or minor units of currency for a fixed commission.
+  int64 commission_value = 3;
+  // The currency of a fixed commission; a percentage follows the currency of each invoice.
+  string currency = 4;
+  // first_invoices, months or lifetime.
+  string commission_term = 5;
+  // N invoices or N months; 0 for lifetime.
+  int32 commission_term_value = 6;
+  int32 attribution_window_days = 7;
+  // How long a commission waits (the refund window) before it can be paid.
+  int32 hold_days = 8;
+  int64 min_payout_minor = 9;
+  // Code of the coupon a referred customer gets on their next checkout; empty for none.
+  string referred_coupon_code = 10;
+  int32 daily_click_cap = 11;
+  // Where /r/<code> sends the visitor afterwards; empty shows a plain page.
+  string landing_url = 12;
+  // A partner who applies is active at once instead of waiting for approval.
+  bool auto_approve = 13;
+  google.protobuf.Timestamp create_time = 14;
+  google.protobuf.Timestamp update_time = 15;
+}
+
+message GetAffiliateProgramRequest {}
+message GetAffiliateProgramResponse {
+  AffiliateProgram program = 1;
+}
+
+message SetAffiliateProgramRequest {
+  AffiliateProgram program = 1;
+}
+message SetAffiliateProgramResponse {
+  AffiliateProgram program = 1;
+}
+
+message Affiliate {
+  string id = 1;
+  string code = 2;
+  string email = 3;
+  string name = 4;
+  // pending, active or suspended.
+  string status = 5;
+  // manual or bank_transfer.
+  string payout_method = 6;
+  string payout_details = 7;
+  // owner (made by the owner) or application (the partner applied).
+  string source = 8;
+  // The partner has signed in and claimed this affiliate.
+  bool signed_in = 9;
+  int64 clicks = 10;
+  int64 referrals = 11;
+  google.protobuf.Timestamp approve_time = 12;
+  google.protobuf.Timestamp create_time = 13;
+}
+
+message CreateAffiliateRequest {
+  string email = 1;
+  string name = 2;
+  // Empty makes a random one.
+  string code = 3;
+  string payout_method = 4;
+  string payout_details = 5;
+  // An affiliate the owner makes is active; set true to leave it pending.
+  bool pending = 6;
+}
+message CreateAffiliateResponse {
+  Affiliate affiliate = 1;
+}
+
+message ListAffiliatesRequest {
+  // pending, active, suspended or empty for all.
+  string status = 1;
+  string search = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+message ListAffiliatesResponse {
+  repeated Affiliate affiliates = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message GetAffiliateRequest {
+  string id = 1;
+}
+message GetAffiliateResponse {
+  Affiliate affiliate = 1;
+}
+
+message UpdateAffiliateRequest {
+  string id = 1;
+  string name = 2;
+  string payout_method = 3;
+  string payout_details = 4;
+  // active, suspended or empty to leave it. A suspended affiliate earns nothing new but keeps what was approved.
+  string status = 5;
+}
+message UpdateAffiliateResponse {
+  Affiliate affiliate = 1;
+}
+
+message LinkAffiliatePromotionCodeRequest {
+  string affiliate_id = 1;
+  string promotion_code = 2;
+}
+message LinkAffiliatePromotionCodeResponse {
+  Affiliate affiliate = 1;
+}
+
+message AttributeCustomerRequest {
+  // Either the customer's external id or, for Payrudder's own services, the internal id.
+  string customer_external_id = 1;
+  string customer_id = 2;
+  // The affiliate's code.
+  string code = 3;
+  // link, code or api. Empty is api.
+  string source = 4;
+  // When the visitor followed the link; empty is now. Older than the attribution window is refused.
+  google.protobuf.Timestamp touch_time = 5;
+}
+message AttributeCustomerResponse {
+  bool attributed = 1;
+  // Why not: already_attributed, unknown_code, program_inactive, affiliate_inactive, expired, same_email, same_domain, same_payment_method.
+  string reason = 2;
+}
+
+message ListAffiliateReferralsRequest {
+  // Empty lists every affiliate's.
+  string affiliate_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+message AffiliateReferral {
+  string affiliate_id = 1;
+  string affiliate_code = 2;
+  string customer_external_id = 3;
+  // The customer's e-mail address, masked (j***@example.com).
+  string customer_email_masked = 4;
+  string source = 5;
+  google.protobuf.Timestamp attribute_time = 6;
+}
+message ListAffiliateReferralsResponse {
+  repeated AffiliateReferral referrals = 1;
+  string next_page_token = 2;
+  int32 total = 3;
+}
+
+message TrackAffiliateClickRequest {
+  string code = 1;
+}
+message TrackAffiliateClickResponse {
+  // The code belongs to an active affiliate of an active program. When false nothing was counted and no cookie should be set.
+  bool valid = 1;
+  // The code as stored (its case), for the cookie.
+  string code = 2;
+  int32 attribution_window_days = 3;
+  string landing_url = 4;
+  // The click was counted; false once the affiliate's daily cap is reached (the cookie is still set, the visitor is not turned away).
+  bool counted = 5;
+}

@@ -1960,6 +1960,23 @@
         "size_required": "Für direkte Uploads ist die Dateigröße erforderlich.",
         "unsupported_content_type": "Dieser Dateityp wird nicht unterstützt."
       }
+    },
+    "affiliate": {
+      "bad_page_token": "Dieser Seitenlink ist ungültig. Laden Sie die Liste neu.",
+      "bad_source": "Die Quelle muss link, code oder api sein.",
+      "bad_status": "Der Status muss pending, active oder suspended sein.",
+      "code_required": "Ein Partnercode ist erforderlich.",
+      "code_taken": "Dieser Code ist schon vergeben. Partnercodes sind auf der ganzen Plattform eindeutig: Wählen Sie einen anderen.",
+      "customer_not_found": "Diesen Kunden gibt es nicht.",
+      "customer_required": "Nennen Sie den Kunden, dem die Empfehlung zugeordnet werden soll.",
+      "email_taken": "Es gibt bereits einen Partner mit dieser E-Mail-Adresse.",
+      "not_found": "Diesen Partner gibt es nicht.",
+      "program": {
+        "coupon_inactive": "Der Gutschein für empfohlene Kunden ist nicht aktiv.",
+        "coupon_not_found": "Der Gutschein für empfohlene Kunden existiert nicht.",
+        "not_set": "Diese Umgebung hat noch kein Partnerprogramm."
+      },
+      "promotion_code_not_found": "Diesen Aktionscode gibt es nicht."
     }
   },
   "product": {

@@ -152,6 +152,10 @@ func newTestServerWith(t *testing.T, tweak func(*Deps)) (*httptest.Server, *fake
 	billingv1.RegisterSandboxServiceServer(gs, fakeBilling{})
 	billingv1.RegisterBillingAdminServiceServer(gs, fakeBilling{})
 	billingv1.RegisterHostedInvoiceServiceServer(gs, fakeBilling{})
+	fa := &fakeAffiliates{}
+	plansv1.RegisterAffiliateServiceServer(gs, fa)
+	plansv1.RegisterAffiliatePublicServiceServer(gs, fa)
+	lastAffiliates = fa
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = gs.Serve(lis) }()
 	t.Cleanup(gs.Stop)
@@ -162,7 +166,7 @@ func newTestServerWith(t *testing.T, tweak func(*Deps)) (*httptest.Server, *fake
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cc.Close() })
-	deps := Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc),
+	deps := Deps{Plans: plansv1.NewPlansServiceClient(cc), Admin: plansv1.NewAdminServiceClient(cc), Affiliates: plansv1.NewAffiliateServiceClient(cc), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(cc),
 		Ingest: ingestv1.NewIngestServiceClient(cc), Usage: aggregatorv1.NewUsageQueryServiceClient(cc), Limits: limitsv1.NewLimitsServiceClient(cc), Billing: billingv1.NewBillingServiceClient(cc), Analytics: analyticsv1.NewAnalyticsServiceClient(cc), Assets: assetsv1.NewAssetsServiceClient(cc),
 		Sandbox: billingv1.NewSandboxServiceClient(cc), BillingAdmin: billingv1.NewBillingAdminServiceClient(cc), Hosted: billingv1.NewHostedInvoiceServiceClient(cc), PublicURL: "https://api.example.test", Auth: fakeAuth{},
 		Limiter: lim, OperatorToken: operatorToken, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
