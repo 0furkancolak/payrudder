@@ -5,10 +5,7 @@ import (
 	"context"
 	_ "embed" // config.default.yaml
 	"errors"
-	"fmt"
 	"time"
-
-	"google.golang.org/grpc"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
@@ -17,7 +14,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
@@ -64,9 +60,9 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer pool.Close()
 
-	plansConn, err := grpcx.NewClient(cfg.PlansAddr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+	plansConn, err := grpcx.NewTenantClient("plans-svc", cfg.PlansAddr)
 	if err != nil {
-		return fmt.Errorf("plans-svc client: %w", err)
+		return err
 	}
 	defer func() { _ = plansConn.Close() }()
 
