@@ -1966,6 +1966,23 @@
         "size_required": "Doğrudan yüklemeler için dosya boyutu gerekli.",
         "unsupported_content_type": "Bu dosya türü desteklenmiyor."
       }
+    },
+    "affiliate": {
+      "bad_page_token": "Bu sayfa bağlantısı geçerli değil. Listeyi yenileyin.",
+      "bad_source": "Kaynak link, code veya api olmalıdır.",
+      "bad_status": "Durum pending, active veya suspended olmalıdır.",
+      "code_required": "Ortak kodu gerekli.",
+      "code_taken": "Bu kod zaten alınmış. Ortak kodları tüm platformda benzersizdir: başka bir kod seçin.",
+      "customer_not_found": "Böyle bir müşteri yok.",
+      "customer_required": "Yönlendirmenin yazılacağı müşteriyi belirtin.",
+      "email_taken": "Bu e-posta adresiyle bir ortak zaten var.",
+      "not_found": "Böyle bir ortak yok.",
+      "program": {
+        "coupon_inactive": "Yönlendirilen müşteriler için seçilen kupon etkin değil.",
+        "coupon_not_found": "Yönlendirilen müşteriler için seçilen kupon mevcut değil.",
+        "not_set": "Bu ortamda henüz bir ortaklık programı yok."
+      },
+      "promotion_code_not_found": "Böyle bir promosyon kodu yok."
     }
   },
   "product": {

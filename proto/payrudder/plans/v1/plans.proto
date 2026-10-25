@@ -119,6 +119,11 @@ message CreateCustomerRequest {
   string billing_currency = 6;
   // The billing address. If it has a country, that is the customer's country (country above must be empty or equal).
   Address address = 7;
+  // The code of the affiliate whose link or code brought this customer (phase 47), as the tenant's own sign-up saw it. Optional; a code that cannot attribute
+  // (unknown, expired, self-referral) does not fail the creation.
+  string referral_code = 8;
+  // When the visitor followed that link; empty is now.
+  google.protobuf.Timestamp referral_touch_time = 9;
 }
 
 message CreateCustomerResponse {

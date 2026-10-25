@@ -25,6 +25,8 @@ const (
 	RoleOwner  = "owner"
 	RoleAdmin  = "admin"
 	RoleViewer = "viewer"
+	// RoleAffiliate (phase 47) belongs to a partner: it sees the partner portal and nothing of the account. Account-wide reads in SQL leave it out.
+	RoleAffiliate = "affiliate"
 )
 
 // CanManage reports whether the role may create apps and keys.

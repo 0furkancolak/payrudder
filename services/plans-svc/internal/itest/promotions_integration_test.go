@@ -577,11 +577,16 @@ func testPromotionsMigration(t *testing.T) {
 	consistent(t, "before")
 
 	ctxb := context.Background()
+	// The affiliate program (47) refers to a coupon by the key this migration adds, so it goes down first and comes back last.
+	if err := pgxx.MigrateVersion(ctxb, e.db.Migrator, migrations.FS, 47, false); err != nil {
+		t.Fatal(err)
+	}
 	if err := pgxx.MigrateVersion(ctxb, e.db.Migrator, migrations.FS, 30, false); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { // whatever happens, leave the schema migrated for the tests that follow
 		_ = pgxx.MigrateVersion(ctxb, e.db.Migrator, migrations.FS, 30, true)
+		_ = pgxx.MigrateVersion(ctxb, e.db.Migrator, migrations.FS, 47, true)
 	})
 	if n := count(`SELECT count(*) FROM information_schema.tables WHERE table_name IN ('promotion_codes', 'coupon_redemptions', 'customer_coupons')`); n != 0 {
 		t.Fatalf("down left %d new tables", n)

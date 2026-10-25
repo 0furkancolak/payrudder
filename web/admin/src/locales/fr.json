@@ -1966,6 +1966,23 @@
         "size_required": "La taille du fichier est requise pour les téléversements directs.",
         "unsupported_content_type": "Ce type de fichier n'est pas pris en charge."
       }
+    },
+    "affiliate": {
+      "bad_page_token": "Ce lien de page n'est pas valide. Rechargez la liste.",
+      "bad_source": "La source doit être link, code ou api.",
+      "bad_status": "Le statut doit être pending, active ou suspended.",
+      "code_required": "Un code partenaire est requis.",
+      "code_taken": "Ce code est déjà pris. Les codes partenaires sont uniques sur toute la plateforme : choisissez-en un autre.",
+      "customer_not_found": "Ce client n'existe pas.",
+      "customer_required": "Indiquez le client à rattacher.",
+      "email_taken": "Un partenaire avec cette adresse e-mail existe déjà.",
+      "not_found": "Ce partenaire n'existe pas.",
+      "program": {
+        "coupon_inactive": "Le coupon des clients parrainés n'est pas actif.",
+        "coupon_not_found": "Le coupon des clients parrainés n'existe pas.",
+        "not_set": "Cet environnement n'a pas encore de programme de partenariat."
+      },
+      "promotion_code_not_found": "Ce code promotionnel n'existe pas."
     }
   },
   "product": {

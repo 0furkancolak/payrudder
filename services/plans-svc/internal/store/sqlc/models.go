@@ -39,6 +39,67 @@ type AccountMember struct {
 	CreatedAt time.Time
 }
 
+type Affiliate struct {
+	TenantID      uuid.UUID
+	ID            uuid.UUID
+	Code          string
+	Email         string
+	Name          string
+	UserID        *uuid.UUID
+	Status        string
+	PayoutMethod  string
+	PayoutDetails string
+	Source        string
+	ApprovedAt    *time.Time
+	SuspendedAt   *time.Time
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+type AffiliateAttribution struct {
+	TenantID     uuid.UUID
+	CustomerID   uuid.UUID
+	AffiliateID  uuid.UUID
+	Source       string
+	TouchedAt    time.Time
+	AttributedAt time.Time
+}
+
+type AffiliateAttributionRejection struct {
+	TenantID    uuid.UUID
+	ID          uuid.UUID
+	AffiliateID uuid.UUID
+	CustomerID  uuid.UUID
+	Reason      string
+	CreatedAt   time.Time
+}
+
+type AffiliateClicksDaily struct {
+	TenantID    uuid.UUID
+	AffiliateID uuid.UUID
+	Day         pgtype.Date
+	Clicks      int32
+}
+
+type AffiliateProgram struct {
+	TenantID              uuid.UUID
+	Status                string
+	CommissionKind        string
+	CommissionValue       int64
+	Currency              *string
+	CommissionTerm        string
+	CommissionTermValue   *int32
+	AttributionWindowDays int32
+	HoldDays              int32
+	MinPayoutMinor        int64
+	ReferredCouponID      *uuid.UUID
+	DailyClickCap         int32
+	LandingUrl            *string
+	AutoApprove           bool
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+}
+
 type ApiKey struct {
 	ID         uuid.UUID
 	TenantID   uuid.UUID
@@ -241,6 +302,7 @@ type PromotionCode struct {
 	AllowedCurrencies []string
 	RestoreOnReversal bool
 	CreatedAt         time.Time
+	AffiliateID       *uuid.UUID
 }
 
 type ProviderMigration struct {

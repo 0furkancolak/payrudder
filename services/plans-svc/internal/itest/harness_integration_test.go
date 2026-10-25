@@ -100,6 +100,8 @@ type env struct {
 	admin   plansv1.AdminServiceClient
 	ident   plansv1.IdentityServiceClient
 	hooks   plansv1.WebhookServiceClient
+	aff     plansv1.AffiliateServiceClient
+	pub     plansv1.AffiliatePublicServiceClient
 	box     *secretbox.Box
 	evicted *recordingEvictor
 }
@@ -155,6 +157,8 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 		t.Fatal(err)
 	}
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, true))
+	plansv1.RegisterAffiliateServiceServer(srv, grpcapi.NewAffiliates(plansSrv))
+	plansv1.RegisterAffiliatePublicServiceServer(srv, grpcapi.NewAffiliatesPublic(system, log))
 	adminSrv := admin.New(system, ev, allowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	mail := &recordingMail{}
@@ -171,7 +175,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), box: box, evicted: ev, mail: mail}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 
 func operator() context.Context {

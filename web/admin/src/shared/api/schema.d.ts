@@ -1056,6 +1056,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/affiliates/program": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The partner program of this environment
+         * @description One program per environment, so the sandbox and live have their own. 404 with the key affiliate.program.not_set before one is set.
+         */
+        get: operations["getAffiliateProgram"];
+        /**
+         * Set the rules of the partner program
+         * @description Replaces the program. A change applies to commissions earned from then on, never to those already earned. A commission is a share of the net, pre-tax amount of a paid invoice (percent_bps) or a fixed amount in one currency (fixed, earned only on invoices in that currency).
+         */
+        put: operations["setAffiliateProgram"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Partners, newest first */
+        get: operations["listAffiliates"];
+        put?: never;
+        /**
+         * Add a partner
+         * @description The code (3 to 32 letters, numbers, - or _) is unique across the whole platform because the public link /r/<code> carries no tenant; leave it out for a random one. A partner you add is active unless you ask for pending.
+         */
+        post: operations["createAffiliate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/referrals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The customers partners brought, newest first
+         * @description The customer's e-mail address is masked (j***@example.com).
+         */
+        get: operations["listAffiliateReferrals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/affiliates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One partner with their click and referral counts */
+        get: operations["getAffiliate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a partner's name, payout details or status
+         * @description status active approves a pending partner or reinstates a suspended one; suspended stops new attributions and commissions but keeps what was approved. Nothing returns to pending.
+         */
+        patch: operations["updateAffiliate"];
+        trace?: never;
+    };
+    "/v1/affiliates/{id}/promotion-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Make a promotion code the partner's
+         * @description A customer who redeems the code at a checkout is attributed to the partner, as if they had followed the link.
+         */
+        put: operations["linkAffiliatePromotionCode"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/referral": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Say which partner brought a customer
+         * @description For your own sign-up, which reads the ?ref= of the link. First touch wins: a customer who has an attribution keeps it. A refusal is a normal answer (attributed false and a reason), not an error: already_attributed, unknown_code, program_inactive, affiliate_inactive, expired, same_email, same_domain, same_payment_method.
+         */
+        post: operations["attributeCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{id}/scheduled-change": {
         parameters: {
             query?: never;
@@ -4345,6 +4471,74 @@ export interface components {
                 request_id?: string;
             };
         };
+        /** @description The rules of the partner program of one environment. */
+        AffiliateProgram: {
+            /**
+             * @description paused and draft earn nothing and turn the links off
+             * @enum {string}
+             */
+            status?: "draft" | "active" | "paused";
+            /** @enum {string} */
+            commission_kind?: "percent_bps" | "fixed";
+            /** @description Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed */
+            commission_value?: string;
+            /** @description Only for fixed; a percentage follows the currency of each invoice */
+            currency?: string;
+            /** @enum {string} */
+            commission_term?: "first_invoices" | "months" | "lifetime";
+            /** @description N invoices or N months; absent for lifetime */
+            commission_term_value?: number;
+            /** @default 30 */
+            attribution_window_days: number;
+            /** @description How long a commission waits (the refund window) before it can be paid */
+            hold_days?: number;
+            min_payout_minor?: string;
+            /** @description Coupon a referred customer gets on their next checkout */
+            referred_coupon_code?: string;
+            /** @default 1000 */
+            daily_click_cap: number;
+            /** @description Where /r/<code> sends the visitor; empty shows a plain page */
+            landing_url?: string;
+            /** @description A partner who applies is active at once */
+            auto_approve?: boolean;
+            /** Format: date-time */
+            readonly create_time?: string;
+            /** Format: date-time */
+            readonly update_time?: string;
+        };
+        Affiliate: {
+            /** Format: uuid */
+            id?: string;
+            code?: string;
+            email?: string;
+            name?: string;
+            /** @enum {string} */
+            status?: "pending" | "active" | "suspended";
+            /** @enum {string} */
+            payout_method?: "manual" | "bank_transfer";
+            payout_details?: string;
+            /** @enum {string} */
+            source?: "owner" | "application";
+            /** @description The partner has signed in and claimed this affiliate */
+            signed_in?: boolean;
+            clicks?: string;
+            referrals?: string;
+            /** Format: date-time */
+            approve_time?: string;
+            /** Format: date-time */
+            create_time?: string;
+        };
+        AffiliateReferral: {
+            /** Format: uuid */
+            affiliate_id?: string;
+            affiliate_code?: string;
+            customer_external_id?: string;
+            customer_email_masked?: string;
+            /** @enum {string} */
+            source?: "link" | "code" | "api";
+            /** Format: date-time */
+            attribute_time?: string;
+        };
         CreateCustomerRequest: {
             external_id: string;
             name: string;
@@ -4356,6 +4550,13 @@ export interface components {
             /** @description ISO 4217; default is the tenant's currency */
             billing_currency?: string;
             address?: components["schemas"]["Address"];
+            /** @description The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation. */
+            referral_code?: string;
+            /**
+             * Format: date-time
+             * @description When the visitor followed that link; default now
+             */
+            referral_touch_time?: string;
         };
         /** @description A postal address as printed on an invoice. Every part is optional. */
         Address: {
@@ -7253,6 +7454,276 @@ export interface operations {
                 content: {
                     "application/json": {
                         granted?: boolean;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    getAffiliateProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffiliateProgram"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    setAffiliateProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AffiliateProgram"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AffiliateProgram"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listAffiliates: {
+        parameters: {
+            query?: {
+                status?: "pending" | "active" | "suspended";
+                /** @description Part of the code */
+                search?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        affiliates?: components["schemas"]["Affiliate"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    createAffiliate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                    name?: string;
+                    code?: string;
+                    /** @enum {string} */
+                    payout_method?: "manual" | "bank_transfer";
+                    payout_details?: string;
+                    pending?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Affiliate"];
+                };
+            };
+            400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    listAffiliateReferrals: {
+        parameters: {
+            query?: {
+                /** @description Only this partner's */
+                affiliate_id?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        referrals?: components["schemas"]["AffiliateReferral"][];
+                        next_page_token?: string;
+                        total?: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getAffiliate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Affiliate"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    updateAffiliate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @enum {string} */
+                    payout_method?: "manual" | "bank_transfer";
+                    payout_details?: string;
+                    /** @enum {string} */
+                    status?: "active" | "suspended";
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Affiliate"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    linkAffiliatePromotionCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    promotion_code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Affiliate"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    attributeCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    /** @enum {string} */
+                    source?: "link" | "code" | "api";
+                    /**
+                     * Format: date-time
+                     * @description When the visitor followed the link; default now
+                     */
+                    touch_time?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        attributed?: boolean;
+                        reason?: string;
                     };
                 };
             };
