@@ -4,7 +4,6 @@ package transfers
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -17,9 +16,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/httpx"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/command"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/query"
 )
@@ -64,7 +62,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	write(w, http.StatusOK, st)
+	httpx.WriteJSON(w, http.StatusOK, st)
 }
 
 // minor reads an amount of minor units written as a JSON number or as a string (the API writes int64 as strings elsewhere).
@@ -109,7 +107,7 @@ func (h *Handler) confirm(w http.ResponseWriter, r *http.Request) {
 	if res.Duplicate {
 		code = http.StatusOK
 	}
-	write(w, code, map[string]any{"receipt": res.Receipt, "duplicate": res.Duplicate, "paid": res.Paid, "saga_notified": res.SagaNotified, "transfer": res.State})
+	httpx.WriteJSON(w, code, map[string]any{"receipt": res.Receipt, "duplicate": res.Duplicate, "paid": res.Paid, "saga_notified": res.SagaNotified, "transfer": res.State})
 }
 
 type rejectBody struct {
@@ -133,7 +131,7 @@ func (h *Handler) reject(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	write(w, http.StatusOK, st)
+	httpx.WriteJSON(w, http.StatusOK, st)
 }
 
 // decode reads a JSON body; an empty body leaves v as it is.
@@ -149,12 +147,6 @@ func decode(w http.ResponseWriter, r *http.Request, v any) error {
 		return errkey.Newf(codes.InvalidArgument, "payments.transfer.bad_body", "malformed JSON: %v", err)
 	}
 	return nil
-}
-
-func write(w http.ResponseWriter, code int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	_ = json.NewEncoder(w).Encode(v)
 }
 
 var httpCodes = map[codes.Code]int{
@@ -184,29 +176,5 @@ func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
 			body["key"] = errkey.Default(codes.Internal)
 		}
 	}
-	write(w, code, map[string]any{"error": body})
-}
-
-// BillingClient lets the commands ask billing-svc about an invoice and nudge its saga. The payments-worker is an internal caller: it acts for the tenant
-// and, for the nudge, as the operator.
-type BillingClient struct {
-	Invoices billingv1.BillingServiceClient
-	Admin    billingv1.BillingAdminServiceClient
-}
-
-// InvoiceStatus implements command.Billing.
-func (b BillingClient) InvoiceStatus(ctx context.Context, t, invoice uuid.UUID) (string, bool, error) {
-	ctx = tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: t}))
-	r, err := b.Invoices.GetInvoice(ctx, &billingv1.GetInvoiceRequest{InvoiceId: invoice.String()})
-	if status.Code(err) == codes.NotFound {
-		return "", false, nil
-	}
-	return r.GetInvoice().GetStatus(), err == nil, err
-}
-
-// Nudge implements command.Billing: RetryInvoiceSaga re-asks the payment status of a saga that is waiting for it.
-func (b BillingClient) Nudge(ctx context.Context, t, invoice uuid.UUID) error {
-	ctx = tenant.OutgoingContext(tenant.WithOperator(ctx))
-	_, err := b.Admin.RetryInvoiceSaga(ctx, &billingv1.RetryInvoiceSagaRequest{TenantId: t.String(), InvoiceId: invoice.String()})
-	return err
+	httpx.WriteJSON(w, code, map[string]any{"error": body})
 }

@@ -112,6 +112,12 @@ type Receipt struct {
 	RecordedAt    time.Time `json:"recorded_at"`
 }
 
+// receiptFromRow is the receipt a stored row stands for.
+func receiptFromRow(r sqlc.ListManualReceiptsRow) Receipt {
+	return Receipt{ID: r.LedgerID, AmountMinor: r.AmountMinor, Currency: r.Currency, ReceivedAt: r.ReceivedAt.UTC(), BankReference: r.BankReference, Note: r.Note,
+		RecordedBy: r.RecordedBy, RecordedAt: r.RecordedAt.UTC()}
+}
+
 // Receipts lists the confirmed transfers of an invoice, oldest first.
 func (t Transfers) Receipts(ctx context.Context, tenant, invoice uuid.UUID) ([]Receipt, error) {
 	rows, err := sqlc.New(t.DB).ListManualReceipts(ctx, sqlc.ListManualReceiptsParams{TenantID: tenant, InvoiceID: invoice})
@@ -120,8 +126,7 @@ func (t Transfers) Receipts(ctx context.Context, tenant, invoice uuid.UUID) ([]R
 	}
 	out := make([]Receipt, len(rows))
 	for i, r := range rows {
-		out[i] = Receipt{ID: r.LedgerID, AmountMinor: r.AmountMinor, Currency: r.Currency, ReceivedAt: r.ReceivedAt.UTC(), BankReference: r.BankReference, Note: r.Note,
-			RecordedBy: r.RecordedBy, RecordedAt: r.RecordedAt.UTC()}
+		out[i] = receiptFromRow(r)
 	}
 	return out, nil
 }
@@ -193,8 +198,7 @@ func (t Transfers) Record(ctx context.Context, n NewReceipt, total int64) (Recor
 			if r.AmountMinor != n.AmountMinor {
 				return ErrReceiptAmount
 			}
-			res = RecordResult{Duplicate: true, Received: sum.Received, Receipt: Receipt{ID: r.LedgerID, AmountMinor: r.AmountMinor, Currency: r.Currency, ReceivedAt: r.ReceivedAt.UTC(),
-				BankReference: r.BankReference, Note: r.Note, RecordedBy: r.RecordedBy, RecordedAt: r.RecordedAt.UTC()}}
+			res = RecordResult{Duplicate: true, Received: sum.Received, Receipt: receiptFromRow(r)}
 			return nil
 		}
 		if _, err := CheckReceipt(sum.Received, n.AmountMinor, total); err != nil {

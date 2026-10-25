@@ -31,7 +31,7 @@ func TestPaidByHandIsNotPaidWithoutCharge(t *testing.T) {
 		"ghost": {Id: "ghost", Number: "INV-2", TotalMinor: 500, Currency: "TRY"},
 	}
 	rec := &Reconciliation{Counts: map[string]int{}}
-	rec.compare(paid, map[string][]ledgerCharge{}, func(id string) bool { return id == "hand" })
+	rec.compare(paid, map[string][]store.Charge{}, func(id string) bool { return id == "hand" })
 	if rec.Counts[PaidWithoutCharge] != 1 || len(rec.Discrepancies) != 1 || rec.Discrepancies[0].InvoiceID != "ghost" {
 		t.Fatalf("discrepancies = %+v, want only the invoice nobody recorded a payment for", rec.Discrepancies)
 	}
@@ -43,9 +43,9 @@ func TestSummedTransfersMatchTheInvoice(t *testing.T) {
 		{InvoiceID: "a", Provider: "banktransfer", ProviderRef: "a:T1", Currency: "TRY", AmountMinor: 400},
 		{InvoiceID: "a", Provider: "banktransfer", ProviderRef: "a:T2", Currency: "TRY", AmountMinor: 600},
 	})
-	by := map[string][]ledgerCharge{}
+	by := map[string][]store.Charge{}
 	for _, c := range charges {
-		by[c.InvoiceID] = append(by[c.InvoiceID], ledgerCharge(c))
+		by[c.InvoiceID] = append(by[c.InvoiceID], c)
 	}
 	rec := &Reconciliation{Counts: map[string]int{}}
 	rec.compare(map[string]*billingv1.Invoice{"a": {Id: "a", TotalMinor: 1000, Currency: "TRY"}}, by, func(string) bool { return false })

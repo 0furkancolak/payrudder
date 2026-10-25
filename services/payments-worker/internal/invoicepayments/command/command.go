@@ -179,7 +179,7 @@ func liveProvider(ctx context.Context, d Deps, t uuid.UUID, name string) (paymen
 
 // startAttempt records that the provider is about to be called. The key decides the command id. It reports whether the attempt was already there.
 func startAttempt(ctx context.Context, d Deps, t, invoice uuid.UUID, provider, key string, req attemptRequest) (bool, error) {
-	redelivered, err := d.Attempts.Start(ctx, uuid.NewSHA1(linkNS, []byte(key)), t, invoice, "charge", env.Live.String(), provider, key, req)
+	redelivered, err := d.Attempts.Start(ctx, uuid.NewSHA1(linkNS, []byte(key)), t, invoice, store.KindCharge, env.Live.String(), provider, key, req)
 	if err != nil {
 		return false, fmt.Errorf("record the payment attempt: %w", err)
 	}
@@ -189,8 +189,8 @@ func startAttempt(ctx context.Context, d Deps, t, invoice uuid.UUID, provider, k
 // recordPending writes the pending ledger row of a started payment. A failure is logged and not returned: the customer has the provider's page or reference
 // already, and the notification writes the outcome.
 func recordPending(ctx context.Context, d Deps, t, invoice uuid.UUID, provider, key string, in Payment, ref, detail string) {
-	_, err := d.Ledger.Append(ctx, store.LedgerEntry{TenantID: t, InvoiceID: invoice, Provider: provider, Environment: env.Live.String(), Kind: "charge", Status: "pending",
-		AmountMinor: in.AmountMinor, Currency: in.Currency, ProviderRef: ref, IdempotencyKey: key, Source: "command", Detail: detail})
+	_, err := d.Ledger.Append(ctx, store.LedgerEntry{TenantID: t, InvoiceID: invoice, Provider: provider, Environment: env.Live.String(), Kind: store.KindCharge, Status: store.StatusPending,
+		AmountMinor: in.AmountMinor, Currency: in.Currency, ProviderRef: ref, IdempotencyKey: key, Source: store.SourceCommand, Detail: detail})
 	if err != nil {
 		d.Log.ErrorContext(ctx, "ledger write failed for a started payment", "provider", provider, "invoice", invoice, "err", err)
 	}

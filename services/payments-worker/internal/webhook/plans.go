@@ -17,13 +17,9 @@ type PlansClient struct {
 	Admin plansv1.AdminServiceClient
 }
 
-func as(ctx context.Context, id uuid.UUID) context.Context {
-	return tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id}))
-}
-
 // SyncProviderSubscription implements PlansAPI.
 func (p PlansClient) SyncProviderSubscription(ctx context.Context, id uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest) error {
-	if _, err := p.Client.SyncProviderSubscription(as(ctx, id), req); err != nil {
+	if _, err := p.Client.SyncProviderSubscription(tenant.OutgoingFor(ctx, id), req); err != nil {
 		return fmt.Errorf("sync with plans-svc: %w", err)
 	}
 	return nil
@@ -31,42 +27,42 @@ func (p PlansClient) SyncProviderSubscription(ctx context.Context, id uuid.UUID,
 
 // GetSubscription implements PlansAPI. The gRPC status is kept so callers can relay it.
 func (p PlansClient) GetSubscription(ctx context.Context, id uuid.UUID, sub string) (*plansv1.Subscription, error) {
-	r, err := p.Client.GetSubscription(as(ctx, id), &plansv1.GetSubscriptionRequest{SubscriptionId: sub})
+	r, err := p.Client.GetSubscription(tenant.OutgoingFor(ctx, id), &plansv1.GetSubscriptionRequest{SubscriptionId: sub})
 	return r.GetSubscription(), err
 }
 
 // StartProviderMigration implements PlansAPI.
 func (p PlansClient) StartProviderMigration(ctx context.Context, id uuid.UUID, req *plansv1.StartProviderMigrationRequest) (*plansv1.ProviderMigration, error) {
-	r, err := p.Client.StartProviderMigration(as(ctx, id), req)
+	r, err := p.Client.StartProviderMigration(tenant.OutgoingFor(ctx, id), req)
 	return r.GetMigration(), err
 }
 
 // CompleteProviderMigration implements PlansAPI.
 func (p PlansClient) CompleteProviderMigration(ctx context.Context, id uuid.UUID, req *plansv1.CompleteProviderMigrationRequest) (*plansv1.CompleteProviderMigrationResponse, error) {
-	return p.Client.CompleteProviderMigration(as(ctx, id), req)
+	return p.Client.CompleteProviderMigration(tenant.OutgoingFor(ctx, id), req)
 }
 
 // AbortProviderMigration implements PlansAPI.
 func (p PlansClient) AbortProviderMigration(ctx context.Context, id uuid.UUID, migration string) error {
-	_, err := p.Client.AbortProviderMigration(as(ctx, id), &plansv1.AbortProviderMigrationRequest{MigrationId: migration})
+	_, err := p.Client.AbortProviderMigration(tenant.OutgoingFor(ctx, id), &plansv1.AbortProviderMigrationRequest{MigrationId: migration})
 	return err
 }
 
 // GetPlanVersion implements PlansAPI. The gRPC status is kept so callers can relay it.
 func (p PlansClient) GetPlanVersion(ctx context.Context, id uuid.UUID, req *plansv1.GetPlanVersionRequest) (*plansv1.PlanVersion, error) {
-	r, err := p.Client.GetPlanVersion(as(ctx, id), req)
+	r, err := p.Client.GetPlanVersion(tenant.OutgoingFor(ctx, id), req)
 	return r.GetPlanVersion(), err
 }
 
 // GetCustomer implements PlansAPI.
 func (p PlansClient) GetCustomer(ctx context.Context, id uuid.UUID, externalID string) (*plansv1.Customer, error) {
-	r, err := p.Client.GetCustomer(as(ctx, id), &plansv1.GetCustomerRequest{ExternalId: externalID})
+	r, err := p.Client.GetCustomer(tenant.OutgoingFor(ctx, id), &plansv1.GetCustomerRequest{ExternalId: externalID})
 	return r.GetCustomer(), err
 }
 
 // PreviewRouting implements PlansAPI.
 func (p PlansClient) PreviewRouting(ctx context.Context, id uuid.UUID, country, currency string) (string, error) {
-	r, err := p.Client.PreviewRouting(as(ctx, id), &plansv1.PreviewRoutingRequest{Country: country, Currency: currency})
+	r, err := p.Client.PreviewRouting(tenant.OutgoingFor(ctx, id), &plansv1.PreviewRoutingRequest{Country: country, Currency: currency})
 	return r.GetProvider(), err
 }
 

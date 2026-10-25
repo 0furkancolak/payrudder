@@ -2,12 +2,10 @@ package store
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
@@ -63,12 +61,12 @@ func (a EInvoiceAccounts) List(ctx context.Context, tenant uuid.UUID) ([]EInvoic
 
 // Settings opens the account of an environment; ErrNoAccount when there is none.
 func (a EInvoiceAccounts) Settings(ctx context.Context, tenant uuid.UUID, env string) (provider string, settings []byte, err error) {
-	row, err := sqlc.New(a.DB).GetEInvoiceAccount(ctx, sqlc.GetEInvoiceAccountParams{TenantID: tenant, Environment: env})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return "", nil, ErrNoAccount
-	}
+	row, ok, err := found(sqlc.New(a.DB).GetEInvoiceAccount(ctx, sqlc.GetEInvoiceAccountParams{TenantID: tenant, Environment: env}))
 	if err != nil {
 		return "", nil, err
+	}
+	if !ok {
+		return "", nil, ErrNoAccount
 	}
 	settings, err = a.Box.Open(row.SettingsEnc, einvoiceAAD(tenant, env))
 	return row.Provider, settings, err
@@ -93,11 +91,8 @@ func (i EInvoiceIssuances) Begin(ctx context.Context, doc, tenant uuid.UUID, env
 
 // Get returns the record of a document, if any.
 func (i EInvoiceIssuances) Get(ctx context.Context, doc, tenant uuid.UUID) (Issuance, bool, error) {
-	r, err := sqlc.New(i.DB).GetEInvoiceIssuance(ctx, sqlc.GetEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Issuance{}, false, nil
-	}
-	if err != nil {
+	r, ok, err := found(sqlc.New(i.DB).GetEInvoiceIssuance(ctx, sqlc.GetEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant}))
+	if !ok {
 		return Issuance{}, false, err
 	}
 	return Issuance{DocumentID: r.DocumentID, Environment: r.Environment, Provider: r.Provider, Kind: r.Kind, DocumentType: r.DocumentType, Status: r.Status,
