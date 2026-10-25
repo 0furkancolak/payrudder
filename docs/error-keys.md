@@ -295,6 +295,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.account.bad_settings`
 - `payments.account.not_found`
 - `payments.account.sync_failed`
+- `payments.billing.failed`
 - `payments.billing.not_configured`
 - `payments.charge.currency_not_supported`
 - `payments.charge.pending`
