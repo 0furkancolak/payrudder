@@ -19,7 +19,9 @@ import (
 )
 
 // uniq makes a code that no other test of the shared database used: affiliate codes are unique across the platform.
-func uniq(prefix string) string { return prefix + strings.ToUpper(strings.ReplaceAll(uuid.NewString()[:8], "-", "")) }
+func uniq(prefix string) string {
+	return prefix + strings.ToUpper(strings.ReplaceAll(uuid.NewString()[:8], "-", ""))
+}
 
 // activeProgram sets a plain 10 % program, active.
 func activeProgram(t *testing.T, e *env, ctx context.Context, mut func(p *plansv1.AffiliateProgram)) *plansv1.AffiliateProgram {
@@ -78,12 +80,20 @@ func testAffiliates(t *testing.T) {
 				t.Errorf("%s was accepted", name)
 			}
 		}
-		got := activeProgram(t, e, ctx, func(p *plansv1.AffiliateProgram) { p.LandingUrl = "https://shop.example.com/welcome"; p.CommissionTerm = "months"; p.CommissionTermValue = 12 })
+		got := activeProgram(t, e, ctx, func(p *plansv1.AffiliateProgram) {
+			p.LandingUrl = "https://shop.example.com/welcome"
+			p.CommissionTerm = "months"
+			p.CommissionTermValue = 12
+		})
 		if got.GetStatus() != "active" || got.GetCommissionTermValue() != 12 || got.GetLandingUrl() != "https://shop.example.com/welcome" {
 			t.Fatalf("program: %v", got)
 		}
 		// Replaced, not merged.
-		got = activeProgram(t, e, ctx, func(p *plansv1.AffiliateProgram) { p.CommissionKind = "fixed"; p.CommissionValue = 700; p.Currency = "try" })
+		got = activeProgram(t, e, ctx, func(p *plansv1.AffiliateProgram) {
+			p.CommissionKind = "fixed"
+			p.CommissionValue = 700
+			p.Currency = "try"
+		})
 		if got.GetCommissionKind() != "fixed" || got.GetCurrency() != "TRY" || got.GetCommissionTermValue() != 0 || got.GetLandingUrl() != "" {
 			t.Fatalf("replaced program: %v", got)
 		}
