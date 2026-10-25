@@ -1499,7 +1499,10 @@
         "already_rotating": "Dieser Schlüssel wurde bereits ersetzt und läuft bald ab. Widerrufen Sie ihn oder warten Sie, bis er endet.",
         "bad_overlap": "Die Überlappung muss zwischen 0 Stunden und 7 Tagen liegen.",
         "bad_scope": "Der Bereich muss full, ingest oder read sein.",
-        "not_active": "Dieser API-Schlüssel wurde widerrufen."
+        "not_active": "Dieser API-Schlüssel wurde widerrufen.",
+        "invalid": "Der API-Schlüssel ist ungültig.",
+        "missing": "Senden Sie Ihren API-Schlüssel als Bearer-Token im Authorization-Header.",
+        "sandbox_only": "Dieser Endpunkt ist nur für Sandbox-Schlüssel (qk_test_) gedacht."
       },
       "app": {
         "not_found": "Diese App existiert nicht oder gehört Ihnen nicht.",
@@ -1507,15 +1510,20 @@
       },
       "auth": {
         "invalid_credentials": "E-Mail oder Passwort falsch oder zu viele Versuche. Nach fünf falschen Passwörtern ist die Anmeldung für diese Adresse 15 Minuten gesperrt, auch mit dem richtigen Passwort.",
-        "rate_limited": "Zu viele Versuche von dieser Adresse. Versuchen Sie es in einer Minute erneut."
+        "rate_limited": "Zu viele Versuche von dieser Adresse. Versuchen Sie es in einer Minute erneut.",
+        "unavailable": "Die Anmeldeprüfung ist gerade nicht verfügbar. Versuchen Sie es gleich erneut."
       },
       "session": {
-        "invalid": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an."
+        "invalid": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
+        "act_as_required": "Eine angemeldete Sitzung muss angeben, für welches Konto sie handelt.",
+        "unavailable": "Die Anmeldung ist vorübergehend nicht verfügbar. Versuchen Sie es gleich erneut."
       },
       "tenant": {
         "not_found": "Diese Umgebung existiert nicht oder gehört Ihnen nicht.",
         "bad_metadata": "Das Konto in der Anfrage ist ungültig.",
-        "metadata_missing": "Die Anfrage gibt nicht an, für welches Konto sie gilt."
+        "metadata_missing": "Die Anfrage gibt nicht an, für welches Konto sie gilt.",
+        "bad_act_as": "Das Konto, für das gehandelt wird, muss eine gültige Konto-ID sein.",
+        "lookup_unavailable": "Das Konto konnte gerade nicht abgefragt werden. Versuchen Sie es gleich erneut."
       },
       "token": {
         "invalid": "Dieser Link ist ungültig, abgelaufen oder wurde schon benutzt. Fordern Sie einen neuen an."
@@ -1548,7 +1556,8 @@
         "not_configured": "Die Anmeldung mit Google ist hier nicht eingerichtet."
       },
       "operator": {
-        "forbidden": "Dieser Bereich ist Plattformbetreibern vorbehalten."
+        "forbidden": "Dieser Bereich ist Plattformbetreibern vorbehalten.",
+        "required": "Dieser Bereich ist für Plattformbetreiber. Melden Sie sich als Betreiber an."
       },
       "go_live": {
         "incomplete": "Die Go-live-Checkliste ist noch nicht vollständig.",
@@ -1560,15 +1569,34 @@
     "gateway": {
       "dashboard": {
         "bad_period": "Dieser Zeitraum ist ungültig. Wählen Sie 7, 30 oder 90 Tage, dieses Jahr oder zwei Tage, deren erster nicht nach dem letzten liegt.",
-        "range_too_long": "Ein Zeitraum darf höchstens zwei Jahre lang sein."
+        "range_too_long": "Ein Zeitraum darf höchstens zwei Jahre lang sein.",
+        "limits_unavailable": "Nutzungslimits sind gerade nicht verfügbar, daher lässt sich diese Ansicht nicht aufbauen. Versuchen Sie es gleich erneut.",
+        "payments_unavailable": "Zahlungen sind gerade nicht verfügbar, daher lässt sich diese Ansicht nicht aufbauen. Versuchen Sie es gleich erneut."
       },
       "request": {
         "invalid": "{field} ist ungültig: {detail}",
-        "too_large": "Die Anfrage ist zu groß."
+        "too_large": "Die Anfrage ist zu groß.",
+        "bad_tenant_id": "Die Konto-ID ist keine gültige ID.",
+        "malformed_json": "Der Anfragetext ist kein gültiges JSON.",
+        "unreadable_body": "Der Anfragetext konnte nicht gelesen werden."
       },
       "auth": {
         "scope_denied": "Der Bereich dieses API-Schlüssels erlaubt diese Anfrage nicht. Verwenden Sie einen Schlüssel mit größerem Bereich.",
         "tenant_not_active": "Diese Umgebung ist gesperrt oder noch nicht aktiv. Schließen Sie die Go-live-Checkliste ab oder wenden Sie sich an den Support."
+      },
+      "assets": {
+        "bad_invoice_logo": "Das Rechnungslogo muss ein abgeschlossener Upload der Art Rechnungslogo sein."
+      },
+      "payments": {
+        "ledger_unreachable": "Das Zahlungsbuch ist gerade nicht erreichbar. Versuchen Sie es gleich erneut.",
+        "not_configured": "Zahlungsanbieter sind in dieser Installation nicht eingerichtet.",
+        "unreachable": "Der Zahlungsdienst ist gerade nicht erreichbar. Versuchen Sie es gleich erneut."
+      },
+      "rate_limit": {
+        "exceeded": "Zu viele Anfragen dieser Art. Warten Sie einen Moment und versuchen Sie es erneut."
+      },
+      "route": {
+        "not_found": "Diese Adresse gibt es in der API nicht."
       }
     },
     "env": {

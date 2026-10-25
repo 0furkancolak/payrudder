@@ -1499,7 +1499,10 @@
         "already_rotating": "Esta clave ya se rotó y terminará pronto. Revócala o espera a que termine.",
         "bad_overlap": "El solapamiento debe estar entre 0 horas y 7 días.",
         "bad_scope": "El alcance debe ser full, ingest o read.",
-        "not_active": "Esta clave de API está revocada."
+        "not_active": "Esta clave de API está revocada.",
+        "invalid": "La clave de API no es válida.",
+        "missing": "Envía tu clave de API como token Bearer en el encabezado Authorization.",
+        "sandbox_only": "Este endpoint es solo para claves sandbox (qk_test_)."
       },
       "app": {
         "not_found": "Esta aplicación no existe o no es suya.",
@@ -1507,15 +1510,20 @@
       },
       "auth": {
         "invalid_credentials": "Correo o contraseña incorrectos, o demasiados intentos. Tras cinco contraseñas erróneas, el acceso con esa dirección se pausa 15 minutos, incluso con la contraseña correcta.",
-        "rate_limited": "Demasiados intentos desde esta dirección. Inténtelo de nuevo en un minuto."
+        "rate_limited": "Demasiados intentos desde esta dirección. Inténtelo de nuevo en un minuto.",
+        "unavailable": "La comprobación de inicio de sesión no está disponible ahora mismo. Inténtalo de nuevo en un momento."
       },
       "session": {
-        "invalid": "Su sesión ha terminado. Inicie sesión de nuevo."
+        "invalid": "Su sesión ha terminado. Inicie sesión de nuevo.",
+        "act_as_required": "Una sesión iniciada debe indicar en nombre de qué cuenta actúa.",
+        "unavailable": "El inicio de sesión no está disponible temporalmente. Inténtalo de nuevo en un momento."
       },
       "tenant": {
         "not_found": "Este entorno no existe o no es suyo.",
         "bad_metadata": "La cuenta de la solicitud no es válida.",
-        "metadata_missing": "La solicitud no indica para qué cuenta es."
+        "metadata_missing": "La solicitud no indica para qué cuenta es.",
+        "bad_act_as": "La cuenta sobre la que actuar debe ser un identificador de cuenta válido.",
+        "lookup_unavailable": "No se pudo consultar la cuenta ahora mismo. Inténtalo de nuevo en un momento."
       },
       "token": {
         "invalid": "Este enlace no es válido, ha caducado o ya se usó. Solicita uno nuevo."
@@ -1548,7 +1556,8 @@
         "not_configured": "El inicio de sesión con Google no está configurado aquí."
       },
       "operator": {
-        "forbidden": "Esta zona es para los operadores de la plataforma."
+        "forbidden": "Esta zona es para los operadores de la plataforma.",
+        "required": "Esta área es para operadores de la plataforma. Inicia sesión como operador."
       },
       "go_live": {
         "incomplete": "La lista de salida a producción aún no está completa.",
@@ -1560,15 +1569,34 @@
     "gateway": {
       "dashboard": {
         "bad_period": "Ese periodo no es válido. Elija 7, 30 o 90 días, este año, o dos días con el primero no posterior al último.",
-        "range_too_long": "Un periodo dura como máximo dos años."
+        "range_too_long": "Un periodo dura como máximo dos años.",
+        "limits_unavailable": "Los límites de uso no están disponibles ahora mismo, así que no se puede construir esta vista. Inténtalo de nuevo en un momento.",
+        "payments_unavailable": "Los pagos no están disponibles ahora mismo, así que no se puede construir esta vista. Inténtalo de nuevo en un momento."
       },
       "request": {
         "invalid": "{field} no es válido: {detail}",
-        "too_large": "La solicitud es demasiado grande."
+        "too_large": "La solicitud es demasiado grande.",
+        "bad_tenant_id": "El identificador de la cuenta no es válido.",
+        "malformed_json": "El cuerpo de la solicitud no es un JSON válido.",
+        "unreadable_body": "No se pudo leer el cuerpo de la solicitud."
       },
       "auth": {
         "scope_denied": "El alcance de esta clave de API no permite esta solicitud. Usa una clave con un alcance mayor.",
         "tenant_not_active": "Este entorno está suspendido o aún no está activo. Completa la lista de salida a producción o contacta con soporte."
+      },
+      "assets": {
+        "bad_invoice_logo": "El logotipo de factura debe ser una subida terminada del tipo logotipo de factura."
+      },
+      "payments": {
+        "ledger_unreachable": "No se puede acceder al libro de pagos ahora mismo. Inténtalo de nuevo en un momento.",
+        "not_configured": "Los proveedores de pago no están configurados en este despliegue.",
+        "unreachable": "No se puede acceder al servicio de pagos ahora mismo. Inténtalo de nuevo en un momento."
+      },
+      "rate_limit": {
+        "exceeded": "Demasiadas solicitudes de este tipo. Espera un momento e inténtalo de nuevo."
+      },
+      "route": {
+        "not_found": "Esa dirección no existe en la API."
       }
     },
     "env": {

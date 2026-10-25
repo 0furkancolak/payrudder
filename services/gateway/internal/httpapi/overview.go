@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
@@ -408,7 +407,7 @@ func (s *Server) buildOverview(ctx context.Context, appID, envName string, t *pl
 		entries, err := s.recentLedger(ctx, t.GetId())
 		if err != nil {
 			paymentsUp = false
-			return status.Error(codes.Unavailable, "payments")
+			return errkey.New(codes.Unavailable, "gateway.dashboard.payments_unavailable", "payments")
 		}
 		rows = entries
 		var accts struct {

@@ -16,6 +16,7 @@ import (
 
 	assetsv1 "github.com/0furkancolak/quotify/gen/go/quotify/assets/v1"
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/tenant"
 )
 
@@ -352,7 +353,7 @@ func (s *Server) setInvoiceLogo(w http.ResponseWriter, r *http.Request) {
 	}
 	a := ar.GetAsset()
 	if a.GetPurpose() != assetsv1.Purpose_PURPOSE_INVOICE_LOGO || a.GetStatus() != assetsv1.AssetStatus_ASSET_STATUS_READY {
-		writeError(w, r, status.Error(codes.FailedPrecondition, "the asset must be a READY invoice_logo"))
+		writeError(w, r, errkey.New(codes.FailedPrecondition, "gateway.assets.bad_invoice_logo", "the asset must be a READY invoice_logo"))
 		return
 	}
 	s.updateLogo(w, r, &plansv1.UpdateTenantSettingsRequest{InvoiceLogoAssetId: a.GetId()})

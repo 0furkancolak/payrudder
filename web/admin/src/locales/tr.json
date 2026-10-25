@@ -1499,7 +1499,10 @@
         "already_rotating": "Bu anahtar zaten yenilendi ve yakında sona erecek. İptal edin ya da bitmesini bekleyin.",
         "bad_overlap": "Geçiş süresi 0 saat ile 7 gün arasında olmalıdır.",
         "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
-        "not_active": "Bu API anahtarı iptal edilmiş."
+        "not_active": "Bu API anahtarı iptal edilmiş.",
+        "invalid": "API anahtarı geçerli değil.",
+        "missing": "API anahtarınızı Authorization başlığında Bearer belirteci olarak gönderin.",
+        "sandbox_only": "Bu uç nokta yalnızca sandbox anahtarları (qk_test_) içindir."
       },
       "app": {
         "not_found": "Bu uygulama yok ya da size ait değil.",
@@ -1507,15 +1510,20 @@
       },
       "auth": {
         "invalid_credentials": "E-posta ya da parola yanlış veya çok fazla deneme yapıldı. Beş yanlış paroladan sonra o adres için giriş, doğru parolayla bile 15 dakika durdurulur.",
-        "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin."
+        "rate_limited": "Bu adresten çok fazla deneme yapıldı. Bir dakika sonra yeniden deneyin.",
+        "unavailable": "Kimlik doğrulama şu anda kullanılamıyor. Biraz sonra yeniden deneyin."
       },
       "session": {
-        "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın."
+        "invalid": "Oturumunuz sona erdi. Yeniden giriş yapın.",
+        "act_as_required": "Oturum açılmış bir oturum hangi hesap adına işlem yaptığını belirtmeli.",
+        "unavailable": "Oturum açma geçici olarak kullanılamıyor. Biraz sonra yeniden deneyin."
       },
       "tenant": {
         "not_found": "Bu ortam yok ya da size ait değil.",
         "bad_metadata": "İstekteki hesap geçerli değil.",
-        "metadata_missing": "İstek hangi hesap için olduğunu belirtmiyor."
+        "metadata_missing": "İstek hangi hesap için olduğunu belirtmiyor.",
+        "bad_act_as": "İşlem yapılacak hesap geçerli bir hesap kimliği olmalı.",
+        "lookup_unavailable": "Hesap şu anda sorgulanamadı. Biraz sonra yeniden deneyin."
       },
       "token": {
         "invalid": "Bu bağlantı geçersiz, süresi dolmuş ya da daha önce kullanılmış. Yenisini isteyin."
@@ -1548,7 +1556,8 @@
         "not_configured": "Google ile giriş burada kurulu değil."
       },
       "operator": {
-        "forbidden": "Bu alan platform operatörlerine ayrılmıştır."
+        "forbidden": "Bu alan platform operatörlerine ayrılmıştır.",
+        "required": "Bu alan platform operatörleri içindir. Operatör olarak oturum açın."
       },
       "go_live": {
         "incomplete": "Canlıya geçiş listesi henüz tamamlanmadı.",
@@ -1560,15 +1569,34 @@
     "gateway": {
       "dashboard": {
         "bad_period": "Bu dönem geçerli değil. 7, 30 ya da 90 gün, bu yıl veya ilki sonuncudan sonra olmayan iki gün seçin.",
-        "range_too_long": "Bir dönem en fazla iki yıl olabilir."
+        "range_too_long": "Bir dönem en fazla iki yıl olabilir.",
+        "limits_unavailable": "Kullanım limitleri şu anda kullanılamıyor, bu yüzden bu görünüm oluşturulamıyor. Biraz sonra yeniden deneyin.",
+        "payments_unavailable": "Ödemeler şu anda kullanılamıyor, bu yüzden bu görünüm oluşturulamıyor. Biraz sonra yeniden deneyin."
       },
       "request": {
         "invalid": "{field} geçerli değil: {detail}",
-        "too_large": "İstek çok büyük."
+        "too_large": "İstek çok büyük.",
+        "bad_tenant_id": "Hesap kimliği geçerli bir kimlik değil.",
+        "malformed_json": "İstek gövdesi geçerli bir JSON değil.",
+        "unreadable_body": "İstek gövdesi okunamadı."
       },
       "auth": {
         "scope_denied": "Bu API anahtarının kapsamı bu isteğe izin vermiyor. Daha geniş kapsamlı bir anahtar kullanın.",
         "tenant_not_active": "Bu ortam askıya alınmış ya da henüz etkin değil. Canlıya geçiş listesini tamamlayın veya destekle iletişime geçin."
+      },
+      "assets": {
+        "bad_invoice_logo": "Fatura logosu, fatura logosu türünde tamamlanmış bir yükleme olmalı."
+      },
+      "payments": {
+        "ledger_unreachable": "Ödeme defterine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin.",
+        "not_configured": "Bu kurulumda ödeme sağlayıcıları yapılandırılmamış.",
+        "unreachable": "Ödeme servisine şu anda ulaşılamıyor. Biraz sonra yeniden deneyin."
+      },
+      "rate_limit": {
+        "exceeded": "Bu türden çok fazla istek var. Biraz bekleyip yeniden deneyin."
+      },
+      "route": {
+        "not_found": "API'de böyle bir adres yok."
       }
     },
     "env": {

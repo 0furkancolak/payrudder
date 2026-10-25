@@ -131,7 +131,7 @@ func New(d Deps) *Server {
 			otelhttp.WithSpanNameFormatter(func(string, *http.Request) string { return name })))
 	}
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, r, status.Error(codes.NotFound, "no such route"))
+		writeError(w, r, errkey.New(codes.NotFound, "gateway.route.not_found", "no such route"))
 	})
 	s.handler = requestIDMiddleware(s.recoverMiddleware(mux))
 	return s
@@ -192,7 +192,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 				return
 			}
 			if !ok {
-				writeError(w, r, status.Error(codes.Unauthenticated, "operator access required"))
+				writeError(w, r, errkey.New(codes.Unauthenticated, "identity.operator.required", "operator access required"))
 				return
 			}
 			ctx = tenant.WithOperator(ctx)
@@ -207,7 +207,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 				return
 			}
 			if rt.Access == AccessSandbox && p.Tenant.Environment != tenant.EnvSandbox {
-				writeError(w, r, status.Error(codes.PermissionDenied, "sandbox endpoints require a qk_test_ key"))
+				writeError(w, r, errkey.New(codes.PermissionDenied, "identity.api_key.sandbox_only", "sandbox endpoints require a qk_test_ key"))
 				return
 			}
 			// The ingest class is charged per event, which only the handler knows after reading the body.
@@ -243,7 +243,7 @@ func (s *Server) chargeKey(w http.ResponseWriter, r *http.Request, key, tier str
 	d, err := s.d.Limiter.Allow(r.Context(), key, tier, class, cost)
 	if err == nil && !d.Allowed {
 		w.Header().Set("Retry-After", ratelimit.RetryAfterSeconds(d.RetryAfter))
-		writeError(w, r, status.Error(codes.ResourceExhausted, "rate limit exceeded for "+string(class)))
+		writeError(w, r, errkey.New(codes.ResourceExhausted, "gateway.rate_limit.exceeded", "rate limit exceeded for "+string(class)))
 		return false
 	}
 	return true
@@ -260,7 +260,7 @@ const ActAsHeader = "X-Quotify-Tenant"
 func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || token == "" {
-		return auth.Principal{}, status.Error(codes.Unauthenticated, "missing Authorization: Bearer <api key>")
+		return auth.Principal{}, errkey.New(codes.Unauthenticated, "identity.api_key.missing", "missing Authorization: Bearer <api key>")
 	}
 	// A person's session token, with a tenant named, is that tenant for the call, if the tenant belongs to one of the person's accounts.
 	if strings.HasPrefix(token, sessionPrefix) {
@@ -274,11 +274,11 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	p, err := s.d.Auth.Authenticate(r.Context(), token)
 	switch {
 	case errors.Is(err, auth.ErrUnavailable):
-		return p, status.Error(codes.Unavailable, "authentication temporarily unavailable")
+		return p, errkey.New(codes.Unavailable, "identity.auth.unavailable", "authentication temporarily unavailable")
 	case errors.Is(err, auth.ErrSuspended):
 		return p, errkey.New(codes.PermissionDenied, "gateway.auth.tenant_not_active", "this environment is suspended or not active yet: contact support")
 	case err != nil:
-		return p, status.Error(codes.Unauthenticated, "invalid api key")
+		return p, errkey.New(codes.Unauthenticated, "identity.api_key.invalid", "invalid api key")
 	}
 	return p, nil
 }
@@ -299,14 +299,14 @@ func scopeAllows(scope, method, path string) bool {
 func (s *Server) actAs(ctx context.Context, id string) (auth.Principal, error) {
 	tid, err := uuid.Parse(id)
 	if err != nil {
-		return auth.Principal{}, status.Error(codes.InvalidArgument, ActAsHeader+" must be a tenant id")
+		return auth.Principal{}, errkey.New(codes.InvalidArgument, "identity.tenant.bad_act_as", ActAsHeader+" must be a tenant id")
 	}
 	resp, err := s.d.Admin.GetTenant(tenant.WithOperator(ctx), &plansv1.GetTenantRequest{TenantId: tid.String()})
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return auth.Principal{}, status.Error(codes.NotFound, "no such tenant")
+			return auth.Principal{}, errkey.New(codes.NotFound, "identity.tenant.not_found", "no such tenant")
 		}
-		return auth.Principal{}, status.Error(codes.Unavailable, "tenant lookup unavailable")
+		return auth.Principal{}, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable")
 	}
 	return principalOf(resp.GetTenant()), nil
 }
@@ -418,13 +418,13 @@ func decode(r *http.Request, msg proto.Message) error {
 		if errors.As(err, &mbe) {
 			return errTooLarge{limit: mbe.Limit}
 		}
-		return status.Error(codes.InvalidArgument, "unreadable body")
+		return errkey.New(codes.InvalidArgument, "gateway.request.unreadable_body", "unreadable body")
 	}
 	if len(strings.TrimSpace(string(body))) == 0 {
 		return nil
 	}
 	if err := unmarshal.Unmarshal(body, msg); err != nil {
-		return status.Errorf(codes.InvalidArgument, "malformed JSON: %v", err)
+		return errkey.Newf(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON: %v", err)
 	}
 	return nil
 }
