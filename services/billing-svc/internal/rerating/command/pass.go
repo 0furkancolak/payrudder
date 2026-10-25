@@ -144,9 +144,12 @@ func (c *Commands) planCodeOf(rp *reratePass, pvID string) (string, error) {
 func (c *Commands) rerateCustomer(ctx context.Context, rp *reratePass, cid string) (bool, error) {
 	job, sub := rp.job, rp.subs[cid]
 	snap, invoiced := rp.snaps[cid]
-	if !invoiced || sub.PlanVersionID == job.PlanVersionID.String() {
-		return false, nil // never billed for the period, or already on the target version
+	if !invoiced {
+		return false, nil // never billed for the period
 	}
+	// A subscription already on the target version is still priced: what was billed may differ from it because an earlier job corrected the period to another
+	// version, and running the job again for the original version is how that is undone. When nothing differs there is nothing to record.
+	onTarget := sub.PlanVersionID == job.PlanVersionID.String()
 	if (sub.Currency != "" && sub.Currency != rp.currency) || len(sub.Chain) > 1 {
 		// Re-rating prices in the tenant currency and compares whole-period fees; a subscription sold in another
 		// currency or changed inside the period would be compared against the wrong amounts.
@@ -165,7 +168,7 @@ func (c *Commands) rerateCustomer(ctx context.Context, rp *reratePass, cid strin
 		return true, err
 	}
 	if total == 0 {
-		return true, nil
+		return !onTarget, nil
 	}
 	cuid, err := uuid.Parse(cid)
 	if err != nil {
