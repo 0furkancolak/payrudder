@@ -1117,6 +1117,299 @@
       }
     }
   },
+  "affiliates": {
+    "intro": "Betreiben Sie ein Partnerprogramm: Partner erhalten einen Link und einen Code, die von ihnen geworbenen Kunden werden gemerkt, und sie verdienen eine Provision auf das, was diese Kunden zahlen. Die Auszahlung nehmen Sie selbst vor.",
+    "tabsLabel": "Bereiche des Partnerprogramms",
+    "tabs": {
+      "overview": "Übersicht",
+      "program": "Programm",
+      "partners": "Partner",
+      "commissions": "Provisionen",
+      "payouts": "Auszahlungen",
+      "journal": "Journal"
+    },
+    "payoutMethod": "Auszahlungsart",
+    "payoutDetails": "Auszahlungsdaten",
+    "payoutDetailsHint": "Freitext für Sie: die IBAN, der Kontoinhaber oder alles, was Sie brauchen, um diesen Partner von Hand zu bezahlen.",
+    "methods": {
+      "manual": "Manuell",
+      "bank_transfer": "Banküberweisung"
+    },
+    "common": {
+      "status": "Status",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "save": "Speichern",
+      "yes": "Ja",
+      "no": "Nein",
+      "prev": "Zurück",
+      "next": "Weiter",
+      "total": "{count} insgesamt"
+    },
+    "status": {
+      "program": {
+        "draft": "Entwurf",
+        "active": "Aktiv",
+        "paused": "Pausiert"
+      },
+      "affiliate": {
+        "pending": "Ausstehend",
+        "active": "Aktiv",
+        "suspended": "Gesperrt"
+      },
+      "commission": {
+        "pending": "Ausstehend",
+        "approved": "Freigegeben",
+        "paid": "Ausgezahlt",
+        "reversed": "Storniert"
+      },
+      "payout": {
+        "open": "Offen",
+        "paid": "Bezahlt",
+        "cancelled": "Abgebrochen"
+      }
+    },
+    "overview": {
+      "noProgram": "Es gibt noch kein Partnerprogramm. Richten Sie eines ein, um Empfehlungen zu erhalten.",
+      "setUp": "Programm einrichten",
+      "inactive": "Die Links sind aus und es wird keine Provision verdient, bis das Programm aktiv ist.",
+      "funnel": "Trichter",
+      "steps": {
+        "clicks": "Link-Klicks",
+        "referrals": "Geworbene Kunden",
+        "paying": "Zahlende Kunden",
+        "commission": "Verdiente Provision"
+      },
+      "rate": "{pct} des vorherigen Schritts",
+      "noCommission": "In diesem Zeitraum keine Provision.",
+      "reversed": "{amount} zurückgenommen",
+      "periodNote": "Gezählt über den gewählten Zeitraum. Provisionen werden je Währung gezeigt und nie addiert.",
+      "balances": "Was die Partner haben",
+      "balancesHint": "Alle Partner zusammen, je Währung. Währungen werden nie addiert oder umgerechnet.",
+      "noBalances": "Es wurde noch keine Provision verdient.",
+      "pending": "Ausstehend",
+      "pendingHint": "Wartet die Rückgabefrist ab, bevor sie ausgezahlt werden kann",
+      "available": "Auszahlbar",
+      "paid": "Ausgezahlt",
+      "takenBack": "Zurückgenommen"
+    },
+    "program": {
+      "title": "Programmeinstellungen",
+      "hint": "Die Regeln, nach denen alle Partner verdienen.",
+      "notSet": "Es gibt noch kein Programm. Die Werte unten sind ein sinnvoller Anfang; speichern Sie, um es anzulegen.",
+      "appliesFromNow": "Eine Änderung gilt für Provisionen, die ab dann verdient werden, nie für bereits verdiente.",
+      "status": "Programmstatus",
+      "statusHint": "Entwurf und pausiert schalten die Links aus; es wird nichts verdient.",
+      "kind": "Provision",
+      "kinds": {
+        "percent_bps": "Prozent des Nettobetrags",
+        "fixed": "Fester Betrag je Rechnung"
+      },
+      "percent": "Prozentsatz",
+      "percentHint": "Vom Nettobetrag einer bezahlten Rechnung ohne Steuer. Bis zu zwei Dezimalstellen, zum Beispiel 12,5.",
+      "fixed": "Betrag je Rechnung",
+      "fixedHint": "Wird nur auf Rechnungen in der unten genannten Währung verdient.",
+      "currency": "Währung",
+      "currencyHint": "Für einen festen Betrag und für die Mindestauszahlung.",
+      "term": "Wie lange ein Kunde Provision bringt",
+      "terms": {
+        "first_invoices": "Die ersten Rechnungen",
+        "months": "Eine Anzahl Monate",
+        "lifetime": "Für seine gesamte Laufzeit"
+      },
+      "termInvoices": "Anzahl der Rechnungen",
+      "termMonths": "Anzahl der Monate",
+      "window": "Zuordnungsfenster (Tage)",
+      "windowHint": "Wie lange ein Kunde nach dem Klick auf einen Link noch dem Partner zugerechnet wird.",
+      "hold": "Wartefrist (Tage)",
+      "holdHint": "Wie lange eine Provision wartet, die Rückgabefrist, bevor sie ausgezahlt werden kann.",
+      "minPayout": "Mindestauszahlung ({currency})",
+      "minPayoutHint": "Ein Partner unterhalb dieses Betrags wird beim Erstellen von Auszahlungen übersprungen. Leer lassen für keine Grenze.",
+      "coupon": "Gutschein für geworbene Kunden",
+      "noCoupon": "Kein Gutschein",
+      "couponHint": "Ein geworbener Kunde erhält ihn bei der nächsten Zahlung. Gutscheine legen Sie unter Preise an.",
+      "clickCap": "Tägliches Klicklimit je Partner",
+      "clickCapHint": "Klicks über diesem Wert pro Tag werden nicht gezählt.",
+      "landing": "Zielseite",
+      "landingHint": "Wohin der Partnerlink den Besucher schickt. Leer zeigt eine einfache Seite.",
+      "autoApprove": "Bewerbungen automatisch freigeben",
+      "autoApproveHint": "Ein Partner, der sich bewirbt, ist sofort aktiv. Sonst wartet die Bewerbung unter Partner auf Sie.",
+      "save": "Programm speichern",
+      "saved": "Programm gespeichert.",
+      "errors": {
+        "value": "Geben Sie eine Provision über null ein: einen Prozentsatz bis 100 mit höchstens zwei Dezimalstellen oder einen Betrag in {currency}.",
+        "term": "Geben Sie die Anzahl der Rechnungen oder Monate als ganze Zahl von 1 bis 1200 ein.",
+        "window": "Das Zuordnungsfenster ist eine ganze Zahl von Tagen von 1 bis 365.",
+        "hold": "Die Wartefrist ist eine ganze Zahl von Tagen von 0 bis 180.",
+        "minPayout": "Geben Sie die Mindestauszahlung als Betrag in {currency} ein oder lassen Sie das Feld leer.",
+        "clickCap": "Das Klicklimit ist eine ganze Zahl von 1 bis 100000.",
+        "landing": "Die Zielseite muss eine Webadresse sein, die mit http:// oder https:// beginnt."
+      }
+    },
+    "partners": {
+      "waiting": "Warten auf Ihre Freigabe: {count}",
+      "showWaiting": "Anzeigen",
+      "allStatuses": "Alle Status",
+      "search": "Nach Code, E-Mail oder Name suchen",
+      "add": "Partner hinzufügen",
+      "empty": "Keine passenden Partner.",
+      "code": "Code",
+      "partner": "Partner",
+      "applied": "Über das Formular beworben",
+      "clicks": "Klicks",
+      "referrals": "Empfehlungen",
+      "signedIn": "Angemeldet",
+      "balance": "Guthaben",
+      "available": "{amount} auszahlbar",
+      "paidAmount": "{amount} ausgezahlt",
+      "approve": "Freigeben",
+      "suspend": "Sperren",
+      "reinstate": "Wieder freigeben",
+      "edit": "Bearbeiten",
+      "linkAndCode": "Link und Code",
+      "referralsOf": "Empfehlungen"
+    },
+    "add": {
+      "title": "Partner hinzufügen",
+      "hint": "Der Partner ist sofort aktiv, es sei denn, Sie lassen ihn ausstehend.",
+      "email": "E-Mail",
+      "name": "Name",
+      "code": "Code (optional)",
+      "codeHint": "3 bis 32 Buchstaben, Ziffern, - oder _. Er muss auf der ganzen Plattform eindeutig sein, weil der öffentliche Link keine App enthält. Leer lassen für einen zufälligen.",
+      "pending": "Ausstehend lassen, bis ich freigebe",
+      "submit": "Partner hinzufügen",
+      "done": "Partner {code} hinzugefügt."
+    },
+    "edit": {
+      "title": "{code} bearbeiten",
+      "done": "Partner gespeichert."
+    },
+    "link": {
+      "title": "Link und Code von {code}",
+      "hint": "Schicken Sie dem Partner seinen Link. Ein Kunde, der den Aktionscode des Partners beim Bezahlen eingibt, wird ihm ebenfalls zugerechnet.",
+      "referralLink": "Empfehlungslink",
+      "copy": "Link kopieren",
+      "noLink": "Der Link von {code} lautet https://ihr-gateway/r/{code}.",
+      "promotionCode": "Aktionscode",
+      "promotionHint": "Ein vorhandener Aktionscode aus Preise. Seine Einlösung zählt wie ein Klick auf den Link.",
+      "submit": "Code verknüpfen",
+      "done": "Code {code} verknüpft."
+    },
+    "referrals": {
+      "title": "Kunden von {code}",
+      "hint": "Die E-Mail-Adressen sind maskiert.",
+      "empty": "Dieser Partner hat noch keinen Kunden geworben.",
+      "customer": "Kunde",
+      "email": "E-Mail",
+      "source": "Quelle",
+      "time": "Zugeordnet",
+      "sources": {
+        "link": "Link",
+        "code": "Code",
+        "api": "API"
+      }
+    },
+    "commissions": {
+      "title": "Provisionen",
+      "intro": "Eine Provision je bezahlter Rechnung eines vom Partner geworbenen Kunden, auf den Nettobetrag ohne Steuer. Sie wartet die Wartefrist ab, wird dann freigegeben und mit einer Auszahlung bezahlt.",
+      "allPartners": "Alle Partner",
+      "allStatuses": "Alle Status",
+      "allKinds": "Provisionen und Stornos",
+      "kind": "Art",
+      "kinds": {
+        "commission": "Provision",
+        "reversal": "Storno"
+      },
+      "partner": "Partner",
+      "empty": "Keine passenden Provisionen.",
+      "earned": "Verdient",
+      "invoice": "Rechnung",
+      "base": "Nettobetrag",
+      "amount": "Provision",
+      "reversedOf": "{amount} zurückgenommen",
+      "payout": "Auszahlung",
+      "openPayout": "Auszahlung öffnen",
+      "reverse": "Stornieren"
+    },
+    "reverse": {
+      "title": "Provision stornieren",
+      "hint": "Nehmen Sie eine Provision bei einer Rückbuchung oder von Hand zurück.",
+      "auto": "Erstattungen, Stornierungen und Gutschriften nehmen Provisionen von selbst zurück. Nutzen Sie dies nur für das, was Payrudder nicht sieht.",
+      "left": "Noch zurückzunehmen",
+      "reason": "Grund",
+      "reasons": {
+        "chargeback": "Rückbuchung",
+        "manual": "Manuell"
+      },
+      "amount": "Betrag ({currency})",
+      "amountHint": "Leer lassen, um alles Verbleibende zurückzunehmen.",
+      "reference": "Referenz (optional)",
+      "referenceRequiredLabel": "Referenz (erforderlich)",
+      "referenceHint": "Benennt dieses Storno. Dieselbe Rechnung, derselbe Grund und dieselbe Referenz nehmen nur einmal zurück.",
+      "note": "Notiz",
+      "paidNote": "Eine bereits ausgezahlte Provision wird mit der nächsten Auszahlung des Partners verrechnet.",
+      "badAmount": "Geben Sie einen Betrag über null in {currency} ein, nicht mehr als der Rest.",
+      "referenceRequired": "Ein manuelles Storno braucht eine Referenz.",
+      "submit": "Provision stornieren",
+      "done": "{amount} zurückgenommen.",
+      "nothing": "Nichts mehr zurückzunehmen: dieses Storno wurde bereits ausgeführt."
+    },
+    "payouts": {
+      "title": "Auszahlungen",
+      "intro": "Eine Auszahlung sind die freigegebenen Provisionen eines Partners in einer Währung. Payrudder bewegt kein Geld: Zahlen Sie von Hand oder per Banküberweisung und markieren Sie die Auszahlung dann als bezahlt.",
+      "create": "Auszahlungen erstellen",
+      "result": "Erstellte Auszahlungen",
+      "created": "Erstellte Auszahlungen: {count}",
+      "skipped": "Ausgelassen: {count}",
+      "reasons": {
+        "below_minimum": "unter der Mindestauszahlung",
+        "not_positive": "nicht über null"
+      },
+      "nothing": "Im Moment gibt es nichts auszuzahlen.",
+      "allStatuses": "Alle Status",
+      "empty": "Noch keine Auszahlungen.",
+      "created_at": "Erstellt",
+      "total": "Summe",
+      "count": "Provisionen",
+      "reference": "Referenz",
+      "fake": "Fake (Sandbox)",
+      "fakeNote": "Dies ist eine Sandbox-Auszahlung. Es wurde und wird nichts gezahlt.",
+      "commissions": "Provisionen",
+      "commissionsOf": "Provisionen der Auszahlung von {code}",
+      "markPaid": "Als bezahlt markieren",
+      "cancel": "Abbrechen"
+    },
+    "pay": {
+      "title": "Auszahlung als bezahlt markieren",
+      "summary": "{amount} an {code}",
+      "noMoney": "Payrudder bewegt kein Geld. Zahlen Sie den Partner selbst, von Hand oder per Banküberweisung, und bestätigen Sie hier, um es in Ihren Büchern zu buchen.",
+      "fakeWarning": "Dies ist eine Sandbox-Auszahlung: Es wird nichts wirklich gezahlt, und ihre Buchungen sind als Fake markiert.",
+      "reference": "Referenz (optional)",
+      "referenceHint": "Zum Beispiel die Referenz der Banküberweisung.",
+      "submit": "Als bezahlt markieren",
+      "done": "Auszahlung als bezahlt markiert."
+    },
+    "journal": {
+      "title": "Journal",
+      "intro": "Was bezahlte Auszahlungen in Ihre Bücher gebucht haben: den Provisionsaufwand gegen die Verbindlichkeit und die Verbindlichkeit gegen die Kasse.",
+      "download": "CSV herunterladen",
+      "balanced": "Ausgeglichen",
+      "unbalanced": "Nicht ausgeglichen",
+      "debits": "Soll",
+      "credits": "Haben",
+      "empty": "Noch nichts gebucht. Das Bezahlen einer Auszahlung bucht ins Journal.",
+      "time": "Gebucht",
+      "account": "Konto",
+      "debit": "Soll",
+      "credit": "Haben",
+      "memo": "Buchungstext",
+      "accounts": {
+        "commission_expense": "Provisionsaufwand",
+        "commissions_payable": "Provisionsverbindlichkeiten",
+        "cash": "Kasse"
+      }
+    }
+  },
   "einvoice": {
     "title": "E-Rechnung",
     "confirmCancel": "Dieses rechtsgültige E-Dokument stornieren? Das lässt sich nicht rückgängig machen.",
@@ -2390,6 +2683,7 @@
       "overview": "Übersicht",
       "customers": "Kunden",
       "billing": "Abrechnung",
+      "growth": "Wachstum",
       "developers": "Entwickler",
       "settings": "Einstellungen"
     },
@@ -2420,7 +2714,8 @@
       "einvoice": "E-Rechnung",
       "appSettings": "App-Einstellungen",
       "operator": "Betreiberkonsole",
-      "myApps": "Meine Apps"
+      "myApps": "Meine Apps",
+      "affiliates": "Partner"
     }
   },
   "privacy": {

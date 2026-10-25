@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { createRoute, type AnyRoute } from "@tanstack/vue-router";
+import { affiliateRoutes } from "@/features/affiliates/routes";
 import { PERSON_PAGES, activeItem, buildNav } from "./nav";
 
 const keys = (sections: ReturnType<typeof buildNav>) => sections.flatMap((s) => s.items.map((i) => i.key));
@@ -66,5 +68,32 @@ describe("activeItem", () => {
   });
   it("does not confuse a prefix with a page", () => {
     expect(activeItem(buildNav({ level: "app", appId: "A", tenantId: "T" }), "/app/t/T/customers-old")).toBeUndefined();
+  });
+});
+
+describe("Growth > Affiliates", () => {
+  const person = buildNav({ level: "app", appId: "A", tenantId: "T" });
+
+  it("is a Growth section between Billing and Developers with the affiliates page", () => {
+    expect(person.map((s) => s.key)).toEqual(["overview", "customers", "billing", "growth", "developers", "settings"]);
+    const growth = person.find((s) => s.key === "growth");
+    expect(growth?.items.map((i) => i.key)).toEqual(["affiliates"]);
+    expect(growth?.items[0]?.to).toBe("/app/t/T/affiliates");
+  });
+
+  it("is a page of a person and of the operator, and is current under its own path", () => {
+    expect(PERSON_PAGES).toContain("affiliates");
+    expect(keys(buildNav({ level: "tenant", tenantId: "T" }))).toContain("affiliates");
+    expect(activeItem(person, "/app/t/T/affiliates")?.key).toBe("affiliates");
+  });
+
+  it("is only listed when its route exists", () => {
+    expect(keys(buildNav({ level: "app", appId: "A", tenantId: "T" }, new Set(["customers"])))).not.toContain("affiliates");
+  });
+
+  it("has a route at the path the sidebar links to", () => {
+    const parent = createRoute({ getParentRoute: () => ({}) as AnyRoute, path: "/app/t/$id" });
+    const routes = affiliateRoutes(parent);
+    expect(routes.map((r) => (r.options as { path?: string }).path)).toEqual(["affiliates"]);
   });
 });

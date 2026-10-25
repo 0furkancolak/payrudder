@@ -1,5 +1,6 @@
 import { createRoute, redirect, type AnyRoute } from "@tanstack/vue-router";
 import { accountingRoutes } from "@/features/accounting/routes";
+import { affiliateRoutes } from "@/features/affiliates/routes";
 import { creditRoutes } from "@/features/credits/routes";
 import { customerRoutes } from "@/features/customers/routes";
 import { mailRoutes } from "@/features/mail/routes";
@@ -88,6 +89,7 @@ export function personRoutes(parent: AnyRoute) {
       payments,
       ...paymentLinkRoutes(tenant),
       ...accountingRoutes(tenant),
+      ...affiliateRoutes(tenant),
       ...reportRoutes(tenant),
       ...webhookRoutes(tenant),
       ...mailRoutes(tenant),

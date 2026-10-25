@@ -4,6 +4,7 @@ import {
   FileText,
   FlaskConical,
   Gift,
+  Handshake,
   Inbox,
   KeyRound,
   LayoutDashboard,
@@ -74,14 +75,14 @@ const exact = (to: string) => (path: string) => path === to;
  * The pages a person has under /app/t/{tenant}/... (route file: features/product/routes.ts). A page is in the sidebar only when its route exists, so
  * nothing in the navigation leads to a "not found". Add a key here in the same change that adds the route.
  */
-export const PERSON_PAGES = ["customers", "subscriptions", "credits", "packages", "pricing", "invoices", "payments", "paymentLinks", "accounting", "reports", "webhooks", "mail", "members"] as const;
+export const PERSON_PAGES = ["customers", "subscriptions", "credits", "packages", "pricing", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "webhooks", "mail", "members"] as const;
 
 /** The pages of a tenant: key, icon, path under the tenant, the section it sits in, and whether a person has it or only the operator. */
 interface Page {
   key: string;
   icon: Component;
   path: string;
-  section: "customers" | "billing" | "developers" | "settings";
+  section: "customers" | "billing" | "growth" | "developers" | "settings";
   person: boolean;
 }
 
@@ -96,6 +97,7 @@ const PAGES: Page[] = [
   { key: "paymentLinks", icon: Link2, path: "payment-links", section: "billing", person: true },
   { key: "accounting", icon: Receipt, path: "accounting", section: "billing", person: true },
   { key: "reports", icon: BarChart3, path: "reports", section: "billing", person: true },
+  { key: "affiliates", icon: Handshake, path: "affiliates", section: "growth", person: true },
   { key: "webhooks", icon: Webhook, path: "webhooks", section: "developers", person: true },
   { key: "apps", icon: KeyRound, path: "apps", section: "developers", person: false },
   { key: "providers", icon: Plug, path: "providers", section: "developers", person: false },
@@ -104,7 +106,7 @@ const PAGES: Page[] = [
   { key: "einvoice", icon: FileText, path: "e-invoice", section: "settings", person: false },
 ];
 
-const SECTION_ORDER = ["customers", "billing", "developers", "settings"] as const;
+const SECTION_ORDER = ["customers", "billing", "growth", "developers", "settings"] as const;
 
 function item(key: string, to: string, icon: Component, owns: (p: string) => boolean, search?: Record<string, string>): NavItem {
   return { key, label: key, to, icon, owns, ...(search ? { search } : {}) };
