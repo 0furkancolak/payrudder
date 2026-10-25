@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"net/http"
 	"strconv"
+	"strings"
 
 	billingv1 "github.com/0furkancolak/quotify/gen/go/quotify/billing/v1"
 	"github.com/0furkancolak/quotify/services/gateway/internal/ratelimit"
@@ -18,6 +19,7 @@ func (s *Server) accountingRoutes() []Route {
 		{"DELETE", "/v1/expenses/{id}", AccessTenant, ratelimit.ClassWrite, s.voidExpense},
 		{"GET", "/v1/accounting/summary", AccessTenant, ratelimit.ClassRead, s.accountingSummary},
 		{"GET", "/v1/accounting/export.csv", AccessTenant, ratelimit.ClassRead, s.accountingExport},
+		{"GET", "/v1/accounting/coupons.csv", AccessTenant, ratelimit.ClassRead, s.couponsExport},
 	}
 }
 
@@ -99,14 +101,46 @@ func (s *Server) accountingExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="accounting-`+resp.GetFromDate()+`-`+resp.GetToDate()+`.csv"`)
 	cw := csv.NewWriter(w)
 	n := func(v int64) string { return strconv.FormatInt(v, 10) }
-	_ = cw.Write([]string{"currency", "bucket", "gross_income_minor", "tax_minor", "refunds_minor", "net_income_minor", "expenses_minor", "provider_fees_minor", "profit_minor"})
+	_ = cw.Write([]string{"currency", "bucket", "gross_income_minor", "tax_minor", "refunds_minor", "net_income_minor", "expenses_minor", "provider_fees_minor", "profit_minor", "discounts_minor",
+		"sales_before_discounts_minor"})
 	for _, c := range resp.GetCurrencies() {
 		for _, p := range c.GetSeries() {
-			_ = cw.Write([]string{c.GetCurrency(), p.GetBucket(), n(p.GetGrossIncomeMinor()), n(p.GetTaxMinor()), n(p.GetRefundsMinor()), n(p.GetNetIncomeMinor()), n(p.GetExpensesMinor()), "", n(p.GetProfitMinor())})
+			_ = cw.Write([]string{c.GetCurrency(), p.GetBucket(), n(p.GetGrossIncomeMinor()), n(p.GetTaxMinor()), n(p.GetRefundsMinor()), n(p.GetNetIncomeMinor()), n(p.GetExpensesMinor()), "", n(p.GetProfitMinor()),
+				n(p.GetDiscountsMinor()), n(p.GetGrossIncomeMinor() - p.GetTaxMinor() + p.GetDiscountsMinor())})
 		}
-		_ = cw.Write([]string{c.GetCurrency(), "total", n(c.GetGrossIncomeMinor()), n(c.GetTaxMinor()), n(c.GetRefundsMinor()), n(c.GetNetIncomeMinor()), n(c.GetExpensesMinor()), feesCell(c), n(c.GetProfitMinor())})
+		_ = cw.Write([]string{c.GetCurrency(), "total", n(c.GetGrossIncomeMinor()), n(c.GetTaxMinor()), n(c.GetRefundsMinor()), n(c.GetNetIncomeMinor()), n(c.GetExpensesMinor()), feesCell(c), n(c.GetProfitMinor()),
+			n(c.GetDiscountsMinor()), n(c.GetSalesMinor())})
 	}
 	cw.Flush()
+}
+
+// couponsExport is GET /v1/accounting/coupons.csv with the query of the summary: one row per currency and coupon, with the invoices paid in the period that used it, their
+// gross sales (before the coupon, tax excluded), the discount and the net. Currencies are never added together.
+func (s *Server) couponsExport(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Billing.GetAccountingSummary(r.Context(), summaryRequest(r))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="coupons-`+resp.GetFromDate()+`-`+resp.GetToDate()+`.csv"`)
+	cw := csv.NewWriter(w)
+	n := func(v int64) string { return strconv.FormatInt(v, 10) }
+	_ = cw.Write([]string{"currency", "coupon", "invoices", "gross_minor", "discount_minor", "net_minor"})
+	for _, c := range resp.GetCurrencies() {
+		for _, k := range c.GetCoupons() {
+			_ = cw.Write([]string{c.GetCurrency(), csvSafe(k.GetCouponCode()), n(k.GetInvoices()), n(k.GetGrossMinor()), n(k.GetDiscountMinor()), n(k.GetNetMinor())})
+		}
+	}
+	cw.Flush()
+}
+
+// csvSafe keeps a cell that starts like a formula from being run by a spreadsheet. A coupon code is 2 to 40 letters, digits, - and _, so only a leading - can matter.
+func csvSafe(s string) string {
+	if s != "" && strings.ContainsRune("=+-@\t\r", rune(s[0])) {
+		return "'" + s
+	}
+	return s
 }
 
 // feesCell is the provider fees of the total row; "not_recorded" when no payment_fees expense exists, which is not the same as zero.

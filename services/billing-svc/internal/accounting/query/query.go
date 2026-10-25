@@ -122,6 +122,7 @@ func Summary(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Summa
 	var (
 		income  []IncomeRow
 		refunds []RefundRow
+		coupons []CouponRow
 		stored  []model.Expense
 	)
 	err = pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
@@ -131,7 +132,14 @@ func Summary(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Summa
 			return err
 		}
 		for _, r := range in {
-			income = append(income, IncomeRow{Bucket: model.FromPG(r.Bucket), Currency: r.Currency, Invoices: r.Invoices, Gross: r.GrossMinor, Tax: r.TaxMinor})
+			income = append(income, IncomeRow{Bucket: model.FromPG(r.Bucket), Currency: r.Currency, Invoices: r.Invoices, Gross: r.GrossMinor, Tax: r.TaxMinor, Discount: r.DiscountMinor})
+		}
+		cp, err := q.AccountingCoupons(ctx, sqlc.AccountingCouponsParams{TenantID: tenantID, FromAt: fromAt, ToAt: toAt})
+		if err != nil {
+			return err
+		}
+		for _, r := range cp {
+			coupons = append(coupons, CouponRow{Currency: r.Currency, CouponCode: r.CouponCode, Invoices: r.Invoices, Sales: r.SalesMinor, Discount: r.DiscountMinor})
 		}
 		rf, err := q.AccountingRefunds(ctx, sqlc.AccountingRefundsParams{Monthly: monthly, TenantID: tenantID, FromAt: fromAt, ToAt: toAt})
 		if err != nil {
@@ -157,6 +165,7 @@ func Summary(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p Summa
 		return nil, internal()
 	}
 	res := &Result{From: from, To: to, Granularity: gran, AppID: p.AppID, Currencies: Build(from, to, gran, income, refunds, stored)}
+	AddCoupons(res.Currencies, coupons)
 	return res, nil
 }
 
