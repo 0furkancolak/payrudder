@@ -12,6 +12,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { CATEGORIES, useSaveExpense, type Category, type Expense } from "./api";
 import { ymd } from "@/shared/lib/dates";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 /** Adds an expense, or edits `expense`. A recurring expense is edited as a whole: every occurrence changes with it. */
 const props = defineProps<{ tenantId: string; expense: Expense | null; defaultCurrency: string; apps: { id: string; name: string }[] }>();
@@ -22,7 +23,7 @@ const save = useSaveExpense(() => props.tenantId);
 const vendor = ref("");
 const category = ref<Category>("infrastructure");
 const amount = ref("");
-const currency = ref("USD");
+const currency = ref<string>(FALLBACK_CURRENCY);
 const incurredOn = ref("");
 const recurring = ref<"none" | "monthly" | "yearly">("none");
 const until = ref("");

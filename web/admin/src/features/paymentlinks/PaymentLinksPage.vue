@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { usePaymentLinkActions, usePaymentLinks } from "./api";
 import { absoluteUrl, newKey, statusVariant, toRequest, type LinkForm } from "./lib";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 const { t, locale } = useI18n();
 const fmt = useFormat();
@@ -28,7 +29,7 @@ const form = ref<LinkForm>({
   kind: prefillInvoice ? "invoice" : "adhoc",
   invoiceId: prefillInvoice,
   amount: "",
-  currency: "USD",
+  currency: FALLBACK_CURRENCY,
   description: "",
   customer: query.get("customer") ?? "",
   singleUse: true,

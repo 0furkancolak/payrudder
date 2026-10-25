@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
+import { PAGE } from "@/shared/api/limits";
 
 export const customerKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "customers"] as const,
@@ -9,7 +10,7 @@ export const customerKeys = {
 export function useCustomers(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => customerKeys.list(toValue(tenantId))),
-    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers", { params: { query: { page_size: 200 } } })),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers", { params: { query: { page_size: PAGE.whole } } })),
   });
 }
 

@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { api, unwrap } from "@/shared/api/client";
+import { api, ApiError, unwrap } from "@/shared/api/client";
 import { invoiceKeys } from "./api";
 import { ACTOR, type InvoiceTransfer, type PaymentMethod } from "./payment";
 
 /**
- * The bank transfer state of an invoice. A failed load (the payments service being unavailable, say) is "no transfer information", not an error:
- * the invoice page must work without it, so the query resolves to null instead of throwing.
+ * The bank transfer state of an invoice. "Not found" and "service unavailable" are "no transfer information", not errors: the invoice page must work
+ * without it, so the query resolves to null for those two. Any other failure (a refused session, a bug) throws and shows.
  */
 export function useInvoiceTransfer(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>, enabled: MaybeRefOrGetter<boolean>) {
   return useQuery({
@@ -18,8 +18,10 @@ export function useInvoiceTransfer(tenantId: MaybeRefOrGetter<string>, invoiceId
         return await unwrap(
           api.GET("/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer", { params: { path: { tenant_id: toValue(tenantId), invoice_id: toValue(invoiceId) } } }),
         );
-      } catch {
-        return null;
+      } catch (e) {
+        // No transfer on this invoice, or the payments service is down: the page works without it. A refusal (401, 403) or anything else is a real failure.
+        if (e instanceof ApiError && (e.code === "NOT_FOUND" || e.code === "UNAVAILABLE")) return null;
+        throw e;
       }
     },
   });
