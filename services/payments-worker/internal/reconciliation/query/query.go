@@ -1,9 +1,12 @@
-package webhook
+// Package query compares the invoices billing calls paid with the successful charges in the payment ledger. It never writes.
+package query
 
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
+	"slices"
 	"sort"
 
 	"github.com/google/uuid"
@@ -13,34 +16,20 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 	"github.com/0furkancolak/payrudder/pkg/period"
-	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
-// BillingAPI is what reconciliation asks of billing-svc, as the tenant: its invoices.
-type BillingAPI interface {
+// Billing is what reconciliation asks of billing-svc, as the tenant: its invoices.
+type Billing interface {
 	ListInvoices(ctx context.Context, tenant uuid.UUID, req *billingv1.ListInvoicesRequest) (*billingv1.ListInvoicesResponse, error)
 	GetInvoice(ctx context.Context, tenant uuid.UUID, id string) (*billingv1.Invoice, error)
-	// SettleInvoicePayment tells billing that a provider confirmed a payment made on a hosted page.
-	SettleInvoicePayment(ctx context.Context, tenant uuid.UUID, req *billingv1.SettleInvoicePaymentRequest) (*billingv1.SettleInvoicePaymentResponse, error)
 }
 
-// BillingClient talks to billing-svc's tenant API.
-type BillingClient struct {
-	Client billingv1.BillingServiceClient
-}
-
-func (b BillingClient) ListInvoices(ctx context.Context, id uuid.UUID, req *billingv1.ListInvoicesRequest) (*billingv1.ListInvoicesResponse, error) {
-	return b.Client.ListInvoices(tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id})), req)
-}
-
-func (b BillingClient) GetInvoice(ctx context.Context, id uuid.UUID, invoice string) (*billingv1.Invoice, error) {
-	r, err := b.Client.GetInvoice(tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id})), &billingv1.GetInvoiceRequest{InvoiceId: invoice})
-	return r.GetInvoice(), err
-}
-
-func (b BillingClient) SettleInvoicePayment(ctx context.Context, id uuid.UUID, req *billingv1.SettleInvoicePaymentRequest) (*billingv1.SettleInvoicePaymentResponse, error) {
-	return b.Client.SettleInvoicePayment(tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: id})), req)
+// Deps is what the query reads. Billing nil means billing-svc is not configured.
+type Deps struct {
+	Ledger  store.Ledger
+	Billing Billing
 }
 
 // Discrepancy kinds.
@@ -79,48 +68,28 @@ type Reconciliation struct {
 const (
 	maxListed     = 200
 	maxInvoicePgs = 100
+	// maxUnpaidChecked is how many ledger charges of invoices billing does not list as paid are looked up one by one.
+	maxUnpaidChecked = 500
 )
 
-// reconcile is GET /admin/tenants/{tenant}/reconciliation?period=YYYY-MM.
-func (s *Server) reconcile(w http.ResponseWriter, r *http.Request) {
-	t, ok := s.tenant(w, r)
-	if !ok {
-		return
-	}
-	pid := r.URL.Query().Get("period")
+// Get runs the comparison for one billing period (YYYY-MM).
+func Get(ctx context.Context, d Deps, t uuid.UUID, pid string) (*Reconciliation, error) {
 	if !period.Valid(pid) {
-		fail(w, http.StatusBadRequest, "payments.reconcile.bad_period", "period must look like 2026-10")
-		return
+		return nil, refuse.New(http.StatusBadRequest, "payments.reconcile.bad_period", "period must look like 2026-10")
 	}
-	if s.Billing == nil {
-		fail(w, http.StatusServiceUnavailable, "payments.billing.not_configured", "billing-svc is not configured")
-		return
+	if d.Billing == nil {
+		return nil, refuse.New(http.StatusServiceUnavailable, "payments.billing.not_configured", "billing-svc is not configured")
 	}
-	rec, err := s.Reconcile(r.Context(), t, pid)
+	rec := &Reconciliation{Period: pid, Counts: map[string]int{}, Discrepancies: []Discrepancy{}}
+	paid, err := paidInvoices(ctx, d, t, pid)
 	if err != nil {
-		if status.Code(err) == codes.Unknown {
-			s.Log.ErrorContext(r.Context(), "reconciliation failed", "err", err)
-			fail(w, http.StatusInternalServerError, "common.internal", "internal error")
-			return
-		}
-		s.billingFail(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, rec)
-}
-
-// Reconcile runs the comparison for one billing period.
-func (s *Server) Reconcile(ctx context.Context, t uuid.UUID, period string) (*Reconciliation, error) {
-	rec := &Reconciliation{Period: period, Counts: map[string]int{}, Discrepancies: []Discrepancy{}}
-	paid, err := s.paidInvoices(ctx, t, period)
-	if err != nil {
-		return nil, err
+		return nil, billingFailure("list the paid invoices", err)
 	}
 	rec.PaidInvoices = len(paid)
 
-	charges, err := s.Ledger.SuccessfulCharges(ctx, t)
+	charges, err := d.Ledger.SuccessfulCharges(ctx, t)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list successful charges: %w", err)
 	}
 	byInvoice := map[string][]ledgerCharge{}
 	for _, c := range mergeTransfers(charges) {
@@ -128,18 +97,26 @@ func (s *Server) Reconcile(ctx context.Context, t uuid.UUID, period string) (*Re
 	}
 	rec.Charges = len(charges)
 
-	rec.compare(paid, byInvoice, s.paidByHand(ctx, t))
-	if err := s.unpaidCharges(ctx, rec, t, paid, byInvoice); err != nil {
-		return nil, err
+	rec.compare(paid, byInvoice, paidByHand(ctx, d, t))
+	if err := unpaidCharges(ctx, d, rec, t, paid, byInvoice); err != nil {
+		return nil, billingFailure("look up an invoice", err)
 	}
-	conflicts, err := s.Ledger.ConflictingCharges(ctx, t)
+	conflicts, err := d.Ledger.ConflictingCharges(ctx, t)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("list conflicting charges: %w", err)
 	}
 	for _, c := range conflicts {
 		rec.add(Discrepancy{Kind: ConflictingOutcomes, InvoiceID: c.InvoiceID, Provider: c.Provider, ProviderRef: c.ProviderRef, Detail: "a success and a failure are both recorded"})
 	}
 	return rec, nil
+}
+
+// billingFailure is a failure of billing-svc: the caller gets billing's refusal, or a bad gateway. An error that is no gRPC status is ours and stays internal.
+func billingFailure(what string, err error) error {
+	if status.Code(err) == codes.Unknown {
+		return fmt.Errorf("reconciliation: %s: %w", what, err)
+	}
+	return &refuse.Billing{Err: err}
 }
 
 func (rec *Reconciliation) add(d Discrepancy) {
@@ -152,11 +129,11 @@ func (rec *Reconciliation) add(d Discrepancy) {
 }
 
 // paidInvoices lists the invoices billing calls paid in the period, by id.
-func (s *Server) paidInvoices(ctx context.Context, t uuid.UUID, period string) (map[string]*billingv1.Invoice, error) {
+func paidInvoices(ctx context.Context, d Deps, t uuid.UUID, pid string) (map[string]*billingv1.Invoice, error) {
 	paid := map[string]*billingv1.Invoice{}
 	token := ""
 	for pages := 0; pages < maxInvoicePgs; pages++ {
-		resp, err := s.Billing.ListInvoices(ctx, t, &billingv1.ListInvoicesRequest{PeriodId: period, Status: "paid", PageSize: 500, PageToken: token})
+		resp, err := d.Billing.ListInvoices(ctx, t, &billingv1.ListInvoicesRequest{PeriodId: pid, Status: "paid", PageSize: 500, PageToken: token})
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +149,7 @@ func (s *Server) paidInvoices(ctx context.Context, t uuid.UUID, period string) (
 
 // compare checks every paid invoice against the successful charges the ledger holds for it.
 func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge, byHand func(id string) bool) {
-	for _, id := range sortedKeys(paid) {
+	for _, id := range slices.Sorted(maps.Keys(paid)) {
 		inv := paid[id]
 		if inv.GetTotalMinor() == 0 {
 			continue // nothing is charged for an invoice of nothing
@@ -203,7 +180,7 @@ func (rec *Reconciliation) compare(paid map[string]*billingv1.Invoice, byInvoice
 }
 
 // unpaidCharges finds charges in the ledger for invoices of this period that billing does not call paid.
-func (s *Server) unpaidCharges(ctx context.Context, rec *Reconciliation, t uuid.UUID, paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge) error {
+func unpaidCharges(ctx context.Context, d Deps, rec *Reconciliation, t uuid.UUID, paid map[string]*billingv1.Invoice, byInvoice map[string][]ledgerCharge) error {
 	var unknown []string
 	for id := range byInvoice {
 		if _, isPaid := paid[id]; !isPaid {
@@ -212,10 +189,10 @@ func (s *Server) unpaidCharges(ctx context.Context, rec *Reconciliation, t uuid.
 	}
 	sort.Strings(unknown)
 	for checked, id := range unknown {
-		if checked >= 500 {
+		if checked >= maxUnpaidChecked {
 			break
 		}
-		inv, err := s.Billing.GetInvoice(ctx, t, id)
+		inv, err := d.Billing.GetInvoice(ctx, t, id)
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
 				continue // not one of this tenant's invoices (or not billed through Payrudder)
@@ -230,15 +207,6 @@ func (s *Server) unpaidCharges(ctx context.Context, rec *Reconciliation, t uuid.
 			BilledMinor: inv.GetTotalMinor(), LedgerMinor: c.AmountMinor, Detail: "invoice status " + inv.GetStatus()})
 	}
 	return nil
-}
-
-func sortedKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
 }
 
 type ledgerCharge struct {
@@ -269,9 +237,9 @@ func mergeTransfers(charges []store.Charge) []store.Charge {
 
 // paidByHand reports whether billing-svc recorded a payment by hand for an invoice. A lookup that fails counts as no: the discrepancy is then listed, and an
 // operator looks.
-func (s *Server) paidByHand(ctx context.Context, t uuid.UUID) func(id string) bool {
+func paidByHand(ctx context.Context, d Deps, t uuid.UUID) func(id string) bool {
 	return func(id string) bool {
-		inv, err := s.Billing.GetInvoice(ctx, t, id)
+		inv, err := d.Billing.GetInvoice(ctx, t, id)
 		return err == nil && len(inv.GetPayments()) > 0
 	}
 }

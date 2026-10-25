@@ -22,6 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	reconcile "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
 	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
@@ -107,40 +108,40 @@ func TestReconciliation(t *testing.T) {
 	if code != 200 {
 		t.Fatalf("%d %s", code, body)
 	}
-	var rec webhook.Reconciliation
+	var rec reconcile.Reconciliation
 	if err := json.Unmarshal(body, &rec); err != nil {
 		t.Fatal(err)
 	}
 	if rec.PaidInvoices != 5 {
 		t.Errorf("paid invoices = %d", rec.PaidInvoices)
 	}
-	want := map[string]int{webhook.PaidWithoutCharge: 1, webhook.AmountMismatch: 1, webhook.DuplicateCharge: 1, webhook.ChargeWithoutPaid: 1, webhook.ConflictingOutcomes: 1}
+	want := map[string]int{reconcile.PaidWithoutCharge: 1, reconcile.AmountMismatch: 1, reconcile.DuplicateCharge: 1, reconcile.ChargeWithoutPaid: 1, reconcile.ConflictingOutcomes: 1}
 	for k, n := range want {
 		if rec.Counts[k] != n {
 			t.Errorf("%s = %d, want %d (all: %v)", k, rec.Counts[k], n, rec.Counts)
 		}
 	}
-	byKind := map[string]webhook.Discrepancy{}
+	byKind := map[string]reconcile.Discrepancy{}
 	for _, x := range rec.Discrepancies {
 		byKind[x.Kind] = x
 	}
-	if x := byKind[webhook.PaidWithoutCharge]; x.InvoiceID != b.Id {
+	if x := byKind[reconcile.PaidWithoutCharge]; x.InvoiceID != b.Id {
 		t.Errorf("paid without a charge = %+v; want invoice b", x)
 	}
-	if x := byKind[webhook.AmountMismatch]; x.InvoiceID != c.Id || x.BilledMinor != 700 || x.LedgerMinor != 650 {
+	if x := byKind[reconcile.AmountMismatch]; x.InvoiceID != c.Id || x.BilledMinor != 700 || x.LedgerMinor != 650 {
 		t.Errorf("amount mismatch = %+v", x)
 	}
-	if x := byKind[webhook.DuplicateCharge]; x.InvoiceID != d.Id {
+	if x := byKind[reconcile.DuplicateCharge]; x.InvoiceID != d.Id {
 		t.Errorf("duplicate = %+v", x)
 	}
-	if x := byKind[webhook.ChargeWithoutPaid]; x.InvoiceID != e.Id || x.Detail != "invoice status open" {
+	if x := byKind[reconcile.ChargeWithoutPaid]; x.InvoiceID != e.Id || x.Detail != "invoice status open" {
 		t.Errorf("charge without paid = %+v", x)
 	}
-	if x := byKind[webhook.ConflictingOutcomes]; x.ProviderRef != "txn_x" {
+	if x := byKind[reconcile.ConflictingOutcomes]; x.ProviderRef != "txn_x" {
 		t.Errorf("conflict = %+v", x)
 	}
 	for _, x := range rec.Discrepancies {
-		if (x.InvoiceID == f.Id || x.InvoiceID == a.Id) && x.Kind != webhook.ConflictingOutcomes {
+		if (x.InvoiceID == f.Id || x.InvoiceID == a.Id) && x.Kind != reconcile.ConflictingOutcomes {
 			t.Errorf("an agreeing invoice was reported: %+v", x)
 		}
 		if x.InvoiceID == other.Id {
