@@ -55,3 +55,35 @@ Today an app has a sandbox tenant and a live tenant ([ADR 0011](../adr/0011-sand
 
 ## Out of scope
 Per-tenant simulated clocks (ADR 0011 rejected them), a third "staging" environment.
+
+## Tasks
+
+- [x] A. Go-live gate: live tenants start `inactive`, checklist computed on the server (`GET/POST /app/v1/apps/{id}/go-live`), only an owner activates, an operator can suspend, reinstate or force-activate with a reason; live keys and webhooks refused while inactive (PR #89)
+- [x] B. Keys: environment in the prefix checked against the tenant on every request (hard 401), scopes full / ingest / read, `last_used_at`, rotation with an overlap window, revoke (PR #89)
+- [x] C. Layered guard: `pkg/env`, fail-closed workers and billing, `PAYMENTS_ALLOW_MOCK_LIVE`, provider `livemode`, invoice number series CHECK, 404 for ids of the other environment with a test per resource family (PR #110)
+- [x] D. Promote sandbox to live: diff, dry run, only adds, conflicts shown and left alone, stale check by hash, audit table with a one-way trigger (PR #113)
+- [x] E. Sandbox lifecycle: reset job across plans, ingest, aggregator, analytics, billing and payments with a coverage test per service, retention sweep, scenario catalogue and simulate (PR #127)
+- [x] F. Console: environment switch always visible, sandbox stripe and banner, the environment is the address's then the last used then live when active, go-live checklist instead of zeros, promote preview and apply, reset and scenarios page, key scope / last use / rotation, six languages including right to left (PR #154)
+- [x] G. Deployment and tests: `values-sandbox.yaml` cannot allow live (rendered chart read through `pkg/env`), plans-svc sandbox-only product path, the dev seed never touches a live tenant or makes a key (whole seed against a recording gateway), end-to-end acceptance through the gateway
+
+## Where each acceptance item is tested
+
+| Acceptance | Test |
+| --- | --- |
+| Random operations with a sandbox key never change or read a live row | `services/plans-svc/internal/itest/crossenv_integration_test.go` (`SandboxKeyNeverTouchesLive`: random operations, live fingerprint of every tenant table unchanged); gateway `auth_test.go` (`TestAuthenticateRejects`, `TestSandboxOnlyDeploymentRejectsLiveKeys`) |
+| Sandbox key against a live route is 401 / 404 | same file (`CrossEnvironmentIDs`, one per resource family); `tests/e2e/live_sandbox_e2e_test.go` |
+| An inactive live tenant cannot be issued a key | `golive_integration_test.go`; `tests/e2e/live_sandbox_e2e_test.go` |
+| Promote dry run shows a diff and applies it | `promote_integration_test.go`; `tests/e2e/live_sandbox_e2e_test.go` |
+| Reset leaves configuration | `sandbox_integration_test.go`, one `sandboxreset` test per service; `tests/e2e/live_sandbox_e2e_test.go` |
+| payments-worker with a fake real provider: no sandbox call to it, no live call to the mock | `services/payments-worker/internal/itest/payments_integration_test.go` |
+| Error keys and six languages for every refusal | `pkg/errkey` (`docs/error-keys.md`), `web/admin/src/shared/lib/errors.test.ts` |
+| `values-sandbox.yaml` cannot create a live tenant | `tests/helm` (`TestSandboxProfileCannotCreateALiveTenant`), plans-svc `SandboxOnlyDeployment` and `SandboxOnlyProductPath` |
+| The dev seed never creates a live tenant or key | `tools/payrudderctl/devseed_live_test.go` |
+| Console | `web/admin/e2e-mock/sandbox.spec.ts` (Playwright, mocked gateway), `nav.test.ts`, `environment.test.ts`, `golive.test.ts`, `promote.test.ts` |
+
+## Decisions and limits
+
+- **Live is earned, not copied.** Promote never copies customers, usage, invoices or payments, and never a webhook secret.
+- **A person cannot yet finish the checklist alone.** The live legal profile and the payment provider are edited on operator pages only; the console says so and links to them for an operator. A page for a person is a follow-up.
+- **Operator tenant pages** (`/tenants/<id>`) do not show the sandbox banner yet.
+- **Not verified here.** `tests/e2e/live_sandbox_e2e_test.go` compiles and follows the gateway's documented behaviour, but was not run against the compose stack (the machine's Docker could not hold the stack next to its other projects). The compose, Railway and chaos changes were only syntax-checked. Ingest `KafkaPausedLosesNothing` and the aggregator integration tests time out producing to Redpanda on this machine, identically on a clean main.

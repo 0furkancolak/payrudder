@@ -35,6 +35,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("RLSIsolationEveryTable", testRLSIsolationEveryTable)
 	t.Run("CreateAccountChoicesAndImmutability", testCreateAccountChoicesAndImmutability)
 	t.Run("SandboxOnlyDeployment", testSandboxOnlyDeployment)
+	t.Run("SandboxOnlyProductPath", testSandboxOnlyProductPath)
 	t.Run("APIKeysFollowEnvironmentAndRevocationEvicts", testAPIKeysFollowEnvironmentAndRevocationEvicts)
 	t.Run("SandboxPaymentMethods", testSandboxPaymentMethods)
 	t.Run("Subscriptions", testSubscriptions)
