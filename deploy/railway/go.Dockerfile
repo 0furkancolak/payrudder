@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # One Dockerfile for every Go service on Railway. Build context: the repo root. The service names itself with SERVICE_DIR, a service variable that
 # Railway passes to the build as an ARG (services/gateway, services/plans-svc, ..., tools/mockpsp); the binary is <dir>/cmd/<basename of dir>.
-# It mirrors services/<name>/Dockerfile without the BuildKit cache mounts: Railway accepts a cache mount only with an id of its own form
+# It mirrors deploy/docker/go.Dockerfile (minus GO_TAGS and MAIN_PKG, which Railway does not need) without the BuildKit cache mounts: Railway accepts a cache mount only with an id of its own form
 # (id=s/<service id>-<path>), which one shared Dockerfile cannot spell, so these builds are a little slower instead of broken.
 FROM golang:1.27.2-alpine AS build
 ARG SERVICE_DIR

@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store/sqlc"
 )
 
@@ -116,20 +117,16 @@ type Offsets struct {
 	Topic string
 }
 
+func (o Offsets) pg() kafkax.PGOffsets {
+	return kafkax.PGOffsets{DB: o.DB, Group: o.Group, Topic: o.Topic, Table: "kafka_offsets"}
+}
+
 // Load implements kafkax.OffsetLoader.
 func (o Offsets) Load(ctx context.Context, _ string, partitions []int32) (map[int32]int64, error) {
-	rows, err := sqlc.New(o.DB).LoadOffsets(ctx, sqlc.LoadOffsetsParams{ConsumerGroup: o.Group, Topic: o.Topic, Partitions: partitions})
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[int32]int64, len(rows))
-	for _, r := range rows {
-		out[r.Partition] = r.NextOffset
-	}
-	return out, nil
+	return o.pg().Load(ctx, o.Topic, partitions)
 }
 
 // Save advances the offset of a partition (never backwards).
 func (o Offsets) Save(ctx context.Context, partition int32, next int64) error {
-	return sqlc.New(o.DB).SaveOffset(ctx, sqlc.SaveOffsetParams{ConsumerGroup: o.Group, Topic: o.Topic, Partition: partition, NextOffset: next})
+	return o.pg().Save(ctx, partition, next)
 }

@@ -1,9 +1,26 @@
 package templates
 
 import (
+	"io/fs"
+	"sort"
 	"strings"
 	"testing"
 )
+
+// Names lists the available templates.
+func Names() []string {
+	var out []string
+	if err := fs.WalkDir(files, "files", func(p string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			out = append(out, strings.TrimSuffix(strings.TrimPrefix(p, "files/"), ".html"))
+		}
+		return err
+	}); err != nil {
+		panic(err)
+	}
+	sort.Strings(out)
+	return out
+}
 
 func TestRenderAllTemplates(t *testing.T) {
 	data := map[string]string{"customer_name": "Ada", "amount": "11.16", "currency": "USD", "invoice_number": "INV-2026-000001",

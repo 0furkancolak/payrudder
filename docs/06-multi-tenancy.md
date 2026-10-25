@@ -39,6 +39,10 @@ The tenant is the unit of isolation; the environment (sandbox or live) is assert
 - A key has a **scope** (`full`, `ingest` = only `POST /v1/events`, `read` = only `GET`), a `last_used_at` and, when it was rotated, an `expires_at`: the old key keeps working for the overlap window (default 24 hours, at most 7 days) and then stops, with no cache eviction needed ([ADR 0023](adr/0023-live-and-sandbox-guards.md)).
 - A **live** tenant is created `inactive`: no keys, no webhook endpoints, no invoices, until its go-live checklist is complete and the owner activates it. An operator can suspend an active tenant; its keys stop at once (`403 gateway.auth.tenant_not_active`).
 
+## Partners (phase 47)
+
+A partner of a seller's affiliate program is a person, not a tenant. They become a member of the seller's account with the role `affiliate`; every account-wide read (account, apps, tenants, keys, members) leaves that role out in SQL, so it reaches nothing of the account. What a partner sees comes from `AffiliatePortalService`, which finds every row through the person's own partner record. The program, partners, commissions, payouts and postings are tenant data under forced RLS, so a sandbox and a live program are separate; affiliate codes alone are unique across the platform because the public link carries no tenant.
+
 ## Row Level Security
 
 ### Roles per service
