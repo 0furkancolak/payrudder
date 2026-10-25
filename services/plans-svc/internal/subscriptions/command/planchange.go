@@ -11,7 +11,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
@@ -144,7 +143,7 @@ func splitFees(oldFee, newFee int64, at, periodStart, periodEnd time.Time) (oldP
 
 // replacePlan ends the subscription at `at` and starts its successor on another plan version.
 func (c *Commands) replacePlan(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, row sqlc.GetSubscriptionRow, planVersionID uuid.UUID, state subscription.State, at time.Time) (*plansv1.Subscription, error) {
-	nr, err := changescmd.SwitchTo(ctx, q, c.now(), tenantID, row, changescmd.Successor{
+	nr, err := SwitchTo(ctx, q, c.now(), tenantID, row, Successor{
 		PlanVersionID: planVersionID, Interval: subscription.Interval(row.Interval), State: state, TrialEnds: row.TrialEndsAt, At: at,
 		Anchor: row.BillingAnchor, FeeTiming: row.FeeTiming,
 	})

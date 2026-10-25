@@ -12,7 +12,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
@@ -65,7 +64,7 @@ func (c *Commands) Cancel(ctx context.Context, req *plansv1.CancelSubscriptionRe
 		}
 		if req.GetCreditUnused() {
 			// The row as it was before it ended: it still says what was prepaid.
-			if credited, err = changescmd.CreditUnusedFee(ctx, q, c.now(), row, end); err != nil {
+			if credited, err = CreditUnusedFee(ctx, q, c.now(), row, end); err != nil {
 				return err
 			}
 		}
