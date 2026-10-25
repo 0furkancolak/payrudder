@@ -15,11 +15,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/0furkancolak/payrudder/pkg/blob"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/store"
@@ -62,16 +62,11 @@ func (j *Jobs) init() error {
 	if j.swept != nil {
 		return nil
 	}
-	m := otel.Meter("github.com/0furkancolak/payrudder/services/assets-svc/background")
-	var err error
-	if j.swept, err = m.Int64Counter("assets_sessions_swept", metric.WithDescription("Expired upload sessions aborted")); err != nil {
-		return err
-	}
-	if j.verified, err = m.Int64Counter("assets_verified", metric.WithDescription("Direct uploads verified, by result")); err != nil {
-		return err
-	}
-	j.orphans, err = m.Int64Counter("assets_orphans_deleted", metric.WithDescription("Objects without an asset row that were deleted"))
-	return err
+	b := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/assets-svc/background")
+	j.swept = b.Counter("assets_sessions_swept", "Expired upload sessions aborted")
+	j.verified = b.Counter("assets_verified", "Direct uploads verified, by result")
+	j.orphans = b.Counter("assets_orphans_deleted", "Objects without an asset row that were deleted")
+	return b.Err()
 }
 
 // SweepExpired aborts the S3 multipart uploads of expired OPEN sessions and marks them EXPIRED. It returns how many
