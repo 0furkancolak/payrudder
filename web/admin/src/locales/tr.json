@@ -1310,7 +1310,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "Bu abonelikte kupon var. Kullanılmayan kısmı, ücret faturasına düzenleyeceğiniz bir alacak dekontuyla alacaklandırın.",
-        "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin."
+        "provider_currency": "Bu ödeme sağlayıcısı bu para biriminde tahsilat yapamaz. Başka bir sağlayıcı ya da para birimi seçin.",
+        "period_overlap": "Bu müşterinin o dönemle çakışan bir aboneliği zaten var."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
@@ -1318,6 +1319,18 @@
       },
       "customer": {
         "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil."
+      },
+      "common": {
+        "not_found": "Bulunamadı.",
+        "already_exists": "Zaten var.",
+        "broken_reference": "Bu kayıt var olmayan bir şeye başvuruyor.",
+        "forbidden": "Bunu yapmaya yetkiniz yok."
+      },
+      "tenant": {
+        "settings_immutable": "Bir hesabın para birimi, saat dilimi ve ortamı değiştirilemez."
+      },
+      "request": {
+        "invalid": "{field} geçerli değil: {detail}"
       }
     },
     "common": {
@@ -1443,6 +1456,10 @@
       "dashboard": {
         "bad_period": "Bu dönem geçerli değil. 7, 30 ya da 90 gün, bu yıl veya ilki sonuncudan sonra olmayan iki gün seçin.",
         "range_too_long": "Bir dönem en fazla iki yıl olabilir."
+      },
+      "request": {
+        "invalid": "{field} geçerli değil: {detail}",
+        "too_large": "İstek çok büyük."
       }
     }
   },

@@ -1310,7 +1310,8 @@
       },
       "subscription": {
         "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut.",
-        "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung."
+        "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung.",
+        "period_overlap": "Dieser Kunde hat bereits ein Abonnement, das sich mit diesem Zeitraum überschneidet."
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
@@ -1318,6 +1319,18 @@
       },
       "customer": {
         "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig."
+      },
+      "common": {
+        "not_found": "Der Eintrag wurde nicht gefunden.",
+        "already_exists": "Der Eintrag existiert bereits.",
+        "broken_reference": "Das verweist auf etwas, das nicht existiert.",
+        "forbidden": "Dazu fehlt Ihnen die Berechtigung."
+      },
+      "tenant": {
+        "settings_immutable": "Währung, Zeitzone und Umgebung eines Kontos lassen sich nicht ändern."
+      },
+      "request": {
+        "invalid": "{field} ist ungültig: {detail}"
       }
     },
     "common": {
@@ -1443,6 +1456,10 @@
       "dashboard": {
         "bad_period": "Dieser Zeitraum ist ungültig. Wählen Sie 7, 30 oder 90 Tage, dieses Jahr oder zwei Tage, deren erster nicht nach dem letzten liegt.",
         "range_too_long": "Ein Zeitraum darf höchstens zwei Jahre lang sein."
+      },
+      "request": {
+        "invalid": "{field} ist ungültig: {detail}",
+        "too_large": "Die Anfrage ist zu groß."
       }
     }
   },

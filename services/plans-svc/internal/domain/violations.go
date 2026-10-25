@@ -6,6 +6,8 @@ import (
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/0furkancolak/quotify/pkg/errkey"
 )
 
 // Violations collects field-level validation errors. The gateway renders them as error.details.
@@ -21,12 +23,13 @@ func (v *Violations) Add(field, description string) {
 // Empty reports whether nothing was recorded.
 func (v *Violations) Empty() bool { return len(v.list) == 0 }
 
-// Err returns an InvalidArgument status with BadRequest details, or nil.
+// Err returns an InvalidArgument status with BadRequest details and the key plans.request.invalid (the console puts the first field and its
+// description into the translated text), or nil.
 func (v *Violations) Err() error {
 	if v.Empty() {
 		return nil
 	}
-	st := status.New(codes.InvalidArgument, "invalid request: "+v.list[0].GetField()+": "+v.list[0].GetDescription())
+	st := status.Convert(errkey.New(codes.InvalidArgument, "plans.request.invalid", "invalid request: "+v.list[0].GetField()+": "+v.list[0].GetDescription()))
 	if withDetails, err := st.WithDetails(&errdetails.BadRequest{FieldViolations: v.list}); err == nil {
 		st = withDetails
 	}
