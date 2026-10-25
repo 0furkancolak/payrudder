@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/quotify/gen/go/quotify/plans/v1"
+	"github.com/0furkancolak/quotify/pkg/errkey"
 	"github.com/0furkancolak/quotify/pkg/idgen"
 	"github.com/0furkancolak/quotify/pkg/payments/providers"
 	"github.com/0furkancolak/quotify/pkg/subscription"
@@ -47,7 +48,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: old.ID, EndTime: when}); err != nil {
 		return sqlc.InsertSubscriptionRow{}, err
 	} else if n != 1 {
-		return sqlc.InsertSubscriptionRow{}, status.Error(codes.Aborted, "subscription changed concurrently; retry")
+		return sqlc.InsertSubscriptionRow{}, errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
 	}
 	eff := convert.SubscriptionState(old.State, old.TrialEndsAt, old.OpenEnded, old.EndTime, now)
 	if !when.After(now) {
@@ -139,13 +140,13 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 		eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
 		switch {
 		case !row.OpenEnded || row.CancelAtPeriodEnd:
-			return status.Error(codes.FailedPrecondition, "an ended or ending subscription cannot be moved")
+			return errkey.New(codes.FailedPrecondition, "plans.migration.subscription_ended", "an ended or ending subscription cannot be moved")
 		case eff != subscription.Active && eff != subscription.Trialing:
-			return status.Errorf(codes.FailedPrecondition, "a %s subscription cannot be moved", eff)
+			return errkey.Newf(codes.FailedPrecondition, "plans.migration.state_not_movable", "a %s subscription cannot be moved", eff)
 		case convert.Str(row.Provider) == req.GetToProvider():
 			return domain.Invalid("to_provider", "the subscription is already with "+req.GetToProvider())
 		case !target.CanCharge(row.Currency):
-			return status.Errorf(codes.FailedPrecondition, "%s cannot charge in %s", req.GetToProvider(), row.Currency)
+			return errkey.Newf(codes.FailedPrecondition, "plans.subscription.provider_currency", "%s cannot charge in %s", req.GetToProvider(), row.Currency)
 		}
 		mig, err := q.InsertProviderMigration(ctx, sqlc.InsertProviderMigrationParams{
 			ID: idgen.NewUUIDv7(), SubscriptionID: id, FromProvider: convert.Str(row.Provider), ToProvider: req.GetToProvider(), State: "started", CutoverAt: cutoverAt,
@@ -220,19 +221,19 @@ func (c *Commands) Complete(ctx context.Context, req *plansv1.CompleteProviderMi
 				return err
 			}
 			if convert.Str(nr.ProviderRef) != req.GetProviderRef() {
-				return status.Errorf(codes.FailedPrecondition, "migration already completed with %s", convert.Str(nr.ProviderRef))
+				return errkey.Newf(codes.FailedPrecondition, "plans.migration.already_completed", "migration already completed with %s", convert.Str(nr.ProviderRef))
 			}
 			resp.Migration, resp.Subscription = provmigqry.Message(mig), subsqry.Message(nr, c.now())
 			return nil
 		case "aborted":
-			return status.Error(codes.FailedPrecondition, "migration was aborted")
+			return errkey.New(codes.FailedPrecondition, "plans.migration.aborted", "migration was aborted")
 		}
 		when := c.now()
 		if req.GetCutoverTime() != nil {
 			when = req.GetCutoverTime().AsTime()
 		}
 		if !old.OpenEnded {
-			return status.Error(codes.FailedPrecondition, "the subscription ended while the migration was waiting")
+			return errkey.New(codes.FailedPrecondition, "plans.migration.subscription_ended", "the subscription ended while the migration was waiting")
 		}
 		nr, err := c.cutover(ctx, q, ti.ID, old, when, mig.ToProvider, new(req.GetProviderRef()), "provider")
 		if err != nil {
@@ -272,7 +273,7 @@ func (c *Commands) Abort(ctx context.Context, migrationID string) (*plansv1.Prov
 			out = provmigqry.Message(mig)
 			return nil
 		case "completed":
-			return status.Error(codes.FailedPrecondition, "the migration has completed; it cannot be aborted")
+			return errkey.New(codes.FailedPrecondition, "plans.migration.cannot_abort", "the migration has completed; it cannot be aborted")
 		}
 		done, err := q.FinishProviderMigration(ctx, sqlc.FinishProviderMigrationParams{ID: id, State: "aborted", NewSubscriptionID: nil, CutoverAt: mig.CutoverAt})
 		if err != nil {

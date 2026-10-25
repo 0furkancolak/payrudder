@@ -1376,7 +1376,16 @@
       "subscription": {
         "coupon_blocks_credit": "Cet abonnement a un coupon. Créditez plutôt la partie non utilisée avec un avoir sur la facture de l'abonnement.",
         "provider_currency": "Ce prestataire de paiement ne peut pas encaisser dans cette devise. Choisissez un autre prestataire ou une autre devise.",
-        "period_overlap": "Ce client a déjà un abonnement qui chevauche cette période."
+        "period_overlap": "Ce client a déjà un abonnement qui chevauche cette période.",
+        "already_linked": "Cet abonnement est déjà lié à un prestataire de paiement.",
+        "bad_period": "La période de facturation de cet abonnement ne peut pas être calculée.",
+        "billed_in_arrears": "Cet abonnement est facturé à terme échu : aucun frais n'a été payé d'avance.",
+        "changed_concurrently": "L'abonnement a changé au même moment. Rechargez et réessayez.",
+        "ended": "L'abonnement est déjà terminé.",
+        "ending_or_ended": "L'abonnement est déjà terminé ou déjà programmé pour se terminer.",
+        "no_scheduled_cancel": "Il n'y a aucune résiliation programmée à annuler.",
+        "run_by_provider": "Cet abonnement est géré par un prestataire de paiement. Modifiez-le chez lui.",
+        "transition_not_allowed": "Cela n'est pas possible dans l'état actuel de l'abonnement."
       },
       "webhook": {
         "not_configured": "Les webhooks ne sont pas configurés sur ce déploiement (la clé des secrets est absente).",
@@ -1384,7 +1393,8 @@
         "tenant_not_active": "Cet environnement n'est pas actif et ne peut donc pas avoir de points de terminaison webhook. Terminez d'abord la liste de mise en production."
       },
       "customer": {
-        "tax_invalid": "Le numéro fiscal ou le centre des impôts du client n'est pas valide."
+        "tax_invalid": "Le numéro fiscal ou le centre des impôts du client n'est pas valide.",
+        "quota_reached": "La limite de clients du forfait de ce compte est atteinte."
       },
       "common": {
         "not_found": "Élément introuvable.",
@@ -1396,7 +1406,8 @@
         "settings_immutable": "La devise, le fuseau horaire et l'environnement d'un compte ne peuvent pas être modifiés.",
         "bad_status": "Le statut doit être active ou suspended.",
         "bad_transition": "Ce changement de statut n'est pas possible pour cet environnement.",
-        "reason_required": "Activer un environnement sans sa liste complète exige une raison."
+        "reason_required": "Activer un environnement sans sa liste complète exige une raison.",
+        "unknown": "Ce compte est inconnu."
       },
       "request": {
         "invalid": "{field} n'est pas valide : {detail}"
@@ -1404,6 +1415,43 @@
       "api_key": {
         "bad_scope": "La portée doit être full, ingest ou read.",
         "tenant_not_active": "Cet environnement n'est pas actif et ne peut donc pas avoir de clés API. Terminez d'abord la liste de mise en production."
+      },
+      "change": {
+        "bad_proration": "Le montant de ce changement de plan ne peut pas être calculé pour cette période.",
+        "billed_in_arrears": "Cet abonnement est facturé à terme échu. Changez son plan avec ChangePlan, qui répartit le mois selon le temps.",
+        "fee_not_invoiced": "Les frais de la période en cours n'ont pas encore été facturés. Réessayez dans un instant.",
+        "invalid": "Ce changement n'est pas valide pour l'abonnement.",
+        "none_scheduled": "Aucun changement n'est programmé pour cet abonnement.",
+        "state_not_changeable": "Un abonnement dans cet état ne peut pas changer de plan.",
+        "subscription_ended": "Un abonnement terminé ou en cours de fin ne peut pas changer de plan.",
+        "use_change_subscription": "Un abonnement dont les frais sont facturés d'avance se modifie avec ChangeSubscription."
+      },
+      "coupon": {
+        "bad_page_token": "Le jeton de page n'est pas valide. Recommencez la liste.",
+        "bad_state": "L'état doit être active, inactive ou vide.",
+        "codes_exhausted": "Pas assez de codes inutilisés n'ont pu être trouvés. Essayez un préfixe plus long.",
+        "fee_not_in_advance": "Un coupon réduit des frais facturés d'avance. Les frais de cet abonnement sont facturés autrement.",
+        "none_on_subscription": "Cet abonnement n'a pas de coupon.",
+        "subscription_ended": "Un abonnement terminé ne peut pas recevoir de coupon."
+      },
+      "fee": {
+        "invalid_period": "La période de facturation de cet abonnement ne peut pas être calculée.",
+        "not_period_start": "Ce n'est pas le début d'une période de facturation."
+      },
+      "meter": {
+        "changed_concurrently": "Une autre version du compteur a été créée au même moment. Réessayez.",
+        "quota_reached": "La limite de compteurs du forfait de ce compte est atteinte."
+      },
+      "migration": {
+        "aborted": "La migration a été abandonnée.",
+        "already_completed": "La migration est déjà terminée.",
+        "cannot_abort": "La migration est terminée et ne peut pas être abandonnée.",
+        "state_not_movable": "Un abonnement dans cet état ne peut pas être déplacé vers un autre prestataire.",
+        "subscription_ended": "L'abonnement est terminé ou en cours de fin : il ne peut pas être déplacé."
+      },
+      "plan": {
+        "no_fixed_fee": "Cette version du plan n'a pas de frais fixes pour cet intervalle dans cette devise.",
+        "no_metered_price": "Cette version du plan a des prix à l'usage, mais aucun dans cette devise."
       }
     },
     "common": {
@@ -1555,7 +1603,8 @@
         "not_active": "Cette clé API est révoquée.",
         "invalid": "La clé d'API n'est pas valide.",
         "missing": "Envoyez votre clé d'API comme jeton Bearer dans l'en-tête Authorization.",
-        "sandbox_only": "Ce point d'accès est réservé aux clés sandbox (qk_test_)."
+        "sandbox_only": "Ce point d'accès est réservé aux clés sandbox (qk_test_).",
+        "prefix_unavailable": "Aucun préfixe de clé unique n'a pu être attribué. Réessayez."
       },
       "app": {
         "not_found": "Cette application n'existe pas, ou elle n'est pas la vôtre.",

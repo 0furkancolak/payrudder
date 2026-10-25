@@ -1376,7 +1376,16 @@
       "subscription": {
         "coupon_blocks_credit": "Dieses Abonnement hat einen Gutschein. Schreiben Sie den ungenutzten Teil stattdessen mit einer Gutschrift auf die Gebührenrechnung gut.",
         "provider_currency": "Dieser Zahlungsanbieter kann in dieser Währung nicht abbuchen. Wählen Sie einen anderen Anbieter oder eine andere Währung.",
-        "period_overlap": "Dieser Kunde hat bereits ein Abonnement, das sich mit diesem Zeitraum überschneidet."
+        "period_overlap": "Dieser Kunde hat bereits ein Abonnement, das sich mit diesem Zeitraum überschneidet.",
+        "already_linked": "Dieses Abonnement ist bereits mit einem Zahlungsanbieter verknüpft.",
+        "bad_period": "Der Abrechnungszeitraum dieses Abonnements lässt sich nicht berechnen.",
+        "billed_in_arrears": "Dieses Abonnement wird nachträglich abgerechnet: Es wurde keine Gebühr im Voraus bezahlt.",
+        "changed_concurrently": "Das Abonnement hat sich gleichzeitig geändert. Laden Sie neu und versuchen Sie es erneut.",
+        "ended": "Das Abonnement ist bereits beendet.",
+        "ending_or_ended": "Das Abonnement ist bereits beendet oder zum Ende vorgemerkt.",
+        "no_scheduled_cancel": "Es gibt keine geplante Kündigung, die zurückgenommen werden könnte.",
+        "run_by_provider": "Dieses Abonnement wird von einem Zahlungsanbieter geführt. Ändern Sie es dort.",
+        "transition_not_allowed": "Das ist im aktuellen Zustand des Abonnements nicht möglich."
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
@@ -1384,7 +1393,8 @@
         "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine Webhook-Endpunkte haben. Schließen Sie zuerst die Go-live-Checkliste ab."
       },
       "customer": {
-        "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig."
+        "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig.",
+        "quota_reached": "Das Kundenlimit des Tarifs dieses Kontos ist erreicht."
       },
       "common": {
         "not_found": "Der Eintrag wurde nicht gefunden.",
@@ -1396,7 +1406,8 @@
         "settings_immutable": "Währung, Zeitzone und Umgebung eines Kontos lassen sich nicht ändern.",
         "bad_status": "Der Status muss active oder suspended sein.",
         "bad_transition": "Diese Statusänderung ist für diese Umgebung nicht möglich.",
-        "reason_required": "Für die Aktivierung ohne Checkliste ist eine Begründung nötig."
+        "reason_required": "Für die Aktivierung ohne Checkliste ist eine Begründung nötig.",
+        "unknown": "Dieses Konto ist nicht bekannt."
       },
       "request": {
         "invalid": "{field} ist ungültig: {detail}"
@@ -1404,6 +1415,43 @@
       "api_key": {
         "bad_scope": "Der Bereich muss full, ingest oder read sein.",
         "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab."
+      },
+      "change": {
+        "bad_proration": "Die Gebühr für diesen Planwechsel lässt sich für diesen Zeitraum nicht berechnen.",
+        "billed_in_arrears": "Dieses Abonnement wird nachträglich abgerechnet. Ändern Sie den Plan mit ChangePlan, das den Monat nach Zeit aufteilt.",
+        "fee_not_invoiced": "Die Gebühr des aktuellen Zeitraums wurde noch nicht in Rechnung gestellt. Versuchen Sie es gleich erneut.",
+        "invalid": "Diese Änderung ist für das Abonnement nicht gültig.",
+        "none_scheduled": "Für dieses Abonnement ist keine Änderung geplant.",
+        "state_not_changeable": "Ein Abonnement in diesem Zustand kann den Plan nicht wechseln.",
+        "subscription_ended": "Ein beendetes oder endendes Abonnement kann den Plan nicht wechseln.",
+        "use_change_subscription": "Ein Abonnement mit Vorausrechnung der Gebühr wird mit ChangeSubscription geändert."
+      },
+      "coupon": {
+        "bad_page_token": "Das Seitentoken ist ungültig. Beginnen Sie die Liste von vorn.",
+        "bad_state": "Der Status muss active, inactive oder leer sein.",
+        "codes_exhausted": "Es wurden nicht genug unbenutzte Codes gefunden. Versuchen Sie ein längeres Präfix.",
+        "fee_not_in_advance": "Ein Gutschein reduziert eine im Voraus berechnete Gebühr. Die Gebühr dieses Abonnements wird anders abgerechnet.",
+        "none_on_subscription": "Dieses Abonnement hat keinen Gutschein.",
+        "subscription_ended": "Ein beendetes Abonnement kann keinen Gutschein erhalten."
+      },
+      "fee": {
+        "invalid_period": "Der Abrechnungszeitraum dieses Abonnements lässt sich nicht berechnen.",
+        "not_period_start": "Dies ist nicht der Beginn eines Abrechnungszeitraums."
+      },
+      "meter": {
+        "changed_concurrently": "Gleichzeitig wurde eine andere Zählerversion erstellt. Versuchen Sie es erneut.",
+        "quota_reached": "Das Zählerlimit des Tarifs dieses Kontos ist erreicht."
+      },
+      "migration": {
+        "aborted": "Die Migration wurde abgebrochen.",
+        "already_completed": "Die Migration ist bereits abgeschlossen.",
+        "cannot_abort": "Die Migration ist abgeschlossen und kann nicht abgebrochen werden.",
+        "state_not_movable": "Ein Abonnement in diesem Zustand kann nicht zu einem anderen Anbieter verschoben werden.",
+        "subscription_ended": "Das Abonnement ist beendet oder endet gerade und kann nicht verschoben werden."
+      },
+      "plan": {
+        "no_fixed_fee": "Diese Planversion hat für dieses Intervall in dieser Währung keine feste Gebühr.",
+        "no_metered_price": "Diese Planversion hat nutzungsabhängige Preise, aber keine in dieser Währung."
       }
     },
     "common": {
@@ -1555,7 +1603,8 @@
         "not_active": "Dieser API-Schlüssel wurde widerrufen.",
         "invalid": "Der API-Schlüssel ist ungültig.",
         "missing": "Senden Sie Ihren API-Schlüssel als Bearer-Token im Authorization-Header.",
-        "sandbox_only": "Dieser Endpunkt ist nur für Sandbox-Schlüssel (qk_test_) gedacht."
+        "sandbox_only": "Dieser Endpunkt ist nur für Sandbox-Schlüssel (qk_test_) gedacht.",
+        "prefix_unavailable": "Es konnte kein eindeutiges Schlüsselpräfix vergeben werden. Versuchen Sie es erneut."
       },
       "app": {
         "not_found": "Diese App existiert nicht oder gehört Ihnen nicht.",

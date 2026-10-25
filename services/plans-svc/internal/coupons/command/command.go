@@ -207,7 +207,7 @@ func (c *Commands) Deactivate(ctx context.Context, code string) (*plansv1.Coupon
 		if n, err := q.DeactivateCoupon(ctx, code); err != nil {
 			return err
 		} else if n == 0 {
-			return status.Error(codes.NotFound, "coupon not found")
+			return errkey.New(codes.NotFound, "coupon.not_found", "coupon not found")
 		}
 		r, err := q.GetCoupon(ctx, code)
 		if err != nil {
@@ -227,10 +227,10 @@ func (c *Commands) Deactivate(ctx context.Context, code string) (*plansv1.Coupon
 // provider renews cannot have one (its fee is the provider's; use a discount at the provider).
 func Redeem(ctx context.Context, q *sqlc.Queries, now time.Time, sub sqlc.GetSubscriptionRow, code string) error {
 	if sub.Owner == "provider" || sub.FeeTiming != "advance" {
-		return status.Error(codes.FailedPrecondition, "a coupon takes something off a fee Payrudder invoices in advance; this subscription's fee is billed another way")
+		return errkey.New(codes.FailedPrecondition, "plans.coupon.fee_not_in_advance", "a coupon takes something off a fee Payrudder invoices in advance; this subscription's fee is billed another way")
 	}
 	if _, err := q.GetSubscriptionCoupon(ctx, sub.ID); err == nil {
-		return status.Error(codes.FailedPrecondition, "the subscription has a coupon already; remove it first")
+		return errkey.New(codes.FailedPrecondition, "coupon.already_applied", "the subscription has a coupon already; remove it first")
 	}
 	others, err := q.CountOtherSubscriptions(ctx, sqlc.CountOtherSubscriptionsParams{CustomerID: sub.CustomerID, ExceptID: sub.ID})
 	if err != nil {
@@ -264,7 +264,7 @@ func (c *Commands) Apply(ctx context.Context, req *plansv1.ApplyCouponRequest) (
 		}
 		row := sqlc.GetSubscriptionRow(cur)
 		if !row.OpenEnded {
-			return status.Error(codes.FailedPrecondition, "an ended subscription cannot take a coupon")
+			return errkey.New(codes.FailedPrecondition, "plans.coupon.subscription_ended", "an ended subscription cannot take a coupon")
 		}
 		if err := Redeem(ctx, q, c.now(), row, req.GetCode()); err != nil {
 			return err
@@ -302,7 +302,7 @@ func (c *Commands) Remove(ctx context.Context, req *plansv1.RemoveCouponRequest)
 		if n, err := q.DeleteSubscriptionCoupon(ctx, id); err != nil {
 			return err
 		} else if n == 0 {
-			return status.Error(codes.FailedPrecondition, "the subscription has no coupon")
+			return errkey.New(codes.FailedPrecondition, "plans.coupon.none_on_subscription", "the subscription has no coupon")
 		}
 		r, err := q.GetSubscription(ctx, id)
 		if err != nil {
@@ -379,7 +379,7 @@ func insertCodes(ctx context.Context, q *sqlc.Queries, p sqlc.InsertPromotionCod
 		all = append(all, ids...)
 	}
 	if len(all) < int(req.GetCount()) {
-		return nil, status.Error(codes.Unavailable, "could not find enough unused codes; try a longer prefix")
+		return nil, errkey.New(codes.Unavailable, "plans.coupon.codes_exhausted", "could not find enough unused codes; try a longer prefix")
 	}
 	return all, nil
 }
