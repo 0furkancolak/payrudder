@@ -3,6 +3,7 @@ package command
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -35,6 +36,18 @@ func ClosePeriodNow(ctx context.Context, mgr *runs.Manager, ti tenant.Info, peri
 	return mgr.ClosePeriodNow(ctx, ti, pid)
 }
 
+// notClosable answers for a failed run that could not be retried: the cause goes to the log, the client gets a fixed message.
+func notClosable(ctx context.Context, tenantID uuid.UUID, periodID string, err error) error {
+	slog.WarnContext(ctx, "failed run not retried", "tenant", tenantID, "period", periodID, "error", err)
+	return errkey.New(codes.FailedPrecondition, "billing.run.not_closable", "the run of this period cannot be retried now")
+}
+
+// retryLater answers for a run that could not advance: the cause goes to the log, the client gets a fixed message.
+func retryLater(ctx context.Context, tenantID uuid.UUID, periodID string, err error) error {
+	slog.WarnContext(ctx, "run not driven", "tenant", tenantID, "period", periodID, "error", err)
+	return errkey.New(codes.Unavailable, "billing.run.retry_later", "run could not advance now; it will be retried")
+}
+
 // ClosePeriod closes a period of a tenant for the operator, retries a failed run and drives it as far as it goes now.
 func ClosePeriod(ctx context.Context, mgr *runs.Manager, tenantID uuid.UUID, periodID string) (*runs.Run, error) {
 	run, err := mgr.ClosePeriod(ctx, tenantID, periodID)
@@ -43,11 +56,11 @@ func ClosePeriod(ctx context.Context, mgr *runs.Manager, tenantID uuid.UUID, per
 	}
 	if run.Status == runs.Failed {
 		if err := mgr.RetryRun(ctx, tenantID, periodID); err != nil {
-			return nil, errkey.New(codes.FailedPrecondition, "billing.run.not_closable", err.Error())
+			return nil, notClosable(ctx, tenantID, periodID, err)
 		}
 	}
 	if run, err = mgr.Drive(ctx, tenantID, periodID); err != nil {
-		return nil, errkey.New(codes.Unavailable, "billing.run.retry_later", "run could not advance now; it will be retried: "+err.Error())
+		return nil, retryLater(ctx, tenantID, periodID, err)
 	}
 	return run, nil
 }
