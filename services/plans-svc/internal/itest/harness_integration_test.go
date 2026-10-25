@@ -104,6 +104,7 @@ type env struct {
 	hooks   plansv1.WebhookServiceClient
 	aff     plansv1.AffiliateServiceClient
 	pub     plansv1.AffiliatePublicServiceClient
+	portal  plansv1.AffiliatePortalServiceClient
 	box     *secretbox.Box
 	evicted *recordingEvictor
 	// runner runs the sandbox resets (a test calls RunOnce itself, so nothing happens behind its back); remotes records what the other services were asked.
@@ -161,6 +162,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, true))
 	plansv1.RegisterAffiliateServiceServer(srv, grpcapi.NewAffiliates(plansSrv))
 	plansv1.RegisterAffiliatePublicServiceServer(srv, grpcapi.NewAffiliatesPublic(system, log))
+	plansv1.RegisterAffiliatePortalServiceServer(srv, grpcapi.NewAffiliatePortal(plansSrv, system))
 	adminSrv := admin.New(system, ev, allowedEnvs, log)
 	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	mail := &recordingMail{}
@@ -179,7 +181,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{runner: runner, remotes: remotes, db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), box: box, evicted: ev, mail: mail}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 
 func operator() context.Context {

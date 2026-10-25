@@ -9,8 +9,6 @@ import (
 	"sort"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -153,9 +151,6 @@ func PayloadHash(customerExternalID, meterCode string, units int64, scale int, e
 	}
 	return h.Sum(nil)
 }
-
-// Timestamp is a helper for building UsageEvent timestamps.
-func Timestamp(t time.Time) *timestamppb.Timestamp { return timestamppb.New(t.UTC()) }
 
 // BucketOf returns the start of t's UTC month: the created_at bucket of idempotency_keys.
 func BucketOf(t time.Time) time.Time {
