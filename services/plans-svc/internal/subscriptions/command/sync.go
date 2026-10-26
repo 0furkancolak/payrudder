@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 )
 
 // providerStates maps a provider's status word to the state a subscription is in. The provider is the truth for a subscription it runs,
@@ -82,11 +83,10 @@ func (c *Commands) SyncProvider(ctx context.Context, req *plansv1.SyncProviderSu
 
 func (c *Commands) syncProvider(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, req *plansv1.SyncProviderSubscriptionRequest, a syncArgs) (*plansv1.Subscription, error) {
 	id := currentInChain(ctx, q, a.id, req.GetProvider(), req.GetProviderRef())
-	cur, err := q.GetSubscriptionForUpdate(ctx, id)
+	row, err := subsqry.Lock(ctx, q, id)
 	if err != nil {
 		return nil, err
 	}
-	row := sqlc.GetSubscriptionRow(cur)
 	if row.ProviderRef != nil && (*row.ProviderRef != req.GetProviderRef() || convert.Str(row.Provider) != req.GetProvider()) {
 		return nil, errkey.Newf(codes.FailedPrecondition, "plans.subscription.already_linked", "subscription is already linked to %s %s", convert.Str(row.Provider), *row.ProviderRef)
 	}

@@ -82,11 +82,7 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateSubscriptionRe
 }
 
 func (c *Commands) create(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, req *plansv1.CreateSubscriptionRequest, a createArgs) (*plansv1.Subscription, error) {
-	t, err := tenantsqry.Current(ctx, q)
-	if err != nil {
-		return nil, err
-	}
-	loc, err := tenantsqry.Location(t.Timezone)
+	t, loc, err := tenantsqry.CurrentIn(ctx, q)
 	if err != nil {
 		return nil, err
 	}

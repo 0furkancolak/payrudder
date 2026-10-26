@@ -50,10 +50,8 @@ func carriesCoupon(next Successor) bool {
 // SwitchTo ends old at next.At and starts its successor in the same transaction, with the entitlements of both.
 func SwitchTo(ctx context.Context, q *sqlc.Queries, now time.Time, tenantID uuid.UUID, old sqlc.GetSubscriptionRow, next Successor) (sqlc.InsertSubscriptionRow, error) {
 	at := next.At
-	if n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: old.ID, EndTime: at}); err != nil {
+	if err := End(ctx, q, old.ID, at); err != nil {
 		return sqlc.InsertSubscriptionRow{}, err
-	} else if n != 1 {
-		return sqlc.InsertSubscriptionRow{}, errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
 	}
 	if !next.LeaveOldOpen {
 		if _, err := q.SetSubscriptionState(ctx, sqlc.SetSubscriptionStateParams{ID: old.ID, State: string(subscription.Cancelled), PausedAt: old.PausedAt}); err != nil {
@@ -109,4 +107,34 @@ func CreditUnusedFee(ctx context.Context, q *sqlc.Queries, now time.Time, row sq
 func AdvanceFee(ctx context.Context, q *sqlc.Queries, id uuid.UUID, start, next time.Time) (bool, error) {
 	n, err := q.AdvanceSubscriptionFee(ctx, sqlc.AdvanceSubscriptionFeeParams{ID: id, PeriodStart: start, NextDue: next})
 	return n > 0, err
+}
+
+// changedConcurrently is the answer to a change that found the subscription no longer as it was read: somebody else changed it first.
+func changedConcurrently() error {
+	return errkey.New(codes.Aborted, "plans.subscription.changed_concurrently", "subscription changed concurrently; retry")
+}
+
+// End ends the subscription at the given time. It is the one way a subscription's range is closed; a row that was changed since it was read is the
+// "changed concurrently" answer.
+func End(ctx context.Context, q *sqlc.Queries, id uuid.UUID, at time.Time) error {
+	n, err := q.EndSubscription(ctx, sqlc.EndSubscriptionParams{ID: id, EndTime: at})
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return changedConcurrently()
+	}
+	return nil
+}
+
+// Reopen undoes End: the subscription runs on, its range open again.
+func Reopen(ctx context.Context, q *sqlc.Queries, id uuid.UUID, now time.Time) error {
+	n, err := q.ReopenSubscription(ctx, sqlc.ReopenSubscriptionParams{ID: id, Now: now})
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return changedConcurrently()
+	}
+	return nil
 }

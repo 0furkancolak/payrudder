@@ -68,11 +68,7 @@ func (r *Queries) Due(ctx context.Context, req *plansv1.ListSubscriptionsFeeDueR
 	size = min(size, 500)
 	var out []*plansv1.FeeDue
 	err := r.db.Tx(ctx, func(q *sqlc.Queries) error {
-		t, err := tenantsqry.Current(ctx, q)
-		if err != nil {
-			return err
-		}
-		loc, err := tenantsqry.Location(t.Timezone)
+		t, loc, err := tenantsqry.CurrentIn(ctx, q)
 		if err != nil {
 			return err
 		}

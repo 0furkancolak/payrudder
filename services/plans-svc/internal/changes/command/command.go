@@ -45,11 +45,10 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 	}
 	resp := &plansv1.ChangeSubscriptionResponse{}
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		cur, err := q.GetSubscriptionForUpdate(ctx, id)
+		row, err := subsqry.Lock(ctx, q, id)
 		if err != nil {
 			return err
 		}
-		row := sqlc.GetSubscriptionRow(cur)
 		pc, err := changesqry.Price(ctx, q, c.now(), row, req)
 		if err != nil {
 			return err
@@ -155,11 +154,10 @@ func (c *Commands) ApplyScheduled(ctx context.Context, req *plansv1.ApplySchedul
 			return err
 		}
 		for _, dc := range due {
-			cur, err := q.GetSubscriptionForUpdate(ctx, dc.SubscriptionID)
+			row, err := subsqry.Lock(ctx, q, dc.SubscriptionID)
 			if err != nil {
 				return err
 			}
-			row := sqlc.GetSubscriptionRow(cur)
 			eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, req.GetNow().AsTime())
 			if !row.OpenEnded || row.CancelAtPeriodEnd || eff != subscription.Active {
 				if _, err := q.SettleChange(ctx, sqlc.SettleChangeParams{ID: dc.ID, State: "cancelled"}); err != nil {

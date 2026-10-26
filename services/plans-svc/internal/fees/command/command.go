@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
@@ -36,19 +37,15 @@ func (c *Commands) Advance(ctx context.Context, req *plansv1.AdvanceSubscription
 	}
 	start := req.GetPeriodStart().AsTime()
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		t, err := tenantsqry.Current(ctx, q)
+		t, loc, err := tenantsqry.CurrentIn(ctx, q)
 		if err != nil {
 			return err
 		}
-		loc, err := tenantsqry.Location(t.Timezone)
+		row, err := subsqry.Lock(ctx, q, id)
 		if err != nil {
 			return err
 		}
-		row, err := q.GetSubscriptionForUpdate(ctx, id)
-		if err != nil {
-			return err
-		}
-		end, err := feesqry.PeriodStartingAt(sqlc.GetSubscriptionRow(row), start, loc)
+		end, err := feesqry.PeriodStartingAt(row, start, loc)
 		if err != nil {
 			return err
 		}
