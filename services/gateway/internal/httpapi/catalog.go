@@ -62,9 +62,12 @@ func (s *Server) getPlanVersion(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		req.Version = int32(n)
-		// A published version never changes: the caller (or an edge in front) may keep it for a while without asking.
-		w.Header().Set("Cache-Control", "private, max-age=300")
 	}
 	resp, err := s.d.Plans.GetPlanVersion(r.Context(), req)
+	if err == nil && req.Version != 0 {
+		// A published version never changes: the caller (or an edge in front) may keep it for a while without asking. Only an answer that found it:
+		// the "not found" of a version that is published a moment later must not be kept.
+		w.Header().Set("Cache-Control", "private, max-age=300")
+	}
 	respond(w, r, http.StatusOK, resp.GetPlanVersion(), err)
 }
