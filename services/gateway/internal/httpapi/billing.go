@@ -100,17 +100,24 @@ func (s *Server) adminVoidInvoice(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp.GetSaga(), err)
 }
 
-// actorHeader names who an operator action is recorded for. The operator token is shared, so the console sends the signed-in operator here.
+// actorHeader names who an operator action is recorded for. The operator token is shared, so a script using it says here who it is.
 const actorHeader = "X-Payrudder-Actor"
 
-// actorOf is the actor of a request: the X-Payrudder-Actor header cut to 120 characters, or "operator".
+// maxActorRunes bounds the actor of an operator action.
+const maxActorRunes = 120
+
+// actorOf is the actor of a request. A signed-in operator is their verified address, whatever the client sends: nobody can have an action recorded as
+// another person's. The machine token has no person behind it, so its X-Payrudder-Actor header cut to 120 characters is the actor, or "operator".
 func actorOf(r *http.Request) string {
-	a := strings.TrimSpace(r.Header.Get(actorHeader))
+	a := operatorFrom(r.Context())
+	if a == "" {
+		a = strings.TrimSpace(r.Header.Get(actorHeader))
+	}
 	if a == "" {
 		return "operator"
 	}
-	if runes := []rune(a); len(runes) > 120 {
-		a = string(runes[:120])
+	if runes := []rune(a); len(runes) > maxActorRunes {
+		a = string(runes[:maxActorRunes])
 	}
 	return a
 }

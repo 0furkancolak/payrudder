@@ -183,7 +183,7 @@ func (s *Server) wrap(rt Route) http.Handler {
 			ctx = context.WithValue(ctx, sessionKey{}, sess)
 			span.SetAttributes(attribute.String("payrudder.user_id", sess.UserID))
 		case AccessOperator:
-			ok, err := s.operatorAllowed(r)
+			ok, person, err := s.operatorAllowed(r)
 			if err != nil {
 				writeError(w, r, err)
 				return
@@ -193,6 +193,9 @@ func (s *Server) wrap(rt Route) http.Handler {
 				return
 			}
 			ctx = tenant.WithOperator(ctx)
+			if person != "" {
+				ctx = context.WithValue(ctx, operatorKey{}, person)
+			}
 		default:
 			p, err := s.authenticate(r)
 			if err != nil {
@@ -331,27 +334,37 @@ func (s *Server) operatorOK(r *http.Request) bool {
 	return s.d.OperatorToken != "" && subtle.ConstantTimeCompare([]byte(bearerToken(r)), []byte(s.d.OperatorToken)) == 1
 }
 
+// operatorKey carries the address of the signed-in operator who makes an operator request. A request with the machine token carries none.
+type operatorKey struct{}
+
+// operatorFrom is the address of the signed-in operator behind ctx, or "" (the machine token, or not an operator request).
+func operatorFrom(ctx context.Context) string {
+	who, _ := ctx.Value(operatorKey{}).(string)
+	return who
+}
+
 // operatorAllowed is who may use the operator routes: the machine token, or the session of an operator user (see isOperator). The session is resolved on
 // every request, so signing out, a revoked session or a removed address takes effect at once; nothing the client sends decides it.
 // An unreachable plans-svc is an error (503), not a refusal, so a signed-in operator is not told to sign in again because of an outage.
-func (s *Server) operatorAllowed(r *http.Request) (bool, error) {
+// person is the operator's verified address when a session let them in, "" for the machine token.
+func (s *Server) operatorAllowed(r *http.Request) (ok bool, person string, err error) {
 	if s.operatorOK(r) {
-		return true, nil
+		return true, "", nil
 	}
 	if !strings.HasPrefix(bearerToken(r), sessionPrefix) {
-		return false, nil
+		return false, "", nil
 	}
 	sess, err := s.session(r)
 	switch {
 	case status.Code(err) == codes.Unavailable:
-		return false, err
+		return false, "", err
 	case err != nil:
-		return false, nil
+		return false, "", nil
 	case !s.isOperator(sess.User):
 		// A valid session that is not an operator's: signed in, but not allowed (403), so the page does not mistake it for an expired session.
-		return false, errkey.New(codes.PermissionDenied, "identity.operator.forbidden", "this area is for platform operators")
+		return false, "", errkey.New(codes.PermissionDenied, "identity.operator.forbidden", "this area is for platform operators")
 	}
-	return true, nil
+	return true, normalizeEmail(sess.User.GetEmail()), nil
 }
 
 func (s *Server) recoverMiddleware(next http.Handler) http.Handler {

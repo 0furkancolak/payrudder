@@ -38,6 +38,9 @@ func (s *Server) paymentsForward(path func(*http.Request) string, tweak func(*ht
 					pr.Out.Header.Set("X-Internal-Token", s.d.PaymentsToken)
 				}
 				pr.Out.Header.Set("X-Request-Id", requestID(pr.In.Context()))
+				if who := operatorFrom(pr.In.Context()); who != "" {
+					pr.Out.Header.Set(actorHeader, who) // a signed-in operator is who the receipt is recorded for, not whom the request claims
+				}
 				if tweak != nil {
 					tweak(pr)
 				}
@@ -110,8 +113,8 @@ func (s *Server) providerAPI(w http.ResponseWriter, r *http.Request) {
 	})(w, r)
 }
 
-// invoiceTransfer forwards the bank transfer endpoints of an invoice (its state, a confirmed receipt, a rejection) to payments-worker. The caller's
-// X-Payrudder-Actor header travels with it: it is who the receipt is recorded for.
+// invoiceTransfer forwards the bank transfer endpoints of an invoice (its state, a confirmed receipt, a rejection) to payments-worker, with the actor the
+// receipt is recorded for: the signed-in operator, or for the machine token its X-Payrudder-Actor header.
 func (s *Server) invoiceTransfer(w http.ResponseWriter, r *http.Request) {
 	s.paymentsProxy(func(r *http.Request) string {
 		return "/admin" + strings.TrimPrefix(r.URL.Path, "/admin/v1")
