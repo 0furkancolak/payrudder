@@ -8,7 +8,7 @@ test("the console speaks the tenant API as the operator user (a session), naming
   const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/customers" && c.method === "GET" ? { body: { customers: [customer("cus_1")] } } : undefined));
   await gw.install(page);
   await openTenantPage(page, "/customers");
-  await expect(page.getByRole("cell", { name: "cus_1", exact: true })).toBeVisible();
+  await expect(page.getByTestId("customer-cus_1")).toContainText("Name cus_1");
   const call = gw.called("GET", "/v1/customers")[0];
   expect(call?.headers["x-payrudder-tenant"]).toBe(TENANT);
   expect(call?.headers["authorization"]).toBe(`Bearer ${OPERATOR}`);
@@ -35,7 +35,7 @@ test.describe("customers", () => {
     await form.getByLabel("Country", { exact: true }).fill("de");
     await pickCurrency(form.getByLabel("Billing currency"), "EUR");
     await page.getByRole("dialog").getByRole("button", { name: "Create customer" }).click();
-    await expect(page.getByRole("cell", { name: "cus_de", exact: true })).toBeVisible();
+    await expect(page.getByTestId("customer-cus_de")).toContainText("Name cus_de");
     expect(gw.called("POST", "/v1/customers")[0]?.body).toEqual({
       external_id: "cus_de",
       name: "Hans",
@@ -79,7 +79,8 @@ test.describe("customer addresses", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/customers");
-    await page.getByRole("cell", { name: "cus_1", exact: true }).click();
+    await page.getByTestId("customer-cus_1").click();
+    await page.getByTestId("customer-tab-details").click();
     await expect(page.getByTestId("customer-detail")).toContainText("Atatürk Cd. 1, 34000 İstanbul, TR");
     await page.keyboard.press("Escape");
 
@@ -102,7 +103,8 @@ test.describe("customer addresses", () => {
     await edit.getByRole("button", { name: "Save address" }).click();
     await expect.poll(() => gw.called("PUT", "/v1/customers/cus_1/address").length).toBe(1);
     expect(gw.called("PUT", "/v1/customers/cus_1/address")[0]?.body).toEqual({ line1: "Atatürk Cd. 1", city: "Ankara", postal_code: "34000", country: "TR" });
-    await page.getByRole("cell", { name: "cus_1", exact: true }).click();
+    await page.getByTestId("customer-cus_1").click();
+    await page.getByTestId("customer-tab-details").click();
     await expect(page.getByTestId("customer-detail")).toContainText("34000 Ankara");
   });
 });

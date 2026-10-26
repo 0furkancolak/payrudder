@@ -377,7 +377,64 @@
         "editing": "Adresse von {id}"
       },
       "allCountries": "Alle Länder",
-      "allCurrencies": "Alle Währungen"
+      "allCurrencies": "Alle Währungen",
+      "newHint": "Kunden legt meist Ihre App über die API an; hier können Sie einen von Hand hinzufügen.",
+      "searchPlaceholder": "Name, E-Mail, ID suchen…",
+      "emptyHint": "Kunden erscheinen hier, sobald Ihre App sie über die API anlegt. Sie können auch einen von Hand hinzufügen.",
+      "partialFigures": "Umsatz, Salden und letzte Zahlungen werden aus den neuesten Rechnungen und Zahlungen berechnet.",
+      "columns": {
+        "customer": "Kunde",
+        "subscriptions": "Abonnements",
+        "currency": "Währung",
+        "spend": "Gesamtumsatz",
+        "created": "Angelegt",
+        "lastPayment": "Letzte Zahlung"
+      },
+      "filters": {
+        "subscription": "Abonnement",
+        "hasActive": "Mit aktivem Abonnement",
+        "noActive": "Ohne aktives Abonnement",
+        "billing": "Abrechnung",
+        "openInvoices": "Offene Rechnungen",
+        "delinquent": "Im Verzug"
+      },
+      "subscriptionStatus": {
+        "pastDue": "Überfällig",
+        "active": "Aktiv",
+        "trialing": "Testphase",
+        "paused": "Pausiert",
+        "cancelled": "Gekündigt",
+        "none": "Keins"
+      },
+      "stats": {
+        "spend": "Gesamtumsatz",
+        "open": "Offener Saldo",
+        "credits": "Guthaben",
+        "subscriptions": "Aktive Abonnements",
+        "openInvoices": "{count} offen"
+      },
+      "tabs": {
+        "overview": "Übersicht",
+        "payments": "Zahlungen",
+        "invoices": "Rechnungen",
+        "subscriptions": "Abonnements",
+        "credits": "Guthaben",
+        "details": "Details"
+      },
+      "sheet": {
+        "copyId": "Kunden-ID {id} kopieren",
+        "since": "Kunde seit {date}",
+        "actions": "Aktionen für den Kunden",
+        "newSubscription": "Neues Abonnement",
+        "edit": "Bearbeiten",
+        "sections": "Bereiche des Kunden",
+        "viewAll": "Alle ansehen",
+        "noSubscriptions": "Noch keine Abonnements.",
+        "noInvoices": "Noch keine Rechnungen.",
+        "noPayments": "Noch keine Zahlungen.",
+        "manageCredits": "Guthaben verwalten",
+        "paymentMethod": "Zahlungsmethode"
+      }
     },
     "packages": {
       "new": "Neues Paket",

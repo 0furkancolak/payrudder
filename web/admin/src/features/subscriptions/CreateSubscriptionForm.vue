@@ -13,8 +13,11 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import type { SubscriptionActions } from "./api";
 import { INTERVALS, type Interval, intervalKey } from "./lib";
 
-/** Starts a subscription: customer, package, currency, interval, trial days, a provider (or the routing rules), and a coupon code. */
-const props = defineProps<{ tenantId: string; packages: readonly Package[]; act: SubscriptionActions }>();
+/**
+ * Starts a subscription: customer, package, currency, interval, trial days, a provider (or the routing rules), and a coupon code. `forCustomer` picks
+ * the customer in advance (the form opened from a customer's sheet).
+ */
+const props = defineProps<{ tenantId: string; packages: readonly Package[]; act: SubscriptionActions; forCustomer?: string }>();
 const { t } = useI18n();
 const open = defineModel<boolean>("open", { default: false });
 
@@ -29,7 +32,8 @@ const interval = ref<Interval>("SUBSCRIPTION_INTERVAL_MONTH");
 // A sheet that was closed opens clean.
 watch(open, (v) => {
   if (v) {
-    customer.value = plan.value = currency.value = provider.value = coupon.value = "";
+    plan.value = currency.value = provider.value = coupon.value = "";
+    customer.value = props.forCustomer ?? "";
     trialDays.value = "0";
     interval.value = "SUBSCRIPTION_INTERVAL_MONTH";
     props.act.create.reset();

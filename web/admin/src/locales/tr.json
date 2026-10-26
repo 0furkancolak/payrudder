@@ -377,7 +377,64 @@
         "editing": "{id} adresi"
       },
       "allCountries": "Tüm ülkeler",
-      "allCurrencies": "Tüm para birimleri"
+      "allCurrencies": "Tüm para birimleri",
+      "newHint": "Müşteriler genelde uygulamanız tarafından API ile oluşturulur; buradan elle de ekleyebilirsiniz.",
+      "searchPlaceholder": "Ad, e-posta, kimlik ara…",
+      "emptyHint": "Uygulamanız API ile müşteri oluşturduğunda burada görünür. Elle de müşteri ekleyebilirsiniz.",
+      "partialFigures": "Harcama, bakiye ve son ödeme en yeni faturalar ve ödemelerden hesaplanır.",
+      "columns": {
+        "customer": "Müşteri",
+        "subscriptions": "Abonelikler",
+        "currency": "Para birimi",
+        "spend": "Toplam harcama",
+        "created": "Oluşturulma",
+        "lastPayment": "Son ödeme"
+      },
+      "filters": {
+        "subscription": "Abonelik",
+        "hasActive": "Etkin aboneliği var",
+        "noActive": "Etkin aboneliği yok",
+        "billing": "Faturalama",
+        "openInvoices": "Açık faturalar",
+        "delinquent": "Gecikmiş"
+      },
+      "subscriptionStatus": {
+        "pastDue": "Vadesi geçmiş",
+        "active": "Etkin",
+        "trialing": "Deneme",
+        "paused": "Duraklatıldı",
+        "cancelled": "İptal edildi",
+        "none": "Yok"
+      },
+      "stats": {
+        "spend": "Toplam harcama",
+        "open": "Açık bakiye",
+        "credits": "Kredi bakiyesi",
+        "subscriptions": "Etkin abonelikler",
+        "openInvoices": "{count} açık"
+      },
+      "tabs": {
+        "overview": "Genel bakış",
+        "payments": "Ödemeler",
+        "invoices": "Faturalar",
+        "subscriptions": "Abonelikler",
+        "credits": "Krediler",
+        "details": "Ayrıntılar"
+      },
+      "sheet": {
+        "copyId": "{id} müşteri kimliğini kopyala",
+        "since": "{date} tarihinden beri müşteri",
+        "actions": "Müşteri işlemleri",
+        "newSubscription": "Yeni abonelik",
+        "edit": "Düzenle",
+        "sections": "Müşteri bölümleri",
+        "viewAll": "Tümünü gör",
+        "noSubscriptions": "Henüz abonelik yok.",
+        "noInvoices": "Henüz fatura yok.",
+        "noPayments": "Henüz ödeme yok.",
+        "manageCredits": "Kredileri yönet",
+        "paymentMethod": "Ödeme yöntemi"
+      }
     },
     "packages": {
       "new": "Yeni paket",

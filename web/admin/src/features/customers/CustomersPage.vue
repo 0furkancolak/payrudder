@@ -1,37 +1,129 @@
 <script setup lang="ts">
 import { useParams, useRouter } from "@tanstack/vue-router";
-import { Plus } from "@lucide/vue";
+import { CreditCard, Eye, Link2, MapPin, Plus, Receipt, Repeat, Users } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { maskEmail } from "@/shared/lib/money";
+import { usePackages } from "@/features/packages";
+import { useSubscriptionActions } from "@/features/subscriptions/api";
+import CreateSubscriptionForm from "@/features/subscriptions/CreateSubscriptionForm.vue";
+import { inRange } from "@/shared/lib/dateRange";
+import { useFormat } from "@/shared/lib/format";
+import { formatMinor, maskEmail } from "@/shared/lib/money";
 import { tenantBase } from "@/shared/lib/session";
-import { ErrorText } from "@/shared/ui/error-text";
-import { Button } from "@/shared/ui/button";
-import { Card } from "@/shared/ui/card";
-import { Input } from "@/shared/ui/input";
-import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { FilterSelect } from "@/shared/ui/filter-select";
-import { DetailSheet } from "@/shared/ui/detail-sheet";
-import { RowActions, type RowAction } from "@/shared/ui/row-actions";
-import { Pencil, Link2, CreditCard, Eye, Receipt } from "@lucide/vue";
-import { useCreditBalance } from "@/features/credits/api";
-import { formatCredits } from "@/features/credits/lib";
-import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
-import { CustomerRelated } from "@/features/related";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useTableState } from "@/shared/lib/useTableState";
+import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorText } from "@/shared/ui/error-text";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { RowActions, type RowAction } from "@/shared/ui/row-actions";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { StatusPill, type Tone } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
-import { addressLine, useCreateCustomer, useCustomers, useSetCustomerAddress, useSetCustomerTax, type Address, type CustomerTax } from "./api";
-import { CurrencySelect } from "@/shared/ui/search-select";
+import { useCustomers, useCustomerSummaries } from "./api";
+import CustomerAvatar from "./CustomerAvatar.vue";
+import CustomerCreateSheet from "./CustomerCreateSheet.vue";
+import CustomerEditSheets from "./CustomerEditSheets.vue";
+import CustomerSheet from "./CustomerSheet.vue";
+import { countryName, emptySummary, flagOf, headline, type Customer, type CustomerTab, type SubscriptionStatus } from "./lib";
 
+/**
+ * The customers of a tenant, after Stripe's customer list: who (initials, name, e-mail), how their subscriptions stand, currency and country, what they
+ * spent, when they joined and last paid. The figures are worked out from the invoices, payments and subscriptions the console loads (useCustomerSummaries).
+ * A row opens the customer's sheet; every form (new customer, address, tax data, new subscription) is a sheet of its own.
+ */
 const { t, locale } = useI18n();
+const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
-const customers = useCustomers(tenantId);
 const router = useRouter();
-/** Whether the payment-page section of the open customer sheet is open. */
-const portalOpen = ref(false);
+const customers = useCustomers(tenantId);
+const summaries = useCustomerSummaries(tenantId);
+const list = computed(() => customers.data.value?.customers ?? []);
+const summaryOf = (c: Customer) => summaries.byCustomer.value.get(c.external_id ?? "") ?? emptySummary();
+
+const range = ref<DateRange>({ from: "", to: "" });
+const table = useTableState(() => list.value.filter((c) => inRange(c.create_time, range.value)), {
+  sheet: { kind: "customer", id: (c) => c.external_id },
+  searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id, c.country, c.billing_currency],
+  filters: {
+    country: (c, v) => (c.country ?? "") === v,
+    currency: (c, v) => (c.billing_currency ?? "") === v,
+    subscription: (c, v) => (v === "active" ? summaryOf(c).activeSubscriptions > 0 : summaryOf(c).activeSubscriptions === 0),
+    billing: (c, v) => (v === "open" ? summaryOf(c).openInvoices > 0 : v === "delinquent" ? summaryOf(c).delinquent : true),
+  },
+});
+watch(range, () => (table.page.value = 1), { deep: true });
+const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+function clear() {
+  table.clear();
+  range.value = { from: "", to: "" };
+}
+const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, [key]: v }) });
+const countryFilter = filter("country");
+const currencyFilter = filter("currency");
+const subscriptionFilter = filter("subscription");
+const billingFilter = filter("billing");
+const distinct = (pick: (c: Customer) => string | undefined) => computed(() => [...new Set(list.value.map((c) => pick(c) ?? "").filter(Boolean))].sort());
+const countries = distinct((c) => c.country);
+const currencies = distinct((c) => c.billing_currency);
+const countryOptions = computed(() => [{ value: "", label: t("billing.customers.allCountries") }, ...countries.value.map((c) => ({ value: c, label: `${flagOf(c)} ${countryName(c, locale.value)}`.trim() }))]);
+const currencyOptions = computed(() => [{ value: "", label: t("billing.customers.allCurrencies") }, ...currencies.value.map((c) => ({ value: c }))]);
+const subscriptionOptions = computed(() => [
+  { value: "", label: t("common.all") },
+  { value: "active", label: t("billing.customers.filters.hasActive") },
+  { value: "none", label: t("billing.customers.filters.noActive") },
+]);
+const billingOptions = computed(() => [
+  { value: "", label: t("common.all") },
+  { value: "open", label: t("billing.customers.filters.openInvoices") },
+  { value: "delinquent", label: t("billing.customers.filters.delinquent") },
+]);
+
+const STATUS_TONES: Record<SubscriptionStatus, Tone> = { pastDue: "danger", active: "success", trialing: "info", paused: "warning", cancelled: "neutral", none: "neutral" };
+const spendOf = (c: Customer) => headline(summaryOf(c).spend, c.billing_currency);
+
+// --- the sheet of one customer
+const current = table.row;
+const currentId = computed(() => current.value?.external_id ?? "");
+const tab = ref<CustomerTab>("overview");
+const portal = ref(false);
+function open(i: number, how: { tab?: CustomerTab; portal?: boolean } = {}) {
+  tab.value = how.tab ?? "overview";
+  portal.value = !!how.portal;
+  table.open(i);
+}
+// Stepping to another customer keeps the tab but closes the payment-page card; closing the sheet starts the next one on the overview.
+watch(table.detail, (v, old) => {
+  if (v === null) {
+    tab.value = "overview";
+    portal.value = false;
+  } else if (old !== null && v !== old) portal.value = false;
+});
+// A link from an invoice, a payment or a subscription opens the customer it names; a filter that hides it is cleared first.
+useOpenParam("customer", () => customers.isSuccess.value, (id) => {
+  const is = (c: Customer) => c.external_id === id;
+  if (!table.openWhere(is)) {
+    clear();
+    table.openWhere(is);
+  }
+});
+
+// --- what the sheet and the row actions lead to
+const creating = ref(false);
+const editingAddress = ref<Customer | null>(null);
+const editingTax = ref<Customer | null>(null);
+const packages = usePackages(tenantId);
+const act = useSubscriptionActions(tenantId);
+const subscribing = ref(false);
+const subscribeFor = ref("");
+function newSubscription(c: Customer) {
+  subscribeFor.value = c.external_id ?? "";
+  subscribing.value = true;
+}
 function paymentLink(externalId?: string) {
   // A person reaches their tenants under /app/t, the operator under /tenants.
   void router.navigate({ to: `${tenantBase()}/$id/payment-links`, params: { id: tenantId.value }, search: { customer: externalId ?? "" } as never });
@@ -39,261 +131,142 @@ function paymentLink(externalId?: string) {
 function toCredits() {
   void router.navigate({ to: `${tenantBase()}/$id/credits`, params: { id: tenantId.value } as never });
 }
-const create = useCreateCustomer(tenantId);
-
-const list = computed(() => customers.data.value?.customers ?? []);
-const table = useTableState(list, {
-  sheet: { kind: "customer", id: (c) => c.external_id }, searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id],
-  filters: { country: (c, v) => (c.country ?? "") === v, currency: (c, v) => (c.billing_currency ?? "") === v },
-});
-const current = table.row;
-const currentId = computed(() => current.value?.external_id ?? "");
-const balance = useCreditBalance(tenantId, currentId);
-function open(i: number, portal = false) {
-  table.open(i);
-  portalOpen.value = portal;
-}
-// A link from an invoice, a payment or a subscription opens the customer it names; a filter that hides it is cleared first.
-useOpenParam("customer", () => customers.isSuccess.value, (id) => {
-  const is = (c: (typeof list.value)[number]) => c.external_id === id;
-  if (!table.openWhere(is)) {
-    table.clear();
-    table.openWhere(is);
-  }
-});
-watch(table.detail, (v, old) => v !== old && (portalOpen.value = portalOpen.value && v !== null && old === null));
-function actionsOf(c: (typeof list.value)[number], i: number): RowAction[] {
+function actionsOf(c: Customer, i: number): RowAction[] {
   return [
     { key: "view", label: t("common.view"), icon: Eye, onSelect: () => open(i) },
-    { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: Receipt, onSelect: () => open(i, true) },
+    { key: "subscription", label: t("billing.customers.sheet.newSubscription"), icon: Repeat, onSelect: () => newSubscription(c) },
+    { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: Receipt, onSelect: () => open(i, { tab: "payments", portal: true }) },
     { key: "link", label: t("billing.paymentLinks.paymentLink"), icon: Link2, onSelect: () => paymentLink(c.external_id) },
-    { key: "address", label: t("billing.customers.address.edit"), icon: Pencil, onSelect: () => edit(c) },
-    { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => editTaxOf(c) },
+    { key: "address", label: t("billing.customers.address.edit"), icon: MapPin, separatorBefore: true, onSelect: () => (editingAddress.value = c) },
+    { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => (editingTax.value = c) },
   ];
-}
-const distinct = (pick: (c: (typeof list.value)[number]) => string | undefined) => computed(() => [...new Set(list.value.map((c) => pick(c) ?? "").filter(Boolean))].sort());
-const countries = distinct((c) => c.country);
-const currencies = distinct((c) => c.billing_currency);
-
-const creating = ref(false);
-const externalId = ref("");
-const name = ref("");
-const email = ref("");
-const country = ref("");
-const currency = ref("");
-const address = ref<Address>({});
-const trimmed = (a: Address): Address => Object.fromEntries(Object.entries(a).map(([k, v]) => [k, (v ?? "").trim()]).filter(([, v]) => v !== ""));
-
-// --- editing the address of a customer in the list
-const setAddress = useSetCustomerAddress(tenantId);
-const editing = ref("");
-const editAddress = ref<Address>({});
-const addressOpen = computed({ get: () => editing.value !== "", set: (v) => { if (!v) editing.value = ""; } });
-function edit(c: { external_id?: string; address?: Address }) {
-  editing.value = c.external_id ?? "";
-  editAddress.value = { ...(c.address ?? {}) };
-}
-function saveAddress() {
-  const a = trimmed(editAddress.value);
-  if (a.country) a.country = a.country.toUpperCase();
-  setAddress.mutate({ externalId: editing.value, address: a }, { onSuccess: () => (editing.value = "") });
-}
-
-// --- editing the tax data (for e-invoices) of a customer in the list
-const setTax = useSetCustomerTax(tenantId);
-const editingTax = ref("");
-const editTax = ref<CustomerTax>({});
-const taxOpen = computed({ get: () => editingTax.value !== "", set: (v) => { if (!v) editingTax.value = ""; } });
-function editTaxOf(c: { external_id?: string } & CustomerTax) {
-  editingTax.value = c.external_id ?? "";
-  editTax.value = { tax_id: c.tax_id ?? "", tax_office: c.tax_office ?? "", e_invoice_registered: c.e_invoice_registered ?? false };
-}
-function saveTax() {
-  setTax.mutate(
-    { externalId: editingTax.value, tax: { tax_id: (editTax.value.tax_id ?? "").trim(), tax_office: (editTax.value.tax_office ?? "").trim(), e_invoice_registered: !!editTax.value.e_invoice_registered } },
-    { onSuccess: () => (editingTax.value = "") },
-  );
-}
-
-// A sheet that was closed opens clean: the last values and error are not shown again.
-watch(creating, (v) => {
-  if (v) {
-    externalId.value = name.value = email.value = country.value = currency.value = "";
-    address.value = {};
-    create.reset();
-  }
-});
-watch(editing, (v) => v && setAddress.reset());
-watch(editingTax, (v) => v && setTax.reset());
-
-function submit() {
-  create.mutate(
-    {
-      external_id: externalId.value.trim(),
-      name: name.value.trim(),
-      email: email.value.trim(),
-      country: country.value.trim().toUpperCase() || undefined,
-      billing_currency: currency.value || undefined,
-      address: Object.keys(trimmed(address.value)).length ? { ...trimmed(address.value), ...(country.value.trim() ? { country: country.value.trim().toUpperCase() } : {}) } : undefined,
-    },
-    {
-      onSuccess: () => {
-        externalId.value = name.value = email.value = country.value = currency.value = "";
-        address.value = {};
-        creating.value = false;
-      },
-    },
-  );
 }
 </script>
 
 <template>
-  <Sheet v-model:open="creating" name="new-customer">
-    <SheetContent>
-      <SheetHeader>
-        <SheetTitle>{{ t("billing.customers.new") }}</SheetTitle>
-        <SheetDescription>{{ t("billing.customers.address.title") }}</SheetDescription>
-      </SheetHeader>
-      <SheetBody>
-        <form id="create-customer" class="grid gap-3" role="form" :aria-label="t('billing.customers.formLabel')" @submit.prevent="submit">
-          <Input v-model="externalId" :aria-label="t('billing.customers.externalId')" :placeholder="t('billing.customers.externalId')" maxlength="128" required />
-          <Input v-model="name" :aria-label="t('billing.customers.name')" :placeholder="t('billing.customers.name')" required />
-          <Input v-model="email" type="email" :aria-label="t('billing.customers.email')" :placeholder="t('billing.customers.email')" required />
-          <Input v-model="country" :aria-label="t('billing.customers.country')" :placeholder="t('billing.customers.countryPlaceholder')" maxlength="2" pattern="[A-Za-z]{2}" />
-          <CurrencySelect v-model="currency" :aria-label="t('billing.customers.currency')" :blank="t('billing.customers.tenantCurrency')" />
-          <fieldset class="grid gap-3">
-            <legend class="text-muted-foreground mb-1 text-sm">{{ t("billing.customers.address.title") }}</legend>
-            <Input v-model="address.line1" maxlength="120" :aria-label="t('billing.customers.address.line1')" :placeholder="t('billing.customers.address.line1')" />
-            <Input v-model="address.line2" maxlength="120" :aria-label="t('billing.customers.address.line2')" :placeholder="t('billing.customers.address.line2')" />
-            <Input v-model="address.city" maxlength="120" :aria-label="t('billing.customers.address.city')" :placeholder="t('billing.customers.address.city')" />
-            <Input v-model="address.region" maxlength="120" :aria-label="t('billing.customers.address.region')" :placeholder="t('billing.customers.address.region')" />
-            <Input v-model="address.postal_code" maxlength="20" :aria-label="t('billing.customers.address.postalCode')" :placeholder="t('billing.customers.address.postalCode')" />
-          </fieldset>
-          <ErrorText :error="create.error.value" />
-        </form>
-      </SheetBody>
-      <SheetFooter>
-        <Button type="button" variant="ghost" @click="creating = false">{{ t("common.cancel") }}</Button>
-        <Button type="submit" form="create-customer" :disabled="create.isPending.value">{{ t("billing.customers.create") }}</Button>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>
-
-  <Sheet v-model:open="addressOpen">
-    <SheetContent>
-      <SheetHeader>
-        <SheetTitle>{{ t("billing.customers.address.editing", { id: editing }) }}</SheetTitle>
-        <SheetDescription>{{ t("billing.customers.address.title") }}</SheetDescription>
-      </SheetHeader>
-      <SheetBody>
-        <form id="edit-address" class="grid gap-3" @submit.prevent="saveAddress">
-          <Input v-model="editAddress.line1" maxlength="120" :aria-label="t('billing.customers.address.line1')" :placeholder="t('billing.customers.address.line1')" />
-          <Input v-model="editAddress.line2" maxlength="120" :aria-label="t('billing.customers.address.line2')" :placeholder="t('billing.customers.address.line2')" />
-          <Input v-model="editAddress.city" maxlength="120" :aria-label="t('billing.customers.address.city')" :placeholder="t('billing.customers.address.city')" />
-          <Input v-model="editAddress.region" maxlength="120" :aria-label="t('billing.customers.address.region')" :placeholder="t('billing.customers.address.region')" />
-          <Input v-model="editAddress.postal_code" maxlength="20" :aria-label="t('billing.customers.address.postalCode')" :placeholder="t('billing.customers.address.postalCode')" />
-          <Input v-model="editAddress.country" maxlength="2" pattern="[A-Za-z]{2}" :aria-label="t('billing.customers.country')" :placeholder="t('billing.customers.countryPlaceholder')" />
-          <ErrorText :error="setAddress.error.value" />
-        </form>
-      </SheetBody>
-      <SheetFooter>
-        <Button type="button" variant="ghost" @click="editing = ''">{{ t("billing.customers.address.cancel") }}</Button>
-        <Button type="submit" form="edit-address" :disabled="setAddress.isPending.value">{{ t("billing.customers.address.save") }}</Button>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>
-
-  <Sheet v-model:open="taxOpen">
-    <SheetContent>
-      <SheetHeader>
-        <SheetTitle>{{ t("einvoice.customer.editing", { id: editingTax }) }}</SheetTitle>
-        <SheetDescription>{{ t("einvoice.customer.title") }}</SheetDescription>
-      </SheetHeader>
-      <SheetBody>
-        <form id="edit-tax" class="grid gap-3" @submit.prevent="saveTax">
-          <Input v-model="editTax.tax_id" maxlength="40" :aria-label="t('einvoice.customer.taxId')" :placeholder="t('einvoice.customer.taxId')" />
-          <Input v-model="editTax.tax_office" maxlength="120" :aria-label="t('einvoice.customer.taxOffice')" :placeholder="t('einvoice.customer.taxOffice')" />
-          <label class="flex items-center gap-2 text-sm"><input v-model="editTax.e_invoice_registered" type="checkbox" :aria-label="t('einvoice.customer.registered')" />{{ t("einvoice.customer.registered") }}</label>
-          <ErrorText :error="setTax.error.value" />
-        </form>
-      </SheetBody>
-      <SheetFooter>
-        <Button type="button" variant="ghost" @click="editingTax = ''">{{ t("billing.customers.address.cancel") }}</Button>
-        <Button type="submit" form="edit-tax" :disabled="setTax.isPending.value">{{ t("einvoice.customer.save") }}</Button>
-      </SheetFooter>
-    </SheetContent>
-  </Sheet>
-  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.name || currentId" :description="current ? currentId : undefined" wide>
-    <div v-if="current" class="flex flex-col gap-6" data-testid="customer-detail">
-      <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-        <dt class="text-muted-foreground">{{ t("billing.customers.externalId") }}</dt>
-        <dd class="mono">{{ current.external_id }}</dd>
-        <dt class="text-muted-foreground">{{ t("billing.customers.email") }}</dt>
-        <dd>{{ maskEmail(current.email) }}</dd>
-        <dt class="text-muted-foreground">{{ t("billing.customers.country") }}</dt>
-        <dd>{{ current.country || "—" }}</dd>
-        <dt class="text-muted-foreground">{{ t("billing.customers.currency") }}</dt>
-        <dd>{{ current.billing_currency || "—" }}</dd>
-        <dt class="text-muted-foreground">{{ t("billing.customers.address.title") }}</dt>
-        <dd class="flex items-center justify-between gap-3">
-          <span>{{ addressLine(current.address) || "—" }}</span>
-          <Button size="sm" variant="ghost" @click="edit(current)"><Pencil class="size-4" aria-hidden="true" />{{ t("billing.customers.address.edit") }}</Button>
-        </dd>
-        <dt class="text-muted-foreground">{{ t("einvoice.customer.title") }}</dt>
-        <dd class="flex items-center justify-between gap-3">
-          <span>{{ [current.tax_id, current.tax_office].filter(Boolean).join(" · ") || "—" }}</span>
-          <Button size="sm" variant="ghost" @click="editTaxOf(current)"><Pencil class="size-4" aria-hidden="true" />{{ t("einvoice.customer.edit") }}</Button>
-        </dd>
-        <dt class="text-muted-foreground">{{ t("shell.items.credits") }}</dt>
-        <dd class="flex items-center justify-between gap-3">
-          <span class="tabular" data-testid="customer-credits">{{ balance.data.value ? formatCredits(balance.data.value.balance, locale) : "—" }}</span>
-          <Button size="sm" variant="ghost" @click="toCredits()">{{ t("common.openFullPage") }}</Button>
-        </dd>
-      </dl>
-      <div class="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" :aria-pressed="portalOpen" @click="portalOpen = !portalOpen"><Receipt class="size-4" aria-hidden="true" />{{ t("billing.paymentLinks.portal.open") }}</Button>
-        <Button variant="outline" size="sm" @click="paymentLink(current.external_id)"><Link2 class="size-4" aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
-      </div>
-      <CustomerLinksCard v-if="portalOpen" :key="currentId" :tenant-id="tenantId" :customer="currentId" @close="portalOpen = false" />
-      <CustomerRelated :key="currentId" :tenant-id="tenantId" :external-id="currentId" />
-    </div>
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.name || currentId" wide>
+    <CustomerSheet
+      v-if="current"
+      :key="currentId"
+      v-model:tab="tab"
+      v-model:portal="portal"
+      :tenant-id="tenantId"
+      :customer="current"
+      :summary="summaryOf(current)"
+      :summary-loading="summaries.loading.value"
+      @edit-address="editingAddress = current"
+      @edit-tax="editingTax = current"
+      @new-subscription="newSubscription(current)"
+      @payment-link="paymentLink(currentId)"
+      @credits="toCredits"
+    />
   </DetailSheet>
+  <!-- After the customer's sheet: a sheet portals to where it was first rendered, so these open above the one they are opened from. -->
+  <CustomerCreateSheet v-model:open="creating" :tenant-id="tenantId" />
+  <CustomerEditSheets v-model:address="editingAddress" v-model:tax="editingTax" :tenant-id="tenantId" />
+  <CreateSubscriptionForm v-model:open="subscribing" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" :for-customer="subscribeFor" />
 
-  <Card class="p-3">
+  <Card class="gap-0 p-3">
+    <h2 class="sr-only">{{ t("shell.items.customers") }}</h2>
     <ErrorText :error="customers.error.value" class="px-3 pb-2" />
-    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <FilterSelect v-model="table.filters.value.country" :label="t('billing.customers.country')" :options="[{ value: '', label: t('billing.customers.allCountries') }, ...countries.map((c) => ({ value: c }))]" />
-      <FilterSelect v-model="table.filters.value.currency" :label="t('billing.customers.currency')" :options="[{ value: '', label: t('billing.customers.allCurrencies') }, ...currencies.map((c) => ({ value: c }))]" />
+    <ErrorText :error="act.create.error.value" class="px-3 pb-2" />
+    <DataToolbar v-if="customers.isPending.value || list.length > 0 || customers.error.value" v-model:search="table.search.value" :placeholder="t('billing.customers.searchPlaceholder')" :active="active" class="pt-2" @clear="clear">
+      <FilterSelect v-model="subscriptionFilter" :label="t('billing.customers.filters.subscription')" :options="subscriptionOptions" />
+      <FilterSelect v-model="billingFilter" :label="t('billing.customers.filters.billing')" :options="billingOptions" />
+      <FilterSelect v-model="countryFilter" :label="t('billing.customers.country')" :options="countryOptions" />
+      <FilterSelect v-model="currencyFilter" :label="t('billing.customers.currency')" :options="currencyOptions" />
+      <DateRangePicker v-model="range" />
       <template #actions>
-        <Button data-testid="customers-new" @click="creating = true"><Plus class="size-4" />{{ t("billing.customers.new") }}</Button>
+        <Button data-testid="customers-new" @click="creating = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.customers.new") }}</Button>
       </template>
     </DataToolbar>
-    <Table>
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead>{{ t("billing.customers.externalId") }}</TableHead>
-          <TableHead>{{ t("billing.customers.name") }}</TableHead>
-          <TableHead class="max-md:hidden">{{ t("billing.customers.email") }}</TableHead>
-          <TableHead class="max-md:hidden">{{ t("billing.customers.country") }}</TableHead>
-          <TableHead class="max-md:hidden">{{ t("billing.customers.currency") }}</TableHead>
-          <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="(c, i) in table.items.value" :key="c.id" class="cursor-pointer" :data-testid="`customer-${c.external_id}`" @click="open(i)">
-          <TableCell class="mono text-xs font-medium">{{ c.external_id }}</TableCell>
-          <TableCell class="font-medium">{{ c.name }}</TableCell>
-          <TableCell class="max-md:hidden">{{ maskEmail(c.email) }}</TableCell>
-          <TableCell class="max-md:hidden">{{ c.country || "—" }}</TableCell>
-          <TableCell class="max-md:hidden">{{ c.billing_currency || "—" }}</TableCell>
-          <TableCell><RowActions :actions="actionsOf(c, i)" :label="`${t('common.moreActions')} ${c.external_id}`" /></TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-    <p v-if="!customers.isPending.value && list.length === 0 && !customers.error.value" class="text-muted-foreground p-4 text-center text-sm">
-      {{ t("billing.customers.empty") }}
-    </p>
-    <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
-    <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
+
+    <!-- Nothing yet: say what a customer is and offer the first one. -->
+    <div v-if="!customers.isPending.value && list.length === 0 && !customers.error.value" class="flex flex-col items-center gap-3 px-4 py-14 text-center" data-testid="customers-empty">
+      <span class="bg-brand-soft text-brand-strong inline-flex size-12 items-center justify-center rounded-2xl"><Users class="size-6" aria-hidden="true" /></span>
+      <p class="m-0 text-base font-semibold">{{ t("billing.customers.empty") }}</p>
+      <p class="text-muted-foreground m-0 max-w-sm text-sm">{{ t("billing.customers.emptyHint") }}</p>
+      <Button data-testid="customers-new" @click="creating = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.customers.new") }}</Button>
+    </div>
+
+    <template v-else>
+      <Table>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>{{ t("billing.customers.columns.customer") }}</TableHead>
+            <TableHead class="max-md:hidden">{{ t("billing.customers.columns.subscriptions") }}</TableHead>
+            <TableHead class="max-xl:hidden">{{ t("billing.customers.columns.currency") }}</TableHead>
+            <TableHead class="max-lg:hidden">{{ t("billing.customers.country") }}</TableHead>
+            <TableHead class="text-end">{{ t("billing.customers.columns.spend") }}</TableHead>
+            <TableHead class="max-lg:hidden">{{ t("billing.customers.columns.created") }}</TableHead>
+            <TableHead class="max-xl:hidden">{{ t("billing.customers.columns.lastPayment") }}</TableHead>
+            <TableHead class="w-px"><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <template v-if="customers.isPending.value">
+            <TableRow v-for="n in 6" :key="n" class="hover:bg-transparent" data-testid="customers-skeleton">
+              <TableCell>
+                <div class="flex items-center gap-3"><Skeleton class="size-9 rounded-full" /><div class="flex flex-col gap-1.5"><Skeleton class="h-3.5 w-32" /><Skeleton class="h-3 w-44 max-sm:w-28" /></div></div>
+              </TableCell>
+              <TableCell class="max-md:hidden"><Skeleton class="h-6 w-20 rounded-full" /></TableCell>
+              <TableCell class="max-xl:hidden"><Skeleton class="h-3.5 w-10" /></TableCell>
+              <TableCell class="max-lg:hidden"><Skeleton class="h-3.5 w-16" /></TableCell>
+              <TableCell><Skeleton class="ms-auto h-3.5 w-16" /></TableCell>
+              <TableCell class="max-lg:hidden"><Skeleton class="h-3.5 w-20" /></TableCell>
+              <TableCell class="max-xl:hidden"><Skeleton class="h-3.5 w-20" /></TableCell>
+              <TableCell />
+            </TableRow>
+          </template>
+          <TableRow
+            v-for="(c, i) in table.items.value"
+            :key="c.id"
+            class="cursor-pointer"
+            :data-state="table.isOpen(i) ? 'selected' : undefined"
+            :data-testid="`customer-${c.external_id}`"
+            @click="open(i)"
+          >
+            <TableCell class="w-full max-w-0 min-w-0">
+              <div class="flex min-w-0 items-center gap-3">
+                <CustomerAvatar :customer="c" />
+                <div class="flex min-w-0 flex-col">
+                  <span class="truncate font-medium" dir="auto">{{ c.name || c.external_id }}</span>
+                  <span class="text-muted-foreground truncate text-xs" dir="auto">{{ maskEmail(c.email) || c.external_id }}</span>
+                </div>
+              </div>
+            </TableCell>
+            <TableCell class="max-md:hidden">
+              <Skeleton v-if="summaries.loading.value" class="h-6 w-20 rounded-full" />
+              <div v-else-if="summaryOf(c).subscriptionStatus !== 'none' || summaryOf(c).openInvoices > 0" class="flex flex-col items-start gap-1">
+                <div class="flex flex-wrap items-center gap-1">
+                  <StatusPill v-if="summaryOf(c).subscriptionStatus !== 'none'" :tone="STATUS_TONES[summaryOf(c).subscriptionStatus]">{{ t(`billing.customers.subscriptionStatus.${summaryOf(c).subscriptionStatus}`) }}</StatusPill>
+                  <StatusPill v-if="summaryOf(c).openInvoices > 0" tone="warning">{{ t("billing.customers.stats.openInvoices", { count: summaryOf(c).openInvoices }) }}</StatusPill>
+                </div>
+                <span v-if="summaryOf(c).plans.length" class="text-muted-foreground mono max-w-48 truncate text-xs">{{ summaryOf(c).plans.join(", ") }}</span>
+              </div>
+              <span v-else class="text-muted-foreground">—</span>
+            </TableCell>
+            <TableCell class="mono max-xl:hidden">{{ c.billing_currency || "—" }}</TableCell>
+            <TableCell class="max-lg:hidden">
+              <span v-if="c.country" class="inline-flex items-center gap-1.5 whitespace-nowrap" :title="countryName(c.country, locale)"><span aria-hidden="true">{{ flagOf(c.country) }}</span>{{ c.country }}</span>
+              <span v-else class="text-muted-foreground">—</span>
+            </TableCell>
+            <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">
+              <Skeleton v-if="summaries.loading.value" class="ms-auto h-3.5 w-16" />
+              <template v-else-if="spendOf(c)">
+                {{ formatMinor(spendOf(c)?.minor, spendOf(c)?.currency, locale) }}<span v-if="spendOf(c)?.more" class="text-muted-foreground ms-1 text-xs font-normal">+{{ spendOf(c)?.more }}</span>
+              </template>
+              <span v-else class="text-muted-foreground font-normal">—</span>
+            </TableCell>
+            <TableCell class="text-muted-foreground whitespace-nowrap max-lg:hidden">{{ fmt.date(c.create_time, "day", "—") }}</TableCell>
+            <TableCell class="text-muted-foreground whitespace-nowrap max-xl:hidden">{{ summaries.loading.value ? "" : fmt.date(summaryOf(c).lastPayment, "day", "—") }}</TableCell>
+            <TableCell class="text-end"><RowActions :actions="actionsOf(c, i)" :label="`${t('common.moreActions')} ${c.external_id}`" /></TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <p v-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-6 text-center text-sm">{{ t("common.noMatches") }}</p>
+      <DataPagination v-if="list.length > 0" v-model:size="table.size.value" :page="table.current.value" :pages="table.pages.value" :total="table.total.value" @update:page="table.page.value = $event" />
+      <p v-if="summaries.partial.value" class="text-muted-foreground px-3 pt-2 text-xs">{{ t("billing.customers.partialFigures") }}</p>
+    </template>
   </Card>
 </template>
