@@ -14,7 +14,7 @@ services:
   analytics-svc: { budget_mib: 32, measured_mib: 12.5 }
   assets-svc: { budget_mib: 56, measured_mib: 13.7 }
   billing-svc: { budget_mib: 88, measured_mib: 25.4 }
-  gateway: { budget_mib: 40, measured_mib: 18.9 }
+  gateway: { budget_mib: 72, measured_mib: 45.8 }
   ingest-svc: { budget_mib: 72, measured_mib: 26.4 }
   invoice-worker: { budget_mib: 32, measured_mib: 11.8 }
   limits-svc: { budget_mib: 40, measured_mib: 16.3 }
