@@ -13,27 +13,15 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/credential"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Invitations lists the open invitations of an account. Only an owner or administrator sees them: a viewer is told so, a stranger finds no account.
 // An invitation whose time has run out is still listed (the page shows it as expired, with a way to send it again) until somebody revokes it.
 func (q *Queries) Invitations(ctx context.Context, userID, accountID string) ([]*plansv1.Invitation, error) {
-	uid, ok1 := ParseID(userID)
-	aid, ok2 := ParseID(accountID)
-	if !ok1 || !ok2 {
-		return nil, NotFound("account")
-	}
 	db := q.db()
-	m, err := db.GetMembership(ctx, sqlc.GetMembershipParams{AccountID: aid, UserID: uid})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, NotFound("account")
-	}
+	_, aid, _, err := RequireManager(ctx, db, userID, accountID)
 	if err != nil {
-		return nil, convert.Err(err, "account")
-	}
-	if !CanManage(m.Role) {
-		return nil, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "your role in this account does not allow this")
+		return nil, err
 	}
 	rows, err := db.ListOpenInvites(ctx, aid)
 	if err != nil {

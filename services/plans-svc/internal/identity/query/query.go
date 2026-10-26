@@ -146,20 +146,44 @@ func NotFound(what string) error {
 	}
 }
 
-// Account returns the account of a member with its member list.
-func (q *Queries) Account(ctx context.Context, userID, accountID string) (*plansv1.GetMyAccountResponse, error) {
+// Membership is the caller's membership of an account, in the queries db (a transaction, for the commands): the ids parsed and the row with the caller's role
+// there. A caller who is not a member of the account, or an id that is not an id, finds no account.
+func Membership(ctx context.Context, db *sqlc.Queries, userID, accountID string) (uid, aid uuid.UUID, m sqlc.GetMembershipRow, err error) {
 	uid, ok1 := ParseID(userID)
 	aid, ok2 := ParseID(accountID)
 	if !ok1 || !ok2 {
-		return nil, NotFound("account")
+		return uid, aid, m, NotFound("account")
 	}
-	db := q.db()
-	m, err := db.GetMembership(ctx, sqlc.GetMembershipParams{AccountID: aid, UserID: uid})
+	m, err = db.GetMembership(ctx, sqlc.GetMembershipParams{AccountID: aid, UserID: uid})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, NotFound("account")
+		return uid, aid, m, NotFound("account")
 	}
 	if err != nil {
-		return nil, convert.Err(err, "account")
+		return uid, aid, m, convert.Err(err, "account")
+	}
+	return uid, aid, m, nil
+}
+
+// Forbidden is the answer to a member whose role does not allow what they asked.
+func Forbidden() error {
+	return errkey.New(codes.PermissionDenied, "identity.account.forbidden", "your role in this account does not allow this")
+}
+
+// RequireManager is Membership for what only an owner or an administrator may do: any other role is told so.
+func RequireManager(ctx context.Context, db *sqlc.Queries, userID, accountID string) (uid, aid uuid.UUID, m sqlc.GetMembershipRow, err error) {
+	uid, aid, m, err = Membership(ctx, db, userID, accountID)
+	if err == nil && !CanManage(m.Role) {
+		err = Forbidden()
+	}
+	return uid, aid, m, err
+}
+
+// Account returns the account of a member with its member list.
+func (q *Queries) Account(ctx context.Context, userID, accountID string) (*plansv1.GetMyAccountResponse, error) {
+	db := q.db()
+	_, aid, m, err := Membership(ctx, db, userID, accountID)
+	if err != nil {
+		return nil, err
 	}
 	rows, err := db.ListAccountMembers(ctx, aid)
 	if err != nil {
@@ -175,16 +199,10 @@ func (q *Queries) Account(ctx context.Context, userID, accountID string) (*plans
 
 // Apps lists the apps of an account the user is a member of, with their tenants.
 func (q *Queries) Apps(ctx context.Context, userID, accountID string) ([]*plansv1.App, error) {
-	uid, ok1 := ParseID(userID)
-	aid, ok2 := ParseID(accountID)
-	if !ok1 || !ok2 {
-		return nil, NotFound("account")
-	}
 	db := q.db()
-	if _, err := db.GetMembership(ctx, sqlc.GetMembershipParams{AccountID: aid, UserID: uid}); errors.Is(err, pgx.ErrNoRows) {
-		return nil, NotFound("account")
-	} else if err != nil {
-		return nil, convert.Err(err, "account")
+	_, aid, _, err := Membership(ctx, db, userID, accountID)
+	if err != nil {
+		return nil, err
 	}
 	apps, err := db.ListAccountApps(ctx, aid)
 	if err != nil {

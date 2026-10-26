@@ -17,7 +17,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/credential"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
@@ -172,22 +171,15 @@ func (c *Commands) createPasswordless(ctx context.Context, q *sqlc.Queries, emai
 	if name == "" {
 		name = email[:strings.IndexByte(email, '@')]
 	}
-	u, err := q.InsertUser(ctx, sqlc.InsertUserParams{ID: idgen.NewUUIDv7(), Email: email, DisplayName: display, PasswordHash: "", Locale: locale})
+	userID, accountID, err := createUserWithAccount(ctx, q, sqlc.InsertUserParams{ID: idgen.NewUUIDv7(), Email: email, DisplayName: display, PasswordHash: "", Locale: locale}, name)
 	if err != nil {
 		return sqlc.User{}, err
 	}
-	a, err := q.InsertAccount(ctx, sqlc.InsertAccountParams{ID: idgen.NewUUIDv7(), Name: name})
-	if err != nil {
+	if err := q.MarkEmailVerified(ctx, userID); err != nil {
 		return sqlc.User{}, err
 	}
-	if err := q.InsertMember(ctx, sqlc.InsertMemberParams{AccountID: a.ID, UserID: u.ID, Role: query.RoleOwner}); err != nil {
-		return sqlc.User{}, err
-	}
-	if err := q.MarkEmailVerified(ctx, u.ID); err != nil {
-		return sqlc.User{}, err
-	}
-	c.log.InfoContext(ctx, "user created by sign-in", "user_id", u.ID, "account_id", a.ID)
-	return q.GetUser(ctx, u.ID)
+	c.log.InfoContext(ctx, "user created by sign-in", "user_id", userID, "account_id", accountID)
+	return q.GetUser(ctx, userID)
 }
 
 func oneLineCapped(s string, n int) string {

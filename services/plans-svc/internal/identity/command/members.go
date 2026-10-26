@@ -64,19 +64,8 @@ func memberNotFound() error {
 
 // actor loads the caller's role in the account inside a transaction; a caller who is not a member finds nothing.
 func actor(ctx context.Context, q *sqlc.Queries, userID, accountID string) (uid, aid uuid.UUID, role, accountName string, err error) {
-	uid, ok1 := query.ParseID(userID)
-	aid, ok2 := query.ParseID(accountID)
-	if !ok1 || !ok2 {
-		return uid, aid, "", "", query.NotFound("account")
-	}
-	m, err := q.GetMembership(ctx, sqlc.GetMembershipParams{AccountID: aid, UserID: uid})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return uid, aid, "", "", query.NotFound("account")
-	}
-	if err != nil {
-		return uid, aid, "", "", err
-	}
-	return uid, aid, m.Role, m.AccountName, nil
+	uid, aid, m, err := query.Membership(ctx, q, userID, accountID)
+	return uid, aid, m.Role, m.AccountName, err
 }
 
 // mayHandle reports whether a caller of this role may create or cancel an invitation, or change or remove a member, whose role is target: owners only for
@@ -298,6 +287,42 @@ func (c *Commands) RevokeInvitation(ctx context.Context, req *plansv1.RevokeInvi
 	return convert.Err(err, "invitation")
 }
 
+// lockedRoles locks the account against other changes of its members and returns the caller's role and the role of the member they act on, both read under
+// the lock (the caller's may have changed since actor loaded it). A caller who is not a member finds no account, a target who is not one finds no member.
+func lockedRoles(ctx context.Context, q *sqlc.Queries, userID, accountID string, target uuid.UUID) (uid, aid uuid.UUID, role, targetRole string, err error) {
+	uid, aid, _, _, err = actor(ctx, q, userID, accountID)
+	if err != nil {
+		return uid, aid, "", "", err
+	}
+	if err := q.LockAccount(ctx, aid.String()); err != nil {
+		return uid, aid, "", "", err
+	}
+	role, err = q.GetMemberRole(ctx, sqlc.GetMemberRoleParams{AccountID: aid, UserID: uid})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uid, aid, "", "", query.NotFound("account")
+	}
+	if err != nil {
+		return uid, aid, "", "", err
+	}
+	targetRole, err = q.GetMemberRole(ctx, sqlc.GetMemberRoleParams{AccountID: aid, UserID: target})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uid, aid, role, "", memberNotFound()
+	}
+	return uid, aid, role, targetRole, err
+}
+
+// requireAnotherOwner refuses a change that would leave the account without an owner: the member it is about is the last one.
+func requireAnotherOwner(ctx context.Context, q *sqlc.Queries, aid uuid.UUID) error {
+	owners, err := q.CountOwners(ctx, aid)
+	if err != nil {
+		return err
+	}
+	if owners <= 1 {
+		return lastOwner()
+	}
+	return nil
+}
+
 // UpdateMemberRole changes a member's role. The last owner cannot be demoted.
 func (c *Commands) UpdateMemberRole(ctx context.Context, req *plansv1.UpdateMemberRoleRequest) (string, error) {
 	if !validRole(req.GetRole()) {
@@ -309,25 +334,7 @@ func (c *Commands) UpdateMemberRole(ctx context.Context, req *plansv1.UpdateMemb
 	}
 	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		uid, aid, _, _, err := actor(ctx, q, req.GetUserId(), req.GetAccountId())
-		if err != nil {
-			return err
-		}
-		if err := q.LockAccount(ctx, aid.String()); err != nil {
-			return err
-		}
-		// The caller's role is read again under the lock: it may have changed since it was first loaded.
-		role, err := q.GetMemberRole(ctx, sqlc.GetMemberRoleParams{AccountID: aid, UserID: uid})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return query.NotFound("account")
-		}
-		if err != nil {
-			return err
-		}
-		current, err := q.GetMemberRole(ctx, sqlc.GetMemberRoleParams{AccountID: aid, UserID: target})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return memberNotFound()
-		}
+		_, aid, role, current, err := lockedRoles(ctx, q, req.GetUserId(), req.GetAccountId(), target)
 		if err != nil {
 			return err
 		}
@@ -335,12 +342,8 @@ func (c *Commands) UpdateMemberRole(ctx context.Context, req *plansv1.UpdateMemb
 			return forbidden()
 		}
 		if current == query.RoleOwner && req.GetRole() != query.RoleOwner {
-			owners, err := q.CountOwners(ctx, aid)
-			if err != nil {
+			if err := requireAnotherOwner(ctx, q, aid); err != nil {
 				return err
-			}
-			if owners <= 1 {
-				return lastOwner()
 			}
 		}
 		_, err = q.SetMemberRole(ctx, sqlc.SetMemberRoleParams{AccountID: aid, UserID: target, Role: req.GetRole()})
@@ -361,24 +364,7 @@ func (c *Commands) RemoveMember(ctx context.Context, req *plansv1.RemoveMemberRe
 	}
 	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		uid, aid, _, _, err := actor(ctx, q, req.GetUserId(), req.GetAccountId())
-		if err != nil {
-			return err
-		}
-		if err := q.LockAccount(ctx, aid.String()); err != nil {
-			return err
-		}
-		role, err := q.GetMemberRole(ctx, sqlc.GetMemberRoleParams{AccountID: aid, UserID: uid})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return query.NotFound("account")
-		}
-		if err != nil {
-			return err
-		}
-		current, err := q.GetMemberRole(ctx, sqlc.GetMemberRoleParams{AccountID: aid, UserID: target})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return memberNotFound()
-		}
+		uid, aid, role, current, err := lockedRoles(ctx, q, req.GetUserId(), req.GetAccountId(), target)
 		if err != nil {
 			return err
 		}
@@ -386,12 +372,8 @@ func (c *Commands) RemoveMember(ctx context.Context, req *plansv1.RemoveMemberRe
 			return forbidden()
 		}
 		if current == query.RoleOwner {
-			owners, err := q.CountOwners(ctx, aid)
-			if err != nil {
+			if err := requireAnotherOwner(ctx, q, aid); err != nil {
 				return err
-			}
-			if owners <= 1 {
-				return lastOwner()
 			}
 		}
 		_, err = q.DeleteMember(ctx, sqlc.DeleteMemberParams{AccountID: aid, UserID: target})
@@ -413,9 +395,7 @@ func signInRequired() error {
 func (c *Commands) AcceptInvitation(ctx context.Context, req *plansv1.AcceptInvitationRequest) (Opened, error) {
 	display := strings.TrimSpace(req.GetDisplayName())
 	var v domain.Violations
-	if n := len(req.GetPassword()); n < credential.MinPasswordLen || n > credential.MaxPasswordLen {
-		v.Add("password", "must be between 10 and 256 characters")
-	}
+	checkPassword(&v, "password", req.GetPassword())
 	if len(display) > 200 {
 		v.Add("display_name", "at most 200 characters")
 	}
@@ -439,13 +419,9 @@ func (c *Commands) AcceptInvitation(ctx context.Context, req *plansv1.AcceptInvi
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return Opened{}, convert.Err(err, "user")
 	}
-	var pw string
-	var herr error
-	if err := c.withSlot(ctx, func() { pw, herr = credential.Hash(req.GetPassword()) }); err != nil {
+	pw, err := c.hashPassword(ctx, req.GetPassword())
+	if err != nil {
 		return Opened{}, err
-	}
-	if herr != nil {
-		return Opened{}, status.Error(codes.Internal, "password hashing failed")
 	}
 	session, sessionHash, err := credential.NewToken()
 	if err != nil {
