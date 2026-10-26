@@ -91,11 +91,7 @@ func Assemble(ctx context.Context, q *sqlc.Queries, id, planID uuid.UUID, planCo
 		return nil, err
 	}
 	for _, f := range fees {
-		iv := plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
-		if f.Interval == string(subscription.Yearly) {
-			iv = plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
-		}
-		pv.Fees = append(pv.Fees, &plansv1.CurrencyFee{Currency: f.Currency, BaseFeeMinor: f.BaseFeeMinor, Interval: iv})
+		pv.Fees = append(pv.Fees, &plansv1.CurrencyFee{Currency: f.Currency, BaseFeeMinor: f.BaseFeeMinor, Interval: subscription.Interval(f.Interval).Proto()})
 	}
 	cps, err := q.ListPlanCurrencyPrices(ctx, id)
 	if err != nil {

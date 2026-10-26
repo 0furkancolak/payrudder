@@ -287,11 +287,7 @@ func Subscription(s SubscriptionFields) *plansv1.Subscription {
 		FeeTiming: feeTimingToProto(s.FeeTiming),
 		State:     stateToProto[SubscriptionState(s.State, s.TrialEnds, s.OpenEnded, s.End, now)],
 	}
-	if s.Interval == string(subscription.Yearly) {
-		out.Interval = plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR
-	} else {
-		out.Interval = plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH
-	}
+	out.Interval = subscription.Interval(s.Interval).Proto()
 	if s.TrialEnds != nil {
 		out.TrialEndTime = ts(*s.TrialEnds)
 	}

@@ -10,6 +10,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
+	"github.com/0furkancolak/payrudder/pkg/subscription"
 )
 
 var (
@@ -391,15 +392,12 @@ func ValidateFees(tenantCurrency string, fees []*plansv1.CurrencyFee) ([]Fee, er
 			v.Add(field+".currency", "unsupported currency")
 			continue
 		}
-		interval := "month"
-		switch f.GetInterval() {
-		case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED, plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
-		case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
-			interval = "year"
-		default:
+		iv, err := IntervalOf(f.GetInterval(), subscription.Monthly)
+		if err != nil {
 			v.Add(field+".interval", "unknown interval")
 			continue
 		}
+		interval := string(iv)
 		key := f.GetCurrency() + "|" + interval
 		switch {
 		case f.GetCurrency() == tenantCurrency && interval == "month":

@@ -47,7 +47,7 @@ func (c *Commands) parseCreate(req *plansv1.CreateSubscriptionRequest) (createAr
 		return a, domain.Invalid("trial_days", "must be between 0 and 365")
 	}
 	var err error
-	if a.interval, err = intervalFromProto(req.GetInterval()); err != nil {
+	if a.interval, err = domain.IntervalOf(req.GetInterval(), subscription.Monthly); err != nil {
 		return a, err
 	}
 	if p := req.GetProvider(); p != "" {
@@ -57,16 +57,6 @@ func (c *Commands) parseCreate(req *plansv1.CreateSubscriptionRequest) (createAr
 		a.provider = &p
 	}
 	return a, nil
-}
-
-func intervalFromProto(i plansv1.SubscriptionInterval) (subscription.Interval, error) {
-	switch i {
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED, plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
-		return subscription.Monthly, nil
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
-		return subscription.Yearly, nil
-	}
-	return "", domain.Invalid("interval", "unknown interval")
 }
 
 // Create starts a subscription of a customer on a plan version, with its coupon, webhook event and entitlements.

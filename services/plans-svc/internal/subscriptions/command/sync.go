@@ -167,11 +167,8 @@ func (c *Commands) followProviderPlan(ctx context.Context, q *sqlc.Queries, tena
 		}
 	}
 	iv := subscription.Interval(row.Interval)
-	switch req.GetInterval() {
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
-		iv = subscription.Monthly
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
-		iv = subscription.Yearly
+	if asked, err := domain.IntervalOf(req.GetInterval(), iv); err == nil { // a value this API does not know leaves the interval as it is
+		iv = asked
 	}
 	newPlan := target != uuid.Nil && target != row.PlanVersionID
 	newInterval := req.GetInterval() != plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED && string(iv) != row.Interval
