@@ -73,7 +73,7 @@ func TestKafkaDLQRedrive(t *testing.T) {
 	if strings.Join(got, "") != "abc" {
 		t.Fatalf("redriven records = %v, want a b c exactly once and in order", got)
 	}
-	if err := dlqKafka("purge", []string{brokers}, "", 0, true); err == nil {
+	if err := dlqKafka("purge", []string{brokers}, "", 0); err == nil {
 		t.Error("purge on Kafka must be refused")
 	}
 }

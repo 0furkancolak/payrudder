@@ -189,7 +189,14 @@ test.describe("partner portal", () => {
     await expect(live.getByTestId("banner-sandbox")).toHaveCount(0);
     // The claim is made once and the list is read again after it claimed something.
     await expect.poll(() => gw.called("POST", "/app/v1/affiliate/claim").length).toBe(1);
-    await expect.poll(() => gw.called("GET", "/app/v1/affiliate/affiliations").length).toBeGreaterThanOrEqual(2);
+    // The first read may be cancelled before it leaves the browser when the claim answers first, so the check is the order, not the count.
+    await expect
+      .poll(() => {
+        const claimAt = gw.calls.findIndex((c) => c.method === "POST" && c.path === "/app/v1/affiliate/claim");
+        const listAt = gw.calls.map((c) => `${c.method} ${c.path}`).lastIndexOf("GET /app/v1/affiliate/affiliations");
+        return claimAt >= 0 && listAt > claimAt;
+      })
+      .toBe(true);
     // Live ones first.
     const order = await page.locator("[data-affiliation]").evaluateAll((els) => els.map((e) => e.getAttribute("data-affiliation")));
     expect(order).toEqual([LIVE_AFF, SAND_AFF]);
