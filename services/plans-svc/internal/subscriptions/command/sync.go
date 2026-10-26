@@ -15,7 +15,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 )
 
 // providerStates maps a provider's status word to the state a subscription is in. The provider is the truth for a subscription it runs,
@@ -110,7 +109,7 @@ func (c *Commands) syncProvider(ctx context.Context, q *sqlc.Queries, tenantID u
 	if err != nil {
 		return nil, err
 	}
-	return subsqry.Message(r, c.now()), nil
+	return convert.SubscriptionOf(r, c.now()), nil
 }
 
 // currentInChain returns the subscription that holds the provider's id now. Events keep naming the subscription they were

@@ -122,13 +122,6 @@ func invitationOf(i sqlc.AccountInvite, inviterEmail, inviterName string) *plans
 		CreateTime: timestamppb.New(i.CreatedAt), SendTime: timestamppb.New(i.SentAt), ExpireTime: timestamppb.New(i.ExpiresAt)}
 }
 
-func displayOf(name, email string) string {
-	if strings.TrimSpace(name) != "" {
-		return name
-	}
-	return email
-}
-
 // InviteMember mails an invitation. A second invitation to an address that has an open one refreshes it (new link, new expiry, the new role).
 func (c *Commands) InviteMember(ctx context.Context, req *plansv1.InviteMemberRequest) (*plansv1.Invitation, error) {
 	email := NormalizeEmail(req.GetEmail())
@@ -212,7 +205,7 @@ func (c *Commands) InviteMember(ctx context.Context, req *plansv1.InviteMemberRe
 		locale = inviter.Locale
 	}
 	c.mail.Send(ctx, usermail.Mail{Kind: usermail.KindInvite, To: email, Locale: usermail.Locale(locale), Link: c.link("invite", token),
-		Account: accountName, Inviter: displayOf(inviter.DisplayName, inviter.Email), Role: inv.Role})
+		Account: accountName, Inviter: query.DisplayOf(inviter.DisplayName, inviter.Email), Role: inv.Role})
 	c.log.InfoContext(ctx, "member invited", "account_id", inv.AccountID, "invitation_id", inv.ID, "by", inviter.ID)
 	return invitationOf(inv, inviter.Email, inviter.DisplayName), nil
 }
@@ -270,7 +263,7 @@ func (c *Commands) ResendInvitation(ctx context.Context, req *plansv1.ResendInvi
 		return nil, convert.Err(err, "invitation")
 	}
 	c.mail.Send(ctx, usermail.Mail{Kind: usermail.KindInvite, To: inv.Email, Locale: usermail.Locale(inviter.Locale), Link: c.link("invite", token),
-		Account: accountName, Inviter: displayOf(inviter.DisplayName, inviter.Email), Role: inv.Role})
+		Account: accountName, Inviter: query.DisplayOf(inviter.DisplayName, inviter.Email), Role: inv.Role})
 	return invitationOf(inv, inviter.Email, inviter.DisplayName), nil
 }
 
@@ -409,31 +402,6 @@ func (c *Commands) RemoveMember(ctx context.Context, req *plansv1.RemoveMemberRe
 	}
 	c.log.InfoContext(ctx, "member removed", "account_id", req.GetAccountId(), "member", target, "by", req.GetUserId())
 	return nil
-}
-
-// LookupInvitation says what a live invitation token is for.
-func (c *Commands) LookupInvitation(ctx context.Context, token string) (*plansv1.LookupInvitationResponse, error) {
-	if !credential.WellFormed(credential.InvitePrefix, token) {
-		return nil, invalidToken()
-	}
-	db := sqlc.New(c.pool)
-	inv, err := db.GetInviteByToken(ctx, credential.HashToken(token))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, invalidToken()
-	}
-	if err != nil {
-		return nil, convert.Err(err, "invitation")
-	}
-	resp := &plansv1.LookupInvitationResponse{AccountName: inv.AccountName, Email: inv.Email, Role: inv.Role}
-	if by, err := db.GetUser(ctx, inv.InvitedBy); err == nil {
-		resp.InvitedByName = displayOf(by.DisplayName, by.Email)
-	}
-	if _, err := db.GetUserByEmail(ctx, inv.Email); err == nil {
-		resp.HasAccount = true
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, convert.Err(err, "user")
-	}
-	return resp, nil
 }
 
 func signInRequired() error {

@@ -18,7 +18,6 @@ import (
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
@@ -107,7 +106,7 @@ func (r *Queries) Due(ctx context.Context, req *plansv1.ListSubscriptionsFeeDueR
 				}
 			}
 			out = append(out, &plansv1.FeeDue{
-				Subscription: subsqry.Message(row, r.now()), PeriodStart: timestamppb.New(d.FeeDueAt), PeriodEnd: timestamppb.New(end), FeeMinor: fee,
+				Subscription: convert.SubscriptionOf(row, r.now()), PeriodStart: timestamppb.New(d.FeeDueAt), PeriodEnd: timestamppb.New(end), FeeMinor: fee,
 				DiscountMinor: discount, CouponCode: coupon,
 			})
 		}

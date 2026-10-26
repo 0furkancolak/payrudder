@@ -123,9 +123,7 @@ func (h *Handler) GetSession(ctx context.Context, req *plansv1.GetSessionRequest
 	if err != nil {
 		return nil, err
 	}
-	if s.Slide {
-		h.cmd.Slide(ctx, s.ID, s.NewExpire)
-	}
+	h.cmd.TouchSession(ctx, s)
 	return &plansv1.GetSessionResponse{User: s.User, Memberships: s.Memberships, ExpireTime: timestamppb.New(s.ExpireTime)}, nil
 }
 
@@ -267,7 +265,7 @@ func (h *Handler) RemoveMember(ctx context.Context, req *plansv1.RemoveMemberReq
 }
 
 func (h *Handler) LookupInvitation(ctx context.Context, req *plansv1.LookupInvitationRequest) (*plansv1.LookupInvitationResponse, error) {
-	return h.cmd.LookupInvitation(ctx, req.GetToken())
+	return h.qry.LookupInvitation(ctx, req.GetToken())
 }
 
 func (h *Handler) AcceptInvitation(ctx context.Context, req *plansv1.AcceptInvitationRequest) (*plansv1.AcceptInvitationResponse, error) {

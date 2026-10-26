@@ -36,9 +36,7 @@ const (
 	kindReset  = "reset_password"
 )
 
-func invalidToken() error {
-	return errkey.New(codes.InvalidArgument, "identity.token.invalid", "this link is invalid, has expired or was already used")
-}
+func invalidToken() error { return query.InvalidToken() }
 
 // link is the console URL a mail points to. The token travels in the fragment: it is never sent to a server, so it is in no proxy log and no Referer.
 func (c *Commands) link(page, token string) string { return c.appURL + "/" + page + "#token=" + token }

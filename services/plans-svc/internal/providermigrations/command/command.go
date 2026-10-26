@@ -23,7 +23,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
-	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
 	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
@@ -82,7 +81,7 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	if err != nil {
 		return nr, err
 	}
-	return nr, webhookscmd.EmitSubscription(ctx, q, now, webhooksmodel.SubscriptionMovedToProvider, subsqry.Message(moved, now), map[string]any{"previous_subscription_id": old.ID.String(), "to_provider": toProvider})
+	return nr, webhookscmd.EmitSubscription(ctx, q, now, webhooksmodel.SubscriptionMovedToProvider, convert.SubscriptionOf(moved, now), map[string]any{"previous_subscription_id": old.ID.String(), "to_provider": toProvider})
 }
 
 // Start begins moving a subscription to another provider: at once when Payrudder runs it there, else when the customer has subscribed there.
@@ -201,7 +200,7 @@ func (c *Commands) Complete(ctx context.Context, req *plansv1.CompleteProviderMi
 			if convert.Str(nr.ProviderRef) != req.GetProviderRef() {
 				return errkey.Newf(codes.FailedPrecondition, "plans.migration.already_completed", "migration already completed with %s", convert.Str(nr.ProviderRef))
 			}
-			resp.Migration, resp.Subscription = provmigqry.Message(mig), subsqry.Message(nr, c.now())
+			resp.Migration, resp.Subscription = provmigqry.Message(mig), convert.SubscriptionOf(nr, c.now())
 			return nil
 		case "aborted":
 			return errkey.New(codes.FailedPrecondition, "plans.migration.aborted", "migration was aborted")
@@ -225,7 +224,7 @@ func (c *Commands) Complete(ctx context.Context, req *plansv1.CompleteProviderMi
 		if err != nil {
 			return err
 		}
-		resp.Migration, resp.Subscription = provmigqry.Message(done), subsqry.Message(nrow, c.now())
+		resp.Migration, resp.Subscription = provmigqry.Message(done), convert.SubscriptionOf(nrow, c.now())
 		return nil
 	})
 	if err != nil {

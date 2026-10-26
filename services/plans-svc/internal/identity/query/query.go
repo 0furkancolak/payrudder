@@ -61,7 +61,7 @@ type Session struct {
 	User        *plansv1.User
 	Memberships []*plansv1.Membership
 	ExpireTime  time.Time
-	// Slide is set when the expiry should be moved on (the session was last used a while ago); the handler asks the command to do it.
+	// Slide is set when the expiry should be moved on (the session was last used a while ago); TouchSession does it.
 	Slide bool
 	// NewExpire is the expiry to slide to.
 	NewExpire time.Time

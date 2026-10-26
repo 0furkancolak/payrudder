@@ -68,7 +68,7 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 				return err
 			}
 			resp.Scheduled = true
-			resp.Subscription = subsqry.Message(row, c.now())
+			resp.Subscription = convert.SubscriptionOf(row, c.now())
 			if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
 				return err
 			}
@@ -94,7 +94,7 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 		if err != nil {
 			return err
 		}
-		resp.Subscription = subsqry.Message(full, c.now())
+		resp.Subscription = convert.SubscriptionOf(full, c.now())
 		if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
 			return err
 		}
@@ -128,7 +128,7 @@ func (c *Commands) CancelScheduled(ctx context.Context, req *plansv1.CancelSched
 		if err != nil {
 			return err
 		}
-		out = subsqry.Message(r, c.now())
+		out = convert.SubscriptionOf(r, c.now())
 		return nil
 	})
 	if err != nil {
@@ -185,7 +185,7 @@ func (c *Commands) ApplyScheduled(ctx context.Context, req *plansv1.ApplySchedul
 			if err != nil {
 				return err
 			}
-			msg := subsqry.Message(full, c.now())
+			msg := convert.SubscriptionOf(full, c.now())
 			if err := subsqry.AttachExtras(ctx, q, msg); err != nil {
 				return err
 			}

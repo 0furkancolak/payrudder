@@ -19,7 +19,6 @@ import (
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
@@ -300,7 +299,7 @@ func (r *Queries) Adjustments(ctx context.Context, pageSize int32) ([]*plansv1.A
 				return err
 			}
 			out = append(out, &plansv1.Adjustment{
-				Id: a.ID.String(), Subscription: subsqry.Message(sub, r.now()), CreditMinor: a.CreditMinor, ChargeMinor: a.ChargeMinor,
+				Id: a.ID.String(), Subscription: convert.SubscriptionOf(sub, r.now()), CreditMinor: a.CreditMinor, ChargeMinor: a.ChargeMinor,
 				FromTime: timestamppb.New(a.FromAt), ToTime: timestamppb.New(a.ToAt), OldPlanCode: a.OldPlanCode,
 			})
 		}

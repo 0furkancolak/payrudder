@@ -280,7 +280,7 @@ func (c *Commands) Apply(ctx context.Context, req *plansv1.ApplyCouponRequest) (
 		if err := Redeem(ctx, q, c.now(), row, req.GetCode()); err != nil {
 			return err
 		}
-		out = subsqry.Message(row, c.now())
+		out = convert.SubscriptionOf(row, c.now())
 		return subsqry.AttachExtras(ctx, q, out)
 	})
 	if err != nil {
@@ -319,7 +319,7 @@ func (c *Commands) Remove(ctx context.Context, req *plansv1.RemoveCouponRequest)
 		if err != nil {
 			return err
 		}
-		out = subsqry.Message(r, c.now())
+		out = convert.SubscriptionOf(r, c.now())
 		return subsqry.AttachExtras(ctx, q, out)
 	})
 	if err != nil {

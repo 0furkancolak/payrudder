@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"slices"
 	"time"
-	_ "time/tzdata" // tenant time zones must load in distroless images
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -19,7 +18,6 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 
 	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
@@ -34,15 +32,8 @@ import (
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
-	golivecmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
-	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity"
-	identitycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
-	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
 	webhooksworker "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/worker"
@@ -255,24 +246,17 @@ func newSandbox(cfg *Config, log *slog.Logger, _, systemPool *pgxpool.Pool) (*sa
 	return h, runner, closeAll, nil
 }
 
-// newGRPCServer builds the gRPC server with the plans, webhook and admin services registered.
+// newGRPCServer builds the gRPC server with every service of plans-svc registered.
 func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor apikeyscmd.Evictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, error) {
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
-	plansSrv := grpcapi.New(appPool, log)
-	plansv1.RegisterPlansServiceServer(srv, plansSrv)
 	box, err := newSecretBox(cfg, log)
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, cfg.WebhookAllowPrivate))
-	plansv1.RegisterAffiliateServiceServer(srv, grpcapi.NewAffiliates(plansSrv))
-	plansv1.RegisterAffiliatePublicServiceServer(srv, grpcapi.NewAffiliatesPublic(systemPool, log))
-	plansv1.RegisterAffiliatePortalServiceServer(srv, grpcapi.NewAffiliatePortal(plansSrv, systemPool))
-	adminSrv := grpcapi.NewAdmin(systemPool, evictor, cfg.AllowedEnvs, log)
-	plansv1.RegisterAdminServiceServer(srv, adminSrv)
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(systemPool, adminSrv.Accounts(), adminSrv.Keys(), usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), cfg.AppURL, log).WithPepper(cfg.OTPPepper), identityqry.New(systemPool),
-		golive.New(golivecmd.New(systemPool, log), goliveqry.New(systemPool)),
-		promote.Wire(appPool, systemPool, box, cfg.WebhookAllowPrivate, log), sbx))
+	grpcapi.Register(srv, grpcapi.Deps{
+		AppPool: appPool, SystemPool: systemPool, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
+		Mail: usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), AppURL: cfg.AppURL, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
+	})
 	return srv, grpcHealth, box, nil
 }
 

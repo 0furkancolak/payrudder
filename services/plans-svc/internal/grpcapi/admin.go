@@ -42,9 +42,9 @@ type AdminServer struct {
 	keys     *apikeyscmd.Commands
 }
 
-// NewAdmin returns AdminService on the system pool. evict drops revoked keys from the gateway cache (nil: they stay valid there until its TTL).
+// newAdmin returns AdminService on the system pool. evict drops revoked keys from the gateway cache (nil: they stay valid there until its TTL).
 // allowedEnvs is PAYRUDDER_ALLOWED_ENVIRONMENTS ("sandbox", "live").
-func NewAdmin(systemPool *pgxpool.Pool, evict apikeyscmd.Evictor, allowedEnvs []string, log *slog.Logger) *AdminServer {
+func newAdmin(systemPool *pgxpool.Pool, evict apikeyscmd.Evictor, allowedEnvs []string, log *slog.Logger) *AdminServer {
 	accounts := accountscmd.New(systemPool, allowedEnvs, log)
 	keys := apikeyscmd.New(systemPool, evict, log)
 	return &AdminServer{
@@ -55,9 +55,3 @@ func NewAdmin(systemPool *pgxpool.Pool, evict apikeyscmd.Evictor, allowedEnvs []
 		keys:            keys,
 	}
 }
-
-// Accounts is the command that makes apps, which the identity module calls for a signed-in owner.
-func (s *AdminServer) Accounts() *accountscmd.Commands { return s.accounts }
-
-// Keys is the command that issues and revokes API keys, which the identity module calls for a member of the tenant's account.
-func (s *AdminServer) Keys() *apikeyscmd.Commands { return s.keys }
