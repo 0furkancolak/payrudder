@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { validRange } from "@/features/accounting/period";
-import { rangeOf } from "@/shared/lib/dateRange";
+import { thisMonth } from "@/shared/lib/dateRange";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { useFormat } from "@/shared/lib/format";
 import { Card } from "@/shared/ui/card";
@@ -30,7 +30,7 @@ const props = defineProps<{ id: string }>();
 const id = computed(() => props.id);
 const tab = ref<Tab>("referrals");
 
-const range = ref<DateRange>(rangeOf("30d", new Date()));
+const range = ref<DateRange>(thisMonth());
 const rangeOk = computed(() => validRange(range.value));
 const detail = useAffiliation(
   id,

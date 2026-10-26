@@ -265,3 +265,10 @@
 [data-testid="sidebar"] *::-webkit-scrollbar { width: 8px; }
 [data-testid="sidebar"] *::-webkit-scrollbar-thumb { background-color: color-mix(in oklab, var(--rail-foreground) 25%, transparent); border-width: 2px; }
 [data-testid="sidebar"] *::-webkit-scrollbar-thumb:hover { background-color: color-mix(in oklab, var(--rail-foreground) 45%, transparent); }
+
+/* A sheet behind the one in front shows a sliver of itself, so a stack of sheets reads as a stack (a phone shows only the one in front). */
+@media (min-width: 40rem) {
+  .sheet-stacked {
+    inset-inline-end: calc(0.75rem + var(--sheet-behind, 0) * 0.875rem);
+  }
+}

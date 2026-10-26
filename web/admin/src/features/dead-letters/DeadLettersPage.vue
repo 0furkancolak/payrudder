@@ -18,8 +18,8 @@ const list = useDeadLetters(queue);
 const redrive = useRedrive();
 const queues = computed(() => list.data.value?.queues ?? []);
 const messages = computed(() => list.data.value?.messages ?? []);
-const queuesTable = useTableState(queues, { searchFields: (q) => [q.queue] });
-const messagesTable = useTableState(messages, { searchFields: (m) => [m.message_id, m.reason] });
+const queuesTable = useTableState(queues, { sheet: { kind: "dl-queue", id: (q) => q.queue }, searchFields: (q) => [q.queue] });
+const messagesTable = useTableState(messages, { sheet: { kind: "dl-message", id: (m) => m.message_id }, searchFields: (m) => [m.message_id, m.reason] });
 watch(queuesTable.detail, () => {
   queue.value = queuesTable.row.value?.queue ?? "";
   messagesTable.clear();

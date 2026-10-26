@@ -22,7 +22,7 @@ const list = computed(() => tenants.data.value?.tenants ?? []);
 const envOf = (v?: string) => enumWord(v, "ENVIRONMENT_");
 const tierOf = (v?: string) => enumWord(v, "TENANT_TIER_");
 const table = useTableState(list, {
-  searchFields: (x) => [x.name, x.id, x.currency, x.timezone],
+  sheet: { kind: "tenant", id: (x) => x.id }, searchFields: (x) => [x.name, x.id, x.currency, x.timezone],
   filters: { env: (x, v) => envOf(x.environment) === v, tier: (x, v) => tierOf(x.tier) === v, currency: (x, v) => x.currency === v },
 });
 const distinct = (pick: (x: (typeof list.value)[number]) => string | undefined) => computed(() => [...new Set(list.value.map((x) => pick(x) ?? "").filter(Boolean))].sort());

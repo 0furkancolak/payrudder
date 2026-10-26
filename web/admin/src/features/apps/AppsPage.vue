@@ -39,7 +39,7 @@ const revokeKey = useRevokeApiKey();
 
 const list = computed(() => apps.data.value?.apps ?? []);
 const table = useTableState(list, {
-  searchFields: (a) => [a.name, a.slug, ...(a.tenants ?? []).map((e) => e.id)],
+  sheet: { kind: "app", id: (a) => a.id }, searchFields: (a) => [a.name, a.slug, ...(a.tenants ?? []).map((e) => e.id)],
   filters: { env: (a, v) => (a.tenants ?? []).some((e) => environmentWord(e) === v) },
 });
 const when = (v?: string) => fmt.date(v, "day", "—");
@@ -145,7 +145,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <Sheet v-model:open="creating">
+  <Sheet v-model:open="creating" name="new-app">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("apps.new") }}</SheetTitle>

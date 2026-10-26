@@ -3564,5 +3564,9 @@
     "none": "None yet",
     "notFound": "Not in the list",
     "open": "Open"
+  },
+  "sheets": {
+    "back": "Back",
+    "forward": "Forward"
   }
 }

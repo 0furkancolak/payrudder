@@ -3,7 +3,7 @@ import { Eye } from "@lucide/vue";
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -43,7 +43,7 @@ const distinct = (pick: (e: Entry) => string | undefined) => [...new Set((ledger
 
 // --- the ledger
 type Entry = NonNullable<NonNullable<typeof ledger.data.value>["entries"]>[number];
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filter((e) => inRange(e.occurred_at, range.value)), {
   searchFields: (e) => [e.provider, e.provider_ref, e.kind, e.source],
   filters: { status: (e, v) => e.status === v, provider: (e, v) => e.provider === v },

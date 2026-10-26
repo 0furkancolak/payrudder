@@ -140,7 +140,7 @@ function download() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" name="new-code">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.pricing.promotions.codes.create") }}</SheetTitle>

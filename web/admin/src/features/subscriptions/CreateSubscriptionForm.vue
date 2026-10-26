@@ -53,7 +53,7 @@ function create() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" name="new-subscription">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.subscriptions.new") }}</SheetTitle>

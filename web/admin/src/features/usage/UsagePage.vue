@@ -2,7 +2,7 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { rangeOf } from "@/shared/lib/dateRange";
+import { thisMonth } from "@/shared/lib/dateRange";
 import type { DateRange } from "@/shared/ui/date-range";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import CustomersTab from "./CustomersTab.vue";
@@ -21,10 +21,10 @@ const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tab = ref<(typeof TABS)[number]>("overview");
 
-const range = ref<DateRange>(rangeOf("30d", new Date()));
+const range = ref<DateRange>(thisMonth());
 const compare = ref(true);
 // An empty or too long range is not asked of the server: the last 30 days stand in, and the controls say so.
-const effective = computed(() => (validRange(range.value) ? range.value : rangeOf("30d", new Date())));
+const effective = computed(() => (validRange(range.value) ? range.value : thisMonth()));
 const tooLong = computed(() => range.value.from !== "" && range.value.to !== "" && !validRange(range.value));
 const period = computed(() => periodOf(effective.value.to));
 </script>

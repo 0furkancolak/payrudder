@@ -43,7 +43,7 @@ const create = useCreateCustomer(tenantId);
 
 const list = computed(() => customers.data.value?.customers ?? []);
 const table = useTableState(list, {
-  searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id],
+  sheet: { kind: "customer", id: (c) => c.external_id }, searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id],
   filters: { country: (c, v) => (c.country ?? "") === v, currency: (c, v) => (c.billing_currency ?? "") === v },
 });
 const current = table.row;
@@ -148,7 +148,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-model:open="creating">
+  <Sheet v-model:open="creating" name="new-customer">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.customers.new") }}</SheetTitle>

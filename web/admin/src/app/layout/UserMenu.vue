@@ -88,7 +88,7 @@ async function leave() {
     </DropdownMenuContent>
   </DropdownMenu>
 
-  <Sheet v-model:open="creating">
+  <Sheet v-model:open="creating" name="new-organisation">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("product.menu.newOrgTitle") }}</SheetTitle>

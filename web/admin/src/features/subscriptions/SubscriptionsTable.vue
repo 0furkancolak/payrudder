@@ -3,7 +3,7 @@ import { Plus, Settings2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Subscription } from "@/shared/api/client";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { enumWord, label } from "@/shared/lib/labels";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
@@ -33,9 +33,9 @@ const list = computed(() => subs.data.value?.subscriptions ?? []);
 const state = (s: Subscription) => enumWord(s.state, "SUBSCRIPTION_STATE_");
 const BAD_STATES = ["cancelled", "past_due"];
 const stateVariant = (s: Subscription) => (state(s) === "active" ? "success" : BAD_STATES.includes(state(s)) ? "destructive" : "secondary");
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((s) => inRange(s.start_time, range.value)), {
-  searchFields: (s) => [s.customer_external_id, s.plan_code, s.provider],
+  sheet: { kind: "subscription", id: (s) => s.id }, searchFields: (s) => [s.customer_external_id, s.plan_code, s.provider],
   filters: { state: (s, v) => state(s) === v, currency: (s, v) => s.currency === v, interval: (s, v) => s.interval === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });

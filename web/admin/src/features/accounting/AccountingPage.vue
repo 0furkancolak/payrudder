@@ -19,7 +19,7 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CATEGORIES, downloadCsv, useAccountingSummary, useExpenses, type Expense } from "./api";
@@ -53,9 +53,9 @@ const money = (v: string | number | undefined, currency?: string) => fmt.amount(
 // --- the expenses
 const showVoided = ref(false);
 const expenses = useExpenses(tenantId, app, showVoided);
-const expenseRange = ref<DateRange>({ from: "", to: "" });
+const expenseRange = ref<DateRange>(thisMonth());
 const table = useTableState(() => (expenses.data.value?.expenses ?? []).filter((e) => inRange(e.incurred_on, expenseRange.value)), {
-  searchFields: (e) => [e.vendor, e.note, e.category ? t(`billing.accounting.category.${e.category}`) : "", e.amount_minor],
+  sheet: { kind: "expense", id: (e) => e.id }, searchFields: (e) => [e.vendor, e.note, e.category ? t(`billing.accounting.category.${e.category}`) : "", e.amount_minor],
   filters: {
     category: (e, v) => e.category === v,
     recurring: (e, v) => (e.recurring ?? "none") === v,

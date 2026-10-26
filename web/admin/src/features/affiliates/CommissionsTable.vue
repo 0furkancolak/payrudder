@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { thisMonth } from "@/shared/lib/dateRange";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
@@ -36,7 +37,7 @@ const tenantId = computed(() => props.tenantId);
 const affiliate = ref("");
 const status = ref("");
 const kind = ref("");
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const filter = computed<CommissionFilter>(() => ({
   affiliate_id: affiliate.value,
   status: status.value,

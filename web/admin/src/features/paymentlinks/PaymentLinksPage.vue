@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { useTenantCurrency } from "@/features/tenants/currency";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { matchesSearch } from "@/shared/lib/paging";
 import { PaymentContext } from "@/features/related";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
@@ -78,7 +78,7 @@ const act = usePaymentLinkActions(tenantId);
 const list = computed(() => links.data.value?.links ?? []);
 // The API pages by token and has no text search, so the search box narrows the page that is on screen.
 const query = ref("");
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const shown = computed(() => list.value.filter((l) => matchesSearch([l.id, l.description, l.customer_external_id, l.invoice_id, l.promotion_code, l.amount_minor], query.value) && inRange(l.create_time, range.value)));
 const kinds = computed(() => [{ value: "", label: t("billing.paymentLinks.anyKind") }, ...["adhoc", "invoice", "credit_pack"].map((k) => ({ value: k, label: t(`billing.paymentLinks.kinds.${k}`) }))]);
 const statuses = computed(() => [{ value: "", label: t("billing.paymentLinks.anyStatus") }, ...["active", "paid", "expired", "revoked"].map((s) => ({ value: s, label: t(`billing.paymentLinks.statuses.${s}`) }))]);
@@ -212,7 +212,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
       </template>
     </DetailSheet>
 
-    <Sheet v-model:open="open">
+    <Sheet v-model:open="open" name="new-payment-link">
       <SheetContent>
         <SheetHeader>
           <SheetTitle>{{ t("billing.paymentLinks.title") }}</SheetTitle>

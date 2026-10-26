@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { thisMonth } from "@/shared/lib/dateRange";
 import { Check, Download, TriangleAlert } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -24,7 +25,7 @@ const fmt = useFormat();
 const errorText = useErrorText();
 const tenantId = computed(() => props.tenantId);
 
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const filter = computed<JournalFilter>(() => ({ currency: "", from: dayStart(range.value.from) ?? "", to: dayEnd(range.value.to) ?? "" }));
 const pager = usePager();
 watch(filter, () => pager.reset());

@@ -1,5 +1,6 @@
 import { computed, ref, toValue, watch, type MaybeRefOrGetter } from "vue";
 import { matchesSearch, paginate, PAGE_SIZES } from "./paging";
+import { idOf, setKind } from "./sheets";
 
 /**
  * The state of a list the console already holds in full: a search text, filters (a key and the value it must equal; empty means no filter), a page and
@@ -8,8 +9,11 @@ import { matchesSearch, paginate, PAGE_SIZES } from "./paging";
  * The detail sheet of a row walks the whole filtered list, not just the page on screen: `detail` is the absolute index into `filtered` (null is closed),
  * `row` the row it points at, and the table moves to the page that holds it, so previous/next may cross pages. `open(i)` takes the index of a row on
  * the page shown, which is what a table row has.
+ *
+ * With `sheet` ({ kind, id }) the open row is written into the address as `?sheet=<kind>:<id>` and the sheet opens by itself when the address names a
+ * row (a reload, a shared link, "forward" in the strip of sheets); a filter that hides the named row is cleared.
  */
-export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined>, opts: { searchFields: (row: T) => (string | number | null | undefined)[]; filters?: Record<string, (row: T, value: string) => boolean>; size?: number }) {
+export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined>, opts: { searchFields: (row: T) => (string | number | null | undefined)[]; filters?: Record<string, (row: T, value: string) => boolean>; size?: number; sheet?: { kind: string; id: (row: T) => string | undefined } }) {
   const search = ref("");
   const filters = ref<Record<string, string>>({});
   const page = ref(1);
@@ -34,6 +38,31 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
   watch(filtered, (rows) => {
     if (detail.value !== null && detail.value >= rows.length) detail.value = null;
   });
+
+  if (opts.sheet) {
+    const { kind, id } = opts.sheet;
+    watch(detail, (d) => {
+      const r = d === null ? undefined : filtered.value[d];
+      setKind(kind, (r === undefined ? undefined : id(r)) ?? null);
+    });
+    watch([() => idOf(kind), filtered], ([named]) => {
+      if (named === undefined) {
+        if (detail.value !== null) detail.value = null;
+        return;
+      }
+      const shown = row.value;
+      if (shown !== undefined && id(shown) === named) return;
+      const find = () => filtered.value.findIndex((r) => id(r) === named);
+      let at = find();
+      // A filter hides the row the address names: the address wins.
+      if (at < 0 && (toValue(rows) ?? []).some((r) => id(r) === named)) {
+        search.value = "";
+        filters.value = {};
+        at = find();
+      }
+      if (at >= 0) detail.value = at;
+    });
+  }
 
   return {
     search,

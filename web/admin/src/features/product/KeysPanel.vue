@@ -46,7 +46,7 @@ const unverified = computed(() => me.data.value?.user?.email_verified === false)
 const list = computed(() => (keys.data.value?.api_keys ?? []).slice().sort((a, b) => Number(isRevoked(a)) - Number(isRevoked(b))));
 const isRevoked = (k: ApiKey) => k.status === "STATUS_REVOKED";
 const table = useTableState(list, {
-  searchFields: (k) => [k.prefix, k.id, envOf(k.environment)],
+  sheet: { kind: "key", id: (k) => k.id }, searchFields: (k) => [k.prefix, k.id, envOf(k.environment)],
   filters: { env: (k, v) => envOf(k.environment) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
 });
 const keyEnv = (k: ApiKey): Environment => envOf(k.environment);

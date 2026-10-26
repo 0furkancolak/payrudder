@@ -3,7 +3,7 @@ import { Eye } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -29,9 +29,9 @@ const invoices = useTenantInvoices(() => props.tenantId);
 const list = computed(() => invoices.data.value?.invoices ?? []);
 const STATUSES = ["draft", "open", "paid", "uncollectible", "void"] as const;
 const KINDS = ["REGULAR", "CORRECTION", "CREDIT_NOTE"] as const;
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((inv) => inRange(inv.create_time, range.value)), {
-  searchFields: (inv) => [inv.number, inv.period_id, inv.customer_external_id, inv.total_minor],
+  sheet: { kind: "invoice", id: (inv) => inv.id }, searchFields: (inv) => [inv.number, inv.period_id, inv.customer_external_id, inv.total_minor],
   filters: { status: (inv, v) => inv.status === v, kind: (inv, v) => inv.kind === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });

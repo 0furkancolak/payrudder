@@ -3,13 +3,15 @@ import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { usageReads } from "./usage";
 import { pickFilter, pickRange, rowAction } from "./ui";
 
-// 21 October 2026, local: the page's default range is the last 30 days, 22 September to 21 October, and its billing period is 2026-10.
+// 21 October 2026, local: the page opens on this month so far, 1 to 21 October; the tests pick the last 30 days (22 September to 21 October). Its billing period is 2026-10.
 const NOW = new Date(2026, 9, 21, 12, 0, 0);
 
 async function open(page: Page, gw: MockGateway) {
   await page.clock.setFixedTime(NOW);
   await gw.install(page);
   await openTenantPage(page, "/usage");
+  // The page opens on this month so far; these figures are those of the last 30 days.
+  await pickRange(page, "30d");
 }
 const gateway = () => baseTenant(new MockGateway()).on(usageReads);
 

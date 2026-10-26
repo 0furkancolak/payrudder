@@ -234,7 +234,7 @@ test.describe("partner portal", () => {
   test("the dashboard: figures, earned and balances per currency (never summed), the terms in words, and the period", async ({ page }) => {
     await page.clock.setFixedTime(new Date(2026, 9, 21, 12, 0, 0));
     const { gw } = await open(page, portal(), {}, `/app/partner?open=${LIVE_AFF}`);
-    await expect(page.getByRole("heading", { name: "Globex Seller" })).toBeVisible();
+    await expect(page.getByTestId("detail-sheet").getByRole("heading", { name: "Globex Seller" })).toBeVisible();
     await expect(page.locator('[data-stat="clicks"]').first()).toContainText("320");
     await expect(page.locator('[data-stat="referrals"]').first()).toContainText("40");
     await expect(page.locator('[data-stat="paying"]').first()).toContainText("12");

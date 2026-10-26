@@ -3564,5 +3564,9 @@
     "none": "Aún no hay",
     "notFound": "No está en la lista",
     "open": "Abrir"
+  },
+  "sheets": {
+    "back": "Atrás",
+    "forward": "Adelante"
   }
 }

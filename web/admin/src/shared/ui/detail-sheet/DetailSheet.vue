@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronUp } from "@lucide/vue";
-import { onBeforeUnmount, onMounted } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 
@@ -17,6 +17,7 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 const props = defineProps<{ index: number | null; total: number; title: string; description?: string; wide?: boolean; offset?: number; of?: number; edge?: { prev?: boolean; next?: boolean } }>();
 const emit = defineEmits<{ "update:index": [number | null]; edge: ["prev" | "next"] }>();
 const { t } = useI18n();
+const sheet = ref<{ front: boolean } | null>(null);
 
 const open = () => props.index !== null;
 const hasPrev = () => props.index !== null && (props.index > 0 || !!props.edge?.prev);
@@ -30,7 +31,7 @@ function go(by: -1 | 1) {
 }
 
 function key(e: KeyboardEvent) {
-  if (props.index === null) return;
+  if (props.index === null || sheet.value?.front === false) return;
   const el = e.target as HTMLElement | null;
   if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
   if (el?.isContentEditable) return;
@@ -47,7 +48,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", key));
 </script>
 
 <template>
-  <Sheet :open="open()" @update:open="(v) => !v && emit('update:index', null)">
+  <Sheet ref="sheet" :open="open()" @update:open="(v) => !v && emit('update:index', null)">
     <SheetContent :class="wide ? 'sm:max-w-2xl' : 'sm:max-w-lg'" data-testid="detail-sheet">
       <SheetHeader>
         <div v-if="index !== null" class="text-muted-foreground mb-1 flex items-center gap-1 text-xs">

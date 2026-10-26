@@ -85,7 +85,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" name="new-coupon">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.coupons.sheet.title") }}</SheetTitle>

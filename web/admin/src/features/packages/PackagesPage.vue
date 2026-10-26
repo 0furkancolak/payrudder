@@ -36,7 +36,7 @@ const create = useCreatePackage(tenantId);
 const list = computed(() => packages.data.value ?? []);
 const fmt = useFormat();
 const range = ref<DateRange>({ from: "", to: "" });
-const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { searchFields: (p) => [p.plan.code, p.plan.name] });
+const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { sheet: { kind: "package", id: (p) => p.plan.code }, searchFields: (p) => [p.plan.code, p.plan.name] });
 watch(range, () => (table.page.value = 1), { deep: true });
 const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
 function clear() {
@@ -109,7 +109,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-if="canWrite" v-model:open="creating">
+  <Sheet v-if="canWrite" v-model:open="creating" name="new-package">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.packages.new") }}</SheetTitle>

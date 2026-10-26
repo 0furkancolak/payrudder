@@ -119,7 +119,7 @@ test.describe("app dashboard", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await page.goto(`/app/apps/${APP}`);
+    await page.goto(`/app/apps/${APP}?period=30d`);
     await expect(page.getByRole("heading", { name: "Web shop" })).toBeVisible();
     // The tenant's own currency first; every figure is in it.
     await expect(page.getByTestId("currency-tab-TRY")).toHaveAttribute("aria-selected", "true");

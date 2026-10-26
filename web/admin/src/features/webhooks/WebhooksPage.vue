@@ -13,7 +13,7 @@ import { Input } from "@/shared/ui/input";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -35,14 +35,14 @@ const types = ref<EventType[]>([]);
 const selected = ref("");
 const deliveries = useWebhookDeliveries(tenantId, selected);
 const list = computed(() => endpoints.data.value?.endpoints ?? []);
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const log = computed(() => (deliveries.data.value?.deliveries ?? []).filter((d) => inRange(d.create_time, range.value)));
 const endpointsTable = useTableState(list, {
-  searchFields: (e) => [e.url, e.description, ...(e.event_types ?? [])],
+  sheet: { kind: "endpoint", id: (e) => e.id }, searchFields: (e) => [e.url, e.description, ...(e.event_types ?? [])],
   filters: { status: (e, v) => (e.active ? "active" : "paused") === v },
 });
 const deliveriesTable = useTableState(log, {
-  searchFields: (d) => [d.event_type, d.last_error, d.last_status],
+  sheet: { kind: "delivery", id: (d) => d.id }, searchFields: (d) => [d.event_type, d.last_error, d.last_status],
   filters: { state: (d, v) => d.state === v },
 });
 const current = endpointsTable.row;
@@ -98,7 +98,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
 </script>
 
 <template>
-  <Sheet v-model:open="creating">
+  <Sheet v-model:open="creating" name="new-endpoint">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.webhooks.add") }}</SheetTitle>

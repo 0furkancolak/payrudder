@@ -11,7 +11,7 @@ import { reportRoutes } from "@/features/reports/routes";
 import { subscriptionRoutes } from "@/features/subscriptions/routes";
 import { usageRoutes } from "@/features/usage/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
-import { dashSearch } from "@/features/dashboard/lib";
+import { dashSearch, sheetSearch } from "@/features/dashboard/lib";
 import { lazyPage } from "@/shared/lib/lazy";
 import { isPerson } from "@/shared/lib/session";
 import { partnerRoutes } from "@/features/partner/routes";
@@ -68,7 +68,7 @@ export function personRoutes(parent: AnyRoute) {
     component: lazyPage(() => import("./AppDashboard.vue")),
     validateSearch: dashSearch,
   });
-  const envSearch = (s: Record<string, unknown>) => (s.env === "sandbox" || s.env === "live" ? { env: s.env } : {});
+  const envSearch = (s: Record<string, unknown>) => ({ ...(s.env === "sandbox" || s.env === "live" ? { env: s.env } : {}), ...sheetSearch(s) });
   const keys = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/keys", component: lazyPage(() => import("./ApiKeysPage.vue")), validateSearch: envSearch });
   const appSettings = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/settings", component: lazyPage(() => import("./AppSettingsPage.vue")), validateSearch: envSearch });
   // Going live and the sandbox's own tools (phase 45): the checklist and promote, and reset and scenarios.

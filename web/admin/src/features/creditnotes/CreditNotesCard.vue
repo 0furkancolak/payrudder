@@ -14,7 +14,7 @@ import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
@@ -49,9 +49,9 @@ function whereKey(n: { disposition?: string; refund_state?: string }): Where {
 }
 const where = (n: { disposition?: string; refund_state?: string }) => t(`billing.creditNotes.${whereKey(n)}`);
 
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((n) => inRange(n.create_time, range.value)), {
-  searchFields: (n) => [n.number, n.invoice_number, n.customer_external_id, n.reason],
+  sheet: { kind: "creditnote", id: (n) => n.id }, searchFields: (n) => [n.number, n.invoice_number, n.customer_external_id, n.reason],
   filters: { where: (n, v) => whereKey(n) === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });

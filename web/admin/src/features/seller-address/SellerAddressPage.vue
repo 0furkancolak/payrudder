@@ -93,7 +93,7 @@ function submit() {
     <p v-if="saved" class="text-success text-sm" role="status">{{ t("address.saved") }}</p>
     <ErrorText :error="tenant.error.value" />
 
-    <Sheet v-model:open="open">
+    <Sheet v-model:open="open" name="seller-address">
       <SheetContent>
         <SheetHeader>
           <SheetTitle>{{ t("address.title") }}</SheetTitle>

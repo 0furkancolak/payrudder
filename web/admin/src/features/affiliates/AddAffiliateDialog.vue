@@ -49,7 +49,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" name="add-affiliate">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("affiliates.add.title") }}</SheetTitle>

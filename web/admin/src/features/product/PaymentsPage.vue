@@ -12,7 +12,7 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { Eye, FileText } from "@lucide/vue";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -31,12 +31,12 @@ const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const payments = usePayments(tenantId);
 const all = computed(() => payments.data.value?.payments ?? []);
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const rows = computed(() => all.value.filter((p) => inRange(p.occurred_at, range.value)));
 const navigate = useNavigate();
 const toInvoice = (id?: string) => void navigate({ to: "/app/t/$id/invoices", params: { id: tenantId.value }, search: { invoice: id ?? "" } as never });
 const table = useTableState(rows, {
-  searchFields: (p) => [p.provider, p.invoice_id, p.id, p.amount_minor],
+  sheet: { kind: "payment", id: (p) => p.id }, searchFields: (p) => [p.provider, p.invoice_id, p.id, p.amount_minor],
   filters: { status: (p, v) => p.status === v, kind: (p, v) => p.kind === v },
 });
 const statuses = computed(() => [...new Set(all.value.map((p) => p.status as string | undefined).filter((v): v is string => !!v))].sort());

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { thisMonth } from "@/shared/lib/dateRange";
 import { Check, Eye } from "@lucide/vue";
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
@@ -29,7 +30,7 @@ const tab = ref<(typeof tabs)[number]>("revenue");
 
 // Revenue
 // The date range chip drives the period: the report counts whole months, so the days are cut to their month.
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const from = computed(() => range.value.from.slice(0, 7));
 const to = computed(() => range.value.to.slice(0, 7));
 const split = ref<string[]>(["period"]);

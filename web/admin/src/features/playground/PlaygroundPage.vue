@@ -103,7 +103,7 @@ function create() {
     </Card>
   </div>
 
-  <Sheet v-model:open="creating">
+  <Sheet v-model:open="creating" name="new-playground">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("playground.account.title") }}</SheetTitle>

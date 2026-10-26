@@ -16,7 +16,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { Eye } from "@lucide/vue";
 import InvoiceDetail from "./InvoiceDetail.vue";
 import InvoiceSheetById from "./InvoiceSheetById.vue";
@@ -36,7 +36,7 @@ const at = ref(0);
 const search = ref("");
 watch(status, () => (at.value = 0));
 const loaded = computed(() => invoices.data.value?.pages ?? []);
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const rows = computed(() => (loaded.value[at.value]?.invoices ?? []).filter((i) => matchesSearch([i.number, i.customer_external_id, i.period_id], search.value) && inRange(i.create_time, range.value)));
 const filtering = computed(() => search.value !== "" || status.value !== "" || range.value.from !== "" || range.value.to !== "");
 function clear() {
