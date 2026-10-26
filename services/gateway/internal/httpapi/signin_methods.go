@@ -96,7 +96,7 @@ func (s *Server) respondSignedIn(w http.ResponseWriter, r *http.Request, resp *p
 // otpRequest is POST /auth/otp/request {email, locale}: mails a code. 202 for any well-formed address, whether or not it has an account and whether or not
 // a code was actually sent (plans-svc sends at most one a minute and five an hour per address).
 func (s *Server) otpRequest(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.otpRequests, otpRequestsPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.otpRequests, otpRequestsPerMinute) {
 		return
 	}
 	var body struct {
@@ -118,7 +118,7 @@ func (s *Server) otpRequest(w http.ResponseWriter, r *http.Request) {
 // otpVerify is POST /auth/otp/verify {email, code, display_name, account_name, locale}: checks the code and opens a session; an address without an account
 // gets one.
 func (s *Server) otpVerify(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.otpVerifies, otpVerifiesPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.otpVerifies, otpVerifiesPerMinute) {
 		return
 	}
 	var body struct {
@@ -207,7 +207,7 @@ func (s *Server) googleStart(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, errkey.New(codes.NotFound, "identity.oauth.not_configured", "sign-in with Google is not set up on this deployment"))
 		return
 	}
-	if !s.authAllowed(w, r, &s.oauths, oauthPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.oauths, oauthPerMinute) {
 		return
 	}
 	req, err := s.d.Google.Begin(r.Context())
@@ -236,7 +236,7 @@ func (s *Server) googleCallback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, errkey.New(codes.NotFound, "identity.oauth.not_configured", "sign-in with Google is not set up on this deployment"))
 		return
 	}
-	if !s.authAllowed(w, r, &s.oauths, oauthPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.oauths, oauthPerMinute) {
 		return
 	}
 	noStore(w)

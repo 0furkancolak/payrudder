@@ -18,6 +18,7 @@ import (
 	grpchealth "google.golang.org/grpc/health"
 
 	adminv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/admin/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
@@ -107,7 +108,7 @@ func (c *Config) Validate() error {
 type redisEvictor struct{ c *redis.Client }
 
 func (r redisEvictor) EvictAPIKey(ctx context.Context, prefix string) error {
-	return r.c.Del(ctx, "gw:apikey:"+prefix).Err()
+	return r.c.Del(ctx, apikey.CacheKey(prefix)).Err()
 }
 
 func main() { app.Main("plans-svc", defaults, start) }

@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"time"
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
@@ -25,7 +24,7 @@ type meterUsageRow struct {
 func (s *Server) getCustomerUsage(w http.ResponseWriter, r *http.Request) {
 	periodID := r.URL.Query().Get("period")
 	if periodID == "" {
-		periodID = period.PeriodOf(time.Now(), tenantLocation(principalFrom(r.Context()).Tenant.Timezone))
+		periodID = period.PeriodOf(s.now(), tenantLocation(principalFrom(r.Context()).Tenant.Timezone))
 	} else if !period.Valid(periodID) {
 		writeError(w, r, invalid("period", "must look like 2026-11"))
 		return

@@ -258,7 +258,11 @@ func (s *Server) appOverview(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	ctx, cancel := tenantContext(r.Context(), t, overviewTimeout)
+	ctx, cancel, err := tenantContext(r.Context(), t, overviewTimeout)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
 	defer cancel()
 	o := s.buildOverview(ctx, appID, envName, t)
 	noStoreJSON(w)
@@ -296,7 +300,7 @@ func (s *Server) buildOverview(ctx context.Context, appID, envName string, t *pl
 	run.run("customers", f.customers)
 	run.run("subscriptions", f.subscriptions)
 	run.run("webhooks", f.webhooks)
-	return assembleOverview(appID, envName, t, &f.src, run.wait(), time.Now())
+	return assembleOverview(appID, envName, t, &f.src, run.wait(), s.now())
 }
 
 // assembleOverview is the pure part of the overview: it sorts what the sections answered into the page. A section in down is left out and named in

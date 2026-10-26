@@ -151,7 +151,7 @@ func (s *Server) invitationAcceptAsUser(w http.ResponseWriter, r *http.Request) 
 // invitationLookup is POST /auth/invitations/lookup {token}: what a live invitation is for, so the accept page asks for the right thing. The token travels
 // in a body, not in the URL.
 func (s *Server) invitationLookup(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.tokenUses, tokenUsesPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.tokenUses, tokenUsesPerMinute) {
 		return
 	}
 	var body struct {
@@ -169,7 +169,7 @@ func (s *Server) invitationLookup(w http.ResponseWriter, r *http.Request) {
 // invitationAccept is POST /auth/invitations/accept {token, password, display_name}: a person without an account joins as a new user and gets a session.
 // An address that has an account is answered 409 identity.invite.sign_in_required; that person signs in and uses /app/v1/invitations/accept.
 func (s *Server) invitationAccept(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.tokenUses, tokenUsesPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.tokenUses, tokenUsesPerMinute) {
 		return
 	}
 	var body struct {

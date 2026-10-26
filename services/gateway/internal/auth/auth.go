@@ -26,6 +26,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // CacheTTL bounds how stale a cached key can be if the revocation eviction fails.
@@ -230,7 +231,7 @@ func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error
 	}
 	e := Entry{
 		APIKeyID: res.GetApiKeyId(), TenantID: res.GetTenantId(), Timezone: res.GetTimezone(),
-		Environment: envName(res.GetEnvironment()), Tier: tierName(res.GetTier()),
+		Environment: envName(res.GetEnvironment()), Tier: TierName(res.GetTier()),
 		Active: res.GetStatus() == plansv1.ApiKey_STATUS_ACTIVE, KeyHash: res.GetKeyHash(),
 		Status: statusName(res.GetTenantStatus()), Scope: scopeName(res.GetScope()),
 	}
@@ -281,18 +282,19 @@ func scopeName(s plansv1.ApiKey_Scope) string {
 	return ScopeFull
 }
 
-func tierName(t plansv1.TenantTier) string {
+// TierName is the rate-limit tier of a tenant tier; a tenant without one is on the free tier.
+func TierName(t plansv1.TenantTier) string {
 	switch t {
 	case plansv1.TenantTier_TENANT_TIER_STANDARD:
-		return "standard"
+		return ratelimit.TierStandard
 	case plansv1.TenantTier_TENANT_TIER_ENTERPRISE:
-		return "enterprise"
+		return ratelimit.TierEnterprise
 	default:
-		return "free"
+		return ratelimit.TierFree
 	}
 }
 
-// RedisCache is the shared cache. plans-svc deletes gw:apikey:{prefix} on revocation.
+// RedisCache is the shared cache. plans-svc deletes apikey.CacheKey(prefix) on revocation.
 type RedisCache struct {
 	rdb redis.Cmdable
 }
@@ -301,7 +303,7 @@ type RedisCache struct {
 func NewRedisCache(rdb redis.Cmdable) *RedisCache { return &RedisCache{rdb: rdb} }
 
 func (c *RedisCache) Get(ctx context.Context, prefix string) (Entry, bool, error) {
-	raw, err := c.rdb.Get(ctx, "gw:apikey:"+prefix).Bytes()
+	raw, err := c.rdb.Get(ctx, apikey.CacheKey(prefix)).Bytes()
 	if errors.Is(err, redis.Nil) {
 		return Entry{}, false, nil
 	}
@@ -320,7 +322,7 @@ func (c *RedisCache) Set(ctx context.Context, prefix string, e Entry) error {
 	if err != nil {
 		return err
 	}
-	return c.rdb.Set(ctx, "gw:apikey:"+prefix, raw, CacheTTL).Err()
+	return c.rdb.Set(ctx, apikey.CacheKey(prefix), raw, CacheTTL).Err()
 }
 
 // AdminToucher adapts the generated client.
