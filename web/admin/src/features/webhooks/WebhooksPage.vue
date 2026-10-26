@@ -13,7 +13,7 @@ import { Input } from "@/shared/ui/input";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -32,21 +32,20 @@ const creating = ref(false);
 const url = ref("");
 const description = ref("");
 const types = ref<EventType[]>([]);
-const detail = ref<number | null>(null);
 const selected = ref("");
 const deliveries = useWebhookDeliveries(tenantId, selected);
 const list = computed(() => endpoints.data.value?.endpoints ?? []);
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const log = computed(() => (deliveries.data.value?.deliveries ?? []).filter((d) => inRange(d.create_time, range.value)));
 const endpointsTable = useTableState(list, {
-  searchFields: (e) => [e.url, e.description, ...(e.event_types ?? [])],
+  sheet: { kind: "endpoint", id: (e) => e.id }, searchFields: (e) => [e.url, e.description, ...(e.event_types ?? [])],
   filters: { status: (e, v) => (e.active ? "active" : "paused") === v },
 });
 const deliveriesTable = useTableState(log, {
-  searchFields: (d) => [d.event_type, d.last_error, d.last_status],
+  sheet: { kind: "delivery", id: (d) => d.id }, searchFields: (d) => [d.event_type, d.last_error, d.last_status],
   filters: { state: (d, v) => d.state === v },
 });
-const current = computed(() => (detail.value === null ? undefined : endpointsTable.items.value[detail.value]));
+const current = endpointsTable.row;
 watch(
   () => current.value?.id,
   (id) => {
@@ -63,7 +62,7 @@ function clearDeliveries() {
 type Endpoint = (typeof list.value)[number];
 function actionsOf(e: Endpoint, i: number): RowAction[] {
   return [
-    { key: "deliveries", label: t("billing.webhooks.deliveries"), icon: ListTree, onSelect: () => (detail.value = i) },
+    { key: "deliveries", label: t("billing.webhooks.deliveries"), icon: ListTree, onSelect: () => endpointsTable.open(i) },
     { key: "test", label: t("billing.webhooks.test"), icon: Send, disabled: act.test.isPending.value, onSelect: () => act.test.mutate(e.id ?? "") },
     { key: "toggle", label: e.active ? t("billing.webhooks.pause") : t("billing.webhooks.resume"), icon: e.active ? Pause : Play, onSelect: () => toggle(e) },
     { key: "rotate", label: t("billing.webhooks.rotate"), icon: RefreshCw, onSelect: () => act.rotate.mutate(e.id ?? "") },
@@ -99,7 +98,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
 </script>
 
 <template>
-  <Sheet v-model:open="creating">
+  <Sheet v-model:open="creating" name="new-endpoint">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.webhooks.add") }}</SheetTitle>
@@ -151,7 +150,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(e, i) in endpointsTable.items.value" :key="e.id" class="cursor-pointer" @click="detail = i">
+        <TableRow v-for="(e, i) in endpointsTable.items.value" :key="e.id" class="cursor-pointer" @click="endpointsTable.open(i)">
           <TableCell>
             <span class="mono text-sm break-all">{{ e.url }}</span>
             <span v-if="e.description" class="text-muted-foreground block text-xs">{{ e.description }}</span>
@@ -167,7 +166,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
     <DataPagination v-if="list.length > 0" v-model:page="endpointsTable.page.value" v-model:size="endpointsTable.size.value" :pages="endpointsTable.pages.value" :total="endpointsTable.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="detail" :total="endpointsTable.items.value.length" :title="current?.url ?? ''" :description="current?.description || undefined" wide>
+  <DetailSheet v-model:index="endpointsTable.detail.value" :total="endpointsTable.total.value" :title="current?.url ?? ''" :description="current?.description || undefined" wide>
     <div v-if="current" class="flex flex-col gap-5" role="region" :aria-label="t('billing.webhooks.deliveries')">
       <div class="flex flex-wrap items-center gap-2 text-sm">
         <Badge :variant="current.active ? 'success' : 'secondary'">{{ current.active ? t("billing.webhooks.active") : t("billing.webhooks.paused") }}</Badge>

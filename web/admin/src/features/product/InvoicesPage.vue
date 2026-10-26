@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { Link, useParams } from "@tanstack/vue-router";
-import { computed, ref, watch } from "vue";
+import { useParams } from "@tanstack/vue-router";
+import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
-import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { matchesSearch } from "@/shared/lib/paging";
@@ -15,9 +14,12 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { inRange } from "@/shared/lib/dateRange";
-import { Eye, FileText } from "@lucide/vue";
+import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
+import { useOpenParam } from "@/shared/lib/useOpenParam";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { Eye } from "@lucide/vue";
 import InvoiceDetail from "./InvoiceDetail.vue";
+import InvoiceSheetById from "./InvoiceSheetById.vue";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { useInvoices } from "./billingApi";
 
@@ -34,7 +36,7 @@ const at = ref(0);
 const search = ref("");
 watch(status, () => (at.value = 0));
 const loaded = computed(() => invoices.data.value?.pages ?? []);
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const rows = computed(() => (loaded.value[at.value]?.invoices ?? []).filter((i) => matchesSearch([i.number, i.customer_external_id, i.period_id], search.value) && inRange(i.create_time, range.value)));
 const filtering = computed(() => search.value !== "" || status.value !== "" || range.value.from !== "" || range.value.to !== "");
 function clear() {
@@ -42,15 +44,31 @@ function clear() {
   status.value = "";
   range.value = { from: "", to: "" };
 }
-/** The invoice whose sheet is open: an index into the rows shown now, so the arrows step through the list. */
-const shown = ref<number | null>(null);
-const current = computed(() => (shown.value === null ? undefined : rows.value[shown.value]));
-watch([at, search, status, range], () => (shown.value = null), { deep: true });
 const hasNext = computed(() => at.value + 1 < loaded.value.length || !!invoices.hasNextPage.value);
 async function next() {
   if (at.value + 1 >= loaded.value.length) await invoices.fetchNextPage();
   at.value = Math.min(at.value + 1, Math.max(0, loaded.value.length - 1));
 }
+/** The invoice whose sheet is open: an index into the rows shown now; the arrows step through them and on into the next and previous page. */
+const nav = useEdgeDetail(rows, { hasPrev: () => at.value > 0, hasNext, prev: () => at.value--, next });
+const shown = nav.index;
+const current = nav.row;
+// The arrows turn the page themselves; any other change of what is listed closes the sheet.
+watch([search, status, range], () => (shown.value = null), { deep: true });
+// A link names an invoice: found in the pages loaded so far (a search or date range that hides it is cleared first), or else opened on its own.
+const alone = ref("");
+useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
+  const where = loaded.value.findIndex((p) => (p.invoices ?? []).some((i) => i.id === id));
+  if (where < 0) {
+    alone.value = id;
+    return;
+  }
+  search.value = "";
+  range.value = { from: "", to: "" };
+  at.value = where;
+  // After the watcher that closes the sheet when what is listed changes has run.
+  void nextTick(() => (shown.value = rows.value.findIndex((i) => i.id === id)));
+});
 const statuses = ["draft", "open", "paid", "uncollectible", "void"] as const;
 const day = (v?: string) => fmt.date(v, "day");
 </script>
@@ -94,12 +112,8 @@ const day = (v?: string) => fmt.date(v, "day");
     <DataPagination :page="at + 1" :has-prev="at > 0" :has-next="hasNext" @prev="at--" @next="next" />
   </Card>
 
-  <DetailSheet v-model:index="shown" :total="rows.length" :title="current ? current.number || t('product.billing.invoices.draft') : ''" :description="current?.customer_external_id" wide>
-    <InvoiceDetail v-if="current?.id" :key="current.id" embedded :tenant-id="tenantId" :invoice-id="current.id" />
-    <template #footer>
-      <Button v-if="current?.id" variant="ghost" as-child>
-        <Link to="/app/t/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: current.id }"><FileText class="size-4" aria-hidden="true" />{{ t("common.openFullPage") }}</Link>
-      </Button>
-    </template>
+  <DetailSheet v-model:index="shown" :total="rows.length" :title="current ? current.number || t('product.billing.invoices.draft') : ''" :description="current?.customer_external_id" wide :edge="nav.edge.value" @edge="nav.onEdge">
+    <InvoiceDetail v-if="current?.id" :key="current.id" :tenant-id="tenantId" :invoice-id="current.id" />
   </DetailSheet>
+  <InvoiceSheetById v-if="alone" :tenant-id="tenantId" :invoice-id="alone" @close="alone = ''" />
 </template>

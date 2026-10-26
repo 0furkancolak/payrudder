@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
+import type { components } from "@/shared/api/schema";
+
+export type Coupon = components["schemas"]["Coupon"];
+export type PromotionCode = components["schemas"]["PromotionCode"];
+export type Redemption = components["schemas"]["CouponRedemption"];
 
 export const pricingKeys = {
   coupons: (tenantId: string) => ["tenants", tenantId, "coupons"] as const,
@@ -31,6 +36,8 @@ export interface NewCoupon {
   duration?: "COUPON_DURATION_ONCE" | "COUPON_DURATION_REPEATING" | "COUPON_DURATION_FOREVER";
   duration_periods?: number;
   max_redemptions?: number;
+  /** The coupon stops working at this instant (RFC 3339). */
+  expire_time?: string;
   /** Do not make the promotion code with the coupon's own text. */
   without_default_code?: boolean;
 }
@@ -59,17 +66,17 @@ export interface NewCodes {
   prefix?: string;
 }
 
-export function usePromotionCodes(tenantId: MaybeRefOrGetter<string>, coupon: MaybeRefOrGetter<string>, state: MaybeRefOrGetter<string>, search: MaybeRefOrGetter<string>, pageToken: MaybeRefOrGetter<string>) {
+/** The promotion codes, of one coupon or (an empty coupon) of all, a page at a time. */
+export function usePromotionCodes(tenantId: MaybeRefOrGetter<string>, coupon: MaybeRefOrGetter<string>, state: MaybeRefOrGetter<string>, search: MaybeRefOrGetter<string>, pageToken: MaybeRefOrGetter<string>, size: MaybeRefOrGetter<number> = 25) {
   return useQuery({
-    queryKey: computed(() => [...pricingKeys.codes(toValue(tenantId)), toValue(coupon), toValue(state), toValue(search), toValue(pageToken)]),
-    enabled: computed(() => toValue(coupon) !== ""),
+    queryKey: computed(() => [...pricingKeys.codes(toValue(tenantId)), toValue(coupon), toValue(state), toValue(search), toValue(pageToken), toValue(size)]),
     queryFn: () =>
       unwrap(
         tenantApi(toValue(tenantId)).GET("/v1/promotion-codes", {
           params: {
             query: {
-              coupon: toValue(coupon),
-              page_size: 25,
+              ...(toValue(coupon) ? { coupon: toValue(coupon) } : {}),
+              page_size: toValue(size),
               ...(toValue(state) ? { state: toValue(state) as "active" } : {}),
               ...(toValue(search) ? { search: toValue(search) } : {}),
               ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}),
@@ -104,15 +111,44 @@ export function useCodeActions(tenantId: MaybeRefOrGetter<string>) {
   };
 }
 
-export function useRedemptions(tenantId: MaybeRefOrGetter<string>, coupon: MaybeRefOrGetter<string>, pageToken: MaybeRefOrGetter<string>) {
+/** What narrows the redemptions: a coupon, one of its promotion codes, a customer (all optional). */
+export interface RedemptionFilter {
+  coupon?: string;
+  promotionCode?: string;
+  customer?: string;
+}
+
+export function useRedemptions(tenantId: MaybeRefOrGetter<string>, filter: MaybeRefOrGetter<RedemptionFilter | string>, pageToken: MaybeRefOrGetter<string>, size: MaybeRefOrGetter<number> = 25, enabled: MaybeRefOrGetter<boolean> = true) {
+  // A plain string is a coupon code (the form the first pages used).
+  const f = () => {
+    const v = toValue(filter);
+    return typeof v === "string" ? { coupon: v } : v;
+  };
   return useQuery({
-    queryKey: computed(() => [...pricingKeys.redemptions(toValue(tenantId)), toValue(coupon), toValue(pageToken)]),
+    queryKey: computed(() => [...pricingKeys.redemptions(toValue(tenantId)), f(), toValue(pageToken), toValue(size)]),
+    enabled: computed(() => toValue(enabled)),
     queryFn: () =>
       unwrap(
         tenantApi(toValue(tenantId)).GET("/v1/coupon-redemptions", {
-          params: { query: { page_size: 25, ...(toValue(coupon) ? { coupon: toValue(coupon) } : {}), ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}) } },
+          params: {
+            query: {
+              page_size: toValue(size),
+              ...(f().coupon ? { coupon: f().coupon } : {}),
+              ...(f().promotionCode ? { promotion_code: f().promotionCode } : {}),
+              ...(f().customer ? { customer_external_id: f().customer } : {}),
+              ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}),
+            },
+          },
         }),
       ),
+  });
+}
+
+/** The codes of the tenant's packages, for a form that restricts a promotion code to some of them. */
+export function usePlanCodes(tenantId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => ["tenants", toValue(tenantId), "plan-codes"] as const),
+    queryFn: async () => (await unwrap(tenantApi(toValue(tenantId)).GET("/v1/plans"))).plans ?? [],
   });
 }
 

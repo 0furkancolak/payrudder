@@ -39,7 +39,7 @@ const revokeKey = useRevokeApiKey();
 
 const list = computed(() => apps.data.value?.apps ?? []);
 const table = useTableState(list, {
-  searchFields: (a) => [a.name, a.slug, ...(a.tenants ?? []).map((e) => e.id)],
+  sheet: { kind: "app", id: (a) => a.id }, searchFields: (a) => [a.name, a.slug, ...(a.tenants ?? []).map((e) => e.id)],
   filters: { env: (a, v) => (a.tenants ?? []).some((e) => environmentWord(e) === v) },
 });
 const when = (v?: string) => fmt.date(v, "day", "—");
@@ -68,8 +68,7 @@ function submit() {
 }
 
 // --- API keys. The API cannot list keys, so the page shows those made here (their plaintext only until dismissed) and revokes by id.
-const keysAt = ref<number | null>(null);
-const keysApp = computed(() => (keysAt.value === null ? undefined : table.items.value[keysAt.value]));
+const keysApp = table.row;
 const session = ref<CreatedKey[]>([]);
 const secret = ref<CreatedKey | null>(null);
 const revokeId = ref("");
@@ -98,7 +97,7 @@ function revoke(id: string) {
 }
 const failure = computed(() => firstError(createKey, revokeKey));
 // Stepping to another app leaves the key just made (and the note about a revoked one) behind.
-watch(keysAt, () => {
+watch(table.detail, () => {
   secret.value = null;
   revoked.value = "";
 });
@@ -126,7 +125,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(a, i) in table.items.value" :key="a.id" class="cursor-pointer" @click="keysAt = i">
+        <TableRow v-for="(a, i) in table.items.value" :key="a.id" class="cursor-pointer" @click="table.open(i)">
           <TableCell class="font-medium">{{ a.name }}</TableCell>
           <TableCell class="mono text-xs">{{ a.slug }}</TableCell>
           <TableCell class="space-y-1">
@@ -137,7 +136,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
             </div>
           </TableCell>
           <TableCell class="text-xs">{{ when(a.create_time) }}</TableCell>
-          <TableCell><RowActions :actions="[{ key: 'keys', label: t('apps.keys.open'), onSelect: () => (keysAt = i) }]" /></TableCell>
+          <TableCell><RowActions :actions="[{ key: 'keys', label: t('apps.keys.open'), onSelect: () => table.open(i) }]" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
@@ -146,7 +145,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <Sheet v-model:open="creating">
+  <Sheet v-model:open="creating" name="new-app">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("apps.new") }}</SheetTitle>
@@ -179,7 +178,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
     </SheetContent>
   </Sheet>
 
-  <DetailSheet v-model:index="keysAt" :total="table.items.value.length" :title="keysApp ? t('apps.keys.title', { app: keysApp.name }) : ''" :description="t('apps.keys.hint')" wide>
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="keysApp ? t('apps.keys.title', { app: keysApp.name }) : ''" :description="t('apps.keys.hint')" wide>
   <div v-if="keysApp" class="flex flex-col gap-4" role="region" :aria-label="t('apps.keys.title', { app: keysApp.name })">
     <ErrorText :error="failure" />
     <div v-if="secret" class="border-warning/50 bg-warning/10 rounded-md border p-3" role="status">

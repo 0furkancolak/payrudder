@@ -269,6 +269,18 @@ type CustomerCoupon struct {
 	ConsumedRedemptionID *uuid.UUID
 }
 
+type CustomerEntitlementOverride struct {
+	TenantID           uuid.UUID
+	CustomerID         uuid.UUID
+	MeterCode          string
+	LimitUnits         int64
+	AlertThresholdsPct []int32
+	QuotaWindow        string
+	Mode               string
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+}
+
 type GoLiveAudit struct {
 	ID           uuid.UUID
 	AppID        uuid.UUID
@@ -300,6 +312,7 @@ type Meter struct {
 	QuantityScale int16
 	UnitLabel     string
 	CreatedAt     time.Time
+	Category      string
 }
 
 type Outbox struct {
@@ -335,6 +348,8 @@ type PlanEntitlement struct {
 	MeterCode          string
 	LimitUnits         int64
 	AlertThresholdsPct []int32
+	QuotaWindow        string
+	Mode               string
 }
 
 type PlanPrice struct {

@@ -46,7 +46,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" name="new-app">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("product.createApp.title") }}</SheetTitle>

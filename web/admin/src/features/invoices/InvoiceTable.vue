@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { Link } from "@tanstack/vue-router";
-import { ExternalLink, Eye } from "@lucide/vue";
+import { Eye } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
+import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Badge } from "@/shared/ui/badge";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -19,8 +19,9 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useTenantInvoices } from "./api";
 import InvoiceDetail from "./InvoiceDetail.vue";
+import InvoiceSheetById from "./InvoiceSheetById.vue";
 
-/** The invoices of a tenant. A row opens the invoice in a sheet that steps through the rows the list shows; the invoice page stays for deep links. */
+/** The invoices of a tenant. A row opens the invoice in a sheet that steps through every row the filters leave, across pages. A link from another page opens an invoice with `?invoice=<id>`. */
 const props = defineProps<{ tenantId: string }>();
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
@@ -28,9 +29,9 @@ const invoices = useTenantInvoices(() => props.tenantId);
 const list = computed(() => invoices.data.value?.invoices ?? []);
 const STATUSES = ["draft", "open", "paid", "uncollectible", "void"] as const;
 const KINDS = ["REGULAR", "CORRECTION", "CREDIT_NOTE"] as const;
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((inv) => inRange(inv.create_time, range.value)), {
-  searchFields: (inv) => [inv.number, inv.period_id, inv.customer_external_id, inv.total_minor],
+  sheet: { kind: "invoice", id: (inv) => inv.id }, searchFields: (inv) => [inv.number, inv.period_id, inv.customer_external_id, inv.total_minor],
   filters: { status: (inv, v) => inv.status === v, kind: (inv, v) => inv.kind === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
@@ -45,8 +46,15 @@ const kindFilter = setFilter("kind");
 const statusOptions = computed(() => [{ value: "", label: t("tenant.allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: label(t, te, "invoiceStatus", s) }))]);
 const kindOptions = computed(() => [{ value: "", label: t("tenant.allKinds") }, ...KINDS.map((k) => ({ value: k, label: label(t, te, "invoiceKind", k) }))]);
 
-const index = ref<number | null>(null);
-const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
+const current = table.row;
+// A link names an invoice: found among the rows (a filter that hides it is cleared first), or else opened on its own, since the API sent only the newest ones.
+const alone = ref("");
+useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
+  const is = (inv: (typeof list.value)[number]) => inv.id === id;
+  if (table.openWhere(is)) return;
+  clear();
+  if (!table.openWhere(is)) alone.value = id;
+});
 </script>
 
 <template>
@@ -72,8 +80,8 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
       </TableRow>
     </TableHeader>
     <TableBody>
-      <TableRow v-for="(inv, i) in table.items.value" :key="inv.id" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
-        <TableCell class="font-medium"><Link to="/tenants/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: inv.id ?? '' }" class="hover:underline" @click.stop>{{ inv.number || t("tenant.draft") }}</Link></TableCell>
+      <TableRow v-for="(inv, i) in table.items.value" :key="inv.id" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
+        <TableCell class="font-medium">{{ inv.number || t("tenant.draft") }}</TableCell>
         <TableCell>{{ label(t, te, "invoiceKind", inv.kind) }}</TableCell>
         <TableCell>{{ inv.period_id }}</TableCell>
         <TableCell>{{ inv.customer_external_id }}</TableCell>
@@ -81,7 +89,7 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
         <TableCell class="text-end font-medium tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
         <TableCell><Badge :variant="statusVariant(inv.status)">{{ label(t, te, "invoiceStatus", inv.status) }}</Badge></TableCell>
         <TableCell><Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ label(t, te, "sagaState", inv.saga_state) }}</Badge></TableCell>
-        <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => (index = i) }]" /></TableCell>
+        <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => table.open(i) }]" /></TableCell>
       </TableRow>
     </TableBody>
   </Table>
@@ -90,10 +98,8 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
     {{ t("tenant.noInvoices") }}
   </p>
 
-  <DetailSheet v-model:index="index" :total="table.items.value.length" :title="current?.number || t('tenant.draft')" :description="current ? [label(t, te, 'invoiceKind', current.kind), current.customer_external_id].filter(Boolean).join(' · ') : undefined" wide>
-    <Link v-if="current" to="/tenants/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: current.id ?? '' }" class="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-sm hover:underline" data-testid="open-full-page">
-      <ExternalLink class="size-3.5" aria-hidden="true" />{{ t("common.openFullPage") }}
-    </Link>
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.number || t('tenant.draft')" :description="current ? [label(t, te, 'invoiceKind', current.kind), current.customer_external_id].filter(Boolean).join(' · ') : undefined" wide>
     <InvoiceDetail v-if="current" :key="current.id" :tenant-id="tenantId" :invoice-id="current.id ?? ''" />
   </DetailSheet>
+  <InvoiceSheetById v-if="alone" :tenant-id="tenantId" :invoice-id="alone" @close="alone = ''" />
 </template>

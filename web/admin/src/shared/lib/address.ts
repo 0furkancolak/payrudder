@@ -79,9 +79,6 @@ const PROFILES: Record<string, CountryProfile> = {
   KW: { region: "region", postalCode: "postalCode", usesRegion: false },
 };
 
-/** The countries the form offers by name; any other ISO code can be typed. */
-export const COMMON_COUNTRIES = Object.keys(PROFILES);
-
 export function countryProfile(country: string | undefined): CountryProfile {
   return PROFILES[(country ?? "").toUpperCase()] ?? DEFAULT_PROFILE;
 }

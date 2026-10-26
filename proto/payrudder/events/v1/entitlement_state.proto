@@ -20,4 +20,10 @@ message EntitlementState {
   // Unset = open-ended.
   google.protobuf.Timestamp valid_until = 8;
   uint32 quantity_scale = 9;
+  // What the limit counts over: "month" (also when empty: the billing period), "hour", "day" or "week", in the tenant's time zone.
+  string window = 10;
+  // "hard" (also when empty), "soft" or "notify": whether CheckEntitlement still allows usage at the limit.
+  string mode = 11;
+  // The limit is the customer's own (an override), not the plan version's.
+  bool override = 12;
 }

@@ -49,7 +49,7 @@ const actions = useEInvoiceAccountActions(tenantId);
 const accountOpen = ref(false);
 const list = computed(() => accounts.data.value ?? []);
 const table = useTableState(list, {
-  searchFields: (a) => [a.provider, a.environment],
+  sheet: { kind: "einvoice", id: (a) => a.environment }, searchFields: (a) => [a.provider, a.environment],
   filters: { environment: (a, v) => a.environment === v },
 });
 const environmentOptions = computed(() => [

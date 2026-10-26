@@ -55,7 +55,7 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateMeterRequest) 
 		}
 		out, err = q.InsertMeter(ctx, sqlc.InsertMeterParams{
 			Code: in.Code, Version: nextVersion, Aggregation: in.Aggregation, ValueProperty: in.ValueProperty,
-			Filter: in.Filter, QuantityScale: in.Scale, UnitLabel: in.UnitLabel,
+			Filter: in.Filter, QuantityScale: in.Scale, UnitLabel: in.UnitLabel, Category: in.Category,
 		})
 		if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
 			return errkey.New(codes.Aborted, "plans.meter.changed_concurrently", "concurrent meter version created; retry")

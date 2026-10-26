@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { thisMonth } from "@/shared/lib/dateRange";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
@@ -18,6 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAffiliateOptions, useCommissions, type CommissionFilter } from "./api";
 import { commissionTone, dayEnd, dayStart, isReversal, type Commission } from "./logic";
 import { DataPagination } from "@/shared/ui/data-table";
+import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { usePager } from "./paging";
 import ReverseDialog from "./ReverseDialog.vue";
 
@@ -35,7 +37,7 @@ const tenantId = computed(() => props.tenantId);
 const affiliate = ref("");
 const status = ref("");
 const kind = ref("");
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const filter = computed<CommissionFilter>(() => ({
   affiliate_id: affiliate.value,
   status: status.value,
@@ -69,9 +71,11 @@ const kindOptions = computed(() => [
   { value: "commission", label: t("affiliates.commissions.kinds.commission") },
   { value: "reversal", label: t("affiliates.commissions.kinds.reversal") },
 ]);
-const index = ref<number | null>(null);
 const items = computed(() => list.data.value?.items ?? []);
-const current = computed(() => (index.value === null ? undefined : items.value[index.value]));
+/** The sheet steps through the loaded page and, at its ends, loads the page beyond. */
+const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") });
+const index = detail.index;
+const current = detail.row;
 function reverseFrom(c: Commission) {
   index.value = null;
   reverse(c);
@@ -141,7 +145,7 @@ const canReverse = (c: Commission) => !isReversal(c) && c.status !== "reversed" 
     </Table>
     <DataPagination v-if="list.data.value" v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
   </Card>
-  <DetailSheet v-if="!payoutId" v-model:index="index" :total="items.length" :title="current?.affiliate_code ?? ''" :description="current ? fmt.date(current.earn_time, 'short') : undefined">
+  <DetailSheet v-if="!payoutId" v-model:index="index" :total="items.length" :offset="pager.offset.value" :of="list.data.value?.total" :edge="detail.edge.value" :title="current?.affiliate_code ?? ''" :description="current ? fmt.date(current.earn_time, 'short') : undefined" @edge="detail.onEdge">
     <dl v-if="current" class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm" data-testid="commission-detail">
       <dt class="text-muted-foreground">{{ t("affiliates.commissions.amount") }}</dt>
       <dd class="text-end text-lg font-semibold tabular-nums" :class="isReversal(current) ? 'text-destructive' : ''">{{ fmt.amount(current.amount_minor, current.currency) }}</dd>

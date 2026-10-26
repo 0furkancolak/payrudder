@@ -60,7 +60,7 @@ test.describe("payment links", () => {
     await expect(page.getByRole("row", { name: /Workshop/ })).toContainText("Revoked");
   });
 
-  test("the invoice page offers the payment links page for that invoice", async ({ page }) => {
+  test("the invoice sheet offers the payment links page for that invoice", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.method === "GET" && c.path === "/v1/payment-links") return { body: { links: [] } };
       if (c.method === "GET" && c.path.endsWith("/invoices/inv1")) return { body: { id: "inv1", number: "INV-1", status: "open", currency: "USD", total_minor: "100", lines: [] } };
@@ -69,7 +69,7 @@ test.describe("payment links", () => {
       return undefined;
     });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByRole("link", { name: "Payment link", exact: true }).click();
     await expect(page.getByRole("dialog").getByLabel("Invoice id")).toHaveValue("inv1");
   });

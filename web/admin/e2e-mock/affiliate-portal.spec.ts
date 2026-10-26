@@ -3,7 +3,7 @@ import { MockGateway, type Call } from "./gateway";
 import { ACCOUNT, memberships, productGateway, signInAsAda, type ProductState } from "./product";
 import { pickFilter, pickRange } from "./ui";
 
-// The affiliate partner portal against a mocked gateway: /app/partner (the person's affiliations and the claim), /app/partner/{id} (figures, balances,
+// The affiliate partner portal against a mocked gateway: /app/partner (the person's affiliations and the claim), /app/partner?open={id} (an affiliation's sheet: figures, balances,
 // terms, referrals, commissions, payouts, settings) and /app/partner/apply. The mock is a small stand-in for /app/v1/affiliate/*.
 
 const SELLER = "99999999-0000-4000-8000-000000000001";
@@ -221,19 +221,20 @@ test.describe("partner portal", () => {
   test("a pending and a suspended affiliation say so and still show their data", async ({ page }) => {
     const p = portal();
     p.affiliations = [affiliation(PENDING_AFF, { status: "pending" }), affiliation(LIVE_AFF, { status: "suspended" })];
-    await open(page, p, {}, `/app/partner/${PENDING_AFF}`);
-    await expect(page.getByTestId("banner-pending")).toContainText("waiting for the seller's approval");
-    await expect(page.getByTestId("status-badge")).toHaveText("Waiting for approval");
-    await expect(page.locator('[data-stat="clicks"]')).toContainText("320");
-    await page.goto(`/app/partner/${LIVE_AFF}`);
-    await expect(page.getByTestId("banner-suspended")).toContainText("suspended you");
-    await expect(page.locator('[data-stat="clicks"]')).toContainText("320");
+    await open(page, p, {}, `/app/partner?open=${PENDING_AFF}`);
+    const sheet = page.getByTestId("detail-sheet");
+    await expect(sheet.getByTestId("banner-pending")).toContainText("waiting for the seller's approval");
+    await expect(sheet.getByTestId("status-badge")).toHaveText("Waiting for approval");
+    await expect(sheet.locator('[data-stat="clicks"]')).toContainText("320");
+    await page.goto(`/app/partner?open=${LIVE_AFF}`);
+    await expect(sheet.getByTestId("banner-suspended")).toContainText("suspended you");
+    await expect(sheet.locator('[data-stat="clicks"]')).toContainText("320");
   });
 
   test("the dashboard: figures, earned and balances per currency (never summed), the terms in words, and the period", async ({ page }) => {
     await page.clock.setFixedTime(new Date(2026, 9, 21, 12, 0, 0));
-    const { gw } = await open(page, portal(), {}, `/app/partner/${LIVE_AFF}`);
-    await expect(page.getByRole("heading", { name: "Globex Seller" })).toBeVisible();
+    const { gw } = await open(page, portal(), {}, `/app/partner?open=${LIVE_AFF}`);
+    await expect(page.getByTestId("detail-sheet").getByRole("heading", { name: "Globex Seller" })).toBeVisible();
     await expect(page.locator('[data-stat="clicks"]').first()).toContainText("320");
     await expect(page.locator('[data-stat="referrals"]').first()).toContainText("40");
     await expect(page.locator('[data-stat="paying"]').first()).toContainText("12");
@@ -265,7 +266,7 @@ test.describe("partner portal", () => {
 
   test("referrals show masked e-mails only; commissions mark a reversal row and hide seller data; payouts carry the fake badge", async ({ page }) => {
     const p = portal();
-    const { gw } = await open(page, p, {}, `/app/partner/${SAND_AFF}`);
+    const { gw } = await open(page, p, {}, `/app/partner?open=${SAND_AFF}`);
     await expect(page.getByTestId("referrals")).toContainText("j***@example.com");
     await expect(page.getByTestId("referrals")).toContainText("m***@corp.example");
     await expect(page.getByTestId("referrals")).not.toContainText("@example.com j");
@@ -288,13 +289,13 @@ test.describe("partner portal", () => {
     await expect(page.locator('[data-payout="p2"]')).toContainText("Open");
 
     // A live affiliation's payouts are not fake.
-    await page.goto(`/app/partner/${LIVE_AFF}`);
+    await page.goto(`/app/partner?open=${LIVE_AFF}`);
     await page.getByRole("tab", { name: "Payouts" }).click();
     await expect(page.getByTestId("fake-badge")).toHaveCount(0);
   });
 
   test("the settings change the name and the payout details", async ({ page }) => {
-    const { gw } = await open(page, portal(), {}, `/app/partner/${LIVE_AFF}`);
+    const { gw } = await open(page, portal(), {}, `/app/partner?open=${LIVE_AFF}`);
     await page.getByRole("tab", { name: "Settings" }).click();
     await expect(page.getByLabel("Your name")).toHaveValue("Ada");
     await expect(page.getByLabel("Payout details")).toHaveValue("TR00 1111");
@@ -324,7 +325,8 @@ test.describe("applying", () => {
     await expect(page.getByTestId("apply-done")).toContainText("Application sent");
     expect(gw.called("POST", "/app/v1/affiliate/applications")[0]?.body).toEqual({ tenant_id: SELLER_TENANT, name: "Ada Lovelace", payout_method: "bank_transfer", payout_details: "TR55 0000" });
     await page.getByTestId("apply-done").getByRole("link", { name: "Open" }).click();
-    await expect(page).toHaveURL(new RegExp(`/app/partner/${PENDING_AFF}$`));
+    // The portal's home, which opens the new affiliation's sheet.
+    await expect(page).toHaveURL(/\/app\/partner(\?.*)?$/);
   });
 
   test("an automatic program makes the partner active at once", async ({ page }) => {
@@ -399,7 +401,7 @@ test.describe("the partner portal in Arabic", () => {
       };
       await visit("/app/partner", `[data-affiliation="${LIVE_AFF}"]`);
       await expect(page.getByTestId("env-badge").first()).toHaveText(/^(حقيقي|تجريبي)$/);
-      await visit(`/app/partner/${SAND_AFF}`, '[data-testid="earned"]');
+      await visit(`/app/partner?open=${SAND_AFF}`, '[data-testid="earned"]');
       for (const name of ["الإحالات", "العمولات", "الدفعات", "الإعدادات"]) {
         await page.getByRole("tab", { name, exact: true }).click();
         await page.waitForTimeout(300);

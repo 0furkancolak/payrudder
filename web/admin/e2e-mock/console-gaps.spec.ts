@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
-import { pickCurrency, pickZone } from "./ui";
+import { pickCurrency, pickPlace, pickZone } from "./ui";
 
 const ACCOUNT = "0192f0b4-0000-7000-8000-000000000001";
 const SANDBOX = "0192f0b4-0000-7000-8000-0000000000a1";
@@ -102,30 +102,42 @@ test.describe("seller address", () => {
     await expect(form.getByLabel("Address line 1")).toHaveValue("Atatürk Cd. 1");
     await expect(preview).toContainText("Acme");
     await expect(preview.getByTestId("preview-line")).toHaveText(["Atatürk Cd. 1", "34000 İstanbul", "TR"]);
-    // Turkey has no region field; the United States asks for a state and a ZIP code.
-    await expect(form.getByLabel("Province")).toHaveCount(0);
-    await form.getByLabel("Country", { exact: true }).selectOption("US");
-    await expect(form.getByLabel("State", { exact: true })).toBeVisible();
+    // Turkey's provinces come from the list, and a province offers its districts; the stored city stays until one is picked.
+    await expect(form.getByLabel("City")).toHaveValue("İstanbul");
+    await pickPlace(form.getByLabel("Province"), "istan");
+    await expect(form.getByLabel("Province")).toHaveValue("Istanbul");
+    await expect(form.getByLabel("City")).toHaveValue("İstanbul");
+    await pickPlace(form.getByLabel("City"), "kadikoy");
+    await expect(form.getByLabel("City")).toHaveValue("Kadıköy");
+    await expect(preview.getByTestId("preview-line")).toHaveText(["Atatürk Cd. 1", "34000 Kadıköy", "Istanbul", "TR"]);
+    await expect(form.getByTestId("geo-attribution")).toContainText("GeoNames (CC BY 4.0)");
+
+    // The United States asks for a state and a ZIP code; another country empties the region and the city of the old one.
+    await pickPlace(form.getByLabel("Country", { exact: true }), "united states");
+    await expect(form.getByLabel("Country", { exact: true })).toHaveValue("United States");
+    await expect(form.getByLabel("State", { exact: true })).toHaveValue("");
+    await expect(form.getByLabel("City")).toHaveValue("");
     await expect(form.getByLabel("ZIP code")).toBeVisible();
-    await form.getByLabel("State", { exact: true }).fill("California");
+    await pickPlace(form.getByLabel("State", { exact: true }), "calif");
     await form.getByLabel("ZIP code").fill("94105");
-    await form.getByLabel("City").fill("San Francisco");
+    await pickPlace(form.getByLabel("City"), "san fr");
     await expect(preview.getByTestId("preview-line")).toHaveText(["Atatürk Cd. 1", "94105 San Francisco", "California", "US"]);
 
-    // The backend's rules: one line, at most 120 characters (postal code 20), an ISO country of two letters (capitalised before it is sent).
+    // The backend's rules: one line, at most 120 characters (postal code 20).
     await form.getByLabel("Address line 1").fill("x".repeat(121));
     await expect(form.getByRole("alert")).toContainText("at most 120 characters");
     await expect(form.getByRole("button", { name: "Save address" })).toBeDisabled();
     await form.getByLabel("Address line 1").fill("1 Market St");
-    await form.getByLabel("Country", { exact: true }).selectOption("other");
-    await form.getByLabel(/Country code/).fill("s1");
-    await expect(form.getByRole("alert")).toContainText("Two letters");
-    await expect(form.getByRole("button", { name: "Save address" })).toBeDisabled();
-    await form.getByLabel(/Country code/).fill("se");
+    // A country the list does not have is taken by its two-letter code; where there are no regions, region and city are plain text.
+    await form.getByLabel("Country", { exact: true }).fill("no");
+    await expect(page.getByRole("option", { name: "Use the code NO" })).toBeVisible();
+    await form.getByLabel("Country", { exact: true }).press("Enter");
+    await expect(form.getByLabel("Country", { exact: true })).toHaveValue("NO");
+    await form.getByLabel("City").fill("Oslo");
     await form.getByRole("button", { name: "Save address" }).click();
     await expect(page.getByText("Address saved.")).toBeVisible();
     expect(gw.called("PATCH", `/admin/v1/tenants/${TENANT}`)[0]?.body).toEqual({
-      address: { line1: "1 Market St", city: "San Francisco", region: "California", postal_code: "94105", country: "SE" },
+      address: { line1: "1 Market St", city: "Oslo", postal_code: "94105", country: "NO" },
     });
   });
 

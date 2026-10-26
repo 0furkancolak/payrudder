@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { dashboardFixture } from "./dashboard";
-import { APP, INVOICE_1, LIVE, SESSION, billingGateway, productGateway, signInAsAda, user } from "./product";
+import { APP, LIVE, SESSION, billingGateway, liveGateway, productGateway, signInAsAda, user } from "./product";
 import { pickCurrency } from "./ui";
 
 // The end-user product: sign up and in, the organisation home, an app's dashboard, API keys. The gateway is mocked; SHOTS=<dir> also writes screenshots
@@ -119,7 +119,7 @@ test.describe("app dashboard", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await page.goto(`/app/apps/${APP}`);
+    await page.goto(`/app/apps/${APP}?period=30d`);
     await expect(page.getByRole("heading", { name: "Web shop" })).toBeVisible();
     // The tenant's own currency first; every figure is in it.
     await expect(page.getByTestId("currency-tab-TRY")).toHaveAttribute("aria-selected", "true");
@@ -128,8 +128,8 @@ test.describe("app dashboard", () => {
     await expect(page.getByTestId("kpi-customers-value")).toHaveText("18");
     await expect(page.getByRole("img", { name: /payment attempts/ })).toBeVisible();
     await expect(page.getByRole("region", { name: "Health" })).toContainText("1 failed deliveries");
-    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`)[0]?.query.get("environment")).toBe("live");
-    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`)[0]?.query.get("period")).toBe("30d");
+    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`).at(-1)?.query.get("environment")).toBe("live");
+    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`).at(-1)?.query.get("period")).toBe("30d");
     await shoot(page, "06-dashboard");
   });
 
@@ -491,6 +491,38 @@ test.describe("members and invitations", () => {
     expect(gw.called("PATCH", "/app/v1/account")[0]?.body).toEqual({ name: "Ada Holdings" });
   });
 
+  test("the user menu lists the organisations and starts a new one, which becomes the one in use", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await expect(page.getByTestId("switch-org-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")).toContainText("Ada Labs");
+    await page.getByTestId("new-org").click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByRole("button", { name: "Create organisation" })).toBeDisabled();
+    await sheet.getByLabel("Organisation name").fill("  Second Co  ");
+    await sheet.getByRole("button", { name: "Create organisation" }).click();
+    await expect(sheet).toHaveCount(0);
+    expect(gw.called("POST", "/app/v1/accounts")[0]?.body).toEqual({ name: "Second Co" });
+    await expect(page).toHaveURL(/\/app$/);
+    // The new organisation is in the menu, ticked, and the console now asks for it.
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await expect(page.getByTestId("switch-org-dddddddd-dddd-4ddd-8ddd-000000000001")).toContainText("Second Co");
+    await expect.poll(() => gw.called("GET", "/app/v1/apps").some((c) => c.query.get("account_id") === "dddddddd-dddd-4ddd-8ddd-000000000001")).toBe(true);
+  });
+
+  test("a refused new organisation says why and keeps the sheet open", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { maxAccounts: 1 });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await page.getByTestId("new-org").click();
+    const sheet = page.getByRole("dialog");
+    await sheet.getByLabel("Organisation name").fill("One too many");
+    await sheet.getByRole("button", { name: "Create organisation" }).click();
+    await expect(sheet.getByRole("alert")).toContainText("at most 20 organisations");
+  });
+
   test("an invited newcomer chooses a password and is in; the token leaves the address bar", async ({ page }) => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
@@ -596,11 +628,9 @@ test.describe("billing pages of the app", () => {
     expect(gw.called("GET", "/v1/invoices").some((c) => c.query.get("status") === "open")).toBe(true);
     await page.getByRole("button", { name: "Status: ×" }).click();
 
-    // A row opens the invoice in a sheet beside the list; the sheet leads to the invoice's own page.
+    // A row opens the invoice in a sheet beside the list (there is no page of its own).
     await page.getByTestId("invoice-INV-2026-000003").click();
     await expect(page.getByTestId("detail-sheet")).toContainText("$49.00");
-    await page.getByRole("link", { name: "Open full page" }).click();
-    await page.waitForURL(`**/app/t/${LIVE}/invoices/${INVOICE_1}`);
     await expect(page.getByTestId("invoice-total")).toHaveText("$49.00");
     await expect(page.getByRole("cell", { name: /Pro plan, September/ })).toBeVisible();
     await expect(page.getByRole("cell", { name: /API calls/ })).toBeVisible();
@@ -639,7 +669,9 @@ test.describe("billing pages of the app", () => {
     await shoot(page, "32-payments");
     await rows.nth(0).getByTestId("row-actions").click();
     await page.getByTestId("row-action-invoice").click();
-    await page.waitForURL(`**/app/t/${LIVE}/invoices/${INVOICE_1}`);
+    // The invoice list opens with the invoice's sheet on top.
+    await page.waitForURL(`**/app/t/${LIVE}/invoices`);
+    await expect(page.getByTestId("detail-sheet")).toContainText("INV-2026-000003");
     expect(gw.called("GET", "/v1/payments")[0]?.headers["x-payrudder-tenant"]).toBe(LIVE);
     expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
   });
@@ -650,9 +682,11 @@ test.describe("billing pages of the app", () => {
     await expect(page.getByRole("cell", { name: "pro", exact: true })).toBeVisible();
     await expect(page.getByTestId("packages-new")).toBeEnabled();
     await shoot(page, "33-packages");
+    await page.getByTestId("sidebar").getByRole("link", { name: "Coupons", exact: true }).click();
+    await expect(page.getByRole("cell", { name: "SAVE10", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "New coupon" })).toBeEnabled();
     await page.getByTestId("sidebar").getByRole("link", { name: "Pricing and tax" }).click();
-    await expect(page.getByRole("cell", { name: "SAVE10" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create coupon" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Save rates" })).toBeEnabled();
     await page.getByTestId("sidebar").getByRole("link", { name: "Reports", exact: true }).click();
     await expect(page.getByRole("cell", { name: "USD" }).first()).toBeVisible();
     expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
@@ -664,9 +698,10 @@ test.describe("billing pages of the app", () => {
     await expect(page.getByTestId("read-only-note")).toContainText("Your role is viewer");
     await expect(page.getByRole("cell", { name: "pro", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Publish version" })).toHaveCount(0);
+    await page.getByTestId("sidebar").getByRole("link", { name: "Coupons", exact: true }).click();
+    await expect(page.getByRole("cell", { name: "SAVE10", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "New coupon" })).toBeDisabled();
     await page.getByTestId("sidebar").getByRole("link", { name: "Pricing and tax" }).click();
-    await expect(page.getByRole("cell", { name: "SAVE10" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Create coupon" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Save retries" })).toBeDisabled();
     await page.goto(`/app/t/${LIVE}/invoices`);
     await expect(page.getByTestId("invoice-INV-2026-000003")).toBeVisible();
@@ -676,12 +711,13 @@ test.describe("billing pages of the app", () => {
   // Every page of the product at phone width: nothing scrolls sideways. The list is the menu of an environment plus the pages that are not in it, so
   // a page added to the navigation is covered without touching this test.
   test("no page of the app scrolls sideways at 375 px", async ({ page }) => {
+    test.setTimeout(180_000); // every page of the menu, one after the other
     await page.setViewportSize({ width: 375, height: 812 });
-    await open(page);
+    liveGateway(await open(page));
     await page.goto(`/app/t/${LIVE}/customers`);
     await page.getByRole("button", { name: "Open the menu" }).click();
     const hrefs = await page.getByRole("dialog").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""));
-    const routes = new Set<string>(["/app", `/app/apps/${APP}`, "/app/settings", "/app/members", `/app/apps/${APP}/keys`, `/app/apps/${APP}/settings`, `/app/t/${LIVE}/invoices/${INVOICE_1}`]);
+    const routes = new Set<string>(["/app", `/app/apps/${APP}`, "/app/settings", "/app/members", `/app/apps/${APP}/keys`, `/app/apps/${APP}/settings`, `/app/t/${LIVE}/invoices`]);
     for (const h of hrefs) if (h.startsWith("/app")) routes.add(h);
     expect(routes.size, "the navigation must list the environment's pages").toBeGreaterThan(12);
     for (const r of routes) {
@@ -697,10 +733,10 @@ test.describe("billing pages of the app", () => {
     const gw = await open(page);
     await page.goto(`/app/t/${LIVE}/customers`);
     const nav = page.getByTestId("sidebar").getByRole("navigation", { name: "Main navigation" });
-    for (const tab of ["Customers", "Invoices", "Payments", "Packages", "Pricing and tax", "Reports", "Payment links", "Credits", "Webhooks"]) {
+    for (const tab of ["Customers", "Invoices", "Payments", "Packages", "Pricing and tax", "Coupons", "Usage", "Reports", "Payment links", "Credits", "Webhooks"]) {
       await expect(nav.getByRole("link", { name: tab, exact: true })).toBeVisible();
     }
-    for (const path of ["customers", "invoices", "payments", "packages", "pricing", "reports", "payment-links", "credits", "webhooks"]) {
+    for (const path of ["customers", "invoices", "payments", "packages", "pricing", "coupons", "usage", "reports", "payment-links", "credits", "webhooks"]) {
       await page.goto(`/app/t/${LIVE}/${path}`);
       await expect(page.getByTestId("page-title")).toBeVisible();
     }

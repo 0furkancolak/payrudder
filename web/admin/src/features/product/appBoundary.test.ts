@@ -25,7 +25,7 @@ const sources = import.meta.glob(
 describe("pages of the product app", () => {
   it("covers the pages that are mounted under /app/t/{tenant}", () => {
     const names = Object.keys(sources).map((p) => p.replace(/^\.\.?\//, ""));
-    for (const expected of ["InvoicesPage.vue", "InvoiceDetailPage.vue", "PaymentsPage.vue", "billingApi.ts", "packages/PackagesPage.vue", "pricing/PricingPage.vue", "reports/ReportsPage.vue", "customers/CustomersPage.vue"]) {
+    for (const expected of ["InvoicesPage.vue", "InvoiceDetail.vue", "PaymentsPage.vue", "billingApi.ts", "packages/PackagesPage.vue", "pricing/PricingPage.vue", "reports/ReportsPage.vue", "customers/CustomersPage.vue"]) {
       expect(names.some((n) => n.endsWith(expected)), expected).toBe(true);
     }
   });

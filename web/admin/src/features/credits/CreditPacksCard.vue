@@ -115,7 +115,7 @@ function submitPack() {
     <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
     <ErrorText :error="setActive.error.value" class="px-3" />
 
-    <Sheet v-model:open="open">
+    <Sheet v-model:open="open" name="new-credit-pack">
       <SheetContent>
         <SheetHeader>
           <SheetTitle>{{ t("billing.credits.packs.new") }}</SheetTitle>

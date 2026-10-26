@@ -45,7 +45,7 @@ function target(key: GoLiveKey): { to: string } | { anchor: string } | null {
     case "legal_profile":
       return { anchor: "billing-profile" };
     case "payment_provider":
-      return { anchor: "live-provider" };
+      return { to: `/app/apps/${props.appId}/providers` };
     case "terms_accepted":
       return { anchor: "go-live-terms-box" };
     default:
@@ -101,7 +101,7 @@ function acceptNow() {
           </p>
           <p v-if="!i.done && !compact" class="text-muted-foreground text-xs">{{ t(`product.goLive.help.${i.key}`) }}</p>
         </div>
-        <Link v-if="!i.done && !compact && pageTarget(i.key)" :to="pageTarget(i.key)!" class="text-primary shrink-0 text-xs font-medium hover:underline">{{ t("product.goLive.open") }}</Link>
+        <Link v-if="!i.done && !compact && pageTarget(i.key)" :to="pageTarget(i.key)!" :search="(i.key === 'payment_provider' ? { env: 'live' } : undefined) as never" class="text-primary shrink-0 text-xs font-medium hover:underline" :data-testid="`go-live-go-${i.key}`">{{ t("product.goLive.open") }}</Link>
         <button v-else-if="!i.done && !compact && target(i.key)" type="button" class="text-primary shrink-0 text-xs font-medium hover:underline" :data-testid="`go-live-go-${i.key}`" @click="scrollTo(i.key)">{{ t("product.goLive.fillIn") }}</button>
       </li>
     </ol>

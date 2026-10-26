@@ -8,6 +8,7 @@ import { useFormat } from "@/shared/lib/format";
 import { SCENARIOS } from "./golive";
 import { useApps } from "./api";
 import { ManualPaymentsCard } from "@/features/invoices";
+import { InvoiceRelated } from "@/features/related";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -17,12 +18,12 @@ import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { useInvoice, useOpenInvoicePdf, useSimulateInvoice } from "./billingApi";
 
 /**
- * The content of one invoice, for its page and for the sheet the invoice list opens (`embedded`: the sheet's header already names the invoice): its total and status, who it is for, its lines and the payments recorded for it by hand, and a link to the PDF (a presigned link, valid five
+ * The content of one invoice, for the sheet the invoice list opens (the sheet's header already names the invoice): its total and status, who it is for, its lines and the payments recorded for it by hand, the records related to it, and a link to the PDF (a presigned link, valid five
  * minutes). It reads /v1/invoices/{id} and /pdf; the saga timeline, the transfer controls and the credit-note actions are operator tools and are not here.
  */
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
-const props = defineProps<{ tenantId: string; invoiceId: string; embedded?: boolean }>();
+const props = defineProps<{ tenantId: string; invoiceId: string }>();
 const tenantId = computed(() => props.tenantId);
 const invoiceId = computed(() => props.invoiceId);
 const invoice = useInvoice(tenantId, invoiceId);
@@ -44,10 +45,10 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
     <Skeleton v-if="invoice.isPending.value" class="h-48 rounded-3xl" />
 
     <template v-if="inv">
-      <div :class="embedded ? 'flex flex-wrap items-start justify-between gap-4' : 'surface flex flex-wrap items-start justify-between gap-4 p-6'">
+      <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="flex flex-col gap-1">
           <p class="text-muted-foreground text-sm">{{ label(t, te, "invoiceKind", inv.kind) }}</p>
-          <h2 :class="embedded ? 'sr-only' : 'text-2xl font-semibold tracking-tight'" data-testid="invoice-number">{{ inv.number || t("product.billing.invoices.draft") }}</h2>
+          <h2 class="sr-only" data-testid="invoice-number">{{ inv.number || t("product.billing.invoices.draft") }}</h2>
           <p class="text-4xl font-semibold tracking-tight tabular" data-testid="invoice-total">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</p>
           <div class="mt-1"><StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill></div>
         </div>
@@ -65,7 +66,7 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
         </div>
       </div>
 
-      <section v-if="canSimulate" :class="embedded ? 'bg-muted/50 flex flex-col gap-3 rounded-2xl p-4' : 'surface flex flex-col gap-3 p-6'" :aria-label="t('product.sandbox.simulateTitle')" data-testid="simulate">
+      <section v-if="canSimulate" class="bg-muted/50 flex flex-col gap-3 rounded-2xl p-4" :aria-label="t('product.sandbox.simulateTitle')" data-testid="simulate">
         <div>
           <h3 class="text-lg font-semibold tracking-tight">{{ t("product.sandbox.simulateTitle") }}</h3>
           <p class="text-muted-foreground text-sm">{{ t("product.sandbox.simulateBody") }}</p>
@@ -82,7 +83,7 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
         <ErrorText :error="simulate.error.value" />
       </section>
 
-      <section :class="embedded ? 'flex flex-col gap-3' : 'surface flex flex-col gap-3 p-6'" :aria-label="t('product.billing.invoice.lines')">
+      <section class="flex flex-col gap-3" :aria-label="t('product.billing.invoice.lines')">
         <h2 class="text-lg font-semibold tracking-tight">{{ t("product.billing.invoice.lines") }}</h2>
         <div class="relative -mx-2 overflow-x-auto px-2">
           <table class="w-full text-sm">
@@ -113,6 +114,8 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
       </section>
 
       <ManualPaymentsCard v-if="(inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
+
+      <InvoiceRelated :tenant-id="tenantId" :invoice-id="invoiceId" :customer="inv.customer_external_id" />
     </template>
   </section>
 </template>

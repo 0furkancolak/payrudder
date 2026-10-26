@@ -3,9 +3,10 @@ import { Plus, Settings2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Subscription } from "@/shared/api/client";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { enumWord, label } from "@/shared/lib/labels";
+import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -32,9 +33,9 @@ const list = computed(() => subs.data.value?.subscriptions ?? []);
 const state = (s: Subscription) => enumWord(s.state, "SUBSCRIPTION_STATE_");
 const BAD_STATES = ["cancelled", "past_due"];
 const stateVariant = (s: Subscription) => (state(s) === "active" ? "success" : BAD_STATES.includes(state(s)) ? "destructive" : "secondary");
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((s) => inRange(s.start_time, range.value)), {
-  searchFields: (s) => [s.customer_external_id, s.plan_code, s.provider],
+  sheet: { kind: "subscription", id: (s) => s.id }, searchFields: (s) => [s.customer_external_id, s.plan_code, s.provider],
   filters: { state: (s, v) => state(s) === v, currency: (s, v) => s.currency === v, interval: (s, v) => s.interval === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
@@ -55,8 +56,14 @@ const intervalOptions = computed(() => [
 ]);
 const date = (v?: string | null) => fmt.date(v, "day", "—");
 
-const index = ref<number | null>(null);
-const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
+const current = table.row;
+// A link from a customer or an invoice opens the subscription it names; a filter that hides it is cleared first.
+useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
+  if (!table.openWhere((s) => s.id === id)) {
+    clear();
+    table.openWhere((s) => s.id === id);
+  }
+});
 </script>
 
 <template>
@@ -86,7 +93,7 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(s, i) in table.items.value" :key="s.id" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
+        <TableRow v-for="(s, i) in table.items.value" :key="s.id" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
           <TableCell class="font-medium">{{ s.customer_external_id }}</TableCell>
           <TableCell class="mono">{{ s.plan_code }} v{{ s.plan_version }}</TableCell>
           <TableCell>
@@ -101,7 +108,7 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
           </TableCell>
           <TableCell>{{ date(s.start_time) }}</TableCell>
           <TableCell>{{ date(s.end_time) }}</TableCell>
-          <TableCell class="text-end"><RowActions :actions="[{ key: 'manage', label: t('billing.subscriptions.manage'), icon: Settings2, onSelect: () => (index = i) }]" /></TableCell>
+          <TableCell class="text-end"><RowActions :actions="[{ key: 'manage', label: t('billing.subscriptions.manage'), icon: Settings2, onSelect: () => table.open(i) }]" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
@@ -112,7 +119,7 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="index" :total="table.items.value.length" :title="t('billing.subscriptions.managing', { customer: current?.customer_external_id ?? '' })" :description="current ? `${current.plan_code} v${current.plan_version}` : undefined" wide>
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="t('billing.subscriptions.managing', { customer: current?.customer_external_id ?? '' })" :description="current ? `${current.plan_code} v${current.plan_version}` : undefined" wide>
     <slot v-if="current" name="detail" :subscription="current" />
   </DetailSheet>
 </template>

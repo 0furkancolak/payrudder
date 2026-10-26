@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { currencyInfo } from "./intl";
-import { formatMinor, maskDigits, maskEmail, minorDigits, minorToMajor, parseMajor } from "./money";
+import { formatMinor, maskDigits, maskEmail, minorDigits, minorToMajor, parseMajor, parseUnitPrice, unitPriceToMajor } from "./money";
 import { privacyMode } from "./prefs";
 
 describe("minorToMajor", () => {
@@ -120,5 +120,30 @@ describe("privacy mode", () => {
     } finally {
       privacyMode.value = false;
     }
+  });
+});
+
+describe("unit prices", () => {
+  it("moves the point by the currency's minor digits, in the text", () => {
+    expect(parseUnitPrice("0.0002", "USD")).toBe("0.02");
+    expect(parseUnitPrice("1,5", "TRY")).toBe("150");
+    expect(parseUnitPrice("0.10", "EUR")).toBe("10");
+    expect(parseUnitPrice("3", "JPY")).toBe("3");
+    expect(parseUnitPrice("0.5", "JPY")).toBe("0.5");
+    expect(parseUnitPrice("0.001", "KWD")).toBe("1");
+    expect(parseUnitPrice("0", "USD")).toBe("0");
+    expect(parseUnitPrice("0.00000000000001", "USD")).toBe("0.000000000001");
+  });
+  it("refuses what the API would", () => {
+    for (const bad of ["", "-1", "1e3", "abc", "1.2.3", "0.000000000000001"]) expect(parseUnitPrice(bad, "USD")).toBeNull();
+  });
+  it("reads back what it wrote", () => {
+    expect(unitPriceToMajor("0.02", "USD")).toBe("0.0002");
+    expect(unitPriceToMajor("150", "TRY")).toBe("1.5");
+    expect(unitPriceToMajor("10", "EUR")).toBe("0.1");
+    expect(unitPriceToMajor("3", "JPY")).toBe("3");
+    expect(unitPriceToMajor("0", "USD")).toBe("0");
+    expect(unitPriceToMajor("x", "USD")).toBe("");
+    for (const v of ["0.0002", "12.345", "7"]) expect(unitPriceToMajor(parseUnitPrice(v, "USD") ?? "", "USD")).toBe(v);
   });
 });

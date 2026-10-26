@@ -3,6 +3,7 @@ import { Link, Outlet, useNavigate } from "@tanstack/vue-router";
 import { Menu } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import PeekHost from "@/features/related/PeekHost.vue";
 import VerifyBanner from "@/features/product/VerifyBanner.vue";
 import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
@@ -19,6 +20,7 @@ import PrivacyToggle from "./PrivacyToggle.vue";
 import Sidebar from "./Sidebar.vue";
 import ThemeToggle from "./ThemeToggle.vue";
 import UserMenu from "./UserMenu.vue";
+import { useSheetUrlSync } from "@/shared/lib/sheets";
 import { useShell } from "./useShell";
 
 /**
@@ -32,6 +34,7 @@ const brand = brandName();
 // There is one kind of signed-in person; an operator is a person the server also lets into the operator console.
 const signedIn = computed(() => isPerson.value);
 const shell = useShell();
+useSheetUrlSync();
 const drawer = ref(false);
 
 // A route change closes the drawer (the links also do; this covers the browser's back button).
@@ -138,6 +141,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         <VerifyBanner v-if="isPerson" />
         <Outlet />
       </main>
+      <PeekHost v-if="isPerson" />
     </div>
   </div>
 </template>

@@ -13,6 +13,7 @@ import (
 
 func (s *Server) memberRoutes() []Route {
 	return []Route{
+		{"POST", "/app/v1/accounts", AccessSession, ratelimit.ClassWrite, s.accountCreate},
 		{"PATCH", "/app/v1/account", AccessSession, ratelimit.ClassWrite, s.withAccount(s.accountRename)},
 		{"GET", "/app/v1/account/invitations", AccessSession, ratelimit.ClassRead, s.withAccount(s.invitationList)},
 		{"POST", "/app/v1/account/invitations", AccessSession, ratelimit.ClassWrite, s.withAccount(s.invitationCreate)},
@@ -24,6 +25,21 @@ func (s *Server) memberRoutes() []Route {
 		{"POST", "/auth/invitations/lookup", AccessPublic, "", s.invitationLookup},
 		{"POST", "/auth/invitations/accept", AccessPublic, "", s.invitationAccept},
 	}
+}
+
+// accountCreate is POST /app/v1/accounts {name}: the signed-in person starts another organisation and owns it. The session's memberships are read on
+// every request, so the new account is in them from the next call on.
+func (s *Server) accountCreate(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Identity.CreateMyAccount(r.Context(), &plansv1.CreateMyAccountRequest{UserId: sess.UserID, Name: body.Name})
+	respond(w, r, http.StatusCreated, resp.GetMembership(), err)
 }
 
 func (s *Server) accountRename(w http.ResponseWriter, r *http.Request, sess session, id string) {

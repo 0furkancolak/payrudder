@@ -247,6 +247,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `gateway.dashboard.limits_unavailable`
 - `gateway.dashboard.payments_unavailable`
 - `gateway.dashboard.range_too_long`
+- `gateway.geo.country_not_found`
+- `gateway.geo.region_not_found`
 - `gateway.payments.ledger_unreachable`
 - `gateway.payments.not_configured`
 - `gateway.payments.unreachable`
@@ -259,6 +261,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `gateway.route.not_found`
 - `identity.account.forbidden`
 - `identity.account.not_found`
+- `identity.account.quota`
 - `identity.api_key.already_rotating`
 - `identity.api_key.bad_environment`
 - `identity.api_key.bad_overlap`
@@ -428,6 +431,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.migration.cannot_abort`
 - `plans.migration.state_not_movable`
 - `plans.migration.subscription_ended`
+- `plans.override.customer_required`
+- `plans.override.not_found`
 - `plans.plan.no_fixed_fee`
 - `plans.plan.no_metered_price`
 - `plans.request.invalid`

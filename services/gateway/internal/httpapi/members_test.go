@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -24,9 +25,30 @@ type memberCalls struct {
 	removes []*plansv1.RemoveMemberRequest
 	revokes []*plansv1.RevokeInvitationRequest
 	renames []*plansv1.RenameMyAccountRequest
+	creates []*plansv1.CreateMyAccountRequest
+	created map[string][]*plansv1.Membership // accounts made through CreateMyAccount, by user
 	accepts []*plansv1.AcceptInvitationRequest
 	asUser  []*plansv1.AcceptInvitationAsUserRequest
 	lookups []*plansv1.LookupInvitationRequest
+}
+
+func (f *fakeIdentity) CreateMyAccount(_ context.Context, req *plansv1.CreateMyAccountRequest) (*plansv1.CreateMyAccountResponse, error) {
+	f.seen(req.GetUserId())
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.mem.creates = append(f.mem.creates, req)
+	if strings.TrimSpace(req.GetName()) == "" || len(req.GetName()) > 200 {
+		return nil, errkey.New(codes.InvalidArgument, "common.invalid_argument", "name: required, at most 200 characters")
+	}
+	if len(f.mem.created[req.GetUserId()]) >= 2 {
+		return nil, errkey.New(codes.ResourceExhausted, "identity.account.quota", "too many accounts")
+	}
+	m := &plansv1.Membership{AccountId: "0193c000-0000-7000-8000-00000000a0" + string(rune('0'+len(f.mem.created[req.GetUserId()]))), AccountName: strings.TrimSpace(req.GetName()), Role: "owner"}
+	if f.mem.created == nil {
+		f.mem.created = map[string][]*plansv1.Membership{}
+	}
+	f.mem.created[req.GetUserId()] = append(f.mem.created[req.GetUserId()], m)
+	return &plansv1.CreateMyAccountResponse{Membership: m}, nil
 }
 
 func (f *fakeIdentity) RenameMyAccount(_ context.Context, req *plansv1.RenameMyAccountRequest) (*plansv1.RenameMyAccountResponse, error) {
@@ -163,6 +185,7 @@ func (f *fakeIdentity) AcceptInvitationAsUser(_ context.Context, req *plansv1.Ac
 func TestMemberRoutesNeedALiveSession(t *testing.T) {
 	p := newProduct(t, nil, nil)
 	for _, rt := range []struct{ method, path, body string }{
+		{"POST", "/app/v1/accounts", `{"name":"x"}`},
 		{"PATCH", "/app/v1/account", `{"name":"x"}`},
 		{"GET", "/app/v1/account/invitations", ""},
 		{"POST", "/app/v1/account/invitations", `{"email":"a@example.com","role":"viewer"}`},
@@ -180,7 +203,7 @@ func TestMemberRoutesNeedALiveSession(t *testing.T) {
 	}
 	p.ident.mu.Lock()
 	defer p.ident.mu.Unlock()
-	if n := len(p.ident.mem.invites) + len(p.ident.mem.roles) + len(p.ident.mem.removes) + len(p.ident.mem.revokes) + len(p.ident.mem.renames) + len(p.ident.mem.asUser); n != 0 {
+	if n := len(p.ident.mem.invites) + len(p.ident.mem.roles) + len(p.ident.mem.removes) + len(p.ident.mem.revokes) + len(p.ident.mem.renames) + len(p.ident.mem.creates) + len(p.ident.mem.asUser); n != 0 {
 		t.Errorf("%d calls reached plans-svc without a session", n)
 	}
 }
@@ -313,5 +336,50 @@ func TestInvitationLinksAreRateLimitedPerAddress(t *testing.T) {
 		if i >= tokenUsesPerMinute && (resp.StatusCode != 429 || errKeyOf(m) != "identity.auth.rate_limited") {
 			t.Fatalf("request %d: %d %v", i+1, resp.StatusCode, m)
 		}
+	}
+}
+
+func TestCreateAccountMakesTheSessionsUserAnOwnerOfANewOne(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	// A body that names another user changes nothing: the session decides who owns the new account.
+	resp, m := p.call(t, "POST", "/app/v1/accounts", tokAda, "", `{"name":"  Second Co  ","user_id":"`+bobUser+`"}`)
+	if resp.StatusCode != 201 || m["account_name"] != "Second Co" || m["role"] != "owner" || m["account_id"] == "" {
+		t.Fatalf("create: %d %v", resp.StatusCode, m)
+	}
+	p.ident.mu.Lock()
+	got := p.ident.mem.creates[len(p.ident.mem.creates)-1]
+	p.ident.mu.Unlock()
+	if got.GetUserId() != adaUser {
+		t.Errorf("created for %q, want the session's user", got.GetUserId())
+	}
+	// The next request already sees it among the memberships, and may act in it.
+	resp, me := p.call(t, "GET", "/auth/me", tokAda, "", "")
+	if resp.StatusCode != 200 || len(me["memberships"].([]any)) != 2 {
+		t.Fatalf("me after create: %d %v", resp.StatusCode, me)
+	}
+	if resp, _ = p.call(t, "GET", "/app/v1/account?account_id="+m["account_id"].(string), tokAda, "", ""); resp.StatusCode == 404 {
+		t.Error("the new account is not one of the session's accounts")
+	}
+	// Bob is untouched.
+	if _, me = p.call(t, "GET", "/auth/me", tokBob, "", ""); len(me["memberships"].([]any)) != 1 {
+		t.Errorf("bob's memberships changed: %v", me)
+	}
+}
+
+func TestCreateAccountRefusesABadNameAndTooMany(t *testing.T) {
+	p := newProduct(t, nil, nil)
+	if resp, _ := p.call(t, "POST", "/app/v1/accounts", tokAda, "", `{"name":"   "}`); resp.StatusCode != 400 {
+		t.Errorf("blank name: %d, want 400", resp.StatusCode)
+	}
+	if resp, _ := p.call(t, "POST", "/app/v1/accounts", tokAda, "", `{}`); resp.StatusCode != 400 {
+		t.Errorf("no name: %d, want 400", resp.StatusCode)
+	}
+	for i := 0; i < 2; i++ {
+		if resp, _ := p.call(t, "POST", "/app/v1/accounts", tokAda, "", `{"name":"More"}`); resp.StatusCode != 201 {
+			t.Fatalf("create %d: %d", i, resp.StatusCode)
+		}
+	}
+	if resp, m := p.call(t, "POST", "/app/v1/accounts", tokAda, "", `{"name":"One too many"}`); resp.StatusCode != 429 {
+		t.Errorf("over the limit: %d %v, want 429", resp.StatusCode, m)
 	}
 }

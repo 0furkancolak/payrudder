@@ -1,18 +1,20 @@
 <script setup lang="ts">
-import { Link } from "@tanstack/vue-router";
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useResendVerification } from "@/features/product/api";
 import { toApiError } from "@/shared/api/client";
 import { personToken } from "@/shared/lib/session";
+import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useAffiliations, useClaim } from "./api";
 import { affiliateTone, environmentTone, sortAffiliations } from "./logic";
+import PartnerDetail from "./PartnerDetail.vue";
 import StatusBanner from "./StatusBanner.vue";
 import TermsList from "./TermsList.vue";
 
@@ -22,6 +24,15 @@ const list = useAffiliations();
 const claim = useClaim();
 const resend = useResendVerification();
 const affiliations = computed(() => sortAffiliations(list.data.value));
+
+/** The affiliation whose sheet is open, as its place among the cards; a link from the apply page names one with `?open=<id>`. */
+const shown = ref<number | null>(null);
+const current = computed(() => (shown.value === null ? undefined : affiliations.value[shown.value]));
+const open = (id: string) => {
+  const at = affiliations.value.findIndex((a) => a.id === id);
+  if (at >= 0) shown.value = at;
+};
+useOpenParam("open", () => list.isSuccess.value, open);
 
 // The records a seller made for the person's verified address are claimed once per session (idempotent on the server), then the list is read again.
 let claimedFor: string | null = null;
@@ -72,9 +83,13 @@ const claimProblem = computed(() => (claim.error.value && !unverified.value ? cl
         <CopyField v-if="a.link" :value="a.link" :label="t('partner.link')" :copy-label="t('partner.copyLink')" testid="affiliation-link" />
         <TermsList :program="a.program" />
         <div>
-          <Link :to="`/app/partner/${a.id}`" class="text-brand-strong text-sm font-medium underline-offset-4 hover:underline">{{ t("partner.open") }}</Link>
+          <Button type="button" variant="link" class="h-auto p-0" :data-testid="`open-${a.id}`" @click="open(a.id ?? '')">{{ t("partner.open") }}</Button>
         </div>
       </Card>
     </div>
   </div>
+
+  <DetailSheet v-model:index="shown" :total="affiliations.length" :title="current?.seller_name ?? ''" :description="current ? `${t('partner.code')}: ${current.code}` : undefined" wide>
+    <PartnerDetail v-if="current" :id="current.id ?? ''" :key="current.id" />
+  </DetailSheet>
 </template>

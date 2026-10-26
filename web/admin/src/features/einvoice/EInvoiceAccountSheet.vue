@@ -59,7 +59,7 @@ function saveAccount() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" name="einvoice-account">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("einvoice.account.add") }}</SheetTitle>

@@ -1,23 +1,24 @@
 <script setup lang="ts">
-import { Link, useNavigate, useParams } from "@tanstack/vue-router";
+import { useNavigate, useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { Eye, FileText } from "@lucide/vue";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
+import { PaymentContext } from "@/features/related";
+import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { usePayments } from "./billingApi";
 
 /**
@@ -30,12 +31,12 @@ const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const payments = usePayments(tenantId);
 const all = computed(() => payments.data.value?.payments ?? []);
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const rows = computed(() => all.value.filter((p) => inRange(p.occurred_at, range.value)));
 const navigate = useNavigate();
-const toInvoice = (id?: string) => void navigate({ to: "/app/t/$id/invoices/$invoiceId", params: { id: tenantId.value, invoiceId: id ?? "" } });
+const toInvoice = (id?: string) => void navigate({ to: "/app/t/$id/invoices", params: { id: tenantId.value }, search: { invoice: id ?? "" } as never });
 const table = useTableState(rows, {
-  searchFields: (p) => [p.provider, p.invoice_id, p.id, p.amount_minor],
+  sheet: { kind: "payment", id: (p) => p.id }, searchFields: (p) => [p.provider, p.invoice_id, p.id, p.amount_minor],
   filters: { status: (p, v) => p.status === v, kind: (p, v) => p.kind === v },
 });
 const statuses = computed(() => [...new Set(all.value.map((p) => p.status as string | undefined).filter((v): v is string => !!v))].sort());
@@ -45,10 +46,15 @@ function clear() {
   table.clear();
   range.value = { from: "", to: "" };
 }
-/** The payment whose sheet is open: an index into the rows shown now. */
-const shown = ref<number | null>(null);
-const current = computed(() => (shown.value === null ? undefined : table.items.value[shown.value]));
-watch([table.search, table.filters, table.page, table.size, range], () => (shown.value = null), { deep: true });
+const current = table.row;
+watch([table.search, table.filters, table.size, range], () => (table.detail.value = null), { deep: true });
+// A link from an invoice or a customer opens the payment it names; a filter that hides it is cleared first.
+useOpenParam("payment", () => payments.isSuccess.value, (id) => {
+  if (!table.openWhere((p) => p.id === id)) {
+    clear();
+    table.openWhere((p) => p.id === id);
+  }
+});
 const signed = (p: NonNullable<typeof current.value>) => formatMinor(p.status === "refunded" ? `-${p.amount_minor}` : p.amount_minor, p.currency, locale.value);
 const when = (v?: string) => fmt.date(v, "dateTime");
 </script>
@@ -79,7 +85,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="(p, i) in table.items.value" :key="p.id" class="cursor-pointer" data-testid="payment-row" @click="shown = i">
+          <TableRow v-for="(p, i) in table.items.value" :key="p.id" class="cursor-pointer" data-testid="payment-row" @click="table.open(i)">
             <TableCell class="font-medium whitespace-nowrap">{{ when(p.occurred_at) }}</TableCell>
             <TableCell>{{ t(`product.billing.payments.kinds.${p.kind}`) }}</TableCell>
             <TableCell><StatusPill :tone="toneOf(p.status)">{{ t(`product.status.${p.status}`) }}</StatusPill></TableCell>
@@ -88,7 +94,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
             <TableCell>
               <RowActions
                 :actions="[
-                  { key: 'view', label: t('common.view'), icon: Eye, onSelect: () => (shown = i) },
+                  { key: 'view', label: t('common.view'), icon: Eye, onSelect: () => table.open(i) },
                   ...(p.invoice_id ? [{ key: 'invoice', label: t('product.billing.payments.viewInvoice'), icon: FileText, onSelect: () => toInvoice(p.invoice_id) }] : []),
                 ]"
               />
@@ -101,7 +107,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
     <DataPagination v-if="all.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="shown" :total="table.items.value.length" :title="current ? signed(current) : ''" :description="current ? when(current.occurred_at) : undefined">
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current ? signed(current) : ''" :description="current ? when(current.occurred_at) : undefined">
     <dl v-if="current" class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm" data-testid="payment-detail">
       <dt class="text-muted-foreground">{{ t("product.billing.payments.kind") }}</dt>
       <dd>{{ t(`product.billing.payments.kinds.${current.kind}`) }}</dd>
@@ -112,10 +118,6 @@ const when = (v?: string) => fmt.date(v, "dateTime");
       <dt class="text-muted-foreground">{{ t("product.payments.amount") }}</dt>
       <dd class="tabular font-medium">{{ signed(current) }}</dd>
     </dl>
-    <template #footer>
-      <Button v-if="current?.invoice_id" variant="ghost" as-child>
-        <Link to="/app/t/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: current.invoice_id }"><FileText class="size-4" aria-hidden="true" />{{ t("product.billing.payments.viewInvoice") }}</Link>
-      </Button>
-    </template>
+    <PaymentContext v-if="current?.invoice_id" :key="current.id" :tenant-id="tenantId" :invoice-id="current.invoice_id" class="mt-6" />
   </DetailSheet>
 </template>

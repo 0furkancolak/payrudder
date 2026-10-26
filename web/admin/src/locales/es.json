@@ -148,8 +148,6 @@
     "allKinds": "Todos los tipos"
   },
   "invoice": {
-    "back": "← Inquilino",
-    "fallbackTitle": "Factura",
     "summary": "{kind} · periodo {period} · {customer} · {total} · {status} · saga {saga}",
     "openPdf": "Abrir PDF",
     "noPdfLink": "sin enlace",
@@ -361,7 +359,6 @@
       "name": "Nombre",
       "email": "Correo electrónico",
       "country": "País",
-      "countryPlaceholder": "País (TR, DE…)",
       "currency": "Moneda de facturación",
       "tenantCurrency": "Moneda del cliente",
       "create": "Crear cliente",
@@ -379,7 +376,64 @@
         "editing": "Dirección de {id}"
       },
       "allCountries": "Todos los países",
-      "allCurrencies": "Todas las monedas"
+      "allCurrencies": "Todas las monedas",
+      "newHint": "Normalmente tu aplicación crea los clientes mediante la API; aquí puedes añadir uno a mano.",
+      "searchPlaceholder": "Buscar nombre, correo, id…",
+      "emptyHint": "Los clientes aparecen aquí cuando tu aplicación los crea mediante la API. También puedes añadir uno a mano.",
+      "partialFigures": "El gasto, los saldos y los últimos pagos se calculan a partir de las facturas y pagos más recientes.",
+      "columns": {
+        "customer": "Cliente",
+        "subscriptions": "Suscripciones",
+        "currency": "Moneda",
+        "spend": "Gasto total",
+        "created": "Creado",
+        "lastPayment": "Último pago"
+      },
+      "filters": {
+        "subscription": "Suscripción",
+        "hasActive": "Con suscripción activa",
+        "noActive": "Sin suscripción activa",
+        "billing": "Facturación",
+        "openInvoices": "Facturas abiertas",
+        "delinquent": "Moroso"
+      },
+      "subscriptionStatus": {
+        "pastDue": "Vencida",
+        "active": "Activa",
+        "trialing": "En prueba",
+        "paused": "En pausa",
+        "cancelled": "Cancelada",
+        "none": "Ninguna"
+      },
+      "stats": {
+        "spend": "Gasto total",
+        "open": "Saldo pendiente",
+        "credits": "Saldo de créditos",
+        "subscriptions": "Suscripciones activas",
+        "openInvoices": "{count} abiertas"
+      },
+      "tabs": {
+        "overview": "Resumen",
+        "payments": "Pagos",
+        "invoices": "Facturas",
+        "subscriptions": "Suscripciones",
+        "credits": "Créditos",
+        "details": "Detalles"
+      },
+      "sheet": {
+        "copyId": "Copiar id de cliente {id}",
+        "since": "Cliente desde {date}",
+        "actions": "Acciones del cliente",
+        "newSubscription": "Nueva suscripción",
+        "edit": "Editar",
+        "sections": "Secciones del cliente",
+        "viewAll": "Ver todo",
+        "noSubscriptions": "Aún no hay suscripciones.",
+        "noInvoices": "Aún no hay facturas.",
+        "noPayments": "Aún no hay pagos.",
+        "manageCredits": "Gestionar créditos",
+        "paymentMethod": "Método de pago"
+      }
     },
     "packages": {
       "new": "Nuevo paquete",
@@ -410,6 +464,54 @@
         "perUnit": "{price} por unidad",
         "tiered": "{n} tramos",
         "package": "{size} unidades por {price}"
+      },
+      "usagePrices": "Precios de uso",
+      "usagePricesHelp": "Precios en {currency} de lo que se mide, por periodo de facturación. Una cantidad incluida es gratuita; el precio se aplica a lo que la supera.",
+      "noMeters": "Esta aplicación aún no tiene medidores: cree uno primero en la página Medidores.",
+      "priceRow": "Precio de uso {n}",
+      "priceMeter": "Medidor del precio {n}",
+      "priceModel": "Modelo de precio del precio {n}",
+      "chooseMeter": "Elija un medidor",
+      "models": {
+        "per_unit": "Por unidad",
+        "tiered": "Por tramos",
+        "package": "Por paquete de unidades"
+      },
+      "included": "Cantidad incluida del precio {n}",
+      "includedPlaceholder": "Incluido gratis por periodo ({unit}), opcional",
+      "unitPrice": "Precio unitario del precio {n}",
+      "unitPricePlaceholder": "Precio por {unit} en {currency} (0.002)",
+      "tierUpTo": "Precio {n}, tramo {tier} hasta",
+      "tierUpToPlaceholder": "Hasta (cantidad)",
+      "tierRest": "Todo lo que exceda",
+      "tierPrice": "Precio {n}, tramo {tier} precio unitario",
+      "unitPriceShort": "Precio unitario ({currency})",
+      "tierFlat": "Precio {n}, tramo {tier} tarifa fija",
+      "flatFeePlaceholder": "Tarifa fija ({currency}), opcional",
+      "addTier": "Añadir un tramo",
+      "packageSize": "Tamaño de paquete del precio {n}",
+      "packageSizePlaceholder": "Unidades por paquete ({unit})",
+      "packagePrice": "Precio de paquete del precio {n}",
+      "packagePricePlaceholder": "Precio por paquete ({currency})",
+      "addPrice": "Añadir un precio de uso",
+      "otherCurrencyPrices": "Los precios de uso están en {currency}. Una suscripción en otra moneda también necesita precios de uso en ella (currency_prices en la API).",
+      "limitsHelp": "Una cuota limita un medidor durante una ventana de tiempo. Los eventos de uso nunca se rechazan: el campo allowed de la API y las alertas le dicen a su aplicación qué hacer.",
+      "quotaRow": "Cuota {n}",
+      "quotaMeter": "Medidor de la cuota {n}",
+      "addQuota": "Añadir una cuota",
+      "includedColumn": "Incluido",
+      "usageErrors": {
+        "meter": "Línea de uso {n}: elija un medidor.",
+        "duplicate": "Línea de uso {n}: {meter} aparece dos veces.",
+        "unitPrice": "Línea de uso {n}: el precio unitario no es un importe en {currency}.",
+        "included": "Línea de uso {n}: la cantidad incluida tiene más decimales de los que permite {meter}.",
+        "tierBound": "Línea de uso {n}: cada tramo salvo el último necesita un límite superior en unidades de {meter}.",
+        "flatFee": "Línea de uso {n}: una tarifa fija no es un importe en {currency}.",
+        "packageSize": "Línea de uso {n}: el tamaño del paquete debe ser una cantidad mayor que cero.",
+        "packagePrice": "Línea de uso {n}: el precio del paquete no es un importe en {currency}.",
+        "limit": "Cuota {n}: el límite debe ser una cantidad con como mucho los decimales de {meter}.",
+        "thresholds": "Cuota {n}: las alertas son hasta 10 porcentajes crecientes entre 1 y 1000.",
+        "softNeedsPrice": "Cuota {n}: un límite flexible cobra lo que lo supera, así que {meter} necesita un precio de uso; si no, elija Solo avisar."
       }
     },
     "subscriptions": {
@@ -1153,6 +1255,294 @@
         "discount": "Descuento",
         "net": "Neto"
       }
+    },
+    "usage": {
+      "tabsLabel": "Secciones del uso",
+      "tabs": {
+        "overview": "Resumen",
+        "meters": "Medidores",
+        "customers": "Clientes"
+      },
+      "compare": "Comparar con el periodo anterior",
+      "period": "Límites y clasificaciones: {period}",
+      "periodHint": "Los límites y las clasificaciones se cuentan por periodo de facturación (un mes): el mes en que termina el rango elegido.",
+      "tooLong": "Un rango dura como máximo un año. Se muestran los últimos 30 días.",
+      "before": "Antes: {value} {unit}",
+      "events": "{n} eventos",
+      "aggregation": {
+        "sum": "Suma",
+        "count": "Número de eventos",
+        "max": "Valor más alto"
+      },
+      "aggregationHint": {
+        "sum": "Suma el valor de la propiedad del evento.",
+        "count": "Cuenta los eventos; no hace falta ninguna propiedad.",
+        "max": "Toma el valor más alto de la propiedad del evento en el periodo."
+      },
+      "state": {
+        "over": "Límite superado",
+        "near": "Cerca del límite",
+        "ok": "Dentro del límite",
+        "unlimited": "Sin límite"
+      },
+      "chart": {
+        "current": "Este periodo",
+        "previous": "Periodo anterior",
+        "total": "Total",
+        "before": "antes",
+        "estimate": "Estimación: se cuenta a partir de acumulados por hora, así que una entrega duplicada puede contarse dos veces. Las facturas usan el uso exacto.",
+        "empty": "Sin uso en este periodo.",
+        "summary": "{total} {unit} del {from} al {to}"
+      },
+      "empty": {
+        "title": "Aún no hay medidores",
+        "hint": "Un medidor indica qué contar en los eventos que envías. Crea un medidor y luego envía eventos con su código."
+      },
+      "top": {
+        "title": "Clientes principales",
+        "hint": "Quién usó más {meter} en {period}.",
+        "empty": "Nadie usó este medidor en este periodo."
+      },
+      "limits": {
+        "title": "Límites",
+        "hint": "Clientes cerca de un límite o por encima, entre los {n} mayores usuarios en {period}.",
+        "over": "{n} por encima",
+        "near": "{n} cerca",
+        "clear": "Nadie está cerca de un límite.",
+        "nobody": "Ningún cliente usó un medidor en este periodo."
+      },
+      "meters": {
+        "new": "Nuevo medidor",
+        "newHint": "Un medidor convierte los eventos que envías en una cantidad que se factura.",
+        "formLabel": "medidor",
+        "code": "Código",
+        "codeHint": "Minúsculas, dígitos y _, empezando por una letra.",
+        "unit": "Unidad",
+        "unitPlaceholder": "llamadas, GB, tokens",
+        "aggregation": "Agregación",
+        "allAggregations": "Cualquier agregación",
+        "property": "Propiedad de valor",
+        "propertyHint": "La propiedad del evento que contiene la cantidad.",
+        "scale": "Decimales",
+        "scaleHint": "De 0 a 6. Queda fijo para un código una vez creado el medidor.",
+        "scaleFixed": "Fijo para este código.",
+        "filter": "Contar solo los eventos donde",
+        "filterHint": "Déjalo vacío para contar todos los eventos. Una propiedad puede coincidir con varios valores.",
+        "filterRow": "Filtro {n}",
+        "filterProperty": "Propiedad {n}",
+        "filterValues": "Valores {n}",
+        "filterValuesPlaceholder": "eu, us",
+        "addFilter": "Añadir un filtro",
+        "create": "Crear medidor",
+        "saveVersion": "Guardar la nueva versión",
+        "newVersion": "Nueva versión",
+        "versionTitle": "Nueva versión de {code}",
+        "versionHint": "Guarda la siguiente versión de este medidor (ahora la versión {version}).",
+        "search": "Buscar medidores",
+        "inPeriod": "En el periodo",
+        "trend": "Tendencia",
+        "series": "Uso a lo largo del tiempo",
+        "version": "Versión",
+        "created": "Creado",
+        "errors": {
+          "code": "El código son minúsculas, dígitos y _, empezando por una letra (como máximo 63).",
+          "unit": "Da a la unidad un nombre de 32 caracteres como máximo.",
+          "property": "Indica la propiedad del evento que contiene la cantidad.",
+          "scale": "Los decimales son un número entero de 0 a 6.",
+          "filter": "Cada filtro necesita una propiedad y al menos un valor (sin propiedades repetidas, como máximo 10)."
+        },
+        "filterShort": "Filtro"
+      },
+      "customers": {
+        "search": "Buscar clientes",
+        "meter": "Medidor",
+        "allMeters": "Todos los medidores",
+        "usage": "Uso",
+        "anyUsage": "Cualquier uso",
+        "used": "Con uso",
+        "idle": "Sin uso",
+        "limits": "Límites",
+        "limitsOf": "Límites en {period}",
+        "billingPeriod": "Periodo de facturación"
+      }
+    },
+    "coupons": {
+      "tabsLabel": "Secciones de cupones",
+      "tabs": {
+        "coupons": "Cupones",
+        "codes": "Códigos promocionales",
+        "redemptions": "Canjes"
+      },
+      "hint": {
+        "coupons": "Un cupón indica qué se descuenta, dónde vale y durante cuánto tiempo. Los clientes lo obtienen con un código promocional.",
+        "codes": "Los códigos que escriben los clientes. Muchos códigos pueden apuntar a un cupón, cada uno con su límite, caducidad y reglas.",
+        "redemptions": "Cada uso de un cupón, con el cliente, la factura y lo que descontó."
+      },
+      "new": "Nuevo cupón",
+      "searchCoupons": "Buscar cupones",
+      "searchCustomer": "Buscar por id de cliente",
+      "anyTarget": "Vale en cualquier sitio",
+      "everywhere": "En todas partes",
+      "never": "Nunca",
+      "expires": "Caduca",
+      "created": "Creado",
+      "firstOf": "Se muestran los primeros {n} de {total}.",
+      "errors": {
+        "code": "El código tiene de 2 a 40 letras, dígitos, - o _.",
+        "value": "Indica lo que descuenta el cupón: un porcentaje hasta 100 (hasta 1000 para créditos extra) o un importe con como máximo los decimales de la moneda.",
+        "targets": "Elige dónde vale el cupón.",
+        "periods": "El número de cuotas es un entero de 1 a 120.",
+        "max": "El límite de canjes es un entero desde 1.",
+        "expires": "La caducidad debe ser un día futuro.",
+        "coupon": "Elige un cupón."
+      },
+      "sheet": {
+        "title": "Nuevo cupón",
+        "hint": "Un cupón indica qué se descuenta. Los clientes lo usan con un código promocional.",
+        "codeHint": "De 2 a 40 letras, dígitos, - o _. El código del cupón es también su primer código promocional.",
+        "namePlaceholder": "Oferta de bienvenida (opcional)",
+        "value": {
+          "percent": "Porcentaje de descuento (%)",
+          "amount": "Importe del descuento",
+          "bonus": "Créditos extra (%)"
+        },
+        "durationHint": "A cuántas cuotas de una suscripción se aplica el descuento.",
+        "noLimit": "Sin límite",
+        "expires": "Caduca el (opcional)",
+        "defaultCode": "Crear también un código promocional con este texto",
+        "defaultCodeHint": "Los clientes pueden escribir el código del cupón de inmediato. Desactívalo para crear los códigos tú mismo."
+      },
+      "preview": {
+        "title": "Qué hará",
+        "noValue": "Introduce un valor para ver qué hace el cupón.",
+        "percent": "{pct} de descuento: una cuota de {before} pasa a {after}.",
+        "amount": "{off} de descuento: una cuota de {before} pasa a {after}.",
+        "bonus": "{pct} más de créditos: comprar {credits} créditos da {total}.",
+        "where": "Vale para: {list}.",
+        "duration": "En una suscripción: {duration}.",
+        "max": "Como máximo {n} usos en total.",
+        "noMax": "Sin límite de usos.",
+        "expires": "Deja de valer después del {date}.",
+        "noExpiry": "No caduca.",
+        "code": "Los clientes pueden escribir {code}."
+      },
+      "codeSheet": {
+        "makes": "Crea {n} códigos promocionales para {coupon} ({value}).",
+        "usesEach": "Cada código puede usarse {n} veces.",
+        "usesUnlimited": "Cada código puede usarse sin límite.",
+        "minimum": "Desde {amount}",
+        "plans": "Solo en estos planes",
+        "plansHint": "Deja todo sin marcar para permitir cualquier plan.",
+        "noPlans": "Aún no hay paquetes: el código vale para cualquier plan.",
+        "packs": "Solo en estos paquetes de créditos",
+        "namesHint": "Separa los códigos con saltos de línea, comas o espacios. De 2 a 40 letras, dígitos, - o _.",
+        "done": "Hecho"
+      },
+      "redemptions": {
+        "invoice": "Factura",
+        "bonusCredits": "+{n} créditos",
+        "noCode": "Sin código (aplicado directamente)"
+      },
+      "discount": "Descuento"
+    },
+    "meters": {
+      "new": "Nuevo medidor",
+      "newVersion": "Nueva versión",
+      "newVersionOf": "Nueva versión de {code}",
+      "intro": "Un medidor dice qué se mide y cómo se suman los eventos de uso. Una nueva versión de un código puede cambiarlo todo salvo sus decimales; los eventos se comprueban con la más reciente.",
+      "formLabel": "nuevo medidor",
+      "code": "Código",
+      "codePlaceholder": "Código (api_calls)",
+      "category": "Categoría",
+      "categoryPlaceholder": "Categoría a su elección (opcional)",
+      "allCategories": "Todas las categorías",
+      "aggregation": "Agregación",
+      "allAggregations": "Todas las agregaciones",
+      "aggregations": {
+        "sum": "Suma",
+        "count": "Recuento",
+        "max": "Máximo"
+      },
+      "aggregationHelp": {
+        "sum": "Suma la cantidad de cada evento del periodo.",
+        "count": "Cuenta los eventos; su cantidad se ignora.",
+        "max": "Guarda la cantidad más alta informada en el periodo (puestos, almacenamiento)."
+      },
+      "valueProperty": "Propiedad de cantidad",
+      "valuePropertyPlaceholder": "Propiedad del evento con la cantidad (tokens)",
+      "unit": "Unidad",
+      "unitPlaceholder": "Unidad a su elección (tokens, GB-h)",
+      "scale": "Decimales",
+      "decimals": "{n} decimales",
+      "filter": "Solo eventos con",
+      "filterHelp": "Los eventos cuyas propiedades no coinciden con cada línea no se cuentan. Déjelo vacío para contarlos todos.",
+      "filterProperty": "Propiedad de filtro {n}",
+      "filterValues": "Valores aceptados {n}",
+      "filterPropertyPlaceholder": "Propiedad (region)",
+      "filterValuesPlaceholder": "Valores separados por comas (eu, us)",
+      "addFilter": "Añadir una condición",
+      "badFilter": "Cada condición necesita una propiedad y al menos un valor.",
+      "noFilter": "todos los eventos",
+      "create": "Crear medidor",
+      "saveVersion": "Publicar versión",
+      "empty": "Aún no hay medidores. Hace falta uno para que un paquete pueda cobrar o limitar el uso."
+    },
+    "quotas": {
+      "action": "Cuotas",
+      "of": "Cuotas de {id}",
+      "intro": "Una excepción sustituye lo que el paquete del cliente permite en un medidor, en todas sus suscripciones, hasta que se elimine.",
+      "overrides": "Límites propios",
+      "none": "Sin excepciones: se aplican los límites del paquete.",
+      "formLabel": "excepción de cuota",
+      "set": "Fijar un límite para este cliente",
+      "meter": "Medidor",
+      "chooseMeter": "Elija un medidor",
+      "save": "Guardar excepción",
+      "edit": "Editar la excepción en {meter}",
+      "remove": "Quitar la excepción en {meter}",
+      "limit": "Límite",
+      "limitN": "Límite de la cuota {n}",
+      "limitIn": "Límite en {unit} (0 = ilimitado)",
+      "limitPlaceholder": "Límite (0 = ilimitado)",
+      "window": "Ventana",
+      "windowN": "Ventana de la cuota {n}",
+      "mode": "Al alcanzarlo",
+      "modeN": "Al alcanzar la cuota {n}",
+      "thresholds": "Alertas",
+      "thresholdsN": "Alertas de la cuota {n}",
+      "thresholdsPlaceholder": "Alertas al % del límite (50, 80, 100)",
+      "windows": {
+        "hour": "Por hora",
+        "day": "Por día",
+        "week": "Por semana",
+        "month": "Por mes de facturación"
+      },
+      "modes": {
+        "hard": "Estricto: dejar de permitir",
+        "soft": "Flexible: permitir y cobrar el exceso",
+        "notify": "Solo avisar"
+      },
+      "modeHelp": {
+        "hard": "Al llegar al límite, allowed pasa a false.",
+        "soft": "allowed sigue en true; el uso por encima del límite se cobra al precio del medidor.",
+        "notify": "allowed sigue en true; solo se envían las alertas."
+      },
+      "windowHelp": {
+        "hour": "Cuenta cada hora en la zona horaria de la aplicación.",
+        "day": "Cuenta cada día en la zona horaria de la aplicación.",
+        "week": "Cuenta cada semana desde el lunes en la zona horaria de la aplicación.",
+        "month": "Cuenta el mes de facturación, como la factura."
+      },
+      "windowColumn": "Ventana",
+      "modeColumn": "Al alcanzarlo",
+      "alertsColumn": "Alertas",
+      "overridden": "límite propio",
+      "overButAllowed": "por encima del límite, aún permitido",
+      "resets": "se reinicia {at}",
+      "errors": {
+        "limit": "El límite debe ser una cantidad con como mucho {n} decimales.",
+        "thresholds": "Las alertas son hasta 10 porcentajes crecientes entre 1 y 1000."
+      }
     }
   },
   "affiliates": {
@@ -1704,10 +2094,8 @@
     "hint": "La dirección legal y de facturación de este inquilino, impresa como vendedor en cada factura (PDF y página alojada). Se aplica a las facturas emitidas después de guardar.",
     "formLabel": "dirección del vendedor",
     "noCountry": "Sin país",
-    "otherCountry": "Otro país…",
     "labels": {
       "country": "País",
-      "countryCode": "Código de país (dos letras, p. ej. SE)",
       "line1": "Línea de dirección 1",
       "line2": "Línea de dirección 2",
       "city": "Ciudad",
@@ -1999,6 +2387,10 @@
       "plan": {
         "no_fixed_fee": "Esta versión del plan no tiene tarifa fija para ese intervalo en esta moneda.",
         "no_metered_price": "Esta versión del plan tiene precios medidos, pero ninguno en esta moneda."
+      },
+      "override": {
+        "customer_required": "Indique para qué cliente es el límite.",
+        "not_found": "Este cliente no tiene ninguna excepción en ese medidor."
       }
     },
     "common": {
@@ -2150,7 +2542,8 @@
     "identity": {
       "account": {
         "forbidden": "Su rol en esta cuenta no lo permite.",
-        "not_found": "Esta cuenta no existe o no es suya."
+        "not_found": "Esta cuenta no existe o no es suya.",
+        "quota": "Una persona puede ser propietaria de un máximo de 20 organizaciones."
       },
       "api_key": {
         "bad_environment": "Esta aplicación no tiene ese entorno.",
@@ -2270,6 +2663,10 @@
       },
       "route": {
         "not_found": "Esa dirección no existe en la API."
+      },
+      "geo": {
+        "country_not_found": "Ese país no está en la lista.",
+        "region_not_found": "Esa región no está en la lista."
       }
     },
     "env": {
@@ -2461,7 +2858,12 @@
   },
   "product": {
     "menu": {
-      "open": "Menú de la cuenta"
+      "open": "Menú de la cuenta",
+      "newOrg": "Nueva organización",
+      "newOrgTitle": "Crear una organización",
+      "newOrgBody": "Usted será su propietario. Empieza vacía: añada aplicaciones e invite a personas después.",
+      "orgName": "Nombre de la organización",
+      "orgCreate": "Crear organización"
     },
     "nav": {
       "home": "Inicio",
@@ -2823,7 +3225,6 @@
         "loadMore": "Cargar más"
       },
       "invoice": {
-        "back": "Todas las facturas",
         "issued": "Emitida",
         "openPdf": "Abrir el PDF",
         "lines": "Líneas",
@@ -3055,6 +3456,75 @@
       "simulate": "Simular",
       "simulated": "Pago ejecutado de nuevo como {scenario}.",
       "simulateNotRetried": "El escenario está establecido, pero el pago no pudo ejecutarse de nuevo ahora ({why})."
+    },
+    "providers": {
+      "introApp": "Conecta y gestiona los proveedores de pago de {app}. Los clientes pagan con la cuenta live; el sandbox no necesita conexión.",
+      "introOrg": "Conecta un proveedor de pago una vez para todas tus apps, o configura una app de forma distinta al resto.",
+      "connect": "Conectar",
+      "manage": "Gestionar",
+      "simulator": "Simulador integrado",
+      "sandboxNote": "El sandbox nunca llega a un proveedor real: funciona con un simulador integrado, así que no hay nada que conectar allí.",
+      "state": {
+        "none": "No conectado",
+        "working": "Conectado y funcionando",
+        "problem": "Problema"
+      },
+      "defaultAccount": "Conectado y usado en los pagos live.",
+      "connectedLine": "Conectado.",
+      "notConnectedLine": "No conectado en modo live.",
+      "noLiveApps": "Ninguna app tiene aún un entorno live.",
+      "orgLine": "Conectado en {connected} de {total} apps",
+      "openScreen": "Proveedores de pago",
+      "doneAll": "{provider} conectado en {count} app(s).",
+      "donePartial": "{provider}: {ok} app(s) conectadas, {failed} con error.",
+      "appsTitle": "Apps",
+      "appsIntro": "Haz clic en un estado para conectar, sustituir o quitar un proveedor solo en esa app.",
+      "app": "App",
+      "noLive": "Sin entorno live",
+      "about": {
+        "iyzico": "Tarjetas turcas y métodos locales",
+        "paddle": "Tarjetas de todo el mundo, con suscripciones gestionadas por el proveedor",
+        "banktransfer": "Pago por transferencia a tu propia cuenta bancaria"
+      },
+      "scope": {
+        "title": "Dónde conectar",
+        "app": "Solo esta app",
+        "org": "Todas las apps de la organización",
+        "appNote": "Solo esta app usa estas claves.",
+        "orgNote": "Las mismas claves se conectan en las {count} apps que tienen entorno live. Después aún puedes cambiar una app por separado."
+      },
+      "confirmDisconnectOrg": "¿Quitar la cuenta live de {provider} de {count} app(s)? Los clientes ya no podrán pagar por ahí.",
+      "sheet": {
+        "connectTitle": "Conectar {provider}",
+        "manageTitle": "Conexión de {provider}",
+        "intro": {
+          "iyzico": "Introduce tus claves de comercio live de iyzico. Se comprueban con iyzico antes de guardarse.",
+          "paddle": "Introduce tus claves live de Paddle y el secreto del webhook. Se comprueban con Paddle antes de guardarse.",
+          "banktransfer": "Introduce los datos bancarios que se imprimen en las facturas de los clientes que pagan por transferencia. No hay nada que comprobar en un banco."
+        },
+        "envNote": "Esto conecta el entorno live. El sandbox sigue funcionando con el simulador integrado.",
+        "testOk": "El proveedor acepta estas claves.",
+        "testFailed": "El proveedor no las acepta ahora: {reason}",
+        "testing": "Probando...",
+        "test": "Probar conexión",
+        "replaceNote": "Ya existe una conexión. Escribe claves nuevas solo si quieres sustituirla; las actuales nunca se muestran.",
+        "openDashboard": "Abrir el panel de {provider}",
+        "partial": "Conectado en {ok} app(s) antes del fallo.",
+        "disconnectOrg": "Desconectar de {count} app(s)"
+      },
+      "help": {
+        "iyzico": {
+          "api_key": "En el panel de comercio de iyzico: Ajustes, Ajustes de la empresa, Claves API. Usa el par live.",
+          "secret_key": "Aparece junto a la clave API en el mismo sitio. Allí se muestra una sola vez; cópiala ahora.",
+          "buyer_identity_number": "El número fiscal (TCKN o VKN) de la persona o empresa que figura como comprador. Tu perfil de facturación lo rellena.",
+          "buyer_ip": "La dirección IP pública fija desde la que tu negocio envía solicitudes; iyzico vincula las claves a ella."
+        },
+        "paddle": {
+          "api_key": "En Paddle, en Developer tools, Authentication, crea una clave API live.",
+          "webhook_secret": "En Developer tools, Notifications: crea un destino para Payrudder y copia su clave secreta.",
+          "usage_product_id": "El id del producto que Paddle usa para los cargos por uso. En el Catalog, abre el producto y copia su id, que empieza por pro_."
+        }
+      }
     }
   },
   "shell": {
@@ -3112,7 +3582,11 @@
       "affiliates": "Afiliados",
       "goLive": "Pasar a producción",
       "sandbox": "Herramientas del sandbox",
-      "partner": "Portal de socios"
+      "partner": "Portal de socios",
+      "usage": "Uso",
+      "coupons": "Cupones",
+      "paymentProviders": "Proveedores de pago",
+      "meters": "Medidores"
     },
     "noApps": "Aún no hay aplicaciones"
   },
@@ -3127,7 +3601,12 @@
     "currencyPlaceholder": "Buscar una moneda",
     "timezone": "Zona horaria",
     "timezonePlaceholder": "Buscar una zona horaria",
-    "noMatch": "Sin coincidencias"
+    "noMatch": "Sin coincidencias",
+    "countryPlaceholder": "Buscar un país",
+    "placePlaceholder": "Buscar o escribir",
+    "useTyped": "Usar «{value}»",
+    "useCode": "Usar el código {code}",
+    "geoAttribution": "Nombres de lugares: GeoNames (CC BY 4.0)"
   },
   "dash": {
     "retry": "Reintentar",
@@ -3287,5 +3766,22 @@
       "lastMonth": "Mes pasado",
       "year": "Este año"
     }
+  },
+  "related": {
+    "title": "Registros relacionados",
+    "customer": "Cliente",
+    "paidBy": "Pagado por",
+    "invoice": "Factura",
+    "invoices": "Facturas",
+    "payments": "Pagos",
+    "subscriptions": "Suscripciones",
+    "creditNotes": "Notas de crédito",
+    "none": "Aún no hay",
+    "notFound": "No está en la lista",
+    "open": "Abrir"
+  },
+  "sheets": {
+    "back": "Atrás",
+    "forward": "Adelante"
   }
 }

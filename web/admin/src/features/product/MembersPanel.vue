@@ -51,7 +51,7 @@ const when = (v?: string) => fmt.date(v, "day");
 const expired = (v?: string) => (v ? new Date(v).getTime() < Date.now() : false);
 
 const table = useTableState(members, {
-  searchFields: (m) => [m.display_name, m.email],
+  sheet: { kind: "member", id: (m) => m.user_id }, searchFields: (m) => [m.display_name, m.email],
   filters: { role: (m, v) => m.role === v },
 });
 
@@ -191,7 +191,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
     </Table>
   </Card>
 
-    <Sheet v-model:open="inviting">
+    <Sheet v-model:open="inviting" name="invite-member">
       <SheetContent>
         <SheetHeader>
           <SheetTitle>{{ t("product.members.inviteTitle") }}</SheetTitle>

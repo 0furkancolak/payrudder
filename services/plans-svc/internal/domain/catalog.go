@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
+	"unicode"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/money"
@@ -55,12 +57,14 @@ type MeterInput struct {
 	Filter        json.RawMessage
 	Scale         int16
 	UnitLabel     string
+	Category      string
 }
 
 // ValidateMeter checks CreateMeter. previousScale is the scale of the code's latest version, or -1 for a new code.
 func ValidateMeter(req *plansv1.CreateMeterRequest, previousScale int) (MeterInput, error) {
 	var v Violations
-	in := MeterInput{Code: req.GetCode(), UnitLabel: req.GetUnitLabel(), Scale: int16(min(req.GetQuantityScale(), 99))}
+	in := MeterInput{Code: req.GetCode(), UnitLabel: strings.TrimSpace(req.GetUnitLabel()), Scale: int16(min(req.GetQuantityScale(), 99)),
+		Category: strings.TrimSpace(req.GetCategory())}
 	if !meterCodeRe.MatchString(in.Code) {
 		v.Add("code", "lowercase letters, digits and _, starting with a letter, at most 63 characters")
 	}
@@ -83,8 +87,11 @@ func ValidateMeter(req *plansv1.CreateMeterRequest, previousScale int) (MeterInp
 	} else if previousScale >= 0 && int(req.GetQuantityScale()) != previousScale {
 		v.Add("quantity_scale", fmt.Sprintf("is fixed per meter code (existing versions use %d); use a new code", previousScale))
 	}
-	if n := len(in.UnitLabel); n == 0 || n > 32 {
-		v.Add("unit_label", "required, at most 32 characters (e.g. tokens, GB-h)")
+	if n := len([]rune(in.UnitLabel)); n == 0 || n > 32 || !printable(in.UnitLabel) {
+		v.Add("unit_label", "required, at most 32 characters of your choice (e.g. tokens, GB-h, seats)")
+	}
+	if len([]rune(in.Category)) > 64 || !printable(in.Category) {
+		v.Add("category", "at most 64 characters of your choice, no control characters")
 	}
 	filter := map[string][]string{}
 	if len(req.GetFilter()) > 10 {
@@ -136,7 +143,12 @@ func ValidatePlan(req *plansv1.CreatePlanRequest) error {
 
 // Stored price configs (plan_prices.config). Quantities are scaled units of the meter.
 type (
+	// includedConfig is the free quantity of every price model; absent in configs stored before it existed (none).
+	includedConfig struct {
+		IncludedUnits int64 `json:"included_units,omitempty"`
+	}
 	perUnitConfig struct {
+		includedConfig
 		UnitPrice string `json:"unit_price"`
 	}
 	tierConfig struct {
@@ -145,9 +157,11 @@ type (
 		FlatFeeMinor int64  `json:"flat_fee_minor"`
 	}
 	tieredConfig struct {
+		includedConfig
 		Tiers []tierConfig `json:"tiers"`
 	}
 	packageConfig struct {
+		includedConfig
 		PackageSizeUnits  int64 `json:"package_size_units"`
 		PackagePriceMinor int64 `json:"package_price_minor"`
 	}
@@ -165,6 +179,106 @@ type StoredEntitlement struct {
 	MeterCode  string
 	LimitUnits int64
 	Thresholds []int32
+	// Window is the stored name of the quota window: "hour", "day", "week" or "month".
+	Window string
+	// Mode is the stored name of the enforcement mode: "hard", "soft" or "notify".
+	Mode string
+}
+
+// WindowToDB maps the API window to its stored name; unspecified is the month (the billing period).
+func WindowToDB(w plansv1.QuotaWindow) (string, bool) {
+	switch w {
+	case plansv1.QuotaWindow_QUOTA_WINDOW_UNSPECIFIED, plansv1.QuotaWindow_QUOTA_WINDOW_MONTH:
+		return "month", true
+	case plansv1.QuotaWindow_QUOTA_WINDOW_HOUR:
+		return "hour", true
+	case plansv1.QuotaWindow_QUOTA_WINDOW_DAY:
+		return "day", true
+	case plansv1.QuotaWindow_QUOTA_WINDOW_WEEK:
+		return "week", true
+	default:
+		return "", false
+	}
+}
+
+// WindowFromDB maps a stored window name to the API enum.
+func WindowFromDB(s string) plansv1.QuotaWindow {
+	switch s {
+	case "hour":
+		return plansv1.QuotaWindow_QUOTA_WINDOW_HOUR
+	case "day":
+		return plansv1.QuotaWindow_QUOTA_WINDOW_DAY
+	case "week":
+		return plansv1.QuotaWindow_QUOTA_WINDOW_WEEK
+	default:
+		return plansv1.QuotaWindow_QUOTA_WINDOW_MONTH
+	}
+}
+
+// ModeToDB maps the API mode to its stored name; unspecified is hard (allowed turns false at the limit, as before modes existed).
+func ModeToDB(m plansv1.QuotaMode) (string, bool) {
+	switch m {
+	case plansv1.QuotaMode_QUOTA_MODE_UNSPECIFIED, plansv1.QuotaMode_QUOTA_MODE_HARD:
+		return "hard", true
+	case plansv1.QuotaMode_QUOTA_MODE_SOFT:
+		return "soft", true
+	case plansv1.QuotaMode_QUOTA_MODE_NOTIFY:
+		return "notify", true
+	default:
+		return "", false
+	}
+}
+
+// ModeFromDB maps a stored mode name to the API enum.
+func ModeFromDB(s string) plansv1.QuotaMode {
+	switch s {
+	case "soft":
+		return plansv1.QuotaMode_QUOTA_MODE_SOFT
+	case "notify":
+		return plansv1.QuotaMode_QUOTA_MODE_NOTIFY
+	default:
+		return plansv1.QuotaMode_QUOTA_MODE_HARD
+	}
+}
+
+// EntitlementTerms is the part of an entitlement or an override that is checked the same way for both.
+type EntitlementTerms struct {
+	MeterCode  string
+	Limit      string
+	Thresholds []int32
+	Window     plansv1.QuotaWindow
+	Mode       plansv1.QuotaMode
+}
+
+// ValidateEntitlement checks one entitlement's terms against the meter's scale and reports violations under field. An empty threshold list is 80 and 100.
+func ValidateEntitlement(t EntitlementTerms, scale int, field string, v *Violations) (StoredEntitlement, bool) {
+	out := StoredEntitlement{MeterCode: t.MeterCode}
+	ok := true
+	units, err := quantity.ParseUnits(t.Limit, scale)
+	if err != nil {
+		v.Add(field+".limit", quantityMessage(err, scale))
+		ok = false
+	}
+	out.LimitUnits = units
+	th := t.Thresholds
+	if len(th) == 0 {
+		th = []int32{80, 100}
+	}
+	if !strictlyAscending(th) || th[0] < 1 || th[len(th)-1] > 1000 || len(th) > 10 {
+		v.Add(field+".alert_thresholds_pct", "1..10 strictly ascending percentages between 1 and 1000")
+		ok = false
+	}
+	out.Thresholds = th
+	var known bool
+	if out.Window, known = WindowToDB(t.Window); !known {
+		v.Add(field+".window", "one of QUOTA_WINDOW_HOUR, QUOTA_WINDOW_DAY, QUOTA_WINDOW_WEEK, QUOTA_WINDOW_MONTH")
+		ok = false
+	}
+	if out.Mode, known = ModeToDB(t.Mode); !known {
+		v.Add(field+".mode", "one of QUOTA_MODE_HARD, QUOTA_MODE_SOFT, QUOTA_MODE_NOTIFY")
+		ok = false
+	}
+	return out, ok
 }
 
 // PlanVersionInput is a validated PublishPlanVersion request.
@@ -215,20 +329,17 @@ func ValidatePlanVersion(req *plansv1.PublishPlanVersionRequest, scales map[stri
 			continue
 		}
 		seenEnt[e.GetMeterCode()] = true
-		units, err := quantity.ParseUnits(e.GetLimit(), scale)
-		if err != nil {
-			v.Add(field+".limit", quantityMessage(err, scale))
+		se, ok := ValidateEntitlement(EntitlementTerms{MeterCode: e.GetMeterCode(), Limit: e.GetLimit(), Thresholds: e.GetAlertThresholdsPct(),
+			Window: e.GetWindow(), Mode: e.GetMode()}, scale, field, &v)
+		if !ok {
 			continue
 		}
-		th := e.GetAlertThresholdsPct()
-		if len(th) == 0 {
-			th = []int32{80, 100}
-		}
-		if !strictlyAscending(th) || th[0] < 1 || th[len(th)-1] > 1000 || len(th) > 10 {
-			v.Add(field+".alert_thresholds_pct", "1..10 strictly ascending percentages between 1 and 1000")
+		// Soft means "keep serving and bill what is over": without a price nothing over the limit would be billed, which is notify.
+		if se.Mode == "soft" && !seen[e.GetMeterCode()] {
+			v.Add(field+".mode", "QUOTA_MODE_SOFT bills the usage over the limit at the meter's price: price the meter in prices, or use QUOTA_MODE_NOTIFY")
 			continue
 		}
-		in.Entitlements = append(in.Entitlements, StoredEntitlement{MeterCode: e.GetMeterCode(), LimitUnits: units, Thresholds: th})
+		in.Entitlements = append(in.Entitlements, se)
 	}
 	return in, v.Err()
 }
@@ -237,6 +348,15 @@ var errSkip = errors.New("invalid")
 
 func priceToStored(p *plansv1.Price, scale int, field string, v *Violations) (StoredPrice, error) {
 	sp := StoredPrice{MeterCode: p.GetMeterCode()}
+	var inc includedConfig
+	if p.GetIncluded() != "" {
+		units, err := quantity.ParseUnits(p.GetIncluded(), scale)
+		if err != nil {
+			v.Add(field+".included", quantityMessage(err, scale))
+			return sp, errSkip
+		}
+		inc.IncludedUnits = units
+	}
 	var cfg any
 	switch m := p.GetModel().(type) {
 	case *plansv1.Price_PerUnit:
@@ -244,14 +364,14 @@ func priceToStored(p *plansv1.Price, scale int, field string, v *Violations) (St
 			v.Add(field+".per_unit.unit_price", err.Error())
 			return sp, errSkip
 		}
-		sp.Model, cfg = "PER_UNIT", perUnitConfig{UnitPrice: m.PerUnit.GetUnitPrice()}
+		sp.Model, cfg = "PER_UNIT", perUnitConfig{includedConfig: inc, UnitPrice: m.PerUnit.GetUnitPrice()}
 	case *plansv1.Price_Tiered:
 		tiers := m.Tiered.GetTiers()
 		if len(tiers) == 0 || len(tiers) > 20 {
 			v.Add(field+".tiered.tiers", "1..20 tiers")
 			return sp, errSkip
 		}
-		out := tieredConfig{}
+		out := tieredConfig{includedConfig: inc}
 		var prev int64 = -1
 		ok := true
 		for j, t := range tiers {
@@ -307,7 +427,7 @@ func priceToStored(p *plansv1.Price, scale int, field string, v *Violations) (St
 			v.Add(field+".package.package_price_minor", "must be ≥ 0")
 			return sp, errSkip
 		}
-		sp.Model, cfg = "PACKAGE", packageConfig{PackageSizeUnits: units, PackagePriceMinor: m.Package.GetPackagePriceMinor()}
+		sp.Model, cfg = "PACKAGE", packageConfig{includedConfig: inc, PackageSizeUnits: units, PackagePriceMinor: m.Package.GetPackagePriceMinor()}
 	default:
 		v.Add(field, "one of per_unit, tiered, package is required")
 		return sp, errSkip
@@ -319,6 +439,13 @@ func priceToStored(p *plansv1.Price, scale int, field string, v *Violations) (St
 // PriceFromStored converts a stored price back to the API shape.
 func PriceFromStored(meterCode, model string, config json.RawMessage, scale int) (*plansv1.Price, error) {
 	p := &plansv1.Price{MeterCode: meterCode}
+	var inc includedConfig
+	if err := json.Unmarshal(config, &inc); err != nil {
+		return nil, err
+	}
+	if inc.IncludedUnits > 0 {
+		p.Included = quantity.FormatUnits(inc.IncludedUnits, scale)
+	}
 	switch model {
 	case "PER_UNIT":
 		var c perUnitConfig
@@ -362,6 +489,11 @@ func quantityMessage(err error, scale int) string {
 	default:
 		return "must be a non-negative decimal string such as \"1000\" or \"2.5\""
 	}
+}
+
+// printable reports whether s has no control characters (labels the tenant chooses freely are printed on invoices and pages).
+func printable(s string) bool {
+	return !strings.ContainsFunc(s, unicode.IsControl)
 }
 
 func strictlyAscending(xs []int32) bool {

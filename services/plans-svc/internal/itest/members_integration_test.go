@@ -312,6 +312,32 @@ func testMembersAndInvitations(t *testing.T) {
 
 	t.Run("the account keeps its owner", func(t *testing.T) { testLastOwner(t, e, olga, adam, vera) })
 	t.Run("invitation quotas", func(t *testing.T) { testInviteQuotas(t, e) })
+	t.Run("create another account", func(t *testing.T) {
+		u := e.verified(t, "multi@members.example", "First Co")
+		for _, bad := range []string{"", "   ", strings.Repeat("x", 201)} {
+			_, err := e.ident.CreateMyAccount(ctx, &plansv1.CreateMyAccountRequest{UserId: u.id, Name: bad})
+			wantCode(t, "bad name", err, codes.InvalidArgument, "")
+		}
+		_, err := e.ident.CreateMyAccount(ctx, &plansv1.CreateMyAccountRequest{UserId: "not-a-uuid", Name: "Ghost"})
+		wantCode(t, "unknown user", err, codes.NotFound, "")
+		r, err := e.ident.CreateMyAccount(ctx, &plansv1.CreateMyAccountRequest{UserId: u.id, Name: " Second Co "})
+		if err != nil || r.GetMembership().GetAccountName() != "Second Co" || r.GetMembership().GetRole() != "owner" {
+			t.Fatalf("create = %v, %v", r, err)
+		}
+		if e.roleOf(t, r.GetMembership().GetAccountId(), u.id) != "owner" {
+			t.Error("the creator owns the new account")
+		}
+		if a, err := e.ident.GetMyAccount(ctx, &plansv1.GetMyAccountRequest{UserId: u.id, AccountId: r.GetMembership().GetAccountId()}); err != nil || a.GetName() != "Second Co" {
+			t.Errorf("the new account is not readable by its creator: %v, %v", a, err)
+		}
+		for i := 2; i < 20; i++ {
+			if _, err := e.ident.CreateMyAccount(ctx, &plansv1.CreateMyAccountRequest{UserId: u.id, Name: "More"}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		_, err = e.ident.CreateMyAccount(ctx, &plansv1.CreateMyAccountRequest{UserId: u.id, Name: "One too many"})
+		wantCode(t, "over the limit", err, codes.ResourceExhausted, "identity.account.quota")
+	})
 	t.Run("rename", func(t *testing.T) {
 		admin := e.joinNew(t, olga, "rename-admin@members.example", "admin")
 		_, err := e.ident.RenameMyAccount(ctx, &plansv1.RenameMyAccountRequest{UserId: admin.id, AccountId: acct, Name: "Hijack"})

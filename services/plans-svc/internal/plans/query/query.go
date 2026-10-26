@@ -129,6 +129,7 @@ func Assemble(ctx context.Context, q *sqlc.Queries, id, planID uuid.UUID, planCo
 	for _, e := range ents {
 		pv.Entitlements = append(pv.Entitlements, &plansv1.Entitlement{
 			MeterCode: e.MeterCode, Limit: quantity.FormatUnits(e.LimitUnits, scales[e.MeterCode]), AlertThresholdsPct: e.AlertThresholdsPct,
+			Window: domain.WindowFromDB(e.QuotaWindow), Mode: domain.ModeFromDB(e.Mode),
 		})
 	}
 	return pv, nil

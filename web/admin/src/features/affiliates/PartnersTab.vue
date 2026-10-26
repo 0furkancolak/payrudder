@@ -21,6 +21,7 @@ import EditAffiliateDialog from "./EditAffiliateDialog.vue";
 import LinkDialog from "./LinkDialog.vue";
 import { affiliateTone, balancesByAffiliate, type Affiliate } from "./logic";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { usePager } from "./paging";
 import ReferralsDialog from "./ReferralsDialog.vue";
 
@@ -62,9 +63,11 @@ const statusOptions = computed(() => [
   { value: "", label: t("affiliates.partners.allStatuses") },
   ...["pending", "active", "suspended"].map((s) => ({ value: s, label: t(`affiliates.status.affiliate.${s}`) })),
 ]);
-const index = ref<number | null>(null);
 const items = computed(() => list.data.value?.items ?? []);
-const current = computed(() => (index.value === null ? undefined : items.value[index.value]));
+/** The sheet steps through the loaded page and, at its ends, loads the page beyond. */
+const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") });
+const index = detail.index;
+const current = detail.row;
 /** The status change that fits the partner's status: approve a waiting one, suspend an active one, reinstate a suspended one. */
 const statusStep = (a: Affiliate) => (a.status === "pending" ? { key: "approve", to: "active" as const } : a.status === "active" ? { key: "suspend", to: "suspended" as const } : { key: "reinstate", to: "active" as const });
 const actionsOf = (a: Affiliate, i: number) => [
@@ -144,7 +147,7 @@ function openFrom(kind: "edit" | "link" | "referrals", a: Affiliate) {
     <DataPagination v-if="list.data.value" v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
   </Card>
 
-  <DetailSheet v-model:index="index" :total="items.length" :title="current?.name || current?.email || current?.code || ''" :description="current?.code">
+  <DetailSheet v-model:index="index" :total="items.length" :offset="pager.offset.value" :of="list.data.value?.total" :edge="detail.edge.value" :title="current?.name || current?.email || current?.code || ''" :description="current?.code" @edge="detail.onEdge">
     <dl v-if="current" class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm" data-testid="partner-detail">
       <dt class="text-muted-foreground">{{ t("affiliates.common.status") }}</dt>
       <dd class="flex justify-end"><StatusPill :tone="affiliateTone(current.status)">{{ t(`affiliates.status.affiliate.${current.status}`) }}</StatusPill></dd>

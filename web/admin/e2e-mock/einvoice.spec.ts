@@ -49,7 +49,7 @@ test.describe("e-invoice status on the invoice page", () => {
       return undefined;
     });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     const status = page.getByTestId("einvoice-status");
     await expect(status.getByTestId("einvoice-badge")).toHaveText("Failed");
     await expect(status.getByRole("alert")).toContainText("customer's tax data is incomplete");
@@ -64,7 +64,7 @@ test.describe("e-invoice status on the invoice page", () => {
     );
     await gw.install(page);
     await page.route("**/file.xml", (r) => r.fulfill({ status: 200, contentType: "application/xml", body: "<Invoice/>" }));
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     const status = page.getByTestId("einvoice-status");
     await expect(status.getByTestId("einvoice-number")).toHaveText("ABC2026000000001");
     await expect(status.getByRole("button", { name: "Retry" })).toHaveCount(0);
@@ -77,7 +77,7 @@ test.describe("e-invoice status on the invoice page", () => {
 
   test("nothing is drawn for an invoice without a document", async ({ page }) => {
     await withInvoice([]).install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await expect(page.getByRole("heading", { name: "INV-2026-000001" })).toBeVisible();
     await expect(page.getByTestId("einvoice-status")).toHaveCount(0);
   });

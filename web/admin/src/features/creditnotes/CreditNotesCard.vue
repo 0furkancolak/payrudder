@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { Plus, RotateCw } from "@lucide/vue";
+import { Link } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
+import { recordLink } from "@/features/related/link";
 import { formatMinor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
@@ -12,7 +14,7 @@ import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
@@ -47,9 +49,9 @@ function whereKey(n: { disposition?: string; refund_state?: string }): Where {
 }
 const where = (n: { disposition?: string; refund_state?: string }) => t(`billing.creditNotes.${whereKey(n)}`);
 
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((n) => inRange(n.create_time, range.value)), {
-  searchFields: (n) => [n.number, n.invoice_number, n.customer_external_id, n.reason],
+  sheet: { kind: "creditnote", id: (n) => n.id }, searchFields: (n) => [n.number, n.invoice_number, n.customer_external_id, n.reason],
   filters: { where: (n, v) => whereKey(n) === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
@@ -64,8 +66,7 @@ const whereOptions = computed(() => [{ value: "", label: t("billing.creditNotes.
 type Note = (typeof list.value)[number];
 const actionsOf = (n: Note) =>
   n.refund_state === "REFUND_STATE_FAILED" ? [{ key: "retry", label: t("billing.creditNotes.retryRefund"), icon: RotateCw, disabled: retry.isPending.value, onSelect: () => retry.mutate(n.id ?? "") }] : [];
-const index = ref<number | null>(null);
-const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
+const current = table.row;
 </script>
 
 <template>
@@ -96,7 +97,7 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(n, i) in table.items.value" :key="n.id" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
+        <TableRow v-for="(n, i) in table.items.value" :key="n.id" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
           <TableCell class="mono font-medium">{{ n.number }}</TableCell>
           <TableCell v-if="!invoiceId" class="mono">{{ n.invoice_number }}</TableCell>
           <TableCell>{{ n.customer_external_id }}</TableCell>
@@ -116,14 +117,14 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
     <p v-if="!notes.isPending.value && list.length === 0 && !notes.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.creditNotes.empty") }}</p>
   </Card>
 
-  <DetailSheet v-model:index="index" :total="table.items.value.length" :title="current?.number ?? ''" :description="current?.reason || undefined">
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.number ?? ''" :description="current?.reason || undefined">
     <dl v-if="current" class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm" data-testid="credit-note-detail">
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.amount") }}</dt>
       <dd class="text-end text-lg font-semibold tabular-nums">{{ formatMinor(current.total_minor, current.currency, locale) }}</dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.invoice") }}</dt>
-      <dd class="mono text-end">{{ current.invoice_number || "—" }}</dd>
+      <dd class="mono text-end"><Link v-if="current.invoice_id" v-bind="recordLink('invoice', current.invoice_id, tenantId)" class="hover:underline">{{ current.invoice_number || current.invoice_id.slice(0, 8) }}</Link><template v-else>—</template></dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.customer") }}</dt>
-      <dd class="text-end">{{ current.customer_external_id || "—" }}</dd>
+      <dd class="text-end"><Link v-if="current.customer_external_id" v-bind="recordLink('customer', current.customer_external_id, tenantId)" class="hover:underline">{{ current.customer_external_id }}</Link><template v-else>—</template></dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.date") }}</dt>
       <dd class="text-end">{{ date(current.create_time) }}</dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.where") }}</dt>

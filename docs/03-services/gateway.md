@@ -111,6 +111,9 @@ Decided: `net/http` with Go 1.22+ `ServeMux` patterns, one handler per route tha
 
 Redis only: `gw:apikey:{prefix}` (cache), `gw:rl:{tenant_id}:{class}` (GCRA state). Nothing durable.
 
+Reference data in the binary: the GeoNames country, region and district lists (`internal/geo`, embedded gzip, made by `cmd/geoimport`), served read-only
+under `GET /app/v1/geo/*` to any session. See [geo-data.md](../geo-data.md).
+
 ## Consumed / produced messages
 
 None.

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createRoute, type AnyRoute } from "@tanstack/vue-router";
 import { affiliateRoutes } from "@/features/affiliates/routes";
+import { pricingRoutes } from "@/features/pricing/routes";
+import { usageRoutes } from "@/features/usage/routes";
 import { PERSON_PAGES, activeItem, buildNav } from "./nav";
 
 const keys = (sections: ReturnType<typeof buildNav>) => sections.flatMap((s) => s.items.map((i) => i.key));
@@ -8,7 +10,7 @@ const keys = (sections: ReturnType<typeof buildNav>) => sections.flatMap((s) => 
 describe("buildNav", () => {
   it("the organisation level has the apps, the members and the settings, nothing of an app", () => {
     const nav = buildNav({ level: "org" });
-    expect(keys(nav)).toEqual(["overview", "members", "settings"]);
+    expect(keys(nav)).toEqual(["overview", "members", "paymentProviders", "settings"]);
   });
 
   it("an app level has the app's pages under the tenant, and the dashboard and keys under the app", () => {
@@ -39,7 +41,7 @@ describe("buildNav", () => {
 
   it("a page that has no route is not listed", () => {
     const nav = buildNav({ level: "app", appId: "A", tenantId: "T" }, new Set(["customers"]));
-    expect(keys(nav)).toEqual(["dashboard", "goLive", "customers", "apiKeys", "sandbox", "appSettings"]);
+    expect(keys(nav)).toEqual(["dashboard", "goLive", "customers", "apiKeys", "sandbox", "appSettings", "paymentProviders"]);
   });
 
   it("the operator sees the platform, and a tenant with the operator-only pages too", () => {
@@ -101,5 +103,42 @@ describe("Growth > Affiliates", () => {
     const parent = createRoute({ getParentRoute: () => ({}) as AnyRoute, path: "/app/t/$id" });
     const routes = affiliateRoutes(parent);
     expect(routes.map((r) => (r.options as { path?: string }).path)).toEqual(["affiliates"]);
+  });
+});
+
+describe("Usage and Coupons", () => {
+  const person = buildNav({ level: "app", appId: "A", tenantId: "T" });
+  const section = (key: string) => person.find((s) => s.key === key)?.items.map((i) => i.key);
+  const parent = createRoute({ getParentRoute: () => ({}) as AnyRoute, path: "/app/t/$id" });
+  const pathsOf = (routes: AnyRoute[]) => routes.map((r) => (r.options as { path?: string }).path);
+
+  it("puts usage with the customers and coupons with the billing pages, after pricing", () => {
+    expect(section("customers")).toEqual(["customers", "subscriptions", "usage", "credits"]);
+    expect(section("billing")?.slice(0, 5)).toEqual(["meters", "packages", "pricing", "coupons", "invoices"]);
+    expect(person.flatMap((s) => s.items).find((i) => i.key === "usage")?.to).toBe("/app/t/T/usage");
+    expect(person.flatMap((s) => s.items).find((i) => i.key === "coupons")?.to).toBe("/app/t/T/coupons");
+  });
+
+  it("is in the operator's tenant console too, at the same paths under the tenant", () => {
+    const flat = buildNav({ level: "tenant", tenantId: "T" }).flatMap((s) => s.items);
+    expect(flat.find((i) => i.key === "usage")?.to).toBe("/tenants/T/usage");
+    expect(flat.find((i) => i.key === "coupons")?.to).toBe("/tenants/T/coupons");
+  });
+
+  it("is current under its own path, and pricing is not mistaken for coupons", () => {
+    expect(activeItem(person, "/app/t/T/usage")?.key).toBe("usage");
+    expect(activeItem(person, "/app/t/T/coupons")?.key).toBe("coupons");
+    expect(activeItem(person, "/app/t/T/pricing")?.key).toBe("pricing");
+  });
+
+  it("has a route at the path the sidebar links to", () => {
+    expect(pathsOf(usageRoutes(parent))).toEqual(["usage"]);
+    expect(pathsOf(pricingRoutes(parent))).toEqual(["pricing", "coupons"]);
+  });
+
+  it("is only listed when its route exists", () => {
+    const keysOf = keys(buildNav({ level: "app", appId: "A", tenantId: "T" }, new Set(["customers"])));
+    expect(keysOf).not.toContain("usage");
+    expect(keysOf).not.toContain("coupons");
   });
 });

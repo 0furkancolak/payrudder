@@ -341,6 +341,18 @@ func (q *Queries) ResetEntitlementOutbox(ctx context.Context, tenantID uuid.UUID
 	return result.RowsAffected(), nil
 }
 
+const resetEntitlementOverrides = `-- name: ResetEntitlementOverrides :execrows
+DELETE FROM customer_entitlement_overrides WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetEntitlementOverrides(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetEntitlementOverrides, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetPromotionCodeCounters = `-- name: ResetPromotionCodeCounters :exec
 UPDATE promotion_codes SET redeemed = 0 WHERE tenant_id = $1 AND redeemed <> 0
 `

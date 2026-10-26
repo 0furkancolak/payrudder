@@ -210,6 +210,14 @@ func (h *Handler) SignInWithIdentity(ctx context.Context, req *plansv1.SignInWit
 	return &plansv1.SignInWithIdentityResponse{User: o.User, Memberships: o.Memberships, Token: o.Token, ExpireTime: timestamppb.New(o.ExpireTime)}, nil
 }
 
+func (h *Handler) CreateMyAccount(ctx context.Context, req *plansv1.CreateMyAccountRequest) (*plansv1.CreateMyAccountResponse, error) {
+	m, err := h.cmd.CreateAccount(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.CreateMyAccountResponse{Membership: m}, nil
+}
+
 func (h *Handler) RenameMyAccount(ctx context.Context, req *plansv1.RenameMyAccountRequest) (*plansv1.RenameMyAccountResponse, error) {
 	name, err := h.cmd.RenameAccount(ctx, req)
 	if err != nil {

@@ -40,6 +40,9 @@ const KeyTTL = 40 * 24 * time.Hour
 // firedTTL outlives any counter key, so a threshold is never fired twice for the same period.
 const firedTTL = 80 * 24 * time.Hour
 
+// windowTTL is how long a window counter outlives the end of its window: it is read only while the window is current.
+const windowTTL = 2 * 24 * time.Hour
+
 // ErrMeterNotFound is the answer for a meter plans-svc does not know.
 var ErrMeterNotFound = errkey.New(codes.NotFound, "limits.meter.not_found", "meter not found")
 
@@ -233,7 +236,7 @@ func (a *Applier) applyRecords(ctx context.Context, p int32, recs []*kgo.Record)
 		args = append(args, TSKey(t), b.stamps[t].UnixMilli())
 	}
 
-	res, err := a.script.Run(ctx, a.cfg.Redis, []string{OffsetKey(p), ActiveKey(p)}, args...).Slice()
+	res, err := a.script.Run(ctx, a.cfg.Redis, []string{OffsetKey(p), ActiveKey(p), WindowActiveKey(p)}, args...).Slice()
 	if err != nil {
 		return fmt.Errorf("apply_batch: %w", err)
 	}
@@ -287,14 +290,30 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 		return nil
 	}
 	_, end, _ := period.Bounds(ev.Period, tn.Location)
-	ref := Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: ev.Period}
+	isMax, v := m.Aggregation == usage.Max, m.Value(ev)
+	b.add(Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: ev.Period}, isMax, v, end.Add(KeyTTL))
+	// A quota over a shorter window has its own counter, kept only while the entitlement asks for one: the aggregator has no such totals.
+	if ent, ok := a.cfg.Ents.Get(ev.TenantID, ev.CustomerID, ev.Meter, a.cfg.Now()); ok && ent.Window != period.Month {
+		id, _, wend := period.WindowOf(ent.Window, ev.EventTime, tn.Location)
+		// An old event of a window that has ended still counts in it, and its key outlives the event by a little.
+		wend = maxTime(wend, a.cfg.Now()).Add(windowTTL)
+		b.add(Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: id, Windowed: true}, isMax, v, wend)
+	}
+	if ev.IngestedAt.After(b.stamps[ev.TenantID]) {
+		b.stamps[ev.TenantID] = ev.IngestedAt
+	}
+	b.counted++
+	return nil
+}
+
+// add folds a value into the cell of ref.
+func (b *batch) add(ref Ref, isMax bool, v int64, expire time.Time) {
 	k := ref.Key()
 	c := b.cells[k]
 	if c == nil {
-		c = &cell{ref: ref, isMax: m.Aggregation == usage.Max, expireAt: end.Add(KeyTTL).Unix()}
+		c = &cell{ref: ref, isMax: isMax, expireAt: expire.Unix()}
 		b.cells[k] = c
 	}
-	v := m.Value(ev)
 	switch {
 	case c.isMax:
 		c.delta = max(c.delta, v)
@@ -303,11 +322,13 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 	default:
 		c.delta += v
 	}
-	if ev.IngestedAt.After(b.stamps[ev.TenantID]) {
-		b.stamps[ev.TenantID] = ev.IngestedAt
+}
+
+func maxTime(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
 	}
-	b.counted++
-	return nil
+	return b
 }
 
 // batchKeys returns the counter keys to send and the tenants to stamp, both sorted. Counters whose delta overflowed are
@@ -377,7 +398,7 @@ func (a *Applier) fireCrossed(ctx context.Context, rows []any) {
 		}
 		before, err1 := strconv.ParseInt(fmt.Sprint(row[1]), 10, 64)
 		after, err2 := strconv.ParseInt(fmt.Sprint(row[2]), 10, 64)
-		ref, okRef := ParseCounterKey(key)
+		ref, okRef := ParseKey(key)
 		if err1 != nil || err2 != nil || !okRef {
 			a.log.WarnContext(ctx, "apply_batch returned an unreadable threshold row", "key", key, "before", row[1], "after", row[2])
 			continue
@@ -400,38 +421,47 @@ func (a *Applier) reached(ctx context.Context, ref Ref, used int64) {
 	})
 }
 
-// fireWhere fires the thresholds of the counter's entitlement that hit selects, if the entitlement limits the period.
+// fireWhere fires the thresholds of the counter's entitlement that hit selects, if the entitlement limits the counter's window: a monthly
+// limit is measured on the billing-period counter only, a daily one on the day counters only.
 func (a *Applier) fireWhere(ctx context.Context, ref Ref, used int64, hit func(ent entitlements.State, pct int32) bool) {
 	now := a.cfg.Now()
 	ent, ok := a.cfg.Ents.Get(ref.Tenant, ref.Customer, ref.Meter, now)
-	if !ok || ent.Limit <= 0 || !a.overlaps(ctx, ent, ref.Period) {
+	if !ok || ent.Limit <= 0 {
+		return
+	}
+	billingPeriod, ok := a.overlaps(ctx, ent, ref)
+	if !ok {
 		return
 	}
 	for _, pct := range ent.Thresholds {
 		if hit(ent, pct) {
-			a.fire(ctx, ent, ref, pct, used, now)
+			a.fire(ctx, ent, ref, billingPeriod, pct, used, now)
 		}
 	}
 }
 
-// overlaps reports whether the entitlement existed during the period.
-func (a *Applier) overlaps(ctx context.Context, ent entitlements.State, periodID string) bool {
+// overlaps reports whether the entitlement counts over the counter's kind of window and existed during that window, and returns the billing
+// period the window starts in.
+func (a *Applier) overlaps(ctx context.Context, ent entitlements.State, ref Ref) (string, bool) {
 	tn, err := a.cfg.Tenants.Tenant(ctx, ent.Tenant)
 	if err != nil {
 		a.log.WarnContext(ctx, "tenant lookup failed, threshold not evaluated", "tenant", ent.Tenant, "error", err)
-		return false
+		return "", false
 	}
-	start, end, err := period.Bounds(periodID, tn.Location)
+	w, start, end, err := period.WindowBounds(ref.Period, tn.Location)
 	if err != nil {
-		a.log.WarnContext(ctx, "period bounds failed, threshold not evaluated", "tenant", ent.Tenant, "period", periodID, "error", err)
-		return false
+		a.log.WarnContext(ctx, "window bounds failed, threshold not evaluated", "tenant", ent.Tenant, "window", ref.Period, "error", err)
+		return "", false
 	}
-	return ent.From.Before(end) && (ent.Until.IsZero() || ent.Until.After(start))
+	if w != ent.Window || ref.Windowed != (w != period.Month) {
+		return "", false
+	}
+	return period.PeriodOf(start, tn.Location), ent.From.Before(end) && (ent.Until.IsZero() || ent.Until.After(start))
 }
 
 // fire produces one LimitExceeded event unless this threshold of this period already fired. A lost marker (Redis
 // failover) re-fires, and consumers dedup on the deterministic event id.
-func (a *Applier) fire(ctx context.Context, ent entitlements.State, ref Ref, pct int32, used int64, now time.Time) {
+func (a *Applier) fire(ctx context.Context, ent entitlements.State, ref Ref, billingPeriod string, pct int32, used int64, now time.Time) {
 	fk := FiredKey(ref.Tenant, ref.Customer, ref.Meter, ref.Period, pct)
 	won, err := a.cfg.Redis.SetNX(ctx, fk, "1", firedTTL).Result()
 	if err != nil {
@@ -447,8 +477,9 @@ func (a *Applier) fire(ctx context.Context, ent entitlements.State, ref Ref, pct
 	}
 	pb := &eventsv1.LimitExceeded{
 		EventId: domain.LimitEventID(ref.Tenant, ref.Customer, ref.Meter, ref.Period, pct), TenantId: ref.Tenant.String(),
-		CustomerId: ref.Customer.String(), MeterCode: ref.Meter, PeriodId: ref.Period, ThresholdPct: pct,
+		CustomerId: ref.Customer.String(), MeterCode: ref.Meter, PeriodId: billingPeriod, ThresholdPct: pct,
 		LimitUnits: ent.Limit, UsedUnits: used, DetectedAt: timestamppb.New(now), QuantityScale: uint32(ent.Scale), //nolint:gosec // 0..6
+		Window: string(ent.Window), WindowId: ref.Period,
 	}
 	payload, err := proto.Marshal(pb)
 	if err == nil {
@@ -477,7 +508,7 @@ func (a *Applier) Sweep(ctx context.Context, keys []string) error {
 		return err
 	}
 	for i, k := range keys {
-		ref, ok := ParseCounterKey(k)
+		ref, ok := ParseKey(k)
 		s, isStr := vals[i].(string)
 		if !ok || !isStr {
 			continue

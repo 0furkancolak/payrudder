@@ -148,8 +148,6 @@
     "allKinds": "All kinds"
   },
   "invoice": {
-    "back": "← Tenant",
-    "fallbackTitle": "Invoice",
     "summary": "{kind} · period {period} · {customer} · {total} · {status} · saga {saga}",
     "openPdf": "Open PDF",
     "noPdfLink": "no link",
@@ -361,7 +359,6 @@
       "name": "Name",
       "email": "E-mail",
       "country": "Country",
-      "countryPlaceholder": "Country (TR, DE…)",
       "currency": "Billing currency",
       "tenantCurrency": "Tenant's currency",
       "create": "Create customer",
@@ -379,7 +376,64 @@
         "editing": "Address of {id}"
       },
       "allCountries": "All countries",
-      "allCurrencies": "All currencies"
+      "allCurrencies": "All currencies",
+      "newHint": "Your app usually creates customers through the API; add one here by hand.",
+      "searchPlaceholder": "Search name, e-mail, id…",
+      "emptyHint": "Customers appear here once your app creates them through the API. You can also add one by hand.",
+      "partialFigures": "Spend, balances and last payments are worked out from the newest invoices and payments.",
+      "columns": {
+        "customer": "Customer",
+        "subscriptions": "Subscriptions",
+        "currency": "Currency",
+        "spend": "Total spend",
+        "created": "Created",
+        "lastPayment": "Last payment"
+      },
+      "filters": {
+        "subscription": "Subscription",
+        "hasActive": "Has an active subscription",
+        "noActive": "No active subscription",
+        "billing": "Billing",
+        "openInvoices": "Open invoices",
+        "delinquent": "Delinquent"
+      },
+      "subscriptionStatus": {
+        "pastDue": "Past due",
+        "active": "Active",
+        "trialing": "Trialing",
+        "paused": "Paused",
+        "cancelled": "Cancelled",
+        "none": "None"
+      },
+      "stats": {
+        "spend": "Total spend",
+        "open": "Open balance",
+        "credits": "Credit balance",
+        "subscriptions": "Active subscriptions",
+        "openInvoices": "{count} open"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "payments": "Payments",
+        "invoices": "Invoices",
+        "subscriptions": "Subscriptions",
+        "credits": "Credits",
+        "details": "Details"
+      },
+      "sheet": {
+        "copyId": "Copy customer id {id}",
+        "since": "Customer since {date}",
+        "actions": "Customer actions",
+        "newSubscription": "New subscription",
+        "edit": "Edit",
+        "sections": "Customer sections",
+        "viewAll": "View all",
+        "noSubscriptions": "No subscriptions yet.",
+        "noInvoices": "No invoices yet.",
+        "noPayments": "No payments yet.",
+        "manageCredits": "Manage credits",
+        "paymentMethod": "Payment method"
+      }
     },
     "packages": {
       "new": "New package",
@@ -410,6 +464,54 @@
         "perUnit": "{price} per unit",
         "tiered": "{n} tiers",
         "package": "{size} units for {price}"
+      },
+      "usagePrices": "Usage prices",
+      "usagePricesHelp": "Prices in {currency} for what is measured, per billing period. An included quantity is free; the price applies to what is above it.",
+      "noMeters": "This app has no meters yet: create one on the Meters page first.",
+      "priceRow": "Usage price {n}",
+      "priceMeter": "Meter of price {n}",
+      "priceModel": "Pricing model of price {n}",
+      "chooseMeter": "Choose a meter",
+      "models": {
+        "per_unit": "Per unit",
+        "tiered": "Graduated tiers",
+        "package": "Per package of units"
+      },
+      "included": "Included quantity of price {n}",
+      "includedPlaceholder": "Included free per period ({unit}), optional",
+      "unitPrice": "Unit price of price {n}",
+      "unitPricePlaceholder": "Price per {unit} in {currency} (0.002)",
+      "tierUpTo": "Price {n}, tier {tier} up to",
+      "tierUpToPlaceholder": "Up to (quantity)",
+      "tierRest": "Everything above",
+      "tierPrice": "Price {n}, tier {tier} unit price",
+      "unitPriceShort": "Unit price ({currency})",
+      "tierFlat": "Price {n}, tier {tier} flat fee",
+      "flatFeePlaceholder": "Flat fee ({currency}), optional",
+      "addTier": "Add a tier",
+      "packageSize": "Package size of price {n}",
+      "packageSizePlaceholder": "Units per package ({unit})",
+      "packagePrice": "Package price of price {n}",
+      "packagePricePlaceholder": "Price per package ({currency})",
+      "addPrice": "Add a usage price",
+      "otherCurrencyPrices": "Usage prices are in {currency}. A subscription in another currency needs usage prices in it too (currency_prices in the API).",
+      "limitsHelp": "A quota limits a meter over a window. Usage events are never refused: the API's allowed flag and the alerts tell your app what to do.",
+      "quotaRow": "Quota {n}",
+      "quotaMeter": "Meter of quota {n}",
+      "addQuota": "Add a quota",
+      "includedColumn": "Included",
+      "usageErrors": {
+        "meter": "Usage line {n}: choose a meter.",
+        "duplicate": "Usage line {n}: {meter} is listed twice.",
+        "unitPrice": "Usage line {n}: the unit price is not an amount in {currency}.",
+        "included": "Usage line {n}: the included quantity has more decimals than {meter} allows.",
+        "tierBound": "Usage line {n}: every tier but the last needs an upper bound in units of {meter}.",
+        "flatFee": "Usage line {n}: a flat fee is not an amount in {currency}.",
+        "packageSize": "Usage line {n}: the package size must be a quantity above zero.",
+        "packagePrice": "Usage line {n}: the package price is not an amount in {currency}.",
+        "limit": "Quota {n}: the limit must be a quantity with at most the decimals of {meter}.",
+        "thresholds": "Quota {n}: alerts are up to 10 ascending percentages between 1 and 1000.",
+        "softNeedsPrice": "Quota {n}: a soft limit bills what is over it, so {meter} needs a usage price; use notify only otherwise."
       }
     },
     "subscriptions": {
@@ -1153,6 +1255,294 @@
         "discount": "Discount",
         "net": "Net"
       }
+    },
+    "usage": {
+      "tabsLabel": "Usage sections",
+      "tabs": {
+        "overview": "Overview",
+        "meters": "Meters",
+        "customers": "Customers"
+      },
+      "compare": "Compare with the period before",
+      "period": "Limits and rankings: {period}",
+      "periodHint": "Limits and rankings are counted per billing period (a month): the month the chosen range ends in.",
+      "tooLong": "A range is at most a year. Showing the last 30 days.",
+      "before": "Before: {value} {unit}",
+      "events": "{n} events",
+      "aggregation": {
+        "sum": "Sum",
+        "count": "Count of events",
+        "max": "Highest value"
+      },
+      "aggregationHint": {
+        "sum": "Adds up the value of the event property.",
+        "count": "Counts the events; no property is needed.",
+        "max": "Takes the highest value of the event property in the period."
+      },
+      "state": {
+        "over": "Over the limit",
+        "near": "Near the limit",
+        "ok": "Within the limit",
+        "unlimited": "No limit"
+      },
+      "chart": {
+        "current": "This period",
+        "previous": "Period before",
+        "total": "Total",
+        "before": "before",
+        "estimate": "Estimate: counted from hourly rollups, so duplicate deliveries may be counted twice. Invoices use the exact usage.",
+        "empty": "No usage in this period.",
+        "summary": "{total} {unit} from {from} to {to}"
+      },
+      "empty": {
+        "title": "No meters yet",
+        "hint": "A meter says what to count in the events you send. Create a meter, then send events with its code."
+      },
+      "top": {
+        "title": "Top customers",
+        "hint": "Who used {meter} most in {period}.",
+        "empty": "Nobody used this meter in this period."
+      },
+      "limits": {
+        "title": "Limits",
+        "hint": "Customers near or over a limit, among the {n} heaviest users in {period}.",
+        "over": "{n} over",
+        "near": "{n} near",
+        "clear": "Nobody is near a limit.",
+        "nobody": "No customer has used a meter in this period."
+      },
+      "meters": {
+        "new": "New meter",
+        "newHint": "A meter turns the events you send into a quantity to bill.",
+        "formLabel": "meter",
+        "code": "Code",
+        "codeHint": "Lowercase letters, digits and _, starting with a letter.",
+        "unit": "Unit",
+        "unitPlaceholder": "calls, GB, tokens",
+        "aggregation": "Aggregation",
+        "allAggregations": "Any aggregation",
+        "property": "Value property",
+        "propertyHint": "The event property that holds the quantity.",
+        "scale": "Decimal places",
+        "scaleHint": "0 to 6. Fixed for a code once the meter exists.",
+        "scaleFixed": "Fixed for this code.",
+        "filter": "Count only events where",
+        "filterHint": "Leave empty to count every event. A property can match several values.",
+        "filterRow": "Filter {n}",
+        "filterProperty": "Property {n}",
+        "filterValues": "Values {n}",
+        "filterValuesPlaceholder": "eu, us",
+        "addFilter": "Add a filter",
+        "create": "Create meter",
+        "saveVersion": "Save new version",
+        "newVersion": "New version",
+        "versionTitle": "New version of {code}",
+        "versionHint": "Saves the next version of this meter (now version {version}).",
+        "search": "Search meters",
+        "inPeriod": "In the period",
+        "trend": "Trend",
+        "series": "Usage over time",
+        "version": "Version",
+        "created": "Created",
+        "errors": {
+          "code": "The code is lowercase letters, digits and _, starting with a letter (at most 63).",
+          "unit": "Give the unit a name of at most 32 characters.",
+          "property": "Name the event property that holds the quantity.",
+          "scale": "Decimal places are a whole number from 0 to 6.",
+          "filter": "Each filter needs a property and at least one value (no property twice, at most 10)."
+        },
+        "filterShort": "Filter"
+      },
+      "customers": {
+        "search": "Search customers",
+        "meter": "Meter",
+        "allMeters": "All meters",
+        "usage": "Usage",
+        "anyUsage": "Any usage",
+        "used": "With usage",
+        "idle": "Without usage",
+        "limits": "Limits",
+        "limitsOf": "Limits in {period}",
+        "billingPeriod": "Billing period"
+      }
+    },
+    "coupons": {
+      "tabsLabel": "Coupon sections",
+      "tabs": {
+        "coupons": "Coupons",
+        "codes": "Promotion codes",
+        "redemptions": "Redemptions"
+      },
+      "hint": {
+        "coupons": "A coupon says what is taken off, where it works and for how long. Customers get it through a promotion code.",
+        "codes": "The codes customers type. Many codes can point to one coupon, each with its own limit, expiry and rules.",
+        "redemptions": "Every use of a coupon, with the customer, the invoice and what it took off."
+      },
+      "new": "New coupon",
+      "searchCoupons": "Search coupons",
+      "searchCustomer": "Search by customer id",
+      "anyTarget": "Works anywhere",
+      "everywhere": "Everywhere",
+      "never": "Never",
+      "expires": "Expires",
+      "created": "Created",
+      "firstOf": "Showing the first {n} of {total}.",
+      "errors": {
+        "code": "The code is 2 to 40 letters, digits, - or _.",
+        "value": "Enter what the coupon takes off: a percentage up to 100 (up to 1000 for bonus credits), or an amount with at most as many decimals as the currency has.",
+        "targets": "Pick where the coupon works.",
+        "periods": "The number of fees is a whole number from 1 to 120.",
+        "max": "The redemptions limit is a whole number from 1.",
+        "expires": "The expiry must be a day in the future.",
+        "coupon": "Choose a coupon."
+      },
+      "sheet": {
+        "title": "New coupon",
+        "hint": "A coupon says what is taken off. Customers use it through a promotion code.",
+        "codeHint": "2 to 40 letters, digits, - or _. The coupon's code is also its first promotion code.",
+        "namePlaceholder": "Welcome offer (optional)",
+        "value": {
+          "percent": "Percentage off (%)",
+          "amount": "Amount off",
+          "bonus": "Extra credits (%)"
+        },
+        "durationHint": "How many fees of a subscription the discount applies to.",
+        "noLimit": "No limit",
+        "expires": "Expires on (optional)",
+        "defaultCode": "Also create a promotion code with this text",
+        "defaultCodeHint": "Customers can type the coupon's code straight away. Turn off to create codes yourself."
+      },
+      "preview": {
+        "title": "What it will do",
+        "noValue": "Enter a value to see what the coupon does.",
+        "percent": "{pct} off: a {before} fee becomes {after}.",
+        "amount": "{off} off: a {before} fee becomes {after}.",
+        "bonus": "{pct} more credits: buying {credits} credits gives {total}.",
+        "where": "Works on: {list}.",
+        "duration": "On a subscription: {duration}.",
+        "max": "At most {n} uses in total.",
+        "noMax": "No limit on uses.",
+        "expires": "Stops working after {date}.",
+        "noExpiry": "Does not expire.",
+        "code": "Customers can type {code}."
+      },
+      "codeSheet": {
+        "makes": "Creates {n} promotion codes for {coupon} ({value}).",
+        "usesEach": "Each code can be used {n} times.",
+        "usesUnlimited": "Each code can be used without limit.",
+        "minimum": "From {amount}",
+        "plans": "Only on these plans",
+        "plansHint": "Leave all unticked to allow any plan.",
+        "noPlans": "No packages yet: the code works on any plan.",
+        "packs": "Only on these credit packs",
+        "namesHint": "Separate codes with new lines, commas or spaces. 2 to 40 letters, digits, - or _.",
+        "done": "Done"
+      },
+      "redemptions": {
+        "invoice": "Invoice",
+        "bonusCredits": "+{n} credits",
+        "noCode": "No code (applied directly)"
+      },
+      "discount": "Discount"
+    },
+    "meters": {
+      "new": "New meter",
+      "newVersion": "New version",
+      "newVersionOf": "New version of {code}",
+      "intro": "A meter says what is measured and how usage events add up. A new version of a code can change everything except its decimal places; events are checked against the latest one.",
+      "formLabel": "new meter",
+      "code": "Code",
+      "codePlaceholder": "Code (api_calls)",
+      "category": "Category",
+      "categoryPlaceholder": "Category of your choice (optional)",
+      "allCategories": "All categories",
+      "aggregation": "Aggregation",
+      "allAggregations": "All aggregations",
+      "aggregations": {
+        "sum": "Sum",
+        "count": "Count",
+        "max": "Maximum"
+      },
+      "aggregationHelp": {
+        "sum": "Adds up the quantity of every event in the period.",
+        "count": "Counts the events; their quantity is ignored.",
+        "max": "Keeps the highest quantity reported in the period (seats, storage)."
+      },
+      "valueProperty": "Quantity property",
+      "valuePropertyPlaceholder": "Event property holding the quantity (tokens)",
+      "unit": "Unit",
+      "unitPlaceholder": "Unit of your choice (tokens, GB-h)",
+      "scale": "Decimal places",
+      "decimals": "{n} decimals",
+      "filter": "Only events with",
+      "filterHelp": "Events whose properties do not match every line are not counted. Leave empty to count all.",
+      "filterProperty": "Filter property {n}",
+      "filterValues": "Accepted values {n}",
+      "filterPropertyPlaceholder": "Property (region)",
+      "filterValuesPlaceholder": "Values, comma separated (eu, us)",
+      "addFilter": "Add a condition",
+      "badFilter": "Every condition needs a property and at least one value.",
+      "noFilter": "every event",
+      "create": "Create meter",
+      "saveVersion": "Publish version",
+      "empty": "No meters yet. A meter is needed before a package can price or limit usage."
+    },
+    "quotas": {
+      "action": "Quotas",
+      "of": "Quotas of {id}",
+      "intro": "An override replaces what the customer's package allows on a meter, for all its subscriptions, until it is deleted.",
+      "overrides": "Own limits",
+      "none": "No overrides: the package's limits apply.",
+      "formLabel": "quota override",
+      "set": "Set a limit for this customer",
+      "meter": "Meter",
+      "chooseMeter": "Choose a meter",
+      "save": "Save override",
+      "edit": "Edit the override on {meter}",
+      "remove": "Remove the override on {meter}",
+      "limit": "Limit",
+      "limitN": "Limit of quota {n}",
+      "limitIn": "Limit in {unit} (0 = unlimited)",
+      "limitPlaceholder": "Limit (0 = unlimited)",
+      "window": "Window",
+      "windowN": "Window of quota {n}",
+      "mode": "When reached",
+      "modeN": "When quota {n} is reached",
+      "thresholds": "Alerts",
+      "thresholdsN": "Alerts of quota {n}",
+      "thresholdsPlaceholder": "Alerts at % of the limit (50, 80, 100)",
+      "windows": {
+        "hour": "Per hour",
+        "day": "Per day",
+        "week": "Per week",
+        "month": "Per billing month"
+      },
+      "modes": {
+        "hard": "Hard: stop allowing",
+        "soft": "Soft: allow and bill the excess",
+        "notify": "Notify only"
+      },
+      "modeHelp": {
+        "hard": "At the limit, allowed turns false.",
+        "soft": "Allowed stays true; usage over the limit is billed at the meter's price.",
+        "notify": "Allowed stays true; only the alerts are sent."
+      },
+      "windowHelp": {
+        "hour": "Counts each clock hour in the app's time zone.",
+        "day": "Counts each day in the app's time zone.",
+        "week": "Counts each week from Monday in the app's time zone.",
+        "month": "Counts the billing month, like the invoice."
+      },
+      "windowColumn": "Window",
+      "modeColumn": "When reached",
+      "alertsColumn": "Alerts",
+      "overridden": "own limit",
+      "overButAllowed": "over the limit, still allowed",
+      "resets": "resets {at}",
+      "errors": {
+        "limit": "The limit must be a quantity with at most {n} decimals.",
+        "thresholds": "Alerts are up to 10 ascending percentages between 1 and 1000."
+      }
     }
   },
   "affiliates": {
@@ -1704,10 +2094,8 @@
     "hint": "The legal and billing address of this tenant, printed as the seller on every invoice (PDF and hosted page). It applies to invoices made after you save.",
     "formLabel": "seller address",
     "noCountry": "No country",
-    "otherCountry": "Another country…",
     "labels": {
       "country": "Country",
-      "countryCode": "Country code (two letters, e.g. SE)",
       "line1": "Address line 1",
       "line2": "Address line 2",
       "city": "City",
@@ -1999,6 +2387,10 @@
       "plan": {
         "no_fixed_fee": "This plan version has no fixed fee for that interval in this currency.",
         "no_metered_price": "This plan version has metered prices but none in this currency."
+      },
+      "override": {
+        "customer_required": "Say which customer the limit is for.",
+        "not_found": "This customer has no override on that meter."
       }
     },
     "common": {
@@ -2150,7 +2542,8 @@
     "identity": {
       "account": {
         "forbidden": "Your role in this account does not allow this.",
-        "not_found": "This account does not exist, or it is not yours."
+        "not_found": "This account does not exist, or it is not yours.",
+        "quota": "A person can own at most 20 organisations."
       },
       "api_key": {
         "bad_environment": "This app has no such environment.",
@@ -2270,6 +2663,10 @@
       },
       "route": {
         "not_found": "There is no such address in the API."
+      },
+      "geo": {
+        "country_not_found": "There is no such country in the list.",
+        "region_not_found": "There is no such region in the list."
       }
     },
     "env": {
@@ -2461,7 +2858,12 @@
   },
   "product": {
     "menu": {
-      "open": "Account menu"
+      "open": "Account menu",
+      "newOrg": "New organisation",
+      "newOrgTitle": "Create an organisation",
+      "newOrgBody": "You will be its owner. It starts empty: add apps and invite people afterwards.",
+      "orgName": "Organisation name",
+      "orgCreate": "Create organisation"
     },
     "nav": {
       "home": "Home",
@@ -2823,7 +3225,6 @@
         "loadMore": "Load more"
       },
       "invoice": {
-        "back": "All invoices",
         "issued": "Issued",
         "openPdf": "Open PDF",
         "lines": "Lines",
@@ -3055,6 +3456,75 @@
       "simulate": "Simulate",
       "simulated": "Payment run again as {scenario}.",
       "simulateNotRetried": "The scenario is set, but the payment could not run again now ({why})."
+    },
+    "providers": {
+      "introApp": "Connect and manage the payment providers of {app}. Customers pay through the live account; the sandbox needs no connection.",
+      "introOrg": "Connect a payment provider once for all your apps, or set an app up differently from the rest.",
+      "connect": "Connect",
+      "manage": "Manage",
+      "simulator": "Built-in simulator",
+      "sandboxNote": "The sandbox never reaches a real provider: it runs against a built-in simulator, so there is nothing to connect there.",
+      "state": {
+        "none": "Not connected",
+        "working": "Connected and working",
+        "problem": "Problem"
+      },
+      "defaultAccount": "Connected and used for live payments.",
+      "connectedLine": "Connected.",
+      "notConnectedLine": "Not connected in live mode.",
+      "noLiveApps": "No app has a live environment yet.",
+      "orgLine": "Connected on {connected} of {total} apps",
+      "openScreen": "Payment providers",
+      "doneAll": "{provider} connected on {count} app(s).",
+      "donePartial": "{provider}: {ok} app(s) connected, {failed} failed.",
+      "appsTitle": "Apps",
+      "appsIntro": "Click a status to connect, replace or remove a provider for that app alone.",
+      "app": "App",
+      "noLive": "No live environment",
+      "about": {
+        "iyzico": "Turkish cards and local methods",
+        "paddle": "Cards worldwide, with subscriptions run by the provider",
+        "banktransfer": "Pay by transfer to your own bank account"
+      },
+      "scope": {
+        "title": "Where to connect",
+        "app": "This app only",
+        "org": "All apps of the organisation",
+        "appNote": "Only this app uses these keys.",
+        "orgNote": "The same keys are connected on all {count} apps that have a live environment. You can still change one app later."
+      },
+      "confirmDisconnectOrg": "Remove the live account at {provider} from {count} app(s)? Customers can no longer pay through it.",
+      "sheet": {
+        "connectTitle": "Connect {provider}",
+        "manageTitle": "{provider} connection",
+        "intro": {
+          "iyzico": "Enter your live iyzico merchant keys. They are checked with iyzico before they are stored.",
+          "paddle": "Enter your live Paddle keys and webhook secret. They are checked with Paddle before they are stored.",
+          "banktransfer": "Enter the bank details printed on invoices for customers who pay by transfer. There is nothing to check at a bank."
+        },
+        "envNote": "This connects the live environment. The sandbox keeps running on the built-in simulator.",
+        "testOk": "The provider accepts these keys.",
+        "testFailed": "The provider does not accept them now: {reason}",
+        "testing": "Testing...",
+        "test": "Test connection",
+        "replaceNote": "A connection exists. Type new keys only if you want to replace it; the current ones are never shown.",
+        "openDashboard": "Open the {provider} dashboard",
+        "partial": "Connected on {ok} app(s) before the failure.",
+        "disconnectOrg": "Disconnect from {count} app(s)"
+      },
+      "help": {
+        "iyzico": {
+          "api_key": "In the iyzico merchant panel under Settings, Company Settings, API keys. Use the live pair.",
+          "secret_key": "Shown next to the API key in the same place. It is shown once there; copy it now.",
+          "buyer_identity_number": "The tax id (TCKN or VKN) of the person or company that appears as the buyer on charges. Your billing profile fills it in.",
+          "buyer_ip": "The fixed public IP address your business sends requests from; iyzico ties the keys to it."
+        },
+        "paddle": {
+          "api_key": "In Paddle under Developer tools, Authentication, create a live API key.",
+          "webhook_secret": "Under Developer tools, Notifications: create a destination for Payrudder and copy its secret key.",
+          "usage_product_id": "The id of the product Paddle uses for usage charges. In the Catalog, open the product and copy its id, which starts with pro_."
+        }
+      }
     }
   },
   "shell": {
@@ -3112,7 +3582,11 @@
       "affiliates": "Affiliates",
       "goLive": "Go live",
       "sandbox": "Sandbox tools",
-      "partner": "Partner portal"
+      "partner": "Partner portal",
+      "usage": "Usage",
+      "coupons": "Coupons",
+      "paymentProviders": "Payment providers",
+      "meters": "Meters"
     },
     "noApps": "No apps yet"
   },
@@ -3127,7 +3601,12 @@
     "currencyPlaceholder": "Search a currency",
     "timezone": "Time zone",
     "timezonePlaceholder": "Search a time zone",
-    "noMatch": "Nothing matches"
+    "noMatch": "Nothing matches",
+    "countryPlaceholder": "Search a country",
+    "placePlaceholder": "Search or type",
+    "useTyped": "Use “{value}”",
+    "useCode": "Use the code {code}",
+    "geoAttribution": "Place names: GeoNames (CC BY 4.0)"
   },
   "dash": {
     "retry": "Try again",
@@ -3287,5 +3766,22 @@
       "lastMonth": "Last month",
       "year": "This year"
     }
+  },
+  "related": {
+    "title": "Related",
+    "customer": "Customer",
+    "paidBy": "Paid by",
+    "invoice": "Invoice",
+    "invoices": "Invoices",
+    "payments": "Payments",
+    "subscriptions": "Subscriptions",
+    "creditNotes": "Credit notes",
+    "none": "None yet",
+    "notFound": "Not in the list",
+    "open": "Open"
+  },
+  "sheets": {
+    "back": "Back",
+    "forward": "Forward"
   }
 }

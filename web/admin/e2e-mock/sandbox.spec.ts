@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { APP, appWithLive, liveGateway, productGateway, signInAsAda } from "./product";
-import { pickLanguage } from "./ui";
+import { pickLanguage, pickPlace } from "./ui";
 
 // Phase 45 F: the console never lets live and sandbox be mixed up. The environment switch is always there, the sandbox is marked on every page, a live
 // environment that is not active shows its go-live checklist instead of zeros, and the app opens where the person last was. The gateway is mocked.
@@ -95,7 +95,8 @@ test.describe("a live environment that is not active", () => {
     await page.goto(`/app/apps/${APP}?env=live`);
     await expect(page.getByTestId("live-checklist")).toBeVisible();
     await expect(page.getByTestId("go-live-state")).toContainText("1 of 5 done");
-    expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`)).toHaveLength(0);
+    // The organisation's home (where signing in lands) may have asked for the figures of the app on its way; the app's own page must not.
+    expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`).filter((c) => (c.headers["referer"] ?? "").includes("/apps/"))).toHaveLength(0);
     await page.getByTestId("to-sandbox").click();
     await expect(page.getByTestId("sandbox-banner")).toBeVisible();
   });
@@ -137,8 +138,10 @@ test.describe("going live", () => {
     await expect(page.getByTestId("go-live-legal_profile")).not.toContainText("Contact support");
     await expect(page.getByTestId("billing-profile")).toBeVisible();
     await expect(page.getByTestId("live-provider")).toBeVisible();
+    // The provider item opens the payment providers screen of the app.
     await page.getByTestId("go-live-go-payment_provider").click();
-    await expect(page.getByTestId("live-provider")).toBeInViewport();
+    await expect(page).toHaveURL(new RegExp(`/app/apps/${APP}/providers`));
+    await expect(page.getByTestId("provider-card-paddle")).toBeVisible();
   });
 
   test("a member who is not the owner reads the steps but cannot change anything, and is told why", async ({ page }) => {
@@ -150,7 +153,7 @@ test.describe("going live", () => {
     await expect(page.getByTestId("profile-owner-only")).toBeVisible();
     await expect(page.getByTestId("profile-save")).toBeDisabled();
     await expect(page.getByTestId("provider-owner-only")).toBeVisible();
-    await expect(page.getByTestId("provider-select")).toHaveCount(0);
+    await expect(page.getByTestId("provider-open-paddle")).toHaveCount(0);
     await expect(page.getByTestId("live-account-remove-paddle")).toHaveCount(0);
     await expect(page.getByTestId("live-account-paddle")).toContainText("Working");
     await expect(page.getByTestId("go-live-accept-terms")).toBeDisabled();
@@ -167,7 +170,7 @@ test.describe("the owner's own steps", () => {
     const card = page.getByTestId("billing-profile");
     await expect(page.getByTestId("go-live-legal_profile")).toHaveAttribute("data-done", "false");
     await card.getByLabel("Legal name").fill("Shop GmbH");
-    await card.getByLabel("Country", { exact: true }).selectOption("DE");
+    await pickPlace(card.getByLabel("Country", { exact: true }), "germany");
     await card.getByLabel("Address line 1").fill("Hauptstr. 1");
     await card.getByLabel("City").fill("Berlin");
     // In Germany the seller's tax id is required; nothing is sent until it is there.
@@ -193,27 +196,28 @@ test.describe("the owner's own steps", () => {
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}/go-live?env=live`);
     const card = page.getByTestId("live-provider");
+    const sheet = page.getByTestId("provider-sheet");
     await expect(page.getByTestId("live-accounts-none")).toBeVisible();
-    await card.getByTestId("provider-select").selectOption("paddle");
+    await card.getByTestId("provider-open-paddle").click();
     // Keys are password fields, and the form never asks for an endpoint.
-    await expect(card.getByTestId("lp-api_key")).toHaveAttribute("type", "password");
-    await expect(card.getByTestId("lp-webhook_secret")).toHaveAttribute("type", "password");
-    await expect(card.getByLabel(/base.?url|endpoint/i)).toHaveCount(0);
-    await card.getByTestId("provider-connect").click();
-    await expect(card.getByRole("alert").first()).toContainText("Required.");
+    await expect(sheet.getByTestId("lp-api_key")).toHaveAttribute("type", "password");
+    await expect(sheet.getByTestId("lp-webhook_secret")).toHaveAttribute("type", "password");
+    await expect(sheet.getByLabel(/base.?url|endpoint/i)).toHaveCount(0);
+    await sheet.getByTestId("provider-connect").click();
+    await expect(sheet.getByRole("alert").first()).toContainText("Required.");
     expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(0);
-    await card.getByTestId("lp-api_key").fill("pdl_live_SECRETKEY");
-    await card.getByTestId("lp-webhook_secret").fill("pdl_ntfset_SECRETHOOK");
-    await card.getByTestId("lp-usage_product_id").fill("pro_01abc");
-    await card.getByTestId("provider-connect").click();
+    await sheet.getByTestId("lp-api_key").fill("pdl_live_SECRETKEY");
+    await sheet.getByTestId("lp-webhook_secret").fill("pdl_ntfset_SECRETHOOK");
+    await sheet.getByTestId("lp-usage_product_id").fill("pro_01abc");
+    await sheet.getByTestId("provider-connect").click();
     await expect(page.getByTestId("provider-connected")).toContainText("Paddle is connected");
     expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/paddle`)[0]?.body).toEqual({
       api_key: "pdl_live_SECRETKEY", webhook_secret: "pdl_ntfset_SECRETHOOK", usage_product_id: "pro_01abc",
     });
-    // The secrets are gone from the form and from the page, and the checklist item is done.
+    // The secrets are gone from the form and from the page, and the checklist item is done at once.
+    await expect(sheet).toHaveCount(0);
     await expect(page.getByTestId("live-account-paddle")).toContainText("Working");
     await expect(page.getByTestId("go-live-payment_provider")).toHaveAttribute("data-done", "true");
-    await expect(card.getByTestId("provider-select")).toHaveValue("");
     expect(await page.content()).not.toContain("SECRETKEY");
     expect(await page.evaluate(() => [...document.querySelectorAll("input")].map((i) => i.value).join("|"))).not.toMatch(/SECRET/);
     // Removing asks first.
@@ -235,15 +239,18 @@ test.describe("the owner's own steps", () => {
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}/go-live?env=live`);
     const card = page.getByTestId("live-provider");
-    await card.getByTestId("provider-select").selectOption("iyzico");
-    await expect(card.getByTestId("lp-buyer_email")).toHaveValue("ada@example.com");
-    await expect(card.getByTestId("lp-buyer_address")).toHaveValue("Bagdat Cd. 1");
-    await expect(card.getByTestId("lp-buyer_country")).toHaveValue(/^(Turkey|Türkiye)$/);
-    await expect(card.getByTestId("lp-buyer_identity_number")).toHaveValue("1234567890");
-    await expect(card.getByTestId("lp-secret_key")).toHaveValue("");
-    await card.getByTestId("provider-select").selectOption("banktransfer");
-    await expect(card.getByLabel("IBAN")).toBeVisible();
-    await expect(card.getByText(/Sandbox charges never reach/)).toHaveCount(0);
+    const sheet = page.getByTestId("provider-sheet");
+    await card.getByTestId("provider-open-iyzico").click();
+    await expect(sheet.getByTestId("lp-buyer_email")).toHaveValue("ada@example.com");
+    await expect(sheet.getByTestId("lp-buyer_address")).toHaveValue("Bagdat Cd. 1");
+    await expect(sheet.getByTestId("lp-buyer_country")).toHaveValue(/^(Turkey|Türkiye)$/);
+    await expect(sheet.getByTestId("lp-buyer_identity_number")).toHaveValue("1234567890");
+    await expect(sheet.getByTestId("lp-secret_key")).toHaveValue("");
+    await page.keyboard.press("Escape");
+    await expect(sheet).toHaveCount(0);
+    await card.getByTestId("provider-open-banktransfer").click();
+    await expect(sheet.getByLabel("IBAN")).toBeVisible();
+    await expect(sheet.getByText(/Sandbox charges never reach/)).toHaveCount(0);
   });
 
   test("a provider that refuses the keys is explained in words, and nothing is connected", async ({ page }) => {
@@ -252,13 +259,16 @@ test.describe("the owner's own steps", () => {
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}/go-live?env=live`);
-    const card = page.getByTestId("live-provider");
-    await card.getByTestId("provider-select").selectOption("paddle");
-    await card.getByTestId("lp-api_key").fill("pdl_live_x");
-    await card.getByTestId("lp-webhook_secret").fill("pdl_ntfset_x");
-    await card.getByTestId("lp-usage_product_id").fill("pro_01abc");
-    await card.getByTestId("provider-connect").click();
-    await expect(card.getByRole("alert")).toContainText("did not accept these credentials");
+    const sheet = page.getByTestId("provider-sheet");
+    await page.getByTestId("provider-open-paddle").click();
+    await sheet.getByTestId("lp-api_key").fill("pdl_live_x");
+    await sheet.getByTestId("lp-webhook_secret").fill("pdl_ntfset_x");
+    await sheet.getByTestId("lp-usage_product_id").fill("pro_01abc");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(sheet.getByRole("alert")).toContainText("did not accept these credentials");
+    // What was typed stays for another try, and nothing counts as connected.
+    await expect(sheet.getByTestId("lp-api_key")).toHaveValue("pdl_live_x");
+    await page.keyboard.press("Escape");
     await expect(page.getByTestId("live-accounts-none")).toBeVisible();
     await expect(page.getByTestId("go-live-payment_provider")).toHaveAttribute("data-done", "false");
   });

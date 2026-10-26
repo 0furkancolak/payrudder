@@ -3,7 +3,7 @@ import { Eye } from "@lucide/vue";
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -22,6 +22,8 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
+import { PaymentContext, recordLink } from "@/features/related";
+import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useLedger, useReconcile } from "./api";
 
 const { t, te, locale } = useI18n();
@@ -41,7 +43,7 @@ const distinct = (pick: (e: Entry) => string | undefined) => [...new Set((ledger
 
 // --- the ledger
 type Entry = NonNullable<NonNullable<typeof ledger.data.value>["entries"]>[number];
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filter((e) => inRange(e.occurred_at, range.value)), {
   searchFields: (e) => [e.provider, e.provider_ref, e.kind, e.source],
   filters: { status: (e, v) => e.status === v, provider: (e, v) => e.provider === v },
@@ -56,8 +58,7 @@ function clearLedger() {
   range.value = { from: "", to: "" };
 }
 
-const detail = ref<number | null>(null);
-const current = computed(() => (detail.value === null ? undefined : table.items.value[detail.value]));
+const current = table.row;
 const detailRows = computed(() => {
   const e = current.value;
   if (!e) return [];
@@ -72,7 +73,15 @@ const detailRows = computed(() => {
     { key: "id", label: t("billing.payments.id"), value: String(e.id ?? ""), mono: true },
   ];
 });
-const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => (detail.value = i) }];
+// A link from an invoice or a customer opens the payment it names (the ledger row's id); a date range that hides it is cleared first.
+useOpenParam("payment", () => !ledger.isPending.value, (id) => {
+  const is = (e: Entry) => String(e.id) === id || e.provider_ref === id;
+  if (!table.openWhere(is)) {
+    clearLedger();
+    table.openWhere(is);
+  }
+});
+const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => table.open(i) }];
 
 // --- the discrepancies a reconciliation found
 type Discrepancy = NonNullable<NonNullable<typeof reconcile.data.value>["discrepancies"]>[number];
@@ -106,7 +115,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(e, i) in table.items.value" :key="e.id" class="cursor-pointer" @click="detail = i">
+        <TableRow v-for="(e, i) in table.items.value" :key="e.id" class="cursor-pointer" @click="table.open(i)">
           <TableCell class="mono text-xs font-medium">{{ e.provider_ref || String(e.id ?? "") }}</TableCell>
           <TableCell class="whitespace-nowrap">{{ when(e.occurred_at) }}</TableCell>
           <TableCell>{{ label(t, te, "ledgerKind", e.kind) }}</TableCell>
@@ -125,10 +134,11 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
     <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="detail" :total="table.items.value.length" :title="current?.provider_ref || String(current?.id ?? '') || ''" :description="current ? when(current.occurred_at) : ''">
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.provider_ref || String(current?.id ?? '') || ''" :description="current ? when(current.occurred_at) : ''">
     <DetailList :rows="detailRows">
       <template #status><StatusPill :tone="toneOf(current?.status)">{{ label(t, te, "ledgerStatus", current?.status) }}</StatusPill></template>
     </DetailList>
+    <PaymentContext v-if="current?.invoice_id" :key="current.id" :tenant-id="tenantId" :invoice-id="current.invoice_id" class="mt-6" />
   </DetailSheet>
 
   <Card class="mb-6">
@@ -165,7 +175,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
           <TableBody>
             <TableRow v-for="(d, i) in issues.items.value" :key="i">
               <TableCell>
-                <Link v-if="d.invoice_id" to="/tenants/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: d.invoice_id }" class="mono font-medium hover:underline">{{ d.number || d.invoice_id.slice(0, 8) }}</Link>
+                <Link v-if="d.invoice_id" v-bind="recordLink('invoice', d.invoice_id, tenantId)" class="mono font-medium hover:underline">{{ d.number || d.invoice_id.slice(0, 8) }}</Link>
               </TableCell>
               <TableCell>{{ label(t, te, "discrepancy", d.kind) }}</TableCell>
               <TableCell>{{ d.provider }} <span class="mono text-xs">{{ d.provider_ref }}</span></TableCell>

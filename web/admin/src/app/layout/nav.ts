@@ -3,6 +3,7 @@ import {
   Building2,
   FileText,
   FlaskConical,
+  Gauge,
   Gift,
   Handshake,
   Inbox,
@@ -20,6 +21,7 @@ import {
   Rocket,
   Settings,
   ShieldCheck,
+  Ticket,
   Users,
   UsersRound,
   Wallet,
@@ -78,7 +80,7 @@ const exact = (to: string) => (path: string) => path === to;
  * The pages a person has under /app/t/{tenant}/... (route file: features/product/routes.ts). A page is in the sidebar only when its route exists, so
  * nothing in the navigation leads to a "not found". Add a key here in the same change that adds the route.
  */
-export const PERSON_PAGES = ["customers", "subscriptions", "credits", "packages", "pricing", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "webhooks", "mail", "members"] as const;
+export const PERSON_PAGES = ["customers", "subscriptions", "usage", "credits", "meters", "packages", "pricing", "coupons", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "webhooks", "mail", "members"] as const;
 
 /** The pages of a tenant: key, icon, path under the tenant, the section it sits in, and whether a person has it or only the operator. */
 interface Page {
@@ -92,9 +94,12 @@ interface Page {
 const PAGES: Page[] = [
   { key: "customers", icon: Users, path: "customers", section: "customers", person: true },
   { key: "subscriptions", icon: Repeat, path: "subscriptions", section: "customers", person: true },
+  { key: "usage", icon: Gauge, path: "usage", section: "customers", person: true },
   { key: "credits", icon: Gift, path: "credits", section: "customers", person: true },
+  { key: "meters", icon: Gauge, path: "meters", section: "billing", person: true },
   { key: "packages", icon: Package, path: "packages", section: "billing", person: true },
   { key: "pricing", icon: Percent, path: "pricing", section: "billing", person: true },
+  { key: "coupons", icon: Ticket, path: "coupons", section: "billing", person: true },
   { key: "invoices", icon: FileText, path: "invoices", section: "billing", person: true },
   { key: "payments", icon: Wallet, path: "payments", section: "billing", person: true },
   { key: "paymentLinks", icon: Link2, path: "payment-links", section: "billing", person: true },
@@ -126,6 +131,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
             item("overview", "/app", LayoutGrid, exact("/app")),
             ...(has.has("members") ? [item("members", "/app/members", UsersRound, under("/app/members"))] : []),
             ...(ctx.partner ? [item("partner", "/app/partner", Handshake, under("/app/partner"))] : []),
+            item("paymentProviders", "/app/providers", Plug, under("/app/providers")),
             item("settings", "/app/settings", Settings, under("/app/settings")),
           ],
         },
@@ -171,6 +177,8 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
         if (s === "settings" && ctx.appId) {
           const settings = `/app/apps/${ctx.appId}/settings`;
           items.unshift(item("appSettings", settings, Building2, under(settings), { env }));
+          const providers = `/app/apps/${ctx.appId}/providers`;
+          items.splice(1, 0, item("paymentProviders", providers, Plug, under(providers), { env }));
         }
         if (items.length > 0) sections.push({ key: s, items });
       }

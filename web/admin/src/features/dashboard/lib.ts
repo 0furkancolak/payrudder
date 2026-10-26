@@ -1,4 +1,5 @@
 import type { components } from "@/shared/api/schema";
+import { thisMonth } from "@/shared/lib/dateRange";
 
 /** The dashboard as the gateway answers it (see `Dashboard` in the OpenAPI file). */
 export type Dashboard = components["schemas"]["Dashboard"];
@@ -20,25 +21,32 @@ export interface DashQuery {
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Reads the address' search into a query; anything that is not understood falls back to the default (30 days, compared, first currency). */
-export function parseQuery(search: Record<string, unknown>): DashQuery {
-  const period = PERIODS.includes(search.period as Period) ? (search.period as Period) : "30d";
-  const q: DashQuery = { period, compare: !["off", "0", 0, false].includes(search.compare as never) };
-  if (period === "custom" && typeof search.from === "string" && typeof search.to === "string" && DAY.test(search.from) && DAY.test(search.to)) {
+/**
+ * Reads the address' search into a query; anything that is not understood falls back to the default: this month so far (a custom period from the
+ * first of the month to today, like every other filter of the console), compared, first currency.
+ */
+export function parseQuery(search: Record<string, unknown>, now: Date = new Date()): DashQuery {
+  const named = PERIODS.includes(search.period as Period) ? (search.period as Period) : "custom";
+  const q: DashQuery = { period: named, compare: !["off", "0", 0, false].includes(search.compare as never) };
+  if (named === "custom" && typeof search.from === "string" && typeof search.to === "string" && DAY.test(search.from) && DAY.test(search.to)) {
     q.from = search.from;
     q.to = search.to;
-  } else if (period === "custom") {
-    q.period = "30d";
+  } else if (named === "custom") {
+    const month = thisMonth(now);
+    q.from = month.from;
+    q.to = month.to;
   }
   if (typeof search.cur === "string" && /^[A-Z]{3}$/.test(search.cur)) q.cur = search.cur;
   return q;
 }
 
-/** The query as the search of an address, leaving out what is the default so a plain dashboard has a plain address. */
-export function toSearch(q: DashQuery): Record<string, string> {
+/** The query as the search of an address, leaving out what is the default (this month so far) so a plain dashboard has a plain address. */
+export function toSearch(q: DashQuery, now: Date = new Date()): Record<string, string> {
   const s: Record<string, string> = {};
-  if (q.period !== "30d") s.period = q.period;
-  if (q.period === "custom" && q.from && q.to) {
+  const month = thisMonth(now);
+  const isDefault = q.period === "custom" && q.from === month.from && q.to === month.to;
+  if (!isDefault) s.period = q.period;
+  if (!isDefault && q.period === "custom" && q.from && q.to) {
     s.from = q.from;
     s.to = q.to;
   }
@@ -170,13 +178,16 @@ export function share(value: number, max: number): number {
   return Math.max(2, Math.min(100, Math.round((value / max) * 100)));
 }
 
+/** The sheets open in an address (see shared/lib/sheets): every route that understands its own search keeps them. */
+export const sheetSearch = (s: Record<string, unknown>): { sheet?: string } => (typeof s.sheet === "string" && s.sheet !== "" ? { sheet: s.sheet } : {});
+
 /**
  * The search of a dashboard address: the environment of an app (sandbox only; live is the default) and the query. Used by the routes, so that a link keeps the
  * view and a value that is not understood is dropped instead of breaking the page.
  */
 export function dashSearch(s: Record<string, unknown>): Record<string, string> {
   // Both environments are written out: with none in the address the console chooses by itself (the last one used), and a chosen one must stay chosen.
-  return { ...(s.env === "sandbox" || s.env === "live" ? { env: s.env } : {}), ...toSearch(parseQuery(s)) };
+  return { ...(s.env === "sandbox" || s.env === "live" ? { env: s.env } : {}), ...sheetSearch(s), ...toSearch(parseQuery(s)) };
 }
 
 /** What the KPI cards need besides the figures themselves: the rates as percentages, the earlier ones, and every change against the period before. */

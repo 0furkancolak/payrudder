@@ -30,6 +30,9 @@ const (
 	maxKeysPerCycle = 10000
 	// activeRetention is how long a counter key stays in lim:active:{p} after its last update.
 	activeRetention = 45 * 24 * time.Hour
+	// windowSweepRetention is how long a window counter stays in lim:wactive:{p} after its last update: the threshold sweep retries a
+	// LimitExceeded that could not be produced for that long.
+	windowSweepRetention = time.Hour
 )
 
 // ReconcilerConfig configures a Reconciler.
@@ -127,6 +130,15 @@ func (r *Reconciler) RunOnce(ctx context.Context) (Result, error) {
 			return total, ctx.Err()
 		}
 	}
+	// Window counters are not reconciled (the aggregator keeps months only), but their thresholds are swept the same way.
+	for _, p := range r.cfg.Owned() {
+		keys, err := r.windowKeys(ctx, p)
+		if err != nil {
+			r.log.WarnContext(ctx, "window counters not swept", "partition", p, "error", err)
+			continue
+		}
+		swept = append(swept, keys...)
+	}
 	// Thresholds the apply loop could not fire (crash after the script, failed produce) are fired now.
 	for len(swept) > 0 {
 		n := min(len(swept), 500)
@@ -137,6 +149,15 @@ func (r *Reconciler) RunOnce(ctx context.Context) (Result, error) {
 		swept = swept[n:]
 	}
 	return total, nil
+}
+
+// windowKeys returns the window counters of partition p updated within windowSweepRetention, dropping the older ones from the set.
+func (r *Reconciler) windowKeys(ctx context.Context, p int32) ([]string, error) {
+	cutoff := float64(time.Now().Add(-windowSweepRetention).UnixMilli())
+	if err := r.cfg.Redis.ZRemRangeByScore(ctx, WindowActiveKey(p), "-inf", strconv.FormatFloat(cutoff, 'f', 0, 64)).Err(); err != nil {
+		return nil, err
+	}
+	return r.cfg.Redis.ZRangeArgs(ctx, redis.ZRangeArgs{Key: WindowActiveKey(p), Start: 0, Stop: maxKeysPerCycle - 1, Rev: true}).Result()
 }
 
 // partition builds and registers the checkpoints of one partition: one per (tenant, chunk of keys), since the

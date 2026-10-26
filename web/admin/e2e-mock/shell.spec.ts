@@ -252,8 +252,7 @@ test.describe("responsive", () => {
     await shoot(page, "37-rtl");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByTestId("menu-button").click();
-    const drawer = await page.getByTestId("drawer").boundingBox();
-    expect(drawer && drawer.x > 100).toBe(true);
+    await expect.poll(async () => ((await page.getByTestId("drawer").boundingBox())?.x ?? 0) > 100).toBe(true); // the drawer slides in: measure once it has settled
     await shoot(page, "38-rtl-drawer");
   });
 });

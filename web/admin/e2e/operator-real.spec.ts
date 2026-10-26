@@ -7,7 +7,7 @@ const operatorToken = process.env.PAYRUDDER_OPERATOR_TOKEN ?? "local-operator-to
 const gateway = process.env.PAYRUDDER_GATEWAY_URL ?? "http://localhost:42800";
 const shots = process.env.SHOTS;
 
-const tabs = ["", "invoices", "apps", "customers", "subscriptions", "packages", "pricing", "payments", "reports", "credits", "payment-links", "accounting", "providers", "e-invoice", "mail", "address", "webhooks"];
+const tabs = ["", "invoices", "apps", "customers", "subscriptions", "usage", "packages", "pricing", "coupons", "payments", "reports", "credits", "payment-links", "accounting", "providers", "e-invoice", "mail", "address", "webhooks"];
 
 async function tenantId(): Promise<string> {
   if (process.env.TENANT) return process.env.TENANT;

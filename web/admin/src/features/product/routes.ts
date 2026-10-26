@@ -4,13 +4,15 @@ import { affiliateRoutes } from "@/features/affiliates/routes";
 import { creditRoutes } from "@/features/credits/routes";
 import { customerRoutes } from "@/features/customers/routes";
 import { mailRoutes } from "@/features/mail/routes";
+import { meterRoutes } from "@/features/meters/routes";
 import { packageRoutes } from "@/features/packages/routes";
 import { paymentLinkRoutes } from "@/features/paymentlinks/routes";
 import { pricingRoutes } from "@/features/pricing/routes";
 import { reportRoutes } from "@/features/reports/routes";
 import { subscriptionRoutes } from "@/features/subscriptions/routes";
+import { usageRoutes } from "@/features/usage/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
-import { dashSearch } from "@/features/dashboard/lib";
+import { dashSearch, sheetSearch } from "@/features/dashboard/lib";
 import { lazyPage } from "@/shared/lib/lazy";
 import { isPerson } from "@/shared/lib/session";
 import { partnerRoutes } from "@/features/partner/routes";
@@ -67,18 +69,21 @@ export function personRoutes(parent: AnyRoute) {
     component: lazyPage(() => import("./AppDashboard.vue")),
     validateSearch: dashSearch,
   });
-  const envSearch = (s: Record<string, unknown>) => (s.env === "sandbox" || s.env === "live" ? { env: s.env } : {});
+  const envSearch = (s: Record<string, unknown>) => ({ ...(s.env === "sandbox" || s.env === "live" ? { env: s.env } : {}), ...sheetSearch(s) });
   const keys = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/keys", component: lazyPage(() => import("./ApiKeysPage.vue")), validateSearch: envSearch });
   const appSettings = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/settings", component: lazyPage(() => import("./AppSettingsPage.vue")), validateSearch: envSearch });
   // Going live and the sandbox's own tools (phase 45): the checklist and promote, and reset and scenarios.
   const goLive = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/go-live", component: lazyPage(() => import("./GoLivePage.vue")), validateSearch: envSearch });
   const sandbox = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/sandbox", component: lazyPage(() => import("./SandboxPage.vue")), validateSearch: envSearch });
+  // Payment providers (connect, test, disconnect): one screen per app and one for the organisation, which can connect a provider on all of its apps.
+  const providerScreen = lazyPage(() => import("@/features/providers/ConnectionsPage.vue"));
+  const appProviders = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/providers", component: providerScreen, validateSearch: envSearch });
+  const orgProviders = createRoute({ getParentRoute: () => signedIn, path: "/app/providers", component: providerScreen });
   const members = createRoute({ getParentRoute: () => signedIn, path: "/app/members", component: lazyPage(() => import("./MembersPage.vue")) });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazyPage(() => import("./SettingsPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazyPage(() => import("./ProductTenantLayout.vue")) });
   // Invoices and payments are pages of the product: the console's versions speak operator-only routes (saga, transfers, the raw ledger).
   const invoices = createRoute({ getParentRoute: () => tenant, path: "invoices", component: lazyPage(() => import("./InvoicesPage.vue")) });
-  const invoice = createRoute({ getParentRoute: () => tenant, path: "invoices/$invoiceId", component: lazyPage(() => import("./InvoiceDetailPage.vue")) });
   const payments = createRoute({ getParentRoute: () => tenant, path: "payments", component: lazyPage(() => import("./PaymentsPage.vue")) });
   return signedIn.addChildren([
     home,
@@ -87,6 +92,8 @@ export function personRoutes(parent: AnyRoute) {
     appSettings,
     goLive,
     sandbox,
+    appProviders,
+    orgProviders,
     members,
     settings,
     ...partnerRoutes(signedIn),
@@ -94,11 +101,12 @@ export function personRoutes(parent: AnyRoute) {
     tenant.addChildren([
       ...customerRoutes(tenant),
       ...subscriptionRoutes(tenant),
+      ...usageRoutes(tenant),
       ...creditRoutes(tenant),
+      ...meterRoutes(tenant),
       ...packageRoutes(tenant),
       ...pricingRoutes(tenant),
       invoices,
-      invoice,
       payments,
       ...paymentLinkRoutes(tenant),
       ...accountingRoutes(tenant),

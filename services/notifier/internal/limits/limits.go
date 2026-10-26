@@ -96,9 +96,14 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 		return fmt.Errorf("tenant lookup: %w", err)
 	}
 	scale := int(le.GetQuantityScale())
+	// A limit over an hour, a day or a week names its window ("2026-11-05"); a monthly one its billing period, as before windows existed.
+	window := le.GetWindowId()
+	if window == "" {
+		window = le.GetPeriodId()
+	}
 	data := map[string]string{
 		"customer_name": cust.GetCustomer().GetName(), "tenant_name": tn.GetTenant().GetName(), "meter_code": le.GetMeterCode(),
-		"period": le.GetPeriodId(), "threshold_pct": fmt.Sprint(le.GetThresholdPct()),
+		"period": window, "threshold_pct": fmt.Sprint(le.GetThresholdPct()),
 		"used": quantity.FormatUnits(le.GetUsedUnits(), scale), "limit": quantity.FormatUnits(le.GetLimitUnits(), scale),
 	}
 	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{

@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -23,7 +23,7 @@ const ledger = useCreditLedger(
   () => props.customer,
 );
 type Entry = NonNullable<NonNullable<typeof ledger.data.value>["entries"]>[number];
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filter((e) => inRange(e.create_time, range.value)), {
   searchFields: (e) => [e.reason, e.kind ? t(`billing.credits.kind.${e.kind}`) : "", e.source ? t(`billing.credits.source.${e.source}`) : ""],
   filters: { kind: (e, v) => e.kind === v },
