@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
@@ -93,6 +94,16 @@ func (s *Server) ledgerLookup(ctx context.Context, tenantID string, invoiceIDs [
 	}
 	sort.SliceStable(rows, func(i, j int) bool { return rows[i].id() < rows[j].id() })
 	return rows, nil
+}
+
+// ledgerRowsOf is the ledger rows of the invoice a hosted page shows. A page does not fail for a ledger that cannot be read: it shows what billing alone
+// knows, and the log says the ledger was missing.
+func (s *Server) ledgerRowsOf(ctx context.Context, resp *billingv1.GetHostedInvoiceResponse) []ledgerRow {
+	rows, err := s.ledgerLookup(ctx, resp.GetPayment().GetTenantId(), []string{resp.GetInvoice().GetId()})
+	if err != nil {
+		s.d.Log.WarnContext(ctx, "ledger lookup failed; the page shows what billing knows", "error", err)
+	}
+	return rows
 }
 
 // pendingWindow is how long a pending charge row keeps an invoice "processing". It matches payments-worker's checkoutReuse: the time a handed-out

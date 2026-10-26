@@ -156,34 +156,74 @@ func groupIBAN(iban string) string {
 	return b.String()
 }
 
+// invoiceHeader is what the invoice page and the receipt both say about the invoice: who it is from and to, its number, date, currency, total and lines.
+type invoiceHeader struct {
+	Seller, Customer, Number, Date, Currency, Total string
+	SellerAddress, CustomerAddress                  []string
+	Lines                                           []hostedLine
+}
+
+// newInvoiceHeader reads the header from billing's answer. The lines carry their service period when withPeriod is set (the invoice page shows it, the
+// receipt does not).
+func newInvoiceHeader(resp *billingv1.GetHostedInvoiceResponse, withPeriod bool) invoiceHeader {
+	inv := resp.GetInvoice()
+	exp := int(resp.GetCurrencyExponent())
+	h := invoiceHeader{Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(), Number: inv.GetNumber(), Currency: inv.GetCurrency(),
+		Total:         money.FormatMinorGrouped(inv.GetTotalMinor(), exp),
+		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines()}
+	if t := inv.GetFinalizeTime(); t != nil {
+		h.Date = t.AsTime().UTC().Format(time.DateOnly)
+	}
+	for _, l := range inv.GetLines() {
+		line := hostedLine{Description: l.GetDescription(), Amount: money.FormatMinorGrouped(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0}
+		if f, t := l.GetServiceFrom(), l.GetServiceTo(); withPeriod && f != nil && t != nil {
+			line.Period = f.AsTime().UTC().Format(time.DateOnly) + " – " + t.AsTime().UTC().Format(time.DateOnly)
+		}
+		h.Lines = append(h.Lines, line)
+	}
+	return h
+}
+
+// hostedBase is the page base of a page about an invoice of the scope: language, brand, the seller's logo when it has one, and the test-mode banner.
+func hostedBase(resp *billingv1.GetHostedInvoiceResponse, sc scope, lang string) pageBase {
+	b := newBase(lang)
+	b.Test = resp.GetEnvironment() == env.Sandbox.String()
+	if resp.GetLogoAvailable() {
+		b.Logo = sc.logo()
+	}
+	return b
+}
+
 type invoiceView struct {
 	pageBase
-	Seller, Customer, Number, Status string
-	State, StateLabel                string
-	SellerAddress, CustomerAddress   []string
-	Date, Currency, Subtotal, Total  string
-	Lines                            []hostedLine
-	HasPDF                           bool
-	PDF, Receipt, Back, Pay          string
-	Payable, NoMethod                bool
-	Bank                             *hostedBank
-	Methods                          []methodView
-	Hint                             string
+	invoiceHeader
+	Status, State, StateLabel, Subtotal string
+	HasPDF                              bool
+	PDF, Receipt, Back, Pay             string
+	Payable, NoMethod                   bool
+	Bank                                *hostedBank
+	Methods                             []methodView
+	Hint                                string
 }
 
 func (v *invoiceView) Title() string { return v.L["invoice"] + " " + v.Number }
 
-func stateOf(resp *billingv1.GetHostedInvoiceResponse) string {
-	if s := resp.GetPaymentState(); s != "" {
-		return s
+// paymentStateWord is the state of an invoice as a person reads it: what the payment state says, else paid or void, else open.
+func paymentStateWord(paymentState, invoiceStatus string) string {
+	if paymentState != "" {
+		return paymentState
 	}
-	switch resp.GetInvoice().GetStatus() {
+	switch invoiceStatus {
 	case "paid":
 		return "paid"
 	case "void":
 		return "void"
 	}
 	return "open"
+}
+
+func stateOf(resp *billingv1.GetHostedInvoiceResponse) string {
+	return paymentStateWord(resp.GetPaymentState(), resp.GetInvoice().GetStatus())
 }
 
 // hostedInvoicePage is GET /i/{token}: the invoice (or the ad-hoc request) as a page, no sign-in.
@@ -225,36 +265,19 @@ func (s *Server) invoiceOrAdhoc(w http.ResponseWriter, r *http.Request, sc scope
 
 func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse) *invoiceView {
 	inv := resp.GetInvoice()
-	exp := int(resp.GetCurrencyExponent())
 	q := langSuffix(r)
 	v := &invoiceView{
-		pageBase: newBase(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(),
-		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines(), Number: inv.GetNumber(), Status: inv.GetStatus(),
-		Currency: inv.GetCurrency(), Subtotal: money.FormatMinorGrouped(inv.GetSubtotalMinor(), exp), Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp), HasPDF: resp.GetPdfAvailable(),
+		pageBase: hostedBase(resp, sc, lang), invoiceHeader: newInvoiceHeader(resp, true), Status: inv.GetStatus(),
+		Subtotal: money.FormatMinorGrouped(inv.GetSubtotalMinor(), int(resp.GetCurrencyExponent())), HasPDF: resp.GetPdfAvailable(),
 		PDF: sc.page() + "/pdf", Pay: sc.page() + "/pay" + q, Back: sc.back(), State: stateOf(resp),
 	}
-	v.Test = resp.GetEnvironment() == env.Sandbox.String()
 	if v.Back != "" {
 		v.Back += q
-	}
-	if resp.GetLogoAvailable() {
-		v.Logo = sc.logo()
-	}
-	if t := inv.GetFinalizeTime(); t != nil {
-		v.Date = t.AsTime().UTC().Format(time.DateOnly)
-	}
-	for _, l := range inv.GetLines() {
-		line := hostedLine{Description: l.GetDescription(), Amount: money.FormatMinorGrouped(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0}
-		if f, t := l.GetServiceFrom(), l.GetServiceTo(); f != nil && t != nil {
-			line.Period = f.AsTime().UTC().Format(time.DateOnly) + " – " + t.AsTime().UTC().Format(time.DateOnly)
-		}
-		v.Lines = append(v.Lines, line)
 	}
 	if in := resp.GetPaymentInstructions(); in.GetIban() != "" {
 		v.Bank = &hostedBank{Name: in.GetBankName(), Holder: in.GetAccountHolder(), IBAN: groupIBAN(in.GetIban()), BIC: in.GetBic(), Reference: in.GetReference()}
 	}
-	rows, _ := s.ledgerLookup(ctx, resp.GetPayment().GetTenantId(), []string{inv.GetId()})
-	v.State = refineState(v.State, rows, inv.GetId(), s.now())
+	v.State = refineState(v.State, s.ledgerRowsOf(ctx, resp), inv.GetId(), s.now())
 	v.StateLabel = v.L["st_"+v.State]
 	switch v.State {
 	case "processing":
@@ -563,11 +586,9 @@ func (s *Server) logo(w http.ResponseWriter, r *http.Request, req *billingv1.Get
 
 type receiptView struct {
 	pageBase
-	Seller, Customer, Number, Date    string
-	Currency, Total, PaidOn, PaidWith string
-	SellerAddress, CustomerAddress    []string
-	Lines                             []hostedLine
-	Back                              string
+	invoiceHeader
+	PaidOn, PaidWith string
+	Back             string
 }
 
 func (v *receiptView) Title() string { return v.L["receipt"] + " " + v.Number }
@@ -597,22 +618,8 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 		return
 	}
 	inv := resp.GetInvoice()
-	exp := int(resp.GetCurrencyExponent())
-	v := &receiptView{pageBase: newBase(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName(), Number: inv.GetNumber(),
-		SellerAddress: resp.GetSellerAddressLines(), CustomerAddress: resp.GetCustomerAddressLines(), Currency: inv.GetCurrency(), Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp),
-		Back: sc.page() + langSuffix(r)}
-	v.Test = resp.GetEnvironment() == env.Sandbox.String()
-	if resp.GetLogoAvailable() {
-		v.Logo = sc.logo()
-	}
-	if t := inv.GetFinalizeTime(); t != nil {
-		v.Date = t.AsTime().UTC().Format(time.DateOnly)
-	}
-	for _, l := range inv.GetLines() {
-		v.Lines = append(v.Lines, hostedLine{Description: l.GetDescription(), Amount: money.FormatMinorGrouped(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0})
-	}
-	rows, _ := s.ledgerLookup(r.Context(), resp.GetPayment().GetTenantId(), []string{inv.GetId()})
-	for _, row := range rows {
+	v := &receiptView{pageBase: hostedBase(resp, sc, lang), invoiceHeader: newInvoiceHeader(resp, false), Back: sc.page() + langSuffix(r)}
+	for _, row := range s.ledgerRowsOf(r.Context(), resp) {
 		if row.InvoiceID == inv.GetId() && row.Kind == "charge" && row.Status == "succeeded" {
 			v.PaidOn, v.PaidWith = row.OccurredAt.UTC().Format(time.DateOnly), row.Provider
 		}
@@ -645,13 +652,15 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 		return
 	}
 	l := hostedText(lang)
+	back := sc.page() + langSuffix(r)
+	// refuse answers with a page the person can go back from: the payment cannot be made (409), or cannot be started now (503).
+	refuse := func(code int, key string) { s.message(w, r, code, lang, l["pay_title"], l[key], back) }
 	method := ""
 	if err := r.ParseForm(); err == nil {
 		method = r.PostForm.Get("method")
 	}
-	back := sc.page() + langSuffix(r)
-	if method == "" || len(method) > 64 {
-		s.message(w, r, http.StatusConflict, lang, l["pay_title"], l["pay_cannot"], back)
+	if method == "" || len(method) > maxMethodLen {
+		refuse(http.StatusConflict, "pay_cannot")
 		return
 	}
 	refCode, refAt := referral(r)
@@ -663,10 +672,10 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 		hostedNotFound(w, lang)
 		return
 	case status.Code(err) == codes.FailedPrecondition:
-		s.message(w, r, http.StatusConflict, lang, l["pay_title"], l["pay_cannot"], back)
+		refuse(http.StatusConflict, "pay_cannot")
 		return
 	default:
-		s.message(w, r, http.StatusServiceUnavailable, lang, l["pay_title"], l["pay_unavailable"], back)
+		refuse(http.StatusServiceUnavailable, "pay_unavailable")
 		return
 	}
 	if resp.GetAction() != "provider" {
@@ -675,27 +684,22 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 		return
 	}
 	p := resp.GetPayment()
-	var out paymentStart
-	code, err := s.paymentsDo(r.Context(), http.MethodPost, "/admin/tenants/"+url.PathEscape(p.GetTenantId())+"/invoice-payments", nil, map[string]any{
-		"invoice_id": p.GetInvoiceId(), "saga_id": p.GetSagaId(), "number": p.GetNumber(), "amount_minor": p.GetAmountMinor(), "currency": p.GetCurrency(), "method": method,
-		"provider": p.GetProvider(), "country": p.GetCountry(), "customer_email": p.GetCustomerEmail(), "customer_name": p.GetCustomerName(), "description": p.GetDescription(),
-		"return_url": s.d.PublicURL + back, "environment": p.GetEnvironment(),
-	}, &out)
+	out, code, err := s.startProviderPayment(r.Context(), p, method, s.d.PublicURL+back)
 	switch {
 	case err != nil || code >= 500:
 		if err != nil {
 			s.d.Log.WarnContext(r.Context(), "payment not started", "error", err)
 		}
-		s.message(w, r, http.StatusServiceUnavailable, lang, l["pay_title"], l["pay_unavailable"], back)
+		refuse(http.StatusServiceUnavailable, "pay_unavailable")
 		return
 	case code/100 != 2:
-		s.message(w, r, http.StatusConflict, lang, l["pay_title"], l["pay_cannot"], back)
+		refuse(http.StatusConflict, "pay_cannot")
 		return
 	}
 	if out.Kind == "redirect" {
 		u, perr := url.Parse(out.URL)
 		if perr != nil || u.Scheme != "https" || u.Host == "" {
-			s.message(w, r, http.StatusServiceUnavailable, lang, l["pay_title"], l["pay_unavailable"], back)
+			refuse(http.StatusServiceUnavailable, "pay_unavailable")
 			return
 		}
 		hostedHeaders(w)
@@ -709,6 +713,21 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 		v.Lines = append(v.Lines, struct{ Label, Value string }{ln.Label, ln.Value})
 	}
 	s.render(w, r, http.StatusOK, "instructions", v)
+}
+
+// maxMethodLen bounds the payment method a pay form names.
+const maxMethodLen = 64
+
+// startProviderPayment asks payments-worker to start paying the invoice billing prepared (p) by the method, returning to returnURL. It returns the worker's
+// answer and its HTTP status; the error is a worker that could not be reached.
+func (s *Server) startProviderPayment(ctx context.Context, p *billingv1.HostedPaymentContext, method, returnURL string) (paymentStart, int, error) {
+	var out paymentStart
+	code, err := s.paymentsDo(ctx, http.MethodPost, "/admin/tenants/"+url.PathEscape(p.GetTenantId())+"/invoice-payments", nil, map[string]any{
+		"invoice_id": p.GetInvoiceId(), "saga_id": p.GetSagaId(), "number": p.GetNumber(), "amount_minor": p.GetAmountMinor(), "currency": p.GetCurrency(), "method": method,
+		"provider": p.GetProvider(), "country": p.GetCountry(), "customer_email": p.GetCustomerEmail(), "customer_name": p.GetCustomerName(), "description": p.GetDescription(),
+		"return_url": returnURL, "environment": p.GetEnvironment(),
+	}, &out)
+	return out, code, err
 }
 
 // exponentOf is the number of decimal places of a currency, for the one page that is rendered from payments-worker's answer; the others use the exponent

@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -198,7 +199,7 @@ func (s *Server) uploadAssets(w http.ResponseWriter, r *http.Request) {
 		Purpose string `json:"purpose"`
 	}{}
 	results := []uploadResult{}
-	var total int64
+	budget := &uploadBudget{}
 	files := 0
 	for {
 		part, err := mr.NextPart()
@@ -239,7 +240,7 @@ func (s *Server) uploadAssets(w http.ResponseWriter, r *http.Request) {
 		if files > 1 && !s.charge(w, r, p, ratelimit.ClassWrite, 1) { // the route charged the first file; each further file costs one more
 			return
 		}
-		res, over := s.uploadOne(r.Context(), part, purposeOf(meta[part.FileName()].Purpose), &total)
+		res, over := s.uploadOne(r.Context(), part, purposeOf(meta[part.FileName()].Purpose), budget)
 		results = append(results, res)
 		if over {
 			writeError(w, r, errBodyTooLarge(maxUploadRequest))
@@ -253,8 +254,11 @@ func (s *Server) uploadAssets(w http.ResponseWriter, r *http.Request) {
 	writeJSONValue(w, http.StatusOK, map[string]any{"results": results})
 }
 
+// uploadBudget counts the file bytes of a form upload, which are limited as a whole (maxUploadRequest) as well as one by one.
+type uploadBudget struct{ total int64 }
+
 // uploadOne streams one form part into assets-svc. over reports that the request-wide limit was exceeded.
-func (s *Server) uploadOne(ctx context.Context, part *multipart.Part, purpose assetsv1.Purpose, total *int64) (res uploadResult, over bool) {
+func (s *Server) uploadOne(ctx context.Context, part *multipart.Part, purpose assetsv1.Purpose, budget *uploadBudget) (res uploadResult, over bool) {
 	res = uploadResult{Filename: part.FileName()}
 	reject := func(code, msg string) uploadResult {
 		res.Status, res.ErrorCode, res.Message = "rejected", code, msg
@@ -278,44 +282,13 @@ func (s *Server) uploadOne(ctx context.Context, part *multipart.Part, purpose as
 		code, msg := errReason(err)
 		return reject(code, msg), false
 	}
-	buf := make([]byte, uploadChunk)
-	var size int64
-	serverDone := false
-	for !serverDone {
-		n, rerr := part.Read(buf)
-		if n > 0 {
-			size += int64(n)
-			*total += int64(n)
-			switch {
-			case *total > maxUploadRequest:
-				cancel()
-				return reject("REQUEST_TOO_LARGE", "the request exceeds 100 MiB"), true
-			case size > maxUploadFile:
-				cancel()
-				_, _ = io.Copy(io.Discard, part)
-				return reject("FILE_TOO_LARGE", "files in a form upload are limited to 25 MiB; use an upload session for larger files"), false
-			}
-			if serr := stream.Send(&assetsv1.UploadAssetRequest{Msg: &assetsv1.UploadAssetRequest_Chunk{Chunk: buf[:n]}}); serr != nil {
-				if errors.Is(serr, io.EOF) {
-					serverDone = true // assets-svc answered early (a rejected file): fetch its answer below and skip the rest
-				} else {
-					cancel()
-					code, msg := errReason(serr)
-					return reject(code, msg), false
-				}
-			}
-		}
-		if rerr != nil {
-			if !errors.Is(rerr, io.EOF) {
-				cancel() // the client went away mid-part
-				return reject("UPLOAD_INTERRUPTED", "the request body ended unexpectedly"), false
-			}
-			break
-		}
+	pumped := pumpPart(stream, part, budget, cancel)
+	if pumped.rejected != nil {
+		return reject(pumped.rejected.code, pumped.rejected.message), pumped.over
 	}
 	resp, err := stream.CloseAndRecv()
 	asset := resp.GetAsset()
-	if serverDone {
+	if pumped.serverDone {
 		_, _ = io.Copy(io.Discard, part)
 	}
 	if err != nil {
@@ -328,6 +301,57 @@ func (s *Server) uploadOne(ctx context.Context, part *multipart.Part, purpose as
 	raw, _ := protojson.MarshalOptions{UseProtoNames: true}.Marshal(asset)
 	res.Status, res.Asset = "created", raw
 	return res, false
+}
+
+// rejection is why a file of a form upload was not taken: the code and message its result carries.
+type rejection struct{ code, message string }
+
+// pumped is how copying a part into the upload stream ended.
+type pumped struct {
+	rejected *rejection // set when the file is rejected; the stream is cancelled
+	over     bool       // the request-wide limit was exceeded
+	// serverDone: assets-svc answered before the end of the part (a rejected file), so the rest of the part is dropped and its answer is read.
+	serverDone bool
+}
+
+// pumpPart copies the part into the stream, one chunk at a time, within the size of one file and of the whole request. cancel aborts the upload at assets-svc.
+func pumpPart(stream grpc.ClientStreamingClient[assetsv1.UploadAssetRequest, assetsv1.UploadAssetResponse], part *multipart.Part, budget *uploadBudget, cancel context.CancelFunc) pumped {
+	buf := make([]byte, uploadChunk)
+	var size int64
+	var out pumped
+	for !out.serverDone {
+		n, rerr := part.Read(buf)
+		if n > 0 {
+			size += int64(n)
+			budget.total += int64(n)
+			switch {
+			case budget.total > maxUploadRequest:
+				cancel()
+				return pumped{rejected: &rejection{"REQUEST_TOO_LARGE", "the request exceeds 100 MiB"}, over: true}
+			case size > maxUploadFile:
+				cancel()
+				_, _ = io.Copy(io.Discard, part)
+				return pumped{rejected: &rejection{"FILE_TOO_LARGE", "files in a form upload are limited to 25 MiB; use an upload session for larger files"}}
+			}
+			if serr := stream.Send(&assetsv1.UploadAssetRequest{Msg: &assetsv1.UploadAssetRequest_Chunk{Chunk: buf[:n]}}); serr != nil {
+				if errors.Is(serr, io.EOF) {
+					out.serverDone = true // assets-svc answered early (a rejected file): the caller fetches its answer and skips the rest
+				} else {
+					cancel()
+					code, msg := errReason(serr)
+					return pumped{rejected: &rejection{code, msg}}
+				}
+			}
+		}
+		if rerr != nil {
+			if !errors.Is(rerr, io.EOF) {
+				cancel() // the client went away mid-part
+				return pumped{rejected: &rejection{"UPLOAD_INTERRUPTED", "the request body ended unexpectedly"}}
+			}
+			break
+		}
+	}
+	return out
 }
 
 // setInvoiceLogo is PUT /v1/tenant/invoice-logo {"asset_id": "…"}: the READY invoice_logo asset invoices are drawn with.

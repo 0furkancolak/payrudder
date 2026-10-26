@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"html/template"
+	"maps"
 	"net"
 	"net/http"
 	"slices"
@@ -114,14 +115,28 @@ func hostedDir(lang string) string {
 	return "ltr"
 }
 
-func hostedText(lang string) map[string]string {
-	out := map[string]string{}
-	for _, src := range []map[string]string{hostedStrings["en"], paymentStrings["en"], creditStrings["en"], promoStrings["en"], affiliateStrings["en"], hostedStrings[lang], paymentStrings[lang], creditStrings[lang], promoStrings[lang], affiliateStrings[lang]} {
-		for k, v := range src {
-			out[k] = v
+// hostedTexts is the text of the public pages per language: English first, then the language's own over it, so a text a translation lacks reads in English.
+var hostedTexts = func() map[string]map[string]string {
+	out := map[string]map[string]string{}
+	for _, lang := range hostedLangs {
+		merged := map[string]string{}
+		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings} {
+			maps.Copy(merged, src["en"])
 		}
+		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings} {
+			maps.Copy(merged, src[lang])
+		}
+		out[lang] = merged
 	}
 	return out
+}()
+
+// hostedText is the text of the public pages in a language (English for one this API does not know). The map is shared: callers read it, never change it.
+func hostedText(lang string) map[string]string {
+	if t, ok := hostedTexts[lang]; ok {
+		return t
+	}
+	return hostedTexts["en"]
 }
 
 var hostedStrings = map[string]map[string]string{
