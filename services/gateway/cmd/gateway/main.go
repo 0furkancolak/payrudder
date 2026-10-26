@@ -75,7 +75,7 @@ type Config struct {
 	GoogleClientSecret string `env:"PAYRUDDER_GOOGLE_CLIENT_SECRET"`
 	// GoogleRedirectURL overrides <AppURL>/gw/auth/google/callback when the browser reaches the gateway at another address than the console.
 	GoogleRedirectURL string `env:"PAYRUDDER_GOOGLE_REDIRECT_URL"`
-	// GoogleIssuer is the OpenID provider's address. Google's by default; development points it at the in-repo mock (tools/mockoidc).
+	// GoogleIssuer is the OpenID provider's address. Google's by default; development points it at the in-repo mock (pkg/oidctest/cmd/mockoidc).
 	GoogleIssuer string `env:"PAYRUDDER_GOOGLE_ISSUER"`
 }
 

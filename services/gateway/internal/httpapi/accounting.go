@@ -28,14 +28,12 @@ func (s *Server) listExpenses(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := &billingv1.ListExpensesRequest{Category: q.Get("category"), AppId: q.Get("app_id"), Currency: q.Get("currency"), FromDate: q.Get("from"), ToDate: q.Get("to"),
 		IncludeVoided: q.Get("include_voided") == "true", PageToken: q.Get("page_token")}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil || n < 1 || n > 200 {
-			writeError(w, r, invalid("page_size", "must be 1 to 200"))
-			return
-		}
-		req.PageSize = int32(n)
+	size, err := rangedParam(q, "page_size", 1, 200, "must be 1 to 200")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = size
 	resp, err := s.d.Billing.ListExpenses(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
@@ -100,16 +98,15 @@ func (s *Server) accountingExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="accounting-`+resp.GetFromDate()+`-`+resp.GetToDate()+`.csv"`)
 	cw := csv.NewWriter(w)
-	n := func(v int64) string { return strconv.FormatInt(v, 10) }
 	_ = cw.Write([]string{"currency", "bucket", "gross_income_minor", "tax_minor", "refunds_minor", "net_income_minor", "expenses_minor", "provider_fees_minor", "profit_minor", "discounts_minor",
 		"sales_before_discounts_minor"})
 	for _, c := range resp.GetCurrencies() {
 		for _, p := range c.GetSeries() {
-			_ = cw.Write([]string{c.GetCurrency(), p.GetBucket(), n(p.GetGrossIncomeMinor()), n(p.GetTaxMinor()), n(p.GetRefundsMinor()), n(p.GetNetIncomeMinor()), n(p.GetExpensesMinor()), "", n(p.GetProfitMinor()),
-				n(p.GetDiscountsMinor()), n(p.GetGrossIncomeMinor() - p.GetTaxMinor() + p.GetDiscountsMinor())})
+			_ = cw.Write([]string{c.GetCurrency(), p.GetBucket(), itoa(p.GetGrossIncomeMinor()), itoa(p.GetTaxMinor()), itoa(p.GetRefundsMinor()), itoa(p.GetNetIncomeMinor()), itoa(p.GetExpensesMinor()), "", itoa(p.GetProfitMinor()),
+				itoa(p.GetDiscountsMinor()), itoa(p.GetGrossIncomeMinor() - p.GetTaxMinor() + p.GetDiscountsMinor())})
 		}
-		_ = cw.Write([]string{c.GetCurrency(), "total", n(c.GetGrossIncomeMinor()), n(c.GetTaxMinor()), n(c.GetRefundsMinor()), n(c.GetNetIncomeMinor()), n(c.GetExpensesMinor()), feesCell(c), n(c.GetProfitMinor()),
-			n(c.GetDiscountsMinor()), n(c.GetSalesMinor())})
+		_ = cw.Write([]string{c.GetCurrency(), "total", itoa(c.GetGrossIncomeMinor()), itoa(c.GetTaxMinor()), itoa(c.GetRefundsMinor()), itoa(c.GetNetIncomeMinor()), itoa(c.GetExpensesMinor()), feesCell(c), itoa(c.GetProfitMinor()),
+			itoa(c.GetDiscountsMinor()), itoa(c.GetSalesMinor())})
 	}
 	cw.Flush()
 }
@@ -125,11 +122,10 @@ func (s *Server) couponsExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", `attachment; filename="coupons-`+resp.GetFromDate()+`-`+resp.GetToDate()+`.csv"`)
 	cw := csv.NewWriter(w)
-	n := func(v int64) string { return strconv.FormatInt(v, 10) }
 	_ = cw.Write([]string{"currency", "coupon", "invoices", "gross_minor", "discount_minor", "net_minor"})
 	for _, c := range resp.GetCurrencies() {
 		for _, k := range c.GetCoupons() {
-			_ = cw.Write([]string{c.GetCurrency(), csvSafe(k.GetCouponCode()), n(k.GetInvoices()), n(k.GetGrossMinor()), n(k.GetDiscountMinor()), n(k.GetNetMinor())})
+			_ = cw.Write([]string{c.GetCurrency(), csvSafe(k.GetCouponCode()), itoa(k.GetInvoices()), itoa(k.GetGrossMinor()), itoa(k.GetDiscountMinor()), itoa(k.GetNetMinor())})
 		}
 	}
 	cw.Flush()

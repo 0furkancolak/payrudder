@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"sort"
-	"strconv"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -12,7 +11,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -77,14 +75,12 @@ func (s *Server) createPaymentLink(w http.ResponseWriter, r *http.Request) {
 func (s *Server) listPaymentLinks(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := &billingv1.ListPaymentLinksRequest{Kind: q.Get("kind"), Status: q.Get("status"), InvoiceId: q.Get("invoice_id"), CustomerExternalId: q.Get("customer"), PageToken: q.Get("page_token")}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(q, "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	resp, err := s.d.Billing.ListPaymentLinks(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
@@ -129,20 +125,17 @@ func (s *Server) revokePortalLinks(w http.ResponseWriter, r *http.Request) {
 // listCustomerPayments is GET /v1/customers/{external_id}/payments?limit=: the customer's finalized invoices and the ledger rows recorded for them.
 func (s *Server) listCustomerPayments(w http.ResponseWriter, r *http.Request) {
 	limit := int64(100)
-	if v := r.URL.Query().Get("limit"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil || n < 1 || n > 200 {
-			writeError(w, r, invalid("limit", "must be an integer from 1 to 200"))
-			return
-		}
-		limit = n
-	}
-	cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: r.PathValue("external_id")})
-	if err != nil {
+	if n, err := rangedParam(r.URL.Query(), "limit", 1, 200, "must be an integer from 1 to 200"); err != nil {
 		writeError(w, r, err)
 		return
+	} else if n != 0 {
+		limit = int64(n)
 	}
-	list, err := s.d.Billing.ListInvoices(r.Context(), &billingv1.ListInvoicesRequest{CustomerId: cust.GetCustomer().GetId(), PageSize: int32(limit)}) //nolint:gosec // 1..200
+	cust, ok := s.resolveCustomer(w, r, r.PathValue("external_id"))
+	if !ok {
+		return
+	}
+	list, err := s.d.Billing.ListInvoices(r.Context(), &billingv1.ListInvoicesRequest{CustomerId: cust.GetId(), PageSize: int32(limit)}) //nolint:gosec // 1..200
 	if err != nil {
 		writeError(w, r, err)
 		return

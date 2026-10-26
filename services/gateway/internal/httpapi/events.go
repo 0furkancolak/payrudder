@@ -3,9 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -21,13 +19,6 @@ import (
 
 // MaxEventsPerRequest is the batch size limit of POST /v1/events.
 const MaxEventsPerRequest = 500
-
-// errTooManyEvents renders as 413.
-type errTooManyEvents struct{ got int }
-
-func (e errTooManyEvents) Error() string {
-	return fmt.Sprintf("a request may carry at most %d events, got %d", MaxEventsPerRequest, e.got)
-}
 
 type eventsRequest struct {
 	Events []eventJSON `json:"events"`
@@ -60,13 +51,9 @@ func quantityText(raw json.RawMessage) string {
 }
 
 func parseEvents(r *http.Request) (*ingestv1.IngestEventsRequest, error) {
-	body, err := io.ReadAll(r.Body)
+	body, err := readBody(r)
 	if err != nil {
-		var mbe *http.MaxBytesError
-		if errors.As(err, &mbe) {
-			return nil, errTooLarge{limit: mbe.Limit}
-		}
-		return nil, errkey.New(codes.InvalidArgument, "gateway.request.unreadable_body", "unreadable body")
+		return nil, err
 	}
 	var in eventsRequest
 	dec := json.NewDecoder(bytes.NewReader(body))
@@ -81,7 +68,7 @@ func parseEvents(r *http.Request) (*ingestv1.IngestEventsRequest, error) {
 	case n == 0:
 		return nil, invalid("events", "at least one event is required")
 	case n > MaxEventsPerRequest:
-		return nil, errTooManyEvents{got: n}
+		return nil, errTooManyEvents(n)
 	}
 	out := &ingestv1.IngestEventsRequest{Events: make([]*ingestv1.IncomingEvent, len(in.Events))}
 	for i, e := range in.Events {

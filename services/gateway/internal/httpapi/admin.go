@@ -3,7 +3,6 @@ package httpapi
 import (
 	"context"
 	"net/http"
-	"strconv"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -24,14 +23,12 @@ func operatorAs(r *http.Request) (context.Context, error) {
 
 func (s *Server) adminListTenants(w http.ResponseWriter, r *http.Request) {
 	req := &plansv1.ListTenantsRequest{PageToken: r.URL.Query().Get("page_token")}
-	if v := r.URL.Query().Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(r.URL.Query(), "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	resp, err := s.d.Admin.ListTenants(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
@@ -44,14 +41,12 @@ func (s *Server) adminListInvoices(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	req := &billingv1.ListInvoicesRequest{PeriodId: q.Get("period"), Status: q.Get("status"), PageToken: q.Get("page_token")}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(q, "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	resp, err := s.d.Billing.ListInvoices(ctx, req)
 	respond(w, r, http.StatusOK, resp, err)
 }
@@ -73,11 +68,7 @@ func (s *Server) adminInvoicePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, err := s.d.Billing.GetInvoicePdfUrl(ctx, &billingv1.GetInvoicePdfUrlRequest{InvoiceId: r.PathValue("invoice_id")})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSONValue(w, http.StatusOK, map[string]any{"url": resp.GetUrl(), "expires_at": resp.GetExpireTime().AsTime().UTC().Format("2006-01-02T15:04:05Z07:00")})
+	respondSignedURL(w, r, resp.GetUrl(), resp.GetExpireTime(), err)
 }
 
 func (s *Server) adminInvoiceSaga(w http.ResponseWriter, r *http.Request) {
@@ -87,14 +78,12 @@ func (s *Server) adminInvoiceSaga(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) adminListDeadLetters(w http.ResponseWriter, r *http.Request) {
 	req := &billingv1.ListDeadLettersRequest{Queue: r.URL.Query().Get("queue")}
-	if v := r.URL.Query().Get("limit"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("limit", "must be an integer"))
-			return
-		}
-		req.Limit = int32(n)
+	n, err := intParam(r.URL.Query(), "limit")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.Limit = n
 	resp, err := s.d.BillingAdmin.ListDeadLetters(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

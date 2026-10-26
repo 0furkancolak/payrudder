@@ -61,16 +61,10 @@ func HTTPStatus(c codes.Code) int {
 
 // writeError renders err (a gRPC status or anything else) as the error envelope.
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
-	var tooLarge errTooLarge
+	var tooLarge tooLargeError
 	if errors.As(err, &tooLarge) {
 		writeJSONValue(w, http.StatusRequestEntityTooLarge, ErrorBody{Error: ErrorInfo{
 			Code: "REQUEST_TOO_LARGE", Key: errkey.Key("gateway.request.too_large"), Message: tooLarge.Error(), RequestID: requestID(r.Context())}})
-		return
-	}
-	var tooMany errTooManyEvents
-	if errors.As(err, &tooMany) {
-		writeJSONValue(w, http.StatusRequestEntityTooLarge, ErrorBody{Error: ErrorInfo{
-			Code: "REQUEST_TOO_LARGE", Key: errkey.Key("gateway.request.too_large"), Message: tooMany.Error(), RequestID: requestID(r.Context())}})
 		return
 	}
 	st := status.Convert(err)
@@ -95,17 +89,18 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	writeJSONValue(w, HTTPStatus(st.Code()), body)
 }
 
-// codeName renders codes as UPPER_SNAKE (codes.String gives "InvalidArgument").
+// codeNames renders codes as UPPER_SNAKE (codes.String gives "InvalidArgument").
+var codeNames = map[codes.Code]string{
+	codes.OK: "OK", codes.Canceled: "CANCELLED", codes.Unknown: "UNKNOWN", codes.InvalidArgument: "INVALID_ARGUMENT",
+	codes.DeadlineExceeded: "DEADLINE_EXCEEDED", codes.NotFound: "NOT_FOUND", codes.AlreadyExists: "ALREADY_EXISTS",
+	codes.PermissionDenied: "PERMISSION_DENIED", codes.ResourceExhausted: "RESOURCE_EXHAUSTED",
+	codes.FailedPrecondition: "FAILED_PRECONDITION", codes.Aborted: "ABORTED", codes.OutOfRange: "OUT_OF_RANGE",
+	codes.Unimplemented: "UNIMPLEMENTED", codes.Internal: "INTERNAL", codes.Unavailable: "UNAVAILABLE",
+	codes.DataLoss: "DATA_LOSS", codes.Unauthenticated: "UNAUTHENTICATED",
+}
+
 func codeName(c codes.Code) string {
-	names := map[codes.Code]string{
-		codes.OK: "OK", codes.Canceled: "CANCELLED", codes.Unknown: "UNKNOWN", codes.InvalidArgument: "INVALID_ARGUMENT",
-		codes.DeadlineExceeded: "DEADLINE_EXCEEDED", codes.NotFound: "NOT_FOUND", codes.AlreadyExists: "ALREADY_EXISTS",
-		codes.PermissionDenied: "PERMISSION_DENIED", codes.ResourceExhausted: "RESOURCE_EXHAUSTED",
-		codes.FailedPrecondition: "FAILED_PRECONDITION", codes.Aborted: "ABORTED", codes.OutOfRange: "OUT_OF_RANGE",
-		codes.Unimplemented: "UNIMPLEMENTED", codes.Internal: "INTERNAL", codes.Unavailable: "UNAVAILABLE",
-		codes.DataLoss: "DATA_LOSS", codes.Unauthenticated: "UNAUTHENTICATED",
-	}
-	if n, ok := names[c]; ok {
+	if n, ok := codeNames[c]; ok {
 		return n
 	}
 	return "UNKNOWN"

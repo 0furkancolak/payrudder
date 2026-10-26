@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -84,12 +85,8 @@ func goneError(err error) bool {
 
 // langSuffix keeps an explicit ?lang= on the links of a page.
 func langSuffix(r *http.Request) string {
-	if v := r.URL.Query().Get("lang"); v != "" {
-		for _, l := range hostedLangs {
-			if v == l {
-				return "?lang=" + l
-			}
-		}
+	if v := r.URL.Query().Get("lang"); slices.Contains(hostedLangs, v) {
+		return "?lang=" + v
 	}
 	return ""
 }

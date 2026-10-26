@@ -17,20 +17,15 @@ const (
 	maxAcceptLanguageLn = 200
 )
 
-// supportedLocales are the languages of the console and of the mail.
-var supportedLocales = []string{"en", "tr", "de", "fr", "es", "ar"}
+// hostedLangs are the languages of the console, of the mail and of the public pages.
+var hostedLangs = []string{"en", "tr", "de", "fr", "es", "ar"}
 
 // localeOf picks the language for a mail: the one the page sent when it is supported, else the first supported language of Accept-Language, else English.
 func localeOf(r *http.Request, asked string) string {
 	if l := matchLocale(asked); l != "" {
 		return l
 	}
-	h := r.Header.Get("Accept-Language")
-	if len(h) > maxAcceptLanguageLn {
-		h = h[:maxAcceptLanguageLn]
-	}
-	for _, part := range strings.Split(h, ",") {
-		tag, _, _ := strings.Cut(strings.TrimSpace(part), ";")
+	for _, tag := range acceptedTags(r) {
 		if l := matchLocale(tag); l != "" {
 			return l
 		}
@@ -38,10 +33,25 @@ func localeOf(r *http.Request, asked string) string {
 	return "en"
 }
 
+// acceptedTags are the language tags of Accept-Language in the order the browser listed them, without their quality values. A header longer than
+// maxAcceptLanguageLn is cut: nobody lists more than a few languages.
+func acceptedTags(r *http.Request) []string {
+	h := r.Header.Get("Accept-Language")
+	if len(h) > maxAcceptLanguageLn {
+		h = h[:maxAcceptLanguageLn]
+	}
+	var tags []string
+	for _, part := range strings.Split(h, ",") {
+		tag, _, _ := strings.Cut(strings.TrimSpace(part), ";")
+		tags = append(tags, tag)
+	}
+	return tags
+}
+
 func matchLocale(tag string) string {
 	tag = strings.ToLower(strings.TrimSpace(tag))
 	base, _, _ := strings.Cut(tag, "-")
-	for _, l := range supportedLocales {
+	for _, l := range hostedLangs {
 		if base == l {
 			return l
 		}

@@ -18,6 +18,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 // Limits of the proxied form-data upload (docs/03-services/assets-svc.md#b-proxied-multipartform-data).
@@ -138,14 +139,12 @@ func (s *Server) listAssets(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if v := r.URL.Query().Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(r.URL.Query(), "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	resp, err := s.d.Assets.ListAssets(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
@@ -157,11 +156,7 @@ func (s *Server) getAsset(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) downloadAsset(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Assets.GetDownloadUrl(r.Context(), &assetsv1.GetDownloadUrlRequest{AssetId: r.PathValue("id")})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSONValue(w, http.StatusOK, map[string]any{"url": resp.GetUrl(), "expires_at": resp.GetExpireTime().AsTime().UTC().Format("2006-01-02T15:04:05Z07:00")})
+	respondSignedURL(w, r, resp.GetUrl(), resp.GetExpireTime(), err)
 }
 
 func (s *Server) deleteAsset(w http.ResponseWriter, r *http.Request) {
@@ -213,7 +208,7 @@ func (s *Server) uploadAssets(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			var mbe *http.MaxBytesError
 			if errors.As(err, &mbe) {
-				writeError(w, r, errTooLarge{limit: mbe.Limit})
+				writeError(w, r, errBodyTooLarge(mbe.Limit))
 				return
 			}
 			writeError(w, r, invalid("body", "malformed multipart body"))
@@ -238,16 +233,16 @@ func (s *Server) uploadAssets(w http.ResponseWriter, r *http.Request) {
 		}
 		files++
 		if files > maxUploadFiles {
-			writeError(w, r, errTooLarge{limit: maxUploadFiles, files: true})
+			writeError(w, r, errTooManyFiles(maxUploadFiles))
 			return
 		}
-		if files > 1 && !s.charge(w, r, p, "write", 1) { // the route charged the first file; each further file costs one more
+		if files > 1 && !s.charge(w, r, p, ratelimit.ClassWrite, 1) { // the route charged the first file; each further file costs one more
 			return
 		}
 		res, over := s.uploadOne(r.Context(), part, purposeOf(meta[part.FileName()].Purpose), &total)
 		results = append(results, res)
 		if over {
-			writeError(w, r, errTooLarge{limit: maxUploadRequest})
+			writeError(w, r, errBodyTooLarge(maxUploadRequest))
 			return
 		}
 	}

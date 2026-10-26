@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"strconv"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
@@ -68,14 +67,12 @@ func (s *Server) listWebhookDeliveries(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, invalid("state", "pending, delivered or failed"))
 		return
 	}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(q, "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	resp, err := s.d.Webhooks.ListWebhookDeliveries(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

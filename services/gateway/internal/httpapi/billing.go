@@ -3,7 +3,6 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -15,21 +14,18 @@ import (
 func (s *Server) listInvoices(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := &billingv1.ListInvoicesRequest{PeriodId: q.Get("period"), Status: q.Get("status"), PageToken: q.Get("page_token")}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(q, "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	if c := q.Get("customer"); c != "" {
-		cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: c})
-		if err != nil {
-			writeError(w, r, err)
+		cust, ok := s.resolveCustomer(w, r, c)
+		if !ok {
 			return
 		}
-		req.CustomerId = cust.GetCustomer().GetId()
+		req.CustomerId = cust.GetId()
 	}
 	resp, err := s.d.Billing.ListInvoices(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
@@ -44,11 +40,7 @@ func (s *Server) getInvoice(w http.ResponseWriter, r *http.Request) {
 // getInvoicePDF is GET /v1/invoices/{id}/pdf: a presigned download link, valid for 5 minutes.
 func (s *Server) getInvoicePDF(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Billing.GetInvoicePdfUrl(r.Context(), &billingv1.GetInvoicePdfUrlRequest{InvoiceId: r.PathValue("id")})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSONValue(w, http.StatusOK, map[string]any{"url": resp.GetUrl(), "expires_at": resp.GetExpireTime().AsTime().UTC().Format("2006-01-02T15:04:05Z07:00")})
+	respondSignedURL(w, r, resp.GetUrl(), resp.GetExpireTime(), err)
 }
 
 // sandboxClosePeriod is POST /v1/sandbox/close-period: close the current (or the given) period now and run the real
@@ -176,14 +168,12 @@ func (s *Server) revenueReport(w http.ResponseWriter, r *http.Request) {
 // dunningReport is GET /v1/reports/dunning?limit=: invoices whose payment has not gone through.
 func (s *Server) dunningReport(w http.ResponseWriter, r *http.Request) {
 	req := &billingv1.GetDunningReportRequest{}
-	if v := r.URL.Query().Get("limit"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("limit", "must be an integer"))
-			return
-		}
-		req.Limit = int32(n)
+	n, err := intParam(r.URL.Query(), "limit")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.Limit = n
 	resp, err := s.d.Billing.GetDunningReport(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
@@ -231,14 +221,12 @@ func (s *Server) getCreditNote(w http.ResponseWriter, r *http.Request) {
 func (s *Server) listCreditNotes(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := &billingv1.ListCreditNotesRequest{InvoiceId: q.Get("invoice_id"), CustomerExternalId: q.Get("customer"), PageToken: q.Get("page_token")}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(q, "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	resp, err := s.d.Billing.ListCreditNotes(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"strconv"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -34,13 +33,10 @@ func (s *Server) createPromotionCodes(w http.ResponseWriter, r *http.Request) {
 // pageParams reads page_size and page_token.
 func pageParams(w http.ResponseWriter, r *http.Request) (size int32, token string, ok bool) {
 	token = r.URL.Query().Get("page_token")
-	if v := r.URL.Query().Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return 0, "", false
-		}
-		size = int32(n)
+	size, err := intParam(r.URL.Query(), "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return 0, "", false
 	}
 	return size, token, true
 }

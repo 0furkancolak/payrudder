@@ -3,7 +3,6 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
@@ -20,14 +19,12 @@ func (s *Server) createCustomer(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) listCustomers(w http.ResponseWriter, r *http.Request) {
 	req := &plansv1.ListCustomersRequest{PageToken: r.URL.Query().Get("page_token")}
-	if v := r.URL.Query().Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(r.URL.Query(), "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	resp, err := s.d.Plans.ListCustomers(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

@@ -3,7 +3,6 @@ package httpapi
 import (
 	"net/http"
 	"net/url"
-	"strconv"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -15,13 +14,11 @@ import (
 func einvoiceListRequest(r *http.Request) (*billingv1.ListEInvoicesRequest, error) {
 	q := r.URL.Query()
 	req := &billingv1.ListEInvoicesRequest{InvoiceId: q.Get("invoice_id"), CreditNoteId: q.Get("credit_note_id"), Status: q.Get("status"), PageToken: q.Get("page_token")}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			return nil, invalid("page_size", "must be an integer")
-		}
-		req.PageSize = int32(n)
+	size, err := intParam(q, "page_size")
+	if err != nil {
+		return nil, err
 	}
+	req.PageSize = size
 	return req, nil
 }
 
@@ -42,11 +39,7 @@ func (s *Server) getEInvoice(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getEInvoiceFile(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Billing.GetEInvoiceFileUrl(r.Context(), &billingv1.GetEInvoiceFileUrlRequest{Id: r.PathValue("id"), Kind: r.PathValue("kind")})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSONValue(w, http.StatusOK, map[string]any{"url": resp.GetUrl(), "expires_at": resp.GetExpiresAt().AsTime().UTC().Format("2006-01-02T15:04:05Z07:00")})
+	respondSignedURL(w, r, resp.GetUrl(), resp.GetExpiresAt(), err)
 }
 
 func (s *Server) adminListEInvoices(w http.ResponseWriter, r *http.Request) {
@@ -81,11 +74,7 @@ func (s *Server) adminGetEInvoiceFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, err := s.d.Billing.GetEInvoiceFileUrl(ctx, &billingv1.GetEInvoiceFileUrlRequest{Id: r.PathValue("id"), Kind: r.PathValue("kind")})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	writeJSONValue(w, http.StatusOK, map[string]any{"url": resp.GetUrl(), "expires_at": resp.GetExpiresAt().AsTime().UTC().Format("2006-01-02T15:04:05Z07:00")})
+	respondSignedURL(w, r, resp.GetUrl(), resp.GetExpiresAt(), err)
 }
 
 func (s *Server) adminRetryEInvoice(w http.ResponseWriter, r *http.Request) {
