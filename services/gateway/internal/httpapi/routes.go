@@ -1,22 +1,15 @@
 package httpapi
 
 import (
-	"encoding/json"
-	"net/http"
 	"slices"
-	"strconv"
-	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
 func (s *Server) routes() []Route {
 	return slices.Concat(
 		s.ingestAndCatalogRoutes(),
-		s.subscriptionRoutes(),
+		s.subscriptionTaxAndCouponRoutes(),
 		s.promotionRoutes(),
 		s.affiliateRoutes(),
 		s.affiliatePayoutRoutes(),
@@ -25,11 +18,11 @@ func (s *Server) routes() []Route {
 		s.webhookAndInvoiceLinkRoutes(),
 		s.paymentLinkRoutes(),
 		s.hostedPublicRoutes(),
-		s.reportingAndRoutingRoutes(),
+		s.reportRoutingAndMailRoutes(),
 		s.creditRoutes(),
 		s.accountingRoutes(),
 		s.assetRoutes(),
-		s.billingReadRoutes(),
+		s.billingReadAndSandboxRoutes(),
 		s.appRoutes(),
 		s.goLiveRoutes(),
 		s.sandboxRoutes(),
@@ -66,8 +59,8 @@ func (s *Server) ingestAndCatalogRoutes() []Route {
 	}
 }
 
-// subscriptionRoutes is the table for subscriptions, tax rates and coupons.
-func (s *Server) subscriptionRoutes() []Route {
+// subscriptionTaxAndCouponRoutes is the table for subscriptions, tax rates and coupons.
+func (s *Server) subscriptionTaxAndCouponRoutes() []Route {
 	return []Route{
 		// Subscriptions
 		{"POST", "/v1/subscriptions", AccessTenant, ratelimit.ClassWrite, s.createSubscription},
@@ -110,8 +103,8 @@ func (s *Server) webhookAndInvoiceLinkRoutes() []Route {
 	}
 }
 
-// reportingAndRoutingRoutes is the table for reports, dunning settings and payment provider routing.
-func (s *Server) reportingAndRoutingRoutes() []Route {
+// reportRoutingAndMailRoutes is the table for reports, dunning settings and payment provider routing.
+func (s *Server) reportRoutingAndMailRoutes() []Route {
 	return []Route{
 		// Reports
 		{"GET", "/v1/reports/revenue", AccessTenant, ratelimit.ClassRead, s.revenueReport},
@@ -149,8 +142,8 @@ func (s *Server) assetRoutes() []Route {
 	}
 }
 
-// billingReadRoutes is the table for analytics, invoices, credit notes and the sandbox.
-func (s *Server) billingReadRoutes() []Route {
+// billingReadAndSandboxRoutes is the table for analytics, invoices, credit notes and the sandbox.
+func (s *Server) billingReadAndSandboxRoutes() []Route {
 	return []Route{
 		// Analytics (estimates: invoices come from billing)
 		{"GET", "/v1/analytics/usage", AccessTenant, ratelimit.ClassRead, s.getAnalyticsUsage},
@@ -245,397 +238,4 @@ func (s *Server) operatorAdminRoutes() []Route {
 		{"PUT", "/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}", AccessOperator, "", s.einvoiceAccount},
 		{"DELETE", "/admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}", AccessOperator, "", s.einvoiceAccount},
 	}
-}
-
-func (s *Server) createCustomer(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.CreateCustomerRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.CreateCustomer(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp.GetCustomer(), err)
-}
-
-func (s *Server) listCustomers(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.ListCustomersRequest{PageToken: r.URL.Query().Get("page_token")}
-	if v := r.URL.Query().Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
-	}
-	resp, err := s.d.Plans.ListCustomers(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) getCustomer(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.GetCustomer(r.Context(), &plansv1.GetCustomerRequest{ExternalId: r.PathValue("external_id")})
-	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
-}
-
-func (s *Server) setPaymentMethod(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.SetPaymentMethodRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.ExternalId = r.PathValue("external_id")
-	resp, err := s.d.Plans.SetPaymentMethod(r.Context(), req)
-	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
-}
-
-// setCustomerAddress is PUT /v1/customers/{external_id}/address: the body is the address.
-func (s *Server) setCustomerAddress(w http.ResponseWriter, r *http.Request) {
-	addr := &plansv1.Address{}
-	if err := decode(r, addr); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.SetCustomerAddress(r.Context(), &plansv1.SetCustomerAddressRequest{ExternalId: r.PathValue("external_id"), Address: addr})
-	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
-}
-
-// setPaymentScenario is the sandbox spelling of SetPaymentMethod: {"scenario": "declined"} → pm_sandbox_declined.
-func (s *Server) setPaymentScenario(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Scenario string `json:"scenario"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Scenario == "" {
-		writeError(w, r, invalid("scenario", "required, e.g. \"declined\" or \"timeout_committed\""))
-		return
-	}
-	resp, err := s.d.Plans.SetPaymentMethod(r.Context(), &plansv1.SetPaymentMethodRequest{
-		ExternalId: r.PathValue("external_id"), PaymentMethod: "pm_sandbox_" + body.Scenario,
-	})
-	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
-}
-
-func (s *Server) createMeter(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.CreateMeterRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.CreateMeter(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp.GetMeter(), err)
-}
-
-func (s *Server) listMeters(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.ListMeters(r.Context(), &plansv1.ListMetersRequest{})
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) getMeter(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.GetMeter(r.Context(), &plansv1.GetMeterRequest{Code: r.PathValue("code")})
-	respond(w, r, http.StatusOK, resp.GetMeter(), err)
-}
-
-func (s *Server) createPlan(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.CreatePlanRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.CreatePlan(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp.GetPlan(), err)
-}
-
-func (s *Server) listPlans(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.ListPlans(r.Context(), &plansv1.ListPlansRequest{})
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) publishPlanVersion(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.PublishPlanVersionRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.PlanCode = r.PathValue("code")
-	resp, err := s.d.Plans.PublishPlanVersion(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp.GetPlanVersion(), err)
-}
-
-func (s *Server) getPlanVersion(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.GetPlanVersionRequest{PlanCode: r.PathValue("code")}
-	if v := r.PathValue("version"); v != "latest" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil || n < 1 {
-			writeError(w, r, invalid("version", `a positive integer or "latest"`))
-			return
-		}
-		req.Version = int32(n)
-		// A published version never changes: the caller (or an edge in front) may keep it for a while without asking.
-		w.Header().Set("Cache-Control", "private, max-age=300")
-	}
-	resp, err := s.d.Plans.GetPlanVersion(r.Context(), req)
-	respond(w, r, http.StatusOK, resp.GetPlanVersion(), err)
-}
-
-func (s *Server) createSubscription(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.CreateSubscriptionRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.CreateSubscription(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp.GetSubscription(), err)
-}
-
-// listSubscriptions is GET /v1/subscriptions?customer=&page_size=&page_token=, newest first. customer is the external id.
-func (s *Server) listSubscriptions(w http.ResponseWriter, r *http.Request) {
-	q := r.URL.Query()
-	req := &plansv1.ListSubscriptionsRequest{CustomerExternalId: q.Get("customer"), PageToken: q.Get("page_token")}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
-	}
-	resp, err := s.d.Plans.ListSubscriptions(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) getSubscription(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.GetSubscription(r.Context(), &plansv1.GetSubscriptionRequest{SubscriptionId: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) pauseSubscription(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.PauseSubscription(r.Context(), &plansv1.PauseSubscriptionRequest{SubscriptionId: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) resumeSubscription(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.ResumeSubscription(r.Context(), &plansv1.ResumeSubscriptionRequest{SubscriptionId: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) scheduleCancellation(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.ScheduleCancellation(r.Context(), &plansv1.ScheduleCancellationRequest{SubscriptionId: r.PathValue("id"), Cancel: true})
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) withdrawCancellation(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.ScheduleCancellation(r.Context(), &plansv1.ScheduleCancellationRequest{SubscriptionId: r.PathValue("id"), Cancel: false})
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) changePlan(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.ChangePlanRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.SubscriptionId = r.PathValue("id")
-	resp, err := s.d.Plans.ChangePlan(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) previewSubscriptionChange(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.ChangeSubscriptionRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.SubscriptionId = r.PathValue("id")
-	resp, err := s.d.Plans.PreviewSubscriptionChange(r.Context(), &plansv1.PreviewSubscriptionChangeRequest{Change: req})
-	respond(w, r, http.StatusOK, resp.GetQuote(), err)
-}
-
-func (s *Server) changeSubscription(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.ChangeSubscriptionRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.SubscriptionId = r.PathValue("id")
-	resp, err := s.d.Plans.ChangeSubscription(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) cancelScheduledChange(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.CancelScheduledChange(r.Context(), &plansv1.CancelScheduledChangeRequest{SubscriptionId: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) applyCoupon(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.ApplyCouponRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.SubscriptionId = r.PathValue("id")
-	resp, err := s.d.Plans.ApplyCoupon(r.Context(), req)
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) removeCoupon(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.RemoveCoupon(r.Context(), &plansv1.RemoveCouponRequest{SubscriptionId: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) getTaxRates(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.GetTaxRates(r.Context(), &plansv1.GetTaxRatesRequest{})
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) setTaxRates(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.SetTaxRatesRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.SetTaxRates(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) createCoupon(w http.ResponseWriter, r *http.Request) {
-	c := &plansv1.Coupon{}
-	if err := decode(r, c); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.CreateCoupon(r.Context(), &plansv1.CreateCouponRequest{Coupon: c})
-	respond(w, r, http.StatusCreated, resp.GetCoupon(), err)
-}
-
-func (s *Server) listCoupons(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.ListCoupons(r.Context(), &plansv1.ListCouponsRequest{})
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) deactivateCoupon(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.DeactivateCoupon(r.Context(), &plansv1.DeactivateCouponRequest{Code: r.PathValue("code")})
-	respond(w, r, http.StatusOK, resp.GetCoupon(), err)
-}
-
-func (s *Server) cancelSubscription(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.CancelSubscriptionRequest{SubscriptionId: r.PathValue("id")}
-	if v := r.URL.Query().Get("end_time"); v != "" {
-		t, err := time.Parse(time.RFC3339Nano, v)
-		if err != nil {
-			writeError(w, r, invalid("end_time", "RFC 3339 timestamp"))
-			return
-		}
-		req.EndTime = timestamppb.New(t)
-	}
-	switch r.URL.Query().Get("credit_unused") {
-	case "", "false":
-	case "true":
-		req.CreditUnused = true
-	default:
-		writeError(w, r, invalid("credit_unused", "true or false"))
-		return
-	}
-	resp, err := s.d.Plans.CancelSubscription(r.Context(), req)
-	if req.CreditUnused {
-		// {subscription, credited_minor}: the caller asked what was credited.
-		respond(w, r, http.StatusOK, resp, err)
-		return
-	}
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
-}
-
-func (s *Server) createAccount(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.CreateAccountRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Admin.CreateAccount(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp.GetAccount(), err)
-}
-
-func (s *Server) createApp(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.CreateAppRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.AccountId = r.PathValue("id")
-	resp, err := s.d.Admin.CreateApp(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp.GetApp(), err)
-}
-
-func (s *Server) listApps(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Admin.ListApps(r.Context(), &plansv1.ListAppsRequest{AccountId: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) getTenant(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Admin.GetTenant(r.Context(), &plansv1.GetTenantRequest{TenantId: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp.GetTenant(), err)
-}
-
-func (s *Server) updateTenant(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.UpdateTenantSettingsRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.TenantId = r.PathValue("id")
-	resp, err := s.d.Admin.UpdateTenantSettings(r.Context(), req)
-	respond(w, r, http.StatusOK, resp.GetTenant(), err)
-}
-
-func (s *Server) createAPIKey(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.CreateApiKeyRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	req.TenantId = r.PathValue("id")
-	resp, err := s.d.Admin.CreateApiKey(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp, err)
-}
-
-func (s *Server) revokeAPIKey(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Admin.RevokeApiKey(r.Context(), &plansv1.RevokeApiKeyRequest{ApiKeyId: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp.GetApiKey(), err)
-}
-
-func (s *Server) getRoutingRules(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.GetRoutingRules(r.Context(), &plansv1.GetRoutingRulesRequest{})
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) setRoutingRules(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.SetRoutingRulesRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.SetRoutingRules(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) getMailSettings(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.GetMailSettings(r.Context(), &plansv1.GetMailSettingsRequest{})
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) setMailSettings(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.SetMailSettingsRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.SetMailSettings(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
-}
-
-func (s *Server) previewRouting(w http.ResponseWriter, r *http.Request) {
-	req := &plansv1.PreviewRoutingRequest{}
-	if err := decode(r, req); err != nil {
-		writeError(w, r, err)
-		return
-	}
-	resp, err := s.d.Plans.PreviewRouting(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
 }
