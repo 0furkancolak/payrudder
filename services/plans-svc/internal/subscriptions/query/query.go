@@ -45,7 +45,7 @@ func AttachExtras(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subscri
 	}
 	for _, c := range rows {
 		if sb := byID[c.SubscriptionID.String()]; sb != nil {
-			sb.ScheduledChange = &plansv1.ScheduledChange{PlanCode: c.PlanCode, PlanVersion: c.PlanVersion, Interval: convert.IntervalToProto(subscription.Interval(c.Interval)), EffectiveTime: timestamppb.New(c.EffectiveAt)}
+			sb.ScheduledChange = &plansv1.ScheduledChange{PlanCode: c.PlanCode, PlanVersion: c.PlanVersion, Interval: subscription.Interval(c.Interval).Proto(), EffectiveTime: timestamppb.New(c.EffectiveAt)}
 		}
 	}
 	coupons, err := q.ListCouponCodesFor(ctx, ids)

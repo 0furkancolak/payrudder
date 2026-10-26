@@ -64,7 +64,7 @@ func (c Priced) Message() *plansv1.ChangeQuote {
 		PeriodStart: timestamppb.New(q.PeriodStart), PeriodEnd: timestamppb.New(q.PeriodEnd),
 		CreditMinor: q.CreditMinor, ChargeMinor: q.ChargeMinor, NetMinor: q.NetMinor, Currency: c.Row.Currency,
 		NextRenewalTime: timestamppb.New(q.NextRenewal), NextRenewalMinor: q.NextRenewalMinor,
-		PlanCode: c.NewPV.PlanCode, PlanVersion: c.NewPV.Version, Interval: convert.IntervalToProto(c.NewInterval),
+		PlanCode: c.NewPV.PlanCode, PlanVersion: c.NewPV.Version, Interval: c.NewInterval.Proto(),
 	}
 }
 
@@ -87,7 +87,7 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 		return nil, err
 	}
 	oldInterval := subscription.Interval(row.Interval)
-	newInterval, err := changeInterval(req.GetInterval(), oldInterval)
+	newInterval, err := domain.IntervalOf(req.GetInterval(), oldInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -202,19 +202,6 @@ func changeInstant(req *plansv1.ChangeSubscriptionRequest, now, start time.Time)
 		return at, domain.Invalid("change_time", "must be after the subscription start")
 	}
 	return at, nil
-}
-
-// changeInterval is the interval after the change: the request's, or the old one when it names none.
-func changeInterval(asked plansv1.SubscriptionInterval, old subscription.Interval) (subscription.Interval, error) {
-	switch asked {
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED:
-		return old, nil
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_MONTH:
-		return subscription.Monthly, nil
-	case plansv1.SubscriptionInterval_SUBSCRIPTION_INTERVAL_YEAR:
-		return subscription.Yearly, nil
-	}
-	return old, domain.Invalid("interval", "unknown interval")
 }
 
 // quoteTrial prices a change during a trial: nothing has been paid yet, so the plan changes now and the first fee, at the

@@ -32,17 +32,13 @@ func New(db *store.DB, now func() time.Time) *Queries { return &Queries{db: db, 
 // monthBounds returns the label and the [start, end) of a month in loc; empty means the month now falls in.
 func monthBounds(month string, loc *time.Location, now time.Time) (label string, start, end time.Time, err error) {
 	if month == "" {
-		y, m, _ := now.In(loc).Date()
-		start = time.Date(y, m, 1, 0, 0, 0, 0, loc)
-	} else {
-		y, mo, perr := period.Parse(month)
-		if perr != nil {
-			return "", start, end, domain.Invalid("month", "must look like 2026-10")
-		}
-		start = time.Date(y, time.Month(mo), 1, 0, 0, 0, 0, loc)
+		month = period.PeriodOf(now, loc)
 	}
-	end = start.AddDate(0, 1, 0)
-	return start.Format("2006-01"), start, end, nil
+	start, end, err = period.Bounds(month, loc)
+	if err != nil {
+		return "", start, end, domain.Invalid("month", "must look like 2026-10")
+	}
+	return month, start, end, nil
 }
 
 // Subscriptions reports the month's subscriptions, split by currency and, when asked, by provider and country.
