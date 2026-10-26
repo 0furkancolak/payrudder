@@ -88,26 +88,7 @@ func tsp(t *time.Time) *timestamppb.Timestamp {
 	return timestamppb.New(*t)
 }
 
-// BankTransferJSON is the stored form of the bank transfer details: a JSON object without the empty parts.
-func BankTransferJSON(d *plansv1.BankTransferDetails) []byte {
-	if d == nil {
-		return []byte("{}")
-	}
-	b, err := addressJSON.Marshal(d)
-	if err != nil {
-		return []byte("{}")
-	}
-	return b
-}
-
-// BankTransferFromJSON reads stored bank transfer details; nil when there are none.
-func BankTransferFromJSON(raw []byte) *plansv1.BankTransferDetails {
-	var d plansv1.BankTransferDetails
-	if len(raw) == 0 || protojson.Unmarshal(raw, &d) != nil || proto.Equal(&d, &plansv1.BankTransferDetails{}) {
-		return nil
-	}
-	return &d
-}
+var addressJSON = protojson.MarshalOptions{UseProtoNames: true}
 
 // App with its tenants (sandbox first).
 func App(a sqlc.App, tenants []sqlc.Tenant) *plansv1.App {
@@ -170,48 +151,50 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 	}
 }
 
-var addressJSON = protojson.MarshalOptions{UseProtoNames: true}
+// The seller's address, company data and bank transfer details are stored as JSON objects without the empty parts. A message that is nil stores as {}.
 
-// AddressJSON is the stored form of an address: a JSON object without the empty parts.
-func AddressJSON(a *plansv1.Address) []byte {
-	if a == nil {
+func messageJSON(m proto.Message) []byte {
+	if m == nil || !m.ProtoReflect().IsValid() {
 		return []byte("{}")
 	}
-	b, err := addressJSON.Marshal(a)
+	b, err := addressJSON.Marshal(m)
 	if err != nil {
 		return []byte("{}")
 	}
 	return b
 }
+
+// messageFromJSON reads a stored message; nil when there is none (nothing stored, unreadable, or all parts empty).
+func messageFromJSON[M any, P interface {
+	*M
+	proto.Message
+}](raw []byte) P {
+	var m M
+	p := P(&m)
+	if len(raw) == 0 || protojson.Unmarshal(raw, p) != nil || proto.Equal(p, P(new(M))) {
+		return nil
+	}
+	return p
+}
+
+// AddressJSON is the stored form of an address.
+func AddressJSON(a *plansv1.Address) []byte { return messageJSON(a) }
 
 // AddressFromJSON reads a stored address; nil when there is none.
-func AddressFromJSON(raw []byte) *plansv1.Address {
-	var a plansv1.Address
-	if len(raw) == 0 || protojson.Unmarshal(raw, &a) != nil || proto.Equal(&a, &plansv1.Address{}) {
-		return nil
-	}
-	return &a
-}
+func AddressFromJSON(raw []byte) *plansv1.Address { return messageFromJSON[plansv1.Address](raw) }
 
 // LegalJSON is the stored form of the seller's company data.
-func LegalJSON(l *plansv1.LegalInfo) []byte {
-	if l == nil {
-		return []byte("{}")
-	}
-	b, err := addressJSON.Marshal(l)
-	if err != nil {
-		return []byte("{}")
-	}
-	return b
-}
+func LegalJSON(l *plansv1.LegalInfo) []byte { return messageJSON(l) }
 
 // LegalFromJSON reads stored company data; nil when there is none.
-func LegalFromJSON(raw []byte) *plansv1.LegalInfo {
-	var l plansv1.LegalInfo
-	if len(raw) == 0 || protojson.Unmarshal(raw, &l) != nil || proto.Equal(&l, &plansv1.LegalInfo{}) {
-		return nil
-	}
-	return &l
+func LegalFromJSON(raw []byte) *plansv1.LegalInfo { return messageFromJSON[plansv1.LegalInfo](raw) }
+
+// BankTransferJSON is the stored form of the bank transfer details.
+func BankTransferJSON(d *plansv1.BankTransferDetails) []byte { return messageJSON(d) }
+
+// BankTransferFromJSON reads stored bank transfer details; nil when there are none.
+func BankTransferFromJSON(raw []byte) *plansv1.BankTransferDetails {
+	return messageFromJSON[plansv1.BankTransferDetails](raw)
 }
 
 // Meter maps a meter row.

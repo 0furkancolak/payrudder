@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -60,49 +62,59 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 			}
 		}
 		resp.Quote = pc.Message()
-		qt := pc.Quote
-		if qt.Timing == subscription.AtPeriodEnd {
-			if _, err := q.InsertSubscriptionChange(ctx, sqlc.InsertSubscriptionChangeParams{
-				ID: idgen.NewUUIDv7(), SubscriptionID: id, PlanVersionID: pc.NewPV.ID, Interval: string(pc.NewInterval), EffectiveAt: qt.Effective}); err != nil {
-				return err
-			}
-			resp.Scheduled = true
-			resp.Subscription = convert.SubscriptionOf(row, c.now())
-			if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
-				return err
-			}
-			return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChangeScheduled, resp.Subscription, map[string]any{"quote": json.RawMessage(quoteJSON(resp.Quote))})
+		if pc.Quote.Timing == subscription.AtPeriodEnd {
+			return c.schedule(ctx, q, resp, row, pc)
 		}
-		state := subscription.Active
-		if pc.Trial {
-			state = subscription.Trialing
-		}
-		feeDue := qt.NewFeeDue
-		nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), ti.ID, row, subscriptionscmd.Successor{PlanVersionID: pc.NewPV.ID, Interval: pc.NewInterval, State: state, TrialEnds: row.TrialEndsAt, At: pc.At,
-			Anchor: qt.NewAnchor, FeeTiming: subscription.FeeInAdvance, FeeDue: &feeDue})
-		if err != nil {
-			return err
-		}
-		if qt.CreditMinor > 0 || qt.ChargeMinor > 0 {
-			if err := q.InsertSubscriptionAdjustment(ctx, sqlc.InsertSubscriptionAdjustmentParams{
-				ID: idgen.NewUUIDv7(), SubscriptionID: nr.ID, OldPlanCode: row.PlanCode, FromAt: pc.At, ToAt: qt.PeriodEnd, CreditMinor: qt.CreditMinor, ChargeMinor: qt.ChargeMinor}); err != nil {
-				return err
-			}
-		}
-		full, err := q.GetSubscription(ctx, nr.ID)
-		if err != nil {
-			return err
-		}
-		resp.Subscription = convert.SubscriptionOf(full, c.now())
-		if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
-			return err
-		}
-		return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChanged, resp.Subscription, map[string]any{"previous_subscription_id": row.ID.String(), "quote": json.RawMessage(quoteJSON(resp.Quote))})
+		return c.applyNow(ctx, q, ti.ID, resp, row, pc)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
 	}
 	return resp, nil
+}
+
+// schedule records a change for the end of the paid period and tells the tenant it is scheduled; the subscription is not changed yet.
+func (c *Commands) schedule(ctx context.Context, q *sqlc.Queries, resp *plansv1.ChangeSubscriptionResponse, row sqlc.GetSubscriptionRow, pc *changesqry.Priced) error {
+	if _, err := q.InsertSubscriptionChange(ctx, sqlc.InsertSubscriptionChangeParams{
+		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, PlanVersionID: pc.NewPV.ID, Interval: string(pc.NewInterval), EffectiveAt: pc.Quote.Effective}); err != nil {
+		return err
+	}
+	resp.Scheduled = true
+	resp.Subscription = convert.SubscriptionOf(row, c.now())
+	if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
+		return err
+	}
+	return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChangeScheduled, resp.Subscription, map[string]any{"quote": json.RawMessage(quoteJSON(resp.Quote))})
+}
+
+// applyNow replaces the subscription by its successor on the new plan version and interval, records the proration the quote worked out and tells the tenant.
+func (c *Commands) applyNow(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, resp *plansv1.ChangeSubscriptionResponse, row sqlc.GetSubscriptionRow, pc *changesqry.Priced) error {
+	qt := pc.Quote
+	state := subscription.Active
+	if pc.Trial {
+		state = subscription.Trialing
+	}
+	feeDue := qt.NewFeeDue
+	nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), tenantID, row, subscriptionscmd.Successor{PlanVersionID: pc.NewPV.ID, Interval: pc.NewInterval, State: state, TrialEnds: row.TrialEndsAt, At: pc.At,
+		Anchor: qt.NewAnchor, FeeTiming: subscription.FeeInAdvance, FeeDue: &feeDue})
+	if err != nil {
+		return err
+	}
+	if qt.CreditMinor > 0 || qt.ChargeMinor > 0 {
+		if err := q.InsertSubscriptionAdjustment(ctx, sqlc.InsertSubscriptionAdjustmentParams{
+			ID: idgen.NewUUIDv7(), SubscriptionID: nr.ID, OldPlanCode: row.PlanCode, FromAt: pc.At, ToAt: qt.PeriodEnd, CreditMinor: qt.CreditMinor, ChargeMinor: qt.ChargeMinor}); err != nil {
+			return err
+		}
+	}
+	full, err := q.GetSubscription(ctx, nr.ID)
+	if err != nil {
+		return err
+	}
+	resp.Subscription = convert.SubscriptionOf(full, c.now())
+	if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
+		return err
+	}
+	return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChanged, resp.Subscription, map[string]any{"previous_subscription_id": row.ID.String(), "quote": json.RawMessage(quoteJSON(resp.Quote))})
 }
 
 // CancelScheduled withdraws the change waiting for the end of the period.
@@ -154,41 +166,12 @@ func (c *Commands) ApplyScheduled(ctx context.Context, req *plansv1.ApplySchedul
 			return err
 		}
 		for _, dc := range due {
-			row, err := subsqry.Lock(ctx, q, dc.SubscriptionID)
+			done, err := c.applyOne(ctx, q, ti.ID, dc, req.GetNow().AsTime())
 			if err != nil {
 				return err
 			}
-			eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, req.GetNow().AsTime())
-			if !row.OpenEnded || row.CancelAtPeriodEnd || eff != subscription.Active {
-				if _, err := q.SettleChange(ctx, sqlc.SettleChangeParams{ID: dc.ID, State: "cancelled"}); err != nil {
-					return err
-				}
-				continue
-			}
-			pv, err := q.GetPlanVersionByID(ctx, dc.PlanVersionID)
-			if err != nil {
-				return err
-			}
-			effective := dc.EffectiveAt
-			nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), ti.ID, row, subscriptionscmd.Successor{PlanVersionID: pv.ID, Interval: subscription.Interval(dc.Interval), State: subscription.Active,
-				At: effective, Anchor: effective, FeeTiming: subscription.FeeInAdvance, FeeDue: &effective})
-			if err != nil {
-				return err
-			}
-			if _, err := q.SettleChange(ctx, sqlc.SettleChangeParams{ID: dc.ID, State: "applied", NewSubscriptionID: &nr.ID}); err != nil {
-				return err
-			}
-			applied++
-			full, err := q.GetSubscription(ctx, nr.ID)
-			if err != nil {
-				return err
-			}
-			msg := convert.SubscriptionOf(full, c.now())
-			if err := subsqry.AttachExtras(ctx, q, msg); err != nil {
-				return err
-			}
-			if err := webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChanged, msg, map[string]any{"previous_subscription_id": row.ID.String(), "scheduled": true}); err != nil {
-				return err
+			if done {
+				applied++
 			}
 		}
 		return nil
@@ -197,6 +180,41 @@ func (c *Commands) ApplyScheduled(ctx context.Context, req *plansv1.ApplySchedul
 		return 0, convert.Err(err, "subscription")
 	}
 	return applied, nil
+}
+
+// applyOne applies one due change, or settles it as cancelled when its subscription can no longer change. It reports whether the change was applied.
+func (c *Commands) applyOne(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, dc sqlc.ListDueChangesRow, asOf time.Time) (bool, error) {
+	row, err := subsqry.Lock(ctx, q, dc.SubscriptionID)
+	if err != nil {
+		return false, err
+	}
+	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, asOf)
+	if !row.OpenEnded || row.CancelAtPeriodEnd || eff != subscription.Active {
+		_, err := q.SettleChange(ctx, sqlc.SettleChangeParams{ID: dc.ID, State: "cancelled"})
+		return false, err
+	}
+	pv, err := q.GetPlanVersionByID(ctx, dc.PlanVersionID)
+	if err != nil {
+		return false, err
+	}
+	effective := dc.EffectiveAt
+	nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), tenantID, row, subscriptionscmd.Successor{PlanVersionID: pv.ID, Interval: subscription.Interval(dc.Interval), State: subscription.Active,
+		At: effective, Anchor: effective, FeeTiming: subscription.FeeInAdvance, FeeDue: &effective})
+	if err != nil {
+		return false, err
+	}
+	if _, err := q.SettleChange(ctx, sqlc.SettleChangeParams{ID: dc.ID, State: "applied", NewSubscriptionID: &nr.ID}); err != nil {
+		return false, err
+	}
+	full, err := q.GetSubscription(ctx, nr.ID)
+	if err != nil {
+		return false, err
+	}
+	msg := convert.SubscriptionOf(full, c.now())
+	if err := subsqry.AttachExtras(ctx, q, msg); err != nil {
+		return false, err
+	}
+	return true, webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChanged, msg, map[string]any{"previous_subscription_id": row.ID.String(), "scheduled": true})
 }
 
 // MarkAdjustmentBilled records that billing-svc has dealt with an adjustment. Marking twice is fine.

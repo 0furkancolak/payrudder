@@ -152,6 +152,15 @@ func FeeIn(ctx context.Context, q *sqlc.Queries, planVersionID uuid.UUID, baseFe
 	return 0, errkey.Newf(codes.FailedPrecondition, "plans.plan.no_fixed_fee", "plan version has no %sly fixed fee in %s", interval, currency)
 }
 
+// SubscriptionFee is the fixed fee a subscription pays for one period: the fee of its plan version for its interval and currency.
+func SubscriptionFee(ctx context.Context, q *sqlc.Queries, tenantCurrency string, row sqlc.GetSubscriptionRow) (int64, error) {
+	pv, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
+	if err != nil {
+		return 0, err
+	}
+	return FeeIn(ctx, q, pv.ID, pv.BaseFeeMinor, tenantCurrency, row.Currency, subscription.Interval(row.Interval))
+}
+
 // RequireUsagePrices refuses a currency in which the plan version has metered prices but no price set. Fixed-fee-only plan
 // versions need nothing beyond their fee.
 func RequireUsagePrices(ctx context.Context, q *sqlc.Queries, planVersionID uuid.UUID, tenantCurrency, currency string) error {

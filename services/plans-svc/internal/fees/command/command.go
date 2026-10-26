@@ -57,11 +57,7 @@ func (c *Commands) Advance(ctx context.Context, req *plansv1.AdvanceSubscription
 		if row.State == string(subscription.Paused) {
 			return nil
 		}
-		pv, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
-		if err != nil {
-			return err
-		}
-		fee, err := plansqry.FeeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, row.Currency, subscription.Interval(row.Interval))
+		fee, err := plansqry.SubscriptionFee(ctx, q, t.Currency, row)
 		if err != nil {
 			return err
 		}

@@ -321,15 +321,11 @@ func UnusedFee(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.Get
 	if err != nil {
 		return 0, time.Time{}, false, err
 	}
-	pv, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
+	fee, err := plansqry.SubscriptionFee(ctx, q, t.Currency, row)
 	if err != nil {
 		return 0, time.Time{}, false, err
 	}
 	interval := subscription.Interval(row.Interval)
-	fee, err := plansqry.FeeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, row.Currency, interval)
-	if err != nil {
-		return 0, time.Time{}, false, err
-	}
 	n, err := subscription.PeriodIndex(row.BillingAnchor, interval, at, loc)
 	if err != nil {
 		return 0, time.Time{}, false, err
