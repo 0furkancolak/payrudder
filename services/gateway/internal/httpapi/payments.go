@@ -4,11 +4,12 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
 	"strings"
 
-	"github.com/0furkancolak/payrudder/pkg/errkey"
-
 	"google.golang.org/grpc/codes"
+
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
 // payments-worker serves provider webhooks and the provider-account and ledger endpoints over plain HTTP. The gateway forwards to it:
@@ -22,107 +23,59 @@ func (s *Server) paymentsProxy(path func(*http.Request) string) http.HandlerFunc
 // paymentsForward is paymentsProxy with a last word on the outgoing request: tweak may set a query or headers the caller's own request must not decide (the
 // environment of an owner's provider account, who is asking). It runs after the caller's Authorization and internal-token headers are gone.
 func (s *Server) paymentsForward(path func(*http.Request) string, tweak func(*httputil.ProxyRequest)) http.HandlerFunc {
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(pr *httputil.ProxyRequest) {
+			pr.SetURL(s.d.PaymentsURL)
+			pr.Out.URL.Path = path(pr.In)
+			pr.Out.URL.RawPath = ""
+			pr.Out.Header.Del("Authorization")
+			pr.Out.Header.Del("X-Internal-Token")
+			if s.d.PaymentsToken != "" {
+				pr.Out.Header.Set("X-Internal-Token", s.d.PaymentsToken)
+			}
+			pr.Out.Header.Set("X-Request-Id", requestID(pr.In.Context()))
+			if who := operatorFrom(pr.In.Context()); who != "" {
+				pr.Out.Header.Set(actorHeader, who) // a signed-in operator is who the receipt is recorded for, not whom the request claims
+			}
+			if tweak != nil {
+				tweak(pr)
+			}
+		},
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.unreachable", "payments-worker is not reachable"))
+		},
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.d.PaymentsURL == nil {
 			writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.not_configured", "payment providers are not configured on this deployment"))
 			return
 		}
-		proxy := &httputil.ReverseProxy{
-			Rewrite: func(pr *httputil.ProxyRequest) {
-				pr.SetURL(s.d.PaymentsURL)
-				pr.Out.URL.Path = path(pr.In)
-				pr.Out.URL.RawPath = ""
-				pr.Out.Header.Del("Authorization")
-				pr.Out.Header.Del("X-Internal-Token")
-				if s.d.PaymentsToken != "" {
-					pr.Out.Header.Set("X-Internal-Token", s.d.PaymentsToken)
-				}
-				pr.Out.Header.Set("X-Request-Id", requestID(pr.In.Context()))
-				if who := operatorFrom(pr.In.Context()); who != "" {
-					pr.Out.Header.Set(actorHeader, who) // a signed-in operator is who the receipt is recorded for, not whom the request claims
-				}
-				if tweak != nil {
-					tweak(pr)
-				}
-			},
-			ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-				writeError(w, r, errkey.New(codes.Unavailable, "gateway.payments.unreachable", "payments-worker is not reachable"))
-			},
-		}
 		proxy.ServeHTTP(w, r)
 	}
 }
 
-func (s *Server) providerWebhook(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string { return "/webhooks/" + url.PathEscape(r.PathValue("provider")) })(w, r)
+// proxy forwards a route to payments-worker's path template: {name} is replaced by the (escaped) value of the path variable of that name. The proxy is built
+// once, with the route.
+func (s *Server) proxy(template string) http.HandlerFunc {
+	return s.paymentsProxy(func(r *http.Request) string {
+		return pathVarRe.ReplaceAllStringFunc(template, func(v string) string { return url.PathEscape(r.PathValue(v[1 : len(v)-1])) })
+	})
 }
 
-func (s *Server) providerAccounts(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/provider-accounts"
-	})(w, r)
-}
-
-func (s *Server) providerAccount(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/provider-accounts/" + url.PathEscape(r.PathValue("provider"))
-	})(w, r)
-}
-
-func (s *Server) paymentLedger(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/ledger"
-	})(w, r)
-}
-
-func (s *Server) tenantWebhook(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/webhooks/" + url.PathEscape(r.PathValue("provider")) + "/" + url.PathEscape(r.PathValue("tenant_id")) + "/" + url.PathEscape(r.PathValue("environment"))
-	})(w, r)
-}
-
-func (s *Server) providerSubscriptions(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/provider-subscriptions"
-	})(w, r)
-}
-
-func (s *Server) providerCheckout(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/checkouts"
-	})(w, r)
-}
-
-func (s *Server) providerMigrate(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/migrations"
-	})(w, r)
-}
-
-func (s *Server) providerMigrationAbort(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/migrations/" + url.PathEscape(r.PathValue("migration_id")) + "/abort"
-	})(w, r)
-}
+var pathVarRe = regexp.MustCompile(`\{[a-z_]+\}`)
 
 // providerAPI forwards what a provider can do beyond charging (catalogue, customers, subscriptions, discounts, documents) to payments-worker, which keeps the
 // admin path below /admin/v1 as /admin/tenants/{tenant}/providers/....
-func (s *Server) providerAPI(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
+func (s *Server) providerAPI() http.HandlerFunc {
+	return s.paymentsProxy(func(r *http.Request) string {
 		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + strings.TrimPrefix(r.URL.Path, "/admin/v1/tenants/"+r.PathValue("tenant_id"))
-	})(w, r)
+	})
 }
 
 // invoiceTransfer forwards the bank transfer endpoints of an invoice (its state, a confirmed receipt, a rejection) to payments-worker, with the actor the
 // receipt is recorded for: the signed-in operator, or for the machine token its X-Payrudder-Actor header.
-func (s *Server) invoiceTransfer(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
+func (s *Server) invoiceTransfer() http.HandlerFunc {
+	return s.paymentsProxy(func(r *http.Request) string {
 		return "/admin" + strings.TrimPrefix(r.URL.Path, "/admin/v1")
-	})(w, r)
-}
-
-func (s *Server) paymentReconciliation(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/reconciliation"
-	})(w, r)
+	})
 }

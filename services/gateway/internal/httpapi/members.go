@@ -13,26 +13,20 @@ import (
 
 func (s *Server) memberRoutes() []Route {
 	return []Route{
-		{"PATCH", "/app/v1/account", AccessSession, ratelimit.ClassWrite, s.accountRename},
-		{"GET", "/app/v1/account/invitations", AccessSession, ratelimit.ClassRead, s.invitationList},
-		{"POST", "/app/v1/account/invitations", AccessSession, ratelimit.ClassWrite, s.invitationCreate},
-		{"DELETE", "/app/v1/account/invitations/{id}", AccessSession, ratelimit.ClassWrite, s.invitationRevoke},
-		{"POST", "/app/v1/account/invitations/{id}/resend", AccessSession, ratelimit.ClassWrite, s.invitationResend},
-		{"PATCH", "/app/v1/account/members/{user_id}", AccessSession, ratelimit.ClassWrite, s.memberRole},
-		{"DELETE", "/app/v1/account/members/{user_id}", AccessSession, ratelimit.ClassWrite, s.memberRemove},
+		{"PATCH", "/app/v1/account", AccessSession, ratelimit.ClassWrite, s.withAccount(s.accountRename)},
+		{"GET", "/app/v1/account/invitations", AccessSession, ratelimit.ClassRead, s.withAccount(s.invitationList)},
+		{"POST", "/app/v1/account/invitations", AccessSession, ratelimit.ClassWrite, s.withAccount(s.invitationCreate)},
+		{"DELETE", "/app/v1/account/invitations/{id}", AccessSession, ratelimit.ClassWrite, s.withAccount(s.invitationRevoke)},
+		{"POST", "/app/v1/account/invitations/{id}/resend", AccessSession, ratelimit.ClassWrite, s.withAccount(s.invitationResend)},
+		{"PATCH", "/app/v1/account/members/{user_id}", AccessSession, ratelimit.ClassWrite, s.withAccount(s.memberRole)},
+		{"DELETE", "/app/v1/account/members/{user_id}", AccessSession, ratelimit.ClassWrite, s.withAccount(s.memberRemove)},
 		{"POST", "/app/v1/invitations/accept", AccessSession, ratelimit.ClassWrite, s.invitationAcceptAsUser},
 		{"POST", "/auth/invitations/lookup", AccessPublic, "", s.invitationLookup},
 		{"POST", "/auth/invitations/accept", AccessPublic, "", s.invitationAccept},
 	}
 }
 
-func (s *Server) accountRename(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) accountRename(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	var body struct {
 		Name string `json:"name"`
 	}
@@ -44,24 +38,12 @@ func (s *Server) accountRename(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp, err)
 }
 
-func (s *Server) invitationList(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) invitationList(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	resp, err := s.d.Identity.ListInvitations(r.Context(), &plansv1.ListInvitationsRequest{UserId: sess.UserID, AccountId: id})
 	respond(w, r, http.StatusOK, resp, err)
 }
 
-func (s *Server) invitationCreate(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) invitationCreate(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	var body struct {
 		Email  string `json:"email"`
 		Role   string `json:"role"`
@@ -76,13 +58,7 @@ func (s *Server) invitationCreate(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusCreated, resp.GetInvitation(), err)
 }
 
-func (s *Server) invitationRevoke(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) invitationRevoke(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	if _, err := s.d.Identity.RevokeInvitation(r.Context(), &plansv1.RevokeInvitationRequest{UserId: sess.UserID, AccountId: id, InvitationId: r.PathValue("id")}); err != nil {
 		writeError(w, r, err)
 		return
@@ -90,24 +66,12 @@ func (s *Server) invitationRevoke(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) invitationResend(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) invitationResend(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	resp, err := s.d.Identity.ResendInvitation(r.Context(), &plansv1.ResendInvitationRequest{UserId: sess.UserID, AccountId: id, InvitationId: r.PathValue("id")})
 	respond(w, r, http.StatusOK, resp.GetInvitation(), err)
 }
 
-func (s *Server) memberRole(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) memberRole(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	var body struct {
 		Role string `json:"role"`
 	}
@@ -119,13 +83,7 @@ func (s *Server) memberRole(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp, err)
 }
 
-func (s *Server) memberRemove(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) memberRemove(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	if _, err := s.d.Identity.RemoveMember(r.Context(), &plansv1.RemoveMemberRequest{UserId: sess.UserID, AccountId: id, MemberUserId: r.PathValue("user_id")}); err != nil {
 		writeError(w, r, err)
 		return

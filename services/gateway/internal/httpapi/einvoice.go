@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"net/url"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -105,16 +104,4 @@ func (s *Server) setCustomerTax(w http.ResponseWriter, r *http.Request) {
 	req.ExternalId = r.PathValue("external_id")
 	resp, err := s.d.Plans.SetCustomerTax(r.Context(), req)
 	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
-}
-
-func (s *Server) einvoiceAccounts(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/e-invoice-accounts"
-	})(w, r)
-}
-
-func (s *Server) einvoiceAccount(w http.ResponseWriter, r *http.Request) {
-	s.paymentsProxy(func(r *http.Request) string {
-		return "/admin/tenants/" + url.PathEscape(r.PathValue("tenant_id")) + "/e-invoice-accounts/" + url.PathEscape(r.PathValue("environment"))
-	})(w, r)
 }

@@ -30,9 +30,9 @@ func (s *Server) appRoutes() []Route {
 		{"POST", "/auth/reset", AccessPublic, "", s.resetPassword},
 		{"POST", "/auth/signout", AccessSession, ratelimit.ClassWrite, s.signOut},
 		{"GET", "/auth/me", AccessSession, ratelimit.ClassRead, s.me},
-		{"GET", "/app/v1/account", AccessSession, ratelimit.ClassRead, s.appAccount},
-		{"GET", "/app/v1/apps", AccessSession, ratelimit.ClassRead, s.appList},
-		{"POST", "/app/v1/apps", AccessSession, ratelimit.ClassWrite, s.appCreate},
+		{"GET", "/app/v1/account", AccessSession, ratelimit.ClassRead, s.withAccount(s.appAccount)},
+		{"GET", "/app/v1/apps", AccessSession, ratelimit.ClassRead, s.withAccount(s.appList)},
+		{"POST", "/app/v1/apps", AccessSession, ratelimit.ClassWrite, s.withAccount(s.appCreate)},
 		{"GET", "/app/v1/apps/{id}", AccessSession, ratelimit.ClassRead, s.appGet},
 		{"GET", "/app/v1/apps/{id}/overview", AccessSession, ratelimit.ClassRead, s.appOverview},
 		{"GET", "/app/v1/apps/{id}/dashboard", AccessSession, ratelimit.ClassRead, s.appDashboard},
@@ -68,35 +68,31 @@ func accountOf(r *http.Request, sess session) (string, error) {
 	return "", errkey.New(codes.NotFound, "identity.account.not_found", "no such account")
 }
 
-func (s *Server) appAccount(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
+// withAccount runs a handler of the signed-in person's account: the account is ?account_id= (default: the first one), checked against the session's
+// memberships. The handler gets the session and the account's id.
+func (s *Server) withAccount(h func(w http.ResponseWriter, r *http.Request, sess session, accountID string)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		sess := sessionFrom(r.Context())
+		id, err := accountOf(r, sess)
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		h(w, r, sess, id)
 	}
+}
+
+func (s *Server) appAccount(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	resp, err := s.d.Identity.GetMyAccount(r.Context(), &plansv1.GetMyAccountRequest{UserId: sess.UserID, AccountId: id})
 	respond(w, r, http.StatusOK, resp, err)
 }
 
-func (s *Server) appList(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) appList(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	resp, err := s.d.Identity.ListMyApps(r.Context(), &plansv1.ListMyAppsRequest{UserId: sess.UserID, AccountId: id})
 	respond(w, r, http.StatusOK, resp, err)
 }
 
-func (s *Server) appCreate(w http.ResponseWriter, r *http.Request) {
-	sess := sessionFrom(r.Context())
-	id, err := accountOf(r, sess)
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
+func (s *Server) appCreate(w http.ResponseWriter, r *http.Request, sess session, id string) {
 	var body struct {
 		Name     string `json:"name"`
 		Slug     string `json:"slug"`

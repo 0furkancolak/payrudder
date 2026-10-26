@@ -108,7 +108,7 @@ func (s *Server) accountingExport(w http.ResponseWriter, r *http.Request) {
 		_ = cw.Write([]string{c.GetCurrency(), "total", itoa(c.GetGrossIncomeMinor()), itoa(c.GetTaxMinor()), itoa(c.GetRefundsMinor()), itoa(c.GetNetIncomeMinor()), itoa(c.GetExpensesMinor()), feesCell(c), itoa(c.GetProfitMinor()),
 			itoa(c.GetDiscountsMinor()), itoa(c.GetSalesMinor())})
 	}
-	cw.Flush()
+	s.finishCSV(r, cw)
 }
 
 // couponsExport is GET /v1/accounting/coupons.csv with the query of the summary: one row per currency and coupon, with the invoices paid in the period that used it, their
@@ -128,7 +128,7 @@ func (s *Server) couponsExport(w http.ResponseWriter, r *http.Request) {
 			_ = cw.Write([]string{c.GetCurrency(), csvSafe(k.GetCouponCode()), itoa(k.GetInvoices()), itoa(k.GetGrossMinor()), itoa(k.GetDiscountMinor()), itoa(k.GetNetMinor())})
 		}
 	}
-	cw.Flush()
+	s.finishCSV(r, cw)
 }
 
 // csvSafe keeps a cell that starts like a formula from being run by a spreadsheet. A coupon code is 2 to 40 letters, digits, - and _, so only a leading - can matter.
@@ -145,4 +145,12 @@ func feesCell(c *billingv1.AccountingCurrency) string {
 		return "not_recorded"
 	}
 	return strconv.FormatInt(c.GetProviderFeesMinor(), 10)
+}
+
+// finishCSV flushes a CSV answer. Its status line has gone out already, so a write error (the client went away) can only be logged.
+func (s *Server) finishCSV(r *http.Request, cw *csv.Writer) {
+	cw.Flush()
+	if err := cw.Error(); err != nil {
+		s.d.Log.WarnContext(r.Context(), "csv export not written to the end", "error", err)
+	}
 }
