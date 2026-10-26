@@ -18,23 +18,6 @@ export const sidebarCollapsed = ref(readFlag(SIDEBAR_KEY));
 /** Privacy mode: monetary amounts are replaced by a mask everywhere they are formatted (see money.ts), until the person turns it off. */
 export const privacyMode = ref(readFlag(PRIVACY_KEY));
 
-/** The sidebar groups the person folded (by section key), remembered in this browser. */
-const GROUPS_KEY = "payrudder.sidebar.groups";
-function readGroups(): string[] {
-  try {
-    const v = JSON.parse(safeGet("local", GROUPS_KEY) ?? "[]") as unknown;
-    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
-}
-export const foldedGroups = ref<string[]>(readGroups());
-
-export function toggleGroup(key: string): void {
-  foldedGroups.value = foldedGroups.value.includes(key) ? foldedGroups.value.filter((k) => k !== key) : [...foldedGroups.value, key];
-  void safeSet("local", GROUPS_KEY, JSON.stringify(foldedGroups.value));
-}
-
 export function setSidebarCollapsed(on: boolean): void {
   sidebarCollapsed.value = on;
   writeFlag(SIDEBAR_KEY, on);

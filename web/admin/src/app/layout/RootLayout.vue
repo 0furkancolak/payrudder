@@ -59,8 +59,8 @@ watch(
   { immediate: true },
 );
 
-/** The apps the sidebar lists: a person's own, on the organisation's pages and inside an app (not in the operator's platform). */
-const sidebarApps = computed(() => (isPerson.value && ["org", "app"].includes(shell.context.value.level) ? (shell.apps.data.value?.apps ?? []) : undefined));
+/** The apps the sidebar lists: a person's own, on the organisation's pages (inside an app the sidebar is that app's pages, as before). */
+const sidebarApps = computed(() => (isPerson.value && shell.context.value.level === "org" ? (shell.apps.data.value?.apps ?? []) : undefined));
 
 const home = computed(() => (isPerson.value ? "/app" : "/signin"));
 
@@ -84,8 +84,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
     <a href="#main" class="bg-primary text-primary-foreground sr-only z-[60] rounded-xl px-4 py-2 focus:not-sr-only focus:fixed focus:start-4 focus:top-4">{{ t("shell.skip") }}</a>
 
     <template v-if="signedIn">
-      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" :apps="sidebarApps" :app-id="shell.context.value.appId" :env="pageEnv" :nest="shell.context.value.level === 'app'" />
-      <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :apps="sidebarApps" :app-id="shell.context.value.appId" :env="pageEnv" :nest="shell.context.value.level === 'app'" />
+      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" :apps="sidebarApps" :app-id="shell.context.value.appId" :env="pageEnv" />
+      <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :apps="sidebarApps" :app-id="shell.context.value.appId" :env="pageEnv" />
     </template>
 
     <!-- One wrapper and one <main> for both states: signing in must not remount the page that is signing in (its onSuccess would be lost). -->
