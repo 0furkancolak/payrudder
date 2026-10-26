@@ -14,6 +14,7 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -80,16 +81,21 @@ func (s *Server) respondSignedIn(w http.ResponseWriter, r *http.Request, resp *p
 		writeError(w, r, err)
 		return
 	}
-	b, err := marshal.Marshal(resp)
+	s.writeWithOperator(w, r, http.StatusOK, resp.GetUser(), resp)
+}
+
+// writeWithOperator answers a message about a user as JSON with the server's verdict "operator" added (see withOperator).
+func (s *Server) writeWithOperator(w http.ResponseWriter, r *http.Request, code int, u *plansv1.User, msg proto.Message) {
+	b, err := marshal.Marshal(msg)
 	if err == nil {
-		b, err = s.withOperator(resp.GetUser(), b)
+		b, err = s.withOperator(u, b)
 	}
 	if err != nil {
 		writeError(w, r, status.Error(codes.Internal, "encode response"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(code)
 	_, _ = w.Write(b)
 }
 

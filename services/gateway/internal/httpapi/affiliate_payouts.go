@@ -129,5 +129,5 @@ func (s *Server) affiliateJournalCSV(w http.ResponseWriter, r *http.Request) {
 	for _, t := range totals {
 		_ = cw.Write([]string{"total", "", "", t.GetCurrency(), "", n(t.GetDebitMinor()), n(t.GetCreditMinor()), "", ""})
 	}
-	cw.Flush()
+	s.finishCSV(r, cw)
 }

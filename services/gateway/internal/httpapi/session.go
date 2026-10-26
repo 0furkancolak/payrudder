@@ -217,14 +217,5 @@ func (s *Server) signOut(w http.ResponseWriter, r *http.Request) {
 func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
 	noStore(w)
-	b, err := marshal.Marshal(&plansv1.GetSessionResponse{User: sess.User, Memberships: sess.Memberships, ExpireTime: timestamppb.New(sess.Expire)})
-	if err == nil {
-		b, err = s.withOperator(sess.User, b)
-	}
-	if err != nil {
-		writeError(w, r, status.Error(codes.Internal, "encode response"))
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(b)
+	s.writeWithOperator(w, r, http.StatusOK, sess.User, &plansv1.GetSessionResponse{User: sess.User, Memberships: sess.Memberships, ExpireTime: timestamppb.New(sess.Expire)})
 }
