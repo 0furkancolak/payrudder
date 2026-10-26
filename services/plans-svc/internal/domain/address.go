@@ -17,17 +17,18 @@ func ValidateAddress(field string, a *plansv1.Address) error {
 
 // Address records the violations of an address (see ValidateAddress).
 func (v *Violations) Address(field string, a *plansv1.Address) {
-	for name, part := range map[string]struct {
-		value string
-		max   int
+	// A slice, not a map: the violations come in the order of the fields, so the message that names the first one is always the same.
+	for _, part := range []struct {
+		name, value string
+		max         int
 	}{
-		"line1": {a.GetLine1(), 120}, "line2": {a.GetLine2(), 120}, "city": {a.GetCity(), 120}, "region": {a.GetRegion(), 120}, "postal_code": {a.GetPostalCode(), 20},
+		{"line1", a.GetLine1(), 120}, {"line2", a.GetLine2(), 120}, {"city", a.GetCity(), 120}, {"region", a.GetRegion(), 120}, {"postal_code", a.GetPostalCode(), 20},
 	} {
 		switch {
 		case utf8.RuneCountInString(part.value) > part.max:
-			v.Add(field+"."+name, "too long")
+			v.Add(field+"."+part.name, "too long")
 		case strings.ContainsAny(part.value, "\n\r\t\x00"):
-			v.Add(field+"."+name, "must be one line of text")
+			v.Add(field+"."+part.name, "must be one line of text")
 		}
 	}
 	if c := a.GetCountry(); c != "" && !countryRe.MatchString(c) {

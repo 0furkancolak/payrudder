@@ -12,12 +12,13 @@ import (
 // (payments-worker, which owns the account, normalises it), the reference template uses known placeholders. field names the request field for the violations.
 func ValidateBankTransfer(field string, d *plansv1.BankTransferDetails) error {
 	var v Violations
-	for name, text := range map[string]string{"bank_name": d.GetBankName(), "account_holder": d.GetAccountHolder()} {
+	// A slice, not a map: the violations come in the order of the fields, so the message that names the first one is always the same.
+	for _, part := range []struct{ name, text string }{{"bank_name", d.GetBankName()}, {"account_holder", d.GetAccountHolder()}} {
 		switch {
-		case strings.TrimSpace(text) == "":
-			v.Add(field+"."+name, "is required")
-		case utf8.RuneCountInString(text) > 100 || strings.ContainsAny(text, "\n\r\t\x00"):
-			v.Add(field+"."+name, "must be one line of at most 100 characters")
+		case strings.TrimSpace(part.text) == "":
+			v.Add(field+"."+part.name, "is required")
+		case utf8.RuneCountInString(part.text) > 100 || strings.ContainsAny(part.text, "\n\r\t\x00"):
+			v.Add(field+"."+part.name, "must be one line of at most 100 characters")
 		}
 	}
 	if iban, err := banktransfer.ValidateIBAN(d.GetIban()); err != nil || iban != d.GetIban() {

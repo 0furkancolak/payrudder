@@ -21,7 +21,7 @@ func (v *Violations) Add(field, description string) {
 	v.list = append(v.list, &errdetails.BadRequest_FieldViolation{Field: field, Description: description})
 }
 
-// Empty reports whether nothing was recorded.
+// empty reports whether nothing was recorded.
 func (v *Violations) empty() bool { return len(v.list) == 0 }
 
 // Err returns an InvalidArgument status with BadRequest details and the key plans.request.invalid (the console puts the first field and its
