@@ -123,3 +123,40 @@ func TestNegativeQuantityRejected(t *testing.T) {
 		t.Fatal("negative quantity must be rejected")
 	}
 }
+
+func TestIncludedQuantityIsFree(t *testing.T) {
+	withIncluded := func(p Price, inc string) Price {
+		p.Included = dec(t, inc)
+		return p
+	}
+	tests := []struct {
+		name  string
+		price Price
+		qty   string
+		want  int64
+	}{
+		{"per unit under the included quantity", withIncluded(perUnit(t, "2"), "1000"), "999", 0},
+		{"per unit at the included quantity", withIncluded(perUnit(t, "2"), "1000"), "1000", 0},
+		{"per unit above it prices only the rest", withIncluded(perUnit(t, "2"), "1000"), "1250", 500},
+		{"fractional included", withIncluded(perUnit(t, "10"), "0.5"), "1.25", 8}, // 0.75 × 10 = 7.5 → 8 (half-even)
+		{"tiered starts its tiers above the included quantity", withIncluded(tiered(t), "100"), "150", 40*2 + 100},
+		{"package counts packages above it", withIncluded(Price{Model: Package, PackageSize: dec(t, "100"), PackagePriceMinor: 500}, "50"), "151", 1000},
+		{"zero included is none", withIncluded(perUnit(t, "2"), "0"), "3", 6},
+	}
+	for _, tc := range tests {
+		got, err := Amount(tc.price, dec(t, tc.qty))
+		if err != nil || got != tc.want {
+			t.Errorf("%s: Amount(%s) = %d, %v; want %d", tc.name, tc.qty, got, err, tc.want)
+		}
+	}
+	// Late usage adds what crossing the included quantity costs, not the price of the late quantity alone.
+	p := withIncluded(perUnit(t, "2"), "1000")
+	if got, err := Incremental(p, dec(t, "900"), dec(t, "300")); err != nil || got != 400 {
+		t.Fatalf("Incremental across the included quantity = %d, %v; want 400", got, err)
+	}
+	// The line names what was free and drops the unit price: quantity × unit price is not its amount.
+	lines, err := RateUsage(PlanVersion{Prices: map[string]Price{"calls": p}}, []Usage{{MeterCode: "calls", Quantity: dec(t, "1250"), UnitLabel: "calls"}})
+	if err != nil || len(lines) != 1 || lines[0].AmountMinor != 500 || lines[0].UnitPrice != "" || lines[0].Description != "Usage — calls — 1250 calls (1000 calls included)" {
+		t.Fatalf("lines = %+v, %v", lines, err)
+	}
+}

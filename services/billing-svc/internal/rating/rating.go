@@ -44,6 +44,8 @@ type Price struct {
 	// Package: ceil(qty / PackageSize) × PackagePriceMinor.
 	PackageSize       *apd.Decimal
 	PackagePriceMinor int64
+	// Included is the quantity of a period that is free: the model prices only what is above it. nil or zero = none.
+	Included *apd.Decimal
 }
 
 // PlanVersion is the part of a plan version rating needs.
@@ -112,6 +114,16 @@ func zero() *apd.Decimal { return apd.New(0, 0) }
 func exact(p Price, qty *apd.Decimal) (*apd.Decimal, error) {
 	if qty.Sign() < 0 {
 		return nil, fmt.Errorf("rating: negative quantity %s", qty.String())
+	}
+	if p.Included != nil && p.Included.Sign() > 0 {
+		if qty.Cmp(p.Included) <= 0 {
+			return zero(), nil
+		}
+		var above apd.Decimal
+		if _, err := decCtx.Sub(&above, qty, p.Included); err != nil {
+			return nil, err
+		}
+		qty = &above
 	}
 	switch p.Model {
 	case PerUnit:
@@ -237,7 +249,11 @@ func RateUsage(pv PlanVersion, usage []Usage) ([]Line, error) {
 		}
 		l := Line{Kind: KindUsage, MeterCode: u.MeterCode, Quantity: u.Quantity, UnitLabel: u.UnitLabel, AmountMinor: amt,
 			Description: fmt.Sprintf("Usage — %s — %s %s", u.MeterCode, u.Quantity.Text('f'), u.UnitLabel)}
-		if p.Model == PerUnit {
+		switch {
+		case p.Included != nil && p.Included.Sign() > 0:
+			// quantity × unit price is not the amount any more, so the line says what was free instead of a unit price.
+			l.Description += fmt.Sprintf(" (%s %s included)", p.Included.Text('f'), u.UnitLabel)
+		case p.Model == PerUnit:
 			l.UnitPrice = p.UnitPrice.Text('f')
 		}
 		lines = append(lines, l)

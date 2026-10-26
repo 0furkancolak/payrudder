@@ -252,6 +252,13 @@ paths:
         `as_of` is the ingest time of the newest event reflected in `used`. Payrudder never blocks ingest on a limit; call
         this before serving your customer and decide what to do. A customer without an entitlement on the meter is
         `unlimited`. `period` defaults to the current period in the tenant's time zone.
+
+        A limit counts over its `window`: the billing month, or an hour, a day or an ISO week in the tenant's time zone.
+        `period` picks the month of a monthly limit; an hourly, daily or weekly limit always reports its current window
+        (`window_id`, ending at `resets_at`). `allowed` follows the limit's `mode`: a `hard` limit stops allowing at the
+        limit, a `soft` or `notify` one keeps allowing and says `over_limit`. Hourly, daily and weekly counters are kept by
+        limits-svc only and not reconciled against the aggregator (an event delivered twice counts twice until its window
+        ends); monthly counters are reconciled every few minutes.
       parameters:
         - { $ref: "#/components/parameters/ExternalID" }
         - { name: meter, in: path, required: true, schema: { type: string } }
@@ -261,6 +268,48 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/entitlement-overrides:
+    get:
+      operationId: listEntitlementOverrides
+      summary: The customer's own limits, which replace its package's on their meters
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  overrides: { type: array, items: { $ref: "#/components/schemas/EntitlementOverride" } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/customers/{external_id}/entitlement-overrides/{meter}:
+    put:
+      operationId: setEntitlementOverride
+      summary: Give the customer its own limit on a meter
+      description: |
+        Replaces the entitlement the customer's package gives on the meter, or adds one on a meter the package does not limit, for every
+        subscription of the customer until the override is deleted. limits-svc applies it within seconds. `QUOTA_MODE_SOFT` needs every
+        current package of the customer to price the meter (the usage over the limit is billed at that price).
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: meter, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EntitlementTerms" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EntitlementOverride" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteEntitlementOverride
+      summary: Return the customer to its package's limit on the meter
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: meter, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/plans:
     post:
       operationId: createPlan
@@ -301,7 +350,7 @@ paths:
                   description: Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's
                   items: { $ref: "#/components/schemas/CurrencyFee" }
                 prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
-                entitlements: { type: array, items: { $ref: "#/components/schemas/EntitlementStatus" } }
+                entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/PlanVersion" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -4673,8 +4722,14 @@ components:
         used: { type: string, description: Exact decimal with the meter's scale, examples: ["10.500"] }
         limit: { type: [string, "null"], description: Exact decimal; null when unlimited, examples: ["10.500"] }
         unlimited: { type: boolean }
-        allowed: { type: boolean, description: "unlimited, or used < limit" }
+        allowed: { type: boolean, description: "unlimited, used < limit, or a soft or notify limit" }
         as_of: { type: [string, "null"], format: date-time }
+        window: { type: string, enum: [hour, day, week, month], description: What the limit counts over; month for a meter without a limit }
+        window_id: { type: string, description: "The window used counts in: period_id for a month, 2026-11-05T13, 2026-11-05 or 2026-W45", examples: ["2026-11-05"] }
+        resets_at: { type: [string, "null"], format: date-time, description: When the window ends and used starts again from zero }
+        mode: { type: string, enum: [hard, soft, notify] }
+        over_limit: { type: boolean, description: "not unlimited and used >= limit, whatever the mode" }
+        overridden: { type: boolean, description: The limit is the customer's own override, not its package's }
     IngestEventsRequest:
       type: object
       required: [events]
@@ -5340,7 +5395,8 @@ components:
         value_property: { type: string, description: Required for SUM and MAX }
         filter: { type: object, additionalProperties: { type: object, properties: { values: { type: array, items: { type: string } } } } }
         quantity_scale: { type: integer, minimum: 0, maximum: 6, description: Decimal places, fixed per code }
-        unit_label: { type: string }
+        unit_label: { type: string, maxLength: 32, description: "Any unit of your choice: tokens, GB-h, seats, minutes", examples: ["tokens"] }
+        category: { type: string, maxLength: 64, description: "Any group of your choice to file the meter under (compute, storage, AI); changes nothing in metering or billing", examples: ["AI"] }
     Meter:
       allOf:
         - $ref: "#/components/schemas/CreateMeterRequest"
@@ -5378,13 +5434,42 @@ components:
           properties:
             package_size: { type: string }
             package_price_minor: { type: string }
-    Entitlement:
+        included: { type: string, description: "Quantity of every billing period that is free: the model prices only what is above it. Empty or 0 = none", examples: ["1000"] }
+    QuotaWindow:
+      type: string
+      description: What a limit counts over, in the tenant's time zone. Unspecified is the month (the billing period).
+      enum: [QUOTA_WINDOW_UNSPECIFIED, QUOTA_WINDOW_MONTH, QUOTA_WINDOW_HOUR, QUOTA_WINDOW_DAY, QUOTA_WINDOW_WEEK]
+    QuotaMode:
+      type: string
+      description: |
+        What reaching the limit means for `allowed` (Payrudder never refuses usage events). HARD (also unspecified): allowed turns false at the
+        limit. SOFT: allowed stays true and the usage over the limit is billed at the meter's price, which the package must have. NOTIFY: allowed
+        stays true; only the alerts are sent.
+      enum: [QUOTA_MODE_UNSPECIFIED, QUOTA_MODE_HARD, QUOTA_MODE_SOFT, QUOTA_MODE_NOTIFY]
+    EntitlementTerms:
       type: object
-      required: [meter_code, limit]
+      required: [limit]
       properties:
-        meter_code: { type: string }
         limit: { type: string, description: Decimal in meter units; "0" = unlimited }
-        alert_thresholds_pct: { type: array, items: { type: integer } }
+        alert_thresholds_pct: { type: array, maxItems: 10, items: { type: integer, minimum: 1, maximum: 1000 }, description: "Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100", examples: [[50, 80, 100]] }
+        window: { $ref: "#/components/schemas/QuotaWindow" }
+        mode: { $ref: "#/components/schemas/QuotaMode" }
+    Entitlement:
+      allOf:
+        - type: object
+          required: [meter_code]
+          properties:
+            meter_code: { type: string }
+        - $ref: "#/components/schemas/EntitlementTerms"
+    EntitlementOverride:
+      allOf:
+        - type: object
+          properties:
+            customer_external_id: { type: string }
+            meter_code: { type: string }
+            create_time: { type: string, format: date-time }
+            update_time: { type: string, format: date-time }
+        - $ref: "#/components/schemas/EntitlementTerms"
     PlanVersion:
       type: object
       properties:

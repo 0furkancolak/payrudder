@@ -206,7 +206,7 @@ func Meter(m sqlc.Meter) (*plansv1.Meter, error) {
 	return &plansv1.Meter{
 		Code: m.Code, Version: m.Version, Aggregation: domain.AggregationFromDB(m.Aggregation),
 		ValueProperty: Str(m.ValueProperty), Filter: filter, QuantityScale: uint32(max(m.QuantityScale, 0)), //nolint:gosec // 0..6 by CHECK
-		UnitLabel: m.UnitLabel, CreateTime: ts(m.CreatedAt),
+		UnitLabel: m.UnitLabel, CreateTime: ts(m.CreatedAt), Category: m.Category,
 	}, nil
 }
 

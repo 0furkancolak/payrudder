@@ -29,6 +29,9 @@ const (
 	PlansService_CreateMeter_FullMethodName                      = "/payrudder.plans.v1.PlansService/CreateMeter"
 	PlansService_GetMeter_FullMethodName                         = "/payrudder.plans.v1.PlansService/GetMeter"
 	PlansService_ListMeters_FullMethodName                       = "/payrudder.plans.v1.PlansService/ListMeters"
+	PlansService_SetEntitlementOverride_FullMethodName           = "/payrudder.plans.v1.PlansService/SetEntitlementOverride"
+	PlansService_DeleteEntitlementOverride_FullMethodName        = "/payrudder.plans.v1.PlansService/DeleteEntitlementOverride"
+	PlansService_ListEntitlementOverrides_FullMethodName         = "/payrudder.plans.v1.PlansService/ListEntitlementOverrides"
 	PlansService_CreatePlan_FullMethodName                       = "/payrudder.plans.v1.PlansService/CreatePlan"
 	PlansService_ListPlans_FullMethodName                        = "/payrudder.plans.v1.PlansService/ListPlans"
 	PlansService_PublishPlanVersion_FullMethodName               = "/payrudder.plans.v1.PlansService/PublishPlanVersion"
@@ -101,6 +104,12 @@ type PlansServiceClient interface {
 	// GetMeter returns the latest version of a code.
 	GetMeter(ctx context.Context, in *GetMeterRequest, opts ...grpc.CallOption) (*GetMeterResponse, error)
 	ListMeters(ctx context.Context, in *ListMetersRequest, opts ...grpc.CallOption) (*ListMetersResponse, error)
+	// SetEntitlementOverride gives one customer its own limit on a meter, in place of its plan version's (or where the plan has none).
+	// limits-svc applies it to the customer's current and future subscriptions within seconds.
+	SetEntitlementOverride(ctx context.Context, in *SetEntitlementOverrideRequest, opts ...grpc.CallOption) (*SetEntitlementOverrideResponse, error)
+	// DeleteEntitlementOverride returns the customer to its plan version's entitlement on the meter.
+	DeleteEntitlementOverride(ctx context.Context, in *DeleteEntitlementOverrideRequest, opts ...grpc.CallOption) (*DeleteEntitlementOverrideResponse, error)
+	ListEntitlementOverrides(ctx context.Context, in *ListEntitlementOverridesRequest, opts ...grpc.CallOption) (*ListEntitlementOverridesResponse, error)
 	CreatePlan(ctx context.Context, in *CreatePlanRequest, opts ...grpc.CallOption) (*CreatePlanResponse, error)
 	ListPlans(ctx context.Context, in *ListPlansRequest, opts ...grpc.CallOption) (*ListPlansResponse, error)
 	// PublishPlanVersion appends an immutable version.
@@ -286,6 +295,36 @@ func (c *plansServiceClient) ListMeters(ctx context.Context, in *ListMetersReque
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMetersResponse)
 	err := c.cc.Invoke(ctx, PlansService_ListMeters_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) SetEntitlementOverride(ctx context.Context, in *SetEntitlementOverrideRequest, opts ...grpc.CallOption) (*SetEntitlementOverrideResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetEntitlementOverrideResponse)
+	err := c.cc.Invoke(ctx, PlansService_SetEntitlementOverride_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) DeleteEntitlementOverride(ctx context.Context, in *DeleteEntitlementOverrideRequest, opts ...grpc.CallOption) (*DeleteEntitlementOverrideResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteEntitlementOverrideResponse)
+	err := c.cc.Invoke(ctx, PlansService_DeleteEntitlementOverride_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ListEntitlementOverrides(ctx context.Context, in *ListEntitlementOverridesRequest, opts ...grpc.CallOption) (*ListEntitlementOverridesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListEntitlementOverridesResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListEntitlementOverrides_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -794,6 +833,12 @@ type PlansServiceServer interface {
 	// GetMeter returns the latest version of a code.
 	GetMeter(context.Context, *GetMeterRequest) (*GetMeterResponse, error)
 	ListMeters(context.Context, *ListMetersRequest) (*ListMetersResponse, error)
+	// SetEntitlementOverride gives one customer its own limit on a meter, in place of its plan version's (or where the plan has none).
+	// limits-svc applies it to the customer's current and future subscriptions within seconds.
+	SetEntitlementOverride(context.Context, *SetEntitlementOverrideRequest) (*SetEntitlementOverrideResponse, error)
+	// DeleteEntitlementOverride returns the customer to its plan version's entitlement on the meter.
+	DeleteEntitlementOverride(context.Context, *DeleteEntitlementOverrideRequest) (*DeleteEntitlementOverrideResponse, error)
+	ListEntitlementOverrides(context.Context, *ListEntitlementOverridesRequest) (*ListEntitlementOverridesResponse, error)
 	CreatePlan(context.Context, *CreatePlanRequest) (*CreatePlanResponse, error)
 	ListPlans(context.Context, *ListPlansRequest) (*ListPlansResponse, error)
 	// PublishPlanVersion appends an immutable version.
@@ -914,6 +959,15 @@ func (UnimplementedPlansServiceServer) GetMeter(context.Context, *GetMeterReques
 }
 func (UnimplementedPlansServiceServer) ListMeters(context.Context, *ListMetersRequest) (*ListMetersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMeters not implemented")
+}
+func (UnimplementedPlansServiceServer) SetEntitlementOverride(context.Context, *SetEntitlementOverrideRequest) (*SetEntitlementOverrideResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetEntitlementOverride not implemented")
+}
+func (UnimplementedPlansServiceServer) DeleteEntitlementOverride(context.Context, *DeleteEntitlementOverrideRequest) (*DeleteEntitlementOverrideResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteEntitlementOverride not implemented")
+}
+func (UnimplementedPlansServiceServer) ListEntitlementOverrides(context.Context, *ListEntitlementOverridesRequest) (*ListEntitlementOverridesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListEntitlementOverrides not implemented")
 }
 func (UnimplementedPlansServiceServer) CreatePlan(context.Context, *CreatePlanRequest) (*CreatePlanResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreatePlan not implemented")
@@ -1253,6 +1307,60 @@ func _PlansService_ListMeters_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlansServiceServer).ListMeters(ctx, req.(*ListMetersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_SetEntitlementOverride_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetEntitlementOverrideRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).SetEntitlementOverride(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_SetEntitlementOverride_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).SetEntitlementOverride(ctx, req.(*SetEntitlementOverrideRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_DeleteEntitlementOverride_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteEntitlementOverrideRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).DeleteEntitlementOverride(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_DeleteEntitlementOverride_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).DeleteEntitlementOverride(ctx, req.(*DeleteEntitlementOverrideRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ListEntitlementOverrides_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListEntitlementOverridesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListEntitlementOverrides(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListEntitlementOverrides_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListEntitlementOverrides(ctx, req.(*ListEntitlementOverridesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2142,6 +2250,18 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMeters",
 			Handler:    _PlansService_ListMeters_Handler,
+		},
+		{
+			MethodName: "SetEntitlementOverride",
+			Handler:    _PlansService_SetEntitlementOverride_Handler,
+		},
+		{
+			MethodName: "DeleteEntitlementOverride",
+			Handler:    _PlansService_DeleteEntitlementOverride_Handler,
+		},
+		{
+			MethodName: "ListEntitlementOverrides",
+			Handler:    _PlansService_ListEntitlementOverrides_Handler,
 		},
 		{
 			MethodName: "CreatePlan",

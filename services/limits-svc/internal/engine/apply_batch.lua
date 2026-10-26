@@ -1,7 +1,8 @@
 -- Applies the counter deltas of one batch of one partition, atomically, together with the partition's offset.
 --
 -- KEYS[1] = lim:off:{p}      next offset applied
--- KEYS[2] = lim:active:{p}   sorted set of counter keys, score = last update (ms)
+-- KEYS[2] = lim:active:{p}   sorted set of the billing-period counter keys (lim:c), score = last update (ms)
+-- KEYS[3] = lim:wactive:{p}  the same for the window counter keys (lim:w), which reconciliation does not read
 -- ARGV[1] first offset of the batch      ARGV[2] next offset after the batch
 -- ARGV[3] now (ms)                       ARGV[4] offset the caller expects to find (0 = none)
 -- ARGV[5] n counters                     ARGV[6] n tenant timestamps
@@ -50,7 +51,11 @@ for _ = 1, nc do
   end
   if ok then
     redis.call('EXPIREAT', key, exp)
-    redis.call('ZADD', KEYS[2], now, key)
+    if string.sub(key, 1, 6) == 'lim:w:' then
+      redis.call('ZADD', KEYS[3], now, key)
+    else
+      redis.call('ZADD', KEYS[2], now, key)
+    end
     out[#out + 1] = {key, string.format('%.0f', before), string.format('%.0f', after)}
   end
 end

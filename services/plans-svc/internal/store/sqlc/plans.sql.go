@@ -141,6 +141,23 @@ func (q *Queries) CurrentTenant(ctx context.Context) (CurrentTenantRow, error) {
 	return i, err
 }
 
+const deleteEntitlementOverride = `-- name: DeleteEntitlementOverride :execrows
+DELETE FROM customer_entitlement_overrides WHERE tenant_id = app_tenant_id() AND customer_id = $1 AND meter_code = $2
+`
+
+type DeleteEntitlementOverrideParams struct {
+	CustomerID uuid.UUID
+	MeterCode  string
+}
+
+func (q *Queries) DeleteEntitlementOverride(ctx context.Context, arg DeleteEntitlementOverrideParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteEntitlementOverride, arg.CustomerID, arg.MeterCode)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteRoutingRules = `-- name: DeleteRoutingRules :exec
 DELETE FROM routing_rules WHERE tenant_id = app_tenant_id()
 `
@@ -657,9 +674,9 @@ func (q *Queries) GetSubscriptionIDByProviderRef(ctx context.Context, arg GetSub
 }
 
 const insertMeter = `-- name: InsertMeter :one
-INSERT INTO meters (tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
-RETURNING tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, created_at
+INSERT INTO meters (tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, category)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, created_at, category
 `
 
 type InsertMeterParams struct {
@@ -670,6 +687,7 @@ type InsertMeterParams struct {
 	Filter        json.RawMessage
 	QuantityScale int16
 	UnitLabel     string
+	Category      string
 }
 
 func (q *Queries) InsertMeter(ctx context.Context, arg InsertMeterParams) (Meter, error) {
@@ -681,6 +699,7 @@ func (q *Queries) InsertMeter(ctx context.Context, arg InsertMeterParams) (Meter
 		arg.Filter,
 		arg.QuantityScale,
 		arg.UnitLabel,
+		arg.Category,
 	)
 	var i Meter
 	err := row.Scan(
@@ -693,6 +712,7 @@ func (q *Queries) InsertMeter(ctx context.Context, arg InsertMeterParams) (Meter
 		&i.QuantityScale,
 		&i.UnitLabel,
 		&i.CreatedAt,
+		&i.Category,
 	)
 	return i, err
 }
@@ -762,8 +782,8 @@ func (q *Queries) InsertPlanCurrencyPrice(ctx context.Context, arg InsertPlanCur
 }
 
 const insertPlanEntitlement = `-- name: InsertPlanEntitlement :exec
-INSERT INTO plan_entitlements (tenant_id, plan_version_id, meter_code, limit_units, alert_thresholds_pct)
-VALUES (app_tenant_id(), $1, $2, $3, $4)
+INSERT INTO plan_entitlements (tenant_id, plan_version_id, meter_code, limit_units, alert_thresholds_pct, quota_window, mode)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6)
 `
 
 type InsertPlanEntitlementParams struct {
@@ -771,6 +791,8 @@ type InsertPlanEntitlementParams struct {
 	MeterCode          string
 	LimitUnits         int64
 	AlertThresholdsPct []int32
+	QuotaWindow        string
+	Mode               string
 }
 
 func (q *Queries) InsertPlanEntitlement(ctx context.Context, arg InsertPlanEntitlementParams) error {
@@ -779,6 +801,8 @@ func (q *Queries) InsertPlanEntitlement(ctx context.Context, arg InsertPlanEntit
 		arg.MeterCode,
 		arg.LimitUnits,
 		arg.AlertThresholdsPct,
+		arg.QuotaWindow,
+		arg.Mode,
 	)
 	return err
 }
@@ -1098,7 +1122,7 @@ func (q *Queries) InsertTaxRate(ctx context.Context, arg InsertTaxRateParams) er
 }
 
 const latestMeter = `-- name: LatestMeter :one
-SELECT tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, created_at FROM meters WHERE tenant_id = app_tenant_id() AND code = $1 ORDER BY version DESC LIMIT 1
+SELECT tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, created_at, category FROM meters WHERE tenant_id = app_tenant_id() AND code = $1 ORDER BY version DESC LIMIT 1
 `
 
 func (q *Queries) LatestMeter(ctx context.Context, code string) (Meter, error) {
@@ -1114,6 +1138,7 @@ func (q *Queries) LatestMeter(ctx context.Context, code string) (Meter, error) {
 		&i.QuantityScale,
 		&i.UnitLabel,
 		&i.CreatedAt,
+		&i.Category,
 	)
 	return i, err
 }
@@ -1265,8 +1290,42 @@ func (q *Queries) ListDueChanges(ctx context.Context, now time.Time) ([]ListDueC
 	return items, nil
 }
 
+const listEntitlementOverrides = `-- name: ListEntitlementOverrides :many
+SELECT tenant_id, customer_id, meter_code, limit_units, alert_thresholds_pct, quota_window, mode, created_at, updated_at FROM customer_entitlement_overrides WHERE tenant_id = app_tenant_id() AND customer_id = $1 ORDER BY meter_code
+`
+
+func (q *Queries) ListEntitlementOverrides(ctx context.Context, customerID uuid.UUID) ([]CustomerEntitlementOverride, error) {
+	rows, err := q.db.Query(ctx, listEntitlementOverrides, customerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CustomerEntitlementOverride{}
+	for rows.Next() {
+		var i CustomerEntitlementOverride
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.CustomerID,
+			&i.MeterCode,
+			&i.LimitUnits,
+			&i.AlertThresholdsPct,
+			&i.QuotaWindow,
+			&i.Mode,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLatestMeters = `-- name: ListLatestMeters :many
-SELECT DISTINCT ON (code) tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, created_at FROM meters WHERE tenant_id = app_tenant_id() ORDER BY code, version DESC
+SELECT DISTINCT ON (code) tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, created_at, category FROM meters WHERE tenant_id = app_tenant_id() ORDER BY code, version DESC
 `
 
 func (q *Queries) ListLatestMeters(ctx context.Context) ([]Meter, error) {
@@ -1288,6 +1347,7 @@ func (q *Queries) ListLatestMeters(ctx context.Context) ([]Meter, error) {
 			&i.QuantityScale,
 			&i.UnitLabel,
 			&i.CreatedAt,
+			&i.Category,
 		); err != nil {
 			return nil, err
 		}
@@ -1383,7 +1443,7 @@ func (q *Queries) ListPlanCurrencyPrices(ctx context.Context, planVersionID uuid
 }
 
 const listPlanEntitlements = `-- name: ListPlanEntitlements :many
-SELECT meter_code, limit_units, alert_thresholds_pct FROM plan_entitlements
+SELECT meter_code, limit_units, alert_thresholds_pct, quota_window, mode FROM plan_entitlements
 WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY meter_code
 `
 
@@ -1391,6 +1451,8 @@ type ListPlanEntitlementsRow struct {
 	MeterCode          string
 	LimitUnits         int64
 	AlertThresholdsPct []int32
+	QuotaWindow        string
+	Mode               string
 }
 
 func (q *Queries) ListPlanEntitlements(ctx context.Context, planVersionID uuid.UUID) ([]ListPlanEntitlementsRow, error) {
@@ -1402,7 +1464,13 @@ func (q *Queries) ListPlanEntitlements(ctx context.Context, planVersionID uuid.U
 	items := []ListPlanEntitlementsRow{}
 	for rows.Next() {
 		var i ListPlanEntitlementsRow
-		if err := rows.Scan(&i.MeterCode, &i.LimitUnits, &i.AlertThresholdsPct); err != nil {
+		if err := rows.Scan(
+			&i.MeterCode,
+			&i.LimitUnits,
+			&i.AlertThresholdsPct,
+			&i.QuotaWindow,
+			&i.Mode,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1839,6 +1907,52 @@ func (q *Queries) ListUnbilledAdjustments(ctx context.Context, pageSize int32) (
 	return items, nil
 }
 
+const listUnendedSubscriptionsOfCustomer = `-- name: ListUnendedSubscriptionsOfCustomer :many
+SELECT plan_version_id, lower(active)::timestamptz AS start_time, upper_inf(active)::bool AS open_ended,
+       COALESCE(upper(active), lower(active))::timestamptz AS end_time
+FROM subscriptions
+WHERE tenant_id = app_tenant_id() AND customer_id = $1 AND (upper_inf(active) OR upper(active) > $2::timestamptz)
+ORDER BY lower(active), id
+`
+
+type ListUnendedSubscriptionsOfCustomerParams struct {
+	CustomerID uuid.UUID
+	Now        time.Time
+}
+
+type ListUnendedSubscriptionsOfCustomerRow struct {
+	PlanVersionID uuid.UUID
+	StartTime     time.Time
+	OpenEnded     bool
+	EndTime       time.Time
+}
+
+// The subscriptions of a customer whose entitlements are (or will be) in force: the ones that have not ended at now, oldest start first.
+func (q *Queries) ListUnendedSubscriptionsOfCustomer(ctx context.Context, arg ListUnendedSubscriptionsOfCustomerParams) ([]ListUnendedSubscriptionsOfCustomerRow, error) {
+	rows, err := q.db.Query(ctx, listUnendedSubscriptionsOfCustomer, arg.CustomerID, arg.Now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnendedSubscriptionsOfCustomerRow{}
+	for rows.Next() {
+		var i ListUnendedSubscriptionsOfCustomerRow
+		if err := rows.Scan(
+			&i.PlanVersionID,
+			&i.StartTime,
+			&i.OpenEnded,
+			&i.EndTime,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAdjustmentBilled = `-- name: MarkAdjustmentBilled :execrows
 UPDATE subscription_adjustments SET billed_at = now() WHERE tenant_id = app_tenant_id() AND id = $1 AND billed_at IS NULL
 `
@@ -2056,6 +2170,48 @@ func (q *Queries) SettleChange(ctx context.Context, arg SettleChangeParams) (int
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const upsertEntitlementOverride = `-- name: UpsertEntitlementOverride :one
+INSERT INTO customer_entitlement_overrides (tenant_id, customer_id, meter_code, limit_units, alert_thresholds_pct, quota_window, mode)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6)
+ON CONFLICT (tenant_id, customer_id, meter_code) DO UPDATE
+SET limit_units = EXCLUDED.limit_units, alert_thresholds_pct = EXCLUDED.alert_thresholds_pct, quota_window = EXCLUDED.quota_window,
+    mode = EXCLUDED.mode, updated_at = now()
+RETURNING tenant_id, customer_id, meter_code, limit_units, alert_thresholds_pct, quota_window, mode, created_at, updated_at
+`
+
+type UpsertEntitlementOverrideParams struct {
+	CustomerID         uuid.UUID
+	MeterCode          string
+	LimitUnits         int64
+	AlertThresholdsPct []int32
+	QuotaWindow        string
+	Mode               string
+}
+
+func (q *Queries) UpsertEntitlementOverride(ctx context.Context, arg UpsertEntitlementOverrideParams) (CustomerEntitlementOverride, error) {
+	row := q.db.QueryRow(ctx, upsertEntitlementOverride,
+		arg.CustomerID,
+		arg.MeterCode,
+		arg.LimitUnits,
+		arg.AlertThresholdsPct,
+		arg.QuotaWindow,
+		arg.Mode,
+	)
+	var i CustomerEntitlementOverride
+	err := row.Scan(
+		&i.TenantID,
+		&i.CustomerID,
+		&i.MeterCode,
+		&i.LimitUnits,
+		&i.AlertThresholdsPct,
+		&i.QuotaWindow,
+		&i.Mode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const upsertMailDisabled = `-- name: UpsertMailDisabled :exec

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
@@ -17,12 +18,23 @@ type entitlementJSON struct {
 	Unlimited          bool    `json:"unlimited"`
 	Allowed            bool    `json:"allowed"`
 	AsOf               *string `json:"as_of"`
+	Window             string  `json:"window"`
+	WindowID           string  `json:"window_id"`
+	ResetsAt           *string `json:"resets_at"`
+	Mode               string  `json:"mode"`
+	OverLimit          bool    `json:"over_limit"`
+	Overridden         bool    `json:"overridden"`
 }
 
 func entitlementOf(external string, s *limitsv1.LimitStatus) entitlementJSON {
 	out := entitlementJSON{
 		CustomerExternalID: external, MeterCode: s.GetMeterCode(), PeriodID: s.GetPeriodId(), Used: s.GetUsed(),
-		Unlimited: s.GetUnlimited(), Allowed: s.GetAllowed(),
+		Unlimited: s.GetUnlimited(), Allowed: s.GetAllowed(), Window: s.GetWindow(), WindowID: s.GetWindowId(), Mode: s.GetMode(),
+		OverLimit: s.GetOverLimit(), Overridden: s.GetOverridden(),
+	}
+	if s.GetResetsAt() != nil {
+		t := s.GetResetsAt().AsTime().UTC().Format(time.RFC3339Nano)
+		out.ResetsAt = &t
 	}
 	if !s.GetUnlimited() {
 		l := s.GetLimit()
@@ -86,4 +98,32 @@ func (s *Server) listEntitlements(w http.ResponseWriter, r *http.Request) {
 		items = append(items, entitlementOf(cust.GetExternalId(), st))
 	}
 	writeJSONValue(w, http.StatusOK, map[string]any{"items": items})
+}
+
+// listEntitlementOverrides is GET /v1/customers/{external_id}/entitlement-overrides: the customer's own limits, in place of its plan's.
+func (s *Server) listEntitlementOverrides(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.ListEntitlementOverrides(r.Context(), &plansv1.ListEntitlementOverridesRequest{CustomerExternalId: r.PathValue("external_id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// setEntitlementOverride is PUT /v1/customers/{external_id}/entitlement-overrides/{meter}: creates or replaces the customer's limit on the meter.
+func (s *Server) setEntitlementOverride(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SetEntitlementOverrideRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.CustomerExternalId, req.MeterCode = r.PathValue("external_id"), r.PathValue("meter")
+	resp, err := s.d.Plans.SetEntitlementOverride(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetOverride(), err)
+}
+
+// deleteEntitlementOverride is DELETE /v1/customers/{external_id}/entitlement-overrides/{meter}: back to the plan's limit.
+func (s *Server) deleteEntitlementOverride(w http.ResponseWriter, r *http.Request) {
+	_, err := s.d.Plans.DeleteEntitlementOverride(r.Context(), &plansv1.DeleteEntitlementOverrideRequest{CustomerExternalId: r.PathValue("external_id"), MeterCode: r.PathValue("meter")})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

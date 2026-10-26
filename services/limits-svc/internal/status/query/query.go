@@ -46,13 +46,29 @@ func (s *Queries) periodFor(ti tenant.Info, id string) (string, error) {
 		}
 		return id, nil
 	}
-	loc := time.UTC
+	return period.PeriodOf(s.now(), location(ti)), nil
+}
+
+// location is the tenant's time zone (UTC when it cannot be loaded).
+func location(ti tenant.Info) *time.Location {
 	if ti.Timezone != "" {
 		if l, err := time.LoadLocation(ti.Timezone); err == nil {
-			loc = l
+			return l
 		}
 	}
-	return period.PeriodOf(s.now(), loc), nil
+	return time.UTC
+}
+
+// windowOf is the counter, window and reset time a status reads: the billing period pid for a monthly limit (or none), the current window for
+// a shorter one.
+func (s *Queries) windowOf(ti tenant.Info, customer uuid.UUID, meter, pid string, ent *entitlements.State) (key string, w period.Window, id string, resets time.Time) {
+	loc := location(ti)
+	if ent != nil && ent.Window != period.Month {
+		id, _, resets = period.WindowOf(ent.Window, s.now(), loc)
+		return engine.WindowKey(ti.ID, customer, meter, id), ent.Window, id, resets
+	}
+	_, resets, _ = period.Bounds(pid, loc)
+	return engine.CounterKey(ti.ID, customer, meter, pid), period.Month, pid, resets
 }
 
 // caller is what both queries start from: the calling tenant and the customer asked about.
@@ -99,7 +115,7 @@ func (s *Queries) Check(ctx context.Context, customerID, meterCode, periodID str
 		}
 		scale = m.Scale
 	}
-	return s.statusOf(ctx, ti.ID, customer, meterCode, pid, ent, scale)
+	return s.statusOf(ctx, ti, customer, meterCode, pid, ent, scale)
 }
 
 // List is the status of every meter the customer has an entitlement on, ordered by meter code.
@@ -114,7 +130,7 @@ func (s *Queries) List(ctx context.Context, customerID, periodID string) ([]*lim
 	}
 	out := []*limitsv1.LimitStatus{}
 	for _, ent := range s.ents.ForCustomer(ti.ID, customer, s.now()) {
-		st, err := s.statusOf(ctx, ti.ID, customer, ent.Meter, pid, &ent, ent.Scale)
+		st, err := s.statusOf(ctx, ti, customer, ent.Meter, pid, &ent, ent.Scale)
 		if err != nil {
 			return nil, err
 		}
@@ -123,8 +139,10 @@ func (s *Queries) List(ctx context.Context, customerID, periodID string) ([]*lim
 	return out, nil
 }
 
-func (s *Queries) statusOf(ctx context.Context, tid, customer uuid.UUID, meter, pid string, ent *entitlements.State, scale int) (*limitsv1.LimitStatus, error) {
-	vals, err := s.rdb.MGet(ctx, engine.CounterKey(tid, customer, meter, pid), engine.TSKey(tid)).Result()
+func (s *Queries) statusOf(ctx context.Context, ti tenant.Info, customer uuid.UUID, meter, pid string, ent *entitlements.State, scale int) (*limitsv1.LimitStatus, error) {
+	tid := ti.ID
+	key, window, windowID, resets := s.windowOf(ti, customer, meter, pid, ent)
+	vals, err := s.rdb.MGet(ctx, key, engine.TSKey(tid)).Result()
 	if err != nil {
 		slog.WarnContext(ctx, "counter read failed", "tenant", tid, "error", err)
 		return nil, errkey.New(codes.Unavailable, "limits.counter.unavailable", "counter store unavailable")
@@ -136,16 +154,18 @@ func (s *Queries) statusOf(ctx context.Context, tid, customer uuid.UUID, meter, 
 			used = 0
 		}
 	}
+	mode := "hard"
 	if ent != nil {
-		limit = ent.Limit
+		limit, mode = ent.Limit, ent.Mode
 	}
 	out := &limitsv1.LimitStatus{
 		CustomerId: customer.String(), MeterCode: meter, PeriodId: pid,
 		Used: quantity.FormatUnits(used, scale), Limit: quantity.FormatUnits(limit, scale),
 		UsedUnits: used, LimitUnits: limit, QuantityScale: uint32(scale), //nolint:gosec // 0..6
-		Unlimited: limit == 0,
+		Unlimited: limit == 0, Window: string(window), WindowId: windowID, ResetsAt: timestamppb.New(resets), Mode: mode,
+		OverLimit: limit > 0 && used >= limit, Overridden: ent != nil && ent.Override,
 	}
-	out.Allowed = out.Unlimited || used < limit
+	out.Allowed = ent == nil || ent.Allows(used)
 	if v, ok := vals[1].(string); ok {
 		if ms, err := strconv.ParseInt(v, 10, 64); err == nil && ms > 0 {
 			out.AsOf = timestamppb.New(time.UnixMilli(ms).UTC())

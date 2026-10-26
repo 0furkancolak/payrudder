@@ -66,6 +66,13 @@ func ConvertPlanVersion(p *plansv1.PlanVersion, currency, tenantCurrency string)
 // convertPrice turns one meter's price of a plan version into rating's.
 func convertPrice(pr *plansv1.Price) (rating.Price, error) {
 	out := rating.Price{MeterCode: pr.GetMeterCode()}
+	if pr.GetIncluded() != "" {
+		inc, err := Decimal(pr.GetIncluded())
+		if err != nil {
+			return out, err
+		}
+		out.Included = inc
+	}
 	switch mod := pr.GetModel().(type) {
 	case *plansv1.Price_PerUnit:
 		out.Model = rating.PerUnit

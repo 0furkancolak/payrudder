@@ -216,7 +216,7 @@ func (c *Commands) plan(sctx, lctx context.Context, liveActive bool) ([]*step, e
 		m := d.Item.(*plansv1.Meter)
 		return func(ctx context.Context) (string, error) {
 			_, err := c.m.MetersC.Create(ctx, &plansv1.CreateMeterRequest{Code: m.GetCode(), Aggregation: m.GetAggregation(), ValueProperty: m.GetValueProperty(),
-				Filter: m.GetFilter(), QuantityScale: m.GetQuantityScale(), UnitLabel: m.GetUnitLabel()})
+				Filter: m.GetFilter(), QuantityScale: m.GetQuantityScale(), UnitLabel: m.GetUnitLabel(), Category: m.GetCategory()})
 			return "", err
 		}
 	})

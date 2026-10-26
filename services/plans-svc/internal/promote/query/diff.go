@@ -66,8 +66,8 @@ func Meters(sandbox, live []*plansv1.Meter) []Decision {
 
 // meterTerms is what makes two meters the same meter: the part of Meter that is not an id, a version or a time.
 func meterTerms(m *plansv1.Meter) string {
-	f := &plansv1.Meter{Aggregation: m.GetAggregation(), ValueProperty: m.GetValueProperty(), Filter: m.GetFilter(), QuantityScale: m.GetQuantityScale(), UnitLabel: m.GetUnitLabel()}
-	return fmt.Sprintf("%s %s scale %d unit %q filter %s", f.GetAggregation(), f.GetValueProperty(), f.GetQuantityScale(), f.GetUnitLabel(), canonical(f.GetFilter()))
+	f := &plansv1.Meter{Aggregation: m.GetAggregation(), ValueProperty: m.GetValueProperty(), Filter: m.GetFilter(), QuantityScale: m.GetQuantityScale(), UnitLabel: m.GetUnitLabel(), Category: m.GetCategory()}
+	return fmt.Sprintf("%s %s scale %d unit %q category %q filter %s", f.GetAggregation(), f.GetValueProperty(), f.GetQuantityScale(), f.GetUnitLabel(), f.GetCategory(), canonical(f.GetFilter()))
 }
 
 func canonical(filter map[string]*plansv1.FilterValues) string {

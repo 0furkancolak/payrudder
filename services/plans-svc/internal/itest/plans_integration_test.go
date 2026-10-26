@@ -73,6 +73,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("ManyCurrenciesAndZones", testManyCurrenciesAndZones)
 	t.Run("DashboardFacts", testDashboardFacts)
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
+	t.Run("QuotasAndOverrides", testQuotasAndOverrides)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
 	t.Run("PromotionsMigration", testPromotionsMigration) // last: it rolls the newest migration back and forward
 }
@@ -123,6 +124,12 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		}
 		_, err = tx.Exec(context.Background(), `INSERT INTO subscription_adjustments (tenant_id, id, subscription_id, old_plan_code, from_at, to_at, credit_minor, charge_minor, billed_at)
 			SELECT app_tenant_id(), gen_random_uuid(), id, 'pro', now(), now(), 1, 2, now() FROM subscriptions LIMIT 1`)
+		if err != nil {
+			return err
+		}
+		// An override row without SetEntitlementOverride, which would publish the subscription's entitlements again (testEntitlementOutbox counts them).
+		_, err = tx.Exec(context.Background(), `INSERT INTO customer_entitlement_overrides (tenant_id, customer_id, meter_code, limit_units, quota_window, mode)
+			SELECT app_tenant_id(), id, 'gb_hours', 200000, 'day', 'notify' FROM customers LIMIT 1`)
 		return err
 	}); err != nil {
 		t.Fatal(err)

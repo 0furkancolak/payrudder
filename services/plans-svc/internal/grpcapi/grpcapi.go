@@ -35,6 +35,9 @@ import (
 	metersapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/meters"
 	meterscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/meters/command"
 	metersqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/meters/query"
+	overridesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/overrides"
+	overridescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/overrides/command"
+	overridesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/overrides/query"
 	plansapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans"
 	planscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/command"
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
@@ -62,6 +65,7 @@ import (
 type (
 	customersHandler     = customersapi.Handler
 	metersHandler        = metersapi.Handler
+	overridesHandler     = overridesapi.Handler
 	plansHandler         = plansapi.Handler
 	subscriptionsHandler = subscriptionsapi.Handler
 	changesHandler       = changesapi.Handler
@@ -85,6 +89,7 @@ type Server struct {
 	unimplemented
 	*customersHandler
 	*metersHandler
+	*overridesHandler
 	*plansHandler
 	*subscriptionsHandler
 	*changesHandler
@@ -109,6 +114,7 @@ func newPlans(appPool *pgxpool.Pool) *Server {
 	return &Server{
 		customersHandler:     customersapi.New(customerscmd.New(db).WithReferral(affiliatescmd.Attribute, now), customersqry.New(db)),
 		metersHandler:        metersapi.New(meterscmd.New(db), metersqry.New(db)),
+		overridesHandler:     overridesapi.New(overridescmd.New(db, now), overridesqry.New(db)),
 		plansHandler:         plansapi.New(planscmd.New(db), plansqry.New(db)),
 		subscriptionsHandler: subscriptionsapi.New(subscriptionscmd.New(db, now), subscriptionsQ),
 		changesHandler:       changesapi.New(changescmd.New(db, now), changesqry.New(db, now)),

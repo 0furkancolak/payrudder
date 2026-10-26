@@ -261,11 +261,58 @@ export interface paths {
          *     `as_of` is the ingest time of the newest event reflected in `used`. Payrudder never blocks ingest on a limit; call
          *     this before serving your customer and decide what to do. A customer without an entitlement on the meter is
          *     `unlimited`. `period` defaults to the current period in the tenant's time zone.
+         *
+         *     A limit counts over its `window`: the billing month, or an hour, a day or an ISO week in the tenant's time zone.
+         *     `period` picks the month of a monthly limit; an hourly, daily or weekly limit always reports its current window
+         *     (`window_id`, ending at `resets_at`). `allowed` follows the limit's `mode`: a `hard` limit stops allowing at the
+         *     limit, a `soft` or `notify` one keeps allowing and says `over_limit`. Hourly, daily and weekly counters are kept by
+         *     limits-svc only and not reconciled against the aggregator (an event delivered twice counts twice until its window
+         *     ends); monthly counters are reconciled every few minutes.
          */
         get: operations["getEntitlement"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/entitlement-overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The customer's own limits, which replace its package's on their meters */
+        get: operations["listEntitlementOverrides"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/entitlement-overrides/{meter}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Give the customer its own limit on a meter
+         * @description Replaces the entitlement the customer's package gives on the meter, or adds one on a meter the package does not limit, for every
+         *     subscription of the customer until the override is deleted. limits-svc applies it within seconds. `QUOTA_MODE_SOFT` needs every
+         *     current package of the customer to price the meter (the usage over the limit is billed at that price).
+         */
+        put: operations["setEntitlementOverride"];
+        post?: never;
+        /** Return the customer to its package's limit on the meter */
+        delete: operations["deleteEntitlementOverride"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4490,10 +4537,31 @@ export interface components {
              */
             limit?: string | null;
             unlimited?: boolean;
-            /** @description unlimited, or used < limit */
+            /** @description unlimited, used < limit, or a soft or notify limit */
             allowed?: boolean;
             /** Format: date-time */
             as_of?: string | null;
+            /**
+             * @description What the limit counts over; month for a meter without a limit
+             * @enum {string}
+             */
+            window?: "hour" | "day" | "week" | "month";
+            /**
+             * @description The window used counts in: period_id for a month, 2026-11-05T13, 2026-11-05 or 2026-W45
+             * @example 2026-11-05
+             */
+            window_id?: string;
+            /**
+             * Format: date-time
+             * @description When the window ends and used starts again from zero
+             */
+            resets_at?: string | null;
+            /** @enum {string} */
+            mode?: "hard" | "soft" | "notify";
+            /** @description not unlimited and used >= limit, whatever the mode */
+            over_limit?: boolean;
+            /** @description The limit is the customer's own override */
+            overridden?: boolean;
         };
         IngestEventsRequest: {
             events: components["schemas"]["IncomingEvent"][];
@@ -5319,7 +5387,16 @@ export interface components {
             };
             /** @description Decimal places */
             quantity_scale?: number;
+            /**
+             * @description Any unit of your choice: tokens, GB-h, seats, minutes
+             * @example tokens
+             */
             unit_label: string;
+            /**
+             * @description Any group of your choice to file the meter under (compute, storage, AI); changes nothing in metering or billing
+             * @example AI
+             */
+            category?: string;
         };
         Meter: components["schemas"]["CreateMeterRequest"] & {
             version?: number;
@@ -5353,13 +5430,50 @@ export interface components {
                 package_size?: string;
                 package_price_minor?: string;
             };
+            /**
+             * @description Quantity of every billing period that is free: the model prices only what is above it. Empty or 0 = none
+             * @example 1000
+             */
+            included?: string;
+        };
+        /**
+         * @description What a limit counts over, in the tenant's time zone. Unspecified is the month (the billing period).
+         * @enum {string}
+         */
+        QuotaWindow: "QUOTA_WINDOW_UNSPECIFIED" | "QUOTA_WINDOW_MONTH" | "QUOTA_WINDOW_HOUR" | "QUOTA_WINDOW_DAY" | "QUOTA_WINDOW_WEEK";
+        /**
+         * @description What reaching the limit means for `allowed` (Payrudder never refuses usage events). HARD (also unspecified): allowed turns false at the
+         *     limit. SOFT: allowed stays true and the usage over the limit is billed at the meter's price, which the package must have. NOTIFY: allowed
+         *     stays true; only the alerts are sent.
+         * @enum {string}
+         */
+        QuotaMode: "QUOTA_MODE_UNSPECIFIED" | "QUOTA_MODE_HARD" | "QUOTA_MODE_SOFT" | "QUOTA_MODE_NOTIFY";
+        EntitlementTerms: {
+            /** @description Decimal in meter units; "0" = unlimited */
+            limit: string;
+            /**
+             * @description Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100
+             * @example [
+             *       50,
+             *       80,
+             *       100
+             *     ]
+             */
+            alert_thresholds_pct?: number[];
+            window?: components["schemas"]["QuotaWindow"];
+            mode?: components["schemas"]["QuotaMode"];
         };
         Entitlement: {
             meter_code: string;
-            /** @description Decimal in meter units; "0" = unlimited */
-            limit: string;
-            alert_thresholds_pct?: number[];
-        };
+        } & components["schemas"]["EntitlementTerms"];
+        EntitlementOverride: {
+            customer_external_id?: string;
+            meter_code?: string;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            update_time?: string;
+        } & components["schemas"]["EntitlementTerms"];
         PlanVersion: {
             /** Format: uuid */
             id?: string;
@@ -6742,6 +6856,82 @@ export interface operations {
             429: components["responses"]["Error"];
         };
     };
+    listEntitlementOverrides: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        overrides?: components["schemas"]["EntitlementOverride"][];
+                    };
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    setEntitlementOverride: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+                meter: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntitlementTerms"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementOverride"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    deleteEntitlementOverride: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+                meter: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+        };
+    };
     listPlans: {
         parameters: {
             query?: never;
@@ -6810,7 +7000,7 @@ export interface operations {
                     /** @description Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's */
                     fees?: components["schemas"]["CurrencyFee"][];
                     prices?: components["schemas"]["Price"][];
-                    entitlements?: components["schemas"]["EntitlementStatus"][];
+                    entitlements?: components["schemas"]["Entitlement"][];
                 };
             };
         };

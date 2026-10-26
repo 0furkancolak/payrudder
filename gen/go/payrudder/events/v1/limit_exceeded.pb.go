@@ -23,7 +23,7 @@ const (
 )
 
 // LimitExceeded says a customer's usage of a meter reached an alert threshold of its entitlement. It is published
-// by limits-svc on usage.limit-exceeded.v1 (key: tenant_id), once per (customer, meter, period, threshold).
+// by limits-svc on usage.limit-exceeded.v1 (key: tenant_id), once per (customer, meter, window, threshold).
 //
 // Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
 type LimitExceeded struct {
@@ -42,6 +42,11 @@ type LimitExceeded struct {
 	UsedUnits     int64                  `protobuf:"varint,8,opt,name=used_units,json=usedUnits,proto3" json:"used_units,omitempty"`
 	DetectedAt    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=detected_at,json=detectedAt,proto3" json:"detected_at,omitempty"`
 	QuantityScale uint32                 `protobuf:"varint,10,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
+	// The window of the quota: "month" (also when empty), "hour", "day" or "week".
+	Window string `protobuf:"bytes,11,opt,name=window,proto3" json:"window,omitempty"`
+	// The window the usage was counted in: "2026-11" for a month (= period_id), "2026-11-05T13", "2026-11-05" or "2026-W45". period_id is the
+	// billing period the window starts in. event_id is uuidv5(tenant|customer|meter|window_id|threshold).
+	WindowId      string `protobuf:"bytes,12,opt,name=window_id,json=windowId,proto3" json:"window_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -146,11 +151,25 @@ func (x *LimitExceeded) GetQuantityScale() uint32 {
 	return 0
 }
 
+func (x *LimitExceeded) GetWindow() string {
+	if x != nil {
+		return x.Window
+	}
+	return ""
+}
+
+func (x *LimitExceeded) GetWindowId() string {
+	if x != nil {
+		return x.WindowId
+	}
+	return ""
+}
+
 var File_payrudder_events_v1_limit_exceeded_proto protoreflect.FileDescriptor
 
 const file_payrudder_events_v1_limit_exceeded_proto_rawDesc = "" +
 	"\n" +
-	"(payrudder/events/v1/limit_exceeded.proto\x12\x13payrudder.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xed\x02\n" +
+	"(payrudder/events/v1/limit_exceeded.proto\x12\x13payrudder.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa2\x03\n" +
 	"\rLimitExceeded\x12\x19\n" +
 	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x1f\n" +
@@ -167,7 +186,9 @@ const file_payrudder_events_v1_limit_exceeded_proto_rawDesc = "" +
 	"\vdetected_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"detectedAt\x12%\n" +
 	"\x0equantity_scale\x18\n" +
-	" \x01(\rR\rquantityScaleB\xe2\x01\n" +
+	" \x01(\rR\rquantityScale\x12\x16\n" +
+	"\x06window\x18\v \x01(\tR\x06window\x12\x1b\n" +
+	"\twindow_id\x18\f \x01(\tR\bwindowIdB\xe2\x01\n" +
 	"\x17com.payrudder.events.v1B\x12LimitExceededProtoP\x01ZEgithub.com/0furkancolak/payrudder/gen/go/payrudder/events/v1;eventsv1\xa2\x02\x03PEX\xaa\x02\x13Payrudder.Events.V1\xca\x02\x13Payrudder\\Events\\V1\xe2\x02\x1fPayrudder\\Events\\V1\\GPBMetadata\xea\x02\x15Payrudder::Events::V1b\x06proto3"
 
 var (

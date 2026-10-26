@@ -194,6 +194,9 @@ message Meter {
   uint32 quantity_scale = 6;
   string unit_label = 7;
   google.protobuf.Timestamp create_time = 8;
+  // Free-form group the tenant files the meter under ("compute", "storage", "AI tokens"); at most 64 characters, empty = none.
+  // Only for finding and grouping meters: it changes nothing in metering, limits or billing.
+  string category = 9;
 }
 
 message Plan {
@@ -236,14 +239,56 @@ message Price {
     TieredGraduatedPrice tiered = 3;
     PackagePrice package = 4;
   }
+  // Decimal in meter units included free in every billing period: the model prices only the quantity above it. Empty or "0" = none.
+  string included = 5;
 }
 
-// Entitlement is a per-period limit on a meter.
+// QuotaWindow is the time a quota counts over before it starts again, in the tenant's time zone.
+enum QuotaWindow {
+  // The billing period (a calendar month), as before windows existed.
+  QUOTA_WINDOW_UNSPECIFIED = 0;
+  QUOTA_WINDOW_MONTH = 1;
+  QUOTA_WINDOW_HOUR = 2;
+  QUOTA_WINDOW_DAY = 3;
+  // ISO week: Monday 00:00 to the next Monday 00:00.
+  QUOTA_WINDOW_WEEK = 4;
+}
+
+// QuotaMode is what reaching the limit means for CheckEntitlement's `allowed`. Payrudder never refuses usage events whatever the mode.
+enum QuotaMode {
+  // HARD.
+  QUOTA_MODE_UNSPECIFIED = 0;
+  // allowed turns false once used reaches the limit.
+  QUOTA_MODE_HARD = 1;
+  // allowed stays true over the limit; the usage over it is billed at the meter's price, which the plan version must have.
+  QUOTA_MODE_SOFT = 2;
+  // allowed stays true; reaching the limit only sends the alerts.
+  QUOTA_MODE_NOTIFY = 3;
+}
+
+// Entitlement is a limit on a meter over a window (the billing period unless said otherwise).
 message Entitlement {
   string meter_code = 1;
   // Decimal in meter units. "0" means unlimited.
   string limit = 2;
+  // 1..10 strictly ascending percentages of the limit (1..1000) at which a LimitExceeded alert fires; empty on publish = 80 and 100.
   repeated int32 alert_thresholds_pct = 3;
+  QuotaWindow window = 4;
+  QuotaMode mode = 5;
+}
+
+// EntitlementOverride replaces, for one customer, the entitlement its plan version gives on a meter (or adds one on a meter the plan does not limit).
+// It holds for every subscription of the customer until it is deleted.
+message EntitlementOverride {
+  string customer_external_id = 1;
+  string meter_code = 2;
+  // Decimal in meter units. "0" means unlimited.
+  string limit = 3;
+  repeated int32 alert_thresholds_pct = 4;
+  QuotaWindow window = 5;
+  QuotaMode mode = 6;
+  google.protobuf.Timestamp create_time = 7;
+  google.protobuf.Timestamp update_time = 8;
 }
 
 // PlanVersion is an immutable snapshot of prices and entitlements.

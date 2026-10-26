@@ -39,6 +39,12 @@ type EntitlementState struct {
 	// Unset = open-ended.
 	ValidUntil    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=valid_until,json=validUntil,proto3" json:"valid_until,omitempty"`
 	QuantityScale uint32                 `protobuf:"varint,9,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
+	// What the limit counts over: "month" (also when empty: the billing period), "hour", "day" or "week", in the tenant's time zone.
+	Window string `protobuf:"bytes,10,opt,name=window,proto3" json:"window,omitempty"`
+	// "hard" (also when empty), "soft" or "notify": whether CheckEntitlement still allows usage at the limit.
+	Mode string `protobuf:"bytes,11,opt,name=mode,proto3" json:"mode,omitempty"`
+	// The limit is the customer's own (an override), not the plan version's.
+	Override      bool `protobuf:"varint,12,opt,name=override,proto3" json:"override,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -136,11 +142,32 @@ func (x *EntitlementState) GetQuantityScale() uint32 {
 	return 0
 }
 
+func (x *EntitlementState) GetWindow() string {
+	if x != nil {
+		return x.Window
+	}
+	return ""
+}
+
+func (x *EntitlementState) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *EntitlementState) GetOverride() bool {
+	if x != nil {
+		return x.Override
+	}
+	return false
+}
+
 var File_payrudder_events_v1_entitlement_state_proto protoreflect.FileDescriptor
 
 const file_payrudder_events_v1_entitlement_state_proto_rawDesc = "" +
 	"\n" +
-	"+payrudder/events/v1/entitlement_state.proto\x12\x13payrudder.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x89\x03\n" +
+	"+payrudder/events/v1/entitlement_state.proto\x12\x13payrudder.events.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd1\x03\n" +
 	"\x10EntitlementState\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -155,7 +182,11 @@ const file_payrudder_events_v1_entitlement_state_proto_rawDesc = "" +
 	"valid_from\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tvalidFrom\x12;\n" +
 	"\vvalid_until\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"validUntil\x12%\n" +
-	"\x0equantity_scale\x18\t \x01(\rR\rquantityScaleB\xe5\x01\n" +
+	"\x0equantity_scale\x18\t \x01(\rR\rquantityScale\x12\x16\n" +
+	"\x06window\x18\n" +
+	" \x01(\tR\x06window\x12\x12\n" +
+	"\x04mode\x18\v \x01(\tR\x04mode\x12\x1a\n" +
+	"\boverride\x18\f \x01(\bR\boverrideB\xe5\x01\n" +
 	"\x17com.payrudder.events.v1B\x15EntitlementStateProtoP\x01ZEgithub.com/0furkancolak/payrudder/gen/go/payrudder/events/v1;eventsv1\xa2\x02\x03PEX\xaa\x02\x13Payrudder.Events.V1\xca\x02\x13Payrudder\\Events\\V1\xe2\x02\x1fPayrudder\\Events\\V1\\GPBMetadata\xea\x02\x15Payrudder::Events::V1b\x06proto3"
 
 var (

@@ -232,6 +232,121 @@ func (Aggregation) EnumDescriptor() ([]byte, []int) {
 	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{3}
 }
 
+// QuotaWindow is the time a quota counts over before it starts again, in the tenant's time zone.
+type QuotaWindow int32
+
+const (
+	// The billing period (a calendar month), as before windows existed.
+	QuotaWindow_QUOTA_WINDOW_UNSPECIFIED QuotaWindow = 0
+	QuotaWindow_QUOTA_WINDOW_MONTH       QuotaWindow = 1
+	QuotaWindow_QUOTA_WINDOW_HOUR        QuotaWindow = 2
+	QuotaWindow_QUOTA_WINDOW_DAY         QuotaWindow = 3
+	// ISO week: Monday 00:00 to the next Monday 00:00.
+	QuotaWindow_QUOTA_WINDOW_WEEK QuotaWindow = 4
+)
+
+// Enum value maps for QuotaWindow.
+var (
+	QuotaWindow_name = map[int32]string{
+		0: "QUOTA_WINDOW_UNSPECIFIED",
+		1: "QUOTA_WINDOW_MONTH",
+		2: "QUOTA_WINDOW_HOUR",
+		3: "QUOTA_WINDOW_DAY",
+		4: "QUOTA_WINDOW_WEEK",
+	}
+	QuotaWindow_value = map[string]int32{
+		"QUOTA_WINDOW_UNSPECIFIED": 0,
+		"QUOTA_WINDOW_MONTH":       1,
+		"QUOTA_WINDOW_HOUR":        2,
+		"QUOTA_WINDOW_DAY":         3,
+		"QUOTA_WINDOW_WEEK":        4,
+	}
+)
+
+func (x QuotaWindow) Enum() *QuotaWindow {
+	p := new(QuotaWindow)
+	*p = x
+	return p
+}
+
+func (x QuotaWindow) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (QuotaWindow) Descriptor() protoreflect.EnumDescriptor {
+	return file_payrudder_plans_v1_resources_proto_enumTypes[4].Descriptor()
+}
+
+func (QuotaWindow) Type() protoreflect.EnumType {
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[4]
+}
+
+func (x QuotaWindow) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use QuotaWindow.Descriptor instead.
+func (QuotaWindow) EnumDescriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{4}
+}
+
+// QuotaMode is what reaching the limit means for CheckEntitlement's `allowed`. Payrudder never refuses usage events whatever the mode.
+type QuotaMode int32
+
+const (
+	// HARD.
+	QuotaMode_QUOTA_MODE_UNSPECIFIED QuotaMode = 0
+	// allowed turns false once used reaches the limit.
+	QuotaMode_QUOTA_MODE_HARD QuotaMode = 1
+	// allowed stays true over the limit; the usage over it is billed at the meter's price, which the plan version must have.
+	QuotaMode_QUOTA_MODE_SOFT QuotaMode = 2
+	// allowed stays true; reaching the limit only sends the alerts.
+	QuotaMode_QUOTA_MODE_NOTIFY QuotaMode = 3
+)
+
+// Enum value maps for QuotaMode.
+var (
+	QuotaMode_name = map[int32]string{
+		0: "QUOTA_MODE_UNSPECIFIED",
+		1: "QUOTA_MODE_HARD",
+		2: "QUOTA_MODE_SOFT",
+		3: "QUOTA_MODE_NOTIFY",
+	}
+	QuotaMode_value = map[string]int32{
+		"QUOTA_MODE_UNSPECIFIED": 0,
+		"QUOTA_MODE_HARD":        1,
+		"QUOTA_MODE_SOFT":        2,
+		"QUOTA_MODE_NOTIFY":      3,
+	}
+)
+
+func (x QuotaMode) Enum() *QuotaMode {
+	p := new(QuotaMode)
+	*p = x
+	return p
+}
+
+func (x QuotaMode) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (QuotaMode) Descriptor() protoreflect.EnumDescriptor {
+	return file_payrudder_plans_v1_resources_proto_enumTypes[5].Descriptor()
+}
+
+func (QuotaMode) Type() protoreflect.EnumType {
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[5]
+}
+
+func (x QuotaMode) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use QuotaMode.Descriptor instead.
+func (QuotaMode) EnumDescriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{5}
+}
+
 type FeeTiming int32
 
 const (
@@ -265,11 +380,11 @@ func (x FeeTiming) String() string {
 }
 
 func (FeeTiming) Descriptor() protoreflect.EnumDescriptor {
-	return file_payrudder_plans_v1_resources_proto_enumTypes[4].Descriptor()
+	return file_payrudder_plans_v1_resources_proto_enumTypes[6].Descriptor()
 }
 
 func (FeeTiming) Type() protoreflect.EnumType {
-	return &file_payrudder_plans_v1_resources_proto_enumTypes[4]
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[6]
 }
 
 func (x FeeTiming) Number() protoreflect.EnumNumber {
@@ -278,7 +393,7 @@ func (x FeeTiming) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FeeTiming.Descriptor instead.
 func (FeeTiming) EnumDescriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{4}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{6}
 }
 
 type SubscriptionState int32
@@ -323,11 +438,11 @@ func (x SubscriptionState) String() string {
 }
 
 func (SubscriptionState) Descriptor() protoreflect.EnumDescriptor {
-	return file_payrudder_plans_v1_resources_proto_enumTypes[5].Descriptor()
+	return file_payrudder_plans_v1_resources_proto_enumTypes[7].Descriptor()
 }
 
 func (SubscriptionState) Type() protoreflect.EnumType {
-	return &file_payrudder_plans_v1_resources_proto_enumTypes[5]
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[7]
 }
 
 func (x SubscriptionState) Number() protoreflect.EnumNumber {
@@ -336,7 +451,7 @@ func (x SubscriptionState) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SubscriptionState.Descriptor instead.
 func (SubscriptionState) EnumDescriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{5}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{7}
 }
 
 type SubscriptionInterval int32
@@ -372,11 +487,11 @@ func (x SubscriptionInterval) String() string {
 }
 
 func (SubscriptionInterval) Descriptor() protoreflect.EnumDescriptor {
-	return file_payrudder_plans_v1_resources_proto_enumTypes[6].Descriptor()
+	return file_payrudder_plans_v1_resources_proto_enumTypes[8].Descriptor()
 }
 
 func (SubscriptionInterval) Type() protoreflect.EnumType {
-	return &file_payrudder_plans_v1_resources_proto_enumTypes[6]
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[8]
 }
 
 func (x SubscriptionInterval) Number() protoreflect.EnumNumber {
@@ -385,7 +500,7 @@ func (x SubscriptionInterval) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SubscriptionInterval.Descriptor instead.
 func (SubscriptionInterval) EnumDescriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{6}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{8}
 }
 
 // CouponTarget is what a coupon is used on.
@@ -428,11 +543,11 @@ func (x CouponTarget) String() string {
 }
 
 func (CouponTarget) Descriptor() protoreflect.EnumDescriptor {
-	return file_payrudder_plans_v1_resources_proto_enumTypes[7].Descriptor()
+	return file_payrudder_plans_v1_resources_proto_enumTypes[9].Descriptor()
 }
 
 func (CouponTarget) Type() protoreflect.EnumType {
-	return &file_payrudder_plans_v1_resources_proto_enumTypes[7]
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[9]
 }
 
 func (x CouponTarget) Number() protoreflect.EnumNumber {
@@ -441,7 +556,7 @@ func (x CouponTarget) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CouponTarget.Descriptor instead.
 func (CouponTarget) EnumDescriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{7}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{9}
 }
 
 type CouponDuration int32
@@ -483,11 +598,11 @@ func (x CouponDuration) String() string {
 }
 
 func (CouponDuration) Descriptor() protoreflect.EnumDescriptor {
-	return file_payrudder_plans_v1_resources_proto_enumTypes[8].Descriptor()
+	return file_payrudder_plans_v1_resources_proto_enumTypes[10].Descriptor()
 }
 
 func (CouponDuration) Type() protoreflect.EnumType {
-	return &file_payrudder_plans_v1_resources_proto_enumTypes[8]
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[10]
 }
 
 func (x CouponDuration) Number() protoreflect.EnumNumber {
@@ -496,7 +611,7 @@ func (x CouponDuration) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CouponDuration.Descriptor instead.
 func (CouponDuration) EnumDescriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{8}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{10}
 }
 
 type ApiKey_Status int32
@@ -532,11 +647,11 @@ func (x ApiKey_Status) String() string {
 }
 
 func (ApiKey_Status) Descriptor() protoreflect.EnumDescriptor {
-	return file_payrudder_plans_v1_resources_proto_enumTypes[9].Descriptor()
+	return file_payrudder_plans_v1_resources_proto_enumTypes[11].Descriptor()
 }
 
 func (ApiKey_Status) Type() protoreflect.EnumType {
-	return &file_payrudder_plans_v1_resources_proto_enumTypes[9]
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[11]
 }
 
 func (x ApiKey_Status) Number() protoreflect.EnumNumber {
@@ -584,11 +699,11 @@ func (x ApiKey_Scope) String() string {
 }
 
 func (ApiKey_Scope) Descriptor() protoreflect.EnumDescriptor {
-	return file_payrudder_plans_v1_resources_proto_enumTypes[10].Descriptor()
+	return file_payrudder_plans_v1_resources_proto_enumTypes[12].Descriptor()
 }
 
 func (ApiKey_Scope) Type() protoreflect.EnumType {
-	return &file_payrudder_plans_v1_resources_proto_enumTypes[10]
+	return &file_payrudder_plans_v1_resources_proto_enumTypes[12]
 }
 
 func (x ApiKey_Scope) Number() protoreflect.EnumNumber {
@@ -1535,6 +1650,9 @@ type Meter struct {
 	QuantityScale uint32                 `protobuf:"varint,6,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
 	UnitLabel     string                 `protobuf:"bytes,7,opt,name=unit_label,json=unitLabel,proto3" json:"unit_label,omitempty"`
 	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	// Free-form group the tenant files the meter under ("compute", "storage", "AI tokens"); at most 64 characters, empty = none.
+	// Only for finding and grouping meters: it changes nothing in metering, limits or billing.
+	Category      string `protobuf:"bytes,9,opt,name=category,proto3" json:"category,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1623,6 +1741,13 @@ func (x *Meter) GetCreateTime() *timestamppb.Timestamp {
 		return x.CreateTime
 	}
 	return nil
+}
+
+func (x *Meter) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
 }
 
 type Plan struct {
@@ -1915,7 +2040,9 @@ type Price struct {
 	//	*Price_PerUnit
 	//	*Price_Tiered
 	//	*Price_Package
-	Model         isPrice_Model `protobuf_oneof:"model"`
+	Model isPrice_Model `protobuf_oneof:"model"`
+	// Decimal in meter units included free in every billing period: the model prices only the quantity above it. Empty or "0" = none.
+	Included      string `protobuf:"bytes,5,opt,name=included,proto3" json:"included,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1991,6 +2118,13 @@ func (x *Price) GetPackage() *PackagePrice {
 	return nil
 }
 
+func (x *Price) GetIncluded() string {
+	if x != nil {
+		return x.Included
+	}
+	return ""
+}
+
 type isPrice_Model interface {
 	isPrice_Model()
 }
@@ -2013,13 +2147,16 @@ func (*Price_Tiered) isPrice_Model() {}
 
 func (*Price_Package) isPrice_Model() {}
 
-// Entitlement is a per-period limit on a meter.
+// Entitlement is a limit on a meter over a window (the billing period unless said otherwise).
 type Entitlement struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	MeterCode string                 `protobuf:"bytes,1,opt,name=meter_code,json=meterCode,proto3" json:"meter_code,omitempty"`
 	// Decimal in meter units. "0" means unlimited.
-	Limit              string  `protobuf:"bytes,2,opt,name=limit,proto3" json:"limit,omitempty"`
-	AlertThresholdsPct []int32 `protobuf:"varint,3,rep,packed,name=alert_thresholds_pct,json=alertThresholdsPct,proto3" json:"alert_thresholds_pct,omitempty"`
+	Limit string `protobuf:"bytes,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// 1..10 strictly ascending percentages of the limit (1..1000) at which a LimitExceeded alert fires; empty on publish = 80 and 100.
+	AlertThresholdsPct []int32     `protobuf:"varint,3,rep,packed,name=alert_thresholds_pct,json=alertThresholdsPct,proto3" json:"alert_thresholds_pct,omitempty"`
+	Window             QuotaWindow `protobuf:"varint,4,opt,name=window,proto3,enum=payrudder.plans.v1.QuotaWindow" json:"window,omitempty"`
+	Mode               QuotaMode   `protobuf:"varint,5,opt,name=mode,proto3,enum=payrudder.plans.v1.QuotaMode" json:"mode,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -2075,6 +2212,123 @@ func (x *Entitlement) GetAlertThresholdsPct() []int32 {
 	return nil
 }
 
+func (x *Entitlement) GetWindow() QuotaWindow {
+	if x != nil {
+		return x.Window
+	}
+	return QuotaWindow_QUOTA_WINDOW_UNSPECIFIED
+}
+
+func (x *Entitlement) GetMode() QuotaMode {
+	if x != nil {
+		return x.Mode
+	}
+	return QuotaMode_QUOTA_MODE_UNSPECIFIED
+}
+
+// EntitlementOverride replaces, for one customer, the entitlement its plan version gives on a meter (or adds one on a meter the plan does not limit).
+// It holds for every subscription of the customer until it is deleted.
+type EntitlementOverride struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	CustomerExternalId string                 `protobuf:"bytes,1,opt,name=customer_external_id,json=customerExternalId,proto3" json:"customer_external_id,omitempty"`
+	MeterCode          string                 `protobuf:"bytes,2,opt,name=meter_code,json=meterCode,proto3" json:"meter_code,omitempty"`
+	// Decimal in meter units. "0" means unlimited.
+	Limit              string                 `protobuf:"bytes,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	AlertThresholdsPct []int32                `protobuf:"varint,4,rep,packed,name=alert_thresholds_pct,json=alertThresholdsPct,proto3" json:"alert_thresholds_pct,omitempty"`
+	Window             QuotaWindow            `protobuf:"varint,5,opt,name=window,proto3,enum=payrudder.plans.v1.QuotaWindow" json:"window,omitempty"`
+	Mode               QuotaMode              `protobuf:"varint,6,opt,name=mode,proto3,enum=payrudder.plans.v1.QuotaMode" json:"mode,omitempty"`
+	CreateTime         *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	UpdateTime         *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *EntitlementOverride) Reset() {
+	*x = EntitlementOverride{}
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EntitlementOverride) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EntitlementOverride) ProtoMessage() {}
+
+func (x *EntitlementOverride) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EntitlementOverride.ProtoReflect.Descriptor instead.
+func (*EntitlementOverride) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *EntitlementOverride) GetCustomerExternalId() string {
+	if x != nil {
+		return x.CustomerExternalId
+	}
+	return ""
+}
+
+func (x *EntitlementOverride) GetMeterCode() string {
+	if x != nil {
+		return x.MeterCode
+	}
+	return ""
+}
+
+func (x *EntitlementOverride) GetLimit() string {
+	if x != nil {
+		return x.Limit
+	}
+	return ""
+}
+
+func (x *EntitlementOverride) GetAlertThresholdsPct() []int32 {
+	if x != nil {
+		return x.AlertThresholdsPct
+	}
+	return nil
+}
+
+func (x *EntitlementOverride) GetWindow() QuotaWindow {
+	if x != nil {
+		return x.Window
+	}
+	return QuotaWindow_QUOTA_WINDOW_UNSPECIFIED
+}
+
+func (x *EntitlementOverride) GetMode() QuotaMode {
+	if x != nil {
+		return x.Mode
+	}
+	return QuotaMode_QUOTA_MODE_UNSPECIFIED
+}
+
+func (x *EntitlementOverride) GetCreateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreateTime
+	}
+	return nil
+}
+
+func (x *EntitlementOverride) GetUpdateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdateTime
+	}
+	return nil
+}
+
 // PlanVersion is an immutable snapshot of prices and entitlements.
 type PlanVersion struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
@@ -2096,7 +2350,7 @@ type PlanVersion struct {
 
 func (x *PlanVersion) Reset() {
 	*x = PlanVersion{}
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[17]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2108,7 +2362,7 @@ func (x *PlanVersion) String() string {
 func (*PlanVersion) ProtoMessage() {}
 
 func (x *PlanVersion) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[17]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2121,7 +2375,7 @@ func (x *PlanVersion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlanVersion.ProtoReflect.Descriptor instead.
 func (*PlanVersion) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{17}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PlanVersion) GetId() string {
@@ -2205,7 +2459,7 @@ type CurrencyPrices struct {
 
 func (x *CurrencyPrices) Reset() {
 	*x = CurrencyPrices{}
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[18]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2217,7 +2471,7 @@ func (x *CurrencyPrices) String() string {
 func (*CurrencyPrices) ProtoMessage() {}
 
 func (x *CurrencyPrices) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[18]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2230,7 +2484,7 @@ func (x *CurrencyPrices) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CurrencyPrices.ProtoReflect.Descriptor instead.
 func (*CurrencyPrices) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{18}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *CurrencyPrices) GetCurrency() string {
@@ -2260,7 +2514,7 @@ type CurrencyFee struct {
 
 func (x *CurrencyFee) Reset() {
 	*x = CurrencyFee{}
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[19]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2272,7 +2526,7 @@ func (x *CurrencyFee) String() string {
 func (*CurrencyFee) ProtoMessage() {}
 
 func (x *CurrencyFee) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[19]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2285,7 +2539,7 @@ func (x *CurrencyFee) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CurrencyFee.ProtoReflect.Descriptor instead.
 func (*CurrencyFee) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{19}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *CurrencyFee) GetCurrency() string {
@@ -2353,7 +2607,7 @@ type Subscription struct {
 
 func (x *Subscription) Reset() {
 	*x = Subscription{}
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[20]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2365,7 +2619,7 @@ func (x *Subscription) String() string {
 func (*Subscription) ProtoMessage() {}
 
 func (x *Subscription) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[20]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2378,7 +2632,7 @@ func (x *Subscription) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Subscription.ProtoReflect.Descriptor instead.
 func (*Subscription) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{20}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *Subscription) GetId() string {
@@ -2547,7 +2801,7 @@ type ScheduledChange struct {
 
 func (x *ScheduledChange) Reset() {
 	*x = ScheduledChange{}
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[21]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2559,7 +2813,7 @@ func (x *ScheduledChange) String() string {
 func (*ScheduledChange) ProtoMessage() {}
 
 func (x *ScheduledChange) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[21]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2572,7 +2826,7 @@ func (x *ScheduledChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduledChange.ProtoReflect.Descriptor instead.
 func (*ScheduledChange) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{21}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *ScheduledChange) GetPlanCode() string {
@@ -2638,7 +2892,7 @@ type Coupon struct {
 
 func (x *Coupon) Reset() {
 	*x = Coupon{}
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[22]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2650,7 +2904,7 @@ func (x *Coupon) String() string {
 func (*Coupon) ProtoMessage() {}
 
 func (x *Coupon) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[22]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2663,7 +2917,7 @@ func (x *Coupon) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Coupon.ProtoReflect.Descriptor instead.
 func (*Coupon) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{22}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Coupon) GetCode() string {
@@ -2817,7 +3071,7 @@ type PromotionCode struct {
 
 func (x *PromotionCode) Reset() {
 	*x = PromotionCode{}
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[23]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2829,7 +3083,7 @@ func (x *PromotionCode) String() string {
 func (*PromotionCode) ProtoMessage() {}
 
 func (x *PromotionCode) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[23]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2842,7 +3096,7 @@ func (x *PromotionCode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PromotionCode.ProtoReflect.Descriptor instead.
 func (*PromotionCode) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{23}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *PromotionCode) GetId() string {
@@ -2989,7 +3243,7 @@ type CouponRedemption struct {
 
 func (x *CouponRedemption) Reset() {
 	*x = CouponRedemption{}
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[24]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3001,7 +3255,7 @@ func (x *CouponRedemption) String() string {
 func (*CouponRedemption) ProtoMessage() {}
 
 func (x *CouponRedemption) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[24]
+	mi := &file_payrudder_plans_v1_resources_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3014,7 +3268,7 @@ func (x *CouponRedemption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CouponRedemption.ProtoReflect.Descriptor instead.
 func (*CouponRedemption) Descriptor() ([]byte, []int) {
-	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{24}
+	return file_payrudder_plans_v1_resources_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *CouponRedemption) GetId() string {
@@ -3216,7 +3470,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"tax_office\x18\v \x01(\tR\ttaxOffice\x120\n" +
 	"\x14e_invoice_registered\x18\f \x01(\bR\x12eInvoiceRegistered\"&\n" +
 	"\fFilterValues\x12\x16\n" +
-	"\x06values\x18\x01 \x03(\tR\x06values\"\xbe\x03\n" +
+	"\x06values\x18\x01 \x03(\tR\x06values\"\xda\x03\n" +
 	"\x05Meter\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\x05R\aversion\x12A\n" +
@@ -3227,7 +3481,8 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\n" +
 	"unit_label\x18\a \x01(\tR\tunitLabel\x12;\n" +
 	"\vcreate_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"createTime\x1a[\n" +
+	"createTime\x12\x1a\n" +
+	"\bcategory\x18\t \x01(\tR\bcategory\x1a[\n" +
 	"\vFilterEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x126\n" +
 	"\x05value\x18\x02 \x01(\v2 .payrudder.plans.v1.FilterValuesR\x05value:\x028\x01\"\xa2\x01\n" +
@@ -3250,19 +3505,34 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\x05tiers\x18\x01 \x03(\v2\x1d.payrudder.plans.v1.PriceTierR\x05tiers\"a\n" +
 	"\fPackagePrice\x12!\n" +
 	"\fpackage_size\x18\x01 \x01(\tR\vpackageSize\x12.\n" +
-	"\x13package_price_minor\x18\x02 \x01(\x03R\x11packagePriceMinor\"\xf0\x01\n" +
+	"\x13package_price_minor\x18\x02 \x01(\x03R\x11packagePriceMinor\"\x8c\x02\n" +
 	"\x05Price\x12\x1d\n" +
 	"\n" +
 	"meter_code\x18\x01 \x01(\tR\tmeterCode\x12=\n" +
 	"\bper_unit\x18\x02 \x01(\v2 .payrudder.plans.v1.PerUnitPriceH\x00R\aperUnit\x12B\n" +
 	"\x06tiered\x18\x03 \x01(\v2(.payrudder.plans.v1.TieredGraduatedPriceH\x00R\x06tiered\x12<\n" +
-	"\apackage\x18\x04 \x01(\v2 .payrudder.plans.v1.PackagePriceH\x00R\apackageB\a\n" +
-	"\x05model\"t\n" +
+	"\apackage\x18\x04 \x01(\v2 .payrudder.plans.v1.PackagePriceH\x00R\apackage\x12\x1a\n" +
+	"\bincluded\x18\x05 \x01(\tR\bincludedB\a\n" +
+	"\x05model\"\xe0\x01\n" +
 	"\vEntitlement\x12\x1d\n" +
 	"\n" +
 	"meter_code\x18\x01 \x01(\tR\tmeterCode\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\tR\x05limit\x120\n" +
-	"\x14alert_thresholds_pct\x18\x03 \x03(\x05R\x12alertThresholdsPct\"\xcc\x03\n" +
+	"\x14alert_thresholds_pct\x18\x03 \x03(\x05R\x12alertThresholdsPct\x127\n" +
+	"\x06window\x18\x04 \x01(\x0e2\x1f.payrudder.plans.v1.QuotaWindowR\x06window\x121\n" +
+	"\x04mode\x18\x05 \x01(\x0e2\x1d.payrudder.plans.v1.QuotaModeR\x04mode\"\x94\x03\n" +
+	"\x13EntitlementOverride\x120\n" +
+	"\x14customer_external_id\x18\x01 \x01(\tR\x12customerExternalId\x12\x1d\n" +
+	"\n" +
+	"meter_code\x18\x02 \x01(\tR\tmeterCode\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\tR\x05limit\x120\n" +
+	"\x14alert_thresholds_pct\x18\x04 \x03(\x05R\x12alertThresholdsPct\x127\n" +
+	"\x06window\x18\x05 \x01(\x0e2\x1f.payrudder.plans.v1.QuotaWindowR\x06window\x121\n" +
+	"\x04mode\x18\x06 \x01(\x0e2\x1d.payrudder.plans.v1.QuotaModeR\x04mode\x12;\n" +
+	"\vcreate_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"createTime\x12;\n" +
+	"\vupdate_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"updateTime\"\xcc\x03\n" +
 	"\vPlanVersion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\aplan_id\x18\x02 \x01(\tR\x06planId\x12\x1b\n" +
@@ -3398,7 +3668,18 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\x17AGGREGATION_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fAGGREGATION_SUM\x10\x01\x12\x15\n" +
 	"\x11AGGREGATION_COUNT\x10\x02\x12\x13\n" +
-	"\x0fAGGREGATION_MAX\x10\x03*W\n" +
+	"\x0fAGGREGATION_MAX\x10\x03*\x87\x01\n" +
+	"\vQuotaWindow\x12\x1c\n" +
+	"\x18QUOTA_WINDOW_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12QUOTA_WINDOW_MONTH\x10\x01\x12\x15\n" +
+	"\x11QUOTA_WINDOW_HOUR\x10\x02\x12\x14\n" +
+	"\x10QUOTA_WINDOW_DAY\x10\x03\x12\x15\n" +
+	"\x11QUOTA_WINDOW_WEEK\x10\x04*h\n" +
+	"\tQuotaMode\x12\x1a\n" +
+	"\x16QUOTA_MODE_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fQUOTA_MODE_HARD\x10\x01\x12\x13\n" +
+	"\x0fQUOTA_MODE_SOFT\x10\x02\x12\x15\n" +
+	"\x11QUOTA_MODE_NOTIFY\x10\x03*W\n" +
 	"\tFeeTiming\x12\x1a\n" +
 	"\x16FEE_TIMING_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12FEE_TIMING_ADVANCE\x10\x01\x12\x16\n" +
@@ -3438,115 +3719,124 @@ func file_payrudder_plans_v1_resources_proto_rawDescGZIP() []byte {
 	return file_payrudder_plans_v1_resources_proto_rawDescData
 }
 
-var file_payrudder_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
-var file_payrudder_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_payrudder_plans_v1_resources_proto_enumTypes = make([]protoimpl.EnumInfo, 13)
+var file_payrudder_plans_v1_resources_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_payrudder_plans_v1_resources_proto_goTypes = []any{
 	(Environment)(0),              // 0: payrudder.plans.v1.Environment
 	(TenantStatus)(0),             // 1: payrudder.plans.v1.TenantStatus
 	(TenantTier)(0),               // 2: payrudder.plans.v1.TenantTier
 	(Aggregation)(0),              // 3: payrudder.plans.v1.Aggregation
-	(FeeTiming)(0),                // 4: payrudder.plans.v1.FeeTiming
-	(SubscriptionState)(0),        // 5: payrudder.plans.v1.SubscriptionState
-	(SubscriptionInterval)(0),     // 6: payrudder.plans.v1.SubscriptionInterval
-	(CouponTarget)(0),             // 7: payrudder.plans.v1.CouponTarget
-	(CouponDuration)(0),           // 8: payrudder.plans.v1.CouponDuration
-	(ApiKey_Status)(0),            // 9: payrudder.plans.v1.ApiKey.Status
-	(ApiKey_Scope)(0),             // 10: payrudder.plans.v1.ApiKey.Scope
-	(*Address)(nil),               // 11: payrudder.plans.v1.Address
-	(*BankTransferDetails)(nil),   // 12: payrudder.plans.v1.BankTransferDetails
-	(*LegalInfo)(nil),             // 13: payrudder.plans.v1.LegalInfo
-	(*Account)(nil),               // 14: payrudder.plans.v1.Account
-	(*App)(nil),                   // 15: payrudder.plans.v1.App
-	(*Tenant)(nil),                // 16: payrudder.plans.v1.Tenant
-	(*ApiKey)(nil),                // 17: payrudder.plans.v1.ApiKey
-	(*Customer)(nil),              // 18: payrudder.plans.v1.Customer
-	(*FilterValues)(nil),          // 19: payrudder.plans.v1.FilterValues
-	(*Meter)(nil),                 // 20: payrudder.plans.v1.Meter
-	(*Plan)(nil),                  // 21: payrudder.plans.v1.Plan
-	(*PriceTier)(nil),             // 22: payrudder.plans.v1.PriceTier
-	(*PerUnitPrice)(nil),          // 23: payrudder.plans.v1.PerUnitPrice
-	(*TieredGraduatedPrice)(nil),  // 24: payrudder.plans.v1.TieredGraduatedPrice
-	(*PackagePrice)(nil),          // 25: payrudder.plans.v1.PackagePrice
-	(*Price)(nil),                 // 26: payrudder.plans.v1.Price
-	(*Entitlement)(nil),           // 27: payrudder.plans.v1.Entitlement
-	(*PlanVersion)(nil),           // 28: payrudder.plans.v1.PlanVersion
-	(*CurrencyPrices)(nil),        // 29: payrudder.plans.v1.CurrencyPrices
-	(*CurrencyFee)(nil),           // 30: payrudder.plans.v1.CurrencyFee
-	(*Subscription)(nil),          // 31: payrudder.plans.v1.Subscription
-	(*ScheduledChange)(nil),       // 32: payrudder.plans.v1.ScheduledChange
-	(*Coupon)(nil),                // 33: payrudder.plans.v1.Coupon
-	(*PromotionCode)(nil),         // 34: payrudder.plans.v1.PromotionCode
-	(*CouponRedemption)(nil),      // 35: payrudder.plans.v1.CouponRedemption
-	nil,                           // 36: payrudder.plans.v1.Meter.FilterEntry
-	(*timestamppb.Timestamp)(nil), // 37: google.protobuf.Timestamp
-	(*durationpb.Duration)(nil),   // 38: google.protobuf.Duration
+	(QuotaWindow)(0),              // 4: payrudder.plans.v1.QuotaWindow
+	(QuotaMode)(0),                // 5: payrudder.plans.v1.QuotaMode
+	(FeeTiming)(0),                // 6: payrudder.plans.v1.FeeTiming
+	(SubscriptionState)(0),        // 7: payrudder.plans.v1.SubscriptionState
+	(SubscriptionInterval)(0),     // 8: payrudder.plans.v1.SubscriptionInterval
+	(CouponTarget)(0),             // 9: payrudder.plans.v1.CouponTarget
+	(CouponDuration)(0),           // 10: payrudder.plans.v1.CouponDuration
+	(ApiKey_Status)(0),            // 11: payrudder.plans.v1.ApiKey.Status
+	(ApiKey_Scope)(0),             // 12: payrudder.plans.v1.ApiKey.Scope
+	(*Address)(nil),               // 13: payrudder.plans.v1.Address
+	(*BankTransferDetails)(nil),   // 14: payrudder.plans.v1.BankTransferDetails
+	(*LegalInfo)(nil),             // 15: payrudder.plans.v1.LegalInfo
+	(*Account)(nil),               // 16: payrudder.plans.v1.Account
+	(*App)(nil),                   // 17: payrudder.plans.v1.App
+	(*Tenant)(nil),                // 18: payrudder.plans.v1.Tenant
+	(*ApiKey)(nil),                // 19: payrudder.plans.v1.ApiKey
+	(*Customer)(nil),              // 20: payrudder.plans.v1.Customer
+	(*FilterValues)(nil),          // 21: payrudder.plans.v1.FilterValues
+	(*Meter)(nil),                 // 22: payrudder.plans.v1.Meter
+	(*Plan)(nil),                  // 23: payrudder.plans.v1.Plan
+	(*PriceTier)(nil),             // 24: payrudder.plans.v1.PriceTier
+	(*PerUnitPrice)(nil),          // 25: payrudder.plans.v1.PerUnitPrice
+	(*TieredGraduatedPrice)(nil),  // 26: payrudder.plans.v1.TieredGraduatedPrice
+	(*PackagePrice)(nil),          // 27: payrudder.plans.v1.PackagePrice
+	(*Price)(nil),                 // 28: payrudder.plans.v1.Price
+	(*Entitlement)(nil),           // 29: payrudder.plans.v1.Entitlement
+	(*EntitlementOverride)(nil),   // 30: payrudder.plans.v1.EntitlementOverride
+	(*PlanVersion)(nil),           // 31: payrudder.plans.v1.PlanVersion
+	(*CurrencyPrices)(nil),        // 32: payrudder.plans.v1.CurrencyPrices
+	(*CurrencyFee)(nil),           // 33: payrudder.plans.v1.CurrencyFee
+	(*Subscription)(nil),          // 34: payrudder.plans.v1.Subscription
+	(*ScheduledChange)(nil),       // 35: payrudder.plans.v1.ScheduledChange
+	(*Coupon)(nil),                // 36: payrudder.plans.v1.Coupon
+	(*PromotionCode)(nil),         // 37: payrudder.plans.v1.PromotionCode
+	(*CouponRedemption)(nil),      // 38: payrudder.plans.v1.CouponRedemption
+	nil,                           // 39: payrudder.plans.v1.Meter.FilterEntry
+	(*timestamppb.Timestamp)(nil), // 40: google.protobuf.Timestamp
+	(*durationpb.Duration)(nil),   // 41: google.protobuf.Duration
 }
 var file_payrudder_plans_v1_resources_proto_depIdxs = []int32{
-	16, // 0: payrudder.plans.v1.Account.tenants:type_name -> payrudder.plans.v1.Tenant
-	37, // 1: payrudder.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
-	15, // 2: payrudder.plans.v1.Account.apps:type_name -> payrudder.plans.v1.App
-	16, // 3: payrudder.plans.v1.App.tenants:type_name -> payrudder.plans.v1.Tenant
-	37, // 4: payrudder.plans.v1.App.create_time:type_name -> google.protobuf.Timestamp
+	18, // 0: payrudder.plans.v1.Account.tenants:type_name -> payrudder.plans.v1.Tenant
+	40, // 1: payrudder.plans.v1.Account.create_time:type_name -> google.protobuf.Timestamp
+	17, // 2: payrudder.plans.v1.Account.apps:type_name -> payrudder.plans.v1.App
+	18, // 3: payrudder.plans.v1.App.tenants:type_name -> payrudder.plans.v1.Tenant
+	40, // 4: payrudder.plans.v1.App.create_time:type_name -> google.protobuf.Timestamp
 	0,  // 5: payrudder.plans.v1.Tenant.environment:type_name -> payrudder.plans.v1.Environment
 	2,  // 6: payrudder.plans.v1.Tenant.tier:type_name -> payrudder.plans.v1.TenantTier
-	38, // 7: payrudder.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
-	37, // 8: payrudder.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
-	11, // 9: payrudder.plans.v1.Tenant.address:type_name -> payrudder.plans.v1.Address
-	12, // 10: payrudder.plans.v1.Tenant.bank_transfer:type_name -> payrudder.plans.v1.BankTransferDetails
-	13, // 11: payrudder.plans.v1.Tenant.legal:type_name -> payrudder.plans.v1.LegalInfo
+	41, // 7: payrudder.plans.v1.Tenant.grace_period:type_name -> google.protobuf.Duration
+	40, // 8: payrudder.plans.v1.Tenant.create_time:type_name -> google.protobuf.Timestamp
+	13, // 9: payrudder.plans.v1.Tenant.address:type_name -> payrudder.plans.v1.Address
+	14, // 10: payrudder.plans.v1.Tenant.bank_transfer:type_name -> payrudder.plans.v1.BankTransferDetails
+	15, // 11: payrudder.plans.v1.Tenant.legal:type_name -> payrudder.plans.v1.LegalInfo
 	1,  // 12: payrudder.plans.v1.Tenant.status:type_name -> payrudder.plans.v1.TenantStatus
-	37, // 13: payrudder.plans.v1.Tenant.activate_time:type_name -> google.protobuf.Timestamp
-	37, // 14: payrudder.plans.v1.Tenant.terms_accept_time:type_name -> google.protobuf.Timestamp
+	40, // 13: payrudder.plans.v1.Tenant.activate_time:type_name -> google.protobuf.Timestamp
+	40, // 14: payrudder.plans.v1.Tenant.terms_accept_time:type_name -> google.protobuf.Timestamp
 	0,  // 15: payrudder.plans.v1.ApiKey.environment:type_name -> payrudder.plans.v1.Environment
-	9,  // 16: payrudder.plans.v1.ApiKey.status:type_name -> payrudder.plans.v1.ApiKey.Status
-	37, // 17: payrudder.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
-	37, // 18: payrudder.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
-	10, // 19: payrudder.plans.v1.ApiKey.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
-	37, // 20: payrudder.plans.v1.ApiKey.last_used_time:type_name -> google.protobuf.Timestamp
-	37, // 21: payrudder.plans.v1.ApiKey.expire_time:type_name -> google.protobuf.Timestamp
-	37, // 22: payrudder.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
-	11, // 23: payrudder.plans.v1.Customer.address:type_name -> payrudder.plans.v1.Address
+	11, // 16: payrudder.plans.v1.ApiKey.status:type_name -> payrudder.plans.v1.ApiKey.Status
+	40, // 17: payrudder.plans.v1.ApiKey.create_time:type_name -> google.protobuf.Timestamp
+	40, // 18: payrudder.plans.v1.ApiKey.revoke_time:type_name -> google.protobuf.Timestamp
+	12, // 19: payrudder.plans.v1.ApiKey.scope:type_name -> payrudder.plans.v1.ApiKey.Scope
+	40, // 20: payrudder.plans.v1.ApiKey.last_used_time:type_name -> google.protobuf.Timestamp
+	40, // 21: payrudder.plans.v1.ApiKey.expire_time:type_name -> google.protobuf.Timestamp
+	40, // 22: payrudder.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
+	13, // 23: payrudder.plans.v1.Customer.address:type_name -> payrudder.plans.v1.Address
 	3,  // 24: payrudder.plans.v1.Meter.aggregation:type_name -> payrudder.plans.v1.Aggregation
-	36, // 25: payrudder.plans.v1.Meter.filter:type_name -> payrudder.plans.v1.Meter.FilterEntry
-	37, // 26: payrudder.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
-	37, // 27: payrudder.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
-	22, // 28: payrudder.plans.v1.TieredGraduatedPrice.tiers:type_name -> payrudder.plans.v1.PriceTier
-	23, // 29: payrudder.plans.v1.Price.per_unit:type_name -> payrudder.plans.v1.PerUnitPrice
-	24, // 30: payrudder.plans.v1.Price.tiered:type_name -> payrudder.plans.v1.TieredGraduatedPrice
-	25, // 31: payrudder.plans.v1.Price.package:type_name -> payrudder.plans.v1.PackagePrice
-	26, // 32: payrudder.plans.v1.PlanVersion.prices:type_name -> payrudder.plans.v1.Price
-	27, // 33: payrudder.plans.v1.PlanVersion.entitlements:type_name -> payrudder.plans.v1.Entitlement
-	37, // 34: payrudder.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
-	30, // 35: payrudder.plans.v1.PlanVersion.fees:type_name -> payrudder.plans.v1.CurrencyFee
-	29, // 36: payrudder.plans.v1.PlanVersion.currency_prices:type_name -> payrudder.plans.v1.CurrencyPrices
-	26, // 37: payrudder.plans.v1.CurrencyPrices.prices:type_name -> payrudder.plans.v1.Price
-	6,  // 38: payrudder.plans.v1.CurrencyFee.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	37, // 39: payrudder.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
-	37, // 40: payrudder.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
-	37, // 41: payrudder.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
-	5,  // 42: payrudder.plans.v1.Subscription.state:type_name -> payrudder.plans.v1.SubscriptionState
-	6,  // 43: payrudder.plans.v1.Subscription.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	37, // 44: payrudder.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
-	37, // 45: payrudder.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
-	4,  // 46: payrudder.plans.v1.Subscription.fee_timing:type_name -> payrudder.plans.v1.FeeTiming
-	32, // 47: payrudder.plans.v1.Subscription.scheduled_change:type_name -> payrudder.plans.v1.ScheduledChange
-	6,  // 48: payrudder.plans.v1.ScheduledChange.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	37, // 49: payrudder.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
-	8,  // 50: payrudder.plans.v1.Coupon.duration:type_name -> payrudder.plans.v1.CouponDuration
-	37, // 51: payrudder.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
-	37, // 52: payrudder.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
-	7,  // 53: payrudder.plans.v1.Coupon.applies_to:type_name -> payrudder.plans.v1.CouponTarget
-	37, // 54: payrudder.plans.v1.PromotionCode.expire_time:type_name -> google.protobuf.Timestamp
-	37, // 55: payrudder.plans.v1.PromotionCode.create_time:type_name -> google.protobuf.Timestamp
-	7,  // 56: payrudder.plans.v1.CouponRedemption.target:type_name -> payrudder.plans.v1.CouponTarget
-	37, // 57: payrudder.plans.v1.CouponRedemption.create_time:type_name -> google.protobuf.Timestamp
-	37, // 58: payrudder.plans.v1.CouponRedemption.reverse_time:type_name -> google.protobuf.Timestamp
-	19, // 59: payrudder.plans.v1.Meter.FilterEntry.value:type_name -> payrudder.plans.v1.FilterValues
-	60, // [60:60] is the sub-list for method output_type
-	60, // [60:60] is the sub-list for method input_type
-	60, // [60:60] is the sub-list for extension type_name
-	60, // [60:60] is the sub-list for extension extendee
-	0,  // [0:60] is the sub-list for field type_name
+	39, // 25: payrudder.plans.v1.Meter.filter:type_name -> payrudder.plans.v1.Meter.FilterEntry
+	40, // 26: payrudder.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
+	40, // 27: payrudder.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
+	24, // 28: payrudder.plans.v1.TieredGraduatedPrice.tiers:type_name -> payrudder.plans.v1.PriceTier
+	25, // 29: payrudder.plans.v1.Price.per_unit:type_name -> payrudder.plans.v1.PerUnitPrice
+	26, // 30: payrudder.plans.v1.Price.tiered:type_name -> payrudder.plans.v1.TieredGraduatedPrice
+	27, // 31: payrudder.plans.v1.Price.package:type_name -> payrudder.plans.v1.PackagePrice
+	4,  // 32: payrudder.plans.v1.Entitlement.window:type_name -> payrudder.plans.v1.QuotaWindow
+	5,  // 33: payrudder.plans.v1.Entitlement.mode:type_name -> payrudder.plans.v1.QuotaMode
+	4,  // 34: payrudder.plans.v1.EntitlementOverride.window:type_name -> payrudder.plans.v1.QuotaWindow
+	5,  // 35: payrudder.plans.v1.EntitlementOverride.mode:type_name -> payrudder.plans.v1.QuotaMode
+	40, // 36: payrudder.plans.v1.EntitlementOverride.create_time:type_name -> google.protobuf.Timestamp
+	40, // 37: payrudder.plans.v1.EntitlementOverride.update_time:type_name -> google.protobuf.Timestamp
+	28, // 38: payrudder.plans.v1.PlanVersion.prices:type_name -> payrudder.plans.v1.Price
+	29, // 39: payrudder.plans.v1.PlanVersion.entitlements:type_name -> payrudder.plans.v1.Entitlement
+	40, // 40: payrudder.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
+	33, // 41: payrudder.plans.v1.PlanVersion.fees:type_name -> payrudder.plans.v1.CurrencyFee
+	32, // 42: payrudder.plans.v1.PlanVersion.currency_prices:type_name -> payrudder.plans.v1.CurrencyPrices
+	28, // 43: payrudder.plans.v1.CurrencyPrices.prices:type_name -> payrudder.plans.v1.Price
+	8,  // 44: payrudder.plans.v1.CurrencyFee.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	40, // 45: payrudder.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
+	40, // 46: payrudder.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
+	40, // 47: payrudder.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
+	7,  // 48: payrudder.plans.v1.Subscription.state:type_name -> payrudder.plans.v1.SubscriptionState
+	8,  // 49: payrudder.plans.v1.Subscription.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	40, // 50: payrudder.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
+	40, // 51: payrudder.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
+	6,  // 52: payrudder.plans.v1.Subscription.fee_timing:type_name -> payrudder.plans.v1.FeeTiming
+	35, // 53: payrudder.plans.v1.Subscription.scheduled_change:type_name -> payrudder.plans.v1.ScheduledChange
+	8,  // 54: payrudder.plans.v1.ScheduledChange.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	40, // 55: payrudder.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
+	10, // 56: payrudder.plans.v1.Coupon.duration:type_name -> payrudder.plans.v1.CouponDuration
+	40, // 57: payrudder.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
+	40, // 58: payrudder.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
+	9,  // 59: payrudder.plans.v1.Coupon.applies_to:type_name -> payrudder.plans.v1.CouponTarget
+	40, // 60: payrudder.plans.v1.PromotionCode.expire_time:type_name -> google.protobuf.Timestamp
+	40, // 61: payrudder.plans.v1.PromotionCode.create_time:type_name -> google.protobuf.Timestamp
+	9,  // 62: payrudder.plans.v1.CouponRedemption.target:type_name -> payrudder.plans.v1.CouponTarget
+	40, // 63: payrudder.plans.v1.CouponRedemption.create_time:type_name -> google.protobuf.Timestamp
+	40, // 64: payrudder.plans.v1.CouponRedemption.reverse_time:type_name -> google.protobuf.Timestamp
+	21, // 65: payrudder.plans.v1.Meter.FilterEntry.value:type_name -> payrudder.plans.v1.FilterValues
+	66, // [66:66] is the sub-list for method output_type
+	66, // [66:66] is the sub-list for method input_type
+	66, // [66:66] is the sub-list for extension type_name
+	66, // [66:66] is the sub-list for extension extendee
+	0,  // [0:66] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_resources_proto_init() }
@@ -3564,8 +3854,8 @@ func file_payrudder_plans_v1_resources_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_resources_proto_rawDesc), len(file_payrudder_plans_v1_resources_proto_rawDesc)),
-			NumEnums:      11,
-			NumMessages:   26,
+			NumEnums:      13,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

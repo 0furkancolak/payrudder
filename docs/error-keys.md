@@ -428,6 +428,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.migration.cannot_abort`
 - `plans.migration.state_not_movable`
 - `plans.migration.subscription_ended`
+- `plans.override.customer_required`
+- `plans.override.not_found`
 - `plans.plan.no_fixed_fee`
 - `plans.plan.no_metered_price`
 - `plans.request.invalid`
