@@ -128,8 +128,8 @@ test.describe("app dashboard", () => {
     await expect(page.getByTestId("kpi-customers-value")).toHaveText("18");
     await expect(page.getByRole("img", { name: /payment attempts/ })).toBeVisible();
     await expect(page.getByRole("region", { name: "Health" })).toContainText("1 failed deliveries");
-    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`)[0]?.query.get("environment")).toBe("live");
-    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`)[0]?.query.get("period")).toBe("30d");
+    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`).at(-1)?.query.get("environment")).toBe("live");
+    await expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`).at(-1)?.query.get("period")).toBe("30d");
     await shoot(page, "06-dashboard");
   });
 
@@ -711,6 +711,7 @@ test.describe("billing pages of the app", () => {
   // Every page of the product at phone width: nothing scrolls sideways. The list is the menu of an environment plus the pages that are not in it, so
   // a page added to the navigation is covered without touching this test.
   test("no page of the app scrolls sideways at 375 px", async ({ page }) => {
+    test.setTimeout(180_000); // every page of the menu, one after the other
     await page.setViewportSize({ width: 375, height: 812 });
     liveGateway(await open(page));
     await page.goto(`/app/t/${LIVE}/customers`);

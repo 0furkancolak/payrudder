@@ -37,14 +37,16 @@ test.describe("sheets in the address", () => {
     await open(page, "customer:cus_2,new-customer");
     await expect(page.getByTestId("sheet-tab")).toHaveCount(2);
     await expect(page.getByTestId("sheet-strip")).toBeVisible();
+    // The row's sheet opened last, so it is in front: back closes it, forward opens it again.
     await page.getByTestId("sheet-back").click();
-    await expect.poll(() => sheetParam(page)).toBe("customer:cus_2");
+    await expect.poll(() => sheetParam(page)).toBe("new-customer");
+    await expect(page.getByTestId("sheet-strip")).toHaveCount(1); // the one that closed is leaving
     await expect(page.getByTestId("sheet-forward")).toBeEnabled();
     await page.getByTestId("sheet-forward").click();
-    await expect.poll(() => sheetParam(page)).toBe("customer:cus_2,new-customer");
+    await expect.poll(() => sheetParam(page)).toBe("new-customer,customer:cus_2");
     // A tab brings its sheet to the front (it goes last in the strip); a tab's cross closes that sheet.
     await page.getByTestId("sheet-tab").first().getByRole("tab").click();
     await page.getByTestId("sheet-tab").nth(1).getByRole("button", { name: "Close" }).click();
-    await expect.poll(() => sheetParam(page)).toBe("new-customer");
+    await expect.poll(() => sheetParam(page)).toBe("customer:cus_2");
   });
 });

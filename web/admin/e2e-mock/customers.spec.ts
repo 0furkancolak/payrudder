@@ -122,7 +122,11 @@ test.describe("customer sheet", () => {
     await expect(sheet.getByRole("region", { name: "Payments" })).toContainText("mockpsp");
 
     await sheet.getByTestId("customer-tab-invoices").click();
-    await expect(sheet.getByRole("link", { name: /INV-1/ })).toHaveAttribute("href", /\/invoices\?invoice=inv-1$/);
+    // An invoice opens over the customer's sheet, not instead of it.
+    await sheet.getByRole("button", { name: /INV-1/ }).click();
+    await expect(page.getByTestId("sheet-tab")).toHaveCount(2);
+    await page.getByTestId("sheet-back").click();
+    await expect(page.getByTestId("sheet-tab")).toHaveCount(1); // back to the customer; the strip stays for "forward"
     await sheet.getByTestId("customer-tab-details").click();
     await expect(sheet.getByTestId("customer-details")).toContainText("Atatürk Cd. 1, İstanbul, TR");
     await expect(sheet.getByTestId("customer-details")).toContainText("11111111111");

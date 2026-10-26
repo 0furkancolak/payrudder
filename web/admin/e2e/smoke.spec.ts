@@ -112,7 +112,7 @@ test.describe.serial("operator console", () => {
     await page.getByRole("searchbox").fill(tenantId);
     await page.getByRole("row", { name: new RegExp(tenantId) }).getByRole("link").click();
     await expect(page.getByRole("heading", { name: /.+/ }).first()).toBeVisible();
-    await page.getByRole("link", { name: invoiceNumber }).click();
+    await page.getByRole("row", { name: new RegExp(invoiceNumber) }).click();
     await expect(page.getByRole("heading", { name: invoiceNumber })).toBeVisible();
     await expect(page.getByTestId("saga-event").first()).toBeVisible();
     expect(await page.getByTestId("saga-event").count()).toBeGreaterThanOrEqual(5);

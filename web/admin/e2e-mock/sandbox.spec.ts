@@ -95,7 +95,8 @@ test.describe("a live environment that is not active", () => {
     await page.goto(`/app/apps/${APP}?env=live`);
     await expect(page.getByTestId("live-checklist")).toBeVisible();
     await expect(page.getByTestId("go-live-state")).toContainText("1 of 5 done");
-    expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`)).toHaveLength(0);
+    // The organisation's home (where signing in lands) may have asked for the figures of the app on its way; the app's own page must not.
+    expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`).filter((c) => (c.headers["referer"] ?? "").includes("/apps/"))).toHaveLength(0);
     await page.getByTestId("to-sandbox").click();
     await expect(page.getByTestId("sandbox-banner")).toBeVisible();
   });
