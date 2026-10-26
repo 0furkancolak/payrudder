@@ -25,7 +25,8 @@
     "close": "Close",
     "search": "Search",
     "clearFilters": "Clear filters",
-    "noMatches": "Nothing matches these filters."
+    "noMatches": "Nothing matches these filters.",
+    "moreActions": "More actions"
   },
   "enums": {
     "environment": {
@@ -3244,5 +3245,21 @@
     "pageOnly": "Page {page}",
     "goTo": "Go to page",
     "go": "Go"
+  },
+  "dateRange": {
+    "any": "Any time",
+    "label": "Date range",
+    "from": "From",
+    "to": "To",
+    "apply": "Apply",
+    "clear": "Clear",
+    "presets": {
+      "today": "Today",
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "month": "This month",
+      "lastMonth": "Last month",
+      "year": "This year"
+    }
   }
 }

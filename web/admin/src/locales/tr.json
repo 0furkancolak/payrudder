@@ -25,7 +25,8 @@
     "close": "Kapat",
     "search": "Ara",
     "clearFilters": "Filtreleri temizle",
-    "noMatches": "Bu filtrelere uyan kayıt yok."
+    "noMatches": "Bu filtrelere uyan kayıt yok.",
+    "moreActions": "Diğer işlemler"
   },
   "enums": {
     "environment": {
@@ -3244,5 +3245,21 @@
     "pageOnly": "Sayfa {page}",
     "goTo": "Sayfaya git",
     "go": "Git"
+  },
+  "dateRange": {
+    "any": "Tüm zamanlar",
+    "label": "Tarih aralığı",
+    "from": "Başlangıç",
+    "to": "Bitiş",
+    "apply": "Uygula",
+    "clear": "Temizle",
+    "presets": {
+      "today": "Bugün",
+      "7d": "Son 7 gün",
+      "30d": "Son 30 gün",
+      "month": "Bu ay",
+      "lastMonth": "Geçen ay",
+      "year": "Bu yıl"
+    }
   }
 }

@@ -108,17 +108,16 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
             <PrivacyToggle />
             <LanguageSwitcher />
             <ThemeToggle />
-            <UserMenu v-if="isPerson" />
           </div>
-          <OrgEnvSwitch v-if="orgHome && pageEnv" class="order-last w-full sm:order-none sm:w-auto" :env="pageEnv" />
+          <OrgEnvSwitch v-if="orgHome && pageEnv" :env="pageEnv" />
           <ContextSwitcher
             v-if="isPerson && shell.context.value.level === 'app'"
-            class="order-last w-full sm:order-none sm:w-auto"
             :context="shell.context.value"
             :apps="shell.apps.data.value?.apps ?? []"
             :app-name="shell.appName.value"
             :path="shell.path.value"
           />
+          <UserMenu v-if="isPerson" />
         </div>
       </header>
       <header v-else class="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-4 pt-4 md:px-8 md:pt-6">

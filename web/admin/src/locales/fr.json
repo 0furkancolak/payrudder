@@ -25,7 +25,8 @@
     "close": "Fermer",
     "search": "Rechercher",
     "clearFilters": "Effacer les filtres",
-    "noMatches": "Aucun résultat pour ces filtres."
+    "noMatches": "Aucun résultat pour ces filtres.",
+    "moreActions": "Plus d'actions"
   },
   "enums": {
     "environment": {
@@ -3244,5 +3245,21 @@
     "pageOnly": "Page {page}",
     "goTo": "Aller à la page",
     "go": "Aller"
+  },
+  "dateRange": {
+    "any": "Toute période",
+    "label": "Période",
+    "from": "Du",
+    "to": "Au",
+    "apply": "Appliquer",
+    "clear": "Effacer",
+    "presets": {
+      "today": "Aujourd'hui",
+      "7d": "7 derniers jours",
+      "30d": "30 derniers jours",
+      "month": "Ce mois-ci",
+      "lastMonth": "Mois dernier",
+      "year": "Cette année"
+    }
   }
 }
