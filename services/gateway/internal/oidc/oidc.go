@@ -27,6 +27,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 )
 
 // GoogleIssuer is the issuer of Google's ID tokens and the base of its discovery document.
@@ -61,7 +63,10 @@ func (c Config) Enabled() bool { return c.ClientID != "" && c.ClientSecret != ""
 type Client struct {
 	cfg Config
 
+	// mu guards the cached documents below and is never held across a request to the provider: a slow or dead provider must not queue every sign-in
+	// behind one lock. flight makes the sign-ins that arrive while a document is being read share that read, and its failure.
 	mu        sync.Mutex
+	flight    singleflight.Group
 	disco     *discovery
 	discoAt   time.Time
 	keys      map[string]*rsa.PublicKey
@@ -130,10 +135,22 @@ func (c *Client) do(req *http.Request, into any) error {
 
 func (c *Client) discover(ctx context.Context) (*discovery, error) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	if c.disco != nil && c.cfg.Now().Sub(c.discoAt) < cacheTTL {
-		return c.disco, nil
+		d := c.disco
+		c.mu.Unlock()
+		return d, nil
 	}
+	c.mu.Unlock()
+	// The read is detached from the caller that happens to start it: the others share its answer, and the HTTP client's timeout bounds it.
+	v, err, _ := c.flight.Do("discovery", func() (any, error) { return c.readDiscovery(context.WithoutCancel(ctx)) })
+	if err != nil {
+		return nil, err
+	}
+	return v.(*discovery), nil
+}
+
+// readDiscovery reads the provider's configuration document and caches it.
+func (c *Client) readDiscovery(ctx context.Context) (*discovery, error) {
 	var d discovery
 	if err := c.get(ctx, c.cfg.Issuer+"/.well-known/openid-configuration", &d); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDiscovery, err)
@@ -142,8 +159,10 @@ func (c *Client) discover(ctx context.Context) (*discovery, error) {
 	if strings.TrimRight(d.Issuer, "/") != c.cfg.Issuer || d.AuthorizationEndpoint == "" || d.TokenEndpoint == "" || d.JWKSURI == "" {
 		return nil, fmt.Errorf("%w: unexpected document", ErrDiscovery)
 	}
+	c.mu.Lock()
 	c.disco, c.discoAt = &d, c.cfg.Now()
-	return c.disco, nil
+	c.mu.Unlock()
+	return &d, nil
 }
 
 // Request is one started login: what the browser is sent to and what the callback must present again.
@@ -370,17 +389,31 @@ func (c *Client) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
 		return nil, err
 	}
 	c.mu.Lock()
-	defer c.mu.Unlock()
 	now := c.cfg.Now()
 	if k, ok := c.keys[kid]; ok && now.Sub(c.keysAt) < cacheTTL {
+		c.mu.Unlock()
 		return k, nil
 	}
 	if c.keys != nil && now.Sub(c.keysAt) < cacheTTL && now.Sub(c.keysTried) < refetchEvery {
+		c.mu.Unlock()
 		return nil, ErrToken
 	}
 	c.keysTried = now
+	c.mu.Unlock()
+	v, err, _ := c.flight.Do("keys", func() (any, error) { return c.readKeys(context.WithoutCancel(ctx), d.JWKSURI) })
+	if err != nil {
+		return nil, err
+	}
+	if k, ok := v.(map[string]*rsa.PublicKey)[kid]; ok {
+		return k, nil
+	}
+	return nil, ErrToken
+}
+
+// readKeys reads the provider's key set and caches it.
+func (c *Client) readKeys(ctx context.Context, uri string) (map[string]*rsa.PublicKey, error) {
 	var set jwks
-	if err := c.get(ctx, d.JWKSURI, &set); err != nil {
+	if err := c.get(ctx, uri, &set); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDiscovery, err)
 	}
 	keys := map[string]*rsa.PublicKey{}
@@ -399,9 +432,8 @@ func (c *Client) key(ctx context.Context, kid string) (*rsa.PublicKey, error) {
 		}
 		keys[k.Kid] = &rsa.PublicKey{N: new(big.Int).SetBytes(n), E: exp}
 	}
-	c.keys, c.keysAt = keys, now
-	if k, ok := keys[kid]; ok {
-		return k, nil
-	}
-	return nil, ErrToken
+	c.mu.Lock()
+	c.keys, c.keysAt = keys, c.cfg.Now()
+	c.mu.Unlock()
+	return keys, nil
 }
