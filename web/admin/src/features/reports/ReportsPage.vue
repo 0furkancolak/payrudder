@@ -5,12 +5,15 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { tenantBase } from "@/shared/lib/session";
+import { useTableState } from "@/shared/lib/useTableState";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Input } from "@/shared/ui/input";
+import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDunningReport, useRevenueReport, useSubscriptionReport } from "./api";
 
@@ -27,16 +30,39 @@ const to = ref("");
 const split = ref<string[]>(["period"]);
 const revenue = useRevenueReport(tenantId, from, to, split);
 const toggle = (g: string) => (split.value = split.value.includes(g) ? split.value.filter((x) => x !== g) : [...split.value, g]);
+type RevenueRow = NonNullable<NonNullable<typeof revenue.data.value>["rows"]>[number];
+const revenueTable = useTableState<RevenueRow>(() => revenue.data.value?.rows ?? [], {
+  searchFields: (r) => [r.period, r.provider, r.country, r.currency],
+  filters: { currency: (r, v) => r.currency === v },
+});
+const revenueCurrency = computed({ get: () => revenueTable.filters.value.currency ?? "", set: (v) => (revenueTable.filters.value.currency = String(v)) });
+const revenueCurrencies = computed(() => [...new Set((revenue.data.value?.rows ?? []).map((r) => r.currency ?? "").filter(Boolean))]);
 const money = (v: string | number | undefined, currency?: string) => fmt.amount(v, currency);
 
 // Subscriptions
 const month = ref("");
 const subSplit = ref<string[]>([]);
 const subs = useSubscriptionReport(tenantId, month, subSplit);
+type SubRow = NonNullable<NonNullable<typeof subs.data.value>["rows"]>[number];
+const subTable = useTableState<SubRow>(() => subs.data.value?.rows ?? [], {
+  searchFields: (r) => [r.provider, r.country, r.currency],
+  filters: { currency: (r, v) => r.currency === v },
+});
+const subCurrency = computed({ get: () => subTable.filters.value.currency ?? "", set: (v) => (subTable.filters.value.currency = String(v)) });
+const subCurrencies = computed(() => [...new Set((subs.data.value?.rows ?? []).map((r) => r.currency ?? "").filter(Boolean))]);
 const toggleSub = (g: string) => (subSplit.value = subSplit.value.includes(g) ? subSplit.value.filter((x) => x !== g) : [...subSplit.value, g]);
 
 // Dunning
 const dunning = useDunningReport(tenantId);
+type DunningRow = NonNullable<NonNullable<typeof dunning.data.value>["invoices"]>[number];
+const dunningTable = useTableState<DunningRow>(() => dunning.data.value?.invoices ?? [], {
+  searchFields: (d) => [d.number, d.invoice_id, d.customer_external_id, d.provider, d.period],
+  filters: { state: (d, v) => d.state === v, currency: (d, v) => d.currency === v },
+});
+const dunningState = computed({ get: () => dunningTable.filters.value.state ?? "", set: (v) => (dunningTable.filters.value.state = String(v)) });
+const dunningCurrency = computed({ get: () => dunningTable.filters.value.currency ?? "", set: (v) => (dunningTable.filters.value.currency = String(v)) });
+const dunningStates = computed(() => [...new Set((dunning.data.value?.invoices ?? []).map((d) => d.state ?? "").filter(Boolean))]);
+const dunningCurrencies = computed(() => [...new Set((dunning.data.value?.invoices ?? []).map((d) => d.currency ?? "").filter(Boolean))]);
 const when = (v?: string) => fmt.date(v, "short", "—");
 </script>
 
@@ -56,6 +82,12 @@ const when = (v?: string) => fmt.date(v, "short", "—");
     </div>
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.revenueHint") }}</p>
     <ErrorText :error="revenue.error.value" class="px-3" />
+    <DataToolbar v-model:search="revenueTable.search.value" :active="revenueTable.active.value" class="pt-3" @clear="revenueTable.clear()">
+      <NativeSelect v-model="revenueCurrency" class="w-36" :aria-label="t('billing.reports.currency')">
+        <option value="">{{ t("billing.reports.currency") }}</option>
+        <option v-for="c in revenueCurrencies" :key="c" :value="c">{{ c }}</option>
+      </NativeSelect>
+    </DataToolbar>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -73,7 +105,7 @@ const when = (v?: string) => fmt.date(v, "short", "—");
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(r, i) in revenue.data.value?.rows ?? []" :key="i">
+        <TableRow v-for="(r, i) in revenueTable.items.value" :key="i">
           <TableCell v-if="split.includes('period')">{{ r.period }}</TableCell>
           <TableCell v-if="split.includes('provider')">{{ r.provider || "—" }}</TableCell>
           <TableCell v-if="split.includes('country')">{{ r.country || "—" }}</TableCell>
@@ -89,6 +121,7 @@ const when = (v?: string) => fmt.date(v, "short", "—");
       </TableBody>
     </Table>
     <p v-if="!revenue.isPending.value && (revenue.data.value?.rows ?? []).length === 0 && !revenue.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.reports.empty") }}</p>
+    <DataPagination v-model:page="revenueTable.page.value" v-model:size="revenueTable.size.value" :pages="revenueTable.pages.value" :total="revenueTable.total.value" />
   </Card>
 
   <Card v-else-if="tab === 'subscriptions'" class="p-3">
@@ -101,6 +134,12 @@ const when = (v?: string) => fmt.date(v, "short", "—");
     </div>
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.subscriptionsHint") }}</p>
     <ErrorText :error="subs.error.value" class="px-3" />
+    <DataToolbar v-model:search="subTable.search.value" :active="subTable.active.value" class="pt-3" @clear="subTable.clear()">
+      <NativeSelect v-model="subCurrency" class="w-36" :aria-label="t('billing.reports.currency')">
+        <option value="">{{ t("billing.reports.currency") }}</option>
+        <option v-for="c in subCurrencies" :key="c" :value="c">{{ c }}</option>
+      </NativeSelect>
+    </DataToolbar>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -117,7 +156,7 @@ const when = (v?: string) => fmt.date(v, "short", "—");
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(r, i) in subs.data.value?.rows ?? []" :key="i">
+        <TableRow v-for="(r, i) in subTable.items.value" :key="i">
           <TableCell v-if="subSplit.includes('provider')">{{ r.provider || "—" }}</TableCell>
           <TableCell v-if="subSplit.includes('country')">{{ r.country || "—" }}</TableCell>
           <TableCell class="font-medium">{{ r.currency }}</TableCell>
@@ -132,6 +171,7 @@ const when = (v?: string) => fmt.date(v, "short", "—");
       </TableBody>
     </Table>
     <p v-if="!subs.isPending.value && (subs.data.value?.rows ?? []).length === 0 && !subs.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.reports.empty") }}</p>
+    <DataPagination v-model:page="subTable.page.value" v-model:size="subTable.size.value" :pages="subTable.pages.value" :total="subTable.total.value" />
   </Card>
 
   <Card v-else class="p-3">
@@ -143,6 +183,16 @@ const when = (v?: string) => fmt.date(v, "short", "—");
         <Badge variant="secondary">{{ label(t, te, "dunningState", s.state) }} · {{ s.provider || "—" }} · {{ s.currency }}: {{ s.invoices }} · {{ money(s.total_minor, s.currency) }}</Badge>
       </li>
     </ul>
+    <DataToolbar v-model:search="dunningTable.search.value" :active="dunningTable.active.value" class="pt-3" @clear="dunningTable.clear()">
+      <NativeSelect v-model="dunningState" class="w-44" :aria-label="t('billing.reports.state')">
+        <option value="">{{ t("billing.reports.state") }}</option>
+        <option v-for="x in dunningStates" :key="x" :value="x">{{ label(t, te, "dunningState", x) }}</option>
+      </NativeSelect>
+      <NativeSelect v-model="dunningCurrency" class="w-36" :aria-label="t('billing.reports.currency')">
+        <option value="">{{ t("billing.reports.currency") }}</option>
+        <option v-for="c in dunningCurrencies" :key="c" :value="c">{{ c }}</option>
+      </NativeSelect>
+    </DataToolbar>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -157,7 +207,7 @@ const when = (v?: string) => fmt.date(v, "short", "—");
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="d in dunning.data.value?.invoices ?? []" :key="d.invoice_id">
+        <TableRow v-for="d in dunningTable.items.value" :key="d.invoice_id">
           <TableCell><Link :to="`${tenantBase()}/$id/invoices/$invoiceId`" :params="{ id: tenantId, invoiceId: d.invoice_id ?? '' }" class="font-medium hover:underline">{{ d.number || d.invoice_id?.slice(0, 8) }}</Link></TableCell>
           <TableCell>{{ d.customer_external_id }}</TableCell>
           <TableCell>{{ d.period }}</TableCell>
@@ -170,5 +220,6 @@ const when = (v?: string) => fmt.date(v, "short", "—");
       </TableBody>
     </Table>
     <p v-if="!dunning.isPending.value && (dunning.data.value?.invoices ?? []).length === 0 && !dunning.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.reports.noDunning") }}</p>
+    <DataPagination v-model:page="dunningTable.page.value" v-model:size="dunningTable.size.value" :pages="dunningTable.pages.value" :total="dunningTable.total.value" />
   </Card>
 </template>

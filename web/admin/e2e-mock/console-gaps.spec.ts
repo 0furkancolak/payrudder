@@ -43,16 +43,17 @@ test.describe("apps", () => {
     await openTenantPage(page, "/apps");
     await expect(page.getByRole("row", { name: /Default/ })).toContainText("default");
 
+    await page.getByTestId("apps-new").click();
     const form = page.getByRole("form", { name: "new app" });
     await form.getByLabel("App name").fill("Web shop");
     await form.getByLabel("Slug").fill("Web Shop");
     await expect(page.getByRole("alert")).toContainText("lower-case letters");
-    await expect(form.getByRole("button", { name: "Create app" })).toBeDisabled();
+    await expect(page.getByRole("dialog").getByRole("button", { name: "Create app" })).toBeDisabled();
     await form.getByLabel("Slug").fill("web-shop");
     await pickCurrency(form.getByLabel("Currency"), "EUR");
     await pickZone(form.getByLabel("Time zone"), "Europe/Berlin");
     await form.getByLabel("Grace period (hours)").fill("48");
-    await form.getByRole("button", { name: "Create app" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Create app" }).click();
     await expect(page.getByRole("row", { name: /Web shop/ })).toContainText("web-shop");
     expect(gw.called("POST", `/admin/v1/accounts/${ACCOUNT}/apps`)[0]?.body).toEqual({ name: "Web shop", slug: "web-shop", currency: "EUR", timezone: "Europe/Berlin", grace_period: "172800s" });
 
@@ -95,7 +96,8 @@ test.describe("seller address", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/address");
-    const form = page.getByRole("form", { name: "seller address" });
+    await page.getByRole("button", { name: "Edit address" }).click();
+    const form = page.getByRole("dialog");
     const preview = page.getByTestId("invoice-preview");
     await expect(form.getByLabel("Address line 1")).toHaveValue("Atatürk Cd. 1");
     await expect(preview).toContainText("Acme");
@@ -135,6 +137,7 @@ test.describe("seller address", () => {
     await gw.install(page);
     await openTenantPage(page, "/address");
     await inLanguage(page, "tr");
+    await page.getByRole("button", { name: "Adresi düzenle" }).click();
     await page.getByLabel("Şehir").fill("Ankara");
     await page.getByRole("button", { name: "Adresi kaydet" }).click();
     await expect(page.getByRole("alert")).toHaveText("İstekteki bir şey geçerli değil.");
@@ -150,11 +153,12 @@ test.describe("translated error keys", () => {
         : undefined;
 
   async function createCustomer(page: Page, name: string, button: string, id: string, mail: string) {
+    await page.getByTestId("customers-new").click();
     const form = page.getByRole("form");
     await form.getByLabel(id, { exact: true }).fill("cus_1");
     await form.getByLabel(name, { exact: true }).fill("Ada");
     await form.getByLabel(mail).fill("ada@example.com");
-    await form.getByRole("button", { name: button }).click();
+    await page.getByRole("dialog").getByRole("button", { name: button }).click();
   }
 
   test("a known key is shown in the language of the console, not the server's English", async ({ page }) => {

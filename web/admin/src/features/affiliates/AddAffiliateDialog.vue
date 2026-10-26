@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -49,13 +49,14 @@ function submit() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ t("affiliates.add.title") }}</DialogTitle>
-        <DialogDescription>{{ t("affiliates.add.hint") }}</DialogDescription>
-      </DialogHeader>
-      <form class="grid gap-3" @submit.prevent="submit">
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ t("affiliates.add.title") }}</SheetTitle>
+        <SheetDescription>{{ t("affiliates.add.hint") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+      <form id="af-add" class="grid gap-3" @submit.prevent="submit">
         <div class="grid gap-1.5">
           <Label for="af-email">{{ t("affiliates.add.email") }}</Label>
           <Input id="af-email" v-model="email" type="email" inputmode="email" autocomplete="off" required dir="ltr" />
@@ -86,11 +87,12 @@ function submit() {
           <Label for="af-pending">{{ t("affiliates.add.pending") }}</Label>
         </div>
         <ErrorText :error="create.error.value" />
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.cancel") }}</Button>
-          <Button type="submit" :disabled="create.isPending.value">{{ t("affiliates.add.submit") }}</Button>
-        </DialogFooter>
       </form>
-    </DialogContent>
-  </Dialog>
+      </SheetBody>
+      <SheetFooter>
+          <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.cancel") }}</Button>
+          <Button type="submit" form="af-add" :disabled="create.isPending.value">{{ t("affiliates.add.submit") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

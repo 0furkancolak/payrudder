@@ -9,12 +9,13 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { useTableState } from "@/shared/lib/useTableState";
+import EInvoiceAccountSheet from "./EInvoiceAccountSheet.vue";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEInvoiceAccountActions, useEInvoiceAccounts, useSaveEInvoiceSettings, type EInvoiceOn, type LegalInfo } from "./api";
 import type { Environment } from "@/shared/lib/environment";
-
-type Provider = "mock" | "nilvera" | "webhook";
 
 const { t } = useI18n();
 const fmt = useFormat();
@@ -42,30 +43,13 @@ function saveSettings() {
 // --- the integrator account
 const accounts = useEInvoiceAccounts(tenantId);
 const actions = useEInvoiceAccountActions(tenantId);
-const environment = ref<Environment>("live");
-const provider = ref<Provider>("nilvera");
-const mode = ref<"test" | "production">("test");
-const apiKey = ref("");
-const baseUrl = ref("");
-const hookUrl = ref("");
-const hookSecret = ref("");
-/** The sandbox only reaches the mock; a live account may be any integrator. */
-const providers = computed<Provider[]>(() => (environment.value === "sandbox" ? ["mock"] : ["nilvera", "webhook", "mock"]));
-watch(environment, (e) => {
-  if (e === "sandbox") provider.value = "mock";
-  else if (provider.value === "mock") provider.value = "nilvera";
+const accountOpen = ref(false);
+const list = computed(() => accounts.data.value ?? []);
+const table = useTableState(list, {
+  searchFields: (a) => [a.provider, a.environment],
+  filters: { environment: (a, v) => a.environment === v },
 });
-function credentials(): Record<string, string> {
-  if (provider.value === "nilvera") return { api_key: apiKey.value.trim(), ...(baseUrl.value.trim() ? { base_url: baseUrl.value.trim() } : {}) };
-  if (provider.value === "webhook") return { url: hookUrl.value.trim(), secret: hookSecret.value };
-  return {};
-}
-function saveAccount() {
-  actions.save.mutate(
-    { environment: environment.value, provider: provider.value, mode: mode.value, credentials: credentials() },
-    { onSuccess: () => (apiKey.value = hookSecret.value = "") },
-  );
-}
+const environmentFilter = computed({ get: () => table.filters.value.environment ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, environment: v }) });
 function removeAccount(env: Environment, p: string) {
   if (window.confirm(t("einvoice.settings.confirmRemove", { provider: p, environment: env }))) actions.remove.mutate(env);
 }
@@ -95,10 +79,23 @@ const when = (v?: string) => fmt.date(v, "day", "—");
   </Card>
 
   <Card class="mb-6">
-    <h2 class="text-lg font-semibold">{{ t("einvoice.account.title") }}</h2>
-    <p class="text-muted-foreground text-sm">{{ t("einvoice.account.hint") }}</p>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-semibold">{{ t("einvoice.account.title") }}</h2>
+        <p class="text-muted-foreground text-sm">{{ t("einvoice.account.hint") }}</p>
+      </div>
+      <Button type="button" @click="accountOpen = true">{{ t("einvoice.account.add") }}</Button>
+    </div>
     <ErrorText :error="accounts.error.value" />
-    <Table>
+    <DataToolbar v-if="list.length" v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <NativeSelect v-model="environmentFilter" class="w-40" :aria-label="t('einvoice.account.environment')">
+        <option value="">{{ t("einvoice.account.environment") }}</option>
+        <option value="live">live</option>
+        <option value="sandbox">sandbox</option>
+      </NativeSelect>
+    </DataToolbar>
+    <p v-if="list.length && !table.total.value" class="text-muted-foreground text-sm">{{ t("common.noMatches") }}</p>
+    <Table v-else-if="list.length">
       <TableHeader>
         <TableRow class="hover:bg-transparent">
           <TableHead>{{ t("einvoice.account.provider") }}</TableHead>
@@ -110,7 +107,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="a in accounts.data.value ?? []" :key="a.environment" data-testid="einvoice-account">
+        <TableRow v-for="a in table.items.value" :key="a.environment" data-testid="einvoice-account">
           <TableCell class="font-medium">{{ a.provider }}</TableCell>
           <TableCell>{{ a.environment }}</TableCell>
           <TableCell>{{ a.mode ? t(`einvoice.account.modes.${a.mode}`) : "—" }}</TableCell>
@@ -120,37 +117,11 @@ const when = (v?: string) => fmt.date(v, "day", "—");
         </TableRow>
       </TableBody>
     </Table>
+    <DataPagination v-if="list.length" v-model:size="table.size.value" :page="table.current.value" :pages="table.pages.value" :total="table.total.value" @update:page="table.page.value = $event" />
     <p v-if="!accounts.isPending.value && (accounts.data.value ?? []).length === 0" class="text-muted-foreground text-center text-sm">{{ t("einvoice.account.empty") }}</p>
 
-    <form class="grid gap-3" role="form" :aria-label="t('einvoice.account.formLabel')" @submit.prevent="saveAccount">
-      <h3 class="pt-2 text-base font-semibold">{{ t("einvoice.account.add") }}</h3>
-      <div class="grid gap-3 sm:grid-cols-3">
-        <NativeSelect v-model="environment" :aria-label="t('einvoice.account.environment')">
-          <option value="live">live</option>
-          <option value="sandbox">sandbox</option>
-        </NativeSelect>
-        <NativeSelect v-model="provider" :aria-label="t('einvoice.account.provider')">
-          <option v-for="p in providers" :key="p" :value="p">{{ p }}</option>
-        </NativeSelect>
-        <NativeSelect v-model="mode" :aria-label="t('einvoice.account.mode')">
-          <option value="test">{{ t("einvoice.account.modes.test") }}</option>
-          <option value="production">{{ t("einvoice.account.modes.production") }}</option>
-        </NativeSelect>
-      </div>
-      <p v-if="environment === 'sandbox'" class="text-muted-foreground text-xs">{{ t("einvoice.account.sandboxHint") }}</p>
-      <div v-if="provider === 'nilvera'" class="grid gap-3 sm:grid-cols-2">
-        <Input v-model="apiKey" type="password" autocomplete="off" :aria-label="t('einvoice.account.apiKey')" :placeholder="t('einvoice.account.apiKey')" required />
-        <Input v-model="baseUrl" type="url" :aria-label="t('einvoice.account.baseUrl')" :placeholder="t('einvoice.account.baseUrl')" />
-      </div>
-      <div v-else-if="provider === 'webhook'" class="grid gap-3 sm:grid-cols-2">
-        <Input v-model="hookUrl" type="url" :aria-label="t('einvoice.account.webhookUrl')" :placeholder="t('einvoice.account.webhookUrl')" required />
-        <Input v-model="hookSecret" type="password" autocomplete="off" :aria-label="t('einvoice.account.webhookSecret')" :placeholder="t('einvoice.account.webhookSecret')" required />
-      </div>
-      <p v-if="provider !== 'mock'" class="text-muted-foreground text-xs">{{ t("einvoice.account.neverShown") }}</p>
-      <div><Button type="submit" :disabled="actions.save.isPending.value">{{ t("einvoice.account.save") }}</Button></div>
-    </form>
-    <ErrorText :error="actions.save.error.value" />
     <ErrorText :error="actions.remove.error.value" />
-    <p v-if="actions.save.isSuccess.value" class="text-success text-sm" role="status">{{ t("einvoice.account.saved") }}</p>
   </Card>
+
+  <EInvoiceAccountSheet v-model:open="accountOpen" :tenant-id="tenantId" />
 </template>

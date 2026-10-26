@@ -23,7 +23,8 @@ test.describe("credits", () => {
     await openTenantPage(page, "/credits");
     await expect(page.getByRole("row", { name: /Starter/ })).toContainText("$5.00");
 
-    const form = page.getByRole("form", { name: "new credit pack" });
+    await page.getByRole("button", { name: "Add pack" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Pack name").fill("Team");
     await form.getByLabel("Credits", { exact: true }).fill("10000");
     await form.getByLabel("Price").fill("39,90");
@@ -58,7 +59,8 @@ test.describe("credits", () => {
     await expect(page.getByRole("row", { name: /Promotion/ })).toContainText("Never");
     await expect(page.getByRole("row", { name: /Spent/ })).toContainText("-120");
 
-    const form = page.getByRole("form", { name: "Add credits" });
+    await page.getByRole("button", { name: "Add credits" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Credits to add").fill("50");
     await form.getByLabel("Note (optional)").fill("launch gift");
     await form.getByRole("button", { name: "Add credits" }).click();
@@ -86,12 +88,16 @@ test.describe("credits", () => {
     await gw.install(page);
     await openTenantPage(page, "/credits");
     await page.getByLabel("Choose a customer").selectOption("cus_1");
-    const form = page.getByRole("form", { name: "Add credits" });
+    await page.getByRole("button", { name: "Add credits" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Credits to add").fill("50");
     await form.getByRole("button", { name: "Add credits" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
     await form.getByRole("button", { name: "Add credits" }).click();
     await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/credits/grant").length).toBe(2);
+    // A grant that went through closes the sheet; it opens clean for the next one.
+    await expect(form).toHaveCount(0);
+    await page.getByRole("button", { name: "Add credits" }).click();
     await expect(form.getByLabel("Credits to add")).toHaveValue("");
     await form.getByLabel("Credits to add").fill("10");
     await form.getByRole("button", { name: "Add credits" }).click();
@@ -110,7 +116,8 @@ test.describe("credits", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/credits");
-    const form = page.getByRole("form", { name: "new credit pack" });
+    await page.getByRole("button", { name: "Add pack" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Pack name").fill("Odd");
     await form.getByLabel("Credits", { exact: true }).fill("5");
     await form.getByLabel("Price").fill("1");

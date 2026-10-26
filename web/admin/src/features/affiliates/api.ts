@@ -54,14 +54,14 @@ export interface AffiliateFilter {
   search: string;
 }
 
-export function useAffiliates(tenantId: Id, filter: MaybeRefOrGetter<AffiliateFilter>, pageToken: Id) {
+export function useAffiliates(tenantId: Id, filter: MaybeRefOrGetter<AffiliateFilter>, pageToken: Id, pageSize: MaybeRefOrGetter<number> = PAGE.paged) {
   return useQuery({
-    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "list", toValue(filter), toValue(pageToken)]),
+    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "list", toValue(filter), toValue(pageToken), toValue(pageSize)]),
     queryFn: async (): Promise<Page<Affiliate>> => {
       const f = toValue(filter);
       const r = await unwrap(
         tenantApi(tid(tenantId)).GET("/v1/affiliates", {
-          params: { query: clean({ status: f.status as "active", search: f.search.trim(), page_size: PAGE.paged, page_token: toValue(pageToken) }) },
+          params: { query: clean({ status: f.status as "active", search: f.search.trim(), page_size: toValue(pageSize), page_token: toValue(pageToken) }) },
         }),
       );
       return { items: (r.affiliates ?? []) as Affiliate[], next: r.next_page_token ?? "", total: r.total ?? 0 };
@@ -115,13 +115,13 @@ export function useLinkPromotionCode(tenantId: Id) {
   });
 }
 
-export function useReferrals(tenantId: Id, affiliateId: Id, pageToken: Id) {
+export function useReferrals(tenantId: Id, affiliateId: Id, pageToken: Id, pageSize: MaybeRefOrGetter<number> = PAGE.paged) {
   return useQuery({
-    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "referrals", toValue(affiliateId), toValue(pageToken)]),
+    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "referrals", toValue(affiliateId), toValue(pageToken), toValue(pageSize)]),
     enabled: computed(() => toValue(affiliateId) !== ""),
     queryFn: async (): Promise<Page<Referral>> => {
       const r = await unwrap(
-        tenantApi(tid(tenantId)).GET("/v1/affiliates/referrals", { params: { query: clean({ affiliate_id: toValue(affiliateId), page_size: PAGE.paged, page_token: toValue(pageToken) }) } }),
+        tenantApi(tid(tenantId)).GET("/v1/affiliates/referrals", { params: { query: clean({ affiliate_id: toValue(affiliateId), page_size: toValue(pageSize), page_token: toValue(pageToken) }) } }),
       );
       return { items: r.referrals ?? [], next: r.next_page_token ?? "", total: r.total ?? 0 };
     },
@@ -142,14 +142,14 @@ export interface CommissionFilter {
 
 export const NO_COMMISSION_FILTER: CommissionFilter = { affiliate_id: "", status: "", kind: "", payout_id: "", from: "", to: "" };
 
-export function useCommissions(tenantId: Id, filter: MaybeRefOrGetter<CommissionFilter>, pageToken: Id) {
+export function useCommissions(tenantId: Id, filter: MaybeRefOrGetter<CommissionFilter>, pageToken: Id, pageSize: MaybeRefOrGetter<number> = PAGE.paged) {
   return useQuery({
-    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "commissions", toValue(filter), toValue(pageToken)]),
+    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "commissions", toValue(filter), toValue(pageToken), toValue(pageSize)]),
     queryFn: async (): Promise<Page<Commission>> => {
       const f = toValue(filter);
       const r = await unwrap(
         tenantApi(tid(tenantId)).GET("/v1/affiliates/commissions", {
-          params: { query: clean({ affiliate_id: f.affiliate_id, status: f.status as "paid", kind: f.kind as "commission", payout_id: f.payout_id, from: f.from, to: f.to, page_size: PAGE.paged, page_token: toValue(pageToken) }) },
+          params: { query: clean({ affiliate_id: f.affiliate_id, status: f.status as "paid", kind: f.kind as "commission", payout_id: f.payout_id, from: f.from, to: f.to, page_size: toValue(pageSize), page_token: toValue(pageToken) }) },
         }),
       );
       return { items: r.commissions ?? [], next: r.next_page_token ?? "", total: r.total ?? 0 };
@@ -189,12 +189,12 @@ export function useFunnel(tenantId: Id, from: Id, to: Id, enabled: MaybeRefOrGet
 
 // --- payouts
 
-export function usePayouts(tenantId: Id, status: Id, pageToken: Id) {
+export function usePayouts(tenantId: Id, status: Id, pageToken: Id, pageSize: MaybeRefOrGetter<number> = PAGE.paged) {
   return useQuery({
-    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "payouts", toValue(status), toValue(pageToken)]),
+    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "payouts", toValue(status), toValue(pageToken), toValue(pageSize)]),
     queryFn: async (): Promise<Page<Payout>> => {
       const r = await unwrap(
-        tenantApi(tid(tenantId)).GET("/v1/affiliates/payouts", { params: { query: clean({ status: toValue(status) as "open", page_size: PAGE.paged, page_token: toValue(pageToken) }) } }),
+        tenantApi(tid(tenantId)).GET("/v1/affiliates/payouts", { params: { query: clean({ status: toValue(status) as "open", page_size: toValue(pageSize), page_token: toValue(pageToken) }) } }),
       );
       return { items: r.payouts ?? [], next: r.next_page_token ?? "", total: r.total ?? 0 };
     },
@@ -228,13 +228,13 @@ export interface JournalFilter {
   to: string;
 }
 
-export function useJournal(tenantId: Id, filter: MaybeRefOrGetter<JournalFilter>, pageToken: Id) {
+export function useJournal(tenantId: Id, filter: MaybeRefOrGetter<JournalFilter>, pageToken: Id, pageSize: MaybeRefOrGetter<number> = PAGE.paged) {
   return useQuery({
-    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "journal", toValue(filter), toValue(pageToken)]),
+    queryKey: computed(() => [...affiliateKeys.all(tid(tenantId)), "journal", toValue(filter), toValue(pageToken), toValue(pageSize)]),
     queryFn: async () => {
       const f = toValue(filter);
       const r = await unwrap(
-        tenantApi(tid(tenantId)).GET("/v1/affiliates/journal", { params: { query: clean({ currency: f.currency, from: f.from, to: f.to, page_size: PAGE.paged, page_token: toValue(pageToken) }) } }),
+        tenantApi(tid(tenantId)).GET("/v1/affiliates/journal", { params: { query: clean({ currency: f.currency, from: f.from, to: f.to, page_size: toValue(pageSize), page_token: toValue(pageToken) }) } }),
       );
       return { items: (r.entries ?? []) as JournalEntry[], next: r.next_page_token ?? "", total: r.total ?? 0, totals: r.totals ?? [] };
     },

@@ -112,7 +112,10 @@
       "currency": "Currency",
       "timezone": "Time zone",
       "id": "Id"
-    }
+    },
+    "allEnvironments": "All environments",
+    "allTiers": "All tiers",
+    "allCurrencies": "All currencies"
   },
   "tenant": {
     "fallbackTitle": "Tenant",
@@ -366,7 +369,9 @@
         "save": "Save address",
         "cancel": "Cancel",
         "editing": "Address of {id}"
-      }
+      },
+      "allCountries": "All countries",
+      "allCurrencies": "All currencies"
     },
     "packages": {
       "new": "New package",
@@ -483,7 +488,9 @@
       },
       "endNowCredit": "End now and credit the unused part",
       "confirmEndCredit": "End this subscription now and credit the customer with the unused part of the fee they paid in advance?",
-      "credited": "Credited {amount} to the customer's balance."
+      "credited": "Credited {amount} to the customer's balance.",
+      "allStates": "All statuses",
+      "allCurrencies": "All currencies"
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",
@@ -791,7 +798,9 @@
       "refunded": "Refunded to the card",
       "refundRequested": "Refund requested",
       "refundFailed": "Refund failed",
-      "retryRefund": "Retry refund"
+      "retryRefund": "Retry refund",
+      "new": "New credit note",
+      "hint": "Credits a paid invoice in full or in part. The credit goes to the customer's balance, or back to the card."
     },
     "webhooks": {
       "title": "Webhooks",
@@ -827,7 +836,8 @@
         "pending": "Pending",
         "delivered": "Delivered",
         "failed": "Failed"
-      }
+      },
+      "allStatuses": "All statuses"
     },
     "paymentLinks": {
       "title": "Payment links",
@@ -1661,7 +1671,8 @@
       "revokeById": "Revoke by id",
       "confirmRevoke": "Revoke this API key? Requests using it stop working immediately.",
       "revokedDone": "Key {id} revoked."
-    }
+    },
+    "allEnvironments": "All environments"
   },
   "address": {
     "title": "Seller address",
@@ -1697,7 +1708,8 @@
       "hint": "How the seller appears on an invoice.",
       "from": "From",
       "empty": "No address: the invoice shows only the name."
-    }
+    },
+    "edit": "Edit address"
   },
   "errors": {
     "billing": {
@@ -2577,7 +2589,9 @@
       "when": "When",
       "status": "Status",
       "provider": "Provider",
-      "amount": "Amount"
+      "amount": "Amount",
+      "allStatuses": "All statuses",
+      "allKinds": "All kinds"
     },
     "invoices": {
       "title": "Recent invoices",
@@ -2644,7 +2658,11 @@
       "overlapHours": "{n} hours",
       "lastUsed": "last used {date}",
       "neverUsed": "never used",
-      "ends": "Stops working on {date}"
+      "ends": "Stops working on {date}",
+      "filterEnv": "Environment",
+      "allEnvs": "All environments",
+      "filterStatus": "Status",
+      "allStatuses": "All statuses"
     },
     "links": {
       "title": "Go deeper",
@@ -2736,7 +2754,8 @@
       "leaveTitle": "Leave this account?",
       "leaveBody": "You lose access to its apps and data at once. An owner can invite you again.",
       "removeTitle": "Remove this member?",
-      "removeBody": "{name} loses access to this account's apps and data at once."
+      "removeBody": "{name} loses access to this account's apps and data at once.",
+      "allRoles": "All roles"
     },
     "account": {
       "switch": "Account",

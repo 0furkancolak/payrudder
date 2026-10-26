@@ -3,6 +3,8 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { PROVIDERS } from "@/shared/lib/currencies";
 import { usePackages } from "@/features/packages";
+import { useTableState } from "@/shared/lib/useTableState";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -22,6 +24,13 @@ const plan = ref("");
 const catalogue = useCatalogue(tenantId, provider, environment);
 const sync = useSyncCatalogue(tenantId, provider, environment);
 const summary = computed(() => sync.data.value);
+type Obj = NonNullable<NonNullable<typeof catalogue.data.value>["objects"]>[number];
+const table = useTableState<Obj>(() => catalogue.data.value?.objects ?? [], {
+  searchFields: (o) => [o.kind, o.key, o.ref],
+  filters: { kind: (o, v) => o.kind === v },
+});
+const kindFilter = computed({ get: () => table.filters.value.kind ?? "", set: (v) => (table.filters.value.kind = String(v)) });
+const kinds = computed(() => [...new Set((catalogue.data.value?.objects ?? []).map((o) => o.kind ?? "").filter(Boolean))]);
 const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
 </script>
 
@@ -49,6 +58,12 @@ const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
       <p>{{ t("billing.providers.catalogue.result", { created: Object.keys(summary.created ?? {}).length, existing: Object.keys(summary.existing ?? {}).length }) }}</p>
       <p v-for="[key, why] in skipped" :key="key" class="text-muted-foreground">{{ t("billing.providers.catalogue.skipped", { key, why }) }}</p>
     </div>
+    <DataToolbar v-if="(catalogue.data.value?.objects ?? []).length > 0" v-model:search="table.search.value" :active="table.active.value" class="px-0" @clear="table.clear()">
+      <NativeSelect v-model="kindFilter" class="w-40" :aria-label="t('billing.providers.catalogue.kind')">
+        <option value="">{{ t("billing.providers.catalogue.kind") }}</option>
+        <option v-for="k in kinds" :key="k" :value="k">{{ k }}</option>
+      </NativeSelect>
+    </DataToolbar>
     <Table v-if="(catalogue.data.value?.objects ?? []).length > 0">
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -58,13 +73,14 @@ const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="o in catalogue.data.value?.objects ?? []" :key="`${o.kind}-${o.key}`">
+        <TableRow v-for="o in table.items.value" :key="`${o.kind}-${o.key}`">
           <TableCell><Badge variant="secondary">{{ o.kind }}</Badge></TableCell>
           <TableCell class="mono text-xs">{{ o.key }}</TableCell>
           <TableCell class="mono text-xs">{{ o.ref }}</TableCell>
         </TableRow>
       </TableBody>
     </Table>
+    <DataPagination v-if="(catalogue.data.value?.objects ?? []).length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
     <p v-else-if="provider !== '' && !catalogue.isPending.value" class="text-muted-foreground text-sm">{{ t("billing.providers.catalogue.empty") }}</p>
   </Card>
 </template>

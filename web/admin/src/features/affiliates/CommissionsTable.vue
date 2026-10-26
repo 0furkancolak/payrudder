@@ -13,7 +13,7 @@ import { StatusPill } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useAffiliateOptions, useCommissions, type CommissionFilter } from "./api";
 import { commissionTone, dayEnd, dayStart, isReversal, type Commission } from "./logic";
-import Pager from "./Pager.vue";
+import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "./paging";
 import ReverseDialog from "./ReverseDialog.vue";
 
@@ -45,7 +45,7 @@ const pager = usePager();
 watch(filter, () => pager.reset());
 
 const options = useAffiliateOptions(tenantId);
-const list = useCommissions(tenantId, filter, pager.token);
+const list = useCommissions(tenantId, filter, pager.token, pager.size);
 
 const reversing = ref<Commission | null>(null);
 const reverseOpen = ref(false);
@@ -126,7 +126,7 @@ const canReverse = (c: Commission) => !isReversal(c) && c.status !== "reversed" 
         </TableRow>
       </TableBody>
     </Table>
-    <Pager v-if="list.data.value" :has-prev="pager.hasPrev.value" :next="list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
+    <DataPagination v-if="list.data.value" v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
   </Card>
   <ReverseDialog v-model:open="reverseOpen" :tenant-id="tenantId" :commission="reversing" />
 </template>

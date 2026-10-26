@@ -15,7 +15,7 @@ import { useAffiliateOptions, useCancelPayout, useCreatePayouts, usePayouts } fr
 import CommissionsTable from "./CommissionsTable.vue";
 import { payoutTone, type Payout } from "./logic";
 import MarkPaidDialog from "./MarkPaidDialog.vue";
-import Pager from "./Pager.vue";
+import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "./paging";
 
 const props = defineProps<{ tenantId: string; focus?: string }>();
@@ -27,7 +27,7 @@ const tenantId = computed(() => props.tenantId);
 const status = ref("");
 const pager = usePager();
 watch(status, () => pager.reset());
-const list = usePayouts(tenantId, status, pager.token);
+const list = usePayouts(tenantId, status, pager.token, pager.size);
 const options = useAffiliateOptions(tenantId);
 const codeOf = (id: string | undefined) => (options.data.value ?? []).find((a) => a.id === id)?.code ?? (id ?? "").slice(0, 8);
 
@@ -134,7 +134,7 @@ function createAll() {
         </TableRow>
       </TableBody>
     </Table>
-    <Pager v-if="list.data.value" :has-prev="pager.hasPrev.value" :next="list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
+    <DataPagination v-if="list.data.value" v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
   </Card>
 
   <section v-if="shown" :aria-label="t('affiliates.payouts.commissionsOf', { code: shownPayout?.affiliate_code ?? shown.slice(0, 8) })" class="flex flex-col gap-3">

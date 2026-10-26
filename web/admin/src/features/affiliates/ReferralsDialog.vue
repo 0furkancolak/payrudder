@@ -9,7 +9,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useReferrals } from "./api";
 import type { Affiliate } from "./logic";
-import Pager from "./Pager.vue";
+import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "./paging";
 
 /** The customers one partner brought. The e-mail address comes masked from the API (j***@example.com). */
@@ -20,7 +20,7 @@ const fmt = useFormat();
 const pager = usePager();
 const id = computed(() => (open.value ? (props.affiliate?.id ?? "") : ""));
 watch(id, () => pager.reset());
-const referrals = useReferrals(() => props.tenantId, id, pager.token);
+const referrals = useReferrals(() => props.tenantId, id, pager.token, pager.size);
 </script>
 
 <template>
@@ -51,7 +51,7 @@ const referrals = useReferrals(() => props.tenantId, id, pager.token);
           </TableRow>
         </TableBody>
       </Table>
-      <Pager v-if="referrals.data.value" :has-prev="pager.hasPrev.value" :next="referrals.data.value.next" :total="referrals.data.value.total" @prev="pager.prev()" @next="pager.next(referrals.data.value.next)" />
+      <DataPagination v-if="referrals.data.value" v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!referrals.data.value.next" :total="referrals.data.value.total" @prev="pager.prev()" @next="pager.next(referrals.data.value.next)" />
       <DialogFooter>
         <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.close") }}</Button>
       </DialogFooter>

@@ -6,10 +6,10 @@ import type { Currency } from "@/shared/lib/currencies";
 import { ownZone } from "@/shared/lib/intl";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useCreateApp } from "./api";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
@@ -46,34 +46,36 @@ function submit() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent class="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{{ t("product.createApp.title") }}</DialogTitle>
-        <DialogDescription>{{ t("product.createApp.intro") }}</DialogDescription>
-      </DialogHeader>
-      <form id="create-app" class="flex flex-col gap-4" @submit.prevent="submit">
-        <div class="flex flex-col gap-1.5">
-          <Label for="ca-name">{{ t("product.createApp.name") }}</Label>
-          <Input id="ca-name" v-model="name" autocomplete="off" required />
-        </div>
-        <div class="grid gap-4">
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ t("product.createApp.title") }}</SheetTitle>
+        <SheetDescription>{{ t("product.createApp.intro") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+        <form id="create-app" class="flex flex-col gap-4" @submit.prevent="submit">
           <div class="flex flex-col gap-1.5">
-            <Label for="ca-currency">{{ t("product.createApp.currency") }}</Label>
-            <CurrencySelect id="ca-currency" v-model="currency" :aria-label="t('product.createApp.currency')" />
+            <Label for="ca-name">{{ t("product.createApp.name") }}</Label>
+            <Input id="ca-name" v-model="name" autocomplete="off" required />
           </div>
-          <div class="flex flex-col gap-1.5">
-            <Label for="ca-tz">{{ t("product.createApp.timezone") }}</Label>
-            <TimezoneSelect id="ca-tz" v-model="timezone" :aria-label="t('product.createApp.timezone')" />
+          <div class="grid gap-4">
+            <div class="flex flex-col gap-1.5">
+              <Label for="ca-currency">{{ t("product.createApp.currency") }}</Label>
+              <CurrencySelect id="ca-currency" v-model="currency" :aria-label="t('product.createApp.currency')" />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label for="ca-tz">{{ t("product.createApp.timezone") }}</Label>
+              <TimezoneSelect id="ca-tz" v-model="timezone" :aria-label="t('product.createApp.timezone')" />
+            </div>
           </div>
-        </div>
-        <p class="text-muted-foreground text-xs">{{ t("product.createApp.immutable") }}</p>
-        <ErrorText :error="create.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
-      </form>
-      <DialogFooter>
+          <p class="text-muted-foreground text-xs">{{ t("product.createApp.immutable") }}</p>
+          <ErrorText :error="create.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+        </form>
+      </SheetBody>
+      <SheetFooter>
         <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
         <Button type="submit" form="create-app" :disabled="create.isPending.value || !ready">{{ t("product.createApp.submit") }}</Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

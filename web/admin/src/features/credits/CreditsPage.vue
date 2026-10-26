@@ -16,7 +16,7 @@ const customer = ref("");
 
 <template>
   <CreditPacksCard :tenant-id="tenantId" @purchase-link="linkPack = $event" />
-  <PurchaseLinkCard v-if="linkPack" :key="linkPack.id" :tenant-id="tenantId" :pack="linkPack" @close="linkPack = null" />
+  <PurchaseLinkCard :tenant-id="tenantId" :pack="linkPack" @close="linkPack = null" />
   <LowBalanceCard :tenant-id="tenantId" />
   <CustomerCreditsCard v-model:customer="customer" :tenant-id="tenantId" />
   <LedgerCard v-if="customer" :tenant-id="tenantId" :customer="customer" />

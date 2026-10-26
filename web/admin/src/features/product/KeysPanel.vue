@@ -9,6 +9,10 @@ import { firstError } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { Label } from "@/shared/ui/label";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import { useTableState } from "@/shared/lib/useTableState";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { liveState } from "@/shared/lib/environment";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -38,6 +42,10 @@ const unverified = computed(() => me.data.value?.user?.email_verified === false)
 
 const list = computed(() => (keys.data.value?.api_keys ?? []).slice().sort((a, b) => Number(isRevoked(a)) - Number(isRevoked(b))));
 const isRevoked = (k: ApiKey) => k.status === "STATUS_REVOKED";
+const table = useTableState(list, {
+  searchFields: (k) => [k.prefix, k.id, envOf(k.environment)],
+  filters: { env: (k, v) => envOf(k.environment) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
+});
 const keyEnv = (k: ApiKey): Environment => envOf(k.environment);
 const when = (v?: string) => fmt.date(v, "day");
 /** What the list may show of a key: its kind and prefix. The secret part is never known here after creation. */
@@ -108,8 +116,19 @@ function doRevoke() {
     </p>
     <ErrorText :error="firstError(create, revoke, keys)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
 
-    <ul v-if="list.length > 0" class="divide-border/70 divide-y" :aria-label="t('product.keys.title')">
-      <li v-for="k in list" :key="k.id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+    <DataToolbar v-if="list.length > 0" v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <NativeSelect v-model="table.filters.value.env" class="w-40" :aria-label="t('product.keys.filterEnv')">
+        <option value="">{{ t("product.keys.allEnvs") }}</option>
+        <option v-for="e in ['sandbox', 'live']" :key="e" :value="e">{{ t(`product.env.${e}`) }}</option>
+      </NativeSelect>
+      <NativeSelect v-model="table.filters.value.status" class="w-40" :aria-label="t('product.keys.filterStatus')">
+        <option value="">{{ t("product.keys.allStatuses") }}</option>
+        <option value="active">{{ t("product.keys.active") }}</option>
+        <option value="revoked">{{ t("product.keys.revoked") }}</option>
+      </NativeSelect>
+    </DataToolbar>
+    <ul v-if="table.items.value.length > 0" class="divide-border/70 divide-y" :aria-label="t('product.keys.title')">
+      <li v-for="k in table.items.value" :key="k.id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
         <span class="bg-brand-soft text-brand-strong flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><KeyRound class="size-4" /></span>
         <div class="min-w-0 flex-1 basis-44">
           <p class="mono text-sm break-all" :class="isRevoked(k) && 'text-muted-foreground line-through'">{{ shown(k) }}</p>
@@ -123,7 +142,9 @@ function doRevoke() {
         <Button v-if="canManage && !isRevoked(k)" variant="ghost" size="sm" :aria-label="t('product.keys.revokeNamed', { key: shown(k) })" @click="revoking = k">{{ t("product.keys.revoke") }}</Button>
       </li>
     </ul>
+    <p v-else-if="list.length > 0" class="text-muted-foreground py-4 text-center text-sm">{{ t("common.noMatches") }}</p>
     <p v-else-if="!keys.isPending.value" class="text-muted-foreground py-4 text-center text-sm">{{ t("product.keys.empty") }}</p>
+    <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
 
     <Dialog v-model:open="reveal">
       <DialogContent class="sm:max-w-lg" @interact-outside.prevent>
@@ -140,25 +161,30 @@ function doRevoke() {
       </DialogContent>
     </Dialog>
 
-    <Dialog v-model:open="rotateOpen">
-      <DialogContent class="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{{ t("product.keys.rotateTitle") }}</DialogTitle>
-          <DialogDescription>{{ t("product.keys.rotateBody") }}</DialogDescription>
-        </DialogHeader>
-        <p class="mono bg-muted rounded-2xl p-3 text-sm">{{ rotating ? shown(rotating) : "" }}</p>
-        <label class="flex flex-col gap-1.5 text-sm">
-          <span class="font-medium">{{ t("product.keys.overlap") }}</span>
-          <NativeSelect v-model="overlap" data-testid="rotate-overlap">
-            <option v-for="h in OVERLAPS" :key="h" :value="h">{{ h === 0 ? t("product.keys.overlapNow") : t("product.keys.overlapHours", { n: h }) }}</option>
-          </NativeSelect>
-        </label>
-        <DialogFooter>
-          <Button variant="ghost" @click="rotateOpen = false">{{ t("common.cancel") }}</Button>
-          <Button :disabled="rotate.isPending.value" data-testid="rotate-confirm" @click="doRotate">{{ t("product.keys.rotate") }}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <Sheet v-model:open="rotateOpen">
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{{ t("product.keys.rotateTitle") }}</SheetTitle>
+          <SheetDescription>{{ t("product.keys.rotateBody") }}</SheetDescription>
+        </SheetHeader>
+        <SheetBody>
+          <form id="rotate-key" class="flex flex-col gap-4" @submit.prevent="doRotate">
+            <p class="mono bg-muted rounded-2xl p-3 text-sm">{{ rotating ? shown(rotating) : "" }}</p>
+            <div class="flex flex-col gap-1.5">
+              <Label for="rotate-overlap">{{ t("product.keys.overlap") }}</Label>
+              <NativeSelect id="rotate-overlap" v-model="overlap" data-testid="rotate-overlap">
+                <option v-for="h in OVERLAPS" :key="h" :value="h">{{ h === 0 ? t("product.keys.overlapNow") : t("product.keys.overlapHours", { n: h }) }}</option>
+              </NativeSelect>
+            </div>
+            <ErrorText :error="rotate.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+          </form>
+        </SheetBody>
+        <SheetFooter>
+          <Button variant="ghost" type="button" @click="rotateOpen = false">{{ t("common.cancel") }}</Button>
+          <Button type="submit" form="rotate-key" :disabled="rotate.isPending.value" data-testid="rotate-confirm">{{ t("product.keys.rotate") }}</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
 
     <Dialog v-model:open="confirm">
       <DialogContent class="sm:max-w-md">

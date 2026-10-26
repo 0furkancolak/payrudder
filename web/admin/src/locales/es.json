@@ -112,7 +112,10 @@
       "currency": "Moneda",
       "timezone": "Zona horaria",
       "id": "Id"
-    }
+    },
+    "allEnvironments": "Todos los entornos",
+    "allTiers": "Todos los niveles",
+    "allCurrencies": "Todas las monedas"
   },
   "tenant": {
     "fallbackTitle": "Inquilino",
@@ -366,7 +369,9 @@
         "save": "Guardar dirección",
         "cancel": "Cancelar",
         "editing": "Dirección de {id}"
-      }
+      },
+      "allCountries": "Todos los países",
+      "allCurrencies": "Todas las monedas"
     },
     "packages": {
       "new": "Nuevo paquete",
@@ -483,7 +488,9 @@
       },
       "endNowCredit": "Terminar ahora y abonar lo no usado",
       "confirmEndCredit": "¿Terminar esta suscripción ahora y abonar al cliente la parte no usada de la tarifa pagada por adelantado?",
-      "credited": "Se abonaron {amount} al saldo del cliente."
+      "credited": "Se abonaron {amount} al saldo del cliente.",
+      "allStates": "Todos los estados",
+      "allCurrencies": "Todas las monedas"
     },
     "payments": {
       "reconcile": "Conciliar con el libro",
@@ -791,7 +798,9 @@
       "refunded": "Reembolsado a la tarjeta",
       "refundRequested": "Reembolso solicitado",
       "refundFailed": "Reembolso fallido",
-      "retryRefund": "Reintentar el reembolso"
+      "retryRefund": "Reintentar el reembolso",
+      "new": "Nueva nota de crédito",
+      "hint": "Abona total o parcialmente una factura pagada. El importe va al saldo del cliente o vuelve a la tarjeta."
     },
     "webhooks": {
       "title": "Webhooks",
@@ -827,7 +836,8 @@
         "pending": "Pendiente",
         "delivered": "Entregado",
         "failed": "Fallido"
-      }
+      },
+      "allStatuses": "Todos los estados"
     },
     "paymentLinks": {
       "title": "Enlaces de pago",
@@ -1661,7 +1671,8 @@
       "revokeById": "Revocar por id",
       "confirmRevoke": "¿Revocar esta clave de API? Las solicitudes que la usan dejan de funcionar de inmediato.",
       "revokedDone": "Clave {id} revocada."
-    }
+    },
+    "allEnvironments": "Todos los entornos"
   },
   "address": {
     "title": "Dirección del vendedor",
@@ -1697,7 +1708,8 @@
       "hint": "Así aparece el vendedor en una factura.",
       "from": "De",
       "empty": "Sin dirección: la factura solo muestra el nombre."
-    }
+    },
+    "edit": "Editar dirección"
   },
   "errors": {
     "billing": {
@@ -2577,7 +2589,9 @@
       "when": "Cuándo",
       "status": "Estado",
       "provider": "Proveedor",
-      "amount": "Importe"
+      "amount": "Importe",
+      "allStatuses": "Todos los estados",
+      "allKinds": "Todos los tipos"
     },
     "invoices": {
       "title": "Facturas recientes",
@@ -2644,7 +2658,11 @@
       "overlapHours": "{n} horas",
       "lastUsed": "último uso {date}",
       "neverUsed": "nunca usada",
-      "ends": "Deja de funcionar el {date}"
+      "ends": "Deja de funcionar el {date}",
+      "filterEnv": "Entorno",
+      "allEnvs": "Todos los entornos",
+      "filterStatus": "Estado",
+      "allStatuses": "Todos los estados"
     },
     "links": {
       "title": "Profundice",
@@ -2736,7 +2754,8 @@
       "leaveTitle": "¿Salir de esta cuenta?",
       "leaveBody": "Pierdes de inmediato el acceso a sus aplicaciones y datos. Un propietario puede volver a invitarte.",
       "removeTitle": "¿Quitar a este miembro?",
-      "removeBody": "{name} pierde de inmediato el acceso a las aplicaciones y los datos de esta cuenta."
+      "removeBody": "{name} pierde de inmediato el acceso a las aplicaciones y los datos de esta cuenta.",
+      "allRoles": "Todos los roles"
     },
     "account": {
       "switch": "Cuenta",

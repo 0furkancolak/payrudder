@@ -34,7 +34,8 @@ test.describe("credit purchases", () => {
     await openTenantPage(page, "/credits");
     await expect(page.getByRole("row", { name: /Starter/ })).toContainText("30 days");
 
-    const form = page.getByRole("form", { name: "new credit pack" });
+    await page.getByRole("button", { name: "Add pack" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Pack name").fill("Annual");
     await form.getByLabel("Credits", { exact: true }).fill("12000");
     await form.getByLabel("Price").fill("100");
@@ -44,7 +45,7 @@ test.describe("credit purchases", () => {
     expect(gw.called("POST", "/v1/credit-packs")[0]?.body).toMatchObject({ name: "Annual", validity_days: 365 });
 
     await page.getByRole("row", { name: /Starter/ }).getByRole("button", { name: "Create purchase link" }).click();
-    const link = page.getByRole("form", { name: "Create purchase link" });
+    const link = page.getByRole("dialog");
     await link.getByLabel("Customer").selectOption("cus_1");
     await link.getByLabel("Quantity").fill("2");
     await link.getByLabel("Promotion code (optional)").fill("SPRING10");
@@ -68,7 +69,7 @@ test.describe("credit purchases", () => {
     await gw.install(page);
     await openTenantPage(page, "/credits");
     await page.getByRole("row", { name: /Starter/ }).getByRole("button", { name: "Create purchase link" }).click();
-    const link = page.getByRole("form", { name: "Create purchase link" });
+    const link = page.getByRole("dialog");
     await link.getByLabel("Customer").selectOption("cus_1");
     await link.getByLabel("Quantity").fill("2");
     await link.getByRole("button", { name: "Create link" }).click();

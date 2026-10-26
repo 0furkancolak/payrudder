@@ -18,7 +18,8 @@ test.describe("bank transfer account", () => {
       .on((c) => (c.method === "PUT" && c.path === put ? { body: { provider: "banktransfer" } } : undefined));
     await gw.install(page);
     await openTenantPage(page, "/providers");
-    const form = page.getByRole("form", { name: "Add or replace an account" });
+    await page.getByRole("button", { name: "Add or replace an account" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Provider").selectOption("banktransfer");
     await expect(form.getByLabel("Settings (JSON)")).toHaveCount(0);
     await expect(form.getByText("{invoice_number} and {invoice_id} are available")).toBeVisible();
@@ -54,7 +55,8 @@ test.describe("bank transfer account", () => {
     const gw = baseTenant(new MockGateway()).on(quiet);
     await gw.install(page);
     await openTenantPage(page, "/providers");
-    const form = page.getByRole("form", { name: "Add or replace an account" });
+    await page.getByRole("button", { name: "Add or replace an account" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Provider").selectOption("banktransfer");
     await form.getByLabel("Environment").selectOption("sandbox");
     await expect(form.getByRole("note")).toContainText("Sandbox charges never reach this provider");
@@ -76,7 +78,8 @@ test.describe("bank transfer account", () => {
       );
     await gw.install(page);
     await openTenantPage(page, "/providers");
-    const form = page.getByRole("form", { name: "Add or replace an account" });
+    await page.getByRole("button", { name: "Add or replace an account" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Provider").selectOption("banktransfer");
     await form.getByLabel("Bank name").fill("Akbank");
     await form.getByLabel("Account holder").fill("Acme A.S.");

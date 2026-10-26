@@ -112,7 +112,10 @@
       "currency": "Währung",
       "timezone": "Zeitzone",
       "id": "ID"
-    }
+    },
+    "allEnvironments": "Alle Umgebungen",
+    "allTiers": "Alle Stufen",
+    "allCurrencies": "Alle Währungen"
   },
   "tenant": {
     "fallbackTitle": "Mandant",
@@ -366,7 +369,9 @@
         "save": "Adresse speichern",
         "cancel": "Abbrechen",
         "editing": "Adresse von {id}"
-      }
+      },
+      "allCountries": "Alle Länder",
+      "allCurrencies": "Alle Währungen"
     },
     "packages": {
       "new": "Neues Paket",
@@ -483,7 +488,9 @@
       },
       "endNowCredit": "Jetzt beenden und Rest gutschreiben",
       "confirmEndCredit": "Dieses Abonnement jetzt beenden und dem Kunden den ungenutzten Teil der im Voraus bezahlten Gebühr gutschreiben?",
-      "credited": "{amount} dem Guthaben des Kunden gutgeschrieben."
+      "credited": "{amount} dem Guthaben des Kunden gutgeschrieben.",
+      "allStates": "Alle Status",
+      "allCurrencies": "Alle Währungen"
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",
@@ -791,7 +798,9 @@
       "refunded": "Auf die Karte erstattet",
       "refundRequested": "Erstattung angefordert",
       "refundFailed": "Erstattung fehlgeschlagen",
-      "retryRefund": "Erstattung wiederholen"
+      "retryRefund": "Erstattung wiederholen",
+      "new": "Neue Gutschrift",
+      "hint": "Schreibt eine bezahlte Rechnung ganz oder teilweise gut. Der Betrag geht auf das Guthaben des Kunden oder zurück auf die Karte."
     },
     "webhooks": {
       "title": "Webhooks",
@@ -827,7 +836,8 @@
         "pending": "Ausstehend",
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
-      }
+      },
+      "allStatuses": "Alle Status"
     },
     "paymentLinks": {
       "title": "Zahlungslinks",
@@ -1661,7 +1671,8 @@
       "revokeById": "Per ID widerrufen",
       "confirmRevoke": "Diesen API-Schlüssel widerrufen? Anfragen mit ihm funktionieren sofort nicht mehr.",
       "revokedDone": "Schlüssel {id} widerrufen."
-    }
+    },
+    "allEnvironments": "Alle Umgebungen"
   },
   "address": {
     "title": "Verkäuferadresse",
@@ -1697,7 +1708,8 @@
       "hint": "So erscheint der Verkäufer auf einer Rechnung.",
       "from": "Von",
       "empty": "Keine Adresse: Die Rechnung zeigt nur den Namen."
-    }
+    },
+    "edit": "Adresse bearbeiten"
   },
   "errors": {
     "billing": {
@@ -2577,7 +2589,9 @@
       "when": "Wann",
       "status": "Status",
       "provider": "Anbieter",
-      "amount": "Betrag"
+      "amount": "Betrag",
+      "allStatuses": "Alle Status",
+      "allKinds": "Alle Arten"
     },
     "invoices": {
       "title": "Letzte Rechnungen",
@@ -2644,7 +2658,11 @@
       "overlapHours": "{n} Stunden",
       "lastUsed": "zuletzt benutzt {date}",
       "neverUsed": "nie benutzt",
-      "ends": "Funktioniert nicht mehr ab {date}"
+      "ends": "Funktioniert nicht mehr ab {date}",
+      "filterEnv": "Umgebung",
+      "allEnvs": "Alle Umgebungen",
+      "filterStatus": "Status",
+      "allStatuses": "Alle Status"
     },
     "links": {
       "title": "Tiefer einsteigen",
@@ -2736,7 +2754,8 @@
       "leaveTitle": "Dieses Konto verlassen?",
       "leaveBody": "Sie verlieren sofort den Zugriff auf Apps und Daten. Ein Inhaber kann Sie erneut einladen.",
       "removeTitle": "Dieses Mitglied entfernen?",
-      "removeBody": "{name} verliert sofort den Zugriff auf Apps und Daten dieses Kontos."
+      "removeBody": "{name} verliert sofort den Zugriff auf Apps und Daten dieses Kontos.",
+      "allRoles": "Alle Rollen"
     },
     "account": {
       "switch": "Konto",

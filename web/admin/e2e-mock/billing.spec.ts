@@ -27,13 +27,14 @@ test.describe("customers", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/customers");
+    await page.getByTestId("customers-new").click();
     const form = page.getByRole("form", { name: "new customer" });
     await form.getByLabel("Customer id").fill("cus_de");
     await form.getByLabel("Name", { exact: true }).fill("Hans");
     await form.getByLabel("E-mail").fill("hans@example.com");
     await form.getByLabel("Country", { exact: true }).fill("de");
     await pickCurrency(form.getByLabel("Billing currency"), "EUR");
-    await form.getByRole("button", { name: "Create customer" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Create customer" }).click();
     await expect(page.getByRole("cell", { name: "cus_de", exact: true })).toBeVisible();
     expect(gw.called("POST", "/v1/customers")[0]?.body).toEqual({
       external_id: "cus_de",
@@ -51,11 +52,12 @@ test.describe("customers", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/customers");
+    await page.getByTestId("customers-new").click();
     const form = page.getByRole("form", { name: "new customer" });
     await form.getByLabel("Customer id").fill("cus_1");
     await form.getByLabel("Name", { exact: true }).fill("Ada");
     await form.getByLabel("E-mail").fill("ada@example.com");
-    await form.getByRole("button", { name: "Create customer" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Create customer" }).click();
     await expect(page.getByRole("alert")).toContainText("customer already exists");
   });
 });
@@ -79,6 +81,7 @@ test.describe("customer addresses", () => {
     await openTenantPage(page, "/customers");
     await expect(page.getByRole("row", { name: /cus_1/ })).toContainText("Atatürk Cd. 1, 34000 İstanbul, TR");
 
+    await page.getByTestId("customers-new").click();
     const form = page.getByRole("form", { name: "new customer" });
     await form.getByLabel("Customer id").fill("cus_2");
     await form.getByLabel("Name").fill("Bob");
@@ -86,12 +89,12 @@ test.describe("customer addresses", () => {
     await form.getByLabel("Country").fill("de");
     await form.getByLabel("Address line 1").fill(" Hauptstr. 5 ");
     await form.getByLabel("City").fill("Berlin");
-    await form.getByRole("button", { name: "Create customer" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Create customer" }).click();
     await expect.poll(() => gw.called("POST", "/v1/customers").length).toBe(1);
     expect(gw.called("POST", "/v1/customers")[0]?.body).toMatchObject({ external_id: "cus_2", country: "DE", address: { line1: "Hauptstr. 5", city: "Berlin", country: "DE" } });
 
     await page.getByRole("row", { name: /cus_1/ }).getByRole("button", { name: "Edit address" }).click();
-    const edit = page.getByRole("region", { name: "Address of cus_1" });
+    const edit = page.getByRole("dialog", { name: "Address of cus_1" });
     await edit.getByLabel("City").fill("Ankara");
     await edit.getByRole("button", { name: "Save address" }).click();
     await expect.poll(() => gw.called("PUT", "/v1/customers/cus_1/address").length).toBe(1);
@@ -130,6 +133,7 @@ test.describe("packages", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/packages");
+    await page.getByTestId("packages-new").click();
     const form = page.getByRole("form", { name: "new package" });
     await form.getByLabel("Code").fill("team");
     await form.getByLabel("Name", { exact: true }).fill("Team");
@@ -141,7 +145,7 @@ test.describe("packages", () => {
     await form.getByRole("button", { name: "Add a fee in another currency" }).click();
     await pickCurrency(form.getByLabel("Currency of the extra fee").nth(1), "TRY");
     await form.getByLabel("Fixed fee 2").fill("120");
-    await form.getByRole("button", { name: "Publish version" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Publish version" }).click();
     await expect.poll(() => gw.called("POST", "/v1/plans/team/versions").length).toBe(1);
     expect(gw.called("POST", "/v1/plans")[0]?.body).toEqual({ code: "team", name: "Team" });
     expect(gw.called("POST", "/v1/plans/team/versions")[0]?.body).toEqual({
@@ -162,11 +166,12 @@ test.describe("packages", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/packages");
+    await page.getByTestId("packages-new").click();
     const form = page.getByRole("form", { name: "new package" });
     await form.getByLabel("Code").fill("pro");
     await form.getByLabel("Name", { exact: true }).fill("Pro");
     await form.getByLabel("Fixed fee per month (TRY)").fill("100");
-    await form.getByRole("button", { name: "Publish version" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Publish version" }).click();
     await expect.poll(() => gw.called("POST", "/v1/plans/pro/versions").length).toBe(1);
     await expect(page.getByRole("alert")).toHaveCount(0);
   });
@@ -175,11 +180,12 @@ test.describe("packages", () => {
     const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => (c.path === "/v1/plans" ? { body: { plans: [] } } : undefined));
     await gw.install(page);
     await openTenantPage(page, "/packages");
+    await page.getByTestId("packages-new").click();
     const form = page.getByRole("form", { name: "new package" });
     await form.getByLabel("Code").fill("team");
     await form.getByLabel("Name", { exact: true }).fill("Team");
     await form.getByLabel("Fixed fee per month (TRY)").fill("1.005");
-    await form.getByRole("button", { name: "Publish version" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Publish version" }).click();
     await expect(page.getByRole("alert")).toContainText("Not an amount in TRY");
     expect(gw.called("POST", "/v1/plans")).toHaveLength(0);
   });
@@ -246,13 +252,14 @@ test.describe("subscriptions", () => {
     const gw = common(new MockGateway(), []).on((c) => (c.method === "POST" && c.path === "/v1/subscriptions" ? { status: 201, body: sub("s9") } : undefined));
     await gw.install(page);
     await openTenantPage(page, "/subscriptions");
+    await page.getByTestId("subscriptions-new").click();
     const form = page.getByRole("form", { name: "new subscription" });
     await form.getByLabel("Customer").selectOption("cus_2");
     await form.getByLabel("Package").selectOption("pro");
     await form.getByLabel("Billing interval").selectOption("SUBSCRIPTION_INTERVAL_YEAR");
     await form.getByLabel("Trial days").fill("14");
     await form.getByLabel("Provider").selectOption("iyzico");
-    await form.getByRole("button", { name: "Create subscription" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Create subscription" }).click();
     await expect.poll(() => gw.called("POST", "/v1/subscriptions").length).toBe(1);
     expect(gw.called("POST", "/v1/subscriptions")[0]?.body).toEqual({ customer_external_id: "cus_2", plan_code: "pro", trial_days: 14, provider: "iyzico", interval: "SUBSCRIPTION_INTERVAL_YEAR" });
   });
@@ -276,11 +283,12 @@ test.describe("subscriptions", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/subscriptions");
+    await page.getByTestId("subscriptions-new").click();
     const form = page.getByRole("form", { name: "new subscription" });
     await form.getByLabel("Customer").selectOption("cus_2");
     await form.getByLabel("Package").selectOption("pro");
     await form.getByLabel("Coupon code").fill("WELCOME");
-    await form.getByRole("button", { name: "Create subscription" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Create subscription" }).click();
     await expect.poll(() => gw.called("POST", "/v1/subscriptions").length).toBe(1);
     expect(gw.called("POST", "/v1/subscriptions")[0]?.body).toMatchObject({ customer_external_id: "cus_2", plan_code: "pro", coupon_code: "WELCOME" });
     await page.getByRole("button", { name: "Manage" }).click();
@@ -503,7 +511,8 @@ test.describe("pricing", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/pricing");
-    const form = page.getByRole("form", { name: "new coupon" });
+    await page.getByRole("button", { name: "Create coupon" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Code").fill("WELCOME");
     await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("12,5");
     await form.getByLabel("Duration").selectOption("COUPON_DURATION_REPEATING");
@@ -523,6 +532,7 @@ test.describe("pricing", () => {
     await expect(row).toContainText("12.5 %");
     await expect(row).toContainText("First 3 fees");
     await expect(row).toContainText("0 / 100");
+    await page.getByRole("button", { name: "Create coupon" }).click();
     await form.getByLabel("Code").fill("MINUS5");
     await form.getByLabel("Kind").selectOption("amount");
     await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("4.99");
@@ -568,7 +578,8 @@ test.describe("pricing", () => {
     await openTenantPage(page, "/pricing");
 
     // A bonus coupon: extra credits as a percentage, for credit purchases only.
-    const form = page.getByRole("form", { name: "new coupon" });
+    await page.getByRole("button", { name: "Create coupon" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Code", { exact: true }).fill("BONUS25");
     await form.getByLabel("Kind").selectOption("bonus");
     await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("25");
@@ -578,10 +589,11 @@ test.describe("pricing", () => {
 
     // Random codes with rules, for the first coupon.
     await page.getByRole("row", { name: /WELCOME/ }).getByRole("button", { name: "Codes" }).click();
-    const codes = page.getByRole("form", { name: "new promotion codes" });
+    const codes = page.getByRole("dialog");
     const panel = page.getByRole("region", { name: "Promotion codes of WELCOME" });
     await expect(panel.getByRole("cell", { name: "WELCOME", exact: true })).toBeVisible();
     await expect(panel).toContainText("First purchase");
+    await panel.getByRole("button", { name: "Create codes" }).click();
     await codes.getByLabel("How", { exact: true }).selectOption("random");
     await codes.getByLabel("How many (1 to 1000)").fill("2");
     await codes.getByLabel("Prefix (optional)").fill("SPR-");
@@ -594,11 +606,14 @@ test.describe("pricing", () => {
     await expect(page.getByText("2 codes created")).toBeVisible();
 
     // A bad name is refused before anything is sent.
+    await panel.getByRole("button", { name: "Create codes" }).click();
     await codes.getByLabel("How", { exact: true }).selectOption("named");
     await codes.getByLabel("Codes, one per line").fill("x");
     await codes.getByRole("button", { name: "Create codes" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "2 to 40 letters" })).toBeVisible();
     expect(gw.called("POST", "/v1/coupons/WELCOME/promotion-codes")).toHaveLength(1);
+
+    await page.keyboard.press("Escape");
 
     // The redemptions: the discount, the bonus, and a reversed one.
     const first = page.getByRole("row", { name: /cus_1/ });
@@ -613,7 +628,8 @@ test.describe("pricing", () => {
     const gw = baseTenant(new MockGateway()).on(quiet);
     await gw.install(page);
     await openTenantPage(page, "/pricing");
-    const form = page.getByRole("form", { name: "new coupon" });
+    await page.getByRole("button", { name: "Create coupon" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Code").fill("BAD");
     await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("101");
     await form.getByRole("button", { name: "Create coupon" }).click();
@@ -684,10 +700,11 @@ test.describe("credit notes", () => {
     await gw.install(page);
     await openTenantPage(page, "/invoices/inv1");
     await expect(page.getByRole("row", { name: /Base fee/ })).toContainText("Oct 1, 2026");
+    await page.getByRole("button", { name: "New credit note" }).click();
     const form = page.getByRole("form", { name: "new credit note" });
     await form.getByLabel("Amount").fill("25.50");
     await form.getByLabel("Reason").fill("goodwill");
-    await form.getByRole("button", { name: "Issue credit note" }).click();
+    await page.getByRole("button", { name: "Issue credit note" }).click();
     await expect.poll(() => gw.called("POST", "/admin/v1/invoices/inv1/credit-notes").length).toBe(1);
     expect(gw.called("POST", "/admin/v1/invoices/inv1/credit-notes")[0]?.body).toEqual({ tenant_id: TENANT, amount_minor: "2550", reason: "goodwill" });
     await expect(page.getByRole("row", { name: /CN-2026-000001/ })).toContainText("$25.50");
@@ -709,10 +726,11 @@ test.describe("credit notes", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/invoices/inv1");
+    await page.getByRole("button", { name: "New credit note" }).click();
     const form = page.getByRole("form", { name: "new credit note" });
     await form.getByLabel("Amount").fill("10");
     await form.getByLabel("Refund to the card").check();
-    await form.getByRole("button", { name: "Issue credit note" }).click();
+    await page.getByRole("button", { name: "Issue credit note" }).click();
     await expect.poll(() => gw.called("POST", "/admin/v1/invoices/inv1/credit-notes").length).toBe(1);
     expect(gw.called("POST", "/admin/v1/invoices/inv1/credit-notes")[0]?.body).toEqual({ tenant_id: TENANT, amount_minor: "1000", reason: "", refund_to_card: true });
     const row = page.getByRole("row", { name: /CN-2026-000001/ });
@@ -751,14 +769,15 @@ test.describe("credit notes", () => {
     const gw = common("open", []);
     await gw.install(page);
     await openTenantPage(page, "/invoices/inv1");
-    await expect(page.getByRole("form", { name: "new credit note" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "New credit note" })).toHaveCount(0);
     await expect(page.getByText("No credit notes.")).toBeVisible();
 
     const paid = common("paid", []).on((c) => (c.method === "POST" && c.path === "/admin/v1/invoices/inv1/credit-notes" ? { status: 201, body: { id: "cn" } } : undefined));
     const page2 = await page.context().newPage();
     await paid.install(page2);
     await openTenantPage(page2, "/invoices/inv1");
-    await page2.getByRole("form", { name: "new credit note" }).getByRole("button", { name: "Issue credit note" }).click();
+    await page2.getByRole("button", { name: "New credit note" }).click();
+    await page2.getByRole("button", { name: "Issue credit note" }).click();
     await expect.poll(() => paid.called("POST", "/admin/v1/invoices/inv1/credit-notes").length).toBe(1);
     expect(paid.called("POST", "/admin/v1/invoices/inv1/credit-notes")[0]?.body).toEqual({ tenant_id: TENANT, amount_minor: "0", reason: "" });
   });
@@ -814,7 +833,8 @@ test.describe("providers", () => {
     await gw.install(page);
     await openTenantPage(page, "/providers");
     await expect(page.getByRole("row", { name: /iyzico/ })).toContainText("live");
-    const form = page.getByRole("form", { name: "Add or replace an account" });
+    await page.getByRole("button", { name: "Add or replace an account" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Provider").selectOption("paddle");
     const settings = form.getByLabel("Settings (JSON)");
     await expect(settings).toHaveValue(/webhook_secret/);
@@ -830,7 +850,10 @@ test.describe("providers", () => {
     expect(put?.query.get("environment")).toBe("live");
     expect(put?.query.get("default")).toBe("true");
     expect(put?.body).toEqual({ api_key: "k", webhook_secret: "s", usage_product_id: "pro_1" });
-    await expect(settings).not.toHaveValue(/"k"/);
+    // The sheet closes once the account is saved, and opens clean: the keys are not shown again.
+    await page.getByRole("button", { name: "Add or replace an account" }).click();
+    await form.getByLabel("Provider").selectOption("paddle");
+    await expect(form.getByLabel("Settings (JSON)")).not.toHaveValue(/"k"/);
   });
 
   test("routing rules are edited, saved in order, and previewed", async ({ page }) => {
@@ -1016,6 +1039,7 @@ test("the billing pages are translated", async ({ page }) => {
   await page.goto(`/tenants/${TENANT}/customers`);
   await expect(page.getByRole("link", { name: "Müşteriler" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Abonelikler" })).toBeVisible();
+  await page.getByTestId("customers-new").click();
   await expect(page.getByRole("form", { name: "yeni müşteri" })).toBeVisible();
 });
 
@@ -1045,10 +1069,11 @@ test.describe("webhooks", () => {
     await gw.install(page);
     await openTenantPage(page, "/webhooks");
     await expect(page.getByText("No webhook endpoints.")).toBeVisible();
+    await page.getByTestId("webhooks-new").click();
     const form = page.getByRole("form", { name: "new webhook endpoint" });
     await form.getByLabel("Endpoint URL").fill("https://example.com/hook");
     await form.getByLabel("invoice.paid").check();
-    await form.getByRole("button", { name: "Add endpoint" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Add endpoint" }).click();
     await expect.poll(() => gw.called("POST", "/v1/webhook-endpoints").length).toBe(1);
     expect(gw.called("POST", "/v1/webhook-endpoints")[0]?.body).toEqual({ url: "https://example.com/hook", description: "", event_types: ["invoice.paid"] });
     await expect(page.getByTestId("webhook-secret")).toHaveText("whsec_ABC123");

@@ -112,7 +112,10 @@
       "currency": "Para birimi",
       "timezone": "Saat dilimi",
       "id": "Kimlik"
-    }
+    },
+    "allEnvironments": "Tüm ortamlar",
+    "allTiers": "Tüm katmanlar",
+    "allCurrencies": "Tüm para birimleri"
   },
   "tenant": {
     "fallbackTitle": "Kiracı",
@@ -366,7 +369,9 @@
         "save": "Adresi kaydet",
         "cancel": "Vazgeç",
         "editing": "{id} adresi"
-      }
+      },
+      "allCountries": "Tüm ülkeler",
+      "allCurrencies": "Tüm para birimleri"
     },
     "packages": {
       "new": "Yeni paket",
@@ -483,7 +488,9 @@
       },
       "endNowCredit": "Şimdi bitir, kullanılmayanı kredilendir",
       "confirmEndCredit": "Abonelik şimdi bitirilsin ve müşterinin peşin ödediği ücretin kullanılmayan kısmı bakiyesine kredi olarak yazılsın mı?",
-      "credited": "{amount} müşterinin bakiyesine kredi olarak yazıldı."
+      "credited": "{amount} müşterinin bakiyesine kredi olarak yazıldı.",
+      "allStates": "Tüm durumlar",
+      "allCurrencies": "Tüm para birimleri"
     },
     "payments": {
       "reconcile": "Defterle mutabakat",
@@ -791,7 +798,9 @@
       "refunded": "Karta iade edildi",
       "refundRequested": "İade istendi",
       "refundFailed": "İade başarısız",
-      "retryRefund": "İadeyi yeniden dene"
+      "retryRefund": "İadeyi yeniden dene",
+      "new": "Yeni iade faturası",
+      "hint": "Ödenmiş bir faturayı tamamen ya da kısmen alacaklandırır. Tutar müşterinin bakiyesine ya da karta geri gider."
     },
     "webhooks": {
       "title": "Webhooklar",
@@ -827,7 +836,8 @@
         "pending": "Bekliyor",
         "delivered": "Teslim edildi",
         "failed": "Başarısız"
-      }
+      },
+      "allStatuses": "Tüm durumlar"
     },
     "paymentLinks": {
       "title": "Ödeme bağlantıları",
@@ -1661,7 +1671,8 @@
       "revokeById": "Kimliğe göre iptal et",
       "confirmRevoke": "Bu API anahtarı iptal edilsin mi? Onu kullanan istekler hemen çalışmaz.",
       "revokedDone": "{id} anahtarı iptal edildi."
-    }
+    },
+    "allEnvironments": "Tüm ortamlar"
   },
   "address": {
     "title": "Satıcı adresi",
@@ -1697,7 +1708,8 @@
       "hint": "Satıcı faturada böyle görünür.",
       "from": "Satıcı",
       "empty": "Adres yok: faturada yalnızca ad görünür."
-    }
+    },
+    "edit": "Adresi düzenle"
   },
   "errors": {
     "billing": {
@@ -2577,7 +2589,9 @@
       "when": "Zaman",
       "status": "Durum",
       "provider": "Sağlayıcı",
-      "amount": "Tutar"
+      "amount": "Tutar",
+      "allStatuses": "Tüm durumlar",
+      "allKinds": "Tüm türler"
     },
     "invoices": {
       "title": "Son faturalar",
@@ -2644,7 +2658,11 @@
       "overlapHours": "{n} saat",
       "lastUsed": "son kullanım {date}",
       "neverUsed": "hiç kullanılmadı",
-      "ends": "{date} tarihinde çalışmayı bırakır"
+      "ends": "{date} tarihinde çalışmayı bırakır",
+      "filterEnv": "Ortam",
+      "allEnvs": "Tüm ortamlar",
+      "filterStatus": "Durum",
+      "allStatuses": "Tüm durumlar"
     },
     "links": {
       "title": "Daha derine inin",
@@ -2736,7 +2754,8 @@
       "leaveTitle": "Bu hesaptan ayrılsın mısınız?",
       "leaveBody": "Uygulamalarına ve verilerine erişiminizi hemen kaybedersiniz. Bir sahip sizi yeniden davet edebilir.",
       "removeTitle": "Bu üye çıkarılsın mı?",
-      "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder."
+      "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder.",
+      "allRoles": "Tüm roller"
     },
     "account": {
       "switch": "Hesap",

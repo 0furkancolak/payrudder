@@ -49,7 +49,7 @@ function row(it: NavItem): string {
             :data-app="a.id"
             @click="emit('navigate')"
           >
-            <span class="bg-rail-primary/20 text-rail-primary flex size-[1.15rem] shrink-0 items-center justify-center rounded-md text-[0.65rem] font-semibold" aria-hidden="true">{{ initial(a.name) }}</span>
+            <span class="bg-rail-primary/20 text-rail-primary flex size-[1.15rem] shrink-0 items-center justify-center rounded-md text-[0.65rem] font-semibold before:content-[attr(data-initial)]" :data-initial="initial(a.name)" aria-hidden="true" />
             <span :class="collapsed ? 'sr-only' : 'truncate'">{{ a.name }}</span>
           </Link>
         </li>

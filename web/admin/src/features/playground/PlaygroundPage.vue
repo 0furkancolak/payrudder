@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
+import { Plus } from "@lucide/vue";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
@@ -10,6 +11,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PageHeader } from "@/shared/ui/page-header";
 import { Table, TableBody, TableCell, TableRow } from "@/shared/ui/table";
@@ -27,10 +29,14 @@ const currency = ref<Currency | "">(prefill ? playgroundDefaults.currency : "");
 const timezone = ref(prefill ? playgroundDefaults.timezone : "");
 const graceHours = ref(prefill ? playgroundDefaults.graceHours : "");
 const quantity = ref("42");
+const creating = ref(false);
 
 function create() {
   if (currency.value === "") return;
-  play.createAccount.mutate({ name: name.value, currency: currency.value, timezone: timezone.value, graceHours: Number(graceHours.value) });
+  play.createAccount.mutate(
+    { name: name.value, currency: currency.value, timezone: timezone.value, graceHours: Number(graceHours.value) },
+    { onSuccess: () => (creating.value = false) },
+  );
 }
 </script>
 
@@ -41,13 +47,9 @@ function create() {
   <div class="grid gap-4 lg:grid-cols-2">
     <Card>
       <h2 class="text-base font-semibold">{{ t("playground.account.title") }}</h2>
-      <form v-if="play.tenantId.value === null" class="grid gap-3 sm:grid-cols-2" role="form" :aria-label="t('playground.account.formLabel')" @submit.prevent="create">
-        <Input v-model="name" :aria-label="t('playground.account.name')" :placeholder="t('playground.account.name')" required />
-        <CurrencySelect v-model="currency" :aria-label="t('playground.account.currency')" />
-        <TimezoneSelect v-model="timezone" :aria-label="t('playground.account.timezone')" />
-        <Input v-model="graceHours" type="number" min="0" max="168" :aria-label="t('playground.account.grace')" :placeholder="t('playground.account.gracePlaceholder')" required />
-        <Button type="submit" class="sm:col-span-2" :disabled="play.busy.value">{{ t("playground.account.create") }}</Button>
-      </form>
+      <div v-if="play.tenantId.value === null">
+        <Button type="button" data-testid="playground-account-open" @click="creating = true"><Plus class="size-4" />{{ t("playground.account.create") }}</Button>
+      </div>
       <i18n-t v-else keypath="playground.account.ready" tag="p" class="text-success bg-success/10 rounded-2xl px-4 py-3 text-sm" scope="global">
         <template #tenant>
           <Link to="/tenants/$id" :params="{ id: play.tenantId.value }" class="mono underline">{{ play.tenantId.value }}</Link>
@@ -99,6 +101,27 @@ function create() {
       </div>
     </Card>
   </div>
+
+  <Sheet v-model:open="creating">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ t("playground.account.title") }}</SheetTitle>
+        <SheetDescription>{{ t("playground.intro") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+        <form id="playground-account" class="grid gap-3" role="form" :aria-label="t('playground.account.formLabel')" @submit.prevent="create">
+          <Input v-model="name" :aria-label="t('playground.account.name')" :placeholder="t('playground.account.name')" required />
+          <CurrencySelect v-model="currency" :aria-label="t('playground.account.currency')" />
+          <TimezoneSelect v-model="timezone" :aria-label="t('playground.account.timezone')" />
+          <Input v-model="graceHours" type="number" min="0" max="168" :aria-label="t('playground.account.grace')" :placeholder="t('playground.account.gracePlaceholder')" required />
+        </form>
+      </SheetBody>
+      <SheetFooter>
+        <Button type="button" variant="ghost" @click="creating = false">{{ t("common.cancel") }}</Button>
+        <Button type="submit" form="playground-account" :disabled="play.busy.value">{{ t("playground.account.create") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 
   <Card v-if="play.closed.value" class="mt-4 p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("playground.invoice.title") }}</h2>

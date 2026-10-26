@@ -15,8 +15,10 @@ import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { downloadCsv, useAccountingSummary, useExpenses, type Expense } from "./api";
+import { CATEGORIES, downloadCsv, useAccountingSummary, useExpenses, type Expense } from "./api";
 import BarSeries from "./BarSeries.vue";
 import DonutChart from "./DonutChart.vue";
 import ExpenseDialog from "./ExpenseDialog.vue";
@@ -49,6 +51,16 @@ const money = (v: string | number | undefined, currency?: string) => fmt.amount(
 // --- the expenses
 const showVoided = ref(false);
 const expenses = useExpenses(tenantId, app, showVoided);
+const table = useTableState(() => expenses.data.value?.expenses, {
+  searchFields: (e) => [e.vendor, e.note, e.category ? t(`billing.accounting.category.${e.category}`) : "", e.amount_minor],
+  filters: {
+    category: (e, v) => e.category === v,
+    recurring: (e, v) => (e.recurring ?? "none") === v,
+  },
+});
+const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, [key]: v }) });
+const categoryFilter = filter("category");
+const recurringFilter = filter("recurring");
 const day = (iso?: string) => formatUtcDay(iso, locale.value);
 
 const dialogOpen = ref(false);
@@ -213,6 +225,18 @@ async function exportCsv(report: "export" | "coupons" = "export") {
     </div>
     <ErrorText :error="expenses.error.value" class="px-3" />
     <p v-if="expenses.data.value && !(expenses.data.value.expenses ?? []).length" class="text-muted-foreground px-3 py-2 text-sm">{{ t("billing.accounting.expenses.none") }}</p>
+    <template v-else>
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="pt-3" @clear="table.clear()">
+      <NativeSelect v-model="categoryFilter" class="w-44" :aria-label="t('billing.accounting.form.category')">
+        <option value="">{{ t("billing.accounting.form.category") }}</option>
+        <option v-for="c in CATEGORIES" :key="c" :value="c">{{ t(`billing.accounting.category.${c}`) }}</option>
+      </NativeSelect>
+      <NativeSelect v-model="recurringFilter" class="w-44" :aria-label="t('billing.accounting.form.recurring')">
+        <option value="">{{ t("billing.accounting.form.recurring") }}</option>
+        <option v-for="r in ['none', 'monthly', 'yearly']" :key="r" :value="r">{{ t(`billing.accounting.recurring.${r}`) }}</option>
+      </NativeSelect>
+    </DataToolbar>
+    <p v-if="!table.total.value" class="text-muted-foreground px-3 py-2 text-sm">{{ t("common.noMatches") }}</p>
     <Table v-else>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -226,7 +250,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="e in expenses.data.value?.expenses ?? []" :key="e.id" :class="e.void_time ? 'text-muted-foreground' : ''">
+        <TableRow v-for="e in table.items.value" :key="e.id" :class="e.void_time ? 'text-muted-foreground' : ''">
           <TableCell>{{ day(e.incurred_on) }}</TableCell>
           <TableCell class="font-medium">
             {{ e.vendor }}
@@ -250,6 +274,8 @@ async function exportCsv(report: "export" | "coupons" = "export") {
         </TableRow>
       </TableBody>
     </Table>
+    <DataPagination v-model:size="table.size.value" :page="table.current.value" :pages="table.pages.value" :total="table.total.value" @update:page="table.page.value = $event" />
+    </template>
   </Card>
 
   <ExpenseDialog v-model:open="dialogOpen" :tenant-id="tenantId" :expense="editing" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" />

@@ -21,6 +21,7 @@ const subs = useSubscriptions(tenantId);
 const packages = usePackages(tenantId);
 const act = useSubscriptionActions(tenantId);
 
+const creating = ref(false);
 const selectedId = ref("");
 const selected = computed(() => (subs.data.value?.subscriptions ?? []).find((s) => s.id === selectedId.value));
 /** Moving a subscription to another payment provider, and driving one a provider runs, go through the provider accounts: operator actions. */
@@ -29,8 +30,8 @@ const failure = computed(() => firstError(...Object.values(act)));
 </script>
 
 <template>
-  <CreateSubscriptionForm :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" />
+  <CreateSubscriptionForm v-model:open="creating" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" />
   <ErrorText :error="failure" class="bg-destructive/10 mb-4 rounded-2xl px-4 py-3" />
-  <SubscriptionsTable :tenant-id="tenantId" :selected-id="selectedId" @select="selectedId = $event" />
+  <SubscriptionsTable :tenant-id="tenantId" :selected-id="selectedId" @select="selectedId = $event" @create="creating = true" />
   <ManageSubscriptionCard v-if="selected" :tenant-id="tenantId" :subscription="selected" :packages="packages.data.value ?? []" :environment="environment" :operator="operator" :act="act" />
 </template>

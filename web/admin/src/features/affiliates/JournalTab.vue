@@ -14,7 +14,7 @@ import { StatusPill } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { downloadJournalCsv, useJournal, type JournalFilter } from "./api";
 import { dayEnd, dayStart, journalTotals } from "./logic";
-import Pager from "./Pager.vue";
+import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "./paging";
 
 const props = defineProps<{ tenantId: string }>();
@@ -28,7 +28,7 @@ const toDay = ref("");
 const filter = computed<JournalFilter>(() => ({ currency: "", from: dayStart(fromDay.value) ?? "", to: dayEnd(toDay.value) ?? "" }));
 const pager = usePager();
 watch(filter, () => pager.reset());
-const journal = useJournal(tenantId, filter, pager.token);
+const journal = useJournal(tenantId, filter, pager.token, pager.size);
 const totals = computed(() => journalTotals(journal.data.value?.totals));
 
 const exporting = ref(false);
@@ -108,7 +108,7 @@ async function exportCsv() {
           </TableRow>
         </TableBody>
       </Table>
-      <Pager :has-prev="pager.hasPrev.value" :next="journal.data.value.next" :total="journal.data.value.total" @prev="pager.prev()" @next="pager.next(journal.data.value.next)" />
+      <DataPagination v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!journal.data.value.next" :total="journal.data.value.total" @prev="pager.prev()" @next="pager.next(journal.data.value.next)" />
     </Card>
   </template>
 </template>

@@ -35,7 +35,8 @@ test.describe("payment links", () => {
     await openTenantPage(page, "/payment-links");
     await expect(page.getByRole("cell", { name: /Setup fee/ })).toBeVisible();
 
-    const form = page.getByRole("form", { name: "new payment link" });
+    await page.getByRole("button", { name: "Create link" }).click();
+    const form = page.getByRole("dialog");
     await form.getByLabel("Amount").fill("0");
     await form.getByLabel("What it is for").fill("Workshop");
     await form.getByRole("button", { name: "Create link" }).click();
@@ -50,6 +51,7 @@ test.describe("payment links", () => {
     const body = gw.called("POST", "/v1/payment-links")[0]?.body;
     expect(body).toMatchObject({ kind: "adhoc", amount_minor: "4990", currency: "USD", description: "Workshop", single_use: true, promotion_code: "WELCOME" });
     expect(String(body?.idempotency_key).length).toBeGreaterThan(10);
+    await page.keyboard.press("Escape");
 
     page.once("dialog", (d) => void d.accept());
     await page.getByRole("row", { name: /Workshop/ }).getByRole("button", { name: "Revoke" }).click();
@@ -68,7 +70,7 @@ test.describe("payment links", () => {
     await gw.install(page);
     await openTenantPage(page, "/invoices/inv1");
     await page.getByRole("link", { name: "Payment link", exact: true }).click();
-    await expect(page.getByRole("form", { name: "new payment link" }).getByLabel("Invoice id")).toHaveValue("inv1");
+    await expect(page.getByRole("dialog").getByLabel("Invoice id")).toHaveValue("inv1");
   });
 
   test("a customer's payment page link is made and revoked, and their payments are listed", async ({ page }) => {

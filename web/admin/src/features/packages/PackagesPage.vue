@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
@@ -12,6 +12,9 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreatePackage, usePackages } from "./api";
 import { CurrencySelect } from "@/shared/ui/search-select";
@@ -25,11 +28,25 @@ const canWrite = useCanWrite();
 const packages = usePackages(tenantId);
 const create = useCreatePackage(tenantId);
 
+const list = computed(() => packages.data.value ?? []);
+const table = useTableState(list, { searchFields: (p) => [p.plan.code, p.plan.name] });
+
+const creating = ref(false);
 const code = ref("");
 const name = ref("");
 const fee = ref("0");
 const extra = ref<{ currency: string; interval: "month" | "year"; amount: string }[]>([]);
 const formError = ref("");
+
+// A sheet that was closed opens clean: the last values and error are not shown again.
+watch(creating, (v) => {
+  if (v) {
+    code.value = name.value = formError.value = "";
+    fee.value = "0";
+    extra.value = [];
+    create.reset();
+  }
+});
 
 function addFee() {
   extra.value.push({ currency: tenantCurrency.value || FALLBACK_CURRENCY, interval: "year", amount: "0" });
@@ -62,6 +79,7 @@ function submit() {
         code.value = name.value = "";
         fee.value = "0";
         extra.value = [];
+        creating.value = false;
       },
     },
   );
@@ -69,36 +87,45 @@ function submit() {
 </script>
 
 <template>
-  <Card v-if="canWrite" class="mb-6">
-    <h2 class="text-lg font-semibold">{{ t("billing.packages.new") }}</h2>
-    <p class="text-muted-foreground text-sm">{{ t("billing.packages.intro") }}</p>
-    <form class="grid gap-3" role="form" :aria-label="t('billing.packages.formLabel')" @submit.prevent="submit">
-      <div class="grid gap-3 sm:grid-cols-3">
-        <Input v-model="code" :aria-label="t('billing.packages.code')" :placeholder="t('billing.packages.code')" pattern="[a-z][a-z0-9_\-]{0,62}" required />
-        <Input v-model="name" :aria-label="t('billing.packages.name')" :placeholder="t('billing.packages.name')" required />
-        <Input v-model="fee" inputmode="decimal" :aria-label="t('billing.packages.fee', { currency: tenantCurrency })" :placeholder="t('billing.packages.fee', { currency: tenantCurrency })" required />
-      </div>
-      <div v-for="(f, i) in extra" :key="i" class="grid grid-cols-[8rem_9rem_1fr_auto] gap-3">
-        <CurrencySelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')" />
-        <NativeSelect v-model="f.interval" :aria-label="t('billing.packages.interval')">
-          <option value="month">{{ t("billing.packages.monthly") }}</option>
-          <option value="year">{{ t("billing.packages.yearly") }}</option>
-        </NativeSelect>
-        <Input v-model="f.amount" inputmode="decimal" :aria-label="t('billing.packages.extraFee', { n: i + 1 })" required />
-        <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="extra.splice(i, 1)"><X class="size-4" /></Button>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" @click="addFee"><Plus class="size-4" />{{ t("billing.packages.addFee") }}</Button>
-        <Button type="submit" :disabled="create.isPending.value || tenantCurrency === ''">{{ t("billing.packages.publish") }}</Button>
-      </div>
-    </form>
-    <ErrorText :message="formError" />
-    <ErrorText :error="create.error.value" />
-  </Card>
+  <Sheet v-if="canWrite" v-model:open="creating">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ t("billing.packages.new") }}</SheetTitle>
+        <SheetDescription>{{ t("billing.packages.intro") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+        <form id="create-package" class="grid gap-3" role="form" :aria-label="t('billing.packages.formLabel')" @submit.prevent="submit">
+          <Input v-model="code" :aria-label="t('billing.packages.code')" :placeholder="t('billing.packages.code')" pattern="[a-z][a-z0-9_\-]{0,62}" required />
+          <Input v-model="name" :aria-label="t('billing.packages.name')" :placeholder="t('billing.packages.name')" required />
+          <Input v-model="fee" inputmode="decimal" :aria-label="t('billing.packages.fee', { currency: tenantCurrency })" :placeholder="t('billing.packages.fee', { currency: tenantCurrency })" required />
+          <div v-for="(f, i) in extra" :key="i" class="grid grid-cols-[7rem_1fr_auto] gap-2">
+            <CurrencySelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')" />
+            <NativeSelect v-model="f.interval" :aria-label="t('billing.packages.interval')">
+              <option value="month">{{ t("billing.packages.monthly") }}</option>
+              <option value="year">{{ t("billing.packages.yearly") }}</option>
+            </NativeSelect>
+            <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="extra.splice(i, 1)"><X class="size-4" /></Button>
+            <Input v-model="f.amount" class="col-span-3" inputmode="decimal" :aria-label="t('billing.packages.extraFee', { n: i + 1 })" required />
+          </div>
+          <div><Button type="button" variant="outline" @click="addFee"><Plus class="size-4" />{{ t("billing.packages.addFee") }}</Button></div>
+          <ErrorText :message="formError" />
+          <ErrorText :error="create.error.value" />
+        </form>
+      </SheetBody>
+      <SheetFooter>
+        <Button type="button" variant="ghost" @click="creating = false">{{ t("common.cancel") }}</Button>
+        <Button type="submit" form="create-package" :disabled="create.isPending.value || tenantCurrency === ''">{{ t("billing.packages.publish") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 
   <Card class="p-3">
-    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.tabs.packages") }}</h2>
+    <div class="flex flex-wrap items-center justify-between gap-3 px-3 pt-2 pb-3">
+      <h2 class="text-lg font-semibold">{{ t("billing.tabs.packages") }}</h2>
+      <Button v-if="canWrite" data-testid="packages-new" @click="creating = true"><Plus class="size-4" />{{ t("billing.packages.new") }}</Button>
+    </div>
     <ErrorText :error="packages.error.value" class="px-3" />
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -111,7 +138,7 @@ function submit() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="p in packages.data.value ?? []" :key="p.plan.id">
+        <TableRow v-for="p in table.items.value" :key="p.plan.id">
           <TableCell class="mono font-medium">{{ p.plan.code }}</TableCell>
           <TableCell>{{ p.plan.name }}</TableCell>
           <TableCell>v{{ p.version?.version ?? "—" }}</TableCell>
@@ -131,5 +158,7 @@ function submit() {
     <p v-if="!packages.isPending.value && (packages.data.value ?? []).length === 0 && !packages.error.value" class="text-muted-foreground p-4 text-center text-sm">
       {{ t("billing.packages.empty") }}
     </p>
+    <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 </template>

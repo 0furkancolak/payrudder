@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { useInvoicePayments } from "./paymentApi";
@@ -38,23 +38,25 @@ function confirm() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ outcome === "expired" ? t("invoice.transfer.expireTitle") : t("invoice.transfer.rejectTitle") }}</DialogTitle>
-        <DialogDescription>{{ outcome === "expired" ? t("invoice.transfer.expireHint") : t("invoice.transfer.rejectHint") }}</DialogDescription>
-      </DialogHeader>
-      <form class="grid gap-3" @submit.prevent="confirm">
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ outcome === "expired" ? t("invoice.transfer.expireTitle") : t("invoice.transfer.rejectTitle") }}</SheetTitle>
+        <SheetDescription>{{ outcome === "expired" ? t("invoice.transfer.expireHint") : t("invoice.transfer.rejectHint") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+      <form id="reject-transfer" class="grid gap-3" @submit.prevent="confirm">
         <div class="grid gap-1.5">
           <Label for="reject-reason">{{ t("invoice.transfer.reason") }}</Label>
           <Input id="reject-reason" v-model="reason" maxlength="500" autocomplete="off" />
         </div>
         <ErrorText :error="pay.rejectTransfer.error.value" />
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="open = false">{{ t("invoice.payment.cancel") }}</Button>
-          <Button type="submit" variant="destructive" :disabled="pay.rejectTransfer.isPending.value">{{ outcome === "expired" ? t("invoice.transfer.expire") : t("invoice.transfer.reject") }}</Button>
-        </DialogFooter>
       </form>
-    </DialogContent>
-  </Dialog>
+      </SheetBody>
+      <SheetFooter>
+          <Button type="button" variant="outline" @click="open = false">{{ t("invoice.payment.cancel") }}</Button>
+          <Button type="submit" form="reject-transfer" variant="destructive" :disabled="pay.rejectTransfer.isPending.value">{{ outcome === "expired" ? t("invoice.transfer.expire") : t("invoice.transfer.reject") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

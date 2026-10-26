@@ -3,7 +3,7 @@ import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -44,13 +44,14 @@ function submit() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ t("affiliates.edit.title", { code: affiliate?.code ?? "" }) }}</DialogTitle>
-        <DialogDescription>{{ affiliate?.email }}</DialogDescription>
-      </DialogHeader>
-      <form class="grid gap-3" @submit.prevent="submit">
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ t("affiliates.edit.title", { code: affiliate?.code ?? "" }) }}</SheetTitle>
+        <SheetDescription>{{ affiliate?.email }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+      <form id="af-edit" class="grid gap-3" @submit.prevent="submit">
         <div class="grid gap-1.5">
           <Label for="ae-name">{{ t("affiliates.add.name") }}</Label>
           <Input id="ae-name" v-model="name" autocomplete="off" maxlength="120" />
@@ -68,11 +69,12 @@ function submit() {
           <p class="text-muted-foreground text-xs">{{ t("affiliates.payoutDetailsHint") }}</p>
         </div>
         <ErrorText :error="update.error.value" />
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.cancel") }}</Button>
-          <Button type="submit" :disabled="update.isPending.value">{{ t("affiliates.common.save") }}</Button>
-        </DialogFooter>
       </form>
-    </DialogContent>
-  </Dialog>
+      </SheetBody>
+      <SheetFooter>
+          <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.cancel") }}</Button>
+          <Button type="submit" form="af-edit" :disabled="update.isPending.value">{{ t("affiliates.common.save") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

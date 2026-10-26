@@ -3,7 +3,7 @@ import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { useVoidExpense, type Expense } from "./api";
@@ -28,23 +28,25 @@ function submit() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ t("billing.accounting.void.title", { vendor: expense?.vendor ?? "" }) }}</DialogTitle>
-        <DialogDescription>{{ t("billing.accounting.void.hint") }}</DialogDescription>
-      </DialogHeader>
-      <form class="grid gap-3" @submit.prevent="submit">
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ t("billing.accounting.void.title", { vendor: expense?.vendor ?? "" }) }}</SheetTitle>
+        <SheetDescription>{{ t("billing.accounting.void.hint") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+      <form id="void-form" class="grid gap-3" @submit.prevent="submit">
         <div class="grid gap-1.5">
           <Label for="void-reason">{{ t("billing.accounting.void.reason") }}</Label>
           <Input id="void-reason" v-model="reason" maxlength="200" autocomplete="off" />
         </div>
         <ErrorText :error="voidIt.error.value" />
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="open = false">{{ t("billing.accounting.form.cancel") }}</Button>
-          <Button type="submit" variant="destructive" :disabled="voidIt.isPending.value || reason.trim() === ''">{{ t("billing.accounting.void.submit") }}</Button>
-        </DialogFooter>
       </form>
-    </DialogContent>
-  </Dialog>
+      </SheetBody>
+      <SheetFooter>
+        <Button type="button" variant="outline" @click="open = false">{{ t("billing.accounting.form.cancel") }}</Button>
+        <Button type="submit" form="void-form" variant="destructive" :disabled="voidIt.isPending.value || reason.trim() === ''">{{ t("billing.accounting.void.submit") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

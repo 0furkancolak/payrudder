@@ -8,7 +8,6 @@ import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { ErrorText } from "@/shared/ui/error-text";
-import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -18,7 +17,7 @@ import AddAffiliateDialog from "./AddAffiliateDialog.vue";
 import EditAffiliateDialog from "./EditAffiliateDialog.vue";
 import LinkDialog from "./LinkDialog.vue";
 import { affiliateTone, balancesByAffiliate, type Affiliate } from "./logic";
-import Pager from "./Pager.vue";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { usePager } from "./paging";
 import ReferralsDialog from "./ReferralsDialog.vue";
 
@@ -34,7 +33,7 @@ const searchNow = refDebounced(search, 300);
 const pager = usePager();
 watch([status, searchNow], () => pager.reset());
 
-const list = useAffiliates(tenantId, () => ({ status: status.value, search: searchNow.value }), pager.token);
+const list = useAffiliates(tenantId, () => ({ status: status.value, search: searchNow.value }), pager.token, pager.size);
 const waiting = useAffiliates(tenantId, () => ({ status: "pending", search: "" }), "");
 const balances = useBalances(tenantId);
 const byPartner = computed(() => balancesByAffiliate(balances.data.value));
@@ -66,16 +65,15 @@ function setStatus(a: Affiliate, next: "active" | "suspended") {
   </div>
 
   <Card class="p-3">
-    <div class="flex flex-wrap items-end justify-between gap-3 px-3 pt-2">
-      <div class="flex flex-wrap items-center gap-2">
-        <NativeSelect v-model="status" class="w-44" :aria-label="t('affiliates.common.status')">
-          <option value="">{{ t("affiliates.partners.allStatuses") }}</option>
-          <option v-for="s in ['pending', 'active', 'suspended']" :key="s" :value="s">{{ t(`affiliates.status.affiliate.${s}`) }}</option>
-        </NativeSelect>
-        <Input v-model="search" type="search" class="w-64" :aria-label="t('affiliates.partners.search')" :placeholder="t('affiliates.partners.search')" />
-      </div>
-      <Button type="button" :disabled="!canWrite" @click="addOpen = true">{{ t("affiliates.partners.add") }}</Button>
-    </div>
+    <DataToolbar v-model:search="search" :placeholder="t('affiliates.partners.search')" :active="status !== '' || search !== ''" class="pt-2" @clear="status = ''; search = ''">
+      <NativeSelect v-model="status" class="w-44" :aria-label="t('affiliates.common.status')">
+        <option value="">{{ t("affiliates.partners.allStatuses") }}</option>
+        <option v-for="s in ['pending', 'active', 'suspended']" :key="s" :value="s">{{ t(`affiliates.status.affiliate.${s}`) }}</option>
+      </NativeSelect>
+      <template #actions>
+        <Button type="button" :disabled="!canWrite" @click="addOpen = true">{{ t("affiliates.partners.add") }}</Button>
+      </template>
+    </DataToolbar>
     <ErrorText :error="list.error.value" class="px-3" />
     <ErrorText :error="update.error.value" class="px-3" />
     <Skeleton v-if="list.isPending.value" class="mx-3 h-32" />
@@ -130,7 +128,7 @@ function setStatus(a: Affiliate, next: "active" | "suspended") {
         </TableRow>
       </TableBody>
     </Table>
-    <Pager v-if="list.data.value" :has-prev="pager.hasPrev.value" :next="list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
+    <DataPagination v-if="list.data.value" v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
   </Card>
 
   <AddAffiliateDialog v-model:open="addOpen" :tenant-id="tenantId" />

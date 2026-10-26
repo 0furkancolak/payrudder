@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { Mail, Send, UserMinus } from "@lucide/vue";
-import { computed, ref } from "vue";
+import { Mail, Plus, Send, UserMinus } from "@lucide/vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { firstError } from "@/shared/lib/errors";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import { useTableState } from "@/shared/lib/useTableState";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -43,13 +46,26 @@ const nameOf = (m: { display_name?: string; email?: string }) => m.display_name 
 const when = (v?: string) => fmt.date(v, "day");
 const expired = (v?: string) => (v ? new Date(v).getTime() < Date.now() : false);
 
+const table = useTableState(members, {
+  searchFields: (m) => [m.display_name, m.email],
+  filters: { role: (m, v) => m.role === v },
+});
+
+const inviting = ref(false);
 const email = ref("");
 const role = ref<Role>("viewer");
 const sentTo = ref("");
+watch(inviting, (v) => {
+  if (v) {
+    email.value = "";
+    role.value = "viewer";
+    invite.reset();
+  }
+});
 function submitInvite() {
   const address = email.value.trim();
   if (address === "") return;
-  invite.mutate({ email: address, role: role.value }, { onSuccess: () => { sentTo.value = address; email.value = ""; } });
+  invite.mutate({ email: address, role: role.value }, { onSuccess: () => { sentTo.value = address; email.value = ""; inviting.value = false; } });
 }
 
 // Removing and leaving ask first.
@@ -66,21 +82,32 @@ function doRemove() {
   });
 }
 
-const error = computed(() => firstError(invite, revokeInvite, resendInvite, changeRole, remove, invitations));
+const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, remove, invitations));
 </script>
 
 <template>
   <section class="surface flex flex-col gap-5 p-6" :aria-label="t('product.members.title')">
-    <div>
-      <h2 class="text-lg font-semibold tracking-tight">{{ t("product.members.title") }}</h2>
-      <p class="text-muted-foreground text-sm">{{ t(canManage ? "product.members.manageNote" : "product.members.readNote") }}</p>
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight">{{ t("product.members.title") }}</h2>
+        <p class="text-muted-foreground text-sm">{{ t(canManage ? "product.members.manageNote" : "product.members.readNote") }}</p>
+      </div>
+      <Button v-if="canManage" size="sm" data-testid="invite-open" @click="inviting = true"><Plus />{{ t("product.members.inviteTitle") }}</Button>
     </div>
+    <p v-if="sentTo" class="text-success text-sm" role="status">{{ t("product.members.invited", { email: sentTo }) }}</p>
 
     <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
 
     <Skeleton v-if="loading" class="h-20 rounded-2xl" />
-    <ul v-else class="divide-border/70 divide-y" :aria-label="t('product.members.title')">
-      <li v-for="m in members" :key="m.user_id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3" :data-testid="`member-${m.email}`">
+    <template v-else>
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <NativeSelect v-model="table.filters.value.role" class="w-44" :aria-label="t('product.members.allRoles')">
+        <option value="">{{ t("product.members.allRoles") }}</option>
+        <option v-for="r in ['owner', 'admin', 'viewer']" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option>
+      </NativeSelect>
+    </DataToolbar>
+    <ul class="divide-border/70 divide-y" :aria-label="t('product.members.title')">
+      <li v-for="m in table.items.value" :key="m.user_id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3" :data-testid="`member-${m.email}`">
         <span class="bg-brand-soft text-brand-strong flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold" aria-hidden="true">{{ nameOf(m).slice(0, 1).toUpperCase() || "?" }}</span>
         <div class="min-w-0 flex-1 basis-44">
           <p class="truncate text-sm font-medium">{{ nameOf(m) }}<span v-if="m.user_id === myId" class="text-muted-foreground font-normal"> · {{ t("product.members.you") }}</span></p>
@@ -111,24 +138,11 @@ const error = computed(() => firstError(invite, revokeInvite, resendInvite, chan
         </Button>
       </li>
     </ul>
+    <p v-if="members.length > 0 && table.total.value === 0" class="text-muted-foreground py-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
+    </template>
 
     <template v-if="canManage">
-      <form class="border-border/70 flex flex-col gap-3 border-t pt-5" :aria-label="t('product.members.inviteTitle')" @submit.prevent="submitInvite">
-        <h3 class="text-base font-semibold tracking-tight">{{ t("product.members.inviteTitle") }}</h3>
-        <div class="flex flex-wrap items-end gap-3">
-          <div class="flex min-w-56 flex-1 flex-col gap-1.5">
-            <Label for="inv-email">{{ t("product.auth.email") }}</Label>
-            <Input id="inv-email" v-model="email" type="email" inputmode="email" autocomplete="off" required />
-          </div>
-          <div class="flex w-40 flex-col gap-1.5">
-            <Label for="inv-role">{{ t("product.members.role") }}</Label>
-            <NativeSelect id="inv-role" v-model="role"><option v-for="r in roleChoices" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option></NativeSelect>
-          </div>
-          <Button type="submit" :disabled="invite.isPending.value || email.trim() === ''"><Send />{{ t("product.members.invite") }}</Button>
-        </div>
-        <p v-if="sentTo" class="text-success text-sm" role="status">{{ t("product.members.invited", { email: sentTo }) }}</p>
-      </form>
-
       <div v-if="(invitations.data.value?.invitations ?? []).length > 0" class="flex flex-col gap-2">
         <h3 class="text-base font-semibold tracking-tight">{{ t("product.members.pending") }}</h3>
         <ul class="divide-border/70 divide-y" :aria-label="t('product.members.pending')">
@@ -148,6 +162,32 @@ const error = computed(() => firstError(invite, revokeInvite, resendInvite, chan
         </ul>
       </div>
     </template>
+
+    <Sheet v-model:open="inviting">
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{{ t("product.members.inviteTitle") }}</SheetTitle>
+          <SheetDescription>{{ t("product.members.manageNote") }}</SheetDescription>
+        </SheetHeader>
+        <SheetBody>
+          <form id="invite-member" class="flex flex-col gap-4" :aria-label="t('product.members.inviteTitle')" @submit.prevent="submitInvite">
+            <div class="flex flex-col gap-1.5">
+              <Label for="inv-email">{{ t("product.auth.email") }}</Label>
+              <Input id="inv-email" v-model="email" type="email" inputmode="email" autocomplete="off" required />
+            </div>
+            <div class="flex flex-col gap-1.5">
+              <Label for="inv-role">{{ t("product.members.role") }}</Label>
+              <NativeSelect id="inv-role" v-model="role"><option v-for="r in roleChoices" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option></NativeSelect>
+            </div>
+            <ErrorText :error="invite.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+          </form>
+        </SheetBody>
+        <SheetFooter>
+          <Button variant="ghost" type="button" @click="inviting = false">{{ t("common.cancel") }}</Button>
+          <Button type="submit" form="invite-member" :disabled="invite.isPending.value || email.trim() === ''"><Send />{{ t("product.members.invite") }}</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
 
     <Dialog v-model:open="confirm">
       <DialogContent class="sm:max-w-md">

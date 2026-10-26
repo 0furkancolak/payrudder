@@ -10,12 +10,13 @@ test("the playground takes a visitor from an empty account to a paid invoice", a
   await page.getByRole("link", { name: "Playground", exact: true }).click();
 
   // The account form comes pre-filled too; overwrite it to prove each field still takes input.
+  await page.getByTestId("playground-account-open").click();
   const form = page.getByRole("form", { name: "new account" });
   await form.getByLabel("Account name").fill(`playground-${Date.now()}`);
   await form.getByLabel("Time zone").fill("Europe/Istanbul");
   await form.getByLabel("Grace period (hours)").fill("24");
   await pickCurrency(form.getByLabel("Currency"), "TRY");
-  await form.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("Sandbox API key issued")).toBeVisible();
 
   await page.getByRole("button", { name: /Create meter, plan/ }).click();
@@ -39,12 +40,13 @@ test("a declined payment outcome leaves the invoice open with the payment declin
   await signInAsOperator(page);
   await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
   await page.getByRole("link", { name: "Playground", exact: true }).click();
+  await page.getByTestId("playground-account-open").click();
   const form = page.getByRole("form", { name: "new account" });
   await form.getByLabel("Account name").fill(`playground-declined-${Date.now()}`);
   await form.getByLabel("Time zone").fill("Europe/Istanbul");
   await form.getByLabel("Grace period (hours)").fill("24");
   await pickCurrency(form.getByLabel("Currency"), "EUR");
-  await form.getByRole("button", { name: "Create account" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Create account" }).click();
   await page.getByRole("button", { name: /Create meter, plan/ }).click();
   await expect(page.getByText("Subscription to starter")).toBeVisible();
   await page.getByLabel("Payment outcome").selectOption("declined");

@@ -5,6 +5,9 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { NativeSelect } from "@/shared/ui/native-select";
+import { useTableState } from "@/shared/lib/useTableState";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { usePayments } from "./billingApi";
@@ -19,6 +22,12 @@ const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const payments = usePayments(tenantId);
 const rows = computed(() => payments.data.value?.payments ?? []);
+const table = useTableState(rows, {
+  searchFields: (p) => [p.provider, p.invoice_id, p.id, p.amount_minor],
+  filters: { status: (p, v) => p.status === v, kind: (p, v) => p.kind === v },
+});
+const statuses = computed(() => [...new Set(rows.value.map((p) => p.status as string | undefined).filter((v): v is string => !!v))].sort());
+const kinds = computed(() => [...new Set(rows.value.map((p) => p.kind as string | undefined).filter((v): v is string => !!v))].sort());
 const when = (v?: string) => fmt.date(v, "dateTime");
 </script>
 
@@ -33,6 +42,16 @@ const when = (v?: string) => fmt.date(v, "dateTime");
     </div>
 
     <ErrorText :error="payments.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <DataToolbar v-if="rows.length > 0" v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <NativeSelect v-model="table.filters.value.status" class="w-40" :aria-label="t('product.payments.status')">
+        <option value="">{{ t("product.payments.allStatuses") }}</option>
+        <option v-for="s in statuses" :key="s" :value="s">{{ t(`product.status.${s}`) }}</option>
+      </NativeSelect>
+      <NativeSelect v-model="table.filters.value.kind" class="w-40" :aria-label="t('product.billing.payments.kind')">
+        <option value="">{{ t("product.payments.allKinds") }}</option>
+        <option v-for="k in kinds" :key="k" :value="k">{{ t(`product.billing.payments.kinds.${k}`) }}</option>
+      </NativeSelect>
+    </DataToolbar>
     <Skeleton v-if="payments.isPending.value" class="h-40 rounded-2xl" />
     <p v-else-if="rows.length === 0 && !payments.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t("product.billing.payments.empty") }}</p>
     <div v-else class="relative -mx-2 overflow-x-auto px-2">
@@ -48,7 +67,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
           </tr>
         </thead>
         <tbody>
-          <tr v-for="p in rows" :key="p.id" class="border-border/70 border-t" data-testid="payment-row">
+          <tr v-for="p in table.items.value" :key="p.id" class="border-border/70 border-t" data-testid="payment-row">
             <td class="py-3 pe-4 whitespace-nowrap">{{ when(p.occurred_at) }}</td>
             <td class="py-3 pe-4">{{ t(`product.billing.payments.kinds.${p.kind}`) }}</td>
             <td class="py-3 pe-4"><StatusPill :tone="toneOf(p.status)">{{ t(`product.status.${p.status}`) }}</StatusPill></td>
@@ -62,6 +81,8 @@ const when = (v?: string) => fmt.date(v, "dateTime");
           </tr>
         </tbody>
       </table>
+      <p v-if="table.total.value === 0" class="text-muted-foreground py-10 text-center text-sm">{{ t("common.noMatches") }}</p>
     </div>
+    <DataPagination v-if="rows.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </section>
 </template>

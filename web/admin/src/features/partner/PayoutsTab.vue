@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import Pager from "@/features/affiliates/Pager.vue";
+import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "@/features/affiliates/paging";
 import { useFormat } from "@/shared/lib/format";
 import { Card } from "@/shared/ui/card";
@@ -16,7 +16,7 @@ const props = defineProps<{ id: string }>();
 const { t } = useI18n();
 const fmt = useFormat();
 const pager = usePager();
-const list = usePayouts(() => props.id, pager.token);
+const list = usePayouts(() => props.id, pager.token, pager.size);
 </script>
 
 <template>
@@ -49,6 +49,6 @@ const list = usePayouts(() => props.id, pager.token);
         </TableRow>
       </TableBody>
     </Table>
-    <Pager v-if="list.data.value" :has-prev="pager.hasPrev.value" :next="list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
+    <DataPagination v-if="list.data.value" v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
   </Card>
 </template>

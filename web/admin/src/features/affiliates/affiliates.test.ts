@@ -1,3 +1,4 @@
+import { nextTick } from "vue";
 import { describe, expect, it } from "vitest";
 import {
   affiliateTone,
@@ -192,6 +193,18 @@ describe("days and paging", () => {
     expect(p.hasPrev.value).toBe(false);
     p.next("x");
     p.reset();
+    expect(p.token.value).toBe("");
+  });
+
+  it("counts the page, and a new page size starts again from the first", async () => {
+    const p = usePager();
+    expect(p.page.value).toBe(1);
+    p.next("t2");
+    p.next("t3");
+    expect(p.page.value).toBe(3);
+    p.size.value = 50;
+    await nextTick();
+    expect(p.page.value).toBe(1);
     expect(p.token.value).toBe("");
   });
 });
