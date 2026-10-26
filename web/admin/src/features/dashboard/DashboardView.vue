@@ -49,7 +49,8 @@ const revenueDown = computed(() => unavailable.value.includes("revenue"));
 const points = computed(() =>
   (block.value?.series ?? []).map((p) => ({ date: p.date ?? "", value: p.net_minor ?? 0, ...(p.prev_net_minor !== undefined && p.prev_net_minor !== null ? { prevDate: p.prev_date ?? "", prev: p.prev_net_minor } : {}) })),
 );
-const empty = computed(() => !!data.value && !!block.value && !hasActivity(block.value) && (data.value.customers?.total ?? 0) === 0);
+// A tenant that has never been charged has no currency block at all, which is as empty as a block of zeros.
+const empty = computed(() => !!data.value && (!block.value || !hasActivity(block.value)) && (data.value.customers?.total ?? 0) === 0);
 </script>
 
 <template>
