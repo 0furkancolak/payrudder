@@ -5,6 +5,7 @@ package command
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/mail"
 	"strings"
@@ -103,6 +104,42 @@ func validEmail(s string) bool {
 	return at > 0 && strings.Contains(s[at+1:], ".") && !strings.HasSuffix(s, ".")
 }
 
+// checkPassword records a violation of field when the password is not of an allowed length.
+func checkPassword(v *domain.Violations, field, password string) {
+	if n := len(password); n < credential.MinPasswordLen || n > credential.MaxPasswordLen {
+		v.Add(field, fmt.Sprintf("must be between %d and %d characters", credential.MinPasswordLen, credential.MaxPasswordLen))
+	}
+}
+
+// hashPassword hashes a password in one of the hash slots, so that a burst of requests cannot run dozens of 19 MiB hashes at once.
+func (c *Commands) hashPassword(ctx context.Context, password string) (string, error) {
+	var hash string
+	var herr error
+	if err := c.withSlot(ctx, func() { hash, herr = credential.Hash(password) }); err != nil {
+		return "", err
+	}
+	if herr != nil {
+		return "", status.Error(codes.Internal, "password hashing failed")
+	}
+	return hash, nil
+}
+
+// createUserWithAccount makes a user and the account they own in the caller's transaction, and returns their ids.
+func createUserWithAccount(ctx context.Context, q *sqlc.Queries, user sqlc.InsertUserParams, accountName string) (userID, accountID uuid.UUID, err error) {
+	u, err := q.InsertUser(ctx, user)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	a, err := q.InsertAccount(ctx, sqlc.InsertAccountParams{ID: idgen.NewUUIDv7(), Name: accountName})
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	if err := q.InsertMember(ctx, sqlc.InsertMemberParams{AccountID: a.ID, UserID: u.ID, Role: query.RoleOwner}); err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	return u.ID, a.ID, nil
+}
+
 // Opened is a new session.
 type Opened struct {
 	User        *plansv1.User
@@ -123,9 +160,7 @@ func (c *Commands) SignUp(ctx context.Context, req *plansv1.SignUpRequest) error
 	if !validEmail(email) {
 		v.Add("email", "must be a plain e-mail address")
 	}
-	if n := len(req.GetPassword()); n < credential.MinPasswordLen || n > credential.MaxPasswordLen {
-		v.Add("password", "must be between 10 and 256 characters")
-	}
+	checkPassword(&v, "password", req.GetPassword())
 	if name == "" || len(name) > 200 {
 		v.Add("account_name", "required, at most 200 characters")
 	}
@@ -135,31 +170,20 @@ func (c *Commands) SignUp(ctx context.Context, req *plansv1.SignUpRequest) error
 	if err := v.Err(); err != nil {
 		return err
 	}
-	var hash string
-	var herr error
-	if err := c.withSlot(ctx, func() { hash, herr = credential.Hash(req.GetPassword()) }); err != nil {
+	hash, err := c.hashPassword(ctx, req.GetPassword())
+	if err != nil {
 		return err
-	}
-	if herr != nil {
-		return status.Error(codes.Internal, "password hashing failed")
 	}
 	var userID, accountID uuid.UUID
 	var verifyToken string
-	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		u, err := q.InsertUser(ctx, sqlc.InsertUserParams{ID: idgen.NewUUIDv7(), Email: email, DisplayName: display, PasswordHash: hash, Locale: locale})
+		var err error
+		userID, accountID, err = createUserWithAccount(ctx, q, sqlc.InsertUserParams{ID: idgen.NewUUIDv7(), Email: email, DisplayName: display, PasswordHash: hash, Locale: locale}, name)
 		if err != nil {
 			return err
 		}
-		a, err := q.InsertAccount(ctx, sqlc.InsertAccountParams{ID: idgen.NewUUIDv7(), Name: name})
-		if err != nil {
-			return err
-		}
-		if err := q.InsertMember(ctx, sqlc.InsertMemberParams{AccountID: a.ID, UserID: u.ID, Role: query.RoleOwner}); err != nil {
-			return err
-		}
-		userID, accountID = u.ID, a.ID
-		verifyToken, err = issueToken(ctx, q, u.ID, kindVerify, credential.VerifyPrefix, VerifyTTL, c.now())
+		verifyToken, err = issueToken(ctx, q, userID, kindVerify, credential.VerifyPrefix, VerifyTTL, c.now())
 		return err
 	})
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
@@ -300,9 +324,7 @@ func (c *Commands) TouchSession(ctx context.Context, s query.Session) {
 	}
 }
 
-func forbidden() error {
-	return errkey.New(codes.PermissionDenied, "identity.account.forbidden", "your role in this account does not allow this")
-}
+func forbidden() error { return query.Forbidden() }
 
 // CreateApp adds an app to an account the user owns or administers. Self-serve apps are free tier with no grace period; the settings that are immutable
 // afterwards (currency, time zone) are the user's choice.
@@ -326,15 +348,8 @@ func (c *Commands) CreateApp(ctx context.Context, req *plansv1.CreateMyAppReques
 	var app *plansv1.App
 	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		m, err := q.GetMembership(ctx, sqlc.GetMembershipParams{AccountID: aid, UserID: uid})
-		if errors.Is(err, pgx.ErrNoRows) {
-			return query.NotFound("account")
-		}
-		if err != nil {
+		if _, _, _, err := query.RequireManager(ctx, q, req.GetUserId(), req.GetAccountId()); err != nil {
 			return err
-		}
-		if !query.CanManage(m.Role) {
-			return forbidden()
 		}
 		existing, err := q.ListAccountApps(ctx, aid)
 		if err != nil {

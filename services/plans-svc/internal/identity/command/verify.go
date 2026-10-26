@@ -178,8 +178,10 @@ func (c *Commands) RequestPasswordReset(ctx context.Context, req *plansv1.Reques
 // failed sign-ins is cleared; and every session of the user is revoked, so whoever held one (the person after a theft, or a thief) has to sign in again.
 func (c *Commands) ResetPassword(ctx context.Context, req *plansv1.ResetPasswordRequest) error {
 	token := req.GetToken()
-	if n := len(req.GetNewPassword()); n < credential.MinPasswordLen || n > credential.MaxPasswordLen {
-		return domain.Invalid("password", "must be between 10 and 256 characters")
+	var pwv domain.Violations
+	checkPassword(&pwv, "password", req.GetNewPassword())
+	if err := pwv.Err(); err != nil {
+		return err
 	}
 	if !credential.WellFormed(credential.ResetPrefix, token) {
 		return invalidToken()
@@ -190,16 +192,12 @@ func (c *Commands) ResetPassword(ctx context.Context, req *plansv1.ResetPassword
 	} else if err != nil {
 		return convert.Err(err, "token")
 	}
-	var hash string
-	var herr error
-	if err := c.withSlot(ctx, func() { hash, herr = credential.Hash(req.GetNewPassword()) }); err != nil {
+	hash, err := c.hashPassword(ctx, req.GetNewPassword())
+	if err != nil {
 		return err
 	}
-	if herr != nil {
-		return status.Error(codes.Internal, "password hashing failed")
-	}
 	var userID uuid.UUID
-	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		uid, err := q.ConsumeUserToken(ctx, sqlc.ConsumeUserTokenParams{TokenHash: credential.HashToken(token), Kind: kindReset})
 		if errors.Is(err, pgx.ErrNoRows) {
