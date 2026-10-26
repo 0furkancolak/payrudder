@@ -12,7 +12,7 @@ import type { NavItem, NavSection } from "./nav";
  * The sidebar of a wide screen: open by default (icons and labels), foldable to an icon rail with the choice remembered. It is a floating card on
  * the grey page that stays dark in both themes (DESIGN.md). The same navigation fills the phone drawer (MobileDrawer).
  */
-defineProps<{ sections: NavSection[]; current: NavItem | undefined; brand: string; home: string; apps?: SidebarApp[]; appId?: string; env?: Environment }>();
+defineProps<{ sections: NavSection[]; current: NavItem | undefined; brand: string; home: string; apps?: SidebarApp[]; appId?: string; env?: Environment; nest?: boolean }>();
 const { t } = useI18n();
 </script>
 
@@ -30,7 +30,7 @@ const { t } = useI18n();
     </Link>
 
     <div class="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
-      <SidebarNav :sections="sections" :current="current" :collapsed="sidebarCollapsed" :apps="apps" :app-id="appId" :env="env" :label="t('shell.navLabel')" />
+      <SidebarNav :sections="sections" :current="current" :collapsed="sidebarCollapsed" :apps="apps" :app-id="appId" :env="env" :nest="nest" :label="t('shell.navLabel')" />
     </div>
 
     <div class="border-rail-border mt-3 flex flex-col gap-0.5 border-t pt-3">

@@ -52,7 +52,7 @@ function submit() {
         </div>
       </template>
       <Tabs v-model="method">
-        <TabsList class="w-full" :aria-label="t('product.signIn.methods')">
+        <TabsList class="w-full [&>*]:flex-1" :aria-label="t('product.signIn.methods')">
           <TabsTrigger value="password">{{ t("product.signIn.tabPassword") }}</TabsTrigger>
           <TabsTrigger value="code">{{ t("product.signIn.tabCode") }}</TabsTrigger>
         </TabsList>

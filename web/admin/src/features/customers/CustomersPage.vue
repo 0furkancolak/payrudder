@@ -233,8 +233,8 @@ function submit() {
             <span class="text-sm">{{ [c.tax_id, c.tax_office].filter(Boolean).join(" · ") || "—" }}</span>
             <Button size="sm" variant="ghost" @click="editTaxOf(c)">{{ t("einvoice.customer.edit") }}</Button>
           </TableCell>
-          <TableCell class="w-40 text-end">
-<div class="flex flex-col items-end gap-1">
+          <TableCell class="text-end">
+<div class="flex flex-wrap justify-end gap-1">
             <Button size="sm" variant="outline" :aria-label="t('billing.paymentLinks.portal.open') + ' ' + c.external_id" @click="portalFor = c.external_id ?? ''">{{ t("billing.paymentLinks.portal.open") }}</Button>
             <Button size="sm" variant="outline" :aria-label="t('billing.paymentLinks.paymentLink') + ' ' + c.external_id" @click="paymentLink(c.external_id)">{{ t("billing.paymentLinks.paymentLink") }}</Button>
           </div>

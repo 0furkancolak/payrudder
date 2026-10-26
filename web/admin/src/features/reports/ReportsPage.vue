@@ -8,7 +8,6 @@ import { tenantBase } from "@/shared/lib/session";
 import { useTableState } from "@/shared/lib/useTableState";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -67,8 +66,18 @@ const when = (v?: string) => fmt.date(v, "short", "—");
 </script>
 
 <template>
-  <div class="mb-4 flex gap-2" role="tablist" :aria-label="t('billing.reports.kinds')">
-    <Button v-for="k in tabs" :key="k" role="tab" :aria-selected="tab === k" :variant="tab === k ? 'default' : 'outline'" size="sm" @click="tab = k">{{ t(`billing.reports.${k}`) }}</Button>
+  <div class="mb-4 flex flex-wrap gap-2" role="tablist" :aria-label="t('billing.reports.kinds')">
+    <button
+      v-for="k in tabs"
+      :key="k"
+      type="button"
+      role="tab"
+      :aria-selected="tab === k"
+      :class="['inline-flex h-10 items-center rounded-xl border px-4 text-sm font-semibold transition-colors', tab === k ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-card text-muted-foreground hover:text-foreground border-border/70']"
+      @click="tab = k"
+    >
+      {{ t(`billing.reports.${k}`) }}
+    </button>
   </div>
 
   <Card v-if="tab === 'revenue'" class="p-3">
