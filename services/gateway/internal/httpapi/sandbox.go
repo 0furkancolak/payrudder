@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -68,8 +67,8 @@ func (s *Server) sandboxSimulate(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Scenario string `json:"scenario"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, r, invalid("scenario", "required, one of GET /v1/sandbox/scenarios"))
+	if err := decodeBody(r, &body, invalid("scenario", "required, one of GET /v1/sandbox/scenarios")); err != nil {
+		writeError(w, r, err)
 		return
 	}
 	sc, ok := scenarioByName(body.Scenario)

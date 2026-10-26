@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -64,6 +65,19 @@ func decode(r *http.Request, msg proto.Message) error {
 	}
 	if err := unmarshal.Unmarshal(body, msg); err != nil {
 		return errkey.Newf(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON: %v", err)
+	}
+	return nil
+}
+
+// decodeBody reads a JSON body into v for a handler that has its own words for a body it cannot use: bad is what it answers when the body is empty or not
+// JSON. A body over the limit is the 413 answer like everywhere else, never bad.
+func decodeBody(r *http.Request, v any, bad error) error {
+	raw, err := readBody(r)
+	if err != nil {
+		return err
+	}
+	if err := json.NewDecoder(bytes.NewReader(raw)).Decode(v); err != nil {
+		return bad
 	}
 	return nil
 }

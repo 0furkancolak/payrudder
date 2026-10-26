@@ -64,8 +64,8 @@ func (s *Server) createUploadSession(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Files []fileSpecJSON `json:"files"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, r, invalid("body", "must be JSON like {\"files\": [{\"filename\": …, \"content_type\": …, \"size\": …, \"purpose\": …}]}"))
+	if err := decodeBody(r, &body, invalid("body", "must be JSON like {\"files\": [{\"filename\": …, \"content_type\": …, \"size\": …, \"purpose\": …}]}")); err != nil {
+		writeError(w, r, err)
 		return
 	}
 	req := &assetsv1.CreateUploadSessionRequest{IdempotencyKey: r.Header.Get("Idempotency-Key")}
@@ -109,8 +109,8 @@ func (s *Server) completeUploadFile(w http.ResponseWriter, r *http.Request) {
 			ETag       string `json:"etag"`
 		} `json:"parts"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeError(w, r, invalid("body", "must be JSON like {\"parts\": [{\"part_number\": 1, \"etag\": \"…\"}]}"))
+	if err := decodeBody(r, &body, invalid("body", "must be JSON like {\"parts\": [{\"part_number\": 1, \"etag\": \"…\"}]}")); err != nil {
+		writeError(w, r, err)
 		return
 	}
 	req := &assetsv1.CompleteFileRequest{SessionId: r.PathValue("session"), AssetId: r.PathValue("asset")}
@@ -337,8 +337,13 @@ func (s *Server) setInvoiceLogo(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		AssetID string `json:"asset_id"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.AssetID == "" {
-		writeError(w, r, invalid("asset_id", "required"))
+	bad := invalid("asset_id", "required")
+	if err := decodeBody(r, &body, bad); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if body.AssetID == "" {
+		writeError(w, r, bad)
 		return
 	}
 	ar, err := s.d.Assets.GetAsset(r.Context(), &assetsv1.GetAssetRequest{AssetId: body.AssetID})
