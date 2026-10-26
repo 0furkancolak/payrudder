@@ -70,6 +70,17 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 		return s["cus_a"] == "PAYMENT_PENDING" && s["cus_b"] == "PAYMENT_PENDING"
 	})
 
+	// The mail leaves a moment after the saga parks, so wait for both before counting.
+	testkit.Eventually(t, 30*time.Second, "both transfer mails to be sent", func() bool {
+		n := 0
+		for _, c := range e.mine(stub) {
+			if c.GetSendNotification() != nil {
+				n++
+			}
+		}
+		return n >= 2
+	})
+
 	// The charge carried the invoice number, and the customer was mailed where to pay, once per invoice.
 	for _, c := range e.mine(stub) {
 		if ch := c.GetChargePayment(); ch != nil && ch.GetInvoiceNumber() == "" {
