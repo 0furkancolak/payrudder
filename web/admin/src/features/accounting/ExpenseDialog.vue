@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { minorToMajor, parseMajor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -80,13 +80,14 @@ function submit() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ expense ? t("billing.accounting.form.editTitle") : t("billing.accounting.form.addTitle") }}</DialogTitle>
-        <DialogDescription>{{ t("billing.accounting.form.hint") }}</DialogDescription>
-      </DialogHeader>
-      <form class="grid gap-3" @submit.prevent="submit">
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ expense ? t("billing.accounting.form.editTitle") : t("billing.accounting.form.addTitle") }}</SheetTitle>
+        <SheetDescription>{{ t("billing.accounting.form.hint") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+      <form id="expense-form" class="grid gap-3" @submit.prevent="submit">
         <div class="grid gap-1.5">
           <Label for="exp-vendor">{{ t("billing.accounting.form.vendor") }}</Label>
           <Input id="exp-vendor" v-model="vendor" maxlength="120" autocomplete="off" />
@@ -141,11 +142,12 @@ function submit() {
         </div>
         <ErrorText :message="formError" />
         <ErrorText :error="save.error.value" />
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="open = false">{{ t("billing.accounting.form.cancel") }}</Button>
-          <Button type="submit" :disabled="save.isPending.value">{{ t("billing.accounting.form.save") }}</Button>
-        </DialogFooter>
       </form>
-    </DialogContent>
-  </Dialog>
+      </SheetBody>
+      <SheetFooter>
+        <Button type="button" variant="outline" @click="open = false">{{ t("billing.accounting.form.cancel") }}</Button>
+        <Button type="submit" form="expense-form" :disabled="save.isPending.value">{{ t("billing.accounting.form.save") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

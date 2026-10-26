@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { pickCurrency } from "./ui";
+import { pickCurrency, pickFilter, pickRange, rowAction } from "./ui";
 
 const point = (bucket: string, net: string, exp: string) => ({ bucket, gross_income_minor: net, tax_minor: "0", refunds_minor: "0", net_income_minor: net, expenses_minor: exp, profit_minor: String(Number(net) - Number(exp)) });
 
@@ -124,22 +124,23 @@ test.describe("accounting", () => {
     await openTenantPage(page, "/accounting");
     await expect(page.getByText("No income or expenses in this period.")).toBeVisible();
 
-    await page.getByRole("button", { name: "Last month" }).click();
+    await pickRange(page, "lastMonth");
     await expect.poll(() => gw.called("GET", "/v1/accounting/summary").some((c) => c.query.get("from") === "2026-09-01" && c.query.get("to") === "2026-09-30")).toBe(true);
-    await page.getByRole("button", { name: "Last 30 days" }).click();
+    await pickRange(page, "30d");
     await expect.poll(() => gw.called("GET", "/v1/accounting/summary").some((c) => c.query.get("from") === "2026-09-22" && c.query.get("to") === "2026-10-21")).toBe(true);
-    await page.getByRole("button", { name: "This year" }).click();
+    await pickRange(page, "year");
     await expect
       .poll(() => gw.called("GET", "/v1/accounting/summary").some((c) => c.query.get("from") === "2026-01-01" && c.query.get("to") === "2026-10-21" && c.query.get("granularity") === "month"))
       .toBe(true);
 
     const before = gw.called("GET", "/v1/accounting/summary").length;
-    await page.getByRole("button", { name: "Custom" }).click();
+    await page.getByTestId("date-range").first().click();
     await page.getByLabel("From").fill("2026-02-01");
     await page.getByLabel("To", { exact: true }).fill("2026-01-01");
-    await expect(page.getByText("Choose a first and a last day")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Apply" })).toBeDisabled();
     expect(gw.called("GET", "/v1/accounting/summary").length).toBe(before); // an invalid range is not sent
     await page.getByLabel("To", { exact: true }).fill("2026-02-10");
+    await page.getByRole("button", { name: "Apply" }).click();
     await expect.poll(() => gw.called("GET", "/v1/accounting/summary").some((c) => c.query.get("from") === "2026-02-01" && c.query.get("to") === "2026-02-10")).toBe(true);
   });
 
@@ -192,7 +193,7 @@ test.describe("accounting", () => {
     });
 
     // Edit: the dialog starts from the stored values, the amount back in major units.
-    await page.getByRole("row", { name: /AWS/ }).getByRole("button", { name: "Edit" }).click();
+    await rowAction(page.getByRole("row", { name: /AWS/ }), "Edit");
     await expect(page.getByRole("dialog").getByLabel("Amount")).toHaveValue("40.00");
     await page.getByRole("dialog").getByLabel("Vendor").fill("Amazon Web Services");
     await page.getByRole("dialog").getByLabel("Amount").fill("45");
@@ -201,7 +202,7 @@ test.describe("accounting", () => {
     expect(gw.called("PUT", "/v1/expenses/e1")[0]?.body).toMatchObject({ vendor: "Amazon Web Services", amount_minor: "4500", currency: "TRY", recurring: "none" });
 
     // Void: a reason is required, and the voided entry can be shown again.
-    await page.getByRole("row", { name: /Amazon Web Services/ }).getByRole("button", { name: "Void" }).click();
+    await rowAction(page.getByRole("row", { name: /Amazon Web Services/ }), "Void");
     const voidDialog = page.getByRole("dialog");
     await expect(voidDialog.getByRole("button", { name: "Void expense" })).toBeDisabled();
     await voidDialog.getByLabel("Reason").fill("duplicate of the invoice");
@@ -240,7 +241,7 @@ test.describe("accounting", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/accounting");
-    await page.getByLabel("App", { exact: true }).selectOption("app-2");
+    await pickFilter(page, "App", "Web");
     await expect(page.getByText("The app limits the expenses.")).toBeVisible();
     await expect.poll(() => gw.called("GET", "/v1/accounting/summary").some((c) => c.query.get("app_id") === "app-2")).toBe(true);
     await expect.poll(() => gw.called("GET", "/v1/expenses").some((c) => c.query.get("app_id") === "app-2")).toBe(true);

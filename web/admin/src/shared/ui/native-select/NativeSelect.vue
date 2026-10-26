@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from "vue"
+import { computed, type HTMLAttributes } from "vue"
 import { ChevronDown } from "@lucide/vue"
 import { cn } from "@/shared/lib/utils"
 
 defineOptions({ inheritAttrs: false })
 const props = defineProps<{ class?: HTMLAttributes["class"] }>()
-const model = defineModel<string | number>()
+const model = defineModel<string | number | undefined>()
+// A model that was never set (a filter nobody touched) shows the option whose value is empty, not a blank box.
+const shown = computed({ get: () => model.value ?? "", set: (v) => (model.value = v) })
 </script>
 
 <template>
   <span class="relative inline-flex">
     <select
-      v-model="model"
+      v-model="shown"
       v-bind="$attrs"
       data-slot="native-select"
       :class="cn('border-input bg-card h-10 w-full appearance-none rounded-xl border ps-4 pe-9 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50', props.class)"

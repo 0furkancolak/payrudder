@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, TriangleAlert } from "@lucide/vue";
+import { Check, Download, TriangleAlert } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -8,13 +8,14 @@ import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { ErrorText } from "@/shared/ui/error-text";
-import { Input } from "@/shared/ui/input";
+import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
+import FilterBar from "./FilterBar.vue";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { downloadJournalCsv, useJournal, type JournalFilter } from "./api";
 import { dayEnd, dayStart, journalTotals } from "./logic";
-import Pager from "./Pager.vue";
+import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "./paging";
 
 const props = defineProps<{ tenantId: string }>();
@@ -23,12 +24,11 @@ const fmt = useFormat();
 const errorText = useErrorText();
 const tenantId = computed(() => props.tenantId);
 
-const fromDay = ref("");
-const toDay = ref("");
-const filter = computed<JournalFilter>(() => ({ currency: "", from: dayStart(fromDay.value) ?? "", to: dayEnd(toDay.value) ?? "" }));
+const range = ref<DateRange>({ from: "", to: "" });
+const filter = computed<JournalFilter>(() => ({ currency: "", from: dayStart(range.value.from) ?? "", to: dayEnd(range.value.to) ?? "" }));
 const pager = usePager();
 watch(filter, () => pager.reset());
-const journal = useJournal(tenantId, filter, pager.token);
+const journal = useJournal(tenantId, filter, pager.token, pager.size);
 const totals = computed(() => journalTotals(journal.data.value?.totals));
 
 const exporting = ref(false);
@@ -45,18 +45,13 @@ async function exportCsv() {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-end justify-between gap-3">
-    <div>
-      <h2 class="text-lg font-semibold">{{ t("affiliates.journal.title") }}</h2>
-      <p class="text-muted-foreground text-sm">{{ t("affiliates.journal.intro") }}</p>
-    </div>
-    <Button type="button" variant="outline" :disabled="exporting" @click="exportCsv">{{ t("affiliates.journal.download") }}</Button>
-  </div>
-
-  <div class="flex flex-wrap items-center gap-2">
-    <Input v-model="fromDay" type="date" class="w-40" :aria-label="t('billing.accounting.period.from')" />
-    <Input v-model="toDay" type="date" class="w-40" :aria-label="t('billing.accounting.period.to')" />
-  </div>
+  <p class="text-muted-foreground text-sm">{{ t("affiliates.journal.intro") }}</p>
+  <FilterBar :active="range.from !== '' || range.to !== ''" class="p-0" @clear="range = { from: '', to: '' }">
+    <DateRangePicker v-model="range" />
+    <template #actions>
+      <Button type="button" variant="outline" :disabled="exporting" @click="exportCsv"><Download class="size-4" aria-hidden="true" />{{ t("affiliates.journal.download") }}</Button>
+    </template>
+  </FilterBar>
 
   <ErrorText :error="journal.error.value" />
   <Skeleton v-if="journal.isPending.value" class="h-32" />
@@ -108,7 +103,7 @@ async function exportCsv() {
           </TableRow>
         </TableBody>
       </Table>
-      <Pager :has-prev="pager.hasPrev.value" :next="journal.data.value.next" :total="journal.data.value.total" @prev="pager.prev()" @next="pager.next(journal.data.value.next)" />
+      <DataPagination v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!journal.data.value.next" :total="journal.data.value.total" @prev="pager.prev()" @next="pager.next(journal.data.value.next)" />
     </Card>
   </template>
 </template>

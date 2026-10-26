@@ -21,7 +21,15 @@
     "unknown": "?",
     "cancel": "Abbrechen",
     "copied": "Kopiert",
-    "copyFailed": "Ihr Browser hat das Kopieren nicht erlaubt. Markieren Sie den Text und kopieren Sie ihn von Hand."
+    "copyFailed": "Ihr Browser hat das Kopieren nicht erlaubt. Markieren Sie den Text und kopieren Sie ihn von Hand.",
+    "close": "Schließen",
+    "search": "Suchen",
+    "clearFilters": "Filter zurücksetzen",
+    "noMatches": "Keine Einträge passen zu diesen Filtern.",
+    "moreActions": "Weitere Aktionen",
+    "view": "Ansehen",
+    "openFullPage": "Als ganze Seite öffnen",
+    "all": "Alle"
   },
   "enums": {
     "environment": {
@@ -108,7 +116,10 @@
       "currency": "Währung",
       "timezone": "Zeitzone",
       "id": "ID"
-    }
+    },
+    "allEnvironments": "Alle Umgebungen",
+    "allTiers": "Alle Stufen",
+    "allCurrencies": "Alle Währungen"
   },
   "tenant": {
     "fallbackTitle": "Mandant",
@@ -123,7 +134,8 @@
       "customer": "Kunde",
       "total": "Summe",
       "status": "Status",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Erstellt"
     },
     "jobs": {
       "title": "Replay- und Neubewertungsjobs",
@@ -131,7 +143,9 @@
       "idLabel": "Job-ID",
       "replay": "Replay-Job",
       "rerating": "Neubewertungsjob"
-    }
+    },
+    "allStatuses": "Alle Status",
+    "allKinds": "Alle Arten"
   },
   "invoice": {
     "back": "← Mandant",
@@ -255,7 +269,8 @@
       "deliveries": "Zustellungen",
       "reason": "Grund",
       "bytes": "Bytes"
-    }
+    },
+    "noMessages": "Keine Nachrichten in dieser Warteschlange."
   },
   "playground": {
     "title": "Spielwiese",
@@ -362,7 +377,9 @@
         "save": "Adresse speichern",
         "cancel": "Abbrechen",
         "editing": "Adresse von {id}"
-      }
+      },
+      "allCountries": "Alle Länder",
+      "allCurrencies": "Alle Währungen"
     },
     "packages": {
       "new": "Neues Paket",
@@ -385,7 +402,15 @@
       "monthly": "Monatlich",
       "yearly": "Jährlich",
       "perYear": "/ Jahr",
-      "tenantMonthly": "Die monatliche Gebühr in {currency} ist die feste Gebühr oben."
+      "tenantMonthly": "Die monatliche Gebühr in {currency} ist die feste Gebühr oben.",
+      "published": "Veröffentlicht",
+      "priceColumn": "Preis",
+      "limits": "Limits",
+      "priceKinds": {
+        "perUnit": "{price} pro Einheit",
+        "tiered": "{n} Stufen",
+        "package": "{size} Einheiten für {price}"
+      }
     },
     "subscriptions": {
       "new": "Neues Abonnement",
@@ -479,7 +504,10 @@
       },
       "endNowCredit": "Jetzt beenden und Rest gutschreiben",
       "confirmEndCredit": "Dieses Abonnement jetzt beenden und dem Kunden den ungenutzten Teil der im Voraus bezahlten Gebühr gutschreiben?",
-      "credited": "{amount} dem Guthaben des Kunden gutgeschrieben."
+      "credited": "{amount} dem Guthaben des Kunden gutgeschrieben.",
+      "allStates": "Alle Status",
+      "allCurrencies": "Alle Währungen",
+      "allIntervals": "Alle Intervalle"
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",
@@ -502,7 +530,8 @@
       "amount": "Betrag",
       "reference": "Referenz",
       "source": "Quelle",
-      "empty": "Noch nichts im Hauptbuch."
+      "empty": "Noch nichts im Hauptbuch.",
+      "id": "ID"
     },
     "providers": {
       "accounts": "Anbieter-Konten",
@@ -620,7 +649,9 @@
       "nextAttempt": "Nächster Versuch",
       "empty": "Noch nichts zu berichten.",
       "noDunning": "Keine unbezahlten Rechnungen.",
-      "credited": "Gutgeschrieben"
+      "credited": "Gutgeschrieben",
+      "currentMonth": "Aktueller Monat",
+      "splitBy": "Aufteilen nach"
     },
     "pricing": {
       "coupons": {
@@ -787,7 +818,10 @@
       "refunded": "Auf die Karte erstattet",
       "refundRequested": "Erstattung angefordert",
       "refundFailed": "Erstattung fehlgeschlagen",
-      "retryRefund": "Erstattung wiederholen"
+      "retryRefund": "Erstattung wiederholen",
+      "new": "Neue Gutschrift",
+      "hint": "Schreibt eine bezahlte Rechnung ganz oder teilweise gut. Der Betrag geht auf das Guthaben des Kunden oder zurück auf die Karte.",
+      "allWhere": "Überall"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -823,7 +857,8 @@
         "pending": "Ausstehend",
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
-      }
+      },
+      "allStatuses": "Alle Status"
     },
     "paymentLinks": {
       "title": "Zahlungslinks",
@@ -900,7 +935,8 @@
       },
       "for": "Für",
       "promotionCode": "Aktionscode (optional)",
-      "promotionHint": "Der Zahlende erhält den Rabatt dieses Codes, ohne ihn einzugeben, und kann einen anderen eingeben. Er wird jetzt gegen diesen Betrag geprüft."
+      "promotionHint": "Der Zahlende erhält den Rabatt dieses Codes, ohne ihn einzugeben, und kann einen anderen eingeben. Er wird jetzt gegen diesen Betrag geprüft.",
+      "id": "Link"
     },
     "mail": {
       "title": "E-Mail",
@@ -1077,7 +1113,9 @@
         "voided": "Storniert",
         "until": "bis {date}",
         "edit": "Bearbeiten",
-        "void": "Stornieren"
+        "void": "Stornieren",
+        "allCategories": "Alle Kategorien",
+        "allRecurring": "Einmalig und wiederkehrend"
       },
       "form": {
         "addTitle": "Ausgabe hinzufügen",
@@ -1571,7 +1609,8 @@
       "webhookSecret": "Signaturgeheimnis",
       "neverShown": "Das Geheimnis wird einmal gesendet und kann nicht zurückgelesen werden.",
       "save": "Konto speichern",
-      "saved": "Konto gespeichert."
+      "saved": "Konto gespeichert.",
+      "allEnvironments": "Alle Umgebungen"
     },
     "customer": {
       "title": "Steuerdaten",
@@ -1657,7 +1696,8 @@
       "revokeById": "Per ID widerrufen",
       "confirmRevoke": "Diesen API-Schlüssel widerrufen? Anfragen mit ihm funktionieren sofort nicht mehr.",
       "revokedDone": "Schlüssel {id} widerrufen."
-    }
+    },
+    "allEnvironments": "Alle Umgebungen"
   },
   "address": {
     "title": "Verkäuferadresse",
@@ -1693,7 +1733,8 @@
       "hint": "So erscheint der Verkäufer auf einer Rechnung.",
       "from": "Von",
       "empty": "Keine Adresse: Die Rechnung zeigt nur den Namen."
-    }
+    },
+    "edit": "Adresse bearbeiten"
   },
   "errors": {
     "billing": {
@@ -2573,7 +2614,9 @@
       "when": "Wann",
       "status": "Status",
       "provider": "Anbieter",
-      "amount": "Betrag"
+      "amount": "Betrag",
+      "allStatuses": "Alle Status",
+      "allKinds": "Alle Arten"
     },
     "invoices": {
       "title": "Letzte Rechnungen",
@@ -2640,7 +2683,12 @@
       "overlapHours": "{n} Stunden",
       "lastUsed": "zuletzt benutzt {date}",
       "neverUsed": "nie benutzt",
-      "ends": "Funktioniert nicht mehr ab {date}"
+      "ends": "Funktioniert nicht mehr ab {date}",
+      "filterEnv": "Umgebung",
+      "allEnvs": "Alle Umgebungen",
+      "filterStatus": "Status",
+      "allStatuses": "Alle Status",
+      "scopeHead": "Umfang"
     },
     "links": {
       "title": "Tiefer einsteigen",
@@ -2732,7 +2780,9 @@
       "leaveTitle": "Dieses Konto verlassen?",
       "leaveBody": "Sie verlieren sofort den Zugriff auf Apps und Daten. Ein Inhaber kann Sie erneut einladen.",
       "removeTitle": "Dieses Mitglied entfernen?",
-      "removeBody": "{name} verliert sofort den Zugriff auf Apps und Daten dieses Kontos."
+      "removeBody": "{name} verliert sofort den Zugriff auf Apps und Daten dieses Kontos.",
+      "allRoles": "Alle Rollen",
+      "expiresHead": "Gültig bis"
     },
     "account": {
       "switch": "Konto",
@@ -3028,7 +3078,8 @@
       "billing": "Abrechnung",
       "growth": "Wachstum",
       "developers": "Entwickler",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "apps": "Apps"
     },
     "items": {
       "overview": "Apps",
@@ -3062,7 +3113,8 @@
       "goLive": "Live schalten",
       "sandbox": "Sandbox-Werkzeuge",
       "partner": "Partnerportal"
-    }
+    },
+    "noApps": "Noch keine Apps"
   },
   "privacy": {
     "hide": "Beträge ausblenden",
@@ -3208,6 +3260,32 @@
       "apps": "{n} App | {n} Apps",
       "none": "Keine App hat in diesem Zeitraum Umsatz.",
       "open": "App öffnen"
+    }
+  },
+  "pagination": {
+    "perPage": "Zeilen pro Seite",
+    "total": "{count} insgesamt",
+    "prev": "Zurück",
+    "next": "Weiter",
+    "page": "Seite {page} von {pages}",
+    "pageOnly": "Seite {page}",
+    "goTo": "Zu Seite",
+    "go": "Los"
+  },
+  "dateRange": {
+    "any": "Jederzeit",
+    "label": "Zeitraum",
+    "from": "Von",
+    "to": "Bis",
+    "apply": "Anwenden",
+    "clear": "Löschen",
+    "presets": {
+      "today": "Heute",
+      "7d": "Letzte 7 Tage",
+      "30d": "Letzte 30 Tage",
+      "month": "Dieser Monat",
+      "lastMonth": "Letzter Monat",
+      "year": "Dieses Jahr"
     }
   }
 }

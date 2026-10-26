@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, TENANT, type Call } from "./gateway";
+import { pickFilter, rowAction } from "./ui";
 
 // Growth > Affiliates against a mocked gateway: the program form, adding and approving a partner, reversing a commission, creating and paying payouts
 // (a sandbox one is labelled fake), the balanced journal and the right-to-left page. The mock is a small stateful stand-in for /v1/affiliates/*.
@@ -324,12 +325,12 @@ test.describe("affiliates", () => {
     await expect(zed).toContainText("Applied through the form");
     await page.getByRole("button", { name: "Show them" }).click();
     await expect(page.getByRole("row", { name: /ANNA/ })).toHaveCount(0);
-    await zed.getByRole("button", { name: "Approve" }).click();
+    await rowAction(zed, "Approve");
     expect(gw.called("PATCH", `/v1/affiliates/${ZED}`)[0]?.body).toEqual({ status: "active" });
     await expect(page.getByTestId("pending-banner")).toHaveCount(0);
 
     // Back to all: the balance of ANNA is per currency.
-    await page.getByLabel("Status", { exact: true }).selectOption("");
+    await pickFilter(page, "Status", "All statuses");
     const anna = page.getByRole("row", { name: /ANNA/ });
     await expect(anna).toContainText("TRY 25.00 available");
     await expect(anna).toContainText("$9.00 available");
@@ -349,20 +350,20 @@ test.describe("affiliates", () => {
     expect(gw.called("POST", "/v1/affiliates")[0]?.body).toEqual({ email: "bob@partners.example", payout_method: "manual", name: "Bob Builder", code: "BOB-1", payout_details: "Pay by cash", pending: true });
 
     // Suspend and reinstate.
-    await anna.getByRole("button", { name: "Suspend" }).click();
+    await rowAction(anna, "Suspend");
     await expect(anna).toContainText("Suspended");
     expect(gw.called("PATCH", `/v1/affiliates/${ANNA}`).at(-1)?.body).toEqual({ status: "suspended" });
-    await anna.getByRole("button", { name: "Reinstate" }).click();
+    await rowAction(anna, "Reinstate");
     await expect(anna).toContainText("Active");
 
     // Edit the payout details.
-    await anna.getByRole("button", { name: "Edit" }).click();
+    await rowAction(anna, "Edit");
     await page.getByRole("dialog").getByLabel("Payout details").fill("TR99 1111");
     await page.getByRole("dialog").getByRole("button", { name: "Save" }).click();
     expect(gw.called("PATCH", `/v1/affiliates/${ANNA}`).at(-1)?.body).toMatchObject({ payout_details: "TR99 1111", payout_method: "bank_transfer" });
 
     // The referral link is copied from a field, and a promotion code is linked.
-    await anna.getByRole("button", { name: "Link and code" }).click();
+    await rowAction(anna, "Link and code");
     const linkDialog = page.getByRole("dialog");
     await expect(linkDialog.getByTestId("referral-link")).toHaveValue("https://pay.example.com/r/ANNA");
     await linkDialog.getByLabel("Promotion code").fill("ANNA10");
@@ -371,7 +372,7 @@ test.describe("affiliates", () => {
     expect(gw.called("PUT", `/v1/affiliates/${ANNA}/promotion-code`)[0]?.body).toEqual({ promotion_code: "ANNA10" });
 
     // The partner's referrals come with a masked e-mail.
-    await anna.getByRole("button", { name: "Referrals" }).click();
+    await rowAction(anna, "Referrals");
     await expect(page.getByRole("dialog")).toContainText("j***@example.com");
     expect(gw.called("GET", "/v1/affiliates/referrals").at(-1)?.query.get("affiliate_id")).toBe(ANNA);
   });
@@ -390,11 +391,11 @@ test.describe("affiliates", () => {
     await expect(commissions.locator('tbody tr[data-kind="commission"]').nth(1).getByRole("button", { name: "Open the payout" })).toBeVisible();
 
     // The filters narrow the list on the server.
-    await page.getByLabel("Kind").selectOption("reversal");
+    await pickFilter(page, "Kind", "Reversal");
     await expect.poll(() => gw.called("GET", "/v1/affiliates/commissions").some((q) => q.query.get("kind") === "reversal")).toBe(true);
-    await page.getByLabel("Kind").selectOption("");
+    await pickFilter(page, "Kind", "Commissions and reversals");
 
-    await commissions.locator('tbody tr[data-kind="commission"]').first().getByRole("button", { name: "Reverse" }).click();
+    await rowAction(commissions.locator('tbody tr[data-kind="commission"]').first(), "Reverse");
     const dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("Refunds, voids and credit notes reverse commissions on their own");
     await expect(dialog).toContainText("netted from the partner's next payout");
@@ -441,7 +442,7 @@ test.describe("affiliates", () => {
     expect(st.createdPayouts).toHaveLength(1);
 
     // Mark the live payout paid, with the transfer reference; the dialog says that no money moves.
-    await liveRow.getByRole("button", { name: "Mark paid" }).click();
+    await rowAction(liveRow, "Mark paid");
     let dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("Payrudder moves no money");
     await expect(dialog.getByTestId("fake-warning")).toHaveCount(0);
@@ -451,7 +452,7 @@ test.describe("affiliates", () => {
     expect(gw.called("POST", `/v1/affiliates/payouts/${PAYOUT}/pay`)[0]?.body).toEqual({ reference: "EFT-2026-10-21" });
 
     // The sandbox payout's dialog says nothing is really paid.
-    await fakeRow.getByRole("button", { name: "Mark paid" }).click();
+    await rowAction(fakeRow, "Mark paid");
     dialog = page.getByRole("dialog");
     await expect(dialog.getByTestId("fake-warning")).toContainText("nothing is really paid");
     await dialog.getByRole("button", { name: "Mark paid" }).click();
@@ -459,12 +460,13 @@ test.describe("affiliates", () => {
     expect(gw.called("POST", `/v1/affiliates/payouts/${FAKE_PAYOUT}/pay`)[0]?.body).toEqual({});
 
     // The commissions of a payout reuse the commissions table, filtered by the payout.
-    await liveRow.getByRole("button", { name: "Commissions" }).click();
+    await rowAction(liveRow, "Commissions");
     await expect.poll(() => gw.called("GET", "/v1/affiliates/commissions").some((q) => q.query.get("payout_id") === PAYOUT)).toBe(true);
-    await expect(page.getByRole("region", { name: "Commissions of the payout of ANNA" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Commissions of the payout of ANNA" })).toBeVisible();
+    await page.keyboard.press("Escape");
 
     // The status filter.
-    await page.getByLabel("Status", { exact: true }).selectOption("open");
+    await pickFilter(page, "Status", "Open");
     await expect.poll(() => gw.called("GET", "/v1/affiliates/payouts").some((q) => q.query.get("status") === "open")).toBe(true);
   });
 

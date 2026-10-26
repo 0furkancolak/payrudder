@@ -10,7 +10,6 @@ import { enumWord } from "@/shared/lib/labels";
 import { useFormat } from "@/shared/lib/format";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Card } from "@/shared/ui/card";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -22,7 +21,8 @@ import ProviderRunPanel from "./ProviderRunPanel.vue";
 
 /**
  * Everything that can be done with one subscription: pause, resume, cancel at the period end or now, a coupon, a change of package (with a quote when the
- * fee is paid in advance), a move to another payment provider (operators), and the customer's usage against the package's limits.
+ * fee is paid in advance), a move to another payment provider (operators), and the customer's usage against the package's limits. It fills the
+ * detail sheet of the subscriptions list, which carries the title.
  */
 const props = defineProps<{ tenantId: string; subscription: Subscription; packages: Package[]; environment: Environment; operator: boolean; act: SubscriptionActions }>();
 const { t } = useI18n();
@@ -56,8 +56,7 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
 </script>
 
 <template>
-  <Card role="region" :aria-label="t('billing.subscriptions.managing', { customer: subscription.customer_external_id ?? '' })">
-    <h2 class="text-lg font-semibold">{{ t("billing.subscriptions.managing", { customer: subscription.customer_external_id ?? "" }) }}</h2>
+  <div role="region" class="flex flex-col gap-4" :aria-label="t('billing.subscriptions.managing', { customer: subscription.customer_external_id ?? '' })">
     <p v-if="can.providerRuns" class="text-muted-foreground text-sm">{{ t("billing.subscriptions.providerRuns", { provider: subscription.provider ?? "" }) }}</p>
     <ProviderRunPanel v-if="can.providerRuns && operator && !subscription.end_time" :subscription="subscription" :packages="packages" :tenant-id="tenantId" :environment="environment" />
     <div v-else-if="!can.providerRuns" class="flex flex-wrap gap-2">
@@ -117,5 +116,5 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
       <a :href="migration.checkout_url" target="_blank" rel="noopener" class="underline">{{ migration.checkout_url }}</a>
     </p>
     <p v-else-if="migration?.state === 'completed'" class="bg-success/10 text-success rounded-2xl px-4 py-3 text-sm" role="status">{{ t("billing.subscriptions.moved") }}</p>
-  </Card>
+  </div>
 </template>

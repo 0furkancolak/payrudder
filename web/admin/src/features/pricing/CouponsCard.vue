@@ -1,15 +1,23 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useCanWrite } from "@/shared/lib/access";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { RowActions } from "@/shared/ui/row-actions";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Ban, Plus, Ticket } from "@lucide/vue";
+import { useTableState } from "@/shared/lib/useTableState";
 import { parsePercent, useCouponActions, useCoupons, type CouponTarget, type NewCoupon } from "./api";
 import PromotionCodesPanel from "./PromotionCodesPanel.vue";
 import { targetKey, TARGETS } from "./promotions";
@@ -17,6 +25,7 @@ import { targetKey, TARGETS } from "./promotions";
 const props = defineProps<{ tenantId: string }>();
 const { t, locale } = useI18n();
 const errorText = useErrorText();
+const canWrite = useCanWrite();
 const tenantId = computed(() => props.tenantId);
 
 const coupons = useCoupons(tenantId);
@@ -32,7 +41,34 @@ const periods = ref("3");
 const max = ref("");
 const withoutCode = ref(false);
 const couponError = ref("");
-const selected = ref("");
+const index = ref<number | null>(null);
+const open = ref(false);
+
+type CouponRow = NonNullable<typeof coupons.data.value>["coupons"] extends (infer R)[] | undefined ? R : never;
+const table = useTableState<CouponRow>(() => coupons.data.value?.coupons ?? [], {
+  searchFields: (c) => [c.code, c.name],
+  filters: { state: (c, v) => (v === "active" ? !!c.active : !c.active) },
+});
+
+const stateFilter = computed({ get: () => table.filters.value.state ?? "", set: (v) => (table.filters.value = { ...table.filters.value, state: String(v) }) });
+const stateOptions = computed(() => [
+  { value: "", label: t("billing.pricing.promotions.codes.stateAll") },
+  { value: "active", label: t("billing.pricing.coupons.active") },
+  { value: "inactive", label: t("billing.pricing.coupons.inactive") },
+]);
+const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
+const actionsOf = (c: CouponRow, i: number) => [
+  { key: "codes", label: t("billing.pricing.promotions.manageCodes"), icon: Ticket, onSelect: () => (index.value = i) },
+  ...(c.active ? [{ key: "deactivate", label: t("billing.pricing.coupons.deactivate"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value, onSelect: () => actions.deactivate.mutate(c.code ?? "") }] : []),
+];
+
+// A sheet that was closed opens clean: the last values and errors are not shown again.
+watch(open, (v) => {
+  if (!v) return;
+  code.value = name.value = value.value = max.value = "";
+  couponError.value = "";
+  actions.create.reset();
+});
 
 // A bonus coupon is for credit purchases only; the others work wherever they are ticked.
 const effectiveTargets = computed<CouponTarget[]>(() => (kind.value === "bonus" ? ["COUPON_TARGET_CREDIT_PURCHASE"] : targets.value));
@@ -77,6 +113,7 @@ function createCoupon() {
   actions.create.mutate(body, {
     onSuccess: () => {
       code.value = name.value = value.value = max.value = "";
+      open.value = false;
     },
   });
 }
@@ -106,44 +143,18 @@ const where = (c: { applies_to?: string[] }) => (c.applies_to ?? []).map((x) => 
 </script>
 
 <template>
-  <Card class="mb-6">
-    <h2 class="text-lg font-semibold">{{ t("billing.pricing.promotions.title") }}</h2>
-    <p class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.hint") }}</p>
-    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="form" :aria-label="t('billing.pricing.coupons.formLabel')" @submit.prevent="createCoupon">
-      <Input v-model="code" :aria-label="t('billing.pricing.coupons.code')" :placeholder="t('billing.pricing.coupons.code')" pattern="[A-Za-z0-9_\-]{2,40}" required />
-      <Input v-model="name" :aria-label="t('billing.pricing.coupons.name')" :placeholder="t('billing.pricing.coupons.name')" />
-      <NativeSelect v-model="kind" :aria-label="t('billing.pricing.coupons.kind')">
-        <option value="percent">{{ t("billing.pricing.promotions.kinds.percent") }}</option>
-        <option value="amount">{{ t("billing.pricing.promotions.kinds.amount") }}</option>
-        <option value="bonus">{{ t("billing.pricing.promotions.kinds.bonus") }}</option>
-      </NativeSelect>
-      <div class="grid grid-cols-[1fr_auto] gap-2">
-        <Input v-model="value" inputmode="decimal" :aria-label="t('billing.pricing.coupons.value')" :placeholder="t(kind === 'bonus' ? 'billing.pricing.promotions.valueBonus' : 'billing.pricing.coupons.value')" required />
-        <CurrencySelect v-if="kind === 'amount'" v-model="currency" :aria-label="t('billing.pricing.coupons.currency')" />
-      </div>
-      <fieldset v-if="kind !== 'bonus'" class="m-0 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 border-0 p-0 sm:col-span-2">
-        <legend class="text-muted-foreground mb-1 text-xs">{{ t("billing.pricing.promotions.appliesTo") }}</legend>
-        <label v-for="x in TARGETS" :key="x.value" class="flex items-center gap-2 text-sm">
-          <input type="checkbox" class="size-4" :checked="targets.includes(x.value)" @change="toggle(x.value, ($event.target as HTMLInputElement).checked)" />
-          {{ t(`billing.pricing.promotions.targets.${x.key}`) }}
-        </label>
-      </fieldset>
-      <p v-else class="text-muted-foreground text-xs sm:col-span-2">{{ t("billing.pricing.promotions.bonusNote") }}</p>
-      <template v-if="forSubscription">
-        <NativeSelect v-model="duration" :aria-label="t('billing.pricing.coupons.duration')">
-          <option value="COUPON_DURATION_ONCE">{{ t("billing.pricing.coupons.once") }}</option>
-          <option value="COUPON_DURATION_REPEATING">{{ t("billing.pricing.coupons.repeating") }}</option>
-          <option value="COUPON_DURATION_FOREVER">{{ t("billing.pricing.coupons.forever") }}</option>
-        </NativeSelect>
-        <Input v-if="duration === 'COUPON_DURATION_REPEATING'" v-model="periods" type="number" min="1" :aria-label="t('billing.pricing.coupons.periods')" :placeholder="t('billing.pricing.coupons.periods')" />
+  <Card class="mb-6 p-3">
+    <div class="px-3 pt-2">
+      <h2 class="text-lg font-semibold">{{ t("billing.pricing.promotions.title") }}</h2>
+      <p class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.hint") }}</p>
+    </div>
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="pt-3" @clear="table.clear()">
+      <FilterSelect v-model="stateFilter" :label="t('billing.subscriptions.state')" :options="stateOptions" />
+      <template #actions>
+        <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.pricing.coupons.create") }}</Button>
       </template>
-      <Input v-model="max" type="number" min="1" :aria-label="t('billing.pricing.coupons.max')" :placeholder="t('billing.pricing.coupons.max')" />
-      <label class="flex items-center gap-2 text-sm sm:col-span-2"><input v-model="withoutCode" type="checkbox" class="size-4" />{{ t("billing.pricing.promotions.withoutDefaultCode") }}</label>
-      <Button type="submit" :disabled="actions.create.isPending.value">{{ t("billing.pricing.coupons.create") }}</Button>
-    </form>
-    <p v-if="couponError" class="text-destructive text-sm" role="alert">{{ couponError }}</p>
-    <p v-if="actions.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.create.error.value) }}</p>
-    <p v-if="actions.deactivate.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.deactivate.error.value) }}</p>
+    </DataToolbar>
+    <p v-if="actions.deactivate.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(actions.deactivate.error.value) }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -154,11 +165,11 @@ const where = (c: { applies_to?: string[] }) => (c.applies_to ?? []).map((x) => 
           <TableHead class="text-end">{{ t("billing.pricing.promotions.codeCount") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.pricing.coupons.redeemed") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
-          <TableHead />
+          <TableHead><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="c in coupons.data.value?.coupons ?? []" :key="c.code" :data-state="selected === c.code ? 'selected' : undefined">
+        <TableRow v-for="(c, i) in table.items.value" :key="c.code" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
           <TableCell class="mono font-medium">{{ c.code }} <span class="text-muted-foreground text-xs">{{ c.name }}</span></TableCell>
           <TableCell class="tabular-nums">{{ describe(c) }}</TableCell>
           <TableCell class="text-xs">{{ where(c) }}</TableCell>
@@ -166,18 +177,69 @@ const where = (c: { applies_to?: string[] }) => (c.applies_to ?? []).map((x) => 
           <TableCell class="text-end tabular-nums">{{ c.promotion_code_count ?? 0 }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ c.redeemed }}<template v-if="c.max_redemptions"> / {{ c.max_redemptions }}</template></TableCell>
           <TableCell><Badge :variant="c.active ? 'success' : 'secondary'">{{ c.active ? t("billing.pricing.coupons.active") : t("billing.pricing.coupons.inactive") }}</Badge></TableCell>
-          <TableCell class="text-end whitespace-nowrap">
-            <Button size="sm" variant="outline" class="me-2" :aria-pressed="selected === c.code" @click="selected = selected === c.code ? '' : (c.code ?? '')">
-              {{ selected === c.code ? t("billing.pricing.promotions.hideCodes") : t("billing.pricing.promotions.manageCodes") }}
-            </Button>
-            <Button v-if="c.active" size="sm" variant="ghost" @click="actions.deactivate.mutate(c.code ?? '')">{{ t("billing.pricing.coupons.deactivate") }}</Button>
-          </TableCell>
+          <TableCell class="text-end"><RowActions :actions="actionsOf(c, i)" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!coupons.isPending.value && (coupons.data.value?.coupons ?? []).length === 0 && !coupons.error.value" class="text-muted-foreground text-center text-sm">
+    <p v-if="!coupons.isPending.value && (coupons.data.value?.coupons ?? []).length === 0 && !coupons.error.value" class="text-muted-foreground p-4 text-center text-sm">
       {{ t("billing.pricing.coupons.empty") }}
     </p>
-    <PromotionCodesPanel v-if="selected" :key="selected" :tenant-id="tenantId" :coupon="selected" />
+    <p v-else-if="table.total.value === 0 && !coupons.isPending.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
+
+    <DetailSheet v-model:index="index" :total="table.items.value.length" :title="current?.code ?? ''" :description="current ? [current.name, describe(current)].filter(Boolean).join(' · ') : undefined" wide>
+      <fieldset v-if="current" :disabled="!canWrite" class="m-0 min-w-0 border-0 p-0"><PromotionCodesPanel :key="current.code" :tenant-id="tenantId" :coupon="current.code ?? ''" /></fieldset>
+      <template v-if="current?.active && canWrite" #footer>
+        <Button type="button" variant="outline" :disabled="actions.deactivate.isPending.value" @click="actions.deactivate.mutate(current?.code ?? '')">{{ t("billing.pricing.coupons.deactivate") }}</Button>
+      </template>
+    </DetailSheet>
+
+    <Sheet v-model:open="open">
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{{ t("billing.pricing.coupons.create") }}</SheetTitle>
+          <SheetDescription>{{ t("billing.pricing.promotions.hint") }}</SheetDescription>
+        </SheetHeader>
+        <SheetBody>
+          <form id="coupon-form" class="grid gap-4" role="form" :aria-label="t('billing.pricing.coupons.formLabel')" @submit.prevent="createCoupon">
+            <Input v-model="code" :aria-label="t('billing.pricing.coupons.code')" :placeholder="t('billing.pricing.coupons.code')" pattern="[A-Za-z0-9_\-]{2,40}" required />
+            <Input v-model="name" :aria-label="t('billing.pricing.coupons.name')" :placeholder="t('billing.pricing.coupons.name')" />
+            <NativeSelect v-model="kind" :aria-label="t('billing.pricing.coupons.kind')">
+              <option value="percent">{{ t("billing.pricing.promotions.kinds.percent") }}</option>
+              <option value="amount">{{ t("billing.pricing.promotions.kinds.amount") }}</option>
+              <option value="bonus">{{ t("billing.pricing.promotions.kinds.bonus") }}</option>
+            </NativeSelect>
+            <div class="grid grid-cols-[1fr_auto] gap-2">
+              <Input v-model="value" inputmode="decimal" :aria-label="t('billing.pricing.coupons.value')" :placeholder="t(kind === 'bonus' ? 'billing.pricing.promotions.valueBonus' : 'billing.pricing.coupons.value')" required />
+              <CurrencySelect v-if="kind === 'amount'" v-model="currency" :aria-label="t('billing.pricing.coupons.currency')" />
+            </div>
+            <fieldset v-if="kind !== 'bonus'" class="m-0 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 border-0 p-0">
+              <legend class="text-muted-foreground mb-1 text-xs">{{ t("billing.pricing.promotions.appliesTo") }}</legend>
+              <label v-for="x in TARGETS" :key="x.value" class="flex items-center gap-2 text-sm">
+                <input type="checkbox" class="size-4" :checked="targets.includes(x.value)" @change="toggle(x.value, ($event.target as HTMLInputElement).checked)" />
+                {{ t(`billing.pricing.promotions.targets.${x.key}`) }}
+              </label>
+            </fieldset>
+            <p v-else class="text-muted-foreground text-xs">{{ t("billing.pricing.promotions.bonusNote") }}</p>
+            <template v-if="forSubscription">
+              <NativeSelect v-model="duration" :aria-label="t('billing.pricing.coupons.duration')">
+                <option value="COUPON_DURATION_ONCE">{{ t("billing.pricing.coupons.once") }}</option>
+                <option value="COUPON_DURATION_REPEATING">{{ t("billing.pricing.coupons.repeating") }}</option>
+                <option value="COUPON_DURATION_FOREVER">{{ t("billing.pricing.coupons.forever") }}</option>
+              </NativeSelect>
+              <Input v-if="duration === 'COUPON_DURATION_REPEATING'" v-model="periods" type="number" min="1" :aria-label="t('billing.pricing.coupons.periods')" :placeholder="t('billing.pricing.coupons.periods')" />
+            </template>
+            <Input v-model="max" type="number" min="1" :aria-label="t('billing.pricing.coupons.max')" :placeholder="t('billing.pricing.coupons.max')" />
+            <label class="flex items-center gap-2 text-sm"><input v-model="withoutCode" type="checkbox" class="size-4" />{{ t("billing.pricing.promotions.withoutDefaultCode") }}</label>
+            <p v-if="couponError" class="text-destructive text-sm" role="alert">{{ couponError }}</p>
+            <p v-if="actions.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(actions.create.error.value) }}</p>
+          </form>
+        </SheetBody>
+        <SheetFooter>
+          <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
+          <Button type="submit" form="coupon-form" :disabled="actions.create.isPending.value">{{ t("billing.pricing.coupons.create") }}</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   </Card>
 </template>

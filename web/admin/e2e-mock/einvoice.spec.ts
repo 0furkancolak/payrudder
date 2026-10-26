@@ -108,18 +108,23 @@ test.describe("e-invoice settings", () => {
       legal: { legal_name: "Acme AŞ", tax_id: "1234567890", tax_office: "Kadıköy" },
     });
 
+    await page.getByRole("button", { name: "Add or replace an account" }).click();
     const account = page.getByRole("form", { name: "e-invoice account" });
     await account.getByLabel("API key").fill("secret-key");
-    await account.getByRole("button", { name: "Save account" }).click();
+    await page.getByRole("button", { name: "Save account" }).click();
     await expect.poll(() => gw.called("PUT", `/admin/v1/tenants/${TENANT}/e-invoice-accounts/live`).length).toBe(1);
     expect(gw.called("PUT", `/admin/v1/tenants/${TENANT}/e-invoice-accounts/live`)[0]?.body).toEqual({ provider: "nilvera", mode: "test", credentials: { api_key: "secret-key" } });
-    await expect(account.getByLabel("API key")).toHaveValue("");
+    // The sheet closes once the account is saved, and it opens empty the next time.
+    await expect(account).toHaveCount(0);
+    await page.getByRole("button", { name: "Add or replace an account" }).click();
+    await expect(page.getByRole("form", { name: "e-invoice account" }).getByLabel("API key")).toHaveValue("");
   });
 
   test("the sandbox offers the mock provider only", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on((c) => (c.path === `/admin/v1/tenants/${TENANT}/e-invoice-accounts` ? { body: { accounts: [] } } : undefined));
     await gw.install(page);
     await openTenantPage(page, "/e-invoice");
+    await page.getByRole("button", { name: "Add or replace an account" }).click();
     const account = page.getByRole("form", { name: "e-invoice account" });
     await account.getByLabel("Environment").selectOption("sandbox");
     await expect(account.getByLabel("Provider").locator("option")).toHaveText(["mock"]);
@@ -134,8 +139,9 @@ test("a customer's tax data is saved with the customer tax endpoint", async ({ p
   });
   await gw.install(page);
   await openTenantPage(page, "/customers");
-  await page.getByRole("button", { name: "Tax data" }).click();
-  const region = page.getByRole("region", { name: "Tax data of cus_1" });
+  await page.getByTestId("row-actions").click();
+  await page.getByTestId("row-action-tax").click();
+  const region = page.getByRole("dialog", { name: "Tax data of cus_1" });
   await region.getByLabel("Tax id (VKN/TCKN or VAT id)").fill("11111111111");
   await region.getByLabel("Tax office").fill("Beşiktaş");
   await region.getByLabel("Registered for e-fatura").check();

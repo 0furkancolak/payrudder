@@ -77,7 +77,7 @@ test.describe("sign up and sign in", () => {
     const { gw, state } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await expect(page.getByRole("link", { name: /Web shop/ })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("link", { name: /Web shop/ })).toBeVisible();
     state.sessionOk = false;
     await page.reload();
     await page.waitForURL(/\/signin/);
@@ -102,7 +102,7 @@ test.describe("organisation home", () => {
   test("an app card shows its status, thirty days of money per currency and what needs a look", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await signInAsAda(page);
-    const card = page.getByRole("link", { name: "Web shop" });
+    const card = page.getByRole("main").getByRole("link", { name: "Web shop" });
     await expect(card).toContainText("Needs attention");
     await expect(card).toContainText("$12,840.50");
     await expect(card).toContainText("TRY 18,500.00");
@@ -179,9 +179,11 @@ test.describe("app dashboard", () => {
     await expect(page.getByText("SECRETSECRET")).toHaveCount(0);
     await expect(keys).toContainText("qk_live_newkey99_••••••••");
 
-    await keys.getByRole("button", { name: "Revoke key qk_live_newkey99_••••••••" }).click();
+    const fresh = keys.getByRole("row").filter({ hasText: "newkey99" });
+    await fresh.getByTestId("row-actions").click();
+    await page.getByTestId("row-action-revoke-k9").click();
     await page.getByRole("dialog").getByRole("button", { name: "Revoke" }).click();
-    await expect(keys.getByRole("listitem").filter({ hasText: "newkey99" })).toContainText("Revoked");
+    await expect(fresh).toContainText("Revoked");
     expect(gw.called("DELETE", `/app/v1/apps/${APP}/api-keys/k9`)).toHaveLength(1);
   });
 
@@ -390,18 +392,22 @@ test.describe("members and invitations", () => {
     await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
     await expect(panel.getByTestId("member-grace@example.com")).toContainText("Grace Hopper");
-    await panel.getByLabel("E-mail").fill("ned@example.com");
-    await panel.getByLabel("Role", { exact: true }).selectOption("admin");
+    await panel.getByTestId("invite-open").click();
+    const sheet = page.getByRole("dialog", { name: "Invite someone" });
+    await sheet.getByLabel("E-mail").fill("ned@example.com");
+    await sheet.getByLabel("Role", { exact: true }).selectOption("admin");
     await shoot(page, "20-members");
-    await panel.getByRole("button", { name: "Send invitation" }).click();
+    await sheet.getByRole("button", { name: "Send invitation" }).click();
     await expect(panel.getByRole("status")).toContainText("Invitation sent to ned@example.com");
     expect(gw.called("POST", "/app/v1/account/invitations")[0]?.body).toEqual({ email: "ned@example.com", role: "admin", locale: "en" });
-    const pending = panel.getByTestId("invite-ned@example.com");
+    const pending = page.getByTestId("invite-ned@example.com");
     await expect(pending).toBeVisible();
     await expect(pending).toContainText("Administrator");
-    await pending.getByRole("button", { name: "Send the invitation to ned@example.com again" }).click();
+    await pending.getByTestId("row-actions").click();
+    await page.getByTestId("row-action-resend").click();
     await expect.poll(() => gw.called("POST", /\/app\/v1\/account\/invitations\/inv-1\/resend$/).length).toBe(1);
-    await pending.getByRole("button", { name: "Cancel the invitation to ned@example.com" }).click();
+    await pending.getByTestId("row-actions").click();
+    await page.getByTestId("row-action-cancel").click();
     await expect(pending).toHaveCount(0);
     expect(gw.called("DELETE", /\/app\/v1\/account\/invitations\/inv-1$/)).toHaveLength(1);
   });
@@ -412,9 +418,12 @@ test.describe("members and invitations", () => {
     await signInAsAda(page);
     await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
-    await panel.getByLabel("E-mail").fill("grace@example.com");
-    await panel.getByRole("button", { name: "Send invitation" }).click();
-    await expect(panel.getByRole("alert")).toContainText("member of the account already");
+    await panel.getByTestId("invite-open").click();
+    const sheet = page.getByRole("dialog", { name: "Invite someone" });
+    await sheet.getByLabel("E-mail").fill("grace@example.com");
+    await sheet.getByRole("button", { name: "Send invitation" }).click();
+    await expect(sheet.getByRole("alert")).toContainText("member of the account already");
+    await sheet.getByRole("button", { name: "Cancel" }).click();
 
     await panel.getByLabel("Role of Linus Torvalds").selectOption("admin");
     await expect.poll(() => gw.called("PATCH", /\/app\/v1\/account\/members\/55555555/).length).toBe(1);
@@ -433,7 +442,7 @@ test.describe("members and invitations", () => {
     await signInAsAda(page);
     await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
-    await panel.getByRole("button", { name: "Remove Linus Torvalds" }).click();
+    await panel.getByTestId("member-linus@example.com").getByRole("button", { name: "Remove" }).click();
     await expect(page.getByRole("dialog")).toContainText("Linus Torvalds loses access");
     await page.getByRole("dialog").getByRole("button", { name: "Remove", exact: true }).click();
     await expect(panel.getByTestId("member-linus@example.com")).toHaveCount(0);
@@ -448,8 +457,8 @@ test.describe("members and invitations", () => {
     const panel = page.getByRole("region", { name: "Members" });
     await expect(panel.getByTestId("member-grace@example.com")).toBeVisible();
     await expect(panel.getByLabel("E-mail")).toHaveCount(0);
-    await expect(panel.getByRole("combobox")).toHaveCount(0);
-    await expect(panel.getByRole("button", { name: /^Remove / })).toHaveCount(0);
+    await expect(panel.getByRole("row").getByRole("combobox")).toHaveCount(0);
+    await expect(panel.getByRole("button", { name: "Remove" })).toHaveCount(0);
     await expect(panel.getByRole("button", { name: "Leave", exact: true })).toBeVisible();
     await expect(page.getByLabel("Account name")).toHaveCount(0);
     expect(gw.called("GET", "/app/v1/account/invitations")).toHaveLength(0);
@@ -460,11 +469,13 @@ test.describe("members and invitations", () => {
     await signInAsAda(page);
     await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
-    await expect(panel.getByLabel("Role", { exact: true }).locator("option")).toHaveText(["Administrator", "Viewer"]);
+    await panel.getByTestId("invite-open").click();
+    await expect(page.getByRole("dialog").getByLabel("Role", { exact: true }).locator("option")).toHaveText(["Administrator", "Viewer"]);
+    await page.keyboard.press("Escape");
     // Ada's own row (listed as the owner) and her role cannot be changed here; Grace and Linus can.
     await expect(panel.getByLabel("Role of Grace Hopper").locator("option")).toHaveText(["Administrator", "Viewer"]);
     await expect(panel.getByTestId("member-ada@example.com").getByRole("combobox")).toHaveCount(0);
-    await expect(panel.getByRole("button", { name: "Remove Linus Torvalds" })).toBeVisible();
+    await expect(panel.getByTestId("member-linus@example.com").getByRole("button", { name: "Remove" })).toBeVisible();
   });
 
   test("an owner renames the account", async ({ page }) => {
@@ -574,16 +585,21 @@ test.describe("billing pages of the app", () => {
     await expect(page.getByTestId("invoice-INV-2026-000002")).toContainText("$299.00");
     await shoot(page, "30-invoices");
 
-    await page.getByRole("button", { name: "Load more" }).click();
+    await page.getByRole("button", { name: "Next" }).click();
     await expect(page.getByTestId("invoice-INV-2026-000001")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
 
-    await page.getByLabel("Status").selectOption("open");
+    await page.getByRole("button", { name: "Status", exact: true }).click();
+    await page.getByRole("option", { name: "Open" }).click();
+    await page.keyboard.press("Escape");
     await expect(page.getByTestId("invoice-INV-2026-000003")).toHaveCount(0);
     expect(gw.called("GET", "/v1/invoices").some((c) => c.query.get("status") === "open")).toBe(true);
-    await page.getByLabel("Status").selectOption("");
+    await page.getByRole("button", { name: "Status: ×" }).click();
 
-    await page.getByRole("link", { name: "INV-2026-000003" }).click();
+    // A row opens the invoice in a sheet beside the list; the sheet leads to the invoice's own page.
+    await page.getByTestId("invoice-INV-2026-000003").click();
+    await expect(page.getByTestId("detail-sheet")).toContainText("$49.00");
+    await page.getByRole("link", { name: "Open full page" }).click();
     await page.waitForURL(`**/app/t/${LIVE}/invoices/${INVOICE_1}`);
     await expect(page.getByTestId("invoice-total")).toHaveText("$49.00");
     await expect(page.getByRole("cell", { name: /Pro plan, September/ })).toBeVisible();
@@ -621,7 +637,8 @@ test.describe("billing pages of the app", () => {
     await expect(rows.nth(3)).toContainText("Refund");
     await expect(rows.nth(3)).toContainText("Refunded");
     await shoot(page, "32-payments");
-    await rows.nth(0).getByRole("link", { name: "View invoice" }).click();
+    await rows.nth(0).getByTestId("row-actions").click();
+    await page.getByTestId("row-action-invoice").click();
     await page.waitForURL(`**/app/t/${LIVE}/invoices/${INVOICE_1}`);
     expect(gw.called("GET", "/v1/payments")[0]?.headers["x-payrudder-tenant"]).toBe(LIVE);
     expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
@@ -631,7 +648,7 @@ test.describe("billing pages of the app", () => {
     const gw = await open(page);
     await page.goto(`/app/t/${LIVE}/packages`);
     await expect(page.getByRole("cell", { name: "pro", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Publish version" })).toBeEnabled();
+    await expect(page.getByTestId("packages-new")).toBeEnabled();
     await shoot(page, "33-packages");
     await page.getByTestId("sidebar").getByRole("link", { name: "Pricing and tax" }).click();
     await expect(page.getByRole("cell", { name: "SAVE10" })).toBeVisible();

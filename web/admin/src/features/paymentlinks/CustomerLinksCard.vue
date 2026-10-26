@@ -4,13 +4,16 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { validLinkDays } from "@/shared/lib/rules";
+import { useTableState } from "@/shared/lib/useTableState";
 import { absoluteUrl } from "@/shared/lib/url";
 import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Input } from "@/shared/ui/input";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCustomerPayments, usePortalLinkActions } from "./api";
 
@@ -27,6 +30,13 @@ const payments = useCustomerPayments(
   () => props.customer,
 );
 const rows = computed(() => payments.data.value?.payments ?? []);
+type Payment = (typeof rows.value)[number];
+const table = useTableState<Payment>(rows, {
+  searchFields: (p) => [p.invoice_number, p.invoice_id, p.provider],
+  filters: { status: (p, v) => p.status === v },
+});
+const statusFilter = computed({ get: () => table.filters.value.status ?? "", set: (v) => (table.filters.value.status = String(v)) });
+const statusOptions = computed(() => [{ value: "", label: t("billing.paymentLinks.anyStatus") }, ...["succeeded", "pending", "failed"].map((s) => ({ value: s, label: s }))]);
 const url = computed(() => absoluteUrl((act.create.data.value as { url?: string } | undefined)?.url, window.location.origin));
 
 function make() {
@@ -64,6 +74,9 @@ const when = (v?: string) => fmt.date(v, "short", "—");
 
     <h3 class="mt-2 font-medium">{{ t("billing.paymentLinks.portal.payments") }}</h3>
     <ErrorText :error="payments.error.value" />
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="px-0" @clear="table.clear()">
+      <FilterSelect v-model="statusFilter" :label="t('billing.paymentLinks.status')" :options="statusOptions" />
+    </DataToolbar>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -75,15 +88,17 @@ const when = (v?: string) => fmt.date(v, "short", "—");
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(p, i) in rows" :key="i">
+        <TableRow v-for="(p, i) in table.items.value" :key="i">
           <TableCell class="text-xs">{{ when(p.occurred_at) }}</TableCell>
           <TableCell class="mono text-xs">{{ p.invoice_number || p.invoice_id }}</TableCell>
           <TableCell>{{ t(`billing.paymentLinks.portal.kinds.${p.kind ?? 'charge'}`) }} <span class="text-muted-foreground text-xs">{{ p.provider }}</span></TableCell>
-          <TableCell><Badge :variant="p.status === 'succeeded' ? 'success' : p.status === 'pending' ? 'secondary' : 'destructive'">{{ p.status }}</Badge></TableCell>
+          <TableCell><StatusPill :tone="toneOf(p.status)">{{ p.status }}</StatusPill></TableCell>
           <TableCell class="text-end tabular-nums">{{ formatMinor(p.amount_minor, p.currency, locale) }}</TableCell>
         </TableRow>
       </TableBody>
     </Table>
     <p v-if="!payments.isPending.value && rows.length === 0 && !payments.error.value" class="text-muted-foreground text-center text-sm">{{ t("billing.paymentLinks.portal.noPayments") }}</p>
+    <p v-if="rows.length > 0 && table.total.value === 0" class="text-muted-foreground text-center text-sm">{{ t("common.noMatches") }}</p>
+    <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 </template>

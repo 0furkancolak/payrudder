@@ -21,7 +21,15 @@
     "unknown": "?",
     "cancel": "Cancelar",
     "copied": "Copiado",
-    "copyFailed": "Tu navegador no permitió copiar. Selecciona el texto y cópialo a mano."
+    "copyFailed": "Tu navegador no permitió copiar. Selecciona el texto y cópialo a mano.",
+    "close": "Cerrar",
+    "search": "Buscar",
+    "clearFilters": "Borrar filtros",
+    "noMatches": "Nada coincide con estos filtros.",
+    "moreActions": "Más acciones",
+    "view": "Ver",
+    "openFullPage": "Abrir página completa",
+    "all": "Todos"
   },
   "enums": {
     "environment": {
@@ -108,7 +116,10 @@
       "currency": "Moneda",
       "timezone": "Zona horaria",
       "id": "Id"
-    }
+    },
+    "allEnvironments": "Todos los entornos",
+    "allTiers": "Todos los niveles",
+    "allCurrencies": "Todas las monedas"
   },
   "tenant": {
     "fallbackTitle": "Inquilino",
@@ -123,7 +134,8 @@
       "customer": "Cliente",
       "total": "Total",
       "status": "Estado",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Creada"
     },
     "jobs": {
       "title": "Trabajos de repetición y retarificación",
@@ -131,7 +143,9 @@
       "idLabel": "Id del trabajo",
       "replay": "Trabajo de repetición",
       "rerating": "Trabajo de retarificación"
-    }
+    },
+    "allStatuses": "Todos los estados",
+    "allKinds": "Todos los tipos"
   },
   "invoice": {
     "back": "← Inquilino",
@@ -255,7 +269,8 @@
       "deliveries": "Entregas",
       "reason": "Motivo",
       "bytes": "Bytes"
-    }
+    },
+    "noMessages": "No hay mensajes en esta cola."
   },
   "playground": {
     "title": "Área de pruebas",
@@ -362,7 +377,9 @@
         "save": "Guardar dirección",
         "cancel": "Cancelar",
         "editing": "Dirección de {id}"
-      }
+      },
+      "allCountries": "Todos los países",
+      "allCurrencies": "Todas las monedas"
     },
     "packages": {
       "new": "Nuevo paquete",
@@ -385,7 +402,15 @@
       "monthly": "Mensual",
       "yearly": "Anual",
       "perYear": "/ año",
-      "tenantMonthly": "La cuota mensual en {currency} es la cuota fija de arriba."
+      "tenantMonthly": "La cuota mensual en {currency} es la cuota fija de arriba.",
+      "published": "Publicado",
+      "priceColumn": "Precio",
+      "limits": "Límites",
+      "priceKinds": {
+        "perUnit": "{price} por unidad",
+        "tiered": "{n} tramos",
+        "package": "{size} unidades por {price}"
+      }
     },
     "subscriptions": {
       "new": "Nueva suscripción",
@@ -479,7 +504,10 @@
       },
       "endNowCredit": "Terminar ahora y abonar lo no usado",
       "confirmEndCredit": "¿Terminar esta suscripción ahora y abonar al cliente la parte no usada de la tarifa pagada por adelantado?",
-      "credited": "Se abonaron {amount} al saldo del cliente."
+      "credited": "Se abonaron {amount} al saldo del cliente.",
+      "allStates": "Todos los estados",
+      "allCurrencies": "Todas las monedas",
+      "allIntervals": "Todos los intervalos"
     },
     "payments": {
       "reconcile": "Conciliar con el libro",
@@ -502,7 +530,8 @@
       "amount": "Importe",
       "reference": "Referencia",
       "source": "Origen",
-      "empty": "Aún no hay nada en el libro."
+      "empty": "Aún no hay nada en el libro.",
+      "id": "Id"
     },
     "providers": {
       "accounts": "Cuentas de proveedores",
@@ -620,7 +649,9 @@
       "nextAttempt": "Próximo intento",
       "empty": "Aún no hay nada que informar.",
       "noDunning": "No hay facturas impagadas.",
-      "credited": "Acreditado"
+      "credited": "Acreditado",
+      "currentMonth": "Mes actual",
+      "splitBy": "Dividir por"
     },
     "pricing": {
       "coupons": {
@@ -787,7 +818,10 @@
       "refunded": "Reembolsado a la tarjeta",
       "refundRequested": "Reembolso solicitado",
       "refundFailed": "Reembolso fallido",
-      "retryRefund": "Reintentar el reembolso"
+      "retryRefund": "Reintentar el reembolso",
+      "new": "Nueva nota de crédito",
+      "hint": "Abona total o parcialmente una factura pagada. El importe va al saldo del cliente o vuelve a la tarjeta.",
+      "allWhere": "Cualquiera"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -823,7 +857,8 @@
         "pending": "Pendiente",
         "delivered": "Entregado",
         "failed": "Fallido"
-      }
+      },
+      "allStatuses": "Todos los estados"
     },
     "paymentLinks": {
       "title": "Enlaces de pago",
@@ -900,7 +935,8 @@
       },
       "for": "Para",
       "promotionCode": "Código promocional (opcional)",
-      "promotionHint": "Quien paga obtiene el descuento de este código sin escribirlo y puede escribir otro. Se comprueba ahora con este importe."
+      "promotionHint": "Quien paga obtiene el descuento de este código sin escribirlo y puede escribir otro. Se comprueba ahora con este importe.",
+      "id": "Enlace"
     },
     "mail": {
       "title": "Correo electrónico",
@@ -1077,7 +1113,9 @@
         "voided": "Anulado",
         "until": "hasta {date}",
         "edit": "Editar",
-        "void": "Anular"
+        "void": "Anular",
+        "allCategories": "Todas las categorías",
+        "allRecurring": "Únicos y recurrentes"
       },
       "form": {
         "addTitle": "Añadir gasto",
@@ -1571,7 +1609,8 @@
       "webhookSecret": "Secreto de firma",
       "neverShown": "El secreto se envía una vez y no se puede volver a leer.",
       "save": "Guardar cuenta",
-      "saved": "Cuenta guardada."
+      "saved": "Cuenta guardada.",
+      "allEnvironments": "Todos los entornos"
     },
     "customer": {
       "title": "Datos fiscales",
@@ -1657,7 +1696,8 @@
       "revokeById": "Revocar por id",
       "confirmRevoke": "¿Revocar esta clave de API? Las solicitudes que la usan dejan de funcionar de inmediato.",
       "revokedDone": "Clave {id} revocada."
-    }
+    },
+    "allEnvironments": "Todos los entornos"
   },
   "address": {
     "title": "Dirección del vendedor",
@@ -1693,7 +1733,8 @@
       "hint": "Así aparece el vendedor en una factura.",
       "from": "De",
       "empty": "Sin dirección: la factura solo muestra el nombre."
-    }
+    },
+    "edit": "Editar dirección"
   },
   "errors": {
     "billing": {
@@ -2573,7 +2614,9 @@
       "when": "Cuándo",
       "status": "Estado",
       "provider": "Proveedor",
-      "amount": "Importe"
+      "amount": "Importe",
+      "allStatuses": "Todos los estados",
+      "allKinds": "Todos los tipos"
     },
     "invoices": {
       "title": "Facturas recientes",
@@ -2640,7 +2683,12 @@
       "overlapHours": "{n} horas",
       "lastUsed": "último uso {date}",
       "neverUsed": "nunca usada",
-      "ends": "Deja de funcionar el {date}"
+      "ends": "Deja de funcionar el {date}",
+      "filterEnv": "Entorno",
+      "allEnvs": "Todos los entornos",
+      "filterStatus": "Estado",
+      "allStatuses": "Todos los estados",
+      "scopeHead": "Alcance"
     },
     "links": {
       "title": "Profundice",
@@ -2732,7 +2780,9 @@
       "leaveTitle": "¿Salir de esta cuenta?",
       "leaveBody": "Pierdes de inmediato el acceso a sus aplicaciones y datos. Un propietario puede volver a invitarte.",
       "removeTitle": "¿Quitar a este miembro?",
-      "removeBody": "{name} pierde de inmediato el acceso a las aplicaciones y los datos de esta cuenta."
+      "removeBody": "{name} pierde de inmediato el acceso a las aplicaciones y los datos de esta cuenta.",
+      "allRoles": "Todos los roles",
+      "expiresHead": "Válida hasta"
     },
     "account": {
       "switch": "Cuenta",
@@ -3028,7 +3078,8 @@
       "billing": "Facturación",
       "growth": "Crecimiento",
       "developers": "Desarrolladores",
-      "settings": "Ajustes"
+      "settings": "Ajustes",
+      "apps": "Aplicaciones"
     },
     "items": {
       "overview": "Aplicaciones",
@@ -3062,7 +3113,8 @@
       "goLive": "Pasar a producción",
       "sandbox": "Herramientas del sandbox",
       "partner": "Portal de socios"
-    }
+    },
+    "noApps": "Aún no hay aplicaciones"
   },
   "privacy": {
     "hide": "Ocultar importes",
@@ -3208,6 +3260,32 @@
       "apps": "{n} aplicación | {n} aplicaciones",
       "none": "Ninguna aplicación tiene ingresos en este periodo.",
       "open": "Abrir la aplicación"
+    }
+  },
+  "pagination": {
+    "perPage": "Filas por página",
+    "total": "{count} en total",
+    "prev": "Anterior",
+    "next": "Siguiente",
+    "page": "Página {page} de {pages}",
+    "pageOnly": "Página {page}",
+    "goTo": "Ir a la página",
+    "go": "Ir"
+  },
+  "dateRange": {
+    "any": "Cualquier fecha",
+    "label": "Rango de fechas",
+    "from": "Desde",
+    "to": "Hasta",
+    "apply": "Aplicar",
+    "clear": "Borrar",
+    "presets": {
+      "today": "Hoy",
+      "7d": "Últimos 7 días",
+      "30d": "Últimos 30 días",
+      "month": "Este mes",
+      "lastMonth": "Mes pasado",
+      "year": "Este año"
     }
   }
 }

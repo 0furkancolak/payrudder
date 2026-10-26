@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
 import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { NativeSelect } from "@/shared/ui/native-select";
+import { X } from "@lucide/vue";
+import { Button } from "@/shared/ui/button";
+import { DataPagination } from "@/shared/ui/data-table";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCoupons, useRedemptions } from "./api";
 import { targetKey } from "./promotions";
@@ -21,12 +23,17 @@ const pageToken = ref("");
 const history = ref<string[]>([]);
 const coupons = useCoupons(tenantId);
 const list = useRedemptions(tenantId, coupon, pageToken);
+const couponOptions = computed(() => [
+  { value: "", label: t("billing.pricing.promotions.redemptions.allCoupons") },
+  ...(coupons.data.value?.coupons ?? []).map((c) => ({ value: c.code ?? "", label: c.code ?? "" })),
+]);
 const rows = computed(() => list.data.value?.redemptions ?? []);
 
 function filter() {
   pageToken.value = "";
   history.value = [];
 }
+watch(coupon, filter);
 function next() {
   const token = list.data.value?.next_page_token;
   if (!token) return;
@@ -41,15 +48,14 @@ const when = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
 
 <template>
   <Card class="mb-6 p-3">
-    <div class="flex flex-wrap items-center gap-3 px-3 pt-2">
+    <div class="px-3 pt-2">
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.promotions.redemptions.title") }}</h2>
-      <NativeSelect v-model="coupon" class="w-48" :aria-label="t('billing.pricing.promotions.redemptions.coupon')" @change="filter">
-        <option value="">{{ t("billing.pricing.promotions.redemptions.allCoupons") }}</option>
-        <option v-for="c in coupons.data.value?.coupons ?? []" :key="c.code" :value="c.code">{{ c.code }}</option>
-      </NativeSelect>
-      <span class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.redemptions.total", { n: list.data.value?.total ?? 0 }) }}</span>
+      <p class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.redemptions.hint") }}</p>
     </div>
-    <p class="text-muted-foreground px-3 text-sm">{{ t("billing.pricing.promotions.redemptions.hint") }}</p>
+    <div class="flex flex-wrap items-center gap-2 px-3 py-3" role="search">
+      <FilterSelect v-model="coupon" :label="t('billing.pricing.promotions.redemptions.coupon')" :options="couponOptions" />
+      <Button v-if="coupon !== ''" type="button" variant="ghost" size="sm" @click="coupon = ''"><X class="size-4" aria-hidden="true" />{{ t("common.clearFilters") }}</Button>
+    </div>
     <p v-if="list.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(list.error.value) }}</p>
     <Table>
       <TableHeader>
@@ -79,9 +85,6 @@ const when = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       </TableBody>
     </Table>
     <p v-if="!list.isPending.value && rows.length === 0 && !list.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.pricing.promotions.redemptions.none") }}</p>
-    <div class="flex justify-end gap-2 px-3 pb-2">
-      <Button size="sm" variant="outline" :disabled="history.length === 0" @click="back">{{ t("billing.paymentLinks.previous") }}</Button>
-      <Button size="sm" variant="outline" :disabled="!list.data.value?.next_page_token" @click="next">{{ t("billing.paymentLinks.next") }}</Button>
-    </div>
+    <DataPagination :page="history.length + 1" :total="list.data.value?.total ?? 0" :has-prev="history.length > 0" :has-next="!!list.data.value?.next_page_token" @prev="back" @next="next" />
   </Card>
 </template>

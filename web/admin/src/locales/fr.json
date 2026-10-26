@@ -21,7 +21,15 @@
     "unknown": "?",
     "cancel": "Annuler",
     "copied": "Copié",
-    "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez le texte et copiez-le à la main."
+    "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez le texte et copiez-le à la main.",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "clearFilters": "Effacer les filtres",
+    "noMatches": "Aucun résultat pour ces filtres.",
+    "moreActions": "Plus d'actions",
+    "view": "Afficher",
+    "openFullPage": "Ouvrir en pleine page",
+    "all": "Tous"
   },
   "enums": {
     "environment": {
@@ -108,7 +116,10 @@
       "currency": "Devise",
       "timezone": "Fuseau horaire",
       "id": "Id"
-    }
+    },
+    "allEnvironments": "Tous les environnements",
+    "allTiers": "Tous les niveaux",
+    "allCurrencies": "Toutes les devises"
   },
   "tenant": {
     "fallbackTitle": "Locataire",
@@ -123,7 +134,8 @@
       "customer": "Client",
       "total": "Total",
       "status": "Statut",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Créée"
     },
     "jobs": {
       "title": "Tâches de rejeu et de retarification",
@@ -131,7 +143,9 @@
       "idLabel": "Id de la tâche",
       "replay": "Tâche de rejeu",
       "rerating": "Tâche de retarification"
-    }
+    },
+    "allStatuses": "Tous les statuts",
+    "allKinds": "Tous les types"
   },
   "invoice": {
     "back": "← Locataire",
@@ -255,7 +269,8 @@
       "deliveries": "Livraisons",
       "reason": "Motif",
       "bytes": "Octets"
-    }
+    },
+    "noMessages": "Aucun message dans cette file."
   },
   "playground": {
     "title": "Bac à sable",
@@ -362,7 +377,9 @@
         "save": "Enregistrer l'adresse",
         "cancel": "Annuler",
         "editing": "Adresse de {id}"
-      }
+      },
+      "allCountries": "Tous les pays",
+      "allCurrencies": "Toutes les devises"
     },
     "packages": {
       "new": "Nouveau forfait",
@@ -385,7 +402,15 @@
       "monthly": "Mensuel",
       "yearly": "Annuel",
       "perYear": "/ an",
-      "tenantMonthly": "Le tarif mensuel en {currency} est le tarif fixe ci-dessus."
+      "tenantMonthly": "Le tarif mensuel en {currency} est le tarif fixe ci-dessus.",
+      "published": "Publiée",
+      "priceColumn": "Prix",
+      "limits": "Limites",
+      "priceKinds": {
+        "perUnit": "{price} par unité",
+        "tiered": "{n} paliers",
+        "package": "{size} unités pour {price}"
+      }
     },
     "subscriptions": {
       "new": "Nouvel abonnement",
@@ -479,7 +504,10 @@
       },
       "endNowCredit": "Terminer maintenant et créditer le reste",
       "confirmEndCredit": "Terminer cet abonnement maintenant et créditer le client de la part inutilisée des frais payés d'avance ?",
-      "credited": "{amount} crédités sur le solde du client."
+      "credited": "{amount} crédités sur le solde du client.",
+      "allStates": "Tous les statuts",
+      "allCurrencies": "Toutes les devises",
+      "allIntervals": "Tous les intervalles"
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",
@@ -502,7 +530,8 @@
       "amount": "Montant",
       "reference": "Référence",
       "source": "Source",
-      "empty": "Rien dans le grand livre pour l'instant."
+      "empty": "Rien dans le grand livre pour l'instant.",
+      "id": "Identifiant"
     },
     "providers": {
       "accounts": "Comptes prestataires",
@@ -620,7 +649,9 @@
       "nextAttempt": "Prochaine tentative",
       "empty": "Rien à signaler pour l'instant.",
       "noDunning": "Aucune facture impayée.",
-      "credited": "Crédité (avoirs)"
+      "credited": "Crédité (avoirs)",
+      "currentMonth": "Mois en cours",
+      "splitBy": "Répartir par"
     },
     "pricing": {
       "coupons": {
@@ -787,7 +818,10 @@
       "refunded": "Remboursé sur la carte",
       "refundRequested": "Remboursement demandé",
       "refundFailed": "Remboursement échoué",
-      "retryRefund": "Réessayer le remboursement"
+      "retryRefund": "Réessayer le remboursement",
+      "new": "Nouvel avoir",
+      "hint": "Crédite en tout ou en partie une facture payée. Le montant va au solde du client ou retourne sur la carte.",
+      "allWhere": "Partout"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -823,7 +857,8 @@
         "pending": "En attente",
         "delivered": "Livré",
         "failed": "Échoué"
-      }
+      },
+      "allStatuses": "Tous les statuts"
     },
     "paymentLinks": {
       "title": "Liens de paiement",
@@ -900,7 +935,8 @@
       },
       "for": "Pour",
       "promotionCode": "Code promotionnel (facultatif)",
-      "promotionHint": "Le payeur obtient la remise de ce code sans le saisir et peut en saisir un autre. Il est vérifié dès maintenant pour ce montant."
+      "promotionHint": "Le payeur obtient la remise de ce code sans le saisir et peut en saisir un autre. Il est vérifié dès maintenant pour ce montant.",
+      "id": "Lien"
     },
     "mail": {
       "title": "E-mail",
@@ -1077,7 +1113,9 @@
         "voided": "Annulée",
         "until": "jusqu'au {date}",
         "edit": "Modifier",
-        "void": "Annuler"
+        "void": "Annuler",
+        "allCategories": "Toutes les catégories",
+        "allRecurring": "Ponctuelles et récurrentes"
       },
       "form": {
         "addTitle": "Ajouter une dépense",
@@ -1571,7 +1609,8 @@
       "webhookSecret": "Secret de signature",
       "neverShown": "Le secret est envoyé une seule fois et ne peut pas être relu.",
       "save": "Enregistrer le compte",
-      "saved": "Compte enregistré."
+      "saved": "Compte enregistré.",
+      "allEnvironments": "Tous les environnements"
     },
     "customer": {
       "title": "Données fiscales",
@@ -1657,7 +1696,8 @@
       "revokeById": "Révoquer par identifiant",
       "confirmRevoke": "Révoquer cette clé d'API ? Les requêtes qui l'utilisent cessent de fonctionner immédiatement.",
       "revokedDone": "Clé {id} révoquée."
-    }
+    },
+    "allEnvironments": "Tous les environnements"
   },
   "address": {
     "title": "Adresse du vendeur",
@@ -1693,7 +1733,8 @@
       "hint": "Voici comment le vendeur apparaît sur une facture.",
       "from": "De",
       "empty": "Aucune adresse : la facture n'affiche que le nom."
-    }
+    },
+    "edit": "Modifier l'adresse"
   },
   "errors": {
     "billing": {
@@ -2573,7 +2614,9 @@
       "when": "Quand",
       "status": "Statut",
       "provider": "Prestataire",
-      "amount": "Montant"
+      "amount": "Montant",
+      "allStatuses": "Tous les statuts",
+      "allKinds": "Tous les types"
     },
     "invoices": {
       "title": "Factures récentes",
@@ -2640,7 +2683,12 @@
       "overlapHours": "{n} heures",
       "lastUsed": "dernière utilisation {date}",
       "neverUsed": "jamais utilisée",
-      "ends": "Cesse de fonctionner le {date}"
+      "ends": "Cesse de fonctionner le {date}",
+      "filterEnv": "Environnement",
+      "allEnvs": "Tous les environnements",
+      "filterStatus": "Statut",
+      "allStatuses": "Tous les statuts",
+      "scopeHead": "Portée"
     },
     "links": {
       "title": "Aller plus loin",
@@ -2732,7 +2780,9 @@
       "leaveTitle": "Quitter ce compte ?",
       "leaveBody": "Vous perdez aussitôt l'accès à ses applications et à ses données. Un propriétaire peut vous réinviter.",
       "removeTitle": "Retirer ce membre ?",
-      "removeBody": "{name} perd aussitôt l'accès aux applications et aux données de ce compte."
+      "removeBody": "{name} perd aussitôt l'accès aux applications et aux données de ce compte.",
+      "allRoles": "Tous les rôles",
+      "expiresHead": "Valable jusqu'au"
     },
     "account": {
       "switch": "Compte",
@@ -3028,7 +3078,8 @@
       "billing": "Facturation",
       "growth": "Croissance",
       "developers": "Développeurs",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "apps": "Applications"
     },
     "items": {
       "overview": "Applications",
@@ -3062,7 +3113,8 @@
       "goLive": "Passer en production",
       "sandbox": "Outils sandbox",
       "partner": "Portail partenaire"
-    }
+    },
+    "noApps": "Aucune application"
   },
   "privacy": {
     "hide": "Masquer les montants",
@@ -3208,6 +3260,32 @@
       "apps": "{n} application | {n} applications",
       "none": "Aucune application n'a de revenu sur cette période.",
       "open": "Ouvrir l'application"
+    }
+  },
+  "pagination": {
+    "perPage": "Lignes par page",
+    "total": "{count} au total",
+    "prev": "Précédent",
+    "next": "Suivant",
+    "page": "Page {page} sur {pages}",
+    "pageOnly": "Page {page}",
+    "goTo": "Aller à la page",
+    "go": "Aller"
+  },
+  "dateRange": {
+    "any": "Toute période",
+    "label": "Période",
+    "from": "Du",
+    "to": "Au",
+    "apply": "Appliquer",
+    "clear": "Effacer",
+    "presets": {
+      "today": "Aujourd'hui",
+      "7d": "7 derniers jours",
+      "30d": "30 derniers jours",
+      "month": "Ce mois-ci",
+      "lastMonth": "Mois dernier",
+      "year": "Cette année"
     }
   }
 }

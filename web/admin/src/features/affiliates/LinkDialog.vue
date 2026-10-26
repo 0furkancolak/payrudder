@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Button } from "@/shared/ui/button";
 import { CopyField } from "@/shared/ui/copy-field";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -40,29 +40,31 @@ function submit() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ t("affiliates.link.title", { code: affiliate?.code ?? "" }) }}</DialogTitle>
-        <DialogDescription>{{ t("affiliates.link.hint") }}</DialogDescription>
-      </DialogHeader>
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ t("affiliates.link.title", { code: affiliate?.code ?? "" }) }}</SheetTitle>
+        <SheetDescription>{{ t("affiliates.link.hint") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
       <div class="grid gap-1.5">
         <Label>{{ t("affiliates.link.referralLink") }}</Label>
         <CopyField v-if="affiliate?.link" :value="affiliate.link" :label="t('affiliates.link.referralLink')" :copy-label="t('affiliates.link.copy')" testid="referral-link" />
         <p v-else class="text-muted-foreground text-sm">{{ t("affiliates.link.noLink", { code: affiliate?.code ?? "" }) }}</p>
       </div>
-      <form class="grid gap-3" @submit.prevent="submit">
+      <form id="af-link" class="grid gap-3" @submit.prevent="submit">
         <div class="grid gap-1.5">
           <Label for="al-code">{{ t("affiliates.link.promotionCode") }}</Label>
           <Input id="al-code" v-model="code" autocomplete="off" required dir="ltr" :disabled="!canWrite" />
           <p class="text-muted-foreground text-xs">{{ t("affiliates.link.promotionHint") }}</p>
         </div>
         <ErrorText :error="link.error.value" />
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.close") }}</Button>
-          <Button type="submit" :disabled="!canWrite || link.isPending.value">{{ t("affiliates.link.submit") }}</Button>
-        </DialogFooter>
       </form>
-    </DialogContent>
-  </Dialog>
+      </SheetBody>
+      <SheetFooter>
+          <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.close") }}</Button>
+          <Button type="submit" form="af-link" :disabled="!canWrite || link.isPending.value">{{ t("affiliates.link.submit") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

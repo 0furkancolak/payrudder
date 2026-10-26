@@ -59,6 +59,9 @@ watch(
   { immediate: true },
 );
 
+/** The apps the sidebar lists: a person's own, on the organisation's pages (inside an app the sidebar is that app's pages, as before). */
+const sidebarApps = computed(() => (isPerson.value && shell.context.value.level === "org" ? (shell.apps.data.value?.apps ?? []) : undefined));
+
 const home = computed(() => (isPerson.value ? "/app" : "/signin"));
 
 // The server's verdict (/auth/me) corrects what this tab believed: somebody who is not an operator, however they got to the console, is sent home.
@@ -81,8 +84,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
     <a href="#main" class="bg-primary text-primary-foreground sr-only z-[60] rounded-xl px-4 py-2 focus:not-sr-only focus:fixed focus:start-4 focus:top-4">{{ t("shell.skip") }}</a>
 
     <template v-if="signedIn">
-      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" />
-      <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" />
+      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" :apps="sidebarApps" :app-id="shell.context.value.appId" :env="pageEnv" />
+      <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :apps="sidebarApps" :app-id="shell.context.value.appId" :env="pageEnv" />
     </template>
 
     <!-- One wrapper and one <main> for both states: signing in must not remount the page that is signing in (its onSuccess would be lost). -->
@@ -105,17 +108,16 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
             <PrivacyToggle />
             <LanguageSwitcher />
             <ThemeToggle />
-            <UserMenu v-if="isPerson" />
           </div>
-          <OrgEnvSwitch v-if="orgHome && pageEnv" class="order-last w-full sm:order-none sm:w-auto" :env="pageEnv" />
+          <OrgEnvSwitch v-if="orgHome && pageEnv" :env="pageEnv" />
           <ContextSwitcher
             v-if="isPerson && shell.context.value.level === 'app'"
-            class="order-last w-full sm:order-none sm:w-auto"
             :context="shell.context.value"
             :apps="shell.apps.data.value?.apps ?? []"
             :app-name="shell.appName.value"
             :path="shell.path.value"
           />
+          <UserMenu v-if="isPerson" />
         </div>
       </header>
       <header v-else class="mx-auto flex max-w-[1240px] items-center justify-between gap-3 px-4 pt-4 md:px-8 md:pt-6">

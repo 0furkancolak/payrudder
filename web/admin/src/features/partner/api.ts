@@ -51,27 +51,27 @@ export function useAffiliation(id: Id, from: Id, to: Id, ok: MaybeRefOrGetter<bo
   });
 }
 
-export function useReferrals(id: Id, pageToken: Id) {
+export function useReferrals(id: Id, pageToken: Id, pageSize: MaybeRefOrGetter<number> = PAGE.paged) {
   return useQuery({
-    queryKey: computed(() => [...partnerKeys.all, "referrals", toValue(id), toValue(pageToken)]),
+    queryKey: computed(() => [...partnerKeys.all, "referrals", toValue(id), toValue(pageToken), toValue(pageSize)]),
     enabled: computed(() => enabled.value && toValue(id) !== ""),
     queryFn: async (): Promise<Page<MyReferral>> => {
       const r = await unwrap(
-        api.GET("/app/v1/affiliate/affiliations/{id}/referrals", { params: { path: { id: toValue(id) }, query: { page_size: PAGE.paged, ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}) } } }),
+        api.GET("/app/v1/affiliate/affiliations/{id}/referrals", { params: { path: { id: toValue(id) }, query: { page_size: toValue(pageSize), ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}) } } }),
       );
       return { items: r.referrals ?? [], next: r.next_page_token ?? "", total: r.total ?? 0 };
     },
   });
 }
 
-export function useCommissions(id: Id, status: Id, pageToken: Id) {
+export function useCommissions(id: Id, status: Id, pageToken: Id, pageSize: MaybeRefOrGetter<number> = PAGE.paged) {
   return useQuery({
-    queryKey: computed(() => [...partnerKeys.all, "commissions", toValue(id), toValue(status), toValue(pageToken)]),
+    queryKey: computed(() => [...partnerKeys.all, "commissions", toValue(id), toValue(status), toValue(pageToken), toValue(pageSize)]),
     enabled: computed(() => enabled.value && toValue(id) !== ""),
     queryFn: async (): Promise<Page<MyCommission>> => {
       const r = await unwrap(
         api.GET("/app/v1/affiliate/affiliations/{id}/commissions", {
-          params: { path: { id: toValue(id) }, query: { page_size: PAGE.paged, ...(toValue(status) ? { status: toValue(status) as "paid" } : {}), ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}) } },
+          params: { path: { id: toValue(id) }, query: { page_size: toValue(pageSize), ...(toValue(status) ? { status: toValue(status) as "paid" } : {}), ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}) } },
         }),
       );
       return { items: r.commissions ?? [], next: r.next_page_token ?? "", total: r.total ?? 0 };
@@ -79,13 +79,13 @@ export function useCommissions(id: Id, status: Id, pageToken: Id) {
   });
 }
 
-export function usePayouts(id: Id, pageToken: Id) {
+export function usePayouts(id: Id, pageToken: Id, pageSize: MaybeRefOrGetter<number> = PAGE.paged) {
   return useQuery({
-    queryKey: computed(() => [...partnerKeys.all, "payouts", toValue(id), toValue(pageToken)]),
+    queryKey: computed(() => [...partnerKeys.all, "payouts", toValue(id), toValue(pageToken), toValue(pageSize)]),
     enabled: computed(() => enabled.value && toValue(id) !== ""),
     queryFn: async (): Promise<Page<MyPayout>> => {
       const r = await unwrap(
-        api.GET("/app/v1/affiliate/affiliations/{id}/payouts", { params: { path: { id: toValue(id) }, query: { page_size: PAGE.paged, ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}) } } }),
+        api.GET("/app/v1/affiliate/affiliations/{id}/payouts", { params: { path: { id: toValue(id) }, query: { page_size: toValue(pageSize), ...(toValue(pageToken) ? { page_token: toValue(pageToken) } : {}) } } }),
       );
       return { items: r.payouts ?? [], next: r.next_page_token ?? "", total: r.total ?? 0 };
     },

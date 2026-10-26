@@ -46,6 +46,7 @@ function pickEnv(value: string) {
 
 <template>
   <div class="flex min-w-0 flex-wrap items-center gap-2" data-testid="context-switcher">
+    <SegmentedControl v-if="context.env" :model-value="env" :options="options" :label="t('product.env.label')" data-testid="env-switch" @update:model-value="pickEnv" />
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <button
@@ -68,6 +69,5 @@ function pickEnv(value: string) {
         <DropdownMenuItem class="rounded-xl" @select="navigate({ to: '/app' })"><Plus class="size-4" />{{ t("shell.allApps") }}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-    <SegmentedControl v-if="context.env" :model-value="env" :options="options" :label="t('product.env.label')" data-testid="env-switch" @update:model-value="pickEnv" />
   </div>
 </template>

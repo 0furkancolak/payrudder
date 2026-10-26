@@ -8,7 +8,7 @@ import { label } from "@/shared/lib/labels";
 import { minorToMajor, parseMajor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -92,13 +92,14 @@ function submit() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ transfer ? t("invoice.payment.confirmTransfer") : t("invoice.payment.record") }}</DialogTitle>
-        <DialogDescription>{{ transfer ? t("invoice.payment.transferHint") : t("invoice.payment.offlineHint") }}</DialogDescription>
-      </DialogHeader>
-      <form class="grid gap-3" @submit.prevent="submit">
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ transfer ? t("invoice.payment.confirmTransfer") : t("invoice.payment.record") }}</SheetTitle>
+        <SheetDescription>{{ transfer ? t("invoice.payment.transferHint") : t("invoice.payment.offlineHint") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
+      <form id="record-payment" class="grid gap-3" @submit.prevent="submit">
         <div v-if="!transfer" class="grid gap-1.5">
           <Label for="pay-method">{{ t("invoice.payment.method") }}</Label>
           <NativeSelect id="pay-method" v-model="method">
@@ -125,11 +126,12 @@ function submit() {
         </div>
         <ErrorText :message="formError" />
         <ErrorText :error="error()" />
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="open = false">{{ t("invoice.payment.cancel") }}</Button>
-          <Button type="submit" :disabled="pending()">{{ transfer ? t("invoice.payment.confirmSubmit") : t("invoice.payment.submit") }}</Button>
-        </DialogFooter>
       </form>
-    </DialogContent>
-  </Dialog>
+      </SheetBody>
+      <SheetFooter>
+          <Button type="button" variant="outline" @click="open = false">{{ t("invoice.payment.cancel") }}</Button>
+          <Button type="submit" form="record-payment" :disabled="pending()">{{ transfer ? t("invoice.payment.confirmSubmit") : t("invoice.payment.submit") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

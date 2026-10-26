@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Pencil } from "@lucide/vue";
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -9,6 +10,7 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useSetSellerAddress } from "./api";
 
 const { t, locale } = useI18n();
@@ -21,6 +23,7 @@ const form = ref<Address>({});
 /** "other" lets the operator type any ISO code; the common countries are chosen by name. */
 const countryChoice = ref("");
 const saved = ref(false);
+const open = ref(false);
 
 function load(a: Address | undefined) {
   form.value = { ...(a ?? {}) };
@@ -29,6 +32,13 @@ function load(a: Address | undefined) {
 }
 // The stored address fills the form once the tenant arrives, and again after a save refreshes it.
 watch(() => tenant.data.value?.address, (a) => load(a), { immediate: true });
+
+// Closing the sheet drops what was typed and not saved, so the preview shows the stored address again.
+watch(open, (v) => {
+  if (v || saved.value) return;
+  load(tenant.data.value?.address);
+  save.reset();
+});
 
 function chooseCountry(value: string) {
   countryChoice.value = value;
@@ -59,16 +69,38 @@ const problemText = (part: AddressPart) => {
 function submit() {
   if (!valid.value) return;
   saved.value = false;
-  save.mutate(cleaned.value, { onSuccess: () => (saved.value = true) });
+  save.mutate(cleaned.value, {
+    onSuccess: () => {
+      saved.value = true;
+      open.value = false;
+    },
+  });
 }
 </script>
 
 <template>
-  <div class="grid gap-6 lg:grid-cols-2">
-    <Card>
-      <h2 class="text-lg font-semibold">{{ t("address.title") }}</h2>
-      <p class="text-muted-foreground text-sm">{{ t("address.hint") }}</p>
-      <form class="grid gap-3" role="form" :aria-label="t('address.formLabel')" @submit.prevent="submit" @input="saved = false">
+  <Card role="region" :aria-label="t('address.preview.title')">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <p class="text-muted-foreground max-w-xl text-sm">{{ t("address.hint") }} {{ t("address.preview.hint") }}</p>
+      <Button type="button" @click="open = true"><Pencil class="size-4" aria-hidden="true" />{{ t("address.edit") }}</Button>
+    </div>
+    <div class="bg-card max-w-md rounded-2xl border p-4 text-sm shadow-sm" data-testid="invoice-preview">
+      <p class="text-muted-foreground text-xs tracking-wide uppercase">{{ t("address.preview.from") }}</p>
+      <p class="font-semibold">{{ tenant.data.value?.name }}</p>
+      <p v-for="(line, i) in lines" :key="i" data-testid="preview-line">{{ line }}</p>
+      <p v-if="lines.length === 0" class="text-muted-foreground italic">{{ t("address.preview.empty") }}</p>
+    </div>
+    <p v-if="saved" class="text-success text-sm" role="status">{{ t("address.saved") }}</p>
+    <ErrorText :error="tenant.error.value" />
+
+    <Sheet v-model:open="open">
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{{ t("address.title") }}</SheetTitle>
+          <SheetDescription>{{ t("address.hint") }}</SheetDescription>
+        </SheetHeader>
+        <SheetBody>
+      <form id="seller-address-form" class="grid gap-4" role="form" :aria-label="t('address.formLabel')" @submit.prevent="submit" @input="saved = false">
         <div class="grid gap-1">
           <label class="text-sm" for="seller-country">{{ t("address.labels.country") }}</label>
           <NativeSelect id="seller-country" :model-value="countryChoice" :aria-label="t('address.labels.country')" @change="chooseCountry(($event.target as HTMLSelectElement).value)">
@@ -115,24 +147,14 @@ function submit() {
           <Input id="seller-region" v-model="form.region" :aria-invalid="!!problems.region" />
           <p v-if="problems.region" class="text-destructive text-xs" role="alert">{{ problemText("region") }}</p>
         </div>
-        <div class="flex items-center gap-3">
-          <Button type="submit" :disabled="save.isPending.value || !valid">{{ t("address.save") }}</Button>
-          <span v-if="saved" class="text-success text-sm" role="status">{{ t("address.saved") }}</span>
-        </div>
+        <ErrorText :error="save.error.value" />
       </form>
-      <ErrorText :error="save.error.value" />
-      <ErrorText :error="tenant.error.value" />
-    </Card>
-
-    <Card role="region" :aria-label="t('address.preview.title')">
-      <h2 class="text-lg font-semibold">{{ t("address.preview.title") }}</h2>
-      <p class="text-muted-foreground text-sm">{{ t("address.preview.hint") }}</p>
-      <div class="bg-card rounded-md border p-4 text-sm shadow-sm" data-testid="invoice-preview">
-        <p class="text-muted-foreground text-xs tracking-wide uppercase">{{ t("address.preview.from") }}</p>
-        <p class="font-semibold">{{ tenant.data.value?.name }}</p>
-        <p v-for="(line, i) in lines" :key="i" data-testid="preview-line">{{ line }}</p>
-        <p v-if="lines.length === 0" class="text-muted-foreground italic">{{ t("address.preview.empty") }}</p>
-      </div>
-    </Card>
-  </div>
+        </SheetBody>
+        <SheetFooter>
+          <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
+          <Button type="submit" form="seller-address-form" :disabled="save.isPending.value || !valid">{{ t("address.save") }}</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  </Card>
 </template>

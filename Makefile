@@ -9,6 +9,22 @@ BIN     := $(CURDIR)/bin
 COMPOSE := docker compose -f deploy/compose/compose.yaml $(if $(wildcard .env),--env-file .env)
 export GOPRIVATE := github.com/0furkancolak/*
 
+# macOS: a Command Line Tools SDK newer than the installed linker (its .tbd stubs list architectures ld does not know, "tapi error: malformed
+# file") makes every cgo link fail, and Go links with cgo for net's resolver. When the default SDK cannot link, build against the newest SDK that can.
+ifeq ($(shell uname -s),Darwin)
+ifeq ($(origin SDKROOT),undefined)
+SDKROOT := $(shell printf 'int main(void){return 0;}' > /tmp/payrudder-sdk-probe.c; \
+  ok() { cc -isysroot "$$1" /tmp/payrudder-sdk-probe.c -framework CoreFoundation -lresolv -o /dev/null >/dev/null 2>&1; }; \
+  if ok "$$(xcrun --show-sdk-path 2>/dev/null)"; then :; else \
+    for s in $$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX[0-9]*.sdk 2>/dev/null | sort -rV); do ok "$$s" && { echo "$$s"; break; }; done; fi)
+ifneq ($(strip $(SDKROOT)),)
+export SDKROOT
+else
+undefine SDKROOT
+endif
+endif
+endif
+
 .PHONY: help
 help: ## List targets
 	@grep -hE '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'

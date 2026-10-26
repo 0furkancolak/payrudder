@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway, type Call } from "./gateway";
 import { ACCOUNT, memberships, productGateway, signInAsAda, type ProductState } from "./product";
+import { pickFilter, pickRange } from "./ui";
 
 // The affiliate partner portal against a mocked gateway: /app/partner (the person's affiliations and the claim), /app/partner/{id} (figures, balances,
 // terms, referrals, commissions, payouts, settings) and /app/partner/apply. The mock is a small stand-in for /app/v1/affiliate/*.
@@ -189,7 +190,14 @@ test.describe("partner portal", () => {
     await expect(live.getByTestId("banner-sandbox")).toHaveCount(0);
     // The claim is made once and the list is read again after it claimed something.
     await expect.poll(() => gw.called("POST", "/app/v1/affiliate/claim").length).toBe(1);
-    await expect.poll(() => gw.called("GET", "/app/v1/affiliate/affiliations").length).toBeGreaterThanOrEqual(2);
+    // The first read may be cancelled before it leaves the browser when the claim answers first, so the check is the order, not the count.
+    await expect
+      .poll(() => {
+        const claimAt = gw.calls.findIndex((c) => c.method === "POST" && c.path === "/app/v1/affiliate/claim");
+        const listAt = gw.calls.map((c) => `${c.method} ${c.path}`).lastIndexOf("GET /app/v1/affiliate/affiliations");
+        return claimAt >= 0 && listAt > claimAt;
+      })
+      .toBe(true);
     // Live ones first.
     const order = await page.locator("[data-affiliation]").evaluateAll((els) => els.map((e) => e.getAttribute("data-affiliation")));
     expect(order).toEqual([LIVE_AFF, SAND_AFF]);
@@ -250,7 +258,7 @@ test.describe("partner portal", () => {
     await expect(terms.locator('[data-term="minPayout"]')).toContainText("TRY 25.00");
 
     // The period is sent as days, and changing it keeps the page.
-    await page.getByRole("button", { name: "Last month" }).click();
+    await pickRange(page, "lastMonth");
     await expect.poll(() => gw.called("GET", `/app/v1/affiliate/affiliations/${LIVE_AFF}`).some((q) => q.query.get("from") === "2026-09-01" && q.query.get("to") === "2026-09-30")).toBe(true);
     await expect(page.locator('[data-stat="clicks"]').first()).toContainText("320");
   });
@@ -271,7 +279,7 @@ test.describe("partner portal", () => {
     await expect(rows.locator('tbody tr[data-kind="commission"]').first()).toContainText("Payable from");
     // Nothing of the seller's: no invoice number or customer id column.
     await expect(rows.getByRole("columnheader", { name: /invoice/i })).toHaveCount(0);
-    await page.getByLabel("Status", { exact: true }).selectOption("paid");
+    await pickFilter(page, "Status", "Paid");
     await expect.poll(() => gw.called("GET", `/app/v1/affiliate/affiliations/${SAND_AFF}/commissions`).some((q) => q.query.get("status") === "paid")).toBe(true);
 
     await page.getByRole("tab", { name: "Payouts" }).click();

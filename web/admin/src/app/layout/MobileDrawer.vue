@@ -3,14 +3,15 @@ import { X } from "@lucide/vue";
 import { DialogContent, DialogDescription, DialogOverlay, DialogPortal, DialogRoot, DialogTitle } from "reka-ui";
 import { useI18n } from "vue-i18n";
 import { BrandLogo } from "@/shared/ui/brand-logo";
-import SidebarNav from "./SidebarNav.vue";
+import SidebarNav, { type SidebarApp } from "./SidebarNav.vue";
+import type { Environment } from "@/shared/lib/environment";
 import type { NavItem, NavSection } from "./nav";
 
 /**
  * The navigation on a phone or a tablet: a drawer from the start edge (the left in English, the right in Arabic). It is a modal dialog, so focus moves into
  * it when it opens, stays inside while it is open, Escape closes it and focus returns to the menu button; choosing a link closes it.
  */
-defineProps<{ sections: NavSection[]; current: NavItem | undefined; brand: string }>();
+defineProps<{ sections: NavSection[]; current: NavItem | undefined; brand: string; apps?: SidebarApp[]; appId?: string; env?: Environment }>();
 const open = defineModel<boolean>("open", { required: true });
 const { t } = useI18n();
 </script>
@@ -34,7 +35,7 @@ const { t } = useI18n();
         </div>
         <DialogDescription class="sr-only">{{ t("shell.navLabel") }}</DialogDescription>
         <div class="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
-          <SidebarNav :sections="sections" :current="current" :label="t('shell.navLabel')" @navigate="open = false" />
+          <SidebarNav :sections="sections" :current="current" :apps="apps" :app-id="appId" :env="env" :label="t('shell.navLabel')" @navigate="open = false" />
         </div>
       </DialogContent>
     </DialogPortal>

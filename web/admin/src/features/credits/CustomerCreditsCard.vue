@@ -1,15 +1,21 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { Plus } from "@lucide/vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import CustomerSelect from "@/features/customers/CustomerSelect.vue";
 import { useFormat } from "@/shared/lib/format";
 import { useAttemptKey } from "@/shared/lib/key";
 import { CREDITS_RE } from "@/shared/lib/rules";
+import { useTableState } from "@/shared/lib/useTableState";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { StatusPill } from "@/shared/ui/status-pill";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreditBalance, useGrantCredits } from "./api";
 import { formatCredits } from "./lib";
@@ -31,6 +37,23 @@ const attempt = useAttemptKey();
 const grantValid = computed(() => customer.value !== "" && CREDITS_RE.test(grantCredits.value.trim()));
 const credits = (v: string | number | undefined) => formatCredits(v, locale.value);
 
+const open = ref(false);
+type Lot = NonNullable<NonNullable<typeof balance.data.value>["lots"]>[number];
+const lots = useTableState<Lot>(() => balance.data.value?.lots ?? [], {
+  searchFields: (l) => [l.source ? t(`billing.credits.source.${l.source}`) : ""],
+  filters: { source: (l, v) => l.source === v },
+});
+const sourceFilter = computed({ get: () => lots.filters.value.source ?? "", set: (v) => (lots.filters.value.source = String(v)) });
+// The sources a lot can come from, as far as this customer's lots show.
+const sources = computed(() => [{ value: "", label: t("common.all") }, ...[...new Set((balance.data.value?.lots ?? []).map((l) => l.source ?? "").filter(Boolean))].map((s) => ({ value: s, label: t(`billing.credits.source.${s}`) }))]);
+
+// A sheet that was closed opens clean: the last values and error are not shown again.
+watch(open, (v) => {
+  if (!v) return;
+  grantCredits.value = grantExpiry.value = grantReason.value = "";
+  grant.reset();
+});
+
 function submitGrant() {
   if (!grantValid.value) return;
   grant.mutate(
@@ -47,6 +70,7 @@ function submitGrant() {
       onSuccess: () => {
         grantCredits.value = grantExpiry.value = grantReason.value = "";
         attempt.renew();
+        open.value = false;
       },
     },
   );
@@ -54,13 +78,15 @@ function submitGrant() {
 </script>
 
 <template>
-  <Card class="mb-6">
-    <h2 class="text-lg font-semibold">{{ t("billing.credits.customer.title") }}</h2>
-    <CustomerSelect v-model="customer" :tenant-id="tenantId" named :label="t('billing.credits.customer.pick')" :placeholder="t('billing.credits.customer.pick')" />
+  <Card class="mb-6 p-3">
+    <div class="grid gap-3 px-3 pt-2 pb-3">
+      <h2 class="text-base font-semibold">{{ t("billing.credits.customer.title") }}</h2>
+      <CustomerSelect v-model="customer" :tenant-id="tenantId" named :label="t('billing.credits.customer.pick')" :placeholder="t('billing.credits.customer.pick')" />
+    </div>
 
     <template v-if="customer">
-      <ErrorText :error="balance.error.value" />
-      <div v-if="balance.data.value" class="flex flex-wrap items-baseline gap-x-4 gap-y-1" role="status" :aria-label="t('billing.credits.customer.balance')">
+      <ErrorText :error="balance.error.value" class="px-3" />
+      <div v-if="balance.data.value" class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-3 pb-3" role="status" :aria-label="t('billing.credits.customer.balance')">
         <span class="text-3xl font-semibold tabular-nums">{{ credits(balance.data.value.balance) }}</span>
         <span class="text-muted-foreground text-sm">{{ t("billing.credits.customer.balance") }}</span>
         <span v-if="balance.data.value.next_expire_time" class="text-muted-foreground text-sm">
@@ -68,7 +94,13 @@ function submitGrant() {
         </span>
       </div>
 
-      <Table v-if="(balance.data.value?.lots ?? []).length">
+      <DataToolbar v-model:search="lots.search.value" :active="lots.active.value" @clear="lots.clear()">
+        <FilterSelect v-model="sourceFilter" :label="t('billing.credits.lots.source')" :options="sources" />
+        <template #actions>
+          <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.credits.grant.submit") }}</Button>
+        </template>
+      </DataToolbar>
+      <Table>
         <TableHeader>
           <TableRow class="hover:bg-transparent">
             <TableHead>{{ t("billing.credits.lots.source") }}</TableHead>
@@ -78,26 +110,41 @@ function submitGrant() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="l in balance.data.value?.lots ?? []" :key="l.id">
-            <TableCell>{{ t(`billing.credits.source.${l.source}`) }}</TableCell>
+          <TableRow v-for="l in lots.items.value" :key="l.id">
+            <TableCell><StatusPill :tone="l.source === 'purchase' ? 'success' : 'neutral'">{{ t(`billing.credits.source.${l.source}`) }}</StatusPill></TableCell>
             <TableCell class="text-end tabular-nums">{{ credits(l.remaining) }}</TableCell>
             <TableCell class="text-end tabular-nums">{{ credits(l.granted) }}</TableCell>
             <TableCell>{{ l.expire_time ? fmt.date(l.expire_time, "dateTime") : t("billing.credits.lots.never") }}</TableCell>
           </TableRow>
         </TableBody>
       </Table>
-
-      <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" role="form" :aria-label="t('billing.credits.grant.formLabel')" @submit.prevent="submitGrant">
-        <Input v-model="grantCredits" inputmode="numeric" :aria-label="t('billing.credits.grant.credits')" :placeholder="t('billing.credits.grant.credits')" required />
-        <NativeSelect v-model="grantSource" :aria-label="t('billing.credits.grant.source')">
-          <option value="promo">{{ t("billing.credits.source.promo") }}</option>
-          <option value="manual">{{ t("billing.credits.source.manual") }}</option>
-        </NativeSelect>
-        <Input v-model="grantExpiry" type="date" :aria-label="t('billing.credits.grant.expiry')" :title="t('billing.credits.grant.expiryHint')" />
-        <Input v-model="grantReason" maxlength="200" :aria-label="t('billing.credits.grant.reason')" :placeholder="t('billing.credits.grant.reason')" />
-        <Button type="submit" :disabled="grant.isPending.value || !grantValid">{{ t("billing.credits.grant.submit") }}</Button>
-      </form>
-      <ErrorText :error="grant.error.value" />
+      <p v-if="lots.total.value === 0 && lots.active.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+      <DataPagination v-model:page="lots.page.value" v-model:size="lots.size.value" :pages="lots.pages.value" :total="lots.total.value" />
     </template>
+
+    <Sheet v-model:open="open">
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{{ t("billing.credits.grant.submit") }}</SheetTitle>
+          <SheetDescription>{{ t("billing.credits.customer.title") }}</SheetDescription>
+        </SheetHeader>
+        <SheetBody>
+          <form id="grant-form" class="grid gap-4" role="form" :aria-label="t('billing.credits.grant.formLabel')" @submit.prevent="submitGrant">
+            <Input v-model="grantCredits" inputmode="numeric" :aria-label="t('billing.credits.grant.credits')" :placeholder="t('billing.credits.grant.credits')" required />
+            <NativeSelect v-model="grantSource" :aria-label="t('billing.credits.grant.source')">
+              <option value="promo">{{ t("billing.credits.source.promo") }}</option>
+              <option value="manual">{{ t("billing.credits.source.manual") }}</option>
+            </NativeSelect>
+            <Input v-model="grantExpiry" type="date" :aria-label="t('billing.credits.grant.expiry')" :title="t('billing.credits.grant.expiryHint')" />
+            <Input v-model="grantReason" maxlength="200" :aria-label="t('billing.credits.grant.reason')" :placeholder="t('billing.credits.grant.reason')" />
+            <ErrorText :error="grant.error.value" />
+          </form>
+        </SheetBody>
+        <SheetFooter>
+          <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
+          <Button type="submit" form="grant-form" :disabled="grant.isPending.value || !grantValid">{{ t("billing.credits.grant.submit") }}</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   </Card>
 </template>

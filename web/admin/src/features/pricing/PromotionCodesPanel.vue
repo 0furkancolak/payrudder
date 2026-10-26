@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { Plus } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor } from "@/shared/lib/money";
 import { useTenantCurrency } from "@/features/tenants/currency";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Input } from "@/shared/ui/input";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { RowActions } from "@/shared/ui/row-actions";
 import { CurrencySelect } from "@/shared/ui/search-select";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
 import { useCodeActions, usePromotionCodes } from "./api";
@@ -33,6 +38,17 @@ function filter() {
   pageToken.value = "";
   history.value = [];
 }
+watch([state, search], filter);
+const stateOptions = computed(() => [
+  { value: "", label: t("billing.pricing.promotions.codes.stateAll") },
+  { value: "active", label: t("billing.pricing.coupons.active") },
+  { value: "inactive", label: t("billing.pricing.coupons.inactive") },
+]);
+const active = computed(() => state.value !== "" || search.value !== "");
+function clear() {
+  state.value = "";
+  search.value = "";
+}
 function next() {
   const token = codes.data.value?.next_page_token;
   if (!token) return;
@@ -53,6 +69,14 @@ const seeded = ref(false);
 const formError = ref("");
 const made = ref<string[]>([]);
 const copied = ref(false);
+const open = ref(false);
+
+// A sheet that was closed opens clean: the last error is not shown again.
+watch(open, (v) => {
+  if (!v) return;
+  formError.value = "";
+  act.create.reset();
+});
 
 function seedCurrency() {
   if (!seeded.value && tenantCurrency.value) {
@@ -91,6 +115,7 @@ function create() {
     onSuccess: (r) => {
       made.value = (r.codes ?? []).map((c) => c.code ?? "").filter(Boolean);
       names.value = "";
+      open.value = false;
     },
   });
 }
@@ -137,38 +162,11 @@ const rules = (c: Row) => {
 </script>
 
 <template>
-  <section class="border-border mt-2 grid gap-4 rounded-md border p-4" :aria-label="t('billing.pricing.promotions.codes.title', { coupon })">
-    <h3 class="text-base font-semibold">{{ t("billing.pricing.promotions.codes.title", { coupon }) }}</h3>
-    <p class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.codes.hint") }}</p>
-    <form class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="form" :aria-label="t('billing.pricing.promotions.codes.formLabel')" @submit.prevent="create">
-      <NativeSelect v-model="mode" :aria-label="t('billing.pricing.promotions.codes.mode')" @focus="seedCurrency">
-        <option value="named">{{ t("billing.pricing.promotions.codes.modeNamed") }}</option>
-        <option value="random">{{ t("billing.pricing.promotions.codes.modeRandom") }}</option>
-      </NativeSelect>
-      <Textarea v-if="mode === 'named'" v-model="names" rows="3" class="sm:col-span-2" :aria-label="t('billing.pricing.promotions.codes.names')" :placeholder="t('billing.pricing.promotions.codes.namesPlaceholder')" />
-      <template v-else>
-        <Input v-model="count" inputmode="numeric" :aria-label="t('billing.pricing.promotions.codes.count')" :placeholder="t('billing.pricing.promotions.codes.count')" />
-        <Input v-model="prefix" maxlength="20" :aria-label="t('billing.pricing.promotions.codes.prefix')" :placeholder="t('billing.pricing.promotions.codes.prefix')" />
-      </template>
-      <Input v-model="form.max" inputmode="numeric" :aria-label="t('billing.pricing.promotions.codes.maxPerCode')" :placeholder="t('billing.pricing.promotions.codes.maxPerCode')" />
-      <Input v-model="form.expires" type="date" :aria-label="t('billing.pricing.promotions.codes.expires')" :title="t('billing.pricing.promotions.codes.expires')" />
-      <div class="grid grid-cols-[1fr_auto] gap-2">
-        <Input v-model="form.minAmount" inputmode="decimal" :aria-label="t('billing.pricing.promotions.codes.minAmount')" :placeholder="t('billing.pricing.promotions.codes.minAmount')" />
-        <CurrencySelect v-model="form.minCurrency" :aria-label="t('billing.pricing.promotions.codes.minCurrency')" />
-      </div>
-      <Input v-model="form.currencies" :aria-label="t('billing.pricing.promotions.codes.allowedCurrencies')" :placeholder="t('billing.pricing.promotions.codes.allowedCurrencies')" />
-      <Input v-model="form.plans" :aria-label="t('billing.pricing.promotions.codes.allowedPlans')" :placeholder="t('billing.pricing.promotions.codes.allowedPlans')" />
-      <Input v-model="form.packs" :aria-label="t('billing.pricing.promotions.codes.allowedPacks')" :placeholder="t('billing.pricing.promotions.codes.allowedPacks')" />
-      <div class="grid gap-1 sm:col-span-2 lg:col-span-3">
-        <label class="flex items-center gap-2 text-sm"><input v-model="form.firstPurchase" type="checkbox" class="size-4" />{{ t("billing.pricing.promotions.codes.firstPurchase") }}</label>
-        <label class="flex items-center gap-2 text-sm"><input v-model="form.onePerCustomer" type="checkbox" class="size-4" />{{ t("billing.pricing.promotions.codes.onePerCustomer") }}</label>
-        <label class="flex items-center gap-2 text-sm"><input v-model="form.restore" type="checkbox" class="size-4" />{{ t("billing.pricing.promotions.codes.restore") }}</label>
-      </div>
-      <Button type="submit" :disabled="act.create.isPending.value">{{ t("billing.pricing.promotions.codes.create") }}</Button>
-    </form>
-    <p v-if="formError" class="text-destructive text-sm" role="alert">{{ formError }}</p>
-    <p v-if="act.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(act.create.error.value) }}</p>
-    <p v-if="act.deactivate.error.value" class="text-destructive text-sm" role="alert">{{ errorText(act.deactivate.error.value) }}</p>
+  <section class="grid gap-4" :aria-label="t('billing.pricing.promotions.codes.title', { coupon })">
+    <div>
+      <h3 class="text-base font-semibold">{{ t("billing.pricing.promotions.codes.title", { coupon }) }}</h3>
+      <p class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.codes.hint") }}</p>
+    </div>
 
     <div v-if="made.length" class="border-success/50 bg-success/10 grid gap-2 rounded-md border p-3" role="status">
       <p class="text-sm font-medium">{{ t("billing.pricing.promotions.codes.created", { n: made.length }) }}</p>
@@ -179,44 +177,83 @@ const rules = (c: Row) => {
       </div>
     </div>
 
-    <div class="flex flex-wrap items-center gap-3">
-      <Input v-model="search" class="w-56" :aria-label="t('billing.pricing.promotions.codes.search')" :placeholder="t('billing.pricing.promotions.codes.search')" @input="filter" />
-      <NativeSelect v-model="state" class="w-40" :aria-label="t('billing.subscriptions.state')" @change="filter">
-        <option value="">{{ t("billing.pricing.promotions.codes.stateAll") }}</option>
-        <option value="active">{{ t("billing.pricing.coupons.active") }}</option>
-        <option value="inactive">{{ t("billing.pricing.coupons.inactive") }}</option>
-      </NativeSelect>
-      <span class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.codes.total", { n: codes.data.value?.total ?? 0 }) }}</span>
+    <div>
+      <DataToolbar v-model:search="search" :placeholder="t('billing.pricing.promotions.codes.search')" :active="active" class="px-0" @clear="clear">
+        <FilterSelect v-model="state" :label="t('billing.subscriptions.state')" :options="stateOptions" />
+        <template #actions>
+          <Button type="button" @click="seedCurrency(); open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.pricing.promotions.codes.create") }}</Button>
+        </template>
+      </DataToolbar>
+      <p v-if="codes.error.value" class="text-destructive text-sm" role="alert">{{ errorText(codes.error.value) }}</p>
+      <p v-if="act.deactivate.error.value" class="text-destructive text-sm" role="alert">{{ errorText(act.deactivate.error.value) }}</p>
+      <Table>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>{{ t("billing.pricing.coupons.code") }}</TableHead>
+            <TableHead class="text-end">{{ t("billing.pricing.promotions.codes.used") }}</TableHead>
+            <TableHead>{{ t("billing.pricing.promotions.codes.expiresCol") }}</TableHead>
+            <TableHead>{{ t("billing.pricing.promotions.codes.rules") }}</TableHead>
+            <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
+            <TableHead><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="c in rows" :key="c.id">
+            <TableCell class="mono font-medium">{{ c.code }}</TableCell>
+            <TableCell class="text-end tabular-nums">{{ c.redeemed ?? 0 }}<template v-if="c.max_redemptions"> / {{ c.max_redemptions }}</template></TableCell>
+            <TableCell class="text-xs">{{ when(c.expire_time) }}</TableCell>
+            <TableCell class="text-xs">{{ rules(c).join(" · ") || "—" }}</TableCell>
+            <TableCell><Badge :variant="c.active ? 'success' : 'secondary'">{{ c.active ? t("billing.pricing.coupons.active") : t("billing.pricing.coupons.inactive") }}</Badge></TableCell>
+            <TableCell class="text-end">
+              <RowActions :actions="c.active ? [{ key: 'deactivate', label: t('billing.pricing.coupons.deactivate'), onSelect: () => act.deactivate.mutate(c.code ?? '') }] : []" />
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <p v-if="!codes.isPending.value && rows.length === 0 && !codes.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.pricing.promotions.codes.none") }}</p>
+      <DataPagination :page="history.length + 1" :total="codes.data.value?.total ?? 0" :has-prev="history.length > 0" :has-next="!!codes.data.value?.next_page_token" @prev="back" @next="next" />
     </div>
-    <p v-if="codes.error.value" class="text-destructive text-sm" role="alert">{{ errorText(codes.error.value) }}</p>
-    <Table>
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead>{{ t("billing.pricing.coupons.code") }}</TableHead>
-          <TableHead class="text-end">{{ t("billing.pricing.promotions.codes.used") }}</TableHead>
-          <TableHead>{{ t("billing.pricing.promotions.codes.expiresCol") }}</TableHead>
-          <TableHead>{{ t("billing.pricing.promotions.codes.rules") }}</TableHead>
-          <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="c in rows" :key="c.id">
-          <TableCell class="mono font-medium">{{ c.code }}</TableCell>
-          <TableCell class="text-end tabular-nums">{{ c.redeemed ?? 0 }}<template v-if="c.max_redemptions"> / {{ c.max_redemptions }}</template></TableCell>
-          <TableCell class="text-xs">{{ when(c.expire_time) }}</TableCell>
-          <TableCell class="text-xs">{{ rules(c).join(" · ") || "—" }}</TableCell>
-          <TableCell><Badge :variant="c.active ? 'success' : 'secondary'">{{ c.active ? t("billing.pricing.coupons.active") : t("billing.pricing.coupons.inactive") }}</Badge></TableCell>
-          <TableCell class="text-end">
-            <Button v-if="c.active" size="sm" variant="ghost" @click="act.deactivate.mutate(c.code ?? '')">{{ t("billing.pricing.coupons.deactivate") }}</Button>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-    <p v-if="!codes.isPending.value && rows.length === 0 && !codes.error.value" class="text-muted-foreground text-center text-sm">{{ t("billing.pricing.promotions.codes.none") }}</p>
-    <div class="flex justify-end gap-2">
-      <Button size="sm" variant="outline" :disabled="history.length === 0" @click="back">{{ t("billing.paymentLinks.previous") }}</Button>
-      <Button size="sm" variant="outline" :disabled="!codes.data.value?.next_page_token" @click="next">{{ t("billing.paymentLinks.next") }}</Button>
-    </div>
+
+    <Sheet v-model:open="open">
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>{{ t("billing.pricing.promotions.codes.create") }}</SheetTitle>
+          <SheetDescription>{{ t("billing.pricing.promotions.codes.title", { coupon }) }}</SheetDescription>
+        </SheetHeader>
+        <SheetBody>
+          <form id="codes-form" class="grid gap-4" role="form" :aria-label="t('billing.pricing.promotions.codes.formLabel')" @submit.prevent="create">
+            <NativeSelect v-model="mode" :aria-label="t('billing.pricing.promotions.codes.mode')" @focus="seedCurrency">
+              <option value="named">{{ t("billing.pricing.promotions.codes.modeNamed") }}</option>
+              <option value="random">{{ t("billing.pricing.promotions.codes.modeRandom") }}</option>
+            </NativeSelect>
+            <Textarea v-if="mode === 'named'" v-model="names" rows="3" :aria-label="t('billing.pricing.promotions.codes.names')" :placeholder="t('billing.pricing.promotions.codes.namesPlaceholder')" />
+            <template v-else>
+              <Input v-model="count" inputmode="numeric" :aria-label="t('billing.pricing.promotions.codes.count')" :placeholder="t('billing.pricing.promotions.codes.count')" />
+              <Input v-model="prefix" maxlength="20" :aria-label="t('billing.pricing.promotions.codes.prefix')" :placeholder="t('billing.pricing.promotions.codes.prefix')" />
+            </template>
+            <Input v-model="form.max" inputmode="numeric" :aria-label="t('billing.pricing.promotions.codes.maxPerCode')" :placeholder="t('billing.pricing.promotions.codes.maxPerCode')" />
+            <Input v-model="form.expires" type="date" :aria-label="t('billing.pricing.promotions.codes.expires')" :title="t('billing.pricing.promotions.codes.expires')" />
+            <div class="grid grid-cols-[1fr_auto] gap-2">
+              <Input v-model="form.minAmount" inputmode="decimal" :aria-label="t('billing.pricing.promotions.codes.minAmount')" :placeholder="t('billing.pricing.promotions.codes.minAmount')" />
+              <CurrencySelect v-model="form.minCurrency" :aria-label="t('billing.pricing.promotions.codes.minCurrency')" />
+            </div>
+            <Input v-model="form.currencies" :aria-label="t('billing.pricing.promotions.codes.allowedCurrencies')" :placeholder="t('billing.pricing.promotions.codes.allowedCurrencies')" />
+            <Input v-model="form.plans" :aria-label="t('billing.pricing.promotions.codes.allowedPlans')" :placeholder="t('billing.pricing.promotions.codes.allowedPlans')" />
+            <Input v-model="form.packs" :aria-label="t('billing.pricing.promotions.codes.allowedPacks')" :placeholder="t('billing.pricing.promotions.codes.allowedPacks')" />
+            <div class="grid gap-1">
+              <label class="flex items-center gap-2 text-sm"><input v-model="form.firstPurchase" type="checkbox" class="size-4" />{{ t("billing.pricing.promotions.codes.firstPurchase") }}</label>
+              <label class="flex items-center gap-2 text-sm"><input v-model="form.onePerCustomer" type="checkbox" class="size-4" />{{ t("billing.pricing.promotions.codes.onePerCustomer") }}</label>
+              <label class="flex items-center gap-2 text-sm"><input v-model="form.restore" type="checkbox" class="size-4" />{{ t("billing.pricing.promotions.codes.restore") }}</label>
+            </div>
+            <p v-if="formError" class="text-destructive text-sm" role="alert">{{ formError }}</p>
+            <p v-if="act.create.error.value" class="text-destructive text-sm" role="alert">{{ errorText(act.create.error.value) }}</p>
+          </form>
+        </SheetBody>
+        <SheetFooter>
+          <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
+          <Button type="submit" form="codes-form" :disabled="act.create.isPending.value">{{ t("billing.pricing.promotions.codes.create") }}</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   </section>
 </template>

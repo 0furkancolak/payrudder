@@ -5,7 +5,7 @@ import { toast } from "vue-sonner";
 import { useFormat } from "@/shared/lib/format";
 import { parseMajor } from "@/shared/lib/money";
 import { Button } from "@/shared/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -75,12 +75,13 @@ function submit() {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>{{ t("affiliates.reverse.title") }}</DialogTitle>
-        <DialogDescription>{{ t("affiliates.reverse.hint") }}</DialogDescription>
-      </DialogHeader>
+  <Sheet v-model:open="open">
+    <SheetContent>
+      <SheetHeader>
+        <SheetTitle>{{ t("affiliates.reverse.title") }}</SheetTitle>
+        <SheetDescription>{{ t("affiliates.reverse.hint") }}</SheetDescription>
+      </SheetHeader>
+      <SheetBody>
       <p class="bg-muted text-muted-foreground rounded-2xl px-4 py-3 text-sm">{{ t("affiliates.reverse.auto") }}</p>
       <dl class="m-0 grid grid-cols-2 gap-2 text-sm">
         <div>
@@ -100,7 +101,7 @@ function submit() {
           <dd class="m-0 font-medium tabular-nums" data-testid="reverse-left">{{ fmt.amount(left, currency) }}</dd>
         </div>
       </dl>
-      <form class="grid gap-3" @submit.prevent="submit">
+      <form id="af-reverse" class="grid gap-3" @submit.prevent="submit">
         <div class="grid gap-1.5">
           <Label for="rv-reason">{{ t("affiliates.reverse.reason") }}</Label>
           <NativeSelect id="rv-reason" v-model="reason">
@@ -125,11 +126,12 @@ function submit() {
         <p class="text-muted-foreground text-xs">{{ t("affiliates.reverse.paidNote") }}</p>
         <ErrorText :message="problem" />
         <ErrorText :error="reverse.error.value" />
-        <DialogFooter>
-          <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.cancel") }}</Button>
-          <Button type="submit" variant="destructive" :disabled="reverse.isPending.value">{{ t("affiliates.reverse.submit") }}</Button>
-        </DialogFooter>
       </form>
-    </DialogContent>
-  </Dialog>
+      </SheetBody>
+      <SheetFooter>
+          <Button type="button" variant="outline" @click="open = false">{{ t("affiliates.common.cancel") }}</Button>
+          <Button type="submit" form="af-reverse" variant="destructive" :disabled="reverse.isPending.value">{{ t("affiliates.reverse.submit") }}</Button>
+      </SheetFooter>
+    </SheetContent>
+  </Sheet>
 </template>

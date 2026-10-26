@@ -303,14 +303,15 @@ test.describe("keys", () => {
     await expect(page.getByTestId("last-used-k5")).toContainText("never used");
     await expect(page.getByTestId("key-ends")).toContainText("Stops working on");
     // A key that already ends cannot be rotated again.
-    await expect(page.getByTestId("rotate-k5")).toHaveCount(0);
+    await expect(page.getByTestId("row-action-rotate-k5")).toHaveCount(0);
 
     await page.getByTestId("key-scope").selectOption("read");
     await page.getByTestId("new-sandbox-key").click();
     await page.getByRole("dialog").getByRole("button", { name: "I have saved it" }).click();
     expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "sandbox", scope: "read" });
 
-    await page.getByTestId("rotate-k2").click();
+    await page.getByRole("row").filter({ has: page.getByTestId("scope-k2") }).getByTestId("row-actions").click();
+    await page.getByTestId("row-action-rotate-k2").click();
     await page.getByTestId("rotate-overlap").selectOption("72");
     await page.getByTestId("rotate-confirm").click();
     await expect(page.getByTestId("new-key")).toHaveText("qk_test_rotated1_SECRETSECRETSECRETSECRET");

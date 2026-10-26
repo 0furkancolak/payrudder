@@ -19,3 +19,27 @@ export async function pickLanguage(page: Page, code: string): Promise<void> {
   await page.getByTestId("language-switcher").click();
   await page.getByTestId(`lang-${code}`).click();
 }
+
+/** Runs a row's action: a row with one action shows it as a button, a row with several folds them into its "more actions" menu. */
+export async function rowAction(row: Locator, name: string | RegExp): Promise<void> {
+  await row.waitFor();
+  const menu = row.getByTestId("row-actions");
+  if ((await menu.count()) === 0) {
+    await row.getByRole("button", { name }).click();
+    return;
+  }
+  await menu.click();
+  await row.page().getByRole("menuitem", { name }).click();
+}
+
+/** Chooses an option of a filter chip: opens the chip by its name and picks the option (an empty name picks the "all" entry by its text). */
+export async function pickFilter(page: Page, label: string, option: string | RegExp): Promise<void> {
+  await page.getByRole("button", { name: label, exact: true }).click();
+  await page.getByRole("listbox", { name: label }).getByRole("option", { name: option, exact: typeof option === "string" }).click();
+}
+
+/** Chooses a preset of a date range chip (today, 7d, 30d, month, lastMonth, year); `nth` picks among several chips on the page. */
+export async function pickRange(page: Page, preset: string, nth = 0): Promise<void> {
+  await page.getByTestId("date-range").nth(nth).click();
+  await page.getByTestId(`range-${preset}`).click();
+}

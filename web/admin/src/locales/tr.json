@@ -21,7 +21,15 @@
     "unknown": "?",
     "cancel": "Vazgeç",
     "copied": "Kopyalandı",
-    "copyFailed": "Tarayıcınız kopyalamaya izin vermedi. Metni seçip elle kopyalayın."
+    "copyFailed": "Tarayıcınız kopyalamaya izin vermedi. Metni seçip elle kopyalayın.",
+    "close": "Kapat",
+    "search": "Ara",
+    "clearFilters": "Filtreleri temizle",
+    "noMatches": "Bu filtrelere uyan kayıt yok.",
+    "moreActions": "Diğer işlemler",
+    "view": "Görüntüle",
+    "openFullPage": "Tam sayfada aç",
+    "all": "Tümü"
   },
   "enums": {
     "environment": {
@@ -108,7 +116,10 @@
       "currency": "Para birimi",
       "timezone": "Saat dilimi",
       "id": "Kimlik"
-    }
+    },
+    "allEnvironments": "Tüm ortamlar",
+    "allTiers": "Tüm katmanlar",
+    "allCurrencies": "Tüm para birimleri"
   },
   "tenant": {
     "fallbackTitle": "Kiracı",
@@ -123,7 +134,8 @@
       "customer": "Müşteri",
       "total": "Toplam",
       "status": "Durum",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Oluşturulma"
     },
     "jobs": {
       "title": "Yeniden oynatma ve yeniden fiyatlama işleri",
@@ -131,7 +143,9 @@
       "idLabel": "İş kimliği",
       "replay": "Yeniden oynatma işi",
       "rerating": "Yeniden fiyatlama işi"
-    }
+    },
+    "allStatuses": "Tüm durumlar",
+    "allKinds": "Tüm türler"
   },
   "invoice": {
     "back": "← Kiracı",
@@ -255,7 +269,8 @@
       "deliveries": "Teslim sayısı",
       "reason": "Neden",
       "bytes": "Bayt"
-    }
+    },
+    "noMessages": "Bu kuyrukta ileti yok."
   },
   "playground": {
     "title": "Oyun alanı",
@@ -362,7 +377,9 @@
         "save": "Adresi kaydet",
         "cancel": "Vazgeç",
         "editing": "{id} adresi"
-      }
+      },
+      "allCountries": "Tüm ülkeler",
+      "allCurrencies": "Tüm para birimleri"
     },
     "packages": {
       "new": "Yeni paket",
@@ -385,7 +402,15 @@
       "monthly": "Aylık",
       "yearly": "Yıllık",
       "perYear": "/ yıl",
-      "tenantMonthly": "{currency} cinsinden aylık ücret yukarıdaki sabit ücrettir."
+      "tenantMonthly": "{currency} cinsinden aylık ücret yukarıdaki sabit ücrettir.",
+      "published": "Yayın tarihi",
+      "priceColumn": "Fiyat",
+      "limits": "Limitler",
+      "priceKinds": {
+        "perUnit": "Birim başına {price}",
+        "tiered": "{n} kademe",
+        "package": "{size} birim için {price}"
+      }
     },
     "subscriptions": {
       "new": "Yeni abonelik",
@@ -479,7 +504,10 @@
       },
       "endNowCredit": "Şimdi bitir, kullanılmayanı kredilendir",
       "confirmEndCredit": "Abonelik şimdi bitirilsin ve müşterinin peşin ödediği ücretin kullanılmayan kısmı bakiyesine kredi olarak yazılsın mı?",
-      "credited": "{amount} müşterinin bakiyesine kredi olarak yazıldı."
+      "credited": "{amount} müşterinin bakiyesine kredi olarak yazıldı.",
+      "allStates": "Tüm durumlar",
+      "allCurrencies": "Tüm para birimleri",
+      "allIntervals": "Tüm aralıklar"
     },
     "payments": {
       "reconcile": "Defterle mutabakat",
@@ -502,7 +530,8 @@
       "amount": "Tutar",
       "reference": "Referans",
       "source": "Kaynak",
-      "empty": "Defterde henüz kayıt yok."
+      "empty": "Defterde henüz kayıt yok.",
+      "id": "Kimlik"
     },
     "providers": {
       "accounts": "Sağlayıcı hesapları",
@@ -620,7 +649,9 @@
       "nextAttempt": "Sonraki deneme",
       "empty": "Henüz raporlanacak bir şey yok.",
       "noDunning": "Ödenmemiş fatura yok.",
-      "credited": "Alacak dekontu"
+      "credited": "Alacak dekontu",
+      "currentMonth": "Bu ay",
+      "splitBy": "Şuna göre ayır"
     },
     "pricing": {
       "coupons": {
@@ -787,7 +818,10 @@
       "refunded": "Karta iade edildi",
       "refundRequested": "İade istendi",
       "refundFailed": "İade başarısız",
-      "retryRefund": "İadeyi yeniden dene"
+      "retryRefund": "İadeyi yeniden dene",
+      "new": "Yeni iade faturası",
+      "hint": "Ödenmiş bir faturayı tamamen ya da kısmen alacaklandırır. Tutar müşterinin bakiyesine ya da karta geri gider.",
+      "allWhere": "Tümü"
     },
     "webhooks": {
       "title": "Webhooklar",
@@ -823,7 +857,8 @@
         "pending": "Bekliyor",
         "delivered": "Teslim edildi",
         "failed": "Başarısız"
-      }
+      },
+      "allStatuses": "Tüm durumlar"
     },
     "paymentLinks": {
       "title": "Ödeme bağlantıları",
@@ -900,7 +935,8 @@
       },
       "for": "Konu",
       "promotionCode": "Promosyon kodu (isteğe bağlı)",
-      "promotionHint": "Ödeyen, bu kodun indirimini yazmadan alır ve başka bir kod yazabilir. Kod şimdi bu tutara göre denetlenir."
+      "promotionHint": "Ödeyen, bu kodun indirimini yazmadan alır ve başka bir kod yazabilir. Kod şimdi bu tutara göre denetlenir.",
+      "id": "Bağlantı"
     },
     "mail": {
       "title": "E-posta",
@@ -1077,7 +1113,9 @@
         "voided": "İptal",
         "until": "{date} tarihine kadar",
         "edit": "Düzenle",
-        "void": "İptal et"
+        "void": "İptal et",
+        "allCategories": "Tüm kategoriler",
+        "allRecurring": "Tek seferlik ve tekrarlayan"
       },
       "form": {
         "addTitle": "Gider ekle",
@@ -1571,7 +1609,8 @@
       "webhookSecret": "İmza anahtarı",
       "neverShown": "Anahtar bir kez gönderilir, geri okunamaz.",
       "save": "Hesabı kaydet",
-      "saved": "Hesap kaydedildi."
+      "saved": "Hesap kaydedildi.",
+      "allEnvironments": "Tüm ortamlar"
     },
     "customer": {
       "title": "Vergi bilgisi",
@@ -1657,7 +1696,8 @@
       "revokeById": "Kimliğe göre iptal et",
       "confirmRevoke": "Bu API anahtarı iptal edilsin mi? Onu kullanan istekler hemen çalışmaz.",
       "revokedDone": "{id} anahtarı iptal edildi."
-    }
+    },
+    "allEnvironments": "Tüm ortamlar"
   },
   "address": {
     "title": "Satıcı adresi",
@@ -1693,7 +1733,8 @@
       "hint": "Satıcı faturada böyle görünür.",
       "from": "Satıcı",
       "empty": "Adres yok: faturada yalnızca ad görünür."
-    }
+    },
+    "edit": "Adresi düzenle"
   },
   "errors": {
     "billing": {
@@ -2573,7 +2614,9 @@
       "when": "Zaman",
       "status": "Durum",
       "provider": "Sağlayıcı",
-      "amount": "Tutar"
+      "amount": "Tutar",
+      "allStatuses": "Tüm durumlar",
+      "allKinds": "Tüm türler"
     },
     "invoices": {
       "title": "Son faturalar",
@@ -2640,7 +2683,12 @@
       "overlapHours": "{n} saat",
       "lastUsed": "son kullanım {date}",
       "neverUsed": "hiç kullanılmadı",
-      "ends": "{date} tarihinde çalışmayı bırakır"
+      "ends": "{date} tarihinde çalışmayı bırakır",
+      "filterEnv": "Ortam",
+      "allEnvs": "Tüm ortamlar",
+      "filterStatus": "Durum",
+      "allStatuses": "Tüm durumlar",
+      "scopeHead": "Kapsam"
     },
     "links": {
       "title": "Daha derine inin",
@@ -2732,7 +2780,9 @@
       "leaveTitle": "Bu hesaptan ayrılsın mısınız?",
       "leaveBody": "Uygulamalarına ve verilerine erişiminizi hemen kaybedersiniz. Bir sahip sizi yeniden davet edebilir.",
       "removeTitle": "Bu üye çıkarılsın mı?",
-      "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder."
+      "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder.",
+      "allRoles": "Tüm roller",
+      "expiresHead": "Geçerlilik"
     },
     "account": {
       "switch": "Hesap",
@@ -3028,7 +3078,8 @@
       "billing": "Faturalama",
       "growth": "Büyüme",
       "developers": "Geliştiriciler",
-      "settings": "Ayarlar"
+      "settings": "Ayarlar",
+      "apps": "Uygulamalar"
     },
     "items": {
       "overview": "Uygulamalar",
@@ -3062,7 +3113,8 @@
       "goLive": "Canlıya geç",
       "sandbox": "Sandbox araçları",
       "partner": "Ortak portalı"
-    }
+    },
+    "noApps": "Henüz uygulama yok"
   },
   "privacy": {
     "hide": "Tutarları gizle",
@@ -3208,6 +3260,32 @@
       "apps": "{n} uygulama | {n} uygulama",
       "none": "Bu dönemde hiçbir uygulamanın geliri yok.",
       "open": "Uygulamayı aç"
+    }
+  },
+  "pagination": {
+    "perPage": "Sayfa başına kayıt",
+    "total": "toplam {count}",
+    "prev": "Önceki",
+    "next": "Sonraki",
+    "page": "Sayfa {page} / {pages}",
+    "pageOnly": "Sayfa {page}",
+    "goTo": "Sayfaya git",
+    "go": "Git"
+  },
+  "dateRange": {
+    "any": "Tüm zamanlar",
+    "label": "Tarih aralığı",
+    "from": "Başlangıç",
+    "to": "Bitiş",
+    "apply": "Uygula",
+    "clear": "Temizle",
+    "presets": {
+      "today": "Bugün",
+      "7d": "Son 7 gün",
+      "30d": "Son 30 gün",
+      "month": "Bu ay",
+      "lastMonth": "Geçen ay",
+      "year": "Bu yıl"
     }
   }
 }
