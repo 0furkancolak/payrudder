@@ -160,7 +160,7 @@ test.describe("product app, real stack", () => {
 
     await page.goto(`/app/apps/${appId}?env=live`);
     await expect(page.getByRole("heading", { name: "Seed Shop" })).toBeVisible();
-    await expect(page.getByTestId("dash-empty")).toBeVisible(); // nothing in live yet: the empty state, not a page of zeros
+    await expect(page.getByTestId("live-checklist")).toBeVisible(); // live is not active yet: the go-live checklist, not a page of zeros
     await expect(page.getByRole("main")).not.toContainText("TRY 198.00"); // the live tenant is another tenant
     await shoot(page, "r3-dashboard-live");
     expect(problems.filter((p) => !/favicon/.test(p))).toEqual([]);
