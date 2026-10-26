@@ -1,5 +1,5 @@
 // Package einvoice executes IssueEInvoice: it turns the invoice or credit note snapshot of a command into a legal document (pkg/einvoice), has the tenant's
-// integrator issue it and keeps the UBL and PDF in object storage. See docs/phases/phase-30-e-invoice.md.
+// integrator issue it and keeps the UBL and PDF in object storage.
 package einvoice
 
 import (

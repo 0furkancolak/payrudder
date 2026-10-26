@@ -1,7 +1,7 @@
 # Payrudder on Railway
 
 Everything to run the stack on [Railway](https://railway.com): a config-as-code file per service, images for the backing services Railway has no plugin
-for, and a script that drives the Railway CLI. The design and the decisions are in [phase 31](../../docs/phases/phase-31-railway.md).
+for, and a script that drives the Railway CLI. The design and the decisions are in phase 31.
 
 > **Status: written without a Railway account.** Nothing here has been deployed. What *was* checked, and what was not, is listed under
 > [What is verified](#what-is-verified). Read that before you rely on it.

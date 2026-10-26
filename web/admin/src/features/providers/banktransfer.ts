@@ -18,7 +18,7 @@ export type BankField = "bankName" | "accountHolder" | "iban" | "bic" | "referen
 export type BankProblem = "required" | IbanProblem | "badBic" | "badTemplate" | "badWindow";
 export type BankErrors = Partial<Record<BankField, BankProblem>>;
 
-/** The settings the PUT takes (docs/phases/phase-29-bank-transfer.md, decision 1). */
+/** The settings the PUT takes. */
 export interface BankSettings {
   bank_name: string;
   account_holder: string;

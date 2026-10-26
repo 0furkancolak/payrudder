@@ -148,7 +148,7 @@ Templates: Go `html/template`, embedded with `embed.FS`, versioned by name (`inv
 
 Packages: `pkg/workerx` (skeleton), `pkg/payments` (provider interface + mock-psp client), `pkg/blob` (S3), services
 `services/{invoice-worker,payments-worker,notifier}` and `tools/mockpsp`. Metrics: `worker_commands_handled{queue,result}`,
-`worker_commands_replayed`. See the notes in [phase 06](../phases/phase-06-workers.md#notes-as-built) for the decisions that
+`worker_commands_replayed`. See the notes in phase 06 for the decisions that
 differ from the sketches above.
 
 ## As built: payments-worker and providers (Phase 14)
@@ -156,14 +156,14 @@ differ from the sketches above.
 payments-worker also serves HTTP on `PAYMENTS_HTTP_ADDR` (default `:8095`), only when `PAYRUDDER_SECRETS_KEY` is set: `POST /webhooks/{provider}` (provider notifications, confirmed
 with the provider before anything is recorded), and, behind `X-Internal-Token`, tenants' provider accounts and the payment ledger. The gateway forwards to it
 (`PAYRUDDER_PAYMENTS_URL`, `PAYRUDDER_PAYMENTS_INTERNAL_TOKEN`). A live tenant's commands go to its default provider account, else to `PAYMENTS_LIVE_PROVIDER`;
-sandbox commands always go to mock-psp. See [phase 14](../phases/phase-14-provider-contract-iyzico.md).
+sandbox commands always go to mock-psp. See phase 14.
 
 Phase 29 adds `banktransfer`: its charge calls nothing and answers `PaymentErrored{PENDING}`, the status query reads the ledger (`PENDING`, `SUCCEEDED` when the confirmed receipts add up to the charge, `DECLINED` after the payment
 window or a rejection), and the operator endpoints `GET /admin/tenants/{tenant}/invoices/{invoice}/transfer`, `POST …/transfer/receipts` (idempotent per bank reference) and `POST …/transfer/reject` confirm or give up on a transfer.
-`PAYMENTS_TRANSFER_WINDOW_DAYS` (14) is the window when the tenant's account sets none. See [phase 29](../phases/phase-29-bank-transfer.md).
+`PAYMENTS_TRANSFER_WINDOW_DAYS` (14) is the window when the tenant's account sets none. See phase 29.
 
 Phase 15 adds Paddle: `POST /webhooks/{provider}/{tenant}/{environment}` (a notification destination per account, verified by signature), the tenant's provider subscriptions
-and hosted checkouts under `/admin/tenants/{tenant}/`, and `PAYRUDDER_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See [phase 15](../phases/phase-15-paddle.md).
+and hosted checkouts under `/admin/tenants/{tenant}/`, and `PAYRUDDER_PLANS_ADDR`, through which subscriptions a provider runs are linked to ours. See phase 15.
 
 Phase 45 adds `GET /admin/tenants/{tenant}/go-live` (internal token): `{"ready": bool, "providers": [...], "accounts": [...]}`, true when the tenant has a live-mode account whose sealed settings still open, still build an adapter and, for an adapter that can ask its provider (`payments.HealthChecker`: iyzico `/payment/bin/check`, Paddle `/event-types`; both unverified against the real hosts, tested against fakes), whose provider accepts the credentials now (the answer is remembered 30 s per version of the settings). Each entry of `accounts` says `working`, `checked` (the provider was asked) and, when it does not work, `problem` (`unreadable`, `refused`, `unreachable`); no setting is in it. The gateway asks it for the go-live checklist; plans-svc never reads provider data.
 
@@ -174,7 +174,7 @@ payments-worker's part of a sandbox reset (phase 45 E) is `POST /admin/tenants/{
 ## As built: e-invoices in payments-worker (Phase 30)
 
 payments-worker also consumes `einvoice.issue` (`IssueEInvoice`: issue or cancel one document) and answers with an `EInvoiceResult` (`issued`, `cancelled`, `failed` with
-`retryable` and an error key). The choice of this worker over invoice-worker or a new service is in [phase 30](../phases/phase-30-e-invoice.md#decisions): it already has the
+`retryable` and an error key). The choice of this worker over invoice-worker or a new service is in phase 30: it already has the
 database, the sealed per-tenant accounts and the HTTP port the gateway forwards to, and gains only the `S3_*` settings for the UBL and PDF files (`{tenant}/einvoice/{document}/document.xml|pdf`
 in the invoices bucket). A sandbox tenant's documents always go to the `mock` adapter; a live tenant's go to its sealed account (`nilvera`, `webhook`), and `PAYRUDDER_DEMO` forces the mock.
 `einvoice_issuances` is the idempotency record (one row per document UUID, written before the integrator is called, the legal number unique per tenant and environment).

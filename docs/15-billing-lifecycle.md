@@ -85,7 +85,7 @@ A provider-neutral `Catalogue` capability (optional interface, like `CheckoutPro
 
 ## Delivery
 
-Four phases in order; each ends with green CI and a merge. Provider behaviour that only a sandbox can settle is marked UNVERIFIED and listed in the phase file, as before.
+Four phases in order; each ends with green CI and a merge. Provider behaviour that only a sandbox can settle is marked UNVERIFIED and listed in the roadmap.
 
 | Phase | Result |
 |---|---|

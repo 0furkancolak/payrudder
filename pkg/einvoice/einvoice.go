@@ -2,7 +2,6 @@
 //
 // The model here is provider-neutral and free of protobuf: the worker maps the invoice snapshot of a command to a Document, the UBL builder
 // (package ubl) renders it, and a Provider delivers it. Money is minor units throughout; rates are basis points (2000 is 20 %).
-// See docs/phases/phase-30-e-invoice.md.
 package einvoice
 
 import (

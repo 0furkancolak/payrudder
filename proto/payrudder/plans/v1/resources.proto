@@ -55,7 +55,7 @@ message BankTransferDetails {
   bool is_default = 7;
 }
 
-// LegalInfo is the seller's company data printed on its invoices and sent in e-invoices (docs/phases/phase-30-e-invoice.md). Every part is optional.
+// LegalInfo is the seller's company data printed on its invoices and sent in e-invoices. Every part is optional.
 message LegalInfo {
   string legal_name = 1;
   // VKN or TCKN in Turkey, the VAT id (with country prefix) in the EU.

@@ -1,4 +1,4 @@
-// Package einvoices serves the e-document methods of BillingService and BillingAdminService and applies the worker's answers (docs/phases/phase-30-e-invoice.md).
+// Package einvoices serves the e-document methods of BillingService and BillingAdminService and applies the worker's answers.
 package einvoices
 
 import (

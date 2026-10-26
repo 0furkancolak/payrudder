@@ -92,7 +92,7 @@ overlap that the saga detects and refunds, never silent double billing. Every st
 
 ## As built: phase 13
 
-Differences from the design above, decided while building (details in [phase 13](phases/phase-13-subscriptions.md)):
+Differences from the design above, decided while building (details in phase 13):
 
 - The design's `package` is the existing `plan` and `plan_version`; they gained a fixed fee and usage prices per currency.
 - The `customer`, `subscription` tables exist already in `plans_db` and were extended instead of new ones being added.
@@ -103,7 +103,7 @@ Differences from the design above, decided while building (details in [phase 13]
 
 ## As built: phase 14
 
-Details in [phase 14](phases/phase-14-provider-contract-iyzico.md). In short: providers declare `Capabilities` and are built from a tenant's sealed
+Details in phase 14. In short: providers declare `Capabilities` and are built from a tenant's sealed
 account settings; iyzico is the first adapter (stored-card charges, refunds, status, confirmation of webhooks) and Payrudder keeps ownership of
 renewal and dunning for it. Every charge and refund lands in an append-only ledger in `payments_db`; notifications arrive on the gateway's public
 `/webhooks/{provider}`, are never believed, and are confirmed with the provider. The `Owner` of a subscription is derived from the capabilities but
@@ -111,55 +111,55 @@ not yet stored on it, since only Payrudder-owned providers exist until Paddle (p
 
 ## As built: phase 15
 
-Details in [phase 15](phases/phase-15-paddle.md). Paddle is the first provider that owns renewal and dunning: a subscription gets `provider`, `provider_ref` and `owner`
+Details in phase 15. Paddle is the first provider that owns renewal and dunning: a subscription gets `provider`, `provider_ref` and `owner`
 (plans-svc), Paddle's signed notifications link and follow it, its fixed fee stays off Payrudder's invoice, and the usage total is charged on the customer's Paddle subscription as a
 one-time charge that settles asynchronously. Dunning of that usage charge stays Payrudder's saga; renewals are Paddle's.
 
 ## As built: phase 16
 
-Details in [phase 16](phases/phase-16-routing-migration.md). Routing rules live in plans-svc and are checked against the provider catalogue; a subscription's provider is fixed at creation. A migration is
+Details in phase 16. Routing rules live in plans-svc and are checked against the provider catalogue; a subscription's provider is fixed at creation. A migration is
 `started` while the customer subscribes at a provider that runs subscriptions, and the old subscription is untouched until the provider confirms; from a provider-run subscription to Payrudder's the old provider is told to
 stop first and the cutover is the end of the period it was paid for. The design's step list (freeze renewal, create at B, cancel at A after B's first charge) is realised as that confirmation-then-cutover rule.
 
 ## As built: phase 17
 
-Details in [phase 17](phases/phase-17-reports.md). The reports are queries over the services' own data (invoices, subscriptions, the payment ledger), not a ClickHouse read model as designed: revenue and dunning in billing-svc, subscriptions and MRR in plans-svc, and a reconciliation of invoices against the
+Details in phase 17. The reports are queries over the services' own data (invoices, subscriptions, the payment ledger), not a ClickHouse read model as designed: revenue and dunning in billing-svc, subscriptions and MRR in plans-svc, and a reconciliation of invoices against the
 ledger in payments-worker. A currency is never added to another.
 
 ## As built: phase 18
 
-Details in [phase 18](phases/phase-18-billing-console.md). The console's tenant page is a layout with seven tabs; the billing pages call the tenant API as the tenant (operator token plus `X-Payrudder-Tenant`) and the operator routes
+Details in phase 18. The console's tenant page is a layout with seven tabs; the billing pages call the tenant API as the tenant (operator token plus `X-Payrudder-Tenant`) and the operator routes
 as the operator, are in six languages, and are tested against a mocked gateway.
 
 ## As built: phase 19
 
-Details in [phase 19](phases/phase-19-yearly-advance.md) and [15-billing-lifecycle.md](15-billing-lifecycle.md). Yearly subscriptions exist; a plan version has a fixed fee per interval and currency; new subscriptions are invoiced in advance (a `FEE` invoice per period)
+Details in phase 19 and [15-billing-lifecycle.md](15-billing-lifecycle.md). Yearly subscriptions exist; a plan version has a fixed fee per interval and currency; new subscriptions are invoiced in advance (a `FEE` invoice per period)
 and keep usage in arrears on the monthly run. The "yearly subscriptions are refused" limit of phase 13 is gone.
 
 ## As built: phase 20
 
-Details in [phase 20](phases/phase-20-plan-changes.md). Advance-billed subscriptions change plan or interval with a preview that is the same calculation as the change: upgrades and monthly-to-yearly at once with the unused time credited, downgrades and
+Details in phase 20. Advance-billed subscriptions change plan or interval with a preview that is the same calculation as the change: upgrades and monthly-to-yearly at once with the unused time credited, downgrades and
 yearly-to-monthly at the end of the paid period, as a scheduled change the customer can withdraw. What a change moves becomes an invoice or a credit balance in billing-svc. Quantity changes are not in this release.
 
 ## As built: phase 21
 
-Details in [phase 21](phases/phase-21-paddle-api.md). Optional provider interfaces (catalogue, customers, subscriptions, discounts, documents) let Payrudder create a plan's product and prices at Paddle, ensure customers, preview and apply plan or interval changes, pause, resume, hand out payment-method and portal links, create discounts and fetch invoice links, all through operator endpoints and the console. Payrudder's copy of a Paddle-run subscription follows a plan change the provider billed, with no money moved on Payrudder's side.
+Details in phase 21. Optional provider interfaces (catalogue, customers, subscriptions, discounts, documents) let Payrudder create a plan's product and prices at Paddle, ensure customers, preview and apply plan or interval changes, pause, resume, hand out payment-method and portal links, create discounts and fetch invoice links, all through operator endpoints and the console. Payrudder's copy of a Paddle-run subscription follows a plan change the provider billed, with no money moved on Payrudder's side.
 Nothing has run against Paddle's sandbox; the points the reference does not settle are marked UNVERIFIED.
 
 ## As built: phase 22
 
-Details in [phase 22](phases/phase-22-billing-documents.md). Credit notes (paid invoices only, into the credit balance), coupons on advance fees, tax rates by customer country, `DISCOUNT` and `TAX` invoice lines, and service periods on lines, with console pages for them. Outbound events, a hosted invoice page, per-tenant dunning settings and card refunds of credit notes came in phase 23.
+Details in phase 22. Credit notes (paid invoices only, into the credit balance), coupons on advance fees, tax rates by customer country, `DISCOUNT` and `TAX` invoice lines, and service periods on lines, with console pages for them. Outbound events, a hosted invoice page, per-tenant dunning settings and card refunds of credit notes came in phase 23.
 
 ## As built: phase 23
 
-Details in [phase 23](phases/phase-23-remaining-gaps.md) and [16-webhooks.md](16-webhooks.md). Tenants set their own dunning delays; ending a subscription early (or moving it to another provider) can credit the unused prepaid fee; a credit note can refund the card instead of the credit balance; tenants receive signed, retried webhook events for subscriptions, invoices and credit notes; and an invoice can be shared with its customer as a hosted page. Quantity changes and tax calculation are still not built.
+Details in phase 23 and [16-webhooks.md](16-webhooks.md). Tenants set their own dunning delays; ending a subscription early (or moving it to another provider) can credit the unused prepaid fee; a credit note can refund the card instead of the credit balance; tenants receive signed, retried webhook events for subscriptions, invoices and credit notes; and an invoice can be shared with its customer as a hosted page. Quantity changes and tax calculation are still not built.
 
 ## As built: phase 34
 
-Details in [phase 34](phases/phase-34-payment-links.md) and [16-webhooks.md](16-webhooks.md). Payment links (for an open invoice, or ad hoc for a fixed amount that becomes an invoice on first use), a public payment page with the methods the provider catalogue offers, and a read-only customer portal with payment history. Provider checkouts for iyzico and Paddle are written from public documentation (UNVERIFIED); a bank-transfer provider appears on the page by implementing `payments.InstructionsProvider`.
+Details in phase 34 and [16-webhooks.md](16-webhooks.md). Payment links (for an open invoice, or ad hoc for a fixed amount that becomes an invoice on first use), a public payment page with the methods the provider catalogue offers, and a read-only customer portal with payment history. Provider checkouts for iyzico and Paddle are written from public documentation (UNVERIFIED); a bank-transfer provider appears on the page by implementing `payments.InstructionsProvider`.
 ## As built: phase 29
 
-Details in [phase 29](phases/phase-29-bank-transfer.md). `banktransfer` is a provider whose charge only tells the customer where to pay (bank details and a reference, by default the invoice number, on the PDF, the hosted page and a mail)
+Details in phase 29. `banktransfer` is a provider whose charge only tells the customer where to pay (bank details and a reference, by default the invoice number, on the PDF, the hosted page and a mail)
 and returns "pending"; the invoice saga waits in `PAYMENT_PENDING` and polls the ledger, an operator confirms what arrived (partial receipts add up, an overpayment is refused), and after the payment window the ordinary dunning path applies.
 Money received outside any provider (cash, a transfer for an invoice not charged through us) is recorded on the invoice with who and when. There is no refund API for a transfer, no bank statement import, and overpayment is not turned into credit.
 

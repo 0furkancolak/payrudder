@@ -1,4 +1,4 @@
-// Package einvoiceaccounts serves the operator API over a tenant's e-invoice integrator account (docs/phases/phase-30-e-invoice.md). It maps requests to the
+// Package einvoiceaccounts serves the operator API over a tenant's e-invoice integrator account. It maps requests to the
 // commands and queries of its subpackages (ADR 0020).
 package einvoiceaccounts
 

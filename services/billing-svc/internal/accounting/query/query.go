@@ -1,7 +1,7 @@
 // Package query reads the accounting of a tenant: the expenses as recorded, and the summary of a period. It never writes.
 //
 // Income is not stored here. It is read from the invoices of billing-svc: an invoice counts on the day its saga reached PAID, its total is the gross income, the
-// TAX lines of the invoice are the tax, and credit notes against paid invoices and refunded invoices are the refunds. See docs/phases/phase-37-accounting.md.
+// TAX lines of the invoice are the tax, and credit notes against paid invoices and refunded invoices are the refunds.
 package query
 
 import (

@@ -82,7 +82,7 @@ message InvoiceSnapshot {
   repeated string customer_address_lines = 16;
   // Where and how to pay, for an invoice whose provider is a bank transfer; unset otherwise.
   PaymentInstructions payment_instructions = 17;
-  // Structured parties for e-invoices (docs/phases/phase-30-e-invoice.md); empty on snapshots made before.
+  // Structured parties for e-invoices; empty on snapshots made before.
   PartySnapshot seller = 18;
   PartySnapshot buyer = 19;
   // The tenant's e_invoice_on when the draft was made: "off", "finalized" or "paid".

@@ -4983,7 +4983,7 @@ func (x *GetHostedInvoicePdfUrlResponse) GetExpireTime() *timestamppb.Timestamp 
 	return nil
 }
 
-// EInvoiceDocument is the legal e-document of an invoice or a credit note and where it stands (docs/phases/phase-30-e-invoice.md).
+// EInvoiceDocument is the legal e-document of an invoice or a credit note and where it stands.
 type EInvoiceDocument struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`

@@ -618,7 +618,7 @@ type InvoiceSnapshot struct {
 	CustomerAddressLines []string `protobuf:"bytes,16,rep,name=customer_address_lines,json=customerAddressLines,proto3" json:"customer_address_lines,omitempty"`
 	// Where and how to pay, for an invoice whose provider is a bank transfer; unset otherwise.
 	PaymentInstructions *PaymentInstructions `protobuf:"bytes,17,opt,name=payment_instructions,json=paymentInstructions,proto3" json:"payment_instructions,omitempty"`
-	// Structured parties for e-invoices (docs/phases/phase-30-e-invoice.md); empty on snapshots made before.
+	// Structured parties for e-invoices; empty on snapshots made before.
 	Seller *PartySnapshot `protobuf:"bytes,18,opt,name=seller,proto3" json:"seller,omitempty"`
 	Buyer  *PartySnapshot `protobuf:"bytes,19,opt,name=buyer,proto3" json:"buyer,omitempty"`
 	// The tenant's e_invoice_on when the draft was made: "off", "finalized" or "paid".
