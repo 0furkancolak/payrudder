@@ -59,10 +59,10 @@ func TestValidatePlanVersionQuotaRefusals(t *testing.T) {
 	scales := map[string]int{"api_calls": 0, "gb_hours": 3}
 	cases := map[string]*plansv1.PublishPlanVersionRequest{
 		// Soft bills what is over the limit, so the meter needs a price.
-		"entitlements[0].mode": {BaseFeeMinor: 100, Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "1", Mode: plansv1.QuotaMode_QUOTA_MODE_SOFT}}},
-		"entitlements[0].window": {BaseFeeMinor: 100, Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "1", Window: plansv1.QuotaWindow(42)}}},
+		"entitlements[0].mode":                 {BaseFeeMinor: 100, Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "1", Mode: plansv1.QuotaMode_QUOTA_MODE_SOFT}}},
+		"entitlements[0].window":               {BaseFeeMinor: 100, Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "1", Window: plansv1.QuotaWindow(42)}}},
 		"entitlements[0].alert_thresholds_pct": {BaseFeeMinor: 100, Entitlements: []*plansv1.Entitlement{{MeterCode: "gb_hours", Limit: "1", AlertThresholdsPct: []int32{80, 50}}}},
-		"prices[0].included": {Prices: []*plansv1.Price{func() *plansv1.Price { p := perUnit("gb_hours", "1"); p.Included = "0.0001"; return p }()}},
+		"prices[0].included":                   {Prices: []*plansv1.Price{func() *plansv1.Price { p := perUnit("gb_hours", "1"); p.Included = "0.0001"; return p }()}},
 	}
 	for want, req := range cases {
 		_, err := ValidatePlanVersion(req, scales)

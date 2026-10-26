@@ -410,6 +410,54 @@
         "perUnit": "{price} por unidad",
         "tiered": "{n} tramos",
         "package": "{size} unidades por {price}"
+      },
+      "usagePrices": "Precios de uso",
+      "usagePricesHelp": "Precios en {currency} de lo que se mide, por periodo de facturación. Una cantidad incluida es gratuita; el precio se aplica a lo que la supera.",
+      "noMeters": "Esta aplicación aún no tiene medidores: cree uno primero en la página Medidores.",
+      "priceRow": "Precio de uso {n}",
+      "priceMeter": "Medidor del precio {n}",
+      "priceModel": "Modelo de precio del precio {n}",
+      "chooseMeter": "Elija un medidor",
+      "models": {
+        "per_unit": "Por unidad",
+        "tiered": "Por tramos",
+        "package": "Por paquete de unidades"
+      },
+      "included": "Cantidad incluida del precio {n}",
+      "includedPlaceholder": "Incluido gratis por periodo ({unit}), opcional",
+      "unitPrice": "Precio unitario del precio {n}",
+      "unitPricePlaceholder": "Precio por {unit} en {currency} (0.002)",
+      "tierUpTo": "Precio {n}, tramo {tier} hasta",
+      "tierUpToPlaceholder": "Hasta (cantidad)",
+      "tierRest": "Todo lo que exceda",
+      "tierPrice": "Precio {n}, tramo {tier} precio unitario",
+      "unitPriceShort": "Precio unitario ({currency})",
+      "tierFlat": "Precio {n}, tramo {tier} tarifa fija",
+      "flatFeePlaceholder": "Tarifa fija ({currency}), opcional",
+      "addTier": "Añadir un tramo",
+      "packageSize": "Tamaño de paquete del precio {n}",
+      "packageSizePlaceholder": "Unidades por paquete ({unit})",
+      "packagePrice": "Precio de paquete del precio {n}",
+      "packagePricePlaceholder": "Precio por paquete ({currency})",
+      "addPrice": "Añadir un precio de uso",
+      "otherCurrencyPrices": "Los precios de uso están en {currency}. Una suscripción en otra moneda también necesita precios de uso en ella (currency_prices en la API).",
+      "limitsHelp": "Una cuota limita un medidor durante una ventana de tiempo. Los eventos de uso nunca se rechazan: el campo allowed de la API y las alertas le dicen a su aplicación qué hacer.",
+      "quotaRow": "Cuota {n}",
+      "quotaMeter": "Medidor de la cuota {n}",
+      "addQuota": "Añadir una cuota",
+      "includedColumn": "Incluido",
+      "usageErrors": {
+        "meter": "Línea de uso {n}: elija un medidor.",
+        "duplicate": "Línea de uso {n}: {meter} aparece dos veces.",
+        "unitPrice": "Línea de uso {n}: el precio unitario no es un importe en {currency}.",
+        "included": "Línea de uso {n}: la cantidad incluida tiene más decimales de los que permite {meter}.",
+        "tierBound": "Línea de uso {n}: cada tramo salvo el último necesita un límite superior en unidades de {meter}.",
+        "flatFee": "Línea de uso {n}: una tarifa fija no es un importe en {currency}.",
+        "packageSize": "Línea de uso {n}: el tamaño del paquete debe ser una cantidad mayor que cero.",
+        "packagePrice": "Línea de uso {n}: el precio del paquete no es un importe en {currency}.",
+        "limit": "Cuota {n}: el límite debe ser una cantidad con como mucho los decimales de {meter}.",
+        "thresholds": "Cuota {n}: las alertas son hasta 10 porcentajes crecientes entre 1 y 1000.",
+        "softNeedsPrice": "Cuota {n}: un límite flexible cobra lo que lo supera, así que {meter} necesita un precio de uso; si no, elija Solo avisar."
       }
     },
     "subscriptions": {
@@ -1152,6 +1200,105 @@
         "gross": "Bruto",
         "discount": "Descuento",
         "net": "Neto"
+      }
+    },
+    "meters": {
+      "new": "Nuevo medidor",
+      "newVersion": "Nueva versión",
+      "newVersionOf": "Nueva versión de {code}",
+      "intro": "Un medidor dice qué se mide y cómo se suman los eventos de uso. Una nueva versión de un código puede cambiarlo todo salvo sus decimales; los eventos se comprueban con la más reciente.",
+      "formLabel": "nuevo medidor",
+      "code": "Código",
+      "codePlaceholder": "Código (api_calls)",
+      "category": "Categoría",
+      "categoryPlaceholder": "Categoría a su elección (opcional)",
+      "allCategories": "Todas las categorías",
+      "aggregation": "Agregación",
+      "allAggregations": "Todas las agregaciones",
+      "aggregations": {
+        "sum": "Suma",
+        "count": "Recuento",
+        "max": "Máximo"
+      },
+      "aggregationHelp": {
+        "sum": "Suma la cantidad de cada evento del periodo.",
+        "count": "Cuenta los eventos; su cantidad se ignora.",
+        "max": "Guarda la cantidad más alta informada en el periodo (puestos, almacenamiento)."
+      },
+      "valueProperty": "Propiedad de cantidad",
+      "valuePropertyPlaceholder": "Propiedad del evento con la cantidad (tokens)",
+      "unit": "Unidad",
+      "unitPlaceholder": "Unidad a su elección (tokens, GB-h)",
+      "scale": "Decimales",
+      "decimals": "{n} decimales",
+      "filter": "Solo eventos con",
+      "filterHelp": "Los eventos cuyas propiedades no coinciden con cada línea no se cuentan. Déjelo vacío para contarlos todos.",
+      "filterProperty": "Propiedad de filtro {n}",
+      "filterValues": "Valores aceptados {n}",
+      "filterPropertyPlaceholder": "Propiedad (region)",
+      "filterValuesPlaceholder": "Valores separados por comas (eu, us)",
+      "addFilter": "Añadir una condición",
+      "badFilter": "Cada condición necesita una propiedad y al menos un valor.",
+      "noFilter": "todos los eventos",
+      "create": "Crear medidor",
+      "saveVersion": "Publicar versión",
+      "empty": "Aún no hay medidores. Hace falta uno para que un paquete pueda cobrar o limitar el uso."
+    },
+    "quotas": {
+      "action": "Cuotas",
+      "of": "Cuotas de {id}",
+      "intro": "Una excepción sustituye lo que el paquete del cliente permite en un medidor, en todas sus suscripciones, hasta que se elimine.",
+      "overrides": "Límites propios",
+      "none": "Sin excepciones: se aplican los límites del paquete.",
+      "formLabel": "excepción de cuota",
+      "set": "Fijar un límite para este cliente",
+      "meter": "Medidor",
+      "chooseMeter": "Elija un medidor",
+      "save": "Guardar excepción",
+      "edit": "Editar la excepción en {meter}",
+      "remove": "Quitar la excepción en {meter}",
+      "limit": "Límite",
+      "limitN": "Límite de la cuota {n}",
+      "limitIn": "Límite en {unit} (0 = ilimitado)",
+      "limitPlaceholder": "Límite (0 = ilimitado)",
+      "window": "Ventana",
+      "windowN": "Ventana de la cuota {n}",
+      "mode": "Al alcanzarlo",
+      "modeN": "Al alcanzar la cuota {n}",
+      "thresholds": "Alertas",
+      "thresholdsN": "Alertas de la cuota {n}",
+      "thresholdsPlaceholder": "Alertas al % del límite (50, 80, 100)",
+      "windows": {
+        "hour": "Por hora",
+        "day": "Por día",
+        "week": "Por semana",
+        "month": "Por mes de facturación"
+      },
+      "modes": {
+        "hard": "Estricto: dejar de permitir",
+        "soft": "Flexible: permitir y cobrar el exceso",
+        "notify": "Solo avisar"
+      },
+      "modeHelp": {
+        "hard": "Al llegar al límite, allowed pasa a false.",
+        "soft": "allowed sigue en true; el uso por encima del límite se cobra al precio del medidor.",
+        "notify": "allowed sigue en true; solo se envían las alertas."
+      },
+      "windowHelp": {
+        "hour": "Cuenta cada hora en la zona horaria de la aplicación.",
+        "day": "Cuenta cada día en la zona horaria de la aplicación.",
+        "week": "Cuenta cada semana desde el lunes en la zona horaria de la aplicación.",
+        "month": "Cuenta el mes de facturación, como la factura."
+      },
+      "windowColumn": "Ventana",
+      "modeColumn": "Al alcanzarlo",
+      "alertsColumn": "Alertas",
+      "overridden": "límite propio",
+      "overButAllowed": "por encima del límite, aún permitido",
+      "resets": "se reinicia {at}",
+      "errors": {
+        "limit": "El límite debe ser una cantidad con como mucho {n} decimales.",
+        "thresholds": "Las alertas son hasta 10 porcentajes crecientes entre 1 y 1000."
       }
     }
   },
@@ -1999,6 +2146,10 @@
       "plan": {
         "no_fixed_fee": "Esta versión del plan no tiene tarifa fija para ese intervalo en esta moneda.",
         "no_metered_price": "Esta versión del plan tiene precios medidos, pero ninguno en esta moneda."
+      },
+      "override": {
+        "customer_required": "Indique para qué cliente es el límite.",
+        "not_found": "Este cliente no tiene ninguna excepción en ese medidor."
       }
     },
     "common": {
@@ -3112,7 +3263,8 @@
       "affiliates": "Afiliados",
       "goLive": "Pasar a producción",
       "sandbox": "Herramientas del sandbox",
-      "partner": "Portal de socios"
+      "partner": "Portal de socios",
+      "meters": "Medidores"
     },
     "noApps": "Aún no hay aplicaciones"
   },

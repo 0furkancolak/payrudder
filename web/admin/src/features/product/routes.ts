@@ -4,6 +4,7 @@ import { affiliateRoutes } from "@/features/affiliates/routes";
 import { creditRoutes } from "@/features/credits/routes";
 import { customerRoutes } from "@/features/customers/routes";
 import { mailRoutes } from "@/features/mail/routes";
+import { meterRoutes } from "@/features/meters/routes";
 import { packageRoutes } from "@/features/packages/routes";
 import { paymentLinkRoutes } from "@/features/paymentlinks/routes";
 import { pricingRoutes } from "@/features/pricing/routes";
@@ -95,6 +96,7 @@ export function personRoutes(parent: AnyRoute) {
       ...customerRoutes(tenant),
       ...subscriptionRoutes(tenant),
       ...creditRoutes(tenant),
+      ...meterRoutes(tenant),
       ...packageRoutes(tenant),
       ...pricingRoutes(tenant),
       invoices,

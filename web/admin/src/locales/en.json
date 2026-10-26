@@ -410,6 +410,54 @@
         "perUnit": "{price} per unit",
         "tiered": "{n} tiers",
         "package": "{size} units for {price}"
+      },
+      "usagePrices": "Usage prices",
+      "usagePricesHelp": "Prices in {currency} for what is measured, per billing period. An included quantity is free; the price applies to what is above it.",
+      "noMeters": "This app has no meters yet: create one on the Meters page first.",
+      "priceRow": "Usage price {n}",
+      "priceMeter": "Meter of price {n}",
+      "priceModel": "Pricing model of price {n}",
+      "chooseMeter": "Choose a meter",
+      "models": {
+        "per_unit": "Per unit",
+        "tiered": "Graduated tiers",
+        "package": "Per package of units"
+      },
+      "included": "Included quantity of price {n}",
+      "includedPlaceholder": "Included free per period ({unit}), optional",
+      "unitPrice": "Unit price of price {n}",
+      "unitPricePlaceholder": "Price per {unit} in {currency} (0.002)",
+      "tierUpTo": "Price {n}, tier {tier} up to",
+      "tierUpToPlaceholder": "Up to (quantity)",
+      "tierRest": "Everything above",
+      "tierPrice": "Price {n}, tier {tier} unit price",
+      "unitPriceShort": "Unit price ({currency})",
+      "tierFlat": "Price {n}, tier {tier} flat fee",
+      "flatFeePlaceholder": "Flat fee ({currency}), optional",
+      "addTier": "Add a tier",
+      "packageSize": "Package size of price {n}",
+      "packageSizePlaceholder": "Units per package ({unit})",
+      "packagePrice": "Package price of price {n}",
+      "packagePricePlaceholder": "Price per package ({currency})",
+      "addPrice": "Add a usage price",
+      "otherCurrencyPrices": "Usage prices are in {currency}. A subscription in another currency needs usage prices in it too (currency_prices in the API).",
+      "limitsHelp": "A quota limits a meter over a window. Usage events are never refused: the API's allowed flag and the alerts tell your app what to do.",
+      "quotaRow": "Quota {n}",
+      "quotaMeter": "Meter of quota {n}",
+      "addQuota": "Add a quota",
+      "includedColumn": "Included",
+      "usageErrors": {
+        "meter": "Usage line {n}: choose a meter.",
+        "duplicate": "Usage line {n}: {meter} is listed twice.",
+        "unitPrice": "Usage line {n}: the unit price is not an amount in {currency}.",
+        "included": "Usage line {n}: the included quantity has more decimals than {meter} allows.",
+        "tierBound": "Usage line {n}: every tier but the last needs an upper bound in units of {meter}.",
+        "flatFee": "Usage line {n}: a flat fee is not an amount in {currency}.",
+        "packageSize": "Usage line {n}: the package size must be a quantity above zero.",
+        "packagePrice": "Usage line {n}: the package price is not an amount in {currency}.",
+        "limit": "Quota {n}: the limit must be a quantity with at most the decimals of {meter}.",
+        "thresholds": "Quota {n}: alerts are up to 10 ascending percentages between 1 and 1000.",
+        "softNeedsPrice": "Quota {n}: a soft limit bills what is over it, so {meter} needs a usage price; use notify only otherwise."
       }
     },
     "subscriptions": {
@@ -1152,6 +1200,105 @@
         "gross": "Gross",
         "discount": "Discount",
         "net": "Net"
+      }
+    },
+    "meters": {
+      "new": "New meter",
+      "newVersion": "New version",
+      "newVersionOf": "New version of {code}",
+      "intro": "A meter says what is measured and how usage events add up. A new version of a code can change everything except its decimal places; events are checked against the latest one.",
+      "formLabel": "new meter",
+      "code": "Code",
+      "codePlaceholder": "Code (api_calls)",
+      "category": "Category",
+      "categoryPlaceholder": "Category of your choice (optional)",
+      "allCategories": "All categories",
+      "aggregation": "Aggregation",
+      "allAggregations": "All aggregations",
+      "aggregations": {
+        "sum": "Sum",
+        "count": "Count",
+        "max": "Maximum"
+      },
+      "aggregationHelp": {
+        "sum": "Adds up the quantity of every event in the period.",
+        "count": "Counts the events; their quantity is ignored.",
+        "max": "Keeps the highest quantity reported in the period (seats, storage)."
+      },
+      "valueProperty": "Quantity property",
+      "valuePropertyPlaceholder": "Event property holding the quantity (tokens)",
+      "unit": "Unit",
+      "unitPlaceholder": "Unit of your choice (tokens, GB-h)",
+      "scale": "Decimal places",
+      "decimals": "{n} decimals",
+      "filter": "Only events with",
+      "filterHelp": "Events whose properties do not match every line are not counted. Leave empty to count all.",
+      "filterProperty": "Filter property {n}",
+      "filterValues": "Accepted values {n}",
+      "filterPropertyPlaceholder": "Property (region)",
+      "filterValuesPlaceholder": "Values, comma separated (eu, us)",
+      "addFilter": "Add a condition",
+      "badFilter": "Every condition needs a property and at least one value.",
+      "noFilter": "every event",
+      "create": "Create meter",
+      "saveVersion": "Publish version",
+      "empty": "No meters yet. A meter is needed before a package can price or limit usage."
+    },
+    "quotas": {
+      "action": "Quotas",
+      "of": "Quotas of {id}",
+      "intro": "An override replaces what the customer's package allows on a meter, for all its subscriptions, until it is deleted.",
+      "overrides": "Own limits",
+      "none": "No overrides: the package's limits apply.",
+      "formLabel": "quota override",
+      "set": "Set a limit for this customer",
+      "meter": "Meter",
+      "chooseMeter": "Choose a meter",
+      "save": "Save override",
+      "edit": "Edit the override on {meter}",
+      "remove": "Remove the override on {meter}",
+      "limit": "Limit",
+      "limitN": "Limit of quota {n}",
+      "limitIn": "Limit in {unit} (0 = unlimited)",
+      "limitPlaceholder": "Limit (0 = unlimited)",
+      "window": "Window",
+      "windowN": "Window of quota {n}",
+      "mode": "When reached",
+      "modeN": "When quota {n} is reached",
+      "thresholds": "Alerts",
+      "thresholdsN": "Alerts of quota {n}",
+      "thresholdsPlaceholder": "Alerts at % of the limit (50, 80, 100)",
+      "windows": {
+        "hour": "Per hour",
+        "day": "Per day",
+        "week": "Per week",
+        "month": "Per billing month"
+      },
+      "modes": {
+        "hard": "Hard: stop allowing",
+        "soft": "Soft: allow and bill the excess",
+        "notify": "Notify only"
+      },
+      "modeHelp": {
+        "hard": "At the limit, allowed turns false.",
+        "soft": "Allowed stays true; usage over the limit is billed at the meter's price.",
+        "notify": "Allowed stays true; only the alerts are sent."
+      },
+      "windowHelp": {
+        "hour": "Counts each clock hour in the app's time zone.",
+        "day": "Counts each day in the app's time zone.",
+        "week": "Counts each week from Monday in the app's time zone.",
+        "month": "Counts the billing month, like the invoice."
+      },
+      "windowColumn": "Window",
+      "modeColumn": "When reached",
+      "alertsColumn": "Alerts",
+      "overridden": "own limit",
+      "overButAllowed": "over the limit, still allowed",
+      "resets": "resets {at}",
+      "errors": {
+        "limit": "The limit must be a quantity with at most {n} decimals.",
+        "thresholds": "Alerts are up to 10 ascending percentages between 1 and 1000."
       }
     }
   },
@@ -1999,6 +2146,10 @@
       "plan": {
         "no_fixed_fee": "This plan version has no fixed fee for that interval in this currency.",
         "no_metered_price": "This plan version has metered prices but none in this currency."
+      },
+      "override": {
+        "customer_required": "Say which customer the limit is for.",
+        "not_found": "This customer has no override on that meter."
       }
     },
     "common": {
@@ -3112,7 +3263,8 @@
       "affiliates": "Affiliates",
       "goLive": "Go live",
       "sandbox": "Sandbox tools",
-      "partner": "Partner portal"
+      "partner": "Partner portal",
+      "meters": "Meters"
     },
     "noApps": "No apps yet"
   },

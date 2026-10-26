@@ -13,7 +13,8 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions, type RowAction } from "@/shared/ui/row-actions";
-import { Pencil, Link2, CreditCard, Eye, Receipt } from "@lucide/vue";
+import { Pencil, Link2, CreditCard, Eye, Gauge, Receipt } from "@lucide/vue";
+import CustomerQuotasSheet from "./CustomerQuotasSheet.vue";
 import { useCreditBalance } from "@/features/credits/api";
 import { formatCredits } from "@/features/credits/lib";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -60,8 +61,12 @@ function actionsOf(c: (typeof list.value)[number], i: number): RowAction[] {
     { key: "link", label: t("billing.paymentLinks.paymentLink"), icon: Link2, onSelect: () => paymentLink(c.external_id) },
     { key: "address", label: t("billing.customers.address.edit"), icon: Pencil, onSelect: () => edit(c) },
     { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => editTaxOf(c) },
+    { key: "quotas", label: t("billing.quotas.action"), icon: Gauge, onSelect: () => (quotasOf.value = c.external_id ?? "") },
   ];
 }
+// --- the customer's own quotas (overrides of its package's limits)
+const quotasOf = ref("");
+const quotasOpen = computed({ get: () => quotasOf.value !== "", set: (v) => { if (!v) quotasOf.value = ""; } });
 const distinct = (pick: (c: (typeof list.value)[number]) => string | undefined) => computed(() => [...new Set(list.value.map((c) => pick(c) ?? "").filter(Boolean))].sort());
 const countries = distinct((c) => c.country);
 const currencies = distinct((c) => c.billing_currency);
@@ -193,6 +198,8 @@ function submit() {
       </SheetFooter>
     </SheetContent>
   </Sheet>
+
+  <CustomerQuotasSheet v-model:open="quotasOpen" :tenant-id="tenantId" :customer="quotasOf" />
 
   <Sheet v-model:open="taxOpen">
     <SheetContent>

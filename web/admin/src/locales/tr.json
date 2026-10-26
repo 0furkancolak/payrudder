@@ -410,6 +410,54 @@
         "perUnit": "Birim başına {price}",
         "tiered": "{n} kademe",
         "package": "{size} birim için {price}"
+      },
+      "usagePrices": "Kullanım fiyatları",
+      "usagePricesHelp": "Ölçülen kullanımın fatura dönemi başına {currency} cinsinden fiyatları. Dahil miktar ücretsizdir; fiyat bunun üstüne uygulanır.",
+      "noMeters": "Bu uygulamada henüz sayaç yok: önce Sayaçlar sayfasında bir tane oluşturun.",
+      "priceRow": "Kullanım fiyatı {n}",
+      "priceMeter": "Fiyat {n} sayacı",
+      "priceModel": "Fiyat {n} fiyatlama modeli",
+      "chooseMeter": "Bir sayaç seçin",
+      "models": {
+        "per_unit": "Birim başına",
+        "tiered": "Kademeli",
+        "package": "Birim paketi başına"
+      },
+      "included": "Fiyat {n} dahil miktarı",
+      "includedPlaceholder": "Dönem başına ücretsiz dahil ({unit}), isteğe bağlı",
+      "unitPrice": "Fiyat {n} birim fiyatı",
+      "unitPricePlaceholder": "{unit} başına {currency} fiyatı (0.002)",
+      "tierUpTo": "Fiyat {n}, kademe {tier} üst sınırı",
+      "tierUpToPlaceholder": "Şu miktara kadar",
+      "tierRest": "Üstündeki her şey",
+      "tierPrice": "Fiyat {n}, kademe {tier} birim fiyatı",
+      "unitPriceShort": "Birim fiyat ({currency})",
+      "tierFlat": "Fiyat {n}, kademe {tier} sabit ücreti",
+      "flatFeePlaceholder": "Sabit ücret ({currency}), isteğe bağlı",
+      "addTier": "Kademe ekle",
+      "packageSize": "Fiyat {n} paket büyüklüğü",
+      "packageSizePlaceholder": "Paket başına birim ({unit})",
+      "packagePrice": "Fiyat {n} paket fiyatı",
+      "packagePricePlaceholder": "Paket başına fiyat ({currency})",
+      "addPrice": "Kullanım fiyatı ekle",
+      "otherCurrencyPrices": "Kullanım fiyatları {currency} cinsindendir. Başka para birimindeki bir abonelik o para biriminde de kullanım fiyatı ister (API'de currency_prices).",
+      "limitsHelp": "Kota bir sayacı bir zaman aralığı boyunca sınırlar. Kullanım olayları asla reddedilmez: API'nin allowed bayrağı ve uyarılar uygulamanıza ne yapacağını söyler.",
+      "quotaRow": "Kota {n}",
+      "quotaMeter": "Kota {n} sayacı",
+      "addQuota": "Kota ekle",
+      "includedColumn": "Dahil",
+      "usageErrors": {
+        "meter": "Kullanım satırı {n}: bir sayaç seçin.",
+        "duplicate": "Kullanım satırı {n}: {meter} iki kez yazılmış.",
+        "unitPrice": "Kullanım satırı {n}: birim fiyat geçerli bir {currency} tutarı değil.",
+        "included": "Kullanım satırı {n}: dahil miktarda {meter} için izin verilenden fazla ondalık var.",
+        "tierBound": "Kullanım satırı {n}: son kademe dışındaki her kademenin {meter} biriminde bir üst sınırı olmalı.",
+        "flatFee": "Kullanım satırı {n}: sabit ücret geçerli bir {currency} tutarı değil.",
+        "packageSize": "Kullanım satırı {n}: paket büyüklüğü sıfırdan büyük bir miktar olmalı.",
+        "packagePrice": "Kullanım satırı {n}: paket fiyatı geçerli bir {currency} tutarı değil.",
+        "limit": "Kota {n}: sınır, en fazla {meter} ondalık sayısında bir miktar olmalı.",
+        "thresholds": "Kota {n}: uyarılar 1 ile 1000 arasında, artan en fazla 10 yüzdedir.",
+        "softNeedsPrice": "Kota {n}: esnek sınır aşan kısmı faturalar, bu yüzden {meter} için kullanım fiyatı gerekir; yoksa yalnızca bildirim seçin."
       }
     },
     "subscriptions": {
@@ -1152,6 +1200,105 @@
         "gross": "Brüt",
         "discount": "İndirim",
         "net": "Net"
+      }
+    },
+    "meters": {
+      "new": "Yeni sayaç",
+      "newVersion": "Yeni sürüm",
+      "newVersionOf": "{code} için yeni sürüm",
+      "intro": "Sayaç neyin ölçüldüğünü ve kullanım olaylarının nasıl toplandığını söyler. Bir kodun yeni sürümü ondalık basamak sayısı dışında her şeyi değiştirebilir; olaylar en son sürüme göre denetlenir.",
+      "formLabel": "yeni sayaç",
+      "code": "Kod",
+      "codePlaceholder": "Kod (api_calls)",
+      "category": "Kategori",
+      "categoryPlaceholder": "Dilediğiniz kategori (isteğe bağlı)",
+      "allCategories": "Tüm kategoriler",
+      "aggregation": "Toplama",
+      "allAggregations": "Tüm toplama türleri",
+      "aggregations": {
+        "sum": "Toplam",
+        "count": "Sayı",
+        "max": "En yüksek"
+      },
+      "aggregationHelp": {
+        "sum": "Dönemdeki her olayın miktarını toplar.",
+        "count": "Olayları sayar; miktarları yok sayılır.",
+        "max": "Dönemde bildirilen en yüksek miktarı tutar (koltuk, depolama)."
+      },
+      "valueProperty": "Miktar özelliği",
+      "valuePropertyPlaceholder": "Miktarı taşıyan olay özelliği (tokens)",
+      "unit": "Birim",
+      "unitPlaceholder": "Dilediğiniz birim (jeton, GB-saat)",
+      "scale": "Ondalık basamak",
+      "decimals": "{n} ondalık",
+      "filter": "Yalnızca şu olaylar",
+      "filterHelp": "Özellikleri her satıra uymayan olaylar sayılmaz. Hepsini saymak için boş bırakın.",
+      "filterProperty": "Filtre özelliği {n}",
+      "filterValues": "Kabul edilen değerler {n}",
+      "filterPropertyPlaceholder": "Özellik (region)",
+      "filterValuesPlaceholder": "Değerler, virgülle ayrılmış (eu, us)",
+      "addFilter": "Koşul ekle",
+      "badFilter": "Her koşulun bir özelliği ve en az bir değeri olmalı.",
+      "noFilter": "her olay",
+      "create": "Sayacı oluştur",
+      "saveVersion": "Sürümü yayımla",
+      "empty": "Henüz sayaç yok. Bir paketin kullanımı fiyatlaması ya da sınırlaması için önce sayaç gerekir."
+    },
+    "quotas": {
+      "action": "Kotalar",
+      "of": "{id} kotaları",
+      "intro": "Bir istisna, müşterinin paketinin bir sayaçta izin verdiğinin yerine geçer; silinene kadar tüm aboneliklerinde geçerlidir.",
+      "overrides": "Kendi sınırları",
+      "none": "İstisna yok: paketin sınırları geçerli.",
+      "formLabel": "kota istisnası",
+      "set": "Bu müşteri için sınır belirle",
+      "meter": "Sayaç",
+      "chooseMeter": "Bir sayaç seçin",
+      "save": "İstisnayı kaydet",
+      "edit": "{meter} istisnasını düzenle",
+      "remove": "{meter} istisnasını kaldır",
+      "limit": "Sınır",
+      "limitN": "Kota {n} sınırı",
+      "limitIn": "{unit} cinsinden sınır (0 = sınırsız)",
+      "limitPlaceholder": "Sınır (0 = sınırsız)",
+      "window": "Zaman aralığı",
+      "windowN": "Kota {n} zaman aralığı",
+      "mode": "Ulaşıldığında",
+      "modeN": "Kota {n} ulaşıldığında",
+      "thresholds": "Uyarılar",
+      "thresholdsN": "Kota {n} uyarıları",
+      "thresholdsPlaceholder": "Sınırın yüzdesinde uyarı (50, 80, 100)",
+      "windows": {
+        "hour": "Saatlik",
+        "day": "Günlük",
+        "week": "Haftalık",
+        "month": "Fatura ayı başına"
+      },
+      "modes": {
+        "hard": "Kesin: izin vermeyi durdur",
+        "soft": "Esnek: izin ver, aşanı faturala",
+        "notify": "Yalnızca bildir"
+      },
+      "modeHelp": {
+        "hard": "Sınıra ulaşınca allowed false olur.",
+        "soft": "allowed true kalır; sınırı aşan kullanım sayacın fiyatıyla faturalanır.",
+        "notify": "allowed true kalır; yalnızca uyarılar gönderilir."
+      },
+      "windowHelp": {
+        "hour": "Uygulamanın saat diliminde her saati ayrı sayar.",
+        "day": "Uygulamanın saat diliminde her günü ayrı sayar.",
+        "week": "Uygulamanın saat diliminde pazartesiden başlayan her haftayı sayar.",
+        "month": "Fatura gibi fatura ayını sayar."
+      },
+      "windowColumn": "Zaman aralığı",
+      "modeColumn": "Ulaşıldığında",
+      "alertsColumn": "Uyarılar",
+      "overridden": "kendi sınırı",
+      "overButAllowed": "sınırın üstünde, yine de izinli",
+      "resets": "{at} sıfırlanır",
+      "errors": {
+        "limit": "Sınır en fazla {n} ondalıklı bir miktar olmalı.",
+        "thresholds": "Uyarılar 1 ile 1000 arasında, artan en fazla 10 yüzdedir."
       }
     }
   },
@@ -1999,6 +2146,10 @@
       "plan": {
         "no_fixed_fee": "Bu plan sürümünün bu para biriminde bu aralık için sabit ücreti yok.",
         "no_metered_price": "Bu plan sürümünün ölçümlü fiyatları var ama bu para biriminde yok."
+      },
+      "override": {
+        "customer_required": "Sınırın hangi müşteri için olduğunu belirtin.",
+        "not_found": "Bu müşterinin o sayaçta istisnası yok."
       }
     },
     "common": {
@@ -3112,7 +3263,8 @@
       "affiliates": "Ortaklar",
       "goLive": "Canlıya geç",
       "sandbox": "Sandbox araçları",
-      "partner": "Ortak portalı"
+      "partner": "Ortak portalı",
+      "meters": "Sayaçlar"
     },
     "noApps": "Henüz uygulama yok"
   },
