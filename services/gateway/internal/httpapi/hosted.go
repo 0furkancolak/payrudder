@@ -61,6 +61,8 @@ const (
 	// hostedPaysPerMinute limits the POSTs that start a payment, per address.
 	hostedPaysPerMinute = 10
 	hostedMaxKeys       = 50000
+	// hostedSweepWhenFull is the least time between two sweeps of a full table.
+	hostedSweepWhenFull = time.Second
 )
 
 func (l *hostedLimiter) allow(key string, now time.Time) bool {
@@ -74,7 +76,9 @@ func (l *hostedLimiter) allowN(key string, now time.Time, perMinute int) bool {
 	if l.window == nil {
 		l.window = map[string]*hostedWindow{}
 	}
-	if now.Sub(l.last) > time.Minute || len(l.window) > hostedMaxKeys {
+	// Expired addresses are swept once a minute; a table that is full is swept at most once a second, so a flood of new addresses does not make every
+	// request walk the whole table.
+	if now.Sub(l.last) > time.Minute || (len(l.window) >= hostedMaxKeys && now.Sub(l.last) > hostedSweepWhenFull) {
 		for k, w := range l.window {
 			if now.Sub(w.start) > time.Minute {
 				delete(l.window, k)
@@ -84,6 +88,13 @@ func (l *hostedLimiter) allowN(key string, now time.Time, perMinute int) bool {
 	}
 	w := l.window[key]
 	if w == nil || now.Sub(w.start) > time.Minute {
+		if w == nil && len(l.window) >= hostedMaxKeys {
+			// Every address in the table is within its minute: make room by forgetting one, so memory stays bounded and a new visitor is still served.
+			for k := range l.window {
+				delete(l.window, k)
+				break
+			}
+		}
 		w = &hostedWindow{start: now}
 		l.window[key] = w
 	}
