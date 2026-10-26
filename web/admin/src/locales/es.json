@@ -377,7 +377,64 @@
         "editing": "Dirección de {id}"
       },
       "allCountries": "Todos los países",
-      "allCurrencies": "Todas las monedas"
+      "allCurrencies": "Todas las monedas",
+      "newHint": "Normalmente tu aplicación crea los clientes mediante la API; aquí puedes añadir uno a mano.",
+      "searchPlaceholder": "Buscar nombre, correo, id…",
+      "emptyHint": "Los clientes aparecen aquí cuando tu aplicación los crea mediante la API. También puedes añadir uno a mano.",
+      "partialFigures": "El gasto, los saldos y los últimos pagos se calculan a partir de las facturas y pagos más recientes.",
+      "columns": {
+        "customer": "Cliente",
+        "subscriptions": "Suscripciones",
+        "currency": "Moneda",
+        "spend": "Gasto total",
+        "created": "Creado",
+        "lastPayment": "Último pago"
+      },
+      "filters": {
+        "subscription": "Suscripción",
+        "hasActive": "Con suscripción activa",
+        "noActive": "Sin suscripción activa",
+        "billing": "Facturación",
+        "openInvoices": "Facturas abiertas",
+        "delinquent": "Moroso"
+      },
+      "subscriptionStatus": {
+        "pastDue": "Vencida",
+        "active": "Activa",
+        "trialing": "En prueba",
+        "paused": "En pausa",
+        "cancelled": "Cancelada",
+        "none": "Ninguna"
+      },
+      "stats": {
+        "spend": "Gasto total",
+        "open": "Saldo pendiente",
+        "credits": "Saldo de créditos",
+        "subscriptions": "Suscripciones activas",
+        "openInvoices": "{count} abiertas"
+      },
+      "tabs": {
+        "overview": "Resumen",
+        "payments": "Pagos",
+        "invoices": "Facturas",
+        "subscriptions": "Suscripciones",
+        "credits": "Créditos",
+        "details": "Detalles"
+      },
+      "sheet": {
+        "copyId": "Copiar id de cliente {id}",
+        "since": "Cliente desde {date}",
+        "actions": "Acciones del cliente",
+        "newSubscription": "Nueva suscripción",
+        "edit": "Editar",
+        "sections": "Secciones del cliente",
+        "viewAll": "Ver todo",
+        "noSubscriptions": "Aún no hay suscripciones.",
+        "noInvoices": "Aún no hay facturas.",
+        "noPayments": "Aún no hay pagos.",
+        "manageCredits": "Gestionar créditos",
+        "paymentMethod": "Método de pago"
+      }
     },
     "packages": {
       "new": "Nuevo paquete",

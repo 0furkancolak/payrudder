@@ -377,7 +377,64 @@
         "editing": "Address of {id}"
       },
       "allCountries": "All countries",
-      "allCurrencies": "All currencies"
+      "allCurrencies": "All currencies",
+      "newHint": "Your app usually creates customers through the API; add one here by hand.",
+      "searchPlaceholder": "Search name, e-mail, id…",
+      "emptyHint": "Customers appear here once your app creates them through the API. You can also add one by hand.",
+      "partialFigures": "Spend, balances and last payments are worked out from the newest invoices and payments.",
+      "columns": {
+        "customer": "Customer",
+        "subscriptions": "Subscriptions",
+        "currency": "Currency",
+        "spend": "Total spend",
+        "created": "Created",
+        "lastPayment": "Last payment"
+      },
+      "filters": {
+        "subscription": "Subscription",
+        "hasActive": "Has an active subscription",
+        "noActive": "No active subscription",
+        "billing": "Billing",
+        "openInvoices": "Open invoices",
+        "delinquent": "Delinquent"
+      },
+      "subscriptionStatus": {
+        "pastDue": "Past due",
+        "active": "Active",
+        "trialing": "Trialing",
+        "paused": "Paused",
+        "cancelled": "Cancelled",
+        "none": "None"
+      },
+      "stats": {
+        "spend": "Total spend",
+        "open": "Open balance",
+        "credits": "Credit balance",
+        "subscriptions": "Active subscriptions",
+        "openInvoices": "{count} open"
+      },
+      "tabs": {
+        "overview": "Overview",
+        "payments": "Payments",
+        "invoices": "Invoices",
+        "subscriptions": "Subscriptions",
+        "credits": "Credits",
+        "details": "Details"
+      },
+      "sheet": {
+        "copyId": "Copy customer id {id}",
+        "since": "Customer since {date}",
+        "actions": "Customer actions",
+        "newSubscription": "New subscription",
+        "edit": "Edit",
+        "sections": "Customer sections",
+        "viewAll": "View all",
+        "noSubscriptions": "No subscriptions yet.",
+        "noInvoices": "No invoices yet.",
+        "noPayments": "No payments yet.",
+        "manageCredits": "Manage credits",
+        "paymentMethod": "Payment method"
+      }
     },
     "packages": {
       "new": "New package",

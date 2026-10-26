@@ -377,7 +377,64 @@
         "editing": "Adresse de {id}"
       },
       "allCountries": "Tous les pays",
-      "allCurrencies": "Toutes les devises"
+      "allCurrencies": "Toutes les devises",
+      "newHint": "Votre application crée généralement les clients via l'API ; vous pouvez en ajouter un ici à la main.",
+      "searchPlaceholder": "Rechercher nom, e-mail, identifiant…",
+      "emptyHint": "Les clients apparaissent ici dès que votre application les crée via l'API. Vous pouvez aussi en ajouter un à la main.",
+      "partialFigures": "Les dépenses, soldes et derniers paiements sont calculés à partir des factures et paiements les plus récents.",
+      "columns": {
+        "customer": "Client",
+        "subscriptions": "Abonnements",
+        "currency": "Devise",
+        "spend": "Dépenses totales",
+        "created": "Créé le",
+        "lastPayment": "Dernier paiement"
+      },
+      "filters": {
+        "subscription": "Abonnement",
+        "hasActive": "Avec un abonnement actif",
+        "noActive": "Sans abonnement actif",
+        "billing": "Facturation",
+        "openInvoices": "Factures ouvertes",
+        "delinquent": "En défaut"
+      },
+      "subscriptionStatus": {
+        "pastDue": "En retard",
+        "active": "Actif",
+        "trialing": "Essai",
+        "paused": "En pause",
+        "cancelled": "Résilié",
+        "none": "Aucun"
+      },
+      "stats": {
+        "spend": "Dépenses totales",
+        "open": "Solde ouvert",
+        "credits": "Solde de crédits",
+        "subscriptions": "Abonnements actifs",
+        "openInvoices": "{count} ouverte(s)"
+      },
+      "tabs": {
+        "overview": "Aperçu",
+        "payments": "Paiements",
+        "invoices": "Factures",
+        "subscriptions": "Abonnements",
+        "credits": "Crédits",
+        "details": "Détails"
+      },
+      "sheet": {
+        "copyId": "Copier l'identifiant client {id}",
+        "since": "Client depuis le {date}",
+        "actions": "Actions du client",
+        "newSubscription": "Nouvel abonnement",
+        "edit": "Modifier",
+        "sections": "Sections du client",
+        "viewAll": "Tout voir",
+        "noSubscriptions": "Aucun abonnement pour l'instant.",
+        "noInvoices": "Aucune facture pour l'instant.",
+        "noPayments": "Aucun paiement pour l'instant.",
+        "manageCredits": "Gérer les crédits",
+        "paymentMethod": "Moyen de paiement"
+      }
     },
     "packages": {
       "new": "Nouveau forfait",

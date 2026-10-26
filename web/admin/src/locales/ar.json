@@ -377,7 +377,64 @@
         "editing": "عنوان {id}"
       },
       "allCountries": "كل الدول",
-      "allCurrencies": "كل العملات"
+      "allCurrencies": "كل العملات",
+      "newHint": "ينشئ تطبيقك العملاء عادةً عبر واجهة API؛ ويمكنك إضافة عميل يدويًا هنا.",
+      "searchPlaceholder": "ابحث بالاسم أو البريد أو المعرّف…",
+      "emptyHint": "يظهر العملاء هنا بمجرد أن ينشئهم تطبيقك عبر واجهة API. يمكنك أيضًا إضافة عميل يدويًا.",
+      "partialFigures": "يُحسب الإنفاق والأرصدة وآخر الدفعات من أحدث الفواتير والدفعات.",
+      "columns": {
+        "customer": "العميل",
+        "subscriptions": "الاشتراكات",
+        "currency": "العملة",
+        "spend": "إجمالي الإنفاق",
+        "created": "تاريخ الإنشاء",
+        "lastPayment": "آخر دفعة"
+      },
+      "filters": {
+        "subscription": "الاشتراك",
+        "hasActive": "لديه اشتراك نشط",
+        "noActive": "بلا اشتراك نشط",
+        "billing": "الفوترة",
+        "openInvoices": "فواتير مفتوحة",
+        "delinquent": "متعثر"
+      },
+      "subscriptionStatus": {
+        "pastDue": "متأخر",
+        "active": "نشط",
+        "trialing": "تجريبي",
+        "paused": "متوقف مؤقتًا",
+        "cancelled": "ملغى",
+        "none": "لا يوجد"
+      },
+      "stats": {
+        "spend": "إجمالي الإنفاق",
+        "open": "الرصيد المستحق",
+        "credits": "رصيد الأرصدة",
+        "subscriptions": "الاشتراكات النشطة",
+        "openInvoices": "{count} مفتوحة"
+      },
+      "tabs": {
+        "overview": "نظرة عامة",
+        "payments": "الدفعات",
+        "invoices": "الفواتير",
+        "subscriptions": "الاشتراكات",
+        "credits": "الأرصدة",
+        "details": "التفاصيل"
+      },
+      "sheet": {
+        "copyId": "نسخ معرّف العميل {id}",
+        "since": "عميل منذ {date}",
+        "actions": "إجراءات العميل",
+        "newSubscription": "اشتراك جديد",
+        "edit": "تعديل",
+        "sections": "أقسام العميل",
+        "viewAll": "عرض الكل",
+        "noSubscriptions": "لا توجد اشتراكات بعد.",
+        "noInvoices": "لا توجد فواتير بعد.",
+        "noPayments": "لا توجد دفعات بعد.",
+        "manageCredits": "إدارة الأرصدة",
+        "paymentMethod": "طريقة الدفع"
+      }
     },
     "packages": {
       "new": "باقة جديدة",
