@@ -21,7 +21,11 @@
     "unknown": "?",
     "cancel": "Cancel",
     "copied": "Copied",
-    "copyFailed": "Your browser did not allow copying. Select the text and copy it by hand."
+    "copyFailed": "Your browser did not allow copying. Select the text and copy it by hand.",
+    "close": "Close",
+    "search": "Search",
+    "clearFilters": "Clear filters",
+    "noMatches": "Nothing matches these filters."
   },
   "enums": {
     "environment": {
@@ -3028,7 +3032,8 @@
       "billing": "Billing",
       "growth": "Growth",
       "developers": "Developers",
-      "settings": "Settings"
+      "settings": "Settings",
+      "apps": "Apps"
     },
     "items": {
       "overview": "Apps",
@@ -3062,7 +3067,8 @@
       "goLive": "Go live",
       "sandbox": "Sandbox tools",
       "partner": "Partner portal"
-    }
+    },
+    "noApps": "No apps yet"
   },
   "privacy": {
     "hide": "Hide amounts",
@@ -3209,5 +3215,15 @@
       "none": "No app has revenue in this period.",
       "open": "Open the app"
     }
+  },
+  "pagination": {
+    "perPage": "Rows per page",
+    "total": "{count} in all",
+    "prev": "Previous",
+    "next": "Next",
+    "page": "Page {page} of {pages}",
+    "pageOnly": "Page {page}",
+    "goTo": "Go to page",
+    "go": "Go"
   }
 }

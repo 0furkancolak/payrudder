@@ -21,7 +21,11 @@
     "unknown": "?",
     "cancel": "Annuler",
     "copied": "Copié",
-    "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez le texte et copiez-le à la main."
+    "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez le texte et copiez-le à la main.",
+    "close": "Fermer",
+    "search": "Rechercher",
+    "clearFilters": "Effacer les filtres",
+    "noMatches": "Aucun résultat pour ces filtres."
   },
   "enums": {
     "environment": {
@@ -3028,7 +3032,8 @@
       "billing": "Facturation",
       "growth": "Croissance",
       "developers": "Développeurs",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "apps": "Applications"
     },
     "items": {
       "overview": "Applications",
@@ -3062,7 +3067,8 @@
       "goLive": "Passer en production",
       "sandbox": "Outils sandbox",
       "partner": "Portail partenaire"
-    }
+    },
+    "noApps": "Aucune application"
   },
   "privacy": {
     "hide": "Masquer les montants",
@@ -3209,5 +3215,15 @@
       "none": "Aucune application n'a de revenu sur cette période.",
       "open": "Ouvrir l'application"
     }
+  },
+  "pagination": {
+    "perPage": "Lignes par page",
+    "total": "{count} au total",
+    "prev": "Précédent",
+    "next": "Suivant",
+    "page": "Page {page} sur {pages}",
+    "pageOnly": "Page {page}",
+    "goTo": "Aller à la page",
+    "go": "Aller"
   }
 }
