@@ -4,6 +4,7 @@ import { Plus } from "@lucide/vue";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
+import { recordLink } from "@/features/related/link";
 import { formatMinor } from "@/shared/lib/money";
 import { playgroundDefaults, prefillPlayground } from "@/shared/lib/prefill";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -134,7 +135,7 @@ function create() {
           <TableCell><Badge :variant="statusVariant(inv.status)">{{ inv.status }}</Badge></TableCell>
           <TableCell class="text-end tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
           <TableCell class="text-end">
-            <Link v-if="play.tenantId.value && inv.id" to="/tenants/$id/invoices/$invoiceId" :params="{ id: play.tenantId.value, invoiceId: inv.id }" class="font-medium underline">
+            <Link v-if="play.tenantId.value && inv.id" v-bind="recordLink('invoice', inv.id, play.tenantId.value)" class="font-medium underline">
               {{ t("playground.invoice.open") }}
             </Link>
           </TableCell>

@@ -250,6 +250,8 @@ export function useGoLive(id: MaybeRefOrGetter<string>, on: MaybeRefOrGetter<boo
     queryKey: computed(() => liveKeys.goLive(toValue(id))),
     queryFn: async () => (await unwrap(api.GET("/app/v1/apps/{id}/go-live", { params: { path: { id: toValue(id) } } }))).go_live,
     enabled: computed(() => enabled.value && toValue(id) !== "" && toValue(on)),
+    // Plans are published on another page (and keys and terms elsewhere): coming back to the checklist always asks again.
+    refetchOnMount: "always",
   });
 }
 
@@ -319,7 +321,8 @@ export function usePromote(id: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
     mutationFn: (v: { dryRun: boolean; planHash?: string }) => promoteCall(toValue(id), { dry_run: v.dryRun, ...(v.planHash ? { plan_hash: v.planHash } : {}) }),
-    onSuccess: (_r, v) => (v.dryRun ? undefined : queries.invalidateQueries({ queryKey: ["app", "tenant"] })),
+    // An applied promote may publish the plans the "plan published" item waits for: the tenant's data and the app's checklist are read again.
+    onSuccess: (_r, v) => (v.dryRun ? undefined : Promise.all([queries.invalidateQueries({ queryKey: ["app", "tenant"] }), queries.invalidateQueries({ queryKey: liveKeys.goLive(toValue(id)) })])),
   });
 }
 
@@ -411,6 +414,18 @@ export function useRenameAccount() {
   return useMutation({
     mutationFn: (name: string) => unwrap(api.PATCH("/app/v1/account", { body: { name } })),
     onSuccess: () => refreshAccount(queries),
+  });
+}
+
+/** Starts another organisation the person owns; it becomes the one they work in. The memberships (and everything cached per account) are read again. */
+export function useCreateAccount() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => unwrap(api.POST("/app/v1/accounts", { body: { name } })),
+    onSuccess: async (m) => {
+      if (m.account_id) setActiveAccount(m.account_id);
+      await queries.invalidateQueries({ queryKey: ["app"] });
+    },
   });
 }
 

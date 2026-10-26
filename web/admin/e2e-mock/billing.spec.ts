@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, openTenantPage, TENANT } from "./gateway";
-import { pickCurrency, pickLanguage, rowAction } from "./ui";
+import { pickCurrency, pickLanguage } from "./ui";
 
 const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
 
@@ -475,8 +475,6 @@ test.describe("subscriptions", () => {
 
 test.describe("pricing", () => {
   const quiet = (c: { path: string; method: string }) => {
-    if (c.path === "/v1/coupons" && c.method === "GET") return { body: { coupons: [] } };
-    if (c.path === "/v1/coupon-redemptions" && c.method === "GET") return { body: { redemptions: [], total: 0 } };
     if (c.path === "/v1/tax-rates" && c.method === "GET") return { body: { rates: [{ country: "DE", name: "VAT", rate_bps: 1900 }, { country: "", name: "Sales tax", rate_bps: 825 }] } };
     if (c.path === "/v1/dunning-settings" && c.method === "GET") return { body: { retry_hours: [24, 72, 168], defaults_in_use: true } };
     return undefined;
@@ -498,151 +496,6 @@ test.describe("pricing", () => {
     await page.getByRole("button", { name: "Save retries" }).click();
     await expect.poll(() => gw.called("PUT", "/v1/dunning-settings").length).toBe(1);
     expect(gw.called("PUT", "/v1/dunning-settings")[0]?.body).toEqual({ retry_hours: [24, 72, 120] });
-  });
-
-  test("a coupon is made as a percentage or an amount, and deactivated", async ({ page }) => {
-    const coupons: Record<string, unknown>[] = [];
-    const gw = baseTenant(new MockGateway()).on((c) => {
-      if (c.path === "/v1/coupons" && c.method === "POST") {
-        coupons.push({ ...c.body, redeemed: 0, active: true });
-        return { status: 201, body: coupons.at(-1) };
-      }
-      if (c.path === "/v1/coupons" && c.method === "GET") return { body: { coupons } };
-      if (c.method === "DELETE" && c.path === "/v1/coupons/WELCOME") {
-        coupons[0] = { ...coupons[0], active: false };
-        return { body: coupons[0] };
-      }
-      return quiet(c);
-    });
-    await gw.install(page);
-    await openTenantPage(page, "/pricing");
-    await page.getByRole("button", { name: "Create coupon" }).click();
-    const form = page.getByRole("dialog");
-    await form.getByLabel("Code").fill("WELCOME");
-    await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("12,5");
-    await form.getByLabel("Duration").selectOption("COUPON_DURATION_REPEATING");
-    await form.getByLabel("Fees", { exact: true }).fill("3");
-    await form.getByLabel("Redemptions limit").fill("100");
-    await form.getByRole("button", { name: "Create coupon" }).click();
-    await expect.poll(() => gw.called("POST", "/v1/coupons").length).toBe(1);
-    expect(gw.called("POST", "/v1/coupons")[0]?.body).toEqual({
-      code: "WELCOME",
-      name: "",
-      duration: "COUPON_DURATION_REPEATING",
-      percent_bps: 1250,
-      duration_periods: 3,
-      max_redemptions: 100,
-    });
-    const row = page.getByRole("row", { name: /WELCOME/ });
-    await expect(row).toContainText("12.5 %");
-    await expect(row).toContainText("First 3 fees");
-    await expect(row).toContainText("0 / 100");
-    await page.getByRole("button", { name: "Create coupon" }).click();
-    await form.getByLabel("Code").fill("MINUS5");
-    await form.getByLabel("Kind").selectOption("amount");
-    await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("4.99");
-    await pickCurrency(form.getByLabel("Currency"), "USD");
-    await form.getByLabel("Duration").selectOption("COUPON_DURATION_FOREVER");
-    await form.getByRole("button", { name: "Create coupon" }).click();
-    await expect.poll(() => gw.called("POST", "/v1/coupons").length).toBe(2);
-    expect(gw.called("POST", "/v1/coupons")[1]?.body).toMatchObject({ code: "MINUS5", amount_minor: "499", currency: "USD", duration: "COUPON_DURATION_FOREVER" });
-    await rowAction(row, "Deactivate");
-    await expect.poll(() => gw.called("DELETE", "/v1/coupons/WELCOME").length).toBe(1);
-  });
-
-  test("a coupon gets named and random promotion codes, and its redemptions are listed", async ({ page }) => {
-    const welcome = { id: "c1", code: "WELCOME", percent_bps: 1000, duration: "COUPON_DURATION_ONCE", applies_to: ["COUPON_TARGET_SUBSCRIPTION", "COUPON_TARGET_CREDIT_PURCHASE", "COUPON_TARGET_PAYMENT"], active: true, redeemed: 2, promotion_code_count: 1 };
-    const bonus = { id: "c2", code: "BONUS25", bonus_percent_bps: 2500, applies_to: ["COUPON_TARGET_CREDIT_PURCHASE"], active: true, redeemed: 0, promotion_code_count: 1 };
-    const coupons: Record<string, unknown>[] = [welcome];
-    const gw = baseTenant(new MockGateway()).on((c) => {
-      if (c.path === "/v1/coupons" && c.method === "GET") return { body: { coupons } };
-      if (c.path === "/v1/coupons" && c.method === "POST") {
-        coupons.push(bonus);
-        return { status: 201, body: bonus };
-      }
-      if (c.path === "/v1/promotion-codes" && c.method === "GET") {
-        return { body: { codes: [{ id: "p1", coupon_code: "WELCOME", code: "WELCOME", active: true, redeemed: 2, max_redemptions: 5, first_purchase_only: true }], total: 1 } };
-      }
-      if (c.path === "/v1/coupons/WELCOME/promotion-codes" && c.method === "POST") {
-        return { status: 201, body: { codes: [{ id: "p2", code: "SPR-ABCD2345" }, { id: "p3", code: "SPR-EFGH6789" }] } };
-      }
-      if (c.path === "/v1/coupon-redemptions" && c.method === "GET") {
-        return {
-          body: {
-            redemptions: [
-              { id: "r1", coupon_code: "WELCOME", promotion_code: "WELCOME", customer_external_id: "cus_1", target: "COUPON_TARGET_CREDIT_PURCHASE", discount_minor: "500", currency: "USD", create_time: "2026-10-20T10:00:00Z" },
-              { id: "r2", coupon_code: "BONUS25", promotion_code: "BONUS25", customer_external_id: "cus_2", target: "COUPON_TARGET_CREDIT_PURCHASE", bonus_credits: "250", create_time: "2026-10-21T10:00:00Z", reverse_time: "2026-10-22T10:00:00Z" },
-            ],
-            total: 2,
-          },
-        };
-      }
-      return quiet(c);
-    });
-    await gw.install(page);
-    await openTenantPage(page, "/pricing");
-
-    // A bonus coupon: extra credits as a percentage, for credit purchases only.
-    await page.getByRole("button", { name: "Create coupon" }).click();
-    const form = page.getByRole("dialog");
-    await form.getByLabel("Code", { exact: true }).fill("BONUS25");
-    await form.getByLabel("Kind").selectOption("bonus");
-    await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("25");
-    await form.getByRole("button", { name: "Create coupon" }).click();
-    await expect.poll(() => gw.called("POST", "/v1/coupons").length).toBe(1);
-    expect(gw.called("POST", "/v1/coupons")[0]?.body).toEqual({ code: "BONUS25", name: "", bonus_percent_bps: 2500 });
-
-    // Random codes with rules, for the first coupon.
-    await rowAction(page.getByRole("row", { name: /WELCOME/ }).first(), "Codes");
-    const codes = page.getByRole("dialog", { name: "Create codes" });
-    const panel = page.getByRole("region", { name: "Promotion codes of WELCOME" });
-    await expect(panel.getByRole("cell", { name: "WELCOME", exact: true })).toBeVisible();
-    await expect(panel).toContainText("First purchase");
-    await panel.getByRole("button", { name: "Create codes" }).click();
-    await codes.getByLabel("How", { exact: true }).selectOption("random");
-    await codes.getByLabel("How many (1 to 1000)").fill("2");
-    await codes.getByLabel("Prefix (optional)").fill("SPR-");
-    await codes.getByLabel("Uses per code (empty: no limit)").fill("1");
-    await codes.getByLabel("First purchase only").check();
-    await codes.getByRole("button", { name: "Create codes" }).click();
-    await expect.poll(() => gw.called("POST", "/v1/coupons/WELCOME/promotion-codes").length).toBe(1);
-    expect(gw.called("POST", "/v1/coupons/WELCOME/promotion-codes")[0]?.body).toEqual({ template: { max_redemptions: 1, first_purchase_only: true }, count: 2, prefix: "SPR-" });
-    await expect(page.getByTestId("made-codes")).toHaveValue("SPR-ABCD2345\nSPR-EFGH6789");
-    await expect(page.getByText("2 codes created")).toBeVisible();
-
-    // A bad name is refused before anything is sent.
-    await panel.getByRole("button", { name: "Create codes" }).click();
-    await codes.getByLabel("How", { exact: true }).selectOption("named");
-    await codes.getByLabel("Codes, one per line").fill("x");
-    await codes.getByRole("button", { name: "Create codes" }).click();
-    await expect(page.getByRole("alert").filter({ hasText: "2 to 40 letters" })).toBeVisible();
-    expect(gw.called("POST", "/v1/coupons/WELCOME/promotion-codes")).toHaveLength(1);
-
-    await page.keyboard.press("Escape");
-    await expect(codes).toBeHidden();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("dialog", { name: "WELCOME" })).toBeHidden();
-
-    // The redemptions: the discount, the bonus, and a reversed one.
-    const first = page.getByRole("row", { name: /cus_1/ });
-    await expect(first).toContainText("$5.00");
-    await expect(first).toContainText("Credit purchase");
-    const reversed = page.getByRole("row", { name: /cus_2/ });
-    await expect(reversed).toContainText("250");
-    await expect(reversed).toContainText("Reversed");
-  });
-
-  test("a percentage that is not one is refused before anything is sent", async ({ page }) => {
-    const gw = baseTenant(new MockGateway()).on(quiet);
-    await gw.install(page);
-    await openTenantPage(page, "/pricing");
-    await page.getByRole("button", { name: "Create coupon" }).click();
-    const form = page.getByRole("dialog");
-    await form.getByLabel("Code").fill("BAD");
-    await form.getByLabel("Value (10 or 12.5 / 4.99)").fill("101");
-    await form.getByRole("button", { name: "Create coupon" }).click();
-    await expect(page.getByRole("alert")).toContainText("Not a percentage");
-    expect(gw.called("POST", "/v1/coupons")).toHaveLength(0);
   });
 
   test("tax rates are shown as percentages and saved as basis points, replacing the list", async ({ page }) => {
@@ -706,7 +559,7 @@ test.describe("credit notes", () => {
       return undefined;
     });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await expect(page.getByRole("row", { name: /Base fee/ })).toContainText("Oct 1, 2026");
     await page.getByRole("button", { name: "New credit note" }).click();
     const form = page.getByRole("form", { name: "new credit note" });
@@ -733,7 +586,7 @@ test.describe("credit notes", () => {
       return undefined;
     });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByRole("button", { name: "New credit note" }).click();
     const form = page.getByRole("form", { name: "new credit note" });
     await form.getByLabel("Amount").fill("10");
@@ -757,7 +610,7 @@ test.describe("credit notes", () => {
       return undefined;
     });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     const card = page.getByRole("region", { name: "Share with the customer" });
     await card.getByLabel("Valid for (days)").fill("30");
     await card.getByRole("button", { name: "Make a link" }).click();
@@ -776,14 +629,14 @@ test.describe("credit notes", () => {
   test("an invoice that is not paid cannot be credited here, and an empty amount credits what is left", async ({ page }) => {
     const gw = common("open", []);
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await expect(page.getByRole("button", { name: "New credit note" })).toHaveCount(0);
     await expect(page.getByText("No credit notes.")).toBeVisible();
 
     const paid = common("paid", []).on((c) => (c.method === "POST" && c.path === "/admin/v1/invoices/inv1/credit-notes" ? { status: 201, body: { id: "cn" } } : undefined));
     const page2 = await page.context().newPage();
     await paid.install(page2);
-    await openTenantPage(page2, "/invoices/inv1");
+    await openTenantPage(page2, "/invoices?invoice=inv1");
     await page2.getByRole("button", { name: "New credit note" }).click();
     await page2.getByRole("button", { name: "Issue credit note" }).click();
     await expect.poll(() => paid.called("POST", "/admin/v1/invoices/inv1/credit-notes").length).toBe(1);
@@ -1028,7 +881,7 @@ test.describe("reports", () => {
     await expect(row).toContainText("21,000.00");
     await expect(row).toContainText("1 · TRY 9,000.00");
     await page.getByRole("tab", { name: "Unpaid invoices" }).click();
-    await expect(page.getByRole("link", { name: "INV-2026-000009" })).toHaveAttribute("href", `/tenants/${TENANT}/invoices/inv-9`);
+    await expect(page.getByRole("link", { name: "INV-2026-000009" })).toHaveAttribute("href", `/tenants/${TENANT}/invoices?invoice=inv-9`);
     await expect(page.getByText("given up").first()).toBeVisible();
   });
 });

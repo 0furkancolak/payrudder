@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { validRange } from "@/features/accounting/period";
@@ -21,14 +20,14 @@ import SettingsTab from "./SettingsTab.vue";
 import StatusBanner from "./StatusBanner.vue";
 import TermsList from "./TermsList.vue";
 
-/** One affiliation: the link, the figures of a period, the balances per currency, the seller's terms, and the partner's own lists. */
+/** One affiliation, as the body of the sheet the portal's home opens: the link, the figures of a period, the balances per currency, the seller's terms, and the partner's own lists. */
 const TABS = ["referrals", "commissions", "payouts", "settings"] as const;
 type Tab = (typeof TABS)[number];
 
 const { t } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const id = computed(() => String((params.value as { id?: string }).id ?? ""));
+const props = defineProps<{ id: string }>();
+const id = computed(() => props.id);
 const tab = ref<Tab>("referrals");
 
 const range = ref<DateRange>(rangeOf("30d", new Date()));
@@ -46,21 +45,14 @@ const balances = computed(() => sumBalances(detail.data.value?.balances));
 
 <template>
   <div class="flex flex-col gap-6">
-    <Link to="/app/partner" class="text-muted-foreground hover:text-foreground w-fit text-sm">{{ t("partner.back") }}</Link>
     <ErrorText :error="detail.error.value" />
     <Skeleton v-if="detail.isPending.value" class="h-40" />
 
     <template v-if="a">
-      <header class="flex flex-wrap items-start justify-between gap-3">
-        <div class="min-w-0">
-          <h1 class="m-0 text-2xl font-semibold tracking-tight break-words" dir="auto">{{ a.seller_name }}</h1>
-          <p class="text-muted-foreground m-0 text-sm">{{ t("partner.code") }}: <span class="mono">{{ a.code }}</span></p>
-        </div>
-        <div class="flex flex-wrap gap-1.5">
-          <StatusPill :tone="environmentTone(a.environment)" data-testid="env-badge">{{ t(`partner.environment.${a.environment}`) }}</StatusPill>
-          <StatusPill :tone="affiliateTone(a.status)" data-testid="status-badge">{{ t(`partner.status.${a.status}`) }}</StatusPill>
-        </div>
-      </header>
+      <div class="flex flex-wrap gap-1.5">
+        <StatusPill :tone="environmentTone(a.environment)" data-testid="env-badge">{{ t(`partner.environment.${a.environment}`) }}</StatusPill>
+        <StatusPill :tone="affiliateTone(a.status)" data-testid="status-badge">{{ t(`partner.status.${a.status}`) }}</StatusPill>
+      </div>
       <StatusBanner :affiliation="a" />
       <CopyField v-if="a.link" :value="a.link" :label="t('partner.link')" :copy-label="t('partner.copyLink')" testid="affiliation-link" />
 

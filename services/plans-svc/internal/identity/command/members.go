@@ -78,6 +78,55 @@ func mayHandle(actorRole, target string) bool {
 	return target != query.RoleOwner || actorRole == query.RoleOwner
 }
 
+// MaxOwnedAccounts bounds how many accounts one person may create and own.
+const MaxOwnedAccounts = 20
+
+// CreateAccount makes another account that the user owns. The person must be a user already; the new account starts empty (no apps).
+func (c *Commands) CreateAccount(ctx context.Context, req *plansv1.CreateMyAccountRequest) (*plansv1.Membership, error) {
+	name := strings.TrimSpace(req.GetName())
+	if name == "" || len(name) > 200 {
+		return nil, domain.Invalid("name", "required, at most 200 characters")
+	}
+	uid, ok := query.ParseID(req.GetUserId())
+	if !ok {
+		return nil, query.NotFound("account")
+	}
+	var out *plansv1.Membership
+	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if _, err := q.GetUser(ctx, uid); err != nil {
+			return err
+		}
+		owned, err := q.ListUserMemberships(ctx, uid)
+		if err != nil {
+			return err
+		}
+		n := 0
+		for _, m := range owned {
+			if m.Role == query.RoleOwner {
+				n++
+			}
+		}
+		if n >= MaxOwnedAccounts {
+			return errkey.Newf(codes.ResourceExhausted, "identity.account.quota", "a person can own at most %d accounts", MaxOwnedAccounts)
+		}
+		a, err := q.InsertAccount(ctx, sqlc.InsertAccountParams{ID: idgen.NewUUIDv7(), Name: name})
+		if err != nil {
+			return err
+		}
+		if err := q.InsertMember(ctx, sqlc.InsertMemberParams{AccountID: a.ID, UserID: uid, Role: query.RoleOwner}); err != nil {
+			return err
+		}
+		out = &plansv1.Membership{AccountId: a.ID.String(), AccountName: name, Role: query.RoleOwner}
+		return nil
+	})
+	if err != nil {
+		return nil, convert.Err(err, "account")
+	}
+	c.log.InfoContext(ctx, "account created by member", "user_id", uid, "account_id", out.GetAccountId())
+	return out, nil
+}
+
 // RenameAccount renames the account; only an owner may.
 func (c *Commands) RenameAccount(ctx context.Context, req *plansv1.RenameMyAccountRequest) (string, error) {
 	name := strings.TrimSpace(req.GetName())

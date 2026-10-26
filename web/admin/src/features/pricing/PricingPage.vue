@@ -10,8 +10,6 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { parsePercent, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type Rate } from "./api";
-import CouponsCard from "./CouponsCard.vue";
-import RedemptionsCard from "./RedemptionsCard.vue";
 
 const { t } = useI18n();
 const canWrite = useCanWrite();
@@ -64,11 +62,8 @@ function saveDunning() {
 </script>
 
 <template>
-  <!-- A viewer reads the promotions, the retry schedule and the tax rates; the controls that change them are switched off (the server refuses them anyway). -->
+  <!-- A viewer reads the retry schedule and the tax rates; the controls that change them are switched off (the server refuses them anyway). -->
   <fieldset :disabled="!canWrite" class="m-0 min-w-0 border-0 p-0">
-    <CouponsCard :tenant-id="tenantId" />
-    <RedemptionsCard :tenant-id="tenantId" />
-
     <Card class="mb-6">
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.dunning.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.dunning.hint") }}</p>

@@ -148,8 +148,6 @@
     "allKinds": "Tous les types"
   },
   "invoice": {
-    "back": "← Locataire",
-    "fallbackTitle": "Facture",
     "summary": "{kind} · période {period} · {customer} · {total} · {status} · saga {saga}",
     "openPdf": "Ouvrir le PDF",
     "noPdfLink": "aucun lien",
@@ -1153,6 +1151,195 @@
         "discount": "Remise",
         "net": "Net"
       }
+    },
+    "usage": {
+      "tabsLabel": "Sections de l'utilisation",
+      "tabs": {
+        "overview": "Vue d'ensemble",
+        "meters": "Compteurs",
+        "customers": "Clients"
+      },
+      "compare": "Comparer avec la période précédente",
+      "period": "Limites et classements : {period}",
+      "periodHint": "Les limites et classements sont comptés par période de facturation (un mois) : le mois où se termine la plage choisie.",
+      "tooLong": "Une plage dure au plus un an. Les 30 derniers jours sont affichés.",
+      "before": "Avant : {value} {unit}",
+      "events": "{n} événements",
+      "aggregation": {
+        "sum": "Somme",
+        "count": "Nombre d'événements",
+        "max": "Valeur maximale"
+      },
+      "aggregationHint": {
+        "sum": "Additionne la valeur de la propriété de l'événement.",
+        "count": "Compte les événements ; aucune propriété n'est nécessaire.",
+        "max": "Prend la valeur la plus élevée de la propriété de l'événement dans la période."
+      },
+      "state": {
+        "over": "Limite dépassée",
+        "near": "Proche de la limite",
+        "ok": "Dans la limite",
+        "unlimited": "Sans limite"
+      },
+      "chart": {
+        "current": "Cette période",
+        "previous": "Période précédente",
+        "total": "Total",
+        "before": "avant",
+        "estimate": "Estimation : comptée à partir de cumuls horaires, une livraison en double peut donc être comptée deux fois. Les factures utilisent l'utilisation exacte.",
+        "empty": "Aucune utilisation sur cette période.",
+        "summary": "{total} {unit} du {from} au {to}"
+      },
+      "empty": {
+        "title": "Pas encore de compteurs",
+        "hint": "Un compteur indique ce qu'il faut compter dans les événements que vous envoyez. Créez un compteur, puis envoyez des événements avec son code."
+      },
+      "top": {
+        "title": "Principaux clients",
+        "hint": "Qui a le plus utilisé {meter} en {period}.",
+        "empty": "Personne n'a utilisé ce compteur sur cette période."
+      },
+      "limits": {
+        "title": "Limites",
+        "hint": "Clients proches d'une limite ou l'ayant dépassée, parmi les {n} plus gros utilisateurs en {period}.",
+        "over": "{n} dépassé(s)",
+        "near": "{n} proche(s)",
+        "clear": "Personne n'est proche d'une limite.",
+        "nobody": "Aucun client n'a utilisé de compteur sur cette période."
+      },
+      "meters": {
+        "new": "Nouveau compteur",
+        "newHint": "Un compteur transforme les événements envoyés en une quantité à facturer.",
+        "formLabel": "compteur",
+        "code": "Code",
+        "codeHint": "Minuscules, chiffres et _, en commençant par une lettre.",
+        "unit": "Unité",
+        "unitPlaceholder": "appels, Go, jetons",
+        "aggregation": "Agrégation",
+        "allAggregations": "Toute agrégation",
+        "property": "Propriété de valeur",
+        "propertyHint": "La propriété de l'événement qui contient la quantité.",
+        "scale": "Décimales",
+        "scaleHint": "De 0 à 6. Fixe pour un code une fois le compteur créé.",
+        "scaleFixed": "Fixe pour ce code.",
+        "filter": "Ne compter que les événements où",
+        "filterHint": "Laissez vide pour compter tous les événements. Une propriété peut correspondre à plusieurs valeurs.",
+        "filterRow": "Filtre {n}",
+        "filterProperty": "Propriété {n}",
+        "filterValues": "Valeurs {n}",
+        "filterValuesPlaceholder": "eu, us",
+        "addFilter": "Ajouter un filtre",
+        "create": "Créer le compteur",
+        "saveVersion": "Enregistrer la nouvelle version",
+        "newVersion": "Nouvelle version",
+        "versionTitle": "Nouvelle version de {code}",
+        "versionHint": "Enregistre la version suivante de ce compteur (actuellement la version {version}).",
+        "search": "Rechercher des compteurs",
+        "inPeriod": "Sur la période",
+        "trend": "Tendance",
+        "series": "Utilisation dans le temps",
+        "version": "Version",
+        "created": "Créé",
+        "errors": {
+          "code": "Le code est fait de minuscules, chiffres et _, commence par une lettre (63 au plus).",
+          "unit": "Donnez à l'unité un nom de 32 caractères au plus.",
+          "property": "Indiquez la propriété de l'événement qui contient la quantité.",
+          "scale": "Les décimales sont un entier de 0 à 6.",
+          "filter": "Chaque filtre demande une propriété et au moins une valeur (pas de propriété en double, 10 au plus)."
+        },
+        "filterShort": "Filtre"
+      },
+      "customers": {
+        "search": "Rechercher des clients",
+        "meter": "Compteur",
+        "allMeters": "Tous les compteurs",
+        "usage": "Utilisation",
+        "anyUsage": "Toute utilisation",
+        "used": "Avec utilisation",
+        "idle": "Sans utilisation",
+        "limits": "Limites",
+        "limitsOf": "Limites en {period}",
+        "billingPeriod": "Période de facturation"
+      }
+    },
+    "coupons": {
+      "tabsLabel": "Sections des coupons",
+      "tabs": {
+        "coupons": "Coupons",
+        "codes": "Codes promotionnels",
+        "redemptions": "Utilisations"
+      },
+      "hint": {
+        "coupons": "Un coupon indique ce qui est déduit, où il s'applique et pendant combien de temps. Les clients l'obtiennent par un code promotionnel.",
+        "codes": "Les codes que saisissent les clients. Plusieurs codes peuvent pointer vers un coupon, chacun avec sa limite, son expiration et ses règles.",
+        "redemptions": "Chaque utilisation d'un coupon, avec le client, la facture et ce qui a été déduit."
+      },
+      "new": "Nouveau coupon",
+      "searchCoupons": "Rechercher des coupons",
+      "searchCustomer": "Rechercher par identifiant client",
+      "anyTarget": "Valable partout",
+      "everywhere": "Partout",
+      "never": "Jamais",
+      "expires": "Expire",
+      "created": "Créé",
+      "firstOf": "Les {n} premiers sur {total} sont affichés.",
+      "errors": {
+        "code": "Le code fait de 2 à 40 lettres, chiffres, - ou _.",
+        "value": "Indiquez ce que le coupon déduit : un pourcentage jusqu'à 100 (1000 pour des crédits bonus) ou un montant avec au plus autant de décimales que la devise.",
+        "targets": "Choisissez où le coupon s'applique.",
+        "periods": "Le nombre de frais est un entier de 1 à 120.",
+        "max": "La limite d'utilisations est un entier à partir de 1.",
+        "expires": "L'expiration doit être un jour à venir.",
+        "coupon": "Choisissez un coupon."
+      },
+      "sheet": {
+        "title": "Nouveau coupon",
+        "hint": "Un coupon indique ce qui est déduit. Les clients l'utilisent par un code promotionnel.",
+        "codeHint": "De 2 à 40 lettres, chiffres, - ou _. Le code du coupon est aussi son premier code promotionnel.",
+        "namePlaceholder": "Offre de bienvenue (facultatif)",
+        "value": {
+          "percent": "Pourcentage de remise (%)",
+          "amount": "Montant de la remise",
+          "bonus": "Crédits supplémentaires (%)"
+        },
+        "durationHint": "Sur combien de frais d'un abonnement la remise s'applique.",
+        "noLimit": "Sans limite",
+        "expires": "Expire le (facultatif)",
+        "defaultCode": "Créer aussi un code promotionnel avec ce texte",
+        "defaultCodeHint": "Les clients peuvent saisir tout de suite le code du coupon. Désactivez pour créer les codes vous-même."
+      },
+      "preview": {
+        "title": "Ce que cela fera",
+        "noValue": "Saisissez une valeur pour voir l'effet du coupon.",
+        "percent": "{pct} de remise : des frais de {before} deviennent {after}.",
+        "amount": "{off} de remise : des frais de {before} deviennent {after}.",
+        "bonus": "{pct} de crédits en plus : acheter {credits} crédits en donne {total}.",
+        "where": "S'applique à : {list}.",
+        "duration": "Sur un abonnement : {duration}.",
+        "max": "Au plus {n} utilisations au total.",
+        "noMax": "Pas de limite d'utilisations.",
+        "expires": "Cesse de fonctionner après le {date}.",
+        "noExpiry": "N'expire pas.",
+        "code": "Les clients peuvent saisir {code}."
+      },
+      "codeSheet": {
+        "makes": "Crée {n} codes promotionnels pour {coupon} ({value}).",
+        "usesEach": "Chaque code peut être utilisé {n} fois.",
+        "usesUnlimited": "Chaque code peut être utilisé sans limite.",
+        "minimum": "À partir de {amount}",
+        "plans": "Uniquement sur ces forfaits",
+        "plansHint": "Ne cochez rien pour autoriser tous les forfaits.",
+        "noPlans": "Pas encore de forfaits : le code vaut pour tout forfait.",
+        "packs": "Uniquement sur ces packs de crédits",
+        "namesHint": "Séparez les codes par des retours à la ligne, virgules ou espaces. De 2 à 40 lettres, chiffres, - ou _.",
+        "done": "Terminé"
+      },
+      "redemptions": {
+        "invoice": "Facture",
+        "bonusCredits": "+{n} crédits",
+        "noCode": "Pas de code (appliqué directement)"
+      },
+      "discount": "Remise"
     }
   },
   "affiliates": {
@@ -2150,7 +2337,8 @@
     "identity": {
       "account": {
         "forbidden": "Votre rôle dans ce compte ne le permet pas.",
-        "not_found": "Ce compte n'existe pas, ou il n'est pas le vôtre."
+        "not_found": "Ce compte n'existe pas, ou il n'est pas le vôtre.",
+        "quota": "Une personne peut posséder au plus 20 organisations."
       },
       "api_key": {
         "bad_environment": "Cette application n'a pas un tel environnement.",
@@ -2461,7 +2649,12 @@
   },
   "product": {
     "menu": {
-      "open": "Menu du compte"
+      "open": "Menu du compte",
+      "newOrg": "Nouvelle organisation",
+      "newOrgTitle": "Créer une organisation",
+      "newOrgBody": "Vous en serez le propriétaire. Elle démarre vide : ajoutez ensuite des applications et invitez des personnes.",
+      "orgName": "Nom de l'organisation",
+      "orgCreate": "Créer l'organisation"
     },
     "nav": {
       "home": "Accueil",
@@ -2823,7 +3016,6 @@
         "loadMore": "Charger plus"
       },
       "invoice": {
-        "back": "Toutes les factures",
         "issued": "Émise",
         "openPdf": "Ouvrir le PDF",
         "lines": "Lignes",
@@ -3055,6 +3247,75 @@
       "simulate": "Simuler",
       "simulated": "Paiement relancé comme {scenario}.",
       "simulateNotRetried": "Le scénario est défini, mais le paiement n'a pas pu être relancé maintenant ({why})."
+    },
+    "providers": {
+      "introApp": "Connectez et gérez les prestataires de paiement de {app}. Les clients paient via le compte live ; le sandbox n'a besoin d'aucune connexion.",
+      "introOrg": "Connectez un prestataire de paiement une fois pour toutes vos apps, ou configurez une app autrement que les autres.",
+      "connect": "Connecter",
+      "manage": "Gérer",
+      "simulator": "Simulateur intégré",
+      "sandboxNote": "Le sandbox n'atteint jamais un vrai prestataire : il tourne sur un simulateur intégré, il n'y a donc rien à y connecter.",
+      "state": {
+        "none": "Non connecté",
+        "working": "Connecté et fonctionnel",
+        "problem": "Problème"
+      },
+      "defaultAccount": "Connecté et utilisé pour les paiements live.",
+      "connectedLine": "Connecté.",
+      "notConnectedLine": "Non connecté en mode live.",
+      "noLiveApps": "Aucune app n'a encore d'environnement live.",
+      "orgLine": "Connecté sur {connected} app(s) sur {total}",
+      "openScreen": "Prestataires de paiement",
+      "doneAll": "{provider} connecté sur {count} app(s).",
+      "donePartial": "{provider} : {ok} app(s) connectée(s), {failed} en échec.",
+      "appsTitle": "Apps",
+      "appsIntro": "Cliquez sur un état pour connecter, remplacer ou retirer un prestataire pour cette app seule.",
+      "app": "App",
+      "noLive": "Pas d'environnement live",
+      "about": {
+        "iyzico": "Cartes turques et moyens locaux",
+        "paddle": "Cartes dans le monde entier, abonnements gérés par le prestataire",
+        "banktransfer": "Paiement par virement sur votre propre compte bancaire"
+      },
+      "scope": {
+        "title": "Où connecter",
+        "app": "Cette app seulement",
+        "org": "Toutes les apps de l'organisation",
+        "appNote": "Seule cette app utilise ces clés.",
+        "orgNote": "Les mêmes clés sont connectées sur les {count} apps qui ont un environnement live. Vous pourrez encore modifier une app ensuite."
+      },
+      "confirmDisconnectOrg": "Retirer le compte live chez {provider} de {count} app(s) ? Les clients ne pourront plus payer par ce biais.",
+      "sheet": {
+        "connectTitle": "Connecter {provider}",
+        "manageTitle": "Connexion {provider}",
+        "intro": {
+          "iyzico": "Saisissez vos clés marchand iyzico live. Elles sont vérifiées auprès d'iyzico avant d'être enregistrées.",
+          "paddle": "Saisissez vos clés Paddle live et le secret du webhook. Elles sont vérifiées auprès de Paddle avant d'être enregistrées.",
+          "banktransfer": "Saisissez les coordonnées bancaires imprimées sur les factures des clients qui paient par virement. Il n'y a rien à vérifier auprès d'une banque."
+        },
+        "envNote": "Cela connecte l'environnement live. Le sandbox continue de tourner sur le simulateur intégré.",
+        "testOk": "Le prestataire accepte ces clés.",
+        "testFailed": "Le prestataire ne les accepte pas pour le moment : {reason}",
+        "testing": "Test en cours...",
+        "test": "Tester la connexion",
+        "replaceNote": "Une connexion existe. Saisissez de nouvelles clés seulement pour la remplacer ; les clés actuelles ne sont jamais affichées.",
+        "openDashboard": "Ouvrir le tableau de bord {provider}",
+        "partial": "Connecté sur {ok} app(s) avant l'échec.",
+        "disconnectOrg": "Déconnecter de {count} app(s)"
+      },
+      "help": {
+        "iyzico": {
+          "api_key": "Dans le panneau marchand iyzico : Paramètres, Paramètres de l'entreprise, Clés API. Utilisez la paire live.",
+          "secret_key": "Affichée à côté de la clé API au même endroit. Elle n'y est montrée qu'une fois ; copiez-la maintenant.",
+          "buyer_identity_number": "Le numéro fiscal (TCKN ou VKN) de la personne ou de l'entreprise qui figure comme acheteur. Votre profil de facturation le remplit.",
+          "buyer_ip": "L'adresse IP publique fixe d'où votre entreprise envoie ses requêtes ; iyzico y lie les clés."
+        },
+        "paddle": {
+          "api_key": "Dans Paddle, sous Developer tools, Authentication, créez une clé API live.",
+          "webhook_secret": "Sous Developer tools, Notifications : créez une destination pour Payrudder et copiez sa clé secrète.",
+          "usage_product_id": "L'identifiant du produit que Paddle utilise pour les frais d'usage. Dans le Catalog, ouvrez le produit et copiez son identifiant, qui commence par pro_."
+        }
+      }
     }
   },
   "shell": {
@@ -3112,7 +3373,10 @@
       "affiliates": "Affiliés",
       "goLive": "Passer en production",
       "sandbox": "Outils sandbox",
-      "partner": "Portail partenaire"
+      "partner": "Portail partenaire",
+      "usage": "Utilisation",
+      "coupons": "Coupons",
+      "paymentProviders": "Prestataires de paiement"
     },
     "noApps": "Aucune application"
   },
@@ -3287,5 +3551,18 @@
       "lastMonth": "Mois dernier",
       "year": "Cette année"
     }
+  },
+  "related": {
+    "title": "Éléments liés",
+    "customer": "Client",
+    "paidBy": "Payé par",
+    "invoice": "Facture",
+    "invoices": "Factures",
+    "payments": "Paiements",
+    "subscriptions": "Abonnements",
+    "creditNotes": "Avoirs",
+    "none": "Aucun pour l'instant",
+    "notFound": "Absent de la liste",
+    "open": "Ouvrir"
   }
 }

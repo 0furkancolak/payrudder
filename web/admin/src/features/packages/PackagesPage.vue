@@ -43,8 +43,7 @@ function clear() {
   table.clear();
   range.value = { from: "", to: "" };
 }
-const index = ref<number | null>(null);
-const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
+const current = table.row;
 type Price = NonNullable<NonNullable<(typeof list.value)[number]["version"]>["prices"]>[number];
 /** How a usage price charges, in a few words. */
 function priceText(p: Price): string {
@@ -164,7 +163,7 @@ function submit() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(p, i) in table.items.value" :key="p.plan.id" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
+        <TableRow v-for="(p, i) in table.items.value" :key="p.plan.id" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
           <TableCell class="mono font-medium">{{ p.plan.code }}</TableCell>
           <TableCell>{{ p.plan.name }}</TableCell>
           <TableCell>v{{ p.version?.version ?? "—" }}</TableCell>
@@ -179,7 +178,7 @@ function submit() {
             </div>
           </TableCell>
           <TableCell class="text-end tabular-nums">{{ (p.version?.prices ?? []).length }}</TableCell>
-          <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => (index = i) }]" /></TableCell>
+          <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => table.open(i) }]" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
@@ -190,7 +189,7 @@ function submit() {
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="index" :total="table.items.value.length" :title="current?.plan.name || current?.plan.code || ''" :description="current ? `${current.plan.code} · v${current.version?.version ?? '—'}` : undefined">
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.plan.name || current?.plan.code || ''" :description="current ? `${current.plan.code} · v${current.version?.version ?? '—'}` : undefined">
     <div v-if="current" class="flex flex-col gap-5" data-testid="package-detail">
       <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
         <dt class="text-muted-foreground">{{ t("billing.packages.fixedFee") }}</dt>

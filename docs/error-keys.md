@@ -259,6 +259,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `gateway.route.not_found`
 - `identity.account.forbidden`
 - `identity.account.not_found`
+- `identity.account.quota`
 - `identity.api_key.already_rotating`
 - `identity.api_key.bad_environment`
 - `identity.api_key.bad_overlap`

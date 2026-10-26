@@ -20,9 +20,8 @@ const queues = computed(() => list.data.value?.queues ?? []);
 const messages = computed(() => list.data.value?.messages ?? []);
 const queuesTable = useTableState(queues, { searchFields: (q) => [q.queue] });
 const messagesTable = useTableState(messages, { searchFields: (m) => [m.message_id, m.reason] });
-const shown = ref<number | null>(null);
-watch(shown, (i) => {
-  queue.value = i === null ? "" : (queuesTable.items.value[i]?.queue ?? "");
+watch(queuesTable.detail, () => {
+  queue.value = queuesTable.row.value?.queue ?? "";
   messagesTable.clear();
 });
 const note = ref<{ queue: string; count: number } | null>(null);
@@ -52,7 +51,7 @@ async function run(name: string, count: number) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(q, i) in queuesTable.items.value" :key="q.queue" class="cursor-pointer" :data-testid="`dlq-${q.queue}`" @click="shown = i">
+        <TableRow v-for="(q, i) in queuesTable.items.value" :key="q.queue" class="cursor-pointer" :data-testid="`dlq-${q.queue}`" @click="queuesTable.open(i)">
           <TableCell class="mono text-sm font-medium">{{ q.queue }}.dlq</TableCell>
           <TableCell class="text-end" data-testid="dlq-count">
             <Badge :variant="Number(q.messages ?? 0) > 0 ? 'destructive' : 'secondary'">{{ Number(q.messages ?? 0) }}</Badge>
@@ -67,7 +66,7 @@ async function run(name: string, count: number) {
     <DataPagination v-if="queues.length > 0" v-model:page="queuesTable.page.value" v-model:size="queuesTable.size.value" :pages="queuesTable.pages.value" :total="queuesTable.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="shown" :total="queuesTable.items.value.length" :title="t('deadLetters.messagesOf', { queue })" wide>
+  <DetailSheet v-model:index="queuesTable.detail.value" :total="queuesTable.total.value" :title="t('deadLetters.messagesOf', { queue })" wide>
     <div class="-mx-3">
       <DataToolbar v-model:search="messagesTable.search.value" :active="messagesTable.active.value" @clear="messagesTable.clear()" />
       <Table>

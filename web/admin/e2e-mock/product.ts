@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { dashboardFixture } from "./dashboard";
 import type { MockGateway } from "./gateway";
+import { usageReads } from "./usage";
 
 export const SESSION = "qs_" + "A".repeat(43);
 export const APP = "a0000000-0000-4000-8000-000000000001";
@@ -121,6 +122,8 @@ export interface ProductState {
   invitations: ReturnType<typeof invitation>[];
   accountName: string;
   memberships: { account_id: string; account_name: string; role: string }[];
+  /** How many accounts the person may have before creating another is refused (default 20). */
+  maxAccounts?: number;
   /** The tokens the mocked mails carry. */
   verifyToken: string;
   resetToken: string;
@@ -174,6 +177,14 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
     if (c.path === "/app/v1/account" && c.method === "GET") {
       const id = c.query.get("account_id") ?? ACCOUNT;
       return { body: { id, name: id === ACCOUNT ? s.accountName : (s.memberships.find((m) => m.account_id === id)?.account_name ?? ""), role: s.role, create_time: "2026-10-01T09:00:00Z", members: s.members } };
+    }
+    if (c.path === "/app/v1/accounts" && c.method === "POST") {
+      const name = String(c.body?.name ?? "").trim();
+      if (!name) return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "common.invalid_argument", message: "name" } } };
+      if (s.memberships.length >= (s.maxAccounts ?? 20)) return { status: 429, body: { error: { code: "RESOURCE_EXHAUSTED", key: "identity.account.quota", message: "too many" } } };
+      const made = { account_id: `dddddddd-dddd-4ddd-8ddd-${String(s.memberships.length).padStart(12, "0")}`, account_name: name, role: "owner" };
+      s.memberships = [...s.memberships, made];
+      return { status: 201, body: made };
     }
     if (c.path === "/app/v1/account" && c.method === "PATCH") {
       s.accountName = String(c.body?.name);
@@ -398,6 +409,7 @@ export function billingGateway(gw: MockGateway): MockGateway {
     if (c.path === "/v1/reports/subscriptions") return { body: { rows: [{ currency: "USD", active: 4, trialing: 0, past_due: 1, mrr_minor: "490000" }] } };
     if (c.path === "/v1/reports/dunning") return { body: { rows: [] } };
     if (c.path === "/v1/customers") return { body: { customers: [] } };
-    return undefined;
+    if (c.path === "/v1/promotion-codes") return { body: { codes: [], total: 0 } };
+    return usageReads(c);
   });
 }

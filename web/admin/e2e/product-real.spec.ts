@@ -196,14 +196,14 @@ test.describe("product app, real stack", () => {
       const o = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
       expect(o.sw, `horizontal overflow on ${tag}`).toBeLessThanOrEqual(o.cw);
     };
-    const pages: string[] = [`/app`, `/app/apps/${appId}?env=sandbox`, `/app/settings`, `/app/t/${sandbox}/customers`, `/app/t/${sandbox}/subscriptions`, `/app/t/${sandbox}/packages`, `/app/t/${sandbox}/pricing`, `/app/t/${sandbox}/invoices`, `/app/t/${sandbox}/payments`, `/app/t/${sandbox}/payment-links`, `/app/t/${sandbox}/credits`, `/app/t/${sandbox}/accounting`, `/app/t/${sandbox}/reports`, `/app/t/${sandbox}/webhooks`, `/app/t/${sandbox}/mail`, `/app/apps/${appId}/keys?env=sandbox`, `/app/apps/${appId}/settings?env=sandbox`, `/app/members`];
+    const pages: string[] = [`/app`, `/app/apps/${appId}?env=sandbox`, `/app/settings`, `/app/t/${sandbox}/customers`, `/app/t/${sandbox}/subscriptions`, `/app/t/${sandbox}/usage`, `/app/t/${sandbox}/packages`, `/app/t/${sandbox}/pricing`, `/app/t/${sandbox}/coupons`, `/app/t/${sandbox}/invoices`, `/app/t/${sandbox}/payments`, `/app/t/${sandbox}/payment-links`, `/app/t/${sandbox}/credits`, `/app/t/${sandbox}/accounting`, `/app/t/${sandbox}/reports`, `/app/t/${sandbox}/webhooks`, `/app/t/${sandbox}/mail`, `/app/apps/${appId}/keys?env=sandbox`, `/app/apps/${appId}/settings?env=sandbox`, `/app/members`];
     // Every page the environment's menu links to is checked as well, so a page added to the navigation is covered without touching this list.
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`/app/t/${sandbox}/customers`);
     await page.getByTestId("sidebar").waitFor();
     const menu = await page.getByTestId("sidebar").getByRole("link").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""));
     for (const h of menu) if (h.startsWith("/app") && !pages.includes(h)) pages.push(h);
-    pages.push(`/app/t/${sandbox}/invoices/${invoiceId}`);
+    pages.push(`/app/t/${sandbox}/invoices?invoice=${invoiceId}`);
     for (const [w, h] of [[375, 812], [768, 1024], [1280, 900]] as [number, number][]) {
       await page.setViewportSize({ width: w, height: h });
       for (const p of pages) {

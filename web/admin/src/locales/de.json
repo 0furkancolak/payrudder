@@ -148,8 +148,6 @@
     "allKinds": "Alle Arten"
   },
   "invoice": {
-    "back": "← Mandant",
-    "fallbackTitle": "Rechnung",
     "summary": "{kind} · Zeitraum {period} · {customer} · {total} · {status} · Saga {saga}",
     "openPdf": "PDF öffnen",
     "noPdfLink": "kein Link",
@@ -1153,6 +1151,195 @@
         "discount": "Rabatt",
         "net": "Netto"
       }
+    },
+    "usage": {
+      "tabsLabel": "Bereiche der Nutzung",
+      "tabs": {
+        "overview": "Übersicht",
+        "meters": "Zähler",
+        "customers": "Kunden"
+      },
+      "compare": "Mit dem Zeitraum davor vergleichen",
+      "period": "Limits und Ranglisten: {period}",
+      "periodHint": "Limits und Ranglisten werden pro Abrechnungszeitraum (ein Monat) gezählt: der Monat, in dem der gewählte Bereich endet.",
+      "tooLong": "Ein Bereich umfasst höchstens ein Jahr. Es werden die letzten 30 Tage gezeigt.",
+      "before": "Davor: {value} {unit}",
+      "events": "{n} Ereignisse",
+      "aggregation": {
+        "sum": "Summe",
+        "count": "Anzahl der Ereignisse",
+        "max": "Höchster Wert"
+      },
+      "aggregationHint": {
+        "sum": "Addiert den Wert der Ereigniseigenschaft.",
+        "count": "Zählt die Ereignisse; eine Eigenschaft ist nicht nötig.",
+        "max": "Nimmt den höchsten Wert der Ereigniseigenschaft im Zeitraum."
+      },
+      "state": {
+        "over": "Über dem Limit",
+        "near": "Nahe am Limit",
+        "ok": "Im Limit",
+        "unlimited": "Ohne Limit"
+      },
+      "chart": {
+        "current": "Dieser Zeitraum",
+        "previous": "Zeitraum davor",
+        "total": "Gesamt",
+        "before": "davor",
+        "estimate": "Schätzung: aus Stundenwerten gezählt, doppelt zugestellte Ereignisse können doppelt zählen. Rechnungen nutzen die genaue Nutzung.",
+        "empty": "Keine Nutzung in diesem Zeitraum.",
+        "summary": "{total} {unit} von {from} bis {to}"
+      },
+      "empty": {
+        "title": "Noch keine Zähler",
+        "hint": "Ein Zähler legt fest, was in den gesendeten Ereignissen gezählt wird. Legen Sie einen Zähler an und senden Sie dann Ereignisse mit seinem Code."
+      },
+      "top": {
+        "title": "Top-Kunden",
+        "hint": "Wer {meter} im Zeitraum {period} am meisten genutzt hat.",
+        "empty": "In diesem Zeitraum hat niemand diesen Zähler genutzt."
+      },
+      "limits": {
+        "title": "Limits",
+        "hint": "Kunden nahe am oder über dem Limit, unter den {n} stärksten Nutzern in {period}.",
+        "over": "{n} darüber",
+        "near": "{n} nahe dran",
+        "clear": "Niemand ist nahe an einem Limit.",
+        "nobody": "In diesem Zeitraum hat kein Kunde einen Zähler genutzt."
+      },
+      "meters": {
+        "new": "Neuer Zähler",
+        "newHint": "Ein Zähler macht aus den gesendeten Ereignissen eine abrechenbare Menge.",
+        "formLabel": "Zähler",
+        "code": "Code",
+        "codeHint": "Kleinbuchstaben, Ziffern und _, beginnend mit einem Buchstaben.",
+        "unit": "Einheit",
+        "unitPlaceholder": "Aufrufe, GB, Tokens",
+        "aggregation": "Aggregation",
+        "allAggregations": "Jede Aggregation",
+        "property": "Wert-Eigenschaft",
+        "propertyHint": "Die Ereigniseigenschaft, die die Menge enthält.",
+        "scale": "Nachkommastellen",
+        "scaleHint": "0 bis 6. Für einen Code festgelegt, sobald der Zähler existiert.",
+        "scaleFixed": "Für diesen Code festgelegt.",
+        "filter": "Nur Ereignisse zählen, bei denen",
+        "filterHint": "Leer lassen, um jedes Ereignis zu zählen. Eine Eigenschaft kann mehrere Werte haben.",
+        "filterRow": "Filter {n}",
+        "filterProperty": "Eigenschaft {n}",
+        "filterValues": "Werte {n}",
+        "filterValuesPlaceholder": "eu, us",
+        "addFilter": "Filter hinzufügen",
+        "create": "Zähler anlegen",
+        "saveVersion": "Neue Version speichern",
+        "newVersion": "Neue Version",
+        "versionTitle": "Neue Version von {code}",
+        "versionHint": "Speichert die nächste Version dieses Zählers (jetzt Version {version}).",
+        "search": "Zähler suchen",
+        "inPeriod": "Im Zeitraum",
+        "trend": "Verlauf",
+        "series": "Nutzung im Zeitverlauf",
+        "version": "Version",
+        "created": "Erstellt",
+        "errors": {
+          "code": "Der Code besteht aus Kleinbuchstaben, Ziffern und _, beginnt mit einem Buchstaben (höchstens 63).",
+          "unit": "Geben Sie der Einheit einen Namen mit höchstens 32 Zeichen.",
+          "property": "Nennen Sie die Ereigniseigenschaft, die die Menge enthält.",
+          "scale": "Nachkommastellen sind eine ganze Zahl von 0 bis 6.",
+          "filter": "Jeder Filter braucht eine Eigenschaft und mindestens einen Wert (keine Eigenschaft doppelt, höchstens 10)."
+        },
+        "filterShort": "Filter"
+      },
+      "customers": {
+        "search": "Kunden suchen",
+        "meter": "Zähler",
+        "allMeters": "Alle Zähler",
+        "usage": "Nutzung",
+        "anyUsage": "Jede Nutzung",
+        "used": "Mit Nutzung",
+        "idle": "Ohne Nutzung",
+        "limits": "Limits",
+        "limitsOf": "Limits in {period}",
+        "billingPeriod": "Abrechnungszeitraum"
+      }
+    },
+    "coupons": {
+      "tabsLabel": "Bereiche der Gutscheine",
+      "tabs": {
+        "coupons": "Gutscheine",
+        "codes": "Aktionscodes",
+        "redemptions": "Einlösungen"
+      },
+      "hint": {
+        "coupons": "Ein Gutschein legt fest, was abgezogen wird, wo er gilt und wie lange. Kunden nutzen ihn über einen Aktionscode.",
+        "codes": "Die Codes, die Kunden eingeben. Viele Codes können auf einen Gutschein zeigen, jeder mit eigenem Limit, Ablauf und eigenen Regeln.",
+        "redemptions": "Jede Nutzung eines Gutscheins, mit Kunde, Rechnung und dem abgezogenen Betrag."
+      },
+      "new": "Neuer Gutschein",
+      "searchCoupons": "Gutscheine suchen",
+      "searchCustomer": "Nach Kundennummer suchen",
+      "anyTarget": "Überall gültig",
+      "everywhere": "Überall",
+      "never": "Nie",
+      "expires": "Läuft ab",
+      "created": "Erstellt",
+      "firstOf": "Die ersten {n} von {total} werden gezeigt.",
+      "errors": {
+        "code": "Der Code besteht aus 2 bis 40 Buchstaben, Ziffern, - oder _.",
+        "value": "Geben Sie an, was der Gutschein abzieht: ein Prozentsatz bis 100 (bei Bonus-Guthaben bis 1000) oder ein Betrag mit höchstens so vielen Nachkommastellen wie die Währung.",
+        "targets": "Wählen Sie, wo der Gutschein gilt.",
+        "periods": "Die Anzahl der Gebühren ist eine ganze Zahl von 1 bis 120.",
+        "max": "Das Einlösungslimit ist eine ganze Zahl ab 1.",
+        "expires": "Das Ablaufdatum muss ein Tag in der Zukunft sein.",
+        "coupon": "Wählen Sie einen Gutschein."
+      },
+      "sheet": {
+        "title": "Neuer Gutschein",
+        "hint": "Ein Gutschein legt fest, was abgezogen wird. Kunden nutzen ihn über einen Aktionscode.",
+        "codeHint": "2 bis 40 Buchstaben, Ziffern, - oder _. Der Code des Gutscheins ist zugleich sein erster Aktionscode.",
+        "namePlaceholder": "Willkommensangebot (optional)",
+        "value": {
+          "percent": "Rabatt in Prozent (%)",
+          "amount": "Rabattbetrag",
+          "bonus": "Zusätzliches Guthaben (%)"
+        },
+        "durationHint": "Auf wie viele Gebühren eines Abonnements der Rabatt gilt.",
+        "noLimit": "Kein Limit",
+        "expires": "Läuft ab am (optional)",
+        "defaultCode": "Auch einen Aktionscode mit diesem Text anlegen",
+        "defaultCodeHint": "Kunden können den Code des Gutscheins sofort eingeben. Ausschalten, um Codes selbst anzulegen."
+      },
+      "preview": {
+        "title": "Was er bewirkt",
+        "noValue": "Geben Sie einen Wert ein, um die Wirkung zu sehen.",
+        "percent": "{pct} Rabatt: aus einer Gebühr von {before} werden {after}.",
+        "amount": "{off} Rabatt: aus einer Gebühr von {before} werden {after}.",
+        "bonus": "{pct} mehr Guthaben: Wer {credits} Guthaben kauft, erhält {total}.",
+        "where": "Gilt für: {list}.",
+        "duration": "Bei einem Abonnement: {duration}.",
+        "max": "Insgesamt höchstens {n} Einlösungen.",
+        "noMax": "Keine Begrenzung der Einlösungen.",
+        "expires": "Gilt nur bis {date}.",
+        "noExpiry": "Läuft nicht ab.",
+        "code": "Kunden können {code} eingeben."
+      },
+      "codeSheet": {
+        "makes": "Legt {n} Aktionscodes für {coupon} an ({value}).",
+        "usesEach": "Jeder Code kann {n}-mal genutzt werden.",
+        "usesUnlimited": "Jeder Code kann unbegrenzt genutzt werden.",
+        "minimum": "Ab {amount}",
+        "plans": "Nur für diese Pakete",
+        "plansHint": "Nichts anhaken, um jedes Paket zuzulassen.",
+        "noPlans": "Noch keine Pakete: Der Code gilt für jedes Paket.",
+        "packs": "Nur für diese Guthabenpakete",
+        "namesHint": "Codes durch Zeilenumbrüche, Kommas oder Leerzeichen trennen. 2 bis 40 Buchstaben, Ziffern, - oder _.",
+        "done": "Fertig"
+      },
+      "redemptions": {
+        "invoice": "Rechnung",
+        "bonusCredits": "+{n} Guthaben",
+        "noCode": "Kein Code (direkt angewendet)"
+      },
+      "discount": "Rabatt"
     }
   },
   "affiliates": {
@@ -2150,7 +2337,8 @@
     "identity": {
       "account": {
         "forbidden": "Ihre Rolle in diesem Konto erlaubt das nicht.",
-        "not_found": "Dieses Konto existiert nicht oder gehört Ihnen nicht."
+        "not_found": "Dieses Konto existiert nicht oder gehört Ihnen nicht.",
+        "quota": "Eine Person kann höchstens 20 Organisationen besitzen."
       },
       "api_key": {
         "bad_environment": "Diese App hat keine solche Umgebung.",
@@ -2461,7 +2649,12 @@
   },
   "product": {
     "menu": {
-      "open": "Kontomenü"
+      "open": "Kontomenü",
+      "newOrg": "Neue Organisation",
+      "newOrgTitle": "Organisation erstellen",
+      "newOrgBody": "Sie sind ihr Eigentümer. Sie startet leer: Apps und Personen fügen Sie danach hinzu.",
+      "orgName": "Name der Organisation",
+      "orgCreate": "Organisation erstellen"
     },
     "nav": {
       "home": "Start",
@@ -2823,7 +3016,6 @@
         "loadMore": "Mehr laden"
       },
       "invoice": {
-        "back": "Alle Rechnungen",
         "issued": "Ausgestellt",
         "openPdf": "PDF öffnen",
         "lines": "Positionen",
@@ -3055,6 +3247,75 @@
       "simulate": "Simulieren",
       "simulated": "Zahlung erneut als {scenario} ausgeführt.",
       "simulateNotRetried": "Das Szenario ist gesetzt, die Zahlung konnte aber jetzt nicht erneut laufen ({why})."
+    },
+    "providers": {
+      "introApp": "Verbinden und verwalten Sie die Zahlungsanbieter von {app}. Kunden zahlen über das Live-Konto; die Sandbox braucht keine Verbindung.",
+      "introOrg": "Verbinden Sie einen Zahlungsanbieter einmal für alle Apps oder richten Sie eine App anders ein als die übrigen.",
+      "connect": "Verbinden",
+      "manage": "Verwalten",
+      "simulator": "Eingebauter Simulator",
+      "sandboxNote": "Die Sandbox erreicht nie einen echten Anbieter: Sie läuft gegen einen eingebauten Simulator, es gibt dort also nichts zu verbinden.",
+      "state": {
+        "none": "Nicht verbunden",
+        "working": "Verbunden und funktionsfähig",
+        "problem": "Problem"
+      },
+      "defaultAccount": "Verbunden und für Live-Zahlungen genutzt.",
+      "connectedLine": "Verbunden.",
+      "notConnectedLine": "Im Live-Modus nicht verbunden.",
+      "noLiveApps": "Noch keine App hat eine Live-Umgebung.",
+      "orgLine": "Bei {connected} von {total} Apps verbunden",
+      "openScreen": "Zahlungsanbieter",
+      "doneAll": "{provider} bei {count} App(s) verbunden.",
+      "donePartial": "{provider}: {ok} App(s) verbunden, {failed} fehlgeschlagen.",
+      "appsTitle": "Apps",
+      "appsIntro": "Klicken Sie auf einen Status, um einen Anbieter nur für diese App zu verbinden, zu ersetzen oder zu entfernen.",
+      "app": "App",
+      "noLive": "Keine Live-Umgebung",
+      "about": {
+        "iyzico": "Türkische Karten und lokale Methoden",
+        "paddle": "Karten weltweit, Abonnements führt der Anbieter",
+        "banktransfer": "Zahlung per Überweisung auf Ihr eigenes Bankkonto"
+      },
+      "scope": {
+        "title": "Wo verbinden",
+        "app": "Nur diese App",
+        "org": "Alle Apps der Organisation",
+        "appNote": "Nur diese App nutzt diese Schlüssel.",
+        "orgNote": "Dieselben Schlüssel werden bei allen {count} Apps mit Live-Umgebung verbunden. Eine App können Sie später noch einzeln ändern."
+      },
+      "confirmDisconnectOrg": "Das Live-Konto bei {provider} von {count} App(s) entfernen? Kunden können dann nicht mehr darüber zahlen.",
+      "sheet": {
+        "connectTitle": "{provider} verbinden",
+        "manageTitle": "Verbindung zu {provider}",
+        "intro": {
+          "iyzico": "Geben Sie Ihre Live-Händlerschlüssel von iyzico ein. Sie werden vor dem Speichern bei iyzico geprüft.",
+          "paddle": "Geben Sie Ihre Live-Schlüssel und das Webhook-Geheimnis von Paddle ein. Sie werden vor dem Speichern bei Paddle geprüft.",
+          "banktransfer": "Geben Sie die Bankdaten ein, die auf Rechnungen für Kunden stehen, die per Überweisung zahlen. Bei einer Bank gibt es nichts zu prüfen."
+        },
+        "envNote": "Das verbindet die Live-Umgebung. Die Sandbox läuft weiter mit dem eingebauten Simulator.",
+        "testOk": "Der Anbieter akzeptiert diese Schlüssel.",
+        "testFailed": "Der Anbieter akzeptiert sie derzeit nicht: {reason}",
+        "testing": "Wird getestet...",
+        "test": "Verbindung testen",
+        "replaceNote": "Es besteht eine Verbindung. Geben Sie neue Schlüssel nur ein, wenn Sie sie ersetzen wollen; die aktuellen werden nie angezeigt.",
+        "openDashboard": "Dashboard von {provider} öffnen",
+        "partial": "Vor dem Fehler bei {ok} App(s) verbunden.",
+        "disconnectOrg": "Von {count} App(s) trennen"
+      },
+      "help": {
+        "iyzico": {
+          "api_key": "Im iyzico-Händlerpanel unter Einstellungen, Firmeneinstellungen, API-Schlüssel. Verwenden Sie das Live-Paar.",
+          "secret_key": "Steht am selben Ort neben dem API-Schlüssel. Er wird dort nur einmal angezeigt; kopieren Sie ihn jetzt.",
+          "buyer_identity_number": "Die Steuernummer (TCKN oder VKN) der Person oder Firma, die bei Zahlungen als Käufer erscheint. Ihr Rechnungsprofil füllt sie aus.",
+          "buyer_ip": "Die feste öffentliche IP-Adresse, von der Ihr Unternehmen Anfragen sendet; iyzico bindet die Schlüssel daran."
+        },
+        "paddle": {
+          "api_key": "In Paddle unter Developer tools, Authentication einen Live-API-Schlüssel erstellen.",
+          "webhook_secret": "Unter Developer tools, Notifications ein Ziel für Payrudder anlegen und dessen geheimen Schlüssel kopieren.",
+          "usage_product_id": "Die ID des Produkts, das Paddle für Nutzungsgebühren verwendet. Im Catalog das Produkt öffnen und seine ID kopieren, sie beginnt mit pro_."
+        }
+      }
     }
   },
   "shell": {
@@ -3112,7 +3373,10 @@
       "affiliates": "Partner",
       "goLive": "Live schalten",
       "sandbox": "Sandbox-Werkzeuge",
-      "partner": "Partnerportal"
+      "partner": "Partnerportal",
+      "usage": "Nutzung",
+      "coupons": "Gutscheine",
+      "paymentProviders": "Zahlungsanbieter"
     },
     "noApps": "Noch keine Apps"
   },
@@ -3287,5 +3551,18 @@
       "lastMonth": "Letzter Monat",
       "year": "Dieses Jahr"
     }
+  },
+  "related": {
+    "title": "Verknüpfte Daten",
+    "customer": "Kunde",
+    "paidBy": "Bezahlt von",
+    "invoice": "Rechnung",
+    "invoices": "Rechnungen",
+    "payments": "Zahlungen",
+    "subscriptions": "Abonnements",
+    "creditNotes": "Gutschriften",
+    "none": "Noch keine",
+    "notFound": "Nicht in der Liste",
+    "open": "Öffnen"
   }
 }

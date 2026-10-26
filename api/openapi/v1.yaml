@@ -2441,6 +2441,27 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionInfo" } } } }
         "401": { $ref: "#/components/responses/Error" }
+  /app/v1/accounts:
+    post:
+      operationId: appCreateAccount
+      tags: [Product]
+      summary: Start another organisation, owned by the person (at most 20 owned)
+      description: The new account is empty (no apps). It is in the session's memberships from the next request on.
+      security: [{ sessionToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 200 }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Membership" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /app/v1/account:
     get:
       operationId: appGetAccount

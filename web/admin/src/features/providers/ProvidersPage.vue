@@ -124,8 +124,7 @@ const subTable = useTableState<ProviderSub>(() => providerSubs.data.value?.subsc
 });
 const subStatus = computed({ get: () => subTable.filters.value.status ?? "", set: (v) => (subTable.filters.value.status = String(v)) });
 const subStatuses = computed(() => [all.value, ...new Set((providerSubs.data.value?.subscriptions ?? []).map((s) => s.status ?? "").filter(Boolean))].map((s) => (typeof s === "string" ? { value: s, label: s } : s)));
-const subDetail = ref<number | null>(null);
-const subCurrent = computed(() => (subDetail.value === null ? undefined : subTable.items.value[subDetail.value]));
+const subCurrent = subTable.row;
 const subRows = computed(() => {
   const s = subCurrent.value;
   if (!s) return [];
@@ -138,7 +137,7 @@ const subRows = computed(() => {
     { key: "updated", label: t("billing.providers.updated"), value: when(s.updated_at) },
   ];
 });
-const subActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => (subDetail.value = i) }];
+const subActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => subTable.open(i) }];
 const when = (v?: string) => fmt.date(v, "day", "—");
 </script>
 
@@ -229,7 +228,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(s, i) in subTable.items.value" :key="`${s.provider}-${s.provider_ref}`" class="cursor-pointer" @click="subDetail = i">
+        <TableRow v-for="(s, i) in subTable.items.value" :key="`${s.provider}-${s.provider_ref}`" class="cursor-pointer" @click="subTable.open(i)">
           <TableCell class="mono text-xs font-medium">{{ s.provider_ref }}</TableCell>
           <TableCell>{{ s.provider }} <span class="text-muted-foreground text-xs">{{ s.environment }}</span></TableCell>
           <TableCell><StatusPill :tone="toneOf(s.status)">{{ s.status }}</StatusPill></TableCell>
@@ -246,7 +245,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     <DataPagination v-model:page="subTable.page.value" v-model:size="subTable.size.value" :pages="subTable.pages.value" :total="subTable.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="subDetail" :total="subTable.items.value.length" :title="subCurrent?.provider_ref ?? ''" :description="subCurrent?.provider ?? ''">
+  <DetailSheet v-model:index="subTable.detail.value" :total="subTable.total.value" :title="subCurrent?.provider_ref ?? ''" :description="subCurrent?.provider ?? ''">
     <DetailList :rows="subRows">
       <template #status><StatusPill :tone="toneOf(subCurrent?.status)">{{ subCurrent?.status }}</StatusPill></template>
     </DetailList>

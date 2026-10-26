@@ -5,7 +5,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
-import { tenantBase } from "@/shared/lib/session";
+import { recordLink } from "@/features/related/link";
 import { useTableState } from "@/shared/lib/useTableState";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Card } from "@/shared/ui/card";
@@ -92,8 +92,7 @@ const dunningStates = computed(() => [all.value, ...[...new Set((dunning.data.va
 const dunningCurrencies = computed(() => distinct((dunning.data.value?.invoices ?? []).map((d) => d.currency)));
 const when = (v?: string) => fmt.date(v, "short", "—");
 const dunningTone = (state?: string) => (state === "UNCOLLECTIBLE" ? "danger" : "warning");
-const detail = ref<number | null>(null);
-const current = computed(() => (detail.value === null ? undefined : dunningTable.items.value[detail.value]));
+const current = dunningTable.row;
 const detailRows = computed(() => {
   const d = current.value;
   if (!d) return [];
@@ -108,7 +107,7 @@ const detailRows = computed(() => {
     { key: "next", label: t("billing.reports.nextAttempt"), value: when(d.next_attempt_time) },
   ];
 });
-const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => (detail.value = i) }];
+const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => dunningTable.open(i) }];
 </script>
 
 <template>
@@ -248,8 +247,8 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(d, i) in dunningTable.items.value" :key="d.invoice_id" class="cursor-pointer" @click="detail = i">
-          <TableCell><Link :to="`${tenantBase()}/$id/invoices/$invoiceId`" :params="{ id: tenantId, invoiceId: d.invoice_id ?? '' }" class="font-medium hover:underline" @click.stop>{{ d.number || d.invoice_id?.slice(0, 8) }}</Link></TableCell>
+        <TableRow v-for="(d, i) in dunningTable.items.value" :key="d.invoice_id" class="cursor-pointer" @click="dunningTable.open(i)">
+          <TableCell><Link v-bind="recordLink('invoice', d.invoice_id ?? '', tenantId)" class="font-medium hover:underline" @click.stop>{{ d.number || d.invoice_id?.slice(0, 8) }}</Link></TableCell>
           <TableCell>{{ d.customer_external_id }}</TableCell>
           <TableCell>{{ d.period }}</TableCell>
           <TableCell>{{ d.provider || "—" }}</TableCell>
@@ -267,9 +266,9 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.dunningHint") }}</p>
   </Card>
 
-  <DetailSheet v-model:index="detail" :total="dunningTable.items.value.length" :title="current?.number || current?.invoice_id?.slice(0, 8) || ''" :description="t('billing.reports.dunning')">
+  <DetailSheet v-model:index="dunningTable.detail.value" :total="dunningTable.total.value" :title="current?.number || current?.invoice_id?.slice(0, 8) || ''" :description="t('billing.reports.dunning')">
     <DetailList :rows="detailRows">
-      <template #invoice><Link :to="`${tenantBase()}/$id/invoices/$invoiceId`" :params="{ id: tenantId, invoiceId: current?.invoice_id ?? '' }" class="font-medium hover:underline">{{ current?.number || current?.invoice_id?.slice(0, 8) }}</Link></template>
+      <template #invoice><Link v-bind="recordLink('invoice', current?.invoice_id ?? '', tenantId)" class="font-medium hover:underline">{{ current?.number || current?.invoice_id?.slice(0, 8) }}</Link></template>
       <template #state><StatusPill :tone="dunningTone(current?.state)">{{ label(t, te, "dunningState", current?.state) }}</StatusPill></template>
     </DetailList>
   </DetailSheet>

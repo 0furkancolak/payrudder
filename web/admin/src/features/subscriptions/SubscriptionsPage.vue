@@ -2,6 +2,7 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { usePackages } from "@/features/packages";
+import { SubscriptionRelated } from "@/features/related";
 import { useTenant } from "@/features/tenants";
 import { envOf } from "@/shared/lib/environment";
 import { firstError } from "@/shared/lib/errors";
@@ -32,6 +33,7 @@ const failure = computed(() => firstError(...Object.values(act)));
   <SubscriptionsTable :tenant-id="tenantId" @create="creating = true">
     <template #detail="{ subscription }">
       <ManageSubscriptionCard :tenant-id="tenantId" :subscription="subscription" :packages="packages.data.value ?? []" :environment="environment" :operator="operator" :act="act" />
+      <SubscriptionRelated v-if="subscription.customer_external_id" :key="subscription.id" :tenant-id="tenantId" :customer="subscription.customer_external_id" class="mt-6" />
     </template>
   </SubscriptionsTable>
 </template>

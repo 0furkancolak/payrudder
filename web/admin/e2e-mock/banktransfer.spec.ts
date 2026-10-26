@@ -139,7 +139,7 @@ test.describe("invoice money", () => {
       }),
     });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     const card = page.getByTestId("transfer-card");
     await expect(card.getByTestId("transfer-state")).toHaveText("waiting for the money");
     await expect(card.getByTestId("transfer-reference")).toHaveText("INV-2026-000007");
@@ -156,7 +156,7 @@ test.describe("invoice money", () => {
   test("without transfer information (503) the invoice page still works", async ({ page }) => {
     const gw = invoicePage({ invoice: invoice({ saga_state: "PAYMENT_DECLINED" }), transfer: null });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await expect(page.getByRole("heading", { name: "INV-2026-000007" })).toBeVisible();
     await expect(page.getByTestId("transfer-card")).toHaveCount(0);
     // The invoice is payable, so it can be recorded by hand.
@@ -166,7 +166,7 @@ test.describe("invoice money", () => {
   test("an expired transfer is shown as such", async ({ page }) => {
     const gw = invoicePage({ invoice: invoice({ saga_state: "PAYMENT_DECLINED" }), transfer: transfer({ state: "expired", closed_reason: "transfer_expired" }) });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await expect(page.getByTestId("transfer-state")).toHaveText("expired");
     await expect(page.getByTestId("transfer-card")).toContainText("transfer_expired");
     await expect(page.getByRole("button", { name: "Mark expired" })).toHaveCount(0);
@@ -186,7 +186,7 @@ test.describe("invoice money", () => {
       return undefined;
     });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByRole("button", { name: "Record payment" }).click();
     const dialog = page.getByRole("dialog", { name: "Confirm bank transfer" });
     await expect(dialog.getByLabel("Amount (USD)")).toHaveValue("100.00");
@@ -221,7 +221,7 @@ test.describe("invoice money", () => {
         : undefined,
     );
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByRole("button", { name: "Record payment" }).click();
     const dialog = page.getByRole("dialog", { name: "Confirm bank transfer" });
     await dialog.getByLabel("Amount (USD)").fill("150");
@@ -242,7 +242,7 @@ test.describe("invoice money", () => {
       return undefined;
     });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByRole("button", { name: "Record payment" }).click();
     const dialog = page.getByRole("dialog", { name: "Record payment" });
     await expect(dialog.getByLabel("Amount (USD)")).toHaveValue("100.00");
@@ -273,7 +273,7 @@ test.describe("invoice money", () => {
         : undefined,
     );
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByRole("button", { name: "Record payment" }).click();
     const dialog = page.getByRole("dialog", { name: "Record payment" }); // not "Confirm bank transfer": the saga no longer waits for it
     await dialog.getByLabel("Method").selectOption("bank_transfer");
@@ -289,7 +289,7 @@ test.describe("invoice money", () => {
         : undefined,
     );
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByRole("button", { name: "Record payment" }).click();
     const dialog = page.getByRole("dialog", { name: "Record payment" });
     await dialog.getByLabel("Amount (USD)").fill("500");
@@ -300,7 +300,7 @@ test.describe("invoice money", () => {
   test("a future received date is refused before sending", async ({ page }) => {
     const gw = invoicePage({ invoice: invoice({ saga_state: "PAYMENT_DECLINED" }), transfer: transfer({ state: "none" }) });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByRole("button", { name: "Record payment" }).click();
     const dialog = page.getByRole("dialog", { name: "Record payment" });
     await dialog.getByLabel("Received").fill("2999-01-01T10:00");
@@ -314,7 +314,7 @@ test.describe("invoice money", () => {
       c.method === "POST" && c.path === `${base}/transfer/reject` ? { body: transfer({ state: "rejected", closed_reason: "rejected" }) } : undefined,
     );
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByTestId("transfer-card").getByRole("button", { name: "Reject" }).click();
     const dialog = page.getByRole("dialog", { name: "Reject the bank transfer" });
     await expect(dialog).toContainText("dunning schedule applies at once");
@@ -331,7 +331,7 @@ test.describe("invoice money", () => {
       c.method === "POST" && c.path === `${base}/transfer/reject` ? { body: transfer({ state: "expired" }) } : undefined,
     );
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByTestId("transfer-card").getByRole("button", { name: "Mark expired" }).click();
     const dialog = page.getByRole("dialog", { name: "Mark the bank transfer expired" });
     await dialog.getByRole("button", { name: "Mark expired" }).click();
@@ -346,7 +346,7 @@ test.describe("invoice money", () => {
         : undefined,
     );
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await page.getByTestId("transfer-card").getByRole("button", { name: "Reject" }).click();
     const dialog = page.getByRole("dialog", { name: "Reject the bank transfer" });
     await dialog.getByRole("button", { name: "Reject" }).click();
@@ -356,7 +356,7 @@ test.describe("invoice money", () => {
   test("a paid invoice offers no way to record a payment", async ({ page }) => {
     const gw = invoicePage({ invoice: invoice({ status: "paid", saga_state: "COMPLETED" }), transfer: null });
     await gw.install(page);
-    await openTenantPage(page, "/invoices/inv1");
+    await openTenantPage(page, "/invoices?invoice=inv1");
     await expect(page.getByRole("heading", { name: "INV-2026-000007" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Record payment" })).toHaveCount(0);
     expect(gw.called("GET", `${base}/transfer`)).toHaveLength(0);

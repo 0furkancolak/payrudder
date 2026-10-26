@@ -18,6 +18,7 @@ import { Card } from "@/shared/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
+import { InvoiceRelated } from "@/features/related";
 import { Input } from "@/shared/ui/input";
 import { useInvoice, useInvoiceLinks, useInvoiceSaga, useOpenPdf } from "./api";
 import ManualPaymentsCard from "./ManualPaymentsCard.vue";
@@ -27,7 +28,7 @@ import RecordPaymentDialog from "./RecordPaymentDialog.vue";
 import RejectTransferDialog from "./RejectTransferDialog.vue";
 import TransferCard from "./TransferCard.vue";
 
-/** Everything about one invoice: what to do with it, its figures, payments, lines, the shared link, the e-document, credit notes and the saga. It is the body of the invoice page and of the sheet the invoices list opens. */
+/** Everything about one invoice: what to do with it, its figures, payments, lines, the shared link, the e-document, credit notes, the records related to it and the saga. It is the body of the sheet the invoices list opens. */
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
 const errorText = useErrorText();
@@ -146,6 +147,11 @@ const day = (v?: string) => fmt.date(v, "day");
 
   <CreditNotesCard v-if="inv && inv.status === 'paid'" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" issuable />
   <CreditNotesCard v-else-if="inv" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" />
+
+  <Card v-if="inv" class="mb-6" role="region" :aria-label="t('related.title')">
+    <h2 class="text-lg font-semibold">{{ t("related.title") }}</h2>
+    <InvoiceRelated :tenant-id="tenantId" :invoice-id="invoiceId" :customer="inv.customer_external_id" :credit-notes="false" />
+  </Card>
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.saga") }}</h2>

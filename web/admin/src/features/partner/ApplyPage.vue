@@ -71,7 +71,7 @@ function submit() {
           <h2 class="m-0 text-lg font-semibold">{{ apply.data.value.status === "active" ? t("partner.apply.activeTitle") : t("partner.apply.pendingTitle") }}</h2>
           <p class="text-muted-foreground m-0 text-sm">{{ apply.data.value.status === "active" ? t("partner.apply.activeBody") : t("partner.apply.pendingBody") }}</p>
           <div>
-            <Link :to="`/app/partner/${apply.data.value.id}`" class="text-brand-strong text-sm font-medium underline-offset-4 hover:underline">{{ t("partner.open") }}</Link>
+            <Link to="/app/partner" :search="{ open: apply.data.value.id } as never" class="text-brand-strong text-sm font-medium underline-offset-4 hover:underline">{{ t("partner.open") }}</Link>
           </div>
         </Card>
         <Card v-else-if="lookup.data.value.applied" data-testid="apply-already">

@@ -20,6 +20,7 @@ import CommissionsTable from "./CommissionsTable.vue";
 import { payoutTone, type Payout } from "./logic";
 import MarkPaidDialog from "./MarkPaidDialog.vue";
 import { DataPagination } from "@/shared/ui/data-table";
+import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { usePager } from "./paging";
 
 const props = defineProps<{ tenantId: string; focus?: string }>();
@@ -47,9 +48,11 @@ function pay(p: Payout) {
 }
 
 // The payout whose commissions are shown in the sheet (the payout another tab sent the reader to, or the one they opened).
-const index = ref<number | null>(null);
 const items = computed(() => list.data.value?.items ?? []);
-const current = computed(() => (index.value === null ? undefined : items.value[index.value]));
+/** The sheet steps through the loaded page and, at its ends, loads the page beyond. */
+const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") });
+const index = detail.index;
+const current = detail.row;
 let focused = false;
 watch(
   items,
@@ -154,7 +157,7 @@ function createAll() {
     <DataPagination v-if="list.data.value" v-model:size="pager.size.value" :page="pager.page.value" :has-prev="pager.hasPrev.value" :has-next="!!list.data.value.next" :total="list.data.value.total" @prev="pager.prev()" @next="pager.next(list.data.value.next)" />
   </Card>
 
-  <DetailSheet v-model:index="index" :total="items.length" :title="t('affiliates.payouts.commissionsOf', { code: current?.affiliate_code ?? '' })" :description="current ? `${fmt.amount(current.total_minor, current.currency)} · ${t(`affiliates.status.payout.${current.status}`)}` : undefined" wide>
+  <DetailSheet v-model:index="index" :total="items.length" :offset="pager.offset.value" :of="list.data.value?.total" :edge="detail.edge.value" :title="t('affiliates.payouts.commissionsOf', { code: current?.affiliate_code ?? '' })" :description="current ? `${fmt.amount(current.total_minor, current.currency)} · ${t(`affiliates.status.payout.${current.status}`)}` : undefined" wide @edge="detail.onEdge">
     <div v-if="current" class="flex flex-col gap-3">
       <p v-if="current.fake" role="status" class="m-0 bg-warning-soft text-warning rounded-2xl px-4 py-3 text-sm font-medium">{{ t("affiliates.payouts.fakeNote") }}</p>
       <CommissionsTable :key="current.id" :tenant-id="tenantId" :payout-id="current.id" />

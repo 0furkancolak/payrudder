@@ -31,6 +31,7 @@ const (
 	IdentityService_VerifyLoginCode_FullMethodName        = "/payrudder.plans.v1.IdentityService/VerifyLoginCode"
 	IdentityService_SignInWithIdentity_FullMethodName     = "/payrudder.plans.v1.IdentityService/SignInWithIdentity"
 	IdentityService_GetMyAccount_FullMethodName           = "/payrudder.plans.v1.IdentityService/GetMyAccount"
+	IdentityService_CreateMyAccount_FullMethodName        = "/payrudder.plans.v1.IdentityService/CreateMyAccount"
 	IdentityService_RenameMyAccount_FullMethodName        = "/payrudder.plans.v1.IdentityService/RenameMyAccount"
 	IdentityService_InviteMember_FullMethodName           = "/payrudder.plans.v1.IdentityService/InviteMember"
 	IdentityService_ListInvitations_FullMethodName        = "/payrudder.plans.v1.IdentityService/ListInvitations"
@@ -93,6 +94,8 @@ type IdentityServiceClient interface {
 	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
 	SignInWithIdentity(ctx context.Context, in *SignInWithIdentityRequest, opts ...grpc.CallOption) (*SignInWithIdentityResponse, error)
 	GetMyAccount(ctx context.Context, in *GetMyAccountRequest, opts ...grpc.CallOption) (*GetMyAccountResponse, error)
+	// CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
+	CreateMyAccount(ctx context.Context, in *CreateMyAccountRequest, opts ...grpc.CallOption) (*CreateMyAccountResponse, error)
 	// RenameMyAccount renames an account; only an owner may.
 	RenameMyAccount(ctx context.Context, in *RenameMyAccountRequest, opts ...grpc.CallOption) (*RenameMyAccountResponse, error)
 	// InviteMember mails an invitation to an address. An owner or administrator may invite, an owner may invite owners, and the inviter's own address must be
@@ -268,6 +271,16 @@ func (c *identityServiceClient) GetMyAccount(ctx context.Context, in *GetMyAccou
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetMyAccountResponse)
 	err := c.cc.Invoke(ctx, IdentityService_GetMyAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) CreateMyAccount(ctx context.Context, in *CreateMyAccountRequest, opts ...grpc.CallOption) (*CreateMyAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateMyAccountResponse)
+	err := c.cc.Invoke(ctx, IdentityService_CreateMyAccount_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -559,6 +572,8 @@ type IdentityServiceServer interface {
 	// trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
 	SignInWithIdentity(context.Context, *SignInWithIdentityRequest) (*SignInWithIdentityResponse, error)
 	GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error)
+	// CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
+	CreateMyAccount(context.Context, *CreateMyAccountRequest) (*CreateMyAccountResponse, error)
 	// RenameMyAccount renames an account; only an owner may.
 	RenameMyAccount(context.Context, *RenameMyAccountRequest) (*RenameMyAccountResponse, error)
 	// InviteMember mails an invitation to an address. An owner or administrator may invite, an owner may invite owners, and the inviter's own address must be
@@ -655,6 +670,9 @@ func (UnimplementedIdentityServiceServer) SignInWithIdentity(context.Context, *S
 }
 func (UnimplementedIdentityServiceServer) GetMyAccount(context.Context, *GetMyAccountRequest) (*GetMyAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyAccount not implemented")
+}
+func (UnimplementedIdentityServiceServer) CreateMyAccount(context.Context, *CreateMyAccountRequest) (*CreateMyAccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateMyAccount not implemented")
 }
 func (UnimplementedIdentityServiceServer) RenameMyAccount(context.Context, *RenameMyAccountRequest) (*RenameMyAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RenameMyAccount not implemented")
@@ -964,6 +982,24 @@ func _IdentityService_GetMyAccount_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(IdentityServiceServer).GetMyAccount(ctx, req.(*GetMyAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_CreateMyAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateMyAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).CreateMyAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_CreateMyAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).CreateMyAccount(ctx, req.(*CreateMyAccountRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1472,6 +1508,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMyAccount",
 			Handler:    _IdentityService_GetMyAccount_Handler,
+		},
+		{
+			MethodName: "CreateMyAccount",
+			Handler:    _IdentityService_CreateMyAccount_Handler,
 		},
 		{
 			MethodName: "RenameMyAccount",

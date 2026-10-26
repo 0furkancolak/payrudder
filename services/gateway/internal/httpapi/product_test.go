@@ -104,6 +104,14 @@ var tokenUsers = map[string]fakeUser{tokAda: {adaUser, "ada@example.com", true},
 	tokOperator: {opUser, "boss@example.com", true}, tokOperatorUnverified: {opUser2, "boss@example.com", false}, tokSpoof: {spoofUser, "ada@example.com.evil.test", true}}
 
 func (f *fakeIdentity) memberships(user string) []*plansv1.Membership {
+	base := f.baseMemberships(user)
+	if extra := f.mem.created[user]; len(extra) > 0 {
+		return append(append([]*plansv1.Membership{}, base...), extra...)
+	}
+	return base
+}
+
+func (f *fakeIdentity) baseMemberships(user string) []*plansv1.Membership {
 	switch user {
 	case adaUser:
 		return []*plansv1.Membership{{AccountId: adaAcct, AccountName: "Ada Labs", Role: "owner"}}

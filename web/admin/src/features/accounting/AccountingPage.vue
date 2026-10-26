@@ -73,11 +73,10 @@ function clearExpenses() {
 const appOptions = computed(() => [{ value: "", label: t("billing.accounting.app.all") }, ...appList.value.map((a) => ({ value: a.id, label: a.name }))]);
 const categoryOptions = computed(() => [{ value: "", label: t("billing.accounting.expenses.allCategories") }, ...CATEGORIES.map((c) => ({ value: c, label: t(`billing.accounting.category.${c}`) }))]);
 const recurringOptions = computed(() => [{ value: "", label: t("billing.accounting.expenses.allRecurring") }, ...["none", "monthly", "yearly"].map((r) => ({ value: r, label: t(`billing.accounting.recurring.${r}`) }))]);
-const index = ref<number | null>(null);
-const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
+const current = table.row;
 const actionsOf = (e: Expense, i: number) =>
   e.void_time
-    ? [{ key: "view", label: t("common.view"), onSelect: () => (index.value = i) }]
+    ? [{ key: "view", label: t("common.view"), onSelect: () => table.open(i) }]
     : [
         { key: "edit", label: t("billing.accounting.expenses.edit"), icon: Pencil, onSelect: () => edit(e) },
         { key: "void", label: t("billing.accounting.expenses.void"), icon: Ban, destructive: true, separatorBefore: true, onSelect: () => voidOne(e) },
@@ -91,7 +90,7 @@ const recurringText = (e: Expense) =>
 
 /** Closes the detail sheet, then runs an action on the expense it showed (its dialog opens on its own). */
 function from(act: (e: Expense) => void, e: Expense | undefined) {
-  index.value = null;
+  table.detail.value = null;
   if (e) act(e);
 }
 
@@ -261,7 +260,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(e, i) in table.items.value" :key="e.id" class="cursor-pointer" :class="e.void_time ? 'text-muted-foreground' : ''" :data-state="index === i ? 'selected' : undefined" @click="index = i">
+        <TableRow v-for="(e, i) in table.items.value" :key="e.id" class="cursor-pointer" :class="e.void_time ? 'text-muted-foreground' : ''" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
           <TableCell>{{ day(e.incurred_on) }}</TableCell>
           <TableCell class="font-medium">
             {{ e.vendor }}
@@ -278,7 +277,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
     <DataPagination v-if="table.total.value" v-model:size="table.size.value" :page="table.current.value" :pages="table.pages.value" :total="table.total.value" @update:page="table.page.value = $event" />
   </Card>
 
-  <DetailSheet v-model:index="index" :total="table.items.value.length" :title="current?.vendor ?? ''" :description="current ? day(current.incurred_on) : undefined">
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.vendor ?? ''" :description="current ? day(current.incurred_on) : undefined">
     <dl v-if="current" class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm" data-testid="expense-detail">
       <dt class="text-muted-foreground">{{ t("billing.accounting.form.amount") }}</dt>
       <dd class="text-end text-lg font-semibold tabular-nums" :class="current.void_time ? 'line-through' : ''">{{ money(current.amount_minor, current.currency) }}</dd>

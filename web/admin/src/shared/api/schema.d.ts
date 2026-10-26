@@ -2541,6 +2541,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start another organisation, owned by the person (at most 20 owned)
+         * @description The new account is empty (no apps). It is in the session's memberships from the next request on.
+         */
+        post: operations["appCreateAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/account": {
         parameters: {
             query?: never;
@@ -11122,6 +11142,35 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+        };
+    };
+    appCreateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Membership"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            429: components["responses"]["Error"];
         };
     };
     appGetAccount: {

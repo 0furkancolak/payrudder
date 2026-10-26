@@ -8,6 +8,9 @@ import { formatMinor } from "@/shared/lib/money";
 import { useTenantCurrency } from "@/features/tenants/currency";
 import { inRange } from "@/shared/lib/dateRange";
 import { matchesSearch } from "@/shared/lib/paging";
+import { PaymentContext } from "@/features/related";
+import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
+import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { newKey } from "@/shared/lib/key";
 import { useSeededRef } from "@/shared/lib/seeded";
 import { CopyField } from "@/shared/ui/copy-field";
@@ -80,9 +83,15 @@ const shown = computed(() => list.value.filter((l) => matchesSearch([l.id, l.des
 const kinds = computed(() => [{ value: "", label: t("billing.paymentLinks.anyKind") }, ...["adhoc", "invoice", "credit_pack"].map((k) => ({ value: k, label: t(`billing.paymentLinks.kinds.${k}`) }))]);
 const statuses = computed(() => [{ value: "", label: t("billing.paymentLinks.anyStatus") }, ...["active", "paid", "expired", "revoked"].map((s) => ({ value: s, label: t(`billing.paymentLinks.statuses.${s}`) }))]);
 
-// The link whose detail is open, as its place among the links on screen.
-const detail = ref<number | null>(null);
-const current = computed(() => (detail.value === null ? undefined : shown.value[detail.value]));
+// The link whose detail is open, as its place among the links on screen; the arrows go on to the next and previous page of links.
+const nav = useEdgeDetail(shown, { hasPrev: () => history.value.length > 0, hasNext: () => !!links.data.value?.next_page_token, prev: back, next });
+const detail = nav.index;
+const current = nav.row;
+// A link from an invoice or a customer opens the payment link it names, when it is on the page of links loaded.
+useOpenParam("link", () => links.isSuccess.value, (id) => {
+  const at = shown.value.findIndex((l) => l.id === id);
+  if (at >= 0) detail.value = at;
+});
 const canRevoke = (l: { status?: string } | undefined) => l?.status === "active" || l?.status === "paid";
 
 /** The URL is returned once, right after creation, and is not kept anywhere else. */
@@ -193,10 +202,11 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
     <p v-else-if="shown.length === 0 && active" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
     <DataPagination :page="history.length + 1" :has-prev="history.length > 0" :has-next="!!links.data.value?.next_page_token" @prev="back" @next="next" />
 
-    <DetailSheet v-model:index="detail" :total="shown.length" :title="t('billing.paymentLinks.title')" :description="current?.id ?? ''">
+    <DetailSheet v-model:index="detail" :total="shown.length" :title="t('billing.paymentLinks.title')" :description="current?.id ?? ''" :edge="nav.edge.value" @edge="nav.onEdge">
       <DetailList :rows="detailRows">
         <template #status><StatusPill :tone="toneOf(current?.status ?? 'active')">{{ t(`billing.paymentLinks.statuses.${current?.status ?? 'active'}`) }}</StatusPill></template>
       </DetailList>
+      <PaymentContext v-if="current && (current.invoice_id || current.customer_external_id)" :key="current.id" :payer="false" :tenant-id="tenantId" :invoice-id="current.invoice_id" :customer="current.customer_external_id" class="mt-6" />
       <template v-if="canRevoke(current)" #footer>
         <Button type="button" variant="destructive" :disabled="act.revoke.isPending.value" @click="revoke(current?.id)">{{ t("billing.paymentLinks.revoke") }}</Button>
       </template>

@@ -19,6 +19,8 @@ export function usePager() {
     size,
     /** The page the reader is on, counting from 1. */
     page: computed(() => seen.value.length + 1),
+    /** How many rows come before the page the reader is on. */
+    offset: computed(() => seen.value.length * size.value),
     hasPrev: computed(() => seen.value.length > 0),
     next(nextToken: string) {
       seen.value = [...seen.value, token.value];

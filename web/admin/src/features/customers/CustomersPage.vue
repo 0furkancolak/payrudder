@@ -17,6 +17,8 @@ import { Pencil, Link2, CreditCard, Eye, Receipt } from "@lucide/vue";
 import { useCreditBalance } from "@/features/credits/api";
 import { formatCredits } from "@/features/credits/lib";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import { CustomerRelated } from "@/features/related";
+import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
@@ -28,8 +30,7 @@ const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const customers = useCustomers(tenantId);
 const router = useRouter();
-/** The row whose detail sheet is open (an index into the rows the table shows now), and whether its payment-page section is open. */
-const shown = ref<number | null>(null);
+/** Whether the payment-page section of the open customer sheet is open. */
 const portalOpen = ref(false);
 function paymentLink(externalId?: string) {
   // A person reaches their tenants under /app/t, the operator under /tenants.
@@ -45,14 +46,22 @@ const table = useTableState(list, {
   searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id],
   filters: { country: (c, v) => (c.country ?? "") === v, currency: (c, v) => (c.billing_currency ?? "") === v },
 });
-const current = computed(() => (shown.value === null ? undefined : table.items.value[shown.value]));
+const current = table.row;
 const currentId = computed(() => current.value?.external_id ?? "");
 const balance = useCreditBalance(tenantId, currentId);
 function open(i: number, portal = false) {
-  shown.value = i;
+  table.open(i);
   portalOpen.value = portal;
 }
-watch(shown, (v, old) => v !== old && (portalOpen.value = portalOpen.value && v !== null && old === null));
+// A link from an invoice, a payment or a subscription opens the customer it names; a filter that hides it is cleared first.
+useOpenParam("customer", () => customers.isSuccess.value, (id) => {
+  const is = (c: (typeof list.value)[number]) => c.external_id === id;
+  if (!table.openWhere(is)) {
+    table.clear();
+    table.openWhere(is);
+  }
+});
+watch(table.detail, (v, old) => v !== old && (portalOpen.value = portalOpen.value && v !== null && old === null));
 function actionsOf(c: (typeof list.value)[number], i: number): RowAction[] {
   return [
     { key: "view", label: t("common.view"), icon: Eye, onSelect: () => open(i) },
@@ -214,7 +223,7 @@ function submit() {
       </SheetFooter>
     </SheetContent>
   </Sheet>
-  <DetailSheet v-model:index="shown" :total="table.items.value.length" :title="current?.name || currentId" :description="current ? currentId : undefined" wide>
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.name || currentId" :description="current ? currentId : undefined" wide>
     <div v-if="current" class="flex flex-col gap-6" data-testid="customer-detail">
       <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
         <dt class="text-muted-foreground">{{ t("billing.customers.externalId") }}</dt>
@@ -246,6 +255,7 @@ function submit() {
         <Button variant="outline" size="sm" @click="paymentLink(current.external_id)"><Link2 class="size-4" aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
       </div>
       <CustomerLinksCard v-if="portalOpen" :key="currentId" :tenant-id="tenantId" :customer="currentId" @close="portalOpen = false" />
+      <CustomerRelated :key="currentId" :tenant-id="tenantId" :external-id="currentId" />
     </div>
   </DetailSheet>
 

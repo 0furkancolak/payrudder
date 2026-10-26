@@ -40,6 +40,8 @@ service IdentityService {
   rpc SignInWithIdentity(SignInWithIdentityRequest) returns (SignInWithIdentityResponse);
 
   rpc GetMyAccount(GetMyAccountRequest) returns (GetMyAccountResponse);
+  // CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
+  rpc CreateMyAccount(CreateMyAccountRequest) returns (CreateMyAccountResponse);
   // RenameMyAccount renames an account; only an owner may.
   rpc RenameMyAccount(RenameMyAccountRequest) returns (RenameMyAccountResponse);
 
@@ -403,6 +405,16 @@ message ResetPasswordRequest {
 }
 
 message ResetPasswordResponse {}
+
+message CreateMyAccountRequest {
+  string user_id = 1;
+  string name = 2;
+}
+
+message CreateMyAccountResponse {
+  // The new account with the caller as its owner.
+  Membership membership = 1;
+}
 
 message RenameMyAccountRequest {
   string user_id = 1;

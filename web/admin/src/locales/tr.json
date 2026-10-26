@@ -148,8 +148,6 @@
     "allKinds": "Tüm türler"
   },
   "invoice": {
-    "back": "← Kiracı",
-    "fallbackTitle": "Fatura",
     "summary": "{kind} · dönem {period} · {customer} · {total} · {status} · saga {saga}",
     "openPdf": "PDF'yi aç",
     "noPdfLink": "bağlantı yok",
@@ -1153,6 +1151,195 @@
         "discount": "İndirim",
         "net": "Net"
       }
+    },
+    "usage": {
+      "tabsLabel": "Kullanım bölümleri",
+      "tabs": {
+        "overview": "Genel bakış",
+        "meters": "Sayaçlar",
+        "customers": "Müşteriler"
+      },
+      "compare": "Önceki dönemle karşılaştır",
+      "period": "Limitler ve sıralamalar: {period}",
+      "periodHint": "Limitler ve sıralamalar fatura dönemine (bir ay) göre sayılır: seçilen aralığın bittiği ay.",
+      "tooLong": "Bir aralık en fazla bir yıl olabilir. Son 30 gün gösteriliyor.",
+      "before": "Önceki: {value} {unit}",
+      "events": "{n} olay",
+      "aggregation": {
+        "sum": "Toplam",
+        "count": "Olay sayısı",
+        "max": "En yüksek değer"
+      },
+      "aggregationHint": {
+        "sum": "Olay özelliğinin değerlerini toplar.",
+        "count": "Olayları sayar; özellik gerekmez.",
+        "max": "Dönemdeki olay özelliğinin en yüksek değerini alır."
+      },
+      "state": {
+        "over": "Limit aşıldı",
+        "near": "Limite yakın",
+        "ok": "Limit içinde",
+        "unlimited": "Limitsiz"
+      },
+      "chart": {
+        "current": "Bu dönem",
+        "previous": "Önceki dönem",
+        "total": "Toplam",
+        "before": "önceki",
+        "estimate": "Tahmin: saatlik özetlerden sayılır, bu yüzden yinelenen teslimatlar iki kez sayılabilir. Faturalar kesin kullanımı esas alır.",
+        "empty": "Bu dönemde kullanım yok.",
+        "summary": "{from} – {to} arası {total} {unit}"
+      },
+      "empty": {
+        "title": "Henüz sayaç yok",
+        "hint": "Sayaç, gönderdiğiniz olaylarda neyin sayılacağını belirler. Bir sayaç oluşturun, sonra olayları onun koduyla gönderin."
+      },
+      "top": {
+        "title": "En çok kullanan müşteriler",
+        "hint": "{period} döneminde {meter} sayacını en çok kullananlar.",
+        "empty": "Bu dönemde bu sayacı kimse kullanmadı."
+      },
+      "limits": {
+        "title": "Limitler",
+        "hint": "{period} döneminde en çok kullanan {n} müşteri arasında limite yakın veya limiti aşanlar.",
+        "over": "{n} aştı",
+        "near": "{n} yakın",
+        "clear": "Limite yaklaşan kimse yok.",
+        "nobody": "Bu dönemde hiçbir müşteri bir sayaç kullanmadı."
+      },
+      "meters": {
+        "new": "Yeni sayaç",
+        "newHint": "Sayaç, gönderdiğiniz olayları faturalanacak bir miktara çevirir.",
+        "formLabel": "sayaç",
+        "code": "Kod",
+        "codeHint": "Küçük harf, rakam ve _; bir harfle başlar.",
+        "unit": "Birim",
+        "unitPlaceholder": "çağrı, GB, token",
+        "aggregation": "Toplama yöntemi",
+        "allAggregations": "Tüm yöntemler",
+        "property": "Değer özelliği",
+        "propertyHint": "Miktarı taşıyan olay özelliği.",
+        "scale": "Ondalık basamak",
+        "scaleHint": "0 ile 6 arası. Sayaç oluşturulduktan sonra bu kod için sabittir.",
+        "scaleFixed": "Bu kod için sabit.",
+        "filter": "Yalnızca şu olayları say",
+        "filterHint": "Her olayı saymak için boş bırakın. Bir özellik birden çok değerle eşleşebilir.",
+        "filterRow": "Filtre {n}",
+        "filterProperty": "Özellik {n}",
+        "filterValues": "Değerler {n}",
+        "filterValuesPlaceholder": "eu, us",
+        "addFilter": "Filtre ekle",
+        "create": "Sayaç oluştur",
+        "saveVersion": "Yeni sürümü kaydet",
+        "newVersion": "Yeni sürüm",
+        "versionTitle": "{code} için yeni sürüm",
+        "versionHint": "Bu sayacın bir sonraki sürümünü kaydeder (şu an sürüm {version}).",
+        "search": "Sayaç ara",
+        "inPeriod": "Dönemde",
+        "trend": "Eğilim",
+        "series": "Zaman içinde kullanım",
+        "version": "Sürüm",
+        "created": "Oluşturulma",
+        "errors": {
+          "code": "Kod küçük harf, rakam ve _ olmalı, bir harfle başlamalı (en çok 63).",
+          "unit": "Birime en çok 32 karakterlik bir ad verin.",
+          "property": "Miktarı taşıyan olay özelliğinin adını yazın.",
+          "scale": "Ondalık basamak 0 ile 6 arasında bir tam sayı olmalı.",
+          "filter": "Her filtre bir özellik ve en az bir değer ister (aynı özellik iki kez olmaz, en çok 10)."
+        },
+        "filterShort": "Filtre"
+      },
+      "customers": {
+        "search": "Müşteri ara",
+        "meter": "Sayaç",
+        "allMeters": "Tüm sayaçlar",
+        "usage": "Kullanım",
+        "anyUsage": "Her kullanım",
+        "used": "Kullanımı olan",
+        "idle": "Kullanımı olmayan",
+        "limits": "Limitler",
+        "limitsOf": "{period} dönemindeki limitler",
+        "billingPeriod": "Fatura dönemi"
+      }
+    },
+    "coupons": {
+      "tabsLabel": "Kupon bölümleri",
+      "tabs": {
+        "coupons": "Kuponlar",
+        "codes": "Promosyon kodları",
+        "redemptions": "Kullanımlar"
+      },
+      "hint": {
+        "coupons": "Kupon, neyin indirileceğini, nerede ve ne kadar süre geçerli olduğunu belirler. Müşteriler ona promosyon koduyla ulaşır.",
+        "codes": "Müşterilerin yazdığı kodlar. Birçok kod tek bir kupona bağlanabilir; her birinin kendi limiti, bitiş tarihi ve kuralları vardır.",
+        "redemptions": "Bir kuponun her kullanımı: müşteri, fatura ve indirilen tutar."
+      },
+      "new": "Yeni kupon",
+      "searchCoupons": "Kupon ara",
+      "searchCustomer": "Müşteri kimliğiyle ara",
+      "anyTarget": "Her yerde geçerli",
+      "everywhere": "Her yerde",
+      "never": "Asla",
+      "expires": "Bitiş",
+      "created": "Oluşturulma",
+      "firstOf": "{total} kayıttan ilk {n} gösteriliyor.",
+      "errors": {
+        "code": "Kod 2 ile 40 arasında harf, rakam, - veya _ olmalı.",
+        "value": "Kuponun neyi indirdiğini yazın: en çok 100 yüzde (bonus kredi için 1000'e kadar) ya da para biriminin ondalık sayısını aşmayan bir tutar.",
+        "targets": "Kuponun nerede geçerli olduğunu seçin.",
+        "periods": "Ücret sayısı 1 ile 120 arasında bir tam sayı olmalı.",
+        "max": "Kullanım limiti 1'den başlayan bir tam sayı olmalı.",
+        "expires": "Bitiş tarihi gelecekte bir gün olmalı.",
+        "coupon": "Bir kupon seçin."
+      },
+      "sheet": {
+        "title": "Yeni kupon",
+        "hint": "Kupon neyin indirileceğini belirler. Müşteriler onu promosyon koduyla kullanır.",
+        "codeHint": "2 ile 40 arasında harf, rakam, - veya _. Kuponun kodu aynı zamanda ilk promosyon kodudur.",
+        "namePlaceholder": "Hoş geldin teklifi (isteğe bağlı)",
+        "value": {
+          "percent": "İndirim yüzdesi (%)",
+          "amount": "İndirim tutarı",
+          "bonus": "Ek krediler (%)"
+        },
+        "durationHint": "İndirimin bir aboneliğin kaç ücretine uygulanacağı.",
+        "noLimit": "Sınırsız",
+        "expires": "Bitiş tarihi (isteğe bağlı)",
+        "defaultCode": "Aynı metinle bir promosyon kodu da oluştur",
+        "defaultCodeHint": "Müşteriler kuponun kodunu hemen yazabilir. Kodları kendiniz oluşturmak için kapatın."
+      },
+      "preview": {
+        "title": "Ne yapacak",
+        "noValue": "Kuponun ne yaptığını görmek için bir değer girin.",
+        "percent": "{pct} indirim: {before} tutarındaki ücret {after} olur.",
+        "amount": "{off} indirim: {before} tutarındaki ücret {after} olur.",
+        "bonus": "{pct} fazla kredi: {credits} kredi almak {total} kredi verir.",
+        "where": "Geçerli olduğu yerler: {list}.",
+        "duration": "Abonelikte: {duration}.",
+        "max": "Toplamda en çok {n} kullanım.",
+        "noMax": "Kullanım sınırı yok.",
+        "expires": "{date} tarihinden sonra geçersiz olur.",
+        "noExpiry": "Süresi dolmaz.",
+        "code": "Müşteriler {code} yazabilir."
+      },
+      "codeSheet": {
+        "makes": "{coupon} kuponu ({value}) için {n} promosyon kodu oluşturur.",
+        "usesEach": "Her kod {n} kez kullanılabilir.",
+        "usesUnlimited": "Her kod sınırsız kullanılabilir.",
+        "minimum": "{amount} ve üzeri",
+        "plans": "Yalnızca bu paketlerde",
+        "plansHint": "Her paketi kabul etmek için hiçbirini işaretlemeyin.",
+        "noPlans": "Henüz paket yok: kod her pakette geçerli.",
+        "packs": "Yalnızca bu kredi paketlerinde",
+        "namesHint": "Kodları satır, virgül veya boşlukla ayırın. 2 ile 40 arasında harf, rakam, - veya _.",
+        "done": "Bitti"
+      },
+      "redemptions": {
+        "invoice": "Fatura",
+        "bonusCredits": "+{n} kredi",
+        "noCode": "Kod yok (doğrudan uygulandı)"
+      },
+      "discount": "İndirim"
     }
   },
   "affiliates": {
@@ -2150,7 +2337,8 @@
     "identity": {
       "account": {
         "forbidden": "Bu hesaptaki rolünüz buna izin vermiyor.",
-        "not_found": "Bu hesap yok ya da size ait değil."
+        "not_found": "Bu hesap yok ya da size ait değil.",
+        "quota": "Bir kişi en fazla 20 organizasyona sahip olabilir."
       },
       "api_key": {
         "bad_environment": "Bu uygulamada böyle bir ortam yok.",
@@ -2461,7 +2649,12 @@
   },
   "product": {
     "menu": {
-      "open": "Hesap menüsü"
+      "open": "Hesap menüsü",
+      "newOrg": "Yeni organizasyon",
+      "newOrgTitle": "Organizasyon oluştur",
+      "newOrgBody": "Sahibi siz olacaksınız. Boş başlar: uygulamaları ve kişileri sonradan ekleyebilirsiniz.",
+      "orgName": "Organizasyon adı",
+      "orgCreate": "Organizasyon oluştur"
     },
     "nav": {
       "home": "Ana sayfa",
@@ -2823,7 +3016,6 @@
         "loadMore": "Daha fazla yükle"
       },
       "invoice": {
-        "back": "Tüm faturalar",
         "issued": "Düzenlendi",
         "openPdf": "PDF'i aç",
         "lines": "Kalemler",
@@ -3055,6 +3247,75 @@
       "simulate": "Simüle et",
       "simulated": "Ödeme {scenario} olarak yeniden çalıştırıldı.",
       "simulateNotRetried": "Senaryo ayarlandı ama ödeme şu an yeniden çalıştırılamadı ({why})."
+    },
+    "providers": {
+      "introApp": "{app} uygulamasının ödeme sağlayıcılarını bağlayın ve yönetin. Müşteriler canlı hesap üzerinden öder; sandbox için bağlantı gerekmez.",
+      "introOrg": "Bir ödeme sağlayıcısını tüm uygulamalarınız için bir kez bağlayın ya da bir uygulamayı diğerlerinden farklı ayarlayın.",
+      "connect": "Bağla",
+      "manage": "Yönet",
+      "simulator": "Yerleşik simülatör",
+      "sandboxNote": "Sandbox hiçbir zaman gerçek bir sağlayıcıya ulaşmaz: yerleşik bir simülatörle çalışır, bu yüzden orada bağlanacak bir şey yoktur.",
+      "state": {
+        "none": "Bağlı değil",
+        "working": "Bağlı ve çalışıyor",
+        "problem": "Sorun var"
+      },
+      "defaultAccount": "Bağlı ve canlı ödemelerde kullanılıyor.",
+      "connectedLine": "Bağlı.",
+      "notConnectedLine": "Canlı modda bağlı değil.",
+      "noLiveApps": "Henüz canlı ortamı olan bir uygulama yok.",
+      "orgLine": "{total} uygulamanın {connected} tanesinde bağlı",
+      "openScreen": "Ödeme sağlayıcıları",
+      "doneAll": "{provider}, {count} uygulamada bağlandı.",
+      "donePartial": "{provider}: {ok} uygulamada bağlandı, {failed} uygulamada başarısız oldu.",
+      "appsTitle": "Uygulamalar",
+      "appsIntro": "Bir sağlayıcıyı yalnızca o uygulama için bağlamak, değiştirmek ya da kaldırmak için duruma tıklayın.",
+      "app": "Uygulama",
+      "noLive": "Canlı ortam yok",
+      "about": {
+        "iyzico": "Türk kartları ve yerel yöntemler",
+        "paddle": "Dünya genelinde kartlar; abonelikleri sağlayıcı yürütür",
+        "banktransfer": "Kendi banka hesabınıza havale ile ödeme"
+      },
+      "scope": {
+        "title": "Nereye bağlansın",
+        "app": "Yalnızca bu uygulama",
+        "org": "Kuruluşun tüm uygulamaları",
+        "appNote": "Bu anahtarları yalnızca bu uygulama kullanır.",
+        "orgNote": "Aynı anahtarlar canlı ortamı olan {count} uygulamanın hepsine bağlanır. Sonra bir uygulamayı yine ayrıca değiştirebilirsiniz."
+      },
+      "confirmDisconnectOrg": "{provider} canlı hesabı {count} uygulamadan kaldırılsın mı? Müşteriler artık bunun üzerinden ödeme yapamaz.",
+      "sheet": {
+        "connectTitle": "{provider} bağla",
+        "manageTitle": "{provider} bağlantısı",
+        "intro": {
+          "iyzico": "Canlı iyzico üye iş yeri anahtarlarınızı girin. Saklanmadan önce iyzico ile doğrulanır.",
+          "paddle": "Canlı Paddle anahtarlarınızı ve webhook sırrınızı girin. Saklanmadan önce Paddle ile doğrulanır.",
+          "banktransfer": "Havale ile ödeyen müşteriler için faturalara basılan banka bilgilerini girin. Bankada denetlenecek bir şey yoktur."
+        },
+        "envNote": "Bu işlem canlı ortamı bağlar. Sandbox yerleşik simülatörle çalışmaya devam eder.",
+        "testOk": "Sağlayıcı bu anahtarları kabul ediyor.",
+        "testFailed": "Sağlayıcı şu an kabul etmiyor: {reason}",
+        "testing": "Sınanıyor...",
+        "test": "Bağlantıyı sına",
+        "replaceNote": "Bir bağlantı var. Yalnızca değiştirmek istiyorsanız yeni anahtarlar yazın; mevcut anahtarlar hiçbir zaman gösterilmez.",
+        "openDashboard": "{provider} panelini aç",
+        "partial": "Hata öncesinde {ok} uygulamada bağlandı.",
+        "disconnectOrg": "{count} uygulamadan ayır"
+      },
+      "help": {
+        "iyzico": {
+          "api_key": "iyzico üye iş yeri panelinde Ayarlar, Firma Ayarları, API anahtarları altında. Canlı çifti kullanın.",
+          "secret_key": "Aynı yerde API anahtarının yanında görünür. Orada yalnızca bir kez gösterilir; şimdi kopyalayın.",
+          "buyer_identity_number": "Ödemelerde alıcı görünen kişi veya şirketin vergi kimlik numarası (TCKN veya VKN). Fatura profiliniz bunu doldurur.",
+          "buyer_ip": "İşletmenizin istek gönderdiği sabit genel IP adresi; iyzico anahtarları buna bağlar."
+        },
+        "paddle": {
+          "api_key": "Paddle'da Developer tools, Authentication altında canlı bir API anahtarı oluşturun.",
+          "webhook_secret": "Developer tools, Notifications altında Payrudder için bir hedef oluşturun ve gizli anahtarını kopyalayın.",
+          "usage_product_id": "Paddle'ın kullanım ücretleri için kullandığı ürünün kimliği. Catalog'da ürünü açıp pro_ ile başlayan kimliğini kopyalayın."
+        }
+      }
     }
   },
   "shell": {
@@ -3112,7 +3373,10 @@
       "affiliates": "Ortaklar",
       "goLive": "Canlıya geç",
       "sandbox": "Sandbox araçları",
-      "partner": "Ortak portalı"
+      "partner": "Ortak portalı",
+      "usage": "Kullanım",
+      "coupons": "Kuponlar",
+      "paymentProviders": "Ödeme sağlayıcıları"
     },
     "noApps": "Henüz uygulama yok"
   },
@@ -3287,5 +3551,18 @@
       "lastMonth": "Geçen ay",
       "year": "Bu yıl"
     }
+  },
+  "related": {
+    "title": "İlgili kayıtlar",
+    "customer": "Müşteri",
+    "paidBy": "Ödeyen",
+    "invoice": "Fatura",
+    "invoices": "Faturalar",
+    "payments": "Ödemeler",
+    "subscriptions": "Abonelikler",
+    "creditNotes": "Alacak dekontları",
+    "none": "Henüz yok",
+    "notFound": "Listede yok",
+    "open": "Aç"
   }
 }
