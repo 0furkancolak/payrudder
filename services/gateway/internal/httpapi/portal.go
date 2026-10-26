@@ -71,48 +71,67 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 	if resp.GetLogoAvailable() {
 		v.Logo = scope{portal: token}.logo()
 	}
-	type known struct {
-		number   string
-		exponent int
-	}
-	byID := map[string]known{}
 	var ids []string
-	for _, inv := range resp.GetInvoices() {
-		state := inv.GetPaymentState()
-		if state == "" {
-			state = map[string]string{"paid": "paid", "void": "void"}[inv.GetStatus()]
-			if state == "" {
-				state = "open"
-			}
-		}
-		exp := int(inv.GetCurrencyExponent())
-		row := portalInvoiceRow{Number: inv.GetNumber(), State: state, StateLabel: v.L["st_"+state], Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp), Currency: inv.GetCurrency(),
-			Payable: inv.GetPayable(), Href: "/c/" + token + "/invoices/" + inv.GetId() + q}
-		if t := inv.GetIssueTime(); t != nil {
-			row.Date = t.AsTime().UTC().Format(time.DateOnly)
-		}
-		v.Invoices = append(v.Invoices, row)
-		byID[inv.GetId()] = known{inv.GetNumber(), exp}
-		ids = append(ids, inv.GetId())
-	}
+	var shown map[string]knownInvoice
+	v.Invoices, ids, shown = portalInvoices(resp, v.L, token, q)
 	rows, err := s.ledgerLookup(r.Context(), resp.GetTenantId(), ids)
 	if err != nil {
 		s.d.Log.WarnContext(r.Context(), "portal ledger lookup failed", "error", err)
 	}
-	sort.SliceStable(rows, func(i, j int) bool { return rows[i].OccurredAt.After(rows[j].OccurredAt) })
-	statusKey := map[string]string{"succeeded": "pay_succeeded", "declined": "pay_declined", "failed": "pay_failed", "pending": "pay_pending"}
-	for _, row := range rows {
-		k, ok := byID[row.InvoiceID]
-		if !ok {
-			continue // a row of an invoice that is not this customer's is never shown
+	v.Payments = portalPayments(rows, shown, v.L)
+	portalCredits(v, resp, token, q)
+	s.render(w, r, http.StatusOK, "portal", v)
+}
+
+// knownInvoice is an invoice of the portal's customer: what a ledger row of it is shown with.
+type knownInvoice struct {
+	number   string
+	exponent int
+}
+
+// portalInvoices lists the customer's invoices as the page shows them, with their ids (the ledger is read for exactly these) and what to show a ledger
+// row of each with.
+func portalInvoices(resp *billingv1.GetPortalResponse, l map[string]string, token, q string) (rows []portalInvoiceRow, ids []string, shown map[string]knownInvoice) {
+	shown = map[string]knownInvoice{}
+	for _, inv := range resp.GetInvoices() {
+		state := paymentStateWord(inv.GetPaymentState(), inv.GetStatus())
+		exp := int(inv.GetCurrencyExponent())
+		row := portalInvoiceRow{Number: inv.GetNumber(), State: state, StateLabel: l["st_"+state], Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp), Currency: inv.GetCurrency(),
+			Payable: inv.GetPayable(), Href: "/c/" + token + "/invoices/" + inv.GetId() + q}
+		if t := inv.GetIssueTime(); t != nil {
+			row.Date = t.AsTime().UTC().Format(time.DateOnly)
 		}
-		p := portalPaymentRow{Date: row.OccurredAt.UTC().Format(time.DateOnly), Kind: v.L["kind_"+row.Kind], Number: k.number, Status: v.L[statusKey[row.Status]],
+		rows = append(rows, row)
+		shown[inv.GetId()] = knownInvoice{inv.GetNumber(), exp}
+		ids = append(ids, inv.GetId())
+	}
+	return rows, ids, shown
+}
+
+// portalPaymentStatusKey is the text key of a ledger row's status.
+var portalPaymentStatusKey = map[string]string{"succeeded": "pay_succeeded", "declined": "pay_declined", "failed": "pay_failed", "pending": "pay_pending"}
+
+// portalPayments lists the ledger rows of the customer's invoices, newest first. A row of an invoice that is not in shown is never listed.
+func portalPayments(rows []ledgerRow, shown map[string]knownInvoice, l map[string]string) []portalPaymentRow {
+	sort.SliceStable(rows, func(i, j int) bool { return rows[i].OccurredAt.After(rows[j].OccurredAt) })
+	var out []portalPaymentRow
+	for _, row := range rows {
+		k, ok := shown[row.InvoiceID]
+		if !ok {
+			continue
+		}
+		p := portalPaymentRow{Date: row.OccurredAt.UTC().Format(time.DateOnly), Kind: l["kind_"+row.Kind], Number: k.number, Status: l[portalPaymentStatusKey[row.Status]],
 			Provider: row.Provider, Currency: row.Currency, Amount: money.FormatMinorGrouped(row.amount(), k.exponent), Negative: row.Kind == "refund"}
 		if p.Negative {
 			p.Amount = "-" + p.Amount
 		}
-		v.Payments = append(v.Payments, p)
+		out = append(out, p)
 	}
+	return out
+}
+
+// portalCredits fills the credit balance, lots and packs of the page.
+func portalCredits(v *portalView, resp *billingv1.GetPortalResponse, token, q string) {
 	v.Balance, v.CanBuy, v.Buy = money.FormatMinorGrouped(resp.GetCreditBalance(), 0), resp.GetCanBuyCredits(), "/c/"+token+"/credits/buy"+q
 	for _, l := range resp.GetCreditLots() {
 		row := portalLotRow{Granted: money.FormatMinorGrouped(l.GetGranted(), 0), Remaining: money.FormatMinorGrouped(l.GetRemaining(), 0)}
@@ -126,7 +145,6 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 			Currency: p.GetCurrency(), Valid: validText(v.L, p.GetValidityDays())})
 	}
 	v.ShowCredits = len(v.Lots) > 0 || len(v.Packs) > 0 || resp.GetCreditBalance() > 0
-	s.render(w, r, http.StatusOK, "portal", v)
 }
 
 // portalCreditsBuy is POST /c/{token}/credits/buy: the "Buy" button of a credit pack. Billing makes the credit-pack link and its invoice (the price is the pack's, not the
