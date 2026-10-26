@@ -15,6 +15,7 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -25,7 +26,7 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreatePackage, usePackages } from "./api";
-import { buildUsage, newPrice, type Price, type PriceDraft, type PriceModel, type QuotaRow } from "./usage";
+import { buildUsage, isFreeTier, newPrice, type Price, type PriceDraft, type PriceModel, type QuotaRow } from "./usage";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
@@ -65,6 +66,8 @@ const creating = ref(false);
 const code = ref("");
 const name = ref("");
 const fee = ref("0");
+const trialDays = ref<string | number>("");
+const freeTier = ref(false);
 const extra = ref<{ currency: string; interval: "month" | "year"; amount: string }[]>([]);
 const prices = ref<PriceDraft[]>([]);
 const quotas = ref<QuotaRow[]>([]);
@@ -76,6 +79,8 @@ watch(creating, (v) => {
   if (v) {
     code.value = name.value = formError.value = "";
     fee.value = "0";
+    trialDays.value = "";
+    freeTier.value = false;
     extra.value = [];
     prices.value = [];
     quotas.value = [];
@@ -97,13 +102,19 @@ const otherCurrencies = computed(() => extra.value.some((f) => f.currency !== te
 
 function submit() {
   formError.value = "";
-  const base = parseMajor(fee.value, tenantCurrency.value);
+  const base = freeTier.value ? "0" : parseMajor(fee.value, tenantCurrency.value);
   if (base === null) {
     formError.value = t("billing.packages.badAmount", { currency: tenantCurrency.value });
     return;
   }
+  // A number input hands over a number, or an empty text.
+  const trial = String(trialDays.value).trim() === "" ? 0 : Number(trialDays.value);
+  if (!Number.isInteger(trial) || trial < 0 || trial > 365) {
+    formError.value = t("billing.packages.badTrial");
+    return;
+  }
   const fees: { currency: string; interval: "month" | "year"; baseFeeMinor: string }[] = [];
-  for (const f of extra.value) {
+  for (const f of freeTier.value ? [] : extra.value) {
     if (f.interval === "month" && f.currency === tenantCurrency.value) {
       formError.value = t("billing.packages.tenantMonthly", { currency: f.currency });
       return;
@@ -120,14 +131,18 @@ function submit() {
     formError.value = t(`billing.packages.usageErrors.${usage.error.key}`, { n: usage.error.row, meter: usage.error.meter, currency: tenantCurrency.value });
     return;
   }
-  create.mutate({ code: code.value.trim(), name: name.value.trim(), baseFeeMinor: base, fees, ...usage }, { onSuccess: () => (creating.value = false) });
+  // A free tier is what its limits say: with none there is nothing to give the customer.
+  if (freeTier.value && usage.entitlements.length === 0) {
+    formError.value = t("billing.packages.freeNeedsLimit");
+    return;
+  }
+  create.mutate({ code: code.value.trim(), name: name.value.trim(), baseFeeMinor: base, fees, ...usage, ...(trial > 0 ? { trialDays: trial } : {}) }, { onSuccess: () => (creating.value = false) });
 }
 </script>
 
 <template>
   <Sheet v-if="canWrite" v-model:open="creating" name="new-package">
     <SheetContent>
-const unitPrice = (minor: string | undefined) => `${unitPriceToMajor(minor, tenantCurrency.value)} ${tenantCurrency.value}`;
       <SheetHeader>
         <SheetTitle>{{ t("billing.packages.new") }}</SheetTitle>
         <SheetDescription>{{ t("billing.packages.intro") }}</SheetDescription>
@@ -136,7 +151,12 @@ const unitPrice = (minor: string | undefined) => `${unitPriceToMajor(minor, tena
         <form id="create-package" class="grid gap-3" role="form" :aria-label="t('billing.packages.formLabel')" @submit.prevent="submit">
           <Input v-model="code" :aria-label="t('billing.packages.code')" :placeholder="t('billing.packages.code')" pattern="[a-z][a-z0-9_\-]{0,62}" required />
           <Input v-model="name" :aria-label="t('billing.packages.name')" :placeholder="t('billing.packages.name')" required />
-          <Input v-model="fee" inputmode="decimal" :aria-label="t('billing.packages.fee', { currency: tenantCurrency })" :placeholder="t('billing.packages.fee', { currency: tenantCurrency })" required />
+          <Input v-model="fee" inputmode="decimal" :disabled="freeTier" :aria-label="t('billing.packages.fee', { currency: tenantCurrency })" :placeholder="t('billing.packages.fee', { currency: tenantCurrency })" :required="!freeTier" />
+          <label class="flex items-start gap-2 text-sm"><Checkbox v-model="freeTier" class="mt-0.5" data-testid="package-free-tier" :aria-label="t('billing.packages.freeTier')" /><span>{{ t("billing.packages.freeTier") }}<span class="text-muted-foreground block text-xs">{{ t("billing.packages.freeTierHelp") }}</span></span></label>
+          <div class="grid gap-1.5">
+            <Input v-model="trialDays" type="number" :aria-label="t('billing.packages.trialDays')" :placeholder="t('billing.packages.trialDays')" data-testid="package-trial-days" />
+            <p class="text-muted-foreground text-xs">{{ t("billing.packages.trialHelp") }}</p>
+          </div>
           <div v-for="(f, i) in extra" :key="i" class="grid grid-cols-[7rem_1fr_auto] gap-2">
             <CurrencySelect v-model="f.currency" :aria-label="t('billing.packages.extraCurrency')" />
             <NativeSelect v-model="f.interval" :aria-label="t('billing.packages.interval')">
@@ -235,7 +255,11 @@ const unitPrice = (minor: string | undefined) => `${unitPriceToMajor(minor, tena
       <TableBody>
         <TableRow v-for="(p, i) in table.items.value" :key="p.plan.id" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
           <TableCell class="mono font-medium">{{ p.plan.code }}</TableCell>
-          <TableCell>{{ p.plan.name }}</TableCell>
+          <TableCell>
+            {{ p.plan.name }}
+            <Badge v-if="isFreeTier(p.version)" variant="secondary" class="ms-2" data-testid="free-tier-badge">{{ t("billing.packages.freeTierBadge") }}</Badge>
+            <Badge v-if="(p.version?.trial_days ?? 0) > 0" variant="secondary" class="ms-2" data-testid="trial-badge">{{ t("billing.packages.trialBadge", { n: p.version?.trial_days ?? 0 }) }}</Badge>
+          </TableCell>
           <TableCell>v{{ p.version?.version ?? "—" }}</TableCell>
           <TableCell class="whitespace-nowrap">{{ fmt.date(p.version?.publish_time, "day", "—") }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ p.version ? formatMinor(p.version.base_fee_minor, tenantCurrency, locale) : "—" }}</TableCell>
@@ -249,9 +273,7 @@ const unitPrice = (minor: string | undefined) => `${unitPriceToMajor(minor, tena
           </TableCell>
           <TableCell class="text-end tabular-nums">{{ (p.version?.prices ?? []).length }}</TableCell>
           <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => table.open(i) }]" /></TableCell>
-
-const unitPrice = (minor: string | undefined) => `${unitPriceToMajor(minor, tenantCurrency.value)} ${tenantCurrency.value}`;
-        </TableRow>
+</TableRow>
       </TableBody>
     </Table>
     <p v-if="!packages.isPending.value && (packages.data.value ?? []).length === 0 && !packages.error.value" class="text-muted-foreground p-4 text-center text-sm">
@@ -262,11 +284,12 @@ const unitPrice = (minor: string | undefined) => `${unitPriceToMajor(minor, tena
   </Card>
 
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.plan.name || current?.plan.code || ''" :description="current ? `${current.plan.code} · v${current.version?.version ?? '—'}` : undefined">
-const unitPrice = (minor: string | undefined) => `${unitPriceToMajor(minor, tenantCurrency.value)} ${tenantCurrency.value}`;
     <div v-if="current" class="flex flex-col gap-5" data-testid="package-detail">
       <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">
         <dt class="text-muted-foreground">{{ t("billing.packages.fixedFee") }}</dt>
         <dd class="text-end text-lg font-semibold tabular-nums">{{ current.version ? formatMinor(current.version.base_fee_minor, tenantCurrency, locale) : "—" }}</dd>
+        <dt class="text-muted-foreground">{{ t("billing.packages.trialColumn") }}</dt>
+        <dd class="text-end">{{ (current.version?.trial_days ?? 0) > 0 ? t("billing.packages.trialDaysValue", { n: current.version?.trial_days ?? 0 }) : t("billing.packages.noTrial") }}</dd>
         <dt class="text-muted-foreground">{{ t("billing.packages.published") }}</dt>
         <dd class="text-end">{{ fmt.date(current.version?.publish_time, "day", "—") }}</dd>
         <dt class="text-muted-foreground">{{ t("billing.packages.otherFees") }}</dt>

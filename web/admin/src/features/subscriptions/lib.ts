@@ -34,3 +34,23 @@ export function subscriptionAbilities(s: Pick<Subscription, "owner" | "end_time"
     canEndWithCredit: open && advance && !s.coupon_code && active,
   };
 }
+
+/** How many days before its end a trial counts as "ending soon" on the subscriptions page. */
+export const TRIAL_WARNING_DAYS = 7;
+
+/** Whole days (rounded up) until a trialing subscription's trial ends: null when it is not in a trial, 0 when it ends today. */
+export function trialDaysLeft(s: Pick<Subscription, "state" | "trial_end_time">, now: Date = new Date()): number | null {
+  if (s.state !== "SUBSCRIPTION_STATE_TRIALING" || !s.trial_end_time) return null;
+  const left = new Date(s.trial_end_time).getTime() - now.getTime();
+  return Number.isNaN(left) ? null : Math.max(0, Math.ceil(left / 86_400_000));
+}
+
+/** The trials that end within `days` days, soonest first. */
+export function trialsEndingSoon<S extends Pick<Subscription, "state" | "trial_end_time">>(list: readonly S[], now: Date = new Date(), days: number = TRIAL_WARNING_DAYS): S[] {
+  return list
+    .filter((s) => {
+      const left = trialDaysLeft(s, now);
+      return left !== null && left <= days;
+    })
+    .sort((a, b) => new Date(a.trial_end_time ?? 0).getTime() - new Date(b.trial_end_time ?? 0).getTime());
+}

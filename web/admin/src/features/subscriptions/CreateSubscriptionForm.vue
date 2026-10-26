@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import CustomerSelect from "@/features/customers/CustomerSelect.vue";
 import PackageSelect from "@/features/packages/PackageSelect.vue";
@@ -24,7 +24,9 @@ const open = defineModel<boolean>("open", { default: false });
 const customer = ref("");
 const plan = ref("");
 const currency = ref("");
-const trialDays = ref("0");
+// Empty leaves the trial to the package (its default, if it has one); a number, 0 included, is this subscription's own.
+const trialDays = ref<string | number>("");
+const packageTrial = computed(() => props.packages.find((p) => p.plan.code === plan.value)?.version?.trial_days ?? 0);
 const provider = ref("");
 const coupon = ref("");
 const interval = ref<Interval>("SUBSCRIPTION_INTERVAL_MONTH");
@@ -34,7 +36,7 @@ watch(open, (v) => {
   if (v) {
     plan.value = currency.value = provider.value = coupon.value = "";
     customer.value = props.forCustomer ?? "";
-    trialDays.value = "0";
+    trialDays.value = "";
     interval.value = "SUBSCRIPTION_INTERVAL_MONTH";
     props.act.create.reset();
   }
@@ -46,12 +48,12 @@ function create() {
       customer_external_id: customer.value,
       plan_code: plan.value,
       currency: currency.value || undefined,
-      trial_days: Number(trialDays.value) || undefined,
+      trial_days: String(trialDays.value).trim() === "" ? undefined : Number(trialDays.value),
       provider: provider.value || undefined,
       interval: interval.value,
       coupon_code: coupon.value.trim() || undefined,
     },
-    { onSuccess: () => ((trialDays.value = "0"), (coupon.value = ""), (open.value = false)) },
+    { onSuccess: () => ((trialDays.value = ""), (coupon.value = ""), (open.value = false)) },
   );
 }
 </script>
@@ -71,7 +73,17 @@ function create() {
           <NativeSelect v-model="interval" :aria-label="t('billing.subscriptions.interval')">
             <option v-for="i in INTERVALS" :key="i" :value="i">{{ t(`billing.subscriptions.${intervalKey(i)}`) }}</option>
           </NativeSelect>
-          <Input v-model="trialDays" type="number" min="0" max="365" :aria-label="t('billing.subscriptions.trialDays')" :placeholder="t('billing.subscriptions.trialDays')" />
+          <div class="grid gap-1.5">
+            <Input
+              v-model="trialDays"
+              type="number"
+              min="0"
+              max="365"
+              :aria-label="t('billing.subscriptions.trialDays')"
+              :placeholder="packageTrial > 0 ? t('billing.subscriptions.trialDefault', { days: packageTrial }) : t('billing.subscriptions.trialDays')"
+            />
+            <p class="text-muted-foreground text-xs" data-testid="trial-hint">{{ t("billing.subscriptions.trialHint") }}</p>
+          </div>
           <NativeSelect v-model="provider" :aria-label="t('billing.subscriptions.provider')">
             <option value="">{{ t("billing.subscriptions.byRules") }}</option>
             <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>

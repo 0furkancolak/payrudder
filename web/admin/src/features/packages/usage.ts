@@ -1,3 +1,4 @@
+import type { PlanVersion } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 import { parseMajor, parseUnitPrice } from "@/shared/lib/money";
 import { isQuantity, quotaTerms, scaleOf, type Entitlement, type Meter, type QuotaDraft } from "@/features/meters/quota";
@@ -94,4 +95,10 @@ export function buildUsage(prices: readonly PriceDraft[], quotas: readonly Quota
     entitlements.push({ meter_code: q.meter, ...r.terms });
   }
   return { prices: out, entitlements };
+}
+
+/** A free tier: no fixed fee in any currency and no usage price, only limits (and perhaps a trial). */
+export function isFreeTier(v: PlanVersion | undefined): boolean {
+  if (!v) return false;
+  return (v.base_fee_minor ?? "0") === "0" && (v.fees ?? []).every((f) => (f.base_fee_minor ?? "0") === "0") && (v.prices ?? []).length === 0;
 }

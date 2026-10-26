@@ -11,6 +11,9 @@ export const OPERATOR_PASSWORD = "password123";
 /** The sign-in answer and the /auth/me answer of that operator user; `operator: true` is the server's verdict. */
 export const operatorUser = { id: "99999999-9999-4999-8999-999999999999", email: OPERATOR_EMAIL, display_name: "Operator One", email_verified: true, create_time: "2026-10-01T09:00:00Z" };
 
+/** The ids of the people the mocks sign in as (Ada of product.ts, and the operator): see MockGateway.install. */
+const ONBOARDED_USERS = ["11111111-1111-4111-8111-111111111111", operatorUser.id];
+
 export interface Call {
   method: string;
   path: string;
@@ -58,7 +61,31 @@ export class MockGateway {
     return this.calls.filter((c) => c.method === method && (typeof path === "string" ? c.path === path : path.test(c.path)));
   }
 
-  async install(page: Page): Promise<void> {
+  /**
+   * Routes the page's /gw requests to the handlers. The people of the mocks (Ada, the operator) are already through the first-run wizard and the tour of the
+   * home, as somebody who has been using the console for a while would be, so a test sees the page and not the welcome. `onboarded: false` and
+   * `tourSeen: false` leave that part of the first-run state empty, for the tests of the wizard and of the tour themselves. What the app writes later
+   * (finishing the wizard) is never overwritten.
+   */
+  async install(page: Page, opts: { onboarded?: boolean; tourSeen?: boolean } = {}): Promise<void> {
+    const marks = { wizard: opts.onboarded ?? true, tour: opts.tourSeen ?? true };
+    if (marks.wizard || marks.tour) {
+      await page.addInitScript(
+        ([ids, m]) => {
+          try {
+            for (const id of ids as string[]) {
+              const wizard = `payrudder.onboarding.${id}`;
+              if ((m as typeof marks).wizard && localStorage.getItem(wizard) === null) localStorage.setItem(wizard, JSON.stringify({ status: "done", step: "done", hidden: true }));
+              const tour = `payrudder.tour.${id}.overview`;
+              if ((m as typeof marks).tour && localStorage.getItem(tour) === null) localStorage.setItem(tour, "1");
+            }
+          } catch {
+            // Storage can be blocked; the test then sees the welcome.
+          }
+        },
+        [ONBOARDED_USERS, marks],
+      );
+    }
     await page.route("**/gw/**", async (route: Route) => {
       const req = route.request();
       const url = new URL(req.url());

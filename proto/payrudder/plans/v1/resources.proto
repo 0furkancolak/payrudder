@@ -305,6 +305,8 @@ message PlanVersion {
   repeated CurrencyFee fees = 9;
   // Usage prices in the currencies of fees, when the plan version has metered prices.
   repeated CurrencyPrices currency_prices = 10;
+  // The trial in days a new subscription to this version gets unless its request says otherwise. 0 = none.
+  int32 trial_days = 11;
 }
 
 // CurrencyPrices prices every metered component of a plan version in one currency (minor units of that currency).

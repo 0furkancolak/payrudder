@@ -284,6 +284,7 @@ func ValidateEntitlement(t EntitlementTerms, scale int, field string, v *Violati
 // PlanVersionInput is a validated PublishPlanVersion request.
 type PlanVersionInput struct {
 	BaseFeeMinor int64
+	TrialDays    int32
 	Prices       []StoredPrice
 	Entitlements []StoredEntitlement
 }
@@ -291,12 +292,16 @@ type PlanVersionInput struct {
 // ValidatePlanVersion checks PublishPlanVersion. scales maps each known meter code to its quantity_scale.
 func ValidatePlanVersion(req *plansv1.PublishPlanVersionRequest, scales map[string]int) (PlanVersionInput, error) {
 	var v Violations
-	in := PlanVersionInput{BaseFeeMinor: req.GetBaseFeeMinor()}
+	in := PlanVersionInput{BaseFeeMinor: req.GetBaseFeeMinor(), TrialDays: req.GetTrialDays()}
 	if in.BaseFeeMinor < 0 {
 		v.Add("base_fee_minor", "must be ≥ 0")
 	}
-	if len(req.GetPrices()) == 0 && in.BaseFeeMinor == 0 {
-		v.Add("prices", "a plan version needs at least one price or a base fee")
+	if in.TrialDays < 0 || in.TrialDays > 365 {
+		v.Add("trial_days", "must be between 0 and 365")
+	}
+	// A free tier is a version with a fee of nothing, no usage price and quotas: what the customer gets is the limits.
+	if len(req.GetPrices()) == 0 && in.BaseFeeMinor == 0 && len(req.GetEntitlements()) == 0 {
+		v.Add("prices", "a plan version needs at least one price, a base fee or a quota")
 	}
 	seen := map[string]bool{}
 	for i, p := range req.GetPrices() {

@@ -512,7 +512,18 @@
         "limit": "Quota {n}: the limit must be a quantity with at most the decimals of {meter}.",
         "thresholds": "Quota {n}: alerts are up to 10 ascending percentages between 1 and 1000.",
         "softNeedsPrice": "Quota {n}: a soft limit bills what is over it, so {meter} needs a usage price; use notify only otherwise."
-      }
+      },
+      "trialDays": "Free trial in days (optional)",
+      "trialHelp": "A subscription to this package starts trialing for this many days, with no card; the first fee is invoiced when the trial ends. A subscription can still choose its own.",
+      "freeTier": "Free tier",
+      "freeTierHelp": "No fixed fee: customers get the limits you set below. Add at least one limit.",
+      "freeNeedsLimit": "A free tier needs at least one limit.",
+      "badTrial": "The trial is a whole number of days from 0 to 365.",
+      "freeTierBadge": "Free tier",
+      "trialBadge": "{n}-day trial",
+      "trialColumn": "Free trial",
+      "trialDaysValue": "{n} days",
+      "noTrial": "None"
     },
     "subscriptions": {
       "new": "New subscription",
@@ -609,7 +620,13 @@
       "credited": "Credited {amount} to the customer's balance.",
       "allStates": "All statuses",
       "allCurrencies": "All currencies",
-      "allIntervals": "All intervals"
+      "allIntervals": "All intervals",
+      "trialDefault": "Package default: {days} days",
+      "trialHint": "No card is needed during a trial; the first fee is invoiced when it ends. Leave empty for the package's own trial, or enter 0 for none.",
+      "trialEnds": "trial ends {date}",
+      "trialsEnding": "{n} trial ends within {days} days | {n} trials end within {days} days",
+      "showTrials": "Show trials",
+      "trialBanner": "The trial ends {date}, in {n} day. No card is needed until then; the first fee is invoiced when it ends. | The trial ends {date}, in {n} days. No card is needed until then; the first fee is invoiced when it ends."
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",
@@ -1099,7 +1116,20 @@
         "expiry": "Expiry date",
         "expiryHint": "Leave empty for credits that never expire",
         "reason": "Note (optional)",
-        "submit": "Add credits"
+        "submit": "Add credits",
+        "free": "Grant free credits",
+        "freeHint": "Free credits go into the balance of {customer} at once and are not invoiced.",
+        "badExpiry": "Choose an expiry date in the future.",
+        "expires": "Expires",
+        "never": "Never expires",
+        "onDate": "On a date…",
+        "inDays": "In {n} days",
+        "reasons": {
+          "welcome": "Welcome gift",
+          "goodwill": "Goodwill",
+          "promotion": "Promotion",
+          "other": "Other"
+        }
       },
       "ledger": {
         "title": "Credit history",
@@ -3845,5 +3875,293 @@
   "sheets": {
     "back": "Back",
     "forward": "Forward"
+  },
+  "tour": {
+    "progress": "Step {n} of {total}",
+    "skip": "Skip tour",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "take": "Take a tour of this page",
+    "common": {
+      "find": "Search and filter",
+      "findBody": "Type to search, and narrow the list with the filters next to it.",
+      "create": "Add new",
+      "list": "The list",
+      "tabs": "Sections"
+    },
+    "pages": {
+      "overview": {
+        "welcomeTitle": "Welcome to Payrudder",
+        "welcome": "Payrudder measures what your customers use, prices it with your packages, bills it and collects the payment. This short tour shows you around.",
+        "appsTitle": "Your apps",
+        "apps": "An app is one product you bill for. Open one from here to see its dashboard, customers and billing.",
+        "groupsTitle": "Find your way",
+        "groups": "Everything you can open is listed here. Inside an app, the sidebar grows into customers, billing, growth, developers and settings.",
+        "sandboxTitle": "Sandbox and live",
+        "sandbox": "Every app has a sandbox to try things with test money and a live environment for real payments. This switch picks which one you look at.",
+        "accountTitle": "You and your organisation",
+        "account": "Switch organisation, open your settings or sign out from your menu.",
+        "againTitle": "A tour on every page",
+        "again": "Every page has this icon. Press it any time for a short tour of the page you are on."
+      },
+      "dashboard": {
+        "intro": "The dashboard of one app in one environment: payments, invoices, subscriptions and customers over the period you choose.",
+        "figuresTitle": "Your figures",
+        "figures": "Choose the period and the currency at the top; every figure and chart follows. Currencies are never added together."
+      },
+      "goLive": {
+        "intro": "The live environment starts switched off: no live keys, no real charges. Finish the checklist, then switch it on.",
+        "checklistTitle": "The checklist",
+        "checklist": "Each item says what is missing and takes you to where you fix it. When all are done, an owner can activate live."
+      },
+      "apiKeys": {
+        "intro": "API keys let your server talk to Payrudder. Sandbox keys act on test data, live keys on real data.",
+        "create": "Create a key for the sandbox to start. The secret is shown once, so copy it then. You can rotate or revoke a key at any time."
+      },
+      "sandbox": {
+        "intro": "Tools that act on the sandbox only: start again from a clean slate, and choose how test payments end.",
+        "scenariosTitle": "How test payments end",
+        "scenarios": "Pick an outcome (paid, declined, an error that clears on retry) to see how your integration copes before real money is involved."
+      },
+      "appSettings": {
+        "intro": "What this app was created with. Its currency and time zone decide how invoices are worked out, so they are fixed once the app exists."
+      },
+      "members": {
+        "intro": "Who belongs to this organisation, their roles and the invitations that are still open.",
+        "invite": "Invite a colleague by e-mail and choose their role. Viewers can look but not change anything."
+      },
+      "settings": {
+        "intro": "Your organisation's name, your profile and how the console looks for you."
+      },
+      "partner": {
+        "intro": "The partner portal: your referral links, the customers you brought and the commission you have earned."
+      },
+      "paymentProviders": {
+        "intro": "Connect the payment providers your customers pay through, once for all apps or app by app.",
+        "cardsTitle": "Providers",
+        "cards": "Each card shows whether a provider is connected and works. Open one to connect, test or disconnect it.",
+        "sandboxTitle": "Nothing to connect in the sandbox",
+        "sandbox": "The sandbox runs against a built-in simulator, so you can try everything without a provider account."
+      },
+      "customers": {
+        "intro": "The people and companies you bill. Open a customer to see their invoices, payments, subscriptions and credits.",
+        "create": "Add a customer by hand. Customers are also created by your API when they sign up in your product."
+      },
+      "subscriptions": {
+        "intro": "Which customer is on which package, and in what state: trialing, active, past due, paused or cancelled.",
+        "create": "Start a subscription for a customer. You can give it a free trial with no card, or leave the package's own trial in place."
+      },
+      "usage": {
+        "intro": "What your customers used, by meter and by customer, in the period you pick, against their limits.",
+        "tabs": "Switch between the overview, the meters and the customers."
+      },
+      "credits": {
+        "intro": "Prepaid credits: the packs you sell, and each customer's balance and history.",
+        "packs": "Credit packs are credits sold for a price. A customer buys one through a payment link.",
+        "grantTitle": "Free credits",
+        "grant": "Choose a customer to see their balance. From here, or from their customer page, grant free credits with a reason and an optional expiry."
+      },
+      "meters": {
+        "intro": "A meter says what is measured and how usage events add up: a count, a sum or a maximum.",
+        "create": "Add a meter, or a new version of an existing one. Packages price the meters you make."
+      },
+      "packages": {
+        "intro": "What customers subscribe to: a fixed fee, prices for the usage you meter, and limits.",
+        "create": "Publish a package or a new version of one. A package can include a free trial, or be a free tier with limits only.",
+        "trialsTitle": "Trials and free tiers",
+        "trials": "Give a package a default trial in days, and subscriptions to it start trialing with no card. A free tier is a package with no fee and limits only."
+      },
+      "pricing": {
+        "intro": "Tax rates and promotions: what is added to or taken off what you bill.",
+        "tabs": "Switch between the sections of this page."
+      },
+      "coupons": {
+        "intro": "Discounts: a coupon says what is taken off, and customers get it through a promotion code.",
+        "create": "Create a coupon, then add codes for it. Each code can have its own limit and expiry."
+      },
+      "invoices": {
+        "intro": "Every invoice, with its state: open, paid, void or uncollectible.",
+        "list": "Open a row to see its lines, payments and credit notes. Invoices are made for you at the end of each billing period."
+      },
+      "payments": {
+        "intro": "Every attempt to collect money, with the provider, the amount and what came of it.",
+        "list": "Open a payment to see which invoice it was for and what the provider said."
+      },
+      "paymentLinks": {
+        "intro": "Links a customer opens to pay without signing in: for an open invoice, a fixed amount or a credit pack.",
+        "list": "Your links and their state. A link stops working when it expires or is revoked."
+      },
+      "accounting": {
+        "intro": "What you earned from paid invoices and what you spent, for the period you choose.",
+        "currenciesTitle": "One currency at a time",
+        "currencies": "Each currency is shown on its own. Amounts in different currencies are never added together or converted."
+      },
+      "reports": {
+        "intro": "Revenue, subscriptions and unpaid invoices, month by month.",
+        "table": "Each currency has its own rows; amounts in different currencies are never added together."
+      },
+      "affiliates": {
+        "intro": "Run a partner programme: partners get a link and a code, and earn a commission on what the customers they bring pay.",
+        "tabs": "The sections go from the programme's terms to partners, commissions and payouts."
+      },
+      "webhooks": {
+        "intro": "Payrudder sends a signed message to your server when something happens: an invoice is paid, a subscription changes.",
+        "create": "Add an HTTPS endpoint and choose the events it wants. The signing secret is shown once."
+      },
+      "mail": {
+        "intro": "Choose which e-mails Payrudder sends to your customers on your behalf.",
+        "categoriesTitle": "E-mail kinds",
+        "categories": "Switch a kind of e-mail on or off. A kind that is off is dropped, not queued."
+      },
+      "tenants": {
+        "intro": "Every tenant on the platform, for operators.",
+        "list": "Open one to see its customers, billing and settings as the tenant sees them."
+      },
+      "playground": {
+        "intro": "A guided walk through the whole flow in a throwaway account: meter, plan, usage, the close of the period and the invoice."
+      },
+      "deadLetters": {
+        "intro": "Messages the platform could not process after several tries, for operators to inspect and replay."
+      }
+    }
+  },
+  "onboarding": {
+    "skip": "Skip for now",
+    "back": "Back",
+    "continue": "Continue",
+    "stepLabel": "Step {n} of {total}",
+    "steps": {
+      "welcome": "Welcome",
+      "organisation": "Organisation",
+      "app": "First app",
+      "meter": "First meter",
+      "package": "First package",
+      "event": "Test event",
+      "done": "Done"
+    },
+    "welcome": {
+      "title": "Bill for what your customers use",
+      "body": "Payrudder measures usage, prices it with your packages, bills it and collects the payment. Set up your first pieces now, in a sandbox where nothing is real.",
+      "flow": {
+        "meter": {
+          "title": "Meter usage",
+          "body": "Send events: API calls, gigabytes, seats, tokens."
+        },
+        "price": {
+          "title": "Price it",
+          "body": "Packages with a fixed fee, usage prices and limits."
+        },
+        "bill": {
+          "title": "Bill it",
+          "body": "Invoices are made for you at the end of each period."
+        },
+        "paid": {
+          "title": "Get paid",
+          "body": "Customers pay through the providers you connect."
+        }
+      },
+      "start": "Set up my account",
+      "time": "It takes about two minutes."
+    },
+    "organisation": {
+      "title": "Your organisation",
+      "body": "The name your team and customers see, and the defaults for your first app.",
+      "name": "Organisation name",
+      "currency": "Currency",
+      "timezone": "Time zone",
+      "note": "The currency and the time zone decide how invoices are worked out, so they cannot be changed once the app exists."
+    },
+    "app": {
+      "title": "Your first app",
+      "body": "An app is one product you bill for. It comes with a sandbox to test in and a live environment for real payments.",
+      "name": "App name",
+      "defaultName": "My first app",
+      "create": "Create app",
+      "created": "{name} is ready, with its sandbox."
+    },
+    "meter": {
+      "title": "What do you measure?",
+      "body": "A meter turns usage events into a quantity you can bill. Pick a template; you can add or change meters later.",
+      "create": "Create meter",
+      "templates": {
+        "api_calls": {
+          "name": "API calls",
+          "body": "Counts every request your customers make."
+        },
+        "storage": {
+          "name": "Storage (GB)",
+          "body": "The most storage a customer used in the period."
+        },
+        "seats": {
+          "name": "Seats",
+          "body": "The most seats a customer had in the period."
+        },
+        "tokens": {
+          "name": "AI tokens",
+          "body": "Adds up the tokens your customers spend."
+        }
+      }
+    },
+    "package": {
+      "title": "Your first package",
+      "body": "A package is what a customer subscribes to: a fixed monthly fee plus a price for each unit they use.",
+      "name": "Package name",
+      "defaultName": "Starter",
+      "fee": "Monthly fee ({currency})",
+      "unitPrice": "Price per {unit} ({currency})",
+      "note": "You can add limits, other currencies and a free trial on the Packages page.",
+      "create": "Publish package"
+    },
+    "event": {
+      "title": "Send a test event",
+      "body": "We create a test customer, subscribe it to your package and send one usage event to your sandbox, so you see the whole path work.",
+      "customer": "Customer",
+      "meter": "Meter",
+      "quantity": "Quantity",
+      "send": "Send test event",
+      "sending": "Sending…",
+      "sent": "Accepted: {quantity} {unit} of usage in your sandbox."
+    },
+    "done": {
+      "title": "You are all set",
+      "body": "Your sandbox has a meter, a package and its first usage event. Here is what usually comes next.",
+      "finish": "Go to my dashboard",
+      "next": {
+        "dashboard": {
+          "title": "Open your sandbox dashboard",
+          "body": "See the usage and the invoice the test event leads to."
+        },
+        "keys": {
+          "title": "Create an API key",
+          "body": "Let your own server send usage."
+        },
+        "team": {
+          "title": "Invite your team",
+          "body": "Colleagues can join with a role of their own."
+        },
+        "live": {
+          "title": "Go live",
+          "body": "Connect a payment provider and switch real billing on."
+        }
+      }
+    },
+    "checklist": {
+      "title": "Getting started",
+      "progress": "{done} of {total} done",
+      "resume": "Continue setup",
+      "hide": "Hide this list",
+      "open": "Open",
+      "done": "done",
+      "todo": "to do",
+      "items": {
+        "app": "Create your first app",
+        "meter": "Add a meter",
+        "package": "Publish a package with a price",
+        "event": "Send a test event",
+        "key": "Create an API key",
+        "live": "Go live"
+      }
+    }
   }
 }

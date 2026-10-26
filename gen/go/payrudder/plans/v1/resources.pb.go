@@ -2344,8 +2344,10 @@ type PlanVersion struct {
 	Fees []*CurrencyFee `protobuf:"bytes,9,rep,name=fees,proto3" json:"fees,omitempty"`
 	// Usage prices in the currencies of fees, when the plan version has metered prices.
 	CurrencyPrices []*CurrencyPrices `protobuf:"bytes,10,rep,name=currency_prices,json=currencyPrices,proto3" json:"currency_prices,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The trial in days a new subscription to this version gets unless its request says otherwise. 0 = none.
+	TrialDays     int32 `protobuf:"varint,11,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PlanVersion) Reset() {
@@ -2446,6 +2448,13 @@ func (x *PlanVersion) GetCurrencyPrices() []*CurrencyPrices {
 		return x.CurrencyPrices
 	}
 	return nil
+}
+
+func (x *PlanVersion) GetTrialDays() int32 {
+	if x != nil {
+		return x.TrialDays
+	}
+	return 0
 }
 
 // CurrencyPrices prices every metered component of a plan version in one currency (minor units of that currency).
@@ -3532,7 +3541,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\vcreate_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12;\n" +
 	"\vupdate_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"updateTime\"\xcc\x03\n" +
+	"updateTime\"\xeb\x03\n" +
 	"\vPlanVersion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\aplan_id\x18\x02 \x01(\tR\x06planId\x12\x1b\n" +
@@ -3544,7 +3553,9 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\fpublish_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vpublishTime\x123\n" +
 	"\x04fees\x18\t \x03(\v2\x1f.payrudder.plans.v1.CurrencyFeeR\x04fees\x12K\n" +
 	"\x0fcurrency_prices\x18\n" +
-	" \x03(\v2\".payrudder.plans.v1.CurrencyPricesR\x0ecurrencyPrices\"_\n" +
+	" \x03(\v2\".payrudder.plans.v1.CurrencyPricesR\x0ecurrencyPrices\x12\x1d\n" +
+	"\n" +
+	"trial_days\x18\v \x01(\x05R\ttrialDays\"_\n" +
 	"\x0eCurrencyPrices\x12\x1a\n" +
 	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x121\n" +
 	"\x06prices\x18\x02 \x03(\v2\x19.payrudder.plans.v1.PriceR\x06prices\"\x95\x01\n" +

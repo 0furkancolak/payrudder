@@ -367,6 +367,7 @@ type PlanVersion struct {
 	Version      int32
 	BaseFeeMinor int64
 	PublishedAt  time.Time
+	TrialDays    int32
 }
 
 type PlanVersionFee struct {

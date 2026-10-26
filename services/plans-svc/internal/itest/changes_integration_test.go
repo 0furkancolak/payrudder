@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -41,7 +42,7 @@ func testSubscriptionChanges(t *testing.T) {
 			t.Fatal(err)
 		}
 		start := time.Now().Add(-time.Duration(daysAgo) * 24 * time.Hour).Truncate(time.Microsecond)
-		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: ext, PlanCode: plan, Interval: interval, StartTime: timestamppb.New(start), TrialDays: trialDays})
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: ext, PlanCode: plan, Interval: interval, StartTime: timestamppb.New(start), TrialDays: proto.Int32(trialDays)})
 		if err != nil {
 			t.Fatal(err)
 		}

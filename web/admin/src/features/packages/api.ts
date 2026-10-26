@@ -18,6 +18,7 @@ export interface Package {
 export function usePackages(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => packageKeys.list(toValue(tenantId))),
+    enabled: computed(() => toValue(tenantId) !== ""),
     queryFn: async (): Promise<Package[]> => {
       const api = tenantApi(toValue(tenantId));
       const { plans = [] } = await unwrap(api.GET("/v1/plans"));
@@ -42,6 +43,8 @@ export interface NewPackage {
   /** Usage prices in the tenant's currency (minor units), and the quotas of the version. */
   prices?: Price[];
   entitlements?: Entitlement[];
+  /** The trial in days a new subscription to this version gets unless it says otherwise (0 or left out: none). */
+  trialDays?: number;
 }
 
 /** Creates the package (unless it exists) and publishes a version with these fixed fees. */
@@ -64,6 +67,7 @@ export function useCreatePackage(tenantId: MaybeRefOrGetter<string>) {
             fees: p.fees.map((f) => ({ currency: f.currency, base_fee_minor: f.baseFeeMinor, interval: f.interval === "year" ? ("SUBSCRIPTION_INTERVAL_YEAR" as const) : ("SUBSCRIPTION_INTERVAL_MONTH" as const) })),
             ...(p.prices?.length ? { prices: p.prices } : {}),
             ...(p.entitlements?.length ? { entitlements: p.entitlements } : {}),
+            ...(p.trialDays ? { trial_days: p.trialDays } : {}),
           },
         }),
       );

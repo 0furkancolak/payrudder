@@ -66,7 +66,7 @@ func (c *Commands) PublishVersion(ctx context.Context, req *plansv1.PublishPlanV
 		if err != nil {
 			return err
 		}
-		pv, err := q.InsertPlanVersion(ctx, sqlc.InsertPlanVersionParams{ID: idgen.NewUUIDv7(), PlanID: plan.ID, BaseFeeMinor: in.BaseFeeMinor})
+		pv, err := q.InsertPlanVersion(ctx, sqlc.InsertPlanVersionParams{ID: idgen.NewUUIDv7(), PlanID: plan.ID, BaseFeeMinor: in.BaseFeeMinor, TrialDays: in.TrialDays})
 		if err != nil {
 			return err
 		}
@@ -95,7 +95,7 @@ func (c *Commands) PublishVersion(ctx context.Context, req *plansv1.PublishPlanV
 				return err
 			}
 		}
-		out, err = plansqry.Assemble(ctx, q, pv.ID, pv.PlanID, plan.Code, pv.Version, pv.BaseFeeMinor, pv.PublishedAt, scales)
+		out, err = plansqry.Assemble(ctx, q, pv.ID, pv.PlanID, plan.Code, pv.Version, pv.BaseFeeMinor, pv.TrialDays, pv.PublishedAt, scales)
 		return err
 	}
 	// Two concurrent publishes of the same plan collide on UNIQUE (tenant, plan, version); retry once.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeOutcome, intervalKey, subscriptionAbilities } from "./lib";
+import { changeOutcome, intervalKey, subscriptionAbilities, trialDaysLeft, trialsEndingSoon } from "./lib";
 
 describe("subscription helpers", () => {
   it("names an interval, monthly unless it is a year", () => {
@@ -22,5 +22,24 @@ describe("subscription helpers", () => {
     expect(subscriptionAbilities({ ...active, end_time: "2026-10-01T00:00:00Z" })).toEqual({ providerRuns: false, manageHere: false, advanceActions: false, canEndWithCredit: false });
     expect(subscriptionAbilities({ ...active, owner: "provider" })).toMatchObject({ providerRuns: true, manageHere: false, advanceActions: false });
     expect(subscriptionAbilities({ ...active, fee_timing: "FEE_TIMING_ARREARS" })).toMatchObject({ manageHere: true, advanceActions: false, canEndWithCredit: false });
+  });
+});
+
+describe("trials", () => {
+  const now = new Date("2026-10-26T10:00:00Z");
+  const trial = (end: string) => ({ state: "SUBSCRIPTION_STATE_TRIALING" as const, trial_end_time: end });
+
+  it("counts the days left in a trial, rounded up, and knows nothing of a subscription that is not trialing", () => {
+    expect(trialDaysLeft(trial("2026-10-29T09:00:00Z"), now)).toBe(3);
+    expect(trialDaysLeft(trial("2026-10-26T12:00:00Z"), now)).toBe(1);
+    expect(trialDaysLeft(trial("2026-10-25T12:00:00Z"), now)).toBe(0);
+    expect(trialDaysLeft({ state: "SUBSCRIPTION_STATE_ACTIVE", trial_end_time: "2026-10-29T09:00:00Z" }, now)).toBeNull();
+    expect(trialDaysLeft({ state: "SUBSCRIPTION_STATE_TRIALING" }, now)).toBeNull();
+  });
+
+  it("lists the trials that end within a week, soonest first", () => {
+    const list: { state: "SUBSCRIPTION_STATE_TRIALING" | "SUBSCRIPTION_STATE_ACTIVE"; trial_end_time?: string }[] = [trial("2026-11-20T00:00:00Z"), trial("2026-10-30T00:00:00Z"), trial("2026-10-28T00:00:00Z"), { state: "SUBSCRIPTION_STATE_ACTIVE" as const }];
+    expect(trialsEndingSoon(list, now).map((s) => s.trial_end_time)).toEqual(["2026-10-28T00:00:00Z", "2026-10-30T00:00:00Z"]);
+    expect(trialsEndingSoon(list, now, 30)).toHaveLength(3);
   });
 });

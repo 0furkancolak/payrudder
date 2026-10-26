@@ -60,7 +60,7 @@ func (r *Queries) Version(ctx context.Context, req *plansv1.GetPlanVersionReques
 			if err != nil {
 				return err
 			}
-			out, err = Assemble(ctx, q, r.ID, r.PlanID, r.PlanCode, r.Version, r.BaseFeeMinor, r.PublishedAt, scales)
+			out, err = Assemble(ctx, q, r.ID, r.PlanID, r.PlanCode, r.Version, r.BaseFeeMinor, r.TrialDays, r.PublishedAt, scales)
 			return err
 		}
 		if req.GetPlanCode() == "" {
@@ -70,7 +70,7 @@ func (r *Queries) Version(ctx context.Context, req *plansv1.GetPlanVersionReques
 		if err != nil {
 			return err
 		}
-		out, err = Assemble(ctx, q, r.ID, r.PlanID, r.PlanCode, r.Version, r.BaseFeeMinor, r.PublishedAt, scales)
+		out, err = Assemble(ctx, q, r.ID, r.PlanID, r.PlanCode, r.Version, r.BaseFeeMinor, r.TrialDays, r.PublishedAt, scales)
 		return err
 	})
 	if err != nil {
@@ -80,10 +80,10 @@ func (r *Queries) Version(ctx context.Context, req *plansv1.GetPlanVersionReques
 }
 
 // Assemble builds the API message of a plan version from its rows, in the caller's transaction.
-func Assemble(ctx context.Context, q *sqlc.Queries, id, planID uuid.UUID, planCode string, version int32, baseFee int64,
+func Assemble(ctx context.Context, q *sqlc.Queries, id, planID uuid.UUID, planCode string, version int32, baseFee int64, trialDays int32,
 	published time.Time, scales map[string]int) (*plansv1.PlanVersion, error) {
 	pv := &plansv1.PlanVersion{
-		Id: id.String(), PlanId: planID.String(), PlanCode: planCode, Version: version, BaseFeeMinor: baseFee,
+		Id: id.String(), PlanId: planID.String(), PlanCode: planCode, Version: version, BaseFeeMinor: baseFee, TrialDays: trialDays,
 		PublishTime: timestamppb.New(published),
 	}
 	fees, err := q.ListPlanVersionFees(ctx, id)

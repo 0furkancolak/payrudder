@@ -62,6 +62,7 @@ async function leave() {
     <DropdownMenuTrigger as-child>
       <button
         type="button"
+        data-testid="user-menu"
         class="bg-brand text-rail shadow-card inline-flex size-10 items-center justify-center rounded-xl text-sm font-semibold transition-transform hover:scale-105"
         :aria-label="t('product.menu.open')"
       >

@@ -238,7 +238,8 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
     if (c.path === "/app/v1/invitations/accept") return { body: { account_id: ACCOUNT, memberships } };
     if (c.path === "/app/v1/apps" && c.method === "GET") return { body: { apps: s.apps } };
     if (c.path === "/app/v1/apps" && c.method === "POST") {
-      const created = { ...app, id: "b0000000-0000-4000-8000-000000000002", name: String(c.body?.name), slug: String(c.body?.name).toLowerCase().replace(/\s+/g, "-") };
+      // The first app of an organisation is the fixture app (its dashboard is mocked); the next ones are other apps.
+      const created = { ...app, id: s.apps.length === 0 ? APP : "b0000000-0000-4000-8000-000000000002", name: String(c.body?.name), slug: String(c.body?.name).toLowerCase().replace(/\s+/g, "-") };
       s.apps = [...s.apps, created];
       return { status: 201, body: created };
     }

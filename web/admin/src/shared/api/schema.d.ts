@@ -5764,6 +5764,8 @@ export interface components {
             entitlements?: components["schemas"]["Entitlement"][];
             /** Format: date-time */
             publish_time?: string;
+            /** @description The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
+            trial_days?: number;
             /** @description Fixed fees other than the tenant currency's monthly one, per currency and interval */
             fees?: components["schemas"]["CurrencyFee"][];
         };
@@ -7330,6 +7332,8 @@ export interface operations {
                     fees?: components["schemas"]["CurrencyFee"][];
                     prices?: components["schemas"]["Price"][];
                     entitlements?: components["schemas"]["Entitlement"][];
+                    /** @description The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
+                    trial_days?: number;
                 };
             };
         };
@@ -7416,6 +7420,7 @@ export interface operations {
                     plan_version?: number;
                     /** Format: date-time */
                     start_time?: string;
+                    /** @description Left out: the package version's own default trial. 0: no trial whatever the default is */
                     trial_days?: number;
                     /** @enum {string} */
                     interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";

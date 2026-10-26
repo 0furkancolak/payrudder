@@ -512,7 +512,18 @@
         "limit": "Kontingent {n}: das Limit muss eine Menge mit höchstens den Nachkommastellen von {meter} sein.",
         "thresholds": "Kontingent {n}: Warnungen sind bis zu 10 aufsteigende Prozentwerte zwischen 1 und 1000.",
         "softNeedsPrice": "Kontingent {n}: ein weiches Limit rechnet ab, was darüber liegt, daher braucht {meter} einen Nutzungspreis; sonst Nur benachrichtigen wählen."
-      }
+      },
+      "trialDays": "Kostenlose Testphase in Tagen (optional)",
+      "trialHelp": "Ein Abo dieses Pakets startet für so viele Tage als Test, ohne Karte; die erste Gebühr wird nach der Testphase berechnet. Ein Abo kann trotzdem eine eigene wählen.",
+      "freeTier": "Gratisstufe",
+      "freeTierHelp": "Keine Fixgebühr: Kunden erhalten die unten gesetzten Limits. Fügen Sie mindestens ein Limit hinzu.",
+      "freeNeedsLimit": "Eine Gratisstufe braucht mindestens ein Limit.",
+      "badTrial": "Die Testphase ist eine ganze Zahl von Tagen zwischen 0 und 365.",
+      "freeTierBadge": "Gratisstufe",
+      "trialBadge": "{n} Tage Test",
+      "trialColumn": "Kostenlose Testphase",
+      "trialDaysValue": "{n} Tage",
+      "noTrial": "Keine"
     },
     "subscriptions": {
       "new": "Neues Abonnement",
@@ -609,7 +620,13 @@
       "credited": "{amount} dem Guthaben des Kunden gutgeschrieben.",
       "allStates": "Alle Status",
       "allCurrencies": "Alle Währungen",
-      "allIntervals": "Alle Intervalle"
+      "allIntervals": "Alle Intervalle",
+      "trialDefault": "Standard des Pakets: {days} Tage",
+      "trialHint": "Während einer Testphase wird keine Karte benötigt; die erste Gebühr wird nach ihrem Ende berechnet. Leer lassen für die Testphase des Pakets, 0 für keine.",
+      "trialEnds": "Test endet am {date}",
+      "trialsEnding": "{n} Testphase endet innerhalb von {days} Tagen | {n} Testphasen enden innerhalb von {days} Tagen",
+      "showTrials": "Testphasen anzeigen",
+      "trialBanner": "Die Testphase endet am {date}, in {n} Tag. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet. | Die Testphase endet am {date}, in {n} Tagen. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet."
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",
@@ -1099,7 +1116,20 @@
         "expiry": "Ablaufdatum",
         "expiryHint": "Leer lassen für Guthaben ohne Ablauf",
         "reason": "Notiz (optional)",
-        "submit": "Guthaben hinzufügen"
+        "submit": "Guthaben hinzufügen",
+        "free": "Gratisguthaben vergeben",
+        "freeHint": "Gratisguthaben wird dem Konto von {customer} sofort gutgeschrieben und nicht berechnet.",
+        "badExpiry": "Wählen Sie ein Ablaufdatum in der Zukunft.",
+        "expires": "Läuft ab",
+        "never": "Läuft nie ab",
+        "onDate": "An einem Datum …",
+        "inDays": "In {n} Tagen",
+        "reasons": {
+          "welcome": "Willkommensgeschenk",
+          "goodwill": "Kulanz",
+          "promotion": "Aktion",
+          "other": "Sonstiges"
+        }
       },
       "ledger": {
         "title": "Guthabenverlauf",
@@ -3845,5 +3875,293 @@
   "sheets": {
     "back": "Zurück",
     "forward": "Vor"
+  },
+  "tour": {
+    "progress": "Schritt {n} von {total}",
+    "skip": "Tour überspringen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "done": "Fertig",
+    "take": "Rundgang durch diese Seite",
+    "common": {
+      "find": "Suchen und filtern",
+      "findBody": "Tippen Sie zum Suchen und grenzen Sie die Liste mit den Filtern daneben ein.",
+      "create": "Neu hinzufügen",
+      "list": "Die Liste",
+      "tabs": "Bereiche"
+    },
+    "pages": {
+      "overview": {
+        "welcomeTitle": "Willkommen bei Payrudder",
+        "welcome": "Payrudder misst, was Ihre Kunden nutzen, bepreist es mit Ihren Paketen, stellt es in Rechnung und zieht die Zahlung ein. Dieser kurze Rundgang zeigt Ihnen alles.",
+        "appsTitle": "Ihre Apps",
+        "apps": "Eine App ist ein Produkt, das Sie abrechnen. Öffnen Sie hier eine, um Dashboard, Kunden und Abrechnung zu sehen.",
+        "groupsTitle": "Sich zurechtfinden",
+        "groups": "Alles, was Sie öffnen können, steht hier. In einer App wächst die Seitenleiste um Kunden, Abrechnung, Wachstum, Entwickler und Einstellungen.",
+        "sandboxTitle": "Sandbox und Live",
+        "sandbox": "Jede App hat eine Sandbox zum Ausprobieren mit Testgeld und eine Live-Umgebung für echte Zahlungen. Dieser Schalter wählt, welche Sie sehen.",
+        "accountTitle": "Sie und Ihre Organisation",
+        "account": "Wechseln Sie die Organisation, öffnen Sie Ihre Einstellungen oder melden Sie sich über Ihr Menü ab.",
+        "againTitle": "Ein Rundgang auf jeder Seite",
+        "again": "Jede Seite hat dieses Symbol. Drücken Sie es jederzeit für einen kurzen Rundgang durch die aktuelle Seite."
+      },
+      "dashboard": {
+        "intro": "Das Dashboard einer App in einer Umgebung: Zahlungen, Rechnungen, Abos und Kunden im gewählten Zeitraum.",
+        "figuresTitle": "Ihre Zahlen",
+        "figures": "Wählen Sie oben Zeitraum und Währung; alle Zahlen und Diagramme folgen. Währungen werden nie addiert."
+      },
+      "goLive": {
+        "intro": "Die Live-Umgebung startet ausgeschaltet: keine Live-Schlüssel, keine echten Abbuchungen. Arbeiten Sie die Checkliste ab und schalten Sie sie dann ein.",
+        "checklistTitle": "Die Checkliste",
+        "checklist": "Jeder Punkt sagt, was fehlt, und führt Sie dorthin, wo Sie es beheben. Sind alle erledigt, kann ein Inhaber Live aktivieren."
+      },
+      "apiKeys": {
+        "intro": "API-Schlüssel lassen Ihren Server mit Payrudder sprechen. Sandbox-Schlüssel wirken auf Testdaten, Live-Schlüssel auf echte Daten.",
+        "create": "Erstellen Sie zum Start einen Sandbox-Schlüssel. Das Geheimnis wird nur einmal angezeigt, kopieren Sie es also sofort. Schlüssel lassen sich jederzeit rotieren oder widerrufen."
+      },
+      "sandbox": {
+        "intro": "Werkzeuge, die nur auf die Sandbox wirken: neu beginnen und festlegen, wie Testzahlungen enden.",
+        "scenariosTitle": "Wie Testzahlungen enden",
+        "scenarios": "Wählen Sie ein Ergebnis (bezahlt, abgelehnt, ein Fehler, der beim Wiederholen verschwindet) und sehen Sie, wie Ihre Integration damit umgeht, bevor echtes Geld im Spiel ist."
+      },
+      "appSettings": {
+        "intro": "Womit diese App angelegt wurde. Währung und Zeitzone bestimmen, wie Rechnungen berechnet werden, und sind daher nach dem Anlegen fest."
+      },
+      "members": {
+        "intro": "Wer zu dieser Organisation gehört, welche Rollen sie haben und welche Einladungen noch offen sind.",
+        "invite": "Laden Sie Kollegen per E-Mail ein und wählen Sie ihre Rolle. Betrachter dürfen ansehen, aber nichts ändern."
+      },
+      "settings": {
+        "intro": "Name Ihrer Organisation, Ihr Profil und das Aussehen der Konsole für Sie."
+      },
+      "partner": {
+        "intro": "Das Partnerportal: Ihre Empfehlungslinks, die von Ihnen geworbenen Kunden und Ihre verdiente Provision."
+      },
+      "paymentProviders": {
+        "intro": "Verbinden Sie die Zahlungsanbieter, über die Ihre Kunden zahlen, einmal für alle Apps oder App für App.",
+        "cardsTitle": "Anbieter",
+        "cards": "Jede Karte zeigt, ob ein Anbieter verbunden ist und funktioniert. Öffnen Sie eine, um ihn zu verbinden, zu testen oder zu trennen.",
+        "sandboxTitle": "In der Sandbox gibt es nichts zu verbinden",
+        "sandbox": "Die Sandbox läuft gegen einen eingebauten Simulator, sodass Sie alles ohne Anbieterkonto ausprobieren können."
+      },
+      "customers": {
+        "intro": "Die Personen und Firmen, die Sie abrechnen. Öffnen Sie einen Kunden, um Rechnungen, Zahlungen, Abos und Guthaben zu sehen.",
+        "create": "Legen Sie einen Kunden von Hand an. Kunden entstehen auch über Ihre API, wenn sie sich in Ihrem Produkt registrieren."
+      },
+      "subscriptions": {
+        "intro": "Welcher Kunde in welchem Paket ist und in welchem Zustand: Test, aktiv, überfällig, pausiert oder gekündigt.",
+        "create": "Starten Sie ein Abo für einen Kunden. Sie können eine kostenlose Testphase ohne Karte geben oder die des Pakets belassen."
+      },
+      "usage": {
+        "intro": "Was Ihre Kunden im gewählten Zeitraum genutzt haben, nach Zähler und Kunde, im Vergleich zu ihren Limits.",
+        "tabs": "Wechseln Sie zwischen Übersicht, Zählern und Kunden."
+      },
+      "credits": {
+        "intro": "Vorausbezahltes Guthaben: die Pakete, die Sie verkaufen, sowie Kontostand und Verlauf jedes Kunden.",
+        "packs": "Guthabenpakete sind Guthaben zu einem Preis. Ein Kunde kauft sie über einen Zahlungslink.",
+        "grantTitle": "Gratisguthaben",
+        "grant": "Wählen Sie einen Kunden, um seinen Kontostand zu sehen. Von hier oder von seiner Kundenseite aus vergeben Sie Gratisguthaben mit Grund und optionalem Ablauf."
+      },
+      "meters": {
+        "intro": "Ein Zähler legt fest, was gemessen wird und wie Nutzungsereignisse zusammenkommen: Anzahl, Summe oder Maximum.",
+        "create": "Fügen Sie einen Zähler oder eine neue Version eines bestehenden hinzu. Pakete bepreisen die Zähler, die Sie anlegen."
+      },
+      "packages": {
+        "intro": "Wofür Kunden abonnieren: eine feste Gebühr, Preise für die gemessene Nutzung und Limits.",
+        "create": "Veröffentlichen Sie ein Paket oder eine neue Version. Ein Paket kann eine kostenlose Testphase enthalten oder eine Gratisstufe nur mit Limits sein.",
+        "trialsTitle": "Testphasen und Gratisstufen",
+        "trials": "Geben Sie einem Paket eine Standard-Testphase in Tagen, und Abos darauf starten ohne Karte als Test. Eine Gratisstufe ist ein Paket ohne Gebühr, nur mit Limits."
+      },
+      "pricing": {
+        "intro": "Steuersätze und Aktionen: was auf Ihre Rechnungen aufgeschlagen oder abgezogen wird.",
+        "tabs": "Wechseln Sie zwischen den Bereichen dieser Seite."
+      },
+      "coupons": {
+        "intro": "Rabatte: Ein Gutschein legt fest, was abgezogen wird, und Kunden erhalten ihn über einen Aktionscode.",
+        "create": "Legen Sie einen Gutschein an und fügen Sie Codes dazu hinzu. Jeder Code kann ein eigenes Limit und Ablaufdatum haben."
+      },
+      "invoices": {
+        "intro": "Jede Rechnung mit ihrem Status: offen, bezahlt, storniert oder uneinbringlich.",
+        "list": "Öffnen Sie eine Zeile, um Positionen, Zahlungen und Gutschriften zu sehen. Rechnungen entstehen automatisch am Ende jeder Abrechnungsperiode."
+      },
+      "payments": {
+        "intro": "Jeder Einzugsversuch mit Anbieter, Betrag und Ergebnis.",
+        "list": "Öffnen Sie eine Zahlung, um zu sehen, für welche Rechnung sie war und was der Anbieter gemeldet hat."
+      },
+      "paymentLinks": {
+        "intro": "Links, mit denen ein Kunde ohne Anmeldung zahlt: für eine offene Rechnung, einen festen Betrag oder ein Guthabenpaket.",
+        "list": "Ihre Links und ihr Status. Ein Link funktioniert nicht mehr, wenn er abläuft oder widerrufen wird."
+      },
+      "accounting": {
+        "intro": "Was Sie mit bezahlten Rechnungen verdient und was Sie ausgegeben haben, für den gewählten Zeitraum.",
+        "currenciesTitle": "Eine Währung nach der anderen",
+        "currencies": "Jede Währung wird für sich gezeigt. Beträge in verschiedenen Währungen werden nie addiert oder umgerechnet."
+      },
+      "reports": {
+        "intro": "Umsatz, Abos und unbezahlte Rechnungen, Monat für Monat.",
+        "table": "Jede Währung hat ihre eigenen Zeilen; Beträge in verschiedenen Währungen werden nie addiert."
+      },
+      "affiliates": {
+        "intro": "Führen Sie ein Partnerprogramm: Partner erhalten Link und Code und verdienen Provision auf das, was ihre Kunden zahlen.",
+        "tabs": "Die Bereiche reichen von den Programmbedingungen über Partner und Provisionen bis zu Auszahlungen."
+      },
+      "webhooks": {
+        "intro": "Payrudder sendet Ihrem Server eine signierte Nachricht, wenn etwas passiert: eine Rechnung wird bezahlt, ein Abo ändert sich.",
+        "create": "Fügen Sie einen HTTPS-Endpunkt hinzu und wählen Sie die gewünschten Ereignisse. Das Signaturgeheimnis wird nur einmal angezeigt."
+      },
+      "mail": {
+        "intro": "Wählen Sie, welche E-Mails Payrudder in Ihrem Namen an Ihre Kunden sendet.",
+        "categoriesTitle": "E-Mail-Arten",
+        "categories": "Schalten Sie eine E-Mail-Art ein oder aus. Eine ausgeschaltete Art wird verworfen, nicht eingereiht."
+      },
+      "tenants": {
+        "intro": "Alle Mandanten der Plattform, für Betreiber.",
+        "list": "Öffnen Sie einen, um Kunden, Abrechnung und Einstellungen so zu sehen, wie der Mandant sie sieht."
+      },
+      "playground": {
+        "intro": "Ein geführter Durchlauf des ganzen Ablaufs in einem Wegwerfkonto: Zähler, Plan, Nutzung, Periodenabschluss und Rechnung."
+      },
+      "deadLetters": {
+        "intro": "Nachrichten, die die Plattform nach mehreren Versuchen nicht verarbeiten konnte, zum Prüfen und erneuten Abspielen durch Betreiber."
+      }
+    }
+  },
+  "onboarding": {
+    "skip": "Vorerst überspringen",
+    "back": "Zurück",
+    "continue": "Weiter",
+    "stepLabel": "Schritt {n} von {total}",
+    "steps": {
+      "welcome": "Willkommen",
+      "organisation": "Organisation",
+      "app": "Erste App",
+      "meter": "Erster Zähler",
+      "package": "Erstes Paket",
+      "event": "Testereignis",
+      "done": "Fertig"
+    },
+    "welcome": {
+      "title": "Rechnen Sie ab, was Ihre Kunden nutzen",
+      "body": "Payrudder misst die Nutzung, bepreist sie mit Ihren Paketen, stellt sie in Rechnung und zieht die Zahlung ein. Richten Sie jetzt die ersten Bausteine ein, in einer Sandbox, in der nichts echt ist.",
+      "flow": {
+        "meter": {
+          "title": "Nutzung messen",
+          "body": "Senden Sie Ereignisse: API-Aufrufe, Gigabyte, Plätze, Tokens."
+        },
+        "price": {
+          "title": "Bepreisen",
+          "body": "Pakete mit Fixgebühr, Nutzungspreisen und Limits."
+        },
+        "bill": {
+          "title": "Abrechnen",
+          "body": "Rechnungen entstehen am Ende jeder Periode automatisch."
+        },
+        "paid": {
+          "title": "Bezahlt werden",
+          "body": "Kunden zahlen über die Anbieter, die Sie verbinden."
+        }
+      },
+      "start": "Mein Konto einrichten",
+      "time": "Es dauert etwa zwei Minuten."
+    },
+    "organisation": {
+      "title": "Ihre Organisation",
+      "body": "Der Name, den Ihr Team und Ihre Kunden sehen, und die Standardwerte für Ihre erste App.",
+      "name": "Name der Organisation",
+      "currency": "Währung",
+      "timezone": "Zeitzone",
+      "note": "Währung und Zeitzone bestimmen, wie Rechnungen berechnet werden, und lassen sich nach dem Anlegen der App nicht mehr ändern."
+    },
+    "app": {
+      "title": "Ihre erste App",
+      "body": "Eine App ist ein Produkt, das Sie abrechnen. Sie kommt mit einer Sandbox zum Testen und einer Live-Umgebung für echte Zahlungen.",
+      "name": "Name der App",
+      "defaultName": "Meine erste App",
+      "create": "App erstellen",
+      "created": "{name} ist bereit, mit ihrer Sandbox."
+    },
+    "meter": {
+      "title": "Was messen Sie?",
+      "body": "Ein Zähler macht aus Nutzungsereignissen eine abrechenbare Menge. Wählen Sie eine Vorlage; Zähler lassen sich später ergänzen oder ändern.",
+      "create": "Zähler erstellen",
+      "templates": {
+        "api_calls": {
+          "name": "API-Aufrufe",
+          "body": "Zählt jede Anfrage Ihrer Kunden."
+        },
+        "storage": {
+          "name": "Speicher (GB)",
+          "body": "Der höchste Speicher, den ein Kunde im Zeitraum nutzte."
+        },
+        "seats": {
+          "name": "Plätze",
+          "body": "Die höchste Zahl an Plätzen, die ein Kunde im Zeitraum hatte."
+        },
+        "tokens": {
+          "name": "KI-Tokens",
+          "body": "Addiert die Tokens, die Ihre Kunden verbrauchen."
+        }
+      }
+    },
+    "package": {
+      "title": "Ihr erstes Paket",
+      "body": "Ein Paket ist das, was ein Kunde abonniert: eine feste Monatsgebühr plus ein Preis für jede genutzte Einheit.",
+      "name": "Name des Pakets",
+      "defaultName": "Starter",
+      "fee": "Monatsgebühr ({currency})",
+      "unitPrice": "Preis pro {unit} ({currency})",
+      "note": "Limits, weitere Währungen und eine kostenlose Testphase fügen Sie auf der Seite Pakete hinzu.",
+      "create": "Paket veröffentlichen"
+    },
+    "event": {
+      "title": "Testereignis senden",
+      "body": "Wir legen einen Testkunden an, abonnieren ihn auf Ihr Paket und senden ein Nutzungsereignis an Ihre Sandbox, damit Sie den ganzen Weg funktionieren sehen.",
+      "customer": "Kunde",
+      "meter": "Zähler",
+      "quantity": "Menge",
+      "send": "Testereignis senden",
+      "sending": "Wird gesendet…",
+      "sent": "Angenommen: {quantity} {unit} Nutzung in Ihrer Sandbox."
+    },
+    "done": {
+      "title": "Alles bereit",
+      "body": "Ihre Sandbox hat einen Zähler, ein Paket und das erste Nutzungsereignis. Das folgt meist als Nächstes.",
+      "finish": "Zu meinem Dashboard",
+      "next": {
+        "dashboard": {
+          "title": "Sandbox-Dashboard öffnen",
+          "body": "Sehen Sie die Nutzung und die Rechnung, zu der das Testereignis führt."
+        },
+        "keys": {
+          "title": "API-Schlüssel erstellen",
+          "body": "Lassen Sie Ihren eigenen Server die Nutzung senden."
+        },
+        "team": {
+          "title": "Team einladen",
+          "body": "Kollegen können mit einer eigenen Rolle beitreten."
+        },
+        "live": {
+          "title": "Live gehen",
+          "body": "Verbinden Sie einen Zahlungsanbieter und schalten Sie die echte Abrechnung ein."
+        }
+      }
+    },
+    "checklist": {
+      "title": "Erste Schritte",
+      "progress": "{done} von {total} erledigt",
+      "resume": "Einrichtung fortsetzen",
+      "hide": "Diese Liste ausblenden",
+      "open": "Öffnen",
+      "done": "erledigt",
+      "todo": "offen",
+      "items": {
+        "app": "Erste App erstellen",
+        "meter": "Zähler hinzufügen",
+        "package": "Ein Paket mit Preis veröffentlichen",
+        "event": "Ein Testereignis senden",
+        "key": "API-Schlüssel erstellen",
+        "live": "Live gehen"
+      }
+    }
   }
 }
