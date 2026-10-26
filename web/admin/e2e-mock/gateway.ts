@@ -1,5 +1,6 @@
 import type { Page, Route } from "@playwright/test";
 import { dashboardFixture } from "./dashboard";
+import { geoHandler } from "./geo";
 
 export const TENANT = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e";
 /** The session token of the operator user the console tests sign in as (a person whose address the gateway lists in PAYRUDDER_OPERATOR_EMAILS). */
@@ -67,7 +68,7 @@ export class MockGateway {
       }
       const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body };
       this.calls.push(call);
-      for (const h of [...this.handlers, operatorSignIn]) {
+      for (const h of [...this.handlers, operatorSignIn, geoHandler]) {
         const r = h(call);
         if (r) {
           await route.fulfill({ status: r.status ?? 200, contentType: "application/json", body: JSON.stringify(r.body ?? {}) });

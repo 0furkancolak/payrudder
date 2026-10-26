@@ -5,7 +5,8 @@ import { Eye, Plus, Trash2, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { useTableState } from "@/shared/lib/useTableState";
-import { COUNTRY_HINTS, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
+import { PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
+import { CountrySelect } from "@/shared/ui/location-fields";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -16,7 +17,6 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -255,9 +255,8 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     <h2 class="text-base font-semibold">{{ t("billing.providers.routing") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.routingHint") }}</p>
     <ErrorText :error="stored.error.value" />
-    <datalist id="countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
     <div v-for="(r, i) in rules" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.providers.rule', { n: i + 1 })">
-      <Input v-model="r.country" list="countries" maxlength="2" :aria-label="t('billing.providers.country', { n: i + 1 })" :placeholder="t('billing.providers.anyCountry')" />
+      <CountrySelect v-model="r.country" code-only :aria-label="t('billing.providers.country', { n: i + 1 })" :blank="t('billing.providers.anyCountry')" />
       <CurrencySelect v-model="r.currency" :aria-label="t('billing.providers.currency', { n: i + 1 })" :blank="t('billing.providers.anyCurrency')" />
       <NativeSelect v-model="r.provider" :aria-label="t('billing.providers.ruleProvider', { n: i + 1 })">
         <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
@@ -274,7 +273,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
 
     <form class="flex flex-wrap items-center gap-3 border-t pt-4" role="form" :aria-label="t('billing.providers.preview')" @submit.prevent="preview.mutate({ country: pCountry.trim().toUpperCase(), currency: pCurrency })">
       <h3 class="text-base font-semibold">{{ t("billing.providers.preview") }}</h3>
-      <Input v-model="pCountry" class="w-32" maxlength="2" :aria-label="t('billing.providers.previewCountry')" :placeholder="t('billing.providers.previewCountry')" />
+      <CountrySelect v-model="pCountry" class="w-48" code-only :aria-label="t('billing.providers.previewCountry')" :blank="t('billing.providers.anyCountry')" />
       <CurrencySelect v-model="pCurrency" :aria-label="t('billing.providers.previewCurrency')" :blank="t('billing.providers.anyCurrency')" />
       <Button type="submit" variant="outline">{{ t("billing.providers.previewRun") }}</Button>
     </form>

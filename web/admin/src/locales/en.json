@@ -359,7 +359,6 @@
       "name": "Name",
       "email": "E-mail",
       "country": "Country",
-      "countryPlaceholder": "Country (TR, DE…)",
       "currency": "Billing currency",
       "tenantCurrency": "Tenant's currency",
       "create": "Create customer",
@@ -1948,10 +1947,8 @@
     "hint": "The legal and billing address of this tenant, printed as the seller on every invoice (PDF and hosted page). It applies to invoices made after you save.",
     "formLabel": "seller address",
     "noCountry": "No country",
-    "otherCountry": "Another country…",
     "labels": {
       "country": "Country",
-      "countryCode": "Country code (two letters, e.g. SE)",
       "line1": "Address line 1",
       "line2": "Address line 2",
       "city": "City",
@@ -2515,6 +2512,10 @@
       },
       "route": {
         "not_found": "There is no such address in the API."
+      },
+      "geo": {
+        "country_not_found": "There is no such country in the list.",
+        "region_not_found": "There is no such region in the list."
       }
     },
     "env": {
@@ -3448,7 +3449,12 @@
     "currencyPlaceholder": "Search a currency",
     "timezone": "Time zone",
     "timezonePlaceholder": "Search a time zone",
-    "noMatch": "Nothing matches"
+    "noMatch": "Nothing matches",
+    "countryPlaceholder": "Search a country",
+    "placePlaceholder": "Search or type",
+    "useTyped": "Use “{value}”",
+    "useCode": "Use the code {code}",
+    "geoAttribution": "Place names: GeoNames (CC BY 4.0)"
   },
   "dash": {
     "retry": "Try again",

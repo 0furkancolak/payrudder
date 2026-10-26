@@ -27,6 +27,7 @@ func (s *Server) routes() []Route {
 		s.goLiveRoutes(),
 		s.sandboxRoutes(),
 		s.memberRoutes(),
+		s.geoRoutes(),
 		s.operatorProviderRoutes(),
 		s.operatorAdminRoutes(),
 	)

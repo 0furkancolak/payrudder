@@ -1,5 +1,9 @@
 Payrudder is licensed under the Elastic License 2.0 (see LICENSE) from the first release after v0.4.0.
 Releases v0.1.0 to v0.4.0 were published under the Apache License 2.0 and remain available under it to those who received them.
 
+The country, region and district lists embedded in the gateway (services/gateway/internal/geo/data/geonames.json.gz) are made from GeoNames data
+(https://www.geonames.org), licensed under the Creative Commons Attribution 4.0 License (https://creativecommons.org/licenses/by/4.0/). The data was
+reduced and merged as docs/geo-data.md describes.
+
 Third-party components keep their own licences. `make licenses` lists them (Go modules and npm packages); the list is checked in CI so that no dependency
 with a copyleft licence is added without a decision recorded in docs/adr/0019-license.md.

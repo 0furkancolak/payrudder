@@ -31,9 +31,6 @@ export const CURRENCY_EXPONENTS: Record<Currency, number> = {
   UGX: 0, USD: 2, UYU: 2, UZS: 2, VES: 2, VND: 0, VUV: 0, WST: 2, XAF: 0, XCD: 2, XCG: 2, XOF: 0, XPF: 0, YER: 2, ZAR: 2, ZMW: 2, ZWG: 2,
 };
 
-/** The countries the console offers in routing rules: any ISO 3166-1 alpha-2 code is valid, these are shortcuts. */
-export const COUNTRY_HINTS = ["TR", "DE", "FR", "ES", "GB", "US", "NL", "IT", "CH", "JP"] as const;
-
 /**
  * The payment providers Payrudder has adapters for, whether the provider runs subscriptions itself, and whether the API's routing rules and provider
  * migrations name it (the OpenAPI enums list iyzico and paddle only: bank transfer is a tenant's default account, not a routing target).

@@ -359,7 +359,6 @@
       "name": "Nombre",
       "email": "Correo electrónico",
       "country": "País",
-      "countryPlaceholder": "País (TR, DE…)",
       "currency": "Moneda de facturación",
       "tenantCurrency": "Moneda del cliente",
       "create": "Crear cliente",
@@ -1948,10 +1947,8 @@
     "hint": "La dirección legal y de facturación de este inquilino, impresa como vendedor en cada factura (PDF y página alojada). Se aplica a las facturas emitidas después de guardar.",
     "formLabel": "dirección del vendedor",
     "noCountry": "Sin país",
-    "otherCountry": "Otro país…",
     "labels": {
       "country": "País",
-      "countryCode": "Código de país (dos letras, p. ej. SE)",
       "line1": "Línea de dirección 1",
       "line2": "Línea de dirección 2",
       "city": "Ciudad",
@@ -2515,6 +2512,10 @@
       },
       "route": {
         "not_found": "Esa dirección no existe en la API."
+      },
+      "geo": {
+        "country_not_found": "Ese país no está en la lista.",
+        "region_not_found": "Esa región no está en la lista."
       }
     },
     "env": {
@@ -3448,7 +3449,12 @@
     "currencyPlaceholder": "Buscar una moneda",
     "timezone": "Zona horaria",
     "timezonePlaceholder": "Buscar una zona horaria",
-    "noMatch": "Sin coincidencias"
+    "noMatch": "Sin coincidencias",
+    "countryPlaceholder": "Buscar un país",
+    "placePlaceholder": "Buscar o escribir",
+    "useTyped": "Usar «{value}»",
+    "useCode": "Usar el código {code}",
+    "geoAttribution": "Nombres de lugares: GeoNames (CC BY 4.0)"
   },
   "dash": {
     "retry": "Reintentar",

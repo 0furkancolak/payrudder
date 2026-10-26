@@ -3164,6 +3164,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/geo/countries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every country (GeoNames, CC BY 4.0), for the address forms
+         * @description The same for every caller; cached for a day (Cache-Control private, max-age=86400) and revalidated by ETag. Names are English; show them in the page's language with Intl.DisplayNames.
+         */
+        get: operations["appGeoCountries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/geo/countries/{iso2}/regions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The first-level divisions of a country (states, provinces, counties), sorted by name
+         * @description A country may have none (the list is then empty and the form takes the region as text). 404 gateway.geo.country_not_found for an unknown code.
+         */
+        get: operations["appGeoRegions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/geo/regions/{id}/districts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The districts of a region (second-level divisions and towns of 15000 people or more), sorted by name
+         * @description 404 gateway.geo.region_not_found for an unknown region id.
+         */
+        get: operations["appGeoDistricts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/accounts": {
         parameters: {
             query?: never;
@@ -5307,6 +5367,51 @@ export interface components {
             postal_code?: string;
             /** @description ISO 3166-1 alpha-2 */
             country?: string;
+        };
+        GeoCountry: {
+            /** @description ISO 3166-1 alpha-2 (XK for Kosovo) */
+            iso2: string;
+            iso3: string;
+            /** @description English name */
+            name: string;
+            /** @enum {string} */
+            continent: "AF" | "AN" | "AS" | "EU" | "NA" | "OC" | "SA";
+            geoname_id: number;
+        };
+        GeoRegion: {
+            /** @description GeoNames admin1 code, e.g. TR.34 */
+            id: string;
+            /** @description The part of the id after the country */
+            code: string;
+            name: string;
+            ascii_name: string;
+            geoname_id: number;
+        };
+        GeoDistrict: {
+            /** @description The admin2 code (TR.34.7732501) or the GeoNames id of a town */
+            id: string;
+            name: string;
+            ascii_name: string;
+            /** @enum {string} */
+            kind: "admin2" | "city";
+        };
+        GeoCountries: {
+            /** @description The GeoNames export the list was made from */
+            version: string;
+            attribution: string;
+            countries: components["schemas"]["GeoCountry"][];
+        };
+        GeoRegions: {
+            version: string;
+            attribution: string;
+            country: string;
+            regions: components["schemas"]["GeoRegion"][];
+        };
+        GeoDistricts: {
+            version: string;
+            attribution: string;
+            region: string;
+            districts: components["schemas"]["GeoDistrict"][];
         };
         Customer: {
             /** Format: uuid */
@@ -12394,6 +12499,99 @@ export interface operations {
             };
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appGeoCountries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeoCountries"];
+                };
+            };
+            /** @description Not modified (If-None-Match) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    appGeoRegions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                iso2: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeoRegions"];
+                };
+            };
+            /** @description Not modified (If-None-Match) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appGeoDistricts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The region id (GeoNames admin1 code), e.g. TR.34 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GeoDistricts"];
+                };
+            };
+            /** @description Not modified (If-None-Match) */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

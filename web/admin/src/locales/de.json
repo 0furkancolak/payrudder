@@ -359,7 +359,6 @@
       "name": "Name",
       "email": "E-Mail",
       "country": "Land",
-      "countryPlaceholder": "Land (TR, DE…)",
       "currency": "Rechnungswährung",
       "tenantCurrency": "Währung des Mandanten",
       "create": "Kunden anlegen",
@@ -1948,10 +1947,8 @@
     "hint": "Die rechtliche Adresse und Rechnungsadresse dieses Mandanten; sie steht als Verkäufer auf jeder Rechnung (PDF und gehostete Seite). Sie gilt für Rechnungen, die nach dem Speichern entstehen.",
     "formLabel": "Verkäuferadresse",
     "noCountry": "Kein Land",
-    "otherCountry": "Anderes Land…",
     "labels": {
       "country": "Land",
-      "countryCode": "Ländercode (zwei Buchstaben, z. B. SE)",
       "line1": "Adresszeile 1",
       "line2": "Adresszeile 2",
       "city": "Ort",
@@ -2515,6 +2512,10 @@
       },
       "route": {
         "not_found": "Diese Adresse gibt es in der API nicht."
+      },
+      "geo": {
+        "country_not_found": "Dieses Land steht nicht in der Liste.",
+        "region_not_found": "Diese Region steht nicht in der Liste."
       }
     },
     "env": {
@@ -3448,7 +3449,12 @@
     "currencyPlaceholder": "Währung suchen",
     "timezone": "Zeitzone",
     "timezonePlaceholder": "Zeitzone suchen",
-    "noMatch": "Keine Treffer"
+    "noMatch": "Keine Treffer",
+    "countryPlaceholder": "Land suchen",
+    "placePlaceholder": "Suchen oder eingeben",
+    "useTyped": "„{value}“ verwenden",
+    "useCode": "Code {code} verwenden",
+    "geoAttribution": "Ortsnamen: GeoNames (CC BY 4.0)"
   },
   "dash": {
     "retry": "Erneut versuchen",

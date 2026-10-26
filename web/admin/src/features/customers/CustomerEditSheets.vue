@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
+import { LocationFields } from "@/shared/ui/location-fields";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useSetCustomerAddress, useSetCustomerTax, type Address, type CustomerTax } from "./api";
 import type { Customer } from "./lib";
@@ -19,6 +20,8 @@ const { t } = useI18n();
 
 const setAddress = useSetCustomerAddress(() => props.tenantId);
 const editAddress = ref<Address>({});
+/** The place fields carry the names the customer list uses for them. */
+const placeLabels = computed(() => ({ country: t("billing.customers.country"), region: t("billing.customers.address.region"), city: t("billing.customers.address.city") }));
 const addressId = computed(() => addressOf.value?.external_id ?? "");
 const addressOpen = computed({ get: () => addressOf.value !== null, set: (v) => !v && (addressOf.value = null) });
 watch(addressOf, (c) => {
@@ -59,14 +62,10 @@ function saveTax() {
       </SheetHeader>
       <SheetBody>
         <form id="edit-address" class="grid gap-3" @submit.prevent="saveAddress">
+          <LocationFields v-model:country="editAddress.country" v-model:region="editAddress.region" v-model:city="editAddress.city" id-prefix="edit-customer" compact :labels="placeLabels" />
           <Input v-model="editAddress.line1" maxlength="120" :aria-label="t('billing.customers.address.line1')" :placeholder="t('billing.customers.address.line1')" />
           <Input v-model="editAddress.line2" maxlength="120" :aria-label="t('billing.customers.address.line2')" :placeholder="t('billing.customers.address.line2')" />
-          <div class="grid gap-3 sm:grid-cols-2">
-            <Input v-model="editAddress.city" maxlength="120" :aria-label="t('billing.customers.address.city')" :placeholder="t('billing.customers.address.city')" />
-            <Input v-model="editAddress.postal_code" maxlength="20" :aria-label="t('billing.customers.address.postalCode')" :placeholder="t('billing.customers.address.postalCode')" />
-          </div>
-          <Input v-model="editAddress.region" maxlength="120" :aria-label="t('billing.customers.address.region')" :placeholder="t('billing.customers.address.region')" />
-          <Input v-model="editAddress.country" maxlength="2" pattern="[A-Za-z]{2}" :aria-label="t('billing.customers.country')" :placeholder="t('billing.customers.countryPlaceholder')" />
+          <Input v-model="editAddress.postal_code" maxlength="20" :aria-label="t('billing.customers.address.postalCode')" :placeholder="t('billing.customers.address.postalCode')" />
           <ErrorText :error="setAddress.error.value" />
         </form>
       </SheetBody>

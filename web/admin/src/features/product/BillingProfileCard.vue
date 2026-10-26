@@ -2,11 +2,11 @@
 import { FileText } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { ADDRESS_MAX, COMMON_COUNTRIES, countryProfile } from "@/shared/lib/address";
+import { ADDRESS_MAX, countryProfile } from "@/shared/lib/address";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { NativeSelect } from "@/shared/ui/native-select";
+import { LocationFields } from "@/shared/ui/location-fields";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useApp, useSaveBillingProfile } from "./api";
 import { emptyProfile, fromTenant, normalizeTaxId, profileBody, taxIdRequired, validateProfile, type ProfileField, type ProfileForm } from "./billingProfile";
@@ -16,43 +16,33 @@ import { emptyProfile, fromTenant, normalizeTaxId, profileBody, taxIdRequired, v
  * go-live checklist. Only the owner edits it; everybody else in the account sees what is saved. The server checks the same rules again.
  */
 const props = defineProps<{ appId: string }>();
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const app = useApp(() => props.appId);
 const live = computed(() => app.data.value?.app?.tenants?.find((x) => x.environment === "ENVIRONMENT_LIVE"));
 const isOwner = computed(() => app.data.value?.role === "owner");
 const save = useSaveBillingProfile(() => props.appId);
 
 const form = ref<ProfileForm>(emptyProfile());
-/** "other" lets the owner type any ISO code; the common countries are chosen by name. */
-const countryChoice = ref("");
 const saved = ref(false);
 /** Problems are shown once the owner has tried to save, so an empty form does not open covered in red. */
 const tried = ref(false);
 
 function load() {
   form.value = fromTenant(live.value);
-  const c = form.value.country;
-  countryChoice.value = c === "" || COMMON_COUNTRIES.includes(c) ? c : "other";
 }
 // The saved profile fills the form when it arrives, and again after a save refreshes it.
 watch(() => live.value, load, { immediate: true });
 
-function chooseCountry(value: string) {
-  countryChoice.value = value;
-  form.value.country = value === "other" ? "" : value;
-  saved.value = false;
-}
-const countryName = (code: string) => {
-  try {
-    return new Intl.DisplayNames([locale.value], { type: "region" }).of(code) ?? code;
-  } catch {
-    return code;
-  }
-};
+// A place picked from a list types nothing into the form, so the "saved" note goes away here too.
+watch(
+  () => [form.value.country, form.value.region, form.value.city],
+  (now, before) => {
+    if (before && live.value && now.some((v, i) => v !== before[i]) && !save.isPending.value) saved.value = false;
+  },
+);
 
 const problems = computed(() => validateProfile(form.value));
 const profile = computed(() => countryProfile(form.value.country.trim().toUpperCase()));
-const showRegion = computed(() => profile.value.usesRegion || form.value.region.trim() !== "");
 const needsTaxId = computed(() => taxIdRequired(form.value.country));
 const MAX: Record<ProfileField, number> = { legalName: 200, taxId: 20, taxOffice: 200, country: 2, line1: ADDRESS_MAX.line1, line2: ADDRESS_MAX.line2, city: ADDRESS_MAX.city, region: ADDRESS_MAX.region, postalCode: ADDRESS_MAX.postal_code };
 const problemText = (f: ProfileField): string => {
@@ -61,6 +51,7 @@ const problemText = (f: ProfileField): string => {
   if (p === "required" || p === "taxIdFormat") return t(`product.goLive.profile.problems.${p}`);
   return t(`address.problems.${p}`, { max: MAX[f] });
 };
+const placeProblems = computed(() => ({ country: problemText("country"), region: problemText("region"), city: problemText("city") }));
 
 function submit() {
   tried.value = true;
@@ -92,17 +83,8 @@ const taxIdPreview = computed(() => normalizeTaxId(form.value.taxId));
             <Input id="bp-legal-name" v-model="form.legalName" autocomplete="organization" :aria-invalid="!!(tried && problems.legalName)" />
             <p v-if="problemText('legalName')" class="text-destructive text-xs" role="alert">{{ problemText("legalName") }}</p>
           </div>
-          <div class="grid gap-1">
-            <label class="text-sm" for="bp-country">{{ t("address.labels.country") }}</label>
-            <NativeSelect id="bp-country" :model-value="countryChoice" @change="chooseCountry(($event.target as HTMLSelectElement).value)">
-              <option value="">{{ t("address.noCountry") }}</option>
-              <option v-for="c in COMMON_COUNTRIES" :key="c" :value="c">{{ countryName(c) }} ({{ c }})</option>
-              <option value="other">{{ t("address.otherCountry") }}</option>
-            </NativeSelect>
-            <Input v-if="countryChoice === 'other'" v-model="form.country" maxlength="2" :aria-label="t('address.labels.countryCode')" :placeholder="t('address.labels.countryCode')" />
-            <p v-if="problemText('country')" class="text-destructive text-xs" role="alert">{{ problemText("country") }}</p>
-          </div>
         </div>
+        <LocationFields v-model:country="form.country" v-model:region="form.region" v-model:city="form.city" id-prefix="bp" :problems="placeProblems" />
 
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="grid gap-1">
@@ -130,22 +112,10 @@ const taxIdPreview = computed(() => normalizeTaxId(form.value.taxId));
           <Input id="bp-line2" v-model="form.line2" autocomplete="address-line2" :aria-invalid="!!(tried && problems.line2)" />
           <p v-if="problemText('line2')" class="text-destructive text-xs" role="alert">{{ problemText("line2") }}</p>
         </div>
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div class="grid gap-1">
-            <label class="text-sm" for="bp-postal">{{ t(`address.labels.${profile.postalCode}`) }}</label>
-            <Input id="bp-postal" v-model="form.postalCode" autocomplete="postal-code" :placeholder="profile.example" :aria-invalid="!!(tried && problems.postalCode)" />
-            <p v-if="problemText('postalCode')" class="text-destructive text-xs" role="alert">{{ problemText("postalCode") }}</p>
-          </div>
-          <div class="grid gap-1">
-            <label class="text-sm" for="bp-city">{{ t("address.labels.city") }}</label>
-            <Input id="bp-city" v-model="form.city" autocomplete="address-level2" :aria-invalid="!!(tried && problems.city)" />
-            <p v-if="problemText('city')" class="text-destructive text-xs" role="alert">{{ problemText("city") }}</p>
-          </div>
-        </div>
-        <div v-if="showRegion" class="grid gap-1">
-          <label class="text-sm" for="bp-region">{{ t(`address.labels.${profile.region}`) }}</label>
-          <Input id="bp-region" v-model="form.region" autocomplete="address-level1" :aria-invalid="!!(tried && problems.region)" />
-          <p v-if="problemText('region')" class="text-destructive text-xs" role="alert">{{ problemText("region") }}</p>
+        <div class="grid gap-1 sm:max-w-[50%]">
+          <label class="text-sm" for="bp-postal">{{ t(`address.labels.${profile.postalCode}`) }}</label>
+          <Input id="bp-postal" v-model="form.postalCode" autocomplete="postal-code" :placeholder="profile.example" :aria-invalid="!!(tried && problems.postalCode)" />
+          <p v-if="problemText('postalCode')" class="text-destructive text-xs" role="alert">{{ problemText("postalCode") }}</p>
         </div>
       </fieldset>
       <div class="flex flex-wrap items-center gap-3">

@@ -55,6 +55,7 @@ describe("fold", () => {
   it("ignores case and accents so a search finds İstanbul and Zürich", () => {
     expect(fold("İstanbul")).toBe("istanbul");
     expect(fold("Zürich")).toBe("zurich");
+    expect(fold("Kadıköy")).toBe("kadikoy");
     expect(fold("São Paulo")).toBe("sao paulo");
   });
 });

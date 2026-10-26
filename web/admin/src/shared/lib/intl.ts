@@ -128,11 +128,11 @@ export function ownZone(): string {
   }
 }
 
-/** Lower-case, accents removed: what search compares ("İstanbul" and "istanbul" match). */
+/** Lower-case, accents removed: what search compares ("İstanbul" and "istanbul" match, so do "Kadıköy" and "kadikoy"). */
 export function fold(s: string): string {
   return s
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
-    .replace(/İ/g, "i")
+    .replace(/[İı]/g, "i")
     .toLowerCase();
 }

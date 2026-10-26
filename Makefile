@@ -43,6 +43,10 @@ gen: tools ## Generate code (buf, sqlc for every service and tool with a sqlc.ya
 	@for f in services/*/sqlc.yaml tools/*/sqlc.yaml; do (cd $$(dirname $$f) && $(BIN)/sqlc generate); done
 	@for m in $(MODULES); do (cd $$m && GOWORK=off go mod tidy); done
 
+.PHONY: geo-data
+geo-data: ## Rebuild the gateway's embedded GeoNames country/region/district lists from download.geonames.org (docs/geo-data.md)
+	cd services/gateway && go run ./cmd/geoimport
+
 .PHONY: lint
 lint: tools ## golangci-lint every module + buf lint
 	$(BIN)/buf lint

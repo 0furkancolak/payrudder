@@ -3197,6 +3197,47 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /app/v1/geo/countries:
+    get:
+      operationId: appGeoCountries
+      tags: [Product]
+      summary: Every country (GeoNames, CC BY 4.0), for the address forms
+      description: The same for every caller; cached for a day (Cache-Control private, max-age=86400) and revalidated by ETag. Names are English; show them in the page's language with Intl.DisplayNames.
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GeoCountries" } } } }
+        "304": { description: Not modified (If-None-Match) }
+        "401": { $ref: "#/components/responses/Error" }
+  /app/v1/geo/countries/{iso2}/regions:
+    get:
+      operationId: appGeoRegions
+      tags: [Product]
+      summary: The first-level divisions of a country (states, provinces, counties), sorted by name
+      description: A country may have none (the list is then empty and the form takes the region as text). 404 gateway.geo.country_not_found for an unknown code.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { name: iso2, in: path, required: true, schema: { type: string, pattern: "^[A-Za-z]{2}$" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GeoRegions" } } } }
+        "304": { description: Not modified (If-None-Match) }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/geo/regions/{id}/districts:
+    get:
+      operationId: appGeoDistricts
+      tags: [Product]
+      summary: The districts of a region (second-level divisions and towns of 15000 people or more), sorted by name
+      description: 404 gateway.geo.region_not_found for an unknown region id.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, description: "The region id (GeoNames admin1 code), e.g. TR.34", schema: { type: string, pattern: "^[A-Za-z]{2}[.][A-Za-z0-9]{1,20}$" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GeoDistricts" } } } }
+        "304": { description: Not modified (If-None-Match) }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/accounts:
     post:
       operationId: createAccount
@@ -5337,6 +5378,55 @@ components:
         region: { type: string, maxLength: 120, description: "State, province or county" }
         postal_code: { type: string, maxLength: 20 }
         country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2 }
+    GeoCountry:
+      type: object
+      required: [iso2, iso3, name, continent, geoname_id]
+      properties:
+        iso2: { type: string, description: ISO 3166-1 alpha-2 (XK for Kosovo) }
+        iso3: { type: string }
+        name: { type: string, description: English name }
+        continent: { type: string, enum: [AF, AN, AS, EU, NA, OC, SA] }
+        geoname_id: { type: integer }
+    GeoRegion:
+      type: object
+      required: [id, code, name, ascii_name, geoname_id]
+      properties:
+        id: { type: string, description: "GeoNames admin1 code, e.g. TR.34" }
+        code: { type: string, description: The part of the id after the country }
+        name: { type: string }
+        ascii_name: { type: string }
+        geoname_id: { type: integer }
+    GeoDistrict:
+      type: object
+      required: [id, name, ascii_name, kind]
+      properties:
+        id: { type: string, description: "The admin2 code (TR.34.7732501) or the GeoNames id of a town" }
+        name: { type: string }
+        ascii_name: { type: string }
+        kind: { type: string, enum: [admin2, city] }
+    GeoCountries:
+      type: object
+      required: [version, attribution, countries]
+      properties:
+        version: { type: string, description: The GeoNames export the list was made from }
+        attribution: { type: string }
+        countries: { type: array, items: { $ref: "#/components/schemas/GeoCountry" } }
+    GeoRegions:
+      type: object
+      required: [version, attribution, country, regions]
+      properties:
+        version: { type: string }
+        attribution: { type: string }
+        country: { type: string }
+        regions: { type: array, items: { $ref: "#/components/schemas/GeoRegion" } }
+    GeoDistricts:
+      type: object
+      required: [version, attribution, region, districts]
+      properties:
+        version: { type: string }
+        attribution: { type: string }
+        region: { type: string }
+        districts: { type: array, items: { $ref: "#/components/schemas/GeoDistrict" } }
     Customer:
       type: object
       properties:

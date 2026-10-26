@@ -3,7 +3,7 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { COUNTRY_HINTS } from "@/shared/lib/currencies";
+import { CountrySelect } from "@/shared/ui/location-fields";
 import { ErrorText } from "@/shared/ui/error-text";
 import { useCanWrite } from "@/shared/lib/access";
 import { Button } from "@/shared/ui/button";
@@ -87,9 +87,8 @@ function saveDunning() {
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.tax.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.tax.hint") }}</p>
       <ErrorText :error="stored.error.value" />
-      <datalist id="tax-countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
       <div v-for="(r, i) in rates" :key="i" class="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3" role="group" :aria-label="t('billing.pricing.tax.rate', { n: i + 1 })">
-        <Input v-model="r.country" list="tax-countries" maxlength="2" :aria-label="t('billing.pricing.tax.country', { n: i + 1 })" :placeholder="t('billing.pricing.tax.anyCountry')" />
+        <CountrySelect v-model="r.country" code-only :aria-label="t('billing.pricing.tax.country', { n: i + 1 })" :blank="t('billing.pricing.tax.anyCountry')" />
         <Input v-model="r.name" :aria-label="t('billing.pricing.tax.name', { n: i + 1 })" :placeholder="t('billing.pricing.tax.namePlaceholder')" required />
         <Input v-model="r.percent" inputmode="decimal" :aria-label="t('billing.pricing.tax.percent', { n: i + 1 })" required />
         <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="rates.splice(i, 1)"><X class="size-4" /></Button>
