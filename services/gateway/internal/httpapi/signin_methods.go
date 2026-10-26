@@ -19,7 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
-// The three ways to sign in (phase 42): e-mail and password (signin.go's signIn), a one-time code mailed to the address, and Google. The operator console has
+// The three ways to sign in (phase 42): e-mail and password (session.go's signIn), a one-time code mailed to the address, and Google. The operator console has
 // no sign-in of its own any more: an operator is a person who signs in one of these ways with a verified address that PAYRUDDER_OPERATOR_EMAILS lists.
 
 // Per-minute limits per client address on the new public routes. The per-address limits of the code (one a minute, five an hour, five tries) are plans-svc's.
@@ -31,7 +31,7 @@ const (
 
 // methods is GET /auth/methods: which sign-in methods this deployment offers, so the page shows only buttons that work.
 func (s *Server) methods(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control", "no-store")
+	noStore(w)
 	writeJSONValue(w, http.StatusOK, map[string]bool{"password": true, "otp": true, "google": s.d.Google.Enabled()})
 }
 
@@ -41,7 +41,7 @@ func (s *Server) isOperator(u *plansv1.User) bool {
 	if u == nil || !u.GetEmailVerified() || u.GetEmail() == "" {
 		return false
 	}
-	email := strings.ToLower(strings.TrimSpace(u.GetEmail()))
+	email := normalizeEmail(u.GetEmail())
 	for _, o := range s.d.OperatorEmails {
 		if subtleEqual(o, email) {
 			return true
@@ -56,7 +56,7 @@ func subtleEqual(a, b string) bool { return subtle.ConstantTimeCompare([]byte(a)
 func NormalizeOperatorEmails(list []string) []string {
 	out := make([]string, 0, len(list))
 	for _, e := range list {
-		if e = strings.ToLower(strings.TrimSpace(e)); e != "" {
+		if e = normalizeEmail(e); e != "" {
 			out = append(out, e)
 		}
 	}

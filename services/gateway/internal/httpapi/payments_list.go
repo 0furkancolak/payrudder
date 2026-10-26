@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"net/http"
 	"slices"
-	"strconv"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -37,13 +36,11 @@ type paymentsResponse struct {
 
 func (s *Server) listPayments(w http.ResponseWriter, r *http.Request) {
 	limit := 100
-	if v := r.URL.Query().Get("limit"); v != "" {
-		n, err := strconv.Atoi(v)
-		if err != nil || n < 1 || n > 200 {
-			writeError(w, r, invalid("limit", "must be an integer from 1 to 200"))
-			return
-		}
-		limit = n
+	if n, err := rangedParam(r.URL.Query(), "limit", 1, 200, "must be an integer from 1 to 200"); err != nil {
+		writeError(w, r, err)
+		return
+	} else if n != 0 {
+		limit = int(n)
 	}
 	ti, ok := tenant.FromContext(r.Context())
 	if !ok {

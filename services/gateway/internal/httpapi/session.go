@@ -3,9 +3,6 @@ package httpapi
 import (
 	"context"
 	"crypto/subtle"
-	"encoding/json"
-	"errors"
-	"io"
 	"net"
 	"net/http"
 	"net/netip"
@@ -154,7 +151,7 @@ func (s *Server) authAllowed(w http.ResponseWriter, r *http.Request, l *hostedLi
 	if l.allowN(s.clientAddr(r), time.Now(), perMinute) {
 		return true
 	}
-	w.Header().Set("Retry-After", "60")
+	w.Header().Set("Retry-After", retryAfterMinute)
 	writeError(w, r, errkey.New(codes.ResourceExhausted, "identity.auth.rate_limited", "too many attempts from this address: try again in a minute"))
 	return false
 }
@@ -230,23 +227,4 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write(b)
-}
-
-// decodeJSON reads a JSON object body into v. Fields v does not name are ignored: the handler never takes a user, account or tenant id from a body.
-func decodeJSON(r *http.Request, v any) error {
-	raw, err := io.ReadAll(r.Body)
-	if err != nil {
-		var mbe *http.MaxBytesError
-		if errors.As(err, &mbe) {
-			return errTooLarge{limit: mbe.Limit}
-		}
-		return errkey.New(codes.InvalidArgument, "gateway.request.unreadable_body", "unreadable body")
-	}
-	if len(strings.TrimSpace(string(raw))) == 0 {
-		return nil
-	}
-	if err := json.Unmarshal(raw, v); err != nil {
-		return errkey.New(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON body")
-	}
-	return nil
 }

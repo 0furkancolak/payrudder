@@ -9,8 +9,6 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/netip"
@@ -26,7 +24,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
@@ -101,7 +98,7 @@ type Deps struct {
 	// Google is the "Continue with Google" client; nil or unconfigured hides the button and answers 404 on its routes.
 	Google *oidc.Client
 	// AppURL is the console's public address (https://app.example.com), where the browser is sent after a provider login. The OAuth redirect address
-	// registered at Google is AppURL + /auth/google/callback unless the deployment says otherwise.
+	// registered at Google is AppURL + /gw/auth/google/callback unless the deployment says otherwise.
 	AppURL string
 }
 
@@ -164,9 +161,6 @@ type Route struct {
 	Class  ratelimit.Class
 	Handle func(w http.ResponseWriter, r *http.Request)
 }
-
-// Routes exposes the route table for the contract test.
-func (s *Server) Routes() []Route { return s.routes() }
 
 func (s *Server) wrap(rt Route) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -261,8 +255,8 @@ func principalFrom(ctx context.Context) auth.Principal {
 const ActAsHeader = "X-Payrudder-Tenant"
 
 func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
-	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if !ok || token == "" {
+	token := bearerToken(r)
+	if token == "" {
 		return auth.Principal{}, errkey.New(codes.Unauthenticated, "identity.api_key.missing", "missing Authorization: Bearer <api key>")
 	}
 	// A person's session token, with a tenant named, is that tenant for the call, if the tenant belongs to one of the person's accounts.
@@ -334,8 +328,7 @@ func principalOf(t *plansv1.Tenant) auth.Principal {
 // operatorOK reports whether the request carries the machine operator token (PAYRUDDER_OPERATOR_TOKEN): the credential of the API, payrudderctl, the demo and the
 // tests. It is never typed into a page.
 func (s *Server) operatorOK(r *http.Request) bool {
-	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-	return ok && s.d.OperatorToken != "" && subtle.ConstantTimeCompare([]byte(token), []byte(s.d.OperatorToken)) == 1
+	return s.d.OperatorToken != "" && subtle.ConstantTimeCompare([]byte(bearerToken(r)), []byte(s.d.OperatorToken)) == 1
 }
 
 // operatorAllowed is who may use the operator routes: the machine token, or the session of an operator user (see isOperator). The session is resolved on
@@ -392,44 +385,6 @@ func requestIDMiddleware(next http.Handler) http.Handler {
 func requestID(ctx context.Context) string {
 	id, _ := ctx.Value(requestIDKey{}).(string)
 	return id
-}
-
-var (
-	unmarshal = protojson.UnmarshalOptions{}
-	marshal   = protojson.MarshalOptions{UseProtoNames: true, EmitUnpopulated: true}
-)
-
-// errTooLarge renders as 413.
-type errTooLarge struct {
-	limit int64
-	// files means limit is a number of files, not bytes.
-	files bool
-}
-
-func (e errTooLarge) Error() string {
-	if e.files {
-		return fmt.Sprintf("more than %d files in one request", e.limit)
-	}
-	return fmt.Sprintf("request body larger than %d bytes", e.limit)
-}
-
-// decode reads a JSON body into msg. An empty body leaves msg unchanged.
-func decode(r *http.Request, msg proto.Message) error {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		var mbe *http.MaxBytesError
-		if errors.As(err, &mbe) {
-			return errTooLarge{limit: mbe.Limit}
-		}
-		return errkey.New(codes.InvalidArgument, "gateway.request.unreadable_body", "unreadable body")
-	}
-	if len(strings.TrimSpace(string(body))) == 0 {
-		return nil
-	}
-	if err := unmarshal.Unmarshal(body, msg); err != nil {
-		return errkey.Newf(codes.InvalidArgument, "gateway.request.malformed_json", "malformed JSON: %v", err)
-	}
-	return nil
 }
 
 // respond writes a proto message as JSON, or the error envelope.

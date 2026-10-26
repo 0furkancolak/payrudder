@@ -4,7 +4,7 @@ import (
 	"html/template"
 	"net"
 	"net/http"
-	"strings"
+	"slices"
 	"sync"
 	"time"
 
@@ -53,6 +53,9 @@ type hostedWindow struct {
 	n     int
 }
 
+// retryAfterMinute is the Retry-After of a visitor over a per-minute limit.
+const retryAfterMinute = "60"
+
 const (
 	hostedPerMinute = 60
 	// hostedPaysPerMinute limits the POSTs that start a payment, per address.
@@ -100,19 +103,24 @@ func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
 	if s.hosted.allow(s.clientAddr(r), time.Now()) {
 		return true
 	}
-	w.Header().Set("Retry-After", "60")
-	http.Error(w, "too many requests", http.StatusTooManyRequests)
+	rejectRateLimited(w)
 	return false
 }
 
 // hostedPayAllowed is hostedAllowed for the POSTs that start a payment: they also count against the stricter limit.
 func (s *Server) hostedPayAllowed(w http.ResponseWriter, r *http.Request) bool {
-	if s.hosted.allow(s.clientAddr(r), time.Now()) && s.hostedPays.allowN(s.clientAddr(r), time.Now(), hostedPaysPerMinute) {
+	addr, now := s.clientAddr(r), time.Now()
+	if s.hosted.allow(addr, now) && s.hostedPays.allowN(addr, now, hostedPaysPerMinute) {
 		return true
 	}
-	w.Header().Set("Retry-After", "60")
-	http.Error(w, "too many requests", http.StatusTooManyRequests)
+	rejectRateLimited(w)
 	return false
+}
+
+// rejectRateLimited answers a public page a visitor asked for too often: 429, to try again in a minute.
+func rejectRateLimited(w http.ResponseWriter) {
+	w.Header().Set("Retry-After", retryAfterMinute)
+	http.Error(w, "too many requests", http.StatusTooManyRequests)
 }
 
 // hostedHeaders makes a page that is private to whoever holds the link: not indexed, not cached, not leaking the link in a Referer, and unable to load anything.
@@ -138,20 +146,14 @@ func hostedNotFound(w http.ResponseWriter, lang string) {
 	_ = hostedGone.Execute(w, map[string]any{"L": hostedText(lang), "Lang": lang, "Dir": hostedDir(lang)})
 }
 
-var hostedLangs = []string{"en", "tr", "de", "fr", "es", "ar"}
-
 // pickLang chooses the page language: ?lang= first, then the browser's Accept-Language, else English.
 func pickLang(r *http.Request) string {
-	want := []string{r.URL.Query().Get("lang")}
-	for _, part := range strings.Split(r.Header.Get("Accept-Language"), ",") {
-		tag, _, _ := strings.Cut(strings.TrimSpace(part), ";")
-		want = append(want, strings.ToLower(strings.SplitN(tag, "-", 2)[0]))
+	if want := r.URL.Query().Get("lang"); slices.Contains(hostedLangs, want) {
+		return want
 	}
-	for _, w := range want {
-		for _, l := range hostedLangs {
-			if w == l {
-				return l
-			}
+	for _, tag := range acceptedTags(r) {
+		if l := matchLocale(tag); l != "" {
+			return l
 		}
 	}
 	return "en"

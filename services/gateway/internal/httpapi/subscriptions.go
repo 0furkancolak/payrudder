@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"net/http"
-	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -24,14 +23,12 @@ func (s *Server) createSubscription(w http.ResponseWriter, r *http.Request) {
 func (s *Server) listSubscriptions(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := &plansv1.ListSubscriptionsRequest{CustomerExternalId: q.Get("customer"), PageToken: q.Get("page_token")}
-	if v := q.Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("page_size", "must be an integer"))
-			return
-		}
-		req.PageSize = int32(n)
+	n, err := intParam(q, "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = n
 	resp, err := s.d.Plans.ListSubscriptions(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

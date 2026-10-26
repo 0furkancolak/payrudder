@@ -5,7 +5,6 @@ import (
 	"time"
 
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
@@ -53,18 +52,17 @@ func (s *Server) getEntitlement(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: r.PathValue("external_id")})
-	if err != nil {
-		writeError(w, r, err)
+	cust, ok := s.resolveCustomer(w, r, r.PathValue("external_id"))
+	if !ok {
 		return
 	}
 	resp, err := s.d.Limits.CheckEntitlement(r.Context(), &limitsv1.CheckEntitlementRequest{
-		CustomerId: cust.GetCustomer().GetId(), MeterCode: r.PathValue("meter"), PeriodId: periodID})
+		CustomerId: cust.GetId(), MeterCode: r.PathValue("meter"), PeriodId: periodID})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	writeJSONValue(w, http.StatusOK, entitlementOf(cust.GetCustomer().GetExternalId(), resp.GetStatus()))
+	writeJSONValue(w, http.StatusOK, entitlementOf(cust.GetExternalId(), resp.GetStatus()))
 }
 
 // listEntitlements is GET /v1/customers/{external_id}/entitlements: every meter the customer has a limit on.
@@ -73,20 +71,19 @@ func (s *Server) listEntitlements(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: r.PathValue("external_id")})
-	if err != nil {
-		writeError(w, r, err)
+	cust, ok := s.resolveCustomer(w, r, r.PathValue("external_id"))
+	if !ok {
 		return
 	}
 	resp, err := s.d.Limits.GetLimitStatus(r.Context(), &limitsv1.GetLimitStatusRequest{
-		CustomerId: cust.GetCustomer().GetId(), PeriodId: periodID})
+		CustomerId: cust.GetId(), PeriodId: periodID})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 	items := make([]entitlementJSON, 0, len(resp.GetStatuses()))
 	for _, st := range resp.GetStatuses() {
-		items = append(items, entitlementOf(cust.GetCustomer().GetExternalId(), st))
+		items = append(items, entitlementOf(cust.GetExternalId(), st))
 	}
 	writeJSONValue(w, http.StatusOK, map[string]any{"items": items})
 }

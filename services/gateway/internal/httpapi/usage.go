@@ -3,10 +3,8 @@ package httpapi
 import (
 	"net/http"
 	"time"
-	_ "time/tzdata" // tenant time zones must load in distroless images
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
@@ -27,29 +25,22 @@ type meterUsageRow struct {
 func (s *Server) getCustomerUsage(w http.ResponseWriter, r *http.Request) {
 	periodID := r.URL.Query().Get("period")
 	if periodID == "" {
-		loc := time.UTC
-		if tz := principalFrom(r.Context()).Tenant.Timezone; tz != "" {
-			if l, err := time.LoadLocation(tz); err == nil {
-				loc = l
-			}
-		}
-		periodID = period.PeriodOf(time.Now(), loc)
+		periodID = period.PeriodOf(time.Now(), tenantLocation(principalFrom(r.Context()).Tenant.Timezone))
 	} else if !period.Valid(periodID) {
 		writeError(w, r, invalid("period", "must look like 2026-11"))
 		return
 	}
-	cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: r.PathValue("external_id")})
-	if err != nil {
-		writeError(w, r, err)
+	cust, ok := s.resolveCustomer(w, r, r.PathValue("external_id"))
+	if !ok {
 		return
 	}
 	resp, err := s.d.Usage.GetCustomerUsage(r.Context(), &aggregatorv1.GetCustomerUsageRequest{
-		CustomerId: cust.GetCustomer().GetId(), PeriodId: periodID})
+		CustomerId: cust.GetId(), PeriodId: periodID})
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	out := usageJSON{CustomerExternalID: cust.GetCustomer().GetExternalId(), PeriodID: periodID, Usage: []meterUsageRow{}}
+	out := usageJSON{CustomerExternalID: cust.GetExternalId(), PeriodID: periodID, Usage: []meterUsageRow{}}
 	for _, u := range resp.GetUsage() {
 		out.Usage = append(out.Usage, meterUsageRow{MeterCode: u.GetMeterCode(), Quantity: u.GetQuantity(), EventCount: u.GetEventCount()})
 	}

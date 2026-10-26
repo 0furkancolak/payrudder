@@ -2,10 +2,8 @@ package httpapi
 
 import (
 	"net/http"
-	"strconv"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
@@ -52,12 +50,11 @@ func (s *Server) setCreditPackActive(active bool) http.HandlerFunc {
 
 // customerID resolves the external id in the path to Payrudder's id, or writes the error.
 func (s *Server) customerID(w http.ResponseWriter, r *http.Request) (string, bool) {
-	cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: r.PathValue("external_id")})
-	if err != nil {
-		writeError(w, r, err)
+	cust, ok := s.resolveCustomer(w, r, r.PathValue("external_id"))
+	if !ok {
 		return "", false
 	}
-	return cust.GetCustomer().GetId(), true
+	return cust.GetId(), true
 }
 
 // getCreditBalance is GET /v1/customers/{external_id}/credits.
@@ -115,14 +112,12 @@ func (s *Server) listCreditLedger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req := &billingv1.ListCreditLedgerRequest{CustomerId: id, PageToken: r.URL.Query().Get("page_token")}
-	if v := r.URL.Query().Get("page_size"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil || n < 1 || n > 200 {
-			writeError(w, r, invalid("page_size", "must be 1 to 200"))
-			return
-		}
-		req.PageSize = int32(n)
+	size, err := rangedParam(r.URL.Query(), "page_size", 1, 200, "must be 1 to 200")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.PageSize = size
 	resp, err := s.d.Billing.ListCreditLedger(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

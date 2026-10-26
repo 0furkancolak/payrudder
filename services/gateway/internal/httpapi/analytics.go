@@ -8,7 +8,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
@@ -46,12 +45,11 @@ func (s *Server) getAnalyticsUsage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if c := q.Get("customer"); c != "" {
-		cust, err := s.d.Plans.ResolveCustomer(r.Context(), &plansv1.ResolveCustomerRequest{ExternalId: c})
-		if err != nil {
-			writeError(w, r, err)
+		cust, ok := s.resolveCustomer(w, r, c)
+		if !ok {
 			return
 		}
-		req.CustomerId = cust.GetCustomer().GetId()
+		req.CustomerId = cust.GetId()
 	}
 	resp, err := s.d.Analytics.QueryUsage(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
@@ -65,14 +63,12 @@ func (s *Server) getTopCustomers(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, invalid("meter", "meter and period (2026-11) are required"))
 		return
 	}
-	if v := q.Get("limit"); v != "" {
-		n, err := strconv.ParseInt(v, 10, 32)
-		if err != nil {
-			writeError(w, r, invalid("limit", "must be an integer"))
-			return
-		}
-		req.Limit = int32(n)
+	n, err := intParam(q, "limit")
+	if err != nil {
+		writeError(w, r, err)
+		return
 	}
+	req.Limit = n
 	resp, err := s.d.Analytics.TopCustomers(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }
