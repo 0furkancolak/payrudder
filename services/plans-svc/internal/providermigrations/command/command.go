@@ -13,6 +13,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/providers"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -47,19 +48,19 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 	eff := convert.SubscriptionState(old.State, old.TrialEndsAt, old.OpenEnded, old.EndTime, now)
 	// What the successor pays, and when. A Payrudder-run subscription whose fee is already paid in advance goes on with the period it paid for (no credit, the
 	// same renewal, its coupon); a yearly one that a provider ran comes back billed in advance from the cutover, as a year cannot be waited out in arrears.
-	timing, anchor, feeDue, creditUnused := "arrears", old.BillingAnchor, (*time.Time)(nil), old.Owner == "quotify"
-	if owner == "quotify" {
+	timing, anchor, feeDue, creditUnused := subscription.FeeInArrears, old.BillingAnchor, (*time.Time)(nil), old.Owner == domain.OwnerPayrudder
+	if owner == domain.OwnerPayrudder {
 		switch {
-		case old.FeeTiming == "advance" && old.Owner == "quotify":
+		case old.FeeTiming == subscription.FeeInAdvance && old.Owner == domain.OwnerPayrudder:
 			due, err := q.GetSubscriptionFeeDue(ctx, old.ID)
 			if err != nil {
 				return sqlc.InsertSubscriptionRow{}, err
 			}
 			if due != nil {
-				timing, feeDue, creditUnused = "advance", due, false
+				timing, feeDue, creditUnused = subscription.FeeInAdvance, due, false
 			}
 		case subscription.Interval(old.Interval) == subscription.Yearly:
-			timing, anchor, feeDue = "advance", when, &when
+			timing, anchor, feeDue = subscription.FeeInAdvance, when, &when
 		}
 	}
 	// A fee paid in advance for the rest of the period the old provider-side subscription will not serve goes to the customer's credit balance.
@@ -131,7 +132,7 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 		if err != nil {
 			return err
 		}
-		if target.Owner() == "provider" {
+		if target.Owner() == payments.OwnerProvider {
 			// The target provider runs it: wait for the customer to subscribe there. Nothing about the old subscription changes yet.
 			out = provmigqry.Message(mig)
 			return nil
@@ -140,10 +141,10 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 		when := now
 		if cutoverAt != nil {
 			when = *cutoverAt
-		} else if row.Owner == "provider" {
+		} else if row.Owner == domain.OwnerProvider {
 			return domain.Invalid("cutover_time", "required when the subscription is run by its provider: its paid period must not be cut short")
 		}
-		nr, err := c.cutover(ctx, q, ti.ID, row, when, req.GetToProvider(), nil, "quotify")
+		nr, err := c.cutover(ctx, q, ti.ID, row, when, req.GetToProvider(), nil, domain.OwnerPayrudder)
 		if err != nil {
 			return err
 		}
@@ -184,7 +185,7 @@ func (c *Commands) Complete(ctx context.Context, req *plansv1.CompleteProviderMi
 			return err
 		}
 		resp.SourceProvider = convert.Str(old.Provider)
-		if old.Owner == "provider" {
+		if old.Owner == domain.OwnerProvider {
 			resp.SourceProviderRef = convert.Str(old.ProviderRef)
 		}
 		switch mig.State {
@@ -212,7 +213,7 @@ func (c *Commands) Complete(ctx context.Context, req *plansv1.CompleteProviderMi
 		if !old.OpenEnded {
 			return errkey.New(codes.FailedPrecondition, "plans.migration.subscription_ended", "the subscription ended while the migration was waiting")
 		}
-		nr, err := c.cutover(ctx, q, ti.ID, old, when, mig.ToProvider, new(req.GetProviderRef()), "provider")
+		nr, err := c.cutover(ctx, q, ti.ID, old, when, mig.ToProvider, new(req.GetProviderRef()), domain.OwnerProvider)
 		if err != nil {
 			return err
 		}

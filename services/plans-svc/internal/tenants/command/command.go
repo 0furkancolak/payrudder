@@ -60,8 +60,8 @@ func setGrace(req *plansv1.UpdateTenantSettingsRequest, p *sqlc.UpdateTenantSett
 		p.GracePeriod = pgtype.Interval{}
 		return nil
 	}
-	g, err := domain.ValidateGrace(req.GetGracePeriod().AsDuration())
-	if err != nil {
+	g := req.GetGracePeriod().AsDuration()
+	if err := domain.ValidateGrace(g); err != nil {
 		return domain.Invalid("grace_period", err.Error())
 	}
 	p.GracePeriod = convert.Interval(g)

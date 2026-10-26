@@ -101,12 +101,6 @@ func (s *SMTP) Send(reqCtx context.Context, m Mail) {
 	}()
 }
 
-// Discard is a Sender that sends nothing (tests that do not look at mail).
-type Discard struct{}
-
-// Send implements Sender.
-func (Discard) Send(context.Context, Mail) {}
-
 // copy is the text of one mail in one language. Lines is the body; Button is the label of the link; Ignore is the closing line.
 type copyText struct {
 	Subject string

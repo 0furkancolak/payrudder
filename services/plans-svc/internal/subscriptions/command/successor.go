@@ -12,6 +12,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
 	couponscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
@@ -25,7 +26,7 @@ type Successor struct {
 	State         subscription.State
 	TrialEnds     *time.Time
 	At, Anchor    time.Time
-	// FeeTiming and FeeDue: "advance" with the start of the next period to invoice, or "arrears" with none.
+	// FeeTiming and FeeDue: subscription.FeeInAdvance with the start of the next period to invoice, or subscription.FeeInArrears with none.
 	FeeTiming string
 	FeeDue    *time.Time
 	// Owner and ProviderRef carry a provider-run subscription's link over. Owner "" is Payrudder.
@@ -38,15 +39,12 @@ type Successor struct {
 	LeaveOldOpen bool
 }
 
-// ownerPayrudder is the Owner of a subscription Payrudder itself invoices (the stored value predates the rename).
-const ownerPayrudder = "quotify"
-
 // carriesCoupon is the one rule for the coupon of a subscription that is replaced: it follows the subscription, with the
 // periods it has used, as long as the successor can hold one. A coupon takes something off a fee Payrudder invoices in
 // advance (coupons.Redeem refuses any other subscription), so a successor that a provider runs, or that is billed in
 // arrears, leaves it on the ended subscription.
 func carriesCoupon(next Successor) bool {
-	return (next.Owner == "" || next.Owner == ownerPayrudder) && next.FeeTiming == "advance"
+	return (next.Owner == "" || next.Owner == domain.OwnerPayrudder) && next.FeeTiming == subscription.FeeInAdvance
 }
 
 // SwitchTo ends old at next.At and starts its successor in the same transaction, with the entitlements of both.
@@ -70,7 +68,7 @@ func SwitchTo(ctx context.Context, q *sqlc.Queries, now time.Time, tenantID uuid
 	oldID := old.ID
 	owner := next.Owner
 	if owner == "" {
-		owner = ownerPayrudder
+		owner = domain.OwnerPayrudder
 	}
 	provider := old.Provider
 	if next.Provider != nil {

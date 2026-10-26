@@ -172,7 +172,7 @@ func requireChangeable(row sqlc.GetSubscriptionRow, now time.Time) (subscription
 	if err := domain.RequirePayrudderOwned(row.Owner, row.Provider); err != nil {
 		return "", err
 	}
-	if row.FeeTiming != "advance" {
+	if row.FeeTiming != subscription.FeeInAdvance {
 		return "", errkey.New(codes.FailedPrecondition, "plans.change.billed_in_arrears", "this subscription is billed in arrears; ChangePlan splits the month by time")
 	}
 	if !row.OpenEnded || row.CancelAtPeriodEnd {
@@ -315,7 +315,7 @@ func (r *Queries) Adjustments(ctx context.Context, pageSize int32) ([]*plansv1.A
 // It is zero (ok=false) when nothing was prepaid for the period at is in: a trial, a pause, or a fee billing has not invoiced yet. The caller
 // holds the row locked. A coupon makes the fee actually paid differ from the list fee, so a subscription with one is refused (ErrCouponOnCredit).
 func UnusedFee(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubscriptionRow, at time.Time) (credit int64, periodEnd time.Time, ok bool, err error) {
-	if row.FeeTiming != "advance" {
+	if row.FeeTiming != subscription.FeeInAdvance {
 		return 0, time.Time{}, false, nil
 	}
 	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)

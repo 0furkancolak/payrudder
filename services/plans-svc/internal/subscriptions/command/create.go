@@ -131,7 +131,7 @@ func (c *Commands) create(ctx context.Context, q *sqlc.Queries, tenantID uuid.UU
 	r, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 		ID: idgen.NewUUIDv7(), CustomerID: cust.ID, PlanVersionID: pv.ID, StartTime: a.start,
 		State: string(state), Interval: string(a.interval), Currency: currency, TrialEndsAt: trialEnds,
-		BillingAnchor: anchor, Provider: provider, Owner: "quotify", FeeTiming: timing, FeeDueAt: feeDue,
+		BillingAnchor: anchor, Provider: provider, Owner: domain.OwnerPayrudder, FeeTiming: timing, FeeDueAt: feeDue,
 	})
 	if err != nil {
 		return nil, err
@@ -196,19 +196,19 @@ func feeTimingFor(asked plansv1.FeeTiming, interval subscription.Interval, provi
 	arrears := asked == plansv1.FeeTiming_FEE_TIMING_ARREARS
 	switch {
 	case providerRenews:
-		return "arrears", nil
+		return subscription.FeeInArrears, nil
 	case arrears && interval == subscription.Yearly:
 		return "", domain.Invalid("fee_timing", "a yearly subscription is invoiced in advance")
 	case arrears:
-		return "arrears", nil
+		return subscription.FeeInArrears, nil
 	}
-	return "advance", nil
+	return subscription.FeeInAdvance, nil
 }
 
 // billingAnchor: billing periods of an advance subscription start where its fee does, on the day it starts or when its
 // trial ends. An arrears subscription is billed by calendar month.
 func billingAnchor(timing string, start time.Time, trialEnds *time.Time, loc *time.Location) (anchor time.Time, feeDue *time.Time) {
-	if timing != "advance" {
+	if timing != subscription.FeeInAdvance {
 		return monthStart(start, loc), nil
 	}
 	anchor = start
