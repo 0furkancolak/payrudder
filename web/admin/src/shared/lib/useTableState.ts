@@ -41,10 +41,15 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
 
   if (opts.sheet) {
     const { kind, id } = opts.sheet;
-    watch(detail, (d) => {
-      const r = d === null ? undefined : filtered.value[d];
-      setKind(kind, (r === undefined ? undefined : id(r)) ?? null);
-    });
+    // Synchronous: the watcher below closes the sheet when the address names no row, and must not run between a row being opened and the address hearing of it.
+    watch(
+      detail,
+      (d) => {
+        const r = d === null ? undefined : filtered.value[d];
+        setKind(kind, (r === undefined ? undefined : id(r)) ?? null);
+      },
+      { flush: "sync" },
+    );
     watch([() => idOf(kind), filtered], ([named]) => {
       if (named === undefined) {
         if (detail.value !== null) detail.value = null;
