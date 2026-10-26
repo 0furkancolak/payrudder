@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, tenantApi, unwrap, type Plan, type PlanVersion } from "@/shared/api/client";
+import type { Entitlement } from "@/features/meters/quota";
+import type { Price } from "./usage";
 
 export const packageKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "packages"] as const,
@@ -37,6 +39,9 @@ export interface NewPackage {
   baseFeeMinor: string;
   /** Fixed fees in other currencies, minor units. */
   fees: { currency: string; interval: "month" | "year"; baseFeeMinor: string }[];
+  /** Usage prices in the tenant's currency (minor units), and the quotas of the version. */
+  prices?: Price[];
+  entitlements?: Entitlement[];
 }
 
 /** Creates the package (unless it exists) and publishes a version with these fixed fees. */
@@ -54,7 +59,12 @@ export function useCreatePackage(tenantId: MaybeRefOrGetter<string>) {
       return unwrap(
         api.POST("/v1/plans/{code}/versions", {
           params: { path: { code: p.code } },
-          body: { base_fee_minor: p.baseFeeMinor, fees: p.fees.map((f) => ({ currency: f.currency, base_fee_minor: f.baseFeeMinor, interval: f.interval === "year" ? ("SUBSCRIPTION_INTERVAL_YEAR" as const) : ("SUBSCRIPTION_INTERVAL_MONTH" as const) })) },
+          body: {
+            base_fee_minor: p.baseFeeMinor,
+            fees: p.fees.map((f) => ({ currency: f.currency, base_fee_minor: f.baseFeeMinor, interval: f.interval === "year" ? ("SUBSCRIPTION_INTERVAL_YEAR" as const) : ("SUBSCRIPTION_INTERVAL_MONTH" as const) })),
+            ...(p.prices?.length ? { prices: p.prices } : {}),
+            ...(p.entitlements?.length ? { entitlements: p.entitlements } : {}),
+          },
         }),
       );
     },

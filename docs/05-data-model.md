@@ -156,8 +156,19 @@ CREATE TABLE plan_entitlements (
   limit_units          bigint NOT NULL CHECK (limit_units >= 0),      -- scaled units of the meter; 0 = unlimited
   -- plan_prices.config stores quantities as scaled units too: {"tiers":[{"up_to_units":10500,"unit_price":"0","flat_fee_minor":0},…]}
   alert_thresholds_pct int[]  NOT NULL DEFAULT '{80,100}',
+  quota_window         text NOT NULL DEFAULT 'month' CHECK (quota_window IN ('hour','day','week','month')),   -- 00052
+  mode                 text NOT NULL DEFAULT 'hard'  CHECK (mode IN ('hard','soft','notify')),             -- 00052
   PRIMARY KEY (tenant_id, plan_version_id, meter_code)
 );
+
+-- 00052: a customer's own limit on a meter, in place of its plan version's. Same columns as plan_entitlements; RLS like every tenant table.
+CREATE TABLE customer_entitlement_overrides (
+  tenant_id uuid, customer_id uuid, meter_code text, limit_units bigint, alert_thresholds_pct int[], quota_window text, mode text,
+  created_at timestamptz, updated_at timestamptz,
+  PRIMARY KEY (tenant_id, customer_id, meter_code), FOREIGN KEY (tenant_id, customer_id) REFERENCES customers (tenant_id, id)
+);
+-- 00052: meters.category text NOT NULL DEFAULT '' (at most 64 characters, the tenant's own words). plan_prices.config may carry
+-- "included_units" (scaled units free in every billing period) for any model.
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 CREATE TABLE subscriptions (

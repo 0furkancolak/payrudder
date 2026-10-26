@@ -43,8 +43,8 @@ RETURNING *;
 SELECT * FROM meters WHERE tenant_id = app_tenant_id() AND code = $1 ORDER BY version DESC LIMIT 1;
 
 -- name: InsertMeter :one
-INSERT INTO meters (tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7)
+INSERT INTO meters (tenant_id, code, version, aggregation, value_property, filter, quantity_scale, unit_label, category)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: ListLatestMeters :many
@@ -79,8 +79,8 @@ INSERT INTO plan_prices (tenant_id, plan_version_id, meter_code, model, config)
 VALUES (app_tenant_id(), $1, $2, $3, $4);
 
 -- name: InsertPlanEntitlement :exec
-INSERT INTO plan_entitlements (tenant_id, plan_version_id, meter_code, limit_units, alert_thresholds_pct)
-VALUES (app_tenant_id(), $1, $2, $3, $4);
+INSERT INTO plan_entitlements (tenant_id, plan_version_id, meter_code, limit_units, alert_thresholds_pct, quota_window, mode)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6);
 
 -- name: GetPlanVersionByID :one
 SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.published_at, p.code AS plan_code
@@ -100,8 +100,30 @@ SELECT meter_code, model, config FROM plan_prices
 WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY meter_code;
 
 -- name: ListPlanEntitlements :many
-SELECT meter_code, limit_units, alert_thresholds_pct FROM plan_entitlements
+SELECT meter_code, limit_units, alert_thresholds_pct, quota_window, mode FROM plan_entitlements
 WHERE tenant_id = app_tenant_id() AND plan_version_id = $1 ORDER BY meter_code;
+
+-- name: UpsertEntitlementOverride :one
+INSERT INTO customer_entitlement_overrides (tenant_id, customer_id, meter_code, limit_units, alert_thresholds_pct, quota_window, mode)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6)
+ON CONFLICT (tenant_id, customer_id, meter_code) DO UPDATE
+SET limit_units = EXCLUDED.limit_units, alert_thresholds_pct = EXCLUDED.alert_thresholds_pct, quota_window = EXCLUDED.quota_window,
+    mode = EXCLUDED.mode, updated_at = now()
+RETURNING *;
+
+-- name: DeleteEntitlementOverride :execrows
+DELETE FROM customer_entitlement_overrides WHERE tenant_id = app_tenant_id() AND customer_id = $1 AND meter_code = $2;
+
+-- name: ListEntitlementOverrides :many
+SELECT * FROM customer_entitlement_overrides WHERE tenant_id = app_tenant_id() AND customer_id = $1 ORDER BY meter_code;
+
+-- name: ListUnendedSubscriptionsOfCustomer :many
+-- The subscriptions of a customer whose entitlements are (or will be) in force: the ones that have not ended at now, oldest start first.
+SELECT plan_version_id, lower(active)::timestamptz AS start_time, upper_inf(active)::bool AS open_ended,
+       COALESCE(upper(active), lower(active))::timestamptz AS end_time
+FROM subscriptions
+WHERE tenant_id = app_tenant_id() AND customer_id = $1 AND (upper_inf(active) OR upper(active) > @now::timestamptz)
+ORDER BY lower(active), id;
 
 -- name: InsertSubscription :one
 INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing, fee_due_at)

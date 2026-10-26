@@ -464,6 +464,54 @@
         "perUnit": "{price} pro Einheit",
         "tiered": "{n} Stufen",
         "package": "{size} Einheiten für {price}"
+      },
+      "usagePrices": "Nutzungspreise",
+      "usagePricesHelp": "Preise in {currency} für das Gemessene, je Abrechnungszeitraum. Eine enthaltene Menge ist kostenlos; der Preis gilt für alles darüber.",
+      "noMeters": "Diese App hat noch keine Zähler: legen Sie zuerst einen auf der Seite Zähler an.",
+      "priceRow": "Nutzungspreis {n}",
+      "priceMeter": "Zähler von Preis {n}",
+      "priceModel": "Preismodell von Preis {n}",
+      "chooseMeter": "Zähler wählen",
+      "models": {
+        "per_unit": "Pro Einheit",
+        "tiered": "Gestaffelt",
+        "package": "Pro Paket von Einheiten"
+      },
+      "included": "Enthaltene Menge von Preis {n}",
+      "includedPlaceholder": "Kostenlos enthalten je Zeitraum ({unit}), optional",
+      "unitPrice": "Stückpreis von Preis {n}",
+      "unitPricePlaceholder": "Preis pro {unit} in {currency} (0.002)",
+      "tierUpTo": "Preis {n}, Stufe {tier} bis",
+      "tierUpToPlaceholder": "Bis (Menge)",
+      "tierRest": "Alles darüber",
+      "tierPrice": "Preis {n}, Stufe {tier} Stückpreis",
+      "unitPriceShort": "Stückpreis ({currency})",
+      "tierFlat": "Preis {n}, Stufe {tier} Pauschale",
+      "flatFeePlaceholder": "Pauschale ({currency}), optional",
+      "addTier": "Stufe hinzufügen",
+      "packageSize": "Paketgröße von Preis {n}",
+      "packageSizePlaceholder": "Einheiten pro Paket ({unit})",
+      "packagePrice": "Paketpreis von Preis {n}",
+      "packagePricePlaceholder": "Preis pro Paket ({currency})",
+      "addPrice": "Nutzungspreis hinzufügen",
+      "otherCurrencyPrices": "Nutzungspreise sind in {currency}. Ein Abonnement in einer anderen Währung braucht auch Nutzungspreise in dieser (currency_prices in der API).",
+      "limitsHelp": "Ein Kontingent begrenzt einen Zähler über ein Zeitfenster. Nutzungsereignisse werden nie abgelehnt: das allowed-Feld der API und die Warnungen sagen Ihrer App, was zu tun ist.",
+      "quotaRow": "Kontingent {n}",
+      "quotaMeter": "Zähler von Kontingent {n}",
+      "addQuota": "Kontingent hinzufügen",
+      "includedColumn": "Enthalten",
+      "usageErrors": {
+        "meter": "Nutzungszeile {n}: Zähler wählen.",
+        "duplicate": "Nutzungszeile {n}: {meter} steht zweimal da.",
+        "unitPrice": "Nutzungszeile {n}: der Stückpreis ist kein Betrag in {currency}.",
+        "included": "Nutzungszeile {n}: die enthaltene Menge hat mehr Nachkommastellen, als {meter} erlaubt.",
+        "tierBound": "Nutzungszeile {n}: jede Stufe außer der letzten braucht eine Obergrenze in Einheiten von {meter}.",
+        "flatFee": "Nutzungszeile {n}: eine Pauschale ist kein Betrag in {currency}.",
+        "packageSize": "Nutzungszeile {n}: die Paketgröße muss eine Menge über null sein.",
+        "packagePrice": "Nutzungszeile {n}: der Paketpreis ist kein Betrag in {currency}.",
+        "limit": "Kontingent {n}: das Limit muss eine Menge mit höchstens den Nachkommastellen von {meter} sein.",
+        "thresholds": "Kontingent {n}: Warnungen sind bis zu 10 aufsteigende Prozentwerte zwischen 1 und 1000.",
+        "softNeedsPrice": "Kontingent {n}: ein weiches Limit rechnet ab, was darüber liegt, daher braucht {meter} einen Nutzungspreis; sonst Nur benachrichtigen wählen."
       }
     },
     "subscriptions": {
@@ -1396,6 +1444,105 @@
         "noCode": "Kein Code (direkt angewendet)"
       },
       "discount": "Rabatt"
+    },
+    "meters": {
+      "new": "Neuer Zähler",
+      "newVersion": "Neue Version",
+      "newVersionOf": "Neue Version von {code}",
+      "intro": "Ein Zähler legt fest, was gemessen wird und wie Nutzungsereignisse zusammengezählt werden. Eine neue Version eines Codes kann alles außer den Nachkommastellen ändern; Ereignisse werden gegen die neueste geprüft.",
+      "formLabel": "neuer Zähler",
+      "code": "Code",
+      "codePlaceholder": "Code (api_calls)",
+      "category": "Kategorie",
+      "categoryPlaceholder": "Kategorie Ihrer Wahl (optional)",
+      "allCategories": "Alle Kategorien",
+      "aggregation": "Aggregation",
+      "allAggregations": "Alle Aggregationen",
+      "aggregations": {
+        "sum": "Summe",
+        "count": "Anzahl",
+        "max": "Maximum"
+      },
+      "aggregationHelp": {
+        "sum": "Addiert die Menge jedes Ereignisses im Zeitraum.",
+        "count": "Zählt die Ereignisse; ihre Menge wird ignoriert.",
+        "max": "Behält die höchste im Zeitraum gemeldete Menge (Plätze, Speicher)."
+      },
+      "valueProperty": "Mengen-Eigenschaft",
+      "valuePropertyPlaceholder": "Ereigniseigenschaft mit der Menge (tokens)",
+      "unit": "Einheit",
+      "unitPlaceholder": "Einheit Ihrer Wahl (Tokens, GB-h)",
+      "scale": "Nachkommastellen",
+      "decimals": "{n} Nachkommastellen",
+      "filter": "Nur Ereignisse mit",
+      "filterHelp": "Ereignisse, deren Eigenschaften nicht jeder Zeile entsprechen, werden nicht gezählt. Leer lassen, um alle zu zählen.",
+      "filterProperty": "Filter-Eigenschaft {n}",
+      "filterValues": "Erlaubte Werte {n}",
+      "filterPropertyPlaceholder": "Eigenschaft (region)",
+      "filterValuesPlaceholder": "Werte, durch Komma getrennt (eu, us)",
+      "addFilter": "Bedingung hinzufügen",
+      "badFilter": "Jede Bedingung braucht eine Eigenschaft und mindestens einen Wert.",
+      "noFilter": "jedes Ereignis",
+      "create": "Zähler anlegen",
+      "saveVersion": "Version veröffentlichen",
+      "empty": "Noch keine Zähler. Ein Paket kann Nutzung erst bepreisen oder begrenzen, wenn es einen Zähler gibt."
+    },
+    "quotas": {
+      "action": "Kontingente",
+      "of": "Kontingente von {id}",
+      "intro": "Eine Ausnahme ersetzt, was das Paket des Kunden auf einem Zähler erlaubt, für alle seine Abonnements, bis sie gelöscht wird.",
+      "overrides": "Eigene Limits",
+      "none": "Keine Ausnahmen: es gelten die Limits des Pakets.",
+      "formLabel": "Kontingent-Ausnahme",
+      "set": "Limit für diesen Kunden festlegen",
+      "meter": "Zähler",
+      "chooseMeter": "Zähler wählen",
+      "save": "Ausnahme speichern",
+      "edit": "Ausnahme für {meter} bearbeiten",
+      "remove": "Ausnahme für {meter} entfernen",
+      "limit": "Limit",
+      "limitN": "Limit von Kontingent {n}",
+      "limitIn": "Limit in {unit} (0 = unbegrenzt)",
+      "limitPlaceholder": "Limit (0 = unbegrenzt)",
+      "window": "Zeitfenster",
+      "windowN": "Zeitfenster von Kontingent {n}",
+      "mode": "Bei Erreichen",
+      "modeN": "Bei Erreichen von Kontingent {n}",
+      "thresholds": "Warnungen",
+      "thresholdsN": "Warnungen von Kontingent {n}",
+      "thresholdsPlaceholder": "Warnungen bei % des Limits (50, 80, 100)",
+      "windows": {
+        "hour": "Pro Stunde",
+        "day": "Pro Tag",
+        "week": "Pro Woche",
+        "month": "Pro Abrechnungsmonat"
+      },
+      "modes": {
+        "hard": "Hart: nicht mehr erlauben",
+        "soft": "Weich: erlauben und Überschuss abrechnen",
+        "notify": "Nur benachrichtigen"
+      },
+      "modeHelp": {
+        "hard": "Am Limit wird allowed false.",
+        "soft": "allowed bleibt true; Nutzung über dem Limit wird zum Preis des Zählers abgerechnet.",
+        "notify": "allowed bleibt true; nur die Warnungen werden gesendet."
+      },
+      "windowHelp": {
+        "hour": "Zählt jede volle Stunde in der Zeitzone der App.",
+        "day": "Zählt jeden Tag in der Zeitzone der App.",
+        "week": "Zählt jede Woche ab Montag in der Zeitzone der App.",
+        "month": "Zählt den Abrechnungsmonat, wie die Rechnung."
+      },
+      "windowColumn": "Zeitfenster",
+      "modeColumn": "Bei Erreichen",
+      "alertsColumn": "Warnungen",
+      "overridden": "eigenes Limit",
+      "overButAllowed": "über dem Limit, weiter erlaubt",
+      "resets": "beginnt neu {at}",
+      "errors": {
+        "limit": "Das Limit muss eine Menge mit höchstens {n} Nachkommastellen sein.",
+        "thresholds": "Warnungen sind bis zu 10 aufsteigende Prozentwerte zwischen 1 und 1000."
+      }
     }
   },
   "affiliates": {
@@ -2240,6 +2387,10 @@
       "plan": {
         "no_fixed_fee": "Diese Planversion hat für dieses Intervall in dieser Währung keine feste Gebühr.",
         "no_metered_price": "Diese Planversion hat nutzungsabhängige Preise, aber keine in dieser Währung."
+      },
+      "override": {
+        "customer_required": "Geben Sie an, für welchen Kunden das Limit gilt.",
+        "not_found": "Dieser Kunde hat auf diesem Zähler keine Ausnahme."
       }
     },
     "common": {
@@ -3434,7 +3585,8 @@
       "partner": "Partnerportal",
       "usage": "Nutzung",
       "coupons": "Gutscheine",
-      "paymentProviders": "Zahlungsanbieter"
+      "paymentProviders": "Zahlungsanbieter",
+      "meters": "Zähler"
     },
     "noApps": "Noch keine Apps"
   },

@@ -38,6 +38,8 @@ DELETE FROM customers WHERE tenant_id = $1;
 DELETE FROM webhook_deliveries WHERE tenant_id = $1;
 -- name: ResetWebhookEvents :execrows
 DELETE FROM webhook_events WHERE tenant_id = $1;
+-- name: ResetEntitlementOverrides :execrows
+DELETE FROM customer_entitlement_overrides WHERE tenant_id = $1;
 -- name: ResetEntitlementOutbox :execrows
 DELETE FROM outbox WHERE tenant_id = $1;
 -- name: ResetCouponCounters :exec

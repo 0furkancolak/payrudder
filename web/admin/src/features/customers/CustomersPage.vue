@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useParams, useRouter } from "@tanstack/vue-router";
-import { CreditCard, Eye, Link2, MapPin, Plus, Receipt, Repeat, Users } from "@lucide/vue";
+import { CreditCard, Eye, Gauge, Link2, MapPin, Plus, Receipt, Repeat, Users } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
@@ -22,6 +22,7 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
+import CustomerQuotasSheet from "./CustomerQuotasSheet.vue";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCustomers, useCustomerSummaries } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
@@ -131,6 +132,14 @@ function paymentLink(externalId?: string) {
 function toCredits() {
   void router.navigate({ to: `${tenantBase()}/$id/credits`, params: { id: tenantId.value } as never });
 }
+// --- the customer's own quotas (overrides of its package's limits)
+const quotasOf = ref("");
+const quotasOpen = computed({
+  get: () => quotasOf.value !== "",
+  set: (v) => {
+    if (!v) quotasOf.value = "";
+  },
+});
 function actionsOf(c: Customer, i: number): RowAction[] {
   return [
     { key: "view", label: t("common.view"), icon: Eye, onSelect: () => open(i) },
@@ -139,6 +148,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
     { key: "link", label: t("billing.paymentLinks.paymentLink"), icon: Link2, onSelect: () => paymentLink(c.external_id) },
     { key: "address", label: t("billing.customers.address.edit"), icon: MapPin, separatorBefore: true, onSelect: () => (editingAddress.value = c) },
     { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => (editingTax.value = c) },
+    { key: "quotas", label: t("billing.quotas.action"), icon: Gauge, onSelect: () => (quotasOf.value = c.external_id ?? "") },
   ];
 }
 </script>
@@ -163,6 +173,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
   </DetailSheet>
   <!-- After the customer's sheet: a sheet portals to where it was first rendered, so these open above the one they are opened from. -->
   <CustomerCreateSheet v-model:open="creating" :tenant-id="tenantId" />
+  <CustomerQuotasSheet v-model:open="quotasOpen" :tenant-id="tenantId" :customer="quotasOf" />
   <CustomerEditSheets v-model:address="editingAddress" v-model:tax="editingTax" :tenant-id="tenantId" />
   <CreateSubscriptionForm v-model:open="subscribing" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" :for-customer="subscribeFor" />
 

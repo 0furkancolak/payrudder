@@ -114,7 +114,7 @@ describe("Usage and Coupons", () => {
 
   it("puts usage with the customers and coupons with the billing pages, after pricing", () => {
     expect(section("customers")).toEqual(["customers", "subscriptions", "usage", "credits"]);
-    expect(section("billing")?.slice(0, 4)).toEqual(["packages", "pricing", "coupons", "invoices"]);
+    expect(section("billing")?.slice(0, 5)).toEqual(["meters", "packages", "pricing", "coupons", "invoices"]);
     expect(person.flatMap((s) => s.items).find((i) => i.key === "usage")?.to).toBe("/app/t/T/usage");
     expect(person.flatMap((s) => s.items).find((i) => i.key === "coupons")?.to).toBe("/app/t/T/coupons");
   });

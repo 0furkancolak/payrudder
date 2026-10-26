@@ -80,7 +80,7 @@ const exact = (to: string) => (path: string) => path === to;
  * The pages a person has under /app/t/{tenant}/... (route file: features/product/routes.ts). A page is in the sidebar only when its route exists, so
  * nothing in the navigation leads to a "not found". Add a key here in the same change that adds the route.
  */
-export const PERSON_PAGES = ["customers", "subscriptions", "usage", "credits", "packages", "pricing", "coupons", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "webhooks", "mail", "members"] as const;
+export const PERSON_PAGES = ["customers", "subscriptions", "usage", "credits", "meters", "packages", "pricing", "coupons", "invoices", "payments", "paymentLinks", "accounting", "reports", "affiliates", "webhooks", "mail", "members"] as const;
 
 /** The pages of a tenant: key, icon, path under the tenant, the section it sits in, and whether a person has it or only the operator. */
 interface Page {
@@ -96,6 +96,7 @@ const PAGES: Page[] = [
   { key: "subscriptions", icon: Repeat, path: "subscriptions", section: "customers", person: true },
   { key: "usage", icon: Gauge, path: "usage", section: "customers", person: true },
   { key: "credits", icon: Gift, path: "credits", section: "customers", person: true },
+  { key: "meters", icon: Gauge, path: "meters", section: "billing", person: true },
   { key: "packages", icon: Package, path: "packages", section: "billing", person: true },
   { key: "pricing", icon: Percent, path: "pricing", section: "billing", person: true },
   { key: "coupons", icon: Ticket, path: "coupons", section: "billing", person: true },

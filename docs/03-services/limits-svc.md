@@ -23,6 +23,8 @@ to counter). It is not the billing source of truth. See [ADR 0006](../adr/0006-e
 | `lim:c:{tenant}:{customer}:{meter}:{period}` | string int (counter, scaled units of the meter) | period end + 40 days |
 | `lim:off:{partition}` | string int (next offset applied) | none |
 | `lim:fired:{tenant}:{customer}:{meter}:{period}:{pct}` | string `1` | period end + 40 days |
+| `lim:w:{tenant}:{customer}:{meter}:{window}` | string int (counter of an hour, day or ISO week window) | window end + 2 days |
+| `lim:wactive:{partition}` | sorted set of the window counters (score = last update) | entries pruned after 1 h |
 
 All counter keys of a batch for partition `p` are updated in **one Lua script** together with
 `lim:off:{p}`. That works because the script runs atomically on a single Redis node. In Redis Cluster the keys
@@ -129,3 +131,23 @@ our ingest **targets**. `CheckEntitlement` is a single `MGET` (counter + entitle
   until the entitlement map has read the topic up to the end offsets recorded at start.
 - Metrics: `limits_events_applied`, `limits_events_skipped{reason}`, `limits_reconcile_corrections{reason}`,
   `limits_reconcile_skipped{reason}`, `limits_reconcile_keys_checked`, `limits_thresholds_fired`.
+
+## As built: quota windows and modes
+
+- An entitlement counts over a **window**: the billing month (`lim:c`, as before) or an hour, a day or an ISO week in the tenant's time zone
+  (`pkg/period.WindowOf`; ids `2026-11-05T13`, `2026-11-05`, `2026-W45`). For an entitlement with a shorter window the apply loop adds the
+  event to `lim:w:…:{window of event_time}` as well, in the same script call; the month counter keeps counting everything.
+- Window counters are kept **only while an entitlement asks for them**: a window counter starts with the first event after limits-svc learns the
+  entitlement, so switching a meter from monthly to daily mid-day counts the rest of that day only.
+- Window counters are **not reconciled**: the aggregator keeps months only. A Redis data loss is repaired by replaying the partition (the 30-day
+  topic retention covers any window up to a week); an outbox duplicate counts twice until its window ends. They are kept out of
+  `lim:active:{p}` (the script sends `lim:w:` keys to `lim:wactive:{p}`), and the reconciler sweeps their thresholds every cycle.
+- A threshold of a monthly limit fires on the month counter only, of a daily limit on the day counters only. `LimitExceeded` carries `window` and
+  `window_id`; `period_id` stays the billing period the window starts in, and `event_id` is `uuidv5(tenant|customer|meter|window_id|pct)` (for a
+  month that is the period id, as before).
+- **Mode** decides `allowed`: `hard` (and a state published before modes) is `used < limit`, `soft` and `notify` are always allowed.
+  `LimitStatus` adds `window`, `window_id`, `resets_at`, `mode`, `over_limit` and `overridden`. A shorter window always reports the current one;
+  `period_id` only picks the month of monthly limits.
+- **Not offered, on purpose:** a yearly or lifetime window (a year needs twelve month totals and months older than the 45-day reconciliation
+  window and the 30-day log retention could not be restored truthfully after a Redis loss), and the `UNIQUE` (distinct count) or `LAST`
+  aggregations (the counters, the aggregator's upsert and rating only add, keep a maximum or count).

@@ -46,7 +46,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-model:open="open" name="new-meter">
+  <Sheet v-model:open="open">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ isVersion ? t("billing.usage.meters.versionTitle", { code: base?.code }) : t("billing.usage.meters.new") }}</SheetTitle>

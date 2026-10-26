@@ -90,6 +90,7 @@ func (c *Commands) PublishVersion(ctx context.Context, req *plansv1.PublishPlanV
 		for _, e := range in.Entitlements {
 			if err := q.InsertPlanEntitlement(ctx, sqlc.InsertPlanEntitlementParams{
 				PlanVersionID: pv.ID, MeterCode: e.MeterCode, LimitUnits: e.LimitUnits, AlertThresholdsPct: e.Thresholds,
+				QuotaWindow: e.Window, Mode: e.Mode,
 			}); err != nil {
 				return err
 			}

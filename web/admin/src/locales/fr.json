@@ -464,6 +464,54 @@
         "perUnit": "{price} par unité",
         "tiered": "{n} paliers",
         "package": "{size} unités pour {price}"
+      },
+      "usagePrices": "Prix d'usage",
+      "usagePricesHelp": "Prix en {currency} de ce qui est mesuré, par période de facturation. Une quantité incluse est gratuite ; le prix s'applique au-delà.",
+      "noMeters": "Cette application n'a pas encore de compteur : créez-en un d'abord sur la page Compteurs.",
+      "priceRow": "Prix d'usage {n}",
+      "priceMeter": "Compteur du prix {n}",
+      "priceModel": "Modèle de tarification du prix {n}",
+      "chooseMeter": "Choisir un compteur",
+      "models": {
+        "per_unit": "À l'unité",
+        "tiered": "Par paliers",
+        "package": "Par lot d'unités"
+      },
+      "included": "Quantité incluse du prix {n}",
+      "includedPlaceholder": "Inclus gratuitement par période ({unit}), facultatif",
+      "unitPrice": "Prix unitaire du prix {n}",
+      "unitPricePlaceholder": "Prix par {unit} en {currency} (0.002)",
+      "tierUpTo": "Prix {n}, palier {tier} jusqu'à",
+      "tierUpToPlaceholder": "Jusqu'à (quantité)",
+      "tierRest": "Tout le reste au-delà",
+      "tierPrice": "Prix {n}, palier {tier} prix unitaire",
+      "unitPriceShort": "Prix unitaire ({currency})",
+      "tierFlat": "Prix {n}, palier {tier} forfait",
+      "flatFeePlaceholder": "Forfait ({currency}), facultatif",
+      "addTier": "Ajouter un palier",
+      "packageSize": "Taille du lot du prix {n}",
+      "packageSizePlaceholder": "Unités par lot ({unit})",
+      "packagePrice": "Prix du lot du prix {n}",
+      "packagePricePlaceholder": "Prix par lot ({currency})",
+      "addPrice": "Ajouter un prix d'usage",
+      "otherCurrencyPrices": "Les prix d'usage sont en {currency}. Un abonnement dans une autre devise a aussi besoin de prix d'usage dans celle-ci (currency_prices dans l'API).",
+      "limitsHelp": "Un quota limite un compteur sur une fenêtre de temps. Les événements d'usage ne sont jamais refusés : le champ allowed de l'API et les alertes disent à votre application quoi faire.",
+      "quotaRow": "Quota {n}",
+      "quotaMeter": "Compteur du quota {n}",
+      "addQuota": "Ajouter un quota",
+      "includedColumn": "Inclus",
+      "usageErrors": {
+        "meter": "Ligne d'usage {n} : choisissez un compteur.",
+        "duplicate": "Ligne d'usage {n} : {meter} apparaît deux fois.",
+        "unitPrice": "Ligne d'usage {n} : le prix unitaire n'est pas un montant en {currency}.",
+        "included": "Ligne d'usage {n} : la quantité incluse a plus de décimales que {meter} n'en permet.",
+        "tierBound": "Ligne d'usage {n} : chaque palier sauf le dernier a besoin d'une borne haute en unités de {meter}.",
+        "flatFee": "Ligne d'usage {n} : un forfait n'est pas un montant en {currency}.",
+        "packageSize": "Ligne d'usage {n} : la taille du lot doit être une quantité supérieure à zéro.",
+        "packagePrice": "Ligne d'usage {n} : le prix du lot n'est pas un montant en {currency}.",
+        "limit": "Quota {n} : la limite doit être une quantité avec au plus les décimales de {meter}.",
+        "thresholds": "Quota {n} : les alertes sont jusqu'à 10 pourcentages croissants entre 1 et 1000.",
+        "softNeedsPrice": "Quota {n} : une limite souple facture le dépassement, donc {meter} a besoin d'un prix d'usage ; sinon choisissez Notifier seulement."
       }
     },
     "subscriptions": {
@@ -1396,6 +1444,105 @@
         "noCode": "Pas de code (appliqué directement)"
       },
       "discount": "Remise"
+    },
+    "meters": {
+      "new": "Nouveau compteur",
+      "newVersion": "Nouvelle version",
+      "newVersionOf": "Nouvelle version de {code}",
+      "intro": "Un compteur dit ce qui est mesuré et comment les événements d'usage s'additionnent. Une nouvelle version d'un code peut tout changer sauf ses décimales ; les événements sont vérifiés par rapport à la plus récente.",
+      "formLabel": "nouveau compteur",
+      "code": "Code",
+      "codePlaceholder": "Code (api_calls)",
+      "category": "Catégorie",
+      "categoryPlaceholder": "Catégorie de votre choix (facultatif)",
+      "allCategories": "Toutes les catégories",
+      "aggregation": "Agrégation",
+      "allAggregations": "Toutes les agrégations",
+      "aggregations": {
+        "sum": "Somme",
+        "count": "Nombre",
+        "max": "Maximum"
+      },
+      "aggregationHelp": {
+        "sum": "Additionne la quantité de chaque événement de la période.",
+        "count": "Compte les événements ; leur quantité est ignorée.",
+        "max": "Garde la quantité la plus élevée déclarée sur la période (sièges, stockage)."
+      },
+      "valueProperty": "Propriété de quantité",
+      "valuePropertyPlaceholder": "Propriété de l'événement qui porte la quantité (tokens)",
+      "unit": "Unité",
+      "unitPlaceholder": "Unité de votre choix (jetons, Go-h)",
+      "scale": "Décimales",
+      "decimals": "{n} décimales",
+      "filter": "Seulement les événements avec",
+      "filterHelp": "Les événements dont les propriétés ne correspondent pas à chaque ligne ne sont pas comptés. Laissez vide pour tout compter.",
+      "filterProperty": "Propriété de filtre {n}",
+      "filterValues": "Valeurs acceptées {n}",
+      "filterPropertyPlaceholder": "Propriété (region)",
+      "filterValuesPlaceholder": "Valeurs, séparées par des virgules (eu, us)",
+      "addFilter": "Ajouter une condition",
+      "badFilter": "Chaque condition doit avoir une propriété et au moins une valeur.",
+      "noFilter": "chaque événement",
+      "create": "Créer le compteur",
+      "saveVersion": "Publier la version",
+      "empty": "Aucun compteur pour l'instant. Il en faut un pour qu'un forfait puisse tarifer ou limiter l'usage."
+    },
+    "quotas": {
+      "action": "Quotas",
+      "of": "Quotas de {id}",
+      "intro": "Une exception remplace ce que le forfait du client permet sur un compteur, pour tous ses abonnements, jusqu'à sa suppression.",
+      "overrides": "Limites propres",
+      "none": "Aucune exception : les limites du forfait s'appliquent.",
+      "formLabel": "exception de quota",
+      "set": "Fixer une limite pour ce client",
+      "meter": "Compteur",
+      "chooseMeter": "Choisir un compteur",
+      "save": "Enregistrer l'exception",
+      "edit": "Modifier l'exception sur {meter}",
+      "remove": "Supprimer l'exception sur {meter}",
+      "limit": "Limite",
+      "limitN": "Limite du quota {n}",
+      "limitIn": "Limite en {unit} (0 = illimité)",
+      "limitPlaceholder": "Limite (0 = illimité)",
+      "window": "Fenêtre",
+      "windowN": "Fenêtre du quota {n}",
+      "mode": "Une fois atteinte",
+      "modeN": "Quand le quota {n} est atteint",
+      "thresholds": "Alertes",
+      "thresholdsN": "Alertes du quota {n}",
+      "thresholdsPlaceholder": "Alertes à % de la limite (50, 80, 100)",
+      "windows": {
+        "hour": "Par heure",
+        "day": "Par jour",
+        "week": "Par semaine",
+        "month": "Par mois de facturation"
+      },
+      "modes": {
+        "hard": "Stricte : ne plus autoriser",
+        "soft": "Souple : autoriser et facturer le dépassement",
+        "notify": "Notifier seulement"
+      },
+      "modeHelp": {
+        "hard": "À la limite, allowed passe à false.",
+        "soft": "allowed reste true ; l'usage au-delà de la limite est facturé au prix du compteur.",
+        "notify": "allowed reste true ; seules les alertes sont envoyées."
+      },
+      "windowHelp": {
+        "hour": "Compte chaque heure pleine dans le fuseau horaire de l'application.",
+        "day": "Compte chaque jour dans le fuseau horaire de l'application.",
+        "week": "Compte chaque semaine à partir du lundi dans le fuseau horaire de l'application.",
+        "month": "Compte le mois de facturation, comme la facture."
+      },
+      "windowColumn": "Fenêtre",
+      "modeColumn": "Une fois atteinte",
+      "alertsColumn": "Alertes",
+      "overridden": "limite propre",
+      "overButAllowed": "au-delà de la limite, toujours autorisé",
+      "resets": "repart à zéro {at}",
+      "errors": {
+        "limit": "La limite doit être une quantité avec au plus {n} décimales.",
+        "thresholds": "Les alertes sont jusqu'à 10 pourcentages croissants entre 1 et 1000."
+      }
     }
   },
   "affiliates": {
@@ -2240,6 +2387,10 @@
       "plan": {
         "no_fixed_fee": "Cette version du plan n'a pas de frais fixes pour cet intervalle dans cette devise.",
         "no_metered_price": "Cette version du plan a des prix à l'usage, mais aucun dans cette devise."
+      },
+      "override": {
+        "customer_required": "Indiquez pour quel client est la limite.",
+        "not_found": "Ce client n'a pas d'exception sur ce compteur."
       }
     },
     "common": {
@@ -3434,7 +3585,8 @@
       "partner": "Portail partenaire",
       "usage": "Utilisation",
       "coupons": "Coupons",
-      "paymentProviders": "Prestataires de paiement"
+      "paymentProviders": "Prestataires de paiement",
+      "meters": "Compteurs"
     },
     "noApps": "Aucune application"
   },

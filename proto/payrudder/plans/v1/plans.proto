@@ -26,6 +26,13 @@ service PlansService {
   rpc GetMeter(GetMeterRequest) returns (GetMeterResponse);
   rpc ListMeters(ListMetersRequest) returns (ListMetersResponse);
 
+  // SetEntitlementOverride gives one customer its own limit on a meter, in place of its plan version's (or where the plan has none).
+  // limits-svc applies it to the customer's current and future subscriptions within seconds.
+  rpc SetEntitlementOverride(SetEntitlementOverrideRequest) returns (SetEntitlementOverrideResponse);
+  // DeleteEntitlementOverride returns the customer to its plan version's entitlement on the meter.
+  rpc DeleteEntitlementOverride(DeleteEntitlementOverrideRequest) returns (DeleteEntitlementOverrideResponse);
+  rpc ListEntitlementOverrides(ListEntitlementOverridesRequest) returns (ListEntitlementOverridesResponse);
+
   rpc CreatePlan(CreatePlanRequest) returns (CreatePlanResponse);
   rpc ListPlans(ListPlansRequest) returns (ListPlansResponse);
   // PublishPlanVersion appends an immutable version.
@@ -195,6 +202,8 @@ message CreateMeterRequest {
   map<string, FilterValues> filter = 4;
   uint32 quantity_scale = 5;
   string unit_label = 6;
+  // Free-form, at most 64 characters. A new version may change it.
+  string category = 7;
 }
 
 message CreateMeterResponse {
@@ -214,6 +223,35 @@ message ListMetersRequest {}
 message ListMetersResponse {
   // Latest version of each code.
   repeated Meter meters = 1;
+}
+
+message SetEntitlementOverrideRequest {
+  string customer_external_id = 1;
+  string meter_code = 2;
+  string limit = 3;
+  repeated int32 alert_thresholds_pct = 4;
+  QuotaWindow window = 5;
+  QuotaMode mode = 6;
+}
+
+message SetEntitlementOverrideResponse {
+  EntitlementOverride override = 1;
+}
+
+message DeleteEntitlementOverrideRequest {
+  string customer_external_id = 1;
+  string meter_code = 2;
+}
+
+message DeleteEntitlementOverrideResponse {}
+
+message ListEntitlementOverridesRequest {
+  string customer_external_id = 1;
+}
+
+message ListEntitlementOverridesResponse {
+  // Ordered by meter code.
+  repeated EntitlementOverride overrides = 1;
 }
 
 message CreatePlanRequest {

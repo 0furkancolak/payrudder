@@ -79,6 +79,34 @@ export function parseMajor(input: string, currency: string): string | null {
 }
 
 /**
+ * Reads a unit price a person typed in major units ("0.0002" dollars per call) into the decimal of minor units per unit the API takes ("0.02" cents), or
+ * null when it is not a non-negative decimal the backend accepts (at most 18 integer and 12 fractional digits of minor units). The point is moved in the
+ * text: no float.
+ */
+export function parseUnitPrice(input: string, currency: string): string | null {
+  const text = input.trim().replace(/[\s ']/g, "");
+  const m = /^(\d+)(?:[.,](\d+))?$/.exec(text);
+  if (!m) return null;
+  const digits = minorDigits(currency);
+  const frac = (m[2] ?? "").padEnd(digits, "0");
+  const whole = ((m[1] ?? "") + frac.slice(0, digits)).replace(/^0+(?=\d)/, "");
+  const rest = frac.slice(digits).replace(/0+$/, "");
+  const out = rest ? `${whole}.${rest}` : whole;
+  return /^(0|[1-9]\d{0,17})(\.\d{1,12})?$/.test(out) ? out : null;
+}
+
+/** A unit price in minor units per unit ("0.02" cents) as the major-unit decimal a person reads and types ("0.0002" dollars). The inverse of parseUnitPrice. */
+export function unitPriceToMajor(minor: string | undefined, currency: string): string {
+  const m = /^(\d+)(?:\.(\d+))?$/.exec(minor ?? "");
+  if (!m) return "";
+  const digits = minorDigits(currency);
+  const whole = (m[1] ?? "").padStart(digits + 1, "0");
+  const head = whole.slice(0, whole.length - digits).replace(/^0+(?=\d)/, "");
+  const frac = (whole.slice(whole.length - digits) + (m[2] ?? "")).replace(/0+$/, "");
+  return frac ? `${head}.${frac}` : head;
+}
+
+/**
  * An amount in minor units (a decimal string) as the plain decimal a person types for a currency ("1250" -> "12.50" for dollars, "500" -> "500" for yen).
  * The inverse of parseMajor; done on the text, no float. Anything that is not a non-negative integer gives "".
  */

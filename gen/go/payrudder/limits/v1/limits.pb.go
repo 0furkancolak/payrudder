@@ -96,10 +96,22 @@ type LimitStatus struct {
 	QuantityScale uint32 `protobuf:"varint,8,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
 	// No entitlement, or an entitlement with limit 0.
 	Unlimited bool `protobuf:"varint,9,opt,name=unlimited,proto3" json:"unlimited,omitempty"`
-	// unlimited || used < limit.
+	// unlimited || used < limit || mode is "soft" or "notify".
 	Allowed bool `protobuf:"varint,10,opt,name=allowed,proto3" json:"allowed,omitempty"`
 	// Ingest time of the newest event of the tenant that is reflected in used. Unset before the first event.
-	AsOf          *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
+	AsOf *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
+	// "month", "hour", "day" or "week". A window shorter than a month is always the current one: period_id only picks the month of monthly quotas.
+	Window string `protobuf:"bytes,12,opt,name=window,proto3" json:"window,omitempty"`
+	// The window used counts in: period_id for a month, "2026-11-05T13", "2026-11-05" or "2026-W45".
+	WindowId string `protobuf:"bytes,13,opt,name=window_id,json=windowId,proto3" json:"window_id,omitempty"`
+	// When the window ends and used starts again from zero.
+	ResetsAt *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=resets_at,json=resetsAt,proto3" json:"resets_at,omitempty"`
+	// "hard", "soft" or "notify".
+	Mode string `protobuf:"bytes,15,opt,name=mode,proto3" json:"mode,omitempty"`
+	// !unlimited && used >= limit, whatever the mode.
+	OverLimit bool `protobuf:"varint,16,opt,name=over_limit,json=overLimit,proto3" json:"over_limit,omitempty"`
+	// The limit is the customer's own override, not its plan version's.
+	Overridden    bool `protobuf:"varint,17,opt,name=overridden,proto3" json:"overridden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -209,6 +221,48 @@ func (x *LimitStatus) GetAsOf() *timestamppb.Timestamp {
 		return x.AsOf
 	}
 	return nil
+}
+
+func (x *LimitStatus) GetWindow() string {
+	if x != nil {
+		return x.Window
+	}
+	return ""
+}
+
+func (x *LimitStatus) GetWindowId() string {
+	if x != nil {
+		return x.WindowId
+	}
+	return ""
+}
+
+func (x *LimitStatus) GetResetsAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ResetsAt
+	}
+	return nil
+}
+
+func (x *LimitStatus) GetMode() string {
+	if x != nil {
+		return x.Mode
+	}
+	return ""
+}
+
+func (x *LimitStatus) GetOverLimit() bool {
+	if x != nil {
+		return x.OverLimit
+	}
+	return false
+}
+
+func (x *LimitStatus) GetOverridden() bool {
+	if x != nil {
+		return x.Overridden
+	}
+	return false
 }
 
 type CheckEntitlementResponse struct {
@@ -458,7 +512,7 @@ const file_payrudder_limits_v1_limits_proto_rawDesc = "" +
 	"customerId\x12\x1d\n" +
 	"\n" +
 	"meter_code\x18\x02 \x01(\tR\tmeterCode\x12\x1b\n" +
-	"\tperiod_id\x18\x03 \x01(\tR\bperiodId\"\xe4\x02\n" +
+	"\tperiod_id\x18\x03 \x01(\tR\bperiodId\"\xa5\x04\n" +
 	"\vLimitStatus\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +
@@ -475,7 +529,16 @@ const file_payrudder_limits_v1_limits_proto_rawDesc = "" +
 	"\tunlimited\x18\t \x01(\bR\tunlimited\x12\x18\n" +
 	"\aallowed\x18\n" +
 	" \x01(\bR\aallowed\x12/\n" +
-	"\x05as_of\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x04asOf\"T\n" +
+	"\x05as_of\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\x04asOf\x12\x16\n" +
+	"\x06window\x18\f \x01(\tR\x06window\x12\x1b\n" +
+	"\twindow_id\x18\r \x01(\tR\bwindowId\x127\n" +
+	"\tresets_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\bresetsAt\x12\x12\n" +
+	"\x04mode\x18\x0f \x01(\tR\x04mode\x12\x1d\n" +
+	"\n" +
+	"over_limit\x18\x10 \x01(\bR\toverLimit\x12\x1e\n" +
+	"\n" +
+	"overridden\x18\x11 \x01(\bR\n" +
+	"overridden\"T\n" +
 	"\x18CheckEntitlementResponse\x128\n" +
 	"\x06status\x18\x01 \x01(\v2 .payrudder.limits.v1.LimitStatusR\x06status\"U\n" +
 	"\x15GetLimitStatusRequest\x12\x1f\n" +
@@ -520,19 +583,20 @@ var file_payrudder_limits_v1_limits_proto_goTypes = []any{
 }
 var file_payrudder_limits_v1_limits_proto_depIdxs = []int32{
 	7, // 0: payrudder.limits.v1.LimitStatus.as_of:type_name -> google.protobuf.Timestamp
-	1, // 1: payrudder.limits.v1.CheckEntitlementResponse.status:type_name -> payrudder.limits.v1.LimitStatus
-	1, // 2: payrudder.limits.v1.GetLimitStatusResponse.statuses:type_name -> payrudder.limits.v1.LimitStatus
-	0, // 3: payrudder.limits.v1.LimitsService.CheckEntitlement:input_type -> payrudder.limits.v1.CheckEntitlementRequest
-	3, // 4: payrudder.limits.v1.LimitsService.GetLimitStatus:input_type -> payrudder.limits.v1.GetLimitStatusRequest
-	5, // 5: payrudder.limits.v1.LimitsService.ReconcileNow:input_type -> payrudder.limits.v1.ReconcileNowRequest
-	2, // 6: payrudder.limits.v1.LimitsService.CheckEntitlement:output_type -> payrudder.limits.v1.CheckEntitlementResponse
-	4, // 7: payrudder.limits.v1.LimitsService.GetLimitStatus:output_type -> payrudder.limits.v1.GetLimitStatusResponse
-	6, // 8: payrudder.limits.v1.LimitsService.ReconcileNow:output_type -> payrudder.limits.v1.ReconcileNowResponse
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7, // 1: payrudder.limits.v1.LimitStatus.resets_at:type_name -> google.protobuf.Timestamp
+	1, // 2: payrudder.limits.v1.CheckEntitlementResponse.status:type_name -> payrudder.limits.v1.LimitStatus
+	1, // 3: payrudder.limits.v1.GetLimitStatusResponse.statuses:type_name -> payrudder.limits.v1.LimitStatus
+	0, // 4: payrudder.limits.v1.LimitsService.CheckEntitlement:input_type -> payrudder.limits.v1.CheckEntitlementRequest
+	3, // 5: payrudder.limits.v1.LimitsService.GetLimitStatus:input_type -> payrudder.limits.v1.GetLimitStatusRequest
+	5, // 6: payrudder.limits.v1.LimitsService.ReconcileNow:input_type -> payrudder.limits.v1.ReconcileNowRequest
+	2, // 7: payrudder.limits.v1.LimitsService.CheckEntitlement:output_type -> payrudder.limits.v1.CheckEntitlementResponse
+	4, // 8: payrudder.limits.v1.LimitsService.GetLimitStatus:output_type -> payrudder.limits.v1.GetLimitStatusResponse
+	6, // 9: payrudder.limits.v1.LimitsService.ReconcileNow:output_type -> payrudder.limits.v1.ReconcileNowResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_limits_v1_limits_proto_init() }

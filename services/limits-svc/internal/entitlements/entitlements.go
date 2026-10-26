@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
 // State is the limit of one customer on one meter.
@@ -30,6 +31,18 @@ type State struct {
 	From       time.Time
 	Until      time.Time // zero = open-ended
 	Scale      int
+	// Window is what the limit counts over: the billing month, or a shorter window.
+	Window period.Window
+	// Mode is "hard", "soft" or "notify".
+	Mode string
+	// Override marks a customer's own limit in place of its plan version's.
+	Override bool
+}
+
+// Allows reports whether CheckEntitlement answers allowed for used against this entitlement: always for an unlimited one or a soft or notify
+// limit, and below the limit for a hard one.
+func (s State) Allows(used int64) bool {
+	return s.Limit == 0 || s.Mode != "hard" || used < s.Limit
 }
 
 // Active reports whether the entitlement applies at t.
@@ -153,9 +166,21 @@ func fromProto(pb *eventsv1.EntitlementState) (State, error) {
 	if pb.GetMeterCode() == "" || pb.GetLimitUnits() < 0 || pb.GetQuantityScale() > 6 {
 		return State{}, fmt.Errorf("invalid meter, limit or scale")
 	}
+	w, ok := period.ParseWindow(pb.GetWindow())
+	if !ok {
+		return State{}, fmt.Errorf("unknown window %q", pb.GetWindow())
+	}
+	mode := pb.GetMode()
+	switch mode {
+	case "":
+		mode = "hard"
+	case "hard", "soft", "notify":
+	default:
+		return State{}, fmt.Errorf("unknown mode %q", mode)
+	}
 	st := State{
 		Tenant: t, Customer: c, Meter: pb.GetMeterCode(), Limit: pb.GetLimitUnits(),
-		Thresholds: pb.GetAlertThresholdsPct(), Scale: int(pb.GetQuantityScale()),
+		Thresholds: pb.GetAlertThresholdsPct(), Scale: int(pb.GetQuantityScale()), Window: w, Mode: mode, Override: pb.GetOverride(),
 	}
 	if pb.GetValidFrom() != nil {
 		st.From = pb.GetValidFrom().AsTime()

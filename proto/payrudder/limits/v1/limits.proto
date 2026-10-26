@@ -34,10 +34,22 @@ message LimitStatus {
   uint32 quantity_scale = 8;
   // No entitlement, or an entitlement with limit 0.
   bool unlimited = 9;
-  // unlimited || used < limit.
+  // unlimited || used < limit || mode is "soft" or "notify".
   bool allowed = 10;
   // Ingest time of the newest event of the tenant that is reflected in used. Unset before the first event.
   google.protobuf.Timestamp as_of = 11;
+  // "month", "hour", "day" or "week". A window shorter than a month is always the current one: period_id only picks the month of monthly quotas.
+  string window = 12;
+  // The window used counts in: period_id for a month, "2026-11-05T13", "2026-11-05" or "2026-W45".
+  string window_id = 13;
+  // When the window ends and used starts again from zero.
+  google.protobuf.Timestamp resets_at = 14;
+  // "hard", "soft" or "notify".
+  string mode = 15;
+  // !unlimited && used >= limit, whatever the mode.
+  bool over_limit = 16;
+  // The limit is the customer's own override, not its plan version's.
+  bool overridden = 17;
 }
 
 message CheckEntitlementResponse {

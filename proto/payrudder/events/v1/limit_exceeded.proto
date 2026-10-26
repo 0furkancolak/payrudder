@@ -5,7 +5,7 @@ package payrudder.events.v1;
 import "google/protobuf/timestamp.proto";
 
 // LimitExceeded says a customer's usage of a meter reached an alert threshold of its entitlement. It is published
-// by limits-svc on usage.limit-exceeded.v1 (key: tenant_id), once per (customer, meter, period, threshold).
+// by limits-svc on usage.limit-exceeded.v1 (key: tenant_id), once per (customer, meter, window, threshold).
 //
 // Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
 message LimitExceeded {
@@ -23,4 +23,9 @@ message LimitExceeded {
   int64 used_units = 8;
   google.protobuf.Timestamp detected_at = 9;
   uint32 quantity_scale = 10;
+  // The window of the quota: "month" (also when empty), "hour", "day" or "week".
+  string window = 11;
+  // The window the usage was counted in: "2026-11" for a month (= period_id), "2026-11-05T13", "2026-11-05" or "2026-W45". period_id is the
+  // billing period the window starts in. event_id is uuidv5(tenant|customer|meter|window_id|threshold).
+  string window_id = 12;
 }
