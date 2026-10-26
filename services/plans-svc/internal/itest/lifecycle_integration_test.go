@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -36,9 +37,66 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 	}
 
+	t.Run("a package's default trial applies unless the request says otherwise, and a free tier needs only a quota", func(t *testing.T) {
+		if _, err := e.plans.CreatePlan(ctx, &plansv1.CreatePlanRequest{Code: "starter", Name: "Starter"}); err != nil {
+			t.Fatal(err)
+		}
+		pv, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "starter", BaseFeeMinor: 5000, TrialDays: 7, Fees: yearlyFees("starter", 5000)})
+		if err != nil || pv.GetPlanVersion().GetTrialDays() != 7 {
+			t.Fatalf("publish with a trial = %v, %v", pv, err)
+		}
+		if got, err := e.plans.GetPlanVersion(ctx, &plansv1.GetPlanVersionRequest{PlanCode: "starter"}); err != nil || got.GetPlanVersion().GetTrialDays() != 7 {
+			t.Fatalf("read back = %v, %v", got, err)
+		}
+		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "starter", BaseFeeMinor: 5000, TrialDays: 400}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("trial_days 400 on a version: %v", err)
+		}
+		mkCustomer("cus_deftrial")
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_deftrial", PlanCode: "starter"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sub := r.GetSubscription()
+		if sub.GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_TRIALING || sub.GetTrialEndTime() == nil {
+			t.Fatalf("a subscription that names no trial must take the package's: %v", sub)
+		}
+		if days := sub.GetTrialEndTime().AsTime().Sub(sub.GetStartTime().AsTime()).Hours() / 24; days < 6.9 || days > 7.1 {
+			t.Fatalf("trial lasts %.2f days, want 7", days)
+		}
+		mkCustomer("cus_notrial")
+		r, err = e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_notrial", PlanCode: "starter", TrialDays: proto.Int32(0)})
+		if err != nil || r.GetSubscription().GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_ACTIVE {
+			t.Fatalf("an explicit 0 is no trial: %v, %v", r, err)
+		}
+		mkCustomer("cus_ownTrial")
+		r, err = e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_ownTrial", PlanCode: "starter", TrialDays: proto.Int32(30)})
+		if err != nil || r.GetSubscription().GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_TRIALING {
+			t.Fatalf("the request's own trial: %v, %v", r, err)
+		}
+
+		// A free tier: no fee, no usage price, only a quota.
+		if _, err := e.plans.CreateMeter(ctx, &plansv1.CreateMeterRequest{Code: "free_calls", Aggregation: plansv1.Aggregation_AGGREGATION_COUNT, UnitLabel: "calls"}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.plans.CreatePlan(ctx, &plansv1.CreatePlanRequest{Code: "free", Name: "Free"}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "free"}); code(t, err) != codes.InvalidArgument {
+			t.Fatalf("an empty version must still be refused: %v", err)
+		}
+		if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "free", Entitlements: []*plansv1.Entitlement{{MeterCode: "free_calls", Limit: "1000"}}}); err != nil {
+			t.Fatalf("a free tier with a quota: %v", err)
+		}
+		mkCustomer("cus_free")
+		r, err = e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_free", PlanCode: "free"})
+		if err != nil || r.GetSubscription().GetState() != plansv1.SubscriptionState_SUBSCRIPTION_STATE_ACTIVE {
+			t.Fatalf("subscribing to the free tier: %v, %v", r, err)
+		}
+	})
+
 	t.Run("trial then active, pause and resume", func(t *testing.T) {
 		mkCustomer("cus_trial")
-		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_trial", PlanCode: "basic", TrialDays: 14})
+		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_trial", PlanCode: "basic", TrialDays: proto.Int32(14)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +110,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 		if code(t, pauseErr(e, ctx, sub.GetId())) != codes.FailedPrecondition {
 			t.Fatal("a trialing subscription cannot be paused")
 		}
-		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_trial", PlanCode: "basic", TrialDays: 400}); code(t, err) != codes.InvalidArgument {
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_trial", PlanCode: "basic", TrialDays: proto.Int32(400)}); code(t, err) != codes.InvalidArgument {
 			t.Fatalf("trial_days 400: %v", err)
 		}
 
@@ -466,7 +524,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 		}
 		sub := func(customer, plan, provider string, start *timestamppb.Timestamp, trialDays int32) *plansv1.Subscription {
 			t.Helper()
-			r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: customer, PlanCode: plan, Provider: provider, StartTime: start, TrialDays: trialDays, FeeTiming: plansv1.FeeTiming_FEE_TIMING_ARREARS})
+			r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: customer, PlanCode: plan, Provider: provider, StartTime: start, TrialDays: proto.Int32(trialDays), FeeTiming: plansv1.FeeTiming_FEE_TIMING_ARREARS})
 			if err != nil {
 				t.Fatalf("%s: %v", customer, err)
 			}
@@ -680,7 +738,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tr, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_advtrial", PlanCode: "basic", StartTime: timestamppb.New(start), TrialDays: 30})
+		tr, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_advtrial", PlanCode: "basic", StartTime: timestamppb.New(start), TrialDays: proto.Int32(30)})
 		if err != nil {
 			t.Fatal(err)
 		}

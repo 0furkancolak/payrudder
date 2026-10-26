@@ -1729,8 +1729,10 @@ type PublishPlanVersionRequest struct {
 	// Usage prices in those currencies. A currency with prices must have a fee above, and prices must cover exactly the
 	// meters in `prices`.
 	CurrencyPrices []*CurrencyPrices `protobuf:"bytes,6,rep,name=currency_prices,json=currencyPrices,proto3" json:"currency_prices,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 0..365. The trial a new subscription to this version gets unless its request says otherwise. 0 = none.
+	TrialDays     int32 `protobuf:"varint,7,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PublishPlanVersionRequest) Reset() {
@@ -1803,6 +1805,13 @@ func (x *PublishPlanVersionRequest) GetCurrencyPrices() []*CurrencyPrices {
 		return x.CurrencyPrices
 	}
 	return nil
+}
+
+func (x *PublishPlanVersionRequest) GetTrialDays() int32 {
+	if x != nil {
+		return x.TrialDays
+	}
+	return 0
 }
 
 type PublishPlanVersionResponse struct {
@@ -1962,8 +1971,8 @@ type CreateSubscriptionRequest struct {
 	PlanVersion int32 `protobuf:"varint,3,opt,name=plan_version,json=planVersion,proto3" json:"plan_version,omitempty"`
 	// Unset = now.
 	StartTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=start_time,json=startTime,proto3" json:"start_time,omitempty"`
-	// 0..365. Unset or 0 = no trial.
-	TrialDays int32 `protobuf:"varint,5,opt,name=trial_days,json=trialDays,proto3" json:"trial_days,omitempty"`
+	// 0..365. Unset = the plan version's own default (PlanVersion.trial_days); 0 = no trial whatever the default is.
+	TrialDays *int32 `protobuf:"varint,5,opt,name=trial_days,json=trialDays,proto3,oneof" json:"trial_days,omitempty"`
 	// Unspecified = month.
 	Interval SubscriptionInterval `protobuf:"varint,6,opt,name=interval,proto3,enum=payrudder.plans.v1.SubscriptionInterval" json:"interval,omitempty"`
 	// Unset = the customer's billing currency, else the tenant's. The plan version must have a fee in it.
@@ -2037,8 +2046,8 @@ func (x *CreateSubscriptionRequest) GetStartTime() *timestamppb.Timestamp {
 }
 
 func (x *CreateSubscriptionRequest) GetTrialDays() int32 {
-	if x != nil {
-		return x.TrialDays
+	if x != nil && x.TrialDays != nil {
+		return *x.TrialDays
 	}
 	return 0
 }
@@ -7396,14 +7405,16 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x04plan\x18\x01 \x01(\v2\x18.payrudder.plans.v1.PlanR\x04plan\"\x12\n" +
 	"\x10ListPlansRequest\"C\n" +
 	"\x11ListPlansResponse\x12.\n" +
-	"\x05plans\x18\x01 \x03(\v2\x18.payrudder.plans.v1.PlanR\x05plans\"\xd8\x02\n" +
+	"\x05plans\x18\x01 \x03(\v2\x18.payrudder.plans.v1.PlanR\x05plans\"\xf7\x02\n" +
 	"\x19PublishPlanVersionRequest\x12\x1b\n" +
 	"\tplan_code\x18\x01 \x01(\tR\bplanCode\x12$\n" +
 	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\x121\n" +
 	"\x06prices\x18\x03 \x03(\v2\x19.payrudder.plans.v1.PriceR\x06prices\x12C\n" +
 	"\fentitlements\x18\x04 \x03(\v2\x1f.payrudder.plans.v1.EntitlementR\fentitlements\x123\n" +
 	"\x04fees\x18\x05 \x03(\v2\x1f.payrudder.plans.v1.CurrencyFeeR\x04fees\x12K\n" +
-	"\x0fcurrency_prices\x18\x06 \x03(\v2\".payrudder.plans.v1.CurrencyPricesR\x0ecurrencyPrices\"`\n" +
+	"\x0fcurrency_prices\x18\x06 \x03(\v2\".payrudder.plans.v1.CurrencyPricesR\x0ecurrencyPrices\x12\x1d\n" +
+	"\n" +
+	"trial_days\x18\a \x01(\x05R\ttrialDays\"`\n" +
 	"\x1aPublishPlanVersionResponse\x12B\n" +
 	"\fplan_version\x18\x01 \x01(\v2\x1f.payrudder.plans.v1.PlanVersionR\vplanVersion\"v\n" +
 	"\x15GetPlanVersionRequest\x12&\n" +
@@ -7411,15 +7422,15 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\tplan_code\x18\x02 \x01(\tR\bplanCode\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\x05R\aversion\"\\\n" +
 	"\x16GetPlanVersionResponse\x12B\n" +
-	"\fplan_version\x18\x01 \x01(\v2\x1f.payrudder.plans.v1.PlanVersionR\vplanVersion\"\xc4\x03\n" +
+	"\fplan_version\x18\x01 \x01(\v2\x1f.payrudder.plans.v1.PlanVersionR\vplanVersion\"\xd8\x03\n" +
 	"\x19CreateSubscriptionRequest\x120\n" +
 	"\x14customer_external_id\x18\x01 \x01(\tR\x12customerExternalId\x12\x1b\n" +
 	"\tplan_code\x18\x02 \x01(\tR\bplanCode\x12!\n" +
 	"\fplan_version\x18\x03 \x01(\x05R\vplanVersion\x129\n" +
 	"\n" +
-	"start_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x12\x1d\n" +
+	"start_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tstartTime\x12\"\n" +
 	"\n" +
-	"trial_days\x18\x05 \x01(\x05R\ttrialDays\x12D\n" +
+	"trial_days\x18\x05 \x01(\x05H\x00R\ttrialDays\x88\x01\x01\x12D\n" +
 	"\binterval\x18\x06 \x01(\x0e2(.payrudder.plans.v1.SubscriptionIntervalR\binterval\x12\x1a\n" +
 	"\bcurrency\x18\a \x01(\tR\bcurrency\x12\x1a\n" +
 	"\bprovider\x18\b \x01(\tR\bprovider\x12<\n" +
@@ -7427,7 +7438,8 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"fee_timing\x18\t \x01(\x0e2\x1d.payrudder.plans.v1.FeeTimingR\tfeeTiming\x12\x1f\n" +
 	"\vcoupon_code\x18\n" +
 	" \x01(\tR\n" +
-	"couponCode\"b\n" +
+	"couponCodeB\r\n" +
+	"\v_trial_days\"b\n" +
 	"\x1aCreateSubscriptionResponse\x12D\n" +
 	"\fsubscription\x18\x01 \x01(\v2 .payrudder.plans.v1.SubscriptionR\fsubscription\"\xa0\x01\n" +
 	"\x19CancelSubscriptionRequest\x12'\n" +
@@ -8276,6 +8288,7 @@ func file_payrudder_plans_v1_plans_proto_init() {
 		return
 	}
 	file_payrudder_plans_v1_resources_proto_init()
+	file_payrudder_plans_v1_plans_proto_msgTypes[34].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

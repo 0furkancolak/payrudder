@@ -19,7 +19,7 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useSubscriptions } from "./api";
-import { intervalKey } from "./lib";
+import { intervalKey, TRIAL_WARNING_DAYS, trialDaysLeft, trialsEndingSoon } from "./lib";
 
 /** The tenant's subscriptions. A row opens a sheet (the `detail` slot, which gets the subscription) that steps through the rows the list shows. */
 const props = defineProps<{ tenantId: string }>();
@@ -56,6 +56,12 @@ const intervalOptions = computed(() => [
 ]);
 const date = (v?: string | null) => fmt.date(v, "day", "—");
 
+// Trials that are about to end: a subscription then starts to be billed, so the person is told ahead (and can open them with one click).
+const ending = computed(() => trialsEndingSoon(list.value));
+function showTrials() {
+  table.filters.value = { ...table.filters.value, state: "trialing" };
+}
+
 const current = table.row;
 // A link from a customer or an invoice opens the subscription it names; a filter that hides it is cleared first.
 useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
@@ -69,6 +75,10 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
 <template>
   <Card class="p-3">
     <ErrorText :error="subs.error.value" class="px-3" />
+    <div v-if="ending.length > 0" class="bg-warning-soft text-warning mx-3 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl px-4 py-2.5 text-sm" role="status" data-testid="trials-ending">
+      <span>{{ t("billing.subscriptions.trialsEnding", { n: ending.length, days: TRIAL_WARNING_DAYS }, ending.length) }}</span>
+      <Button type="button" size="sm" variant="outline" data-testid="trials-ending-show" @click="showTrials">{{ t("billing.subscriptions.showTrials") }}</Button>
+    </div>
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
       <FilterSelect v-model="stateFilter" :label="t('billing.subscriptions.state')" :options="stateOptions" />
       <FilterSelect v-model="currencyFilter" :label="t('billing.subscriptions.currency')" :options="currencyOptions" />
@@ -99,6 +109,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
           <TableCell>
             <Badge :variant="stateVariant(s)">{{ label(t, te, "subscriptionState", state(s)) }}</Badge>
             <span v-if="s.cancel_at_period_end" class="text-muted-foreground ms-2 text-xs">{{ t("billing.subscriptions.endsWithPeriod") }}</span>
+            <span v-if="trialDaysLeft(s) !== null" class="text-muted-foreground ms-2 text-xs" data-testid="trial-end">{{ t("billing.subscriptions.trialEnds", { date: date(s.trial_end_time) }) }}</span>
           </TableCell>
           <TableCell>{{ t(`billing.subscriptions.${intervalKey(s.interval)}`) }}</TableCell>
           <TableCell>{{ s.currency }}</TableCell>

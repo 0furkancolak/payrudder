@@ -512,7 +512,18 @@
         "limit": "Quota {n} : la limite doit être une quantité avec au plus les décimales de {meter}.",
         "thresholds": "Quota {n} : les alertes sont jusqu'à 10 pourcentages croissants entre 1 et 1000.",
         "softNeedsPrice": "Quota {n} : une limite souple facture le dépassement, donc {meter} a besoin d'un prix d'usage ; sinon choisissez Notifier seulement."
-      }
+      },
+      "trialDays": "Essai gratuit en jours (facultatif)",
+      "trialHelp": "Un abonnement à ce forfait démarre en essai pour ce nombre de jours, sans carte ; le premier tarif est facturé à la fin. Un abonnement peut quand même choisir sa propre durée.",
+      "freeTier": "Offre gratuite",
+      "freeTierHelp": "Pas de tarif fixe : les clients reçoivent les limites définies ci-dessous. Ajoutez au moins une limite.",
+      "freeNeedsLimit": "Une offre gratuite a besoin d'au moins une limite.",
+      "badTrial": "L'essai est un nombre entier de jours de 0 à 365.",
+      "freeTierBadge": "Offre gratuite",
+      "trialBadge": "Essai de {n} jours",
+      "trialColumn": "Essai gratuit",
+      "trialDaysValue": "{n} jours",
+      "noTrial": "Aucun"
     },
     "subscriptions": {
       "new": "Nouvel abonnement",
@@ -609,7 +620,13 @@
       "credited": "{amount} crédités sur le solde du client.",
       "allStates": "Tous les statuts",
       "allCurrencies": "Toutes les devises",
-      "allIntervals": "Tous les intervalles"
+      "allIntervals": "Tous les intervalles",
+      "trialDefault": "Valeur du forfait : {days} jours",
+      "trialHint": "Aucune carte n'est requise pendant un essai ; le premier tarif est facturé à sa fin. Laissez vide pour l'essai du forfait, ou saisissez 0 pour aucun.",
+      "trialEnds": "essai jusqu'au {date}",
+      "trialsEnding": "{n} essai se termine dans les {days} jours | {n} essais se terminent dans les {days} jours",
+      "showTrials": "Afficher les essais",
+      "trialBanner": "L'essai se termine le {date}, dans {n} jour. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin. | L'essai se termine le {date}, dans {n} jours. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin."
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",
@@ -1107,7 +1124,20 @@
         "expiry": "Date d'expiration",
         "expiryHint": "Laisser vide pour des crédits sans expiration",
         "reason": "Note (facultatif)",
-        "submit": "Ajouter des crédits"
+        "submit": "Ajouter des crédits",
+        "free": "Offrir des crédits",
+        "freeHint": "Les crédits offerts rejoignent aussitôt le solde de {customer} et ne sont pas facturés.",
+        "badExpiry": "Choisissez une date d'expiration dans le futur.",
+        "expires": "Expire",
+        "never": "N'expire jamais",
+        "onDate": "À une date…",
+        "inDays": "Dans {n} jours",
+        "reasons": {
+          "welcome": "Cadeau de bienvenue",
+          "goodwill": "Geste commercial",
+          "promotion": "Promotion",
+          "other": "Autre"
+        }
       },
       "ledger": {
         "title": "Historique des crédits",
@@ -3783,5 +3813,293 @@
   "sheets": {
     "back": "Retour",
     "forward": "Avancer"
+  },
+  "tour": {
+    "progress": "Étape {n} sur {total}",
+    "skip": "Passer la visite",
+    "back": "Retour",
+    "next": "Suivant",
+    "done": "Terminé",
+    "take": "Visiter cette page",
+    "common": {
+      "find": "Rechercher et filtrer",
+      "findBody": "Tapez pour rechercher et affinez la liste avec les filtres à côté.",
+      "create": "Ajouter",
+      "list": "La liste",
+      "tabs": "Sections"
+    },
+    "pages": {
+      "overview": {
+        "welcomeTitle": "Bienvenue sur Payrudder",
+        "welcome": "Payrudder mesure ce que vos clients utilisent, le tarife avec vos forfaits, le facture et encaisse le paiement. Cette courte visite vous guide.",
+        "appsTitle": "Vos applications",
+        "apps": "Une application est un produit que vous facturez. Ouvrez-en une ici pour voir son tableau de bord, ses clients et sa facturation.",
+        "groupsTitle": "Vous repérer",
+        "groups": "Tout ce que vous pouvez ouvrir est listé ici. Dans une application, la barre latérale s'étoffe : clients, facturation, croissance, développeurs et réglages.",
+        "sandboxTitle": "Bac à sable et production",
+        "sandbox": "Chaque application a un bac à sable pour essayer avec de l'argent fictif et un environnement de production pour les vrais paiements. Ce sélecteur choisit celui que vous regardez.",
+        "accountTitle": "Vous et votre organisation",
+        "account": "Changez d'organisation, ouvrez vos réglages ou déconnectez-vous depuis votre menu.",
+        "againTitle": "Une visite sur chaque page",
+        "again": "Chaque page a cette icône. Appuyez dessus à tout moment pour une courte visite de la page."
+      },
+      "dashboard": {
+        "intro": "Le tableau de bord d'une application dans un environnement : paiements, factures, abonnements et clients sur la période choisie.",
+        "figuresTitle": "Vos chiffres",
+        "figures": "Choisissez la période et la devise en haut ; tous les chiffres et graphiques suivent. Les devises ne sont jamais additionnées."
+      },
+      "goLive": {
+        "intro": "L'environnement de production démarre désactivé : pas de clés de production, pas de vrais débits. Terminez la liste, puis activez-le.",
+        "checklistTitle": "La liste de contrôle",
+        "checklist": "Chaque élément dit ce qui manque et vous mène où le corriger. Quand tout est fait, un propriétaire peut activer la production."
+      },
+      "apiKeys": {
+        "intro": "Les clés d'API permettent à votre serveur de parler à Payrudder. Les clés du bac à sable agissent sur des données de test, celles de production sur les vraies.",
+        "create": "Créez une clé du bac à sable pour commencer. Le secret n'est affiché qu'une fois : copiez-le alors. Vous pouvez renouveler ou révoquer une clé à tout moment."
+      },
+      "sandbox": {
+        "intro": "Des outils qui n'agissent que sur le bac à sable : repartir de zéro et choisir l'issue des paiements de test.",
+        "scenariosTitle": "L'issue des paiements de test",
+        "scenarios": "Choisissez une issue (payé, refusé, une erreur qui disparaît au nouvel essai) pour voir comment votre intégration réagit avant tout vrai argent."
+      },
+      "appSettings": {
+        "intro": "Ce avec quoi cette application a été créée. Sa devise et son fuseau horaire déterminent le calcul des factures : ils sont figés une fois l'application créée."
+      },
+      "members": {
+        "intro": "Qui fait partie de cette organisation, leurs rôles et les invitations encore ouvertes.",
+        "invite": "Invitez un collègue par e-mail et choisissez son rôle. Les lecteurs peuvent consulter mais rien modifier."
+      },
+      "settings": {
+        "intro": "Le nom de votre organisation, votre profil et l'apparence de la console pour vous."
+      },
+      "partner": {
+        "intro": "Le portail partenaire : vos liens de parrainage, les clients que vous avez amenés et la commission gagnée."
+      },
+      "paymentProviders": {
+        "intro": "Connectez les prestataires de paiement de vos clients, une fois pour toutes les applications ou application par application.",
+        "cardsTitle": "Prestataires",
+        "cards": "Chaque carte indique si un prestataire est connecté et fonctionne. Ouvrez-en une pour le connecter, le tester ou le déconnecter.",
+        "sandboxTitle": "Rien à connecter dans le bac à sable",
+        "sandbox": "Le bac à sable fonctionne avec un simulateur intégré : vous pouvez tout essayer sans compte chez un prestataire."
+      },
+      "customers": {
+        "intro": "Les personnes et entreprises que vous facturez. Ouvrez un client pour voir ses factures, paiements, abonnements et crédits.",
+        "create": "Ajoutez un client à la main. Les clients sont aussi créés par votre API quand ils s'inscrivent dans votre produit."
+      },
+      "subscriptions": {
+        "intro": "Quel client est sur quel forfait et dans quel état : essai, actif, en retard, en pause ou résilié.",
+        "create": "Démarrez un abonnement pour un client. Vous pouvez offrir un essai gratuit sans carte ou garder l'essai du forfait."
+      },
+      "usage": {
+        "intro": "Ce que vos clients ont utilisé, par compteur et par client, sur la période choisie, face à leurs limites.",
+        "tabs": "Passez de la vue d'ensemble aux compteurs et aux clients."
+      },
+      "credits": {
+        "intro": "Crédits prépayés : les packs que vous vendez, et le solde et l'historique de chaque client.",
+        "packs": "Les packs de crédits sont des crédits vendus à un prix. Un client en achète un via un lien de paiement.",
+        "grantTitle": "Crédits offerts",
+        "grant": "Choisissez un client pour voir son solde. Ici, ou depuis sa page client, offrez des crédits avec un motif et une expiration facultative."
+      },
+      "meters": {
+        "intro": "Un compteur dit ce qui est mesuré et comment les événements s'additionnent : un nombre, une somme ou un maximum.",
+        "create": "Ajoutez un compteur ou une nouvelle version d'un existant. Les forfaits tarifent les compteurs que vous créez."
+      },
+      "packages": {
+        "intro": "Ce à quoi les clients s'abonnent : un tarif fixe, des prix pour l'usage mesuré et des limites.",
+        "create": "Publiez un forfait ou une nouvelle version. Un forfait peut inclure un essai gratuit ou être une offre gratuite avec seulement des limites.",
+        "trialsTitle": "Essais et offres gratuites",
+        "trials": "Donnez à un forfait un essai par défaut en jours : les abonnements démarrent en essai sans carte. Une offre gratuite est un forfait sans tarif, avec seulement des limites."
+      },
+      "pricing": {
+        "intro": "Taux de taxe et promotions : ce qui s'ajoute à ce que vous facturez ou s'en retranche.",
+        "tabs": "Passez d'une section de cette page à l'autre."
+      },
+      "coupons": {
+        "intro": "Remises : un coupon dit ce qui est déduit, et les clients l'obtiennent par un code promotionnel.",
+        "create": "Créez un coupon puis ajoutez-y des codes. Chaque code peut avoir sa limite et son expiration."
+      },
+      "invoices": {
+        "intro": "Chaque facture avec son état : ouverte, payée, annulée ou irrécouvrable.",
+        "list": "Ouvrez une ligne pour voir ses lignes, paiements et avoirs. Les factures sont créées pour vous à la fin de chaque période de facturation."
+      },
+      "payments": {
+        "intro": "Chaque tentative d'encaissement, avec le prestataire, le montant et son issue.",
+        "list": "Ouvrez un paiement pour voir la facture concernée et la réponse du prestataire."
+      },
+      "paymentLinks": {
+        "intro": "Des liens qu'un client ouvre pour payer sans se connecter : pour une facture ouverte, un montant fixe ou un pack de crédits.",
+        "list": "Vos liens et leur état. Un lien cesse de fonctionner quand il expire ou est révoqué."
+      },
+      "accounting": {
+        "intro": "Ce que vous avez gagné avec les factures payées et ce que vous avez dépensé, sur la période choisie.",
+        "currenciesTitle": "Une devise à la fois",
+        "currencies": "Chaque devise est affichée séparément. Les montants en devises différentes ne sont jamais additionnés ni convertis."
+      },
+      "reports": {
+        "intro": "Revenus, abonnements et factures impayées, mois par mois.",
+        "table": "Chaque devise a ses propres lignes ; les montants en devises différentes ne sont jamais additionnés."
+      },
+      "affiliates": {
+        "intro": "Menez un programme partenaire : les partenaires reçoivent un lien et un code et gagnent une commission sur ce que paient les clients qu'ils amènent.",
+        "tabs": "Les sections vont des conditions du programme aux partenaires, commissions et paiements."
+      },
+      "webhooks": {
+        "intro": "Payrudder envoie un message signé à votre serveur quand quelque chose arrive : une facture est payée, un abonnement change.",
+        "create": "Ajoutez un point de terminaison HTTPS et choisissez ses événements. Le secret de signature n'est affiché qu'une fois."
+      },
+      "mail": {
+        "intro": "Choisissez quels e-mails Payrudder envoie à vos clients en votre nom.",
+        "categoriesTitle": "Types d'e-mails",
+        "categories": "Activez ou désactivez un type d'e-mail. Un type désactivé est abandonné, pas mis en file."
+      },
+      "tenants": {
+        "intro": "Tous les locataires de la plateforme, pour les opérateurs.",
+        "list": "Ouvrez-en un pour voir ses clients, sa facturation et ses réglages comme le locataire les voit."
+      },
+      "playground": {
+        "intro": "Un parcours guidé de tout le flux dans un compte jetable : compteur, forfait, usage, clôture de période et facture."
+      },
+      "deadLetters": {
+        "intro": "Les messages que la plateforme n'a pas pu traiter après plusieurs essais, que les opérateurs inspectent et rejouent."
+      }
+    }
+  },
+  "onboarding": {
+    "skip": "Passer pour l'instant",
+    "back": "Retour",
+    "continue": "Continuer",
+    "stepLabel": "Étape {n} sur {total}",
+    "steps": {
+      "welcome": "Bienvenue",
+      "organisation": "Organisation",
+      "app": "Première application",
+      "meter": "Premier compteur",
+      "package": "Premier forfait",
+      "event": "Événement de test",
+      "done": "Terminé"
+    },
+    "welcome": {
+      "title": "Facturez ce que vos clients utilisent",
+      "body": "Payrudder mesure l'usage, le tarife avec vos forfaits, le facture et encaisse le paiement. Mettez en place vos premiers éléments dans un bac à sable où rien n'est réel.",
+      "flow": {
+        "meter": {
+          "title": "Mesurer l'usage",
+          "body": "Envoyez des événements : appels d'API, gigaoctets, sièges, jetons."
+        },
+        "price": {
+          "title": "Le tarifer",
+          "body": "Des forfaits avec tarif fixe, prix à l'usage et limites."
+        },
+        "bill": {
+          "title": "Le facturer",
+          "body": "Les factures sont créées pour vous à la fin de chaque période."
+        },
+        "paid": {
+          "title": "Être payé",
+          "body": "Les clients paient via les prestataires que vous connectez."
+        }
+      },
+      "start": "Configurer mon compte",
+      "time": "Cela prend environ deux minutes."
+    },
+    "organisation": {
+      "title": "Votre organisation",
+      "body": "Le nom que voient votre équipe et vos clients, et les valeurs par défaut de votre première application.",
+      "name": "Nom de l'organisation",
+      "currency": "Devise",
+      "timezone": "Fuseau horaire",
+      "note": "La devise et le fuseau horaire déterminent le calcul des factures : on ne peut plus les changer une fois l'application créée."
+    },
+    "app": {
+      "title": "Votre première application",
+      "body": "Une application est un produit que vous facturez. Elle vient avec un bac à sable pour tester et un environnement de production pour les vrais paiements.",
+      "name": "Nom de l'application",
+      "defaultName": "Ma première application",
+      "create": "Créer l'application",
+      "created": "{name} est prête, avec son bac à sable."
+    },
+    "meter": {
+      "title": "Que mesurez-vous ?",
+      "body": "Un compteur transforme les événements d'usage en une quantité facturable. Choisissez un modèle ; vous pourrez ajouter ou modifier des compteurs plus tard.",
+      "create": "Créer le compteur",
+      "templates": {
+        "api_calls": {
+          "name": "Appels d'API",
+          "body": "Compte chaque requête de vos clients."
+        },
+        "storage": {
+          "name": "Stockage (Go)",
+          "body": "Le stockage maximal utilisé par un client sur la période."
+        },
+        "seats": {
+          "name": "Sièges",
+          "body": "Le plus grand nombre de sièges d'un client sur la période."
+        },
+        "tokens": {
+          "name": "Jetons d'IA",
+          "body": "Additionne les jetons que dépensent vos clients."
+        }
+      }
+    },
+    "package": {
+      "title": "Votre premier forfait",
+      "body": "Un forfait est ce à quoi un client s'abonne : un tarif mensuel fixe plus un prix pour chaque unité utilisée.",
+      "name": "Nom du forfait",
+      "defaultName": "Démarrage",
+      "fee": "Tarif mensuel ({currency})",
+      "unitPrice": "Prix par {unit} ({currency})",
+      "note": "Vous pourrez ajouter des limites, d'autres devises et un essai gratuit sur la page Forfaits.",
+      "create": "Publier le forfait"
+    },
+    "event": {
+      "title": "Envoyer un événement de test",
+      "body": "Nous créons un client de test, l'abonnons à votre forfait et envoyons un événement d'usage à votre bac à sable, pour que vous voyiez tout le trajet fonctionner.",
+      "customer": "Client",
+      "meter": "Compteur",
+      "quantity": "Quantité",
+      "send": "Envoyer l'événement de test",
+      "sending": "Envoi…",
+      "sent": "Accepté : {quantity} {unit} d'usage dans votre bac à sable."
+    },
+    "done": {
+      "title": "Tout est prêt",
+      "body": "Votre bac à sable a un compteur, un forfait et son premier événement d'usage. Voici ce qui suit en général.",
+      "finish": "Aller à mon tableau de bord",
+      "next": {
+        "dashboard": {
+          "title": "Ouvrir le tableau de bord du bac à sable",
+          "body": "Voyez l'usage et la facture auxquels mène l'événement de test."
+        },
+        "keys": {
+          "title": "Créer une clé d'API",
+          "body": "Faites envoyer l'usage par votre propre serveur."
+        },
+        "team": {
+          "title": "Inviter votre équipe",
+          "body": "Vos collègues peuvent rejoindre avec leur propre rôle."
+        },
+        "live": {
+          "title": "Passer en production",
+          "body": "Connectez un prestataire de paiement et activez la vraie facturation."
+        }
+      }
+    },
+    "checklist": {
+      "title": "Premiers pas",
+      "progress": "{done} sur {total} terminés",
+      "resume": "Reprendre la configuration",
+      "hide": "Masquer cette liste",
+      "open": "Ouvrir",
+      "done": "terminé",
+      "todo": "à faire",
+      "items": {
+        "app": "Créer votre première application",
+        "meter": "Ajouter un compteur",
+        "package": "Publier un forfait avec un prix",
+        "event": "Envoyer un événement de test",
+        "key": "Créer une clé d'API",
+        "live": "Passer en production"
+      }
+    }
   }
 }

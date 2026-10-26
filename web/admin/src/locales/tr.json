@@ -512,7 +512,18 @@
         "limit": "Kota {n}: sınır, en fazla {meter} ondalık sayısında bir miktar olmalı.",
         "thresholds": "Kota {n}: uyarılar 1 ile 1000 arasında, artan en fazla 10 yüzdedir.",
         "softNeedsPrice": "Kota {n}: esnek sınır aşan kısmı faturalar, bu yüzden {meter} için kullanım fiyatı gerekir; yoksa yalnızca bildirim seçin."
-      }
+      },
+      "trialDays": "Gün olarak ücretsiz deneme (isteğe bağlı)",
+      "trialHelp": "Bu pakete abonelik, kartsız olarak bu kadar gün denemeyle başlar; ilk ücret deneme bitince faturalanır. Bir abonelik yine de kendi süresini seçebilir.",
+      "freeTier": "Ücretsiz katman",
+      "freeTierHelp": "Sabit ücret yok: müşteriler aşağıda belirlediğiniz limitleri alır. En az bir limit ekleyin.",
+      "freeNeedsLimit": "Ücretsiz katman için en az bir limit gerekir.",
+      "badTrial": "Deneme 0 ile 365 arasında tam sayı gündür.",
+      "freeTierBadge": "Ücretsiz katman",
+      "trialBadge": "{n} günlük deneme",
+      "trialColumn": "Ücretsiz deneme",
+      "trialDaysValue": "{n} gün",
+      "noTrial": "Yok"
     },
     "subscriptions": {
       "new": "Yeni abonelik",
@@ -609,7 +620,13 @@
       "credited": "{amount} müşterinin bakiyesine kredi olarak yazıldı.",
       "allStates": "Tüm durumlar",
       "allCurrencies": "Tüm para birimleri",
-      "allIntervals": "Tüm aralıklar"
+      "allIntervals": "Tüm aralıklar",
+      "trialDefault": "Paket varsayılanı: {days} gün",
+      "trialHint": "Deneme sırasında kart gerekmez; ilk ücret deneme bitince faturalanır. Paketin kendi denemesi için boş bırakın, hiç deneme istemiyorsanız 0 girin.",
+      "trialEnds": "deneme {date} tarihinde biter",
+      "trialsEnding": "{n} deneme {days} gün içinde bitiyor | {n} deneme {days} gün içinde bitiyor",
+      "showTrials": "Denemeleri göster",
+      "trialBanner": "Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır. | Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır."
     },
     "payments": {
       "reconcile": "Defterle mutabakat",
@@ -1107,7 +1124,20 @@
         "expiry": "Son kullanma tarihi",
         "expiryHint": "Hiç sona ermeyen krediler için boş bırakın",
         "reason": "Not (isteğe bağlı)",
-        "submit": "Kredi ekle"
+        "submit": "Kredi ekle",
+        "free": "Ücretsiz kredi ver",
+        "freeHint": "Ücretsiz krediler {customer} müşterisinin bakiyesine hemen eklenir ve faturalanmaz.",
+        "badExpiry": "Gelecekte bir son kullanma tarihi seçin.",
+        "expires": "Sona erer",
+        "never": "Hiç sona ermez",
+        "onDate": "Bir tarihte…",
+        "inDays": "{n} gün sonra",
+        "reasons": {
+          "welcome": "Hoş geldin hediyesi",
+          "goodwill": "İyi niyet jesti",
+          "promotion": "Promosyon",
+          "other": "Diğer"
+        }
       },
       "ledger": {
         "title": "Kredi geçmişi",
@@ -3783,5 +3813,293 @@
   "sheets": {
     "back": "Geri",
     "forward": "İleri"
+  },
+  "tour": {
+    "progress": "Adım {n} / {total}",
+    "skip": "Turu atla",
+    "back": "Geri",
+    "next": "İleri",
+    "done": "Bitti",
+    "take": "Bu sayfanın turuna çık",
+    "common": {
+      "find": "Ara ve süz",
+      "findBody": "Yazarak ara, yanındaki süzgeçlerle listeyi daralt.",
+      "create": "Yeni ekle",
+      "list": "Liste",
+      "tabs": "Bölümler"
+    },
+    "pages": {
+      "overview": {
+        "welcomeTitle": "Payrudder'a hoş geldiniz",
+        "welcome": "Payrudder müşterilerinizin kullandığını ölçer, paketlerinizle fiyatlar, faturalar ve ödemeyi tahsil eder. Bu kısa tur size etrafı gösterir.",
+        "appsTitle": "Uygulamalarınız",
+        "apps": "Uygulama, faturalandırdığınız tek bir üründür. Panosunu, müşterilerini ve faturalamasını görmek için buradan birini açın.",
+        "groupsTitle": "Yolunuzu bulun",
+        "groups": "Açabileceğiniz her şey burada listelenir. Bir uygulamanın içinde kenar çubuğu müşteriler, faturalama, büyüme, geliştiriciler ve ayarlara genişler.",
+        "sandboxTitle": "Sandbox ve canlı",
+        "sandbox": "Her uygulamanın test parasıyla denemeler için bir sandbox'ı ve gerçek ödemeler için bir canlı ortamı vardır. Bu anahtar hangisine baktığınızı seçer.",
+        "accountTitle": "Siz ve kuruluşunuz",
+        "account": "Menünüzden kuruluş değiştirebilir, ayarlarınızı açabilir veya çıkış yapabilirsiniz.",
+        "againTitle": "Her sayfada bir tur",
+        "again": "Her sayfada bu simge vardır. Bulunduğunuz sayfanın kısa turu için istediğiniz zaman basın."
+      },
+      "dashboard": {
+        "intro": "Bir uygulamanın tek bir ortamdaki panosu: seçtiğiniz dönem için ödemeler, faturalar, abonelikler ve müşteriler.",
+        "figuresTitle": "Rakamlarınız",
+        "figures": "Üstten dönemi ve para birimini seçin; tüm rakamlar ve grafikler buna uyar. Para birimleri asla toplanmaz."
+      },
+      "goLive": {
+        "intro": "Canlı ortam kapalı başlar: canlı anahtar yok, gerçek tahsilat yok. Kontrol listesini tamamlayın, sonra açın.",
+        "checklistTitle": "Kontrol listesi",
+        "checklist": "Her madde neyin eksik olduğunu söyler ve sizi düzelteceğiniz yere götürür. Hepsi bitince bir sahip canlıyı etkinleştirebilir."
+      },
+      "apiKeys": {
+        "intro": "API anahtarları sunucunuzun Payrudder ile konuşmasını sağlar. Sandbox anahtarları test verisine, canlı anahtarlar gerçek veriye işler.",
+        "create": "Başlamak için sandbox için bir anahtar oluşturun. Gizli değer yalnızca bir kez gösterilir, o an kopyalayın. Anahtarı istediğiniz zaman yenileyebilir veya iptal edebilirsiniz."
+      },
+      "sandbox": {
+        "intro": "Yalnızca sandbox'a işleyen araçlar: temiz bir sayfayla yeniden başlayın ve test ödemelerinin nasıl biteceğini seçin.",
+        "scenariosTitle": "Test ödemeleri nasıl biter",
+        "scenarios": "Bir sonuç seçin (ödendi, reddedildi, yeniden denemede düzelen bir hata); gerçek para devreye girmeden entegrasyonunuzun nasıl başa çıktığını görün."
+      },
+      "appSettings": {
+        "intro": "Bu uygulamanın oluşturulduğu değerler. Para birimi ve saat dilimi faturaların nasıl hesaplanacağını belirler, bu yüzden uygulama oluşunca sabittir."
+      },
+      "members": {
+        "intro": "Bu kuruluşa kimlerin ait olduğu, rolleri ve hâlâ açık olan davetler.",
+        "invite": "Bir iş arkadaşını e-postayla davet edin ve rolünü seçin. Görüntüleyenler bakabilir ama hiçbir şeyi değiştiremez."
+      },
+      "settings": {
+        "intro": "Kuruluşunuzun adı, profiliniz ve konsolun sizin için görünümü."
+      },
+      "partner": {
+        "intro": "İş ortağı portalı: yönlendirme bağlantılarınız, getirdiğiniz müşteriler ve kazandığınız komisyon."
+      },
+      "paymentProviders": {
+        "intro": "Müşterilerinizin ödeme yaptığı sağlayıcıları bağlayın; tüm uygulamalar için bir kez ya da uygulama uygulama.",
+        "cardsTitle": "Sağlayıcılar",
+        "cards": "Her kart bir sağlayıcının bağlı olup olmadığını ve çalışıp çalışmadığını gösterir. Bağlamak, denemek veya kaldırmak için birini açın.",
+        "sandboxTitle": "Sandbox'ta bağlanacak bir şey yok",
+        "sandbox": "Sandbox yerleşik bir simülatöre karşı çalışır; böylece sağlayıcı hesabı olmadan her şeyi deneyebilirsiniz."
+      },
+      "customers": {
+        "intro": "Faturaladığınız kişi ve şirketler. Faturalarını, ödemelerini, aboneliklerini ve kredilerini görmek için bir müşteri açın.",
+        "create": "Bir müşteriyi elle ekleyin. Müşteriler ürününüze kaydolduğunda API'niz de onları oluşturur."
+      },
+      "subscriptions": {
+        "intro": "Hangi müşteri hangi pakette ve hangi durumda: denemede, etkin, gecikmiş, duraklatılmış veya iptal.",
+        "create": "Bir müşteri için abonelik başlatın. Kartsız ücretsiz deneme verebilir veya paketin kendi denemesini bırakabilirsiniz."
+      },
+      "usage": {
+        "intro": "Müşterilerinizin seçtiğiniz dönemde sayaca ve müşteriye göre kullandıkları, limitleriyle karşılaştırmalı.",
+        "tabs": "Genel bakış, sayaçlar ve müşteriler arasında geçiş yapın."
+      },
+      "credits": {
+        "intro": "Ön ödemeli krediler: sattığınız paketler ile her müşterinin bakiyesi ve geçmişi.",
+        "packs": "Kredi paketleri bir fiyata satılan kredilerdir. Müşteri bir ödeme bağlantısıyla satın alır.",
+        "grantTitle": "Ücretsiz krediler",
+        "grant": "Bakiyesini görmek için bir müşteri seçin. Buradan ya da müşteri sayfasından, nedenle ve isteğe bağlı son kullanma tarihiyle ücretsiz kredi verin."
+      },
+      "meters": {
+        "intro": "Sayaç neyin ölçüldüğünü ve kullanım olaylarının nasıl toplandığını söyler: sayım, toplam veya en yüksek değer.",
+        "create": "Bir sayaç ya da var olanın yeni bir sürümünü ekleyin. Paketler oluşturduğunuz sayaçları fiyatlar."
+      },
+      "packages": {
+        "intro": "Müşterilerin abone olduğu şey: sabit ücret, ölçtüğünüz kullanımın fiyatları ve limitler.",
+        "create": "Bir paket ya da yeni bir sürümünü yayımlayın. Paket ücretsiz deneme içerebilir veya yalnızca limitli ücretsiz bir katman olabilir.",
+        "trialsTitle": "Denemeler ve ücretsiz katmanlar",
+        "trials": "Bir pakete gün olarak varsayılan bir deneme verin; abonelikler kartsız denemeyle başlar. Ücretsiz katman, ücreti olmayan ve yalnızca limitli bir pakettir."
+      },
+      "pricing": {
+        "intro": "Vergi oranları ve promosyonlar: faturaladığınız tutara eklenen veya ondan düşülen şeyler.",
+        "tabs": "Bu sayfanın bölümleri arasında geçiş yapın."
+      },
+      "coupons": {
+        "intro": "İndirimler: kupon neyin düşüleceğini söyler, müşteriler onu bir promosyon koduyla alır.",
+        "create": "Bir kupon oluşturun, sonra ona kodlar ekleyin. Her kodun kendi sınırı ve son kullanma tarihi olabilir."
+      },
+      "invoices": {
+        "intro": "Her fatura durumuyla birlikte: açık, ödenmiş, geçersiz veya tahsil edilemez.",
+        "list": "Satırlarını, ödemelerini ve alacak dekontlarını görmek için bir satır açın. Faturalar her faturalama döneminin sonunda sizin için oluşturulur."
+      },
+      "payments": {
+        "intro": "Para tahsil etme girişimlerinin hepsi: sağlayıcı, tutar ve sonuç.",
+        "list": "Hangi fatura için olduğunu ve sağlayıcının ne dediğini görmek için bir ödeme açın."
+      },
+      "paymentLinks": {
+        "intro": "Müşterinin giriş yapmadan ödemek için açtığı bağlantılar: açık bir fatura, sabit bir tutar veya kredi paketi için.",
+        "list": "Bağlantılarınız ve durumları. Bir bağlantı süresi dolunca veya iptal edilince çalışmayı bırakır."
+      },
+      "accounting": {
+        "intro": "Seçtiğiniz dönem için ödenmiş faturalardan kazandıklarınız ve harcadıklarınız.",
+        "currenciesTitle": "Her seferinde tek para birimi",
+        "currencies": "Her para birimi kendi başına gösterilir. Farklı para birimlerindeki tutarlar asla toplanmaz veya çevrilmez."
+      },
+      "reports": {
+        "intro": "Gelir, abonelikler ve ödenmemiş faturalar, ay ay.",
+        "table": "Her para biriminin kendi satırları vardır; farklı para birimlerindeki tutarlar asla toplanmaz."
+      },
+      "affiliates": {
+        "intro": "Bir iş ortağı programı yürütün: ortaklar bir bağlantı ve kod alır, getirdikleri müşterilerin ödemelerinden komisyon kazanır.",
+        "tabs": "Bölümler programın koşullarından ortaklara, komisyonlara ve ödemelere uzanır."
+      },
+      "webhooks": {
+        "intro": "Bir şey olduğunda Payrudder sunucunuza imzalı bir mesaj gönderir: bir fatura ödenir, bir abonelik değişir.",
+        "create": "Bir HTTPS uç noktası ekleyin ve istediği olayları seçin. İmza sırrı yalnızca bir kez gösterilir."
+      },
+      "mail": {
+        "intro": "Payrudder'ın müşterilerinize sizin adınıza hangi e-postaları göndereceğini seçin.",
+        "categoriesTitle": "E-posta türleri",
+        "categories": "Bir e-posta türünü açın veya kapatın. Kapalı bir tür kuyruğa alınmaz, atılır."
+      },
+      "tenants": {
+        "intro": "Platformdaki tüm kiracılar, operatörler için.",
+        "list": "Müşterilerini, faturalamasını ve ayarlarını kiracının gördüğü gibi görmek için birini açın."
+      },
+      "playground": {
+        "intro": "Tek kullanımlık bir hesapta tüm akışın rehberli turu: sayaç, plan, kullanım, dönem kapanışı ve fatura."
+      },
+      "deadLetters": {
+        "intro": "Platformun birkaç denemeden sonra işleyemediği mesajlar; operatörler inceleyip yeniden oynatır."
+      }
+    }
+  },
+  "onboarding": {
+    "skip": "Şimdilik atla",
+    "back": "Geri",
+    "continue": "Devam",
+    "stepLabel": "Adım {n} / {total}",
+    "steps": {
+      "welcome": "Hoş geldiniz",
+      "organisation": "Kuruluş",
+      "app": "İlk uygulama",
+      "meter": "İlk sayaç",
+      "package": "İlk paket",
+      "event": "Test olayı",
+      "done": "Bitti"
+    },
+    "welcome": {
+      "title": "Müşterilerinizin kullandığı kadar faturalayın",
+      "body": "Payrudder kullanımı ölçer, paketlerinizle fiyatlar, faturalar ve ödemeyi tahsil eder. İlk parçaları şimdi, hiçbir şeyin gerçek olmadığı bir sandbox'ta kurun.",
+      "flow": {
+        "meter": {
+          "title": "Kullanımı ölç",
+          "body": "Olay gönderin: API çağrıları, gigabayt, koltuk, token."
+        },
+        "price": {
+          "title": "Fiyatla",
+          "body": "Sabit ücretli, kullanım fiyatlı ve limitli paketler."
+        },
+        "bill": {
+          "title": "Faturala",
+          "body": "Faturalar her dönem sonunda sizin için oluşturulur."
+        },
+        "paid": {
+          "title": "Ödemeni al",
+          "body": "Müşteriler bağladığınız sağlayıcılar üzerinden öder."
+        }
+      },
+      "start": "Hesabımı kur",
+      "time": "Yaklaşık iki dakika sürer."
+    },
+    "organisation": {
+      "title": "Kuruluşunuz",
+      "body": "Ekibinizin ve müşterilerinizin gördüğü ad ve ilk uygulamanız için varsayılanlar.",
+      "name": "Kuruluş adı",
+      "currency": "Para birimi",
+      "timezone": "Saat dilimi",
+      "note": "Para birimi ve saat dilimi faturaların nasıl hesaplanacağını belirler; bu yüzden uygulama oluştuktan sonra değiştirilemez."
+    },
+    "app": {
+      "title": "İlk uygulamanız",
+      "body": "Uygulama, faturalandırdığınız tek bir üründür. Test için bir sandbox ve gerçek ödemeler için bir canlı ortamla gelir.",
+      "name": "Uygulama adı",
+      "defaultName": "İlk uygulamam",
+      "create": "Uygulamayı oluştur",
+      "created": "{name} sandbox'ıyla birlikte hazır."
+    },
+    "meter": {
+      "title": "Neyi ölçüyorsunuz?",
+      "body": "Sayaç, kullanım olaylarını faturalayabileceğiniz bir miktara çevirir. Bir şablon seçin; sayaçları sonra ekleyebilir veya değiştirebilirsiniz.",
+      "create": "Sayacı oluştur",
+      "templates": {
+        "api_calls": {
+          "name": "API çağrıları",
+          "body": "Müşterilerinizin yaptığı her isteği sayar."
+        },
+        "storage": {
+          "name": "Depolama (GB)",
+          "body": "Bir müşterinin dönemde kullandığı en yüksek depolama."
+        },
+        "seats": {
+          "name": "Koltuklar",
+          "body": "Bir müşterinin dönemde sahip olduğu en yüksek koltuk sayısı."
+        },
+        "tokens": {
+          "name": "Yapay zekâ token'ları",
+          "body": "Müşterilerinizin harcadığı token'ları toplar."
+        }
+      }
+    },
+    "package": {
+      "title": "İlk paketiniz",
+      "body": "Paket, müşterinin abone olduğu şeydir: sabit bir aylık ücret ve kullandığı her birim için bir fiyat.",
+      "name": "Paket adı",
+      "defaultName": "Başlangıç",
+      "fee": "Aylık ücret ({currency})",
+      "unitPrice": "{unit} başına fiyat ({currency})",
+      "note": "Limitleri, diğer para birimlerini ve ücretsiz denemeyi Paketler sayfasından ekleyebilirsiniz.",
+      "create": "Paketi yayımla"
+    },
+    "event": {
+      "title": "Test olayı gönderin",
+      "body": "Bir test müşterisi oluşturur, onu paketinize abone eder ve sandbox'ınıza bir kullanım olayı göndeririz; böylece tüm yolun çalıştığını görürsünüz.",
+      "customer": "Müşteri",
+      "meter": "Sayaç",
+      "quantity": "Miktar",
+      "send": "Test olayı gönder",
+      "sending": "Gönderiliyor…",
+      "sent": "Kabul edildi: sandbox'ınızda {quantity} {unit} kullanım."
+    },
+    "done": {
+      "title": "Her şey hazır",
+      "body": "Sandbox'ınızda bir sayaç, bir paket ve ilk kullanım olayı var. Genellikle sonra şunlar gelir.",
+      "finish": "Panoma git",
+      "next": {
+        "dashboard": {
+          "title": "Sandbox panonuzu açın",
+          "body": "Test olayının yol açtığı kullanımı ve faturayı görün."
+        },
+        "keys": {
+          "title": "Bir API anahtarı oluşturun",
+          "body": "Kendi sunucunuz kullanım göndersin."
+        },
+        "team": {
+          "title": "Ekibinizi davet edin",
+          "body": "İş arkadaşları kendi rolleriyle katılabilir."
+        },
+        "live": {
+          "title": "Canlıya geçin",
+          "body": "Bir ödeme sağlayıcı bağlayın ve gerçek faturalamayı açın."
+        }
+      }
+    },
+    "checklist": {
+      "title": "Başlarken",
+      "progress": "{total} işten {done} tamam",
+      "resume": "Kuruluma devam et",
+      "hide": "Bu listeyi gizle",
+      "open": "Aç",
+      "done": "tamam",
+      "todo": "yapılacak",
+      "items": {
+        "app": "İlk uygulamanızı oluşturun",
+        "meter": "Bir sayaç ekleyin",
+        "package": "Fiyatlı bir paket yayımlayın",
+        "event": "Bir test olayı gönderin",
+        "key": "Bir API anahtarı oluşturun",
+        "live": "Canlıya geçin"
+      }
+    }
   }
 }

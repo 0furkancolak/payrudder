@@ -351,6 +351,7 @@ paths:
                   items: { $ref: "#/components/schemas/CurrencyFee" }
                 prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
                 entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
+                trial_days: { type: integer, minimum: 0, maximum: 365, description: The trial a new subscription to this version gets unless its request says otherwise; 0 is none }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/PlanVersion" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -400,7 +401,7 @@ paths:
                 plan_code: { type: string }
                 plan_version: { type: integer, description: 0 = latest }
                 start_time: { type: string, format: date-time }
-                trial_days: { type: integer, minimum: 0, maximum: 365 }
+                trial_days: { type: integer, minimum: 0, maximum: 365, description: "Left out: the package version's own default trial. 0: no trial whatever the default is" }
                 interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
                 currency: { type: string, description: Default is the customer's billing currency, then the tenant's }
                 provider: { type: string, description: The payment provider that sells it (for example paddle); default is the tenant's default account }
@@ -5592,6 +5593,7 @@ components:
         prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
         entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
         publish_time: { type: string, format: date-time }
+        trial_days: { type: integer, description: The trial a new subscription to this version gets unless its request says otherwise; 0 is none }
         fees:
           type: array
           description: Fixed fees other than the tenant currency's monthly one, per currency and interval

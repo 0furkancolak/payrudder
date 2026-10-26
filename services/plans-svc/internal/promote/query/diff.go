@@ -148,7 +148,7 @@ func sortPrices(p []*plansv1.Price) {
 // PublishRequest is what publishing a sandbox plan version in live takes.
 func PublishRequest(code string, v *plansv1.PlanVersion) *plansv1.PublishPlanVersionRequest {
 	return &plansv1.PublishPlanVersionRequest{PlanCode: code, BaseFeeMinor: v.GetBaseFeeMinor(), Prices: v.GetPrices(), Entitlements: v.GetEntitlements(),
-		Fees: v.GetFees(), CurrencyPrices: v.GetCurrencyPrices()}
+		Fees: v.GetFees(), CurrencyPrices: v.GetCurrencyPrices(), TrialDays: v.GetTrialDays()}
 }
 
 // Taxes compares tax rates by country ("" is the rate for every other country).

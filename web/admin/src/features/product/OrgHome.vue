@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Link, useNavigate, useSearch } from "@tanstack/vue-router";
 import { Plus, Rocket } from "@lucide/vue";
-import { computed, ref } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import OrgDashboard from "@/features/dashboard/OrgDashboard.vue";
 import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
+import { GettingStarted, loadProgress, OnboardingWizard, progress, wizardOpen } from "@/features/onboarding";
+import { startTourOnce, welcomeOff } from "@/shared/ui/tour";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -14,6 +16,7 @@ import AppCard from "./AppCard.vue";
 import AppGoLiveCard from "./AppGoLiveCard.vue";
 import CreateAppDialog from "./CreateAppDialog.vue";
 import { hasPartnerRole, ownMemberships } from "./lib";
+import { homeTour } from "./tour";
 import { defaultOrgEnv, isEnvironment, liveState, tenantOf, type Environment } from "@/shared/lib/environment";
 import type { App } from "./api";
 
@@ -47,6 +50,22 @@ const canCreate = computed(() => account.data.value?.role !== "viewer");
 // A membership with the role affiliate is a seller's account the person is a partner of: it is not an account of theirs.
 const noAccount = computed(() => me.data.value?.user !== undefined && ownMemberships(me.data.value.memberships).length === 0);
 const partner = computed(() => hasPartnerRole(me.data.value?.memberships));
+
+// The first-run wizard (features/onboarding) fills the screen for somebody with no app who has not been through it; after it (or when it is skipped) the
+// "Getting started" card carries on, and the tour of this page starts once, the first time the page is quiet.
+watch(() => me.data.value?.user?.id ?? "", loadProgress, { immediate: true });
+const known = computed(() => !!me.data.value?.user?.id && !!apps.data.value && !!account.data.value);
+const showWizard = computed(() => !noAccount.value && !welcomeOff() && wizardOpen(progress.value, { appCount: known.value ? list.value.length : undefined, canCreate: account.data.value?.role !== "viewer" }));
+const showChecklist = computed(() => !!progress.value && !progress.value.hidden && !showWizard.value && !noAccount.value && known.value);
+watch(
+  () => known.value && !showWizard.value && !noAccount.value,
+  async (quiet) => {
+    if (!quiet) return;
+    await nextTick();
+    startTourOnce(homeTour);
+  },
+  { immediate: true, flush: "post" },
+);
 const first = computed(() => (me.data.value?.user?.display_name || me.data.value?.user?.email?.split("@")[0] || "").split(/\s+/)[0]);
 </script>
 
@@ -68,6 +87,8 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
     </header>
 
     <ErrorText :error="apps.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+
+    <GettingStarted v-if="showChecklist" :app="list[0]" @create-app="creating = true" />
 
     <div v-if="apps.isPending.value" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
       <Skeleton v-for="n in 3" :key="n" class="h-52 rounded-3xl" />
@@ -105,5 +126,6 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
     </div>
 
     <CreateAppDialog v-model:open="creating" />
+    <OnboardingWizard v-if="showWizard" />
   </section>
 </template>

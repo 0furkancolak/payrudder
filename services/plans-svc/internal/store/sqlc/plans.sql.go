@@ -370,7 +370,7 @@ func (q *Queries) GetPlanByCode(ctx context.Context, code string) (GetPlanByCode
 }
 
 const getPlanVersionByCode = `-- name: GetPlanVersionByCode :one
-SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.published_at, p.code AS plan_code
+SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.trial_days, v.published_at, p.code AS plan_code
 FROM plan_versions v JOIN plans p ON p.tenant_id = v.tenant_id AND p.id = v.plan_id
 WHERE v.tenant_id = app_tenant_id() AND p.code = $1 AND ($2::int = 0 OR v.version = $2::int)
 ORDER BY v.version DESC
@@ -387,6 +387,7 @@ type GetPlanVersionByCodeRow struct {
 	PlanID       uuid.UUID
 	Version      int32
 	BaseFeeMinor int64
+	TrialDays    int32
 	PublishedAt  time.Time
 	PlanCode     string
 }
@@ -400,6 +401,7 @@ func (q *Queries) GetPlanVersionByCode(ctx context.Context, arg GetPlanVersionBy
 		&i.PlanID,
 		&i.Version,
 		&i.BaseFeeMinor,
+		&i.TrialDays,
 		&i.PublishedAt,
 		&i.PlanCode,
 	)
@@ -407,7 +409,7 @@ func (q *Queries) GetPlanVersionByCode(ctx context.Context, arg GetPlanVersionBy
 }
 
 const getPlanVersionByID = `-- name: GetPlanVersionByID :one
-SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.published_at, p.code AS plan_code
+SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.trial_days, v.published_at, p.code AS plan_code
 FROM plan_versions v JOIN plans p ON p.tenant_id = v.tenant_id AND p.id = v.plan_id
 WHERE v.tenant_id = app_tenant_id() AND v.id = $1
 `
@@ -417,6 +419,7 @@ type GetPlanVersionByIDRow struct {
 	PlanID       uuid.UUID
 	Version      int32
 	BaseFeeMinor int64
+	TrialDays    int32
 	PublishedAt  time.Time
 	PlanCode     string
 }
@@ -429,6 +432,7 @@ func (q *Queries) GetPlanVersionByID(ctx context.Context, id uuid.UUID) (GetPlan
 		&i.PlanID,
 		&i.Version,
 		&i.BaseFeeMinor,
+		&i.TrialDays,
 		&i.PublishedAt,
 		&i.PlanCode,
 	)
@@ -830,22 +834,28 @@ func (q *Queries) InsertPlanPrice(ctx context.Context, arg InsertPlanPriceParams
 }
 
 const insertPlanVersion = `-- name: InsertPlanVersion :one
-INSERT INTO plan_versions (tenant_id, id, plan_id, version, base_fee_minor)
+INSERT INTO plan_versions (tenant_id, id, plan_id, version, base_fee_minor, trial_days)
 VALUES (app_tenant_id(), $1, $2,
         (SELECT COALESCE(max(version), 0) + 1 FROM plan_versions WHERE tenant_id = app_tenant_id() AND plan_id = $2),
-        $3)
-RETURNING tenant_id, id, plan_id, version, base_fee_minor, published_at
+        $3, $4)
+RETURNING tenant_id, id, plan_id, version, base_fee_minor, published_at, trial_days
 `
 
 type InsertPlanVersionParams struct {
 	ID           uuid.UUID
 	PlanID       uuid.UUID
 	BaseFeeMinor int64
+	TrialDays    int32
 }
 
 // Next version number; a concurrent publish loses on UNIQUE (tenant_id, plan_id, version) and is retried.
 func (q *Queries) InsertPlanVersion(ctx context.Context, arg InsertPlanVersionParams) (PlanVersion, error) {
-	row := q.db.QueryRow(ctx, insertPlanVersion, arg.ID, arg.PlanID, arg.BaseFeeMinor)
+	row := q.db.QueryRow(ctx, insertPlanVersion,
+		arg.ID,
+		arg.PlanID,
+		arg.BaseFeeMinor,
+		arg.TrialDays,
+	)
 	var i PlanVersion
 	err := row.Scan(
 		&i.TenantID,
@@ -854,6 +864,7 @@ func (q *Queries) InsertPlanVersion(ctx context.Context, arg InsertPlanVersionPa
 		&i.Version,
 		&i.BaseFeeMinor,
 		&i.PublishedAt,
+		&i.TrialDays,
 	)
 	return i, err
 }

@@ -134,6 +134,7 @@ CREATE TABLE plan_versions (
   plan_id         uuid NOT NULL,
   version         int  NOT NULL,
   base_fee_minor  bigint NOT NULL DEFAULT 0 CHECK (base_fee_minor >= 0),
+  trial_days      int NOT NULL DEFAULT 0 CHECK (trial_days BETWEEN 0 AND 365),  -- the trial a subscription takes unless its request says otherwise
   published_at    timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, id),
   UNIQUE (tenant_id, plan_id, version),

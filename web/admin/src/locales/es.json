@@ -512,7 +512,18 @@
         "limit": "Cuota {n}: el límite debe ser una cantidad con como mucho los decimales de {meter}.",
         "thresholds": "Cuota {n}: las alertas son hasta 10 porcentajes crecientes entre 1 y 1000.",
         "softNeedsPrice": "Cuota {n}: un límite flexible cobra lo que lo supera, así que {meter} necesita un precio de uso; si no, elija Solo avisar."
-      }
+      },
+      "trialDays": "Prueba gratuita en días (opcional)",
+      "trialHelp": "Una suscripción a este paquete empieza en prueba durante estos días, sin tarjeta; la primera cuota se factura al terminar. Una suscripción aún puede elegir la suya.",
+      "freeTier": "Nivel gratuito",
+      "freeTierHelp": "Sin cuota fija: los clientes obtienen los límites que fijes abajo. Añade al menos un límite.",
+      "freeNeedsLimit": "Un nivel gratuito necesita al menos un límite.",
+      "badTrial": "La prueba es un número entero de días entre 0 y 365.",
+      "freeTierBadge": "Nivel gratuito",
+      "trialBadge": "Prueba de {n} días",
+      "trialColumn": "Prueba gratuita",
+      "trialDaysValue": "{n} días",
+      "noTrial": "Ninguna"
     },
     "subscriptions": {
       "new": "Nueva suscripción",
@@ -609,7 +620,13 @@
       "credited": "Se abonaron {amount} al saldo del cliente.",
       "allStates": "Todos los estados",
       "allCurrencies": "Todas las monedas",
-      "allIntervals": "Todos los intervalos"
+      "allIntervals": "Todos los intervalos",
+      "trialDefault": "Valor del paquete: {days} días",
+      "trialHint": "No hace falta tarjeta durante una prueba; la primera cuota se factura al terminar. Déjalo vacío para la prueba del paquete o escribe 0 para ninguna.",
+      "trialEnds": "la prueba termina el {date}",
+      "trialsEnding": "{n} prueba termina en {days} días | {n} pruebas terminan en {days} días",
+      "showTrials": "Mostrar pruebas",
+      "trialBanner": "La prueba termina el {date}, en {n} día. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar. | La prueba termina el {date}, en {n} días. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar."
     },
     "payments": {
       "reconcile": "Conciliar con el libro",
@@ -1107,7 +1124,20 @@
         "expiry": "Fecha de caducidad",
         "expiryHint": "Déjelo vacío para créditos que no caducan",
         "reason": "Nota (opcional)",
-        "submit": "Añadir créditos"
+        "submit": "Añadir créditos",
+        "free": "Conceder créditos gratis",
+        "freeHint": "Los créditos gratis pasan al saldo de {customer} al instante y no se facturan.",
+        "badExpiry": "Elige una fecha de caducidad futura.",
+        "expires": "Caduca",
+        "never": "No caduca nunca",
+        "onDate": "En una fecha…",
+        "inDays": "En {n} días",
+        "reasons": {
+          "welcome": "Regalo de bienvenida",
+          "goodwill": "Gesto comercial",
+          "promotion": "Promoción",
+          "other": "Otro"
+        }
       },
       "ledger": {
         "title": "Historial de créditos",
@@ -3783,5 +3813,293 @@
   "sheets": {
     "back": "Atrás",
     "forward": "Adelante"
+  },
+  "tour": {
+    "progress": "Paso {n} de {total}",
+    "skip": "Omitir el recorrido",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "done": "Listo",
+    "take": "Hacer un recorrido por esta página",
+    "common": {
+      "find": "Buscar y filtrar",
+      "findBody": "Escribe para buscar y acota la lista con los filtros de al lado.",
+      "create": "Añadir",
+      "list": "La lista",
+      "tabs": "Secciones"
+    },
+    "pages": {
+      "overview": {
+        "welcomeTitle": "Te damos la bienvenida a Payrudder",
+        "welcome": "Payrudder mide lo que usan tus clientes, lo tarifica con tus paquetes, lo factura y cobra el pago. Este breve recorrido te muestra el lugar.",
+        "appsTitle": "Tus apps",
+        "apps": "Una app es un producto que facturas. Abre una desde aquí para ver su panel, sus clientes y su facturación.",
+        "groupsTitle": "Orientarte",
+        "groups": "Todo lo que puedes abrir está aquí. Dentro de una app, la barra lateral crece con clientes, facturación, crecimiento, desarrolladores y ajustes.",
+        "sandboxTitle": "Sandbox y producción",
+        "sandbox": "Cada app tiene una sandbox para probar con dinero de prueba y un entorno de producción para pagos reales. Este interruptor elige cuál ves.",
+        "accountTitle": "Tú y tu organización",
+        "account": "Cambia de organización, abre tus ajustes o cierra sesión desde tu menú.",
+        "againTitle": "Un recorrido en cada página",
+        "again": "Cada página tiene este icono. Púlsalo cuando quieras para un recorrido breve de la página en la que estás."
+      },
+      "dashboard": {
+        "intro": "El panel de una app en un entorno: pagos, facturas, suscripciones y clientes en el periodo que elijas.",
+        "figuresTitle": "Tus cifras",
+        "figures": "Elige arriba el periodo y la moneda; todas las cifras y gráficos los siguen. Las monedas nunca se suman."
+      },
+      "goLive": {
+        "intro": "El entorno de producción empieza apagado: sin claves reales ni cobros reales. Completa la lista y luego enciéndelo.",
+        "checklistTitle": "La lista de comprobación",
+        "checklist": "Cada punto dice qué falta y te lleva a donde se arregla. Cuando todos están hechos, un propietario puede activar producción."
+      },
+      "apiKeys": {
+        "intro": "Las claves de API permiten que tu servidor hable con Payrudder. Las de sandbox actúan sobre datos de prueba; las de producción, sobre datos reales.",
+        "create": "Crea una clave de sandbox para empezar. El secreto se muestra una sola vez, así que cópialo entonces. Puedes rotar o revocar una clave en cualquier momento."
+      },
+      "sandbox": {
+        "intro": "Herramientas que solo actúan sobre la sandbox: empezar de cero y elegir cómo terminan los pagos de prueba.",
+        "scenariosTitle": "Cómo terminan los pagos de prueba",
+        "scenarios": "Elige un resultado (pagado, rechazado, un error que se resuelve al reintentar) para ver cómo responde tu integración antes de que haya dinero real."
+      },
+      "appSettings": {
+        "intro": "Con qué se creó esta app. Su moneda y su zona horaria deciden cómo se calculan las facturas, así que quedan fijas una vez creada."
+      },
+      "members": {
+        "intro": "Quién pertenece a esta organización, sus roles y las invitaciones aún abiertas.",
+        "invite": "Invita a un compañero por correo y elige su rol. Los lectores pueden mirar pero no cambiar nada."
+      },
+      "settings": {
+        "intro": "El nombre de tu organización, tu perfil y el aspecto de la consola para ti."
+      },
+      "partner": {
+        "intro": "El portal de socios: tus enlaces de referido, los clientes que trajiste y la comisión que ganaste."
+      },
+      "paymentProviders": {
+        "intro": "Conecta los proveedores de pago de tus clientes, una vez para todas las apps o app por app.",
+        "cardsTitle": "Proveedores",
+        "cards": "Cada tarjeta muestra si un proveedor está conectado y funciona. Abre una para conectarlo, probarlo o desconectarlo.",
+        "sandboxTitle": "Nada que conectar en la sandbox",
+        "sandbox": "La sandbox funciona con un simulador integrado, así que puedes probarlo todo sin una cuenta de proveedor."
+      },
+      "customers": {
+        "intro": "Las personas y empresas a las que facturas. Abre un cliente para ver sus facturas, pagos, suscripciones y créditos.",
+        "create": "Añade un cliente a mano. Tu API también crea clientes cuando se registran en tu producto."
+      },
+      "subscriptions": {
+        "intro": "Qué cliente está en qué paquete y en qué estado: en prueba, activa, vencida, en pausa o cancelada.",
+        "create": "Inicia una suscripción para un cliente. Puedes darle una prueba gratuita sin tarjeta o dejar la prueba propia del paquete."
+      },
+      "usage": {
+        "intro": "Lo que usaron tus clientes, por medidor y por cliente, en el periodo elegido, frente a sus límites.",
+        "tabs": "Cambia entre el resumen, los medidores y los clientes."
+      },
+      "credits": {
+        "intro": "Créditos prepagados: los packs que vendes y el saldo y el historial de cada cliente.",
+        "packs": "Los packs de créditos son créditos vendidos a un precio. Un cliente compra uno con un enlace de pago.",
+        "grantTitle": "Créditos gratis",
+        "grant": "Elige un cliente para ver su saldo. Desde aquí o desde su página de cliente, concede créditos gratis con un motivo y una caducidad opcional."
+      },
+      "meters": {
+        "intro": "Un medidor dice qué se mide y cómo se suman los eventos de uso: un recuento, una suma o un máximo.",
+        "create": "Añade un medidor o una nueva versión de uno existente. Los paquetes ponen precio a los medidores que creas."
+      },
+      "packages": {
+        "intro": "A qué se suscriben los clientes: una cuota fija, precios por el uso medido y límites.",
+        "create": "Publica un paquete o una nueva versión. Un paquete puede incluir una prueba gratuita o ser un nivel gratis solo con límites.",
+        "trialsTitle": "Pruebas y niveles gratis",
+        "trials": "Dale a un paquete una prueba por defecto en días y sus suscripciones empiezan en prueba sin tarjeta. Un nivel gratis es un paquete sin cuota y solo con límites."
+      },
+      "pricing": {
+        "intro": "Tasas de impuesto y promociones: lo que se suma o se resta a lo que facturas.",
+        "tabs": "Cambia entre las secciones de esta página."
+      },
+      "coupons": {
+        "intro": "Descuentos: un cupón dice qué se descuenta y los clientes lo obtienen con un código promocional.",
+        "create": "Crea un cupón y añade códigos para él. Cada código puede tener su propio límite y caducidad."
+      },
+      "invoices": {
+        "intro": "Cada factura con su estado: abierta, pagada, anulada o incobrable.",
+        "list": "Abre una fila para ver sus líneas, pagos y notas de crédito. Las facturas se generan solas al final de cada periodo de facturación."
+      },
+      "payments": {
+        "intro": "Cada intento de cobro, con el proveedor, el importe y su resultado.",
+        "list": "Abre un pago para ver a qué factura correspondía y qué dijo el proveedor."
+      },
+      "paymentLinks": {
+        "intro": "Enlaces que un cliente abre para pagar sin iniciar sesión: para una factura abierta, un importe fijo o un pack de créditos.",
+        "list": "Tus enlaces y su estado. Un enlace deja de funcionar al caducar o ser revocado."
+      },
+      "accounting": {
+        "intro": "Lo que ganaste con facturas pagadas y lo que gastaste, en el periodo elegido.",
+        "currenciesTitle": "Una moneda a la vez",
+        "currencies": "Cada moneda se muestra por separado. Los importes en monedas distintas nunca se suman ni se convierten."
+      },
+      "reports": {
+        "intro": "Ingresos, suscripciones y facturas impagadas, mes a mes.",
+        "table": "Cada moneda tiene sus propias filas; los importes en monedas distintas nunca se suman."
+      },
+      "affiliates": {
+        "intro": "Gestiona un programa de socios: los socios reciben un enlace y un código y ganan comisión por lo que pagan los clientes que traen.",
+        "tabs": "Las secciones van de las condiciones del programa a socios, comisiones y pagos."
+      },
+      "webhooks": {
+        "intro": "Payrudder envía un mensaje firmado a tu servidor cuando pasa algo: se paga una factura, cambia una suscripción.",
+        "create": "Añade un endpoint HTTPS y elige los eventos que quiere. El secreto de firma se muestra una sola vez."
+      },
+      "mail": {
+        "intro": "Elige qué correos envía Payrudder a tus clientes en tu nombre.",
+        "categoriesTitle": "Tipos de correo",
+        "categories": "Activa o desactiva un tipo de correo. Un tipo desactivado se descarta, no se encola."
+      },
+      "tenants": {
+        "intro": "Todos los inquilinos de la plataforma, para operadores.",
+        "list": "Abre uno para ver sus clientes, su facturación y sus ajustes como los ve el inquilino."
+      },
+      "playground": {
+        "intro": "Un recorrido guiado por todo el flujo en una cuenta desechable: medidor, plan, uso, cierre del periodo y factura."
+      },
+      "deadLetters": {
+        "intro": "Mensajes que la plataforma no pudo procesar tras varios intentos, para que los operadores los revisen y reproduzcan."
+      }
+    }
+  },
+  "onboarding": {
+    "skip": "Omitir por ahora",
+    "back": "Atrás",
+    "continue": "Continuar",
+    "stepLabel": "Paso {n} de {total}",
+    "steps": {
+      "welcome": "Bienvenida",
+      "organisation": "Organización",
+      "app": "Primera app",
+      "meter": "Primer medidor",
+      "package": "Primer paquete",
+      "event": "Evento de prueba",
+      "done": "Listo"
+    },
+    "welcome": {
+      "title": "Factura lo que usan tus clientes",
+      "body": "Payrudder mide el uso, lo tarifica con tus paquetes, lo factura y cobra el pago. Configura ahora tus primeras piezas, en una sandbox donde nada es real.",
+      "flow": {
+        "meter": {
+          "title": "Medir el uso",
+          "body": "Envía eventos: llamadas a la API, gigabytes, puestos, tokens."
+        },
+        "price": {
+          "title": "Ponle precio",
+          "body": "Paquetes con cuota fija, precios por uso y límites."
+        },
+        "bill": {
+          "title": "Factúralo",
+          "body": "Las facturas se generan solas al final de cada periodo."
+        },
+        "paid": {
+          "title": "Cobra",
+          "body": "Los clientes pagan con los proveedores que conectes."
+        }
+      },
+      "start": "Configurar mi cuenta",
+      "time": "Lleva unos dos minutos."
+    },
+    "organisation": {
+      "title": "Tu organización",
+      "body": "El nombre que ven tu equipo y tus clientes, y los valores por defecto de tu primera app.",
+      "name": "Nombre de la organización",
+      "currency": "Moneda",
+      "timezone": "Zona horaria",
+      "note": "La moneda y la zona horaria deciden cómo se calculan las facturas, así que no pueden cambiarse una vez creada la app."
+    },
+    "app": {
+      "title": "Tu primera app",
+      "body": "Una app es un producto que facturas. Incluye una sandbox para probar y un entorno de producción para pagos reales.",
+      "name": "Nombre de la app",
+      "defaultName": "Mi primera app",
+      "create": "Crear app",
+      "created": "{name} está lista, con su sandbox."
+    },
+    "meter": {
+      "title": "¿Qué mides?",
+      "body": "Un medidor convierte los eventos de uso en una cantidad facturable. Elige una plantilla; podrás añadir o cambiar medidores después.",
+      "create": "Crear medidor",
+      "templates": {
+        "api_calls": {
+          "name": "Llamadas a la API",
+          "body": "Cuenta cada petición de tus clientes."
+        },
+        "storage": {
+          "name": "Almacenamiento (GB)",
+          "body": "El máximo de almacenamiento que un cliente usó en el periodo."
+        },
+        "seats": {
+          "name": "Puestos",
+          "body": "El máximo de puestos que tuvo un cliente en el periodo."
+        },
+        "tokens": {
+          "name": "Tokens de IA",
+          "body": "Suma los tokens que gastan tus clientes."
+        }
+      }
+    },
+    "package": {
+      "title": "Tu primer paquete",
+      "body": "Un paquete es a lo que se suscribe un cliente: una cuota mensual fija más un precio por cada unidad que usa.",
+      "name": "Nombre del paquete",
+      "defaultName": "Inicial",
+      "fee": "Cuota mensual ({currency})",
+      "unitPrice": "Precio por {unit} ({currency})",
+      "note": "Puedes añadir límites, otras monedas y una prueba gratuita en la página Paquetes.",
+      "create": "Publicar paquete"
+    },
+    "event": {
+      "title": "Envía un evento de prueba",
+      "body": "Creamos un cliente de prueba, lo suscribimos a tu paquete y enviamos un evento de uso a tu sandbox, para que veas funcionar todo el recorrido.",
+      "customer": "Cliente",
+      "meter": "Medidor",
+      "quantity": "Cantidad",
+      "send": "Enviar evento de prueba",
+      "sending": "Enviando…",
+      "sent": "Aceptado: {quantity} {unit} de uso en tu sandbox."
+    },
+    "done": {
+      "title": "Todo listo",
+      "body": "Tu sandbox tiene un medidor, un paquete y su primer evento de uso. Esto suele venir después.",
+      "finish": "Ir a mi panel",
+      "next": {
+        "dashboard": {
+          "title": "Abre el panel de tu sandbox",
+          "body": "Mira el uso y la factura a los que lleva el evento de prueba."
+        },
+        "keys": {
+          "title": "Crea una clave de API",
+          "body": "Haz que tu propio servidor envíe el uso."
+        },
+        "team": {
+          "title": "Invita a tu equipo",
+          "body": "Los compañeros pueden unirse con su propio rol."
+        },
+        "live": {
+          "title": "Pasar a producción",
+          "body": "Conecta un proveedor de pago y activa la facturación real."
+        }
+      }
+    },
+    "checklist": {
+      "title": "Primeros pasos",
+      "progress": "{done} de {total} hechos",
+      "resume": "Continuar la configuración",
+      "hide": "Ocultar esta lista",
+      "open": "Abrir",
+      "done": "hecho",
+      "todo": "pendiente",
+      "items": {
+        "app": "Crea tu primera app",
+        "meter": "Añade un medidor",
+        "package": "Publica un paquete con precio",
+        "event": "Envía un evento de prueba",
+        "key": "Crea una clave de API",
+        "live": "Pasa a producción"
+      }
+    }
   }
 }

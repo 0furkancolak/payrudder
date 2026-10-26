@@ -108,7 +108,12 @@ func (c *Commands) create(ctx context.Context, q *sqlc.Queries, tenantID uuid.UU
 	if err != nil {
 		return nil, err
 	}
-	state, trialEnds := initialState(a.start, loc, int(req.GetTrialDays()))
+	// A request that names no trial gets the plan version's own; naming 0 is no trial at all.
+	trialDays := int(pv.TrialDays)
+	if req.TrialDays != nil {
+		trialDays = int(req.GetTrialDays())
+	}
+	state, trialEnds := initialState(a.start, loc, trialDays)
 	timing, err := feeTimingFor(req.GetFeeTiming(), a.interval, providerRenews)
 	if err != nil {
 		return nil, err

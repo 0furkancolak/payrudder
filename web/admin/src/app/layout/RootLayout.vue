@@ -21,6 +21,8 @@ import Sidebar from "./Sidebar.vue";
 import ThemeToggle from "./ThemeToggle.vue";
 import UserMenu from "./UserMenu.vue";
 import { useSheetUrlSync } from "@/shared/lib/sheets";
+import { TourButton, TourHost } from "@/shared/ui/tour";
+import { tourFor, useTourScope } from "../tours";
 import { useShell } from "./useShell";
 
 /**
@@ -35,6 +37,9 @@ const brand = brandName();
 const signedIn = computed(() => isPerson.value);
 const shell = useShell();
 useSheetUrlSync();
+useTourScope();
+// The tour icon of the page's header, when the page has a tour (app/tours.ts).
+const pageTour = computed(() => (isPerson.value ? tourFor(shell.current.value?.key) : undefined));
 const drawer = ref(false);
 
 // A route change closes the drawer (the links also do; this covers the browser's back button).
@@ -108,6 +113,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           </button>
           <Breadcrumbs :crumbs="shell.crumbs.value" class="min-w-0 flex-1" />
           <div class="flex shrink-0 items-center gap-2">
+            <TourButton v-if="pageTour" :tour="pageTour" />
             <PrivacyToggle />
             <LanguageSwitcher />
             <ThemeToggle />
@@ -142,6 +148,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         <Outlet />
       </main>
       <PeekHost v-if="isPerson" />
+      <TourHost v-if="isPerson" />
     </div>
   </div>
 </template>

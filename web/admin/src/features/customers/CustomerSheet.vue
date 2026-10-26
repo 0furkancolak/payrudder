@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Check, Copy, CreditCard, Link2, MapPin, Pencil, Plus, Receipt } from "@lucide/vue";
+import { Check, Copy, CreditCard, Gift, Link2, MapPin, Pencil, Plus, Receipt } from "@lucide/vue";
 import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCreditBalance } from "@/features/credits/api";
+import GrantCreditsSheet from "@/features/credits/GrantCreditsSheet.vue";
 import { formatCredits } from "@/features/credits/lib";
 import LedgerCard from "@/features/credits/LedgerCard.vue";
 import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
@@ -43,6 +44,7 @@ const open = computed(() => (props.summary ? headline(props.summary.open, props.
 const zero = computed(() => formatMinor(0, props.customer.billing_currency || spend.value?.currency || open.value?.currency, locale.value) || "0");
 const money = (h?: { minor: string; currency: string }) => (h ? formatMinor(h.minor, h.currency, locale.value) : zero.value);
 
+const granting = ref(false);
 const copied = ref(false);
 async function copyId() {
   copied.value = await copyText(id.value);
@@ -164,8 +166,12 @@ function showPortal() {
             <span class="text-2xl font-semibold tabular-nums">{{ balance.data.value ? formatCredits(balance.data.value.balance, locale) : "—" }}</span>
             <span v-if="balance.data.value?.next_expire_time" class="text-muted-foreground text-xs">{{ t("billing.credits.customer.nextExpiry", { when: fmt.date(balance.data.value.next_expire_time, "dateTime") }) }}</span>
           </div>
-          <Button size="sm" variant="outline" @click="emit('credits')">{{ t("billing.customers.sheet.manageCredits") }}</Button>
+          <div class="flex flex-wrap gap-2">
+            <Button size="sm" data-testid="customer-grant-credits" @click="granting = true"><Gift aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
+            <Button size="sm" variant="outline" @click="emit('credits')">{{ t("billing.customers.sheet.manageCredits") }}</Button>
+          </div>
         </div>
+        <GrantCreditsSheet v-model:open="granting" :tenant-id="tenantId" :customer="id" />
         <LedgerCard :tenant-id="tenantId" :customer="id" class="-mx-3 gap-2 border-0 bg-transparent p-0 shadow-none [&>h2]:pt-0" />
       </TabsContent>
       <TabsContent value="details" class="outline-none">

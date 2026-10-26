@@ -279,6 +279,8 @@ message PublishPlanVersionRequest {
   // Usage prices in those currencies. A currency with prices must have a fee above, and prices must cover exactly the
   // meters in `prices`.
   repeated CurrencyPrices currency_prices = 6;
+  // 0..365. The trial a new subscription to this version gets unless its request says otherwise. 0 = none.
+  int32 trial_days = 7;
 }
 
 message PublishPlanVersionResponse {
@@ -303,8 +305,8 @@ message CreateSubscriptionRequest {
   int32 plan_version = 3;
   // Unset = now.
   google.protobuf.Timestamp start_time = 4;
-  // 0..365. Unset or 0 = no trial.
-  int32 trial_days = 5;
+  // 0..365. Unset = the plan version's own default (PlanVersion.trial_days); 0 = no trial whatever the default is.
+  optional int32 trial_days = 5;
   // Unspecified = month.
   SubscriptionInterval interval = 6;
   // Unset = the customer's billing currency, else the tenant's. The plan version must have a fee in it.

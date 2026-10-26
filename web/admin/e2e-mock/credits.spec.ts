@@ -60,7 +60,7 @@ test.describe("credits", () => {
     await expect(page.getByRole("row", { name: /Promotion/ })).toContainText("Never");
     await expect(page.getByRole("row", { name: /Spent/ })).toContainText("-120");
 
-    await page.getByRole("button", { name: "Add credits" }).click();
+    await page.getByRole("button", { name: "Grant free credits" }).click();
     const form = page.getByRole("dialog");
     await form.getByLabel("Credits to add").fill("50");
     await form.getByLabel("Note (optional)").fill("launch gift");
@@ -68,7 +68,7 @@ test.describe("credits", () => {
     await expect(page.getByRole("status", { name: "credits available" })).toContainText("350");
     await expect(page.getByRole("row", { name: /Added/ })).toContainText("launch gift");
     const body = gw.called("POST", "/v1/customers/cus_1/credits/grant")[0]?.body as Record<string, unknown>;
-    expect(body).toMatchObject({ credits: "50", source: "promo", reason: "launch gift" });
+    expect(body).toMatchObject({ credits: "50", source: "promo", reason: "Welcome gift: launch gift" });
     expect(String(body.idempotency_key)).toMatch(/^[0-9a-f-]{36}$/);
   });
 
@@ -89,7 +89,7 @@ test.describe("credits", () => {
     await gw.install(page);
     await openTenantPage(page, "/credits");
     await page.getByLabel("Choose a customer").selectOption("cus_1");
-    await page.getByRole("button", { name: "Add credits" }).click();
+    await page.getByRole("button", { name: "Grant free credits" }).click();
     const form = page.getByRole("dialog");
     await form.getByLabel("Credits to add").fill("50");
     await form.getByRole("button", { name: "Add credits" }).click();
@@ -98,7 +98,7 @@ test.describe("credits", () => {
     await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/credits/grant").length).toBe(2);
     // A grant that went through closes the sheet; it opens clean for the next one.
     await expect(form).toHaveCount(0);
-    await page.getByRole("button", { name: "Add credits" }).click();
+    await page.getByRole("button", { name: "Grant free credits" }).click();
     await expect(form.getByLabel("Credits to add")).toHaveValue("");
     await form.getByLabel("Credits to add").fill("10");
     await form.getByRole("button", { name: "Add credits" }).click();

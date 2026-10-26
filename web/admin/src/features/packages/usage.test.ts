@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { newQuota, type Meter } from "@/features/meters/quota";
-import { buildUsage, newPrice } from "./usage";
+import { buildUsage, isFreeTier, newPrice } from "./usage";
 
 const meters: Meter[] = [
   { code: "api_calls", aggregation: "AGGREGATION_COUNT", unit_label: "calls", quantity_scale: 0 },
@@ -54,5 +54,16 @@ describe("buildUsage", () => {
       const r = buildUsage(prices, quotas, meters, "USD");
       expect("error" in r && r.error.key, key).toBe(key);
     }
+  });
+});
+
+describe("isFreeTier", () => {
+  it("is a version with no fee in any currency and no usage price", () => {
+    expect(isFreeTier(undefined)).toBe(false);
+    expect(isFreeTier({ base_fee_minor: "0", fees: [], prices: [], entitlements: [{ meter_code: "api_calls", limit: "1000" }] })).toBe(true);
+    expect(isFreeTier({ base_fee_minor: "0" })).toBe(true);
+    expect(isFreeTier({ base_fee_minor: "2900" })).toBe(false);
+    expect(isFreeTier({ base_fee_minor: "0", fees: [{ currency: "USD", base_fee_minor: "29000", interval: "SUBSCRIPTION_INTERVAL_YEAR" }] })).toBe(false);
+    expect(isFreeTier({ base_fee_minor: "0", prices: [{ meter_code: "api_calls", per_unit: { unit_price: "0.1" } }] })).toBe(false);
   });
 });

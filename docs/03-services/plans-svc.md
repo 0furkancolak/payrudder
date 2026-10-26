@@ -73,7 +73,7 @@ message Entitlement {
 `plan_prices`, `plan_entitlements`, `subscriptions`, `outbox`. DDL is in [05-data-model.md](../05-data-model.md#plans_db).
 
 Rules:
-- `meters` and `plan_versions` are **append-only**. Changing a price means publishing a new version.
+- `meters` and `plan_versions` are **append-only**. Changing a price means publishing a new version. A version needs a price, a base fee or a quota: a free tier is a version with a fee of nothing and quotas only.
   This is what makes historic invoices reproducible and re-rating explicit.
 - A customer has **at most one active subscription** at a time (exclusion constraint on `tstzrange`).
 - Tenant `currency` and `timezone` are **immutable** (DB trigger). Changing them would re-cut periods and re-price history.
@@ -115,7 +115,7 @@ system pool) starts when `PAYRUDDER_KAFKA_BROKERS` is set.
 
 ## As built: subscription lifecycle (Phase 13)
 
-`CreateSubscription` takes `trial_days` (0..365) and `currency` (default: the customer's billing currency, then the tenant's). The
+`CreateSubscription` takes `trial_days` (0..365; unset takes the plan version's own default, `PlanVersion.trial_days`, set when the version is published; `0` is no trial whatever the default is) and `currency` (default: the customer's billing currency, then the tenant's). The
 currency must have a fixed fee on the plan version, and a plan version with metered prices needs a usage price set in it. New RPCs:
 `GetSubscription`, `PauseSubscription`, `ResumeSubscription`, `ScheduleCancellation` (`cancel=false` withdraws it) and `ChangePlan`. State
 moves through `pkg/subscription` (`Next`). `ChangePlan` ends the subscription at the change instant and starts a new one on the other

@@ -68,10 +68,10 @@ FROM plans p WHERE p.tenant_id = app_tenant_id() ORDER BY p.code;
 
 -- name: InsertPlanVersion :one
 -- Next version number; a concurrent publish loses on UNIQUE (tenant_id, plan_id, version) and is retried.
-INSERT INTO plan_versions (tenant_id, id, plan_id, version, base_fee_minor)
+INSERT INTO plan_versions (tenant_id, id, plan_id, version, base_fee_minor, trial_days)
 VALUES (app_tenant_id(), @id, @plan_id,
         (SELECT COALESCE(max(version), 0) + 1 FROM plan_versions WHERE tenant_id = app_tenant_id() AND plan_id = @plan_id),
-        @base_fee_minor)
+        @base_fee_minor, @trial_days)
 RETURNING *;
 
 -- name: InsertPlanPrice :exec
@@ -83,13 +83,13 @@ INSERT INTO plan_entitlements (tenant_id, plan_version_id, meter_code, limit_uni
 VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6);
 
 -- name: GetPlanVersionByID :one
-SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.published_at, p.code AS plan_code
+SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.trial_days, v.published_at, p.code AS plan_code
 FROM plan_versions v JOIN plans p ON p.tenant_id = v.tenant_id AND p.id = v.plan_id
 WHERE v.tenant_id = app_tenant_id() AND v.id = $1;
 
 -- name: GetPlanVersionByCode :one
 -- version 0 = latest.
-SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.published_at, p.code AS plan_code
+SELECT v.id, v.plan_id, v.version, v.base_fee_minor, v.trial_days, v.published_at, p.code AS plan_code
 FROM plan_versions v JOIN plans p ON p.tenant_id = v.tenant_id AND p.id = v.plan_id
 WHERE v.tenant_id = app_tenant_id() AND p.code = @plan_code AND (@version::int = 0 OR v.version = @version::int)
 ORDER BY v.version DESC

@@ -196,3 +196,24 @@ func TestValidateAddress(t *testing.T) {
 		}
 	}
 }
+
+func TestValidatePlanVersionTrialAndFreeTier(t *testing.T) {
+	scales := map[string]int{"api_calls": 0}
+	in, err := ValidatePlanVersion(&plansv1.PublishPlanVersionRequest{BaseFeeMinor: 100, TrialDays: 14}, scales)
+	if err != nil || in.TrialDays != 14 {
+		t.Fatalf("a trial of 14 days = %+v, %v", in, err)
+	}
+	for _, days := range []int32{-1, 366} {
+		_, err := ValidatePlanVersion(&plansv1.PublishPlanVersionRequest{BaseFeeMinor: 100, TrialDays: days}, scales)
+		if got := fields(t, err); !contains(got, "trial_days") {
+			t.Errorf("trial_days %d: violations = %v", days, got)
+		}
+	}
+	// A free tier has a fee of nothing and no usage price, only a quota; a version with nothing at all is still refused.
+	if _, err := ValidatePlanVersion(&plansv1.PublishPlanVersionRequest{Entitlements: []*plansv1.Entitlement{{MeterCode: "api_calls", Limit: "1000"}}}, scales); err != nil {
+		t.Fatalf("a free tier: %v", err)
+	}
+	if _, err := ValidatePlanVersion(&plansv1.PublishPlanVersionRequest{}, scales); err == nil {
+		t.Fatal("an empty version must be refused")
+	}
+}
