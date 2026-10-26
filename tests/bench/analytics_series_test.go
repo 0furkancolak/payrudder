@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-// TestUsageSeriesLatency measures the 30-day hourly series of one tenant (docs/phases/phase-07-analytics-assets.md:
-// target p95 < 300 ms): ROWS synthetic events spread over 30 days are inserted into ClickHouse for a fresh tenant, then
+// TestUsageSeriesLatency measures the 30-day hourly series of one tenant:
+// target p95 < 300 ms. ROWS synthetic events spread over 30 days are inserted into ClickHouse for a fresh tenant, then
 // GET /v1/analytics/usage is called N times through the gateway.
 func TestUsageSeriesLatency(t *testing.T) {
 	rows := envInt("PAYRUDDER_BENCH_ROWS", 3000000)

@@ -282,7 +282,7 @@ dev-docker: ## The services in Docker too, with the console on http://localhost:
 	cd web/admin && ([ -d node_modules ] || npm ci --no-audit --no-fund) && exec npm run dev
 
 .PHONY: mem-report
-mem-report: ## Resident memory of every running Payrudder container (the budget is in docs/phases/phase-27-dev-and-operations.md)
+mem-report: ## Resident memory of every running Payrudder container (the budgets are in deploy/compose/memory-budgets.yaml)
 	@docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}' $$(docker ps --filter name=payrudder- --format '{{.Names}}' | sort)
 
 .PHONY: logs

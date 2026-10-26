@@ -898,7 +898,7 @@ func (x *BankTransferDetails) GetIsDefault() bool {
 	return false
 }
 
-// LegalInfo is the seller's company data printed on its invoices and sent in e-invoices (docs/phases/phase-30-e-invoice.md). Every part is optional.
+// LegalInfo is the seller's company data printed on its invoices and sent in e-invoices. Every part is optional.
 type LegalInfo struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	LegalName string                 `protobuf:"bytes,1,opt,name=legal_name,json=legalName,proto3" json:"legal_name,omitempty"`

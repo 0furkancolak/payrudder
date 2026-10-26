@@ -511,7 +511,7 @@ services:
       PAYMENTS_LIVE_PROVIDER: ${PAYMENTS_LIVE_PROVIDER:-mockpsp}
       # The worker refuses to start with the mock as the live provider unless this says the stack is not production (ADR 0022). This compose file is the local stack.
       PAYMENTS_ALLOW_MOCK_LIVE: ${PAYMENTS_ALLOW_MOCK_LIVE:-true}
-      # Demo mode: every tenant uses the mock provider, whatever accounts exist. See docs/phases/phase-26-demo-and-mail.md.
+      # Demo mode: every tenant uses the mock provider, whatever accounts exist.
       PAYRUDDER_DEMO: ${PAYRUDDER_DEMO:-false}
       # Seals tenants' provider credentials (32 bytes, base64). This default is for the local stack only: generate your own with `openssl rand -base64 32`.
       PAYRUDDER_SECRETS_KEY: ${PAYRUDDER_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
@@ -779,7 +779,7 @@ services:
       PAYRUDDER_ALLOWED_ENVIRONMENTS: ${PAYRUDDER_ALLOWED_ENVIRONMENTS:-sandbox,live}
       PAYRUDDER_PAYMENTS_URL: http://payments-worker:8095
       PAYRUDDER_PAYMENTS_INTERNAL_TOKEN: ${PAYRUDDER_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
-      # A proxy in front of the gateway (the console's Worker in production, `vite preview` here) passes the visitor's address; the sign-in limits count by it (docs/phases/phase-38-product-app.md).
+      # A proxy in front of the gateway (the console's Worker in production, `vite preview` here) passes the visitor's address; the sign-in limits count by it.
       PAYRUDDER_TRUST_FORWARDED_FOR: "true"
       # Optional: believe X-Forwarded-For from a public proxy that sends this value as X-Edge-Auth (the console Worker's EDGE_AUTH_SECRET), or from these CIDRs. Both empty here.
       PAYRUDDER_TRUSTED_PROXY_SECRET: ${PAYRUDDER_TRUSTED_PROXY_SECRET:-}

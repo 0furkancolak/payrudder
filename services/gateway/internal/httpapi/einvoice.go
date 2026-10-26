@@ -7,7 +7,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
-// E-invoice routes (docs/phases/phase-30-e-invoice.md): the tenant reads its e-documents with its API key; the operator reads the same through
+// E-invoice routes: the tenant reads its e-documents with its API key; the operator reads the same through
 // /admin/v1/tenants/{tenant_id}, retries and cancels them, and configures the tenant's integrator account at payments-worker.
 
 func einvoiceListRequest(r *http.Request) (*billingv1.ListEInvoicesRequest, error) {

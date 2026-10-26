@@ -702,7 +702,7 @@ message GetHostedInvoicePdfUrlResponse {
   google.protobuf.Timestamp expire_time = 2;
 }
 
-// EInvoiceDocument is the legal e-document of an invoice or a credit note and where it stands (docs/phases/phase-30-e-invoice.md).
+// EInvoiceDocument is the legal e-document of an invoice or a credit note and where it stands.
 message EInvoiceDocument {
   string id = 1;
   // "invoice" or "credit_note".

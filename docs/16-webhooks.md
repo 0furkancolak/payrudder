@@ -1,6 +1,6 @@
 # Webhooks and hosted invoices
 
-What a tenant's own systems can learn from Payrudder without polling, and what a tenant can hand to its customers without building a page. Built in [phase 23](phases/phase-23-remaining-gaps.md).
+What a tenant's own systems can learn from Payrudder without polling, and what a tenant can hand to its customers without building a page. Built in phase 23.
 
 ## Webhook endpoints
 
@@ -99,7 +99,7 @@ The page is rendered by the gateway with escaped HTML, in English, Turkish, Germ
 
 ## Payment links and the customer payment page (phase 34)
 
-[Phase 34](phases/phase-34-payment-links.md) turns the invoice link into a **payment link**: the customer opens it without signing in and pays.
+Phase 34 turns the invoice link into a **payment link**: the customer opens it without signing in and pays.
 
 - `POST /v1/payment-links` with `kind: invoice` (`invoice_id`, an unpaid finalized invoice) or `kind: adhoc` (`amount_minor`, optional `currency`, `description`, `customer_external_id`). The token is returned once (`token`, `url`). `Idempotency-Key` (or `idempotency_key`) makes a retry return the first link without its token (`replayed: true`); the same key with other parameters is `billing.payment_link.idempotency_conflict`. `single_use` defaults to true for ad hoc, false for an invoice link; links last 30 days (ad hoc) or 90 days, at most 365.
 - An **ad-hoc link is a factory**: its page shows the request and a *Continue* button. Continue (not the page view) makes the invoice (kind `LINK`, gap-free number, the same saga; no tax is added) and hands the payer an invoice link. A single-use link is consumed by its first paid invoice; a reusable one makes an invoice per use. Revoking it (`DELETE /v1/payment-links/{id}`) or its expiry voids the invoices nobody paid.

@@ -6,5 +6,5 @@ PAYRUDDER_VERSION: dev
 PAYRUDDER_LOG_LEVEL: info
 PAYRUDDER_METRICS_ADDR: ":9100"
 PAYRUDDER_MIGRATE_ONLY: "false"
-# Demo mode: the mock provider only, a banner in the console. See docs/phases/phase-26-demo-and-mail.md.
+# Demo mode: the mock provider only, a banner in the console.
 PAYRUDDER_DEMO: "false"

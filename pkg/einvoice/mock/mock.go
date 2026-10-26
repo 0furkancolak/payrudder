@@ -1,5 +1,5 @@
 // Package mock is the sandbox e-invoice provider: it accepts every document and answers with a fake legal number and external id. Sandbox tenants can
-// reach no other provider (docs/phases/phase-30-e-invoice.md). Its documents have no legal effect.
+// reach no other provider. Its documents have no legal effect.
 package mock
 
 import (
