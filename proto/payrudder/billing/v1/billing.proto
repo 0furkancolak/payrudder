@@ -66,6 +66,24 @@ service BillingService {
   rpc VoidExpense(VoidExpenseRequest) returns (VoidExpenseResponse);
   // ListExpenses lists the entries as recorded, newest first; a recurring expense is one entry.
   rpc ListExpenses(ListExpensesRequest) returns (ListExpensesResponse);
+  // GetExpenseInbox returns the tenant's invoice inbox: the token of the address invoices+<token>@<inbound domain> that forwarded invoices are sent to (made on first use).
+  // With app_id it is the inbox of that app.
+  rpc GetExpenseInbox(GetExpenseInboxRequest) returns (ExpenseInbox);
+  // RotateExpenseInbox gives the inbox a new address; mail sent to the old one is dropped.
+  rpc RotateExpenseInbox(GetExpenseInboxRequest) returns (ExpenseInbox);
+  // ListInboxItems lists the attachments received by mail, newest first (status to_review by default).
+  rpc ListInboxItems(ListInboxItemsRequest) returns (ListInboxItemsResponse);
+  // GetInboxItemFile returns the bytes of one received attachment; the console scans it in the browser.
+  rpc GetInboxItemFile(GetInboxItemFileRequest) returns (GetInboxItemFileResponse);
+  // ResolveInboxItem marks a received attachment accepted (an expense was made from it) or dismissed.
+  rpc ResolveInboxItem(ResolveInboxItemRequest) returns (ResolveInboxItemResponse);
+  // ReceiveInboxMail stores the attachments of a forwarded mail as items to review. Public: the token is the address; a mail to an unknown token stores nothing.
+  rpc ReceiveInboxMail(ReceiveInboxMailRequest) returns (ReceiveInboxMailResponse);
+  // ListExpenseRules, SaveExpenseRule and DeleteExpenseRule keep the recurring-vendor rules: a vendor match gives the category, currency and tax of an expense and,
+  // when the amount is within the tolerance of the expected one, lets the console approve it on its own.
+  rpc ListExpenseRules(ListExpenseRulesRequest) returns (ListExpenseRulesResponse);
+  rpc SaveExpenseRule(SaveExpenseRuleRequest) returns (SaveExpenseRuleResponse);
+  rpc DeleteExpenseRule(DeleteExpenseRuleRequest) returns (DeleteExpenseRuleResponse);
   // GetAccountingSummary adds up income (from paid invoices, tax and refunds) and expenses over a period, one block per currency. Currencies are never converted or added together.
   rpc GetAccountingSummary(GetAccountingSummaryRequest) returns (GetAccountingSummaryResponse);
   // GetDashboardStats reads what a dashboard needs that the accounting summary does not carry: the customers who paid most in a period and how old the open invoices are, one block per currency.
@@ -1133,6 +1151,10 @@ message Expense {
   string void_reason = 12;
   google.protobuf.Timestamp create_time = 13;
   google.protobuf.Timestamp update_time = 14;
+  // The tax inside amount_minor, when the receipt shows it; 0 when unknown.
+  int64 tax_minor = 15;
+  // The receipt or invoice the expense was entered from: a READY general asset of the tenant, or empty.
+  string attachment_asset_id = 16;
 }
 message CreateExpenseRequest {
   string app_id = 1;
@@ -1144,6 +1166,8 @@ message CreateExpenseRequest {
   string note = 7;
   string recurring = 8;
   string recurring_until = 9;
+  int64 tax_minor = 10;
+  string attachment_asset_id = 11;
 }
 message CreateExpenseResponse { Expense expense = 1; }
 message UpdateExpenseRequest {
@@ -1157,6 +1181,8 @@ message UpdateExpenseRequest {
   string note = 8;
   string recurring = 9;
   string recurring_until = 10;
+  int64 tax_minor = 11;
+  string attachment_asset_id = 12;
 }
 message UpdateExpenseResponse { Expense expense = 1; }
 message VoidExpenseRequest {
@@ -1308,3 +1334,86 @@ message SetCreditSettingsRequest {
 message SetCreditSettingsResponse {
   int64 low_threshold = 1;
 }
+
+message GetExpenseInboxRequest {
+  // Empty: the inbox of the whole tenant.
+  string app_id = 1;
+}
+message ExpenseInbox {
+  // The secret part of the address: invoices+<token>@<inbound domain>.
+  string token = 1;
+  string app_id = 2;
+}
+message InboxItem {
+  string id = 1;
+  string app_id = 2;
+  string from = 3;
+  string subject = 4;
+  string filename = 5;
+  string content_type = 6;
+  int64 size_bytes = 7;
+  // to_review, accepted or dismissed.
+  string status = 8;
+  // Set when accepted: the expense made from it.
+  string expense_id = 9;
+  google.protobuf.Timestamp receive_time = 10;
+}
+message ListInboxItemsRequest {
+  // to_review (default), accepted, dismissed.
+  string status = 1;
+  // 1..200; 0 means 50.
+  int32 page_size = 2;
+}
+message ListInboxItemsResponse { repeated InboxItem items = 1; }
+message GetInboxItemFileRequest { string id = 1; }
+message GetInboxItemFileResponse {
+  string filename = 1;
+  string content_type = 2;
+  bytes data = 3;
+}
+message ResolveInboxItemRequest {
+  string id = 1;
+  // accepted or dismissed.
+  string status = 2;
+  string expense_id = 3;
+}
+message ResolveInboxItemResponse { InboxItem item = 1; }
+message InboxAttachment {
+  string filename = 1;
+  string content_type = 2;
+  bytes data = 3;
+}
+message ReceiveInboxMailRequest {
+  string token = 1;
+  string from = 2;
+  string subject = 3;
+  repeated InboxAttachment attachments = 4;
+}
+message ReceiveInboxMailResponse {
+  int32 stored = 1;
+  int32 skipped = 2;
+}
+message ExpenseRule {
+  string id = 1;
+  // Case-insensitive text the vendor name must contain.
+  string vendor_match = 2;
+  string category = 3;
+  string currency = 4;
+  // The tax share of the amount in basis points (2000 = 20%); 0: none.
+  int32 tax_bps = 5;
+  // The amount this vendor usually bills, in minor units of the currency; 0: no expectation.
+  int64 expected_amount_minor = 6;
+  // How far the amount may differ from the expected one and still be approved on its own, in basis points.
+  int32 tolerance_bps = 7;
+  bool auto_approve = 8;
+  string app_id = 9;
+}
+message ListExpenseRulesRequest {}
+message ListExpenseRulesResponse { repeated ExpenseRule rules = 1; }
+message SaveExpenseRuleRequest {
+  // An empty id makes a new rule.
+  ExpenseRule rule = 1;
+}
+message SaveExpenseRuleResponse { ExpenseRule rule = 1; }
+message DeleteExpenseRuleRequest { string id = 1; }
+message DeleteExpenseRuleResponse {}

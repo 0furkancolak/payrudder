@@ -82,6 +82,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `assets.upload.size_required`
 - `assets.upload.unsupported_content_type`
 - `billing.accounting.bad_app`
+- `billing.accounting.bad_attachment`
 - `billing.accounting.bad_category`
 - `billing.accounting.bad_date`
 - `billing.accounting.bad_expense`
@@ -90,10 +91,14 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.accounting.bad_page_token`
 - `billing.accounting.bad_period`
 - `billing.accounting.bad_recurring`
+- `billing.accounting.bad_rule`
 - `billing.accounting.expense_not_found`
 - `billing.accounting.expense_voided`
+- `billing.accounting.inbox_item_not_found`
 - `billing.accounting.range_too_long`
 - `billing.accounting.reason_required`
+- `billing.accounting.rule_not_found`
+- `billing.accounting.too_many_rules`
 - `billing.accounting.unknown_currency`
 - `billing.credit_note.bad_amount`
 - `billing.credit_note.bad_id`

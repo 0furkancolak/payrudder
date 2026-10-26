@@ -74,27 +74,46 @@ test.describe("payment links", () => {
     await expect(page.getByRole("dialog").getByLabel("Invoice id")).toHaveValue("inv1");
   });
 
-  test("a customer's payment page link is made and revoked, and their payments are listed", async ({ page }) => {
+  test("a customer's payment page is a small menu in the sheet: copy, open, regenerate, revoke; nothing is embedded", async ({ page, context }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    let n = 0;
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.method === "GET" && c.path === "/v1/customers") return { body: { customers: [{ id: "id-1", external_id: "cus_1", name: "Ada", email: "a@example.com" }] } };
-      if (c.method === "POST" && c.path === "/v1/customers/cus_1/portal-links") return { status: 201, body: { token: "t", url: "/c/t", expires_at: "2026-11-19T10:00:00Z", customer_id: "id-1" } };
+      if (c.method === "POST" && c.path === "/v1/customers/cus_1/portal-links") return { status: 201, body: { token: `t${++n}`, url: `/c/t${n}`, expires_at: "2026-11-19T10:00:00Z", customer_id: "id-1" } };
       if (c.method === "DELETE" && c.path === "/v1/customers/cus_1/portal-links") return { body: { revoked: 1 } };
-      if (c.method === "GET" && c.path === "/v1/customers/cus_1/payments")
-        return { body: { invoices: [], payments: [{ invoice_id: "inv1", invoice_number: "INV-1", kind: "charge", status: "succeeded", amount_minor: "1250", currency: "USD", provider: "mockpsp", occurred_at: "2026-10-20T10:00:00Z" }] } };
       return undefined;
     });
     await gw.install(page);
     await openTenantPage(page, "/customers");
     await page.getByTestId("row-actions").click();
     await page.getByTestId("row-action-portal").click();
-    const card = page.getByRole("region", { name: "Payment page of cus_1" });
-    await expect(card.getByRole("cell", { name: "INV-1" })).toBeVisible();
-    await card.getByLabel("Valid for (days)").fill("14");
-    await card.getByRole("button", { name: "Make a link" }).click();
-    await expect(card.getByTestId("portal-link-url")).toHaveValue(/\/c\/t$/);
-    expect(gw.called("POST", "/v1/customers/cus_1/portal-links")[0]?.body).toEqual({ expires_in_days: 14 });
-    page.once("dialog", (d) => void d.accept());
-    await card.getByRole("button", { name: "Revoke all" }).click();
+    const sheet = page.getByTestId("customer-detail");
+    await expect(sheet).toBeVisible();
+    // No panel in the sheet: the page is reached through one button.
+    await expect(page.getByRole("region", { name: /Payment page of/ })).toHaveCount(0);
+
+    await sheet.getByTestId("customer-payment-page").click();
+    await page.getByTestId("payment-page-copy").click();
+    await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/portal-links").length).toBe(1);
+    expect(gw.called("POST", "/v1/customers/cus_1/portal-links")[0]?.body).toEqual({ expires_in_days: 30 });
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/c\/t1$/);
+
+    // Copying again reuses the link made in this sheet.
+    await sheet.getByTestId("customer-payment-page").click();
+    await page.getByTestId("payment-page-copy").click();
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/c\/t1$/);
+    expect(gw.called("POST", "/v1/customers/cus_1/portal-links")).toHaveLength(1);
+
+    // Regenerate: every old link is revoked, a new one is made.
+    await sheet.getByTestId("customer-payment-page").click();
+    await page.getByTestId("payment-page-regenerate").click();
     await expect.poll(() => gw.called("DELETE", "/v1/customers/cus_1/portal-links").length).toBe(1);
+    await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/portal-links").length).toBe(2);
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/c\/t2$/);
+
+    page.once("dialog", (d) => void d.accept());
+    await sheet.getByTestId("customer-payment-page").click();
+    await page.getByTestId("payment-page-revoke").click();
+    await expect.poll(() => gw.called("DELETE", "/v1/customers/cus_1/portal-links").length).toBe(2);
   });
 });

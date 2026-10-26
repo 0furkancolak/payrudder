@@ -1017,23 +1017,15 @@
       },
       "portal": {
         "open": "Page de paiement",
-        "title": "Page de paiement de {id}",
-        "hint": "Un lien vers une page où ce client voit ses factures et paiements, télécharge PDF et reçus, et paie ce qui est ouvert. Lecture seule.",
-        "close": "Fermer",
-        "create": "Créer un lien",
         "revoke": "Tout révoquer",
         "revoked": "Tous les liens de la page de paiement de ce client ont été révoqués.",
         "confirmRevoke": "Révoquer tous les liens de la page de paiement de ce client ?",
-        "link": "Lien de la page de paiement",
-        "payments": "Paiements",
-        "date": "Date",
-        "invoice": "Facture",
-        "type": "Type",
-        "noPayments": "Aucun paiement enregistré.",
-        "kinds": {
-          "charge": "Paiement",
-          "refund": "Remboursement"
-        }
+        "copy": "Copier le lien",
+        "openPage": "Ouvrir la page",
+        "regenerate": "Régénérer le lien",
+        "copied": "Lien de la page de paiement copié",
+        "regenerated": "Nouveau lien créé et copié ; les anciens ne fonctionnent plus",
+        "validFor": "Les liens sont valables {days} jours"
       },
       "for": "Pour",
       "promotionCode": "Code promotionnel (facultatif)",
@@ -1254,6 +1246,71 @@
         "gross": "Brut",
         "discount": "Remise",
         "net": "Net"
+      },
+      "scan": {
+        "open": "Scanner des reçus",
+        "title": "Scanner reçus et factures",
+        "hint": "Déposez autant de PDF ou de photos que vous voulez. Chacun est lu ici, dans votre navigateur ; vous confirmez, corrigez ou ignorez chaque ligne avant l'enregistrement.",
+        "drop": "Déposez les reçus et factures ici",
+        "types": "PDF, PNG ou JPEG, 8 Mo au plus chacun",
+        "choose": "Choisir des fichiers",
+        "privacy": "Les fichiers sont lus dans votre navigateur. Les photos sont lues par OCR (anglais et turc) ; le moteur et les données de langue sont téléchargés une fois depuis un CDN public. Les fichiers ne sont envoyés qu'à l'enregistrement, chacun devenant la pièce jointe de sa dépense.",
+        "empty": "Rien pour le moment. Ajoutez des fichiers pour commencer.",
+        "include": "Enregistrer cette dépense",
+        "skip": "Ignorer ce fichier",
+        "check": "Lecture incertaine : veuillez vérifier",
+        "tax": "Taxe incluse",
+        "reading": "Lecture des fichiers…",
+        "incomplete": "{count} lignes ont besoin d'un fournisseur, d'une date et d'un montant",
+        "save": "Enregistrer {count} dépenses",
+        "savedCount": "{count} dépenses enregistrées",
+        "attachment": "Justificatif",
+        "openReceipt": "Ouvrir le justificatif",
+        "state": {
+          "queued": "En attente",
+          "scanning": "Lecture…",
+          "ready": "À vérifier",
+          "failed": "Votre saisie est nécessaire",
+          "saving": "Enregistrement…",
+          "saved": "Enregistré",
+          "auto": "Enregistré par une règle"
+        },
+        "errors": {
+          "unsupported": "Ce n'est pas un fichier PDF, PNG ou JPEG. Retirez-le.",
+          "too_large": "Le fichier dépasse 8 Mo.",
+          "unreadable": "Rien n'a pu être lu dans ce fichier. Remplissez la ligne à la main ou ignorez-la."
+        }
+      },
+      "inbox": {
+        "title": "Boîte des factures",
+        "hint": "Transférez les factures que vous recevez à cette adresse. Elles attendent ici et sont lues dans votre navigateur à l'ouverture ; une règle peut enregistrer les factures régulières pour vous.",
+        "review": "Vérifier {count} factures",
+        "nothing": "Rien à vérifier",
+        "rotate": "Nouvelle adresse",
+        "confirmRotate": "Créer une nouvelle adresse ? Les e-mails envoyés à l'ancienne sont supprimés.",
+        "noDomain": "Aucun domaine de réception n'est défini pour ce déploiement (PAYRUDDER_INBOUND_DOMAIN) ; seul le jeton est affiché."
+      },
+      "rules": {
+        "open": "Règles fournisseurs",
+        "title": "Règles des fournisseurs récurrents",
+        "hint": "Un fournisseur dont le nom contient le texte reçoit la catégorie, la devise et la taxe de sa règle. Avec l'approbation automatique, une facture reçue par e-mail est enregistrée sans vérification quand son montant est dans la tolérance du montant attendu.",
+        "none": "Aucune règle pour le moment.",
+        "add": "Ajouter une règle",
+        "edit": "Modifier la règle",
+        "vendor": "Le nom du fournisseur contient",
+        "vendorHint": "Insensible à la casse ; la correspondance la plus longue l'emporte.",
+        "tax": "Taux de taxe inclus (%)",
+        "expected": "Montant attendu",
+        "tolerance": "Tolérance (%)",
+        "auto": "Approuver automatiquement",
+        "autoHint": "Seulement les factures de la boîte de réception, quand le fournisseur, la date et le montant sont lus avec confiance et que le montant est dans la tolérance. Le reste attend une vérification.",
+        "save": "Enregistrer la règle",
+        "delete": "Supprimer la règle",
+        "confirmDelete": "Supprimer la règle pour « {vendor} » ?",
+        "bad": "Indiquez un texte de fournisseur d'au moins 2 caractères, et la taxe et la tolérance en pourcentage de 0 à 100.",
+        "needsExpected": "L'approbation automatique nécessite un montant attendu.",
+        "taxShort": "taxe {percent} %",
+        "autoShort": "approuvé automatiquement autour de {amount} (±{tolerance} %)"
       }
     },
     "usage": {
@@ -2228,7 +2285,12 @@
         "expense_voided": "La dépense a été annulée et ne peut plus être modifiée.",
         "range_too_long": "La période est trop longue : cinq ans au plus, et une série quotidienne jusqu'à 366 jours.",
         "reason_required": "Indiquez un motif de 200 caractères au plus pour annuler une dépense.",
-        "unknown_currency": "La devise n'est pas prise en charge."
+        "unknown_currency": "La devise n'est pas prise en charge.",
+        "bad_attachment": "La pièce jointe n'est pas valide.",
+        "bad_rule": "La règle n'est pas valide : vérifiez le texte du fournisseur, les pourcentages et le montant attendu.",
+        "inbox_item_not_found": "Aucune facture de ce type n'attend de vérification.",
+        "rule_not_found": "Cette règle n'existe pas.",
+        "too_many_rules": "Un locataire peut avoir 200 règles au plus."
       },
       "einvoice": {
         "bad_id": "L'identifiant de la facture électronique ou du compte n'est pas valide.",

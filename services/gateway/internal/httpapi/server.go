@@ -93,6 +93,10 @@ type Deps struct {
 	TrustedProxySecret string
 	// Demo makes the hosted pages offer the mock payment for every tenant (PAYRUDDER_DEMO); a sandbox tenant always gets it.
 	Demo bool
+	// InboundDomain (PAYRUDDER_INBOUND_DOMAIN) is the domain of the invoice inbox addresses, invoices+<token>@<domain>; empty: the console shows only the token.
+	InboundDomain string
+	// InboundSecret (PAYRUDDER_INBOUND_SECRET) is what the mail provider's webhook to /inbound/invoices must present; empty disables the endpoint (404).
+	InboundSecret string
 	// OperatorEmails lists the addresses of the people who are platform operators (PAYRUDDER_OPERATOR_EMAILS), lower case. A session of a user with one of these
 	// addresses, proven by verification, may use the operator routes; OperatorToken stays as the machine credential of the API, payrudderctl and the tests.
 	OperatorEmails []string

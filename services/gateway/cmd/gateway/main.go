@@ -77,6 +77,10 @@ type Config struct {
 	GoogleRedirectURL string `env:"PAYRUDDER_GOOGLE_REDIRECT_URL"`
 	// GoogleIssuer is the OpenID provider's address. Google's by default; development points it at the in-repo mock (pkg/oidctest/cmd/mockoidc).
 	GoogleIssuer string `env:"PAYRUDDER_GOOGLE_ISSUER"`
+	// InboundDomain is the domain invoices are forwarded to (invoices+<token>@<domain>); InboundSecret is the secret of the mail provider's webhook to /inbound/invoices
+	// (environment only). Without the secret the endpoint is off.
+	InboundDomain string `env:"PAYRUDDER_INBOUND_DOMAIN"`
+	InboundSecret string `env:"PAYRUDDER_INBOUND_SECRET"`
 }
 
 func (c *Config) Validate() error {
@@ -240,7 +244,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		BillingAdmin: billingv1.NewBillingAdminServiceClient(up.billing), Hosted: billingv1.NewHostedInvoiceServiceClient(up.billing), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(up.analytics),
 		Assets: assetsv1.NewAssetsServiceClient(up.assets),
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
-		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken, Demo: cfg.Demo,
+		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken, Demo: cfg.Demo, InboundDomain: cfg.InboundDomain, InboundSecret: cfg.InboundSecret,
 		Identity: plansv1.NewIdentityServiceClient(up.plans), TrustForwardedFor: cfg.TrustForwardedFor,
 		TrustedProxies: proxies, TrustedProxySecret: cfg.TrustedProxySecret,
 	}), nil

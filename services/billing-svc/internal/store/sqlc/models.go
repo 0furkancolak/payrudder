@@ -150,21 +150,60 @@ type EinvoiceDocument struct {
 }
 
 type Expense struct {
-	TenantID       uuid.UUID
-	ID             uuid.UUID
-	AppID          *uuid.UUID
-	Vendor         string
-	Category       string
-	AmountMinor    int64
-	Currency       string
-	IncurredOn     pgtype.Date
-	Note           string
-	Recurring      string
-	RecurringUntil pgtype.Date
-	VoidedAt       *time.Time
-	VoidReason     *string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	TenantID          uuid.UUID
+	ID                uuid.UUID
+	AppID             *uuid.UUID
+	Vendor            string
+	Category          string
+	AmountMinor       int64
+	Currency          string
+	IncurredOn        pgtype.Date
+	Note              string
+	Recurring         string
+	RecurringUntil    pgtype.Date
+	VoidedAt          *time.Time
+	VoidReason        *string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	TaxMinor          int64
+	AttachmentAssetID *uuid.UUID
+}
+
+type ExpenseInbox struct {
+	TenantID  uuid.UUID
+	Scope     string
+	Token     string
+	CreatedAt time.Time
+}
+
+type ExpenseInboxItem struct {
+	TenantID    uuid.UUID
+	ID          uuid.UUID
+	AppID       *uuid.UUID
+	FromAddr    string
+	Subject     string
+	Filename    string
+	ContentType string
+	SizeBytes   int64
+	Content     []byte
+	Status      string
+	ExpenseID   *uuid.UUID
+	ReceivedAt  time.Time
+	ResolvedAt  *time.Time
+}
+
+type ExpenseRule struct {
+	TenantID            uuid.UUID
+	ID                  uuid.UUID
+	AppID               *uuid.UUID
+	VendorMatch         string
+	Category            string
+	Currency            string
+	TaxBps              int32
+	ExpectedAmountMinor int64
+	ToleranceBps        int32
+	AutoApprove         bool
+	CreatedAt           time.Time
 }
 
 type InboxReply struct {

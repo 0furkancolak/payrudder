@@ -2,14 +2,14 @@
 -- Nothing here writes income; days are UTC days.
 
 -- name: InsertExpense :one
-INSERT INTO expenses (tenant_id, id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until)
-VALUES (@tenant_id, @id, sqlc.narg('app_id'), @vendor, @category, @amount_minor, @currency, @incurred_on, @note, @recurring, sqlc.narg('recurring_until'))
+INSERT INTO expenses (tenant_id, id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, tax_minor, attachment_asset_id)
+VALUES (@tenant_id, @id, sqlc.narg('app_id'), @vendor, @category, @amount_minor, @currency, @incurred_on, @note, @recurring, sqlc.narg('recurring_until'), @tax_minor, sqlc.narg('attachment_asset_id'))
 RETURNING created_at, updated_at;
 
 -- A voided expense is history; it is not edited.
 -- name: UpdateExpense :one
 UPDATE expenses SET app_id = sqlc.narg('app_id'), vendor = @vendor, category = @category, amount_minor = @amount_minor, currency = @currency,
-       incurred_on = @incurred_on, note = @note, recurring = @recurring, recurring_until = sqlc.narg('recurring_until'), updated_at = now()
+       incurred_on = @incurred_on, note = @note, recurring = @recurring, recurring_until = sqlc.narg('recurring_until'), tax_minor = @tax_minor, attachment_asset_id = sqlc.narg('attachment_asset_id'), updated_at = now()
 WHERE tenant_id = @tenant_id AND id = @id AND voided_at IS NULL
 RETURNING created_at, updated_at;
 
@@ -19,12 +19,12 @@ WHERE tenant_id = @tenant_id AND id = @id AND voided_at IS NULL
 RETURNING voided_at;
 
 -- name: GetExpense :one
-SELECT id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, voided_at, void_reason, created_at, updated_at
+SELECT id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, voided_at, void_reason, created_at, updated_at, tax_minor, attachment_asset_id
 FROM expenses WHERE tenant_id = @tenant_id AND id = @id;
 
 -- Stored entries, newest first; a recurring entry is listed once, at its first date.
 -- name: ListExpenses :many
-SELECT id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, voided_at, void_reason, created_at, updated_at
+SELECT id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, voided_at, void_reason, created_at, updated_at, tax_minor, attachment_asset_id
 FROM expenses
 WHERE tenant_id = @tenant_id
   AND (@include_voided::boolean OR voided_at IS NULL)

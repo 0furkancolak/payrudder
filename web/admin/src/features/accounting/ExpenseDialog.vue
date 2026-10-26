@@ -23,6 +23,7 @@ const save = useSaveExpense(() => props.tenantId);
 const vendor = ref("");
 const category = ref<Category>("infrastructure");
 const amount = ref("");
+const tax = ref("");
 const currency = ref<string>(FALLBACK_CURRENCY);
 const incurredOn = ref("");
 const recurring = ref<"none" | "monthly" | "yearly">("none");
@@ -39,6 +40,7 @@ watch(open, (isOpen) => {
   category.value = e?.category ?? "infrastructure";
   currency.value = e?.currency ?? props.defaultCurrency;
   amount.value = e ? minorToMajor(e.amount_minor, e.currency ?? currency.value) : "";
+  tax.value = e?.tax_minor && e.tax_minor !== "0" ? minorToMajor(e.tax_minor, e.currency ?? currency.value) : "";
   incurredOn.value = e?.incurred_on ?? ymd(new Date());
   recurring.value = (e?.recurring as "none" | "monthly" | "yearly" | undefined) ?? "none";
   until.value = e?.recurring_until ?? "";
@@ -55,6 +57,11 @@ function submit() {
     formError.value = t("billing.accounting.form.bad", { currency: currency.value });
     return;
   }
+  const taxMinor = tax.value.trim() === "" ? undefined : parseMajor(tax.value, currency.value);
+  if (taxMinor === null || (taxMinor !== undefined && BigInt(taxMinor) > BigInt(minor))) {
+    formError.value = t("billing.accounting.form.bad", { currency: currency.value });
+    return;
+  }
   if (incurredOn.value === "" || (recurring.value !== "none" && until.value !== "" && until.value < incurredOn.value)) {
     formError.value = t("billing.accounting.form.badDates");
     return;
@@ -66,6 +73,8 @@ function submit() {
         vendor: vendor.value.trim(),
         category: category.value,
         amount_minor: minor,
+        tax_minor: taxMinor,
+        attachment_asset_id: props.expense?.attachment_asset_id || undefined,
         currency: currency.value,
         incurred_on: incurredOn.value,
         recurring: recurring.value,
@@ -113,6 +122,10 @@ function submit() {
             <Label for="exp-currency">{{ t("billing.accounting.form.currency") }}</Label>
             <CurrencySelect id="exp-currency" v-model="currency" />
           </div>
+        </div>
+        <div class="grid gap-1.5">
+          <Label for="exp-tax">{{ t("billing.accounting.scan.tax") }}</Label>
+          <Input id="exp-tax" v-model="tax" inputmode="decimal" autocomplete="off" />
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="grid gap-1.5">

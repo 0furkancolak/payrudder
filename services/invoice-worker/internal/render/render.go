@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -27,12 +28,11 @@ const (
 	colAmount      = 32.0
 	colLabelSpan   = colDescription + colQuantity
 
-	sizeTitle     = 22
-	sizeBody      = 11
-	sizeTable     = 10
-	sizeTotal     = 12
-	sizeWatermark = 44
-	sizeNote      = 9
+	sizeTitle = 22
+	sizeBody  = 11
+	sizeTable = 10
+	sizeTotal = 12
+	sizeNote  = 9
 
 	rowTitle   = 10.0
 	rowBody    = 6.0
@@ -50,6 +50,8 @@ type Options struct {
 	Sandbox bool
 	// Logo is the tenant's logo (PNG or JPEG bytes), or nil.
 	Logo []byte
+	// PageSize is "A4" (the default) or "Letter".
+	PageSize string
 }
 
 // ErrInvalid means the snapshot cannot be rendered; retrying will not help.
@@ -117,7 +119,7 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 		return nil, fmt.Errorf("%w: id, number, currency and exponent are required", ErrInvalid)
 	}
 	exp := int(inv.GetCurrencyExponent())
-	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf := fpdf.New("P", "mm", pageSize(o.PageSize), "")
 	pdf.SetCompression(false)
 	pdf.SetCatalogSort(true)
 	issued := time.Unix(0, 0).UTC()
@@ -157,12 +159,53 @@ func PDF(inv *commandsv1.InvoiceSnapshot, o Options) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
+// pageSize maps an Options page size to a fpdf one; anything but "Letter" is A4.
+func pageSize(s string) string {
+	if strings.EqualFold(s, "letter") {
+		return "Letter"
+	}
+	return "A4"
+}
+
+const (
+	watermarkText   = "SANDBOX - not a real invoice"
+	watermarkAngle  = 40.0 // degrees, counter-clockwise
+	watermarkMargin = 12.0 // mm kept free around the rotated text
+	watermarkMaxPt  = 60.0
+)
+
+// watermarkFit is the font size (points) at which the rotated watermark of a text width w1 (mm at 1 pt) and a page w x h still lies inside the page margins, and
+// the half extents of its rotated bounding box.
+func watermarkFit(w1, pageW, pageH float64) (size, halfW, halfH float64) {
+	a := watermarkAngle * math.Pi / 180
+	cos, sin := math.Cos(a), math.Sin(a)
+	const ptMM = 25.4 / 72 // one point in millimetres; the text height is about 0.75 of the size
+	h1 := ptMM * 0.75
+	// The box of a text of size s: width s*(w1*cos + h1*sin), height s*(w1*sin + h1*cos).
+	bw, bh := w1*cos+h1*sin, w1*sin+h1*cos
+	size = math.Min((pageW-2*watermarkMargin)/bw, (pageH-2*watermarkMargin)/bh)
+	size = math.Min(size, watermarkMaxPt)
+	return size, size * bw / 2, size * bh / 2
+}
+
+// watermarkPlacement is the font size (points), the text width (mm) and the page centre the watermark is drawn with.
+func watermarkPlacement(pdf *fpdf.Fpdf) (size, width, cx, cy float64) {
+	pageW, pageH := pdf.GetPageSize()
+	pdf.SetFont(fontFamily, "B", 10)
+	w1 := pdf.GetStringWidth(watermarkText) / 10
+	size, _, _ = watermarkFit(w1, pageW, pageH)
+	pdf.SetFont(fontFamily, "B", size)
+	return size, pdf.GetStringWidth(watermarkText), pageW / 2, pageH / 2
+}
+
+// drawWatermark draws the sandbox mark centred on the page, rotated and scaled so that all of it is inside the page, on A4 and on Letter alike.
 func drawWatermark(pdf *fpdf.Fpdf) {
-	pdf.SetFont(fontFamily, "B", sizeWatermark)
+	size, w, cx, cy := watermarkPlacement(pdf)
 	pdf.SetTextColor(235, 200, 200)
 	pdf.TransformBegin()
-	pdf.TransformRotate(40, 105, 160)
-	pdf.Text(30, 170, "SANDBOX - not a real invoice")
+	pdf.TransformRotate(watermarkAngle, cx, cy)
+	// The baseline sits at the text's vertical middle, so the box is centred on the page.
+	pdf.Text(cx-w/2, cy+size*25.4/72*0.75/2, watermarkText)
 	pdf.TransformEnd()
 	pdf.SetTextColor(0, 0, 0)
 }

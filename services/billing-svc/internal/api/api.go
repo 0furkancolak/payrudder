@@ -98,7 +98,7 @@ func New(d Deps) *Server {
 		creditNoteHandler: creditnotes.New(app, system, d.CreditNotes),
 		dunningHandler:    dunning.New(app, eng),
 		creditsHandler:    credits.New(app),
-		accountingHandler: accounting.New(app),
+		accountingHandler: accounting.New(app, system),
 		reportHandler:     reports.New(app),
 		hostedHandler:     hosted.New(app, system, d.Hosted, eng),
 		runHandler:        billingruns.New(mgr),

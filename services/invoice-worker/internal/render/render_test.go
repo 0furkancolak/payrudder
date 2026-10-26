@@ -2,9 +2,11 @@ package render
 
 import (
 	"bytes"
+	"math"
 	"testing"
 	"time"
 
+	"github.com/go-pdf/fpdf"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
@@ -111,5 +113,36 @@ func TestAddressesArePrinted(t *testing.T) {
 	without, _ := PDF(snapshot(), Options{})
 	if bytes.Equal(withAddr, without) || len(withAddr) <= len(without) {
 		t.Fatal("the addresses changed nothing in the PDF")
+	}
+}
+
+// The rotated watermark lies inside the page, with its margin, on A4 and on Letter (it used to run off the right edge).
+func TestSandboxWatermarkFitsThePage(t *testing.T) {
+	for _, size := range []string{"A4", "Letter"} {
+		t.Run(size, func(t *testing.T) {
+			pdf := fpdf.New("P", "mm", pageSize(size), "")
+			pdf.AddPage()
+			fs, w, cx, cy := watermarkPlacement(pdf)
+			pageW, pageH := pdf.GetPageSize()
+			h := fs * 25.4 / 72 * 0.75
+			a := watermarkAngle * math.Pi / 180
+			for _, c := range [][2]float64{{-w / 2, -h / 2}, {w / 2, -h / 2}, {w / 2, h / 2}, {-w / 2, h / 2}} {
+				x := cx + c[0]*math.Cos(a) - c[1]*math.Sin(a)
+				y := cy + c[0]*math.Sin(a) + c[1]*math.Cos(a)
+				if x < 0 || y < 0 || x > pageW || y > pageH {
+					t.Fatalf("watermark corner (%.1f, %.1f) is outside the %s page %.0fx%.0f", x, y, size, pageW, pageH)
+				}
+			}
+			if fs < 20 {
+				t.Fatalf("watermark font %.1f pt is too small to read", fs)
+			}
+			out, err := PDF(snapshot(), Options{Sandbox: true, PageSize: size})
+			if err != nil || !bytes.Contains(out, []byte("SANDBOX")) {
+				t.Fatalf("render on %s: %v", size, err)
+			}
+			if size == "Letter" && !bytes.Contains(out, []byte("612")) {
+				t.Fatal("a Letter render must have a Letter media box")
+			}
+		})
 	}
 }

@@ -5,7 +5,6 @@ import { PAGE } from "@/shared/api/limits";
 
 export const linkKeys = {
   list: (tenantId: string, kind: string, status: string) => ["tenants", tenantId, "payment-links", kind, status] as const,
-  payments: (tenantId: string, customer: string) => ["tenants", tenantId, "customer-payments", customer] as const,
 };
 
 export function usePaymentLinks(tenantId: MaybeRefOrGetter<string>, kind: MaybeRefOrGetter<string>, status: MaybeRefOrGetter<string>, pageToken: MaybeRefOrGetter<string>) {
@@ -47,12 +46,4 @@ export function usePortalLinkActions(tenantId: MaybeRefOrGetter<string>) {
     }),
     revoke: useMutation({ mutationFn: (externalId: string) => unwrap(client().DELETE("/v1/customers/{external_id}/portal-links", path(externalId))) }),
   };
-}
-
-export function useCustomerPayments(tenantId: MaybeRefOrGetter<string>, customer: MaybeRefOrGetter<string>) {
-  return useQuery({
-    queryKey: computed(() => linkKeys.payments(toValue(tenantId), toValue(customer))),
-    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/payments", { params: { path: { external_id: toValue(customer) }, query: { limit: PAGE.long } } })),
-    enabled: computed(() => toValue(customer) !== ""),
-  });
 }

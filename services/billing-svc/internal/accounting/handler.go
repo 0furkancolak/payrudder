@@ -19,11 +19,11 @@ import (
 
 // Handler implements the accounting methods of billingv1.BillingServiceServer.
 type Handler struct {
-	app *pgxpool.Pool
+	app, system *pgxpool.Pool
 }
 
-// New returns the handler over the billing_app pool.
-func New(app *pgxpool.Pool) *Handler { return &Handler{app: app} }
+// New returns the handler over the billing_app pool and the billing_system pool (which receives the mail of the invoice inbox, before a tenant is known).
+func New(app, system *pgxpool.Pool) *Handler { return &Handler{app: app, system: system} }
 
 // CreateExpense implements billingv1.BillingServiceServer.
 func (h *Handler) CreateExpense(ctx context.Context, req *billingv1.CreateExpenseRequest) (*billingv1.CreateExpenseResponse, error) {
@@ -166,16 +166,22 @@ type expenseRequest interface {
 	GetNote() string
 	GetRecurring() string
 	GetRecurringUntil() string
+	GetTaxMinor() int64
+	GetAttachmentAssetId() string
 }
 
 func inputOf(req expenseRequest) *command.Input {
 	return &command.Input{AppID: req.GetAppId(), Vendor: req.GetVendor(), Category: req.GetCategory(), AmountMinor: req.GetAmountMinor(), Currency: req.GetCurrency(),
-		IncurredOn: req.GetIncurredOn(), Note: req.GetNote(), Recurring: req.GetRecurring(), RecurringUntil: req.GetRecurringUntil()}
+		IncurredOn: req.GetIncurredOn(), Note: req.GetNote(), Recurring: req.GetRecurring(), RecurringUntil: req.GetRecurringUntil(),
+		TaxMinor: req.GetTaxMinor(), AttachmentID: req.GetAttachmentAssetId()}
 }
 
 func expenseProto(e *model.Expense) *billingv1.Expense {
 	out := &billingv1.Expense{Id: e.ID.String(), Vendor: e.Vendor, Category: e.Category, AmountMinor: e.AmountMinor, Currency: e.Currency, IncurredOn: model.FormatDay(e.IncurredOn),
-		Note: e.Note, Recurring: e.Recurring, VoidReason: e.VoidReason, CreateTime: timestamppb.New(e.CreatedAt), UpdateTime: timestamppb.New(e.UpdatedAt)}
+		Note: e.Note, Recurring: e.Recurring, VoidReason: e.VoidReason, CreateTime: timestamppb.New(e.CreatedAt), UpdateTime: timestamppb.New(e.UpdatedAt), TaxMinor: e.TaxMinor}
+	if e.AttachmentID != nil {
+		out.AttachmentAssetId = e.AttachmentID.String()
+	}
 	if e.AppID != nil {
 		out.AppId = e.AppID.String()
 	}

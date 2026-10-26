@@ -51,6 +51,15 @@ const (
 	BillingService_UpdateExpense_FullMethodName        = "/payrudder.billing.v1.BillingService/UpdateExpense"
 	BillingService_VoidExpense_FullMethodName          = "/payrudder.billing.v1.BillingService/VoidExpense"
 	BillingService_ListExpenses_FullMethodName         = "/payrudder.billing.v1.BillingService/ListExpenses"
+	BillingService_GetExpenseInbox_FullMethodName      = "/payrudder.billing.v1.BillingService/GetExpenseInbox"
+	BillingService_RotateExpenseInbox_FullMethodName   = "/payrudder.billing.v1.BillingService/RotateExpenseInbox"
+	BillingService_ListInboxItems_FullMethodName       = "/payrudder.billing.v1.BillingService/ListInboxItems"
+	BillingService_GetInboxItemFile_FullMethodName     = "/payrudder.billing.v1.BillingService/GetInboxItemFile"
+	BillingService_ResolveInboxItem_FullMethodName     = "/payrudder.billing.v1.BillingService/ResolveInboxItem"
+	BillingService_ReceiveInboxMail_FullMethodName     = "/payrudder.billing.v1.BillingService/ReceiveInboxMail"
+	BillingService_ListExpenseRules_FullMethodName     = "/payrudder.billing.v1.BillingService/ListExpenseRules"
+	BillingService_SaveExpenseRule_FullMethodName      = "/payrudder.billing.v1.BillingService/SaveExpenseRule"
+	BillingService_DeleteExpenseRule_FullMethodName    = "/payrudder.billing.v1.BillingService/DeleteExpenseRule"
 	BillingService_GetAccountingSummary_FullMethodName = "/payrudder.billing.v1.BillingService/GetAccountingSummary"
 	BillingService_GetDashboardStats_FullMethodName    = "/payrudder.billing.v1.BillingService/GetDashboardStats"
 	BillingService_GetCreditSettings_FullMethodName    = "/payrudder.billing.v1.BillingService/GetCreditSettings"
@@ -121,6 +130,24 @@ type BillingServiceClient interface {
 	VoidExpense(ctx context.Context, in *VoidExpenseRequest, opts ...grpc.CallOption) (*VoidExpenseResponse, error)
 	// ListExpenses lists the entries as recorded, newest first; a recurring expense is one entry.
 	ListExpenses(ctx context.Context, in *ListExpensesRequest, opts ...grpc.CallOption) (*ListExpensesResponse, error)
+	// GetExpenseInbox returns the tenant's invoice inbox: the token of the address invoices+<token>@<inbound domain> that forwarded invoices are sent to (made on first use).
+	// With app_id it is the inbox of that app.
+	GetExpenseInbox(ctx context.Context, in *GetExpenseInboxRequest, opts ...grpc.CallOption) (*ExpenseInbox, error)
+	// RotateExpenseInbox gives the inbox a new address; mail sent to the old one is dropped.
+	RotateExpenseInbox(ctx context.Context, in *GetExpenseInboxRequest, opts ...grpc.CallOption) (*ExpenseInbox, error)
+	// ListInboxItems lists the attachments received by mail, newest first (status to_review by default).
+	ListInboxItems(ctx context.Context, in *ListInboxItemsRequest, opts ...grpc.CallOption) (*ListInboxItemsResponse, error)
+	// GetInboxItemFile returns the bytes of one received attachment; the console scans it in the browser.
+	GetInboxItemFile(ctx context.Context, in *GetInboxItemFileRequest, opts ...grpc.CallOption) (*GetInboxItemFileResponse, error)
+	// ResolveInboxItem marks a received attachment accepted (an expense was made from it) or dismissed.
+	ResolveInboxItem(ctx context.Context, in *ResolveInboxItemRequest, opts ...grpc.CallOption) (*ResolveInboxItemResponse, error)
+	// ReceiveInboxMail stores the attachments of a forwarded mail as items to review. Public: the token is the address; a mail to an unknown token stores nothing.
+	ReceiveInboxMail(ctx context.Context, in *ReceiveInboxMailRequest, opts ...grpc.CallOption) (*ReceiveInboxMailResponse, error)
+	// ListExpenseRules, SaveExpenseRule and DeleteExpenseRule keep the recurring-vendor rules: a vendor match gives the category, currency and tax of an expense and,
+	// when the amount is within the tolerance of the expected one, lets the console approve it on its own.
+	ListExpenseRules(ctx context.Context, in *ListExpenseRulesRequest, opts ...grpc.CallOption) (*ListExpenseRulesResponse, error)
+	SaveExpenseRule(ctx context.Context, in *SaveExpenseRuleRequest, opts ...grpc.CallOption) (*SaveExpenseRuleResponse, error)
+	DeleteExpenseRule(ctx context.Context, in *DeleteExpenseRuleRequest, opts ...grpc.CallOption) (*DeleteExpenseRuleResponse, error)
 	// GetAccountingSummary adds up income (from paid invoices, tax and refunds) and expenses over a period, one block per currency. Currencies are never converted or added together.
 	GetAccountingSummary(ctx context.Context, in *GetAccountingSummaryRequest, opts ...grpc.CallOption) (*GetAccountingSummaryResponse, error)
 	// GetDashboardStats reads what a dashboard needs that the accounting summary does not carry: the customers who paid most in a period and how old the open invoices are, one block per currency.
@@ -459,6 +486,96 @@ func (c *billingServiceClient) ListExpenses(ctx context.Context, in *ListExpense
 	return out, nil
 }
 
+func (c *billingServiceClient) GetExpenseInbox(ctx context.Context, in *GetExpenseInboxRequest, opts ...grpc.CallOption) (*ExpenseInbox, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExpenseInbox)
+	err := c.cc.Invoke(ctx, BillingService_GetExpenseInbox_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) RotateExpenseInbox(ctx context.Context, in *GetExpenseInboxRequest, opts ...grpc.CallOption) (*ExpenseInbox, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExpenseInbox)
+	err := c.cc.Invoke(ctx, BillingService_RotateExpenseInbox_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ListInboxItems(ctx context.Context, in *ListInboxItemsRequest, opts ...grpc.CallOption) (*ListInboxItemsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListInboxItemsResponse)
+	err := c.cc.Invoke(ctx, BillingService_ListInboxItems_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) GetInboxItemFile(ctx context.Context, in *GetInboxItemFileRequest, opts ...grpc.CallOption) (*GetInboxItemFileResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetInboxItemFileResponse)
+	err := c.cc.Invoke(ctx, BillingService_GetInboxItemFile_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ResolveInboxItem(ctx context.Context, in *ResolveInboxItemRequest, opts ...grpc.CallOption) (*ResolveInboxItemResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveInboxItemResponse)
+	err := c.cc.Invoke(ctx, BillingService_ResolveInboxItem_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ReceiveInboxMail(ctx context.Context, in *ReceiveInboxMailRequest, opts ...grpc.CallOption) (*ReceiveInboxMailResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReceiveInboxMailResponse)
+	err := c.cc.Invoke(ctx, BillingService_ReceiveInboxMail_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) ListExpenseRules(ctx context.Context, in *ListExpenseRulesRequest, opts ...grpc.CallOption) (*ListExpenseRulesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListExpenseRulesResponse)
+	err := c.cc.Invoke(ctx, BillingService_ListExpenseRules_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) SaveExpenseRule(ctx context.Context, in *SaveExpenseRuleRequest, opts ...grpc.CallOption) (*SaveExpenseRuleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SaveExpenseRuleResponse)
+	err := c.cc.Invoke(ctx, BillingService_SaveExpenseRule_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *billingServiceClient) DeleteExpenseRule(ctx context.Context, in *DeleteExpenseRuleRequest, opts ...grpc.CallOption) (*DeleteExpenseRuleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteExpenseRuleResponse)
+	err := c.cc.Invoke(ctx, BillingService_DeleteExpenseRule_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *billingServiceClient) GetAccountingSummary(ctx context.Context, in *GetAccountingSummaryRequest, opts ...grpc.CallOption) (*GetAccountingSummaryResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccountingSummaryResponse)
@@ -563,6 +680,24 @@ type BillingServiceServer interface {
 	VoidExpense(context.Context, *VoidExpenseRequest) (*VoidExpenseResponse, error)
 	// ListExpenses lists the entries as recorded, newest first; a recurring expense is one entry.
 	ListExpenses(context.Context, *ListExpensesRequest) (*ListExpensesResponse, error)
+	// GetExpenseInbox returns the tenant's invoice inbox: the token of the address invoices+<token>@<inbound domain> that forwarded invoices are sent to (made on first use).
+	// With app_id it is the inbox of that app.
+	GetExpenseInbox(context.Context, *GetExpenseInboxRequest) (*ExpenseInbox, error)
+	// RotateExpenseInbox gives the inbox a new address; mail sent to the old one is dropped.
+	RotateExpenseInbox(context.Context, *GetExpenseInboxRequest) (*ExpenseInbox, error)
+	// ListInboxItems lists the attachments received by mail, newest first (status to_review by default).
+	ListInboxItems(context.Context, *ListInboxItemsRequest) (*ListInboxItemsResponse, error)
+	// GetInboxItemFile returns the bytes of one received attachment; the console scans it in the browser.
+	GetInboxItemFile(context.Context, *GetInboxItemFileRequest) (*GetInboxItemFileResponse, error)
+	// ResolveInboxItem marks a received attachment accepted (an expense was made from it) or dismissed.
+	ResolveInboxItem(context.Context, *ResolveInboxItemRequest) (*ResolveInboxItemResponse, error)
+	// ReceiveInboxMail stores the attachments of a forwarded mail as items to review. Public: the token is the address; a mail to an unknown token stores nothing.
+	ReceiveInboxMail(context.Context, *ReceiveInboxMailRequest) (*ReceiveInboxMailResponse, error)
+	// ListExpenseRules, SaveExpenseRule and DeleteExpenseRule keep the recurring-vendor rules: a vendor match gives the category, currency and tax of an expense and,
+	// when the amount is within the tolerance of the expected one, lets the console approve it on its own.
+	ListExpenseRules(context.Context, *ListExpenseRulesRequest) (*ListExpenseRulesResponse, error)
+	SaveExpenseRule(context.Context, *SaveExpenseRuleRequest) (*SaveExpenseRuleResponse, error)
+	DeleteExpenseRule(context.Context, *DeleteExpenseRuleRequest) (*DeleteExpenseRuleResponse, error)
 	// GetAccountingSummary adds up income (from paid invoices, tax and refunds) and expenses over a period, one block per currency. Currencies are never converted or added together.
 	GetAccountingSummary(context.Context, *GetAccountingSummaryRequest) (*GetAccountingSummaryResponse, error)
 	// GetDashboardStats reads what a dashboard needs that the accounting summary does not carry: the customers who paid most in a period and how old the open invoices are, one block per currency.
@@ -676,6 +811,33 @@ func (UnimplementedBillingServiceServer) VoidExpense(context.Context, *VoidExpen
 }
 func (UnimplementedBillingServiceServer) ListExpenses(context.Context, *ListExpensesRequest) (*ListExpensesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListExpenses not implemented")
+}
+func (UnimplementedBillingServiceServer) GetExpenseInbox(context.Context, *GetExpenseInboxRequest) (*ExpenseInbox, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetExpenseInbox not implemented")
+}
+func (UnimplementedBillingServiceServer) RotateExpenseInbox(context.Context, *GetExpenseInboxRequest) (*ExpenseInbox, error) {
+	return nil, status.Error(codes.Unimplemented, "method RotateExpenseInbox not implemented")
+}
+func (UnimplementedBillingServiceServer) ListInboxItems(context.Context, *ListInboxItemsRequest) (*ListInboxItemsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListInboxItems not implemented")
+}
+func (UnimplementedBillingServiceServer) GetInboxItemFile(context.Context, *GetInboxItemFileRequest) (*GetInboxItemFileResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetInboxItemFile not implemented")
+}
+func (UnimplementedBillingServiceServer) ResolveInboxItem(context.Context, *ResolveInboxItemRequest) (*ResolveInboxItemResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveInboxItem not implemented")
+}
+func (UnimplementedBillingServiceServer) ReceiveInboxMail(context.Context, *ReceiveInboxMailRequest) (*ReceiveInboxMailResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReceiveInboxMail not implemented")
+}
+func (UnimplementedBillingServiceServer) ListExpenseRules(context.Context, *ListExpenseRulesRequest) (*ListExpenseRulesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListExpenseRules not implemented")
+}
+func (UnimplementedBillingServiceServer) SaveExpenseRule(context.Context, *SaveExpenseRuleRequest) (*SaveExpenseRuleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SaveExpenseRule not implemented")
+}
+func (UnimplementedBillingServiceServer) DeleteExpenseRule(context.Context, *DeleteExpenseRuleRequest) (*DeleteExpenseRuleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteExpenseRule not implemented")
 }
 func (UnimplementedBillingServiceServer) GetAccountingSummary(context.Context, *GetAccountingSummaryRequest) (*GetAccountingSummaryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccountingSummary not implemented")
@@ -1286,6 +1448,168 @@ func _BillingService_ListExpenses_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _BillingService_GetExpenseInbox_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetExpenseInboxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetExpenseInbox(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetExpenseInbox_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetExpenseInbox(ctx, req.(*GetExpenseInboxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_RotateExpenseInbox_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetExpenseInboxRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).RotateExpenseInbox(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_RotateExpenseInbox_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).RotateExpenseInbox(ctx, req.(*GetExpenseInboxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ListInboxItems_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListInboxItemsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ListInboxItems(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ListInboxItems_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ListInboxItems(ctx, req.(*ListInboxItemsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_GetInboxItemFile_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetInboxItemFileRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).GetInboxItemFile(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_GetInboxItemFile_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).GetInboxItemFile(ctx, req.(*GetInboxItemFileRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ResolveInboxItem_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveInboxItemRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ResolveInboxItem(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ResolveInboxItem_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ResolveInboxItem(ctx, req.(*ResolveInboxItemRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ReceiveInboxMail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReceiveInboxMailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ReceiveInboxMail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ReceiveInboxMail_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ReceiveInboxMail(ctx, req.(*ReceiveInboxMailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_ListExpenseRules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListExpenseRulesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).ListExpenseRules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_ListExpenseRules_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).ListExpenseRules(ctx, req.(*ListExpenseRulesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_SaveExpenseRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SaveExpenseRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).SaveExpenseRule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_SaveExpenseRule_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).SaveExpenseRule(ctx, req.(*SaveExpenseRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _BillingService_DeleteExpenseRule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteExpenseRuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BillingServiceServer).DeleteExpenseRule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: BillingService_DeleteExpenseRule_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BillingServiceServer).DeleteExpenseRule(ctx, req.(*DeleteExpenseRuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _BillingService_GetAccountingSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccountingSummaryRequest)
 	if err := dec(in); err != nil {
@@ -1492,6 +1816,42 @@ var BillingService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListExpenses",
 			Handler:    _BillingService_ListExpenses_Handler,
+		},
+		{
+			MethodName: "GetExpenseInbox",
+			Handler:    _BillingService_GetExpenseInbox_Handler,
+		},
+		{
+			MethodName: "RotateExpenseInbox",
+			Handler:    _BillingService_RotateExpenseInbox_Handler,
+		},
+		{
+			MethodName: "ListInboxItems",
+			Handler:    _BillingService_ListInboxItems_Handler,
+		},
+		{
+			MethodName: "GetInboxItemFile",
+			Handler:    _BillingService_GetInboxItemFile_Handler,
+		},
+		{
+			MethodName: "ResolveInboxItem",
+			Handler:    _BillingService_ResolveInboxItem_Handler,
+		},
+		{
+			MethodName: "ReceiveInboxMail",
+			Handler:    _BillingService_ReceiveInboxMail_Handler,
+		},
+		{
+			MethodName: "ListExpenseRules",
+			Handler:    _BillingService_ListExpenseRules_Handler,
+		},
+		{
+			MethodName: "SaveExpenseRule",
+			Handler:    _BillingService_SaveExpenseRule_Handler,
+		},
+		{
+			MethodName: "DeleteExpenseRule",
+			Handler:    _BillingService_DeleteExpenseRule_Handler,
 		},
 		{
 			MethodName: "GetAccountingSummary",

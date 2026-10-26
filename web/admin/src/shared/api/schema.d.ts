@@ -766,6 +766,159 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/expense-inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The tenant's invoice inbox address
+         * @description Invoices received by mail are forwarded to `invoices+<token>@<inbound domain>`. The attachments wait as items to review; the console reads them in the browser. Made on first use. `address` is empty until the deployment sets an inbound domain (PAYRUDDER_INBOUND_DOMAIN).
+         */
+        get: operations["getExpenseInbox"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expense-inbox/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Give the invoice inbox a new address
+         * @description Mail sent to the old address is dropped.
+         */
+        post: operations["rotateExpenseInbox"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expense-inbox/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The attachments received by mail, newest first */
+        get: operations["listInboxItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expense-inbox/items/{id}/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The bytes of a received attachment */
+        get: operations["getInboxItemFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expense-inbox/items/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a received attachment accepted or dismissed
+         * @description An item is resolved once. Accepting records the expense that was made from it.
+         */
+        post: operations["resolveInboxItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expense-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The recurring-vendor rules */
+        get: operations["listExpenseRules"];
+        put?: never;
+        /**
+         * Add a recurring-vendor rule
+         * @description A vendor whose name contains `vendor_match` gets the category, currency and tax of the rule. With `auto_approve` the console records the expense on its own when the amount read from the document is within `tolerance_bps` of `expected_amount_minor`.
+         */
+        post: operations["createExpenseRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/expense-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a recurring-vendor rule */
+        put: operations["updateExpenseRule"];
+        post?: never;
+        /** Delete a recurring-vendor rule */
+        delete: operations["deleteExpenseRule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/inbound/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A forwarded mail from the mail provider. Public; protected by a shared secret
+         * @description The webhook of the mail provider's inbound address (Resend, Nafru or alike) posts each received mail here. The body is the mail, or `{"type": "email.received", "data": {...}}` around it: `from`, `to` (a string, a list of strings or of `{email}`), `subject` and `attachments` (`filename`, `content_type`, `content` base64). The tenant is the token in the recipient `invoices+<token>@<domain>`. PDF, PNG and JPEG attachments (judged by their bytes) up to 3 MiB in all become items to review; the rest are skipped. Authenticate with `Authorization: Bearer <secret>`, `X-Inbound-Secret` or `?secret=`. Answers 200 for an unknown address too. 404 until PAYRUDDER_INBOUND_SECRET is set.
+         */
+        post: operations["inboundInvoices"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/accounting/summary": {
         parameters: {
             query?: never;
@@ -5921,6 +6074,13 @@ export interface components {
              * @description Last day an occurrence may fall on; leave out for no end. Only for a recurring expense.
              */
             recurring_until?: string;
+            /** @description The tax inside amount_minor, when the receipt shows it (informational; no summary reads it) */
+            tax_minor?: string;
+            /**
+             * Format: uuid
+             * @description The receipt or invoice kept with the expense: a READY general asset of the tenant
+             */
+            attachment_asset_id?: string;
         };
         Expense: {
             /** Format: uuid */
@@ -5944,6 +6104,50 @@ export interface components {
             create_time?: string;
             /** Format: date-time */
             update_time?: string;
+            /** @description int64 as a string */
+            tax_minor?: string;
+            attachment_asset_id?: string;
+        };
+        ExpenseInbox: {
+            token?: string;
+            app_id?: string;
+            /** @description invoices+<token>@<inbound domain>; empty when no inbound domain is configured */
+            address?: string;
+        };
+        InboxItem: {
+            /** Format: uuid */
+            id?: string;
+            app_id?: string;
+            from?: string;
+            subject?: string;
+            filename?: string;
+            content_type?: string;
+            size_bytes?: string;
+            /** @enum {string} */
+            status?: "to_review" | "accepted" | "dismissed";
+            expense_id?: string;
+            /** Format: date-time */
+            receive_time?: string;
+        };
+        InboxItemPage: {
+            items?: components["schemas"]["InboxItem"][];
+        };
+        ExpenseRule: {
+            /** Format: uuid */
+            readonly id?: string;
+            /** @description Case-insensitive text the vendor name contains */
+            vendor_match: string;
+            category: components["schemas"]["ExpenseCategory"];
+            currency: string;
+            /** @description The tax share of the amount, in basis points */
+            tax_bps?: number;
+            /** @description What this vendor usually bills, in minor units; 0: no expectation */
+            expected_amount_minor?: string;
+            tolerance_bps?: number;
+            /** @description Needs an expected amount */
+            auto_approve?: boolean;
+            /** Format: uuid */
+            app_id?: string;
         };
         ExpensePage: {
             expenses?: components["schemas"]["Expense"][];
@@ -7964,6 +8168,265 @@ export interface operations {
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    getExpenseInbox: {
+        parameters: {
+            query?: {
+                /** @description The inbox of one app instead of the whole tenant */
+                app_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseInbox"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    rotateExpenseInbox: {
+        parameters: {
+            query?: {
+                app_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseInbox"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    listInboxItems: {
+        parameters: {
+            query?: {
+                status?: "to_review" | "accepted" | "dismissed";
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxItemPage"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getInboxItemFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The file as it came (PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    resolveInboxItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "accepted" | "dismissed";
+                    /** Format: uuid */
+                    expense_id?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InboxItem"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listExpenseRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        rules?: components["schemas"]["ExpenseRule"][];
+                    };
+                };
+            };
+        };
+    };
+    createExpenseRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseRule"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseRule"];
+                };
+            };
+            400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    updateExpenseRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExpenseRule"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpenseRule"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    deleteExpenseRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    inboundInvoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Understood */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        stored?: number;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            /** @description Wrong secret */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
         };
     };
     getAccountingSummary: {

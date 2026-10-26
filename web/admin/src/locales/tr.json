@@ -1017,23 +1017,15 @@
       },
       "portal": {
         "open": "Ödeme sayfası",
-        "title": "{id} için ödeme sayfası",
-        "hint": "Bu müşterinin faturalarını ve ödemelerini görebildiği, PDF ve makbuzları indirebildiği ve açık olanı ödeyebildiği sayfaya bağlantı. Salt okunur.",
-        "close": "Kapat",
-        "create": "Bağlantı oluştur",
         "revoke": "Hepsini iptal et",
         "revoked": "Bu müşterinin tüm ödeme sayfası bağlantıları iptal edildi.",
         "confirmRevoke": "Bu müşterinin tüm ödeme sayfası bağlantıları iptal edilsin mi?",
-        "link": "Ödeme sayfası bağlantısı",
-        "payments": "Ödemeler",
-        "date": "Tarih",
-        "invoice": "Fatura",
-        "type": "Tür",
-        "noPayments": "Kayıtlı ödeme yok.",
-        "kinds": {
-          "charge": "Tahsilat",
-          "refund": "İade"
-        }
+        "copy": "Bağlantıyı kopyala",
+        "openPage": "Sayfayı aç",
+        "regenerate": "Bağlantıyı yenile",
+        "copied": "Ödeme sayfası bağlantısı kopyalandı",
+        "regenerated": "Yeni bağlantı oluşturuldu ve kopyalandı; eskileri artık çalışmıyor",
+        "validFor": "Bağlantılar {days} gün geçerlidir"
       },
       "for": "Konu",
       "promotionCode": "Promosyon kodu (isteğe bağlı)",
@@ -1254,6 +1246,71 @@
         "gross": "Brüt",
         "discount": "İndirim",
         "net": "Net"
+      },
+      "scan": {
+        "open": "Fiş ve fatura tara",
+        "title": "Fiş ve faturaları tara",
+        "hint": "İstediğiniz kadar PDF veya fotoğraf bırakın. Her biri tarayıcınızda okunur; kaydetmeden önce her satırı onaylar, düzeltir veya atlarsınız.",
+        "drop": "Fiş ve faturaları buraya bırakın",
+        "types": "PDF, PNG veya JPEG, her biri en çok 8 MB",
+        "choose": "Dosya seç",
+        "privacy": "Dosyalar tarayıcınızda okunur. Fotoğraflar OCR ile (İngilizce ve Türkçe) okunur; motor ve dil verileri bir kez herkese açık bir CDN'den indirilir. Kaydedene kadar dosyalar hiçbir yere gönderilmez; kaydedince her biri giderinin eki olarak saklanır.",
+        "empty": "Henüz bir şey yok. Başlamak için dosya ekleyin.",
+        "include": "Bu gideri kaydet",
+        "skip": "Bu dosyayı atla",
+        "check": "Bundan emin değiliz: lütfen kontrol edin",
+        "tax": "İçindeki vergi",
+        "reading": "Dosyalar okunuyor…",
+        "incomplete": "{count} satırda satıcı, tarih ve tutar eksik",
+        "save": "{count} gideri kaydet",
+        "savedCount": "{count} gider kaydedildi",
+        "attachment": "Belge",
+        "openReceipt": "Belgeyi aç",
+        "state": {
+          "queued": "Sırada",
+          "scanning": "Okunuyor…",
+          "ready": "İncelemeye hazır",
+          "failed": "Sizin girişiniz gerekli",
+          "saving": "Kaydediliyor…",
+          "saved": "Kaydedildi",
+          "auto": "Kural ile kaydedildi"
+        },
+        "errors": {
+          "unsupported": "Bu bir PDF, PNG veya JPEG dosyası değil. Kaldırın.",
+          "too_large": "Dosya 8 MB'tan büyük.",
+          "unreadable": "Bu dosyadan bir şey okunamadı. Satırı elle doldurun veya atlayın."
+        }
+      },
+      "inbox": {
+        "title": "Fatura gelen kutusu",
+        "hint": "Aldığınız faturaları bu adrese iletin. Burada beklerler ve açtığınızda tarayıcınızda okunurlar; düzenli olanları bir kural sizin yerinize kaydedebilir.",
+        "review": "{count} faturayı incele",
+        "nothing": "İncelenecek bir şey yok",
+        "rotate": "Yeni adres",
+        "confirmRotate": "Yeni bir gelen kutusu adresi oluşturulsun mu? Eski adrese gönderilen postalar atılır.",
+        "noDomain": "Bu kurulumda gelen posta alan adı ayarlanmamış (PAYRUDDER_INBOUND_DOMAIN); yalnızca belirteç gösterilir."
+      },
+      "rules": {
+        "open": "Satıcı kuralları",
+        "title": "Düzenli satıcı kuralları",
+        "hint": "Adı bu metni içeren bir satıcı, kuralının kategorisini, para birimini ve vergisini alır. Otomatik onayla, postayla gelen bir fatura tutarı beklenen tutarın tolerans aralığındaysa incelenmeden kaydedilir.",
+        "none": "Henüz kural yok.",
+        "add": "Kural ekle",
+        "edit": "Kuralı düzenle",
+        "vendor": "Satıcı adı şunu içerir",
+        "vendorHint": "Büyük/küçük harf duyarsız; en uzun eşleşme kazanır.",
+        "tax": "Tutardaki vergi oranı (%)",
+        "expected": "Beklenen tutar",
+        "tolerance": "Tolerans (%)",
+        "auto": "Otomatik onayla",
+        "autoHint": "Yalnızca gelen kutusundaki faturalar; satıcı, tarih ve tutar güvenle okunmuşsa ve tutar tolerans içindeyse. Diğerleri incelemeyi bekler.",
+        "save": "Kuralı kaydet",
+        "delete": "Kuralı sil",
+        "confirmDelete": "\"{vendor}\" kuralı silinsin mi?",
+        "bad": "En az 2 karakterlik bir satıcı metni girin; vergi ve toleransı 0-100 arası yüzde olarak yazın.",
+        "needsExpected": "Otomatik onay için beklenen tutar gerekir.",
+        "taxShort": "vergi %{percent}",
+        "autoShort": "yaklaşık {amount} için otomatik onay (±%{tolerance})"
       }
     },
     "usage": {
@@ -2228,7 +2285,12 @@
         "expense_voided": "Gider iptal edilmiş, değiştirilemez.",
         "range_too_long": "Dönem çok uzun: en fazla beş yıl, günlük seri ise en fazla 366 gün.",
         "reason_required": "Gideri iptal etmek için en fazla 200 karakterlik bir gerekçe verin.",
-        "unknown_currency": "Para birimi desteklenmiyor."
+        "unknown_currency": "Para birimi desteklenmiyor.",
+        "bad_attachment": "Ek geçerli değil.",
+        "bad_rule": "Kural geçerli değil: satıcı metnini, yüzdeleri ve beklenen tutarı kontrol edin.",
+        "inbox_item_not_found": "İncelemeyi bekleyen böyle bir fatura yok.",
+        "rule_not_found": "Böyle bir kural yok.",
+        "too_many_rules": "Bir kiracının en fazla 200 kuralı olabilir."
       },
       "einvoice": {
         "bad_id": "E-fatura veya hesap kimliği geçerli bir kimlik değil.",

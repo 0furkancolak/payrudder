@@ -19,7 +19,9 @@ export interface Call {
   body: Record<string, unknown> | null;
 }
 
-type Handler = (call: Call) => { status?: number; body?: unknown } | undefined;
+/** An answer: a JSON body, or `raw` bytes with their own content type (a file). */
+type Answer = { status?: number; body?: unknown; raw?: Buffer; contentType?: string };
+type Handler = (call: Call) => Answer | undefined;
 
 /**
  * The last resort of every mocked gateway: the operator user can sign in with a password and is recognised by /auth/me. A test that mocks its own people
@@ -68,10 +70,11 @@ export class MockGateway {
       }
       const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body };
       this.calls.push(call);
-      for (const h of [...this.handlers, operatorSignIn, geoHandler]) {
+      for (const h of [...this.handlers, operatorSignIn, geoHandler] as Handler[]) {
         const r = h(call);
         if (r) {
-          await route.fulfill({ status: r.status ?? 200, contentType: "application/json", body: JSON.stringify(r.body ?? {}) });
+          if (r.raw) await route.fulfill({ status: r.status ?? 200, contentType: r.contentType ?? "application/octet-stream", body: r.raw });
+          else await route.fulfill({ status: r.status ?? 200, contentType: "application/json", body: JSON.stringify(r.body ?? {}) });
           return;
         }
       }
@@ -89,6 +92,10 @@ export function baseTenant(gw: MockGateway, overrides: Record<string, unknown> =
     if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/dashboard`) return { body: dashboardFixture(Object.fromEntries(c.query.entries())) };
     if (c.method === "GET" && c.path === "/admin/v1/tenants") return { body: { tenants: [] } };
     if (c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/invoices`) return { body: { invoices: [] } };
+    // The accounting page also reads the invoice inbox and the vendor rules; they are empty unless a test says otherwise.
+    if (c.method === "GET" && c.path === "/v1/expense-inbox") return { body: { token: "abcdefghijklmnopqrstuvwxyz234567", address: "invoices+abcdefghijklmnopqrstuvwxyz234567@in.example.test" } };
+    if (c.method === "GET" && c.path === "/v1/expense-inbox/items") return { body: { items: [] } };
+    if (c.method === "GET" && c.path === "/v1/expense-rules") return { body: { rules: [] } };
     return undefined;
   });
 }

@@ -5,22 +5,28 @@ import "html/template"
 // The templates of the payment pages. Everything is printed through html/template (escaped by context); there is no script and no external resource.
 
 const pageCSS = hostedCSS + `
-.top{display:flex;align-items:center;gap:12px;margin-bottom:8px}.logo{max-height:40px;max-width:160px;object-fit:contain}
-a:not(.btn){color:#1d5fd1;text-underline-offset:3px}a:not(.btn):hover{color:#0f3f95}
-.banner{background:#fff4d6;color:#6b4e00;border-radius:8px;padding:6px 12px;font-size:.85rem;margin-bottom:12px}
-.badge.open{background:#e8ebf0}.badge.processing{background:#dbe9fd;color:#0b3d91}.badge.failed{background:#fde2e1;color:#8a1c17}
-.hint{margin:16px 0 0;padding:10px 12px;border-radius:8px;background:#eef1f5}
-.pay{margin-top:24px;border-top:1px solid #eceef2;padding-top:16px}.pay h2{font-size:1.05rem;margin:0 0 12px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:12px}.logo{max-height:40px;max-width:160px;object-fit:contain}
+a:not(.btn){color:var(--accent-foreground);text-underline-offset:3px}a:not(.btn):hover{text-decoration-thickness:2px}
+.banner{background:var(--warning-soft);color:var(--warning);border-radius:calc(var(--radius) - 6px);padding:6px 12px;font-size:.85rem;font-weight:500;margin-bottom:16px}
+.badge.open{background:var(--secondary)}.badge.processing{background:var(--info-soft);color:var(--info)}.badge.failed{background:var(--destructive-soft);color:var(--destructive)}
+.hint{margin:16px 0 0;padding:10px 12px;border-radius:calc(var(--radius) - 6px);background:var(--muted)}
+.pay{margin-top:24px}.pay h2{font-size:1.05rem;margin:0 0 12px}
 .pay form{display:inline-block;margin:0 8px 8px 0}
-button.btn,a.btn{display:inline-block;margin:0;padding:12px 18px;border:0;border-radius:8px;background:#14171c;color:#fff;text-decoration:none;font:inherit;cursor:pointer;min-height:44px}
-a.btn.alt{background:transparent;color:inherit;border:1px solid #c9ced6;margin-top:20px;margin-inline-end:8px}
-.big{font-size:2rem;font-weight:700;margin:8px 0}.wrap{overflow-x:auto}.foot{margin-top:16px;text-align:center}
-dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px}dl.kv dt{color:#5b6472}dl.kv dd{margin:0;word-break:break-all}
-code.ref{display:block;padding:10px 12px;margin:8px 0;border-radius:8px;background:#eef1f5;font-size:1.05rem;word-break:break-all}
-h2.sec{font-size:1.1rem;margin:28px 0 8px}
-@media (prefers-color-scheme:dark){a:not(.btn){color:#8bb8ef}a:not(.btn):hover{color:#c4dcfa}.banner{background:#3b3000;color:#ffe9a6}.hint,code.ref{background:#262c35}.badge.open{background:#262c35}button.btn,a.btn{background:#e8eaee;color:#14171c}a.btn.alt{background:transparent;color:inherit;border-color:#3a414c}.pay{border-color:#262c35}.badge.processing{background:#16315e;color:#cfe0ff}.badge.failed{background:#4a1b19;color:#ffd0cd}}
-@media print{body{background:#fff;color:#000}.card{border:0;padding:0}.noprint,.foot{display:none}}
-@media (max-width:480px){main{padding:12px 8px}.card{padding:16px;border-radius:8px}.big{font-size:1.6rem}}`
+button.btn,a.btn{display:inline-flex;align-items:center;justify-content:center;margin:0;padding:0 18px;border:0;border-radius:calc(var(--radius) - 6px);background:var(--primary);color:var(--primary-foreground);text-decoration:none;font:inherit;font-weight:500;cursor:pointer;min-height:44px}
+button.btn:hover,a.btn:hover{filter:brightness(1.08)}
+a.btn.alt,button.btn.alt{background:transparent;color:inherit;border:1px solid var(--input);margin-top:20px;margin-inline-end:8px}
+.promo-row .btn.alt{margin:0}
+.big{font-size:2rem;font-weight:700;letter-spacing:-.02em;margin:8px 0;font-variant-numeric:tabular-nums}.wrap{overflow-x:auto}.foot{margin-top:20px;text-align:center}
+dl.kv{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px}dl.kv dt{color:var(--muted-foreground)}dl.kv dd{margin:0;word-break:break-all}
+code.ref{display:block;padding:10px 12px;margin:8px 0;border-radius:calc(var(--radius) - 6px);background:var(--muted);font-size:1.05rem;word-break:break-all}
+h2.sec{font-size:1.05rem;margin:32px 0 10px;padding-top:24px;border-top:1px solid var(--border)}
+.nw td{white-space:nowrap}.seller{font-weight:600;font-size:.95rem;margin-bottom:2px}.stat{display:flex;align-items:baseline;gap:8px;padding:16px;border-radius:calc(var(--radius) - 4px);background:var(--muted)}.stat .big{margin:0}
+.packs{display:grid;gap:12px;margin:0;padding:0;list-style:none}
+.pack{display:grid;grid-template-columns:1fr auto;gap:12px 16px;align-items:center;padding:16px;border:1px solid var(--border);border-radius:calc(var(--radius) - 4px)}
+.pack .price{font-weight:600;font-variant-numeric:tabular-nums;text-align:end}.pack .name{font-weight:600}
+.pack form{grid-column:1/-1;display:flex;gap:8px;margin:0}.pack form input.code{max-width:none;margin:0}
+@media print{body{background:#fff;color:#000}.card{border:0;padding:0;box-shadow:none}.noprint,.foot{display:none}}
+@media (max-width:480px){main{padding:12px 8px 24px}.card{padding:18px;border-radius:calc(var(--radius) - 4px)}.big{font-size:1.6rem}.pack form{flex-direction:column}.pack form input.code{flex:none;width:100%}.pack form .btn{width:100%}td,th{padding:10px 6px}}`
 
 const pageHead = `{{define "head"}}<!doctype html>
 <html lang="{{.Lang}}" dir="{{.Dir}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">{{if .Refresh}}<meta http-equiv="refresh" content="5">{{end}}
@@ -50,7 +56,7 @@ const adhocTmpl = `{{define "adhoc"}}{{template "head" .}}
 {{with .Quote}}{{if .Bonus}}<p class="promo-line"><b>+{{.Bonus}} {{$.L.promo_bonus}}</b></p>{{end}}{{end}}
 {{if .Quote}}{{if .Quote.HasDiscount}}<div class="muted">{{.L.promo_before}}</div><div class="was">{{.Amount}} {{.Currency}}</div><div class="muted">{{.L.promo_discount}}</div><div class="neg">-{{.Quote.Discount}} {{.Currency}}</div><div class="muted">{{.L.promo_pay}}</div><div class="big">{{.Quote.Total}} {{.Currency}}</div>{{else}}<div class="muted">{{.L.adhoc_amount}}</div><div class="big">{{.Amount}} {{.Currency}}</div>{{end}}{{else}}<div class="muted">{{.L.adhoc_amount}}</div><div class="big">{{.Amount}} {{.Currency}}</div>{{end}}
 {{if .Consumed}}<p class="hint">{{.L.adhoc_used}}</p>{{else}}
-<form method="post" action="{{.PromoAction}}" class="promo"><label for="code">{{.L.promo_label}}</label><div class="promo-row"><input id="code" name="code" value="{{.Code}}" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn alt" type="submit">{{.L.promo_apply}}</button></div></form>
+<form method="post" action="{{.PromoAction}}" class="promo" autocomplete="off"><label for="code">{{.L.promo_label}}</label><div class="promo-row"><input id="code" name="code" value="{{.Code}}" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other"><button class="btn alt" type="submit">{{.L.promo_apply}}</button></div></form>
 {{if .PromoError}}<p class="err" role="alert">{{.PromoError}}</p>{{end}}
 <form method="post" action="{{.Start}}">{{if .Quote}}<input type="hidden" name="code" value="{{.Code}}">{{end}}<button class="btn" type="submit">{{.L.adhoc_continue}}</button></form>{{end}}
 {{template "foot" .}}{{end}}`
@@ -89,25 +95,24 @@ const privacyTmpl = `{{define "privacy"}}{{template "head" .}}
 {{template "foot" .}}{{end}}`
 
 const portalTmpl = `{{define "portal"}}{{template "head" .}}
-<div class="muted">{{.Seller}}</div><h1>{{.L.portal_title}}</h1><div class="muted">{{.Customer}}</div>
+<div class="seller">{{.Seller}}</div><h1>{{.L.portal_title}}</h1><div class="muted">{{.Customer}}</div>
 <h2 class="sec">{{.L.portal_invoices}}</h2>
-{{if .Invoices}}<div class="wrap"><table><thead><tr><th>{{.L.number}}</th><th>{{.L.date}}</th><th>{{.L.status}}</th><th class="n">{{.L.total}}</th><th></th></tr></thead><tbody>
+{{if .Invoices}}<div class="wrap"><table class="nw"><thead><tr><th>{{.L.number}}</th><th>{{.L.date}}</th><th>{{.L.status}}</th><th class="n">{{.L.total}}</th><th></th></tr></thead><tbody>
 {{range .Invoices}}<tr><td>{{.Number}}</td><td>{{.Date}}</td><td><span class="badge {{.State}}">{{.StateLabel}}</span></td><td class="n">{{.Total}} {{.Currency}}</td><td><a href="{{.Href}}">{{if .Payable}}{{$.L.pay_title}}{{else}}{{$.L.view}}{{end}}</a></td></tr>
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.portal_none_inv}}</p>{{end}}
 <h2 class="sec">{{.L.portal_payments}}</h2>
-{{if .Payments}}<div class="wrap"><table><thead><tr><th>{{.L.date}}</th><th>{{.L.type}}</th><th>{{.L.number}}</th><th>{{.L.status}}</th><th>{{.L.provider}}</th><th class="n">{{.L.amount}}</th></tr></thead><tbody>
+{{if .Payments}}<div class="wrap"><table class="nw"><thead><tr><th>{{.L.date}}</th><th>{{.L.type}}</th><th>{{.L.number}}</th><th>{{.L.status}}</th><th>{{.L.provider}}</th><th class="n">{{.L.amount}}</th></tr></thead><tbody>
 {{range .Payments}}<tr><td>{{.Date}}</td><td>{{.Kind}}</td><td>{{.Number}}</td><td>{{.Status}}</td><td>{{.Provider}}</td><td class="n{{if .Negative}} neg{{end}}">{{.Amount}} {{.Currency}}</td></tr>
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.portal_none_pay}}</p>{{end}}
 {{if .ShowCredits}}<h2 class="sec">{{.L.cr_title}}</h2>
-<p><span class="muted">{{.L.cr_balance}}</span> <span class="big">{{.Balance}}</span> {{.L.cr_unit}}</p>
-{{if .Lots}}<div class="wrap"><table><thead><tr><th class="n">{{.L.cr_left}}</th><th>{{.L.cr_expires}}</th></tr></thead><tbody>
+<div class="stat"><span class="muted">{{.L.cr_balance}}</span> <span class="big">{{.Balance}}</span> <span class="muted">{{.L.cr_unit}}</span></div>
+{{if .Lots}}<div class="wrap"><table class="nw"><thead><tr><th class="n">{{.L.cr_left}}</th><th>{{.L.cr_expires}}</th></tr></thead><tbody>
 {{range .Lots}}<tr><td class="n">{{.Remaining}} / {{.Granted}}</td><td>{{if .Expires}}{{.Expires}}{{else}}{{$.L.cr_never}}{{end}}</td></tr>
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.cr_none}}</p>{{end}}
 {{if .Packs}}<h2 class="sec">{{.L.cr_buy_title}}</h2>
-<div class="wrap"><table><thead><tr><th>{{.L.cr_pack}}</th><th class="n">{{.L.cr_unit}}</th><th class="n">{{.L.cr_price}}</th><th></th></tr></thead><tbody>
-{{range .Packs}}<tr><td>{{.Name}}<div class="muted">{{.Valid}}</div></td><td class="n">{{.Credits}}</td><td class="n">{{.Price}} {{.Currency}}</td>
-<td>{{if $.CanBuy}}<form method="post" action="{{$.Buy}}"><input type="hidden" name="pack_id" value="{{.ID}}"><input class="code" name="code" maxlength="40" autocomplete="off" placeholder="{{$.L.promo_label}}" aria-label="{{$.L.promo_label}}"><button class="btn" type="submit">{{$.L.cr_buy}}</button></form>{{end}}</td></tr>
-{{end}}</tbody></table></div>{{end}}{{end}}
+<ul class="packs">{{range .Packs}}<li class="pack"><div><div class="name">{{.Name}}</div><div class="muted">{{.Credits}} {{$.L.cr_unit}} · {{.Valid}}</div></div><div class="price">{{.Price}} {{.Currency}}</div>
+{{if $.CanBuy}}<form method="post" action="{{$.Buy}}" autocomplete="off"><input type="hidden" name="pack_id" value="{{.ID}}"><input class="code" type="text" name="code" maxlength="40" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" placeholder="{{$.L.promo_label}}" aria-label="{{$.L.promo_label}}"><button class="btn" type="submit">{{$.L.cr_buy}}</button></form>{{end}}</li>
+{{end}}</ul>{{end}}{{end}}
 {{template "foot" .}}{{end}}`
 
 var pageTemplates = template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))

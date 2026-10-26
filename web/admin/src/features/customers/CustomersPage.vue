@@ -91,18 +91,13 @@ const spendOf = (c: Customer) => headline(summaryOf(c).spend, c.billing_currency
 const current = table.row;
 const currentId = computed(() => current.value?.external_id ?? "");
 const tab = ref<CustomerTab>("overview");
-const portal = ref(false);
-function open(i: number, how: { tab?: CustomerTab; portal?: boolean } = {}) {
+function open(i: number, how: { tab?: CustomerTab } = {}) {
   tab.value = how.tab ?? "overview";
-  portal.value = !!how.portal;
   table.open(i);
 }
-// Stepping to another customer keeps the tab but closes the payment-page card; closing the sheet starts the next one on the overview.
-watch(table.detail, (v, old) => {
-  if (v === null) {
-    tab.value = "overview";
-    portal.value = false;
-  } else if (old !== null && v !== old) portal.value = false;
+// Stepping to another customer keeps the tab; closing the sheet starts the next one on the overview.
+watch(table.detail, (v) => {
+  if (v === null) tab.value = "overview";
 });
 // A link from an invoice, a payment or a subscription opens the customer it names; a filter that hides it is cleared first.
 useOpenParam("customer", () => customers.isSuccess.value, (id) => {
@@ -144,7 +139,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
   return [
     { key: "view", label: t("common.view"), icon: Eye, onSelect: () => open(i) },
     { key: "subscription", label: t("billing.customers.sheet.newSubscription"), icon: Repeat, onSelect: () => newSubscription(c) },
-    { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: Receipt, onSelect: () => open(i, { tab: "payments", portal: true }) },
+    { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: Receipt, onSelect: () => open(i) },
     { key: "link", label: t("billing.paymentLinks.paymentLink"), icon: Link2, onSelect: () => paymentLink(c.external_id) },
     { key: "address", label: t("billing.customers.address.edit"), icon: MapPin, separatorBefore: true, onSelect: () => (editingAddress.value = c) },
     { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => (editingTax.value = c) },
@@ -159,7 +154,6 @@ function actionsOf(c: Customer, i: number): RowAction[] {
       v-if="current"
       :key="currentId"
       v-model:tab="tab"
-      v-model:portal="portal"
       :tenant-id="tenantId"
       :customer="current"
       :summary="summaryOf(current)"

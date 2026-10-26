@@ -1017,23 +1017,15 @@
       },
       "portal": {
         "open": "Página de pagos",
-        "title": "Página de pagos de {id}",
-        "hint": "Un enlace a una página donde este cliente ve sus facturas y pagos, descarga PDF y recibos, y paga lo pendiente. Solo lectura.",
-        "close": "Cerrar",
-        "create": "Crear enlace",
         "revoke": "Revocar todos",
         "revoked": "Se revocaron todos los enlaces de la página de pagos de este cliente.",
         "confirmRevoke": "¿Revocar todos los enlaces de la página de pagos de este cliente?",
-        "link": "Enlace de la página de pagos",
-        "payments": "Pagos",
-        "date": "Fecha",
-        "invoice": "Factura",
-        "type": "Tipo",
-        "noPayments": "No hay pagos registrados.",
-        "kinds": {
-          "charge": "Cobro",
-          "refund": "Reembolso"
-        }
+        "copy": "Copiar enlace",
+        "openPage": "Abrir la página",
+        "regenerate": "Regenerar enlace",
+        "copied": "Enlace de la página de pago copiado",
+        "regenerated": "Enlace nuevo creado y copiado; los anteriores ya no funcionan",
+        "validFor": "Los enlaces son válidos {days} días"
       },
       "for": "Para",
       "promotionCode": "Código promocional (opcional)",
@@ -1254,6 +1246,71 @@
         "gross": "Bruto",
         "discount": "Descuento",
         "net": "Neto"
+      },
+      "scan": {
+        "open": "Escanear recibos",
+        "title": "Escanear recibos y facturas",
+        "hint": "Suelte tantos PDF o fotos como quiera. Cada uno se lee aquí, en su navegador; confirme, corrija u omita cada fila antes de guardar.",
+        "drop": "Suelte aquí recibos y facturas",
+        "types": "PDF, PNG o JPEG, hasta 8 MB cada uno",
+        "choose": "Elegir archivos",
+        "privacy": "Los archivos se leen en su navegador. Las fotos se leen con OCR (inglés y turco); el motor y los datos de idioma se descargan una vez de un CDN público. Los archivos no se envían hasta que guarda, y cada uno queda como adjunto de su gasto.",
+        "empty": "Aún nada. Añada archivos para empezar.",
+        "include": "Guardar este gasto",
+        "skip": "Omitir este archivo",
+        "check": "Lectura dudosa: compruébelo",
+        "tax": "Impuesto incluido",
+        "reading": "Leyendo archivos…",
+        "incomplete": "{count} filas necesitan proveedor, fecha e importe",
+        "save": "Guardar {count} gastos",
+        "savedCount": "{count} gastos guardados",
+        "attachment": "Comprobante",
+        "openReceipt": "Abrir el comprobante",
+        "state": {
+          "queued": "En espera",
+          "scanning": "Leyendo…",
+          "ready": "Listo para revisar",
+          "failed": "Necesita su intervención",
+          "saving": "Guardando…",
+          "saved": "Guardado",
+          "auto": "Guardado por una regla"
+        },
+        "errors": {
+          "unsupported": "No es un archivo PDF, PNG ni JPEG. Quítelo.",
+          "too_large": "El archivo supera los 8 MB.",
+          "unreadable": "No se pudo leer nada de este archivo. Rellene la fila a mano u omítala."
+        }
+      },
+      "inbox": {
+        "title": "Buzón de facturas",
+        "hint": "Reenvíe las facturas que reciba a esta dirección. Esperan aquí y se leen en su navegador al abrirlas; una regla puede registrar las habituales por usted.",
+        "review": "Revisar {count} facturas",
+        "nothing": "Nada que revisar",
+        "rotate": "Nueva dirección",
+        "confirmRotate": "¿Crear una nueva dirección? El correo enviado a la anterior se descarta.",
+        "noDomain": "Esta instalación no tiene dominio de correo entrante (PAYRUDDER_INBOUND_DOMAIN); solo se muestra el token."
+      },
+      "rules": {
+        "open": "Reglas de proveedores",
+        "title": "Reglas de proveedores recurrentes",
+        "hint": "Un proveedor cuyo nombre contiene el texto recibe la categoría, moneda e impuesto de su regla. Con aprobación automática, una factura recibida por correo se registra sin revisión cuando su importe está dentro de la tolerancia del esperado.",
+        "none": "Aún no hay reglas.",
+        "add": "Añadir una regla",
+        "edit": "Editar la regla",
+        "vendor": "El nombre del proveedor contiene",
+        "vendorHint": "Sin distinguir mayúsculas; gana la coincidencia más larga.",
+        "tax": "Tasa de impuesto incluida (%)",
+        "expected": "Importe esperado",
+        "tolerance": "Tolerancia (%)",
+        "auto": "Aprobar automáticamente",
+        "autoHint": "Solo facturas del buzón, solo cuando proveedor, fecha e importe se leyeron con confianza y el importe está dentro de la tolerancia. Lo demás espera revisión.",
+        "save": "Guardar la regla",
+        "delete": "Eliminar la regla",
+        "confirmDelete": "¿Eliminar la regla de «{vendor}»?",
+        "bad": "Indique un texto de proveedor de al menos 2 caracteres, y impuesto y tolerancia como porcentajes de 0 a 100.",
+        "needsExpected": "La aprobación automática necesita un importe esperado.",
+        "taxShort": "impuesto {percent} %",
+        "autoShort": "aprobado automáticamente en torno a {amount} (±{tolerance} %)"
       }
     },
     "usage": {
@@ -2228,7 +2285,12 @@
         "expense_voided": "El gasto se anuló y ya no se puede cambiar.",
         "range_too_long": "El periodo es demasiado largo: cinco años como máximo y una serie diaria de hasta 366 días.",
         "reason_required": "Indique un motivo de hasta 200 caracteres para anular un gasto.",
-        "unknown_currency": "La moneda no es compatible."
+        "unknown_currency": "La moneda no es compatible.",
+        "bad_attachment": "El adjunto no es válido.",
+        "bad_rule": "La regla no es válida: revise el texto del proveedor, los porcentajes y el importe esperado.",
+        "inbox_item_not_found": "No hay tal factura pendiente de revisión.",
+        "rule_not_found": "No existe esa regla.",
+        "too_many_rules": "Un inquilino puede tener como máximo 200 reglas."
       },
       "einvoice": {
         "bad_id": "El identificador de la factura electrónica o de la cuenta no es válido.",

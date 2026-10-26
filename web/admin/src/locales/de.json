@@ -1017,23 +1017,15 @@
       },
       "portal": {
         "open": "Zahlungsseite",
-        "title": "Zahlungsseite von {id}",
-        "hint": "Ein Link zu einer Seite, auf der dieser Kunde seine Rechnungen und Zahlungen sieht, PDFs und Belege lädt und Offenes bezahlt. Nur lesend.",
-        "close": "Schließen",
-        "create": "Link erstellen",
         "revoke": "Alle widerrufen",
         "revoked": "Alle Zahlungsseiten-Links dieses Kunden wurden widerrufen.",
         "confirmRevoke": "Alle Zahlungsseiten-Links dieses Kunden widerrufen?",
-        "link": "Link zur Zahlungsseite",
-        "payments": "Zahlungen",
-        "date": "Datum",
-        "invoice": "Rechnung",
-        "type": "Art",
-        "noPayments": "Keine Zahlungen erfasst.",
-        "kinds": {
-          "charge": "Zahlung",
-          "refund": "Erstattung"
-        }
+        "copy": "Link kopieren",
+        "openPage": "Seite öffnen",
+        "regenerate": "Link neu erzeugen",
+        "copied": "Link zur Zahlungsseite kopiert",
+        "regenerated": "Neuer Link erstellt und kopiert; die alten funktionieren nicht mehr",
+        "validFor": "Links sind {days} Tage gültig"
       },
       "for": "Für",
       "promotionCode": "Aktionscode (optional)",
@@ -1254,6 +1246,71 @@
         "gross": "Brutto",
         "discount": "Rabatt",
         "net": "Netto"
+      },
+      "scan": {
+        "open": "Belege scannen",
+        "title": "Belege und Rechnungen scannen",
+        "hint": "Legen Sie beliebig viele PDFs oder Fotos ab. Jede Datei wird hier im Browser gelesen; vor dem Speichern bestätigen, korrigieren oder überspringen Sie jede Zeile.",
+        "drop": "Belege und Rechnungen hier ablegen",
+        "types": "PDF, PNG oder JPEG, je höchstens 8 MB",
+        "choose": "Dateien wählen",
+        "privacy": "Dateien werden in Ihrem Browser gelesen. Fotos werden per OCR (Englisch und Türkisch) gelesen; Engine und Sprachdaten werden einmal von einem öffentlichen CDN geladen. Die Dateien selbst werden erst beim Speichern übertragen und als Anhang der jeweiligen Ausgabe abgelegt.",
+        "empty": "Noch nichts. Fügen Sie Dateien hinzu.",
+        "include": "Diese Ausgabe speichern",
+        "skip": "Datei überspringen",
+        "check": "Hier ist die Erkennung unsicher: bitte prüfen",
+        "tax": "Enthaltene Steuer",
+        "reading": "Dateien werden gelesen …",
+        "incomplete": "{count} Zeilen brauchen Lieferant, Datum und Betrag",
+        "save": "{count} Ausgaben speichern",
+        "savedCount": "{count} Ausgaben gespeichert",
+        "attachment": "Beleg",
+        "openReceipt": "Beleg öffnen",
+        "state": {
+          "queued": "Wartet",
+          "scanning": "Wird gelesen …",
+          "ready": "Zur Prüfung bereit",
+          "failed": "Eingabe nötig",
+          "saving": "Wird gespeichert …",
+          "saved": "Gespeichert",
+          "auto": "Per Regel gespeichert"
+        },
+        "errors": {
+          "unsupported": "Das ist keine PDF-, PNG- oder JPEG-Datei. Entfernen Sie sie.",
+          "too_large": "Die Datei ist größer als 8 MB.",
+          "unreadable": "Aus dieser Datei konnte nichts gelesen werden. Füllen Sie die Zeile von Hand aus oder überspringen Sie sie."
+        }
+      },
+      "inbox": {
+        "title": "Rechnungseingang",
+        "hint": "Leiten Sie erhaltene Rechnungen an diese Adresse weiter. Sie warten hier und werden beim Öffnen in Ihrem Browser gelesen; eine Regel kann regelmäßige Rechnungen für Sie erfassen.",
+        "review": "{count} Rechnungen prüfen",
+        "nothing": "Nichts zu prüfen",
+        "rotate": "Neue Adresse",
+        "confirmRotate": "Neue Eingangsadresse erzeugen? E-Mails an die alte Adresse werden verworfen.",
+        "noDomain": "Für diese Installation ist keine Domain für eingehende Mails gesetzt (PAYRUDDER_INBOUND_DOMAIN); es wird nur das Token angezeigt."
+      },
+      "rules": {
+        "open": "Lieferantenregeln",
+        "title": "Regeln für wiederkehrende Lieferanten",
+        "hint": "Ein Lieferant, dessen Name den Text enthält, erhält Kategorie, Währung und Steuer seiner Regel. Mit automatischer Freigabe wird eine per Mail eingegangene Rechnung ohne Prüfung erfasst, wenn ihr Betrag innerhalb der Toleranz des erwarteten liegt.",
+        "none": "Noch keine Regeln.",
+        "add": "Regel hinzufügen",
+        "edit": "Regel bearbeiten",
+        "vendor": "Lieferantenname enthält",
+        "vendorHint": "Groß-/Kleinschreibung egal; der längste Treffer gewinnt.",
+        "tax": "Steuersatz im Betrag (%)",
+        "expected": "Erwarteter Betrag",
+        "tolerance": "Toleranz (%)",
+        "auto": "Automatisch freigeben",
+        "autoHint": "Nur Rechnungen aus dem Eingang, nur wenn Lieferant, Datum und Betrag sicher erkannt wurden und der Betrag innerhalb der Toleranz liegt. Alles andere wartet auf Prüfung.",
+        "save": "Regel speichern",
+        "delete": "Regel löschen",
+        "confirmDelete": "Regel für „{vendor}“ löschen?",
+        "bad": "Geben Sie einen Lieferantentext mit mindestens 2 Zeichen an, Steuer und Toleranz als Prozent von 0 bis 100.",
+        "needsExpected": "Die automatische Freigabe braucht einen erwarteten Betrag.",
+        "taxShort": "Steuer {percent} %",
+        "autoShort": "automatisch um {amount} (±{tolerance} %)"
       }
     },
     "usage": {
@@ -2228,7 +2285,12 @@
         "expense_voided": "Die Ausgabe wurde storniert und kann nicht mehr geändert werden.",
         "range_too_long": "Der Zeitraum ist zu lang: höchstens fünf Jahre, eine Tagesreihe höchstens 366 Tage.",
         "reason_required": "Geben Sie zum Stornieren einer Ausgabe eine Begründung von höchstens 200 Zeichen an.",
-        "unknown_currency": "Die Währung wird nicht unterstützt."
+        "unknown_currency": "Die Währung wird nicht unterstützt.",
+        "bad_attachment": "Der Anhang ist nicht gültig.",
+        "bad_rule": "Die Regel ist ungültig: Prüfen Sie Lieferantentext, Prozentwerte und erwarteten Betrag.",
+        "inbox_item_not_found": "Es wartet keine solche Rechnung auf Prüfung.",
+        "rule_not_found": "Es gibt keine solche Regel.",
+        "too_many_rules": "Ein Mandant kann höchstens 200 Regeln haben."
       },
       "einvoice": {
         "bad_id": "Die ID der E-Rechnung oder des Kontos ist keine gültige ID.",

@@ -751,6 +751,120 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/expense-inbox:
+    get:
+      operationId: getExpenseInbox
+      summary: The tenant's invoice inbox address
+      description: >
+        Invoices received by mail are forwarded to `invoices+<token>@<inbound domain>`. The attachments wait as items to review; the console reads them in the browser.
+        Made on first use. `address` is empty until the deployment sets an inbound domain (PAYRUDDER_INBOUND_DOMAIN).
+      parameters: [{ name: app_id, in: query, schema: { type: string, format: uuid }, description: "The inbox of one app instead of the whole tenant" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseInbox" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/expense-inbox/rotate:
+    post:
+      operationId: rotateExpenseInbox
+      summary: Give the invoice inbox a new address
+      description: Mail sent to the old address is dropped.
+      parameters: [{ name: app_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseInbox" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/expense-inbox/items:
+    get:
+      operationId: listInboxItems
+      summary: The attachments received by mail, newest first
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [to_review, accepted, dismissed], default: to_review } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InboxItemPage" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+  /v1/expense-inbox/items/{id}/file:
+    get:
+      operationId: getInboxItemFile
+      summary: The bytes of a received attachment
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: The file as it came (PDF, PNG or JPEG), content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/expense-inbox/items/{id}/resolve:
+    post:
+      operationId: resolveInboxItem
+      summary: Mark a received attachment accepted or dismissed
+      description: An item is resolved once. Accepting records the expense that was made from it.
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [accepted, dismissed] }
+                expense_id: { type: string, format: uuid }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InboxItem" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/expense-rules:
+    get:
+      operationId: listExpenseRules
+      summary: The recurring-vendor rules
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { rules: { type: array, items: { $ref: "#/components/schemas/ExpenseRule" } } } } } } }
+    post:
+      operationId: createExpenseRule
+      summary: Add a recurring-vendor rule
+      description: >
+        A vendor whose name contains `vendor_match` gets the category, currency and tax of the rule. With `auto_approve` the console records the expense on its own when the
+        amount read from the document is within `tolerance_bps` of `expected_amount_minor`.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseRule" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseRule" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/expense-rules/{id}:
+    put:
+      operationId: updateExpenseRule
+      summary: Replace a recurring-vendor rule
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseRule" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ExpenseRule" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteExpenseRule
+      summary: Delete a recurring-vendor rule
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Error" }
+  /inbound/invoices:
+    post:
+      operationId: inboundInvoices
+      summary: A forwarded mail from the mail provider. Public; protected by a shared secret
+      description: >
+        The webhook of the mail provider's inbound address (Resend, Nafru or alike) posts each received mail here. The body is the mail, or `{"type": "email.received", "data": {...}}`
+        around it: `from`, `to` (a string, a list of strings or of `{email}`), `subject` and `attachments` (`filename`, `content_type`, `content` base64). The tenant is the token in
+        the recipient `invoices+<token>@<domain>`. PDF, PNG and JPEG attachments (judged by their bytes) up to 3 MiB in all become items to review; the rest are skipped. Authenticate
+        with `Authorization: Bearer <secret>`, `X-Inbound-Secret` or `?secret=`. Answers 200 for an unknown address too. 404 until PAYRUDDER_INBOUND_SECRET is set.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        "200": { description: Understood, content: { application/json: { schema: { type: object, properties: { stored: { type: integer } } } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { description: Wrong secret }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/accounting/summary:
     get:
       operationId: getAccountingSummary
@@ -5816,6 +5930,8 @@ components:
         app_id: { type: string, format: uuid, description: "The app of the account the cost belongs to; leave out for the whole tenant" }
         recurring: { type: string, enum: [none, monthly, yearly], default: none }
         recurring_until: { type: string, format: date, description: "Last day an occurrence may fall on; leave out for no end. Only for a recurring expense." }
+        tax_minor: { type: string, description: "The tax inside amount_minor, when the receipt shows it (informational; no summary reads it)" }
+        attachment_asset_id: { type: string, format: uuid, description: "The receipt or invoice kept with the expense: a READY general asset of the tenant" }
     Expense:
       type: object
       properties:
@@ -5833,6 +5949,44 @@ components:
         void_reason: { type: string }
         create_time: { type: string, format: date-time }
         update_time: { type: string, format: date-time }
+        tax_minor: { type: string, description: int64 as a string }
+        attachment_asset_id: { type: string }
+    ExpenseInbox:
+      type: object
+      properties:
+        token: { type: string }
+        app_id: { type: string }
+        address: { type: string, description: "invoices+<token>@<inbound domain>; empty when no inbound domain is configured" }
+    InboxItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        app_id: { type: string }
+        from: { type: string }
+        subject: { type: string }
+        filename: { type: string }
+        content_type: { type: string }
+        size_bytes: { type: string }
+        status: { type: string, enum: [to_review, accepted, dismissed] }
+        expense_id: { type: string }
+        receive_time: { type: string, format: date-time }
+    InboxItemPage:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/InboxItem" } }
+    ExpenseRule:
+      type: object
+      required: [vendor_match, category, currency]
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        vendor_match: { type: string, minLength: 2, maxLength: 120, description: "Case-insensitive text the vendor name contains" }
+        category: { $ref: "#/components/schemas/ExpenseCategory" }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        tax_bps: { type: integer, minimum: 0, maximum: 10000, description: "The tax share of the amount, in basis points" }
+        expected_amount_minor: { type: string, description: "What this vendor usually bills, in minor units; 0: no expectation" }
+        tolerance_bps: { type: integer, minimum: 0, maximum: 10000 }
+        auto_approve: { type: boolean, description: "Needs an expected amount" }
+        app_id: { type: string, format: uuid }
     ExpensePage:
       type: object
       properties:

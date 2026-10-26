@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { Check, Copy, CreditCard, Link2, MapPin, Pencil, Plus, Receipt } from "@lucide/vue";
+import { Check, Copy, CreditCard, Link2, MapPin, Pencil, Plus } from "@lucide/vue";
 import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCreditBalance } from "@/features/credits/api";
 import { formatCredits } from "@/features/credits/lib";
 import LedgerCard from "@/features/credits/LedgerCard.vue";
-import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
 import { CustomerRelated, InvoiceRows, PaymentRows, SubscriptionRows, useCustomerInvoices } from "@/features/related";
 import { copyText } from "@/shared/lib/clipboard";
 import { useFormat } from "@/shared/lib/format";
@@ -17,18 +16,18 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { addressLine } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
+import CustomerPaymentPage from "./CustomerPaymentPage.vue";
 import { countryName, flagOf, headline, type Customer, type CustomerSummary, type CustomerTab } from "./lib";
 
 /**
  * The body of a customer's sheet, after Stripe's customer page: who they are (avatar, e-mail, id to copy, country, since when), what can be done for
- * them, four figures (spend, what is open, credits, subscriptions that bill now) and a tab per kind of record. The tab and the payment-page card are
- * models, so a row action of the list can open the sheet on them. The figures come from the list page (`summary`), so list and sheet agree.
+ * them, four figures (spend, what is open, credits, subscriptions that bill now) and a tab per kind of record. The tab is a
+ * model, so a row action of the list can open the sheet on them. The figures come from the list page (`summary`), so list and sheet agree.
  */
 
 const props = defineProps<{ tenantId: string; customer: Customer; summary?: CustomerSummary; summaryLoading?: boolean }>();
 const emit = defineEmits<{ editAddress: []; editTax: []; newSubscription: []; paymentLink: []; credits: [] }>();
 const tab = defineModel<CustomerTab>("tab", { default: "overview" });
-const portal = defineModel<boolean>("portal", { default: false });
 const { t, locale } = useI18n();
 const fmt = useFormat();
 
@@ -51,10 +50,6 @@ async function copyId() {
 const country = computed(() => countryName(props.customer.country, locale.value));
 const address = computed(() => addressLine(props.customer.address));
 const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].filter(Boolean).join(" · "));
-function showPortal() {
-  tab.value = "payments";
-  portal.value = !portal.value;
-}
 </script>
 
 <template>
@@ -87,7 +82,7 @@ function showPortal() {
     <div class="flex flex-wrap gap-2" role="group" :aria-label="t('billing.customers.sheet.actions')">
       <Button size="sm" data-testid="customer-new-subscription" @click="emit('newSubscription')"><Plus aria-hidden="true" />{{ t("billing.customers.sheet.newSubscription") }}</Button>
       <Button size="sm" variant="outline" @click="emit('paymentLink')"><Link2 aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
-      <Button size="sm" variant="outline" :aria-pressed="portal" @click="showPortal"><Receipt aria-hidden="true" />{{ t("billing.paymentLinks.portal.open") }}</Button>
+      <CustomerPaymentPage :tenant-id="tenantId" :customer="id" />
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button size="sm" variant="outline" data-testid="customer-edit"><Pencil aria-hidden="true" />{{ t("billing.customers.sheet.edit") }}</Button>
@@ -127,8 +122,6 @@ function showPortal() {
         </dd>
       </div>
     </dl>
-
-    <CustomerLinksCard v-if="portal" :key="id" :tenant-id="tenantId" :customer="id" class="mb-0" @close="portal = false" />
 
     <Tabs v-model="tab" class="min-w-0 gap-4">
       <TabsList class="border-border/70 w-full flex-nowrap justify-start gap-4 overflow-x-auto border-b" :aria-label="t('billing.customers.sheet.sections')">

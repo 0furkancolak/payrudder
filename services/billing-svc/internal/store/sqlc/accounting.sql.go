@@ -441,7 +441,7 @@ func (q *Queries) ExpensesInWindow(ctx context.Context, arg ExpensesInWindowPara
 }
 
 const getExpense = `-- name: GetExpense :one
-SELECT id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, voided_at, void_reason, created_at, updated_at
+SELECT id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, voided_at, void_reason, created_at, updated_at, tax_minor, attachment_asset_id
 FROM expenses WHERE tenant_id = $1 AND id = $2
 `
 
@@ -451,20 +451,22 @@ type GetExpenseParams struct {
 }
 
 type GetExpenseRow struct {
-	ID             uuid.UUID
-	AppID          *uuid.UUID
-	Vendor         string
-	Category       string
-	AmountMinor    int64
-	Currency       string
-	IncurredOn     pgtype.Date
-	Note           string
-	Recurring      string
-	RecurringUntil pgtype.Date
-	VoidedAt       *time.Time
-	VoidReason     *string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                uuid.UUID
+	AppID             *uuid.UUID
+	Vendor            string
+	Category          string
+	AmountMinor       int64
+	Currency          string
+	IncurredOn        pgtype.Date
+	Note              string
+	Recurring         string
+	RecurringUntil    pgtype.Date
+	VoidedAt          *time.Time
+	VoidReason        *string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	TaxMinor          int64
+	AttachmentAssetID *uuid.UUID
 }
 
 func (q *Queries) GetExpense(ctx context.Context, arg GetExpenseParams) (GetExpenseRow, error) {
@@ -485,29 +487,33 @@ func (q *Queries) GetExpense(ctx context.Context, arg GetExpenseParams) (GetExpe
 		&i.VoidReason,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TaxMinor,
+		&i.AttachmentAssetID,
 	)
 	return i, err
 }
 
 const insertExpense = `-- name: InsertExpense :one
 
-INSERT INTO expenses (tenant_id, id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+INSERT INTO expenses (tenant_id, id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, tax_minor, attachment_asset_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 RETURNING created_at, updated_at
 `
 
 type InsertExpenseParams struct {
-	TenantID       uuid.UUID
-	ID             uuid.UUID
-	AppID          *uuid.UUID
-	Vendor         string
-	Category       string
-	AmountMinor    int64
-	Currency       string
-	IncurredOn     pgtype.Date
-	Note           string
-	Recurring      string
-	RecurringUntil pgtype.Date
+	TenantID          uuid.UUID
+	ID                uuid.UUID
+	AppID             *uuid.UUID
+	Vendor            string
+	Category          string
+	AmountMinor       int64
+	Currency          string
+	IncurredOn        pgtype.Date
+	Note              string
+	Recurring         string
+	RecurringUntil    pgtype.Date
+	TaxMinor          int64
+	AttachmentAssetID *uuid.UUID
 }
 
 type InsertExpenseRow struct {
@@ -530,6 +536,8 @@ func (q *Queries) InsertExpense(ctx context.Context, arg InsertExpenseParams) (I
 		arg.Note,
 		arg.Recurring,
 		arg.RecurringUntil,
+		arg.TaxMinor,
+		arg.AttachmentAssetID,
 	)
 	var i InsertExpenseRow
 	err := row.Scan(&i.CreatedAt, &i.UpdatedAt)
@@ -537,7 +545,7 @@ func (q *Queries) InsertExpense(ctx context.Context, arg InsertExpenseParams) (I
 }
 
 const listExpenses = `-- name: ListExpenses :many
-SELECT id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, voided_at, void_reason, created_at, updated_at
+SELECT id, app_id, vendor, category, amount_minor, currency, incurred_on, note, recurring, recurring_until, voided_at, void_reason, created_at, updated_at, tax_minor, attachment_asset_id
 FROM expenses
 WHERE tenant_id = $1
   AND ($2::boolean OR voided_at IS NULL)
@@ -565,20 +573,22 @@ type ListExpensesParams struct {
 }
 
 type ListExpensesRow struct {
-	ID             uuid.UUID
-	AppID          *uuid.UUID
-	Vendor         string
-	Category       string
-	AmountMinor    int64
-	Currency       string
-	IncurredOn     pgtype.Date
-	Note           string
-	Recurring      string
-	RecurringUntil pgtype.Date
-	VoidedAt       *time.Time
-	VoidReason     *string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                uuid.UUID
+	AppID             *uuid.UUID
+	Vendor            string
+	Category          string
+	AmountMinor       int64
+	Currency          string
+	IncurredOn        pgtype.Date
+	Note              string
+	Recurring         string
+	RecurringUntil    pgtype.Date
+	VoidedAt          *time.Time
+	VoidReason        *string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	TaxMinor          int64
+	AttachmentAssetID *uuid.UUID
 }
 
 // Stored entries, newest first; a recurring entry is listed once, at its first date.
@@ -617,6 +627,8 @@ func (q *Queries) ListExpenses(ctx context.Context, arg ListExpensesParams) ([]L
 			&i.VoidReason,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.TaxMinor,
+			&i.AttachmentAssetID,
 		); err != nil {
 			return nil, err
 		}
@@ -630,23 +642,25 @@ func (q *Queries) ListExpenses(ctx context.Context, arg ListExpensesParams) ([]L
 
 const updateExpense = `-- name: UpdateExpense :one
 UPDATE expenses SET app_id = $1, vendor = $2, category = $3, amount_minor = $4, currency = $5,
-       incurred_on = $6, note = $7, recurring = $8, recurring_until = $9, updated_at = now()
-WHERE tenant_id = $10 AND id = $11 AND voided_at IS NULL
+       incurred_on = $6, note = $7, recurring = $8, recurring_until = $9, tax_minor = $10, attachment_asset_id = $11, updated_at = now()
+WHERE tenant_id = $12 AND id = $13 AND voided_at IS NULL
 RETURNING created_at, updated_at
 `
 
 type UpdateExpenseParams struct {
-	AppID          *uuid.UUID
-	Vendor         string
-	Category       string
-	AmountMinor    int64
-	Currency       string
-	IncurredOn     pgtype.Date
-	Note           string
-	Recurring      string
-	RecurringUntil pgtype.Date
-	TenantID       uuid.UUID
-	ID             uuid.UUID
+	AppID             *uuid.UUID
+	Vendor            string
+	Category          string
+	AmountMinor       int64
+	Currency          string
+	IncurredOn        pgtype.Date
+	Note              string
+	Recurring         string
+	RecurringUntil    pgtype.Date
+	TaxMinor          int64
+	AttachmentAssetID *uuid.UUID
+	TenantID          uuid.UUID
+	ID                uuid.UUID
 }
 
 type UpdateExpenseRow struct {
@@ -666,6 +680,8 @@ func (q *Queries) UpdateExpense(ctx context.Context, arg UpdateExpenseParams) (U
 		arg.Note,
 		arg.Recurring,
 		arg.RecurringUntil,
+		arg.TaxMinor,
+		arg.AttachmentAssetID,
 		arg.TenantID,
 		arg.ID,
 	)

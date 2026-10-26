@@ -48,6 +48,8 @@ type Expense struct {
 	VoidReason     string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	TaxMinor       int64      // the tax inside AmountMinor when a receipt showed it; informational
+	AttachmentID   *uuid.UUID // the receipt or invoice kept with it (an asset of the tenant)
 }
 
 // maxOccurrences stops a pathological row (a monthly expense from year 0001 with no end) from running away: five years of days is far less.
@@ -153,7 +155,7 @@ func ValidCategory(c string) bool {
 // FromRow converts a stored expense; the list query's rows have the same shape and convert with sqlc.GetExpenseRow(row).
 func FromRow(r *sqlc.GetExpenseRow) *Expense {
 	e := &Expense{ID: r.ID, AppID: r.AppID, Vendor: r.Vendor, Category: r.Category, AmountMinor: r.AmountMinor, Currency: r.Currency, IncurredOn: FromPG(r.IncurredOn),
-		Note: r.Note, Recurring: r.Recurring, VoidedAt: r.VoidedAt, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt}
+		Note: r.Note, Recurring: r.Recurring, VoidedAt: r.VoidedAt, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt, TaxMinor: r.TaxMinor, AttachmentID: r.AttachmentAssetID}
 	if u := FromPG(r.RecurringUntil); !u.IsZero() {
 		e.RecurringUntil = &u
 	}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
-import { Download, Pencil, Plus, Ban } from "@lucide/vue";
+import { Download, Pencil, Plus, Ban, ScanLine, Paperclip } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -22,10 +22,13 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { CATEGORIES, downloadCsv, useAccountingSummary, useExpenses, type Expense } from "./api";
+import { CATEGORIES, downloadCsv, receiptUrl, useAccountingSummary, useExpenseRules, useExpenses, useInboxItems, type Expense, type InboxItem } from "./api";
 import BarSeries from "./BarSeries.vue";
 import DonutChart from "./DonutChart.vue";
 import ExpenseDialog from "./ExpenseDialog.vue";
+import ExpenseRulesSheet from "./ExpenseRulesSheet.vue";
+import InboxCard from "./InboxCard.vue";
+import ReceiptScanSheet from "./ReceiptScanSheet.vue";
 import { granularityOf, presetRange, validRange } from "./period";
 import VoidDialog from "./VoidDialog.vue";
 
@@ -94,6 +97,30 @@ function from(act: (e: Expense) => void, e: Expense | undefined) {
   if (e) act(e);
 }
 
+// --- scanning receipts and the invoice inbox
+const scanOpen = ref(false);
+const scanInbox = ref<InboxItem[] | undefined>(undefined);
+const rulesOpen = ref(false);
+const rules = useExpenseRules(tenantId);
+const inboxItems = useInboxItems(tenantId);
+function scan() {
+  scanInbox.value = undefined;
+  scanOpen.value = true;
+}
+function reviewInbox() {
+  scanInbox.value = inboxItems.data.value?.items ?? [];
+  scanOpen.value = true;
+}
+async function openReceipt(id?: string) {
+  if (!id) return;
+  try {
+    const url = await receiptUrl(tenantId.value, id);
+    if (url) window.open(url, "_blank", "noopener");
+  } catch (e) {
+    toast.error(errorText(e));
+  }
+}
+
 const dialogOpen = ref(false);
 const editing = ref<Expense | null>(null);
 const voidOpen = ref(false);
@@ -129,8 +156,10 @@ async function exportCsv(report: "export" | "coupons" = "export") {
     <div class="flex flex-wrap items-center gap-2" role="search" :aria-label="t('billing.accounting.period.label')">
       <DateRangePicker v-model="range" />
       <FilterSelect v-if="appList.length" v-model="app" :label="t('billing.accounting.app.label')" :options="appOptions" />
-      <div class="ms-auto flex items-center gap-2">
+      <div class="ms-auto flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" :disabled="!rangeOk || exporting" @click="exportCsv('export')"><Download class="size-4" aria-hidden="true" />{{ t("billing.accounting.export") }}</Button>
+        <Button type="button" variant="outline" data-testid="scan-receipts" @click="scan"><ScanLine class="size-4" aria-hidden="true" />{{ t("billing.accounting.scan.open") }}</Button>
+        <Button type="button" data-testid="add-expense" @click="add"><Plus class="size-4" aria-hidden="true" />{{ t("billing.accounting.addExpense") }}</Button>
       </div>
     </div>
     <p v-if="!rangeOk" class="text-muted-foreground text-sm">{{ t("billing.accounting.period.invalid") }}</p>
@@ -138,6 +167,8 @@ async function exportCsv(report: "export" | "coupons" = "export") {
     <p v-if="app" class="text-muted-foreground text-xs">{{ t("billing.accounting.app.note") }}</p>
     <p class="text-muted-foreground text-xs">{{ t("billing.accounting.currencyNote") }}</p>
   </div>
+
+  <InboxCard :tenant-id="tenantId" @review="reviewInbox" @rules="rulesOpen = true" />
 
   <ErrorText :error="summary.error.value" class="mb-4" />
   <p v-if="rangeOk && summary.data.value && !currencies.length" class="text-muted-foreground mb-6 text-sm">{{ t("billing.accounting.empty") }}</p>
@@ -241,9 +272,6 @@ async function exportCsv(report: "export" | "coupons" = "export") {
         <Checkbox :model-value="showVoided" @update:model-value="showVoided = $event === true" />
         {{ t("billing.accounting.expenses.showVoided") }}
       </label>
-      <template #actions>
-        <Button type="button" @click="add"><Plus class="size-4" aria-hidden="true" />{{ t("billing.accounting.addExpense") }}</Button>
-      </template>
     </DataToolbar>
     <p v-if="expenses.data.value && !(expenses.data.value.expenses ?? []).length" class="text-muted-foreground px-3 py-4 text-center text-sm">{{ t("billing.accounting.expenses.none") }}</p>
     <p v-else-if="!table.total.value" class="text-muted-foreground px-3 py-4 text-center text-sm">{{ t("common.noMatches") }}</p>
@@ -289,6 +317,14 @@ async function exportCsv(report: "export" | "coupons" = "export") {
         <dt class="text-muted-foreground">{{ t("billing.accounting.form.app") }}</dt>
         <dd class="text-end">{{ current.app_id ? appName(current.app_id) : t("billing.accounting.form.wholeTenant") }}</dd>
       </template>
+      <template v-if="current.tax_minor && current.tax_minor !== '0'">
+        <dt class="text-muted-foreground">{{ t("billing.accounting.scan.tax") }}</dt>
+        <dd class="text-end tabular-nums">{{ money(current.tax_minor, current.currency) }}</dd>
+      </template>
+      <template v-if="current.attachment_asset_id">
+        <dt class="text-muted-foreground">{{ t("billing.accounting.scan.attachment") }}</dt>
+        <dd class="text-end"><Button type="button" variant="link" size="sm" class="h-auto p-0" data-testid="expense-receipt" @click="openReceipt(current.attachment_asset_id)"><Paperclip class="size-4" aria-hidden="true" />{{ t("billing.accounting.scan.openReceipt") }}</Button></dd>
+      </template>
       <template v-if="current.note">
         <dt class="text-muted-foreground">{{ t("billing.accounting.form.note") }}</dt>
         <dd class="text-end">{{ current.note }}</dd>
@@ -306,4 +342,6 @@ async function exportCsv(report: "export" | "coupons" = "export") {
 
   <ExpenseDialog v-model:open="dialogOpen" :tenant-id="tenantId" :expense="editing" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" />
   <VoidDialog v-model:open="voidOpen" :tenant-id="tenantId" :expense="voiding" />
+  <ReceiptScanSheet v-model:open="scanOpen" :tenant-id="tenantId" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" :rules="rules.data.value?.rules ?? []" :inbox="scanInbox" />
+  <ExpenseRulesSheet v-model:open="rulesOpen" :tenant-id="tenantId" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" />
 </template>

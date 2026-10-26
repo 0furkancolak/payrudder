@@ -166,20 +166,28 @@ var hostedStrings = map[string]map[string]string{
 		"paid": "مدفوعة", "open": "مفتوحة", "void": "ملغاة", "uncollectible": "غير قابلة للتحصيل", "draft": "مسودة"},
 }
 
-const hostedCSS = `body{font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f6f7f9;color:#14171c}
-main{max-width:760px;margin:0 auto;padding:24px 16px}
-.card{background:#fff;border:1px solid #e3e6eb;border-radius:12px;padding:24px}
-h1{font-size:1.4rem;margin:0 0 4px}.muted{color:#5b6472;font-size:.9rem}
+const hostedCSS = `:root{color-scheme:light dark;--radius:1rem;--background:oklch(.965 .007 258);--foreground:oklch(.192 .017 269);--card:oklch(1 0 0);--primary:oklch(.519 .212 266);--primary-foreground:oklch(.985 0 0);--secondary:oklch(.945 .012 258);--muted:oklch(.955 .008 258);--muted-foreground:oklch(.5 .02 264);--accent:oklch(.95 .028 258);--accent-foreground:oklch(.437 .19 265);--destructive:oklch(.55 .21 27);--destructive-soft:oklch(.955 .03 25);--success:oklch(.5 .13 155);--success-soft:oklch(.95 .045 155);--warning:oklch(.52 .11 65);--warning-soft:oklch(.96 .055 85);--border:oklch(.915 .009 258);--input:oklch(.885 .011 258);--ring:oklch(.673 .164 261);--info:oklch(.437 .19 265);--info-soft:oklch(.95 .03 255);--shadow:0 1px 2px rgb(16 24 40/.04),0 10px 28px -12px rgb(16 24 40/.1)}
+@media (prefers-color-scheme:dark){:root{--background:oklch(.16 .013 270);--foreground:oklch(.969 .007 261);--card:oklch(.192 .017 269);--primary:oklch(.762 .123 256);--primary-foreground:oklch(.192 .017 269);--secondary:oklch(.26 .02 268);--muted:oklch(.235 .018 268);--muted-foreground:oklch(.72 .02 262);--accent:oklch(.29 .045 262);--accent-foreground:oklch(.93 .03 255);--destructive:oklch(.7 .18 25);--destructive-soft:oklch(.31 .07 25);--success:oklch(.78 .14 155);--success-soft:oklch(.3 .06 155);--warning:oklch(.82 .12 80);--warning-soft:oklch(.32 .06 80);--border:oklch(1 0 0/9%);--input:oklch(1 0 0/14%);--info:oklch(.84 .081 254);--info-soft:oklch(.3 .06 262);--shadow:0 1px 2px rgb(0 0 0/.3)}}
+*{box-sizing:border-box}
+body{font:15px/1.55 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;margin:0;background:var(--background);color:var(--foreground);-webkit-font-smoothing:antialiased}
+main{max-width:760px;margin:0 auto;padding:32px 16px 40px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow)}
+h1{font-size:1.5rem;line-height:1.25;letter-spacing:-.01em;margin:0 0 4px}.muted{color:var(--muted-foreground);font-size:.9rem}
 .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:20px 0}
-.meta b{display:block;font-size:.8rem;color:#5b6472;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
-table{width:100%;border-collapse:collapse}th,td{padding:10px 8px;border-bottom:1px solid #eceef2;text-align:start;vertical-align:top}
-th{font-size:.8rem;color:#5b6472;text-transform:uppercase;letter-spacing:.04em}td.n,th.n{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
-tfoot td{font-weight:600;border-bottom:0}.neg{color:#087443}
-.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.8rem;background:#e8ebf0}.badge.paid{background:#d9f3e4;color:#075c35}.badge.void,.badge.uncollectible{background:#fde2e1;color:#8a1c17}
-.pay{margin-top:20px;padding:16px;border:1px solid #e3e6eb;border-radius:8px}.pay b{display:block;margin-bottom:8px}.pay dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0}.pay dt{color:#5b6472;font-size:.9rem}.pay dd{margin:0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.was{text-decoration:line-through;color:#5b6472;font-variant-numeric:tabular-nums}.err{color:#8a1c17;margin:8px 0}.promo{margin:20px 0 8px}.promo label{display:block;font-size:.8rem;color:#5b6472;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}.promo-row{display:flex;gap:8px}.promo-row input,input.code{flex:1;min-width:0;padding:9px 10px;border:1px solid #c9ced6;border-radius:8px;font:inherit;text-transform:uppercase}.promo-row .btn{margin-top:0}input.code{max-width:9rem;margin-inline-end:6px}
-a.btn{display:inline-block;margin-top:20px;padding:10px 16px;border-radius:8px;background:#14171c;color:#fff;text-decoration:none}
-@media (prefers-color-scheme:dark){body{background:#0f1216;color:#e8eaee}.card{background:#171b21;border-color:#262c35}.pay{border-color:#262c35}.pay dt{color:#9aa4b2}th,td{border-color:#262c35}.muted,.meta b,th{color:#9aa4b2}.badge{background:#262c35}a.btn{background:#e8eaee;color:#14171c}}`
+.meta b{display:block;font-size:.75rem;color:var(--muted-foreground);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+table{width:100%;border-collapse:collapse}th,td{padding:12px 8px;border-bottom:1px solid var(--border);text-align:start;vertical-align:top}
+th{font-size:.75rem;color:var(--muted-foreground);font-weight:600;text-transform:uppercase;letter-spacing:.05em}td.n,th.n{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+tfoot td{font-weight:600;border-bottom:0}.neg{color:var(--success)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;font-size:.78rem;font-weight:500;background:var(--secondary);color:var(--foreground)}.badge:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}.badge.paid{background:var(--success-soft);color:var(--success)}.badge.void,.badge.uncollectible{background:var(--destructive-soft);color:var(--destructive)}
+.pay{margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:calc(var(--radius) - 4px)}.pay b{display:block;margin-bottom:8px}.pay dl{display:grid;grid-template-columns:max-content 1fr;gap:4px 16px;margin:0}.pay dt{color:var(--muted-foreground);font-size:.9rem}.pay dd{margin:0}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.was{text-decoration:line-through;color:var(--muted-foreground);font-variant-numeric:tabular-nums}.err{color:var(--destructive);margin:8px 0}
+.promo{margin:20px 0 8px}.promo label{display:block;font-size:.75rem;color:var(--muted-foreground);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.promo-row{display:flex;gap:8px}
+.promo-row input,input.code{flex:1;min-width:0;height:44px;padding:0 12px;border:1px solid var(--input);border-radius:calc(var(--radius) - 6px);background:var(--card);color:inherit;font:inherit;text-transform:uppercase;letter-spacing:.04em}
+input.code::placeholder,.promo-row input::placeholder{text-transform:none;letter-spacing:0;color:var(--muted-foreground)}
+.promo-row input:focus-visible,input.code:focus-visible,.btn:focus-visible,a:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.promo-row .btn{margin-top:0}
+a.btn{display:inline-block;margin-top:20px;padding:10px 16px;border-radius:calc(var(--radius) - 6px);background:var(--primary);color:var(--primary-foreground);text-decoration:none}`
 
 var hostedGone = template.Must(template.New("gone").Parse(`<!doctype html>
 <html lang="{{.Lang}}" dir="{{.Dir}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">

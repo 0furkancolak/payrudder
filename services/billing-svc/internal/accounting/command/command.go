@@ -46,10 +46,13 @@ type Input struct {
 	Note           string
 	Recurring      string
 	RecurringUntil string
+	TaxMinor       int64
+	AttachmentID   string
 }
 
 type checked struct {
 	app        *uuid.UUID
+	attachment *uuid.UUID
 	vendor     string
 	note       string
 	recurring  string
@@ -67,6 +70,9 @@ func (in *Input) check(now time.Time) (*checked, error) {
 	}
 	if in.AmountMinor < 1 || in.AmountMinor > maxAmount {
 		return nil, errkey.New(codes.InvalidArgument, "billing.accounting.bad_expense", "the amount must be above zero")
+	}
+	if in.TaxMinor < 0 || in.TaxMinor > in.AmountMinor {
+		return nil, errkey.New(codes.InvalidArgument, "billing.accounting.bad_expense", "the tax cannot be negative or more than the amount")
 	}
 	if !model.ValidCategory(in.Category) {
 		return nil, errkey.New(codes.InvalidArgument, "billing.accounting.bad_category", "the category is not one of the known categories")
@@ -102,6 +108,13 @@ func (in *Input) check(now time.Time) (*checked, error) {
 		}
 		c.app = &id
 	}
+	if in.AttachmentID != "" {
+		id, err := uuid.Parse(in.AttachmentID)
+		if err != nil {
+			return nil, errkey.New(codes.InvalidArgument, "billing.accounting.bad_attachment", "attachment_asset_id is not valid")
+		}
+		c.attachment = &id
+	}
 	return c, nil
 }
 
@@ -121,10 +134,10 @@ func Create(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, in *Inpu
 		return nil, err
 	}
 	e := &model.Expense{ID: uuid.New(), AppID: c.app, Vendor: c.vendor, Category: in.Category, AmountMinor: in.AmountMinor, Currency: in.Currency, IncurredOn: c.incurredOn,
-		Note: c.note, Recurring: c.recurring, RecurringUntil: store.NilIfZero(c.until)}
+		Note: c.note, Recurring: c.recurring, RecurringUntil: store.NilIfZero(c.until), TaxMinor: in.TaxMinor, AttachmentID: c.attachment}
 	err = pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		row, err := sqlc.New(tx).InsertExpense(ctx, sqlc.InsertExpenseParams{TenantID: tenantID, ID: e.ID, AppID: c.app, Vendor: c.vendor, Category: in.Category,
-			AmountMinor: in.AmountMinor, Currency: in.Currency, IncurredOn: model.ToPG(c.incurredOn), Note: c.note, Recurring: c.recurring, RecurringUntil: model.ToPG(c.until)})
+			AmountMinor: in.AmountMinor, Currency: in.Currency, IncurredOn: model.ToPG(c.incurredOn), Note: c.note, Recurring: c.recurring, RecurringUntil: model.ToPG(c.until), TaxMinor: in.TaxMinor, AttachmentAssetID: c.attachment})
 		e.CreatedAt, e.UpdatedAt = row.CreatedAt, row.UpdatedAt
 		return err
 	})
@@ -144,7 +157,7 @@ func Update(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID, in *
 	err = pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if _, err := q.UpdateExpense(ctx, sqlc.UpdateExpenseParams{TenantID: tenantID, ID: id, AppID: c.app, Vendor: c.vendor, Category: in.Category,
-			AmountMinor: in.AmountMinor, Currency: in.Currency, IncurredOn: model.ToPG(c.incurredOn), Note: c.note, Recurring: c.recurring, RecurringUntil: model.ToPG(c.until)}); err != nil {
+			AmountMinor: in.AmountMinor, Currency: in.Currency, IncurredOn: model.ToPG(c.incurredOn), Note: c.note, Recurring: c.recurring, RecurringUntil: model.ToPG(c.until), TaxMinor: in.TaxMinor, AttachmentAssetID: c.attachment}); err != nil {
 			return err
 		}
 		var err error

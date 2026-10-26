@@ -37,6 +37,9 @@ func bodyLimit(method, path string) int64 {
 	if method == http.MethodPost && path == "/v1/assets" {
 		return maxUploadRequest + formOverhead
 	}
+	if method == http.MethodPost && path == "/inbound/invoices" {
+		return inboundBodyLimit
+	}
 	return MaxBodyBytes
 }
 

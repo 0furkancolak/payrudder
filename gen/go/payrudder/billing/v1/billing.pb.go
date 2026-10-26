@@ -8942,12 +8942,16 @@ type Expense struct {
 	// Last day an occurrence may fall on; empty: no end.
 	RecurringUntil string `protobuf:"bytes,10,opt,name=recurring_until,json=recurringUntil,proto3" json:"recurring_until,omitempty"`
 	// Set when voided.
-	VoidTime      *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=void_time,json=voidTime,proto3" json:"void_time,omitempty"`
-	VoidReason    string                 `protobuf:"bytes,12,opt,name=void_reason,json=voidReason,proto3" json:"void_reason,omitempty"`
-	CreateTime    *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	VoidTime   *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=void_time,json=voidTime,proto3" json:"void_time,omitempty"`
+	VoidReason string                 `protobuf:"bytes,12,opt,name=void_reason,json=voidReason,proto3" json:"void_reason,omitempty"`
+	CreateTime *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
+	UpdateTime *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	// The tax inside amount_minor, when the receipt shows it; 0 when unknown.
+	TaxMinor int64 `protobuf:"varint,15,opt,name=tax_minor,json=taxMinor,proto3" json:"tax_minor,omitempty"`
+	// The receipt or invoice the expense was entered from: a READY general asset of the tenant, or empty.
+	AttachmentAssetId string `protobuf:"bytes,16,opt,name=attachment_asset_id,json=attachmentAssetId,proto3" json:"attachment_asset_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *Expense) Reset() {
@@ -9078,19 +9082,35 @@ func (x *Expense) GetUpdateTime() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Expense) GetTaxMinor() int64 {
+	if x != nil {
+		return x.TaxMinor
+	}
+	return 0
+}
+
+func (x *Expense) GetAttachmentAssetId() string {
+	if x != nil {
+		return x.AttachmentAssetId
+	}
+	return ""
+}
+
 type CreateExpenseRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	AppId          string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
-	Vendor         string                 `protobuf:"bytes,2,opt,name=vendor,proto3" json:"vendor,omitempty"`
-	Category       string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
-	AmountMinor    int64                  `protobuf:"varint,4,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
-	Currency       string                 `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
-	IncurredOn     string                 `protobuf:"bytes,6,opt,name=incurred_on,json=incurredOn,proto3" json:"incurred_on,omitempty"`
-	Note           string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
-	Recurring      string                 `protobuf:"bytes,8,opt,name=recurring,proto3" json:"recurring,omitempty"`
-	RecurringUntil string                 `protobuf:"bytes,9,opt,name=recurring_until,json=recurringUntil,proto3" json:"recurring_until,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	AppId             string                 `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	Vendor            string                 `protobuf:"bytes,2,opt,name=vendor,proto3" json:"vendor,omitempty"`
+	Category          string                 `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
+	AmountMinor       int64                  `protobuf:"varint,4,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
+	Currency          string                 `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
+	IncurredOn        string                 `protobuf:"bytes,6,opt,name=incurred_on,json=incurredOn,proto3" json:"incurred_on,omitempty"`
+	Note              string                 `protobuf:"bytes,7,opt,name=note,proto3" json:"note,omitempty"`
+	Recurring         string                 `protobuf:"bytes,8,opt,name=recurring,proto3" json:"recurring,omitempty"`
+	RecurringUntil    string                 `protobuf:"bytes,9,opt,name=recurring_until,json=recurringUntil,proto3" json:"recurring_until,omitempty"`
+	TaxMinor          int64                  `protobuf:"varint,10,opt,name=tax_minor,json=taxMinor,proto3" json:"tax_minor,omitempty"`
+	AttachmentAssetId string                 `protobuf:"bytes,11,opt,name=attachment_asset_id,json=attachmentAssetId,proto3" json:"attachment_asset_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CreateExpenseRequest) Reset() {
@@ -9186,6 +9206,20 @@ func (x *CreateExpenseRequest) GetRecurringUntil() string {
 	return ""
 }
 
+func (x *CreateExpenseRequest) GetTaxMinor() int64 {
+	if x != nil {
+		return x.TaxMinor
+	}
+	return 0
+}
+
+func (x *CreateExpenseRequest) GetAttachmentAssetId() string {
+	if x != nil {
+		return x.AttachmentAssetId
+	}
+	return ""
+}
+
 type CreateExpenseResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Expense       *Expense               `protobuf:"bytes,1,opt,name=expense,proto3" json:"expense,omitempty"`
@@ -9231,19 +9265,21 @@ func (x *CreateExpenseResponse) GetExpense() *Expense {
 }
 
 type UpdateExpenseRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	AppId          string                 `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
-	Vendor         string                 `protobuf:"bytes,3,opt,name=vendor,proto3" json:"vendor,omitempty"`
-	Category       string                 `protobuf:"bytes,4,opt,name=category,proto3" json:"category,omitempty"`
-	AmountMinor    int64                  `protobuf:"varint,5,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
-	Currency       string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
-	IncurredOn     string                 `protobuf:"bytes,7,opt,name=incurred_on,json=incurredOn,proto3" json:"incurred_on,omitempty"`
-	Note           string                 `protobuf:"bytes,8,opt,name=note,proto3" json:"note,omitempty"`
-	Recurring      string                 `protobuf:"bytes,9,opt,name=recurring,proto3" json:"recurring,omitempty"`
-	RecurringUntil string                 `protobuf:"bytes,10,opt,name=recurring_until,json=recurringUntil,proto3" json:"recurring_until,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AppId             string                 `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	Vendor            string                 `protobuf:"bytes,3,opt,name=vendor,proto3" json:"vendor,omitempty"`
+	Category          string                 `protobuf:"bytes,4,opt,name=category,proto3" json:"category,omitempty"`
+	AmountMinor       int64                  `protobuf:"varint,5,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
+	Currency          string                 `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
+	IncurredOn        string                 `protobuf:"bytes,7,opt,name=incurred_on,json=incurredOn,proto3" json:"incurred_on,omitempty"`
+	Note              string                 `protobuf:"bytes,8,opt,name=note,proto3" json:"note,omitempty"`
+	Recurring         string                 `protobuf:"bytes,9,opt,name=recurring,proto3" json:"recurring,omitempty"`
+	RecurringUntil    string                 `protobuf:"bytes,10,opt,name=recurring_until,json=recurringUntil,proto3" json:"recurring_until,omitempty"`
+	TaxMinor          int64                  `protobuf:"varint,11,opt,name=tax_minor,json=taxMinor,proto3" json:"tax_minor,omitempty"`
+	AttachmentAssetId string                 `protobuf:"bytes,12,opt,name=attachment_asset_id,json=attachmentAssetId,proto3" json:"attachment_asset_id,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *UpdateExpenseRequest) Reset() {
@@ -9342,6 +9378,20 @@ func (x *UpdateExpenseRequest) GetRecurring() string {
 func (x *UpdateExpenseRequest) GetRecurringUntil() string {
 	if x != nil {
 		return x.RecurringUntil
+	}
+	return ""
+}
+
+func (x *UpdateExpenseRequest) GetTaxMinor() int64 {
+	if x != nil {
+		return x.TaxMinor
+	}
+	return 0
+}
+
+func (x *UpdateExpenseRequest) GetAttachmentAssetId() string {
+	if x != nil {
+		return x.AttachmentAssetId
 	}
 	return ""
 }
@@ -10765,6 +10815,1070 @@ func (x *SetCreditSettingsResponse) GetLowThreshold() int64 {
 	return 0
 }
 
+type GetExpenseInboxRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty: the inbox of the whole tenant.
+	AppId         string `protobuf:"bytes,1,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetExpenseInboxRequest) Reset() {
+	*x = GetExpenseInboxRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[153]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetExpenseInboxRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetExpenseInboxRequest) ProtoMessage() {}
+
+func (x *GetExpenseInboxRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[153]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetExpenseInboxRequest.ProtoReflect.Descriptor instead.
+func (*GetExpenseInboxRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{153}
+}
+
+func (x *GetExpenseInboxRequest) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+type ExpenseInbox struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The secret part of the address: invoices+<token>@<inbound domain>.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	AppId         string `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpenseInbox) Reset() {
+	*x = ExpenseInbox{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[154]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpenseInbox) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpenseInbox) ProtoMessage() {}
+
+func (x *ExpenseInbox) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[154]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpenseInbox.ProtoReflect.Descriptor instead.
+func (*ExpenseInbox) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{154}
+}
+
+func (x *ExpenseInbox) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *ExpenseInbox) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+type InboxItem struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AppId       string                 `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	From        string                 `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
+	Subject     string                 `protobuf:"bytes,4,opt,name=subject,proto3" json:"subject,omitempty"`
+	Filename    string                 `protobuf:"bytes,5,opt,name=filename,proto3" json:"filename,omitempty"`
+	ContentType string                 `protobuf:"bytes,6,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	SizeBytes   int64                  `protobuf:"varint,7,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	// to_review, accepted or dismissed.
+	Status string `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"`
+	// Set when accepted: the expense made from it.
+	ExpenseId     string                 `protobuf:"bytes,9,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
+	ReceiveTime   *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=receive_time,json=receiveTime,proto3" json:"receive_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InboxItem) Reset() {
+	*x = InboxItem{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[155]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InboxItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InboxItem) ProtoMessage() {}
+
+func (x *InboxItem) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[155]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InboxItem.ProtoReflect.Descriptor instead.
+func (*InboxItem) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{155}
+}
+
+func (x *InboxItem) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *InboxItem) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *InboxItem) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *InboxItem) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *InboxItem) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *InboxItem) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *InboxItem) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+func (x *InboxItem) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *InboxItem) GetExpenseId() string {
+	if x != nil {
+		return x.ExpenseId
+	}
+	return ""
+}
+
+func (x *InboxItem) GetReceiveTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ReceiveTime
+	}
+	return nil
+}
+
+type ListInboxItemsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// to_review (default), accepted, dismissed.
+	Status string `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	// 1..200; 0 means 50.
+	PageSize      int32 `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInboxItemsRequest) Reset() {
+	*x = ListInboxItemsRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[156]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInboxItemsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInboxItemsRequest) ProtoMessage() {}
+
+func (x *ListInboxItemsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[156]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInboxItemsRequest.ProtoReflect.Descriptor instead.
+func (*ListInboxItemsRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{156}
+}
+
+func (x *ListInboxItemsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListInboxItemsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+type ListInboxItemsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*InboxItem           `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListInboxItemsResponse) Reset() {
+	*x = ListInboxItemsResponse{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[157]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListInboxItemsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListInboxItemsResponse) ProtoMessage() {}
+
+func (x *ListInboxItemsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[157]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListInboxItemsResponse.ProtoReflect.Descriptor instead.
+func (*ListInboxItemsResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{157}
+}
+
+func (x *ListInboxItemsResponse) GetItems() []*InboxItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type GetInboxItemFileRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInboxItemFileRequest) Reset() {
+	*x = GetInboxItemFileRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[158]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInboxItemFileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInboxItemFileRequest) ProtoMessage() {}
+
+func (x *GetInboxItemFileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[158]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInboxItemFileRequest.ProtoReflect.Descriptor instead.
+func (*GetInboxItemFileRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{158}
+}
+
+func (x *GetInboxItemFileRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetInboxItemFileResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	ContentType   string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Data          []byte                 `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInboxItemFileResponse) Reset() {
+	*x = GetInboxItemFileResponse{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[159]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInboxItemFileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInboxItemFileResponse) ProtoMessage() {}
+
+func (x *GetInboxItemFileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[159]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInboxItemFileResponse.ProtoReflect.Descriptor instead.
+func (*GetInboxItemFileResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{159}
+}
+
+func (x *GetInboxItemFileResponse) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *GetInboxItemFileResponse) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *GetInboxItemFileResponse) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type ResolveInboxItemRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// accepted or dismissed.
+	Status        string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	ExpenseId     string `protobuf:"bytes,3,opt,name=expense_id,json=expenseId,proto3" json:"expense_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveInboxItemRequest) Reset() {
+	*x = ResolveInboxItemRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[160]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveInboxItemRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveInboxItemRequest) ProtoMessage() {}
+
+func (x *ResolveInboxItemRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[160]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveInboxItemRequest.ProtoReflect.Descriptor instead.
+func (*ResolveInboxItemRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{160}
+}
+
+func (x *ResolveInboxItemRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ResolveInboxItemRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ResolveInboxItemRequest) GetExpenseId() string {
+	if x != nil {
+		return x.ExpenseId
+	}
+	return ""
+}
+
+type ResolveInboxItemResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Item          *InboxItem             `protobuf:"bytes,1,opt,name=item,proto3" json:"item,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveInboxItemResponse) Reset() {
+	*x = ResolveInboxItemResponse{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[161]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveInboxItemResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveInboxItemResponse) ProtoMessage() {}
+
+func (x *ResolveInboxItemResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[161]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveInboxItemResponse.ProtoReflect.Descriptor instead.
+func (*ResolveInboxItemResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{161}
+}
+
+func (x *ResolveInboxItemResponse) GetItem() *InboxItem {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+type InboxAttachment struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Filename      string                 `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
+	ContentType   string                 `protobuf:"bytes,2,opt,name=content_type,json=contentType,proto3" json:"content_type,omitempty"`
+	Data          []byte                 `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InboxAttachment) Reset() {
+	*x = InboxAttachment{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[162]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InboxAttachment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InboxAttachment) ProtoMessage() {}
+
+func (x *InboxAttachment) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[162]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InboxAttachment.ProtoReflect.Descriptor instead.
+func (*InboxAttachment) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{162}
+}
+
+func (x *InboxAttachment) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+func (x *InboxAttachment) GetContentType() string {
+	if x != nil {
+		return x.ContentType
+	}
+	return ""
+}
+
+func (x *InboxAttachment) GetData() []byte {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type ReceiveInboxMailRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	From          string                 `protobuf:"bytes,2,opt,name=from,proto3" json:"from,omitempty"`
+	Subject       string                 `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
+	Attachments   []*InboxAttachment     `protobuf:"bytes,4,rep,name=attachments,proto3" json:"attachments,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReceiveInboxMailRequest) Reset() {
+	*x = ReceiveInboxMailRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[163]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReceiveInboxMailRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReceiveInboxMailRequest) ProtoMessage() {}
+
+func (x *ReceiveInboxMailRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[163]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReceiveInboxMailRequest.ProtoReflect.Descriptor instead.
+func (*ReceiveInboxMailRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{163}
+}
+
+func (x *ReceiveInboxMailRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *ReceiveInboxMailRequest) GetFrom() string {
+	if x != nil {
+		return x.From
+	}
+	return ""
+}
+
+func (x *ReceiveInboxMailRequest) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *ReceiveInboxMailRequest) GetAttachments() []*InboxAttachment {
+	if x != nil {
+		return x.Attachments
+	}
+	return nil
+}
+
+type ReceiveInboxMailResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stored        int32                  `protobuf:"varint,1,opt,name=stored,proto3" json:"stored,omitempty"`
+	Skipped       int32                  `protobuf:"varint,2,opt,name=skipped,proto3" json:"skipped,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReceiveInboxMailResponse) Reset() {
+	*x = ReceiveInboxMailResponse{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[164]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReceiveInboxMailResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReceiveInboxMailResponse) ProtoMessage() {}
+
+func (x *ReceiveInboxMailResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[164]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReceiveInboxMailResponse.ProtoReflect.Descriptor instead.
+func (*ReceiveInboxMailResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{164}
+}
+
+func (x *ReceiveInboxMailResponse) GetStored() int32 {
+	if x != nil {
+		return x.Stored
+	}
+	return 0
+}
+
+func (x *ReceiveInboxMailResponse) GetSkipped() int32 {
+	if x != nil {
+		return x.Skipped
+	}
+	return 0
+}
+
+type ExpenseRule struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Case-insensitive text the vendor name must contain.
+	VendorMatch string `protobuf:"bytes,2,opt,name=vendor_match,json=vendorMatch,proto3" json:"vendor_match,omitempty"`
+	Category    string `protobuf:"bytes,3,opt,name=category,proto3" json:"category,omitempty"`
+	Currency    string `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	// The tax share of the amount in basis points (2000 = 20%); 0: none.
+	TaxBps int32 `protobuf:"varint,5,opt,name=tax_bps,json=taxBps,proto3" json:"tax_bps,omitempty"`
+	// The amount this vendor usually bills, in minor units of the currency; 0: no expectation.
+	ExpectedAmountMinor int64 `protobuf:"varint,6,opt,name=expected_amount_minor,json=expectedAmountMinor,proto3" json:"expected_amount_minor,omitempty"`
+	// How far the amount may differ from the expected one and still be approved on its own, in basis points.
+	ToleranceBps  int32  `protobuf:"varint,7,opt,name=tolerance_bps,json=toleranceBps,proto3" json:"tolerance_bps,omitempty"`
+	AutoApprove   bool   `protobuf:"varint,8,opt,name=auto_approve,json=autoApprove,proto3" json:"auto_approve,omitempty"`
+	AppId         string `protobuf:"bytes,9,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ExpenseRule) Reset() {
+	*x = ExpenseRule{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[165]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ExpenseRule) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ExpenseRule) ProtoMessage() {}
+
+func (x *ExpenseRule) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[165]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ExpenseRule.ProtoReflect.Descriptor instead.
+func (*ExpenseRule) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{165}
+}
+
+func (x *ExpenseRule) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ExpenseRule) GetVendorMatch() string {
+	if x != nil {
+		return x.VendorMatch
+	}
+	return ""
+}
+
+func (x *ExpenseRule) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *ExpenseRule) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *ExpenseRule) GetTaxBps() int32 {
+	if x != nil {
+		return x.TaxBps
+	}
+	return 0
+}
+
+func (x *ExpenseRule) GetExpectedAmountMinor() int64 {
+	if x != nil {
+		return x.ExpectedAmountMinor
+	}
+	return 0
+}
+
+func (x *ExpenseRule) GetToleranceBps() int32 {
+	if x != nil {
+		return x.ToleranceBps
+	}
+	return 0
+}
+
+func (x *ExpenseRule) GetAutoApprove() bool {
+	if x != nil {
+		return x.AutoApprove
+	}
+	return false
+}
+
+func (x *ExpenseRule) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+type ListExpenseRulesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListExpenseRulesRequest) Reset() {
+	*x = ListExpenseRulesRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[166]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExpenseRulesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExpenseRulesRequest) ProtoMessage() {}
+
+func (x *ListExpenseRulesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[166]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExpenseRulesRequest.ProtoReflect.Descriptor instead.
+func (*ListExpenseRulesRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{166}
+}
+
+type ListExpenseRulesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rules         []*ExpenseRule         `protobuf:"bytes,1,rep,name=rules,proto3" json:"rules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListExpenseRulesResponse) Reset() {
+	*x = ListExpenseRulesResponse{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[167]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListExpenseRulesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListExpenseRulesResponse) ProtoMessage() {}
+
+func (x *ListExpenseRulesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[167]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListExpenseRulesResponse.ProtoReflect.Descriptor instead.
+func (*ListExpenseRulesResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{167}
+}
+
+func (x *ListExpenseRulesResponse) GetRules() []*ExpenseRule {
+	if x != nil {
+		return x.Rules
+	}
+	return nil
+}
+
+type SaveExpenseRuleRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// An empty id makes a new rule.
+	Rule          *ExpenseRule `protobuf:"bytes,1,opt,name=rule,proto3" json:"rule,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SaveExpenseRuleRequest) Reset() {
+	*x = SaveExpenseRuleRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[168]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveExpenseRuleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveExpenseRuleRequest) ProtoMessage() {}
+
+func (x *SaveExpenseRuleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[168]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveExpenseRuleRequest.ProtoReflect.Descriptor instead.
+func (*SaveExpenseRuleRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{168}
+}
+
+func (x *SaveExpenseRuleRequest) GetRule() *ExpenseRule {
+	if x != nil {
+		return x.Rule
+	}
+	return nil
+}
+
+type SaveExpenseRuleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Rule          *ExpenseRule           `protobuf:"bytes,1,opt,name=rule,proto3" json:"rule,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SaveExpenseRuleResponse) Reset() {
+	*x = SaveExpenseRuleResponse{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[169]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveExpenseRuleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveExpenseRuleResponse) ProtoMessage() {}
+
+func (x *SaveExpenseRuleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[169]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveExpenseRuleResponse.ProtoReflect.Descriptor instead.
+func (*SaveExpenseRuleResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{169}
+}
+
+func (x *SaveExpenseRuleResponse) GetRule() *ExpenseRule {
+	if x != nil {
+		return x.Rule
+	}
+	return nil
+}
+
+type DeleteExpenseRuleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteExpenseRuleRequest) Reset() {
+	*x = DeleteExpenseRuleRequest{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[170]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteExpenseRuleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteExpenseRuleRequest) ProtoMessage() {}
+
+func (x *DeleteExpenseRuleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[170]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteExpenseRuleRequest.ProtoReflect.Descriptor instead.
+func (*DeleteExpenseRuleRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{170}
+}
+
+func (x *DeleteExpenseRuleRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeleteExpenseRuleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteExpenseRuleResponse) Reset() {
+	*x = DeleteExpenseRuleResponse{}
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[171]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteExpenseRuleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteExpenseRuleResponse) ProtoMessage() {}
+
+func (x *DeleteExpenseRuleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_billing_v1_billing_proto_msgTypes[171]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteExpenseRuleResponse.ProtoReflect.Descriptor instead.
+func (*DeleteExpenseRuleResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_billing_v1_billing_proto_rawDescGZIP(), []int{171}
+}
+
 var File_payrudder_billing_v1_billing_proto protoreflect.FileDescriptor
 
 const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
@@ -11520,7 +12634,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\"\x85\x01\n" +
 	"\x18ListCreditLedgerResponse\x12A\n" +
 	"\aentries\x18\x01 \x03(\v2'.payrudder.billing.v1.CreditLedgerEntryR\aentries\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xf3\x03\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"\xc0\x04\n" +
 	"\aExpense\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12\x16\n" +
@@ -11540,7 +12654,9 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\vcreate_time\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12;\n" +
 	"\vupdate_time\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"updateTime\"\x9c\x02\n" +
+	"updateTime\x12\x1b\n" +
+	"\ttax_minor\x18\x0f \x01(\x03R\btaxMinor\x12.\n" +
+	"\x13attachment_asset_id\x18\x10 \x01(\tR\x11attachmentAssetId\"\xe9\x02\n" +
 	"\x14CreateExpenseRequest\x12\x15\n" +
 	"\x06app_id\x18\x01 \x01(\tR\x05appId\x12\x16\n" +
 	"\x06vendor\x18\x02 \x01(\tR\x06vendor\x12\x1a\n" +
@@ -11551,9 +12667,12 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"incurredOn\x12\x12\n" +
 	"\x04note\x18\a \x01(\tR\x04note\x12\x1c\n" +
 	"\trecurring\x18\b \x01(\tR\trecurring\x12'\n" +
-	"\x0frecurring_until\x18\t \x01(\tR\x0erecurringUntil\"P\n" +
+	"\x0frecurring_until\x18\t \x01(\tR\x0erecurringUntil\x12\x1b\n" +
+	"\ttax_minor\x18\n" +
+	" \x01(\x03R\btaxMinor\x12.\n" +
+	"\x13attachment_asset_id\x18\v \x01(\tR\x11attachmentAssetId\"P\n" +
 	"\x15CreateExpenseResponse\x127\n" +
-	"\aexpense\x18\x01 \x01(\v2\x1d.payrudder.billing.v1.ExpenseR\aexpense\"\xac\x02\n" +
+	"\aexpense\x18\x01 \x01(\v2\x1d.payrudder.billing.v1.ExpenseR\aexpense\"\xf9\x02\n" +
 	"\x14UpdateExpenseRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
 	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12\x16\n" +
@@ -11566,7 +12685,9 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x04note\x18\b \x01(\tR\x04note\x12\x1c\n" +
 	"\trecurring\x18\t \x01(\tR\trecurring\x12'\n" +
 	"\x0frecurring_until\x18\n" +
-	" \x01(\tR\x0erecurringUntil\"P\n" +
+	" \x01(\tR\x0erecurringUntil\x12\x1b\n" +
+	"\ttax_minor\x18\v \x01(\x03R\btaxMinor\x12.\n" +
+	"\x13attachment_asset_id\x18\f \x01(\tR\x11attachmentAssetId\"P\n" +
 	"\x15UpdateExpenseResponse\x127\n" +
 	"\aexpense\x18\x01 \x01(\v2\x1d.payrudder.billing.v1.ExpenseR\aexpense\"<\n" +
 	"\x12VoidExpenseRequest\x12\x0e\n" +
@@ -11678,7 +12799,76 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x18SetCreditSettingsRequest\x12#\n" +
 	"\rlow_threshold\x18\x01 \x01(\x03R\flowThreshold\"@\n" +
 	"\x19SetCreditSettingsResponse\x12#\n" +
-	"\rlow_threshold\x18\x01 \x01(\x03R\flowThreshold*\xc5\x01\n" +
+	"\rlow_threshold\x18\x01 \x01(\x03R\flowThreshold\"/\n" +
+	"\x16GetExpenseInboxRequest\x12\x15\n" +
+	"\x06app_id\x18\x01 \x01(\tR\x05appId\";\n" +
+	"\fExpenseInbox\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x15\n" +
+	"\x06app_id\x18\x02 \x01(\tR\x05appId\"\xb4\x02\n" +
+	"\tInboxItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x15\n" +
+	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12\x12\n" +
+	"\x04from\x18\x03 \x01(\tR\x04from\x12\x18\n" +
+	"\asubject\x18\x04 \x01(\tR\asubject\x12\x1a\n" +
+	"\bfilename\x18\x05 \x01(\tR\bfilename\x12!\n" +
+	"\fcontent_type\x18\x06 \x01(\tR\vcontentType\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\a \x01(\x03R\tsizeBytes\x12\x16\n" +
+	"\x06status\x18\b \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"expense_id\x18\t \x01(\tR\texpenseId\x12=\n" +
+	"\freceive_time\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\vreceiveTime\"L\n" +
+	"\x15ListInboxItemsRequest\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x1b\n" +
+	"\tpage_size\x18\x02 \x01(\x05R\bpageSize\"O\n" +
+	"\x16ListInboxItemsResponse\x125\n" +
+	"\x05items\x18\x01 \x03(\v2\x1f.payrudder.billing.v1.InboxItemR\x05items\")\n" +
+	"\x17GetInboxItemFileRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"m\n" +
+	"\x18GetInboxItemFileResponse\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12!\n" +
+	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x12\n" +
+	"\x04data\x18\x03 \x01(\fR\x04data\"`\n" +
+	"\x17ResolveInboxItemRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"expense_id\x18\x03 \x01(\tR\texpenseId\"O\n" +
+	"\x18ResolveInboxItemResponse\x123\n" +
+	"\x04item\x18\x01 \x01(\v2\x1f.payrudder.billing.v1.InboxItemR\x04item\"d\n" +
+	"\x0fInboxAttachment\x12\x1a\n" +
+	"\bfilename\x18\x01 \x01(\tR\bfilename\x12!\n" +
+	"\fcontent_type\x18\x02 \x01(\tR\vcontentType\x12\x12\n" +
+	"\x04data\x18\x03 \x01(\fR\x04data\"\xa6\x01\n" +
+	"\x17ReceiveInboxMailRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x12\n" +
+	"\x04from\x18\x02 \x01(\tR\x04from\x12\x18\n" +
+	"\asubject\x18\x03 \x01(\tR\asubject\x12G\n" +
+	"\vattachments\x18\x04 \x03(\v2%.payrudder.billing.v1.InboxAttachmentR\vattachments\"L\n" +
+	"\x18ReceiveInboxMailResponse\x12\x16\n" +
+	"\x06stored\x18\x01 \x01(\x05R\x06stored\x12\x18\n" +
+	"\askipped\x18\x02 \x01(\x05R\askipped\"\xa4\x02\n" +
+	"\vExpenseRule\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\fvendor_match\x18\x02 \x01(\tR\vvendorMatch\x12\x1a\n" +
+	"\bcategory\x18\x03 \x01(\tR\bcategory\x12\x1a\n" +
+	"\bcurrency\x18\x04 \x01(\tR\bcurrency\x12\x17\n" +
+	"\atax_bps\x18\x05 \x01(\x05R\x06taxBps\x122\n" +
+	"\x15expected_amount_minor\x18\x06 \x01(\x03R\x13expectedAmountMinor\x12#\n" +
+	"\rtolerance_bps\x18\a \x01(\x05R\ftoleranceBps\x12!\n" +
+	"\fauto_approve\x18\b \x01(\bR\vautoApprove\x12\x15\n" +
+	"\x06app_id\x18\t \x01(\tR\x05appId\"\x19\n" +
+	"\x17ListExpenseRulesRequest\"S\n" +
+	"\x18ListExpenseRulesResponse\x127\n" +
+	"\x05rules\x18\x01 \x03(\v2!.payrudder.billing.v1.ExpenseRuleR\x05rules\"O\n" +
+	"\x16SaveExpenseRuleRequest\x125\n" +
+	"\x04rule\x18\x01 \x01(\v2!.payrudder.billing.v1.ExpenseRuleR\x04rule\"P\n" +
+	"\x17SaveExpenseRuleResponse\x125\n" +
+	"\x04rule\x18\x01 \x01(\v2!.payrudder.billing.v1.ExpenseRuleR\x04rule\"*\n" +
+	"\x18DeleteExpenseRuleRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x1b\n" +
+	"\x19DeleteExpenseRuleResponse*\xc5\x01\n" +
 	"\tRunStatus\x12\x1a\n" +
 	"\x16RUN_STATUS_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14RUN_STATUS_SCHEDULED\x10\x01\x12 \n" +
@@ -11700,7 +12890,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x18REFUND_STATE_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16REFUND_STATE_REQUESTED\x10\x01\x12\x19\n" +
 	"\x15REFUND_STATE_REFUNDED\x10\x02\x12\x17\n" +
-	"\x13REFUND_STATE_FAILED\x10\x032\x80 \n" +
+	"\x13REFUND_STATE_FAILED\x10\x032\xec'\n" +
 	"\x0eBillingService\x12_\n" +
 	"\n" +
 	"GetInvoice\x12'.payrudder.billing.v1.GetInvoiceRequest\x1a(.payrudder.billing.v1.GetInvoiceResponse\x12e\n" +
@@ -11734,7 +12924,16 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\rCreateExpense\x12*.payrudder.billing.v1.CreateExpenseRequest\x1a+.payrudder.billing.v1.CreateExpenseResponse\x12h\n" +
 	"\rUpdateExpense\x12*.payrudder.billing.v1.UpdateExpenseRequest\x1a+.payrudder.billing.v1.UpdateExpenseResponse\x12b\n" +
 	"\vVoidExpense\x12(.payrudder.billing.v1.VoidExpenseRequest\x1a).payrudder.billing.v1.VoidExpenseResponse\x12e\n" +
-	"\fListExpenses\x12).payrudder.billing.v1.ListExpensesRequest\x1a*.payrudder.billing.v1.ListExpensesResponse\x12}\n" +
+	"\fListExpenses\x12).payrudder.billing.v1.ListExpensesRequest\x1a*.payrudder.billing.v1.ListExpensesResponse\x12c\n" +
+	"\x0fGetExpenseInbox\x12,.payrudder.billing.v1.GetExpenseInboxRequest\x1a\".payrudder.billing.v1.ExpenseInbox\x12f\n" +
+	"\x12RotateExpenseInbox\x12,.payrudder.billing.v1.GetExpenseInboxRequest\x1a\".payrudder.billing.v1.ExpenseInbox\x12k\n" +
+	"\x0eListInboxItems\x12+.payrudder.billing.v1.ListInboxItemsRequest\x1a,.payrudder.billing.v1.ListInboxItemsResponse\x12q\n" +
+	"\x10GetInboxItemFile\x12-.payrudder.billing.v1.GetInboxItemFileRequest\x1a..payrudder.billing.v1.GetInboxItemFileResponse\x12q\n" +
+	"\x10ResolveInboxItem\x12-.payrudder.billing.v1.ResolveInboxItemRequest\x1a..payrudder.billing.v1.ResolveInboxItemResponse\x12q\n" +
+	"\x10ReceiveInboxMail\x12-.payrudder.billing.v1.ReceiveInboxMailRequest\x1a..payrudder.billing.v1.ReceiveInboxMailResponse\x12q\n" +
+	"\x10ListExpenseRules\x12-.payrudder.billing.v1.ListExpenseRulesRequest\x1a..payrudder.billing.v1.ListExpenseRulesResponse\x12n\n" +
+	"\x0fSaveExpenseRule\x12,.payrudder.billing.v1.SaveExpenseRuleRequest\x1a-.payrudder.billing.v1.SaveExpenseRuleResponse\x12t\n" +
+	"\x11DeleteExpenseRule\x12..payrudder.billing.v1.DeleteExpenseRuleRequest\x1a/.payrudder.billing.v1.DeleteExpenseRuleResponse\x12}\n" +
 	"\x14GetAccountingSummary\x121.payrudder.billing.v1.GetAccountingSummaryRequest\x1a2.payrudder.billing.v1.GetAccountingSummaryResponse\x12t\n" +
 	"\x11GetDashboardStats\x12..payrudder.billing.v1.GetDashboardStatsRequest\x1a/.payrudder.billing.v1.GetDashboardStatsResponse\x12t\n" +
 	"\x11GetCreditSettings\x12..payrudder.billing.v1.GetCreditSettingsRequest\x1a/.payrudder.billing.v1.GetCreditSettingsResponse\x12t\n" +
@@ -11780,7 +12979,7 @@ func file_payrudder_billing_v1_billing_proto_rawDescGZIP() []byte {
 }
 
 var file_payrudder_billing_v1_billing_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_payrudder_billing_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 153)
+var file_payrudder_billing_v1_billing_proto_msgTypes = make([]protoimpl.MessageInfo, 172)
 var file_payrudder_billing_v1_billing_proto_goTypes = []any{
 	(RunStatus)(0),                         // 0: payrudder.billing.v1.RunStatus
 	(ReratingStatus)(0),                    // 1: payrudder.billing.v1.ReratingStatus
@@ -11939,240 +13138,284 @@ var file_payrudder_billing_v1_billing_proto_goTypes = []any{
 	(*GetCreditSettingsResponse)(nil),      // 154: payrudder.billing.v1.GetCreditSettingsResponse
 	(*SetCreditSettingsRequest)(nil),       // 155: payrudder.billing.v1.SetCreditSettingsRequest
 	(*SetCreditSettingsResponse)(nil),      // 156: payrudder.billing.v1.SetCreditSettingsResponse
-	(*timestamppb.Timestamp)(nil),          // 157: google.protobuf.Timestamp
+	(*GetExpenseInboxRequest)(nil),         // 157: payrudder.billing.v1.GetExpenseInboxRequest
+	(*ExpenseInbox)(nil),                   // 158: payrudder.billing.v1.ExpenseInbox
+	(*InboxItem)(nil),                      // 159: payrudder.billing.v1.InboxItem
+	(*ListInboxItemsRequest)(nil),          // 160: payrudder.billing.v1.ListInboxItemsRequest
+	(*ListInboxItemsResponse)(nil),         // 161: payrudder.billing.v1.ListInboxItemsResponse
+	(*GetInboxItemFileRequest)(nil),        // 162: payrudder.billing.v1.GetInboxItemFileRequest
+	(*GetInboxItemFileResponse)(nil),       // 163: payrudder.billing.v1.GetInboxItemFileResponse
+	(*ResolveInboxItemRequest)(nil),        // 164: payrudder.billing.v1.ResolveInboxItemRequest
+	(*ResolveInboxItemResponse)(nil),       // 165: payrudder.billing.v1.ResolveInboxItemResponse
+	(*InboxAttachment)(nil),                // 166: payrudder.billing.v1.InboxAttachment
+	(*ReceiveInboxMailRequest)(nil),        // 167: payrudder.billing.v1.ReceiveInboxMailRequest
+	(*ReceiveInboxMailResponse)(nil),       // 168: payrudder.billing.v1.ReceiveInboxMailResponse
+	(*ExpenseRule)(nil),                    // 169: payrudder.billing.v1.ExpenseRule
+	(*ListExpenseRulesRequest)(nil),        // 170: payrudder.billing.v1.ListExpenseRulesRequest
+	(*ListExpenseRulesResponse)(nil),       // 171: payrudder.billing.v1.ListExpenseRulesResponse
+	(*SaveExpenseRuleRequest)(nil),         // 172: payrudder.billing.v1.SaveExpenseRuleRequest
+	(*SaveExpenseRuleResponse)(nil),        // 173: payrudder.billing.v1.SaveExpenseRuleResponse
+	(*DeleteExpenseRuleRequest)(nil),       // 174: payrudder.billing.v1.DeleteExpenseRuleRequest
+	(*DeleteExpenseRuleResponse)(nil),      // 175: payrudder.billing.v1.DeleteExpenseRuleResponse
+	(*timestamppb.Timestamp)(nil),          // 176: google.protobuf.Timestamp
 }
 var file_payrudder_billing_v1_billing_proto_depIdxs = []int32{
 	0,   // 0: payrudder.billing.v1.BillingRun.status:type_name -> payrudder.billing.v1.RunStatus
-	157, // 1: payrudder.billing.v1.BillingRun.cutoff_time:type_name -> google.protobuf.Timestamp
-	157, // 2: payrudder.billing.v1.BillingRun.start_time:type_name -> google.protobuf.Timestamp
-	157, // 3: payrudder.billing.v1.BillingRun.complete_time:type_name -> google.protobuf.Timestamp
-	157, // 4: payrudder.billing.v1.InvoiceLine.service_from:type_name -> google.protobuf.Timestamp
-	157, // 5: payrudder.billing.v1.InvoiceLine.service_to:type_name -> google.protobuf.Timestamp
-	157, // 6: payrudder.billing.v1.Invoice.create_time:type_name -> google.protobuf.Timestamp
-	157, // 7: payrudder.billing.v1.Invoice.finalize_time:type_name -> google.protobuf.Timestamp
+	176, // 1: payrudder.billing.v1.BillingRun.cutoff_time:type_name -> google.protobuf.Timestamp
+	176, // 2: payrudder.billing.v1.BillingRun.start_time:type_name -> google.protobuf.Timestamp
+	176, // 3: payrudder.billing.v1.BillingRun.complete_time:type_name -> google.protobuf.Timestamp
+	176, // 4: payrudder.billing.v1.InvoiceLine.service_from:type_name -> google.protobuf.Timestamp
+	176, // 5: payrudder.billing.v1.InvoiceLine.service_to:type_name -> google.protobuf.Timestamp
+	176, // 6: payrudder.billing.v1.Invoice.create_time:type_name -> google.protobuf.Timestamp
+	176, // 7: payrudder.billing.v1.Invoice.finalize_time:type_name -> google.protobuf.Timestamp
 	5,   // 8: payrudder.billing.v1.Invoice.lines:type_name -> payrudder.billing.v1.InvoiceLine
 	7,   // 9: payrudder.billing.v1.Invoice.payments:type_name -> payrudder.billing.v1.InvoicePayment
-	157, // 10: payrudder.billing.v1.InvoicePayment.received_at:type_name -> google.protobuf.Timestamp
-	157, // 11: payrudder.billing.v1.InvoicePayment.recorded_at:type_name -> google.protobuf.Timestamp
-	157, // 12: payrudder.billing.v1.RecordInvoicePaymentRequest.received_at:type_name -> google.protobuf.Timestamp
+	176, // 10: payrudder.billing.v1.InvoicePayment.received_at:type_name -> google.protobuf.Timestamp
+	176, // 11: payrudder.billing.v1.InvoicePayment.recorded_at:type_name -> google.protobuf.Timestamp
+	176, // 12: payrudder.billing.v1.RecordInvoicePaymentRequest.received_at:type_name -> google.protobuf.Timestamp
 	7,   // 13: payrudder.billing.v1.RecordInvoicePaymentResponse.payment:type_name -> payrudder.billing.v1.InvoicePayment
 	6,   // 14: payrudder.billing.v1.GetInvoiceResponse.invoice:type_name -> payrudder.billing.v1.Invoice
 	6,   // 15: payrudder.billing.v1.ListInvoicesResponse.invoices:type_name -> payrudder.billing.v1.Invoice
-	157, // 16: payrudder.billing.v1.GetInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 16: payrudder.billing.v1.GetInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
 	4,   // 17: payrudder.billing.v1.ClosePeriodNowResponse.run:type_name -> payrudder.billing.v1.BillingRun
 	4,   // 18: payrudder.billing.v1.ClosePeriodResponse.run:type_name -> payrudder.billing.v1.BillingRun
 	4,   // 19: payrudder.billing.v1.GetBillingRunResponse.run:type_name -> payrudder.billing.v1.BillingRun
 	22,  // 20: payrudder.billing.v1.RetryInvoiceSagaResponse.saga:type_name -> payrudder.billing.v1.InvoiceSaga
 	22,  // 21: payrudder.billing.v1.VoidInvoiceResponse.saga:type_name -> payrudder.billing.v1.InvoiceSaga
 	1,   // 22: payrudder.billing.v1.ReratingJob.status:type_name -> payrudder.billing.v1.ReratingStatus
-	157, // 23: payrudder.billing.v1.ReratingJob.create_time:type_name -> google.protobuf.Timestamp
-	157, // 24: payrudder.billing.v1.ReratingJob.complete_time:type_name -> google.protobuf.Timestamp
+	176, // 23: payrudder.billing.v1.ReratingJob.create_time:type_name -> google.protobuf.Timestamp
+	176, // 24: payrudder.billing.v1.ReratingJob.complete_time:type_name -> google.protobuf.Timestamp
 	27,  // 25: payrudder.billing.v1.StartReratingResponse.job:type_name -> payrudder.billing.v1.ReratingJob
 	27,  // 26: payrudder.billing.v1.GetReratingJobResponse.job:type_name -> payrudder.billing.v1.ReratingJob
-	157, // 27: payrudder.billing.v1.SagaEvent.at:type_name -> google.protobuf.Timestamp
+	176, // 27: payrudder.billing.v1.SagaEvent.at:type_name -> google.protobuf.Timestamp
 	22,  // 28: payrudder.billing.v1.GetInvoiceSagaResponse.saga:type_name -> payrudder.billing.v1.InvoiceSaga
 	32,  // 29: payrudder.billing.v1.GetInvoiceSagaResponse.events:type_name -> payrudder.billing.v1.SagaEvent
 	35,  // 30: payrudder.billing.v1.ListDeadLettersResponse.queues:type_name -> payrudder.billing.v1.DeadLetterQueue
 	36,  // 31: payrudder.billing.v1.ListDeadLettersResponse.messages:type_name -> payrudder.billing.v1.DeadLetter
 	42,  // 32: payrudder.billing.v1.GetRevenueReportResponse.rows:type_name -> payrudder.billing.v1.RevenueRow
-	157, // 33: payrudder.billing.v1.DunningInvoice.next_attempt_time:type_name -> google.protobuf.Timestamp
+	176, // 33: payrudder.billing.v1.DunningInvoice.next_attempt_time:type_name -> google.protobuf.Timestamp
 	45,  // 34: payrudder.billing.v1.GetDunningReportResponse.invoices:type_name -> payrudder.billing.v1.DunningInvoice
 	46,  // 35: payrudder.billing.v1.GetDunningReportResponse.summary:type_name -> payrudder.billing.v1.DunningSummary
-	157, // 36: payrudder.billing.v1.CreditNote.create_time:type_name -> google.protobuf.Timestamp
+	176, // 36: payrudder.billing.v1.CreditNote.create_time:type_name -> google.protobuf.Timestamp
 	2,   // 37: payrudder.billing.v1.CreditNote.disposition:type_name -> payrudder.billing.v1.CreditNoteDisposition
 	3,   // 38: payrudder.billing.v1.CreditNote.refund_state:type_name -> payrudder.billing.v1.RefundState
 	48,  // 39: payrudder.billing.v1.RetryCreditNoteRefundResponse.credit_note:type_name -> payrudder.billing.v1.CreditNote
 	48,  // 40: payrudder.billing.v1.CreateCreditNoteResponse.credit_note:type_name -> payrudder.billing.v1.CreditNote
 	48,  // 41: payrudder.billing.v1.GetCreditNoteResponse.credit_note:type_name -> payrudder.billing.v1.CreditNote
 	48,  // 42: payrudder.billing.v1.ListCreditNotesResponse.credit_notes:type_name -> payrudder.billing.v1.CreditNote
-	157, // 43: payrudder.billing.v1.DunningSettings.update_time:type_name -> google.protobuf.Timestamp
+	176, // 43: payrudder.billing.v1.DunningSettings.update_time:type_name -> google.protobuf.Timestamp
 	57,  // 44: payrudder.billing.v1.GetDunningSettingsResponse.settings:type_name -> payrudder.billing.v1.DunningSettings
 	57,  // 45: payrudder.billing.v1.SetDunningSettingsResponse.settings:type_name -> payrudder.billing.v1.DunningSettings
-	157, // 46: payrudder.billing.v1.CreateInvoiceLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 46: payrudder.billing.v1.CreateInvoiceLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
 	6,   // 47: payrudder.billing.v1.GetHostedInvoiceResponse.invoice:type_name -> payrudder.billing.v1.Invoice
-	157, // 48: payrudder.billing.v1.GetHostedInvoiceResponse.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 48: payrudder.billing.v1.GetHostedInvoiceResponse.expire_time:type_name -> google.protobuf.Timestamp
 	71,  // 49: payrudder.billing.v1.GetHostedInvoiceResponse.payment:type_name -> payrudder.billing.v1.HostedPaymentContext
 	69,  // 50: payrudder.billing.v1.GetHostedInvoiceResponse.adhoc:type_name -> payrudder.billing.v1.HostedAdhoc
 	68,  // 51: payrudder.billing.v1.GetHostedInvoiceResponse.payment_instructions:type_name -> payrudder.billing.v1.BankTransferInstructions
 	70,  // 52: payrudder.billing.v1.HostedAdhoc.pack:type_name -> payrudder.billing.v1.HostedCreditPack
-	157, // 53: payrudder.billing.v1.GetHostedInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 54: payrudder.billing.v1.EInvoiceDocument.next_attempt_at:type_name -> google.protobuf.Timestamp
-	157, // 55: payrudder.billing.v1.EInvoiceDocument.created_at:type_name -> google.protobuf.Timestamp
-	157, // 56: payrudder.billing.v1.EInvoiceDocument.issued_at:type_name -> google.protobuf.Timestamp
-	157, // 57: payrudder.billing.v1.EInvoiceDocument.updated_at:type_name -> google.protobuf.Timestamp
+	176, // 53: payrudder.billing.v1.GetHostedInvoicePdfUrlResponse.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 54: payrudder.billing.v1.EInvoiceDocument.next_attempt_at:type_name -> google.protobuf.Timestamp
+	176, // 55: payrudder.billing.v1.EInvoiceDocument.created_at:type_name -> google.protobuf.Timestamp
+	176, // 56: payrudder.billing.v1.EInvoiceDocument.issued_at:type_name -> google.protobuf.Timestamp
+	176, // 57: payrudder.billing.v1.EInvoiceDocument.updated_at:type_name -> google.protobuf.Timestamp
 	74,  // 58: payrudder.billing.v1.GetEInvoiceResponse.document:type_name -> payrudder.billing.v1.EInvoiceDocument
 	74,  // 59: payrudder.billing.v1.ListEInvoicesResponse.documents:type_name -> payrudder.billing.v1.EInvoiceDocument
-	157, // 60: payrudder.billing.v1.GetEInvoiceFileUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
+	176, // 60: payrudder.billing.v1.GetEInvoiceFileUrlResponse.expires_at:type_name -> google.protobuf.Timestamp
 	74,  // 61: payrudder.billing.v1.RetryEInvoiceResponse.document:type_name -> payrudder.billing.v1.EInvoiceDocument
 	74,  // 62: payrudder.billing.v1.CancelEInvoiceResponse.document:type_name -> payrudder.billing.v1.EInvoiceDocument
-	157, // 63: payrudder.billing.v1.StartLinkPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
-	157, // 64: payrudder.billing.v1.RequestHostedPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	176, // 63: payrudder.billing.v1.StartLinkPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	176, // 64: payrudder.billing.v1.RequestHostedPaymentRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
 	71,  // 65: payrudder.billing.v1.RequestHostedPaymentResponse.payment:type_name -> payrudder.billing.v1.HostedPaymentContext
-	157, // 66: payrudder.billing.v1.PortalInvoice.issue_time:type_name -> google.protobuf.Timestamp
-	157, // 67: payrudder.billing.v1.GetPortalResponse.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 66: payrudder.billing.v1.PortalInvoice.issue_time:type_name -> google.protobuf.Timestamp
+	176, // 67: payrudder.billing.v1.GetPortalResponse.expire_time:type_name -> google.protobuf.Timestamp
 	94,  // 68: payrudder.billing.v1.GetPortalResponse.invoices:type_name -> payrudder.billing.v1.PortalInvoice
 	96,  // 69: payrudder.billing.v1.GetPortalResponse.credit_lots:type_name -> payrudder.billing.v1.PortalCreditLot
 	97,  // 70: payrudder.billing.v1.GetPortalResponse.credit_packs:type_name -> payrudder.billing.v1.PortalCreditPack
-	157, // 71: payrudder.billing.v1.PortalCreditLot.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 72: payrudder.billing.v1.StartPortalPurchaseRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
-	157, // 73: payrudder.billing.v1.PaymentLink.create_time:type_name -> google.protobuf.Timestamp
-	157, // 74: payrudder.billing.v1.PaymentLink.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 75: payrudder.billing.v1.PaymentLink.revoke_time:type_name -> google.protobuf.Timestamp
-	157, // 76: payrudder.billing.v1.PaymentLink.last_paid_time:type_name -> google.protobuf.Timestamp
+	176, // 71: payrudder.billing.v1.PortalCreditLot.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 72: payrudder.billing.v1.StartPortalPurchaseRequest.referral_touch_time:type_name -> google.protobuf.Timestamp
+	176, // 73: payrudder.billing.v1.PaymentLink.create_time:type_name -> google.protobuf.Timestamp
+	176, // 74: payrudder.billing.v1.PaymentLink.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 75: payrudder.billing.v1.PaymentLink.revoke_time:type_name -> google.protobuf.Timestamp
+	176, // 76: payrudder.billing.v1.PaymentLink.last_paid_time:type_name -> google.protobuf.Timestamp
 	100, // 77: payrudder.billing.v1.CreatePaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
 	100, // 78: payrudder.billing.v1.GetPaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
 	100, // 79: payrudder.billing.v1.ListPaymentLinksResponse.links:type_name -> payrudder.billing.v1.PaymentLink
 	100, // 80: payrudder.billing.v1.RevokePaymentLinkResponse.link:type_name -> payrudder.billing.v1.PaymentLink
-	157, // 81: payrudder.billing.v1.CreatePortalLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 82: payrudder.billing.v1.CreditPack.create_time:type_name -> google.protobuf.Timestamp
+	176, // 81: payrudder.billing.v1.CreatePortalLinkResponse.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 82: payrudder.billing.v1.CreditPack.create_time:type_name -> google.protobuf.Timestamp
 	115, // 83: payrudder.billing.v1.ListCreditPacksResponse.packs:type_name -> payrudder.billing.v1.CreditPack
 	115, // 84: payrudder.billing.v1.CreateCreditPackResponse.pack:type_name -> payrudder.billing.v1.CreditPack
-	157, // 85: payrudder.billing.v1.CreditLot.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 86: payrudder.billing.v1.CreditLot.create_time:type_name -> google.protobuf.Timestamp
-	157, // 87: payrudder.billing.v1.GetCreditBalanceResponse.next_expire_time:type_name -> google.protobuf.Timestamp
+	176, // 85: payrudder.billing.v1.CreditLot.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 86: payrudder.billing.v1.CreditLot.create_time:type_name -> google.protobuf.Timestamp
+	176, // 87: payrudder.billing.v1.GetCreditBalanceResponse.next_expire_time:type_name -> google.protobuf.Timestamp
 	122, // 88: payrudder.billing.v1.GetCreditBalanceResponse.lots:type_name -> payrudder.billing.v1.CreditLot
-	157, // 89: payrudder.billing.v1.GrantCreditsRequest.expire_time:type_name -> google.protobuf.Timestamp
-	157, // 90: payrudder.billing.v1.CreditLedgerEntry.create_time:type_name -> google.protobuf.Timestamp
+	176, // 89: payrudder.billing.v1.GrantCreditsRequest.expire_time:type_name -> google.protobuf.Timestamp
+	176, // 90: payrudder.billing.v1.CreditLedgerEntry.create_time:type_name -> google.protobuf.Timestamp
 	129, // 91: payrudder.billing.v1.ListCreditLedgerResponse.entries:type_name -> payrudder.billing.v1.CreditLedgerEntry
-	157, // 92: payrudder.billing.v1.Expense.void_time:type_name -> google.protobuf.Timestamp
-	157, // 93: payrudder.billing.v1.Expense.create_time:type_name -> google.protobuf.Timestamp
-	157, // 94: payrudder.billing.v1.Expense.update_time:type_name -> google.protobuf.Timestamp
+	176, // 92: payrudder.billing.v1.Expense.void_time:type_name -> google.protobuf.Timestamp
+	176, // 93: payrudder.billing.v1.Expense.create_time:type_name -> google.protobuf.Timestamp
+	176, // 94: payrudder.billing.v1.Expense.update_time:type_name -> google.protobuf.Timestamp
 	132, // 95: payrudder.billing.v1.CreateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
 	132, // 96: payrudder.billing.v1.UpdateExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
 	132, // 97: payrudder.billing.v1.VoidExpenseResponse.expense:type_name -> payrudder.billing.v1.Expense
 	132, // 98: payrudder.billing.v1.ListExpensesResponse.expenses:type_name -> payrudder.billing.v1.Expense
 	142, // 99: payrudder.billing.v1.DashboardCurrency.top_customers:type_name -> payrudder.billing.v1.DashboardTopCustomer
 	143, // 100: payrudder.billing.v1.DashboardCurrency.aging:type_name -> payrudder.billing.v1.DashboardAgingBucket
-	157, // 101: payrudder.billing.v1.DashboardInvoice.create_time:type_name -> google.protobuf.Timestamp
+	176, // 101: payrudder.billing.v1.DashboardInvoice.create_time:type_name -> google.protobuf.Timestamp
 	144, // 102: payrudder.billing.v1.GetDashboardStatsResponse.currencies:type_name -> payrudder.billing.v1.DashboardCurrency
 	145, // 103: payrudder.billing.v1.GetDashboardStatsResponse.recent_invoices:type_name -> payrudder.billing.v1.DashboardInvoice
 	148, // 104: payrudder.billing.v1.AccountingCurrency.expense_by_category:type_name -> payrudder.billing.v1.AccountingCategoryTotal
 	149, // 105: payrudder.billing.v1.AccountingCurrency.series:type_name -> payrudder.billing.v1.AccountingPoint
 	150, // 106: payrudder.billing.v1.AccountingCurrency.coupons:type_name -> payrudder.billing.v1.AccountingCoupon
 	151, // 107: payrudder.billing.v1.GetAccountingSummaryResponse.currencies:type_name -> payrudder.billing.v1.AccountingCurrency
-	10,  // 108: payrudder.billing.v1.BillingService.GetInvoice:input_type -> payrudder.billing.v1.GetInvoiceRequest
-	12,  // 109: payrudder.billing.v1.BillingService.ListInvoices:input_type -> payrudder.billing.v1.ListInvoicesRequest
-	14,  // 110: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> payrudder.billing.v1.GetInvoicePdfUrlRequest
-	41,  // 111: payrudder.billing.v1.BillingService.GetRevenueReport:input_type -> payrudder.billing.v1.GetRevenueReportRequest
-	44,  // 112: payrudder.billing.v1.BillingService.GetDunningReport:input_type -> payrudder.billing.v1.GetDunningReportRequest
-	53,  // 113: payrudder.billing.v1.BillingService.GetCreditNote:input_type -> payrudder.billing.v1.GetCreditNoteRequest
-	55,  // 114: payrudder.billing.v1.BillingService.ListCreditNotes:input_type -> payrudder.billing.v1.ListCreditNotesRequest
-	75,  // 115: payrudder.billing.v1.BillingService.GetEInvoice:input_type -> payrudder.billing.v1.GetEInvoiceRequest
-	77,  // 116: payrudder.billing.v1.BillingService.ListEInvoices:input_type -> payrudder.billing.v1.ListEInvoicesRequest
-	79,  // 117: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:input_type -> payrudder.billing.v1.GetEInvoiceFileUrlRequest
-	62,  // 118: payrudder.billing.v1.BillingService.CreateInvoiceLink:input_type -> payrudder.billing.v1.CreateInvoiceLinkRequest
-	64,  // 119: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> payrudder.billing.v1.RevokeInvoiceLinksRequest
-	101, // 120: payrudder.billing.v1.BillingService.CreatePaymentLink:input_type -> payrudder.billing.v1.CreatePaymentLinkRequest
-	103, // 121: payrudder.billing.v1.BillingService.GetPaymentLink:input_type -> payrudder.billing.v1.GetPaymentLinkRequest
-	105, // 122: payrudder.billing.v1.BillingService.ListPaymentLinks:input_type -> payrudder.billing.v1.ListPaymentLinksRequest
-	107, // 123: payrudder.billing.v1.BillingService.RevokePaymentLink:input_type -> payrudder.billing.v1.RevokePaymentLinkRequest
-	109, // 124: payrudder.billing.v1.BillingService.CreatePortalLink:input_type -> payrudder.billing.v1.CreatePortalLinkRequest
-	111, // 125: payrudder.billing.v1.BillingService.RevokePortalLinks:input_type -> payrudder.billing.v1.RevokePortalLinksRequest
-	113, // 126: payrudder.billing.v1.BillingService.SettleInvoicePayment:input_type -> payrudder.billing.v1.SettleInvoicePaymentRequest
-	58,  // 127: payrudder.billing.v1.BillingService.GetDunningSettings:input_type -> payrudder.billing.v1.GetDunningSettingsRequest
-	60,  // 128: payrudder.billing.v1.BillingService.SetDunningSettings:input_type -> payrudder.billing.v1.SetDunningSettingsRequest
-	116, // 129: payrudder.billing.v1.BillingService.ListCreditPacks:input_type -> payrudder.billing.v1.ListCreditPacksRequest
-	118, // 130: payrudder.billing.v1.BillingService.CreateCreditPack:input_type -> payrudder.billing.v1.CreateCreditPackRequest
-	120, // 131: payrudder.billing.v1.BillingService.SetCreditPackActive:input_type -> payrudder.billing.v1.SetCreditPackActiveRequest
-	123, // 132: payrudder.billing.v1.BillingService.GetCreditBalance:input_type -> payrudder.billing.v1.GetCreditBalanceRequest
-	125, // 133: payrudder.billing.v1.BillingService.GrantCredits:input_type -> payrudder.billing.v1.GrantCreditsRequest
-	127, // 134: payrudder.billing.v1.BillingService.ConsumeCredits:input_type -> payrudder.billing.v1.ConsumeCreditsRequest
-	130, // 135: payrudder.billing.v1.BillingService.ListCreditLedger:input_type -> payrudder.billing.v1.ListCreditLedgerRequest
-	133, // 136: payrudder.billing.v1.BillingService.CreateExpense:input_type -> payrudder.billing.v1.CreateExpenseRequest
-	135, // 137: payrudder.billing.v1.BillingService.UpdateExpense:input_type -> payrudder.billing.v1.UpdateExpenseRequest
-	137, // 138: payrudder.billing.v1.BillingService.VoidExpense:input_type -> payrudder.billing.v1.VoidExpenseRequest
-	139, // 139: payrudder.billing.v1.BillingService.ListExpenses:input_type -> payrudder.billing.v1.ListExpensesRequest
-	147, // 140: payrudder.billing.v1.BillingService.GetAccountingSummary:input_type -> payrudder.billing.v1.GetAccountingSummaryRequest
-	141, // 141: payrudder.billing.v1.BillingService.GetDashboardStats:input_type -> payrudder.billing.v1.GetDashboardStatsRequest
-	153, // 142: payrudder.billing.v1.BillingService.GetCreditSettings:input_type -> payrudder.billing.v1.GetCreditSettingsRequest
-	155, // 143: payrudder.billing.v1.BillingService.SetCreditSettings:input_type -> payrudder.billing.v1.SetCreditSettingsRequest
-	66,  // 144: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> payrudder.billing.v1.GetHostedInvoiceRequest
-	72,  // 145: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlRequest
-	85,  // 146: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:input_type -> payrudder.billing.v1.GetHostedLogoUrlRequest
-	87,  // 147: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:input_type -> payrudder.billing.v1.StartLinkPaymentRequest
-	88,  // 148: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:input_type -> payrudder.billing.v1.QuoteLinkPromotionRequest
-	91,  // 149: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:input_type -> payrudder.billing.v1.RequestHostedPaymentRequest
-	93,  // 150: payrudder.billing.v1.HostedInvoiceService.GetPortal:input_type -> payrudder.billing.v1.GetPortalRequest
-	98,  // 151: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:input_type -> payrudder.billing.v1.StartPortalPurchaseRequest
-	16,  // 152: payrudder.billing.v1.SandboxService.ClosePeriodNow:input_type -> payrudder.billing.v1.ClosePeriodNowRequest
-	18,  // 153: payrudder.billing.v1.BillingAdminService.ClosePeriod:input_type -> payrudder.billing.v1.ClosePeriodRequest
-	20,  // 154: payrudder.billing.v1.BillingAdminService.GetBillingRun:input_type -> payrudder.billing.v1.GetBillingRunRequest
-	23,  // 155: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> payrudder.billing.v1.RetryInvoiceSagaRequest
-	25,  // 156: payrudder.billing.v1.BillingAdminService.VoidInvoice:input_type -> payrudder.billing.v1.VoidInvoiceRequest
-	8,   // 157: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:input_type -> payrudder.billing.v1.RecordInvoicePaymentRequest
-	49,  // 158: payrudder.billing.v1.BillingAdminService.CreateCreditNote:input_type -> payrudder.billing.v1.CreateCreditNoteRequest
-	50,  // 159: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> payrudder.billing.v1.RetryCreditNoteRefundRequest
-	81,  // 160: payrudder.billing.v1.BillingAdminService.RetryEInvoice:input_type -> payrudder.billing.v1.RetryEInvoiceRequest
-	82,  // 161: payrudder.billing.v1.BillingAdminService.CancelEInvoice:input_type -> payrudder.billing.v1.CancelEInvoiceRequest
-	28,  // 162: payrudder.billing.v1.BillingAdminService.StartRerating:input_type -> payrudder.billing.v1.StartReratingRequest
-	30,  // 163: payrudder.billing.v1.BillingAdminService.GetReratingJob:input_type -> payrudder.billing.v1.GetReratingJobRequest
-	33,  // 164: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> payrudder.billing.v1.GetInvoiceSagaRequest
-	37,  // 165: payrudder.billing.v1.BillingAdminService.ListDeadLetters:input_type -> payrudder.billing.v1.ListDeadLettersRequest
-	39,  // 166: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> payrudder.billing.v1.RedriveDeadLettersRequest
-	11,  // 167: payrudder.billing.v1.BillingService.GetInvoice:output_type -> payrudder.billing.v1.GetInvoiceResponse
-	13,  // 168: payrudder.billing.v1.BillingService.ListInvoices:output_type -> payrudder.billing.v1.ListInvoicesResponse
-	15,  // 169: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> payrudder.billing.v1.GetInvoicePdfUrlResponse
-	43,  // 170: payrudder.billing.v1.BillingService.GetRevenueReport:output_type -> payrudder.billing.v1.GetRevenueReportResponse
-	47,  // 171: payrudder.billing.v1.BillingService.GetDunningReport:output_type -> payrudder.billing.v1.GetDunningReportResponse
-	54,  // 172: payrudder.billing.v1.BillingService.GetCreditNote:output_type -> payrudder.billing.v1.GetCreditNoteResponse
-	56,  // 173: payrudder.billing.v1.BillingService.ListCreditNotes:output_type -> payrudder.billing.v1.ListCreditNotesResponse
-	76,  // 174: payrudder.billing.v1.BillingService.GetEInvoice:output_type -> payrudder.billing.v1.GetEInvoiceResponse
-	78,  // 175: payrudder.billing.v1.BillingService.ListEInvoices:output_type -> payrudder.billing.v1.ListEInvoicesResponse
-	80,  // 176: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:output_type -> payrudder.billing.v1.GetEInvoiceFileUrlResponse
-	63,  // 177: payrudder.billing.v1.BillingService.CreateInvoiceLink:output_type -> payrudder.billing.v1.CreateInvoiceLinkResponse
-	65,  // 178: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> payrudder.billing.v1.RevokeInvoiceLinksResponse
-	102, // 179: payrudder.billing.v1.BillingService.CreatePaymentLink:output_type -> payrudder.billing.v1.CreatePaymentLinkResponse
-	104, // 180: payrudder.billing.v1.BillingService.GetPaymentLink:output_type -> payrudder.billing.v1.GetPaymentLinkResponse
-	106, // 181: payrudder.billing.v1.BillingService.ListPaymentLinks:output_type -> payrudder.billing.v1.ListPaymentLinksResponse
-	108, // 182: payrudder.billing.v1.BillingService.RevokePaymentLink:output_type -> payrudder.billing.v1.RevokePaymentLinkResponse
-	110, // 183: payrudder.billing.v1.BillingService.CreatePortalLink:output_type -> payrudder.billing.v1.CreatePortalLinkResponse
-	112, // 184: payrudder.billing.v1.BillingService.RevokePortalLinks:output_type -> payrudder.billing.v1.RevokePortalLinksResponse
-	114, // 185: payrudder.billing.v1.BillingService.SettleInvoicePayment:output_type -> payrudder.billing.v1.SettleInvoicePaymentResponse
-	59,  // 186: payrudder.billing.v1.BillingService.GetDunningSettings:output_type -> payrudder.billing.v1.GetDunningSettingsResponse
-	61,  // 187: payrudder.billing.v1.BillingService.SetDunningSettings:output_type -> payrudder.billing.v1.SetDunningSettingsResponse
-	117, // 188: payrudder.billing.v1.BillingService.ListCreditPacks:output_type -> payrudder.billing.v1.ListCreditPacksResponse
-	119, // 189: payrudder.billing.v1.BillingService.CreateCreditPack:output_type -> payrudder.billing.v1.CreateCreditPackResponse
-	121, // 190: payrudder.billing.v1.BillingService.SetCreditPackActive:output_type -> payrudder.billing.v1.SetCreditPackActiveResponse
-	124, // 191: payrudder.billing.v1.BillingService.GetCreditBalance:output_type -> payrudder.billing.v1.GetCreditBalanceResponse
-	126, // 192: payrudder.billing.v1.BillingService.GrantCredits:output_type -> payrudder.billing.v1.GrantCreditsResponse
-	128, // 193: payrudder.billing.v1.BillingService.ConsumeCredits:output_type -> payrudder.billing.v1.ConsumeCreditsResponse
-	131, // 194: payrudder.billing.v1.BillingService.ListCreditLedger:output_type -> payrudder.billing.v1.ListCreditLedgerResponse
-	134, // 195: payrudder.billing.v1.BillingService.CreateExpense:output_type -> payrudder.billing.v1.CreateExpenseResponse
-	136, // 196: payrudder.billing.v1.BillingService.UpdateExpense:output_type -> payrudder.billing.v1.UpdateExpenseResponse
-	138, // 197: payrudder.billing.v1.BillingService.VoidExpense:output_type -> payrudder.billing.v1.VoidExpenseResponse
-	140, // 198: payrudder.billing.v1.BillingService.ListExpenses:output_type -> payrudder.billing.v1.ListExpensesResponse
-	152, // 199: payrudder.billing.v1.BillingService.GetAccountingSummary:output_type -> payrudder.billing.v1.GetAccountingSummaryResponse
-	146, // 200: payrudder.billing.v1.BillingService.GetDashboardStats:output_type -> payrudder.billing.v1.GetDashboardStatsResponse
-	154, // 201: payrudder.billing.v1.BillingService.GetCreditSettings:output_type -> payrudder.billing.v1.GetCreditSettingsResponse
-	156, // 202: payrudder.billing.v1.BillingService.SetCreditSettings:output_type -> payrudder.billing.v1.SetCreditSettingsResponse
-	67,  // 203: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> payrudder.billing.v1.GetHostedInvoiceResponse
-	73,  // 204: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlResponse
-	86,  // 205: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:output_type -> payrudder.billing.v1.GetHostedLogoUrlResponse
-	90,  // 206: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:output_type -> payrudder.billing.v1.StartLinkPaymentResponse
-	89,  // 207: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:output_type -> payrudder.billing.v1.QuoteLinkPromotionResponse
-	92,  // 208: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:output_type -> payrudder.billing.v1.RequestHostedPaymentResponse
-	95,  // 209: payrudder.billing.v1.HostedInvoiceService.GetPortal:output_type -> payrudder.billing.v1.GetPortalResponse
-	99,  // 210: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:output_type -> payrudder.billing.v1.StartPortalPurchaseResponse
-	17,  // 211: payrudder.billing.v1.SandboxService.ClosePeriodNow:output_type -> payrudder.billing.v1.ClosePeriodNowResponse
-	19,  // 212: payrudder.billing.v1.BillingAdminService.ClosePeriod:output_type -> payrudder.billing.v1.ClosePeriodResponse
-	21,  // 213: payrudder.billing.v1.BillingAdminService.GetBillingRun:output_type -> payrudder.billing.v1.GetBillingRunResponse
-	24,  // 214: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> payrudder.billing.v1.RetryInvoiceSagaResponse
-	26,  // 215: payrudder.billing.v1.BillingAdminService.VoidInvoice:output_type -> payrudder.billing.v1.VoidInvoiceResponse
-	9,   // 216: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:output_type -> payrudder.billing.v1.RecordInvoicePaymentResponse
-	52,  // 217: payrudder.billing.v1.BillingAdminService.CreateCreditNote:output_type -> payrudder.billing.v1.CreateCreditNoteResponse
-	51,  // 218: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> payrudder.billing.v1.RetryCreditNoteRefundResponse
-	83,  // 219: payrudder.billing.v1.BillingAdminService.RetryEInvoice:output_type -> payrudder.billing.v1.RetryEInvoiceResponse
-	84,  // 220: payrudder.billing.v1.BillingAdminService.CancelEInvoice:output_type -> payrudder.billing.v1.CancelEInvoiceResponse
-	29,  // 221: payrudder.billing.v1.BillingAdminService.StartRerating:output_type -> payrudder.billing.v1.StartReratingResponse
-	31,  // 222: payrudder.billing.v1.BillingAdminService.GetReratingJob:output_type -> payrudder.billing.v1.GetReratingJobResponse
-	34,  // 223: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> payrudder.billing.v1.GetInvoiceSagaResponse
-	38,  // 224: payrudder.billing.v1.BillingAdminService.ListDeadLetters:output_type -> payrudder.billing.v1.ListDeadLettersResponse
-	40,  // 225: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> payrudder.billing.v1.RedriveDeadLettersResponse
-	167, // [167:226] is the sub-list for method output_type
-	108, // [108:167] is the sub-list for method input_type
-	108, // [108:108] is the sub-list for extension type_name
-	108, // [108:108] is the sub-list for extension extendee
-	0,   // [0:108] is the sub-list for field type_name
+	176, // 108: payrudder.billing.v1.InboxItem.receive_time:type_name -> google.protobuf.Timestamp
+	159, // 109: payrudder.billing.v1.ListInboxItemsResponse.items:type_name -> payrudder.billing.v1.InboxItem
+	159, // 110: payrudder.billing.v1.ResolveInboxItemResponse.item:type_name -> payrudder.billing.v1.InboxItem
+	166, // 111: payrudder.billing.v1.ReceiveInboxMailRequest.attachments:type_name -> payrudder.billing.v1.InboxAttachment
+	169, // 112: payrudder.billing.v1.ListExpenseRulesResponse.rules:type_name -> payrudder.billing.v1.ExpenseRule
+	169, // 113: payrudder.billing.v1.SaveExpenseRuleRequest.rule:type_name -> payrudder.billing.v1.ExpenseRule
+	169, // 114: payrudder.billing.v1.SaveExpenseRuleResponse.rule:type_name -> payrudder.billing.v1.ExpenseRule
+	10,  // 115: payrudder.billing.v1.BillingService.GetInvoice:input_type -> payrudder.billing.v1.GetInvoiceRequest
+	12,  // 116: payrudder.billing.v1.BillingService.ListInvoices:input_type -> payrudder.billing.v1.ListInvoicesRequest
+	14,  // 117: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:input_type -> payrudder.billing.v1.GetInvoicePdfUrlRequest
+	41,  // 118: payrudder.billing.v1.BillingService.GetRevenueReport:input_type -> payrudder.billing.v1.GetRevenueReportRequest
+	44,  // 119: payrudder.billing.v1.BillingService.GetDunningReport:input_type -> payrudder.billing.v1.GetDunningReportRequest
+	53,  // 120: payrudder.billing.v1.BillingService.GetCreditNote:input_type -> payrudder.billing.v1.GetCreditNoteRequest
+	55,  // 121: payrudder.billing.v1.BillingService.ListCreditNotes:input_type -> payrudder.billing.v1.ListCreditNotesRequest
+	75,  // 122: payrudder.billing.v1.BillingService.GetEInvoice:input_type -> payrudder.billing.v1.GetEInvoiceRequest
+	77,  // 123: payrudder.billing.v1.BillingService.ListEInvoices:input_type -> payrudder.billing.v1.ListEInvoicesRequest
+	79,  // 124: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:input_type -> payrudder.billing.v1.GetEInvoiceFileUrlRequest
+	62,  // 125: payrudder.billing.v1.BillingService.CreateInvoiceLink:input_type -> payrudder.billing.v1.CreateInvoiceLinkRequest
+	64,  // 126: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:input_type -> payrudder.billing.v1.RevokeInvoiceLinksRequest
+	101, // 127: payrudder.billing.v1.BillingService.CreatePaymentLink:input_type -> payrudder.billing.v1.CreatePaymentLinkRequest
+	103, // 128: payrudder.billing.v1.BillingService.GetPaymentLink:input_type -> payrudder.billing.v1.GetPaymentLinkRequest
+	105, // 129: payrudder.billing.v1.BillingService.ListPaymentLinks:input_type -> payrudder.billing.v1.ListPaymentLinksRequest
+	107, // 130: payrudder.billing.v1.BillingService.RevokePaymentLink:input_type -> payrudder.billing.v1.RevokePaymentLinkRequest
+	109, // 131: payrudder.billing.v1.BillingService.CreatePortalLink:input_type -> payrudder.billing.v1.CreatePortalLinkRequest
+	111, // 132: payrudder.billing.v1.BillingService.RevokePortalLinks:input_type -> payrudder.billing.v1.RevokePortalLinksRequest
+	113, // 133: payrudder.billing.v1.BillingService.SettleInvoicePayment:input_type -> payrudder.billing.v1.SettleInvoicePaymentRequest
+	58,  // 134: payrudder.billing.v1.BillingService.GetDunningSettings:input_type -> payrudder.billing.v1.GetDunningSettingsRequest
+	60,  // 135: payrudder.billing.v1.BillingService.SetDunningSettings:input_type -> payrudder.billing.v1.SetDunningSettingsRequest
+	116, // 136: payrudder.billing.v1.BillingService.ListCreditPacks:input_type -> payrudder.billing.v1.ListCreditPacksRequest
+	118, // 137: payrudder.billing.v1.BillingService.CreateCreditPack:input_type -> payrudder.billing.v1.CreateCreditPackRequest
+	120, // 138: payrudder.billing.v1.BillingService.SetCreditPackActive:input_type -> payrudder.billing.v1.SetCreditPackActiveRequest
+	123, // 139: payrudder.billing.v1.BillingService.GetCreditBalance:input_type -> payrudder.billing.v1.GetCreditBalanceRequest
+	125, // 140: payrudder.billing.v1.BillingService.GrantCredits:input_type -> payrudder.billing.v1.GrantCreditsRequest
+	127, // 141: payrudder.billing.v1.BillingService.ConsumeCredits:input_type -> payrudder.billing.v1.ConsumeCreditsRequest
+	130, // 142: payrudder.billing.v1.BillingService.ListCreditLedger:input_type -> payrudder.billing.v1.ListCreditLedgerRequest
+	133, // 143: payrudder.billing.v1.BillingService.CreateExpense:input_type -> payrudder.billing.v1.CreateExpenseRequest
+	135, // 144: payrudder.billing.v1.BillingService.UpdateExpense:input_type -> payrudder.billing.v1.UpdateExpenseRequest
+	137, // 145: payrudder.billing.v1.BillingService.VoidExpense:input_type -> payrudder.billing.v1.VoidExpenseRequest
+	139, // 146: payrudder.billing.v1.BillingService.ListExpenses:input_type -> payrudder.billing.v1.ListExpensesRequest
+	157, // 147: payrudder.billing.v1.BillingService.GetExpenseInbox:input_type -> payrudder.billing.v1.GetExpenseInboxRequest
+	157, // 148: payrudder.billing.v1.BillingService.RotateExpenseInbox:input_type -> payrudder.billing.v1.GetExpenseInboxRequest
+	160, // 149: payrudder.billing.v1.BillingService.ListInboxItems:input_type -> payrudder.billing.v1.ListInboxItemsRequest
+	162, // 150: payrudder.billing.v1.BillingService.GetInboxItemFile:input_type -> payrudder.billing.v1.GetInboxItemFileRequest
+	164, // 151: payrudder.billing.v1.BillingService.ResolveInboxItem:input_type -> payrudder.billing.v1.ResolveInboxItemRequest
+	167, // 152: payrudder.billing.v1.BillingService.ReceiveInboxMail:input_type -> payrudder.billing.v1.ReceiveInboxMailRequest
+	170, // 153: payrudder.billing.v1.BillingService.ListExpenseRules:input_type -> payrudder.billing.v1.ListExpenseRulesRequest
+	172, // 154: payrudder.billing.v1.BillingService.SaveExpenseRule:input_type -> payrudder.billing.v1.SaveExpenseRuleRequest
+	174, // 155: payrudder.billing.v1.BillingService.DeleteExpenseRule:input_type -> payrudder.billing.v1.DeleteExpenseRuleRequest
+	147, // 156: payrudder.billing.v1.BillingService.GetAccountingSummary:input_type -> payrudder.billing.v1.GetAccountingSummaryRequest
+	141, // 157: payrudder.billing.v1.BillingService.GetDashboardStats:input_type -> payrudder.billing.v1.GetDashboardStatsRequest
+	153, // 158: payrudder.billing.v1.BillingService.GetCreditSettings:input_type -> payrudder.billing.v1.GetCreditSettingsRequest
+	155, // 159: payrudder.billing.v1.BillingService.SetCreditSettings:input_type -> payrudder.billing.v1.SetCreditSettingsRequest
+	66,  // 160: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:input_type -> payrudder.billing.v1.GetHostedInvoiceRequest
+	72,  // 161: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:input_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlRequest
+	85,  // 162: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:input_type -> payrudder.billing.v1.GetHostedLogoUrlRequest
+	87,  // 163: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:input_type -> payrudder.billing.v1.StartLinkPaymentRequest
+	88,  // 164: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:input_type -> payrudder.billing.v1.QuoteLinkPromotionRequest
+	91,  // 165: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:input_type -> payrudder.billing.v1.RequestHostedPaymentRequest
+	93,  // 166: payrudder.billing.v1.HostedInvoiceService.GetPortal:input_type -> payrudder.billing.v1.GetPortalRequest
+	98,  // 167: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:input_type -> payrudder.billing.v1.StartPortalPurchaseRequest
+	16,  // 168: payrudder.billing.v1.SandboxService.ClosePeriodNow:input_type -> payrudder.billing.v1.ClosePeriodNowRequest
+	18,  // 169: payrudder.billing.v1.BillingAdminService.ClosePeriod:input_type -> payrudder.billing.v1.ClosePeriodRequest
+	20,  // 170: payrudder.billing.v1.BillingAdminService.GetBillingRun:input_type -> payrudder.billing.v1.GetBillingRunRequest
+	23,  // 171: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:input_type -> payrudder.billing.v1.RetryInvoiceSagaRequest
+	25,  // 172: payrudder.billing.v1.BillingAdminService.VoidInvoice:input_type -> payrudder.billing.v1.VoidInvoiceRequest
+	8,   // 173: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:input_type -> payrudder.billing.v1.RecordInvoicePaymentRequest
+	49,  // 174: payrudder.billing.v1.BillingAdminService.CreateCreditNote:input_type -> payrudder.billing.v1.CreateCreditNoteRequest
+	50,  // 175: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:input_type -> payrudder.billing.v1.RetryCreditNoteRefundRequest
+	81,  // 176: payrudder.billing.v1.BillingAdminService.RetryEInvoice:input_type -> payrudder.billing.v1.RetryEInvoiceRequest
+	82,  // 177: payrudder.billing.v1.BillingAdminService.CancelEInvoice:input_type -> payrudder.billing.v1.CancelEInvoiceRequest
+	28,  // 178: payrudder.billing.v1.BillingAdminService.StartRerating:input_type -> payrudder.billing.v1.StartReratingRequest
+	30,  // 179: payrudder.billing.v1.BillingAdminService.GetReratingJob:input_type -> payrudder.billing.v1.GetReratingJobRequest
+	33,  // 180: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:input_type -> payrudder.billing.v1.GetInvoiceSagaRequest
+	37,  // 181: payrudder.billing.v1.BillingAdminService.ListDeadLetters:input_type -> payrudder.billing.v1.ListDeadLettersRequest
+	39,  // 182: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:input_type -> payrudder.billing.v1.RedriveDeadLettersRequest
+	11,  // 183: payrudder.billing.v1.BillingService.GetInvoice:output_type -> payrudder.billing.v1.GetInvoiceResponse
+	13,  // 184: payrudder.billing.v1.BillingService.ListInvoices:output_type -> payrudder.billing.v1.ListInvoicesResponse
+	15,  // 185: payrudder.billing.v1.BillingService.GetInvoicePdfUrl:output_type -> payrudder.billing.v1.GetInvoicePdfUrlResponse
+	43,  // 186: payrudder.billing.v1.BillingService.GetRevenueReport:output_type -> payrudder.billing.v1.GetRevenueReportResponse
+	47,  // 187: payrudder.billing.v1.BillingService.GetDunningReport:output_type -> payrudder.billing.v1.GetDunningReportResponse
+	54,  // 188: payrudder.billing.v1.BillingService.GetCreditNote:output_type -> payrudder.billing.v1.GetCreditNoteResponse
+	56,  // 189: payrudder.billing.v1.BillingService.ListCreditNotes:output_type -> payrudder.billing.v1.ListCreditNotesResponse
+	76,  // 190: payrudder.billing.v1.BillingService.GetEInvoice:output_type -> payrudder.billing.v1.GetEInvoiceResponse
+	78,  // 191: payrudder.billing.v1.BillingService.ListEInvoices:output_type -> payrudder.billing.v1.ListEInvoicesResponse
+	80,  // 192: payrudder.billing.v1.BillingService.GetEInvoiceFileUrl:output_type -> payrudder.billing.v1.GetEInvoiceFileUrlResponse
+	63,  // 193: payrudder.billing.v1.BillingService.CreateInvoiceLink:output_type -> payrudder.billing.v1.CreateInvoiceLinkResponse
+	65,  // 194: payrudder.billing.v1.BillingService.RevokeInvoiceLinks:output_type -> payrudder.billing.v1.RevokeInvoiceLinksResponse
+	102, // 195: payrudder.billing.v1.BillingService.CreatePaymentLink:output_type -> payrudder.billing.v1.CreatePaymentLinkResponse
+	104, // 196: payrudder.billing.v1.BillingService.GetPaymentLink:output_type -> payrudder.billing.v1.GetPaymentLinkResponse
+	106, // 197: payrudder.billing.v1.BillingService.ListPaymentLinks:output_type -> payrudder.billing.v1.ListPaymentLinksResponse
+	108, // 198: payrudder.billing.v1.BillingService.RevokePaymentLink:output_type -> payrudder.billing.v1.RevokePaymentLinkResponse
+	110, // 199: payrudder.billing.v1.BillingService.CreatePortalLink:output_type -> payrudder.billing.v1.CreatePortalLinkResponse
+	112, // 200: payrudder.billing.v1.BillingService.RevokePortalLinks:output_type -> payrudder.billing.v1.RevokePortalLinksResponse
+	114, // 201: payrudder.billing.v1.BillingService.SettleInvoicePayment:output_type -> payrudder.billing.v1.SettleInvoicePaymentResponse
+	59,  // 202: payrudder.billing.v1.BillingService.GetDunningSettings:output_type -> payrudder.billing.v1.GetDunningSettingsResponse
+	61,  // 203: payrudder.billing.v1.BillingService.SetDunningSettings:output_type -> payrudder.billing.v1.SetDunningSettingsResponse
+	117, // 204: payrudder.billing.v1.BillingService.ListCreditPacks:output_type -> payrudder.billing.v1.ListCreditPacksResponse
+	119, // 205: payrudder.billing.v1.BillingService.CreateCreditPack:output_type -> payrudder.billing.v1.CreateCreditPackResponse
+	121, // 206: payrudder.billing.v1.BillingService.SetCreditPackActive:output_type -> payrudder.billing.v1.SetCreditPackActiveResponse
+	124, // 207: payrudder.billing.v1.BillingService.GetCreditBalance:output_type -> payrudder.billing.v1.GetCreditBalanceResponse
+	126, // 208: payrudder.billing.v1.BillingService.GrantCredits:output_type -> payrudder.billing.v1.GrantCreditsResponse
+	128, // 209: payrudder.billing.v1.BillingService.ConsumeCredits:output_type -> payrudder.billing.v1.ConsumeCreditsResponse
+	131, // 210: payrudder.billing.v1.BillingService.ListCreditLedger:output_type -> payrudder.billing.v1.ListCreditLedgerResponse
+	134, // 211: payrudder.billing.v1.BillingService.CreateExpense:output_type -> payrudder.billing.v1.CreateExpenseResponse
+	136, // 212: payrudder.billing.v1.BillingService.UpdateExpense:output_type -> payrudder.billing.v1.UpdateExpenseResponse
+	138, // 213: payrudder.billing.v1.BillingService.VoidExpense:output_type -> payrudder.billing.v1.VoidExpenseResponse
+	140, // 214: payrudder.billing.v1.BillingService.ListExpenses:output_type -> payrudder.billing.v1.ListExpensesResponse
+	158, // 215: payrudder.billing.v1.BillingService.GetExpenseInbox:output_type -> payrudder.billing.v1.ExpenseInbox
+	158, // 216: payrudder.billing.v1.BillingService.RotateExpenseInbox:output_type -> payrudder.billing.v1.ExpenseInbox
+	161, // 217: payrudder.billing.v1.BillingService.ListInboxItems:output_type -> payrudder.billing.v1.ListInboxItemsResponse
+	163, // 218: payrudder.billing.v1.BillingService.GetInboxItemFile:output_type -> payrudder.billing.v1.GetInboxItemFileResponse
+	165, // 219: payrudder.billing.v1.BillingService.ResolveInboxItem:output_type -> payrudder.billing.v1.ResolveInboxItemResponse
+	168, // 220: payrudder.billing.v1.BillingService.ReceiveInboxMail:output_type -> payrudder.billing.v1.ReceiveInboxMailResponse
+	171, // 221: payrudder.billing.v1.BillingService.ListExpenseRules:output_type -> payrudder.billing.v1.ListExpenseRulesResponse
+	173, // 222: payrudder.billing.v1.BillingService.SaveExpenseRule:output_type -> payrudder.billing.v1.SaveExpenseRuleResponse
+	175, // 223: payrudder.billing.v1.BillingService.DeleteExpenseRule:output_type -> payrudder.billing.v1.DeleteExpenseRuleResponse
+	152, // 224: payrudder.billing.v1.BillingService.GetAccountingSummary:output_type -> payrudder.billing.v1.GetAccountingSummaryResponse
+	146, // 225: payrudder.billing.v1.BillingService.GetDashboardStats:output_type -> payrudder.billing.v1.GetDashboardStatsResponse
+	154, // 226: payrudder.billing.v1.BillingService.GetCreditSettings:output_type -> payrudder.billing.v1.GetCreditSettingsResponse
+	156, // 227: payrudder.billing.v1.BillingService.SetCreditSettings:output_type -> payrudder.billing.v1.SetCreditSettingsResponse
+	67,  // 228: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoice:output_type -> payrudder.billing.v1.GetHostedInvoiceResponse
+	73,  // 229: payrudder.billing.v1.HostedInvoiceService.GetHostedInvoicePdfUrl:output_type -> payrudder.billing.v1.GetHostedInvoicePdfUrlResponse
+	86,  // 230: payrudder.billing.v1.HostedInvoiceService.GetHostedLogoUrl:output_type -> payrudder.billing.v1.GetHostedLogoUrlResponse
+	90,  // 231: payrudder.billing.v1.HostedInvoiceService.StartLinkPayment:output_type -> payrudder.billing.v1.StartLinkPaymentResponse
+	89,  // 232: payrudder.billing.v1.HostedInvoiceService.QuoteLinkPromotion:output_type -> payrudder.billing.v1.QuoteLinkPromotionResponse
+	92,  // 233: payrudder.billing.v1.HostedInvoiceService.RequestHostedPayment:output_type -> payrudder.billing.v1.RequestHostedPaymentResponse
+	95,  // 234: payrudder.billing.v1.HostedInvoiceService.GetPortal:output_type -> payrudder.billing.v1.GetPortalResponse
+	99,  // 235: payrudder.billing.v1.HostedInvoiceService.StartPortalPurchase:output_type -> payrudder.billing.v1.StartPortalPurchaseResponse
+	17,  // 236: payrudder.billing.v1.SandboxService.ClosePeriodNow:output_type -> payrudder.billing.v1.ClosePeriodNowResponse
+	19,  // 237: payrudder.billing.v1.BillingAdminService.ClosePeriod:output_type -> payrudder.billing.v1.ClosePeriodResponse
+	21,  // 238: payrudder.billing.v1.BillingAdminService.GetBillingRun:output_type -> payrudder.billing.v1.GetBillingRunResponse
+	24,  // 239: payrudder.billing.v1.BillingAdminService.RetryInvoiceSaga:output_type -> payrudder.billing.v1.RetryInvoiceSagaResponse
+	26,  // 240: payrudder.billing.v1.BillingAdminService.VoidInvoice:output_type -> payrudder.billing.v1.VoidInvoiceResponse
+	9,   // 241: payrudder.billing.v1.BillingAdminService.RecordInvoicePayment:output_type -> payrudder.billing.v1.RecordInvoicePaymentResponse
+	52,  // 242: payrudder.billing.v1.BillingAdminService.CreateCreditNote:output_type -> payrudder.billing.v1.CreateCreditNoteResponse
+	51,  // 243: payrudder.billing.v1.BillingAdminService.RetryCreditNoteRefund:output_type -> payrudder.billing.v1.RetryCreditNoteRefundResponse
+	83,  // 244: payrudder.billing.v1.BillingAdminService.RetryEInvoice:output_type -> payrudder.billing.v1.RetryEInvoiceResponse
+	84,  // 245: payrudder.billing.v1.BillingAdminService.CancelEInvoice:output_type -> payrudder.billing.v1.CancelEInvoiceResponse
+	29,  // 246: payrudder.billing.v1.BillingAdminService.StartRerating:output_type -> payrudder.billing.v1.StartReratingResponse
+	31,  // 247: payrudder.billing.v1.BillingAdminService.GetReratingJob:output_type -> payrudder.billing.v1.GetReratingJobResponse
+	34,  // 248: payrudder.billing.v1.BillingAdminService.GetInvoiceSaga:output_type -> payrudder.billing.v1.GetInvoiceSagaResponse
+	38,  // 249: payrudder.billing.v1.BillingAdminService.ListDeadLetters:output_type -> payrudder.billing.v1.ListDeadLettersResponse
+	40,  // 250: payrudder.billing.v1.BillingAdminService.RedriveDeadLetters:output_type -> payrudder.billing.v1.RedriveDeadLettersResponse
+	183, // [183:251] is the sub-list for method output_type
+	115, // [115:183] is the sub-list for method input_type
+	115, // [115:115] is the sub-list for extension type_name
+	115, // [115:115] is the sub-list for extension extendee
+	0,   // [0:115] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_billing_v1_billing_proto_init() }
@@ -12187,7 +13430,7 @@ func file_payrudder_billing_v1_billing_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_billing_v1_billing_proto_rawDesc), len(file_payrudder_billing_v1_billing_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   153,
+			NumMessages:   172,
 			NumExtensions: 0,
 			NumServices:   4,
 		},

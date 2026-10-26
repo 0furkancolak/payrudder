@@ -60,7 +60,7 @@ func seedCreditNote(t *testing.T, tid, invoice uuid.UUID, currency string, amoun
 
 func testAccounting(t *testing.T) {
 	infra(t)
-	svc := accounting.New(shared.app)
+	svc := accounting.New(shared.app, shared.system)
 	tid, other := uuid.New(), uuid.New()
 	ctx := tenant.NewContext(context.Background(), tenant.Info{ID: tid})
 	otherCtx := tenant.NewContext(context.Background(), tenant.Info{ID: other})

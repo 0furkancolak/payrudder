@@ -44,7 +44,7 @@ func seedInvoiceOf(t *testing.T, tid, customer uuid.UUID, ref, name, currency st
 // invoices are not seen; a bad period is refused with its key.
 func testDashboardStats(t *testing.T) {
 	infra(t)
-	svc := accounting.New(shared.app)
+	svc := accounting.New(shared.app, shared.system)
 	tid, other := uuid.New(), uuid.New()
 	ctx := tenant.NewContext(context.Background(), tenant.Info{ID: tid})
 	ada, bob, cy := uuid.New(), uuid.New(), uuid.New()

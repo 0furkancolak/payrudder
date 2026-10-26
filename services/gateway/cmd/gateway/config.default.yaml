@@ -20,3 +20,6 @@ PAYRUDDER_OPERATOR_EMAILS: ""
 # Networks (CIDRs, comma separated) of proxies whose X-Forwarded-For is believed even from a public address. Empty by default: only a private or loopback peer,
 # and only with PAYRUDDER_TRUST_FORWARDED_FOR. For Cloudflare use PAYRUDDER_TRUSTED_PROXY_SECRET (environment only) instead: Worker egress addresses are not stable.
 PAYRUDDER_TRUSTED_PROXIES: ""
+# The domain of the invoice inbox addresses (invoices+<token>@<domain>) the mail provider receives for. Empty: the console shows the token only. The webhook that posts the mail to
+# /inbound/invoices is protected by PAYRUDDER_INBOUND_SECRET (environment only); without it the endpoint answers 404.
+PAYRUDDER_INBOUND_DOMAIN: ""

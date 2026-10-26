@@ -1017,23 +1017,15 @@
       },
       "portal": {
         "open": "Payment page",
-        "title": "Payment page of {id}",
-        "hint": "A link to a page where this customer sees their invoices and payments, downloads PDFs and receipts, and pays what is open. Read-only.",
-        "close": "Close",
-        "create": "Make a link",
         "revoke": "Revoke all",
         "revoked": "Every payment page link of this customer has been revoked.",
         "confirmRevoke": "Revoke every payment page link of this customer?",
-        "link": "Payment page link",
-        "payments": "Payments",
-        "date": "Date",
-        "invoice": "Invoice",
-        "type": "Type",
-        "noPayments": "No payments recorded.",
-        "kinds": {
-          "charge": "Charge",
-          "refund": "Refund"
-        }
+        "copy": "Copy link",
+        "openPage": "Open page",
+        "regenerate": "Regenerate link",
+        "copied": "Payment page link copied",
+        "regenerated": "New link made and copied; the old ones stopped working",
+        "validFor": "Links are valid for {days} days"
       },
       "for": "For",
       "promotionCode": "Promotion code (optional)",
@@ -1254,6 +1246,71 @@
         "gross": "Gross",
         "discount": "Discount",
         "net": "Net"
+      },
+      "scan": {
+        "open": "Scan receipts",
+        "title": "Scan receipts and invoices",
+        "hint": "Drop as many PDFs or photos as you like. Each one is read here in your browser, then you confirm, fix or skip every row before anything is saved.",
+        "drop": "Drop receipts and invoices here",
+        "types": "PDF, PNG or JPEG, up to 8 MB each",
+        "choose": "Choose files",
+        "privacy": "Files are read in your browser. Photos are read with OCR (English and Turkish), whose engine and language data are downloaded once from a public CDN; the files themselves are not sent anywhere until you save, when each one is stored as the attachment of its expense.",
+        "empty": "Nothing yet. Add files to start.",
+        "include": "Save this expense",
+        "skip": "Skip this file",
+        "check": "Not sure about this one: please check it",
+        "tax": "Tax inside",
+        "reading": "Reading files…",
+        "incomplete": "{count} rows need a vendor, a date and an amount",
+        "save": "Save {count} expenses",
+        "savedCount": "{count} expenses saved",
+        "attachment": "Receipt",
+        "openReceipt": "Open the receipt",
+        "state": {
+          "queued": "Waiting",
+          "scanning": "Reading…",
+          "ready": "Ready to review",
+          "failed": "Needs your input",
+          "saving": "Saving…",
+          "saved": "Saved",
+          "auto": "Saved by a rule"
+        },
+        "errors": {
+          "unsupported": "This is not a PDF, PNG or JPEG file. Remove it or fill the row by hand.",
+          "too_large": "The file is larger than 8 MB.",
+          "unreadable": "Nothing could be read from this file. Fill the row by hand or skip it."
+        }
+      },
+      "inbox": {
+        "title": "Invoice inbox",
+        "hint": "Forward the invoices you receive to this address. They wait here and are read in your browser when you open them; a rule can record the regular ones for you.",
+        "review": "Review {count} invoices",
+        "nothing": "Nothing to review",
+        "rotate": "New address",
+        "confirmRotate": "Make a new inbox address? Mail sent to the old one is dropped.",
+        "noDomain": "This deployment has no inbound mail domain set (PAYRUDDER_INBOUND_DOMAIN), so only the token is shown."
+      },
+      "rules": {
+        "open": "Vendor rules",
+        "title": "Recurring-vendor rules",
+        "hint": "A vendor whose name contains the text gets the category, currency and tax of its rule. With automatic approval, an invoice that arrives by mail is recorded without review when its amount is within the tolerance of the expected one.",
+        "none": "No rules yet.",
+        "add": "Add a rule",
+        "edit": "Edit the rule",
+        "vendor": "Vendor name contains",
+        "vendorHint": "Not case sensitive; the longest match wins.",
+        "tax": "Tax rate in the amount (%)",
+        "expected": "Expected amount",
+        "tolerance": "Tolerance (%)",
+        "auto": "Approve automatically",
+        "autoHint": "Only invoices from the inbox, only when the vendor, date and amount were read with confidence and the amount is within the tolerance. Anything else waits for review.",
+        "save": "Save the rule",
+        "delete": "Delete the rule",
+        "confirmDelete": "Delete the rule for \"{vendor}\"?",
+        "bad": "Give a vendor text of at least 2 characters, and tax and tolerance as percentages from 0 to 100.",
+        "needsExpected": "Automatic approval needs an expected amount.",
+        "taxShort": "tax {percent}%",
+        "autoShort": "auto-approved around {amount} (±{tolerance}%)"
       }
     },
     "usage": {
@@ -2228,7 +2285,12 @@
         "expense_voided": "The expense was voided and cannot be changed.",
         "range_too_long": "The period is too long: five years at most, and a daily series up to 366 days.",
         "reason_required": "Give a reason of up to 200 characters to void an expense.",
-        "unknown_currency": "The currency is not supported."
+        "unknown_currency": "The currency is not supported.",
+        "bad_attachment": "The attachment is not valid.",
+        "bad_rule": "The rule is not valid: check the vendor text, the percentages and the expected amount.",
+        "inbox_item_not_found": "There is no such invoice waiting for review.",
+        "rule_not_found": "There is no such rule.",
+        "too_many_rules": "A tenant may have at most 200 rules."
       },
       "einvoice": {
         "bad_id": "The e-invoice or account id is not a valid id.",
