@@ -22,6 +22,6 @@ const { t } = useI18n();
     </div>
     <slot />
     <Button v-if="active" type="button" variant="ghost" size="sm" @click="$emit('clear')"><X class="size-4" aria-hidden="true" />{{ t("common.clearFilters") }}</Button>
-    <div class="ms-auto flex items-center gap-2"><slot name="actions" /></div>
+    <div class="ms-auto flex max-w-full flex-wrap items-center justify-end gap-2"><slot name="actions" /></div>
   </div>
 </template>

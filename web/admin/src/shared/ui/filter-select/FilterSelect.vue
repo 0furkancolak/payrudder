@@ -10,7 +10,7 @@ import { cn } from "@/shared/lib/utils";
  */
 const props = defineProps<{ label: string; options: readonly { value: string; label?: string }[] }>();
 const model = defineModel<string>({ default: "" });
-const chosen = computed(() => props.options.find((o) => o.value === model.value));
+const chosen = computed(() => (model.value === "" ? undefined : props.options.find((o) => o.value === model.value)));
 const text = (o: { value: string; label?: string }) => o.label ?? o.value;
 </script>
 

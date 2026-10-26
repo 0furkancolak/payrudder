@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Mail, Plus, Send, UserMinus } from "@lucide/vue";
+import { Mail, Plus, RefreshCw, Send, UserMinus, X } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -12,7 +12,11 @@ import { useTableState } from "@/shared/lib/useTableState";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { Card } from "@/shared/ui/card";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { RowActions } from "@/shared/ui/row-actions";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useChangeRole, useInvitations, useInviteMember, useRemoveMember, useResendInvitation, useRevokeInvitation, type MyAccount, type Role } from "./api";
@@ -86,82 +90,106 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
 </script>
 
 <template>
-  <section class="surface flex flex-col gap-5 p-6" :aria-label="t('product.members.title')">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold tracking-tight">{{ t("product.members.title") }}</h2>
-        <p class="text-muted-foreground text-sm">{{ t(canManage ? "product.members.manageNote" : "product.members.readNote") }}</p>
-      </div>
-      <Button v-if="canManage" size="sm" data-testid="invite-open" @click="inviting = true"><Plus />{{ t("product.members.inviteTitle") }}</Button>
-    </div>
-    <p v-if="sentTo" class="text-success text-sm" role="status">{{ t("product.members.invited", { email: sentTo }) }}</p>
+  <p class="text-muted-foreground px-1 text-sm">{{ t(canManage ? "product.members.manageNote" : "product.members.readNote") }}</p>
 
-    <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
-
-    <Skeleton v-if="loading" class="h-20 rounded-2xl" />
+  <Card class="p-3" role="region" :aria-label="t('product.members.title')">
+    <p v-if="sentTo" class="text-success px-3 pb-2 text-sm" role="status">{{ t("product.members.invited", { email: sentTo }) }}</p>
+    <ErrorText :error="error" class="bg-destructive-soft mx-3 mb-3 rounded-2xl px-4 py-3" />
+    <Skeleton v-if="loading" class="mx-3 h-20 rounded-2xl" />
     <template v-else>
-    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <NativeSelect v-model="table.filters.value.role" class="w-44" :aria-label="t('product.members.allRoles')">
-        <option value="">{{ t("product.members.allRoles") }}</option>
-        <option v-for="r in ['owner', 'admin', 'viewer']" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option>
-      </NativeSelect>
-    </DataToolbar>
-    <ul class="divide-border/70 divide-y" :aria-label="t('product.members.title')">
-      <li v-for="m in table.items.value" :key="m.user_id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3" :data-testid="`member-${m.email}`">
-        <span class="bg-brand-soft text-brand-strong flex size-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold" aria-hidden="true">{{ nameOf(m).slice(0, 1).toUpperCase() || "?" }}</span>
-        <div class="min-w-0 flex-1 basis-44">
-          <p class="truncate text-sm font-medium">{{ nameOf(m) }}<span v-if="m.user_id === myId" class="text-muted-foreground font-normal"> · {{ t("product.members.you") }}</span></p>
-          <p v-if="m.display_name" class="text-muted-foreground truncate text-xs">{{ m.email }}</p>
-        </div>
-        <NativeSelect
-          v-if="mayHandle(m.role) && m.user_id !== myId"
-          class="w-36"
-          :model-value="m.role"
-          :aria-label="t('product.members.roleOf', { name: nameOf(m) })"
-          :disabled="changeRole.isPending.value"
-          @update:model-value="(v) => changeRole.mutate({ userId: m.user_id ?? '', role: String(v) as Role })"
-        >
-          <option v-for="r in roleChoices" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option>
-        </NativeSelect>
-        <StatusPill v-else :tone="m.role === 'owner' ? 'info' : 'neutral'">{{ t(`product.role.${m.role}`) }}</StatusPill>
-        <Button v-if="m.user_id === myId" variant="ghost" size="sm" @click="removing = { id: m.user_id ?? '', name: nameOf(m), self: true }">
-          <UserMinus />{{ t("product.members.leave") }}
-        </Button>
-        <Button
-          v-else-if="mayHandle(m.role)"
-          variant="ghost"
-          size="sm"
-          :aria-label="t('product.members.removeNamed', { name: nameOf(m) })"
-          @click="removing = { id: m.user_id ?? '', name: nameOf(m), self: false }"
-        >
-          <UserMinus />{{ t("product.members.remove") }}
-        </Button>
-      </li>
-    </ul>
-    <p v-if="members.length > 0 && table.total.value === 0" class="text-muted-foreground py-4 text-center text-sm">{{ t("common.noMatches") }}</p>
-    <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
+      <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+        <FilterSelect v-model="table.filters.value.role" :label="t('product.members.role')" :options="[{ value: '', label: t('product.members.allRoles') }, ...['owner', 'admin', 'viewer'].map((r) => ({ value: r, label: t(`product.role.${r}`) }))]" />
+        <template v-if="canManage" #actions>
+          <Button data-testid="invite-open" @click="inviting = true"><Plus class="size-4" />{{ t("product.members.inviteTitle") }}</Button>
+        </template>
+      </DataToolbar>
+      <Table>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>{{ t("product.members.title") }}</TableHead>
+            <TableHead class="max-md:hidden">{{ t("product.auth.email") }}</TableHead>
+            <TableHead>{{ t("product.members.role") }}</TableHead>
+            <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="m in table.items.value" :key="m.user_id" :data-testid="`member-${m.email}`">
+            <TableCell>
+              <div class="flex items-center gap-3">
+                <span class="bg-brand-soft text-brand-strong flex size-8 shrink-0 items-center justify-center rounded-xl text-sm font-semibold max-sm:hidden" aria-hidden="true">{{ nameOf(m).slice(0, 1).toUpperCase() || "?" }}</span>
+                <span class="truncate text-sm font-medium">{{ nameOf(m) }}<span v-if="m.user_id === myId" class="text-muted-foreground font-normal"> · {{ t("product.members.you") }}</span></span>
+              </div>
+            </TableCell>
+            <TableCell class="text-muted-foreground max-md:hidden">{{ m.email }}</TableCell>
+            <TableCell>
+              <NativeSelect
+                v-if="mayHandle(m.role) && m.user_id !== myId"
+                class="w-36"
+                :model-value="m.role"
+                :aria-label="t('product.members.roleOf', { name: nameOf(m) })"
+                :disabled="changeRole.isPending.value"
+                @update:model-value="(v) => changeRole.mutate({ userId: m.user_id ?? '', role: String(v) as Role })"
+              >
+                <option v-for="r in roleChoices" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option>
+              </NativeSelect>
+              <StatusPill v-else :tone="m.role === 'owner' ? 'info' : 'neutral'">{{ t(`product.role.${m.role}`) }}</StatusPill>
+            </TableCell>
+            <TableCell>
+              <RowActions
+                v-if="m.user_id === myId"
+                :actions="[{ key: 'leave', label: t('product.members.leave'), icon: UserMinus, onSelect: () => (removing = { id: m.user_id ?? '', name: nameOf(m), self: true }) }]"
+              />
+              <RowActions
+                v-else-if="mayHandle(m.role)"
+                :actions="[{ key: 'remove', label: t('product.members.remove'), icon: UserMinus, destructive: true, onSelect: () => (removing = { id: m.user_id ?? '', name: nameOf(m), self: false }) }]"
+              />
+            </TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <p v-if="members.length > 0 && table.total.value === 0" class="text-muted-foreground py-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+      <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
     </template>
+  </Card>
 
-    <template v-if="canManage">
-      <div v-if="(invitations.data.value?.invitations ?? []).length > 0" class="flex flex-col gap-2">
-        <h3 class="text-base font-semibold tracking-tight">{{ t("product.members.pending") }}</h3>
-        <ul class="divide-border/70 divide-y" :aria-label="t('product.members.pending')">
-          <li v-for="i in invitations.data.value?.invitations ?? []" :key="i.id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3" :data-testid="`invite-${i.email}`">
-            <span class="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><Mail class="size-4" /></span>
-            <div class="min-w-0 flex-1 basis-44">
-              <p class="truncate text-sm font-medium">{{ i.email }}</p>
-              <p class="text-muted-foreground text-xs">{{ expired(i.expire_time) ? t("product.members.expiredOn", { date: when(i.expire_time) }) : t("product.members.expiresOn", { date: when(i.expire_time) }) }}</p>
+  <Card v-if="canManage && (invitations.data.value?.invitations ?? []).length > 0" class="p-3" role="region" :aria-label="t('product.members.pending')">
+    <h2 class="px-3 pt-2 text-base font-semibold tracking-tight">{{ t("product.members.pending") }}</h2>
+    <Table>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead>{{ t("product.auth.email") }}</TableHead>
+          <TableHead>{{ t("product.members.role") }}</TableHead>
+          <TableHead>{{ t("product.members.expiresHead") }}</TableHead>
+          <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="i in invitations.data.value?.invitations ?? []" :key="i.id" :data-testid="`invite-${i.email}`">
+          <TableCell>
+            <div class="flex items-center gap-3">
+              <span class="bg-muted text-muted-foreground flex size-8 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><Mail class="size-4" /></span>
+              <span class="truncate text-sm font-medium">{{ i.email }}</span>
             </div>
-            <StatusPill v-if="expired(i.expire_time)" tone="warning">{{ t("product.members.expired") }}</StatusPill>
-            <StatusPill :tone="i.role === 'owner' ? 'info' : 'neutral'">{{ t(`product.role.${i.role}`) }}</StatusPill>
-            <template v-if="mayHandle(i.role)">
-              <Button variant="outline" size="sm" :disabled="resendInvite.isPending.value" :aria-label="t('product.members.resendNamed', { email: i.email })" @click="resendInvite.mutate(i.id ?? '')">{{ t("product.members.resend") }}</Button>
-              <Button variant="ghost" size="sm" :disabled="revokeInvite.isPending.value" :aria-label="t('product.members.cancelNamed', { email: i.email })" @click="revokeInvite.mutate(i.id ?? '')">{{ t("product.members.cancel") }}</Button>
-            </template>
-          </li>
-        </ul>
-      </div>
-    </template>
+          </TableCell>
+          <TableCell><StatusPill :tone="i.role === 'owner' ? 'info' : 'neutral'">{{ t(`product.role.${i.role}`) }}</StatusPill></TableCell>
+          <TableCell class="text-muted-foreground text-xs">
+            {{ expired(i.expire_time) ? t("product.members.expiredOn", { date: when(i.expire_time) }) : t("product.members.expiresOn", { date: when(i.expire_time) }) }}
+            <StatusPill v-if="expired(i.expire_time)" tone="warning" class="ms-2">{{ t("product.members.expired") }}</StatusPill>
+          </TableCell>
+          <TableCell>
+            <RowActions
+              v-if="mayHandle(i.role)"
+              :actions="[
+                { key: 'resend', label: t('product.members.resend'), icon: RefreshCw, disabled: resendInvite.isPending.value, onSelect: () => resendInvite.mutate(i.id ?? '') },
+                { key: 'cancel', label: t('product.members.cancel'), icon: X, destructive: true, separatorBefore: true, disabled: revokeInvite.isPending.value, onSelect: () => revokeInvite.mutate(i.id ?? '') },
+              ]"
+              :label="`${t('common.moreActions')} ${i.email}`"
+            />
+          </TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+  </Card>
 
     <Sheet v-model:open="inviting">
       <SheetContent>
@@ -202,5 +230,4 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </section>
 </template>

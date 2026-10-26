@@ -26,7 +26,10 @@
     "search": "Buscar",
     "clearFilters": "Borrar filtros",
     "noMatches": "Nada coincide con estos filtros.",
-    "moreActions": "Más acciones"
+    "moreActions": "Más acciones",
+    "view": "Ver",
+    "openFullPage": "Abrir página completa",
+    "all": "Todos"
   },
   "enums": {
     "environment": {
@@ -131,7 +134,8 @@
       "customer": "Cliente",
       "total": "Total",
       "status": "Estado",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Creada"
     },
     "jobs": {
       "title": "Trabajos de repetición y retarificación",
@@ -139,7 +143,9 @@
       "idLabel": "Id del trabajo",
       "replay": "Trabajo de repetición",
       "rerating": "Trabajo de retarificación"
-    }
+    },
+    "allStatuses": "Todos los estados",
+    "allKinds": "Todos los tipos"
   },
   "invoice": {
     "back": "← Inquilino",
@@ -263,7 +269,8 @@
       "deliveries": "Entregas",
       "reason": "Motivo",
       "bytes": "Bytes"
-    }
+    },
+    "noMessages": "No hay mensajes en esta cola."
   },
   "playground": {
     "title": "Área de pruebas",
@@ -395,7 +402,15 @@
       "monthly": "Mensual",
       "yearly": "Anual",
       "perYear": "/ año",
-      "tenantMonthly": "La cuota mensual en {currency} es la cuota fija de arriba."
+      "tenantMonthly": "La cuota mensual en {currency} es la cuota fija de arriba.",
+      "published": "Publicado",
+      "priceColumn": "Precio",
+      "limits": "Límites",
+      "priceKinds": {
+        "perUnit": "{price} por unidad",
+        "tiered": "{n} tramos",
+        "package": "{size} unidades por {price}"
+      }
     },
     "subscriptions": {
       "new": "Nueva suscripción",
@@ -491,7 +506,8 @@
       "confirmEndCredit": "¿Terminar esta suscripción ahora y abonar al cliente la parte no usada de la tarifa pagada por adelantado?",
       "credited": "Se abonaron {amount} al saldo del cliente.",
       "allStates": "Todos los estados",
-      "allCurrencies": "Todas las monedas"
+      "allCurrencies": "Todas las monedas",
+      "allIntervals": "Todos los intervalos"
     },
     "payments": {
       "reconcile": "Conciliar con el libro",
@@ -514,7 +530,8 @@
       "amount": "Importe",
       "reference": "Referencia",
       "source": "Origen",
-      "empty": "Aún no hay nada en el libro."
+      "empty": "Aún no hay nada en el libro.",
+      "id": "Id"
     },
     "providers": {
       "accounts": "Cuentas de proveedores",
@@ -632,7 +649,9 @@
       "nextAttempt": "Próximo intento",
       "empty": "Aún no hay nada que informar.",
       "noDunning": "No hay facturas impagadas.",
-      "credited": "Acreditado"
+      "credited": "Acreditado",
+      "currentMonth": "Mes actual",
+      "splitBy": "Dividir por"
     },
     "pricing": {
       "coupons": {
@@ -801,7 +820,8 @@
       "refundFailed": "Reembolso fallido",
       "retryRefund": "Reintentar el reembolso",
       "new": "Nueva nota de crédito",
-      "hint": "Abona total o parcialmente una factura pagada. El importe va al saldo del cliente o vuelve a la tarjeta."
+      "hint": "Abona total o parcialmente una factura pagada. El importe va al saldo del cliente o vuelve a la tarjeta.",
+      "allWhere": "Cualquiera"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -915,7 +935,8 @@
       },
       "for": "Para",
       "promotionCode": "Código promocional (opcional)",
-      "promotionHint": "Quien paga obtiene el descuento de este código sin escribirlo y puede escribir otro. Se comprueba ahora con este importe."
+      "promotionHint": "Quien paga obtiene el descuento de este código sin escribirlo y puede escribir otro. Se comprueba ahora con este importe.",
+      "id": "Enlace"
     },
     "mail": {
       "title": "Correo electrónico",
@@ -1092,7 +1113,9 @@
         "voided": "Anulado",
         "until": "hasta {date}",
         "edit": "Editar",
-        "void": "Anular"
+        "void": "Anular",
+        "allCategories": "Todas las categorías",
+        "allRecurring": "Únicos y recurrentes"
       },
       "form": {
         "addTitle": "Añadir gasto",
@@ -1586,7 +1609,8 @@
       "webhookSecret": "Secreto de firma",
       "neverShown": "El secreto se envía una vez y no se puede volver a leer.",
       "save": "Guardar cuenta",
-      "saved": "Cuenta guardada."
+      "saved": "Cuenta guardada.",
+      "allEnvironments": "Todos los entornos"
     },
     "customer": {
       "title": "Datos fiscales",
@@ -2663,7 +2687,8 @@
       "filterEnv": "Entorno",
       "allEnvs": "Todos los entornos",
       "filterStatus": "Estado",
-      "allStatuses": "Todos los estados"
+      "allStatuses": "Todos los estados",
+      "scopeHead": "Alcance"
     },
     "links": {
       "title": "Profundice",
@@ -2756,7 +2781,8 @@
       "leaveBody": "Pierdes de inmediato el acceso a sus aplicaciones y datos. Un propietario puede volver a invitarte.",
       "removeTitle": "¿Quitar a este miembro?",
       "removeBody": "{name} pierde de inmediato el acceso a las aplicaciones y los datos de esta cuenta.",
-      "allRoles": "Todos los roles"
+      "allRoles": "Todos los roles",
+      "expiresHead": "Válida hasta"
     },
     "account": {
       "switch": "Cuenta",

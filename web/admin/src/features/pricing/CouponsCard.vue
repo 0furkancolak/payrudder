@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useCanWrite } from "@/shared/lib/access";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatMinor, parseMajor } from "@/shared/lib/money";
 import { Badge } from "@/shared/ui/badge";
@@ -9,10 +10,13 @@ import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { RowActions } from "@/shared/ui/row-actions";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { Plus } from "@lucide/vue";
+import { Ban, Plus, Ticket } from "@lucide/vue";
 import { useTableState } from "@/shared/lib/useTableState";
 import { parsePercent, useCouponActions, useCoupons, type CouponTarget, type NewCoupon } from "./api";
 import PromotionCodesPanel from "./PromotionCodesPanel.vue";
@@ -21,6 +25,7 @@ import { targetKey, TARGETS } from "./promotions";
 const props = defineProps<{ tenantId: string }>();
 const { t, locale } = useI18n();
 const errorText = useErrorText();
+const canWrite = useCanWrite();
 const tenantId = computed(() => props.tenantId);
 
 const coupons = useCoupons(tenantId);
@@ -36,7 +41,7 @@ const periods = ref("3");
 const max = ref("");
 const withoutCode = ref(false);
 const couponError = ref("");
-const selected = ref("");
+const index = ref<number | null>(null);
 const open = ref(false);
 
 type CouponRow = NonNullable<typeof coupons.data.value>["coupons"] extends (infer R)[] | undefined ? R : never;
@@ -45,7 +50,17 @@ const table = useTableState<CouponRow>(() => coupons.data.value?.coupons ?? [], 
   filters: { state: (c, v) => (v === "active" ? !!c.active : !c.active) },
 });
 
-const stateFilter = computed({ get: () => table.filters.value.state ?? "", set: (v) => (table.filters.value.state = String(v)) });
+const stateFilter = computed({ get: () => table.filters.value.state ?? "", set: (v) => (table.filters.value = { ...table.filters.value, state: String(v) }) });
+const stateOptions = computed(() => [
+  { value: "", label: t("billing.pricing.promotions.codes.stateAll") },
+  { value: "active", label: t("billing.pricing.coupons.active") },
+  { value: "inactive", label: t("billing.pricing.coupons.inactive") },
+]);
+const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
+const actionsOf = (c: CouponRow, i: number) => [
+  { key: "codes", label: t("billing.pricing.promotions.manageCodes"), icon: Ticket, onSelect: () => (index.value = i) },
+  ...(c.active ? [{ key: "deactivate", label: t("billing.pricing.coupons.deactivate"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value, onSelect: () => actions.deactivate.mutate(c.code ?? "") }] : []),
+];
 
 // A sheet that was closed opens clean: the last values and errors are not shown again.
 watch(open, (v) => {
@@ -133,12 +148,8 @@ const where = (c: { applies_to?: string[] }) => (c.applies_to ?? []).map((x) => 
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.promotions.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.hint") }}</p>
     </div>
-    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <NativeSelect v-model="stateFilter" class="w-40" :aria-label="t('billing.subscriptions.state')">
-        <option value="">{{ t("billing.pricing.promotions.codes.stateAll") }}</option>
-        <option value="active">{{ t("billing.pricing.coupons.active") }}</option>
-        <option value="inactive">{{ t("billing.pricing.coupons.inactive") }}</option>
-      </NativeSelect>
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="pt-3" @clear="table.clear()">
+      <FilterSelect v-model="stateFilter" :label="t('billing.subscriptions.state')" :options="stateOptions" />
       <template #actions>
         <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.pricing.coupons.create") }}</Button>
       </template>
@@ -154,11 +165,11 @@ const where = (c: { applies_to?: string[] }) => (c.applies_to ?? []).map((x) => 
           <TableHead class="text-end">{{ t("billing.pricing.promotions.codeCount") }}</TableHead>
           <TableHead class="text-end">{{ t("billing.pricing.coupons.redeemed") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
-          <TableHead />
+          <TableHead><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="c in table.items.value" :key="c.code" :data-state="selected === c.code ? 'selected' : undefined">
+        <TableRow v-for="(c, i) in table.items.value" :key="c.code" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
           <TableCell class="mono font-medium">{{ c.code }} <span class="text-muted-foreground text-xs">{{ c.name }}</span></TableCell>
           <TableCell class="tabular-nums">{{ describe(c) }}</TableCell>
           <TableCell class="text-xs">{{ where(c) }}</TableCell>
@@ -166,12 +177,7 @@ const where = (c: { applies_to?: string[] }) => (c.applies_to ?? []).map((x) => 
           <TableCell class="text-end tabular-nums">{{ c.promotion_code_count ?? 0 }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ c.redeemed }}<template v-if="c.max_redemptions"> / {{ c.max_redemptions }}</template></TableCell>
           <TableCell><Badge :variant="c.active ? 'success' : 'secondary'">{{ c.active ? t("billing.pricing.coupons.active") : t("billing.pricing.coupons.inactive") }}</Badge></TableCell>
-          <TableCell class="text-end whitespace-nowrap">
-            <Button size="sm" variant="outline" class="me-2" :aria-pressed="selected === c.code" @click="selected = selected === c.code ? '' : (c.code ?? '')">
-              {{ selected === c.code ? t("billing.pricing.promotions.hideCodes") : t("billing.pricing.promotions.manageCodes") }}
-            </Button>
-            <Button v-if="c.active" size="sm" variant="ghost" @click="actions.deactivate.mutate(c.code ?? '')">{{ t("billing.pricing.coupons.deactivate") }}</Button>
-          </TableCell>
+          <TableCell class="text-end"><RowActions :actions="actionsOf(c, i)" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
@@ -180,7 +186,13 @@ const where = (c: { applies_to?: string[] }) => (c.applies_to ?? []).map((x) => 
     </p>
     <p v-else-if="table.total.value === 0 && !coupons.isPending.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
     <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
-    <div v-if="selected" class="px-3 pb-2"><PromotionCodesPanel :key="selected" :tenant-id="tenantId" :coupon="selected" /></div>
+
+    <DetailSheet v-model:index="index" :total="table.items.value.length" :title="current?.code ?? ''" :description="current ? [current.name, describe(current)].filter(Boolean).join(' · ') : undefined" wide>
+      <fieldset v-if="current" :disabled="!canWrite" class="m-0 min-w-0 border-0 p-0"><PromotionCodesPanel :key="current.code" :tenant-id="tenantId" :coupon="current.code ?? ''" /></fieldset>
+      <template v-if="current?.active && canWrite" #footer>
+        <Button type="button" variant="outline" :disabled="actions.deactivate.isPending.value" @click="actions.deactivate.mutate(current?.code ?? '')">{{ t("billing.pricing.coupons.deactivate") }}</Button>
+      </template>
+    </DetailSheet>
 
     <Sheet v-model:open="open">
       <SheetContent>

@@ -16,7 +16,9 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Label } from "@/shared/ui/label";
-import { NativeSelect } from "@/shared/ui/native-select";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { RowActions } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -66,8 +68,8 @@ function submit() {
 }
 
 // --- API keys. The API cannot list keys, so the page shows those made here (their plaintext only until dismissed) and revokes by id.
-const keysOf = ref("");
-const keysApp = computed(() => list.value.find((a) => a.id === keysOf.value));
+const keysAt = ref<number | null>(null);
+const keysApp = computed(() => (keysAt.value === null ? undefined : table.items.value[keysAt.value]));
 const session = ref<CreatedKey[]>([]);
 const secret = ref<CreatedKey | null>(null);
 const revokeId = ref("");
@@ -95,25 +97,23 @@ function revoke(id: string) {
   });
 }
 const failure = computed(() => firstError(createKey, revokeKey));
+// Stepping to another app leaves the key just made (and the note about a revoked one) behind.
+watch(keysAt, () => {
+  secret.value = null;
+  revoked.value = "";
+});
 const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId === tenant);
 </script>
 
 <template>
+  <p class="text-muted-foreground mb-3 px-1 text-sm">{{ t("apps.immutable") }}</p>
   <Card class="mb-6 p-3">
-    <div class="flex flex-wrap items-start justify-between gap-3 px-3 pt-2">
-      <div>
-        <h2 class="text-lg font-semibold">{{ t("apps.title") }}</h2>
-        <p class="text-muted-foreground text-sm">{{ t("apps.immutable") }}</p>
-      </div>
-      <Button data-testid="apps-new" @click="creating = true"><Plus class="size-4" />{{ t("apps.new") }}</Button>
-    </div>
-    <ErrorText :error="apps.error.value" class="px-3" />
-    <ErrorText :error="failure" class="px-3" />
-    <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="pt-3" @clear="table.clear()">
-      <NativeSelect v-model="table.filters.value.env" class="w-44" :aria-label="t('apps.environments')">
-        <option value="">{{ t("apps.allEnvironments") }}</option>
-        <option v-for="e in ['sandbox', 'live']" :key="e" :value="e">{{ label(t, te, "environment", e) }}</option>
-      </NativeSelect>
+    <ErrorText :error="apps.error.value" class="px-3 pb-2" />
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <FilterSelect v-model="table.filters.value.env" :label="t('apps.environments')" :options="[{ value: '', label: t('apps.allEnvironments') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
+      <template #actions>
+        <Button data-testid="apps-new" @click="creating = true"><Plus class="size-4" />{{ t("apps.new") }}</Button>
+      </template>
     </DataToolbar>
     <Table>
       <TableHeader>
@@ -122,24 +122,22 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
           <TableHead>{{ t("apps.slug") }}</TableHead>
           <TableHead>{{ t("apps.environments") }}</TableHead>
           <TableHead>{{ t("apps.created") }}</TableHead>
-          <TableHead class="text-end">{{ t("apps.actions") }}</TableHead>
+          <TableHead class="w-px"><span class="sr-only">{{ t("apps.actions") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="a in table.items.value" :key="a.id">
+        <TableRow v-for="(a, i) in table.items.value" :key="a.id" class="cursor-pointer" @click="keysAt = i">
           <TableCell class="font-medium">{{ a.name }}</TableCell>
           <TableCell class="mono text-xs">{{ a.slug }}</TableCell>
           <TableCell class="space-y-1">
             <div v-for="e in a.tenants ?? []" :key="e.id" class="flex flex-wrap items-center gap-2 text-xs">
               <Badge :variant="environmentWord(e) === 'live' ? 'success' : 'secondary'">{{ label(t, te, "environment", environmentWord(e)) }}</Badge>
-              <Link to="/tenants/$id" :params="{ id: e.id ?? '' }" class="mono underline">{{ e.id }}</Link>
+              <Link to="/tenants/$id" :params="{ id: e.id ?? '' }" class="mono underline" @click.stop>{{ e.id }}</Link>
               <span class="text-muted-foreground">{{ e.currency }} · {{ e.timezone }}</span>
             </div>
           </TableCell>
           <TableCell class="text-xs">{{ when(a.create_time) }}</TableCell>
-          <TableCell class="text-end">
-            <Button size="sm" variant="outline" @click="keysOf = a.id ?? ''">{{ t("apps.keys.open") }}</Button>
-          </TableCell>
+          <TableCell><RowActions :actions="[{ key: 'keys', label: t('apps.keys.open'), onSelect: () => (keysAt = i) }]" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
@@ -181,9 +179,9 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
     </SheetContent>
   </Sheet>
 
-  <Card v-if="keysApp" class="mb-6" role="region" :aria-label="t('apps.keys.title', { app: keysApp.name })">
-    <h2 class="text-lg font-semibold">{{ t("apps.keys.title", { app: keysApp.name }) }}</h2>
-    <p class="text-muted-foreground text-sm">{{ t("apps.keys.hint") }}</p>
+  <DetailSheet v-model:index="keysAt" :total="table.items.value.length" :title="keysApp ? t('apps.keys.title', { app: keysApp.name }) : ''" :description="t('apps.keys.hint')" wide>
+  <div v-if="keysApp" class="flex flex-col gap-4" role="region" :aria-label="t('apps.keys.title', { app: keysApp.name })">
+    <ErrorText :error="failure" />
     <div v-if="secret" class="border-warning/50 bg-warning/10 rounded-md border p-3" role="status">
       <p class="text-sm font-medium">{{ t("apps.keys.secretOnce") }}</p>
       <p class="mono break-all text-sm" data-testid="api-key-secret">{{ secret.plaintext }}</p>
@@ -211,5 +209,6 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
       <Button type="submit" variant="outline" :disabled="revokeKey.isPending.value || revokeId.trim() === ''">{{ t("apps.keys.revokeById") }}</Button>
     </form>
     <p v-if="revoked" class="text-success text-sm" role="status">{{ t("apps.keys.revokedDone", { id: revoked }) }}</p>
-  </Card>
+  </div>
+  </DetailSheet>
 </template>

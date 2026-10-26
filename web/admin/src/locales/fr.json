@@ -26,7 +26,10 @@
     "search": "Rechercher",
     "clearFilters": "Effacer les filtres",
     "noMatches": "Aucun résultat pour ces filtres.",
-    "moreActions": "Plus d'actions"
+    "moreActions": "Plus d'actions",
+    "view": "Afficher",
+    "openFullPage": "Ouvrir en pleine page",
+    "all": "Tous"
   },
   "enums": {
     "environment": {
@@ -131,7 +134,8 @@
       "customer": "Client",
       "total": "Total",
       "status": "Statut",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Créée"
     },
     "jobs": {
       "title": "Tâches de rejeu et de retarification",
@@ -139,7 +143,9 @@
       "idLabel": "Id de la tâche",
       "replay": "Tâche de rejeu",
       "rerating": "Tâche de retarification"
-    }
+    },
+    "allStatuses": "Tous les statuts",
+    "allKinds": "Tous les types"
   },
   "invoice": {
     "back": "← Locataire",
@@ -263,7 +269,8 @@
       "deliveries": "Livraisons",
       "reason": "Motif",
       "bytes": "Octets"
-    }
+    },
+    "noMessages": "Aucun message dans cette file."
   },
   "playground": {
     "title": "Bac à sable",
@@ -395,7 +402,15 @@
       "monthly": "Mensuel",
       "yearly": "Annuel",
       "perYear": "/ an",
-      "tenantMonthly": "Le tarif mensuel en {currency} est le tarif fixe ci-dessus."
+      "tenantMonthly": "Le tarif mensuel en {currency} est le tarif fixe ci-dessus.",
+      "published": "Publiée",
+      "priceColumn": "Prix",
+      "limits": "Limites",
+      "priceKinds": {
+        "perUnit": "{price} par unité",
+        "tiered": "{n} paliers",
+        "package": "{size} unités pour {price}"
+      }
     },
     "subscriptions": {
       "new": "Nouvel abonnement",
@@ -491,7 +506,8 @@
       "confirmEndCredit": "Terminer cet abonnement maintenant et créditer le client de la part inutilisée des frais payés d'avance ?",
       "credited": "{amount} crédités sur le solde du client.",
       "allStates": "Tous les statuts",
-      "allCurrencies": "Toutes les devises"
+      "allCurrencies": "Toutes les devises",
+      "allIntervals": "Tous les intervalles"
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",
@@ -514,7 +530,8 @@
       "amount": "Montant",
       "reference": "Référence",
       "source": "Source",
-      "empty": "Rien dans le grand livre pour l'instant."
+      "empty": "Rien dans le grand livre pour l'instant.",
+      "id": "Identifiant"
     },
     "providers": {
       "accounts": "Comptes prestataires",
@@ -632,7 +649,9 @@
       "nextAttempt": "Prochaine tentative",
       "empty": "Rien à signaler pour l'instant.",
       "noDunning": "Aucune facture impayée.",
-      "credited": "Crédité (avoirs)"
+      "credited": "Crédité (avoirs)",
+      "currentMonth": "Mois en cours",
+      "splitBy": "Répartir par"
     },
     "pricing": {
       "coupons": {
@@ -801,7 +820,8 @@
       "refundFailed": "Remboursement échoué",
       "retryRefund": "Réessayer le remboursement",
       "new": "Nouvel avoir",
-      "hint": "Crédite en tout ou en partie une facture payée. Le montant va au solde du client ou retourne sur la carte."
+      "hint": "Crédite en tout ou en partie une facture payée. Le montant va au solde du client ou retourne sur la carte.",
+      "allWhere": "Partout"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -915,7 +935,8 @@
       },
       "for": "Pour",
       "promotionCode": "Code promotionnel (facultatif)",
-      "promotionHint": "Le payeur obtient la remise de ce code sans le saisir et peut en saisir un autre. Il est vérifié dès maintenant pour ce montant."
+      "promotionHint": "Le payeur obtient la remise de ce code sans le saisir et peut en saisir un autre. Il est vérifié dès maintenant pour ce montant.",
+      "id": "Lien"
     },
     "mail": {
       "title": "E-mail",
@@ -1092,7 +1113,9 @@
         "voided": "Annulée",
         "until": "jusqu'au {date}",
         "edit": "Modifier",
-        "void": "Annuler"
+        "void": "Annuler",
+        "allCategories": "Toutes les catégories",
+        "allRecurring": "Ponctuelles et récurrentes"
       },
       "form": {
         "addTitle": "Ajouter une dépense",
@@ -1586,7 +1609,8 @@
       "webhookSecret": "Secret de signature",
       "neverShown": "Le secret est envoyé une seule fois et ne peut pas être relu.",
       "save": "Enregistrer le compte",
-      "saved": "Compte enregistré."
+      "saved": "Compte enregistré.",
+      "allEnvironments": "Tous les environnements"
     },
     "customer": {
       "title": "Données fiscales",
@@ -2663,7 +2687,8 @@
       "filterEnv": "Environnement",
       "allEnvs": "Tous les environnements",
       "filterStatus": "Statut",
-      "allStatuses": "Tous les statuts"
+      "allStatuses": "Tous les statuts",
+      "scopeHead": "Portée"
     },
     "links": {
       "title": "Aller plus loin",
@@ -2756,7 +2781,8 @@
       "leaveBody": "Vous perdez aussitôt l'accès à ses applications et à ses données. Un propriétaire peut vous réinviter.",
       "removeTitle": "Retirer ce membre ?",
       "removeBody": "{name} perd aussitôt l'accès aux applications et aux données de ce compte.",
-      "allRoles": "Tous les rôles"
+      "allRoles": "Tous les rôles",
+      "expiresHead": "Valable jusqu'au"
     },
     "account": {
       "switch": "Compte",

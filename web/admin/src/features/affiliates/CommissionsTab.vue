@@ -8,9 +8,6 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div>
-    <h2 class="text-lg font-semibold">{{ t("affiliates.commissions.title") }}</h2>
-    <p class="text-muted-foreground text-sm">{{ t("affiliates.commissions.intro") }}</p>
-  </div>
+  <p class="text-muted-foreground text-sm">{{ t("affiliates.commissions.intro") }}</p>
   <CommissionsTable :tenant-id="tenantId" @payout="$emit('payout', $event)" />
 </template>

@@ -8,7 +8,7 @@ import { Card } from "@/shared/ui/card";
 import { X } from "@lucide/vue";
 import { Button } from "@/shared/ui/button";
 import { DataPagination } from "@/shared/ui/data-table";
-import { NativeSelect } from "@/shared/ui/native-select";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCoupons, useRedemptions } from "./api";
 import { targetKey } from "./promotions";
@@ -23,6 +23,10 @@ const pageToken = ref("");
 const history = ref<string[]>([]);
 const coupons = useCoupons(tenantId);
 const list = useRedemptions(tenantId, coupon, pageToken);
+const couponOptions = computed(() => [
+  { value: "", label: t("billing.pricing.promotions.redemptions.allCoupons") },
+  ...(coupons.data.value?.coupons ?? []).map((c) => ({ value: c.code ?? "", label: c.code ?? "" })),
+]);
 const rows = computed(() => list.data.value?.redemptions ?? []);
 
 function filter() {
@@ -48,11 +52,8 @@ const when = (v?: string | null) => (v ? new Intl.DateTimeFormat(locale.value, {
       <h2 class="text-lg font-semibold">{{ t("billing.pricing.promotions.redemptions.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.redemptions.hint") }}</p>
     </div>
-    <div class="flex flex-wrap items-center gap-2 px-3 py-3">
-      <NativeSelect v-model="coupon" class="w-48" :aria-label="t('billing.pricing.promotions.redemptions.coupon')">
-        <option value="">{{ t("billing.pricing.promotions.redemptions.allCoupons") }}</option>
-        <option v-for="c in coupons.data.value?.coupons ?? []" :key="c.code" :value="c.code">{{ c.code }}</option>
-      </NativeSelect>
+    <div class="flex flex-wrap items-center gap-2 px-3 py-3" role="search">
+      <FilterSelect v-model="coupon" :label="t('billing.pricing.promotions.redemptions.coupon')" :options="couponOptions" />
       <Button v-if="coupon !== ''" type="button" variant="ghost" size="sm" @click="coupon = ''"><X class="size-4" aria-hidden="true" />{{ t("common.clearFilters") }}</Button>
     </div>
     <p v-if="list.error.value" class="text-destructive px-3 text-sm" role="alert">{{ errorText(list.error.value) }}</p>

@@ -19,7 +19,7 @@ test.describe("mail", () => {
     await gw.install(page);
     await openTenantPage(page, "/mail");
     await expect(page.getByTestId("mail-payment_receipts")).toBeChecked();
-    await page.getByTestId("mail-payment_receipts").uncheck();
+    await page.getByTestId("mail-payment_receipts").click();
     await expect.poll(() => gw.called("PUT", "/v1/mail-settings").length).toBe(1);
     expect(gw.called("PUT", "/v1/mail-settings")[0]?.body).toEqual({ categories: [{ category: "payment_receipts", enabled: false }] });
     await expect(page.getByTestId("mail-payment_receipts")).not.toBeChecked();

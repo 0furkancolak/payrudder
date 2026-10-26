@@ -26,7 +26,10 @@
     "search": "Search",
     "clearFilters": "Clear filters",
     "noMatches": "Nothing matches these filters.",
-    "moreActions": "More actions"
+    "moreActions": "More actions",
+    "view": "View",
+    "openFullPage": "Open full page",
+    "all": "All"
   },
   "enums": {
     "environment": {
@@ -131,7 +134,8 @@
       "customer": "Customer",
       "total": "Total",
       "status": "Status",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Created"
     },
     "jobs": {
       "title": "Replay and re-rating jobs",
@@ -139,7 +143,9 @@
       "idLabel": "Job id",
       "replay": "Replay job",
       "rerating": "Re-rating job"
-    }
+    },
+    "allStatuses": "All statuses",
+    "allKinds": "All kinds"
   },
   "invoice": {
     "back": "← Tenant",
@@ -263,7 +269,8 @@
       "deliveries": "Deliveries",
       "reason": "Reason",
       "bytes": "Bytes"
-    }
+    },
+    "noMessages": "No messages in this queue."
   },
   "playground": {
     "title": "Playground",
@@ -395,7 +402,15 @@
       "monthly": "Monthly",
       "yearly": "Yearly",
       "perYear": "/ year",
-      "tenantMonthly": "The monthly fee in {currency} is the fixed fee above."
+      "tenantMonthly": "The monthly fee in {currency} is the fixed fee above.",
+      "published": "Published",
+      "priceColumn": "Price",
+      "limits": "Limits",
+      "priceKinds": {
+        "perUnit": "{price} per unit",
+        "tiered": "{n} tiers",
+        "package": "{size} units for {price}"
+      }
     },
     "subscriptions": {
       "new": "New subscription",
@@ -491,7 +506,8 @@
       "confirmEndCredit": "End this subscription now and credit the customer with the unused part of the fee they paid in advance?",
       "credited": "Credited {amount} to the customer's balance.",
       "allStates": "All statuses",
-      "allCurrencies": "All currencies"
+      "allCurrencies": "All currencies",
+      "allIntervals": "All intervals"
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",
@@ -514,7 +530,8 @@
       "amount": "Amount",
       "reference": "Reference",
       "source": "Source",
-      "empty": "Nothing in the ledger yet."
+      "empty": "Nothing in the ledger yet.",
+      "id": "Id"
     },
     "providers": {
       "accounts": "Provider accounts",
@@ -632,7 +649,9 @@
       "nextAttempt": "Next attempt",
       "empty": "Nothing to report yet.",
       "noDunning": "No unpaid invoices.",
-      "credited": "Credited"
+      "credited": "Credited",
+      "currentMonth": "Current month",
+      "splitBy": "Split by"
     },
     "pricing": {
       "coupons": {
@@ -801,7 +820,8 @@
       "refundFailed": "Refund failed",
       "retryRefund": "Retry refund",
       "new": "New credit note",
-      "hint": "Credits a paid invoice in full or in part. The credit goes to the customer's balance, or back to the card."
+      "hint": "Credits a paid invoice in full or in part. The credit goes to the customer's balance, or back to the card.",
+      "allWhere": "Anywhere"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -915,7 +935,8 @@
       },
       "for": "For",
       "promotionCode": "Promotion code (optional)",
-      "promotionHint": "The payer gets this code's discount without typing it and may type another. It is checked against this amount now."
+      "promotionHint": "The payer gets this code's discount without typing it and may type another. It is checked against this amount now.",
+      "id": "Link"
     },
     "mail": {
       "title": "E-mail",
@@ -1092,7 +1113,9 @@
         "voided": "Voided",
         "until": "until {date}",
         "edit": "Edit",
-        "void": "Void"
+        "void": "Void",
+        "allCategories": "All categories",
+        "allRecurring": "One-off and repeating"
       },
       "form": {
         "addTitle": "Add expense",
@@ -1586,7 +1609,8 @@
       "webhookSecret": "Signing secret",
       "neverShown": "The secret is sent once and cannot be read back.",
       "save": "Save account",
-      "saved": "Account saved."
+      "saved": "Account saved.",
+      "allEnvironments": "All environments"
     },
     "customer": {
       "title": "Tax data",
@@ -2663,7 +2687,8 @@
       "filterEnv": "Environment",
       "allEnvs": "All environments",
       "filterStatus": "Status",
-      "allStatuses": "All statuses"
+      "allStatuses": "All statuses",
+      "scopeHead": "Scope"
     },
     "links": {
       "title": "Go deeper",
@@ -2756,7 +2781,8 @@
       "leaveBody": "You lose access to its apps and data at once. An owner can invite you again.",
       "removeTitle": "Remove this member?",
       "removeBody": "{name} loses access to this account's apps and data at once.",
-      "allRoles": "All roles"
+      "allRoles": "All roles",
+      "expiresHead": "Valid until"
     },
     "account": {
       "switch": "Account",

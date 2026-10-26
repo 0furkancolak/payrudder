@@ -10,7 +10,12 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { NativeSelect } from "@/shared/ui/native-select";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { RowActions, type RowAction } from "@/shared/ui/row-actions";
+import { Pencil, Link2, CreditCard, Eye, Receipt } from "@lucide/vue";
+import { useCreditBalance } from "@/features/credits/api";
+import { formatCredits } from "@/features/credits/lib";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -18,15 +23,20 @@ import CustomerLinksCard from "@/features/paymentlinks/CustomerLinksCard.vue";
 import { addressLine, useCreateCustomer, useCustomers, useSetCustomerAddress, useSetCustomerTax, type Address, type CustomerTax } from "./api";
 import { CurrencySelect } from "@/shared/ui/search-select";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const customers = useCustomers(tenantId);
 const router = useRouter();
-const portalFor = ref("");
+/** The row whose detail sheet is open (an index into the rows the table shows now), and whether its payment-page section is open. */
+const shown = ref<number | null>(null);
+const portalOpen = ref(false);
 function paymentLink(externalId?: string) {
   // A person reaches their tenants under /app/t, the operator under /tenants.
   void router.navigate({ to: `${tenantBase()}/$id/payment-links`, params: { id: tenantId.value }, search: { customer: externalId ?? "" } as never });
+}
+function toCredits() {
+  void router.navigate({ to: `${tenantBase()}/$id/credits`, params: { id: tenantId.value } as never });
 }
 const create = useCreateCustomer(tenantId);
 
@@ -35,6 +45,23 @@ const table = useTableState(list, {
   searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id],
   filters: { country: (c, v) => (c.country ?? "") === v, currency: (c, v) => (c.billing_currency ?? "") === v },
 });
+const current = computed(() => (shown.value === null ? undefined : table.items.value[shown.value]));
+const currentId = computed(() => current.value?.external_id ?? "");
+const balance = useCreditBalance(tenantId, currentId);
+function open(i: number, portal = false) {
+  shown.value = i;
+  portalOpen.value = portal;
+}
+watch(shown, (v, old) => v !== old && (portalOpen.value = portalOpen.value && v !== null && old === null));
+function actionsOf(c: (typeof list.value)[number], i: number): RowAction[] {
+  return [
+    { key: "view", label: t("common.view"), icon: Eye, onSelect: () => open(i) },
+    { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: Receipt, onSelect: () => open(i, true) },
+    { key: "link", label: t("billing.paymentLinks.paymentLink"), icon: Link2, onSelect: () => paymentLink(c.external_id) },
+    { key: "address", label: t("billing.customers.address.edit"), icon: Pencil, onSelect: () => edit(c) },
+    { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => editTaxOf(c) },
+  ];
+}
 const distinct = (pick: (c: (typeof list.value)[number]) => string | undefined) => computed(() => [...new Set(list.value.map((c) => pick(c) ?? "").filter(Boolean))].sort());
 const countries = distinct((c) => c.country);
 const currencies = distinct((c) => c.billing_currency);
@@ -187,62 +214,73 @@ function submit() {
       </SheetFooter>
     </SheetContent>
   </Sheet>
-  <CustomerLinksCard v-if="portalFor" :tenant-id="tenantId" :customer="portalFor" @close="portalFor = ''" />
+  <DetailSheet v-model:index="shown" :total="table.items.value.length" :title="current?.name || currentId" :description="current ? currentId : undefined" wide>
+    <div v-if="current" class="flex flex-col gap-6" data-testid="customer-detail">
+      <dl class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+        <dt class="text-muted-foreground">{{ t("billing.customers.externalId") }}</dt>
+        <dd class="mono">{{ current.external_id }}</dd>
+        <dt class="text-muted-foreground">{{ t("billing.customers.email") }}</dt>
+        <dd>{{ maskEmail(current.email) }}</dd>
+        <dt class="text-muted-foreground">{{ t("billing.customers.country") }}</dt>
+        <dd>{{ current.country || "—" }}</dd>
+        <dt class="text-muted-foreground">{{ t("billing.customers.currency") }}</dt>
+        <dd>{{ current.billing_currency || "—" }}</dd>
+        <dt class="text-muted-foreground">{{ t("billing.customers.address.title") }}</dt>
+        <dd class="flex items-center justify-between gap-3">
+          <span>{{ addressLine(current.address) || "—" }}</span>
+          <Button size="sm" variant="ghost" @click="edit(current)"><Pencil class="size-4" aria-hidden="true" />{{ t("billing.customers.address.edit") }}</Button>
+        </dd>
+        <dt class="text-muted-foreground">{{ t("einvoice.customer.title") }}</dt>
+        <dd class="flex items-center justify-between gap-3">
+          <span>{{ [current.tax_id, current.tax_office].filter(Boolean).join(" · ") || "—" }}</span>
+          <Button size="sm" variant="ghost" @click="editTaxOf(current)"><Pencil class="size-4" aria-hidden="true" />{{ t("einvoice.customer.edit") }}</Button>
+        </dd>
+        <dt class="text-muted-foreground">{{ t("shell.items.credits") }}</dt>
+        <dd class="flex items-center justify-between gap-3">
+          <span class="tabular" data-testid="customer-credits">{{ balance.data.value ? formatCredits(balance.data.value.balance, locale) : "—" }}</span>
+          <Button size="sm" variant="ghost" @click="toCredits()">{{ t("common.openFullPage") }}</Button>
+        </dd>
+      </dl>
+      <div class="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" :aria-pressed="portalOpen" @click="portalOpen = !portalOpen"><Receipt class="size-4" aria-hidden="true" />{{ t("billing.paymentLinks.portal.open") }}</Button>
+        <Button variant="outline" size="sm" @click="paymentLink(current.external_id)"><Link2 class="size-4" aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
+      </div>
+      <CustomerLinksCard v-if="portalOpen" :key="currentId" :tenant-id="tenantId" :customer="currentId" @close="portalOpen = false" />
+    </div>
+  </DetailSheet>
 
   <Card class="p-3">
-    <div class="flex flex-wrap items-center justify-between gap-3 px-3 pt-2 pb-3">
-      <h2 class="text-lg font-semibold">{{ t("billing.tabs.customers") }}</h2>
-      <Button data-testid="customers-new" @click="creating = true"><Plus class="size-4" />{{ t("billing.customers.new") }}</Button>
-    </div>
-    <ErrorText :error="customers.error.value" class="px-3" />
+    <ErrorText :error="customers.error.value" class="px-3 pb-2" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <NativeSelect v-model="table.filters.value.country" class="w-40" :aria-label="t('billing.customers.country')">
-        <option value="">{{ t("billing.customers.allCountries") }}</option>
-        <option v-for="c in countries" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
-      <NativeSelect v-model="table.filters.value.currency" class="w-40" :aria-label="t('billing.customers.currency')">
-        <option value="">{{ t("billing.customers.allCurrencies") }}</option>
-        <option v-for="c in currencies" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
+      <FilterSelect v-model="table.filters.value.country" :label="t('billing.customers.country')" :options="[{ value: '', label: t('billing.customers.allCountries') }, ...countries.map((c) => ({ value: c }))]" />
+      <FilterSelect v-model="table.filters.value.currency" :label="t('billing.customers.currency')" :options="[{ value: '', label: t('billing.customers.allCurrencies') }, ...currencies.map((c) => ({ value: c }))]" />
+      <template #actions>
+        <Button data-testid="customers-new" @click="creating = true"><Plus class="size-4" />{{ t("billing.customers.new") }}</Button>
+      </template>
     </DataToolbar>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
           <TableHead>{{ t("billing.customers.externalId") }}</TableHead>
           <TableHead>{{ t("billing.customers.name") }}</TableHead>
-          <TableHead>{{ t("billing.customers.email") }}</TableHead>
-          <TableHead>{{ t("billing.customers.country") }}</TableHead>
-          <TableHead>{{ t("billing.customers.currency") }}</TableHead>
-          <TableHead>{{ t("billing.customers.address.title") }}</TableHead>
-          <TableHead>{{ t("einvoice.customer.title") }}</TableHead>
-          <TableHead class="text-end">{{ t("billing.paymentLinks.links") }}</TableHead>
+          <TableHead class="max-md:hidden">{{ t("billing.customers.email") }}</TableHead>
+          <TableHead class="max-md:hidden">{{ t("billing.customers.country") }}</TableHead>
+          <TableHead class="max-md:hidden">{{ t("billing.customers.currency") }}</TableHead>
+          <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="c in table.items.value" :key="c.id">
-          <TableCell class="font-medium">{{ c.external_id }}</TableCell>
-          <TableCell>{{ c.name }}</TableCell>
-          <TableCell>{{ maskEmail(c.email) }}</TableCell>
-          <TableCell>{{ c.country || "—" }}</TableCell>
-          <TableCell>{{ c.billing_currency || "—" }}</TableCell>
-          <TableCell class="max-w-64 whitespace-normal">
-            <span class="text-sm">{{ addressLine(c.address) || "—" }}</span>
-            <Button size="sm" variant="ghost" @click="edit(c)">{{ t("billing.customers.address.edit") }}</Button>
-          </TableCell>
-          <TableCell class="max-w-56 whitespace-normal">
-            <span class="text-sm">{{ [c.tax_id, c.tax_office].filter(Boolean).join(" · ") || "—" }}</span>
-            <Button size="sm" variant="ghost" @click="editTaxOf(c)">{{ t("einvoice.customer.edit") }}</Button>
-          </TableCell>
-          <TableCell class="text-end">
-<div class="flex flex-wrap justify-end gap-1">
-            <Button size="sm" variant="outline" :aria-label="t('billing.paymentLinks.portal.open') + ' ' + c.external_id" @click="portalFor = c.external_id ?? ''">{{ t("billing.paymentLinks.portal.open") }}</Button>
-            <Button size="sm" variant="outline" :aria-label="t('billing.paymentLinks.paymentLink') + ' ' + c.external_id" @click="paymentLink(c.external_id)">{{ t("billing.paymentLinks.paymentLink") }}</Button>
-          </div>
-</TableCell>
+        <TableRow v-for="(c, i) in table.items.value" :key="c.id" class="cursor-pointer" :data-testid="`customer-${c.external_id}`" @click="open(i)">
+          <TableCell class="mono text-xs font-medium">{{ c.external_id }}</TableCell>
+          <TableCell class="font-medium">{{ c.name }}</TableCell>
+          <TableCell class="max-md:hidden">{{ maskEmail(c.email) }}</TableCell>
+          <TableCell class="max-md:hidden">{{ c.country || "—" }}</TableCell>
+          <TableCell class="max-md:hidden">{{ c.billing_currency || "—" }}</TableCell>
+          <TableCell><RowActions :actions="actionsOf(c, i)" :label="`${t('common.moreActions')} ${c.external_id}`" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!customers.isPending.value && (customers.data.value?.customers ?? []).length === 0 && !customers.error.value" class="text-muted-foreground p-4 text-center text-sm">
+    <p v-if="!customers.isPending.value && list.length === 0 && !customers.error.value" class="text-muted-foreground p-4 text-center text-sm">
       {{ t("billing.customers.empty") }}
     </p>
     <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>

@@ -81,14 +81,10 @@ function submit() {
 <template>
   <Card role="region" :aria-label="t('address.preview.title')">
     <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold">{{ t("address.title") }}</h2>
-        <p class="text-muted-foreground text-sm">{{ t("address.hint") }}</p>
-      </div>
+      <p class="text-muted-foreground max-w-xl text-sm">{{ t("address.hint") }} {{ t("address.preview.hint") }}</p>
       <Button type="button" @click="open = true"><Pencil class="size-4" aria-hidden="true" />{{ t("address.edit") }}</Button>
     </div>
-    <p class="text-muted-foreground text-sm">{{ t("address.preview.hint") }}</p>
-    <div class="bg-card max-w-md rounded-md border p-4 text-sm shadow-sm" data-testid="invoice-preview">
+    <div class="bg-card max-w-md rounded-2xl border p-4 text-sm shadow-sm" data-testid="invoice-preview">
       <p class="text-muted-foreground text-xs tracking-wide uppercase">{{ t("address.preview.from") }}</p>
       <p class="font-semibold">{{ tenant.data.value?.name }}</p>
       <p v-for="(line, i) in lines" :key="i" data-testid="preview-line">{{ line }}</p>

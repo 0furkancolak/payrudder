@@ -9,7 +9,9 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Input } from "@/shared/ui/input";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { RowActions } from "@/shared/ui/row-actions";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -37,6 +39,11 @@ function filter() {
   history.value = [];
 }
 watch([state, search], filter);
+const stateOptions = computed(() => [
+  { value: "", label: t("billing.pricing.promotions.codes.stateAll") },
+  { value: "active", label: t("billing.pricing.coupons.active") },
+  { value: "inactive", label: t("billing.pricing.coupons.inactive") },
+]);
 const active = computed(() => state.value !== "" || search.value !== "");
 function clear() {
   state.value = "";
@@ -155,7 +162,7 @@ const rules = (c: Row) => {
 </script>
 
 <template>
-  <section class="border-border mt-2 grid gap-4 rounded-md border p-4" :aria-label="t('billing.pricing.promotions.codes.title', { coupon })">
+  <section class="grid gap-4" :aria-label="t('billing.pricing.promotions.codes.title', { coupon })">
     <div>
       <h3 class="text-base font-semibold">{{ t("billing.pricing.promotions.codes.title", { coupon }) }}</h3>
       <p class="text-muted-foreground text-sm">{{ t("billing.pricing.promotions.codes.hint") }}</p>
@@ -172,11 +179,7 @@ const rules = (c: Row) => {
 
     <div>
       <DataToolbar v-model:search="search" :placeholder="t('billing.pricing.promotions.codes.search')" :active="active" class="px-0" @clear="clear">
-        <NativeSelect v-model="state" class="w-40" :aria-label="t('billing.subscriptions.state')">
-          <option value="">{{ t("billing.pricing.promotions.codes.stateAll") }}</option>
-          <option value="active">{{ t("billing.pricing.coupons.active") }}</option>
-          <option value="inactive">{{ t("billing.pricing.coupons.inactive") }}</option>
-        </NativeSelect>
+        <FilterSelect v-model="state" :label="t('billing.subscriptions.state')" :options="stateOptions" />
         <template #actions>
           <Button type="button" @click="seedCurrency(); open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.pricing.promotions.codes.create") }}</Button>
         </template>
@@ -191,7 +194,7 @@ const rules = (c: Row) => {
             <TableHead>{{ t("billing.pricing.promotions.codes.expiresCol") }}</TableHead>
             <TableHead>{{ t("billing.pricing.promotions.codes.rules") }}</TableHead>
             <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
-            <TableHead />
+            <TableHead><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -202,7 +205,7 @@ const rules = (c: Row) => {
             <TableCell class="text-xs">{{ rules(c).join(" · ") || "—" }}</TableCell>
             <TableCell><Badge :variant="c.active ? 'success' : 'secondary'">{{ c.active ? t("billing.pricing.coupons.active") : t("billing.pricing.coupons.inactive") }}</Badge></TableCell>
             <TableCell class="text-end">
-              <Button v-if="c.active" size="sm" variant="ghost" @click="act.deactivate.mutate(c.code ?? '')">{{ t("billing.pricing.coupons.deactivate") }}</Button>
+              <RowActions :actions="c.active ? [{ key: 'deactivate', label: t('billing.pricing.coupons.deactivate'), onSelect: () => act.deactivate.mutate(c.code ?? '') }] : []" />
             </TableCell>
           </TableRow>
         </TableBody>

@@ -139,7 +139,8 @@ test("a customer's tax data is saved with the customer tax endpoint", async ({ p
   });
   await gw.install(page);
   await openTenantPage(page, "/customers");
-  await page.getByRole("button", { name: "Tax data" }).click();
+  await page.getByTestId("row-actions").click();
+  await page.getByTestId("row-action-tax").click();
   const region = page.getByRole("dialog", { name: "Tax data of cus_1" });
   await region.getByLabel("Tax id (VKN/TCKN or VAT id)").fill("11111111111");
   await region.getByLabel("Tax office").fill("Beşiktaş");

@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { firstError } from "@/shared/lib/errors";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Card } from "@/shared/ui/card";
+import { Switch } from "@/shared/ui/switch";
 import { MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "./api";
 
 const { t } = useI18n();
@@ -21,34 +22,24 @@ const enabled = computed(() => {
 });
 const failure = computed(() => firstError(settings, set));
 
-function toggle(category: MailCategory, event: Event) {
-  set.mutate({ category, enabled: (event.target as HTMLInputElement).checked });
+function toggle(category: MailCategory, on: boolean) {
+  set.mutate({ category, enabled: on });
 }
 </script>
 
 <template>
-  <Card class="mb-6">
-    <h2 class="text-lg font-semibold">{{ t("billing.mail.title") }}</h2>
-    <p class="text-muted-foreground text-sm">{{ t("billing.mail.hint") }}</p>
-    <ul class="grid gap-3" :aria-label="t('billing.mail.title')">
-      <li v-for="category in MAIL_CATEGORIES" :key="category">
-        <label class="flex items-start gap-3">
-          <input
-            type="checkbox"
-            class="mt-1 size-4"
-            :data-testid="`mail-${category}`"
-            :checked="enabled(category)"
-            :disabled="settings.isPending.value || set.isPending.value"
-            @change="toggle(category, $event)"
-          />
-          <span>
-            <span class="block text-sm font-medium">{{ t(`billing.mail.categories.${category}`) }}</span>
-            <span class="text-muted-foreground block text-xs">{{ t(`billing.mail.descriptions.${category}`) }}</span>
-          </span>
+  <Card class="gap-0 p-3">
+    <p class="text-muted-foreground px-3 pt-2 pb-3 text-sm">{{ t("billing.mail.hint") }}</p>
+    <ul class="divide-y" :aria-label="t('billing.mail.title')">
+      <li v-for="category in MAIL_CATEGORIES" :key="category" class="flex items-center justify-between gap-4 px-3 py-3.5">
+        <label :for="`mail-${category}`" class="min-w-0 flex-1 cursor-pointer">
+          <span class="block text-sm font-medium">{{ t(`billing.mail.categories.${category}`) }}</span>
+          <span class="text-muted-foreground block text-xs">{{ t(`billing.mail.descriptions.${category}`) }}</span>
         </label>
+        <Switch :id="`mail-${category}`" :data-testid="`mail-${category}`" :model-value="enabled(category)" :disabled="settings.isPending.value || set.isPending.value" @update:model-value="toggle(category, $event)" />
       </li>
     </ul>
-    <p class="text-muted-foreground text-xs">{{ t("billing.mail.providerNote") }}</p>
-    <ErrorText :error="failure" />
+    <p class="text-muted-foreground px-3 pt-3 text-xs">{{ t("billing.mail.providerNote") }}</p>
+    <ErrorText :error="failure" class="px-3" />
   </Card>
 </template>

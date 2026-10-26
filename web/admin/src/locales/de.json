@@ -26,7 +26,10 @@
     "search": "Suchen",
     "clearFilters": "Filter zurücksetzen",
     "noMatches": "Keine Einträge passen zu diesen Filtern.",
-    "moreActions": "Weitere Aktionen"
+    "moreActions": "Weitere Aktionen",
+    "view": "Ansehen",
+    "openFullPage": "Als ganze Seite öffnen",
+    "all": "Alle"
   },
   "enums": {
     "environment": {
@@ -131,7 +134,8 @@
       "customer": "Kunde",
       "total": "Summe",
       "status": "Status",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Erstellt"
     },
     "jobs": {
       "title": "Replay- und Neubewertungsjobs",
@@ -139,7 +143,9 @@
       "idLabel": "Job-ID",
       "replay": "Replay-Job",
       "rerating": "Neubewertungsjob"
-    }
+    },
+    "allStatuses": "Alle Status",
+    "allKinds": "Alle Arten"
   },
   "invoice": {
     "back": "← Mandant",
@@ -263,7 +269,8 @@
       "deliveries": "Zustellungen",
       "reason": "Grund",
       "bytes": "Bytes"
-    }
+    },
+    "noMessages": "Keine Nachrichten in dieser Warteschlange."
   },
   "playground": {
     "title": "Spielwiese",
@@ -395,7 +402,15 @@
       "monthly": "Monatlich",
       "yearly": "Jährlich",
       "perYear": "/ Jahr",
-      "tenantMonthly": "Die monatliche Gebühr in {currency} ist die feste Gebühr oben."
+      "tenantMonthly": "Die monatliche Gebühr in {currency} ist die feste Gebühr oben.",
+      "published": "Veröffentlicht",
+      "priceColumn": "Preis",
+      "limits": "Limits",
+      "priceKinds": {
+        "perUnit": "{price} pro Einheit",
+        "tiered": "{n} Stufen",
+        "package": "{size} Einheiten für {price}"
+      }
     },
     "subscriptions": {
       "new": "Neues Abonnement",
@@ -491,7 +506,8 @@
       "confirmEndCredit": "Dieses Abonnement jetzt beenden und dem Kunden den ungenutzten Teil der im Voraus bezahlten Gebühr gutschreiben?",
       "credited": "{amount} dem Guthaben des Kunden gutgeschrieben.",
       "allStates": "Alle Status",
-      "allCurrencies": "Alle Währungen"
+      "allCurrencies": "Alle Währungen",
+      "allIntervals": "Alle Intervalle"
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",
@@ -514,7 +530,8 @@
       "amount": "Betrag",
       "reference": "Referenz",
       "source": "Quelle",
-      "empty": "Noch nichts im Hauptbuch."
+      "empty": "Noch nichts im Hauptbuch.",
+      "id": "ID"
     },
     "providers": {
       "accounts": "Anbieter-Konten",
@@ -632,7 +649,9 @@
       "nextAttempt": "Nächster Versuch",
       "empty": "Noch nichts zu berichten.",
       "noDunning": "Keine unbezahlten Rechnungen.",
-      "credited": "Gutgeschrieben"
+      "credited": "Gutgeschrieben",
+      "currentMonth": "Aktueller Monat",
+      "splitBy": "Aufteilen nach"
     },
     "pricing": {
       "coupons": {
@@ -801,7 +820,8 @@
       "refundFailed": "Erstattung fehlgeschlagen",
       "retryRefund": "Erstattung wiederholen",
       "new": "Neue Gutschrift",
-      "hint": "Schreibt eine bezahlte Rechnung ganz oder teilweise gut. Der Betrag geht auf das Guthaben des Kunden oder zurück auf die Karte."
+      "hint": "Schreibt eine bezahlte Rechnung ganz oder teilweise gut. Der Betrag geht auf das Guthaben des Kunden oder zurück auf die Karte.",
+      "allWhere": "Überall"
     },
     "webhooks": {
       "title": "Webhooks",
@@ -915,7 +935,8 @@
       },
       "for": "Für",
       "promotionCode": "Aktionscode (optional)",
-      "promotionHint": "Der Zahlende erhält den Rabatt dieses Codes, ohne ihn einzugeben, und kann einen anderen eingeben. Er wird jetzt gegen diesen Betrag geprüft."
+      "promotionHint": "Der Zahlende erhält den Rabatt dieses Codes, ohne ihn einzugeben, und kann einen anderen eingeben. Er wird jetzt gegen diesen Betrag geprüft.",
+      "id": "Link"
     },
     "mail": {
       "title": "E-Mail",
@@ -1092,7 +1113,9 @@
         "voided": "Storniert",
         "until": "bis {date}",
         "edit": "Bearbeiten",
-        "void": "Stornieren"
+        "void": "Stornieren",
+        "allCategories": "Alle Kategorien",
+        "allRecurring": "Einmalig und wiederkehrend"
       },
       "form": {
         "addTitle": "Ausgabe hinzufügen",
@@ -1586,7 +1609,8 @@
       "webhookSecret": "Signaturgeheimnis",
       "neverShown": "Das Geheimnis wird einmal gesendet und kann nicht zurückgelesen werden.",
       "save": "Konto speichern",
-      "saved": "Konto gespeichert."
+      "saved": "Konto gespeichert.",
+      "allEnvironments": "Alle Umgebungen"
     },
     "customer": {
       "title": "Steuerdaten",
@@ -2663,7 +2687,8 @@
       "filterEnv": "Umgebung",
       "allEnvs": "Alle Umgebungen",
       "filterStatus": "Status",
-      "allStatuses": "Alle Status"
+      "allStatuses": "Alle Status",
+      "scopeHead": "Umfang"
     },
     "links": {
       "title": "Tiefer einsteigen",
@@ -2756,7 +2781,8 @@
       "leaveBody": "Sie verlieren sofort den Zugriff auf Apps und Daten. Ein Inhaber kann Sie erneut einladen.",
       "removeTitle": "Dieses Mitglied entfernen?",
       "removeBody": "{name} verliert sofort den Zugriff auf Apps und Daten dieses Kontos.",
-      "allRoles": "Alle Rollen"
+      "allRoles": "Alle Rollen",
+      "expiresHead": "Gültig bis"
     },
     "account": {
       "switch": "Konto",

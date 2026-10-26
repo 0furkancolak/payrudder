@@ -1,24 +1,29 @@
 <script setup lang="ts">
-import { Plus } from "@lucide/vue";
-import { computed } from "vue";
+import { Plus, Settings2 } from "@lucide/vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Subscription } from "@/shared/api/client";
+import { inRange } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { enumWord, label } from "@/shared/lib/labels";
+import { useTableState } from "@/shared/lib/useTableState";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { ErrorText } from "@/shared/ui/error-text";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { NativeSelect } from "@/shared/ui/native-select";
-import { useTableState } from "@/shared/lib/useTableState";
+import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorText } from "@/shared/ui/error-text";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useSubscriptions } from "./api";
 import { intervalKey } from "./lib";
 
-/** The tenant's subscriptions; "Manage" selects one for the card below. */
-const props = defineProps<{ tenantId: string; selectedId: string }>();
-const emit = defineEmits<{ select: [id: string]; create: [] }>();
+/** The tenant's subscriptions. A row opens a sheet (the `detail` slot, which gets the subscription) that steps through the rows the list shows. */
+const props = defineProps<{ tenantId: string }>();
+const emit = defineEmits<{ create: [] }>();
+defineSlots<{ detail(p: { subscription: Subscription }): unknown }>();
 const { t, te } = useI18n();
 const fmt = useFormat();
 const subs = useSubscriptions(() => props.tenantId);
@@ -27,31 +32,44 @@ const list = computed(() => subs.data.value?.subscriptions ?? []);
 const state = (s: Subscription) => enumWord(s.state, "SUBSCRIPTION_STATE_");
 const BAD_STATES = ["cancelled", "past_due"];
 const stateVariant = (s: Subscription) => (state(s) === "active" ? "success" : BAD_STATES.includes(state(s)) ? "destructive" : "secondary");
-const table = useTableState(list, {
+const range = ref<DateRange>({ from: "", to: "" });
+const table = useTableState(() => list.value.filter((s) => inRange(s.start_time, range.value)), {
   searchFields: (s) => [s.customer_external_id, s.plan_code, s.provider],
   filters: { state: (s, v) => state(s) === v, currency: (s, v) => s.currency === v, interval: (s, v) => s.interval === v },
 });
-const states = computed(() => [...new Set(list.value.map(state))].sort());
-const currencies = computed(() => [...new Set(list.value.map((s) => s.currency).filter((c): c is string => !!c))].sort());
+watch(range, () => (table.page.value = 1), { deep: true });
+const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+function clear() {
+  table.clear();
+  range.value = { from: "", to: "" };
+}
+const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, [key]: v }) });
+const stateFilter = filter("state");
+const currencyFilter = filter("currency");
+const intervalFilter = filter("interval");
+const stateOptions = computed(() => [{ value: "", label: t("billing.subscriptions.allStates") }, ...[...new Set(list.value.map(state))].sort().map((s) => ({ value: s, label: label(t, te, "subscriptionState", s) }))]);
+const currencyOptions = computed(() => [{ value: "", label: t("billing.subscriptions.allCurrencies") }, ...[...new Set(list.value.map((s) => s.currency).filter((c): c is string => !!c))].sort().map((c) => ({ value: c, label: c }))]);
+const intervalOptions = computed(() => [
+  { value: "", label: t("billing.subscriptions.allIntervals") },
+  ...[...new Set(list.value.map((s) => s.interval).filter((i): i is NonNullable<Subscription["interval"]> => !!i))].map((i) => ({ value: i, label: t(`billing.subscriptions.${intervalKey(i)}`) })),
+]);
 const date = (v?: string | null) => fmt.date(v, "day", "—");
+
+const index = ref<number | null>(null);
+const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
 </script>
 
 <template>
-  <Card class="mb-6 p-3">
-    <div class="flex flex-wrap items-center justify-between gap-3 px-3 pt-2 pb-3">
-      <h2 class="text-lg font-semibold">{{ t("billing.tabs.subscriptions") }}</h2>
-      <Button data-testid="subscriptions-new" @click="emit('create')"><Plus class="size-4" />{{ t("billing.subscriptions.new") }}</Button>
-    </div>
+  <Card class="p-3">
     <ErrorText :error="subs.error.value" class="px-3" />
-    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <NativeSelect v-model="table.filters.value.state" class="w-44" :aria-label="t('billing.subscriptions.state')">
-        <option value="">{{ t("billing.subscriptions.allStates") }}</option>
-        <option v-for="s in states" :key="s" :value="s">{{ label(t, te, "subscriptionState", s) }}</option>
-      </NativeSelect>
-      <NativeSelect v-model="table.filters.value.currency" class="w-36" :aria-label="t('billing.subscriptions.currency')">
-        <option value="">{{ t("billing.subscriptions.allCurrencies") }}</option>
-        <option v-for="c in currencies" :key="c" :value="c">{{ c }}</option>
-      </NativeSelect>
+    <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
+      <FilterSelect v-model="stateFilter" :label="t('billing.subscriptions.state')" :options="stateOptions" />
+      <FilterSelect v-model="currencyFilter" :label="t('billing.subscriptions.currency')" :options="currencyOptions" />
+      <FilterSelect v-model="intervalFilter" :label="t('billing.subscriptions.interval')" :options="intervalOptions" />
+      <DateRangePicker v-model="range" />
+      <template #actions>
+        <Button data-testid="subscriptions-new" @click="emit('create')"><Plus class="size-4" />{{ t("billing.subscriptions.new") }}</Button>
+      </template>
     </DataToolbar>
     <Table>
       <TableHeader>
@@ -64,11 +82,11 @@ const date = (v?: string | null) => fmt.date(v, "day", "—");
           <TableHead>{{ t("billing.subscriptions.provider") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.since") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.until") }}</TableHead>
-          <TableHead />
+          <TableHead><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="s in table.items.value" :key="s.id" :data-state="s.id === selectedId ? 'selected' : undefined">
+        <TableRow v-for="(s, i) in table.items.value" :key="s.id" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
           <TableCell class="font-medium">{{ s.customer_external_id }}</TableCell>
           <TableCell class="mono">{{ s.plan_code }} v{{ s.plan_version }}</TableCell>
           <TableCell>
@@ -83,7 +101,7 @@ const date = (v?: string | null) => fmt.date(v, "day", "—");
           </TableCell>
           <TableCell>{{ date(s.start_time) }}</TableCell>
           <TableCell>{{ date(s.end_time) }}</TableCell>
-          <TableCell class="text-end"><Button size="sm" variant="outline" @click="emit('select', s.id ?? '')">{{ t("billing.subscriptions.manage") }}</Button></TableCell>
+          <TableCell class="text-end"><RowActions :actions="[{ key: 'manage', label: t('billing.subscriptions.manage'), icon: Settings2, onSelect: () => (index = i) }]" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
@@ -93,4 +111,8 @@ const date = (v?: string | null) => fmt.date(v, "day", "—");
     <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
+
+  <DetailSheet v-model:index="index" :total="table.items.value.length" :title="t('billing.subscriptions.managing', { customer: current?.customer_external_id ?? '' })" :description="current ? `${current.plan_code} v${current.plan_version}` : undefined" wide>
+    <slot v-if="current" name="detail" :subscription="current" />
+  </DetailSheet>
 </template>

@@ -2,13 +2,13 @@
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { PRESETS, presetRange, validRange, type Preset, type Range } from "@/features/accounting/period";
+import { validRange } from "@/features/accounting/period";
+import { rangeOf } from "@/shared/lib/dateRange";
+import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { useFormat } from "@/shared/lib/format";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
-import { Input } from "@/shared/ui/input";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
@@ -31,9 +31,7 @@ const params = useParams({ strict: false });
 const id = computed(() => String((params.value as { id?: string }).id ?? ""));
 const tab = ref<Tab>("referrals");
 
-const preset = ref<Preset>("last30");
-const custom = ref<Range>({ from: "", to: "" });
-const range = computed(() => presetRange(preset.value, new Date(), custom.value));
+const range = ref<DateRange>(rangeOf("30d", new Date()));
 const rangeOk = computed(() => validRange(range.value));
 const detail = useAffiliation(
   id,
@@ -68,15 +66,9 @@ const balances = computed(() => sumBalances(detail.data.value?.balances));
 
       <Card>
         <div class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.accounting.period.label')">
-          <Button v-for="p in PRESETS" :key="p" type="button" size="sm" :variant="preset === p ? 'default' : 'outline'" :aria-pressed="preset === p" @click="preset = p">
-            {{ t(`billing.accounting.period.${p}`) }}
-          </Button>
-          <template v-if="preset === 'custom'">
-            <Input v-model="custom.from" type="date" class="w-40" :aria-label="t('billing.accounting.period.from')" />
-            <Input v-model="custom.to" type="date" class="w-40" :aria-label="t('billing.accounting.period.to')" />
-          </template>
+          <DateRangePicker v-model="range" />
         </div>
-        <p v-if="preset === 'custom' && !rangeOk" class="text-muted-foreground m-0 text-sm">{{ t("billing.accounting.period.invalid") }}</p>
+        <p v-if="!rangeOk" class="text-muted-foreground m-0 text-sm">{{ t("billing.accounting.period.invalid") }}</p>
         <dl class="m-0 grid gap-4 sm:grid-cols-3" data-testid="figures">
           <div data-stat="clicks">
             <dt class="text-muted-foreground text-sm">{{ t("partner.stats.clicks") }}</dt>

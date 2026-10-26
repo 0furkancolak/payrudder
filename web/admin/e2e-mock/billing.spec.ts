@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, openTenantPage, TENANT } from "./gateway";
-import { pickCurrency, pickLanguage } from "./ui";
+import { pickCurrency, pickLanguage, rowAction } from "./ui";
 
 const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
 
@@ -79,7 +79,9 @@ test.describe("customer addresses", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/customers");
-    await expect(page.getByRole("row", { name: /cus_1/ })).toContainText("Atatürk Cd. 1, 34000 İstanbul, TR");
+    await page.getByRole("cell", { name: "cus_1", exact: true }).click();
+    await expect(page.getByTestId("customer-detail")).toContainText("Atatürk Cd. 1, 34000 İstanbul, TR");
+    await page.keyboard.press("Escape");
 
     await page.getByTestId("customers-new").click();
     const form = page.getByRole("form", { name: "new customer" });
@@ -93,13 +95,15 @@ test.describe("customer addresses", () => {
     await expect.poll(() => gw.called("POST", "/v1/customers").length).toBe(1);
     expect(gw.called("POST", "/v1/customers")[0]?.body).toMatchObject({ external_id: "cus_2", country: "DE", address: { line1: "Hauptstr. 5", city: "Berlin", country: "DE" } });
 
-    await page.getByRole("row", { name: /cus_1/ }).getByRole("button", { name: "Edit address" }).click();
+    await page.getByRole("row", { name: /cus_1/ }).getByTestId("row-actions").click();
+    await page.getByTestId("row-action-address").click();
     const edit = page.getByRole("dialog", { name: "Address of cus_1" });
     await edit.getByLabel("City").fill("Ankara");
     await edit.getByRole("button", { name: "Save address" }).click();
     await expect.poll(() => gw.called("PUT", "/v1/customers/cus_1/address").length).toBe(1);
     expect(gw.called("PUT", "/v1/customers/cus_1/address")[0]?.body).toEqual({ line1: "Atatürk Cd. 1", city: "Ankara", postal_code: "34000", country: "TR" });
-    await expect(page.getByRole("row", { name: /cus_1/ })).toContainText("34000 Ankara");
+    await page.getByRole("cell", { name: "cus_1", exact: true }).click();
+    await expect(page.getByTestId("customer-detail")).toContainText("34000 Ankara");
   });
 });
 
@@ -449,6 +453,7 @@ test.describe("subscriptions", () => {
     expect(gw.called("DELETE", "/v1/subscriptions/s1")[0]?.query.get("credit_unused")).toBe("true");
     await expect(panel.getByRole("status")).toContainText("19.99");
     // A subscription with a coupon is left to a credit note.
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Manage" }).nth(1).click();
     await expect(page.getByRole("button", { name: "End now and credit the unused part" })).toHaveCount(0);
   });
@@ -541,7 +546,7 @@ test.describe("pricing", () => {
     await form.getByRole("button", { name: "Create coupon" }).click();
     await expect.poll(() => gw.called("POST", "/v1/coupons").length).toBe(2);
     expect(gw.called("POST", "/v1/coupons")[1]?.body).toMatchObject({ code: "MINUS5", amount_minor: "499", currency: "USD", duration: "COUPON_DURATION_FOREVER" });
-    await row.getByRole("button", { name: "Deactivate" }).click();
+    await rowAction(row, "Deactivate");
     await expect.poll(() => gw.called("DELETE", "/v1/coupons/WELCOME").length).toBe(1);
   });
 
@@ -588,8 +593,8 @@ test.describe("pricing", () => {
     expect(gw.called("POST", "/v1/coupons")[0]?.body).toEqual({ code: "BONUS25", name: "", bonus_percent_bps: 2500 });
 
     // Random codes with rules, for the first coupon.
-    await page.getByRole("row", { name: /WELCOME/ }).getByRole("button", { name: "Codes" }).click();
-    const codes = page.getByRole("dialog");
+    await rowAction(page.getByRole("row", { name: /WELCOME/ }).first(), "Codes");
+    const codes = page.getByRole("dialog", { name: "Create codes" });
     const panel = page.getByRole("region", { name: "Promotion codes of WELCOME" });
     await expect(panel.getByRole("cell", { name: "WELCOME", exact: true })).toBeVisible();
     await expect(panel).toContainText("First purchase");
@@ -614,6 +619,9 @@ test.describe("pricing", () => {
     expect(gw.called("POST", "/v1/coupons/WELCOME/promotion-codes")).toHaveLength(1);
 
     await page.keyboard.press("Escape");
+    await expect(codes).toBeHidden();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "WELCOME" })).toBeHidden();
 
     // The redemptions: the discount, the bonus, and a reversed one.
     const first = page.getByRole("row", { name: /cus_1/ });
@@ -1079,7 +1087,8 @@ test.describe("webhooks", () => {
     await expect(page.getByTestId("webhook-secret")).toHaveText("whsec_ABC123");
     const row = page.getByRole("row", { name: /example.com\/hook/ });
     await expect(row).toContainText("invoice.paid");
-    await row.getByRole("button", { name: "Deliveries" }).click();
+    await row.getByTestId("row-actions").click();
+    await page.getByTestId("row-action-deliveries").click();
     const log = page.getByRole("region", { name: "Deliveries" });
     await expect(log).toContainText("Failed");
     await expect(log).toContainText("HTTP 500: nope");

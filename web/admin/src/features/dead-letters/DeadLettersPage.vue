@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { PageHeader } from "@/shared/ui/page-header";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { RowActions } from "@/shared/ui/row-actions";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDeadLetters, useRedrive } from "./api";
@@ -19,6 +20,11 @@ const queues = computed(() => list.data.value?.queues ?? []);
 const messages = computed(() => list.data.value?.messages ?? []);
 const queuesTable = useTableState(queues, { searchFields: (q) => [q.queue] });
 const messagesTable = useTableState(messages, { searchFields: (m) => [m.message_id, m.reason] });
+const shown = ref<number | null>(null);
+watch(shown, (i) => {
+  queue.value = i === null ? "" : (queuesTable.items.value[i]?.queue ?? "");
+  messagesTable.clear();
+});
 const note = ref<{ queue: string; count: number } | null>(null);
 
 async function run(name: string, count: number) {
@@ -42,21 +48,17 @@ async function run(name: string, count: number) {
         <TableRow class="hover:bg-transparent">
           <TableHead>{{ t("deadLetters.columns.queue") }}</TableHead>
           <TableHead class="text-end">{{ t("deadLetters.columns.messages") }}</TableHead>
-          <TableHead />
+          <TableHead class="w-px"><span class="sr-only">{{ t("deadLetters.redrive") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="q in queuesTable.items.value" :key="q.queue" :data-testid="`dlq-${q.queue}`">
-          <TableCell>
-            <button type="button" class="font-medium hover:underline" @click="queue = queue === q.queue ? '' : (q.queue ?? '')">{{ q.queue }}.dlq</button>
-          </TableCell>
+        <TableRow v-for="(q, i) in queuesTable.items.value" :key="q.queue" class="cursor-pointer" :data-testid="`dlq-${q.queue}`" @click="shown = i">
+          <TableCell class="mono text-sm font-medium">{{ q.queue }}.dlq</TableCell>
           <TableCell class="text-end" data-testid="dlq-count">
             <Badge :variant="Number(q.messages ?? 0) > 0 ? 'destructive' : 'secondary'">{{ Number(q.messages ?? 0) }}</Badge>
           </TableCell>
-          <TableCell class="text-end">
-            <Button type="button" size="sm" variant="outline" :disabled="Number(q.messages ?? 0) === 0" @click="run(q.queue ?? '', Number(q.messages ?? 0))">
-              {{ t("deadLetters.redrive") }}
-            </Button>
+          <TableCell>
+            <RowActions :actions="[{ key: 'redrive', label: t('deadLetters.redrive'), disabled: Number(q.messages ?? 0) === 0, onSelect: () => run(q.queue ?? '', Number(q.messages ?? 0)) }]" />
           </TableCell>
         </TableRow>
       </TableBody>
@@ -65,28 +67,30 @@ async function run(name: string, count: number) {
     <DataPagination v-if="queues.length > 0" v-model:page="queuesTable.page.value" v-model:size="queuesTable.size.value" :pages="queuesTable.pages.value" :total="queuesTable.total.value" />
   </Card>
 
-  <Card v-if="queue" class="p-3">
-    <h2 class="px-3 pt-2 pb-3 text-lg font-semibold">{{ t("deadLetters.messagesOf", { queue }) }}</h2>
-    <DataToolbar v-model:search="messagesTable.search.value" :active="messagesTable.active.value" @clear="messagesTable.clear()" />
-    <Table>
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead>{{ t("deadLetters.messageColumns.id") }}</TableHead>
-          <TableHead class="text-end">{{ t("deadLetters.messageColumns.deliveries") }}</TableHead>
-          <TableHead>{{ t("deadLetters.messageColumns.reason") }}</TableHead>
-          <TableHead class="text-end">{{ t("deadLetters.messageColumns.bytes") }}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="(m, i) in messagesTable.items.value" :key="`${m.message_id}-${i}`">
-          <TableCell class="mono text-xs">{{ m.message_id }}</TableCell>
-          <TableCell class="text-end tabular-nums">{{ m.delivery_count }}</TableCell>
-          <TableCell>{{ m.reason }}</TableCell>
-          <TableCell class="text-end tabular-nums">{{ m.body_bytes }}</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-    <p v-if="messages.length > 0 && messagesTable.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
-    <DataPagination v-if="messages.length > 0" v-model:page="messagesTable.page.value" v-model:size="messagesTable.size.value" :pages="messagesTable.pages.value" :total="messagesTable.total.value" />
-  </Card>
+  <DetailSheet v-model:index="shown" :total="queuesTable.items.value.length" :title="t('deadLetters.messagesOf', { queue })" wide>
+    <div class="-mx-3">
+      <DataToolbar v-model:search="messagesTable.search.value" :active="messagesTable.active.value" @clear="messagesTable.clear()" />
+      <Table>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>{{ t("deadLetters.messageColumns.id") }}</TableHead>
+            <TableHead class="text-end">{{ t("deadLetters.messageColumns.deliveries") }}</TableHead>
+            <TableHead>{{ t("deadLetters.messageColumns.reason") }}</TableHead>
+            <TableHead class="text-end">{{ t("deadLetters.messageColumns.bytes") }}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="(m, i) in messagesTable.items.value" :key="`${m.message_id}-${i}`">
+            <TableCell class="mono text-xs">{{ m.message_id }}</TableCell>
+            <TableCell class="text-end tabular-nums">{{ m.delivery_count }}</TableCell>
+            <TableCell class="whitespace-normal">{{ m.reason }}</TableCell>
+            <TableCell class="text-end tabular-nums">{{ m.body_bytes }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <p v-if="messages.length > 0 && messagesTable.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+      <p v-else-if="messages.length === 0 && !list.isPending.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("deadLetters.noMessages") }}</p>
+      <DataPagination v-if="messages.length > 0" v-model:page="messagesTable.page.value" v-model:size="messagesTable.size.value" :pages="messagesTable.pages.value" :total="messagesTable.total.value" />
+    </div>
+  </DetailSheet>
 </template>

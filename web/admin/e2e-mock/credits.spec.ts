@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
+import { rowAction } from "./ui";
 
 const pack = (id: string, name: string, credits: string, price: string, active = true) => ({ id, name, credits, price_minor: price, currency: "USD", active, create_time: "2026-10-21T09:00:00Z" });
 
@@ -32,7 +33,7 @@ test.describe("credits", () => {
     await expect(page.getByRole("row", { name: /Team/ })).toContainText("$39.90");
     expect(gw.called("POST", "/v1/credit-packs")[0]?.body).toEqual({ name: "Team", credits: "10000", price_minor: "3990", currency: "USD" });
 
-    await page.getByRole("row", { name: /Starter/ }).getByRole("button", { name: "Withdraw" }).click();
+    await rowAction(page.getByRole("row", { name: /Starter/ }), "Withdraw");
     await expect(page.getByRole("row", { name: /Starter/ })).toContainText("Withdrawn");
   });
 

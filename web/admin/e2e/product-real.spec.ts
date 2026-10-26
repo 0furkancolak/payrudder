@@ -179,9 +179,11 @@ test.describe("product app, real stack", () => {
     await reveal.getByRole("button", { name: "I have saved it" }).click();
     await expect(page.getByText(secret)).toHaveCount(0);
     const prefix = secret.split("_").slice(0, 3).join("_");
-    await keys.getByRole("button", { name: `Revoke key ${prefix}_••••••••` }).click();
+    const fresh = keys.getByRole("row").filter({ hasText: prefix });
+    await fresh.getByRole("button", { name: /Revoke|More actions/ }).click();
+    await page.getByRole("menuitem", { name: "Revoke" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Revoke" }).click();
-    await expect(keys.getByRole("listitem").filter({ hasText: prefix })).toContainText("Revoked");
+    await expect(fresh).toContainText("Revoked");
     // The revoked key no longer opens the API.
     expect((await api("GET", "/v1/customers", secret)).status).toBe(401);
   });

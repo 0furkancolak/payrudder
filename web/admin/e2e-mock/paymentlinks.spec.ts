@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
+import { rowAction } from "./ui";
 
 const link = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -54,7 +55,7 @@ test.describe("payment links", () => {
     await page.keyboard.press("Escape");
 
     page.once("dialog", (d) => void d.accept());
-    await page.getByRole("row", { name: /Workshop/ }).getByRole("button", { name: "Revoke" }).click();
+    await rowAction(page.getByRole("row", { name: /Workshop/ }), "Revoke");
     await expect.poll(() => gw.called("DELETE", "/v1/payment-links/l2").length).toBe(1);
     await expect(page.getByRole("row", { name: /Workshop/ })).toContainText("Revoked");
   });
@@ -84,7 +85,8 @@ test.describe("payment links", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/customers");
-    await page.getByRole("button", { name: "Payment page cus_1" }).click();
+    await page.getByTestId("row-actions").click();
+    await page.getByTestId("row-action-portal").click();
     const card = page.getByRole("region", { name: "Payment page of cus_1" });
     await expect(card.getByRole("cell", { name: "INV-1" })).toBeVisible();
     await card.getByLabel("Valid for (days)").fill("14");

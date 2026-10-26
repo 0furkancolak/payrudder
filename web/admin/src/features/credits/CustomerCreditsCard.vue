@@ -13,6 +13,8 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { StatusPill } from "@/shared/ui/status-pill";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreditBalance, useGrantCredits } from "./api";
@@ -43,7 +45,7 @@ const lots = useTableState<Lot>(() => balance.data.value?.lots ?? [], {
 });
 const sourceFilter = computed({ get: () => lots.filters.value.source ?? "", set: (v) => (lots.filters.value.source = String(v)) });
 // The sources a lot can come from, as far as this customer's lots show.
-const sources = computed(() => [...new Set((balance.data.value?.lots ?? []).map((l) => l.source ?? "").filter(Boolean))]);
+const sources = computed(() => [{ value: "", label: t("common.all") }, ...[...new Set((balance.data.value?.lots ?? []).map((l) => l.source ?? "").filter(Boolean))].map((s) => ({ value: s, label: t(`billing.credits.source.${s}`) }))]);
 
 // A sheet that was closed opens clean: the last values and error are not shown again.
 watch(open, (v) => {
@@ -76,13 +78,15 @@ function submitGrant() {
 </script>
 
 <template>
-  <Card class="mb-6">
-    <h2 class="text-lg font-semibold">{{ t("billing.credits.customer.title") }}</h2>
-    <CustomerSelect v-model="customer" :tenant-id="tenantId" named :label="t('billing.credits.customer.pick')" :placeholder="t('billing.credits.customer.pick')" />
+  <Card class="mb-6 p-3">
+    <div class="grid gap-3 px-3 pt-2 pb-3">
+      <h2 class="text-base font-semibold">{{ t("billing.credits.customer.title") }}</h2>
+      <CustomerSelect v-model="customer" :tenant-id="tenantId" named :label="t('billing.credits.customer.pick')" :placeholder="t('billing.credits.customer.pick')" />
+    </div>
 
     <template v-if="customer">
-      <ErrorText :error="balance.error.value" />
-      <div v-if="balance.data.value" class="flex flex-wrap items-baseline gap-x-4 gap-y-1" role="status" :aria-label="t('billing.credits.customer.balance')">
+      <ErrorText :error="balance.error.value" class="px-3" />
+      <div v-if="balance.data.value" class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-3 pb-3" role="status" :aria-label="t('billing.credits.customer.balance')">
         <span class="text-3xl font-semibold tabular-nums">{{ credits(balance.data.value.balance) }}</span>
         <span class="text-muted-foreground text-sm">{{ t("billing.credits.customer.balance") }}</span>
         <span v-if="balance.data.value.next_expire_time" class="text-muted-foreground text-sm">
@@ -90,37 +94,32 @@ function submitGrant() {
         </span>
       </div>
 
-      <div class="-mx-3">
-        <DataToolbar v-model:search="lots.search.value" :active="lots.active.value" @clear="lots.clear()">
-          <NativeSelect v-model="sourceFilter" class="w-44" :aria-label="t('billing.credits.lots.source')">
-            <option value="">{{ t("billing.credits.lots.source") }}</option>
-            <option v-for="s in sources" :key="s" :value="s">{{ t(`billing.credits.source.${s}`) }}</option>
-          </NativeSelect>
-          <template #actions>
-            <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.credits.grant.submit") }}</Button>
-          </template>
-        </DataToolbar>
-        <Table v-if="(balance.data.value?.lots ?? []).length">
-          <TableHeader>
-            <TableRow class="hover:bg-transparent">
-              <TableHead>{{ t("billing.credits.lots.source") }}</TableHead>
-              <TableHead class="text-end">{{ t("billing.credits.lots.remaining") }}</TableHead>
-              <TableHead class="text-end">{{ t("billing.credits.lots.granted") }}</TableHead>
-              <TableHead>{{ t("billing.credits.lots.expires") }}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="l in lots.items.value" :key="l.id">
-              <TableCell>{{ t(`billing.credits.source.${l.source}`) }}</TableCell>
-              <TableCell class="text-end tabular-nums">{{ credits(l.remaining) }}</TableCell>
-              <TableCell class="text-end tabular-nums">{{ credits(l.granted) }}</TableCell>
-              <TableCell>{{ l.expire_time ? fmt.date(l.expire_time, "dateTime") : t("billing.credits.lots.never") }}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-        <p v-if="lots.total.value === 0 && lots.active.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
-        <DataPagination v-model:page="lots.page.value" v-model:size="lots.size.value" :pages="lots.pages.value" :total="lots.total.value" />
-      </div>
+      <DataToolbar v-model:search="lots.search.value" :active="lots.active.value" @clear="lots.clear()">
+        <FilterSelect v-model="sourceFilter" :label="t('billing.credits.lots.source')" :options="sources" />
+        <template #actions>
+          <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.credits.grant.submit") }}</Button>
+        </template>
+      </DataToolbar>
+      <Table>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>{{ t("billing.credits.lots.source") }}</TableHead>
+            <TableHead class="text-end">{{ t("billing.credits.lots.remaining") }}</TableHead>
+            <TableHead class="text-end">{{ t("billing.credits.lots.granted") }}</TableHead>
+            <TableHead>{{ t("billing.credits.lots.expires") }}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="l in lots.items.value" :key="l.id">
+            <TableCell><StatusPill :tone="l.source === 'purchase' ? 'success' : 'neutral'">{{ t(`billing.credits.source.${l.source}`) }}</StatusPill></TableCell>
+            <TableCell class="text-end tabular-nums">{{ credits(l.remaining) }}</TableCell>
+            <TableCell class="text-end tabular-nums">{{ credits(l.granted) }}</TableCell>
+            <TableCell>{{ l.expire_time ? fmt.date(l.expire_time, "dateTime") : t("billing.credits.lots.never") }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <p v-if="lots.total.value === 0 && lots.active.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+      <DataPagination v-model:page="lots.page.value" v-model:size="lots.size.value" :pages="lots.pages.value" :total="lots.total.value" />
     </template>
 
     <Sheet v-model:open="open">

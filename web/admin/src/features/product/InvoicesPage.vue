@@ -4,11 +4,20 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
+import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { matchesSearch } from "@/shared/lib/paging";
-import { NativeSelect } from "@/shared/ui/native-select";
+import { Card } from "@/shared/ui/card";
+import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { RowActions } from "@/shared/ui/row-actions";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { inRange } from "@/shared/lib/dateRange";
+import { Eye, FileText } from "@lucide/vue";
+import InvoiceDetail from "./InvoiceDetail.vue";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { useInvoices } from "./billingApi";
 
@@ -25,7 +34,18 @@ const at = ref(0);
 const search = ref("");
 watch(status, () => (at.value = 0));
 const loaded = computed(() => invoices.data.value?.pages ?? []);
-const rows = computed(() => (loaded.value[at.value]?.invoices ?? []).filter((i) => matchesSearch([i.number, i.customer_external_id, i.period_id], search.value)));
+const range = ref<DateRange>({ from: "", to: "" });
+const rows = computed(() => (loaded.value[at.value]?.invoices ?? []).filter((i) => matchesSearch([i.number, i.customer_external_id, i.period_id], search.value) && inRange(i.create_time, range.value)));
+const filtering = computed(() => search.value !== "" || status.value !== "" || range.value.from !== "" || range.value.to !== "");
+function clear() {
+  search.value = "";
+  status.value = "";
+  range.value = { from: "", to: "" };
+}
+/** The invoice whose sheet is open: an index into the rows shown now, so the arrows step through the list. */
+const shown = ref<number | null>(null);
+const current = computed(() => (shown.value === null ? undefined : rows.value[shown.value]));
+watch([at, search, status, range], () => (shown.value = null), { deep: true });
 const hasNext = computed(() => at.value + 1 < loaded.value.length || !!invoices.hasNextPage.value);
 async function next() {
   if (at.value + 1 >= loaded.value.length) await invoices.fetchNextPage();
@@ -36,50 +56,50 @@ const day = (v?: string) => fmt.date(v, "day");
 </script>
 
 <template>
-  <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.billing.invoices.title')">
-    <div class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold tracking-tight">{{ t("product.billing.invoices.title") }}</h2>
-        <p class="text-muted-foreground text-sm">{{ t("product.billing.invoices.intro") }}</p>
-      </div>
-    </div>
-
-    <DataToolbar v-model:search="search" :active="search !== '' || status !== ''" @clear="search = ''; status = ''">
-      <NativeSelect id="inv-status" v-model="status" class="w-44" :aria-label="t('product.billing.invoices.status')">
-        <option value="">{{ t("product.billing.invoices.all") }}</option>
-        <option v-for="s in statuses" :key="s" :value="s">{{ t(`product.invoiceStatus.${s}`) }}</option>
-      </NativeSelect>
+  <Card class="p-3" :aria-label="t('product.billing.invoices.title')" role="region">
+    <DataToolbar v-model:search="search" :active="filtering" @clear="clear()">
+      <FilterSelect v-model="status" :label="t('product.billing.invoices.status')" :options="[{ value: '', label: t('product.billing.invoices.all') }, ...statuses.map((s) => ({ value: s, label: t(`product.invoiceStatus.${s}`) }))]" />
+      <DateRangePicker v-model="range" />
     </DataToolbar>
 
-    <ErrorText :error="invoices.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
-    <Skeleton v-if="invoices.isPending.value" class="h-40 rounded-2xl" />
-    <p v-else-if="rows.length === 0 && !invoices.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t(search !== "" || status !== "" ? "common.noMatches" : "product.billing.invoices.empty") }}</p>
-    <div v-else class="relative -mx-2 overflow-x-auto px-2">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="text-muted-foreground text-xs">
-            <th scope="col" class="py-2 pe-4 text-start font-medium">{{ t("product.billing.invoices.number") }}</th>
-            <th scope="col" class="py-2 pe-4 text-start font-medium">{{ t("product.billing.invoices.customer") }}</th>
-            <th scope="col" class="py-2 pe-4 text-start font-medium">{{ t("product.billing.invoices.period") }}</th>
-            <th scope="col" class="py-2 pe-4 text-start font-medium">{{ t("product.billing.invoices.created") }}</th>
-            <th scope="col" class="py-2 pe-4 text-start font-medium">{{ t("product.billing.invoices.status") }}</th>
-            <th scope="col" class="py-2 text-end font-medium">{{ t("product.billing.invoices.total") }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="inv in rows" :key="inv.id" class="border-border/70 border-t" :data-testid="`invoice-${inv.number || inv.id}`">
-            <td class="py-3 pe-4 font-medium whitespace-nowrap">
-              <Link to="/app/t/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: inv.id ?? '' }" class="hover:underline">{{ inv.number || t("product.billing.invoices.draft") }}</Link>
-            </td>
-            <td class="py-3 pe-4">{{ inv.customer_external_id }}</td>
-            <td class="text-muted-foreground py-3 pe-4 whitespace-nowrap">{{ inv.period_id }}</td>
-            <td class="text-muted-foreground py-3 pe-4 whitespace-nowrap">{{ day(inv.create_time) }}</td>
-            <td class="py-3 pe-4"><StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill></td>
-            <td class="py-3 text-end font-medium whitespace-nowrap tabular">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <ErrorText :error="invoices.error.value" class="bg-destructive-soft mx-3 rounded-2xl px-4 py-3" />
+    <Skeleton v-if="invoices.isPending.value" class="mx-3 h-40 rounded-2xl" />
+    <template v-else>
+      <Table>
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead>{{ t("product.billing.invoices.number") }}</TableHead>
+            <TableHead>{{ t("product.billing.invoices.customer") }}</TableHead>
+            <TableHead class="max-md:hidden">{{ t("product.billing.invoices.period") }}</TableHead>
+            <TableHead class="max-md:hidden">{{ t("product.billing.invoices.created") }}</TableHead>
+            <TableHead>{{ t("product.billing.invoices.status") }}</TableHead>
+            <TableHead class="text-end">{{ t("product.billing.invoices.total") }}</TableHead>
+            <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="(inv, i) in rows" :key="inv.id" class="cursor-pointer" :data-testid="`invoice-${inv.number || inv.id}`" @click="shown = i">
+            <TableCell class="font-medium whitespace-nowrap">{{ inv.number || t("product.billing.invoices.draft") }}</TableCell>
+            <TableCell>{{ inv.customer_external_id }}</TableCell>
+            <TableCell class="text-muted-foreground whitespace-nowrap max-md:hidden">{{ inv.period_id }}</TableCell>
+            <TableCell class="text-muted-foreground whitespace-nowrap max-md:hidden">{{ day(inv.create_time) }}</TableCell>
+            <TableCell><StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill></TableCell>
+            <TableCell class="text-end font-medium whitespace-nowrap tabular">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
+            <TableCell><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => (shown = i) }]" :label="`${t('common.moreActions')} ${inv.number ?? ''}`" /></TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+      <p v-if="rows.length === 0 && !invoices.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t(filtering ? "common.noMatches" : "product.billing.invoices.empty") }}</p>
+    </template>
     <DataPagination :page="at + 1" :has-prev="at > 0" :has-next="hasNext" @prev="at--" @next="next" />
-  </section>
+  </Card>
+
+  <DetailSheet v-model:index="shown" :total="rows.length" :title="current ? current.number || t('product.billing.invoices.draft') : ''" :description="current?.customer_external_id" wide>
+    <InvoiceDetail v-if="current?.id" :key="current.id" embedded :tenant-id="tenantId" :invoice-id="current.id" />
+    <template #footer>
+      <Button v-if="current?.id" variant="ghost" as-child>
+        <Link to="/app/t/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: current.id }"><FileText class="size-4" aria-hidden="true" />{{ t("common.openFullPage") }}</Link>
+      </Button>
+    </template>
+  </DetailSheet>
 </template>

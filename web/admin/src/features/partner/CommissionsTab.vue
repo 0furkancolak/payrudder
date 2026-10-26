@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { DataPagination } from "@/shared/ui/data-table";
 import { usePager } from "@/features/affiliates/paging";
 import { useFormat } from "@/shared/lib/format";
 import { Card } from "@/shared/ui/card";
 import { ErrorText } from "@/shared/ui/error-text";
-import { NativeSelect } from "@/shared/ui/native-select";
+import FilterBar from "@/features/affiliates/FilterBar.vue";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -20,18 +21,16 @@ const fmt = useFormat();
 const status = ref("");
 const pager = usePager();
 watch(status, () => pager.reset());
+const statusOptions = computed(() => [{ value: "", label: t("affiliates.commissions.allStatuses") }, ...["pending", "approved", "paid", "reversed"].map((x) => ({ value: x, label: t(`affiliates.status.commission.${x}`) }))]);
 const list = useCommissions(() => props.id, status, pager.token, pager.size);
 </script>
 
 <template>
   <Card class="p-3" data-testid="commissions">
-    <div class="flex flex-wrap items-center gap-2 px-3 pt-2">
-      <NativeSelect v-model="status" class="w-44" :aria-label="t('affiliates.common.status')">
-        <option value="">{{ t("affiliates.commissions.allStatuses") }}</option>
-        <option v-for="s in ['pending', 'approved', 'paid', 'reversed']" :key="s" :value="s">{{ t(`affiliates.status.commission.${s}`) }}</option>
-      </NativeSelect>
-    </div>
-    <p class="text-muted-foreground m-0 px-3 text-xs">{{ t("partner.commissions.hint") }}</p>
+    <FilterBar :active="status !== ''" class="pt-2" @clear="status = ''">
+      <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
+    </FilterBar>
+    <p class="text-muted-foreground m-0 px-3 pb-2 text-xs">{{ t("partner.commissions.hint") }}</p>
     <ErrorText :error="list.error.value" class="px-3" />
     <Skeleton v-if="list.isPending.value" class="mx-3 h-24" />
     <p v-else-if="list.isSuccess.value && !list.data.value?.items.length" class="text-muted-foreground m-0 px-3 py-4 text-sm">{{ t("partner.commissions.empty") }}</p>

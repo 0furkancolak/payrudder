@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Copy, KeyRound, Plus } from "@lucide/vue";
+import { Check, Copy, KeyRound, Plus, RefreshCw, Trash2 } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { envOf, keyMask } from "@/shared/lib/environment";
@@ -15,9 +15,12 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { useTableState } from "@/shared/lib/useTableState";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { liveState } from "@/shared/lib/environment";
+import { Card } from "@/shared/ui/card";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { RowActions, type RowAction } from "@/shared/ui/row-actions";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Link } from "@tanstack/vue-router";
-import { RefreshCw } from "@lucide/vue";
 import { useApiKeys, useApp, useCreateApiKey, useMe, useRevokeApiKey, useRotateApiKey, type ApiKey, type Environment, type KeyScope } from "./api";
 
 /**
@@ -83,6 +86,14 @@ const scopeOf = (k: ApiKey): KeyScope => (k.scope === "SCOPE_INGEST" ? "ingest" 
 const lastUsed = (k: ApiKey) => (k.last_used_time ? t("product.keys.lastUsed", { date: fmt.date(k.last_used_time, "day") }) : t("product.keys.neverUsed"));
 const ends = (k: ApiKey) => (k.expire_time && !isRevoked(k) ? t("product.keys.ends", { date: fmt.date(k.expire_time, "day") }) : "");
 
+function actionsOf(k: ApiKey): RowAction[] {
+  if (!props.canManage || isRevoked(k)) return [];
+  return [
+    ...(k.expire_time ? [] : [{ key: `rotate-${k.id}`, label: t("product.keys.rotate"), icon: RefreshCw, onSelect: () => (rotating.value = k) }]),
+    { key: `revoke-${k.id}`, label: t("product.keys.revoke"), icon: Trash2, destructive: true, separatorBefore: !k.expire_time, onSelect: () => (revoking.value = k) },
+  ];
+}
+
 // --- revoking asks first
 const revoking = ref<ApiKey | null>(null);
 const confirm = computed({ get: () => revoking.value !== null, set: (v) => { if (!v) revoking.value = null; } });
@@ -93,58 +104,59 @@ function doRevoke() {
 </script>
 
 <template>
-  <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.keys.title')">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold tracking-tight">{{ t("product.keys.title") }}</h2>
-        <p class="text-muted-foreground text-sm">{{ t("product.keys.intro") }}</p>
-      </div>
-      <div v-if="canManage" class="flex flex-wrap items-center gap-2">
-        <NativeSelect v-model="scope" class="w-44" :aria-label="t('product.keys.scope')" data-testid="key-scope">
-          <option v-for="s in ['full', 'ingest', 'read']" :key="s" :value="s">{{ t(`product.keys.scopes.${s}`) }}</option>
-        </NativeSelect>
-        <Button variant="outline" size="sm" :disabled="create.isPending.value" data-testid="new-sandbox-key" @click="make('sandbox')"><Plus />{{ t("product.keys.newSandbox") }}</Button>
-        <Button size="sm" :disabled="create.isPending.value || unverified || liveBlocked" :title="unverified ? t('product.keys.needsVerified') : liveBlocked ? t('product.keys.liveInactive') : undefined" data-testid="new-live-key" @click="make('live')"><Plus />{{ t("product.keys.newLive") }}</Button>
-      </div>
-    </div>
-    <p class="text-muted-foreground text-xs">{{ t(`product.keys.scopeHelp.${scope}`) }}</p>
-
-    <p v-if="canManage && unverified" class="text-muted-foreground text-xs" data-testid="live-needs-verified">{{ t("product.keys.needsVerified") }}</p>
-    <p v-else-if="canManage && liveBlocked" class="text-muted-foreground text-xs" data-testid="live-inactive">
+  <Card class="p-3" role="region" :aria-label="t('product.keys.title')">
+    <p class="text-muted-foreground px-3 text-xs">{{ t(`product.keys.scopeHelp.${scope}`) }}</p>
+    <p v-if="canManage && unverified" class="text-muted-foreground px-3 text-xs" data-testid="live-needs-verified">{{ t("product.keys.needsVerified") }}</p>
+    <p v-else-if="canManage && liveBlocked" class="text-muted-foreground px-3 text-xs" data-testid="live-inactive">
       {{ t("product.keys.liveInactive") }}
       <Link :to="`/app/apps/${appId}/go-live`" :search="{ env: 'live' } as never" class="text-primary font-medium underline-offset-4 hover:underline">{{ t("product.goLive.continue") }}</Link>
     </p>
-    <ErrorText :error="firstError(create, revoke, keys)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorText :error="firstError(create, revoke, keys)" class="bg-destructive-soft mx-3 rounded-2xl px-4 py-3" />
 
-    <DataToolbar v-if="list.length > 0" v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <NativeSelect v-model="table.filters.value.env" class="w-40" :aria-label="t('product.keys.filterEnv')">
-        <option value="">{{ t("product.keys.allEnvs") }}</option>
-        <option v-for="e in ['sandbox', 'live']" :key="e" :value="e">{{ t(`product.env.${e}`) }}</option>
-      </NativeSelect>
-      <NativeSelect v-model="table.filters.value.status" class="w-40" :aria-label="t('product.keys.filterStatus')">
-        <option value="">{{ t("product.keys.allStatuses") }}</option>
-        <option value="active">{{ t("product.keys.active") }}</option>
-        <option value="revoked">{{ t("product.keys.revoked") }}</option>
-      </NativeSelect>
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <FilterSelect v-model="table.filters.value.env" :label="t('product.keys.filterEnv')" :options="[{ value: '', label: t('product.keys.allEnvs') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: t(`product.env.${e}`) }))]" />
+      <FilterSelect v-model="table.filters.value.status" :label="t('product.keys.filterStatus')" :options="[{ value: '', label: t('product.keys.allStatuses') }, { value: 'active', label: t('product.keys.active') }, { value: 'revoked', label: t('product.keys.revoked') }]" />
+      <template v-if="canManage" #actions>
+        <NativeSelect v-model="scope" class="w-44" :aria-label="t('product.keys.scope')" data-testid="key-scope">
+          <option v-for="s in ['full', 'ingest', 'read']" :key="s" :value="s">{{ t(`product.keys.scopes.${s}`) }}</option>
+        </NativeSelect>
+        <Button variant="outline" :disabled="create.isPending.value" data-testid="new-sandbox-key" @click="make('sandbox')"><Plus class="size-4" />{{ t("product.keys.newSandbox") }}</Button>
+        <Button :disabled="create.isPending.value || unverified || liveBlocked" :title="unverified ? t('product.keys.needsVerified') : liveBlocked ? t('product.keys.liveInactive') : undefined" data-testid="new-live-key" @click="make('live')"><Plus class="size-4" />{{ t("product.keys.newLive") }}</Button>
+      </template>
     </DataToolbar>
-    <ul v-if="table.items.value.length > 0" class="divide-border/70 divide-y" :aria-label="t('product.keys.title')">
-      <li v-for="k in table.items.value" :key="k.id" class="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-        <span class="bg-brand-soft text-brand-strong flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><KeyRound class="size-4" /></span>
-        <div class="min-w-0 flex-1 basis-44">
-          <p class="mono text-sm break-all" :class="isRevoked(k) && 'text-muted-foreground line-through'">{{ shown(k) }}</p>
-          <p class="text-muted-foreground text-xs">{{ t("product.keys.created", { date: when(k.create_time) }) }} · <span :data-testid="`last-used-${k.id}`">{{ lastUsed(k) }}</span></p>
-          <p v-if="ends(k)" class="text-warning text-xs" data-testid="key-ends">{{ ends(k) }}</p>
-        </div>
-        <StatusPill tone="neutral" :data-testid="`scope-${k.id}`">{{ t(`product.keys.scopes.${scopeOf(k)}`) }}</StatusPill>
-        <StatusPill :tone="keyEnv(k) === 'live' ? 'info' : 'neutral'">{{ t(`product.env.${keyEnv(k)}`) }}</StatusPill>
-        <StatusPill :tone="toneOf(isRevoked(k) ? 'revoked' : 'active')">{{ t(isRevoked(k) ? "product.keys.revoked" : "product.keys.active") }}</StatusPill>
-        <Button v-if="canManage && !isRevoked(k) && !k.expire_time" variant="ghost" size="sm" :aria-label="t('product.keys.rotateNamed', { key: shown(k) })" :data-testid="`rotate-${k.id}`" @click="rotating = k"><RefreshCw />{{ t("product.keys.rotate") }}</Button>
-        <Button v-if="canManage && !isRevoked(k)" variant="ghost" size="sm" :aria-label="t('product.keys.revokeNamed', { key: shown(k) })" @click="revoking = k">{{ t("product.keys.revoke") }}</Button>
-      </li>
-    </ul>
+    <Table v-if="table.items.value.length > 0">
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead>{{ t("product.keys.title") }}</TableHead>
+          <TableHead class="max-md:hidden">{{ t("product.keys.scopeHead") }}</TableHead>
+          <TableHead class="max-md:hidden">{{ t("product.keys.filterEnv") }}</TableHead>
+          <TableHead class="max-md:hidden">{{ t("product.keys.filterStatus") }}</TableHead>
+          <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="k in table.items.value" :key="k.id">
+          <TableCell>
+            <div class="flex items-center gap-3">
+              <span class="bg-brand-soft text-brand-strong flex size-8 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><KeyRound class="size-4" /></span>
+              <div class="min-w-0">
+                <p class="mono text-sm break-all" :class="isRevoked(k) && 'text-muted-foreground line-through'">{{ shown(k) }}</p>
+                <p class="text-muted-foreground text-xs">{{ t("product.keys.created", { date: when(k.create_time) }) }} · <span :data-testid="`last-used-${k.id}`">{{ lastUsed(k) }}</span></p>
+                <p v-if="ends(k)" class="text-warning text-xs" data-testid="key-ends">{{ ends(k) }}</p>
+              </div>
+            </div>
+          </TableCell>
+          <TableCell class="max-md:hidden"><StatusPill tone="neutral" :data-testid="`scope-${k.id}`">{{ t(`product.keys.scopes.${scopeOf(k)}`) }}</StatusPill></TableCell>
+          <TableCell class="max-md:hidden"><StatusPill :tone="keyEnv(k) === 'live' ? 'info' : 'neutral'">{{ t(`product.env.${keyEnv(k)}`) }}</StatusPill></TableCell>
+          <TableCell class="max-md:hidden"><StatusPill :tone="toneOf(isRevoked(k) ? 'revoked' : 'active')">{{ t(isRevoked(k) ? "product.keys.revoked" : "product.keys.active") }}</StatusPill></TableCell>
+          <TableCell><RowActions :actions="actionsOf(k)" :label="`${t('common.moreActions')} ${shown(k)}`" /></TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
     <p v-else-if="list.length > 0" class="text-muted-foreground py-4 text-center text-sm">{{ t("common.noMatches") }}</p>
     <p v-else-if="!keys.isPending.value" class="text-muted-foreground py-4 text-center text-sm">{{ t("product.keys.empty") }}</p>
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
+  </Card>
 
     <Dialog v-model:open="reveal">
       <DialogContent class="sm:max-w-lg" @interact-outside.prevent>
@@ -199,5 +211,4 @@ function doRevoke() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  </section>
 </template>

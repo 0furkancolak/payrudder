@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
-import { Plus, X } from "@lucide/vue";
+import { Eye, Plus, Trash2, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { useTableState } from "@/shared/lib/useTableState";
 import { COUNTRY_HINTS, PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { ErrorText } from "@/shared/ui/error-text";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { DetailList } from "@/shared/ui/detail-list";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { RowActions } from "@/shared/ui/row-actions";
+import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -52,6 +56,9 @@ const accountTable = useTableState<Account>(() => accounts.data.value?.accounts 
   searchFields: (a) => [a.provider, a.environment],
   filters: { environment: (a, v) => a.environment === v },
 });
+const all = computed(() => ({ value: "", label: t("common.all") }));
+const environments = computed(() => [all.value, { value: "live", label: "live" }, { value: "sandbox", label: "sandbox" }]);
+const accountActions = (a: Account) => [{ key: "remove", label: t("billing.common.remove"), icon: Trash2, destructive: true, onSelect: () => removeAccount(a.provider ?? "", (a.environment ?? "live") as Environment) }];
 const accountEnv = computed({ get: () => accountTable.filters.value.environment ?? "", set: (v) => (accountTable.filters.value.environment = String(v)) });
 /** Bank transfer has a structured form instead of the JSON text. */
 const isBank = computed(() => provider.value === "banktransfer");
@@ -116,22 +123,30 @@ const subTable = useTableState<ProviderSub>(() => providerSubs.data.value?.subsc
   filters: { status: (s, v) => s.status === v },
 });
 const subStatus = computed({ get: () => subTable.filters.value.status ?? "", set: (v) => (subTable.filters.value.status = String(v)) });
-const subStatuses = computed(() => [...new Set((providerSubs.data.value?.subscriptions ?? []).map((s) => s.status ?? "").filter(Boolean))]);
+const subStatuses = computed(() => [all.value, ...new Set((providerSubs.data.value?.subscriptions ?? []).map((s) => s.status ?? "").filter(Boolean))].map((s) => (typeof s === "string" ? { value: s, label: s } : s)));
+const subDetail = ref<number | null>(null);
+const subCurrent = computed(() => (subDetail.value === null ? undefined : subTable.items.value[subDetail.value]));
+const subRows = computed(() => {
+  const s = subCurrent.value;
+  if (!s) return [];
+  return [
+    { key: "provider", label: t("billing.providers.provider"), value: s.provider },
+    { key: "environment", label: t("billing.providers.environment"), value: s.environment },
+    { key: "reference", label: t("billing.providers.reference"), value: s.provider_ref, mono: true },
+    { key: "status", label: t("billing.subscriptions.state") },
+    { key: "next", label: t("billing.providers.nextBilled"), value: when(s.next_billed_at) },
+    { key: "updated", label: t("billing.providers.updated"), value: when(s.updated_at) },
+  ];
+});
+const subActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => (subDetail.value = i) }];
 const when = (v?: string) => fmt.date(v, "day", "—");
 </script>
 
 <template>
   <Card class="mb-6 p-3">
-    <div class="px-3 pt-2">
-      <h2 class="text-lg font-semibold">{{ t("billing.providers.accounts") }}</h2>
-      <p class="text-muted-foreground text-sm">{{ t("billing.providers.accountsHint") }}</p>
-    </div>
-    <DataToolbar v-model:search="accountTable.search.value" :active="accountTable.active.value" class="pt-3" @clear="accountTable.clear()">
-      <NativeSelect v-model="accountEnv" class="w-40" :aria-label="t('billing.providers.environment')">
-        <option value="">{{ t("billing.providers.environment") }}</option>
-        <option value="live">live</option>
-        <option value="sandbox">sandbox</option>
-      </NativeSelect>
+    <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.providers.accounts") }}</h2>
+    <DataToolbar v-model:search="accountTable.search.value" :active="accountTable.active.value" @clear="accountTable.clear()">
+      <FilterSelect v-model="accountEnv" :label="t('billing.providers.environment')" :options="environments" />
       <template #actions>
         <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.providers.addAccount") }}</Button>
       </template>
@@ -144,18 +159,16 @@ const when = (v?: string) => fmt.date(v, "day", "—");
           <TableHead>{{ t("billing.providers.environment") }}</TableHead>
           <TableHead>{{ t("billing.providers.default") }}</TableHead>
           <TableHead>{{ t("billing.providers.updated") }}</TableHead>
-          <TableHead />
+          <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         <TableRow v-for="a in accountTable.items.value" :key="`${a.provider}-${a.environment}`">
           <TableCell class="font-medium">{{ a.provider }}</TableCell>
           <TableCell>{{ a.environment }}</TableCell>
-          <TableCell><Badge v-if="a.is_default" variant="success">{{ t("billing.providers.default") }}</Badge></TableCell>
+          <TableCell><StatusPill v-if="a.is_default" tone="success">{{ t("billing.providers.default") }}</StatusPill></TableCell>
           <TableCell>{{ when(a.updated_at) }}</TableCell>
-          <TableCell class="text-end">
-            <Button size="sm" variant="ghost" @click="removeAccount(a.provider ?? '', (a.environment ?? 'live') as 'sandbox' | 'live')">{{ t("billing.common.remove") }}</Button>
-          </TableCell>
+          <TableCell><RowActions :actions="accountActions(a)" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>
@@ -199,8 +212,48 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     </Sheet>
   </Card>
 
+  <Card class="mb-6 p-3">
+    <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.providers.runByProviders") }}</h2>
+    <DataToolbar v-model:search="subTable.search.value" :active="subTable.active.value" @clear="subTable.clear()">
+      <FilterSelect v-model="subStatus" :label="t('billing.subscriptions.state')" :options="subStatuses" />
+    </DataToolbar>
+    <Table>
+      <TableHeader>
+        <TableRow class="hover:bg-transparent">
+          <TableHead>{{ t("billing.providers.reference") }}</TableHead>
+          <TableHead>{{ t("billing.providers.provider") }}</TableHead>
+          <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
+          <TableHead>{{ t("billing.providers.nextBilled") }}</TableHead>
+          <TableHead>{{ t("billing.providers.updated") }}</TableHead>
+          <TableHead class="w-px"><span class="sr-only">{{ t("billing.webhooks.actions") }}</span></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow v-for="(s, i) in subTable.items.value" :key="`${s.provider}-${s.provider_ref}`" class="cursor-pointer" @click="subDetail = i">
+          <TableCell class="mono text-xs font-medium">{{ s.provider_ref }}</TableCell>
+          <TableCell>{{ s.provider }} <span class="text-muted-foreground text-xs">{{ s.environment }}</span></TableCell>
+          <TableCell><StatusPill :tone="toneOf(s.status)">{{ s.status }}</StatusPill></TableCell>
+          <TableCell>{{ when(s.next_billed_at) }}</TableCell>
+          <TableCell>{{ when(s.updated_at) }}</TableCell>
+          <TableCell><RowActions :actions="subActions(i)" /></TableCell>
+        </TableRow>
+      </TableBody>
+    </Table>
+    <p v-if="!providerSubs.isPending.value && (providerSubs.data.value?.subscriptions ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">
+      {{ t("billing.providers.noProviderSubscriptions") }}
+    </p>
+    <p v-else-if="subTable.total.value === 0 && subTable.active.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <DataPagination v-model:page="subTable.page.value" v-model:size="subTable.size.value" :pages="subTable.pages.value" :total="subTable.total.value" />
+  </Card>
+
+  <DetailSheet v-model:index="subDetail" :total="subTable.items.value.length" :title="subCurrent?.provider_ref ?? ''" :description="subCurrent?.provider ?? ''">
+    <DetailList :rows="subRows">
+      <template #status><StatusPill :tone="toneOf(subCurrent?.status)">{{ subCurrent?.status }}</StatusPill></template>
+    </DetailList>
+  </DetailSheet>
+
   <Card class="mb-6">
-    <h2 class="text-lg font-semibold">{{ t("billing.providers.routing") }}</h2>
+    <h2 class="text-base font-semibold">{{ t("billing.providers.routing") }}</h2>
     <p class="text-muted-foreground text-sm">{{ t("billing.providers.routingHint") }}</p>
     <ErrorText :error="stored.error.value" />
     <datalist id="countries"><option v-for="c in COUNTRY_HINTS" :key="c" :value="c" /></datalist>
@@ -236,38 +289,4 @@ const when = (v?: string) => fmt.date(v, "day", "—");
   </Card>
 
   <CatalogueCard :tenant-id="tenantId" />
-
-  <Card class="p-3">
-    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.providers.runByProviders") }}</h2>
-    <DataToolbar v-model:search="subTable.search.value" :active="subTable.active.value" class="pt-3" @clear="subTable.clear()">
-      <NativeSelect v-model="subStatus" class="w-40" :aria-label="t('billing.subscriptions.state')">
-        <option value="">{{ t("billing.subscriptions.state") }}</option>
-        <option v-for="x in subStatuses" :key="x" :value="x">{{ x }}</option>
-      </NativeSelect>
-    </DataToolbar>
-    <Table>
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead>{{ t("billing.providers.provider") }}</TableHead>
-          <TableHead>{{ t("billing.providers.reference") }}</TableHead>
-          <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
-          <TableHead>{{ t("billing.providers.nextBilled") }}</TableHead>
-          <TableHead>{{ t("billing.providers.updated") }}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="s in subTable.items.value" :key="`${s.provider}-${s.provider_ref}`">
-          <TableCell>{{ s.provider }} <span class="text-muted-foreground text-xs">{{ s.environment }}</span></TableCell>
-          <TableCell class="mono text-xs">{{ s.provider_ref }}</TableCell>
-          <TableCell><Badge variant="secondary">{{ s.status }}</Badge></TableCell>
-          <TableCell>{{ when(s.next_billed_at) }}</TableCell>
-          <TableCell>{{ when(s.updated_at) }}</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-    <p v-if="!providerSubs.isPending.value && (providerSubs.data.value?.subscriptions ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">
-      {{ t("billing.providers.noProviderSubscriptions") }}
-    </p>
-    <DataPagination v-model:page="subTable.page.value" v-model:size="subTable.size.value" :pages="subTable.pages.value" :total="subTable.total.value" />
-  </Card>
 </template>

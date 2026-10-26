@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
+import { rowAction } from "./ui";
 
 const pack = (id: string, name: string, credits: string, price: string, validity = 0) => ({
   id,
@@ -44,7 +45,7 @@ test.describe("credit purchases", () => {
     await expect(page.getByRole("row", { name: /Annual/ })).toContainText("365 days");
     expect(gw.called("POST", "/v1/credit-packs")[0]?.body).toMatchObject({ name: "Annual", validity_days: 365 });
 
-    await page.getByRole("row", { name: /Starter/ }).getByRole("button", { name: "Create purchase link" }).click();
+    await rowAction(page.getByRole("row", { name: /Starter/ }), "Create purchase link");
     const link = page.getByRole("dialog");
     await link.getByLabel("Customer").selectOption("cus_1");
     await link.getByLabel("Quantity").fill("2");
@@ -68,7 +69,7 @@ test.describe("credit purchases", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/credits");
-    await page.getByRole("row", { name: /Starter/ }).getByRole("button", { name: "Create purchase link" }).click();
+    await rowAction(page.getByRole("row", { name: /Starter/ }), "Create purchase link");
     const link = page.getByRole("dialog");
     await link.getByLabel("Customer").selectOption("cus_1");
     await link.getByLabel("Quantity").fill("2");

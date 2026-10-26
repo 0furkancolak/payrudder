@@ -1,43 +1,60 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
-import { computed } from "vue";
+import { ExternalLink, Eye } from "@lucide/vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
+import { inRange } from "@/shared/lib/dateRange";
+import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
-import { ErrorText } from "@/shared/ui/error-text";
+import { useTableState } from "@/shared/lib/useTableState";
 import { Badge } from "@/shared/ui/badge";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { NativeSelect } from "@/shared/ui/native-select";
-import { useTableState } from "@/shared/lib/useTableState";
+import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
+import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorText } from "@/shared/ui/error-text";
+import { FilterSelect } from "@/shared/ui/filter-select";
+import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useTenantInvoices } from "./api";
+import InvoiceDetail from "./InvoiceDetail.vue";
 
+/** The invoices of a tenant. A row opens the invoice in a sheet that steps through the rows the list shows; the invoice page stays for deep links. */
 const props = defineProps<{ tenantId: string }>();
 const { t, te, locale } = useI18n();
+const fmt = useFormat();
 const invoices = useTenantInvoices(() => props.tenantId);
 const list = computed(() => invoices.data.value?.invoices ?? []);
 const STATUSES = ["draft", "open", "paid", "uncollectible", "void"] as const;
-const table = useTableState(list, {
+const KINDS = ["REGULAR", "CORRECTION", "CREDIT_NOTE"] as const;
+const range = ref<DateRange>({ from: "", to: "" });
+const table = useTableState(() => list.value.filter((inv) => inRange(inv.create_time, range.value)), {
   searchFields: (inv) => [inv.number, inv.period_id, inv.customer_external_id, inv.total_minor],
   filters: { status: (inv, v) => inv.status === v, kind: (inv, v) => inv.kind === v },
 });
+watch(range, () => (table.page.value = 1), { deep: true });
+const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+function clear() {
+  table.clear();
+  range.value = { from: "", to: "" };
+}
 const setFilter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const statusFilter = setFilter("status");
 const kindFilter = setFilter("kind");
+const statusOptions = computed(() => [{ value: "", label: t("tenant.allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: label(t, te, "invoiceStatus", s) }))]);
+const kindOptions = computed(() => [{ value: "", label: t("tenant.allKinds") }, ...KINDS.map((k) => ({ value: k, label: label(t, te, "invoiceKind", k) }))]);
+
+const index = ref<number | null>(null);
+const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
 </script>
 
 <template>
   <ErrorText :error="invoices.error.value" class="px-3" />
-  <DataToolbar v-if="list.length" v-model:search="table.search.value" :active="table.active.value" class="pt-2" @clear="table.clear()">
-    <NativeSelect v-model="statusFilter" class="w-40" :aria-label="t('tenant.columns.status')">
-      <option value="">{{ t("tenant.columns.status") }}</option>
-      <option v-for="s in STATUSES" :key="s" :value="s">{{ label(t, te, "invoiceStatus", s) }}</option>
-    </NativeSelect>
-    <NativeSelect v-model="kindFilter" class="w-40" :aria-label="t('tenant.columns.kind')">
-      <option value="">{{ t("tenant.columns.kind") }}</option>
-      <option v-for="k in ['REGULAR', 'CORRECTION', 'CREDIT_NOTE']" :key="k" :value="k">{{ label(t, te, "invoiceKind", k) }}</option>
-    </NativeSelect>
+  <DataToolbar v-if="list.length" v-model:search="table.search.value" :active="active" class="pt-2" @clear="clear">
+    <FilterSelect v-model="statusFilter" :label="t('tenant.columns.status')" :options="statusOptions" />
+    <FilterSelect v-model="kindFilter" :label="t('tenant.columns.kind')" :options="kindOptions" />
+    <DateRangePicker v-model="range" />
   </DataToolbar>
   <p v-if="list.length && !table.total.value" class="text-muted-foreground px-3 py-4 text-sm">{{ t("common.noMatches") }}</p>
   <Table v-else>
@@ -47,22 +64,24 @@ const kindFilter = setFilter("kind");
         <TableHead>{{ t("tenant.columns.kind") }}</TableHead>
         <TableHead>{{ t("tenant.columns.period") }}</TableHead>
         <TableHead>{{ t("tenant.columns.customer") }}</TableHead>
+        <TableHead>{{ t("tenant.columns.created") }}</TableHead>
         <TableHead class="text-end">{{ t("tenant.columns.total") }}</TableHead>
         <TableHead>{{ t("tenant.columns.status") }}</TableHead>
         <TableHead>{{ t("tenant.columns.saga") }}</TableHead>
+        <TableHead><span class="sr-only">{{ t("common.moreActions") }}</span></TableHead>
       </TableRow>
     </TableHeader>
     <TableBody>
-      <TableRow v-for="inv in table.items.value" :key="inv.id">
-        <TableCell>
-          <Link to="/tenants/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: inv.id ?? '' }" class="font-medium hover:underline">{{ inv.number || t("tenant.draft") }}</Link>
-        </TableCell>
+      <TableRow v-for="(inv, i) in table.items.value" :key="inv.id" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
+        <TableCell class="font-medium">{{ inv.number || t("tenant.draft") }}</TableCell>
         <TableCell>{{ label(t, te, "invoiceKind", inv.kind) }}</TableCell>
         <TableCell>{{ inv.period_id }}</TableCell>
         <TableCell>{{ inv.customer_external_id }}</TableCell>
+        <TableCell class="whitespace-nowrap">{{ fmt.date(inv.create_time, "day", "—") }}</TableCell>
         <TableCell class="text-end font-medium tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
         <TableCell><Badge :variant="statusVariant(inv.status)">{{ label(t, te, "invoiceStatus", inv.status) }}</Badge></TableCell>
         <TableCell><Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ label(t, te, "sagaState", inv.saga_state) }}</Badge></TableCell>
+        <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => (index = i) }]" /></TableCell>
       </TableRow>
     </TableBody>
   </Table>
@@ -70,4 +89,11 @@ const kindFilter = setFilter("kind");
   <p v-if="!invoices.isPending.value && list.length === 0 && !invoices.error.value" class="text-muted-foreground p-4 text-center text-sm">
     {{ t("tenant.noInvoices") }}
   </p>
+
+  <DetailSheet v-model:index="index" :total="table.items.value.length" :title="current?.number || t('tenant.draft')" :description="current ? [label(t, te, 'invoiceKind', current.kind), current.customer_external_id].filter(Boolean).join(' · ') : undefined" wide>
+    <Link v-if="current" to="/tenants/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: current.id ?? '' }" class="text-muted-foreground hover:text-foreground mb-3 inline-flex items-center gap-1 text-sm hover:underline" data-testid="open-full-page">
+      <ExternalLink class="size-3.5" aria-hidden="true" />{{ t("common.openFullPage") }}
+    </Link>
+    <InvoiceDetail v-if="current" :key="current.id" :tenant-id="tenantId" :invoice-id="current.id ?? ''" />
+  </DetailSheet>
 </template>

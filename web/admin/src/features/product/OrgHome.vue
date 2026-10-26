@@ -75,7 +75,9 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
 
     <OrgDashboard v-else-if="env && withFigures.length > 0" :apps="list" :query="query" :env="env" @update:query="go($event, env)" />
 
-    <div v-if="env && list.length > 0" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" :data-env="env">
+    <section v-if="env && list.length > 0" class="flex flex-col gap-3" :aria-label="t('shell.items.overview')">
+      <h2 class="px-1 text-xl font-semibold tracking-tight">{{ t("shell.items.overview") }}</h2>
+      <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" :data-env="env">
       <template v-for="app in list" :key="app.id">
         <AppGoLiveCard v-if="notLive(app)" :app="app" />
         <AppCard v-else :app="app" :env="env" />
@@ -89,7 +91,8 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
         <span class="bg-brand-soft text-brand-strong flex size-12 items-center justify-center rounded-2xl"><Plus class="size-6" /></span>
         <span class="text-sm font-medium">{{ t("product.home.create") }}</span>
       </button>
-    </div>
+      </div>
+    </section>
 
     <div v-else-if="!apps.error.value && !apps.isPending.value" class="surface flex flex-col items-center gap-4 px-6 py-16 text-center">
       <span class="bg-brand-soft text-brand-strong flex size-16 items-center justify-center rounded-3xl"><Rocket class="size-8" /></span>

@@ -26,7 +26,10 @@
     "search": "Ara",
     "clearFilters": "Filtreleri temizle",
     "noMatches": "Bu filtrelere uyan kayıt yok.",
-    "moreActions": "Diğer işlemler"
+    "moreActions": "Diğer işlemler",
+    "view": "Görüntüle",
+    "openFullPage": "Tam sayfada aç",
+    "all": "Tümü"
   },
   "enums": {
     "environment": {
@@ -131,7 +134,8 @@
       "customer": "Müşteri",
       "total": "Toplam",
       "status": "Durum",
-      "saga": "Saga"
+      "saga": "Saga",
+      "created": "Oluşturulma"
     },
     "jobs": {
       "title": "Yeniden oynatma ve yeniden fiyatlama işleri",
@@ -139,7 +143,9 @@
       "idLabel": "İş kimliği",
       "replay": "Yeniden oynatma işi",
       "rerating": "Yeniden fiyatlama işi"
-    }
+    },
+    "allStatuses": "Tüm durumlar",
+    "allKinds": "Tüm türler"
   },
   "invoice": {
     "back": "← Kiracı",
@@ -263,7 +269,8 @@
       "deliveries": "Teslim sayısı",
       "reason": "Neden",
       "bytes": "Bayt"
-    }
+    },
+    "noMessages": "Bu kuyrukta ileti yok."
   },
   "playground": {
     "title": "Oyun alanı",
@@ -395,7 +402,15 @@
       "monthly": "Aylık",
       "yearly": "Yıllık",
       "perYear": "/ yıl",
-      "tenantMonthly": "{currency} cinsinden aylık ücret yukarıdaki sabit ücrettir."
+      "tenantMonthly": "{currency} cinsinden aylık ücret yukarıdaki sabit ücrettir.",
+      "published": "Yayın tarihi",
+      "priceColumn": "Fiyat",
+      "limits": "Limitler",
+      "priceKinds": {
+        "perUnit": "Birim başına {price}",
+        "tiered": "{n} kademe",
+        "package": "{size} birim için {price}"
+      }
     },
     "subscriptions": {
       "new": "Yeni abonelik",
@@ -491,7 +506,8 @@
       "confirmEndCredit": "Abonelik şimdi bitirilsin ve müşterinin peşin ödediği ücretin kullanılmayan kısmı bakiyesine kredi olarak yazılsın mı?",
       "credited": "{amount} müşterinin bakiyesine kredi olarak yazıldı.",
       "allStates": "Tüm durumlar",
-      "allCurrencies": "Tüm para birimleri"
+      "allCurrencies": "Tüm para birimleri",
+      "allIntervals": "Tüm aralıklar"
     },
     "payments": {
       "reconcile": "Defterle mutabakat",
@@ -514,7 +530,8 @@
       "amount": "Tutar",
       "reference": "Referans",
       "source": "Kaynak",
-      "empty": "Defterde henüz kayıt yok."
+      "empty": "Defterde henüz kayıt yok.",
+      "id": "Kimlik"
     },
     "providers": {
       "accounts": "Sağlayıcı hesapları",
@@ -632,7 +649,9 @@
       "nextAttempt": "Sonraki deneme",
       "empty": "Henüz raporlanacak bir şey yok.",
       "noDunning": "Ödenmemiş fatura yok.",
-      "credited": "Alacak dekontu"
+      "credited": "Alacak dekontu",
+      "currentMonth": "Bu ay",
+      "splitBy": "Şuna göre ayır"
     },
     "pricing": {
       "coupons": {
@@ -801,7 +820,8 @@
       "refundFailed": "İade başarısız",
       "retryRefund": "İadeyi yeniden dene",
       "new": "Yeni iade faturası",
-      "hint": "Ödenmiş bir faturayı tamamen ya da kısmen alacaklandırır. Tutar müşterinin bakiyesine ya da karta geri gider."
+      "hint": "Ödenmiş bir faturayı tamamen ya da kısmen alacaklandırır. Tutar müşterinin bakiyesine ya da karta geri gider.",
+      "allWhere": "Tümü"
     },
     "webhooks": {
       "title": "Webhooklar",
@@ -915,7 +935,8 @@
       },
       "for": "Konu",
       "promotionCode": "Promosyon kodu (isteğe bağlı)",
-      "promotionHint": "Ödeyen, bu kodun indirimini yazmadan alır ve başka bir kod yazabilir. Kod şimdi bu tutara göre denetlenir."
+      "promotionHint": "Ödeyen, bu kodun indirimini yazmadan alır ve başka bir kod yazabilir. Kod şimdi bu tutara göre denetlenir.",
+      "id": "Bağlantı"
     },
     "mail": {
       "title": "E-posta",
@@ -1092,7 +1113,9 @@
         "voided": "İptal",
         "until": "{date} tarihine kadar",
         "edit": "Düzenle",
-        "void": "İptal et"
+        "void": "İptal et",
+        "allCategories": "Tüm kategoriler",
+        "allRecurring": "Tek seferlik ve tekrarlayan"
       },
       "form": {
         "addTitle": "Gider ekle",
@@ -1586,7 +1609,8 @@
       "webhookSecret": "İmza anahtarı",
       "neverShown": "Anahtar bir kez gönderilir, geri okunamaz.",
       "save": "Hesabı kaydet",
-      "saved": "Hesap kaydedildi."
+      "saved": "Hesap kaydedildi.",
+      "allEnvironments": "Tüm ortamlar"
     },
     "customer": {
       "title": "Vergi bilgisi",
@@ -2663,7 +2687,8 @@
       "filterEnv": "Ortam",
       "allEnvs": "Tüm ortamlar",
       "filterStatus": "Durum",
-      "allStatuses": "Tüm durumlar"
+      "allStatuses": "Tüm durumlar",
+      "scopeHead": "Kapsam"
     },
     "links": {
       "title": "Daha derine inin",
@@ -2756,7 +2781,8 @@
       "leaveBody": "Uygulamalarına ve verilerine erişiminizi hemen kaybedersiniz. Bir sahip sizi yeniden davet edebilir.",
       "removeTitle": "Bu üye çıkarılsın mı?",
       "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder.",
-      "allRoles": "Tüm roller"
+      "allRoles": "Tüm roller",
+      "expiresHead": "Geçerlilik"
     },
     "account": {
       "switch": "Hesap",
