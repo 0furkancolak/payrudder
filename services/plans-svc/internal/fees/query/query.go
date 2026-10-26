@@ -85,11 +85,7 @@ func (r *Queries) Due(ctx context.Context, req *plansv1.ListSubscriptionsFeeDueR
 			if err != nil {
 				return err
 			}
-			pv, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
-			if err != nil {
-				return err
-			}
-			fee, err := plansqry.FeeIn(ctx, q, pv.ID, pv.BaseFeeMinor, t.Currency, row.Currency, subscription.Interval(row.Interval))
+			fee, err := plansqry.SubscriptionFee(ctx, q, t.Currency, row)
 			if err != nil {
 				// A plan version always has the fee its subscription was created with; a gap here is data to look at, not a free period.
 				return err

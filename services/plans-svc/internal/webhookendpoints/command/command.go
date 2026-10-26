@@ -91,6 +91,19 @@ func newSecret() (string, error) {
 	return "whsec_" + base64.RawURLEncoding.EncodeToString(b), nil
 }
 
+// sealedSecret makes the signing secret of the endpoint with this id: the plaintext, shown to its owner once, and the sealed form that is stored.
+func (c *Commands) sealedSecret(endpoint uuid.UUID) (secret string, sealed []byte, err error) {
+	secret, err = newSecret()
+	if err != nil {
+		return "", nil, status.Error(codes.Internal, "internal error")
+	}
+	sealed, err = c.box.Seal([]byte(secret), webhooksmodel.SecretAAD(endpoint))
+	if err != nil {
+		return "", nil, status.Error(codes.Internal, "internal error")
+	}
+	return secret, sealed, nil
+}
+
 func (c *Commands) requireBox() error {
 	if c.box == nil {
 		return errkey.New(codes.FailedPrecondition, "plans.webhook.not_configured", "webhooks are not configured on this deployment (PAYRUDDER_SECRETS_KEY)")
@@ -119,14 +132,10 @@ func (c *Commands) CreateEndpoint(ctx context.Context, req *plansv1.CreateWebhoo
 	if err != nil {
 		return nil, err
 	}
-	secret, err := newSecret()
-	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
-	}
 	id := idgen.NewUUIDv7()
-	sealed, err := c.box.Seal([]byte(secret), webhooksmodel.SecretAAD(id))
+	secret, sealed, err := c.sealedSecret(id)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, err
 	}
 	var out *plansv1.WebhookEndpoint
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
@@ -212,13 +221,9 @@ func (c *Commands) RotateSecret(ctx context.Context, rawID string) (*plansv1.Web
 	if err != nil {
 		return nil, err
 	}
-	secret, err := newSecret()
+	secret, sealed, err := c.sealedSecret(id)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
-	}
-	sealed, err := c.box.Seal([]byte(secret), webhooksmodel.SecretAAD(id))
-	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return nil, err
 	}
 	var out *plansv1.WebhookEndpoint
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
