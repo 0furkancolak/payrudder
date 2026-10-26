@@ -166,16 +166,16 @@ test.describe("product app, real stack", () => {
     expect(problems.filter((p) => !/favicon/.test(p))).toEqual([]);
   });
 
-  test("keys: create a live key, see it once, revoke it", async ({ page, context }) => {
+  test("keys: create a sandbox key, see it once, revoke it", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await signInUi(page, email);
     await page.waitForURL("**/app");
-    await page.goto(`/app/apps/${appId}/keys?env=live`);
+    await page.goto(`/app/apps/${appId}/keys?env=sandbox`);
     const keys = page.getByRole("region", { name: "API keys" });
-    await keys.getByRole("button", { name: "Live key" }).click();
+    await keys.getByRole("button", { name: "Sandbox key" }).click();
     const reveal = page.getByRole("dialog");
     const secret = (await reveal.getByTestId("new-key").innerText()).trim();
-    expect(secret).toMatch(/^qk_live_/);
+    expect(secret).toMatch(/^qk_/);
     await reveal.getByRole("button", { name: "I have saved it" }).click();
     await expect(page.getByText(secret)).toHaveCount(0);
     const prefix = secret.split("_").slice(0, 3).join("_");
