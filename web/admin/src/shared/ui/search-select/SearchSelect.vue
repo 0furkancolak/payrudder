@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { Check, ChevronsUpDown } from "@lucide/vue";
 import { computed, nextTick, ref, useId, watch } from "vue";
-import { fold } from "@/shared/lib/intl";
 import { cn } from "@/shared/lib/utils";
+import { filterOptions, resolveTyped, type CustomOption } from "./filter";
 
 /**
- * A select with a search box: the ARIA combobox pattern on a text input and a listbox. Typing narrows the list (case and accents ignored, every word must
- * match the label, the hint or the value), the arrow keys move, Enter picks, Escape closes. Used for the currencies and the time zones, where a plain list
- * of hundreds is no use. The value is always one of the options; nothing free-form is accepted.
+ * A select with a search box: the ARIA combobox pattern on a text input and a listbox. A click, typing or an arrow key opens the list (focus alone does not,
+ * so a sheet that focuses its first field opens without a list over the form). Typing narrows the list (case and accents ignored, every word must
+ * match the label, the hint or the value), the arrow keys move, Enter picks, Escape closes. Used for the currencies, the time zones and the places of an
+ * address, where a plain list of hundreds is no use. Without `custom` the value is always one of the options. With it, what was typed is offered too (a
+ * town the list does not have), leaving the field takes the text, and a stored value that is no option still shows.
  */
 export interface SearchOption {
   value: string;
@@ -30,6 +32,8 @@ const props = defineProps<{
   disabled?: boolean;
   invalid?: boolean;
   class?: string;
+  /** Turns the typed text into an option of its own (or null when it is not acceptable): free text next to the list. */
+  custom?: CustomOption;
 }>();
 const model = defineModel<string>({ required: true });
 
@@ -41,13 +45,12 @@ const active = ref(0);
 const input = ref<HTMLInputElement | null>(null);
 const list = ref<HTMLUListElement | null>(null);
 
+/** Whether the person typed since the list opened: only then does leaving the field choose what was typed. */
+const typed = ref(false);
+
 const selected = computed(() => props.options.find((o) => o.value === model.value));
-const indexed = computed(() => props.options.map((o) => ({ o, text: fold(`${o.label} ${o.hint ?? ""} ${o.value} ${o.keywords ?? ""}`) })));
-const shown = computed(() => {
-  const words = fold(query.value).split(/\s+/).filter(Boolean);
-  if (words.length === 0) return props.options;
-  return indexed.value.filter((x) => words.every((w) => x.text.includes(w))).map((x) => x.o);
-});
+const closedText = computed(() => (selected.value ? (selected.value.short ?? selected.value.label) : props.custom ? model.value : ""));
+const shown = computed<SearchOption[]>(() => filterOptions(props.options, query.value, props.custom));
 
 watch(shown, () => {
   active.value = Math.max(0, Math.min(active.value, shown.value.length - 1));
@@ -57,6 +60,7 @@ async function show() {
   if (props.disabled || open.value) return;
   open.value = true;
   query.value = "";
+  typed.value = false;
   const at = shown.value.findIndex((o) => o.value === model.value);
   active.value = at < 0 ? 0 : at;
   await nextTick();
@@ -66,6 +70,16 @@ async function show() {
 function hide() {
   open.value = false;
   query.value = "";
+  typed.value = false;
+}
+
+/** Leaving the field after typing: the option the text names, or the text itself where free text is allowed (empty text clears it). */
+function leave() {
+  if (open.value && typed.value) {
+    const v = resolveTyped(props.options, query.value, props.custom);
+    if (v !== undefined && (props.custom || v !== "")) model.value = v;
+  }
+  hide();
 }
 
 function pick(o: SearchOption | undefined) {
@@ -125,7 +139,7 @@ function onKey(e: KeyboardEvent) {
       }
       break;
     case "Tab":
-      hide();
+      leave();
       break;
   }
 }
@@ -133,6 +147,7 @@ function onKey(e: KeyboardEvent) {
 function onInput(e: Event) {
   query.value = (e.target as HTMLInputElement).value;
   open.value = true;
+  typed.value = true;
   active.value = 0;
 }
 </script>
@@ -154,14 +169,13 @@ function onInput(e: Event) {
       :aria-activedescendant="open && shown[active] ? `${uid}-opt-${active}` : undefined"
       :aria-invalid="invalid || undefined"
       :disabled="disabled"
-      :placeholder="open ? (selected?.label ?? placeholder) : placeholder"
-      :value="open ? query : (selected ? (selected.short ?? selected.label) : '')"
+      :placeholder="open ? (selected?.label ?? (props.custom && model ? model : placeholder)) : placeholder"
+      :value="open ? query : closedText"
       class="border-input bg-card focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:border-destructive h-10 w-full min-w-0 truncate rounded-xl border ps-4 pe-9 text-base outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
-      @focus="show"
       @click="show"
       @input="onInput"
       @keydown="onKey"
-      @blur="hide"
+      @blur="leave"
     />
     <ChevronsUpDown class="text-muted-foreground pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true" />
     <ul
@@ -174,7 +188,7 @@ function onInput(e: Event) {
       <li
         v-for="(o, i) in shown"
         :id="`${uid}-opt-${i}`"
-        :key="o.value"
+        :key="`${i}:${o.value}`"
         role="option"
         :data-index="i"
         :aria-selected="o.value === model"

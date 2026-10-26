@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { APP, appWithLive, liveGateway, productGateway, signInAsAda } from "./product";
-import { pickLanguage } from "./ui";
+import { pickLanguage, pickPlace } from "./ui";
 
 // Phase 45 F: the console never lets live and sandbox be mixed up. The environment switch is always there, the sandbox is marked on every page, a live
 // environment that is not active shows its go-live checklist instead of zeros, and the app opens where the person last was. The gateway is mocked.
@@ -167,7 +167,7 @@ test.describe("the owner's own steps", () => {
     const card = page.getByTestId("billing-profile");
     await expect(page.getByTestId("go-live-legal_profile")).toHaveAttribute("data-done", "false");
     await card.getByLabel("Legal name").fill("Shop GmbH");
-    await card.getByLabel("Country", { exact: true }).selectOption("DE");
+    await pickPlace(card.getByLabel("Country", { exact: true }), "germany");
     await card.getByLabel("Address line 1").fill("Hauptstr. 1");
     await card.getByLabel("City").fill("Berlin");
     // In Germany the seller's tax id is required; nothing is sent until it is there.

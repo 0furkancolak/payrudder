@@ -14,6 +14,13 @@ export async function pickZone(field: Locator, zone: string): Promise<void> {
   await field.page().getByRole("option", { name: new RegExp(`^${zone.replace(/_/g, " ")}`) }).first().click();
 }
 
+/** Chooses a place (a country, a region or a district) in a searchable address field: types the text and takes the first match with Enter. */
+export async function pickPlace(field: Locator, text: string): Promise<void> {
+  await field.click();
+  await field.fill(text);
+  await field.press("Enter");
+}
+
 /** Chooses a language in the header's language menu. */
 export async function pickLanguage(page: Page, code: string): Promise<void> {
   await page.getByTestId("language-switcher").click();

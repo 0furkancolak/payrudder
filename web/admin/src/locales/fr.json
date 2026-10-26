@@ -361,7 +361,6 @@
       "name": "Nom",
       "email": "E-mail",
       "country": "Pays",
-      "countryPlaceholder": "Pays (TR, DE…)",
       "currency": "Devise de facturation",
       "tenantCurrency": "Devise du locataire",
       "create": "Créer le client",
@@ -1704,10 +1703,8 @@
     "hint": "L'adresse légale et de facturation de ce locataire, imprimée comme vendeur sur chaque facture (PDF et page hébergée). Elle s'applique aux factures émises après l'enregistrement.",
     "formLabel": "adresse du vendeur",
     "noCountry": "Aucun pays",
-    "otherCountry": "Autre pays…",
     "labels": {
       "country": "Pays",
-      "countryCode": "Code pays (deux lettres, ex. SE)",
       "line1": "Ligne d'adresse 1",
       "line2": "Ligne d'adresse 2",
       "city": "Ville",
@@ -2270,6 +2267,10 @@
       },
       "route": {
         "not_found": "Cette adresse n'existe pas dans l'API."
+      },
+      "geo": {
+        "country_not_found": "Ce pays ne figure pas dans la liste.",
+        "region_not_found": "Cette région ne figure pas dans la liste."
       }
     },
     "env": {
@@ -3127,7 +3128,12 @@
     "currencyPlaceholder": "Rechercher une devise",
     "timezone": "Fuseau horaire",
     "timezonePlaceholder": "Rechercher un fuseau horaire",
-    "noMatch": "Aucun résultat"
+    "noMatch": "Aucun résultat",
+    "countryPlaceholder": "Rechercher un pays",
+    "placePlaceholder": "Rechercher ou saisir",
+    "useTyped": "Utiliser « {value} »",
+    "useCode": "Utiliser le code {code}",
+    "geoAttribution": "Noms de lieux : GeoNames (CC BY 4.0)"
   },
   "dash": {
     "retry": "Réessayer",

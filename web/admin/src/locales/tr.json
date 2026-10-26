@@ -361,7 +361,6 @@
       "name": "Ad",
       "email": "E-posta",
       "country": "Ülke",
-      "countryPlaceholder": "Ülke (TR, DE…)",
       "currency": "Faturalama para birimi",
       "tenantCurrency": "Kiracının para birimi",
       "create": "Müşteri oluştur",
@@ -1704,10 +1703,8 @@
     "hint": "Bu kiracının yasal ve fatura adresi; her faturada (PDF ve barındırılan sayfa) satıcı olarak basılır. Kaydettikten sonra kesilen faturalara uygulanır.",
     "formLabel": "satıcı adresi",
     "noCountry": "Ülke yok",
-    "otherCountry": "Başka bir ülke…",
     "labels": {
       "country": "Ülke",
-      "countryCode": "Ülke kodu (iki harf, ör. SE)",
       "line1": "Adres satırı 1",
       "line2": "Adres satırı 2",
       "city": "Şehir",
@@ -2270,6 +2267,10 @@
       },
       "route": {
         "not_found": "API'de böyle bir adres yok."
+      },
+      "geo": {
+        "country_not_found": "Listede böyle bir ülke yok.",
+        "region_not_found": "Listede böyle bir bölge yok."
       }
     },
     "env": {
@@ -3127,7 +3128,12 @@
     "currencyPlaceholder": "Para birimi ara",
     "timezone": "Saat dilimi",
     "timezonePlaceholder": "Saat dilimi ara",
-    "noMatch": "Eşleşen yok"
+    "noMatch": "Eşleşen yok",
+    "countryPlaceholder": "Ülke ara",
+    "placePlaceholder": "Ara veya yaz",
+    "useTyped": "“{value}” kullan",
+    "useCode": "{code} kodunu kullan",
+    "geoAttribution": "Yer adları: GeoNames (CC BY 4.0)"
   },
   "dash": {
     "retry": "Tekrar dene",
