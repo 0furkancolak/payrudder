@@ -119,7 +119,10 @@ func (l *Limiter) redisAllow(ctx context.Context, key string, lim Limit, cost in
 	return Decision{Allowed: res[0] == 1, RetryAfter: time.Duration(res[1]) * time.Microsecond}, nil
 }
 
+// localAllow is the fallback decision of one replica, whose burst is only its share of the limit. GCRA never admits a cost above the burst, which would
+// refuse a large batch for ever while telling the client to retry; here such a batch costs the whole share, so it gets in when the share is full.
 func (l *Limiter) localAllow(key string, lim Limit, cost int) Decision {
+	cost = min(cost, lim.Burst)
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	d := step(l.local[key], l.now(), lim, cost)
