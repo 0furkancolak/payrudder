@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"net/http"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -61,8 +60,13 @@ func (s *Server) setPaymentScenario(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Scenario string `json:"scenario"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Scenario == "" {
-		writeError(w, r, invalid("scenario", "required, e.g. \"declined\" or \"timeout_committed\""))
+	bad := invalid("scenario", "required, e.g. \"declined\" or \"timeout_committed\"")
+	if err := decodeBody(r, &body, bad); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if body.Scenario == "" {
+		writeError(w, r, bad)
 		return
 	}
 	resp, err := s.d.Plans.SetPaymentMethod(r.Context(), &plansv1.SetPaymentMethodRequest{

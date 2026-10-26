@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -50,8 +49,8 @@ func (s *Server) sandboxClosePeriod(w http.ResponseWriter, r *http.Request) {
 		Period string `json:"period"`
 	}
 	if r.ContentLength != 0 {
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-			writeError(w, r, invalid("body", "must be JSON like {\"period\": \"2026-11\"}"))
+		if err := decodeBody(r, &body, invalid("body", "must be JSON like {\"period\": \"2026-11\"}")); err != nil {
+			writeError(w, r, err)
 			return
 		}
 	}
