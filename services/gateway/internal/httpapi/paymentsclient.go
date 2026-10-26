@@ -64,29 +64,6 @@ func (s *Server) paymentsDo(ctx context.Context, method, path string, query url.
 	return resp.StatusCode, nil
 }
 
-// ledgerRow is a row of payments-worker's ledger as the gateway reads it (no provider references, no decline details).
-type ledgerRow struct {
-	ID          json.Number `json:"id"`
-	InvoiceID   string      `json:"invoice_id"`
-	Provider    string      `json:"provider"`
-	Environment string      `json:"environment"`
-	Kind        string      `json:"kind"`
-	Status      string      `json:"status"`
-	AmountMinor json.Number `json:"amount_minor"`
-	Currency    string      `json:"currency"`
-	OccurredAt  time.Time   `json:"occurred_at"`
-}
-
-func (r ledgerRow) amount() int64 {
-	n, _ := r.AmountMinor.Int64()
-	return n
-}
-
-func (r ledgerRow) id() int64 {
-	n, _ := r.ID.Int64()
-	return n
-}
-
 const maxLedgerLookup = 200
 
 // ledgerLookup returns the charge and refund rows of the invoices, oldest first. Without a payments-worker it returns none and no error: the
@@ -140,10 +117,10 @@ func refineState(state string, rows []ledgerRow, invoiceID string, now time.Time
 	if latest == nil {
 		return state
 	}
-	switch latest.Status {
-	case "pending":
+	switch {
+	case latest.Status == "pending":
 		return "processing"
-	case "declined", "failed":
+	case failedStatus(latest.Status):
 		return "failed"
 	}
 	return state
