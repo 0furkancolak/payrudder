@@ -39,7 +39,8 @@ test.describe("languages", () => {
     await expect(page.getByRole("heading", { name: "Locataires" })).toBeVisible();
     await page.getByRole("link", { name: "Bac à sable" }).click();
     await expect(page.getByRole("heading", { name: "Bac à sable" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Créer le compte" })).toBeVisible();
+    await page.getByTestId("playground-account-open").click();
+    await expect(page.getByRole("dialog").getByRole("button", { name: "Créer le compte" })).toBeVisible();
     // A development stack pre-fills the account form; the field is labelled in French.
     await expect(page.getByLabel("Devise")).toHaveValue("TRY");
   });

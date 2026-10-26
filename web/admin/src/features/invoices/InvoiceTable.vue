@@ -73,7 +73,7 @@ const current = computed(() => (index.value === null ? undefined : table.items.v
     </TableHeader>
     <TableBody>
       <TableRow v-for="(inv, i) in table.items.value" :key="inv.id" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
-        <TableCell class="font-medium">{{ inv.number || t("tenant.draft") }}</TableCell>
+        <TableCell class="font-medium"><Link to="/tenants/$id/invoices/$invoiceId" :params="{ id: tenantId, invoiceId: inv.id ?? '' }" class="hover:underline" @click.stop>{{ inv.number || t("tenant.draft") }}</Link></TableCell>
         <TableCell>{{ label(t, te, "invoiceKind", inv.kind) }}</TableCell>
         <TableCell>{{ inv.period_id }}</TableCell>
         <TableCell>{{ inv.customer_external_id }}</TableCell>

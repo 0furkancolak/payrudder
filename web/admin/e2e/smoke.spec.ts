@@ -108,6 +108,8 @@ test.describe.serial("operator console", () => {
   test("an operator user opens an invoice and its saga timeline shows at least five transitions", async ({ page }) => {
     await signIn(page);
     await shot(page, "admin-tenants", false); // the list of a long-running dev stack is long: the first screen is enough
+    // The list is paged: search for the tenant instead of hoping it is on the first page.
+    await page.getByRole("searchbox").fill(tenantId);
     await page.getByRole("row", { name: new RegExp(tenantId) }).getByRole("link").click();
     await expect(page.getByRole("heading", { name: /.+/ }).first()).toBeVisible();
     await page.getByRole("link", { name: invoiceNumber }).click();

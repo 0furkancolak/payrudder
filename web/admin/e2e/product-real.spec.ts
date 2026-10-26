@@ -140,7 +140,7 @@ test.describe("product app, real stack", () => {
     const problems = watch(page);
     await signInUi(page, email);
     await page.waitForURL("**/app");
-    await expect(page.getByRole("link", { name: /Seed Shop/ })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("link", { name: /Seed Shop/ })).toBeVisible();
     await shoot(page, "r1-home");
 
     await page.goto(`/app/apps/${appId}?env=sandbox`);
@@ -227,7 +227,8 @@ test.describe("product app, real stack", () => {
     await page.getByRole("button", { name: "Switch to dark mode" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await shoot(page, "r6-dark");
-    expect(problems.filter((p) => !/favicon/.test(p))).toEqual([]);
+    // The affiliate program answers 404 until a seller sets one up: a normal state the page handles (the browser still logs the failed load, with no URL).
+    expect(problems.filter((p) => !/favicon|affiliates\/program|status of 404/.test(p))).toEqual([]);
   });
 
   test("hosted payment link: pay it; the customer portal sells the credit pack", async ({ page }) => {
@@ -298,7 +299,10 @@ test.describe("product app, real stack", () => {
     await expect(page.getByRole("link", { name: "Operator console" })).toHaveCount(0);
 
     // The session is revoked behind the page's back: the next request ends in the sign-in page with a reason.
-    await api("POST", "/auth/signout", other.token);
+    // It is the browser's own session that is revoked (the one the page signed in with), not the API session the test opened for its direct calls.
+    const browserToken = await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken") ?? "");
+    expect(browserToken).not.toBe("");
+    await api("POST", "/auth/signout", browserToken);
     await page.goto("/app");
     await page.waitForURL(/\/signin/);
   });
