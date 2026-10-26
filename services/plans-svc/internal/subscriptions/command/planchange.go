@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
@@ -55,19 +56,14 @@ func (c *Commands) ChangePlan(ctx context.Context, req *plansv1.ChangePlanReques
 
 func (c *Commands) changePlan(ctx context.Context, q *sqlc.Queries, tenantID, id uuid.UUID, at time.Time, req *plansv1.ChangePlanRequest) (PlanChanged, error) {
 	var res PlanChanged
-	t, err := tenantsqry.Current(ctx, q)
+	t, loc, err := tenantsqry.CurrentIn(ctx, q)
 	if err != nil {
 		return res, err
 	}
-	loc, err := tenantsqry.Location(t.Timezone)
+	row, err := subsqry.Lock(ctx, q, id)
 	if err != nil {
 		return res, err
 	}
-	cur, err := q.GetSubscriptionForUpdate(ctx, id)
-	if err != nil {
-		return res, err
-	}
-	row := sqlc.GetSubscriptionRow(cur)
 	eff, err := c.requirePlanChangeable(row, at)
 	if err != nil {
 		return res, err

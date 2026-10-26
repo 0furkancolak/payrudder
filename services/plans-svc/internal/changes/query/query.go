@@ -78,11 +78,7 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 	if err != nil {
 		return nil, err
 	}
-	t, err := tenantsqry.Current(ctx, q)
-	if err != nil {
-		return nil, err
-	}
-	loc, err := tenantsqry.Location(t.Timezone)
+	t, loc, err := tenantsqry.CurrentIn(ctx, q)
 	if err != nil {
 		return nil, err
 	}
@@ -321,11 +317,7 @@ func UnusedFee(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.Get
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return 0, time.Time{}, false, err
 	}
-	t, err := tenantsqry.Current(ctx, q)
-	if err != nil {
-		return 0, time.Time{}, false, err
-	}
-	loc, err := tenantsqry.Location(t.Timezone)
+	t, loc, err := tenantsqry.CurrentIn(ctx, q)
 	if err != nil {
 		return 0, time.Time{}, false, err
 	}

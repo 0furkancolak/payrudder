@@ -26,6 +26,12 @@ type Queries struct {
 // New returns the subscription queries.
 func New(db *store.DB, now func() time.Time) *Queries { return &Queries{db: db, now: now} }
 
+// Lock reads the subscription and locks its row until the transaction ends, the way every change of a subscription starts.
+func Lock(ctx context.Context, q *sqlc.Queries, id uuid.UUID) (sqlc.GetSubscriptionRow, error) {
+	cur, err := q.GetSubscriptionForUpdate(ctx, id)
+	return sqlc.GetSubscriptionRow(cur), err
+}
+
 // AttachExtras sets scheduled_change and coupon_code on the subscriptions that have a change waiting or a coupon on.
 func AttachExtras(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subscription) error {
 	var ids []uuid.UUID

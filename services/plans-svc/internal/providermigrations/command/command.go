@@ -24,6 +24,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subscriptionscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/command"
+	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
 	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
@@ -109,11 +110,10 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 	}
 	var out *plansv1.ProviderMigration
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		cur, err := q.GetSubscriptionForUpdate(ctx, id)
+		row, err := subsqry.Lock(ctx, q, id)
 		if err != nil {
 			return err
 		}
-		row := sqlc.GetSubscriptionRow(cur)
 		now := c.now()
 		eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
 		switch {

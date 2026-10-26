@@ -269,11 +269,10 @@ func (c *Commands) Apply(ctx context.Context, req *plansv1.ApplyCouponRequest) (
 	}
 	var out *plansv1.Subscription
 	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		cur, err := q.GetSubscriptionForUpdate(ctx, id)
+		row, err := subsqry.Lock(ctx, q, id)
 		if err != nil {
 			return err
 		}
-		row := sqlc.GetSubscriptionRow(cur)
 		if !row.OpenEnded {
 			return errkey.New(codes.FailedPrecondition, "plans.coupon.subscription_ended", "an ended subscription cannot take a coupon")
 		}

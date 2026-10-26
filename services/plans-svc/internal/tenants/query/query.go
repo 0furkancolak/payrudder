@@ -31,3 +31,13 @@ func Location(name string) (*time.Location, error) {
 	}
 	return loc, nil
 }
+
+// CurrentIn is Current with the tenant's time zone loaded: what a change of a subscription or a fee needs to find the billing periods in the tenant's days.
+func CurrentIn(ctx context.Context, q *sqlc.Queries) (sqlc.CurrentTenantRow, *time.Location, error) {
+	t, err := Current(ctx, q)
+	if err != nil {
+		return t, nil, err
+	}
+	loc, err := Location(t.Timezone)
+	return t, loc, err
+}
