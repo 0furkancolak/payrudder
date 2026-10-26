@@ -71,9 +71,9 @@ Phase 03 (usage + watermark APIs), Phase 02 (outbox watermark), Phase 01 (subscr
 
 ## Notes (as built)
 
-- **Packages.** `internal/rating` (pure, `apd`), `internal/saga` (the transition table in `table.go` is the single source:
+- **Packages.** `internal/rating` (pure, `apd`), `internal/saga` (now `sagas/model` and `sagas/command`, phase 49; the transition table in `table.go` is the single source:
   exhaustive/guard-determinism tests, and the diagram in `docs/03-services/billing-svc.md` is generated from it by
-  `UPDATE_DOCS=1 go test ./internal/saga`), `internal/runs` (scheduler, watermark, rating, finalization), `internal/replies`,
+  `UPDATE_DOCS=1 go test ./internal/sagas/model`), `internal/runs` (now `billingruns/command` and the modules around it; scheduler, watermark, rating, finalization), `internal/replies`,
   `internal/api` (three gRPC services). SQL is hand-written pgx rather than sqlc: the saga and rating queries are dynamic
   enough that generated code added friction.
 - **Outbox.** billing's outbox has the shared `pkg/outbox` shape plus `message_id UNIQUE`; `x-destination` (`rabbitmq` |

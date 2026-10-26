@@ -75,11 +75,11 @@ func EInvoiceSnapshot(s *sagamodel.Snapshot, t *plansv1.Tenant, cu *plansv1.Cust
 		return
 	}
 	s.EInvoiceOn = on
-	s.Seller, s.Buyer = EInvoiceParties(t, cu)
+	s.Seller, s.Buyer = eInvoiceParties(t, cu)
 }
 
-// EInvoiceParties are the seller and the buyer of an e-invoice from the tenant's and the customer's current data.
-func EInvoiceParties(t *plansv1.Tenant, cu *plansv1.Customer) (seller, buyer *sagamodel.Party) {
+// eInvoiceParties are the seller and the buyer of an e-invoice from the tenant's and the customer's current data.
+func eInvoiceParties(t *plansv1.Tenant, cu *plansv1.Customer) (seller, buyer *sagamodel.Party) {
 	l := t.GetLegal()
 	name := l.GetLegalName()
 	if name == "" {
@@ -109,6 +109,6 @@ func (in *Inputs) Parties(ctx context.Context, tenantID uuid.UUID, customerExter
 	if err != nil {
 		return nil, nil, fmt.Errorf("get customer: %w", err)
 	}
-	seller, buyer = EInvoiceParties(t, resp.GetCustomer())
+	seller, buyer = eInvoiceParties(t, resp.GetCustomer())
 	return seller, buyer, nil
 }
