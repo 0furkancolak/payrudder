@@ -16,7 +16,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	entitlementscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/entitlements/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
 	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
@@ -78,7 +77,7 @@ func (c *Commands) Cancel(ctx context.Context, req *plansv1.CancelSubscriptionRe
 		if err != nil {
 			return err
 		}
-		out = subsqry.Message(r, c.now())
+		out = convert.SubscriptionOf(r, c.now())
 		if err := c.emitCancellation(ctx, q, out, end, credited); err != nil {
 			return err
 		}
@@ -153,7 +152,7 @@ func (c *Commands) move(ctx context.Context, id uuid.UUID, ev subscription.Event
 		if err != nil {
 			return err
 		}
-		out = subsqry.Message(r, c.now())
+		out = convert.SubscriptionOf(r, c.now())
 		switch ev {
 		case subscription.Pause:
 			return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionPaused, out, nil)
@@ -232,7 +231,7 @@ func (c *Commands) ScheduleCancellation(ctx context.Context, req *plansv1.Schedu
 		if err != nil {
 			return err
 		}
-		out = subsqry.Message(r, now)
+		out = convert.SubscriptionOf(r, now)
 		if req.GetCancel() {
 			return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionCancelScheduled, out, nil)
 		}

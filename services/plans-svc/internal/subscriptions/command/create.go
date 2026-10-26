@@ -236,7 +236,7 @@ func (c *Commands) announceCreated(ctx context.Context, q *sqlc.Queries, tenantI
 			return nil, err
 		}
 	}
-	out := subsqry.Message(full, c.now())
+	out := convert.SubscriptionOf(full, c.now())
 	if err := subsqry.AttachExtras(ctx, q, out); err != nil {
 		return nil, err
 	}

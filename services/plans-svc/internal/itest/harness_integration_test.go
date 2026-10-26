@@ -26,15 +26,8 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
-	golivecmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
-	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity"
-	identitycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
-	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
@@ -152,24 +145,17 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 		grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),
 	}})
-	plansSrv := grpcapi.New(app, log)
-	plansv1.RegisterPlansServiceServer(srv, plansSrv)
 	box, err := secretbox.New(make([]byte, 32)) // an all-zero key is fine for a test database
 	if err != nil {
 		t.Fatal(err)
 	}
-	plansv1.RegisterWebhookServiceServer(srv, grpcapi.NewWebhooks(plansSrv, box, true))
-	plansv1.RegisterAffiliateServiceServer(srv, grpcapi.NewAffiliates(plansSrv))
-	plansv1.RegisterAffiliatePublicServiceServer(srv, grpcapi.NewAffiliatesPublic(system, log))
-	plansv1.RegisterAffiliatePortalServiceServer(srv, grpcapi.NewAffiliatePortal(plansSrv, system))
-	adminSrv := grpcapi.NewAdmin(system, ev, allowedEnvs, log)
-	plansv1.RegisterAdminServiceServer(srv, adminSrv)
 	mail := &recordingMail{}
 	remotes := &recordingRemotes{}
 	sbx, runner := sandboxapi.Wire(system, remotes.steps(), time.Hour, sandbox.Settings{Retention: time.Hour}, log)
-	plansv1.RegisterIdentityServiceServer(srv, identity.New(identitycmd.New(system, adminSrv.Accounts(), adminSrv.Keys(), mail, testAppURL, log).WithPepper(testPepper), identityqry.New(system),
-		golive.New(golivecmd.New(system, log), goliveqry.New(system)),
-		promote.Wire(app, system, box, true, log), sbx))
+	grpcapi.Register(srv, grpcapi.Deps{
+		AppPool: app, SystemPool: system, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, Box: box, WebhookAllowPrivate: true,
+		Mail: mail, AppURL: testAppURL, OTPPepper: testPepper, Sandbox: sbx,
+	})
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)

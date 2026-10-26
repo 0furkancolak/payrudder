@@ -15,7 +15,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
-	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
 )
 
@@ -154,5 +153,5 @@ func (c *Commands) replacePlan(ctx context.Context, q *sqlc.Queries, tenantID uu
 	if err != nil {
 		return nil, err
 	}
-	return subsqry.Message(full, c.now()), nil
+	return convert.SubscriptionOf(full, c.now()), nil
 }

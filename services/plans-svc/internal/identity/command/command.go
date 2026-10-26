@@ -291,9 +291,13 @@ func (c *Commands) SignOut(ctx context.Context, token string) error {
 	return nil
 }
 
-// Slide moves the expiry of a session on. It is best effort: a failure is logged, the request that triggered it still succeeds.
-func (c *Commands) Slide(ctx context.Context, sessionID uuid.UUID, expires time.Time) {
-	if err := sqlc.New(c.pool).SlideSession(ctx, sqlc.SlideSessionParams{ID: sessionID, ExpiresAt: expires}); err != nil {
+// TouchSession moves the expiry of a session on when the query that resolved it says the session was last used a while ago. It is best effort: a
+// failure is logged, the request that triggered it still succeeds.
+func (c *Commands) TouchSession(ctx context.Context, s query.Session) {
+	if !s.Slide {
+		return
+	}
+	if err := sqlc.New(c.pool).SlideSession(ctx, sqlc.SlideSessionParams{ID: s.ID, ExpiresAt: s.NewExpire}); err != nil {
 		c.log.WarnContext(ctx, "session expiry not slid", "err", err)
 	}
 }

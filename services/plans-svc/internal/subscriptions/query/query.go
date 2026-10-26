@@ -1,4 +1,4 @@
-// Package query reads subscriptions and shapes them as API messages. Other modules use Message and AttachExtras to return a subscription.
+// Package query reads subscriptions and shapes them as API messages. Other modules use AttachExtras to return a subscription.
 package query
 
 import (
@@ -25,16 +25,6 @@ type Queries struct {
 
 // New returns the subscription queries.
 func New(db *store.DB, now func() time.Time) *Queries { return &Queries{db: db, now: now} }
-
-// Message maps a subscription row to its API message, with the state it has at now.
-func Message(r sqlc.GetSubscriptionRow, now time.Time) *plansv1.Subscription {
-	return convert.Subscription(convert.SubscriptionFields{
-		ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: r.CustomerExternalID,
-		PlanVersionID: r.PlanVersionID.String(), Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
-		State: r.State, Interval: r.Interval, Currency: r.Currency, TrialEnds: r.TrialEndsAt, PausedAt: r.PausedAt,
-		CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: convert.UUIDStr(r.ChangedFromID), Provider: convert.Str(r.Provider), ProviderRef: convert.Str(r.ProviderRef), Owner: r.Owner, PlanCode: r.PlanCode, PlanVersion: r.PlanVersion, FeeTiming: r.FeeTiming, Now: now,
-	})
-}
 
 // AttachExtras sets scheduled_change and coupon_code on the subscriptions that have a change waiting or a coupon on.
 func AttachExtras(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subscription) error {
@@ -78,7 +68,7 @@ func (r *Queries) Get(ctx context.Context, id uuid.UUID) (*plansv1.Subscription,
 		if err != nil {
 			return err
 		}
-		out = Message(row, r.now())
+		out = convert.SubscriptionOf(row, r.now())
 		return AttachExtras(ctx, q, out)
 	})
 	if err != nil {
@@ -121,7 +111,7 @@ func (r *Queries) List(ctx context.Context, req *plansv1.ListSubscriptionsReques
 			rows = rows[:size]
 		}
 		for _, row := range rows {
-			resp.Subscriptions = append(resp.Subscriptions, Message(sqlc.GetSubscriptionRow(row), r.now()))
+			resp.Subscriptions = append(resp.Subscriptions, convert.SubscriptionOf(sqlc.GetSubscriptionRow(row), r.now()))
 		}
 		if more {
 			resp.NextPageToken = rows[len(rows)-1].ID.String()
@@ -152,7 +142,7 @@ func (r *Queries) ForPeriod(ctx context.Context, req *plansv1.ListSubscriptionsF
 			return convert.Err(err, "subscription")
 		}
 		for _, row := range page {
-			if err := send(Message(sqlc.GetSubscriptionRow(row), r.now())); err != nil {
+			if err := send(convert.SubscriptionOf(sqlc.GetSubscriptionRow(row), r.now())); err != nil {
 				return err
 			}
 		}

@@ -320,3 +320,13 @@ func ownerOrDefault(o string) string {
 	}
 	return o
 }
+
+// SubscriptionOf maps a subscription row to its API message, with the state it has at now.
+func SubscriptionOf(r sqlc.GetSubscriptionRow, now time.Time) *plansv1.Subscription {
+	return Subscription(SubscriptionFields{
+		ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: r.CustomerExternalID,
+		PlanVersionID: r.PlanVersionID.String(), Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
+		State: r.State, Interval: r.Interval, Currency: r.Currency, TrialEnds: r.TrialEndsAt, PausedAt: r.PausedAt,
+		CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: UUIDStr(r.ChangedFromID), Provider: Str(r.Provider), ProviderRef: Str(r.ProviderRef), Owner: r.Owner, PlanCode: r.PlanCode, PlanVersion: r.PlanVersion, FeeTiming: r.FeeTiming, Now: now,
+	})
+}

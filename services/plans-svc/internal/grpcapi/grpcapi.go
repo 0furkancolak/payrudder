@@ -100,8 +100,8 @@ type Server struct {
 	now func() time.Time
 }
 
-// New returns a Server on the app pool.
-func New(appPool *pgxpool.Pool, _ *slog.Logger) *Server {
+// newPlans returns a Server on the app pool.
+func newPlans(appPool *pgxpool.Pool) *Server {
 	db := store.New(appPool)
 	now := time.Now
 
@@ -124,24 +124,24 @@ func New(appPool *pgxpool.Pool, _ *slog.Logger) *Server {
 	}
 }
 
-// NewWebhooks returns the webhook service on the same database as s. box seals the signing secrets (nil: endpoints cannot be created).
+// newWebhooks returns the webhook service on the same database as s. box seals the signing secrets (nil: endpoints cannot be created).
 // allowPrivate lets endpoints be http:// and private addresses (development and tests only).
-func NewWebhooks(s *Server, box *secretbox.Box, allowPrivate bool) *webhookendpointsapi.Handler {
+func newWebhooks(s *Server, box *secretbox.Box, allowPrivate bool) *webhookendpointsapi.Handler {
 	return webhookendpointsapi.New(webhookendpointscmd.New(s.db, s.now, box, allowPrivate).WithEventHook(affiliatescmd.OnTenantEvent), webhookendpointsqry.New(s.db))
 }
 
-// NewAffiliates returns the affiliate program service on the same database as s.
-func NewAffiliates(s *Server) *affiliatesapi.Handler {
+// newAffiliates returns the affiliate program service on the same database as s.
+func newAffiliates(s *Server) *affiliatesapi.Handler {
 	return affiliatesapi.New(affiliatescmd.New(s.db, s.now), affiliatesqry.New(s.db))
 }
 
-// NewAffiliatesPublic returns the public link service on the system pool: a visitor has no tenant.
-func NewAffiliatesPublic(systemPool *pgxpool.Pool, log *slog.Logger) *affiliatesapi.PublicHandler {
+// newAffiliatesPublic returns the public link service on the system pool: a visitor has no tenant.
+func newAffiliatesPublic(systemPool *pgxpool.Pool, log *slog.Logger) *affiliatesapi.PublicHandler {
 	return affiliatesapi.NewPublic(affiliatescmd.NewPublic(systemPool, time.Now, log))
 }
 
-// NewAffiliatePortal returns what a signed-in partner sees of their own affiliations: the person is found on the system pool, the figures are read through the tenant's
+// newAffiliatePortal returns what a signed-in partner sees of their own affiliations: the person is found on the system pool, the figures are read through the tenant's
 // own queries on the same database as s.
-func NewAffiliatePortal(s *Server, systemPool *pgxpool.Pool) *affiliatesportal.Handler {
+func newAffiliatePortal(s *Server, systemPool *pgxpool.Pool) *affiliatesportal.Handler {
 	return affiliatesportal.New(portalcmd.New(systemPool, s.now), portalqry.New(systemPool, affiliatesqry.New(s.db), s.now))
 }
