@@ -61,7 +61,7 @@ func matchLocale(tag string) string {
 
 // verifyEmail is POST /auth/verify {token}: the link in the verification mail. The answer is the user, now verified.
 func (s *Server) verifyEmail(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.tokenUses, tokenUsesPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.tokenUses, tokenUsesPerMinute) {
 		return
 	}
 	var body struct {
@@ -88,7 +88,7 @@ func (s *Server) resendVerification(w http.ResponseWriter, r *http.Request) {
 
 // forgotPassword is POST /auth/forgot {email}: always 202 for a well-formed address, whether or not it has an account.
 func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.resets, forgotsPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.resets, forgotsPerMinute) {
 		return
 	}
 	var body struct {
@@ -109,7 +109,7 @@ func (s *Server) forgotPassword(w http.ResponseWriter, r *http.Request) {
 
 // resetPassword is POST /auth/reset {token, password}: sets the new password and signs the person out everywhere. It opens no session; the person signs in.
 func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.tokenUses, tokenUsesPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.tokenUses, tokenUsesPerMinute) {
 		return
 	}
 	var body struct {

@@ -46,7 +46,7 @@ func (s *Server) adminTenantDashboard(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) serveDashboard(w http.ResponseWriter, r *http.Request, appID, envName string, t *plansv1.Tenant) {
 	loc := tenantLocation(t.GetTimezone())
-	now := time.Now()
+	now := s.now()
 	per, err := parseDashPeriod(r.URL.Query(), now, loc)
 	if err != nil {
 		writeError(w, r, err)
@@ -59,7 +59,11 @@ func (s *Server) serveDashboard(w http.ResponseWriter, r *http.Request, appID, e
 		_, _ = w.Write(body)
 		return
 	}
-	ctx, cancel := tenantContext(r.Context(), t, dashTimeout)
+	ctx, cancel, err := tenantContext(r.Context(), t, dashTimeout)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
 	defer cancel()
 	out := s.buildDashboard(ctx, appID, envName, t, per, loc, now)
 	body, err := json.Marshal(out)

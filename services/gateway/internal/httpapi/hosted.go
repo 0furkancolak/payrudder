@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/http"
 	"slices"
-	"sync"
 	"time"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -40,68 +39,6 @@ func (s *Server) revokeInvoiceLinks(w http.ResponseWriter, r *http.Request) {
 	writeJSONValue(w, http.StatusOK, map[string]any{"revoked": resp.GetRevoked()})
 }
 
-// hostedLimiter lets a visitor load a handful of pages a minute. A token is 256 random bits, so guessing one is hopeless; this keeps scrapers and
-// accidents from hammering billing-svc through a public route. It counts by the connection's address (a proxy in front should pass it on as such).
-type hostedLimiter struct {
-	mu     sync.Mutex
-	window map[string]*hostedWindow
-	last   time.Time
-}
-
-type hostedWindow struct {
-	start time.Time
-	n     int
-}
-
-// retryAfterMinute is the Retry-After of a visitor over a per-minute limit.
-const retryAfterMinute = "60"
-
-const (
-	hostedPerMinute = 60
-	// hostedPaysPerMinute limits the POSTs that start a payment, per address.
-	hostedPaysPerMinute = 10
-	hostedMaxKeys       = 50000
-	// hostedSweepWhenFull is the least time between two sweeps of a full table.
-	hostedSweepWhenFull = time.Second
-)
-
-func (l *hostedLimiter) allow(key string, now time.Time) bool {
-	return l.allowN(key, now, hostedPerMinute)
-}
-
-// allowN counts a request of key and reports whether it is within perMinute requests in the current minute.
-func (l *hostedLimiter) allowN(key string, now time.Time, perMinute int) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.window == nil {
-		l.window = map[string]*hostedWindow{}
-	}
-	// Expired addresses are swept once a minute; a table that is full is swept at most once a second, so a flood of new addresses does not make every
-	// request walk the whole table.
-	if now.Sub(l.last) > time.Minute || (len(l.window) >= hostedMaxKeys && now.Sub(l.last) > hostedSweepWhenFull) {
-		for k, w := range l.window {
-			if now.Sub(w.start) > time.Minute {
-				delete(l.window, k)
-			}
-		}
-		l.last = now
-	}
-	w := l.window[key]
-	if w == nil || now.Sub(w.start) > time.Minute {
-		if w == nil && len(l.window) >= hostedMaxKeys {
-			// Every address in the table is within its minute: make room by forgetting one, so memory stays bounded and a new visitor is still served.
-			for k := range l.window {
-				delete(l.window, k)
-				break
-			}
-		}
-		w = &hostedWindow{start: now}
-		l.window[key] = w
-	}
-	w.n++
-	return w.n <= perMinute
-}
-
 func clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -111,7 +48,7 @@ func clientIP(r *http.Request) string {
 }
 
 func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
-	if s.hosted.allow(s.clientAddr(r), time.Now()) {
+	if s.limits.pages.allow(s.clientAddr(r), s.now()) {
 		return true
 	}
 	rejectRateLimited(w)
@@ -120,8 +57,8 @@ func (s *Server) hostedAllowed(w http.ResponseWriter, r *http.Request) bool {
 
 // hostedPayAllowed is hostedAllowed for the POSTs that start a payment: they also count against the stricter limit.
 func (s *Server) hostedPayAllowed(w http.ResponseWriter, r *http.Request) bool {
-	addr, now := s.clientAddr(r), time.Now()
-	if s.hosted.allow(addr, now) && s.hostedPays.allowN(addr, now, hostedPaysPerMinute) {
+	addr, now := s.clientAddr(r), s.now()
+	if s.limits.pages.allow(addr, now) && s.limits.pays.allowN(addr, now, hostedPaysPerMinute) {
 		return true
 	}
 	rejectRateLimited(w)

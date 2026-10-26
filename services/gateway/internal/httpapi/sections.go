@@ -77,9 +77,13 @@ func (s *Server) appTenant(w http.ResponseWriter, r *http.Request) (appID, envNa
 }
 
 // tenantContext is ctx with the tenant t as the caller, for at most timeout.
-func tenantContext(ctx context.Context, t *plansv1.Tenant, timeout time.Duration) (context.Context, context.CancelFunc) {
-	p := principalOf(t)
-	return context.WithTimeout(tenant.NewContext(ctx, tenant.Info{ID: p.Tenant.ID, Environment: p.Tenant.Environment, Timezone: p.Tenant.Timezone, Tier: p.Tier}), timeout)
+func tenantContext(ctx context.Context, t *plansv1.Tenant, timeout time.Duration) (context.Context, context.CancelFunc, error) {
+	p, err := principalOf(t)
+	if err != nil {
+		return nil, nil, err
+	}
+	ctx, cancel := context.WithTimeout(tenant.NewContext(ctx, tenant.Info{ID: p.Tenant.ID, Environment: p.Tenant.Environment, Timezone: p.Tenant.Timezone, Tier: p.Tier}), timeout)
+	return ctx, cancel, nil
 }
 
 // paymentsHealth reads what payments-worker knows of a tenant for a composed page: the newest ledger rows, and the provider accounts. A ledger that cannot be read

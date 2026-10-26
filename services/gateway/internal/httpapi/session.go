@@ -93,7 +93,7 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	if resp.GetRole() == "viewer" && r.Method != http.MethodGet && r.Method != http.MethodHead {
 		return auth.Principal{}, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "your role in this account is read-only")
 	}
-	return principalOf(resp.GetTenant()), nil
+	return principalOf(resp.GetTenant())
 }
 
 // EdgeAuthHeader carries the shared secret (PAYRUDDER_TRUSTED_PROXY_SECRET) that an edge proxy such as the console's Worker adds to prove it is the one
@@ -148,7 +148,7 @@ const (
 )
 
 func (s *Server) authAllowed(w http.ResponseWriter, r *http.Request, l *hostedLimiter, perMinute int) bool {
-	if l.allowN(s.clientAddr(r), time.Now(), perMinute) {
+	if l.allowN(s.clientAddr(r), s.now(), perMinute) {
 		return true
 	}
 	w.Header().Set("Retry-After", retryAfterMinute)
@@ -164,7 +164,7 @@ func noStore(w http.ResponseWriter) {
 
 // signUp answers 202 whether the address was free or taken: the person signs in (or opens the mailed link). It opens no session itself.
 func (s *Server) signUp(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.signUps, signUpsPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.signUps, signUpsPerMinute) {
 		return
 	}
 	var body struct {
@@ -189,7 +189,7 @@ func (s *Server) signUp(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) signIn(w http.ResponseWriter, r *http.Request) {
-	if !s.authAllowed(w, r, &s.signIns, signInsPerMinute) {
+	if !s.authAllowed(w, r, &s.limits.signIns, signInsPerMinute) {
 		return
 	}
 	var body struct {

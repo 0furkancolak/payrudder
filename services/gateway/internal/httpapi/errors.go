@@ -51,8 +51,8 @@ var httpStatus = map[codes.Code]int{
 	codes.Unimplemented:      http.StatusNotImplemented,
 }
 
-// HTTPStatus maps a gRPC code to an HTTP status (500 for anything unmapped).
-func HTTPStatus(c codes.Code) int {
+// statusOf maps a gRPC code to an HTTP status (500 for anything unmapped).
+func statusOf(c codes.Code) int {
 	if s, ok := httpStatus[c]; ok {
 		return s
 	}
@@ -86,7 +86,7 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 			}
 		}
 	}
-	writeJSONValue(w, HTTPStatus(st.Code()), body)
+	writeJSONValue(w, statusOf(st.Code()), body)
 }
 
 // codeNames renders codes as UPPER_SNAKE (codes.String gives "InvalidArgument").

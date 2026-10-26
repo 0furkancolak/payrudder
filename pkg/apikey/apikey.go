@@ -28,6 +28,10 @@ const PrefixLen = 8
 
 const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 
+// CacheKey is the Redis key under which the gateway caches the resolution of the key with this prefix. plans-svc deletes it when a key is revoked or
+// changed, so both services build the key here and a change cannot leave a revoked key in the cache.
+func CacheKey(prefix string) string { return "gw:apikey:" + prefix }
+
 // ErrMalformed is returned by Parse for anything that isn't a well-formed key.
 var ErrMalformed = errors.New("apikey: malformed key")
 

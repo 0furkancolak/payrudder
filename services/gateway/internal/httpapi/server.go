@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -106,22 +107,16 @@ type Deps struct {
 type Server struct {
 	d       Deps
 	handler http.Handler
-	hosted  hostedLimiter
-	// hostedPays limits the POSTs that start a payment on a public page.
-	hostedPays hostedLimiter
+	limits  publicLimits
 	// dash remembers a dashboard for a few seconds: the same page is asked for again and again while it is open.
 	dash dashCache
-	// signIns and signUps limit the public sign-in and sign-up routes, per client address.
-	signIns, signUps hostedLimiter
-	// resets limits "forgot password" requests and tokenUses the routes that spend a mailed token (verify, reset, accept an invitation), per client address.
-	resets, tokenUses hostedLimiter
-	// otpRequests, otpVerifies and oauths limit the one-time code and provider sign-in routes, per client address.
-	otpRequests, otpVerifies, oauths hostedLimiter
+	// now is the clock; a request reads it once.
+	now func() time.Time
 }
 
 // New builds the router.
 func New(d Deps) *Server {
-	s := &Server{d: d}
+	s := &Server{d: d, now: time.Now}
 	mux := http.NewServeMux()
 	for _, rt := range s.routes() {
 		// otelhttp per route: the span is named after the route pattern ("POST /v1/customers"), which a global
@@ -167,68 +162,106 @@ func (s *Server) wrap(rt Route) http.Handler {
 		span := trace.SpanFromContext(r.Context())
 		span.SetAttributes(attribute.String("http.route", rt.Path))
 		r.Body = http.MaxBytesReader(w, r.Body, bodyLimit(rt.Method, rt.Path))
-		ctx := r.Context()
-		switch rt.Access {
-		case AccessPublic:
-			// No principal, no tenant, no rate-limit class: the worker rate-limits by never acting on unconfirmed bodies.
-		case AccessSession:
-			sess, err := s.session(r)
-			if err != nil {
-				writeError(w, r, err)
-				return
-			}
-			if !s.chargeKey(w, r, "user:"+sess.UserID, "standard", rt.Class, 1) {
-				return
-			}
-			ctx = context.WithValue(ctx, sessionKey{}, sess)
-			span.SetAttributes(attribute.String("payrudder.user_id", sess.UserID))
-		case AccessOperator:
-			ok, person, err := s.operatorAllowed(r)
-			if err != nil {
-				writeError(w, r, err)
-				return
-			}
-			if !ok {
-				writeError(w, r, errkey.New(codes.Unauthenticated, "identity.operator.required", "operator access required"))
-				return
-			}
-			ctx = tenant.WithOperator(ctx)
-			if person != "" {
-				ctx = context.WithValue(ctx, operatorKey{}, person)
-			}
-		default:
-			p, err := s.authenticate(r)
-			if err != nil {
-				writeError(w, r, err)
-				return
-			}
-			if !scopeAllows(p.Scope, rt.Method, rt.Path) {
-				writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.scope_denied", "this API key's scope does not allow this request"))
-				return
-			}
-			if rt.Access == AccessSandbox && p.Tenant.Environment != tenant.EnvSandbox {
-				writeError(w, r, errkey.New(codes.PermissionDenied, "identity.api_key.sandbox_only", "sandbox endpoints require a qk_test_ key"))
-				return
-			}
-			// The ingest class is charged per event, which only the handler knows after reading the body.
-			if rt.Class != ratelimit.ClassIngest && !s.charge(w, r, p, rt.Class, 1) {
-				return
-			}
-			ctx = context.WithValue(ctx, principalKey{}, p)
-			ti := p.Tenant
-			ti.Tier = p.Tier
-			ctx = tenant.NewContext(ctx, ti)
-			span.SetAttributes(attribute.String("payrudder.tenant_id", p.Tenant.ID.String()),
-				attribute.String("payrudder.environment", p.Tenant.Environment))
+		ctx, ok := s.authorize(w, r, rt, span)
+		if !ok {
+			return
 		}
 		ctx = metadata.AppendToOutgoingContext(ctx, "x-request-id", requestID(r.Context()))
-		// Only sandbox tenants and operators may force a trace through every consumer (see docs/08-observability.md).
-		if r.Header.Get("X-Payrudder-Debug") == "1" && (rt.Access == AccessOperator || (rt.Access != AccessPublic && principalFrom(ctx).Tenant.Environment == tenant.EnvSandbox)) {
+		if debugAllowed(rt, ctx, r) {
 			ctx = metadata.AppendToOutgoingContext(ctx, "x-payrudder-debug", "1")
 			span.SetAttributes(attribute.Bool("payrudder.debug", true))
 		}
 		rt.Handle(w, r.WithContext(ctx))
 	})
+}
+
+// authorize checks the caller of a route the way its Access says and returns the context the handler runs in, carrying who they are. It writes the refusal
+// itself and reports false.
+func (s *Server) authorize(w http.ResponseWriter, r *http.Request, rt Route, span trace.Span) (context.Context, bool) {
+	switch rt.Access {
+	case AccessPublic:
+		// No principal, no tenant, no rate-limit class: the worker rate-limits by never acting on unconfirmed bodies.
+		return r.Context(), true
+	case AccessSession:
+		return s.authorizeSession(w, r, rt, span)
+	case AccessOperator:
+		return s.authorizeOperator(w, r)
+	default:
+		return s.authorizeTenant(w, r, rt, span)
+	}
+}
+
+// authorizeSession admits a signed-in person, charged against the limits of their own account.
+func (s *Server) authorizeSession(w http.ResponseWriter, r *http.Request, rt Route, span trace.Span) (context.Context, bool) {
+	sess, err := s.session(r)
+	if err != nil {
+		writeError(w, r, err)
+		return nil, false
+	}
+	if !s.chargeKey(w, r, "user:"+sess.UserID, ratelimit.SessionTier, rt.Class, 1) {
+		return nil, false
+	}
+	span.SetAttributes(attribute.String("payrudder.user_id", sess.UserID))
+	return context.WithValue(r.Context(), sessionKey{}, sess), true
+}
+
+// authorizeOperator admits the machine token or the session of an operator user.
+func (s *Server) authorizeOperator(w http.ResponseWriter, r *http.Request) (context.Context, bool) {
+	ok, person, err := s.operatorAllowed(r)
+	if err != nil {
+		writeError(w, r, err)
+		return nil, false
+	}
+	if !ok {
+		writeError(w, r, errkey.New(codes.Unauthenticated, "identity.operator.required", "operator access required"))
+		return nil, false
+	}
+	ctx := tenant.WithOperator(r.Context())
+	if person != "" {
+		ctx = context.WithValue(ctx, operatorKey{}, person)
+	}
+	return ctx, true
+}
+
+// authorizeTenant admits the holder of an API key (or a person or operator acting as a tenant) to a tenant route.
+func (s *Server) authorizeTenant(w http.ResponseWriter, r *http.Request, rt Route, span trace.Span) (context.Context, bool) {
+	p, err := s.authenticate(r)
+	if err != nil {
+		writeError(w, r, err)
+		return nil, false
+	}
+	if !scopeAllows(p.Scope, rt.Method, rt.Path) {
+		writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.scope_denied", "this API key's scope does not allow this request"))
+		return nil, false
+	}
+	if rt.Access == AccessSandbox && p.Tenant.Environment != tenant.EnvSandbox {
+		writeError(w, r, errkey.New(codes.PermissionDenied, "identity.api_key.sandbox_only", "sandbox endpoints require a qk_test_ key"))
+		return nil, false
+	}
+	// The ingest class is charged per event, which only the handler knows after reading the body.
+	if rt.Class != ratelimit.ClassIngest && !s.charge(w, r, p, rt.Class, 1) {
+		return nil, false
+	}
+	ctx := context.WithValue(r.Context(), principalKey{}, p)
+	ti := p.Tenant
+	ti.Tier = p.Tier
+	span.SetAttributes(attribute.String("payrudder.tenant_id", p.Tenant.ID.String()), attribute.String("payrudder.environment", p.Tenant.Environment))
+	return tenant.NewContext(ctx, ti), true
+}
+
+// debugAllowed says whether X-Payrudder-Debug: 1 may force a trace through every consumer (see docs/08-observability.md). Only sandbox tenants and
+// operators may.
+func debugAllowed(rt Route, ctx context.Context, r *http.Request) bool {
+	if r.Header.Get("X-Payrudder-Debug") != "1" {
+		return false
+	}
+	switch rt.Access {
+	case AccessOperator:
+		return true
+	case AccessPublic:
+		return false
+	}
+	return principalFrom(ctx).Tenant.Environment == tenant.EnvSandbox
 }
 
 type principalKey struct{}
@@ -308,24 +341,21 @@ func (s *Server) actAs(ctx context.Context, id string) (auth.Principal, error) {
 		}
 		return auth.Principal{}, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable")
 	}
-	return principalOf(resp.GetTenant()), nil
+	return principalOf(resp.GetTenant())
 }
 
-// principalOf is the principal of a tenant: what a request acting as that tenant carries.
-func principalOf(t *plansv1.Tenant) auth.Principal {
+// principalOf is the principal of a tenant: what a request acting as that tenant carries. A tenant whose id is not a UUID is plans-svc's fault, not the
+// caller's: the request is refused with 503 rather than sent on to the other services as the nil tenant.
+func principalOf(t *plansv1.Tenant) (auth.Principal, error) {
+	id, err := uuid.Parse(t.GetId())
+	if err != nil {
+		return auth.Principal{}, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable")
+	}
 	env := tenant.EnvLive
 	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
 		env = tenant.EnvSandbox
 	}
-	tier := "free"
-	switch t.GetTier() {
-	case plansv1.TenantTier_TENANT_TIER_STANDARD:
-		tier = "standard"
-	case plansv1.TenantTier_TENANT_TIER_ENTERPRISE:
-		tier = "enterprise"
-	}
-	id, _ := uuid.Parse(t.GetId())
-	return auth.Principal{Tenant: tenant.Info{ID: id, Environment: env, Timezone: t.GetTimezone()}, Tier: tier}
+	return auth.Principal{Tenant: tenant.Info{ID: id, Environment: env, Timezone: t.GetTimezone()}, Tier: auth.TierName(t.GetTier())}, nil
 }
 
 // operatorOK reports whether the request carries the machine operator token (PAYRUDDER_OPERATOR_TOKEN): the credential of the API, payrudderctl, the demo and the

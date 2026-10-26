@@ -31,24 +31,33 @@ const (
 	ClassAnalytics Class = "analytics"
 )
 
-// Tiers holds the limit per class for each tenant tier (docs/03-services/gateway.md#rate-limiting).
-var Tiers = map[string]map[Class]Limit{
-	"free": {
+// The tenant tiers, the names plans-svc sends and the keys of tiers below.
+const (
+	TierFree       = "free"
+	TierStandard   = "standard"
+	TierEnterprise = "enterprise"
+	// SessionTier is the tier a signed-in person's requests are limited at: a person has no tenant tier of their own.
+	SessionTier = TierStandard
+)
+
+// tiers holds the limit per class for each tenant tier (docs/03-services/gateway.md#rate-limiting).
+var tiers = map[string]map[Class]Limit{
+	TierFree: {
 		ClassIngest: {100, 500}, ClassReadHot: {50, 100}, ClassRead: {20, 40}, ClassWrite: {5, 10}, ClassAnalytics: {0.5, 5},
 	},
-	"standard": {
+	TierStandard: {
 		ClassIngest: {2000, 10000}, ClassReadHot: {500, 1000}, ClassRead: {200, 400}, ClassWrite: {50, 100}, ClassAnalytics: {5, 20},
 	},
-	"enterprise": {
+	TierEnterprise: {
 		ClassIngest: {10000, 50000}, ClassReadHot: {2000, 4000}, ClassRead: {800, 1600}, ClassWrite: {200, 400}, ClassAnalytics: {20, 50},
 	},
 }
 
-// LimitFor returns the limit of a tier and class. Unknown tiers get free limits.
-func LimitFor(tier string, class Class) Limit {
-	t, ok := Tiers[tier]
+// limitFor returns the limit of a tier and class. Unknown tiers get free limits.
+func limitFor(tier string, class Class) Limit {
+	t, ok := tiers[tier]
 	if !ok {
-		t = Tiers["free"]
+		t = tiers[TierFree]
 	}
 	return t[class]
 }
@@ -87,7 +96,7 @@ func NewLimiter(rdb redis.Scripter, replicas int, log *slog.Logger) (*Limiter, e
 
 // Allow charges cost units (events for ingest, 1 otherwise) for the tenant and class.
 func (l *Limiter) Allow(ctx context.Context, tenantID, tier string, class Class, cost int) (Decision, error) {
-	lim := LimitFor(tier, class)
+	lim := limitFor(tier, class)
 	if cost < 1 {
 		cost = 1
 	}

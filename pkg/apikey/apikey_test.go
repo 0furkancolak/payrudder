@@ -48,3 +48,9 @@ func TestParseRejects(t *testing.T) {
 		}
 	}
 }
+
+func TestCacheKeyIsTheGatewaysKey(t *testing.T) {
+	if got := apikey.CacheKey("abcd1234"); got != "gw:apikey:abcd1234" {
+		t.Errorf("CacheKey = %q; the gateway cache and docs/03-services/gateway.md say gw:apikey:{prefix}", got)
+	}
+}
