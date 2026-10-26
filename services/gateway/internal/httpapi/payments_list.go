@@ -58,8 +58,7 @@ func (s *Server) listPayments(w http.ResponseWriter, r *http.Request) {
 		if c := b.OccurredAt.Compare(a.OccurredAt); c != 0 {
 			return c
 		}
-		bi, _ := b.ID.Int64()
-		ai, _ := a.ID.Int64()
+		bi, ai := b.id(), a.id()
 		return cmp.Compare(bi, ai)
 	})
 	out := paymentsResponse{Payments: []paymentView{}, Truncated: len(rows) >= ledgerWindowRows}

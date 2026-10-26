@@ -241,12 +241,12 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 		v.Logo = sc.logo()
 	}
 	if t := inv.GetFinalizeTime(); t != nil {
-		v.Date = t.AsTime().UTC().Format("2006-01-02")
+		v.Date = t.AsTime().UTC().Format(time.DateOnly)
 	}
 	for _, l := range inv.GetLines() {
 		line := hostedLine{Description: l.GetDescription(), Amount: money.FormatMinorGrouped(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0}
 		if f, t := l.GetServiceFrom(), l.GetServiceTo(); f != nil && t != nil {
-			line.Period = f.AsTime().UTC().Format("2006-01-02") + " – " + t.AsTime().UTC().Format("2006-01-02")
+			line.Period = f.AsTime().UTC().Format(time.DateOnly) + " – " + t.AsTime().UTC().Format(time.DateOnly)
 		}
 		v.Lines = append(v.Lines, line)
 	}
@@ -606,7 +606,7 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 		v.Logo = sc.logo()
 	}
 	if t := inv.GetFinalizeTime(); t != nil {
-		v.Date = t.AsTime().UTC().Format("2006-01-02")
+		v.Date = t.AsTime().UTC().Format(time.DateOnly)
 	}
 	for _, l := range inv.GetLines() {
 		v.Lines = append(v.Lines, hostedLine{Description: l.GetDescription(), Amount: money.FormatMinorGrouped(l.GetAmountMinor(), exp), Negative: l.GetAmountMinor() < 0})
@@ -614,7 +614,7 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 	rows, _ := s.ledgerLookup(r.Context(), resp.GetPayment().GetTenantId(), []string{inv.GetId()})
 	for _, row := range rows {
 		if row.InvoiceID == inv.GetId() && row.Kind == "charge" && row.Status == "succeeded" {
-			v.PaidOn, v.PaidWith = row.OccurredAt.UTC().Format("2006-01-02"), row.Provider
+			v.PaidOn, v.PaidWith = row.OccurredAt.UTC().Format(time.DateOnly), row.Provider
 		}
 	}
 	s.render(w, r, http.StatusOK, "receipt", v)

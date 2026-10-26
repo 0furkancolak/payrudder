@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -88,7 +89,7 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 		row := portalInvoiceRow{Number: inv.GetNumber(), State: state, StateLabel: v.L["st_"+state], Total: money.FormatMinorGrouped(inv.GetTotalMinor(), exp), Currency: inv.GetCurrency(),
 			Payable: inv.GetPayable(), Href: "/c/" + token + "/invoices/" + inv.GetId() + q}
 		if t := inv.GetIssueTime(); t != nil {
-			row.Date = t.AsTime().UTC().Format("2006-01-02")
+			row.Date = t.AsTime().UTC().Format(time.DateOnly)
 		}
 		v.Invoices = append(v.Invoices, row)
 		byID[inv.GetId()] = known{inv.GetNumber(), exp}
@@ -105,7 +106,7 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			continue // a row of an invoice that is not this customer's is never shown
 		}
-		p := portalPaymentRow{Date: row.OccurredAt.UTC().Format("2006-01-02"), Kind: v.L["kind_"+row.Kind], Number: k.number, Status: v.L[statusKey[row.Status]],
+		p := portalPaymentRow{Date: row.OccurredAt.UTC().Format(time.DateOnly), Kind: v.L["kind_"+row.Kind], Number: k.number, Status: v.L[statusKey[row.Status]],
 			Provider: row.Provider, Currency: row.Currency, Amount: money.FormatMinorGrouped(row.amount(), k.exponent), Negative: row.Kind == "refund"}
 		if p.Negative {
 			p.Amount = "-" + p.Amount
@@ -116,7 +117,7 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 	for _, l := range resp.GetCreditLots() {
 		row := portalLotRow{Granted: money.FormatMinorGrouped(l.GetGranted(), 0), Remaining: money.FormatMinorGrouped(l.GetRemaining(), 0)}
 		if t := l.GetExpireTime(); t != nil {
-			row.Expires = t.AsTime().UTC().Format("2006-01-02")
+			row.Expires = t.AsTime().UTC().Format(time.DateOnly)
 		}
 		v.Lots = append(v.Lots, row)
 	}
