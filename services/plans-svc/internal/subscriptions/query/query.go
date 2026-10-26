@@ -84,7 +84,7 @@ func (r *Queries) List(ctx context.Context, req *plansv1.ListSubscriptionsReques
 	if !ok {
 		return nil, domain.Invalid("page_size", "1..200")
 	}
-	before := uuid.MustParse("ffffffff-ffff-ffff-ffff-ffffffffffff")
+	before := uuid.Max
 	if tok := req.GetPageToken(); tok != "" {
 		id, err := uuid.Parse(tok)
 		if err != nil {

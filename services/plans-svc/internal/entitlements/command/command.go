@@ -15,8 +15,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
-// Topic is the compacted topic limits-svc builds its entitlement map from.
-const Topic = "plans.entitlements.v1"
+// topic is the compacted topic limits-svc builds its entitlement map from.
+const topic = "plans.entitlements.v1"
 
 // Publish writes, in the caller's transaction, one outbox row per entitlement of the plan version:
 // the state while the subscription is (or will be) active, or a tombstone once it has ended.
@@ -52,7 +52,7 @@ func Publish(ctx context.Context, q *sqlc.Queries, tenantID, customerID, planVer
 				return err
 			}
 		}
-		if err := q.InsertOutbox(ctx, sqlc.InsertOutboxParams{Topic: Topic, PartitionKey: key, Payload: payload}); err != nil {
+		if err := q.InsertOutbox(ctx, sqlc.InsertOutboxParams{Topic: topic, PartitionKey: key, Payload: payload}); err != nil {
 			return err
 		}
 	}

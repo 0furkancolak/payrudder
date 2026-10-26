@@ -22,12 +22,12 @@ func (v *Violations) Add(field, description string) {
 }
 
 // Empty reports whether nothing was recorded.
-func (v *Violations) Empty() bool { return len(v.list) == 0 }
+func (v *Violations) empty() bool { return len(v.list) == 0 }
 
 // Err returns an InvalidArgument status with BadRequest details and the key plans.request.invalid (the console puts the first field and its
 // description into the translated text), or nil.
 func (v *Violations) Err() error {
-	if v.Empty() {
+	if v.empty() {
 		return nil
 	}
 	st := status.Convert(errkey.New(codes.InvalidArgument, "plans.request.invalid", "invalid request: "+v.list[0].GetField()+": "+v.list[0].GetDescription()))

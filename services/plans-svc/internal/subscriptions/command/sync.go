@@ -44,7 +44,7 @@ func (c *Commands) parseSync(req *plansv1.SyncProviderSubscriptionRequest) (sync
 	if req.GetProviderRef() == "" {
 		return a, domain.Invalid("provider_ref", "required")
 	}
-	if o := req.GetOwner(); o != "quotify" && o != "provider" {
+	if o := req.GetOwner(); o != domain.OwnerPayrudder && o != domain.OwnerProvider {
 		return a, domain.Invalid("owner", `"quotify" or "provider"`)
 	}
 	a.state, a.known = providerStates[req.GetProviderStatus()]
@@ -96,7 +96,7 @@ func (c *Commands) syncProvider(ctx context.Context, q *sqlc.Queries, tenantID u
 	if err != nil {
 		return nil, err
 	}
-	linked := n == 1 && req.GetOwner() == "provider"
+	linked := n == 1 && req.GetOwner() == domain.OwnerProvider
 	if linked && a.known {
 		if err := c.applyProviderState(ctx, q, tenantID, row, a); err != nil {
 			return nil, err
@@ -194,7 +194,7 @@ func (c *Commands) followProviderPlan(ctx context.Context, q *sqlc.Queries, tena
 		next = convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, at)
 	}
 	nr, err := SwitchTo(ctx, q, c.now(), tenantID, row, Successor{PlanVersionID: pv.ID, Interval: iv, State: next, TrialEnds: row.TrialEndsAt, At: at,
-		Anchor: row.BillingAnchor, FeeTiming: "arrears", Owner: "provider", ProviderRef: row.ProviderRef})
+		Anchor: row.BillingAnchor, FeeTiming: subscription.FeeInArrears, Owner: domain.OwnerProvider, ProviderRef: row.ProviderRef})
 	if err != nil {
 		return row.ID, err
 	}

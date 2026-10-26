@@ -69,20 +69,13 @@ func Duration(iv pgtype.Interval) time.Duration {
 
 func ts(t time.Time) *timestamppb.Timestamp { return timestamppb.New(t) }
 
-func str(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}
-
 // Tenant maps a tenant row.
 func Tenant(t sqlc.Tenant) *plansv1.Tenant {
 	return &plansv1.Tenant{
 		Id: t.ID.String(), AccountId: t.AccountID.String(), Environment: domain.EnvironmentFromDB(t.Environment),
 		Name: t.Name, Tier: domain.TierFromDB(t.Tier), Currency: t.Currency, Timezone: t.Timezone,
 		GracePeriod: durationpb.New(Duration(t.GracePeriod)), CreateTime: ts(t.CreatedAt),
-		InvoiceLogoAssetId: logoID(t.InvoiceLogoAssetID), AppId: t.AppID.String(), Address: AddressFromJSON(t.Address),
+		InvoiceLogoAssetId: UUIDStr(t.InvoiceLogoAssetID), AppId: t.AppID.String(), Address: AddressFromJSON(t.Address),
 		Legal: LegalFromJSON(t.Legal), EInvoiceOn: t.EInvoiceOn, BankTransfer: BankTransferFromJSON(t.BankTransfer),
 		Status: domain.StatusFromDB(t.Status), ActivateTime: tsp(t.ActivatedAt), TermsAcceptTime: tsp(t.TermsAcceptedAt),
 	}
@@ -171,8 +164,8 @@ func APIKey(k sqlc.ApiKey) *plansv1.ApiKey {
 func Customer(c sqlc.Customer) *plansv1.Customer {
 	return &plansv1.Customer{
 		Id: c.ID.String(), ExternalId: c.ExternalID, Name: c.Name, Email: c.Email,
-		PaymentMethod: str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
-		Country: str(c.Country), BillingCurrency: str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
+		PaymentMethod: Str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
+		Country: Str(c.Country), BillingCurrency: Str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
 		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered,
 	}
 }
@@ -229,7 +222,7 @@ func Meter(m sqlc.Meter) (*plansv1.Meter, error) {
 	}
 	return &plansv1.Meter{
 		Code: m.Code, Version: m.Version, Aggregation: domain.AggregationFromDB(m.Aggregation),
-		ValueProperty: str(m.ValueProperty), Filter: filter, QuantityScale: uint32(max(m.QuantityScale, 0)), //nolint:gosec // 0..6 by CHECK
+		ValueProperty: Str(m.ValueProperty), Filter: filter, QuantityScale: uint32(max(m.QuantityScale, 0)), //nolint:gosec // 0..6 by CHECK
 		UnitLabel: m.UnitLabel, CreateTime: ts(m.CreatedAt),
 	}, nil
 }
@@ -279,7 +272,7 @@ var stateToProto = map[subscription.State]plansv1.SubscriptionState{
 }
 
 func feeTimingToProto(t string) plansv1.FeeTiming {
-	if t == "advance" {
+	if t == subscription.FeeInAdvance {
 		return plansv1.FeeTiming_FEE_TIMING_ADVANCE
 	}
 	return plansv1.FeeTiming_FEE_TIMING_ARREARS
@@ -288,9 +281,6 @@ func feeTimingToProto(t string) plansv1.FeeTiming {
 // Subscription maps subscription fields.
 func Subscription(s SubscriptionFields) *plansv1.Subscription {
 	now := s.Now
-	if now.IsZero() {
-		now = time.Now()
-	}
 	out := &plansv1.Subscription{
 		Id: s.ID, CustomerId: s.CustomerID, CustomerExternalId: s.CustomerExternalID, PlanVersionId: s.PlanVersionID,
 		StartTime: ts(s.Start), CreateTime: ts(s.Created), Currency: s.Currency, CancelAtPeriodEnd: s.CancelAtPeriodEnd, ChangedFromId: s.ChangedFromID, Provider: s.Provider, ProviderRef: s.ProviderRef, Owner: ownerOrDefault(s.Owner), PlanCode: s.PlanCode, PlanVersion: s.PlanVersion,
@@ -316,7 +306,7 @@ func Subscription(s SubscriptionFields) *plansv1.Subscription {
 
 func ownerOrDefault(o string) string {
 	if o == "" {
-		return "quotify"
+		return domain.OwnerPayrudder
 	}
 	return o
 }

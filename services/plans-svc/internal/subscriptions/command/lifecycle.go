@@ -97,7 +97,7 @@ func requireCancellable(row sqlc.GetSubscriptionRow, end time.Time, creditUnused
 	if !row.OpenEnded {
 		return errkey.New(codes.FailedPrecondition, "plans.subscription.ended", "subscription already ended")
 	}
-	if creditUnused && row.FeeTiming != "advance" {
+	if creditUnused && row.FeeTiming != subscription.FeeInAdvance {
 		return errkey.New(codes.FailedPrecondition, "plans.subscription.billed_in_arrears", "this subscription is billed in arrears: no fee was paid in advance")
 	}
 	if !end.After(row.StartTime) {

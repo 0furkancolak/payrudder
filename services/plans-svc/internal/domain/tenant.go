@@ -103,10 +103,10 @@ func ValidateCreateAccount(req *plansv1.CreateAccountRequest) (AccountSettings, 
 	}
 	if req.GetGracePeriod() == nil {
 		v.Add("grace_period", "required, between 0s and 168h")
-	} else if g, err := ValidateGrace(req.GetGracePeriod().AsDuration()); err != nil {
+	} else if err := ValidateGrace(req.GetGracePeriod().AsDuration()); err != nil {
 		v.Add("grace_period", err.Error())
 	} else {
-		s.Grace = g
+		s.Grace = req.GetGracePeriod().AsDuration()
 	}
 	tier := req.GetTier()
 	if tier == plansv1.TenantTier_TENANT_TIER_UNSPECIFIED {
@@ -135,14 +135,14 @@ func ValidateTimezone(tz string) error {
 }
 
 // ValidateGrace checks 0 ≤ grace ≤ 7 days with whole-second precision.
-func ValidateGrace(d time.Duration) (time.Duration, error) {
+func ValidateGrace(d time.Duration) error {
 	if d < 0 || d > MaxGrace {
-		return 0, fmt.Errorf("must be between 0s and 168h")
+		return fmt.Errorf("must be between 0s and 168h")
 	}
 	if d%time.Second != 0 {
-		return 0, fmt.Errorf("must be whole seconds")
+		return fmt.Errorf("must be whole seconds")
 	}
-	return d, nil
+	return nil
 }
 
 // SandboxPaymentMethods are the mock-psp scenario tokens (docs/03-services/workers.md#payments-worker).

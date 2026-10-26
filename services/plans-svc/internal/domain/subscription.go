@@ -3,9 +3,17 @@ package domain
 import (
 	"regexp"
 
-	"github.com/0furkancolak/payrudder/pkg/errkey"
-
 	"google.golang.org/grpc/codes"
+
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/payments"
+)
+
+// Who runs a subscription (subscriptions.owner): Payrudder itself, or the payment provider the customer pays through. The stored value of the first
+// predates the rename.
+const (
+	OwnerPayrudder = string(payments.OwnerPayrudder)
+	OwnerProvider  = string(payments.OwnerProvider)
 )
 
 var providerNameRe = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
@@ -15,7 +23,7 @@ func ValidProviderName(s string) bool { return providerNameRe.MatchString(s) }
 
 // RequirePayrudderOwned refuses to change locally a subscription a provider runs: the change would not reach the provider.
 func RequirePayrudderOwned(owner string, provider *string) error {
-	if owner == "provider" {
+	if owner == OwnerProvider {
 		name := ""
 		if provider != nil {
 			name = *provider

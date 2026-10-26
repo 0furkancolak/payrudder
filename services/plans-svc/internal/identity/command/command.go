@@ -192,7 +192,7 @@ func (c *Commands) SignIn(ctx context.Context, req *plansv1.SignInRequest) (Open
 	email := NormalizeEmail(req.GetEmail())
 	password := req.GetPassword()
 	if email == "" || password == "" {
-		return Opened{}, domainInvalid("email", "e-mail and password are required")
+		return Opened{}, domain.Invalid("email", "e-mail and password are required")
 	}
 	if len(password) > credential.MaxPasswordLen || len(email) > 254 {
 		return Opened{}, invalidCredentials()
@@ -277,8 +277,6 @@ func (c *Commands) burn(ctx context.Context, password string) error {
 	}
 	return invalidCredentials()
 }
-
-func domainInvalid(field, msg string) error { return domain.Invalid(field, msg) }
 
 // SignOut revokes the session of the token. An unknown token is not an error: the caller wanted it gone and it is.
 func (c *Commands) SignOut(ctx context.Context, token string) error {

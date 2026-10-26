@@ -80,7 +80,7 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 		}
 		feeDue := qt.NewFeeDue
 		nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), ti.ID, row, subscriptionscmd.Successor{PlanVersionID: pc.NewPV.ID, Interval: pc.NewInterval, State: state, TrialEnds: row.TrialEndsAt, At: pc.At,
-			Anchor: qt.NewAnchor, FeeTiming: "advance", FeeDue: &feeDue})
+			Anchor: qt.NewAnchor, FeeTiming: subscription.FeeInAdvance, FeeDue: &feeDue})
 		if err != nil {
 			return err
 		}
@@ -173,7 +173,7 @@ func (c *Commands) ApplyScheduled(ctx context.Context, req *plansv1.ApplySchedul
 			}
 			effective := dc.EffectiveAt
 			nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), ti.ID, row, subscriptionscmd.Successor{PlanVersionID: pv.ID, Interval: subscription.Interval(dc.Interval), State: subscription.Active,
-				At: effective, Anchor: effective, FeeTiming: "advance", FeeDue: &effective})
+				At: effective, Anchor: effective, FeeTiming: subscription.FeeInAdvance, FeeDue: &effective})
 			if err != nil {
 				return err
 			}

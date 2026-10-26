@@ -116,7 +116,7 @@ func (c *Commands) requirePlanChangeable(row sqlc.GetSubscriptionRow, at time.Ti
 	if !row.OpenEnded || row.CancelAtPeriodEnd {
 		return "", errkey.New(codes.FailedPrecondition, "plans.change.subscription_ended", "an ended or ending subscription cannot change plan")
 	}
-	if row.FeeTiming == "advance" {
+	if row.FeeTiming == subscription.FeeInAdvance {
 		return "", errkey.New(codes.FailedPrecondition, "plans.change.use_change_subscription", "a subscription whose fee is invoiced in advance is changed with ChangeSubscription (POST /v1/subscriptions/{id}/change), which prices the change and credits the unused time")
 	}
 	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, c.now())
