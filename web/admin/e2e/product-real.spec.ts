@@ -189,6 +189,7 @@ test.describe("product app, real stack", () => {
   });
 
   test("six languages, Arabic right to left, dark mode, phone and tablet width: no sideways scroll, no console noise", async ({ page }) => {
+    test.setTimeout(900_000); // every page of the menu at three widths, each waiting for the network to settle
     const problems = watch(page);
     await signInUi(page, email);
     await page.waitForURL("**/app");
