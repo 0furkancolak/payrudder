@@ -11,7 +11,18 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
+
+// Pooled is the pooled database behind a Beginner: the pool itself, or the pooled pool of a cells-mode router. What is global (the consumer's offsets) is read there,
+// whatever the tenant's placement.
+func Pooled(db pgxx.Beginner) sqlc.DBTX {
+	if r, ok := db.(*pgxx.Router); ok {
+		return r.Pooled()
+	}
+	return db.(sqlc.DBTX) // a *pgxpool.Pool
+}
 
 // MapErr turns an error of a read or a write into the error a client sees: a status passes through, a cancelled context becomes its
 // status, and anything else is logged and answered with a fixed "database unavailable".

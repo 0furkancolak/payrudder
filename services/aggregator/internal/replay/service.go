@@ -12,6 +12,7 @@ import (
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 )
 
 // Service implements aggregatorv1.ReplayServiceServer (operators only).
@@ -48,6 +49,9 @@ func mapErr(err error) error {
 		return errkey.New(codes.NotFound, "aggregator.replay.not_found", "no such replay job")
 	case errors.Is(err, ErrOpen), errors.Is(err, ErrState):
 		return errkey.New(codes.FailedPrecondition, "aggregator.replay.bad_state", err.Error())
+	case errors.Is(err, tenantdir.ErrNotServing):
+		// A move of the tenant's data is in progress (ADR 0018): expected, brief, and nothing was changed.
+		return status.Error(codes.Unavailable, "the tenant is being moved; retry is safe")
 	}
 	return status.Error(codes.Internal, "internal error")
 }

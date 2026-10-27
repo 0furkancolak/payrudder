@@ -22,7 +22,7 @@ PAYRUDDER_CELLS={"c1":{"app":"postgres://ingest_app:…@c1-db/ingest_db","system
 
 The cell database is prepared like a service database (`deploy/compose/postgres/01-databases.sh`: the three roles, `REVOKE CREATE ON SCHEMA public FROM PUBLIC`), and nothing is migrated into its `public` schema. With `PAYRUDDER_MIGRATE_ON_START=true` the service creates the `shared` schema and applies its tenant migrations to every tenant schema of every cell (a failing tenant is logged and the service starts; with `PAYRUDDER_MIGRATE_ONLY=true` a failing tenant fails the job). `payrudderctl cells migrate` does the same from outside. A service in cells mode needs `PAYRUDDER_PLANS_ADDR` (assets-svc did not have it before; ingest-svc already did): the directory is plans-svc's.
 
-Services converted so far: **ingest-svc**, **assets-svc**. Every other service has no tenant schema yet; do not set `PAYRUDDER_CELLS` for it.
+Services converted so far: **ingest-svc**, **assets-svc**, **aggregator**. Every other service has no tenant schema yet; do not set `PAYRUDDER_CELLS` for it.
 
 ## The operator tool
 
@@ -36,7 +36,9 @@ Services converted so far: **ingest-svc**, **assets-svc**. Every other service h
     "ingest": {"migrations": "services/ingest-svc/migrations/tenant", "roles": ["ingest_app", "ingest_system"],
                "pooled": "${INGEST_MIGRATOR_DSN}", "cells": {"c1": "${INGEST_C1_MIGRATOR_DSN}", "c2": "${INGEST_C2_MIGRATOR_DSN}"}},
     "assets": {"migrations": "services/assets-svc/migrations/tenant", "roles": ["assets_app", "assets_system"],
-               "pooled": "${ASSETS_MIGRATOR_DSN}", "cells": {"c1": "${ASSETS_C1_MIGRATOR_DSN}", "c2": "${ASSETS_C2_MIGRATOR_DSN}"}}
+               "pooled": "${ASSETS_MIGRATOR_DSN}", "cells": {"c1": "${ASSETS_C1_MIGRATOR_DSN}", "c2": "${ASSETS_C2_MIGRATOR_DSN}"}},
+    "aggregator": {"migrations": "services/aggregator/migrations/tenant", "roles": ["aggregator_app", "aggregator_system"],
+                   "pooled": "${AGGREGATOR_MIGRATOR_DSN}", "cells": {"c1": "${AGGREGATOR_C1_MIGRATOR_DSN}", "c2": "${AGGREGATOR_C2_MIGRATOR_DSN}"}}
   }
 }
 ```
@@ -94,5 +96,6 @@ Moves are offline by design: a large tenant is down for the time of its copy. Th
 - **The relay's `LISTEN`.** It needs a session connection: point the system DSN of a cell straight at the database, or accept that the outbox sweep (every 2 s) carries the load.
 - **Cost of the jobs.** A job visits every serving tenant of every cell on each run (one transaction per tenant). That is the design (cells hold few, large tenants); a cell with thousands of tenants would need the jobs batched per cell.
 - **Region.** `region` is recorded for the operator and shown by the directory; nothing routes on it.
+- **The aggregator's consumer and moves.** `consumer_offsets` stays in the pooled database whatever the placements, and the usage consumer writes each cell tenant in its own transaction before the offset moves, so a batch with a failing tenant is retried whole (the tenants that were durable are skipped by their inbox). A tenant that is `moving` stops the partitions that carry its events, because skipping its events would lose them; moves are offline, so keep them short. A tenant with an open replay keeps the job across the move (the job is not counted as failed while the tenant is not serving).
 - **Adding a table.** A new migration of a converted service is written twice: `migrations/NNNNN_….sql` and `migrations/tenant/NNNNN_….sql`. `TestTenantSchemaMatchesPublic` fails until the second exists and matches. Roll it out with the service (`PAYRUDDER_MIGRATE_ON_START`) or `cells migrate`.
 - **Deleting a tenant** in a cell is `DROP SCHEMA t_<id> CASCADE` in each service's cell database after its placement is gone; there is no tool for it.

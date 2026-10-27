@@ -33,25 +33,30 @@ const maxDiffs = 100
 
 // verify compares generation source and target for the tenant's periods [from, to], for on-time aggregates and late usage.
 func (m *Manager) verify(ctx context.Context, job *Job) (*Verification, error) {
-	q := sqlc.New(m.cfg.Pool)
 	out := &Verification{}
-	usage, err := q.CompareUsage(ctx, sqlc.CompareUsageParams{
-		TenantID: job.TenantID, Source: job.SourceGeneration, Target: job.TargetGeneration, FromPeriod: job.From, ToPeriod: job.To,
+	err := m.at(ctx, job.TenantID, func(q *sqlc.Queries) error {
+		usage, err := q.CompareUsage(ctx, sqlc.CompareUsageParams{
+			TenantID: job.TenantID, Source: job.SourceGeneration, Target: job.TargetGeneration, FromPeriod: job.From, ToPeriod: job.To,
+		})
+		if err != nil {
+			return fmt.Errorf("verify usage: %w", err)
+		}
+		for _, r := range usage {
+			out.record("usage", r)
+		}
+		late, err := q.CompareLateUsage(ctx, sqlc.CompareLateUsageParams{
+			TenantID: job.TenantID, Source: job.SourceGeneration, Target: job.TargetGeneration, FromPeriod: job.From, ToPeriod: job.To,
+		})
+		if err != nil {
+			return fmt.Errorf("verify late: %w", err)
+		}
+		for _, r := range late {
+			out.record("late", sqlc.CompareUsageRow(r)) // both queries return the same columns
+		}
+		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("verify usage: %w", err)
-	}
-	for _, r := range usage {
-		out.record("usage", r)
-	}
-	late, err := q.CompareLateUsage(ctx, sqlc.CompareLateUsageParams{
-		TenantID: job.TenantID, Source: job.SourceGeneration, Target: job.TargetGeneration, FromPeriod: job.From, ToPeriod: job.To,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("verify late: %w", err)
-	}
-	for _, r := range late {
-		out.record("late", sqlc.CompareUsageRow(r)) // both queries return the same columns
+		return nil, err
 	}
 	return out, nil
 }

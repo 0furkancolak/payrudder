@@ -305,7 +305,8 @@ func TestUniqueAndLastAreOrderIndependent(t *testing.T) {
 	f.now = now
 	run := func(seed uint64) result {
 		// A new tenant and customer per run, in the same database.
-		f.tenant, f.customer = uuid.New(), uuid.New()
+		f.switchTenant(uuid.New())
+		f.customer = uuid.New()
 		perm := rand.New(rand.NewPCG(seed, seed+1)).Perm(len(events))
 		var batch []uev
 		flush := func() {
