@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { firstError } from "@/shared/lib/errors";
@@ -25,8 +26,8 @@ function docErrorText(d: { last_error_key?: string; last_error?: string }) {
   const path = errorKeyPath(d.last_error_key);
   return path && te(path) ? t(path) : (d.last_error ?? "");
 }
-function cancel(id: string) {
-  if (window.confirm(t("einvoice.confirmCancel"))) actions.cancel.mutate(id);
+async function cancel(id: string) {
+  if ((await askConfirm({ body: t("einvoice.confirmCancel") }))) actions.cancel.mutate(id);
 }
 const failure = computed(() => firstError(actions.retry, actions.cancel, actions.download));
 </script>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomerLabel from "@/features/customers/CustomerLabel.vue";
 import { useParams } from "@tanstack/vue-router";
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -106,7 +107,7 @@ const day = (v?: string | null) => fmt.date(v, "day");
         <TableBody>
           <TableRow v-for="(inv, i) in rows" :key="inv.id" class="cursor-pointer" :data-testid="`invoice-${inv.number || inv.id}`" @click="shown = i">
             <TableCell class="font-medium whitespace-nowrap">{{ inv.number || t("product.billing.invoices.draft") }}</TableCell>
-            <TableCell>{{ inv.customer_external_id }}</TableCell>
+            <TableCell><CustomerLabel :id="inv.customer_external_id" :tenant-id="tenantId" /></TableCell>
             <TableCell class="text-muted-foreground whitespace-nowrap max-md:hidden">{{ inv.period_id }}</TableCell>
             <TableCell class="text-muted-foreground whitespace-nowrap max-md:hidden">{{ day(inv.create_time) }}</TableCell>
             <TableCell><StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill></TableCell>

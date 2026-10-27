@@ -63,7 +63,7 @@ function apply() {
         </Button>
       </div>
     </Alert>
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="grid gap-3 sm:grid-cols-2">
       <ChangeSelects v-model:plan="plan" v-model:interval="interval" v-model:timing="timing" v-model:proration="proration" :packages="packages" show-timing none-key="billing.subscriptions.change.none" @change="reset" />
     </div>
     <div class="grid gap-1.5 sm:max-w-xs">
@@ -85,6 +85,7 @@ function apply() {
       <Button variant="outline" :disabled="nothingChosen || act.previewChange.isPending.value" @click="act.previewChange.mutate(input)">{{ t("billing.subscriptions.change.preview") }}</Button>
       <Button :disabled="nothingChosen || quote === undefined || act.change.isPending.value" @click="apply">{{ t("billing.subscriptions.change.apply") }}</Button>
     </div>
+    <p v-if="nothingChosen && parsedSeats !== 'bad'" class="text-muted-foreground text-xs" data-testid="change-preview-hint">{{ t("billing.subscriptions.change.previewHint") }}</p>
     <QuoteSummary v-if="quote" :quote="quote" :currency="subscription.currency" detailed />
     <ErrorText :error="failure" />
   </section>

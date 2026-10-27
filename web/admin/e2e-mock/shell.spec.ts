@@ -36,7 +36,7 @@ test.describe("sidebar on a desktop", () => {
     await page.waitForURL(`**/app/apps/${APP}?*`);
     await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
     await expect(nav.getByRole("link", { name: "Members" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Settings", exact: true })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Organisation settings", exact: true })).toBeVisible();
     expect((await sidebar.boundingBox())?.width).toBeGreaterThan(200);
     await shoot(page, "30-sidebar-org");
 
@@ -91,7 +91,7 @@ test.describe("sidebar on a desktop", () => {
     await expect(sidebar).toHaveAttribute("data-collapsed", "true");
     await expect.poll(async () => (await sidebar.boundingBox())?.width ?? 999).toBeLessThan(100);
     // Labels are still there for assistive technology and as tooltips.
-    await expect(sidebar.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute("title", "Settings");
+    await expect(sidebar.getByRole("link", { name: "Organisation settings", exact: true })).toHaveAttribute("title", "Organisation settings");
     await shoot(page, "32-sidebar-collapsed");
     expect(await page.evaluate(() => window.localStorage.getItem("payrudder.sidebar.collapsed"))).toBe("1");
     await page.reload();
@@ -218,13 +218,14 @@ test.describe("pointer cursors", () => {
     expect(await cursor(page.getByTestId("privacy-toggle"))).toBe("pointer");
     expect(await cursor(page.getByTestId("user-menu"))).toBe("pointer");
     expect(await cursor(page.getByTestId("env-switch"))).toBe("pointer");
-    expect(await cursor(page.getByTestId("sidebar").getByRole("link", { name: "Settings", exact: true }))).toBe("pointer");
+    expect(await cursor(page.getByTestId("sidebar").getByRole("link", { name: "Organisation settings", exact: true }))).toBe("pointer");
     await page.getByRole("button", { name: "Create app" }).first().click();
     const dialog = page.getByRole("dialog");
     expect(await cursor(dialog.getByRole("button", { name: "Cancel" }))).toBe("pointer");
-    expect(await cursor(dialog.getByRole("button", { name: "Create app" }))).toBe("not-allowed");
-    await dialog.getByLabel("App name").fill("x");
+    // An empty form is not a disabled button: it is submitted and says what is missing, next to the field.
     expect(await cursor(dialog.getByRole("button", { name: "Create app" }))).toBe("pointer");
+    await dialog.getByRole("button", { name: "Create app" }).click();
+    await expect(dialog.getByText("This field is required.")).toBeVisible();
   });
 });
 

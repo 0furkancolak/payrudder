@@ -88,7 +88,7 @@ function create() {
         <Button type="button" :disabled="play.busy.value || !play.ready.value || play.closed.value" @click="play.sendUsage.mutate(Number(quantity))">
           {{ t("playground.usage.send") }}
         </Button>
-        <span class="text-muted-foreground text-sm" data-testid="sent">{{ t("playground.usage.sent", { n: new Intl.NumberFormat(locale).format(play.sent.value) }) }}</span>
+        <span class="text-muted-foreground text-sm" data-testid="sent">{{ t(play.sent.value === 1 ? "playground.usage.sentOne" : "playground.usage.sent", { n: new Intl.NumberFormat(locale).format(play.sent.value) }) }}</span>
       </div>
     </Card>
 
@@ -147,7 +147,7 @@ function create() {
   <Card v-if="play.log.value.length > 0" class="mt-4">
     <h2 class="text-lg font-semibold">{{ t("playground.log.title") }}</h2>
     <ul class="text-muted-foreground space-y-1 text-sm">
-      <li v-for="(line, i) in play.log.value" :key="i" class="flex gap-2"><span class="bg-muted-foreground/50 mt-2 size-1.5 shrink-0 rounded-full" />{{ t(line.key, line.params ?? {}) }}</li>
+      <li v-for="(line, i) in play.log.value" :key="i" class="flex gap-2"><span class="bg-muted-foreground/50 mt-2 size-1.5 shrink-0 rounded-full" />{{ t(line.key === "playground.log.usage" && line.params?.n === 1 ? "playground.log.usageOne" : line.key, line.params ?? {}) }}</li>
     </ul>
   </Card>
 </template>

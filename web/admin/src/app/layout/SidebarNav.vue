@@ -35,7 +35,7 @@ function row(it: NavItem): string {
             :search="(it.search ?? {}) as never"
             :class="row(it)"
             :aria-current="isCurrent(it) ? 'page' : undefined"
-            :title="collapsed ? t(`shell.items.${it.label}`) : undefined"
+            :title="t(`shell.items.${it.label}`)"
             :data-nav="it.key"
             @click="emit('navigate')"
           >

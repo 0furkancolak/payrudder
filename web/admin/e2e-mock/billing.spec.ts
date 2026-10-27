@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, openTenantPage, TENANT } from "./gateway";
-import { pickCurrency, pickLanguage, pickPlace } from "./ui";
+import { pickCurrency, pickLanguage, pickPlace, confirmDialog } from "./ui";
 
 const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
 
@@ -499,7 +499,7 @@ test.describe("subscriptions", () => {
     await expect(page.getByRole("row", { name: /cus_1/ })).toContainText("run by provider");
     await page.getByRole("button", { name: "Manage" }).click();
     const panel = page.getByRole("region", { name: "Manage cus_1" });
-    await expect(panel).toContainText("paddle runs this subscription");
+    await expect(panel).toContainText("Paddle runs this subscription");
     await expect(panel.getByRole("button", { name: "Change package" })).toHaveCount(0);
     await expect(panel.getByRole("region", { name: "Run by paddle" })).toBeVisible();
     await expect(panel.getByLabel("Move to provider")).toBeVisible();
@@ -534,8 +534,8 @@ test.describe("subscriptions", () => {
     await openTenantPage(page, "/subscriptions");
     await page.getByRole("button", { name: "Manage" }).first().click();
     const panel = page.getByRole("region", { name: "Manage cus_1" });
-    page.once("dialog", (d) => void d.accept());
     await panel.getByRole("button", { name: "End now and credit the unused part" }).click();
+    await confirmDialog(page, "yes");
     await expect.poll(() => gw.called("DELETE", "/v1/subscriptions/s1").length).toBe(1);
     expect(gw.called("DELETE", "/v1/subscriptions/s1")[0]?.query.get("credit_unused")).toBe("true");
     await expect(panel.getByRole("status")).toContainText("19.99");
@@ -551,11 +551,11 @@ test.describe("subscriptions", () => {
     await openTenantPage(page, "/subscriptions");
     await page.getByRole("button", { name: "Manage" }).click();
     const panel = page.getByRole("region", { name: "Manage cus_1" });
-    page.once("dialog", (d) => void d.dismiss());
     await panel.getByRole("button", { name: "End now" }).click();
+    await confirmDialog(page, "no");
     expect(gw.called("DELETE", "/v1/subscriptions/s1")).toHaveLength(0);
-    page.once("dialog", (d) => void d.accept());
     await panel.getByRole("button", { name: "End now" }).click();
+    await confirmDialog(page, "yes");
     await expect.poll(() => gw.called("DELETE", "/v1/subscriptions/s1").length).toBe(1);
   });
 });
@@ -1031,7 +1031,8 @@ test.describe("webhooks", () => {
     await page.getByTestId("row-action-deliveries").click();
     const log = page.getByRole("region", { name: "Deliveries" });
     await expect(log).toContainText("Failed");
-    await expect(log).toContainText("HTTP 500: nope");
+    await expect(log).toContainText("500");
+    await expect(log).toContainText("nope");
     await log.getByRole("button", { name: "Send again" }).click();
     await expect.poll(() => gw.called("POST", "/v1/webhook-deliveries/d1/redeliver").length).toBe(1);
   });

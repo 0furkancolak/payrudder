@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { absoluteUrl, statusVariant, toRequest, type LinkForm } from "./lib";
+import { absoluteUrl, fieldErrors, statusVariant, toRequest, type LinkForm } from "./lib";
 
 const base: LinkForm = { kind: "adhoc", invoiceId: "", amount: "12.50", currency: "USD", description: "Setup", customer: "", promotion: "", singleUse: true, days: "30", key: "k1" };
 
@@ -42,5 +42,17 @@ describe("statusVariant", () => {
     expect(statusVariant("paid")).toBe("success");
     expect(statusVariant("revoked")).toBe("destructive");
     expect(statusVariant("active")).toBe("secondary");
+  });
+});
+
+describe("fieldErrors", () => {
+  it("names every wrong field at once, so each can be marked", () => {
+    expect(fieldErrors({ ...base, amount: "", description: " ", days: "0" })).toEqual({ amount: true, description: true, days: true });
+  });
+  it("is empty for a good form", () => {
+    expect(fieldErrors(base)).toEqual({});
+  });
+  it("asks for the invoice id of an invoice link", () => {
+    expect(fieldErrors({ ...base, kind: "invoice" })).toEqual({ invoice: true });
   });
 });

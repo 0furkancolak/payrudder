@@ -42,6 +42,12 @@ const signedInAsInvitee = computed(() => isPerson.value && myAddress.value !== "
 const signedInAsSomeoneElse = computed(() => isPerson.value && myAddress.value !== "" && !signedInAsInvitee.value);
 const error = computed(() => acceptNew.error.value ?? acceptMe.error.value ?? login.error.value);
 
+/** The line under the title: who invites, while checking the invitation, and nothing once it is known to be unusable (the error says so; "checking" would linger beside it). */
+const intro = computed(() => {
+  if (info.value) return t("product.invite.intro", { account: info.value.account_name ?? "", role: t(`product.role.${info.value.role}`) });
+  return missing || lookup.isError.value ? undefined : t("product.invite.checking");
+});
+
 const toApp = () => navigate({ to: "/app" });
 const joinAsMe = () => acceptMe.mutate(token, { onSuccess: toApp });
 const joinNew = () => longEnough.value && acceptNew.mutate({ token, password: password.value, displayName: name.value.trim() }, { onSuccess: toApp });
@@ -49,7 +55,7 @@ const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", passw
 </script>
 
 <template>
-  <AuthShell :title="t('product.invite.title')" :intro="info ? t('product.invite.intro', { account: info.account_name ?? '', role: t(`product.role.${info.role}`) }) : t('product.invite.checking')">
+  <AuthShell :title="t('product.invite.title')" :intro="intro">
     <p v-if="missing || lookup.isError.value" class="bg-destructive-soft text-destructive rounded-2xl px-4 py-3 text-sm" role="alert">
       {{ missing ? t("product.invite.noToken") : t("product.invite.invalid") }}
     </p>

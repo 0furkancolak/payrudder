@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { ArrowUpRight, Plus, Trash2, X } from "@lucide/vue";
@@ -98,8 +99,8 @@ function saveAccount() {
     },
   );
 }
-function removeAccount(p: string, env: Environment) {
-  if (window.confirm(t("billing.providers.confirmRemove", { provider: p, environment: env }))) actions.remove.mutate({ provider: p, environment: env });
+async function removeAccount(p: string, env: Environment) {
+  if ((await askConfirm({ body: t("billing.providers.confirmRemove", { provider: p, environment: env }) }))) actions.remove.mutate({ provider: p, environment: env });
 }
 const webhookPath = computed(() => `/webhooks/${provider.value || "{provider}"}/${tenantId.value}/${environment.value}`);
 

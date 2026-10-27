@@ -39,7 +39,8 @@ export function publicProductRoutes(root: AnyRoute) {
   const signIn = lazyPage(() => import("./SignInPage.vue"));
   const signUp = lazyPage(() => import("./SignUpPage.vue"));
   const validateSignIn = (s: Record<string, unknown>) => ({
-    ...(s.expired === "1" ? { expired: "1" } : {}),
+    // The router reads a typed ?expired=1 as the number 1 (only the encoded "1" stays text): both mean the same.
+    ...(String(s.expired) === "1" ? { expired: "1" } : {}),
     // Where to go after signing in, when the person was sent here from a page of the console.
     ...(safeNext(s.next) ? { next: safeNext(s.next) } : {}),
     // Why a login with Google ended without a session (set by the gateway's callback): one of a fixed few, anything else is ignored.

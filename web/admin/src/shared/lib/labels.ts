@@ -11,3 +11,8 @@ export function label(t: Composer["t"], te: Composer["te"], group: string, key: 
   const path = `enums.${group}.${key}`;
   return te(path) ? t(path) : key;
 }
+
+/** A label with its first letter in capitals, the way the locale writes it ("ödendi" -> "Ödendi", "i" -> "İ" in Turkish): for a badge that stands alone. */
+export function capFirst(text: string, locale: string): string {
+  return text === "" ? text : text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
+}

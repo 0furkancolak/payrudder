@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "@/shared/api/client";
-import { isPayable, isUnlimited, isUpgradeError, limitOf, offerMove, parseLimit, quotaPercent, quotaTone, stateTone } from "./lib";
+import { appLimitReached, isPayable, isUnlimited, isUpgradeError, limitOf, offerMove, parseLimit, quotaPercent, quotaTone, stateTone } from "./lib";
 
 describe("quotas", () => {
   it("treats 0 as unlimited and never fills its bar", () => {
@@ -65,5 +65,18 @@ describe("errors and states", () => {
     expect(parseLimit("0")).toBe(0);
     expect(parseLimit("-1")).toBeNull();
     expect(parseLimit("1.5")).toBeNull();
+  });
+});
+
+describe("appLimitReached", () => {
+  it("reports a hard apps limit that is used up", () => {
+    expect(appLimitReached([{ resource: "apps", used: 1, limit: 1, unlimited: false, mode: "hard" }])).toEqual({ used: 1, limit: 1 });
+  });
+  it("is silent while there is room, for soft limits, unlimited plans and other resources", () => {
+    expect(appLimitReached([{ resource: "apps", used: 0, limit: 1, unlimited: false, mode: "hard" }])).toBeUndefined();
+    expect(appLimitReached([{ resource: "apps", used: 5, limit: 1, unlimited: false, mode: "soft" }])).toBeUndefined();
+    expect(appLimitReached([{ resource: "apps", used: 5, limit: 0, unlimited: true, mode: "hard" }])).toBeUndefined();
+    expect(appLimitReached([{ resource: "members", used: 5, limit: 1, unlimited: false, mode: "hard" }])).toBeUndefined();
+    expect(appLimitReached(undefined)).toBeUndefined();
   });
 });

@@ -2,6 +2,7 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useTabParam } from "@/shared/lib/useSearchValue";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import CommissionsTab from "./CommissionsTab.vue";
 import JournalTab from "./JournalTab.vue";
@@ -20,7 +21,7 @@ type Tab = (typeof TABS)[number];
 const { t } = useI18n();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
-const tab = ref<Tab>("overview");
+const tab = useTabParam<Tab>("tab", TABS, "overview");
 /** A payout another tab sends the reader to (the payout of a commission). */
 const focusPayout = ref("");
 

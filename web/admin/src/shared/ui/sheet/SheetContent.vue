@@ -29,6 +29,21 @@ const sheet = inject(SHEET_CONTEXT, null);
 const depth = computed(() => (sheet ? Math.max(depthOf(sheet.uid), 0) : 0));
 const behind = computed(() => openTabs.value.length - 1 - depth.value);
 // Under the dropdowns and popovers (z-50) so that those open over a sheet in any place of the stack, over the header (z-30).
+/**
+ * A sheet that opens on a form puts the focus on its first field, not on the "App" select that heads every form (that one is changed rarely, and
+ * focusing it made typing start in the wrong place). A sheet without a form keeps the default (its first focusable thing); one behind another keeps the focus where it is.
+ */
+function focusFirstField(e: Event) {
+  if (behind.value > 0) return e.preventDefault();
+  const content = e.target instanceof HTMLElement ? e.target : null;
+  const app = content?.querySelector('[data-testid="app-field"]');
+  const fields = [...(content?.querySelectorAll<HTMLElement>('form input:not([type="hidden"]):not([type="checkbox"]):not([disabled]), form textarea:not([disabled]), form select:not([disabled])') ?? [])];
+  const target = fields.find((el) => !app?.contains(el)) ?? fields[0];
+  if (target) {
+    e.preventDefault();
+    target.focus();
+  }
+}
 const z = computed(() => Math.min(31 + depth.value * 3, 48));
 </script>
 
@@ -58,7 +73,7 @@ const z = computed(() => Math.min(31 + depth.value * 3, 48));
       "
       @escape-key-down.prevent="closeFront()"
       @interact-outside.prevent
-      @open-auto-focus="(e: Event) => behind > 0 && e.preventDefault()"
+      @open-auto-focus="focusFirstField"
     >
       <SheetStrip v-if="depth === openTabs.length - 1" />
       <slot />

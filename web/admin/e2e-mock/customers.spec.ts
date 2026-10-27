@@ -119,7 +119,7 @@ test.describe("customer sheet", () => {
     // The overview lists the newest records of each kind; every row links to its own sheet.
     await expect(sheet.getByRole("region", { name: "Subscriptions" })).toContainText("pro v2");
     await expect(sheet.getByRole("region", { name: "Invoices" })).toContainText("INV-2");
-    await expect(sheet.getByRole("region", { name: "Payments" })).toContainText("mockpsp");
+    await expect(sheet.getByRole("region", { name: "Payments" })).toContainText("Mock PSP");
 
     await sheet.getByTestId("customer-tab-invoices").click();
     // An invoice opens over the customer's sheet, not instead of it.

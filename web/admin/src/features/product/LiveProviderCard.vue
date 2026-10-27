@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { Link } from "@tanstack/vue-router";
 import { CreditCard } from "@lucide/vue";
 import { computed, ref } from "vue";
@@ -47,8 +48,8 @@ useSheetTarget("connect-provider", sheetOpen, providerTarget, { id: (p) => p, fi
 function onDone(s: { provider: LiveProviderName; ok: number; failed: number }) {
   notice.value = s.failed === 0 ? t("product.goLive.provider.connectedNow", { provider: providerName(s.provider) }) : "";
 }
-function removeAccount(p: string) {
-  if (isLiveProvider(p) && window.confirm(t("product.goLive.provider.confirmRemove", { provider: providerName(p) }))) remove.mutate(p);
+async function removeAccount(p: string) {
+  if (isLiveProvider(p) && (await askConfirm({ body: t("product.goLive.provider.confirmRemove", { provider: providerName(p) }) }))) remove.mutate(p);
 }
 </script>
 

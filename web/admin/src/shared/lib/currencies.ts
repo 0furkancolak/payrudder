@@ -43,3 +43,33 @@ export const PROVIDERS = [
 
 /** The providers a routing rule or a provider move can name. */
 export const ROUTABLE_PROVIDERS = PROVIDERS.filter((p) => p.routable);
+
+/**
+ * The currency people in a time zone most likely bill in, for a form that has to guess before the person chooses (the onboarding wizard: a new account in
+ * Europe/Istanbul should not start on USD). Only zones whose currency is clear are listed; any other zone gives undefined and the caller keeps its fallback.
+ */
+const ZONE_CURRENCY: Record<string, Currency> = {
+  "Europe/Istanbul": "TRY", "Europe/London": "GBP", "Europe/Zurich": "CHF", "Europe/Stockholm": "SEK", "Europe/Oslo": "NOK", "Europe/Copenhagen": "DKK",
+  "Europe/Warsaw": "PLN", "Europe/Prague": "CZK", "Europe/Budapest": "HUF", "Europe/Bucharest": "RON", "Europe/Moscow": "RUB", "Europe/Kyiv": "UAH",
+  "Europe/Kiev": "UAH", "Asia/Tokyo": "JPY", "Asia/Seoul": "KRW", "Asia/Shanghai": "CNY", "Asia/Hong_Kong": "HKD", "Asia/Singapore": "SGD",
+  "Asia/Kolkata": "INR", "Asia/Calcutta": "INR", "Asia/Dubai": "AED", "Asia/Riyadh": "SAR", "Asia/Jerusalem": "ILS", "Asia/Bangkok": "THB",
+  "Asia/Jakarta": "IDR", "Asia/Manila": "PHP", "Asia/Karachi": "PKR", "Asia/Dhaka": "BDT", "Asia/Ho_Chi_Minh": "VND", "Asia/Saigon": "VND",
+  "Africa/Cairo": "EGP", "Africa/Lagos": "NGN", "Africa/Nairobi": "KES", "Africa/Johannesburg": "ZAR", "Africa/Casablanca": "MAD",
+  "Australia/Sydney": "AUD", "Australia/Melbourne": "AUD", "Australia/Perth": "AUD", "Pacific/Auckland": "NZD",
+  "America/Toronto": "CAD", "America/Vancouver": "CAD", "America/Mexico_City": "MXN", "America/Sao_Paulo": "BRL", "America/Argentina/Buenos_Aires": "ARS",
+  "America/Buenos_Aires": "ARS", "America/Bogota": "COP", "America/Santiago": "CLP", "America/Lima": "PEN",
+};
+const EURO_ZONES = new Set([
+  "Amsterdam", "Berlin", "Brussels", "Paris", "Madrid", "Rome", "Lisbon", "Vienna", "Dublin", "Helsinki", "Athens", "Luxembourg", "Malta", "Tallinn", "Riga",
+  "Vilnius", "Bratislava", "Ljubljana", "Zagreb", "Andorra", "Monaco", "San_Marino", "Vatican",
+]);
+const US_ZONES = new Set(["New_York", "Chicago", "Denver", "Los_Angeles", "Phoenix", "Anchorage", "Detroit", "Boise"]);
+
+export function currencyOfZone(zone: string | undefined): Currency | undefined {
+  if (!zone) return undefined;
+  const known = ZONE_CURRENCY[zone];
+  if (known) return known;
+  if (zone.startsWith("Europe/") && EURO_ZONES.has(zone.slice("Europe/".length))) return "EUR";
+  if (zone.startsWith("America/") && US_ZONES.has(zone.slice("America/".length))) return "USD";
+  return undefined;
+}

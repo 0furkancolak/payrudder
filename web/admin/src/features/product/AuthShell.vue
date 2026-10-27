@@ -8,7 +8,7 @@ import { brandName } from "@/shared/lib/brand";
 /** The frame of the public pages: a big rounded card, the form on one side and, from a tablet up, a pastel panel that shows what the product looks like. */
 const { t } = useI18n();
 const brand = brandName();
-defineProps<{ title: string; intro: string }>();
+defineProps<{ title: string; intro?: string }>();
 </script>
 
 <template>
@@ -16,7 +16,7 @@ defineProps<{ title: string; intro: string }>();
     <section class="flex flex-col justify-center gap-6 p-7 sm:p-10">
       <div>
         <h1 class="text-3xl font-semibold tracking-tight">{{ title }}</h1>
-        <p class="text-muted-foreground mt-2 text-sm leading-relaxed">{{ intro }}</p>
+        <p v-if="intro" class="text-muted-foreground mt-2 text-sm leading-relaxed">{{ intro }}</p>
       </div>
       <slot />
       <div class="text-muted-foreground text-sm"><slot name="footer" /></div>

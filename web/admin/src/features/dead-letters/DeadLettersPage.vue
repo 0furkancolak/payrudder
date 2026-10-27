@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -28,7 +29,7 @@ watch(queuesTable.detail, () => {
 const note = ref<{ queue: string; count: number } | null>(null);
 
 async function run(name: string, count: number) {
-  if (!window.confirm(t("deadLetters.confirm", { count, queue: name }))) return;
+  if (!(await askConfirm({ body: t("deadLetters.confirm", { count, queue: name }) }))) return;
   note.value = null;
   const r = await redrive.mutateAsync(name).catch(() => null);
   if (r) note.value = { queue: name, count: Number(r.redriven ?? 0) };

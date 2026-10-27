@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { label } from "@/shared/lib/labels";
 import { computed, ref, watch } from "vue";
 import AppField from "@/app/layout/AppField.vue";
 import { useI18n } from "vue-i18n";
@@ -19,7 +20,7 @@ import { INTERVALS, type Interval, intervalKey, MAX_SEATS, parseSeats } from "./
  * the customer in advance (the form opened from a customer's sheet).
  */
 const props = defineProps<{ tenantId: string; packages: readonly Package[]; act: SubscriptionActions; forCustomer?: string }>();
-const { t } = useI18n();
+const { t, te } = useI18n();
 const open = defineModel<boolean>("open", { default: false });
 
 const customer = ref("");
@@ -99,7 +100,7 @@ function create() {
           </div>
           <NativeSelect v-model="provider" :aria-label="t('billing.subscriptions.provider')">
             <option value="">{{ t("billing.subscriptions.byRules") }}</option>
-            <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name">{{ p.name }}</option>
+            <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name">{{ label(t, te, "provider", p.name) }}</option>
           </NativeSelect>
           <Input v-model="coupon" :aria-label="t('billing.subscriptions.coupon.code')" :placeholder="t('billing.subscriptions.coupon.code')" />
         </form>

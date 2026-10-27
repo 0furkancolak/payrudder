@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
-import { pickCurrency, pickPlace, pickZone } from "./ui";
+import { pickCurrency, pickPlace, pickZone, confirmDialog } from "./ui";
 
 const ACCOUNT = "0192f0b4-0000-7000-8000-000000000001";
 const SANDBOX = "0192f0b4-0000-7000-8000-0000000000a1";
@@ -65,9 +65,9 @@ test.describe("apps", () => {
     await expect(page.getByTestId("api-key-secret")).toHaveCount(0);
     await expect(keys).not.toContainText("secretsecret");
     await expect(keys).toContainText("qk_test_AbCd1234…");
-
-    page.once("dialog", (d) => void d.accept());
     await keys.getByRole("button", { name: "Revoke", exact: true }).click();
+
+    await confirmDialog(page, "yes");
     await expect(keys.getByText("Revoked", { exact: true })).toBeVisible();
     expect(gw.called("DELETE", "/admin/v1/api-keys/key-1")).toHaveLength(1);
   });
@@ -82,8 +82,8 @@ test.describe("apps", () => {
     await openTenantPage(page, "/apps");
     await page.getByRole("button", { name: "API keys" }).click();
     await page.getByLabel("Key id").fill("gone");
-    page.once("dialog", (d) => void d.accept());
     await page.getByRole("button", { name: "Revoke by id" }).click();
+    await confirmDialog(page, "yes");
     await expect(page.getByRole("alert")).toContainText("It was not found.");
   });
 });

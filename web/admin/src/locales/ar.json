@@ -35,7 +35,15 @@
     "moreActions": "مزيد من الإجراءات",
     "view": "عرض",
     "openFullPage": "فتح الصفحة كاملة",
-    "all": "الكل"
+    "all": "الكل",
+    "confirm": {
+      "title": "هل أنت متأكد؟",
+      "accept": "تأكيد"
+    },
+    "validation": {
+      "required": "هذا الحقل مطلوب.",
+      "email": "أدخل عنوان بريد إلكتروني صالحًا."
+    }
   },
   "enums": {
     "environment": {
@@ -108,7 +116,25 @@
       "UNCOLLECTIBLE": "تم التخلي"
     },
     "sagaState": {
-      "PAYMENT_PENDING": "بانتظار الحوالة"
+      "PAYMENT_PENDING": "بانتظار الحوالة",
+      "DRAFT": "مسودة",
+      "FINALIZED": "نهائية",
+      "PDF_REQUESTED": "تم طلب PDF",
+      "PDF_RENDERED": "PDF جاهز",
+      "PDF_FAILED": "فشل PDF",
+      "PAYMENT_REQUESTED": "تم طلب الدفع",
+      "PAID": "مدفوعة",
+      "PAYMENT_DECLINED": "رُفض الدفع",
+      "PAYMENT_UNKNOWN": "نتيجة الدفع غير معروفة",
+      "UNCOLLECTIBLE": "غير قابلة للتحصيل",
+      "NOTIFY_REQUESTED": "تم طلب الإشعار",
+      "NOTIFY_FAILED": "فشل الإشعار",
+      "COMPLETED": "مكتملة",
+      "REFUND_REQUESTED": "تم طلب الاسترداد",
+      "REFUND_FAILED": "فشل الاسترداد",
+      "REFUNDED": "تم الاسترداد",
+      "VOIDED": "ملغاة",
+      "AWAITING_PAYMENT": "بانتظار الدفع"
     },
     "paymentMethod": {
       "bank_transfer": "حوالة مصرفية",
@@ -121,6 +147,12 @@
       "paid": "مدفوعة",
       "expired": "منتهية المهلة",
       "rejected": "مرفوضة"
+    },
+    "provider": {
+      "iyzico": "iyzico",
+      "paddle": "Paddle",
+      "mockpsp": "Mock PSP",
+      "banktransfer": "حوالة مصرفية"
     }
   },
   "tenants": {
@@ -266,6 +298,18 @@
         "rejected": "رُفضت الحوالة. يسري جدول التحصيل.",
         "expired": "عُيّنت الحوالة كمنتهية المهلة. يسري جدول التحصيل."
       }
+    },
+    "lineText": {
+      "monthly": "شهري",
+      "yearly": "سنوي",
+      "baseFee": "الرسم الأساسي ({interval}) — {plan} — من {from} إلى {to}",
+      "baseFeeSeats": "الرسم الأساسي ({interval}) × {seats} مقعد — {plan} — من {from} إلى {to}",
+      "baseFeePlain": "الرسم الأساسي",
+      "priceChange": "الرسم الأساسي: تغيير السعر",
+      "unused": "الوقت غير المستخدم في {plan} — من {from} إلى {to}",
+      "coupon": "القسيمة {code}",
+      "usage": "الاستهلاك — {meter} — {rest}",
+      "late": "استهلاك متأخر — {meter} — {origin} ({rest})"
     }
   },
   "deadLetters": {
@@ -320,7 +364,8 @@
       "title": "٣. الاستهلاك",
       "calls": "الاستدعاءات",
       "send": "إرسال الاستهلاك",
-      "sent": "أُرسل {n} استدعاء"
+      "sent": "أُرسل {n} استدعاء",
+      "sentOne": "أُرسل {n} استدعاء"
     },
     "close": {
       "title": "٤. إغلاق الفترة",
@@ -343,7 +388,8 @@
       "subscription": "الاشتراك في starter",
       "outcome": "نتيجة الدفع: {scenario}",
       "usage": "أُرسل الاستهلاك: {n} استدعاء",
-      "closed": "أُغلقت الفترة (بيئة تجريبية): تعمل الفوترة الآن"
+      "closed": "أُغلقت الفترة (بيئة تجريبية): تعمل الفوترة الآن",
+      "usageOne": "أُرسل الاستهلاك: {n} استدعاء"
     },
     "components": {
       "title": "المكونات",
@@ -635,7 +681,8 @@
         "keepSeats": "المقاعد: إبقاء {n}",
         "seatsHint": "تغيير المقاعد وحده فوري ومحتسب بالتناسب: تُحتسب المقاعد المضافة عن بقية الفترة وتتحول المقاعد المحذوفة إلى رصيد. تعرض المعاينة المبلغ.",
         "seatsAfter": "المقاعد بعد التغيير",
-        "scheduledSeats": "مجدول: {plan} ({interval})، {seats} مقاعد اعتبارا من {date}"
+        "scheduledSeats": "مجدول: {plan} ({interval})، {seats} مقاعد اعتبارا من {date}",
+        "previewHint": "اختر باقة أو فترة أو عدد مقاعد جديدًا لمعاينة التغيير."
       },
       "providerRun": {
         "title": "يديره {provider}",
@@ -668,7 +715,12 @@
       "seatsDefault": "المقاعد (الافتراضي 1)",
       "seatsHint": "تُضرب الرسوم الثابتة في عدد المقاعد ولا تُضرب أسعار الاستخدام. يسري ذلك فقط على اشتراك تديره Payrudder وتفوتره مقدّمًا.",
       "seatsBad": "يجب أن يكون عدد المقاعد عددًا صحيحًا من 1 إلى {max}.",
-      "seatsCount": "{n} مقعد | {n} مقاعد"
+      "seatsCount": "{n} مقعد | {n} مقاعد",
+      "trail": {
+        "replacedBy": "تم استبدالها بتغيير الخطة: حلّت {plan} محلها.",
+        "changedFrom": "بدأت بتغيير الخطة من {plan}.",
+        "open": "فتح"
+      }
     },
     "payments": {
       "reconcile": "المطابقة مع دفتر الأستاذ",
@@ -1019,7 +1071,14 @@
         "delivered": "تم التسليم",
         "failed": "فشل"
       },
-      "allStatuses": "كل الحالات"
+      "allStatuses": "كل الحالات",
+      "deleteTitle": "حذف نقطة النهاية هذه؟",
+      "rotateTitle": "تجديد سر التوقيع؟",
+      "confirmRotate": "يتوقف السر القديم عن العمل فورًا: يجب إعطاء المستقبِل السر الجديد وإلا سيرفض كل عمليات التسليم.",
+      "insecure": {
+        "sandbox": "يستخدم هذا العنوان http، وهو مقبول في وضع الاختبار. يجب أن تستخدم نقاط النهاية الحية https.",
+        "live": "يستخدم هذا العنوان http: ستنتقل أحداث تحمل بيانات العملاء والفواتير دون تشفير. استخدم عنوان https."
+      }
     },
     "paymentLinks": {
       "title": "روابط الدفع",
@@ -1089,7 +1148,11 @@
       "for": "لـ",
       "promotionCode": "رمز ترويجي (اختياري)",
       "promotionHint": "يحصل الدافع على خصم هذا الرمز دون أن يكتبه، وله أن يكتب رمزًا آخر. يُفحص الآن مقابل هذا المبلغ.",
-      "id": "الرابط"
+      "id": "الرابط",
+      "createdTitle": "تم إنشاء رابط الدفع",
+      "createdHint": "انسخ الرابط الآن وأرسله إلى الدافع.",
+      "another": "إنشاء رابط آخر",
+      "customerNone": "بدون عميل"
     },
     "mail": {
       "title": "البريد الإلكتروني",
@@ -1131,7 +1194,12 @@
         "validityCol": "الصلاحية",
         "noExpiry": "لا تنتهي",
         "days": "{n} يومًا",
-        "purchaseLink": "إنشاء رابط شراء"
+        "purchaseLink": "إنشاء رابط شراء",
+        "errors": {
+          "credits": "الرصيد: عدد صحيح 1 أو أكثر.",
+          "price": "السعر: مبلغ أكبر من الصفر.",
+          "validity": "الصلاحية: عدد صحيح من الأيام بين 1 و{max} أو اتركه فارغًا."
+        }
       },
       "customer": {
         "title": "أرصدة عميل",
@@ -1172,6 +1240,9 @@
           "goodwill": "بادرة حسن نية",
           "promotion": "عرض ترويجي",
           "other": "أخرى"
+        },
+        "errors": {
+          "credits": "الرصيد: عدد صحيح 1 أو أكثر."
         }
       },
       "ledger": {
@@ -3054,6 +3125,27 @@
         "live_refused": "يمكن إعادة ضبط بيئة الاختبار فقط. لا تُمَسّ البيئة الحية أبدًا.",
         "bad_tenant": "البيئة المطلوب إعادة ضبطها غير صالحة."
       }
+    },
+    "details": {
+      "required": "مطلوب",
+      "at_most_200_characters": "200 حرف كحد أقصى",
+      "required_at_most_200_characters": "مطلوب، 200 حرف كحد أقصى",
+      "must_not_be_negative": "يجب ألا يكون سالبًا",
+      "must_be_a_plain_e_mail_address": "يجب أن يكون عنوان بريد إلكتروني عاديًا",
+      "must_be_a_uuid": "يجب أن يكون UUID",
+      "invalid_timestamp": "طابع زمني غير صالح",
+      "must_be_between_0_and_365": "يجب أن يكون بين 0 و365",
+      "must_be_a_time_in_the_future": "يجب أن يكون وقتًا في المستقبل",
+      "a_plan_version_needs_at_least_one_price_a_base_fee_or_a_quot": "تحتاج الباقة إلى سعر واحد على الأقل أو رسم أساسي أو حصة"
+    },
+    "fields": {
+      "prices": "الأسعار",
+      "base_fee_minor": "الرسم الأساسي",
+      "trial_days": "أيام التجربة",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "currency": "العملة",
+      "code": "الرمز"
     }
   },
   "product": {
@@ -3187,7 +3279,10 @@
       "currency": "العملة",
       "timezone": "المنطقة الزمنية",
       "immutable": "لا يمكن تغيير العملة والمنطقة الزمنية لاحقاً: تُقطع فترات الفوترة وفق هذه المنطقة الزمنية.",
-      "submit": "إنشاء التطبيق"
+      "submit": "إنشاء التطبيق",
+      "badCurrency": "اختر عملة من القائمة.",
+      "badTimezone": "اختر منطقة زمنية من القائمة.",
+      "limitReached": "تتيح خطتك {limit} تطبيقًا ولديك {used}. قم بترقية خطتك لإنشاء تطبيق آخر."
     },
     "env": {
       "label": "البيئة",
@@ -3430,7 +3525,8 @@
       "removeTitle": "إزالة هذا العضو؟",
       "removeBody": "سيفقد {name} الوصول إلى تطبيقات هذا الحساب وبياناته فورًا.",
       "allRoles": "كل الأدوار",
-      "expiresHead": "صالحة حتى"
+      "expiresHead": "صالحة حتى",
+      "soleOwner": "أنت المالك الوحيد، لذا لا يمكنك المغادرة بعد. اجعل شخصًا آخر مالكًا أولًا."
     },
     "account": {
       "switch": "الحساب",
@@ -3975,7 +4071,7 @@
     "items": {
       "overview": "التطبيقات",
       "members": "الأعضاء",
-      "settings": "الإعدادات",
+      "settings": "إعدادات المؤسسة",
       "tenants": "المستأجرون",
       "playground": "ساحة التجربة",
       "deadLetters": "الرسائل الميتة",
@@ -3984,7 +4080,7 @@
       "subscriptions": "الاشتراكات",
       "credits": "الأرصدة",
       "packages": "الباقات",
-      "pricing": "الضريبة وإعادة المحاولة",
+      "pricing": "الضريبة والمحاولات",
       "invoices": "الفواتير",
       "payments": "المدفوعات",
       "paymentLinks": "روابط الدفع",
@@ -4008,7 +4104,7 @@
       "coupons": "القسائم",
       "meters": "العدّادات",
       "integrations": "التكاملات",
-      "orgIntegrations": "التكاملات",
+      "orgIntegrations": "تكاملات المؤسسة",
       "plan": "الخطة والفوترة",
       "organisations": "المؤسسات",
       "platformPlans": "خطط المنصة"
