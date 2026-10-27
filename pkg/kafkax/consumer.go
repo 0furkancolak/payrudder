@@ -58,6 +58,15 @@ type Consumer struct {
 	cfg ConsumerConfig
 	cl  *kgo.Client
 	log *slog.Logger
+
+	failMu sync.Mutex
+	fails  map[string]batchFailure
+}
+
+// batchFailure is what logBatchFailure remembers of a partition: when it last logged and how many failures it held back since.
+type batchFailure struct {
+	last time.Time
+	held int
 }
 
 // NewConsumer connects (lazily) and joins the group on Run.
@@ -77,7 +86,7 @@ func NewConsumer(cfg ConsumerConfig) (*Consumer, error) {
 	if cfg.SessionTimeout <= 0 {
 		cfg.SessionTimeout = 10 * time.Second
 	}
-	c := &Consumer{cfg: cfg, log: cfg.Log}
+	c := &Consumer{cfg: cfg, log: cfg.Log, fails: map[string]batchFailure{}}
 	if err := c.initMetrics(); err != nil {
 		return nil, err
 	}
@@ -184,12 +193,33 @@ func (c *Consumer) apply(ctx context.Context, p kgo.FetchTopicPartition) {
 		if ctx.Err() != nil {
 			return
 		}
-		c.log.WarnContext(ctx, "batch failed, rewinding partition", "topic", p.Topic, "partition", p.Partition,
-			"first_offset", p.Records[0].Offset, "records", len(p.Records), "error", err)
+		c.logBatchFailure(ctx, p, err)
 		c.rewind(ctx, p)
 		return
 	}
 	c.cl.MarkCommitRecords(p.Records[len(p.Records)-1])
+}
+
+// batchLogEvery is the longest a partition's repeated batch failures are held back from the log.
+const batchLogEvery = 30 * time.Second
+
+// logBatchFailure says a batch failed: at once the first time, then at most every batchLogEvery per partition with the number held back.
+func (c *Consumer) logBatchFailure(ctx context.Context, p kgo.FetchTopicPartition, err error) {
+	key := fmt.Sprintf("%s/%d", p.Topic, p.Partition)
+	c.failMu.Lock()
+	st := c.fails[key]
+	st.held++
+	if st.last.IsZero() || time.Since(st.last) >= batchLogEvery {
+		held := st.held - 1
+		st.last, st.held = time.Now(), 0
+		c.fails[key] = st
+		c.failMu.Unlock()
+		c.log.WarnContext(ctx, "batch failed, rewinding partition", "topic", p.Topic, "partition", p.Partition,
+			"first_offset", p.Records[0].Offset, "records", len(p.Records), "held_back", held, "error", err)
+		return
+	}
+	c.fails[key] = st
+	c.failMu.Unlock()
 }
 
 // rewind seeks the partition back to its database offset and pauses it for Backoff.

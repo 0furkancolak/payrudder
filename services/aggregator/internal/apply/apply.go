@@ -230,12 +230,26 @@ func (h *Handler) decodeBatch(ctx context.Context, recs []*kgo.Record) (items []
 
 // sendDeadLetters publishes the poison records of a batch to the dead-letter topic.
 func (h *Handler) sendDeadLetters(ctx context.Context, partition int32, bad []poison) error {
+	// One line per reason and batch, not per record: a replay of events for a meter that is gone would write thousands.
+	type tally struct {
+		n     int
+		first int64
+		err   error
+	}
+	byReason := map[string]*tally{}
 	for _, p := range bad {
 		if err := h.DLQ.Send(ctx, p.rec, p.reason, p.err); err != nil {
 			return err
 		}
 		h.m.dlq.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", p.reason)))
-		h.Log.WarnContext(ctx, "record sent to DLQ", "partition", partition, "offset", p.rec.Offset, "reason", p.reason, "error", p.err)
+		if t := byReason[p.reason]; t != nil {
+			t.n++
+		} else {
+			byReason[p.reason] = &tally{n: 1, first: p.rec.Offset, err: p.err}
+		}
+	}
+	for reason, t := range byReason {
+		h.Log.WarnContext(ctx, "records sent to DLQ", "partition", partition, "reason", reason, "records", t.n, "first_offset", t.first, "error", t.err)
 	}
 	return nil
 }
