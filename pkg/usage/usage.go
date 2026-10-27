@@ -4,6 +4,7 @@
 package usage
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"regexp"
 	"slices"
@@ -104,12 +105,23 @@ const (
 	Sum Aggregation = iota
 	Count
 	Max
+	// Unique counts the distinct values of the meter's value_property, whatever the events' quantities are.
+	Unique
+	// Last is the quantity of the latest event, in the total order of Order.
+	Last
 )
+
+// Additive reports whether the totals of two disjoint sets of events add up to the total of their union. Only SUM and COUNT do: a maximum is the
+// maximum of the parts, the latest value is the latest of the parts, and the distinct values of two parts overlap.
+func (a Aggregation) Additive() bool { return a == Sum || a == Count }
 
 // Meter is the part of a meter definition the consumers of usage events need.
 type Meter struct {
 	Code        string
 	Aggregation Aggregation
+	// ValueProperty is the event property a UNIQUE meter counts the distinct values of. The other aggregations don't read it (the quantity of
+	// an event is its quantity_units).
+	ValueProperty string
 	// Scale is the meter's quantity scale (limits-svc renders its counters with it).
 	Scale int
 	// Filter maps a property name to its accepted values. An event matches when every listed property has an accepted value.
@@ -118,12 +130,16 @@ type Meter struct {
 
 // FromProto converts a plans-svc meter.
 func FromProto(m *plansv1.Meter) Meter {
-	out := Meter{Code: m.GetCode(), Scale: int(m.GetQuantityScale())}
+	out := Meter{Code: m.GetCode(), Scale: int(m.GetQuantityScale()), ValueProperty: m.GetValueProperty()}
 	switch m.GetAggregation() {
 	case plansv1.Aggregation_AGGREGATION_COUNT:
 		out.Aggregation = Count
 	case plansv1.Aggregation_AGGREGATION_MAX:
 		out.Aggregation = Max
+	case plansv1.Aggregation_AGGREGATION_UNIQUE:
+		out.Aggregation = Unique
+	case plansv1.Aggregation_AGGREGATION_LAST:
+		out.Aggregation = Last
 	default:
 		out.Aggregation = Sum
 	}
@@ -147,10 +163,54 @@ func (m Meter) Matches(props map[string]string) bool {
 	return true
 }
 
-// Value is what an event contributes to its meter's aggregate: its quantity, or 1 for COUNT.
+// Value is what an event contributes to its meter's aggregate: its quantity, 1 for COUNT, and nothing for UNIQUE (it counts the distinct values of a
+// property, see DistinctValue).
 func (m Meter) Value(e Event) int64 {
-	if m.Aggregation == Count {
+	switch m.Aggregation {
+	case Count:
 		return 1
+	case Unique:
+		return 0
 	}
 	return e.Units
 }
+
+// DistinctValue is what a UNIQUE meter counts in an event: the property named by the meter's value_property. ok is false when the event does not
+// carry it (or carries it empty), and then the event contributes nothing to the meter.
+func (m Meter) DistinctValue(e Event) (value string, ok bool) {
+	v := e.Props[m.ValueProperty]
+	return v, m.ValueProperty != "" && v != ""
+}
+
+// Digest is the identity of a distinct value: the SHA-256 of its bytes. The aggregator stores it instead of the value (a property can be 4 KiB and
+// a primary key cannot), and two different values collide with a probability that is not a consideration.
+func Digest(value string) [sha256.Size]byte { return sha256.Sum256([]byte(value)) }
+
+// Order is the total order of LAST: the event time at the microsecond (what Postgres and the wire keep), then the event id bytewise. The id of an
+// event is assigned once at ingest, so two different events never compare equal, and the latest event of a set does not depend on the order in
+// which the events, the partitions or a replay deliver them.
+type Order struct {
+	Micros int64
+	ID     string
+}
+
+// OrderOf is the position of an event in the LAST order.
+func OrderOf(e Event) Order { return Order{Micros: e.EventTime.UnixMicro(), ID: e.EventID} }
+
+// Compare is -1, 0 or 1 like a comparator.
+func (o Order) Compare(p Order) int {
+	switch {
+	case o.Micros < p.Micros:
+		return -1
+	case o.Micros > p.Micros:
+		return 1
+	case o.ID < p.ID: // Go compares strings bytewise
+		return -1
+	case o.ID > p.ID:
+		return 1
+	}
+	return 0
+}
+
+// After reports whether o is strictly later than p.
+func (o Order) After(p Order) bool { return o.Compare(p) > 0 }

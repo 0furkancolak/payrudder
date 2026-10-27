@@ -182,6 +182,10 @@ enum Aggregation {
   AGGREGATION_SUM = 1;
   AGGREGATION_COUNT = 2;
   AGGREGATION_MAX = 3;
+  // The number of distinct values of the event property named by value_property, per customer and period. quantity_scale must be 0.
+  AGGREGATION_UNIQUE = 4;
+  // The quantity of the latest event of the period, in the order (event_time, event_id).
+  AGGREGATION_LAST = 5;
 }
 
 // FilterValues is the set of accepted values for one event property (equality only).
@@ -194,7 +198,7 @@ message Meter {
   string code = 1;
   int32 version = 2;
   Aggregation aggregation = 3;
-  // Event property holding the quantity. Empty for COUNT.
+  // Event property holding the quantity (SUM, MAX, LAST) or the value whose distinct occurrences are counted (UNIQUE). Empty for COUNT.
   string value_property = 4;
   map<string, FilterValues> filter = 5;
   // Decimal places accepted in event quantities (0..6, ADR 0010).
