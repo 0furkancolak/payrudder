@@ -15,10 +15,8 @@ service DirectoryService {
 enum PlacementStatus {
   PLACEMENT_STATUS_UNSPECIFIED = 0;
   PLACEMENT_STATUS_READY = 1;
-  // The tenant's schema is being created; no traffic yet.
-  PLACEMENT_STATUS_PROVISIONING = 2;
   // The tenant is being moved: every request and job for it is refused until the move ends.
-  PLACEMENT_STATUS_MOVING = 3;
+  PLACEMENT_STATUS_MOVING = 2;
 }
 
 // Placement is one row of the directory.

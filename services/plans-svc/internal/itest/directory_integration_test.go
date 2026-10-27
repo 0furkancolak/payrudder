@@ -73,7 +73,7 @@ func testDirectory(t *testing.T) {
 	})
 
 	t.Run("the columns refuse a malformed cell, region or status", func(t *testing.T) {
-		for _, set := range []string{"cell = 'Cell One'", "cell = '-c1'", "region = 'EU'", "placement_status = 'half'"} {
+		for _, set := range []string{"cell = 'Cell One'", "cell = '-c1'", "region = 'EU'", "placement_status = 'half'", "placement_status = 'provisioning'"} {
 			_, err := e.system.Exec(ctx, `UPDATE tenants SET `+set+` WHERE id = $1`, live)
 			if pgxx.ErrCode(err) != pgxx.CodeCheckViolation {
 				t.Errorf("%s: %v, want a check violation", set, err)
@@ -84,7 +84,7 @@ func testDirectory(t *testing.T) {
 	t.Run("placed tenants are listed by cell, pooled ones never", func(t *testing.T) {
 		for _, s := range []struct {
 			id, cell, region, status string
-		}{{live, "c1", "eu", "ready"}, {sandbox, "c1", "eu", "moving"}, {other, "c2", "us", "provisioning"}} {
+		}{{live, "c1", "eu", "ready"}, {sandbox, "c1", "eu", "moving"}, {other, "c2", "us", "moving"}} {
 			if _, err := e.system.Exec(ctx, `UPDATE tenants SET cell = $2, region = $3, placement_status = $4 WHERE id = $1`, s.id, s.cell, s.region, s.status); err != nil {
 				t.Fatal(err)
 			}
@@ -102,7 +102,7 @@ func testDirectory(t *testing.T) {
 			got[p.GetTenantId()] = p
 		}
 		if len(got) != 3 || got[live].GetCell() != "c1" || got[sandbox].GetStatus() != plansv1.PlacementStatus_PLACEMENT_STATUS_MOVING ||
-			got[other].GetRegion() != "us" || got[other].GetStatus() != plansv1.PlacementStatus_PLACEMENT_STATUS_PROVISIONING {
+			got[other].GetRegion() != "us" || got[other].GetStatus() != plansv1.PlacementStatus_PLACEMENT_STATUS_MOVING {
 			t.Fatalf("all placements = %v", all.GetPlacements())
 		}
 		c1, err := client.ListPlacements(operator(), &plansv1.ListPlacementsRequest{Cell: "c1"})
@@ -134,7 +134,7 @@ func testDirectory(t *testing.T) {
 		if p, err := dir.Placement(ctx, liveID); err != nil || p.Cell != "c1" || !p.Serving() || p.Pooled() {
 			t.Fatalf("directory live = %+v %v", p, err)
 		}
-		if p, err := dir.Placement(ctx, otherID); err != nil || p.Serving() || p.Status != tenantdir.StatusProvisioning {
+		if p, err := dir.Placement(ctx, otherID); err != nil || p.Serving() || p.Status != tenantdir.StatusMoving {
 			t.Fatalf("directory other = %+v %v", p, err)
 		}
 		if _, err := dir.Placement(ctx, uuid.New()); err == nil {

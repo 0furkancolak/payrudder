@@ -102,7 +102,7 @@ func (r *Router) Invalidate(tenantID uuid.UUID) {
 	}
 }
 
-// Locate says where the tenant's data is. A tenant that is not serving (provisioning, moving) is an error that matches tenantdir.ErrNotServing, and so is a
+// Locate says where the tenant's data is. A tenant that is not serving (moving) is an error that matches tenantdir.ErrNotServing, and so is a
 // directory that cannot answer: the router never guesses a place, because a write to the wrong one is not undone by a retry.
 func (r *Router) Locate(ctx context.Context, tenantID uuid.UUID) (Target, error) {
 	if r.dir == nil {
@@ -123,6 +123,58 @@ func (r *Router) Locate(ctx context.Context, tenantID uuid.UUID) (Target, error)
 		return Target{}, err
 	}
 	return Target{Cell: p.Cell, Pool: pool, Schema: tenantdir.Schema(tenantID)}, nil
+}
+
+// PlacedTenant is a tenant placed in a cell with the pool of that cell (of the router's role).
+type PlacedTenant struct {
+	tenantdir.Placement
+	Pool *pgxpool.Pool
+}
+
+// Placed lists every tenant placed in a cell, whatever its status, asking the directory (not its cache): a job that visits every tenant runs on a timer, and
+// must not miss a tenant a cached answer does not know yet. A router with no cells has none. A tenant in a cell this process has no pool for is an error.
+func (r *Router) Placed(ctx context.Context) ([]PlacedTenant, error) {
+	if len(r.cells) == 0 {
+		return nil, nil
+	}
+	l, ok := r.dir.(tenantdir.Lister)
+	if !ok {
+		return nil, errors.New("pgxx: the directory of this router cannot list placements")
+	}
+	ps, err := l.Placed(ctx, "")
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PlacedTenant, 0, len(ps))
+	var errs []error
+	for _, p := range ps {
+		pool, err := r.Cell(p.Cell)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("tenant %s: %w", p.TenantID, err))
+			continue
+		}
+		out = append(out, PlacedTenant{Placement: p, Pool: pool})
+	}
+	return out, errors.Join(errs...)
+}
+
+// EachReady runs fn for every tenant placed in a cell that is serving, one after the other: the converted form of a job that used to scan one shared table.
+// A tenant that is moving is skipped (a job must not touch it), one whose fn fails does not stop the others; the errors come back joined.
+func (r *Router) EachReady(ctx context.Context, fn func(ctx context.Context, t PlacedTenant) error) error {
+	placed, err := r.Placed(ctx)
+	errs := []error{err}
+	for _, t := range placed {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if !t.Serving() {
+			continue
+		}
+		if err := fn(ctx, t); err != nil {
+			errs = append(errs, fmt.Errorf("tenant %s: %w", t.TenantID, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // BeginTenantTx implements TenantBeginner.

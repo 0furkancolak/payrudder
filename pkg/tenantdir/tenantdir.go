@@ -12,6 +12,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -26,14 +27,12 @@ type Status string
 const (
 	// StatusReady is a placement that serves.
 	StatusReady Status = "ready"
-	// StatusProvisioning is a cell placement whose schema is being created.
-	StatusProvisioning Status = "provisioning"
 	// StatusMoving is a tenant being moved between places: nothing reads or writes it until the move ends.
 	StatusMoving Status = "moving"
 )
 
-// Valid reports whether s is one of the three statuses.
-func (s Status) Valid() bool { return s == StatusReady || s == StatusProvisioning || s == StatusMoving }
+// Valid reports whether s is one of the two statuses.
+func (s Status) Valid() bool { return s == StatusReady || s == StatusMoving }
 
 // Placement is where one tenant lives.
 type Placement struct {
@@ -54,7 +53,7 @@ func (p Placement) Serving() bool { return p.Status == StatusReady }
 var (
 	// ErrNotFound is what a Loader returns (itself or wrapped) for a tenant the directory does not know.
 	ErrNotFound = errors.New("tenantdir: tenant not found")
-	// ErrNotServing wraps a placement that is provisioning or moving: the caller must refuse the request, never fall back to another place.
+	// ErrNotServing wraps a placement that is moving: the caller must refuse the request, never fall back to another place.
 	ErrNotServing = errors.New("tenantdir: tenant is not serving")
 )
 
@@ -90,8 +89,14 @@ type Source interface {
 // Loader fetches one tenant's placement from its owner.
 type Loader func(ctx context.Context, id uuid.UUID) (Placement, error)
 
-// Lister fetches the placements of the tenants in a cell ("" for every cell); pooled tenants are not listed.
-type Lister func(ctx context.Context, cell string) ([]Placement, error)
+// ListFunc fetches the placements of the tenants in a cell ("" for every cell); pooled tenants are not listed.
+type ListFunc func(ctx context.Context, cell string) ([]Placement, error)
+
+// Lister is a Source that can also list the tenants placed in cells; a job that visits every placed tenant needs one. *Directory is one.
+type Lister interface {
+	Source
+	Placed(ctx context.Context, cell string) ([]Placement, error)
+}
 
 // Options tune a Directory. Zero values take the defaults noted.
 type Options struct {
@@ -133,14 +138,14 @@ type entry struct {
 // Directory is a Source over a Loader: a bounded process cache with stale-if-error and one load in flight per tenant.
 type Directory struct {
 	load   Loader
-	list   Lister
+	list   ListFunc
 	o      Options
 	cache  *expirable.LRU[uuid.UUID, entry]
 	flight singleflight.Group
 }
 
 // New returns a Directory over load. list may be nil when the process never iterates placements.
-func New(load Loader, list Lister, o Options) *Directory {
+func New(load Loader, list ListFunc, o Options) *Directory {
 	o.defaults()
 	return &Directory{load: load, list: list, o: o, cache: expirable.NewLRU[uuid.UUID, entry](o.Size, nil, o.MaxStale)}
 }
@@ -200,3 +205,15 @@ func (f Fixed) Placement(_ context.Context, id uuid.UUID) (Placement, error) {
 
 // Invalidate implements Source; a fixed set has nothing cached.
 func (f Fixed) Invalidate(uuid.UUID) {}
+
+// Placed implements Lister: the tenants of the set that are in a cell (the named one, or any when cell is empty), in tenant id order.
+func (f Fixed) Placed(_ context.Context, cell string) ([]Placement, error) {
+	var out []Placement
+	for _, p := range f {
+		if !p.Pooled() && (cell == "" || p.Cell == cell) {
+			out = append(out, p)
+		}
+	}
+	slices.SortFunc(out, func(a, b Placement) int { return slices.Compare(a.TenantID[:], b.TenantID[:]) })
+	return out, nil
+}

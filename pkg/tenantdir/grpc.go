@@ -61,8 +61,6 @@ func FromProto(p *plansv1.Placement) (Placement, error) {
 	switch p.GetStatus() {
 	case plansv1.PlacementStatus_PLACEMENT_STATUS_READY:
 		s = StatusReady
-	case plansv1.PlacementStatus_PLACEMENT_STATUS_PROVISIONING:
-		s = StatusProvisioning
 	case plansv1.PlacementStatus_PLACEMENT_STATUS_MOVING:
 		s = StatusMoving
 	default:
@@ -77,8 +75,6 @@ func ToProto(p Placement) *plansv1.Placement {
 	switch p.Status {
 	case StatusReady:
 		s = plansv1.PlacementStatus_PLACEMENT_STATUS_READY
-	case StatusProvisioning:
-		s = plansv1.PlacementStatus_PLACEMENT_STATUS_PROVISIONING
 	case StatusMoving:
 		s = plansv1.PlacementStatus_PLACEMENT_STATUS_MOVING
 	}

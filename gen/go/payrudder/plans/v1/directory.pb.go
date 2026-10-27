@@ -27,10 +27,8 @@ type PlacementStatus int32
 const (
 	PlacementStatus_PLACEMENT_STATUS_UNSPECIFIED PlacementStatus = 0
 	PlacementStatus_PLACEMENT_STATUS_READY       PlacementStatus = 1
-	// The tenant's schema is being created; no traffic yet.
-	PlacementStatus_PLACEMENT_STATUS_PROVISIONING PlacementStatus = 2
 	// The tenant is being moved: every request and job for it is refused until the move ends.
-	PlacementStatus_PLACEMENT_STATUS_MOVING PlacementStatus = 3
+	PlacementStatus_PLACEMENT_STATUS_MOVING PlacementStatus = 2
 )
 
 // Enum value maps for PlacementStatus.
@@ -38,14 +36,12 @@ var (
 	PlacementStatus_name = map[int32]string{
 		0: "PLACEMENT_STATUS_UNSPECIFIED",
 		1: "PLACEMENT_STATUS_READY",
-		2: "PLACEMENT_STATUS_PROVISIONING",
-		3: "PLACEMENT_STATUS_MOVING",
+		2: "PLACEMENT_STATUS_MOVING",
 	}
 	PlacementStatus_value = map[string]int32{
-		"PLACEMENT_STATUS_UNSPECIFIED":  0,
-		"PLACEMENT_STATUS_READY":        1,
-		"PLACEMENT_STATUS_PROVISIONING": 2,
-		"PLACEMENT_STATUS_MOVING":       3,
+		"PLACEMENT_STATUS_UNSPECIFIED": 0,
+		"PLACEMENT_STATUS_READY":       1,
+		"PLACEMENT_STATUS_MOVING":      2,
 	}
 )
 
@@ -371,12 +367,11 @@ const file_payrudder_plans_v1_directory_proto_rawDesc = "" +
 	"\n" +
 	"placements\x18\x01 \x03(\v2\x1d.payrudder.plans.v1.PlacementR\n" +
 	"placements\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*\x8f\x01\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*l\n" +
 	"\x0fPlacementStatus\x12 \n" +
 	"\x1cPLACEMENT_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16PLACEMENT_STATUS_READY\x10\x01\x12!\n" +
-	"\x1dPLACEMENT_STATUS_PROVISIONING\x10\x02\x12\x1b\n" +
-	"\x17PLACEMENT_STATUS_MOVING\x10\x032\xde\x01\n" +
+	"\x16PLACEMENT_STATUS_READY\x10\x01\x12\x1b\n" +
+	"\x17PLACEMENT_STATUS_MOVING\x10\x022\xde\x01\n" +
 	"\x10DirectoryService\x12a\n" +
 	"\fGetPlacement\x12'.payrudder.plans.v1.GetPlacementRequest\x1a(.payrudder.plans.v1.GetPlacementResponse\x12g\n" +
 	"\x0eListPlacements\x12).payrudder.plans.v1.ListPlacementsRequest\x1a*.payrudder.plans.v1.ListPlacementsResponseB\xd7\x01\n" +
