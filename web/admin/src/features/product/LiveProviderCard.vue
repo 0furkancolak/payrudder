@@ -23,7 +23,7 @@ const props = defineProps<{ appId: string }>();
 const { t } = useI18n();
 const app = useApp(() => props.appId);
 const apps = useApps();
-const live = computed(() => liveTenant(app.data.value?.app));
+const live = computed(() => liveTenant(app.data.value?.app ?? undefined));
 const isOwner = computed(() => app.data.value?.role === "owner");
 const providers = useLiveProviders(() => props.appId, () => !!live.value);
 const { remove } = useLiveProviderActions(() => props.appId);

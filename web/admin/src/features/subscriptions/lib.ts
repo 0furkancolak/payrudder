@@ -13,7 +13,7 @@ export function intervalKey(interval: string | undefined): "yearly" | "monthly" 
 export const MAX_SEATS = 100_000;
 
 /** The seats of a subscription: the API leaves the field out for a subscription made before seats existed, which has one. */
-export const seatsOf = (s: Pick<Subscription, "quantity">): number => (s.quantity && s.quantity > 0 ? s.quantity : 1);
+export const seatsOf = (s: { quantity?: number }): number => (s.quantity && s.quantity > 0 ? s.quantity : 1);
 
 /**
  * Reads a seats field: `null` when it is empty (nothing chosen, the server keeps or defaults it), a whole number from 1 to MAX_SEATS, or `"bad"` for anything

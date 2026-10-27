@@ -146,7 +146,7 @@ class MeterFilterValue(TypedDict):
 
 class Meter(TypedDict):
     code: str
-    aggregation: Literal["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"]
+    aggregation: Literal["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX", "AGGREGATION_UNIQUE", "AGGREGATION_LAST"]
     value_property: str
     filter: dict[str, MeterFilterValue]
     quantity_scale: int
@@ -166,7 +166,7 @@ class CreateMeterRequestFilterValue(TypedDict, total=False):
 
 class _CreateMeterRequestRequired(TypedDict):
     code: str
-    aggregation: Literal["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"]
+    aggregation: Literal["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX", "AGGREGATION_UNIQUE", "AGGREGATION_LAST"]
     unit_label: str
 
 

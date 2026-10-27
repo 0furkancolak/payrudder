@@ -607,9 +607,15 @@ type CreateInvoiceLinkResponse struct {
 // CreateMeterRequest is the request body of CreateMeter.
 type CreateMeterRequest struct {
 	Code string `json:"code"`
-	// One of: AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX.
+	// How a customer's events of a billing period combine into one quantity. SUM adds the quantities, COUNT counts
+	// the events, MAX keeps the largest quantity. UNIQUE counts the distinct values of the event property named by
+	// value_property (an event without the property is not counted; quantity_scale must be 0). LAST is the quantity
+	// of the latest event of the period by event_time, ties broken by event id; an event that arrives after the
+	// period's cutoff never changes it. A code cannot change into or out of UNIQUE or LAST in a later version. One
+	// of: AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_UNIQUE, AGGREGATION_LAST.
 	Aggregation string `json:"aggregation"`
-	// Required for SUM and MAX
+	// Required for SUM, MAX and LAST (the event property holding the quantity) and for UNIQUE (the property whose
+	// distinct values are counted)
 	ValueProperty string                                   `json:"value_property,omitempty"`
 	Filter        map[string]CreateMeterRequestFilterValue `json:"filter,omitempty"`
 	// Decimal places, fixed per code
@@ -1649,9 +1655,9 @@ type MarkAffiliatePayoutPaidRequest struct {
 // Meter is an object of the API; see components.schemas.Meter in api/openapi/v1.yaml.
 type Meter struct {
 	Code string `json:"code"`
-	// One of: AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX.
+	// One of: AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_UNIQUE, AGGREGATION_LAST.
 	Aggregation string `json:"aggregation"`
-	// Required for SUM and MAX
+	// Required for SUM, MAX, UNIQUE and LAST
 	ValueProperty string                      `json:"value_property"`
 	Filter        map[string]MeterFilterValue `json:"filter"`
 	// Decimal places, fixed per code

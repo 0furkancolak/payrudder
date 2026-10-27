@@ -7507,8 +7507,8 @@ components:
       required: [code, aggregation, value_property, filter, quantity_scale, unit_label, category, version, create_time]
       properties:
         code: { type: string, pattern: "^[a-z][a-z0-9_]{0,62}$" }
-        aggregation: { type: string, enum: [AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX] }
-        value_property: { type: string, description: Required for SUM and MAX }
+        aggregation: { type: string, enum: [AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_UNIQUE, AGGREGATION_LAST] }
+        value_property: { type: string, description: "Required for SUM, MAX, UNIQUE and LAST" }
         filter: { type: object, additionalProperties: { type: object, required: [values], properties: { values: { type: array, items: { type: string } } } } }
         quantity_scale: { type: integer, minimum: 0, maximum: 6, description: "Decimal places, fixed per code" }
         unit_label: { type: string, maxLength: 32, description: "Any unit of your choice: tokens, GB-h, seats, minutes", examples: ["tokens"] }

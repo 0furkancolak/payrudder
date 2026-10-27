@@ -19,7 +19,7 @@ import { emptyProfile, fromTenant, normalizeTaxId, profileBody, taxIdRequired, v
 const props = defineProps<{ appId: string }>();
 const { t } = useI18n();
 const app = useApp(() => props.appId);
-const live = computed(() => liveTenant(app.data.value?.app));
+const live = computed(() => liveTenant(app.data.value?.app ?? undefined));
 const isOwner = computed(() => app.data.value?.role === "owner");
 const save = useSaveBillingProfile(() => props.appId);
 

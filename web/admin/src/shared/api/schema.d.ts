@@ -8386,8 +8386,8 @@ export interface components {
         Meter: {
             code: string;
             /** @enum {string} */
-            aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX";
-            /** @description Required for SUM and MAX */
+            aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX" | "AGGREGATION_UNIQUE" | "AGGREGATION_LAST";
+            /** @description Required for SUM, MAX, UNIQUE and LAST */
             value_property: string;
             filter: {
                 [key: string]: {
