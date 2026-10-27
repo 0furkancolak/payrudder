@@ -21,6 +21,9 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	DirectoryService_GetPlacement_FullMethodName   = "/payrudder.plans.v1.DirectoryService/GetPlacement"
 	DirectoryService_ListPlacements_FullMethodName = "/payrudder.plans.v1.DirectoryService/ListPlacements"
+	DirectoryService_BeginMove_FullMethodName      = "/payrudder.plans.v1.DirectoryService/BeginMove"
+	DirectoryService_FinishMove_FullMethodName     = "/payrudder.plans.v1.DirectoryService/FinishMove"
+	DirectoryService_AbortMove_FullMethodName      = "/payrudder.plans.v1.DirectoryService/AbortMove"
 )
 
 // DirectoryServiceClient is the client API for DirectoryService service.
@@ -34,6 +37,13 @@ type DirectoryServiceClient interface {
 	GetPlacement(ctx context.Context, in *GetPlacementRequest, opts ...grpc.CallOption) (*GetPlacementResponse, error)
 	// ListPlacements pages through the tenants placed in a cell (every cell when none is named), ordered by tenant id. Pooled tenants are not listed.
 	ListPlacements(ctx context.Context, in *ListPlacementsRequest, opts ...grpc.CallOption) (*ListPlacementsResponse, error)
+	// BeginMove fences a tenant for a move: it goes from READY to MOVING, and every request and job for it is refused until the move ends. A move to a cell is refused
+	// while any job of the platform is not converted to run per tenant schema (pkg/tenantdir.Jobs); a move out of a cell, or between pooled places, is not.
+	BeginMove(ctx context.Context, in *BeginMoveRequest, opts ...grpc.CallOption) (*BeginMoveResponse, error)
+	// FinishMove ends a move: the tenant is served from its new place (READY).
+	FinishMove(ctx context.Context, in *FinishMoveRequest, opts ...grpc.CallOption) (*FinishMoveResponse, error)
+	// AbortMove ends a move where it started: the placement is unchanged and the tenant is served again.
+	AbortMove(ctx context.Context, in *AbortMoveRequest, opts ...grpc.CallOption) (*AbortMoveResponse, error)
 }
 
 type directoryServiceClient struct {
@@ -64,6 +74,36 @@ func (c *directoryServiceClient) ListPlacements(ctx context.Context, in *ListPla
 	return out, nil
 }
 
+func (c *directoryServiceClient) BeginMove(ctx context.Context, in *BeginMoveRequest, opts ...grpc.CallOption) (*BeginMoveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BeginMoveResponse)
+	err := c.cc.Invoke(ctx, DirectoryService_BeginMove_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *directoryServiceClient) FinishMove(ctx context.Context, in *FinishMoveRequest, opts ...grpc.CallOption) (*FinishMoveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FinishMoveResponse)
+	err := c.cc.Invoke(ctx, DirectoryService_FinishMove_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *directoryServiceClient) AbortMove(ctx context.Context, in *AbortMoveRequest, opts ...grpc.CallOption) (*AbortMoveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AbortMoveResponse)
+	err := c.cc.Invoke(ctx, DirectoryService_AbortMove_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DirectoryServiceServer is the server API for DirectoryService service.
 // All implementations must embed UnimplementedDirectoryServiceServer
 // for forward compatibility.
@@ -75,6 +115,13 @@ type DirectoryServiceServer interface {
 	GetPlacement(context.Context, *GetPlacementRequest) (*GetPlacementResponse, error)
 	// ListPlacements pages through the tenants placed in a cell (every cell when none is named), ordered by tenant id. Pooled tenants are not listed.
 	ListPlacements(context.Context, *ListPlacementsRequest) (*ListPlacementsResponse, error)
+	// BeginMove fences a tenant for a move: it goes from READY to MOVING, and every request and job for it is refused until the move ends. A move to a cell is refused
+	// while any job of the platform is not converted to run per tenant schema (pkg/tenantdir.Jobs); a move out of a cell, or between pooled places, is not.
+	BeginMove(context.Context, *BeginMoveRequest) (*BeginMoveResponse, error)
+	// FinishMove ends a move: the tenant is served from its new place (READY).
+	FinishMove(context.Context, *FinishMoveRequest) (*FinishMoveResponse, error)
+	// AbortMove ends a move where it started: the placement is unchanged and the tenant is served again.
+	AbortMove(context.Context, *AbortMoveRequest) (*AbortMoveResponse, error)
 	mustEmbedUnimplementedDirectoryServiceServer()
 }
 
@@ -90,6 +137,15 @@ func (UnimplementedDirectoryServiceServer) GetPlacement(context.Context, *GetPla
 }
 func (UnimplementedDirectoryServiceServer) ListPlacements(context.Context, *ListPlacementsRequest) (*ListPlacementsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPlacements not implemented")
+}
+func (UnimplementedDirectoryServiceServer) BeginMove(context.Context, *BeginMoveRequest) (*BeginMoveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BeginMove not implemented")
+}
+func (UnimplementedDirectoryServiceServer) FinishMove(context.Context, *FinishMoveRequest) (*FinishMoveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FinishMove not implemented")
+}
+func (UnimplementedDirectoryServiceServer) AbortMove(context.Context, *AbortMoveRequest) (*AbortMoveResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AbortMove not implemented")
 }
 func (UnimplementedDirectoryServiceServer) mustEmbedUnimplementedDirectoryServiceServer() {}
 func (UnimplementedDirectoryServiceServer) testEmbeddedByValue()                          {}
@@ -148,6 +204,60 @@ func _DirectoryService_ListPlacements_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _DirectoryService_BeginMove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BeginMoveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DirectoryServiceServer).BeginMove(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DirectoryService_BeginMove_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DirectoryServiceServer).BeginMove(ctx, req.(*BeginMoveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DirectoryService_FinishMove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinishMoveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DirectoryServiceServer).FinishMove(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DirectoryService_FinishMove_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DirectoryServiceServer).FinishMove(ctx, req.(*FinishMoveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _DirectoryService_AbortMove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AbortMoveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DirectoryServiceServer).AbortMove(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: DirectoryService_AbortMove_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DirectoryServiceServer).AbortMove(ctx, req.(*AbortMoveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // DirectoryService_ServiceDesc is the grpc.ServiceDesc for DirectoryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -162,6 +272,18 @@ var DirectoryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPlacements",
 			Handler:    _DirectoryService_ListPlacements_Handler,
+		},
+		{
+			MethodName: "BeginMove",
+			Handler:    _DirectoryService_BeginMove_Handler,
+		},
+		{
+			MethodName: "FinishMove",
+			Handler:    _DirectoryService_FinishMove_Handler,
+		},
+		{
+			MethodName: "AbortMove",
+			Handler:    _DirectoryService_AbortMove_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

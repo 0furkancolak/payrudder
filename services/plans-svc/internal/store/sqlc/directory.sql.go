@@ -11,6 +11,51 @@ import (
 	"github.com/google/uuid"
 )
 
+const abortMove = `-- name: AbortMove :execrows
+UPDATE tenants SET placement_status = 'ready' WHERE id = $1 AND placement_status = 'moving'
+`
+
+func (q *Queries) AbortMove(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, abortMove, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const beginMove = `-- name: BeginMove :execrows
+
+UPDATE tenants SET placement_status = 'moving' WHERE id = $1 AND placement_status = 'ready'
+`
+
+// A move is fenced (ready -> moving), ended in a new place (moving -> ready, cell and region set) or ended where it began (moving -> ready). Each runs after
+// LockPlacement, in its transaction, and changes nothing unless the tenant is in the state the step expects.
+func (q *Queries) BeginMove(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, beginMove, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const finishMove = `-- name: FinishMove :execrows
+UPDATE tenants SET cell = $1::text, region = $2::text, placement_status = 'ready' WHERE id = $3 AND placement_status = 'moving'
+`
+
+type FinishMoveParams struct {
+	Cell   string
+	Region string
+	ID     uuid.UUID
+}
+
+func (q *Queries) FinishMove(ctx context.Context, arg FinishMoveParams) (int64, error) {
+	result, err := q.db.Exec(ctx, finishMove, arg.Cell, arg.Region, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getPlacement = `-- name: GetPlacement :one
 
 SELECT id, cell, region, placement_status FROM tenants WHERE id = $1
@@ -79,4 +124,27 @@ func (q *Queries) ListPlacements(ctx context.Context, arg ListPlacementsParams) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockPlacement = `-- name: LockPlacement :one
+SELECT id, cell, region, placement_status FROM tenants WHERE id = $1 FOR UPDATE
+`
+
+type LockPlacementRow struct {
+	ID              uuid.UUID
+	Cell            string
+	Region          string
+	PlacementStatus string
+}
+
+func (q *Queries) LockPlacement(ctx context.Context, id uuid.UUID) (LockPlacementRow, error) {
+	row := q.db.QueryRow(ctx, lockPlacement, id)
+	var i LockPlacementRow
+	err := row.Scan(
+		&i.ID,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
+	)
+	return i, err
 }

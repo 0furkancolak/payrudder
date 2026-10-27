@@ -344,6 +344,296 @@ func (x *ListPlacementsResponse) GetNextPageToken() string {
 	return ""
 }
 
+type BeginMoveRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// Where the tenant is going: a cell, or empty for the pooled database. It must differ from where the tenant is.
+	ToCell        string `protobuf:"bytes,2,opt,name=to_cell,json=toCell,proto3" json:"to_cell,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BeginMoveRequest) Reset() {
+	*x = BeginMoveRequest{}
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BeginMoveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BeginMoveRequest) ProtoMessage() {}
+
+func (x *BeginMoveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BeginMoveRequest.ProtoReflect.Descriptor instead.
+func (*BeginMoveRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_directory_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *BeginMoveRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *BeginMoveRequest) GetToCell() string {
+	if x != nil {
+		return x.ToCell
+	}
+	return ""
+}
+
+type BeginMoveResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Placement     *Placement             `protobuf:"bytes,1,opt,name=placement,proto3" json:"placement,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BeginMoveResponse) Reset() {
+	*x = BeginMoveResponse{}
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BeginMoveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BeginMoveResponse) ProtoMessage() {}
+
+func (x *BeginMoveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BeginMoveResponse.ProtoReflect.Descriptor instead.
+func (*BeginMoveResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_directory_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *BeginMoveResponse) GetPlacement() *Placement {
+	if x != nil {
+		return x.Placement
+	}
+	return nil
+}
+
+type FinishMoveRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// The cell the tenant now lives in (the one BeginMove named), empty for the pooled database.
+	Cell          string `protobuf:"bytes,2,opt,name=cell,proto3" json:"cell,omitempty"`
+	Region        string `protobuf:"bytes,3,opt,name=region,proto3" json:"region,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinishMoveRequest) Reset() {
+	*x = FinishMoveRequest{}
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinishMoveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinishMoveRequest) ProtoMessage() {}
+
+func (x *FinishMoveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinishMoveRequest.ProtoReflect.Descriptor instead.
+func (*FinishMoveRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_directory_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *FinishMoveRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *FinishMoveRequest) GetCell() string {
+	if x != nil {
+		return x.Cell
+	}
+	return ""
+}
+
+func (x *FinishMoveRequest) GetRegion() string {
+	if x != nil {
+		return x.Region
+	}
+	return ""
+}
+
+type FinishMoveResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Placement     *Placement             `protobuf:"bytes,1,opt,name=placement,proto3" json:"placement,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FinishMoveResponse) Reset() {
+	*x = FinishMoveResponse{}
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FinishMoveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FinishMoveResponse) ProtoMessage() {}
+
+func (x *FinishMoveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FinishMoveResponse.ProtoReflect.Descriptor instead.
+func (*FinishMoveResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_directory_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *FinishMoveResponse) GetPlacement() *Placement {
+	if x != nil {
+		return x.Placement
+	}
+	return nil
+}
+
+type AbortMoveRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AbortMoveRequest) Reset() {
+	*x = AbortMoveRequest{}
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AbortMoveRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AbortMoveRequest) ProtoMessage() {}
+
+func (x *AbortMoveRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AbortMoveRequest.ProtoReflect.Descriptor instead.
+func (*AbortMoveRequest) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_directory_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *AbortMoveRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+type AbortMoveResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Placement     *Placement             `protobuf:"bytes,1,opt,name=placement,proto3" json:"placement,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AbortMoveResponse) Reset() {
+	*x = AbortMoveResponse{}
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AbortMoveResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AbortMoveResponse) ProtoMessage() {}
+
+func (x *AbortMoveResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_plans_v1_directory_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AbortMoveResponse.ProtoReflect.Descriptor instead.
+func (*AbortMoveResponse) Descriptor() ([]byte, []int) {
+	return file_payrudder_plans_v1_directory_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *AbortMoveResponse) GetPlacement() *Placement {
+	if x != nil {
+		return x.Placement
+	}
+	return nil
+}
+
 var File_payrudder_plans_v1_directory_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_directory_proto_rawDesc = "" +
@@ -367,14 +657,33 @@ const file_payrudder_plans_v1_directory_proto_rawDesc = "" +
 	"\n" +
 	"placements\x18\x01 \x03(\v2\x1d.payrudder.plans.v1.PlacementR\n" +
 	"placements\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken*l\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"H\n" +
+	"\x10BeginMoveRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x17\n" +
+	"\ato_cell\x18\x02 \x01(\tR\x06toCell\"P\n" +
+	"\x11BeginMoveResponse\x12;\n" +
+	"\tplacement\x18\x01 \x01(\v2\x1d.payrudder.plans.v1.PlacementR\tplacement\"\\\n" +
+	"\x11FinishMoveRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x12\n" +
+	"\x04cell\x18\x02 \x01(\tR\x04cell\x12\x16\n" +
+	"\x06region\x18\x03 \x01(\tR\x06region\"Q\n" +
+	"\x12FinishMoveResponse\x12;\n" +
+	"\tplacement\x18\x01 \x01(\v2\x1d.payrudder.plans.v1.PlacementR\tplacement\"/\n" +
+	"\x10AbortMoveRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\"P\n" +
+	"\x11AbortMoveResponse\x12;\n" +
+	"\tplacement\x18\x01 \x01(\v2\x1d.payrudder.plans.v1.PlacementR\tplacement*l\n" +
 	"\x0fPlacementStatus\x12 \n" +
 	"\x1cPLACEMENT_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16PLACEMENT_STATUS_READY\x10\x01\x12\x1b\n" +
-	"\x17PLACEMENT_STATUS_MOVING\x10\x022\xde\x01\n" +
+	"\x17PLACEMENT_STATUS_MOVING\x10\x022\xef\x03\n" +
 	"\x10DirectoryService\x12a\n" +
 	"\fGetPlacement\x12'.payrudder.plans.v1.GetPlacementRequest\x1a(.payrudder.plans.v1.GetPlacementResponse\x12g\n" +
-	"\x0eListPlacements\x12).payrudder.plans.v1.ListPlacementsRequest\x1a*.payrudder.plans.v1.ListPlacementsResponseB\xd7\x01\n" +
+	"\x0eListPlacements\x12).payrudder.plans.v1.ListPlacementsRequest\x1a*.payrudder.plans.v1.ListPlacementsResponse\x12X\n" +
+	"\tBeginMove\x12$.payrudder.plans.v1.BeginMoveRequest\x1a%.payrudder.plans.v1.BeginMoveResponse\x12[\n" +
+	"\n" +
+	"FinishMove\x12%.payrudder.plans.v1.FinishMoveRequest\x1a&.payrudder.plans.v1.FinishMoveResponse\x12X\n" +
+	"\tAbortMove\x12$.payrudder.plans.v1.AbortMoveRequest\x1a%.payrudder.plans.v1.AbortMoveResponseB\xd7\x01\n" +
 	"\x16com.payrudder.plans.v1B\x0eDirectoryProtoP\x01ZCgithub.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1;plansv1\xa2\x02\x03PPX\xaa\x02\x12Payrudder.Plans.V1\xca\x02\x12Payrudder\\Plans\\V1\xe2\x02\x1ePayrudder\\Plans\\V1\\GPBMetadata\xea\x02\x14Payrudder::Plans::V1b\x06proto3"
 
 var (
@@ -390,7 +699,7 @@ func file_payrudder_plans_v1_directory_proto_rawDescGZIP() []byte {
 }
 
 var file_payrudder_plans_v1_directory_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_payrudder_plans_v1_directory_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_payrudder_plans_v1_directory_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_payrudder_plans_v1_directory_proto_goTypes = []any{
 	(PlacementStatus)(0),           // 0: payrudder.plans.v1.PlacementStatus
 	(*Placement)(nil),              // 1: payrudder.plans.v1.Placement
@@ -398,20 +707,35 @@ var file_payrudder_plans_v1_directory_proto_goTypes = []any{
 	(*GetPlacementResponse)(nil),   // 3: payrudder.plans.v1.GetPlacementResponse
 	(*ListPlacementsRequest)(nil),  // 4: payrudder.plans.v1.ListPlacementsRequest
 	(*ListPlacementsResponse)(nil), // 5: payrudder.plans.v1.ListPlacementsResponse
+	(*BeginMoveRequest)(nil),       // 6: payrudder.plans.v1.BeginMoveRequest
+	(*BeginMoveResponse)(nil),      // 7: payrudder.plans.v1.BeginMoveResponse
+	(*FinishMoveRequest)(nil),      // 8: payrudder.plans.v1.FinishMoveRequest
+	(*FinishMoveResponse)(nil),     // 9: payrudder.plans.v1.FinishMoveResponse
+	(*AbortMoveRequest)(nil),       // 10: payrudder.plans.v1.AbortMoveRequest
+	(*AbortMoveResponse)(nil),      // 11: payrudder.plans.v1.AbortMoveResponse
 }
 var file_payrudder_plans_v1_directory_proto_depIdxs = []int32{
-	0, // 0: payrudder.plans.v1.Placement.status:type_name -> payrudder.plans.v1.PlacementStatus
-	1, // 1: payrudder.plans.v1.GetPlacementResponse.placement:type_name -> payrudder.plans.v1.Placement
-	1, // 2: payrudder.plans.v1.ListPlacementsResponse.placements:type_name -> payrudder.plans.v1.Placement
-	2, // 3: payrudder.plans.v1.DirectoryService.GetPlacement:input_type -> payrudder.plans.v1.GetPlacementRequest
-	4, // 4: payrudder.plans.v1.DirectoryService.ListPlacements:input_type -> payrudder.plans.v1.ListPlacementsRequest
-	3, // 5: payrudder.plans.v1.DirectoryService.GetPlacement:output_type -> payrudder.plans.v1.GetPlacementResponse
-	5, // 6: payrudder.plans.v1.DirectoryService.ListPlacements:output_type -> payrudder.plans.v1.ListPlacementsResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0,  // 0: payrudder.plans.v1.Placement.status:type_name -> payrudder.plans.v1.PlacementStatus
+	1,  // 1: payrudder.plans.v1.GetPlacementResponse.placement:type_name -> payrudder.plans.v1.Placement
+	1,  // 2: payrudder.plans.v1.ListPlacementsResponse.placements:type_name -> payrudder.plans.v1.Placement
+	1,  // 3: payrudder.plans.v1.BeginMoveResponse.placement:type_name -> payrudder.plans.v1.Placement
+	1,  // 4: payrudder.plans.v1.FinishMoveResponse.placement:type_name -> payrudder.plans.v1.Placement
+	1,  // 5: payrudder.plans.v1.AbortMoveResponse.placement:type_name -> payrudder.plans.v1.Placement
+	2,  // 6: payrudder.plans.v1.DirectoryService.GetPlacement:input_type -> payrudder.plans.v1.GetPlacementRequest
+	4,  // 7: payrudder.plans.v1.DirectoryService.ListPlacements:input_type -> payrudder.plans.v1.ListPlacementsRequest
+	6,  // 8: payrudder.plans.v1.DirectoryService.BeginMove:input_type -> payrudder.plans.v1.BeginMoveRequest
+	8,  // 9: payrudder.plans.v1.DirectoryService.FinishMove:input_type -> payrudder.plans.v1.FinishMoveRequest
+	10, // 10: payrudder.plans.v1.DirectoryService.AbortMove:input_type -> payrudder.plans.v1.AbortMoveRequest
+	3,  // 11: payrudder.plans.v1.DirectoryService.GetPlacement:output_type -> payrudder.plans.v1.GetPlacementResponse
+	5,  // 12: payrudder.plans.v1.DirectoryService.ListPlacements:output_type -> payrudder.plans.v1.ListPlacementsResponse
+	7,  // 13: payrudder.plans.v1.DirectoryService.BeginMove:output_type -> payrudder.plans.v1.BeginMoveResponse
+	9,  // 14: payrudder.plans.v1.DirectoryService.FinishMove:output_type -> payrudder.plans.v1.FinishMoveResponse
+	11, // 15: payrudder.plans.v1.DirectoryService.AbortMove:output_type -> payrudder.plans.v1.AbortMoveResponse
+	11, // [11:16] is the sub-list for method output_type
+	6,  // [6:11] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_directory_proto_init() }
@@ -425,7 +749,7 @@ func file_payrudder_plans_v1_directory_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_plans_v1_directory_proto_rawDesc), len(file_payrudder_plans_v1_directory_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   5,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
