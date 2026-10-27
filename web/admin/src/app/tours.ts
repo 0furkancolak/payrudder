@@ -35,7 +35,7 @@ const TOURS: Readonly<Record<string, Tour>> = {
   members: membersTour,
   settings: settingsTour,
   partner: partnerTour,
-  paymentProviders: providersTour,
+  integrations: providersTour,
   providers: providersTour,
   customers: customersTour,
   subscriptions: subscriptionsTour,

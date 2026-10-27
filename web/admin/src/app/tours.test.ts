@@ -36,7 +36,7 @@ describe("tours", () => {
   });
 
   it("covers every page a person has in the sidebar", () => {
-    const missing = ["overview", "dashboard", "goLive", "apiKeys", "sandbox", "appSettings", "paymentProviders", ...PERSON_PAGES].filter((k) => !tourFor(k));
+    const missing = ["overview", "dashboard", "goLive", "apiKeys", "sandbox", "appSettings", "integrations", ...PERSON_PAGES].filter((k) => !tourFor(k));
     expect(missing).toEqual([]);
   });
 
