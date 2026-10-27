@@ -203,7 +203,6 @@ func dialBackends(cfg *Config) (b *backends, err error) {
 			b.close()
 		}
 	}()
-	unary := grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor())
 	stream := grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor())
 	targets := []struct {
 		dst  **grpc.ClientConn
@@ -211,14 +210,14 @@ func dialBackends(cfg *Config) (b *backends, err error) {
 		addr string
 		opts []grpc.DialOption
 	}{
-		{&b.plans, "plans-svc", cfg.PlansAddr, []grpc.DialOption{unary, stream}},
-		{&b.ingest, "ingest-svc", cfg.IngestAddr, []grpc.DialOption{unary}},
-		{&b.aggregator, "aggregator", cfg.AggregatorAddr, []grpc.DialOption{unary, stream}},
+		{&b.plans, "plans-svc", cfg.PlansAddr, []grpc.DialOption{stream}},
+		{&b.ingest, "ingest-svc", cfg.IngestAddr, nil},
+		{&b.aggregator, "aggregator", cfg.AggregatorAddr, []grpc.DialOption{stream}},
 	}
 	for _, t := range targets {
-		conn, dialErr := grpcx.NewClient(t.addr, t.opts...)
+		conn, dialErr := grpcx.NewTenantClient(t.name, t.addr, t.opts...)
 		if dialErr != nil {
-			return b, fmt.Errorf("%s client: %w", t.name, dialErr)
+			return b, dialErr
 		}
 		*t.dst = conn
 	}
