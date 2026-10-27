@@ -2285,6 +2285,8 @@
         "bad_method": "El método debe ser transferencia bancaria, efectivo u otro.",
         "bad_amount": "El importe debe ser un número entero de unidades menores mayor que cero.",
         "bad_date": "La fecha de recepción no es válida o es futura.",
+        "bad_reference": "La referencia debe ser una sola línea de 128 caracteres como máximo.",
+        "bad_note": "La nota debe tener 500 caracteres como máximo.",
         "overpayment": "Es más de lo pendiente. Registre solo el importe pendiente.",
         "already_paid": "La factura ya está pagada.",
         "not_payable": "El estado de pago de la factura no permite un pago manual ahora.",
