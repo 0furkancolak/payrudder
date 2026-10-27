@@ -132,8 +132,13 @@ type BillingServiceClient interface {
 	ListExpenses(ctx context.Context, in *ListExpensesRequest, opts ...grpc.CallOption) (*ListExpensesResponse, error)
 	// GetExpenseInbox returns the tenant's invoice inbox: the token of the address invoices+<token>@<inbound domain> that forwarded invoices are sent to (made on first use).
 	// With app_id it is the inbox of that app.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	GetExpenseInbox(ctx context.Context, in *GetExpenseInboxRequest, opts ...grpc.CallOption) (*ExpenseInbox, error)
 	// RotateExpenseInbox gives the inbox a new address; mail sent to the old one is dropped.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	RotateExpenseInbox(ctx context.Context, in *GetExpenseInboxRequest, opts ...grpc.CallOption) (*ExpenseInbox, error)
 	// ListInboxItems lists the attachments received by mail, newest first (status to_review by default).
 	ListInboxItems(ctx context.Context, in *ListInboxItemsRequest, opts ...grpc.CallOption) (*ListInboxItemsResponse, error)
@@ -682,8 +687,13 @@ type BillingServiceServer interface {
 	ListExpenses(context.Context, *ListExpensesRequest) (*ListExpensesResponse, error)
 	// GetExpenseInbox returns the tenant's invoice inbox: the token of the address invoices+<token>@<inbound domain> that forwarded invoices are sent to (made on first use).
 	// With app_id it is the inbox of that app.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	GetExpenseInbox(context.Context, *GetExpenseInboxRequest) (*ExpenseInbox, error)
 	// RotateExpenseInbox gives the inbox a new address; mail sent to the old one is dropped.
+	// buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+	// buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+	// buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
 	RotateExpenseInbox(context.Context, *GetExpenseInboxRequest) (*ExpenseInbox, error)
 	// ListInboxItems lists the attachments received by mail, newest first (status to_review by default).
 	ListInboxItems(context.Context, *ListInboxItemsRequest) (*ListInboxItemsResponse, error)
