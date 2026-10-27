@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Normale",
       "CORRECTION": "Correction",
-      "CREDIT_NOTE": "Avoir"
+      "CREDIT_NOTE": "Avoir",
+      "FEE": "Frais payés d'avance",
+      "LINK": "Lien de paiement"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Frais de base",
+      "USAGE": "Utilisation",
+      "LATE_USAGE": "Utilisation tardive",
+      "CREDIT": "Crédit",
+      "CORRECTION": "Correction",
+      "DISCOUNT": "Remise",
+      "TAX": "Taxe"
     },
     "subscriptionState": {
       "trialing": "en essai",
@@ -2296,7 +2307,7 @@
         "bad_amount": "Le montant doit être un nombre entier d'unités mineures supérieur à zéro.",
         "bad_date": "La date de réception est invalide ou dans le futur.",
         "bad_reference": "La référence doit tenir sur une seule ligne de 128 caractères au plus.",
-        "bad_note": "La note doit comporter 500 caractères au plus.",
+        "bad_note": "La note peut comporter 500 caractères au plus.",
         "overpayment": "C'est plus que le reste à payer. Enregistrez seulement le reste à payer.",
         "already_paid": "La facture est déjà payée.",
         "not_payable": "L'état de paiement de la facture n'autorise pas de paiement manuel pour le moment.",

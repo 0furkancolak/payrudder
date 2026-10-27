@@ -83,9 +83,6 @@ func Get(ctx context.Context, d Deps, tenant, invoice uuid.UUID) (State, error) 
 	out.Received, out.Outstanding = got.Minor, max(charge.AmountMinor-got.Minor, 0)
 
 	window := d.DefaultWindow
-	if window <= 0 {
-		window = handler.DefaultTransferWindow
-	}
 	if prov, err := d.Accounts.Named(ctx, tenant, banktransfer.Name, charge.Environment); err == nil {
 		if bt, ok := prov.(*banktransfer.Provider); ok {
 			in := bt.Instructions(charge.InvoiceNumber, invoice.String())

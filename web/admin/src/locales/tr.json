@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Normal",
       "CORRECTION": "Düzeltme",
-      "CREDIT_NOTE": "Alacak dekontu"
+      "CREDIT_NOTE": "Alacak dekontu",
+      "FEE": "Peşin ücret",
+      "LINK": "Ödeme bağlantısı"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Temel ücret",
+      "USAGE": "Kullanım",
+      "LATE_USAGE": "Geç gelen kullanım",
+      "CREDIT": "Kredi",
+      "CORRECTION": "Düzeltme",
+      "DISCOUNT": "İndirim",
+      "TAX": "Vergi"
     },
     "subscriptionState": {
       "trialing": "denemede",
@@ -2295,8 +2306,8 @@
         "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
         "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
         "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
-        "bad_reference": "Referans tek satır olmalı ve en fazla 128 karakter içermeli.",
-        "bad_note": "Not en fazla 500 karakter olmalı.",
+        "bad_reference": "Referans en fazla 128 karakterlik tek bir satır olmalıdır.",
+        "bad_note": "Not en fazla 500 karakter olabilir.",
         "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
         "already_paid": "Fatura zaten ödenmiş.",
         "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",

@@ -54,7 +54,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", key));
         <div v-if="index !== null" class="text-muted-foreground mb-1 flex items-center gap-1 text-xs">
           <button type="button" class="hover:bg-muted rounded-full p-1 disabled:opacity-40" :disabled="!hasPrev()" :aria-label="t('pagination.prev')" data-testid="detail-prev" @click="go(-1)"><ChevronUp class="size-4" aria-hidden="true" /></button>
           <button type="button" class="hover:bg-muted rounded-full p-1 disabled:opacity-40" :disabled="!hasNext()" :aria-label="t('pagination.next')" data-testid="detail-next" @click="go(1)"><ChevronDown class="size-4" aria-hidden="true" /></button>
-          <span class="tabular ms-1" data-testid="detail-position">{{ (offset ?? 0) + index + 1 }} / {{ of ?? total }}</span>
+          <span class="tabular-nums ms-1" data-testid="detail-position">{{ (offset ?? 0) + index + 1 }} / {{ of ?? total }}</span>
         </div>
         <SheetTitle>{{ title }}</SheetTitle>
         <SheetDescription v-if="description">{{ description }}</SheetDescription>

@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Regulär",
       "CORRECTION": "Korrektur",
-      "CREDIT_NOTE": "Gutschrift"
+      "CREDIT_NOTE": "Gutschrift",
+      "FEE": "Vorauszahlung",
+      "LINK": "Zahlungslink"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Grundgebühr",
+      "USAGE": "Nutzung",
+      "LATE_USAGE": "Verspätete Nutzung",
+      "CREDIT": "Gutschrift",
+      "CORRECTION": "Korrektur",
+      "DISCOUNT": "Rabatt",
+      "TAX": "Steuer"
     },
     "subscriptionState": {
       "trialing": "im Test",

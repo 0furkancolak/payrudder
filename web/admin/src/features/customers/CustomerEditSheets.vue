@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { cleanAddress } from "@/shared/lib/address";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { LocationFields } from "@/shared/ui/location-fields";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useSetCustomerAddress, useSetCustomerTax, type Address, type CustomerTax } from "./api";
+import AddressLines from "./AddressLines.vue";
 import type { Customer } from "./lib";
 
 /**
@@ -29,11 +31,8 @@ watch(addressOf, (c) => {
   editAddress.value = { ...(c.address ?? {}) };
   setAddress.reset();
 });
-const trimmed = (a: Address): Address => Object.fromEntries(Object.entries(a).map(([k, v]) => [k, (v ?? "").trim()]).filter(([, v]) => v !== ""));
 function saveAddress() {
-  const a = trimmed(editAddress.value);
-  if (a.country) a.country = a.country.toUpperCase();
-  setAddress.mutate({ externalId: addressId.value, address: a }, { onSuccess: () => (addressOf.value = null) });
+  setAddress.mutate({ externalId: addressId.value, address: cleanAddress(editAddress.value) }, { onSuccess: () => (addressOf.value = null) });
 }
 
 const setTax = useSetCustomerTax(() => props.tenantId);
@@ -63,9 +62,7 @@ function saveTax() {
       <SheetBody>
         <form id="edit-address" class="grid gap-3" @submit.prevent="saveAddress">
           <LocationFields v-model:country="editAddress.country" v-model:region="editAddress.region" v-model:city="editAddress.city" id-prefix="edit-customer" compact :labels="placeLabels" />
-          <Input v-model="editAddress.line1" maxlength="120" :aria-label="t('billing.customers.address.line1')" :placeholder="t('billing.customers.address.line1')" />
-          <Input v-model="editAddress.line2" maxlength="120" :aria-label="t('billing.customers.address.line2')" :placeholder="t('billing.customers.address.line2')" />
-          <Input v-model="editAddress.postal_code" maxlength="20" :aria-label="t('billing.customers.address.postalCode')" :placeholder="t('billing.customers.address.postalCode')" />
+          <AddressLines v-model:line1="editAddress.line1" v-model:line2="editAddress.line2" v-model:postal-code="editAddress.postal_code" />
           <ErrorText :error="setAddress.error.value" />
         </form>
       </SheetBody>

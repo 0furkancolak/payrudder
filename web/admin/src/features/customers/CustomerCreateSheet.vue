@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import AppField from "@/app/layout/AppField.vue";
 import { useI18n } from "vue-i18n";
+import { cleanAddress } from "@/shared/lib/address";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
@@ -9,6 +10,7 @@ import { LocationFields } from "@/shared/ui/location-fields";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useCreateCustomer, type Address } from "./api";
+import AddressLines from "./AddressLines.vue";
 
 /** Adds a customer by hand: id, name, e-mail, and optionally a country, a billing currency and an address. */
 const props = defineProps<{ tenantId: string }>();
@@ -24,7 +26,6 @@ const currency = ref("");
 const address = ref<Address>({});
 /** The place fields carry the names the customer list uses for them. */
 const placeLabels = computed(() => ({ country: t("billing.customers.country"), region: t("billing.customers.address.region"), city: t("billing.customers.address.city") }));
-const trimmed = (a: Address): Address => Object.fromEntries(Object.entries(a).map(([k, v]) => [k, (v ?? "").trim()]).filter(([, v]) => v !== ""));
 
 function reset() {
   externalId.value = name.value = email.value = country.value = currency.value = "";
@@ -40,7 +41,7 @@ watch(open, (v) => {
 
 function submit() {
   const cc = country.value.trim().toUpperCase();
-  const a = trimmed(address.value);
+  const a = cleanAddress(address.value);
   create.mutate(
     {
       external_id: externalId.value.trim(),
@@ -77,9 +78,7 @@ function submit() {
           <fieldset class="grid gap-3">
             <legend class="text-muted-foreground mb-1 text-sm">{{ t("billing.customers.address.title") }}</legend>
             <LocationFields v-model:country="country" v-model:region="address.region" v-model:city="address.city" id-prefix="new-customer" compact :labels="placeLabels" />
-            <Input v-model="address.line1" maxlength="120" :aria-label="t('billing.customers.address.line1')" :placeholder="t('billing.customers.address.line1')" />
-            <Input v-model="address.line2" maxlength="120" :aria-label="t('billing.customers.address.line2')" :placeholder="t('billing.customers.address.line2')" />
-            <Input v-model="address.postal_code" maxlength="20" :aria-label="t('billing.customers.address.postalCode')" :placeholder="t('billing.customers.address.postalCode')" />
+            <AddressLines v-model:line1="address.line1" v-model:line2="address.line2" v-model:postal-code="address.postal_code" />
           </fieldset>
           <ErrorText :error="create.error.value" />
         </form>

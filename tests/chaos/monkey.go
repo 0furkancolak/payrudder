@@ -179,10 +179,12 @@ func (m *Monkey) killLoop(ctx context.Context) {
 			continue
 		}
 		m.record(func(r *MonkeyReport) { r.Kills++; r.KillsByTarget[svc]++ })
-		go func() {
-			time.Sleep(time.Duration(2+m.pick(4)) * time.Second)
+		// Counted in m.wg, so Stop waits for the revival before it heals the rest: a docker start must not race healAll.
+		wait := time.Duration(2+m.pick(4)) * time.Second
+		m.wg.Go(func() {
+			sleepCtx(ctx, wait)
 			m.p.revive(victim)
-		}()
+		})
 	}
 }
 
@@ -282,7 +284,9 @@ func (c *composePlatform) stopBroker() (func(), error) {
 
 func (c *composePlatform) wipeRedis() error {
 	for _, i := range c.instances("redis") {
-		_, _ = run("docker", "exec", i, "redis-cli", "FLUSHALL")
+		if _, err := run("docker", "exec", i, "redis-cli", "FLUSHALL"); err != nil {
+			return err
+		}
 		if _, err := run("docker", "restart", "-t", "1", i); err != nil {
 			return err
 		}
@@ -386,7 +390,9 @@ func (k *k8sPlatform) stopBroker() (func(), error) {
 func (k *k8sPlatform) wipeRedis() error {
 	pods := k.instances("redis")
 	for _, p := range pods {
-		_, _ = k.kubectl("exec", p, "--", "redis-cli", "FLUSHALL")
+		if _, err := k.kubectl("exec", p, "--", "redis-cli", "FLUSHALL"); err != nil {
+			return err
+		}
 		if _, err := k.kubectl("delete", "pod", p, "--grace-period=0", "--force", "--wait=false"); err != nil {
 			return err
 		}

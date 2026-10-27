@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { api, ApiError, tenantApi, unwrap } from "@/shared/api/client";
+import { api, tenantApi, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
+import { usePresignedOpen } from "@/shared/api/presigned";
 
 export const invoiceKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "invoices"] as const,
@@ -33,20 +34,11 @@ export function useInvoiceSaga(tenantId: MaybeRefOrGetter<string>, invoiceId: Ma
   });
 }
 
-/** Asks for a presigned link (valid for five minutes) and opens the PDF in a new tab. */
+/** Opens the invoice's PDF in a new tab. */
 export function useOpenPdf(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>) {
-  return useMutation({
-    mutationFn: async () => {
-      const r = await unwrap(
-        api.GET("/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/pdf", { params: { path: { tenant_id: toValue(tenantId), invoice_id: toValue(invoiceId) } } }),
-      );
-      if (!r.url) throw new ApiError("no link", "NO_LINK");
-      return r.url;
-    },
-    onSuccess: (url) => {
-      window.open(url, "_blank", "noopener");
-    },
-  });
+  return usePresignedOpen(() =>
+    unwrap(api.GET("/admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/pdf", { params: { path: { tenant_id: toValue(tenantId), invoice_id: toValue(invoiceId) } } })),
+  );
 }
 
 /** Makes (or revokes) the links with which the invoice's customer can open it without signing in. */

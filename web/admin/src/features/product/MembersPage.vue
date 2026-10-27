@@ -2,6 +2,7 @@
 import { useNavigate } from "@tanstack/vue-router";
 import { useI18n } from "vue-i18n";
 import { useQueryClient } from "@tanstack/vue-query";
+import { PageHeader } from "@/shared/ui/page-header";
 import { leaveAccount, useAccount, useMe } from "./api";
 import MembersPanel from "./MembersPanel.vue";
 
@@ -21,10 +22,7 @@ async function onLeft() {
 
 <template>
   <section class="flex flex-col gap-6">
-    <header class="px-1">
-      <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("shell.items.members") }}</h1>
-      <p class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ t("product.membersPage.intro") }}</p>
-    </header>
+    <PageHeader flush :title="t('shell.items.members')" :description="t('product.membersPage.intro')" />
     <MembersPanel :account="account.data.value" :my-id="me.data.value?.user?.id ?? ''" :loading="account.isPending.value" @left="onLeft" />
   </section>
 </template>

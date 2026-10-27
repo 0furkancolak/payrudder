@@ -44,8 +44,13 @@ interface HasStatus {
   tenants?: { id?: string; environment?: string; status?: string }[];
 }
 
+/** The live tenant of an app, if it has one. */
+export function liveTenant<T extends { environment?: string }>(app: { tenants?: T[] } | undefined): T | undefined {
+  return app?.tenants?.find((t) => t.environment === "ENVIRONMENT_LIVE");
+}
+
 export function liveState(app: HasStatus | undefined): LiveState {
-  const live = app?.tenants?.find((t) => t.environment === "ENVIRONMENT_LIVE");
+  const live = liveTenant(app);
   if (!live) return "none";
   switch (live.status) {
     case "TENANT_STATUS_ACTIVE":

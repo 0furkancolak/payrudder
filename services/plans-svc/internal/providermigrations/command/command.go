@@ -104,6 +104,23 @@ func requireNoCoupon(ctx context.Context, q *sqlc.Queries, id uuid.UUID) error {
 	return err
 }
 
+// movable says why a subscription cannot be moved to the provider now: it has ended or is ending, it is not active, it is there already, or the provider
+// cannot charge in its currency.
+func movable(row sqlc.GetSubscriptionRow, toProvider string, target payments.Capabilities, now time.Time) error {
+	eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
+	switch {
+	case !row.OpenEnded || row.CancelAtPeriodEnd:
+		return errkey.New(codes.FailedPrecondition, "plans.migration.subscription_ended", "an ended or ending subscription cannot be moved")
+	case eff != subscription.Active && eff != subscription.Trialing:
+		return errkey.Newf(codes.FailedPrecondition, "plans.migration.state_not_movable", "a %s subscription cannot be moved", eff)
+	case convert.Str(row.Provider) == toProvider:
+		return domain.Invalid("to_provider", "the subscription is already with "+toProvider)
+	case !target.CanCharge(row.Currency):
+		return errkey.Newf(codes.FailedPrecondition, "plans.subscription.provider_currency", "%s cannot charge in %s", toProvider, row.Currency)
+	}
+	return nil
+}
+
 // Start begins moving a subscription to another provider: at once when Payrudder runs it there, else when the customer has subscribed there.
 func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigrationRequest) (*plansv1.ProviderMigration, error) {
 	id, err := domain.ParseID("subscription_id", req.GetSubscriptionId())
@@ -133,16 +150,8 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 			return err
 		}
 		now := c.now()
-		eff := convert.SubscriptionState(row.State, row.TrialEndsAt, row.OpenEnded, row.EndTime, now)
-		switch {
-		case !row.OpenEnded || row.CancelAtPeriodEnd:
-			return errkey.New(codes.FailedPrecondition, "plans.migration.subscription_ended", "an ended or ending subscription cannot be moved")
-		case eff != subscription.Active && eff != subscription.Trialing:
-			return errkey.Newf(codes.FailedPrecondition, "plans.migration.state_not_movable", "a %s subscription cannot be moved", eff)
-		case convert.Str(row.Provider) == req.GetToProvider():
-			return domain.Invalid("to_provider", "the subscription is already with "+req.GetToProvider())
-		case !target.CanCharge(row.Currency):
-			return errkey.Newf(codes.FailedPrecondition, "plans.subscription.provider_currency", "%s cannot charge in %s", req.GetToProvider(), row.Currency)
+		if err := movable(row, req.GetToProvider(), target, now); err != nil {
+			return err
 		}
 		mig, err := q.InsertProviderMigration(ctx, sqlc.InsertProviderMigrationParams{
 			ID: idgen.NewUUIDv7(), SubscriptionID: id, FromProvider: convert.Str(row.Provider), ToProvider: req.GetToProvider(), State: "started", CutoverAt: cutoverAt,

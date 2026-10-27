@@ -58,7 +58,7 @@ function go() {
         <Button variant="outline" :disabled="!canReset || running || reset.isPending.value" data-testid="sandbox-reset-open" @click="confirming = true"><RotateCcw />{{ t("product.sandbox.reset") }}</Button>
       </div>
       <p v-if="!canReset" class="text-muted-foreground text-xs">{{ t("product.promote.adminOnly") }}</p>
-      <ErrorText :error="reset.error.value ?? status.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+      <ErrorText :error="reset.error.value ?? status.error.value" box />
 
       <div v-if="job" class="flex flex-col gap-3 border-t pt-4" data-testid="sandbox-reset-job" :data-state="job.state">
         <div class="flex flex-wrap items-center gap-2">
@@ -73,7 +73,7 @@ function go() {
               <Loader v-else-if="running && s.state === 'pending' && s.name === next" class="size-4 animate-spin" /><Circle v-else class="text-muted-foreground size-3.5" />
             </span>
             <span class="w-28 shrink-0 font-medium">{{ t(`product.sandbox.step.${s.name}`) }}</span>
-            <span v-if="s.state === 'done'" class="text-muted-foreground text-xs tabular">{{ t("product.sandbox.deleted", { n: total(s.deleted) }) }}</span>
+            <span v-if="s.state === 'done'" class="text-muted-foreground text-xs tabular-nums">{{ t("product.sandbox.deleted", { n: total(s.deleted) }) }}</span>
             <span v-else-if="s.state === 'skipped'" class="text-muted-foreground text-xs">{{ t("product.sandbox.skipped") }}</span>
             <span v-if="s.error" class="text-destructive basis-full ps-8 text-xs" role="alert">{{ s.error }}</span>
             <span v-if="s.state === 'done' && rows(s.deleted).length > 0" class="text-muted-foreground basis-full ps-8 text-xs">{{ rows(s.deleted).map(([k, v]) => `${k} ${v}`).join(" · ") }}</span>

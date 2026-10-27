@@ -2,16 +2,15 @@
 import { Link, useSearch } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { FormField } from "@/shared/ui/form-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { useAuthMethods, useSignIn } from "./api";
 import { useAfterSignIn } from "./afterSignIn";
 import { OAUTH_ERRORS } from "./lib";
 import AuthShell from "./AuthShell.vue";
-import GoogleButton from "./GoogleButton.vue";
+import AuthMethodPicker from "./AuthMethodPicker.vue";
 import OtpFlow from "./OtpFlow.vue";
 import PasswordField from "./PasswordField.vue";
 
@@ -45,29 +44,16 @@ function submit() {
       {{ t(`product.signIn.oauthError.${oauthError}`) }}
     </p>
     <div class="flex flex-col gap-4">
-      <template v-if="methods.data.value?.google">
-        <GoogleButton />
-        <div class="text-muted-foreground flex items-center gap-3 text-xs" aria-hidden="true">
-          <span class="bg-border h-px flex-1" />{{ t("product.signIn.or") }}<span class="bg-border h-px flex-1" />
-        </div>
-      </template>
-      <Tabs v-model="method">
-        <TabsList class="w-full [&>*]:flex-1" :aria-label="t('product.signIn.methods')">
-          <TabsTrigger value="password">{{ t("product.signIn.tabPassword") }}</TabsTrigger>
-          <TabsTrigger value="code">{{ t("product.signIn.tabCode") }}</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <AuthMethodPicker v-model="method" :google="methods.data.value?.google" />
       <form v-if="method === 'password'" class="flex flex-col gap-4" :aria-label="t('product.signIn.title')" @submit.prevent="submit">
-        <div class="flex flex-col gap-1.5">
-          <Label for="si-email">{{ t("product.auth.email") }}</Label>
+        <FormField for="si-email" :label="t('product.auth.email')">
           <Input id="si-email" v-model="email" type="email" autocomplete="username" inputmode="email" required />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="si-password">{{ t("product.auth.password") }}</Label>
+        </FormField>
+        <FormField for="si-password" :label="t('product.auth.password')">
           <PasswordField id="si-password" v-model="password" autocomplete="current-password" />
           <Link to="/forgot" class="text-muted-foreground hover:text-foreground self-end text-xs underline-offset-4 hover:underline">{{ t("product.signIn.forgot") }}</Link>
-        </div>
-        <ErrorText :error="login.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+        </FormField>
+        <ErrorText :error="login.error.value" box />
         <Button type="submit" size="lg" :disabled="login.isPending.value || email.trim() === '' || password === ''">{{ t("product.signIn.submit") }}</Button>
       </form>
       <OtpFlow v-else mode="signin" />

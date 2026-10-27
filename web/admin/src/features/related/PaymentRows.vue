@@ -31,7 +31,7 @@ const rows = computed(() => (props.limit ? all.value.slice(0, props.limit) : all
       </span>
       <span class="flex shrink-0 items-center gap-2">
         <StatusPill :tone="toneOf(p.status)">{{ t(`product.status.${p.status}`) }}</StatusPill>
-        <span class="tabular font-medium">{{ formatMinor(p.status === "refunded" ? `-${p.amount_minor}` : p.amount_minor, p.currency, locale) }}</span>
+        <span class="tabular-nums font-medium">{{ formatMinor(p.status === "refunded" ? `-${p.amount_minor}` : p.amount_minor, p.currency, locale) }}</span>
       </span>
     </RelatedRow>
   </RelatedSection>

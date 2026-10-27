@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Regular",
       "CORRECTION": "Correction",
-      "CREDIT_NOTE": "Credit note"
+      "CREDIT_NOTE": "Credit note",
+      "FEE": "Fee in advance",
+      "LINK": "Payment link"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Base fee",
+      "USAGE": "Usage",
+      "LATE_USAGE": "Late usage",
+      "CREDIT": "Credit",
+      "CORRECTION": "Correction",
+      "DISCOUNT": "Discount",
+      "TAX": "Tax"
     },
     "subscriptionState": {
       "trialing": "trialing",
@@ -2296,7 +2307,7 @@
         "bad_amount": "The amount must be a whole number of minor units above zero.",
         "bad_date": "The received date is not valid or lies in the future.",
         "bad_reference": "The reference must be one line of at most 128 characters.",
-        "bad_note": "The note must be at most 500 characters.",
+        "bad_note": "The note can be at most 500 characters.",
         "overpayment": "That is more than is outstanding. Record only the outstanding amount.",
         "already_paid": "The invoice is already paid.",
         "not_payable": "The invoice's payment state does not allow a manual payment right now.",

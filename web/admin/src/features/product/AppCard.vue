@@ -47,10 +47,10 @@ const status = computed(() => overview.data.value?.status);
       <div class="min-w-0">
         <p class="text-muted-foreground text-xs">{{ t("product.card.revenue", { days: overview.data.value?.window_days ?? 30 }) }}</p>
         <Skeleton v-if="overview.isPending.value" class="mt-1 h-8 w-28" />
-        <p v-else-if="lead" class="truncate text-3xl font-semibold tracking-tight tabular">{{ formatMinor(lead.minor, lead.currency, locale) }}</p>
-        <p v-else-if="overview.data.value?.payments" class="text-3xl font-semibold tracking-tight tabular">{{ formatMinor(0, overview.data.value?.currency, locale) }}</p>
+        <p v-else-if="lead" class="truncate text-3xl font-semibold tracking-tight tabular-nums">{{ formatMinor(lead.minor, lead.currency, locale) }}</p>
+        <p v-else-if="overview.data.value?.payments" class="text-3xl font-semibold tracking-tight tabular-nums">{{ formatMinor(0, overview.data.value?.currency, locale) }}</p>
         <p v-else class="text-muted-foreground text-sm">{{ t("product.card.unavailable") }}</p>
-        <p v-if="revenue.length > 1" class="text-muted-foreground mt-0.5 truncate text-xs tabular">
+        <p v-if="revenue.length > 1" class="text-muted-foreground mt-0.5 truncate text-xs tabular-nums">
           {{ revenue.slice(1).map((r) => formatMinor(r.minor, r.currency, locale)).join(" · ") }}
         </p>
       </div>

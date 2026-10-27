@@ -7,6 +7,8 @@ import type { components } from "@/shared/api/schema";
 export type ExpenseInput = components["schemas"]["ExpenseInput"];
 export type Expense = components["schemas"]["Expense"];
 export type Category = components["schemas"]["ExpenseCategory"];
+/** The block of the summary for one currency. */
+export type CurrencySummary = components["schemas"]["AccountingCurrency"];
 
 export const CATEGORIES: readonly Category[] = ["infrastructure", "payment_fees", "marketing", "payroll", "tax", "software", "other"];
 

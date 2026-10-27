@@ -10,7 +10,7 @@ export const appKeys = {
 };
 
 /** The apps of an account, each with its sandbox and live tenant. */
-export function useApps(accountId: MaybeRefOrGetter<string>) {
+export function useAccountApps(accountId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => [...appKeys.list(toValue(accountId)), operatorView() ? "operator" : "person"]),
     // A person lists their own apps through the product API (the admin API is the operator's); the rows have the same shape.
