@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc"
@@ -29,6 +30,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/background"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/grpcapi"
@@ -42,9 +44,67 @@ type world struct {
 	system *pgxpool.Pool
 	svc    *grpcapi.Server
 	quota  map[string]int64
+	// In cells mode every tenant of the world lives in a schema of a second database (placed on first use), and cells is the system-role router over it.
+	cells   *pgxx.Router
+	cellSys *pgxpool.Pool
+	dir     *lazyCells
 }
 
-func start(t *testing.T) *world {
+// lazyCells is the directory of the cells-mode world: a tenant is placed in cell c1 (and its schema built) the first time anything asks where it is, so the
+// scenarios, which make up their tenants as they go, need no change.
+type lazyCells struct {
+	mu       sync.Mutex
+	migrator string
+	placed   map[uuid.UUID]bool
+	moving   map[uuid.UUID]bool
+}
+
+func (l *lazyCells) status(id uuid.UUID) tenantdir.Status {
+	if l.moving[id] {
+		return tenantdir.StatusMoving
+	}
+	return tenantdir.StatusReady
+}
+
+// setMoving marks a tenant as being moved (or not).
+func (l *lazyCells) setMoving(id uuid.UUID, moving bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.moving[id] = moving
+}
+
+func (l *lazyCells) Placement(ctx context.Context, id uuid.UUID) (tenantdir.Placement, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !l.placed[id] {
+		ts := pgxx.TenantSchemas{Migrations: migrations.Tenant(), Roles: []string{"assets_app", "assets_system"}}
+		if _, err := pgxx.ProvisionTenant(ctx, l.migrator, ts, id, nil); err != nil {
+			return tenantdir.Placement{}, err
+		}
+		l.placed[id] = true
+	}
+	return tenantdir.Placement{TenantID: id, Cell: "c1", Status: l.status(id)}, nil
+}
+
+func (l *lazyCells) Invalidate(uuid.UUID) {}
+
+func (l *lazyCells) Placed(context.Context, string) ([]tenantdir.Placement, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var out []tenantdir.Placement
+	for id := range l.placed {
+		out = append(out, tenantdir.Placement{TenantID: id, Cell: "c1", Status: l.status(id)})
+	}
+	return out, nil
+}
+
+// both runs a scenario with every tenant in the pooled database and then with every tenant in a cell: the service and the tests are the same.
+func both(t *testing.T, scenario func(t *testing.T, cells bool)) {
+	t.Run("pooled", func(t *testing.T) { scenario(t, false) })
+	t.Run("cells", func(t *testing.T) { scenario(t, true) })
+}
+
+func start(t *testing.T, cells bool) *world {
 	t.Helper()
 	pg := testkit.StartPostgres(t)
 	db := testkit.MigratedDB(t, pg, "assets", migrations.FS)
@@ -58,6 +118,27 @@ func start(t *testing.T) *world {
 	}
 	t.Cleanup(w.app.Close)
 	t.Cleanup(w.system.Close)
+	var appDB pgxx.Beginner = w.app
+	if cells {
+		cell := testkit.CreateCellDB(t, pg, "assets", "c1")
+		cellApp, err := pgxx.NewPool(context.Background(), cell.App)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if w.cellSys, err = pgxx.NewPool(context.Background(), cell.System); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(cellApp.Close)
+		t.Cleanup(w.cellSys.Close)
+		dir := &lazyCells{migrator: cell.Migrator, placed: map[uuid.UUID]bool{}, moving: map[uuid.UUID]bool{}}
+		w.dir = dir
+		if appDB, err = pgxx.NewRouter(w.app, map[string]*pgxpool.Pool{"c1": cellApp}, dir); err != nil {
+			t.Fatal(err)
+		}
+		if w.cells, err = pgxx.NewRouter(w.system, map[string]*pgxpool.Pool{"c1": w.cellSys}, dir); err != nil {
+			t.Fatal(err)
+		}
+	}
 	m := testkit.StartMinio(t)
 	if w.store, err = blob.New(blob.Config{Endpoint: m.Endpoint, Bucket: "assets", AccessKey: m.AccessKey, SecretKey: m.SecretKey, ForcePathStyle: true}); err != nil {
 		t.Fatal(err)
@@ -66,7 +147,7 @@ func start(t *testing.T) *world {
 		t.Fatal(err)
 	}
 	w.quota = map[string]int64{"free": 1 * policy.MiB, "standard": 10 * policy.GiB}
-	w.svc = grpcapi.New(w.app, w.store, policy.New(policy.DefaultGeneralTypes), grpcapi.Config{Quotas: w.quota})
+	w.svc = grpcapi.New(appDB, w.store, policy.New(policy.DefaultGeneralTypes), grpcapi.Config{Quotas: w.quota})
 	return w
 }
 
@@ -165,8 +246,10 @@ func completeReq(sess *assetsv1.UploadSession, f *assetsv1.UploadFile, etags map
 	return req
 }
 
-func TestDirectUploads(t *testing.T) {
-	w := start(t)
+func TestDirectUploads(t *testing.T) { both(t, directUploads) }
+
+func directUploads(t *testing.T, cells bool) {
+	w := start(t, cells)
 	ctx := ctxOf(uuid.New(), "standard")
 
 	t.Run("ThreeFilesWithParallelParts", func(t *testing.T) {
@@ -229,7 +312,7 @@ func TestDirectUploads(t *testing.T) {
 			t.Fatalf("idempotent create = %v, %v", again, err)
 		}
 		// The verifier agrees with the declared types and hashes.
-		jobs := &background.Jobs{DB: w.system, Store: w.store}
+		jobs := &background.Jobs{DB: w.system, Cells: w.cells, Store: w.store}
 		if n, err := jobs.VerifyUploads(context.Background(), 10); err != nil || n != 3 {
 			t.Fatalf("verified %d, %v", n, err)
 		}
@@ -331,7 +414,7 @@ func TestDirectUploads(t *testing.T) {
 		if ups, _ := w.store.ListMultipartUploads(context.Background(), prefix); len(ups) != 1 {
 			t.Fatalf("expected one open multipart upload, got %v", ups)
 		}
-		jobs := &background.Jobs{DB: w.system, Store: w.store, Now: func() time.Time { return time.Now().Add(25 * time.Hour) }}
+		jobs := &background.Jobs{DB: w.system, Cells: w.cells, Store: w.store, Now: func() time.Time { return time.Now().Add(25 * time.Hour) }}
 		n, err := jobs.SweepExpired(context.Background(), 10)
 		if err != nil || n < 1 {
 			t.Fatalf("swept %d, %v", n, err)
@@ -472,7 +555,7 @@ func TestDirectUploads(t *testing.T) {
 		if err := w.store.Put(context.Background(), orphan, []byte("orphan"), blob.PutOptions{}); err != nil {
 			t.Fatal(err)
 		}
-		jobs := &background.Jobs{DB: w.system, Store: w.store, Now: func() time.Time { return time.Now().Add(72 * time.Hour) }}
+		jobs := &background.Jobs{DB: w.system, Cells: w.cells, Store: w.store, Now: func() time.Time { return time.Now().Add(72 * time.Hour) }}
 		n, err := jobs.ReconcileOrphans(context.Background())
 		if err != nil || n < 1 {
 			t.Fatalf("deleted %d, %v", n, err)
@@ -502,7 +585,7 @@ func TestDirectUploads(t *testing.T) {
 		if err != nil || asset.GetStatus() != assetsv1.AssetStatus_ASSET_STATUS_READY {
 			t.Fatalf("complete = %v, %v", asset, err)
 		}
-		jobs := &background.Jobs{DB: w.system, Store: w.store}
+		jobs := &background.Jobs{DB: w.system, Cells: w.cells, Store: w.store}
 		if _, err := jobs.VerifyUploads(context.Background(), 50); err != nil {
 			t.Fatal(err)
 		}
@@ -558,8 +641,10 @@ func stream(ctx context.Context, name, ct string, purpose assetsv1.Purpose, data
 	return fs, cancel
 }
 
-func TestProxiedUploads(t *testing.T) {
-	w := start(t)
+func TestProxiedUploads(t *testing.T) { both(t, proxiedUploads) }
+
+func proxiedUploads(t *testing.T, cells bool) {
+	w := start(t, cells)
 	ctx := ctxOf(uuid.New(), "standard")
 	png := append([]byte("\x89PNG\r\n\x1a\n"), bytes.Repeat([]byte{7}, 100<<10)...)
 
@@ -625,8 +710,19 @@ func TestProxiedUploads(t *testing.T) {
 			t.Fatalf("the S3 multipart upload was not aborted: %v", ups)
 		}
 		var aborted int
-		if err := w.system.QueryRow(context.Background(), `SELECT count(*) FROM assets WHERE tenant_id = $1 AND status = 'ABORTED' AND filename = 'doc.pdf'`, ti.ID).Scan(&aborted); err != nil || aborted != 1 {
-			t.Fatalf("aborted assets = %d, %v", aborted, err)
+		count := func(q interface {
+			QueryRow(context.Context, string, ...any) pgx.Row
+		}) error {
+			return q.QueryRow(context.Background(), `SELECT count(*) FROM assets WHERE tenant_id = $1 AND status = 'ABORTED' AND filename = 'doc.pdf'`, ti.ID).Scan(&aborted)
+		}
+		var qerr error
+		if w.cells != nil {
+			qerr = pgxx.InTenantSchemaTx(context.Background(), w.cellSys, ti.ID, func(tx pgx.Tx) error { return count(tx) })
+		} else {
+			qerr = count(w.system)
+		}
+		if qerr != nil || aborted != 1 {
+			t.Fatalf("aborted assets = %d, %v", aborted, qerr)
 		}
 	})
 }

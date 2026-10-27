@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/blob"
@@ -55,10 +54,11 @@ type Blob interface {
 }
 
 // DB runs statements as the tenant of the request (assets_app, RLS enforced).
-type DB struct{ pool *pgxpool.Pool }
+type DB struct{ pool pgxx.Beginner }
 
-// NewDB returns the tenant transaction runner over the app pool.
-func NewDB(pool *pgxpool.Pool) DB { return DB{pool: pool} }
+// NewDB returns the tenant transaction runner over the app pool, or over its router when cells are on (ADR 0018): a tenant's transaction goes where the directory
+// says its data is.
+func NewDB(pool pgxx.Beginner) DB { return DB{pool: pool} }
 
 // Tx runs fn in a transaction of the caller's tenant.
 func (d DB) Tx(ctx context.Context, fn func(q *sqlc.Queries) error) error {
@@ -133,6 +133,16 @@ func AssetIDOfKey(key string) (id uuid.UUID, ok bool) {
 	}
 	id, err := uuid.Parse(parts[2])
 	return id, err == nil
+}
+
+// TenantIDOfKey is the tenant an object key belongs to ({tenant}/assets/{asset}), or the nil UUID for a key that does not start with one.
+func TenantIDOfKey(key string) uuid.UUID {
+	first, _, _ := strings.Cut(key, "/")
+	id, err := uuid.Parse(first)
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }
 
 // TrimETag removes the quotes S3 puts around an ETag.

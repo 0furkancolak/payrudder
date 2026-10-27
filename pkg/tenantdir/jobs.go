@@ -60,10 +60,10 @@ var Jobs = []Job{
 	{"aggregator", "replay manager", false, "internal/replay"},
 	{"aggregator", "sandbox purge", false, "internal/sandboxreset"},
 
-	{"assets-svc", "tenant schema", false, "migrations"},
-	{"assets-svc", "upload session sweeper", false, "internal/background"},
-	{"assets-svc", "upload verifier", false, "internal/background"},
-	{"assets-svc", "orphan reconciler", false, "internal/background"},
+	{"assets-svc", "tenant schema", true, "migrations"},
+	{"assets-svc", "upload session sweeper", true, "internal/background"},
+	{"assets-svc", "upload verifier", true, "internal/background"},
+	{"assets-svc", "orphan reconciler", true, "internal/background"},
 
 	{"payments-worker", "tenant schema", false, "migrations"},
 	{"payments-worker", "command worker", false, "cmd/payments-worker"},

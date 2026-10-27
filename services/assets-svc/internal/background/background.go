@@ -35,9 +35,12 @@ type Store interface {
 	Keys(ctx context.Context, prefix string, fn func(key string, modified time.Time) error) error
 }
 
-// Jobs are the three background jobs.
+// Jobs are the three background jobs. Each works the pooled database as one place and, in cells mode (ADR 0018), the schema of every tenant placed in a cell as
+// a place of its own: the statements are the same, run in that tenant's schema.
 type Jobs struct {
-	DB    *pgxpool.Pool // assets_system
+	DB *pgxpool.Pool // assets_system
+	// Cells is the system-role router of cells mode; nil when cells are off, which is a service that only has the pooled database.
+	Cells *pgxx.Router
 	Store Store
 	Now   func() time.Time
 	Log   *slog.Logger
@@ -69,33 +72,97 @@ func (j *Jobs) init() error {
 	return b.Err()
 }
 
+// place is where a job works: the pooled database (tenant is the nil UUID) or one tenant's schema in a cell.
+type place struct {
+	pool   *pgxpool.Pool
+	tenant uuid.UUID
+}
+
+// tx runs fn in a transaction in the place.
+func (p place) tx(ctx context.Context, fn func(pgx.Tx) error) error {
+	if p.tenant == uuid.Nil {
+		return pgxx.InTx(ctx, p.pool, pgx.TxOptions{}, fn)
+	}
+	return pgxx.InTenantSchemaTx(ctx, p.pool, p.tenant, fn)
+}
+
+// places lists where the jobs work now: the pooled database, then every tenant placed in a cell that is serving (one that is moving is left alone). The list of
+// placed tenants is asked of the directory afresh, so a tenant placed a moment ago is not missed.
+func (j *Jobs) places(ctx context.Context) ([]place, error) {
+	out := []place{{pool: j.DB}}
+	if j.Cells == nil {
+		return out, nil
+	}
+	placed, err := j.Cells.PlacedWithin(ctx, 0)
+	for _, t := range placed {
+		if t.Serving() {
+			out = append(out, place{pool: t.Pool, tenant: t.TenantID})
+		}
+	}
+	return out, err
+}
+
+// everyPlace runs fn in every place; a place that fails does not stop the others, and the errors come back joined (a single one as it is).
+func (j *Jobs) everyPlace(ctx context.Context, fn func(place) error) error {
+	ps, err := j.places(ctx)
+	errs := []error{err}
+	for _, p := range ps {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err := fn(p); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return joinErrors(errs)
+}
+
+func joinErrors(errs []error) error {
+	var real []error
+	for _, e := range errs {
+		if e != nil {
+			real = append(real, e)
+		}
+	}
+	if len(real) == 1 {
+		return real[0]
+	}
+	return errors.Join(real...)
+}
+
 // SweepExpired aborts the S3 multipart uploads of expired OPEN sessions and marks them EXPIRED. It returns how many
-// sessions it handled.
+// sessions it handled. limit bounds each place.
 func (j *Jobs) SweepExpired(ctx context.Context, limit int) (int, error) {
 	if err := j.init(); err != nil {
 		return 0, err
 	}
-	due, err := sqlc.New(j.DB).ListExpiredSessions(ctx, sqlc.ListExpiredSessionsParams{Now: j.Now(), Batch: int32(limit)}) //nolint:gosec // a small batch size
-	if err != nil {
-		return 0, err
-	}
 	done := 0
-	for _, k := range due {
-		swept, err := j.sweepSession(ctx, k)
-		if swept {
-			done++
+	err := j.everyPlace(ctx, func(p place) error {
+		var due []sqlc.ListExpiredSessionsRow
+		if err := p.tx(ctx, func(tx pgx.Tx) (err error) {
+			due, err = sqlc.New(tx).ListExpiredSessions(ctx, sqlc.ListExpiredSessionsParams{Now: j.Now(), Batch: int32(limit)}) //nolint:gosec // a small batch size
+			return err
+		}); err != nil {
+			return err
 		}
-		if err != nil {
-			return done, err
+		for _, k := range due {
+			swept, err := j.sweepSession(ctx, p, k)
+			if swept {
+				done++
+				j.swept.Add(ctx, 1)
+			}
+			if err != nil {
+				return err
+			}
 		}
-	}
-	j.swept.Add(ctx, int64(done))
-	return done, nil
+		return nil
+	})
+	return done, err
 }
 
 // sweepSession expires one session under its row lock; it reports false when another pod took it.
-func (j *Jobs) sweepSession(ctx context.Context, k sqlc.ListExpiredSessionsRow) (swept bool, err error) {
-	err = pgxx.InTx(ctx, j.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
+func (j *Jobs) sweepSession(ctx context.Context, p place, k sqlc.ListExpiredSessionsRow) (swept bool, err error) {
+	err = p.tx(ctx, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		st, err := q.LockOpenSessionStatus(ctx, sqlc.LockOpenSessionStatusParams(k))
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && st != "OPEN") {
@@ -130,21 +197,29 @@ func (j *Jobs) VerifyUploads(ctx context.Context, limit int) (int, error) {
 	if err := j.init(); err != nil {
 		return 0, err
 	}
-	items, err := sqlc.New(j.DB).ListUnverifiedAssets(ctx, int32(limit)) //nolint:gosec // a small batch size
-	if err != nil {
-		return 0, err
-	}
-	for _, it := range items {
-		result, reason, err := j.inspect(ctx, it)
-		if err != nil {
-			return 0, err
+	n := 0
+	err := j.everyPlace(ctx, func(p place) error {
+		var items []sqlc.ListUnverifiedAssetsRow
+		if err := p.tx(ctx, func(tx pgx.Tx) (err error) {
+			items, err = sqlc.New(tx).ListUnverifiedAssets(ctx, int32(limit)) //nolint:gosec // a small batch size
+			return err
+		}); err != nil {
+			return err
 		}
-		if err := j.recordVerification(ctx, it, result, reason); err != nil {
-			return 0, err
+		for _, it := range items {
+			result, reason, err := j.inspect(ctx, it)
+			if err != nil {
+				return err
+			}
+			if err := j.recordVerification(ctx, p, it, result, reason); err != nil {
+				return err
+			}
+			n++
+			j.verified.Add(ctx, 1, metric.WithAttributes(attribute.String("result", result)))
 		}
-		j.verified.Add(ctx, 1, metric.WithAttributes(attribute.String("result", result)))
-	}
-	return len(items), nil
+		return nil
+	})
+	return n, err
 }
 
 // inspect checks one object and returns the verdict (ok, missing, type_mismatch or corrupt) with the reject reason.
@@ -175,8 +250,8 @@ func (j *Jobs) inspect(ctx context.Context, it sqlc.ListUnverifiedAssetsRow) (re
 	return "ok", "", nil
 }
 
-func (j *Jobs) recordVerification(ctx context.Context, it sqlc.ListUnverifiedAssetsRow, result, reason string) error {
-	return pgxx.InTx(ctx, j.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
+func (j *Jobs) recordVerification(ctx context.Context, p place, it sqlc.ListUnverifiedAssetsRow, result, reason string) error {
+	return p.tx(ctx, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		switch result {
 		case "ok":
@@ -206,10 +281,28 @@ func (j *Jobs) ReconcileOrphans(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	cutoff := j.Now().Add(-j.OrphanAge)
+	// Where each tenant's rows are. An object whose tenant lives in a cell is checked against that tenant's schema, one whose tenant is moving is left alone (its
+	// rows are in neither place for a moment), and the others against the pooled database. If the directory cannot say, nothing is deleted: an object is an orphan
+	// only if its row is nowhere.
+	where := map[uuid.UUID]place{}
+	moving := map[uuid.UUID]bool{}
+	if j.Cells != nil {
+		placed, err := j.Cells.PlacedWithin(ctx, 0)
+		if err != nil {
+			return 0, err
+		}
+		for _, t := range placed {
+			if t.Serving() {
+				where[t.TenantID] = place{pool: t.Pool, tenant: t.TenantID}
+			} else {
+				moving[t.TenantID] = true
+			}
+		}
+	}
 	deleted := 0
 	var batch []string
 	flush := func() error {
-		n, err := j.deleteOrphans(ctx, batch)
+		n, err := j.deleteOrphans(ctx, batch, where, moving)
 		deleted += n
 		batch = batch[:0]
 		return err
@@ -230,35 +323,56 @@ func (j *Jobs) ReconcileOrphans(ctx context.Context) (int, error) {
 	return deleted, flush()
 }
 
-// deleteOrphans deletes the objects of keys that have no asset row and returns how many it deleted.
-func (j *Jobs) deleteOrphans(ctx context.Context, keys []string) (int, error) {
-	if len(keys) == 0 {
-		return 0, nil
+// deleteOrphans deletes the objects of keys that have no asset row and returns how many it deleted. where says which tenants have their rows in a cell, moving
+// which tenants' objects are not to be touched.
+func (j *Jobs) deleteOrphans(ctx context.Context, keys []string, where map[uuid.UUID]place, moving map[uuid.UUID]bool) (int, error) {
+	// The ids to look for, by place (a tenant in a cell has a place of its own; the pooled database's is the nil tenant).
+	type group struct {
+		p    place
+		ids  []uuid.UUID
+		byID map[uuid.UUID]string
 	}
-	ids := make([]uuid.UUID, 0, len(keys))
-	byID := map[uuid.UUID]string{}
+	groups := map[uuid.UUID]*group{}
 	for _, k := range keys {
 		id, ok := store.AssetIDOfKey(k)
 		if !ok {
 			continue
 		}
-		ids = append(ids, id)
-		byID[id] = k
-	}
-	known, err := sqlc.New(j.DB).ListExistingAssetIDs(ctx, ids)
-	if err != nil {
-		return 0, err
-	}
-	for _, id := range known {
-		delete(byID, id)
+		tenantID := store.TenantIDOfKey(k)
+		if moving[tenantID] {
+			continue
+		}
+		p, inCell := where[tenantID]
+		if !inCell {
+			p = place{pool: j.DB}
+		}
+		g := groups[p.tenant]
+		if g == nil {
+			g = &group{p: p, byID: map[uuid.UUID]string{}}
+			groups[p.tenant] = g
+		}
+		g.ids = append(g.ids, id)
+		g.byID[id] = k
 	}
 	deleted := 0
-	for _, k := range byID {
-		if err := j.Store.Delete(ctx, k); err != nil {
+	for _, g := range groups {
+		var known []uuid.UUID
+		if err := g.p.tx(ctx, func(tx pgx.Tx) (err error) {
+			known, err = sqlc.New(tx).ListExistingAssetIDs(ctx, g.ids)
+			return err
+		}); err != nil {
 			return deleted, err
 		}
-		deleted++
-		j.orphans.Add(ctx, 1)
+		for _, id := range known {
+			delete(g.byID, id)
+		}
+		for _, k := range g.byID {
+			if err := j.Store.Delete(ctx, k); err != nil {
+				return deleted, err
+			}
+			deleted++
+			j.orphans.Add(ctx, 1)
+		}
 	}
 	return deleted, nil
 }

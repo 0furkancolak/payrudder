@@ -10,10 +10,13 @@ import (
 	"time"
 
 	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/background"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/policy"
@@ -26,7 +29,11 @@ var defaults []byte
 type Config struct {
 	config.Base
 	pgxx.Settings
-	GRPCAddr     string        `env:"PAYRUDDER_GRPC_ADDR"`
+	// CellSettings turns on cells mode (ADR 0018). Off unless PAYRUDDER_CELLS names at least one cell.
+	pgxx.CellSettings
+	GRPCAddr string `env:"PAYRUDDER_GRPC_ADDR"`
+	// PlansAddr is plans-svc, where the tenant directory is; it is dialled only in cells mode.
+	PlansAddr    string        `env:"PAYRUDDER_PLANS_ADDR"`
 	S3Endpoint   string        `env:"S3_ENDPOINT"`
 	S3Public     string        `env:"S3_PUBLIC_ENDPOINT"`
 	S3Region     string        `env:"S3_REGION"`
@@ -46,13 +53,18 @@ type Config struct {
 // Validate checks the settings at load time like the other services: migrating needs the migrator DSN. (assets-svc used to find that out
 // only after it had started.)
 func (c *Config) Validate() error {
-	return errors.Join(c.Base.Validate(), c.CheckMigration())
+	return errors.Join(c.Base.Validate(), c.CheckMigration(), c.CheckCells())
 }
 
 func main() { app.Main("assets-svc", defaults, start) }
 
 func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	log := rt.Log
+	if cfg.Enabled() && cfg.MigrateOnStart {
+		if err := cfg.MigrateCells(ctx, tenantSchemas(), cfg.MigrateOnly, log); err != nil {
+			return err
+		}
+	}
 	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
@@ -72,11 +84,28 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	svc := grpcapi.New(appPool, store, policy.New(cfg.GeneralTypes), grpcapi.Config{
+	// Cells mode (ADR 0018): a tenant's transactions go where the directory says its data is. Off, the pools are used directly, as ever.
+	var appDB pgxx.Beginner = appPool
+	var cells *pgxx.Router // the system-role router; nil when cells are off
+	if cfg.Enabled() {
+		plansConn, err := grpcx.NewTenantClient("plans-svc", cfg.PlansAddr)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = plansConn.Close() }()
+		routers, err := cfg.OpenRouters(ctx, appPool, systemPool, tenantdir.NewGRPC(plansv1.NewDirectoryServiceClient(plansConn), tenantdir.Options{}))
+		if err != nil {
+			return err
+		}
+		defer routers.Close()
+		appDB, cells = routers.App, routers.System
+		log.Info("cells mode", "cells", cells.CellNames())
+	}
+	svc := grpcapi.New(appDB, store, policy.New(cfg.GeneralTypes), grpcapi.Config{
 		Quotas: map[string]int64{"free": cfg.QuotaFreeMiB * policy.MiB, "standard": cfg.QuotaStdMiB * policy.MiB, "enterprise": cfg.QuotaEntMiB * policy.MiB},
 		Log:    log,
 	})
-	jobs := &background.Jobs{DB: systemPool, Store: store, Log: log}
+	jobs := &background.Jobs{DB: systemPool, Cells: cells, Store: store, Log: log}
 
 	hh := rt.Health()
 	hh.AddCheck("postgres", appPool.Ping)
@@ -92,4 +121,9 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "bucket", cfg.S3Bucket)
 	g.ServeGRPC(srv, grpcHealth, lis)
 	return g.Wait()
+}
+
+// tenantSchemas is what a tenant's schema in a cell is built from (ADR 0018).
+func tenantSchemas() pgxx.TenantSchemas {
+	return pgxx.TenantSchemas{Migrations: migrations.Tenant(), Roles: []string{"assets_app", "assets_system"}}
 }
