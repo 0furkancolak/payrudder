@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/0furkancolak/payrudder/pkg/outbox"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/outbox/query"
 )
 
@@ -22,6 +23,7 @@ const DefaultRefresh = time.Second
 // Options configure a Monitor. System is required.
 type Options struct {
 	System  *pgxpool.Pool // ingest_system: depth and watermark
+	Cells   *pgxx.Router  // the system-role router of cells mode; nil when cells are off
 	Log     *slog.Logger
 	Refresh time.Duration // default DefaultRefresh
 }
@@ -29,6 +31,7 @@ type Options struct {
 // Monitor refreshes the depth estimate in Run.
 type Monitor struct {
 	system  *pgxpool.Pool
+	cells   *pgxx.Router
 	qry     *query.Queries
 	log     *slog.Logger
 	refresh time.Duration
@@ -46,7 +49,7 @@ func New(o Options) (*Monitor, error) {
 	if o.Refresh <= 0 {
 		o.Refresh = DefaultRefresh
 	}
-	m := &Monitor{system: o.System, qry: query.New(o.System), log: o.Log, refresh: o.Refresh}
+	m := &Monitor{system: o.System, cells: o.Cells, qry: query.New(o.System, o.Cells), log: o.Log, refresh: o.Refresh}
 	meter := otel.Meter("github.com/0furkancolak/payrudder/services/ingest-svc")
 	depthG, err := meter.Int64ObservableGauge("ingest_outbox_depth", metric.WithDescription("Estimated rows waiting in the outbox"))
 	if err != nil {
@@ -86,13 +89,19 @@ func (m *Monitor) Run(ctx context.Context) error {
 
 func (m *Monitor) refreshOnce(ctx context.Context) {
 	d, err := outbox.Depth(ctx, m.system)
+	if err == nil && m.cells != nil {
+		var cellDepth int64
+		if cellDepth, err = outbox.CellsDepth(ctx, m.cells); err == nil {
+			d += cellDepth
+		}
+	}
 	switch {
 	case err == nil:
 		m.depth.Store(d)
 	case ctx.Err() == nil:
 		m.log.WarnContext(ctx, "ingest: outbox depth unavailable", "error", err)
 	}
-	oldest, ok, err := m.qry.Watermark(ctx)
+	oldest, ok, err := m.qry.WatermarkWithin(ctx, outbox.StatsPlacementAge)
 	switch {
 	case err != nil:
 		if ctx.Err() == nil {

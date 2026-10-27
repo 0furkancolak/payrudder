@@ -21,6 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
@@ -35,6 +36,8 @@ var defaults []byte
 type Config struct {
 	config.Base
 	pgxx.Settings
+	// CellSettings turns on cells mode (ADR 0018). Off unless PAYRUDDER_CELLS names at least one cell.
+	pgxx.CellSettings
 	GRPCAddr        string   `env:"PAYRUDDER_GRPC_ADDR"`
 	PlansAddr       string   `env:"PAYRUDDER_PLANS_ADDR"`
 	KafkaBrokers    []string `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
@@ -46,7 +49,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	errs = append(errs, c.CheckMigration())
+	errs = append(errs, c.CheckMigration(), c.CheckCells())
 	if c.RelayWorkers < 1 || c.RelayBatchSize < 1 {
 		errs = append(errs, errors.New("PAYRUDDER_RELAY_WORKERS and PAYRUDDER_RELAY_BATCH_SIZE must be ≥ 1"))
 	}
@@ -60,6 +63,11 @@ func main() { app.Main("ingest-svc", defaults, start) }
 
 func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	log := rt.Log
+	if cfg.Enabled() && cfg.MigrateOnStart {
+		if err := cfg.MigrateCells(ctx, tenantSchemas(), cfg.MigrateOnly, log); err != nil {
+			return err
+		}
+	}
 	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
@@ -86,8 +94,22 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer func() { _ = plansConn.Close() }()
 
+	// Cells mode (ADR 0018): a tenant's transactions go where the directory says its data is. Off, the pools are used directly, as ever.
+	var appDB pgxx.Beginner = appPool
+	var cells *pgxx.Router // the system-role router; nil when cells are off
+	if cfg.Enabled() {
+		dir := tenantdir.NewGRPC(plansv1.NewDirectoryServiceClient(plansConn), tenantdir.Options{})
+		routers, err := cfg.OpenRouters(ctx, appPool, systemPool, dir)
+		if err != nil {
+			return err
+		}
+		defer routers.Close()
+		appDB, cells = routers.App, routers.System
+		log.Info("cells mode", "cells", cells.CellNames())
+	}
+
 	svc, err := grpcapi.New(grpcapi.Options{
-		App: appPool, System: systemPool, Log: log, MaxOutboxDepth: cfg.MaxOutboxDepth,
+		App: appDB, System: systemPool, Cells: cells, Log: log, MaxOutboxDepth: cfg.MaxOutboxDepth,
 		Lookup: lookup.NewPlans(plansv1.NewPlansServiceClient(plansConn), lookup.Options{}),
 	})
 	if err != nil {
@@ -99,6 +121,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
+	relay.WithCells(cells)
 	interval, _ := time.ParseDuration(cfg.PartitionPeriod)
 
 	hh := rt.Health()
@@ -107,7 +130,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	ingestv1.RegisterIngestServiceServer(srv, svc)
-	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(ingestreset.New(systemPool).Reset))
+	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(ingestreset.New(systemPool).WithCells(cells).Reset))
 
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
@@ -117,8 +140,13 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	gctx := g.Context()
 	g.Go(func() error { return svc.Run(gctx) })
 	g.Go(func() error { return relay.Run(gctx) })
-	g.Go(func() error { maintenance.Run(gctx, systemPool, interval, log); return nil })
+	g.Go(func() error { maintenance.Run(gctx, systemPool, cells, interval, log); return nil })
 	log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "kafka", cfg.KafkaBrokers)
 	g.ServeGRPC(srv, grpcHealth, lis)
 	return g.Wait()
+}
+
+// tenantSchemas is what a tenant's schema in a cell is built from (ADR 0018).
+func tenantSchemas() pgxx.TenantSchemas {
+	return pgxx.TenantSchemas{Migrations: migrations.Tenant(), Roles: []string{"ingest_app", "ingest_system"}}
 }

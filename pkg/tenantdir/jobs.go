@@ -23,13 +23,13 @@ func (j Job) String() string { return j.Service + ": " + j.Name }
 // Converted in the commit that converts it and its tests, so the list of what is left is always the list the directory refuses a placement for. A service with
 // no tenant table in Postgres (notifier, limits-svc, gateway, invoice-worker, analytics-svc) has no entry: nothing of it is in a cell.
 var Jobs = []Job{
-	{"ingest-svc", "tenant schema", false, "services/ingest-svc/migrations/tenant"},
-	{"ingest-svc", "event write path", false, "internal/events/command/write.go"},
-	{"ingest-svc", "outbox relay", false, "pkg/outbox"},
-	{"ingest-svc", "outbox monitor (depth, age)", false, "internal/outbox/monitor"},
-	{"ingest-svc", "outbox watermark", false, "internal/outbox/query"},
-	{"ingest-svc", "idempotency partition maintenance", false, "internal/maintenance"},
-	{"ingest-svc", "sandbox reset", false, "internal/sandboxreset"},
+	{"ingest-svc", "tenant schema", true, "services/ingest-svc/migrations/tenant"},
+	{"ingest-svc", "event write path", true, "internal/events/command/write.go"},
+	{"ingest-svc", "outbox relay", true, "pkg/outbox"},
+	{"ingest-svc", "outbox monitor (depth, age)", true, "internal/outbox/monitor"},
+	{"ingest-svc", "outbox watermark", true, "internal/outbox/query"},
+	{"ingest-svc", "idempotency partition maintenance", true, "internal/maintenance"},
+	{"ingest-svc", "sandbox reset", true, "internal/sandboxreset"},
 
 	{"plans-svc", "tenant schema", false, "migrations"},
 	{"plans-svc", "outbox relay", false, "cmd/plans-svc newRelay"},

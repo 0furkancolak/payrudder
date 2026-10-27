@@ -12,6 +12,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/events"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/events/command"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/outbox"
@@ -22,8 +23,12 @@ import (
 
 // Options configure a Server. App, System and Lookup are required.
 type Options struct {
-	App    *pgxpool.Pool // ingest_app: RLS enforced
-	System *pgxpool.Pool // ingest_system: watermark and depth
+	// App is the ingest_app pool (RLS enforced), or its router when cells are on.
+	App pgxx.Beginner
+	// System is the ingest_system pool: watermark and depth.
+	System *pgxpool.Pool
+	// Cells is the system-role router of cells mode (ADR 0018), so the depth and the watermark cover the tenants placed in cells; nil when cells are off.
+	Cells  *pgxx.Router
 	Lookup command.Lookups
 	Log    *slog.Logger
 	// MaxOutboxDepth makes IngestEvents answer RESOURCE_EXHAUSTED above this many pending rows. 0 disables it.
@@ -51,7 +56,7 @@ func New(o Options) (*Server, error) {
 	if o.System == nil {
 		return nil, errors.New("ingest: System is required")
 	}
-	mon, err := monitor.New(monitor.Options{System: o.System, Log: o.Log, Refresh: o.DepthRefresh})
+	mon, err := monitor.New(monitor.Options{System: o.System, Cells: o.Cells, Log: o.Log, Refresh: o.DepthRefresh})
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +67,7 @@ func New(o Options) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Server{events: events.New(cmd), outbox: outbox.New(query.New(o.System)), mon: mon}, nil
+	return &Server{events: events.New(cmd), outbox: outbox.New(query.New(o.System, o.Cells)), mon: mon}, nil
 }
 
 // IngestEvents implements ingestv1.IngestServiceServer.
