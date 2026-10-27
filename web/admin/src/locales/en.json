@@ -2433,7 +2433,8 @@
         "ending_or_ended": "The subscription has already ended or is already scheduled to end.",
         "no_scheduled_cancel": "There is no scheduled cancellation to withdraw.",
         "run_by_provider": "This subscription is run by a payment provider. Change it there.",
-        "transition_not_allowed": "This cannot be done in the subscription's current state."
+        "transition_not_allowed": "This cannot be done in the subscription's current state.",
+        "quantity_needs_advance": "A quantity above 1 needs a subscription that Payrudder runs and bills in advance."
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
@@ -2495,7 +2496,8 @@
         "already_completed": "The migration already completed.",
         "cannot_abort": "The migration has completed and cannot be aborted.",
         "state_not_movable": "A subscription in its current state cannot be moved to another provider.",
-        "subscription_ended": "The subscription has ended or is ending, so it cannot be moved."
+        "subscription_ended": "The subscription has ended or is ending, so it cannot be moved.",
+        "coupon_blocks_move": "This subscription has a coupon, which a provider-run or arrears-billed subscription cannot carry. Remove the coupon first."
       },
       "plan": {
         "no_fixed_fee": "This plan version has no fixed fee for that interval in this currency.",

@@ -1,6 +1,6 @@
 # Billing lifecycle: yearly plans, plan changes, Paddle catalogue, billing documents
 
-Status: approved; phases 19–22 are built; section 4 lists what phase 22 left out. (Quantity changes, listed in section 2 below, were dropped from phase 20: the data model has no quantity.) Builds on [14-billing-platform.md](14-billing-platform.md) and [ADR 0016](adr/0016-provider-capabilities-and-routing.md); decisions in [ADR 0017](adr/0017-advance-fixed-fees-and-change-modes.md).
+Status: approved; phases 19–22 are built; section 4 lists what phase 22 left out. (Quantity changes, listed in section 2 below, were dropped from phase 20: the data model had no quantity. They are built since: a subscription has seats, see [plans-svc](03-services/plans-svc.md#as-built-seats-a-quantity-on-the-subscription).) Builds on [14-billing-platform.md](14-billing-platform.md) and [ADR 0016](adr/0016-provider-capabilities-and-routing.md); decisions in [ADR 0017](adr/0017-advance-fixed-fees-and-change-modes.md).
 
 ## Why
 
@@ -19,7 +19,7 @@ issue credit notes, and use a provider's whole API (catalogue, customers, discou
 
 ## Non-goals
 
-- Becoming a merchant of record; tax calculation for iyzico subscriptions (the tenant's tax setup is applied as given). Paddle's tax stays Paddle's.
+- Becoming a merchant of record; tax calculation for iyzico subscriptions (the tenant's tax setup is applied as given). Paddle's tax stays Paddle's. What is built is applying the tenant's configured rate for the customer's country to every invoice Payrudder raises (fees, usage, plan-change and seat-change adjustments, re-rating corrections) and to the credits that give such a charge back; there is no tax engine (place of supply, registrations, thresholds, reverse charge, rates that change by date).
 - Multi-year contracts, ramp deals, seat-based tiered/volume pricing (quantity is a plain multiplier here), usage commitments and overage bundles.
 - Currency conversion.
 
@@ -47,7 +47,7 @@ One operation, `ChangeSubscription`, with explicit inputs: new plan version, new
 | Downgrade (lower) | at period end | none; scheduled change record |
 | Monthly → yearly | immediately | credit the unused monthly fee, charge the year; a new yearly period starts now |
 | Yearly → monthly | at period end | none; the paid year runs out, monthly starts after (an immediate switch credits the unused year to the credit balance) |
-| Quantity change | immediately | prorated |
+| Quantity change | immediately (more or fewer seats) | prorated: the unused time of the old seats is credited, the new seats are charged for the rest of the period |
 
 - `timing`: `immediately` | `period_end`. `proration`: `prorate` | `none` | `full` (new fee in full, old unused credited in full). Tenant sets the defaults per direction; the request overrides.
 - **Preview** (`PreviewChange`) returns the exact lines, credits, amount due now and next renewal amount, and the same code path computes the real change (one function, two outputs).

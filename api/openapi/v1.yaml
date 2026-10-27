@@ -406,6 +406,7 @@ paths:
                 currency: { type: string, description: Default is the customer's billing currency, then the tenant's }
                 provider: { type: string, description: The payment provider that sells it (for example paddle); default is the tenant's default account }
                 coupon_code: { type: string, description: A coupon to redeem on the new subscription }
+                quantity: { type: integer, minimum: 1, maximum: 100000, description: "Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance" }
                 fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS], description: "Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee." }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
@@ -528,7 +529,7 @@ paths:
       summary: Move a subscription to another plan version and/or interval, now or at the end of the paid period
       description: |
         An upgrade or monthly-to-yearly change is immediate and prorated; a downgrade or yearly-to-monthly change waits for the end of the period the customer has paid for
-        (a scheduled change, shown on the subscription). Whatever moves money is invoiced, or becomes a credit balance when the new plan costs less than the unused old time was worth.
+        (a scheduled change, shown on the subscription). A change of `quantity` alone is immediate and prorated, more seats or fewer. Whatever moves money is invoiced, or becomes a credit balance when the new plan costs less than the unused old time was worth.
         Answers 409 `ABORTED` if the fee of the current period has not been invoiced yet; try again in a moment.
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
@@ -6142,6 +6143,7 @@ components:
         fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS] }
         scheduled_change: { $ref: "#/components/schemas/ScheduledChange" }
         coupon_code: { type: string }
+        quantity: { type: integer, description: "Seats: a plain multiplier of the plan's fixed fee, 1 unless set" }
     CreditNote:
       type: object
       properties:
@@ -6670,6 +6672,7 @@ components:
         timing: { type: string, enum: [CHANGE_TIMING_IMMEDIATELY, CHANGE_TIMING_PERIOD_END], description: Default depends on the direction of the change }
         proration: { type: string, enum: [CHANGE_PRORATION_PRORATE, CHANGE_PRORATION_FULL, CHANGE_PRORATION_NONE], description: "Default prorate. Prorate keeps the cycle within an interval; full starts a new cycle now; none moves no money now" }
         change_time: { type: string, format: date-time, description: Default now; not in the future }
+        quantity: { type: integer, minimum: 1, maximum: 100000, description: "The new number of seats; 0 or absent keeps it. A change of seats alone is immediate and prorated in either direction unless timing says otherwise: the unused time of the old seats is credited and the new seats are charged for the rest of the period" }
     ChangeQuote:
       type: object
       properties:
@@ -6687,6 +6690,7 @@ components:
         plan_code: { type: string }
         plan_version: { type: integer }
         interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+        quantity: { type: integer, description: The seats after the change }
     ScheduledChange:
       type: object
       properties:
@@ -6694,6 +6698,7 @@ components:
         plan_version: { type: integer }
         interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
         effective_time: { type: string, format: date-time }
+        quantity: { type: integer, description: The seats the subscription has from then }
     CurrencyFee:
       type: object
       properties:

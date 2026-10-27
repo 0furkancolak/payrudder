@@ -76,7 +76,7 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 // schedule records a change for the end of the paid period and tells the tenant it is scheduled; the subscription is not changed yet.
 func (c *Commands) schedule(ctx context.Context, q *sqlc.Queries, resp *plansv1.ChangeSubscriptionResponse, row sqlc.GetSubscriptionRow, pc *changesqry.Priced) error {
 	if _, err := q.InsertSubscriptionChange(ctx, sqlc.InsertSubscriptionChangeParams{
-		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, PlanVersionID: pc.NewPV.ID, Interval: string(pc.NewInterval), EffectiveAt: pc.Quote.Effective}); err != nil {
+		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, PlanVersionID: pc.NewPV.ID, Interval: string(pc.NewInterval), EffectiveAt: pc.Quote.Effective, Quantity: &pc.NewQuantity}); err != nil {
 		return err
 	}
 	resp.Scheduled = true
@@ -96,7 +96,7 @@ func (c *Commands) applyNow(ctx context.Context, q *sqlc.Queries, tenantID uuid.
 	}
 	feeDue := qt.NewFeeDue
 	nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), tenantID, row, subscriptionscmd.Successor{PlanVersionID: pc.NewPV.ID, Interval: pc.NewInterval, State: state, TrialEnds: row.TrialEndsAt, At: pc.At,
-		Anchor: qt.NewAnchor, FeeTiming: subscription.FeeInAdvance, FeeDue: &feeDue})
+		Anchor: qt.NewAnchor, FeeTiming: subscription.FeeInAdvance, FeeDue: &feeDue, Quantity: pc.NewQuantity})
 	if err != nil {
 		return err
 	}
@@ -198,8 +198,12 @@ func (c *Commands) applyOne(ctx context.Context, q *sqlc.Queries, tenantID uuid.
 		return false, err
 	}
 	effective := dc.EffectiveAt
-	nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), tenantID, row, subscriptionscmd.Successor{PlanVersionID: pv.ID, Interval: subscription.Interval(dc.Interval), State: subscription.Active,
-		At: effective, Anchor: effective, FeeTiming: subscription.FeeInAdvance, FeeDue: &effective})
+	next := subscriptionscmd.Successor{PlanVersionID: pv.ID, Interval: subscription.Interval(dc.Interval), State: subscription.Active,
+		At: effective, Anchor: effective, FeeTiming: subscription.FeeInAdvance, FeeDue: &effective}
+	if dc.Quantity != nil { // a change made before quantities existed keeps the subscription's own
+		next.Quantity = *dc.Quantity
+	}
+	nr, err := subscriptionscmd.SwitchTo(ctx, q, c.now(), tenantID, row, next)
 	if err != nil {
 		return false, err
 	}

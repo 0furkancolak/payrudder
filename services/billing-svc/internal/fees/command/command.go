@@ -137,8 +137,12 @@ func (c *Commands) billFee(ctx context.Context, tenantID uuid.UUID, t *plansv1.T
 
 // baseFeeLine is the line of a fixed fee for the period from..to.
 func baseFeeLine(sub *plansv1.Subscription, amountMinor int64, from, to time.Time, loc *time.Location) rating.Line {
+	seats := ""
+	if q := sub.GetQuantity(); q > 1 {
+		seats = fmt.Sprintf(" × %d seats", q)
+	}
 	return rating.Line{Kind: rating.KindBaseFee, AmountMinor: amountMinor, ServiceFrom: from, ServiceTo: to,
-		Description: fmt.Sprintf("Base fee (%s) — %s — %s to %s", feeWord(sub), sub.GetPlanCode(), day(from, loc), day(to, loc))}
+		Description: fmt.Sprintf("Base fee (%s)%s — %s — %s to %s", feeWord(sub), seats, sub.GetPlanCode(), day(from, loc), day(to, loc))}
 }
 
 func feeWord(sub *plansv1.Subscription) string {

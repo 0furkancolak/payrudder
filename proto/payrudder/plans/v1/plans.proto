@@ -317,6 +317,8 @@ message CreateSubscriptionRequest {
   FeeTiming fee_timing = 9;
   // A coupon to redeem on the new subscription.
   string coupon_code = 10;
+  // Seats (licences): the plan's fixed fee is multiplied by it. 0 = 1. Only for a subscription Payrudder runs and bills in advance.
+  int32 quantity = 11;
 }
 
 message CreateSubscriptionResponse {
@@ -669,6 +671,8 @@ message ChangeSubscriptionRequest {
   ChangeProration proration = 6;
   // Unset = now. Only for immediate changes.
   google.protobuf.Timestamp change_time = 7;
+  // The new quantity. 0 keeps it. A change of quantity alone is immediate and prorated unless timing says otherwise.
+  int32 quantity = 8;
 }
 
 message ChangeQuote {
@@ -689,6 +693,8 @@ message ChangeQuote {
   string plan_code = 12;
   int32 plan_version = 13;
   SubscriptionInterval interval = 14;
+  // The quantity after the change.
+  int32 quantity = 15;
 }
 
 message PreviewSubscriptionChangeRequest {

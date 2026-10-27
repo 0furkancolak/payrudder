@@ -2433,7 +2433,8 @@
         "ending_or_ended": "Abonelik zaten sona erdi ya da sona ermesi planlandı.",
         "no_scheduled_cancel": "Geri çekilecek planlanmış bir iptal yok.",
         "run_by_provider": "Bu abonelik bir ödeme sağlayıcısı tarafından yürütülüyor. Değişikliği orada yapın.",
-        "transition_not_allowed": "Bu işlem aboneliğin mevcut durumunda yapılamaz."
+        "transition_not_allowed": "Bu işlem aboneliğin mevcut durumunda yapılamaz.",
+        "quantity_needs_advance": "1'den büyük bir adet, Payrudder'ın yürüttüğü ve peşin faturaladığı bir abonelik gerektirir."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
@@ -2495,7 +2496,8 @@
         "already_completed": "Geçiş zaten tamamlandı.",
         "cannot_abort": "Geçiş tamamlandı ve iptal edilemez.",
         "state_not_movable": "Mevcut durumdaki bir abonelik başka bir sağlayıcıya taşınamaz.",
-        "subscription_ended": "Abonelik sona erdi ya da sona eriyor, bu yüzden taşınamaz."
+        "subscription_ended": "Abonelik sona erdi ya da sona eriyor, bu yüzden taşınamaz.",
+        "coupon_blocks_move": "Bu abonelikte kupon var; sağlayıcının yürüttüğü ya da dönem sonunda faturalanan bir abonelik kuponu taşıyamaz. Önce kuponu kaldırın."
       },
       "plan": {
         "no_fixed_fee": "Bu plan sürümünün bu para biriminde bu aralık için sabit ücreti yok.",

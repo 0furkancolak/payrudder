@@ -2433,7 +2433,8 @@
         "ending_or_ended": "L'abonnement est déjà terminé ou déjà programmé pour se terminer.",
         "no_scheduled_cancel": "Il n'y a aucune résiliation programmée à annuler.",
         "run_by_provider": "Cet abonnement est géré par un prestataire de paiement. Modifiez-le chez lui.",
-        "transition_not_allowed": "Cela n'est pas possible dans l'état actuel de l'abonnement."
+        "transition_not_allowed": "Cela n'est pas possible dans l'état actuel de l'abonnement.",
+        "quantity_needs_advance": "Une quantité supérieure à 1 exige un abonnement que Payrudder gère et facture d'avance."
       },
       "webhook": {
         "not_configured": "Les webhooks ne sont pas configurés sur ce déploiement (la clé des secrets est absente).",
@@ -2495,7 +2496,8 @@
         "already_completed": "La migration est déjà terminée.",
         "cannot_abort": "La migration est terminée et ne peut pas être abandonnée.",
         "state_not_movable": "Un abonnement dans cet état ne peut pas être déplacé vers un autre prestataire.",
-        "subscription_ended": "L'abonnement est terminé ou en cours de fin : il ne peut pas être déplacé."
+        "subscription_ended": "L'abonnement est terminé ou en cours de fin : il ne peut pas être déplacé.",
+        "coupon_blocks_move": "Cet abonnement a un coupon qu'un abonnement géré par le prestataire ou facturé à terme échu ne peut pas reprendre. Retirez d'abord le coupon."
       },
       "plan": {
         "no_fixed_fee": "Cette version du plan n'a pas de frais fixes pour cet intervalle dans cette devise.",

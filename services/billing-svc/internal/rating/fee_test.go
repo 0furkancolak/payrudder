@@ -45,3 +45,23 @@ func TestFixedFeeLines(t *testing.T) {
 		}
 	})
 }
+
+// TaxOn rounds half to even, as TaxLine does: the credit that gives a taxed charge back must come to the same minor unit.
+func TestTaxOn(t *testing.T) {
+	for _, c := range []struct {
+		amount int64
+		bps    int32
+		want   int64
+	}{
+		{500, 2000, 100},
+		{224, 2000, 45}, // 44.8
+		{203, 2000, 41}, // 40.6
+		{5, 1000, 0},    // 0.5 goes to the even neighbour
+		{15, 1000, 2},   // 1.5 too
+		{1000, 0, 0},
+	} {
+		if got := rating.TaxOn(c.amount, c.bps); got != c.want {
+			t.Errorf("TaxOn(%d, %d) = %d, want %d", c.amount, c.bps, got, c.want)
+		}
+	}
+}

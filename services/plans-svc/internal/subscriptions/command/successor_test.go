@@ -16,8 +16,8 @@ func TestCarriesCoupon(t *testing.T) {
 		{"run by a provider", Successor{FeeTiming: "advance", Owner: "provider"}, false},
 		{"run by a provider, in arrears (a sync)", Successor{FeeTiming: "arrears", Owner: "provider"}, false},
 	} {
-		if got := carriesCoupon(c.next); got != c.want {
-			t.Errorf("%s: carriesCoupon = %v, want %v", c.name, got, c.want)
+		if got := CarriesCoupon(c.next); got != c.want {
+			t.Errorf("%s: CarriesCoupon = %v, want %v", c.name, got, c.want)
 		}
 	}
 }

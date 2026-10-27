@@ -139,7 +139,7 @@ and keep usage in arrears on the monthly run. The "yearly subscriptions are refu
 ## As built: phase 20
 
 Details in phase 20. Advance-billed subscriptions change plan or interval with a preview that is the same calculation as the change: upgrades and monthly-to-yearly at once with the unused time credited, downgrades and
-yearly-to-monthly at the end of the paid period, as a scheduled change the customer can withdraw. What a change moves becomes an invoice or a credit balance in billing-svc. Quantity changes are not in this release.
+yearly-to-monthly at the end of the paid period, as a scheduled change the customer can withdraw. What a change moves becomes an invoice or a credit balance in billing-svc. A change of quantity (seats) is such a change too.
 
 ## As built: phase 21
 
@@ -152,7 +152,7 @@ Details in phase 22. Credit notes (paid invoices only, into the credit balance),
 
 ## As built: phase 23
 
-Details in phase 23 and [16-webhooks.md](16-webhooks.md). Tenants set their own dunning delays; ending a subscription early (or moving it to another provider) can credit the unused prepaid fee; a credit note can refund the card instead of the credit balance; tenants receive signed, retried webhook events for subscriptions, invoices and credit notes; and an invoice can be shared with its customer as a hosted page. Quantity changes and tax calculation are still not built.
+Details in phase 23 and [16-webhooks.md](16-webhooks.md). Tenants set their own dunning delays; ending a subscription early (or moving it to another provider) can credit the unused prepaid fee; a credit note can refund the card instead of the credit balance; tenants receive signed, retried webhook events for subscriptions, invoices and credit notes; and an invoice can be shared with its customer as a hosted page. Seats (a quantity that multiplies the fixed fee, changed with proration) are built; tax is the tenant's configured rate applied by Payrudder, with no tax engine behind it.
 
 ## As built: phase 34
 

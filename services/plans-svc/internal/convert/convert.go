@@ -229,6 +229,7 @@ type SubscriptionFields struct {
 	PlanCode                      string
 	PlanVersion                   int32
 	FeeTiming                     string
+	Quantity                      int32
 	// Now decides the effective state: a trial that is over reads as active, an ended subscription as cancelled.
 	Now time.Time
 }
@@ -267,8 +268,8 @@ func Subscription(s SubscriptionFields) *plansv1.Subscription {
 	out := &plansv1.Subscription{
 		Id: s.ID, CustomerId: s.CustomerID, CustomerExternalId: s.CustomerExternalID, PlanVersionId: s.PlanVersionID,
 		StartTime: ts(s.Start), CreateTime: ts(s.Created), Currency: s.Currency, CancelAtPeriodEnd: s.CancelAtPeriodEnd, ChangedFromId: s.ChangedFromID, Provider: s.Provider, ProviderRef: s.ProviderRef, Owner: ownerOrDefault(s.Owner), PlanCode: s.PlanCode, PlanVersion: s.PlanVersion,
-		FeeTiming: feeTimingToProto(s.FeeTiming),
-		State:     stateToProto[SubscriptionState(s.State, s.TrialEnds, s.OpenEnded, s.End, now)],
+		FeeTiming: feeTimingToProto(s.FeeTiming), Quantity: max(s.Quantity, 1),
+		State: stateToProto[SubscriptionState(s.State, s.TrialEnds, s.OpenEnded, s.End, now)],
 	}
 	out.Interval = subscription.Interval(s.Interval).Proto()
 	if s.TrialEnds != nil {
@@ -296,6 +297,6 @@ func SubscriptionOf(r sqlc.GetSubscriptionRow, now time.Time) *plansv1.Subscript
 		ID: r.ID.String(), CustomerID: r.CustomerID.String(), CustomerExternalID: r.CustomerExternalID,
 		PlanVersionID: r.PlanVersionID.String(), Start: r.StartTime, End: r.EndTime, OpenEnded: r.OpenEnded, Created: r.CreatedAt,
 		State: r.State, Interval: r.Interval, Currency: r.Currency, TrialEnds: r.TrialEndsAt, PausedAt: r.PausedAt,
-		CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: UUIDStr(r.ChangedFromID), Provider: Str(r.Provider), ProviderRef: Str(r.ProviderRef), Owner: r.Owner, PlanCode: r.PlanCode, PlanVersion: r.PlanVersion, FeeTiming: r.FeeTiming, Now: now,
+		CancelAtPeriodEnd: r.CancelAtPeriodEnd, ChangedFromID: UUIDStr(r.ChangedFromID), Provider: Str(r.Provider), ProviderRef: Str(r.ProviderRef), Owner: r.Owner, PlanCode: r.PlanCode, PlanVersion: r.PlanVersion, FeeTiming: r.FeeTiming, Quantity: r.Quantity, Now: now,
 	})
 }
