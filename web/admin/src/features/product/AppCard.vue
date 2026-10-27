@@ -29,7 +29,7 @@ const status = computed(() => overview.data.value?.status);
 <template>
   <Link
     :to="`/app/apps/${app.id}`"
-    :search="{ env } as never"
+    :search="{ env, app: app.id } as never"
     class="surface group flex flex-col gap-5 p-6 transition-shadow hover:shadow-pop focus-visible:outline-2 focus-visible:outline-offset-2"
     :aria-label="app.name"
   >

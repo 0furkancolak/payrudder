@@ -5,7 +5,9 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { toast } from "vue-sonner";
+import { useShell } from "@/app/layout/useShell";
 import { useApps } from "@/features/apps/api";
+import { ALL_APPS } from "@/shared/lib/scope";
 import { useTenant } from "@/features/tenants";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatUtcDay } from "@/shared/lib/format";
@@ -41,6 +43,9 @@ const range = ref<DateRange>(presetRange("thisMonth", new Date()));
 const rangeOk = computed(() => validRange(range.value));
 const granularity = computed(() => (rangeOk.value ? granularityOf(range.value) : "day"));
 const app = ref("");
+// The page follows the scope in the address: one app shows that app's expenses, all apps show them all.
+const shell = useShell();
+watch(() => shell.scope.value, (sc) => (app.value = sc && sc !== ALL_APPS ? sc : ""), { immediate: true });
 const accountId = computed(() => tenant.data.value?.account_id ?? "");
 const apps = useApps(accountId);
 const appList = computed(() => (apps.data.value?.apps ?? []).map((a) => ({ id: a.id ?? "", name: a.name ?? a.id ?? "" })).filter((a) => a.id !== ""));
@@ -304,6 +309,6 @@ async function exportCsv(report: "export" | "coupons" = "export") {
     </template>
   </DetailSheet>
 
-  <ExpenseDialog v-model:open="dialogOpen" :tenant-id="tenantId" :expense="editing" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" />
+  <ExpenseDialog v-model:open="dialogOpen" :tenant-id="tenantId" :expense="editing" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" :default-app="app" />
   <VoidDialog v-model:open="voidOpen" :tenant-id="tenantId" :expense="voiding" />
 </template>

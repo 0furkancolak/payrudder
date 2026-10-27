@@ -8,7 +8,13 @@
     "language": "Sprache",
     "demo": "Demo-Modus: Beispieldaten, ein simulierter Zahlungsanbieter, Mails gehen an den lokalen Mail-Catcher. Nichts davon ist echt.",
     "themeLight": "Zum hellen Design wechseln",
-    "themeDark": "Zum dunklen Design wechseln"
+    "themeDark": "Zum dunklen Design wechseln",
+    "theme": "Design",
+    "themeChoice": {
+      "system": "System",
+      "light": "Hell",
+      "dark": "Dunkel"
+    }
   },
   "nav": {
     "tenants": "Mandanten",
@@ -1232,7 +1238,7 @@
         "until": "Letzter Tag (optional)",
         "recurringHint": "Das Bearbeiten einer wiederkehrenden Ausgabe ändert alle Wiederholungen, vergangene wie künftige.",
         "app": "App",
-        "wholeTenant": "Ganzer Mandant",
+        "wholeTenant": "Allgemeine Buchhaltung",
         "note": "Notiz (optional)",
         "bad": "Geben Sie einen Lieferanten und einen Betrag über null ein, mit höchstens den Nachkommastellen von {currency}.",
         "badDates": "Geben Sie das Datum ein; der letzte Tag darf nicht vor dem ersten liegen.",
@@ -3525,6 +3531,31 @@
           "usage_product_id": "Die ID des Produkts, das Paddle für Nutzungsgebühren verwendet. Im Catalog das Produkt öffnen und seine ID kopieren, sie beginnt mit pro_."
         }
       }
+    },
+    "envSwitch": {
+      "open": "Umgebung: {env}. Umgebung wechseln",
+      "title": {
+        "sandbox": "Zur Sandbox wechseln?",
+        "live": "Zu Live wechseln?"
+      },
+      "intro": {
+        "sandbox": "Die Sandbox ist eine sichere Kopie zum Testen mit eigenen Daten.",
+        "live": "Live ist der Ort Ihrer echten Kunden und Ihres echten Geldes."
+      },
+      "unaffected": "{app} ist nicht betroffen: Sie läuft genau so weiter wie bisher.",
+      "unaffectedAll": "Keine Ihrer Apps ist betroffen: Sie laufen genau so weiter wie bisher.",
+      "onlyData": {
+        "sandbox": "Ab jetzt zeigen die Seiten nur Sandbox-Daten: Testkunden, Abonnements und Rechnungen. Live-Daten sind ausgeblendet, bis Sie zurückwechseln.",
+        "live": "Ab jetzt zeigen die Seiten nur Live-Daten: Ihre echten Kunden, Abonnements und Rechnungen. Sandbox-Daten sind ausgeblendet, bis Sie zurückwechseln."
+      },
+      "providers": {
+        "sandbox": "In der Sandbox wird nichts an echte Zahlungsanbieter oder echte Kunden gesendet: Zahlungen werden simuliert und E-Mails nicht zugestellt.",
+        "live": "Live ist echt: Zahlungen laufen über Ihre verbundenen Zahlungsanbieter, Kunden erhalten echte E-Mails und Rechnungen."
+      },
+      "confirm": {
+        "sandbox": "Zur Sandbox wechseln",
+        "live": "Zu Live wechseln"
+      }
     }
   },
   "shell": {
@@ -3544,12 +3575,12 @@
       "account": "Organisation",
       "platform": "Plattform",
       "overview": "Übersicht",
-      "customers": "Kunden",
-      "billing": "Abrechnung",
-      "growth": "Wachstum",
       "developers": "Entwickler",
-      "settings": "Einstellungen",
-      "apps": "Apps"
+      "settings": "App-Einstellungen",
+      "apps": "Apps",
+      "customersBilling": "Kunden und Abrechnung",
+      "usageProducts": "Nutzung und Produkte",
+      "money": "Geld"
     },
     "items": {
       "overview": "Apps",
@@ -3586,9 +3617,11 @@
       "usage": "Nutzung",
       "coupons": "Gutscheine",
       "paymentProviders": "Zahlungsanbieter",
-      "meters": "Zähler"
+      "meters": "Zähler",
+      "orgProviders": "Zahlungsanbieter"
     },
-    "noApps": "Noch keine Apps"
+    "noApps": "Noch keine Apps",
+    "newApp": "Neue App"
   },
   "privacy": {
     "hide": "Beträge ausblenden",
@@ -3783,5 +3816,16 @@
   "sheets": {
     "back": "Zurück",
     "forward": "Vor"
+  },
+  "scope": {
+    "app": "App",
+    "allHint": "Die {env}-Daten aller Apps in einer Tabelle. Öffnen Sie eine Zeile, um in der jeweiligen App zu arbeiten.",
+    "noData": "In keiner App gibt es hier bisher etwas.",
+    "chooseTitle": "Diese Seite arbeitet jeweils mit einer App",
+    "chooseHint": "Wählen Sie die App, deren {page} Sie öffnen möchten.",
+    "open": "Öffnen",
+    "failed": "{app} hat nicht geantwortet.",
+    "amount": "Betrag",
+    "date": "Datum"
   }
 }

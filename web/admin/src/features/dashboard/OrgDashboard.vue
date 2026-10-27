@@ -151,7 +151,7 @@ const dCustomers = computed(() => (compare.value ? delta(newCustomers.value, pre
             <li v-for="x in blocks" :key="x.app.id" class="flex items-center gap-3 py-2.5 text-sm">
               <span class="min-w-0 flex-1 truncate font-medium">{{ x.app.name }}</span>
               <StatusPill v-if="x.data" :tone="toneOf(x.data.status)">{{ t(`product.appStatus.${x.data.status}`) }}</StatusPill>
-              <Link :to="`/app/apps/${x.app.id}`" :search="(env === 'sandbox' ? { env: 'sandbox' } : {}) as never" class="text-primary text-xs font-medium hover:underline">{{ t("dash.org.open") }}</Link>
+              <Link :to="`/app/apps/${x.app.id}`" :search="{ app: x.app.id, ...(env === 'sandbox' ? { env: 'sandbox' } : {}) } as never" class="text-primary text-xs font-medium hover:underline">{{ t("dash.org.open") }}</Link>
             </li>
           </ul>
         </section>

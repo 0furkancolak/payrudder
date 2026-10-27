@@ -179,7 +179,11 @@ export function share(value: number, max: number): number {
 }
 
 /** The sheets open in an address (see shared/lib/sheets): every route that understands its own search keeps them. */
-export const sheetSearch = (s: Record<string, unknown>): { sheet?: string } => (typeof s.sheet === "string" && s.sheet !== "" ? { sheet: s.sheet } : {});
+export const sheetSearch = (s: Record<string, unknown>): { sheet?: string; app?: string } => ({
+  ...(typeof s.sheet === "string" && s.sheet !== "" ? { sheet: s.sheet } : {}),
+  // The scope (an app id or "all") travels in every address (see shared/lib/scope).
+  ...(typeof s.app === "string" && s.app !== "" ? { app: s.app } : {}),
+});
 
 /**
  * The search of a dashboard address: the environment of an app (sandbox only; live is the default) and the query. Used by the routes, so that a link keeps the

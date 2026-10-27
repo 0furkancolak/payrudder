@@ -21,10 +21,38 @@ export async function pickPlace(field: Locator, text: string): Promise<void> {
   await field.press("Enter");
 }
 
-/** Chooses a language in the header's language menu. */
+/** Chooses a theme (system, light or dark) in the person's menu. */
+export async function pickTheme(page: Page, choice: "system" | "light" | "dark"): Promise<void> {
+  await page.getByTestId("user-menu").click();
+  await page.getByTestId("menu-theme").click();
+  // The sub-menu opens beside its trigger and closes when the pointer wanders off, so the item is chosen from the keyboard.
+  const item = page.getByTestId(`theme-${choice}`);
+  await item.focus();
+  await item.press("Enter");
+}
+
+/** Switches between the sandbox and live the deliberate way: the pill opens the dialog, and the switch happens on its confirm button. */
+export async function switchEnv(page: Page): Promise<void> {
+  await page.getByTestId("env-switch").click();
+  await page.getByTestId("env-switch-confirm").click();
+}
+
+/** Chooses a language: in the header's menu while signed out, in the person's menu once signed in. */
 export async function pickLanguage(page: Page, code: string): Promise<void> {
-  await page.getByTestId("language-switcher").click();
-  await page.getByTestId(`lang-${code}`).click();
+  const header = page.getByTestId("language-switcher");
+  if ((await header.count()) > 0) {
+    await header.click();
+  } else {
+    await page.getByTestId("user-menu").click();
+    await page.getByTestId("menu-language").click();
+  }
+  const item = page.getByTestId(`lang-${code}`);
+  if ((await header.count()) > 0) {
+    await item.click();
+  } else {
+    await item.focus();
+    await item.press("Enter");
+  }
 }
 
 /** Runs a row's action: a row with one action shows it as a button, a row with several folds them into its "more actions" menu. */

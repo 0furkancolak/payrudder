@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Plus } from "@lucide/vue";
+import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import CustomerSelect from "@/features/customers/CustomerSelect.vue";
@@ -130,6 +131,7 @@ function submitGrant() {
         </SheetHeader>
         <SheetBody>
           <form id="grant-form" class="grid gap-4" role="form" :aria-label="t('billing.credits.grant.formLabel')" @submit.prevent="submitGrant">
+            <AppField />
             <Input v-model="grantCredits" inputmode="numeric" :aria-label="t('billing.credits.grant.credits')" :placeholder="t('billing.credits.grant.credits')" required />
             <NativeSelect v-model="grantSource" :aria-label="t('billing.credits.grant.source')">
               <option value="promo">{{ t("billing.credits.source.promo") }}</option>

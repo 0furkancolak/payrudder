@@ -8,7 +8,13 @@
     "language": "Dil",
     "demo": "Demo modu: örnek veriler, sahte bir ödeme sağlayıcısı, e-postalar yerel posta yakalayıcıya gider. Buradaki hiçbir şey gerçek değildir.",
     "themeLight": "Açık temaya geç",
-    "themeDark": "Koyu temaya geç"
+    "themeDark": "Koyu temaya geç",
+    "theme": "Tema",
+    "themeChoice": {
+      "system": "Sistem",
+      "light": "Açık",
+      "dark": "Koyu"
+    }
   },
   "nav": {
     "tenants": "Kiracılar",
@@ -1232,7 +1238,7 @@
         "until": "Son gün (isteğe bağlı)",
         "recurringHint": "Tekrarlayan bir gideri düzenlemek geçmiş ve gelecek tüm tekrarları değiştirir.",
         "app": "Uygulama",
-        "wholeTenant": "Tüm kiracı",
+        "wholeTenant": "Genel muhasebe",
         "note": "Not (isteğe bağlı)",
         "bad": "Bir tedarikçi ve sıfırdan büyük bir tutar girin; ondalık basamak sayısı {currency} için geçerli olanı aşmasın.",
         "badDates": "Tarihi girin; son gün ilk günden önce olamaz.",
@@ -3525,6 +3531,31 @@
           "usage_product_id": "Paddle'ın kullanım ücretleri için kullandığı ürünün kimliği. Catalog'da ürünü açıp pro_ ile başlayan kimliğini kopyalayın."
         }
       }
+    },
+    "envSwitch": {
+      "open": "Ortam: {env}. Ortamı değiştir",
+      "title": {
+        "sandbox": "Sandbox'a geçilsin mi?",
+        "live": "Canlıya geçilsin mi?"
+      },
+      "intro": {
+        "sandbox": "Sandbox, kendi verileriyle test için güvenli bir kopyadır.",
+        "live": "Canlı, gerçek müşterilerinizin ve paranızın olduğu yerdir."
+      },
+      "unaffected": "{app} etkilenmez: şu anki gibi çalışmaya devam eder.",
+      "unaffectedAll": "Hiçbir uygulamanız etkilenmez: şu anki gibi çalışmaya devam ederler.",
+      "onlyData": {
+        "sandbox": "Bundan sonra sayfalar yalnızca sandbox verilerini gösterir: test müşterileri, abonelikler ve faturalar. Geri dönene kadar canlı veriler gizlenir.",
+        "live": "Bundan sonra sayfalar yalnızca canlı verileri gösterir: gerçek müşterileriniz, abonelikleriniz ve faturalarınız. Geri dönene kadar sandbox verileri gizlenir."
+      },
+      "providers": {
+        "sandbox": "Sandbox'ta gerçek ödeme sağlayıcılarına ya da gerçek müşterilere hiçbir şey gönderilmez: ödemeler simüle edilir ve e-postalar iletilmez.",
+        "live": "Canlı gerçektir: ödemeler bağlı ödeme sağlayıcılarınızdan geçer, müşteriler gerçek e-posta ve faturalar alır."
+      },
+      "confirm": {
+        "sandbox": "Sandbox'a geç",
+        "live": "Canlıya geç"
+      }
     }
   },
   "shell": {
@@ -3544,12 +3575,12 @@
       "account": "Kuruluş",
       "platform": "Platform",
       "overview": "Genel bakış",
-      "customers": "Müşteriler",
-      "billing": "Faturalama",
-      "growth": "Büyüme",
       "developers": "Geliştiriciler",
-      "settings": "Ayarlar",
-      "apps": "Uygulamalar"
+      "settings": "Uygulama ayarları",
+      "apps": "Uygulamalar",
+      "customersBilling": "Müşteriler ve faturalama",
+      "usageProducts": "Kullanım ve ürünler",
+      "money": "Para"
     },
     "items": {
       "overview": "Uygulamalar",
@@ -3586,9 +3617,11 @@
       "usage": "Kullanım",
       "coupons": "Kuponlar",
       "paymentProviders": "Ödeme sağlayıcıları",
-      "meters": "Sayaçlar"
+      "meters": "Sayaçlar",
+      "orgProviders": "Ödeme sağlayıcıları"
     },
-    "noApps": "Henüz uygulama yok"
+    "noApps": "Henüz uygulama yok",
+    "newApp": "Yeni uygulama"
   },
   "privacy": {
     "hide": "Tutarları gizle",
@@ -3783,5 +3816,16 @@
   "sheets": {
     "back": "Geri",
     "forward": "İleri"
+  },
+  "scope": {
+    "app": "Uygulama",
+    "allHint": "Tüm uygulamaların {env} verileri tek tabloda. Bir satırı kendi uygulamasında çalışmak için açın.",
+    "noData": "Hiçbir uygulamada henüz bir şey yok.",
+    "chooseTitle": "Bu sayfa bir seferde tek uygulamayla çalışır",
+    "chooseHint": "{page} sayfasını açmak istediğiniz uygulamayı seçin.",
+    "open": "Aç",
+    "failed": "{app} yanıt vermedi.",
+    "amount": "Tutar",
+    "date": "Tarih"
   }
 }

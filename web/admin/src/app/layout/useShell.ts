@@ -4,9 +4,10 @@ import { useI18n } from "vue-i18n";
 import { useApps, useAccount, useMe, type App } from "@/features/product/api";
 import { hasPartnerRole } from "@/features/product/lib";
 import { useTenant } from "@/features/tenants/api";
-import { defaultEnv, defaultOrgEnv, envEnum, findTenant, isEnvironment, type Environment } from "@/shared/lib/environment";
+import { defaultEnv, defaultOrgEnv, findTenant, isEnvironment, tenantOf, type Environment } from "@/shared/lib/environment";
+import { ALL_APPS, appInSearch, lastApp, resolveScope } from "@/shared/lib/scope";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
-import { activeItem, buildNav, type NavSection, type ShellContext } from "./nav";
+import { activeItem, ALL_TENANTS, buildNav, type NavSection, type ShellContext } from "./nav";
 
 export interface Crumb {
   label: string;
@@ -40,6 +41,8 @@ export function useShell() {
     return m?.[1] ?? "";
   });
   const appInPath = computed(() => /^\/app\/apps\/([^/]+)/.exec(path.value)?.[1] ?? "");
+  /** The pages of every app together live under /app/t/all (see ProductTenantLayout). */
+  const allInPath = computed(() => isPerson.value && path.value.startsWith("/app/t/") && tenantInPath.value === ALL_TENANTS);
 
   // An operator is a person: the console's pages are theirs only while they are on them, and their own organisation is one click away.
   const inOperatorArea = computed(() => isOperator.value && OPERATOR_PATHS.test(path.value));
@@ -48,36 +51,50 @@ export function useShell() {
 
   const located = computed(() => (isPerson.value && path.value.startsWith("/app/t/") ? appOfTenant(apps.data.value?.apps, tenantInPath.value) : null));
 
+  /**
+   * The scope of a person's page: an app's id or "all" (see shared/lib/scope). An app is always selected: the path's app first, then the address'
+   * (`?app=`), then the one used last, then the first. `null` while the apps have not arrived (or there are none).
+   */
+  const scope = computed<string | null>(() => {
+    if (!isPerson.value || inOperatorArea.value) return null;
+    if (allInPath.value) return ALL_APPS;
+    const pathApp = appInPath.value || located.value?.app.id || undefined;
+    return resolveScope({ ...(pathApp ? { pathApp } : {}), ...(appInSearch(search.value) ? { addressApp: appInSearch(search.value) as string } : {}), apps: apps.data.value?.apps, last: lastApp() });
+  });
+  const scopeApp = computed(() => (scope.value && scope.value !== ALL_APPS ? apps.data.value?.apps?.find((a) => a.id === scope.value) : undefined));
+
+  /** The environment the person's pages show: a tenant page's own, else the address', else where the app (or the organisation) opens. */
+  const env = computed<Environment | undefined>(() => {
+    if (located.value) return located.value.env;
+    if (isEnvironment(search.value.env)) return search.value.env;
+    if (scopeApp.value) return defaultEnv(scopeApp.value);
+    return apps.data.value ? defaultOrgEnv(apps.data.value.apps) : undefined;
+  });
+
   const context = computed<ShellContext>(() => {
     if (inOperatorArea.value) {
       return operatorTenant.value ? { level: "tenant", tenantId: operatorTenant.value } : { level: "platform" };
     }
-    if (appInPath.value) {
-      const app = apps.data.value?.apps?.find((a) => a.id === appInPath.value);
-      // The address wins; without it the console opens the app where the person last was (or in live when it is active, else the sandbox).
-      // Until the apps have arrived there is nothing to choose from, and the shell says nothing rather than guess and then flip.
-      const envSearch: Environment | undefined = isEnvironment(search.value.env) ? search.value.env : app ? defaultEnv(app) : undefined;
-      const tenantId = envSearch ? app?.tenants?.find((x) => x.environment === envEnum(envSearch))?.id : undefined;
-      return { level: "app", appId: appInPath.value, ...(envSearch ? { env: envSearch } : {}), operator: isOperator.value, ...(tenantId ? { tenantId } : {}) };
-    }
-    if (path.value.startsWith("/app/t/")) {
-      return { level: "app", tenantId: tenantInPath.value, ...(located.value ? { appId: located.value.app.id ?? "", env: located.value.env } : {}) };
-    }
-    // The home shows one environment at a time; the other organisation pages (members, settings) have none.
-    if (path.value === "/app") {
-      const env: Environment | undefined = isEnvironment(search.value.env) ? search.value.env : apps.data.value ? defaultOrgEnv(apps.data.value.apps) : undefined;
-      return { level: "org", operator: isOperator.value, partner: partner.value, ...(env ? { env } : {}) };
-    }
-    return { level: "org", operator: isOperator.value, partner: partner.value };
+    const sc = scope.value;
+    const appId = sc && sc !== ALL_APPS ? sc : undefined;
+    // The tenant behind the pages: the path's own, else the selected app's in the environment. Until the apps have arrived there is nothing to choose from.
+    const tenantId = allInPath.value ? undefined : (located.value ? tenantInPath.value : env.value && scopeApp.value ? tenantOf(scopeApp.value, env.value) : "") || undefined;
+    const onApp = !!appInPath.value || path.value.startsWith("/app/t/");
+    return {
+      level: onApp ? "app" : "org",
+      operator: isOperator.value,
+      partner: partner.value,
+      ...(sc ? { scope: sc } : {}),
+      ...(appId ? { appId } : {}),
+      ...(env.value ? { env: env.value } : {}),
+      ...(tenantId ? { tenantId } : {}),
+    };
   });
 
   const sections = computed<NavSection[]>(() => buildNav(context.value));
   const current = computed(() => activeItem(sections.value, path.value));
 
-  const appName = computed(() => {
-    const id = context.value.appId;
-    return apps.data.value?.apps?.find((a) => a.id === id)?.name ?? "";
-  });
+  const appName = computed(() => (context.value.scope === ALL_APPS ? t("shell.allApps") : (scopeApp.value?.name ?? "")));
   const orgName = computed(() => account.data.value?.name ?? "");
 
   const crumbs = computed<Crumb[]>(() => {
@@ -92,18 +109,19 @@ export function useShell() {
       list.push({ label: tenant.data.value?.name ?? t("tenant.fallbackTitle"), to: `/tenants/${ctx.tenantId}` });
       if (section && current.value?.key !== "dashboard") list.push(section);
     } else if (ctx.level === "app") {
-      list.push({ label: orgName.value || t("shell.items.overview"), to: "/app" });
-      list.push({ label: appName.value || "…", ...(ctx.appId ? { to: `/app/apps/${ctx.appId}`, search: { env: ctx.env ?? "live" } } : {}) });
+      list.push({ label: orgName.value || t("shell.items.overview"), to: "/app", search: { app: ALL_APPS } });
+      if (ctx.scope === ALL_APPS) list.push({ label: t("shell.allApps"), to: "/app", search: { app: ALL_APPS, ...(ctx.env ? { env: ctx.env } : {}) } });
+      else list.push({ label: appName.value || "…", ...(ctx.appId ? { to: `/app/apps/${ctx.appId}`, search: { app: ctx.appId, env: ctx.env ?? "live" } } : {}) });
       if (section && current.value?.key !== "dashboard") list.push(section);
     } else {
-      list.push({ label: orgName.value || t("shell.org"), to: "/app" });
+      list.push({ label: orgName.value || t("shell.org"), ...(ctx.scope ? { to: "/app", search: { app: ctx.scope } } : { to: "/app" }) });
       if (path.value.startsWith("/app/partner")) {
         // The partner portal is the person's own, whether or not the sidebar lists it (the apply page is open to everybody signed in).
         list.push({ label: t("shell.items.partner"), ...(path.value === "/app/partner" ? {} : { to: "/app/partner" }) });
-      } else if (section && current.value?.key !== "overview") list.push(section);
+      } else if (section && current.value?.key !== "dashboard") list.push(section);
     }
     return list;
   });
 
-  return { path, search, context, sections, current, crumbs, apps, appName, orgName, located, tenant };
+  return { path, search, context, sections, current, crumbs, apps, appName, orgName, located, tenant, scope, scopeApp, env, allInPath, inOperatorArea };
 }

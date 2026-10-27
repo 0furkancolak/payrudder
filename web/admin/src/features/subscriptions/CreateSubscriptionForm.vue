@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import AppField from "@/app/layout/AppField.vue";
 import { useI18n } from "vue-i18n";
 import CustomerSelect from "@/features/customers/CustomerSelect.vue";
 import PackageSelect from "@/features/packages/PackageSelect.vue";
@@ -65,6 +66,7 @@ function create() {
       </SheetHeader>
       <SheetBody>
         <form id="create-subscription" class="grid gap-3" role="form" :aria-label="t('billing.subscriptions.formLabel')" @submit.prevent="create">
+          <AppField />
           <CustomerSelect v-model="customer" :tenant-id="tenantId" required lock-placeholder :label="t('billing.subscriptions.customer')" :placeholder="t('billing.subscriptions.customer')" />
           <PackageSelect v-model="plan" :packages="packages" required lock-placeholder :label="t('billing.subscriptions.package')" :placeholder="t('billing.subscriptions.package')" />
           <CurrencySelect v-model="currency" :aria-label="t('billing.subscriptions.currency')" :blank="t('billing.subscriptions.defaultCurrency')" />

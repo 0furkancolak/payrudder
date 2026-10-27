@@ -142,7 +142,7 @@ const LOGO: Record<LiveProviderName, string> = {
             <tbody>
               <tr v-for="r in overview" :key="r.app.id" class="border-b last:border-0" :data-testid="`providers-app-${r.app.id}`">
                 <th scope="row" class="py-2.5 pe-3 text-start font-medium">
-                  <Link :to="`/app/apps/${r.app.id}/providers`" :search="{ env: 'live' } as never" class="hover:underline">{{ r.app.name }}</Link>
+                  <Link :to="`/app/apps/${r.app.id}/providers`" :search="{ env: 'live', app: r.app.id } as never" class="hover:underline">{{ r.app.name }}</Link>
                 </th>
                 <td v-for="p in LIVE_PROVIDERS" :key="p" class="px-3 py-2.5">
                   <span v-if="!r.app.hasLive" class="text-muted-foreground text-xs">{{ t("product.providers.noLive") }}</span>

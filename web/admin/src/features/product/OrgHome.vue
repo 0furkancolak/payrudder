@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { Link, useNavigate, useSearch } from "@tanstack/vue-router";
 import { Plus, Rocket } from "@lucide/vue";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import OrgDashboard from "@/features/dashboard/OrgDashboard.vue";
 import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
+import { useShell } from "@/app/layout/useShell";
+import { ALL_APPS } from "@/shared/lib/scope";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -18,6 +20,7 @@ import { defaultOrgEnv, isEnvironment, liveState, tenantOf, type Environment } f
 import type { App } from "./api";
 
 const { t } = useI18n();
+const shell = useShell();
 const me = useMe();
 const account = useAccount();
 const apps = useApps();
@@ -35,7 +38,7 @@ const env = computed<Environment | null>(() => {
 
 /** The dashboard keeps its period, currency and environment in the address, like an app's dashboard does. */
 function go(q: DashQuery, e: Environment) {
-  void navigate({ to: "/app", search: { env: e, ...toSearch(q) } as never, replace: true });
+  void navigate({ to: "/app", search: { app: ALL_APPS, env: e, ...toSearch(q) } as never, replace: true });
 }
 
 /** Apps with something to add up in this environment: every app in the sandbox, and in live the ones whose live environment is active. */
@@ -48,6 +51,23 @@ const canCreate = computed(() => account.data.value?.role !== "viewer");
 const noAccount = computed(() => me.data.value?.user !== undefined && ownMemberships(me.data.value.memberships).length === 0);
 const partner = computed(() => hasPartnerRole(me.data.value?.memberships));
 const first = computed(() => (me.data.value?.user?.display_name || me.data.value?.user?.email?.split("@")[0] || "").split(/\s+/)[0]);
+
+// An app is always selected: this page is the view of every app together (`?app=all`); without that choice the person lands in the app used last (else the first).
+const enteringApp = computed(() => {
+  const s = shell.scope.value;
+  // Somebody without an account of their own has nothing to be inside of: the page explains that instead.
+  // Only while the address is this page's own: a link to an app's page changes the scope before this page is gone, and must not be turned back.
+  return shell.path.value === "/app" && !noAccount.value && s && s !== ALL_APPS ? s : "";
+});
+watch(
+  [enteringApp, env],
+  ([appId, e]) => {
+    if (!appId || !e) return;
+    const { sheet } = search.value as { sheet?: string };
+    void navigate({ to: "/app/apps/$appId", params: { appId }, search: { app: appId, env: e, ...toSearch(query.value), ...(sheet ? { sheet } : {}) } as never, replace: true });
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -73,7 +93,7 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
       <Skeleton v-for="n in 3" :key="n" class="h-52 rounded-3xl" />
     </div>
 
-    <OrgDashboard v-else-if="env && withFigures.length > 0" :apps="list" :query="query" :env="env" @update:query="go($event, env)" />
+    <OrgDashboard v-else-if="env && !enteringApp && withFigures.length > 0" :apps="list" :query="query" :env="env" @update:query="go($event, env)" />
 
     <section v-if="env && list.length > 0" class="flex flex-col gap-3" :aria-label="t('shell.items.overview')">
       <h2 class="px-1 text-xl font-semibold tracking-tight">{{ t("shell.items.overview") }}</h2>

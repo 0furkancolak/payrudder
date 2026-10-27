@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import AppField from "@/app/layout/AppField.vue";
 import { useI18n } from "vue-i18n";
 import { useTenantCurrency } from "@/features/tenants/currency";
 import { formatMinor } from "@/shared/lib/money";
@@ -93,6 +94,7 @@ function submit() {
       </SheetHeader>
       <SheetBody>
         <form id="coupon-form" class="grid gap-5" role="form" :aria-label="t('billing.pricing.coupons.formLabel')" @submit.prevent="submit">
+          <AppField />
           <div class="grid gap-1.5">
             <Label for="coupon-code">{{ t("billing.pricing.coupons.code") }}</Label>
             <Input id="coupon-code" v-model="form.code" class="mono" autocomplete="off" placeholder="WELCOME10" pattern="[A-Za-z0-9_\-]{2,40}" required />

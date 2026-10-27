@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import AppField from "@/app/layout/AppField.vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { Button } from "@/shared/ui/button";
@@ -57,6 +58,7 @@ function submit() {
       </SheetHeader>
       <SheetBody>
       <form id="af-add" class="grid gap-3" @submit.prevent="submit">
+        <AppField />
         <div class="grid gap-1.5">
           <Label for="af-email">{{ t("affiliates.add.email") }}</Label>
           <Input id="af-email" v-model="email" type="email" inputmode="email" autocomplete="off" required dir="ltr" />

@@ -8,7 +8,13 @@
     "language": "Langue",
     "demo": "Mode démo : données d'exemple, un faux prestataire de paiement, les mails vont au récepteur local. Rien ici n'est réel.",
     "themeLight": "Passer au thème clair",
-    "themeDark": "Passer au thème sombre"
+    "themeDark": "Passer au thème sombre",
+    "theme": "Thème",
+    "themeChoice": {
+      "system": "Système",
+      "light": "Clair",
+      "dark": "Sombre"
+    }
   },
   "nav": {
     "tenants": "Locataires",
@@ -1232,7 +1238,7 @@
         "until": "Dernier jour (facultatif)",
         "recurringHint": "Modifier une dépense récurrente change toutes ses occurrences, passées et futures.",
         "app": "Application",
-        "wholeTenant": "Tout le locataire",
+        "wholeTenant": "Comptabilité générale",
         "note": "Note (facultative)",
         "bad": "Saisissez un fournisseur et un montant supérieur à zéro, avec au plus les décimales de {currency}.",
         "badDates": "Saisissez la date ; le dernier jour ne peut pas précéder le premier.",
@@ -3525,6 +3531,31 @@
           "usage_product_id": "L'identifiant du produit que Paddle utilise pour les frais d'usage. Dans le Catalog, ouvrez le produit et copiez son identifiant, qui commence par pro_."
         }
       }
+    },
+    "envSwitch": {
+      "open": "Environnement : {env}. Changer d'environnement",
+      "title": {
+        "sandbox": "Passer en Sandbox ?",
+        "live": "Passer en production ?"
+      },
+      "intro": {
+        "sandbox": "La Sandbox est une copie sûre pour tester, avec ses propres données.",
+        "live": "La production est l'endroit où se trouvent vos vrais clients et votre vrai argent."
+      },
+      "unaffected": "{app} n'est pas affectée : elle continue de fonctionner exactement comme maintenant.",
+      "unaffectedAll": "Aucune de vos applications n'est affectée : elles continuent de fonctionner exactement comme maintenant.",
+      "onlyData": {
+        "sandbox": "Désormais, les pages n'affichent que les données de la Sandbox : clients, abonnements et factures de test. Les données de production sont masquées jusqu'à votre retour.",
+        "live": "Désormais, les pages n'affichent que les données de production : vos vrais clients, abonnements et factures. Les données de la Sandbox sont masquées jusqu'à votre retour."
+      },
+      "providers": {
+        "sandbox": "Rien n'est envoyé aux vrais prestataires de paiement ni aux vrais clients dans la Sandbox : les paiements sont simulés et les e-mails ne sont pas remis.",
+        "live": "La production est réelle : les paiements passent par vos prestataires connectés et les clients reçoivent de vrais e-mails et factures."
+      },
+      "confirm": {
+        "sandbox": "Passer en Sandbox",
+        "live": "Passer en production"
+      }
     }
   },
   "shell": {
@@ -3544,12 +3575,12 @@
       "account": "Organisation",
       "platform": "Plateforme",
       "overview": "Vue d'ensemble",
-      "customers": "Clients",
-      "billing": "Facturation",
-      "growth": "Croissance",
       "developers": "Développeurs",
-      "settings": "Paramètres",
-      "apps": "Applications"
+      "settings": "Réglages de l'application",
+      "apps": "Applications",
+      "customersBilling": "Clients et facturation",
+      "usageProducts": "Usage et produits",
+      "money": "Argent"
     },
     "items": {
       "overview": "Applications",
@@ -3586,9 +3617,11 @@
       "usage": "Utilisation",
       "coupons": "Coupons",
       "paymentProviders": "Prestataires de paiement",
-      "meters": "Compteurs"
+      "meters": "Compteurs",
+      "orgProviders": "Prestataires de paiement"
     },
-    "noApps": "Aucune application"
+    "noApps": "Aucune application",
+    "newApp": "Nouvelle application"
   },
   "privacy": {
     "hide": "Masquer les montants",
@@ -3783,5 +3816,16 @@
   "sheets": {
     "back": "Retour",
     "forward": "Avancer"
+  },
+  "scope": {
+    "app": "Application",
+    "allHint": "Les données {env} de toutes les applications dans un seul tableau. Ouvrez une ligne pour travailler dans son application.",
+    "noData": "Aucune application n'a encore rien ici.",
+    "chooseTitle": "Cette page travaille sur une application à la fois",
+    "chooseHint": "Choisissez l'application dont vous voulez ouvrir {page}.",
+    "open": "Ouvrir",
+    "failed": "{app} n'a pas répondu.",
+    "amount": "Montant",
+    "date": "Date"
   }
 }

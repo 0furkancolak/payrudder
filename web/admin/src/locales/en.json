@@ -8,7 +8,13 @@
     "language": "Language",
     "demo": "Demo mode: sample data, a mock payment provider, mail goes to the local mail catcher. Nothing here is real.",
     "themeLight": "Switch to light mode",
-    "themeDark": "Switch to dark mode"
+    "themeDark": "Switch to dark mode",
+    "theme": "Theme",
+    "themeChoice": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    }
   },
   "nav": {
     "tenants": "Tenants",
@@ -1232,7 +1238,7 @@
         "until": "Last day (optional)",
         "recurringHint": "Editing a repeating expense changes every occurrence, past and future.",
         "app": "App",
-        "wholeTenant": "Whole tenant",
+        "wholeTenant": "General accounting",
         "note": "Note (optional)",
         "bad": "Enter a vendor and an amount above zero with at most the decimals of {currency}.",
         "badDates": "Enter the date; the last day cannot be before the first.",
@@ -3525,6 +3531,31 @@
           "usage_product_id": "The id of the product Paddle uses for usage charges. In the Catalog, open the product and copy its id, which starts with pro_."
         }
       }
+    },
+    "envSwitch": {
+      "open": "Environment: {env}. Switch environment",
+      "title": {
+        "sandbox": "Switch to the sandbox?",
+        "live": "Switch to live?"
+      },
+      "intro": {
+        "sandbox": "The sandbox is a safe copy for testing, with its own data.",
+        "live": "Live is where your real customers and money are."
+      },
+      "unaffected": "{app} is not affected: it keeps running exactly as it does now.",
+      "unaffectedAll": "None of your apps is affected: they keep running exactly as they do now.",
+      "onlyData": {
+        "sandbox": "From now on the pages show only sandbox data: test customers, subscriptions and invoices. Live data is hidden until you switch back.",
+        "live": "From now on the pages show only live data: your real customers, subscriptions and invoices. Sandbox data is hidden until you switch back."
+      },
+      "providers": {
+        "sandbox": "Nothing is sent to real payment providers or to real customers while you are in the sandbox: payments are simulated and e-mails are not delivered.",
+        "live": "Live is real: payments go through your connected payment providers and customers receive real e-mails and invoices."
+      },
+      "confirm": {
+        "sandbox": "Switch to sandbox",
+        "live": "Switch to live"
+      }
     }
   },
   "shell": {
@@ -3544,12 +3575,12 @@
       "account": "Organisation",
       "platform": "Platform",
       "overview": "Overview",
-      "customers": "Customers",
-      "billing": "Billing",
-      "growth": "Growth",
       "developers": "Developers",
-      "settings": "Settings",
-      "apps": "Apps"
+      "settings": "App settings",
+      "apps": "Apps",
+      "customersBilling": "Customers and billing",
+      "usageProducts": "Usage and products",
+      "money": "Money"
     },
     "items": {
       "overview": "Apps",
@@ -3586,9 +3617,11 @@
       "usage": "Usage",
       "coupons": "Coupons",
       "paymentProviders": "Payment providers",
-      "meters": "Meters"
+      "meters": "Meters",
+      "orgProviders": "Payment providers"
     },
-    "noApps": "No apps yet"
+    "noApps": "No apps yet",
+    "newApp": "New app"
   },
   "privacy": {
     "hide": "Hide amounts",
@@ -3783,5 +3816,16 @@
   "sheets": {
     "back": "Back",
     "forward": "Forward"
+  },
+  "scope": {
+    "app": "App",
+    "allHint": "The {env} data of every app in one table. Open a row to work on it in its own app.",
+    "noData": "No app has anything here yet.",
+    "chooseTitle": "This page works on one app at a time",
+    "chooseHint": "Choose the app whose {page} you want to open.",
+    "open": "Open",
+    "failed": "{app} did not answer.",
+    "amount": "Amount",
+    "date": "Date"
   }
 }

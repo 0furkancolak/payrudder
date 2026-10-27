@@ -359,7 +359,15 @@ export async function signInAsAda(page: Page): Promise<void> {
   await page.getByLabel("E-mail").fill("ada@example.com");
   await page.getByLabel("Password", { exact: true }).fill("right password!");
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL("**/app");
+  await page.waitForURL(HOME);
+}
+
+/** The address of the signed-in home: an app is always selected, so signing in lands in an app's dashboard (or on /app when there is none yet). */
+export const HOME = /\/app(\/apps\/[^/?]+)?(?![^?])/;
+
+/** Opens the view of every app together (the organisation's home). */
+export async function openAllApps(page: Page): Promise<void> {
+  await page.goto("/app?app=all");
 }
 
 export const INVOICE_1 = "d0000000-0000-4000-8000-000000000001";

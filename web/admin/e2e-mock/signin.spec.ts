@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, signInAsOperator } from "./gateway";
-import { SESSION, productGateway } from "./product";
+import { HOME, SESSION, productGateway } from "./product";
 import { pickLanguage } from "./ui";
 
 // The three ways to sign in (phase 42): e-mail and password, a one-time code mailed to the address, and Google. The gateway is mocked. SHOTS=<dir> also
@@ -61,7 +61,7 @@ test.describe("the sign-in page", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await page.goto(`/signin/complete#token=${SESSION}&expires=2026-11-04T09:00:00Z`);
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     expect(page.url()).not.toContain("qs_");
     expect(await sessionToken(page)).toBe(SESSION);
     expect(gw.called("GET", "/auth/me")[0]?.headers.authorization).toBe(`Bearer ${SESSION}`);
@@ -95,7 +95,7 @@ test.describe("sign in with an e-mailed code", () => {
     await shoot(page, "11-code-entry");
     await page.getByLabel("Digit 1 of 6").focus();
     await page.keyboard.type("123456");
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     expect(gw.called("POST", "/auth/otp/verify")[0]?.body).toEqual({ email: "ada@example.com", code: "123456", locale: "en" });
     expect(await sessionToken(page)).toBe(SESSION);
   });
@@ -109,7 +109,7 @@ test.describe("sign in with an e-mailed code", () => {
       data.setData("text", "123 456");
       el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
     });
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     expect(gw.called("POST", "/auth/otp/verify")[0]?.body?.code).toBe("123456");
   });
 
@@ -123,7 +123,7 @@ test.describe("sign in with an e-mailed code", () => {
     await expect(page.getByLabel("Digit 1 of 6")).toHaveValue("");
     await expect(page.getByLabel("Digit 1 of 6")).toBeFocused();
     await page.keyboard.type("123456");
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
   });
 
   test("Backspace goes back a box and the arrow keys move", async ({ page }) => {
@@ -204,7 +204,7 @@ test.describe("sign up with the same methods", () => {
     expect(await sessionToken(page)).toBeNull();
     await page.getByLabel("Digit 1 of 6").focus();
     await page.keyboard.type("123456");
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     expect(gw.called("POST", "/auth/otp/verify")[0]?.body).toEqual({ email: "ned@example.com", code: "123456", display_name: "Ned New", account_name: "Ned Labs", locale: "en" });
     expect(gw.called("POST", "/auth/signup")).toHaveLength(0);
     await shoot(page, "14-signup-methods");
@@ -225,7 +225,7 @@ test.describe("the operator is a person", () => {
     await shoot(page, "15-operator-console");
     // The rail leads back to the person's own apps.
     await page.getByRole("link", { name: "My apps" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     await expect(page.getByRole("link", { name: "Operator console" })).toBeVisible();
     // No label is a raw translation key.
     await expect(page.locator("body")).not.toContainText("shell.");
@@ -238,11 +238,11 @@ test.describe("the operator is a person", () => {
     await page.getByLabel("E-mail").fill("ada@example.com");
     await page.getByLabel("Password", { exact: true }).fill("right password!");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     await expect(page.getByRole("link", { name: "Operator console" })).toHaveCount(0);
     for (const path of ["/operator", "/tenants", "/playground", "/dead-letters"]) {
       await page.goto(path);
-      await page.waitForURL("**/app");
+      await page.waitForURL(HOME);
     }
   });
 
@@ -254,12 +254,12 @@ test.describe("the operator is a person", () => {
     await page.getByLabel("E-mail").fill("ada@example.com");
     await page.getByLabel("Password", { exact: true }).fill("right password!");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     // A person edits their own storage to look like an operator and opens the console.
     await page.evaluate(() => window.sessionStorage.setItem("payrudder.operator", "1"));
     await page.goto("/tenants");
     // /auth/me says operator=false: the flag is corrected and the person is sent to their own home. They stay signed in (a 403 is not an expired session).
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     await expect(page.getByRole("heading", { name: "Tenants" })).toHaveCount(0);
     expect(await sessionToken(page)).toBe(SESSION);
     expect(await page.evaluate(() => window.sessionStorage.getItem("payrudder.operator"))).toBeNull();

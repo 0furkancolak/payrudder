@@ -8,7 +8,13 @@
     "language": "Idioma",
     "demo": "Modo demo: datos de ejemplo, un proveedor de pago simulado y el correo va al receptor local. Nada de esto es real.",
     "themeLight": "Cambiar al tema claro",
-    "themeDark": "Cambiar al tema oscuro"
+    "themeDark": "Cambiar al tema oscuro",
+    "theme": "Tema",
+    "themeChoice": {
+      "system": "Sistema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    }
   },
   "nav": {
     "tenants": "Inquilinos",
@@ -1232,7 +1238,7 @@
         "until": "Último día (opcional)",
         "recurringHint": "Editar un gasto recurrente cambia todas sus repeticiones, pasadas y futuras.",
         "app": "Aplicación",
-        "wholeTenant": "Todo el inquilino",
+        "wholeTenant": "Contabilidad general",
         "note": "Nota (opcional)",
         "bad": "Introduzca un proveedor y un importe superior a cero, con como máximo los decimales de {currency}.",
         "badDates": "Introduzca la fecha; el último día no puede ser anterior al primero.",
@@ -3525,6 +3531,31 @@
           "usage_product_id": "El id del producto que Paddle usa para los cargos por uso. En el Catalog, abre el producto y copia su id, que empieza por pro_."
         }
       }
+    },
+    "envSwitch": {
+      "open": "Entorno: {env}. Cambiar de entorno",
+      "title": {
+        "sandbox": "¿Cambiar a Sandbox?",
+        "live": "¿Cambiar a Producción?"
+      },
+      "intro": {
+        "sandbox": "Sandbox es una copia segura para probar, con sus propios datos.",
+        "live": "Producción es donde están tus clientes y tu dinero reales."
+      },
+      "unaffected": "{app} no se ve afectada: sigue funcionando exactamente como ahora.",
+      "unaffectedAll": "Ninguna de tus aplicaciones se ve afectada: siguen funcionando exactamente como ahora.",
+      "onlyData": {
+        "sandbox": "A partir de ahora las páginas muestran solo datos de Sandbox: clientes, suscripciones y facturas de prueba. Los datos de producción quedan ocultos hasta que vuelvas.",
+        "live": "A partir de ahora las páginas muestran solo datos de producción: tus clientes, suscripciones y facturas reales. Los datos de Sandbox quedan ocultos hasta que vuelvas."
+      },
+      "providers": {
+        "sandbox": "En Sandbox no se envía nada a proveedores de pago reales ni a clientes reales: los pagos se simulan y los correos no se entregan.",
+        "live": "Producción es real: los pagos pasan por tus proveedores de pago conectados y los clientes reciben correos y facturas reales."
+      },
+      "confirm": {
+        "sandbox": "Cambiar a Sandbox",
+        "live": "Cambiar a Producción"
+      }
     }
   },
   "shell": {
@@ -3544,12 +3575,12 @@
       "account": "Organización",
       "platform": "Plataforma",
       "overview": "Resumen",
-      "customers": "Clientes",
-      "billing": "Facturación",
-      "growth": "Crecimiento",
       "developers": "Desarrolladores",
-      "settings": "Ajustes",
-      "apps": "Aplicaciones"
+      "settings": "Ajustes de la aplicación",
+      "apps": "Aplicaciones",
+      "customersBilling": "Clientes y facturación",
+      "usageProducts": "Uso y productos",
+      "money": "Dinero"
     },
     "items": {
       "overview": "Aplicaciones",
@@ -3586,9 +3617,11 @@
       "usage": "Uso",
       "coupons": "Cupones",
       "paymentProviders": "Proveedores de pago",
-      "meters": "Medidores"
+      "meters": "Medidores",
+      "orgProviders": "Proveedores de pago"
     },
-    "noApps": "Aún no hay aplicaciones"
+    "noApps": "Aún no hay aplicaciones",
+    "newApp": "Nueva aplicación"
   },
   "privacy": {
     "hide": "Ocultar importes",
@@ -3783,5 +3816,16 @@
   "sheets": {
     "back": "Atrás",
     "forward": "Adelante"
+  },
+  "scope": {
+    "app": "Aplicación",
+    "allHint": "Los datos de {env} de todas las aplicaciones en una tabla. Abre una fila para trabajar en su propia aplicación.",
+    "noData": "Ninguna aplicación tiene nada aquí todavía.",
+    "chooseTitle": "Esta página trabaja con una aplicación a la vez",
+    "chooseHint": "Elige la aplicación cuyo apartado {page} quieres abrir.",
+    "open": "Abrir",
+    "failed": "{app} no respondió.",
+    "amount": "Importe",
+    "date": "Fecha"
   }
 }

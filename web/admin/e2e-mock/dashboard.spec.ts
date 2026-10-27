@@ -1,7 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { dashboardFixture } from "./dashboard";
 import { MockGateway, baseTenant, openTenantPage } from "./gateway";
-import { APP, productGateway, signInAsAda } from "./product";
+import { APP, openAllApps, productGateway, signInAsAda } from "./product";
+import { pickLanguage, pickTheme } from "./ui";
 
 // The dashboards: a period and the one before it, one block per currency, KPIs with their change, the revenue chart, payments, top lists, usage,
 // renewals, activity and health; the empty, loading and error states; the organisation's dashboard over all apps; the operator's twin. The gateway is mocked.
@@ -145,12 +146,16 @@ test.describe("one app", () => {
 
   test("while it loads the page has its shape, and when it fails there is a way to try again", async ({ page }) => {
     let calls = 0;
+    let armed = false;
     const answer = (q: Record<string, string>) => {
+      // Signing in lands on a dashboard too: only what is asked once the page under test is open counts.
+      if (!armed) return { body: dashboardFixture(q) };
       calls++;
       return calls <= 3 ? { status: 500, body: { error: { code: "INTERNAL", key: "common.internal", message: "boom" } } } : { body: dashboardFixture(q) };
     };
     await productGateway(new MockGateway(), { dashboard: answer }).gw.install(page);
     await signInAsAda(page);
+    armed = true;
     await page.goto(dash);
     const err = page.getByTestId("dash-error");
     await expect(err).toBeVisible();
@@ -182,6 +187,7 @@ test.describe("the organisation", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
+    await openAllApps(page);
     const org = page.getByTestId("org-dashboard");
     await expect(org).toBeVisible();
     await expect(org.getByTestId("kpi-org-revenue-value")).toContainText("TRY");
@@ -192,7 +198,8 @@ test.describe("the organisation", () => {
     await org.getByText("7 days", { exact: true }).click();
     await expect.poll(() => gw.called("GET", `/app/v1/apps/${APP}/dashboard`).some((c) => c.query.get("period") === "7d")).toBe(true);
     // The environment switch is in the header of the frame now (it is on every page), not in the dashboard.
-    await page.getByTestId("env-switch").getByRole("radio", { name: "Sandbox" }).check({ force: true });
+    await page.getByTestId("env-switch").click();
+    await page.getByTestId("env-switch-confirm").click();
     await expect.poll(() => gw.called("GET", `/app/v1/apps/${APP}/dashboard`).some((c) => c.query.get("environment") === "sandbox")).toBe(true);
     // The apps themselves are still listed below the totals.
     await expect(page.getByRole("link", { name: "Web shop" }).first()).toBeVisible();
@@ -230,7 +237,7 @@ test.describe("on every screen", () => {
       await page.goto(`${dash}?period=custom&from=2026-09-01&to=2026-10-01`);
       await expect(page.getByTestId("dash-from")).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-      await page.goto("/app");
+      await page.goto("/app?app=all");
       await expect(page.getByTestId("org-dashboard")).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
       await shoot(page, `44-dashboard-${w}`);
@@ -242,10 +249,9 @@ test.describe("on every screen", () => {
     await productGateway(new MockGateway()).gw.install(page);
     await signInAsAda(page);
     await page.goto(dash);
-    await page.getByTestId("language-switcher").click();
-    await page.getByTestId("lang-ar").click();
+    await pickLanguage(page, "ar");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-    await page.getByRole("button", { name: "Switch to dark mode" }).or(page.getByRole("button", { name: /داكن|dark/i })).first().click();
+    await pickTheme(page, "dark");
     await page.getByTestId("privacy-toggle").click();
     await expect(page.getByTestId("kpi-revenue-value")).toContainText("••••");
     expect(await page.getByTestId("dashboard").innerText()).not.toMatch(/\d{1,3}(,\d{3})+\.\d\d/);

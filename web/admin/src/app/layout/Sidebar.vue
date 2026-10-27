@@ -4,15 +4,17 @@ import { ChevronsLeft, ChevronsRight } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { setSidebarCollapsed, sidebarCollapsed } from "@/shared/lib/prefs";
 import { BrandLogo } from "@/shared/ui/brand-logo";
-import SidebarNav, { type SidebarApp } from "./SidebarNav.vue";
+import type { App } from "@/features/product/api";
 import type { Environment } from "@/shared/lib/environment";
+import AppSwitcher from "./AppSwitcher.vue";
+import SidebarNav from "./SidebarNav.vue";
 import type { NavItem, NavSection } from "./nav";
 
 /**
  * The sidebar of a wide screen: open by default (icons and labels), foldable to an icon rail with the choice remembered. It is a floating card on
  * the grey page that stays dark in both themes (DESIGN.md). The same navigation fills the phone drawer (MobileDrawer).
  */
-defineProps<{ sections: NavSection[]; current: NavItem | undefined; brand: string; home: string; apps?: SidebarApp[]; appId?: string; env?: Environment }>();
+defineProps<{ sections: NavSection[]; current: NavItem | undefined; brand: string; home: string; apps?: App[]; scope?: string | null; env?: Environment; path: string }>();
 const { t } = useI18n();
 </script>
 
@@ -25,12 +27,15 @@ const { t } = useI18n();
       sidebarCollapsed ? 'w-[4.5rem] px-2.5' : 'w-64 px-3',
     ]"
   >
-    <Link :to="home" :class="['mb-5 flex items-center gap-2.5 rounded-2xl', sidebarCollapsed ? 'justify-center' : 'px-2']" :title="brand">
+    <Link :to="home" :class="['mb-4 flex items-center gap-2.5 rounded-2xl', sidebarCollapsed ? 'justify-center' : 'px-2']" :title="brand">
       <BrandLogo :variant="sidebarCollapsed ? 'icon' : 'wordmark'" on="rail" />
     </Link>
 
-    <div class="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
-      <SidebarNav :sections="sections" :current="current" :collapsed="sidebarCollapsed" :apps="apps" :app-id="appId" :env="env" :label="t('shell.navLabel')" />
+    <div v-if="apps && env" class="mb-4"><AppSwitcher :apps="apps" :scope="scope ?? null" :path="path" :env="env" :collapsed="sidebarCollapsed" /></div>
+
+    <!-- overscroll-behavior: contain keeps a scroll that reaches the end of the sidebar from carrying on into the page behind it. -->
+    <div class="-mx-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1" data-testid="sidebar-scroll">
+      <SidebarNav :sections="sections" :current="current" :collapsed="sidebarCollapsed" :label="t('shell.navLabel')" />
     </div>
 
     <div class="border-rail-border mt-3 flex flex-col gap-0.5 border-t pt-3">
