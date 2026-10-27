@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Normal",
       "CORRECTION": "Düzeltme",
-      "CREDIT_NOTE": "Alacak dekontu"
+      "CREDIT_NOTE": "Alacak dekontu",
+      "FEE": "Peşin ücret",
+      "LINK": "Ödeme bağlantısı"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Temel ücret",
+      "USAGE": "Kullanım",
+      "LATE_USAGE": "Geç gelen kullanım",
+      "CREDIT": "Kredi",
+      "CORRECTION": "Düzeltme",
+      "DISCOUNT": "İndirim",
+      "TAX": "Vergi"
     },
     "subscriptionState": {
       "trialing": "denemede",

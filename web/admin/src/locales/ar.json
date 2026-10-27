@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "عادية",
       "CORRECTION": "تصحيح",
-      "CREDIT_NOTE": "إشعار دائن"
+      "CREDIT_NOTE": "إشعار دائن",
+      "FEE": "رسوم مقدمة",
+      "LINK": "رابط دفع"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "الرسم الأساسي",
+      "USAGE": "الاستخدام",
+      "LATE_USAGE": "استخدام متأخر",
+      "CREDIT": "رصيد",
+      "CORRECTION": "تصحيح",
+      "DISCOUNT": "خصم",
+      "TAX": "ضريبة"
     },
     "subscriptionState": {
       "trialing": "تجريبي",

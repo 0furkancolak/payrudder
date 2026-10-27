@@ -36,7 +36,7 @@ export function useInvoices(tenantId: MaybeRefOrGetter<string>, status: MaybeRef
   });
 }
 
-export function useInvoice(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>) {
+export function useTenantInvoice(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => billingKeys.invoice(toValue(tenantId), toValue(invoiceId))),
     queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/invoices/{id}", { params: { path: { id: toValue(invoiceId) } } })),

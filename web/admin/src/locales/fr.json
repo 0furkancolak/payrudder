@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Normale",
       "CORRECTION": "Correction",
-      "CREDIT_NOTE": "Avoir"
+      "CREDIT_NOTE": "Avoir",
+      "FEE": "Frais payés d'avance",
+      "LINK": "Lien de paiement"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Frais de base",
+      "USAGE": "Utilisation",
+      "LATE_USAGE": "Utilisation tardive",
+      "CREDIT": "Crédit",
+      "CORRECTION": "Correction",
+      "DISCOUNT": "Remise",
+      "TAX": "Taxe"
     },
     "subscriptionState": {
       "trialing": "en essai",

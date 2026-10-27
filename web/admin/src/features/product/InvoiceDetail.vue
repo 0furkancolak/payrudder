@@ -17,7 +17,7 @@ import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { useInvoice, useOpenInvoicePdf, useSimulateInvoice } from "./billingApi";
+import { useTenantInvoice, useOpenInvoicePdf, useSimulateInvoice } from "./billingApi";
 
 /**
  * The content of one invoice, for the sheet the invoice list opens (the sheet's header already names the invoice): its total and status, who it is for, its lines and the payments recorded for it by hand, the records related to it, and a link to the PDF (a presigned link, valid five
@@ -28,7 +28,7 @@ const fmt = useFormat();
 const props = defineProps<{ tenantId: string; invoiceId: string }>();
 const tenantId = computed(() => props.tenantId);
 const invoiceId = computed(() => props.invoiceId);
-const invoice = useInvoice(tenantId, invoiceId);
+const invoice = useTenantInvoice(tenantId, invoiceId);
 const pdf = useOpenInvoicePdf(tenantId, invoiceId);
 const inv = computed(() => invoice.data.value);
 const day = (v?: string) => fmt.date(v, "day");

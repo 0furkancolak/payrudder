@@ -22,7 +22,7 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { environmentWord, isValidSlug, useApps, useCreateApiKey, useCreateApp, useRevokeApiKey, type CreatedKey } from "./api";
+import { environmentWord, isValidSlug, useAccountApps, useCreateApiKey, useCreateApp, useRevokeApiKey, type CreatedKey } from "./api";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 
 const { t, te } = useI18n();
@@ -32,7 +32,7 @@ const tenantId = computed(() => String(params.value.id ?? ""));
 const tenant = useTenant(tenantId);
 /** Apps belong to an account; the tenant this tab is opened from says which. */
 const accountId = computed(() => tenant.data.value?.account_id ?? "");
-const apps = useApps(accountId);
+const apps = useAccountApps(accountId);
 const createApp = useCreateApp(accountId);
 const createKey = useCreateApiKey();
 const revokeKey = useRevokeApiKey();
@@ -140,7 +140,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!apps.isPending.value && list.length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("apps.empty") }}</p>
+    <p v-if="!apps.isPending.value && !apps.error.value && list.length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("apps.empty") }}</p>
     <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>

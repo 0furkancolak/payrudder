@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Regular",
       "CORRECTION": "Correction",
-      "CREDIT_NOTE": "Credit note"
+      "CREDIT_NOTE": "Credit note",
+      "FEE": "Fee in advance",
+      "LINK": "Payment link"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Base fee",
+      "USAGE": "Usage",
+      "LATE_USAGE": "Late usage",
+      "CREDIT": "Credit",
+      "CORRECTION": "Correction",
+      "DISCOUNT": "Discount",
+      "TAX": "Tax"
     },
     "subscriptionState": {
       "trialing": "trialing",

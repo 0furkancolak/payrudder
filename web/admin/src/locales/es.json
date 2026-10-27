@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Regular",
       "CORRECTION": "Corrección",
-      "CREDIT_NOTE": "Nota de crédito"
+      "CREDIT_NOTE": "Nota de crédito",
+      "FEE": "Cargo por adelantado",
+      "LINK": "Enlace de pago"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Tarifa base",
+      "USAGE": "Uso",
+      "LATE_USAGE": "Uso tardío",
+      "CREDIT": "Crédito",
+      "CORRECTION": "Corrección",
+      "DISCOUNT": "Descuento",
+      "TAX": "Impuesto"
     },
     "subscriptionState": {
       "trialing": "en prueba",

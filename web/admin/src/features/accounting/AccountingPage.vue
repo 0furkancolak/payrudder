@@ -6,7 +6,7 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { toast } from "vue-sonner";
 import { useShell } from "@/app/layout/useShell";
-import { useApps } from "@/features/apps/api";
+import { useAccountApps } from "@/features/apps/api";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 import { ALL_APPS } from "@/shared/lib/scope";
 import { useTenant } from "@/features/tenants";
@@ -52,7 +52,7 @@ const app = ref("");
 const shell = useShell();
 watch(() => shell.scope.value, (sc) => (app.value = sc && sc !== ALL_APPS ? sc : ""), { immediate: true });
 const accountId = computed(() => tenant.data.value?.account_id ?? "");
-const apps = useApps(accountId);
+const apps = useAccountApps(accountId);
 const appList = computed(() => (apps.data.value?.apps ?? []).map((a) => ({ id: a.id ?? "", name: a.name ?? a.id ?? "" })).filter((a) => a.id !== ""));
 const appName = (id?: string) => appList.value.find((a) => a.id === id)?.name ?? id ?? "";
 

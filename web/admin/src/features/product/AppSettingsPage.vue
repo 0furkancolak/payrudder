@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { formatDuration } from "@/shared/lib/duration";
 import { envOf } from "@/shared/lib/environment";
 import { currencyInfo, formatOffset, zoneMinutes } from "@/shared/lib/intl";
+import { enumWord, label } from "@/shared/lib/labels";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -23,7 +24,7 @@ import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
  * Packages and prices in other currencies are added per package, not here. Owners and admins rename the app here; an owner can also delete it, which archives it
  * (the billing records stay), after typing its name.
  */
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
 const params = useParams({ strict: false });
 const appId = computed(() => String(params.value.appId ?? ""));
 const app = useApp(appId);
@@ -64,7 +65,7 @@ const envs = computed(() =>
     timezone: x.timezone ?? "",
     offset: formatOffset(zoneMinutes(x.timezone ?? "UTC")),
     grace: formatDuration(x.grace_period, locale.value),
-    tier: (x.tier ?? "").replace("TENANT_TIER_", "").toLowerCase(),
+    tier: label(t, te, "tier", enumWord(x.tier, "TENANT_TIER_")),
   })),
 );
 </script>

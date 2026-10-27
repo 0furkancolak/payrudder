@@ -115,7 +115,7 @@ function remove(r: ExpenseRule) {
             <Button type="button" variant="ghost" size="icon" class="size-8" :aria-label="t('billing.accounting.rules.delete')" @click="remove(r)"><Trash2 class="size-4" aria-hidden="true" /></Button>
           </li>
         </ul>
-        <p v-else-if="!rules.isPending.value" class="text-muted-foreground text-sm">{{ t("billing.accounting.rules.none") }}</p>
+        <p v-else-if="!rules.isPending.value && !rules.error.value" class="text-muted-foreground text-sm">{{ t("billing.accounting.rules.none") }}</p>
 
         <form id="rule-form" class="grid gap-3" @submit.prevent="submit">
           <h3 class="text-sm font-semibold">{{ editing ? t("billing.accounting.rules.edit") : t("billing.accounting.rules.add") }}</h3>
