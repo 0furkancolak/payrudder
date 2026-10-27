@@ -232,10 +232,8 @@ func testKeysPerTenant(t *testing.T) {
 func testDedupCoversMaxLateness(t *testing.T) {
 	clk := newClock(time.Date(2026, 1, 31, 23, 59, 0, 0, time.UTC))
 	svc := newService(t, testOpts{clock: clk})
-	if _, _, err := maintenance.Once(context.Background(), shared.system, clk.Now()); err != nil {
-		t.Fatal(err)
-	}
 	tc := newTenant("live")
+	prepareTenant(t, tc, clk.Now())
 	at := time.Date(2026, 1, 30, 12, 0, 0, 0, time.UTC)
 	first := ingestOne(t, svc, tc, event("late-repeat", "7", at))
 	status1(t, first, ingestv1.EventResult_STATUS_ACCEPTED, "")
@@ -254,10 +252,8 @@ func testDedupCoversMaxLateness(t *testing.T) {
 func testMonthBoundary(t *testing.T) {
 	clk := newClock(time.Date(2026, 11, 30, 23, 59, 30, 0, time.UTC))
 	svc := newService(t, testOpts{clock: clk})
-	if _, _, err := maintenance.Once(context.Background(), shared.system, clk.Now()); err != nil {
-		t.Fatal(err)
-	}
 	tc := newTenant("live")
+	prepareTenant(t, tc, clk.Now())
 	at := clk.Now().Add(-time.Minute)
 
 	first := ingestOne(t, svc, tc, event("boundary", "7", at))
@@ -277,7 +273,7 @@ func testMonthBoundary(t *testing.T) {
 	// The key now also lives in the December bucket only if it was accepted there: it wasn't, so a new key does.
 	status1(t, ingestOne(t, svc, tc, event("december", "1", at)), ingestv1.EventResult_STATUS_ACCEPTED, "")
 	var buckets []time.Time
-	err := pgxx.InTenantTx(context.Background(), shared.app, tc.id, func(tx pgx.Tx) error {
+	err := pgxx.InTenantTx(context.Background(), shared.appDB, tc.id, func(tx pgx.Tx) error {
 		rows, err := tx.Query(context.Background(), `SELECT created_at FROM idempotency_keys ORDER BY idempotency_key`)
 		if err != nil {
 			return err
@@ -365,11 +361,7 @@ func testWatermark(t *testing.T) {
 	if oldest.Before(before) || oldest.After(time.Now()) {
 		t.Fatalf("watermark %s not within the first ingest", oldest)
 	}
-	var minDB time.Time
-	if err := shared.system.QueryRow(ctx, `SELECT min(ingested_at) FROM outbox`).Scan(&minDB); err != nil {
-		t.Fatal(err)
-	}
-	if !oldest.Equal(minDB) {
+	if minDB := oldestIngested(t); !oldest.Equal(minDB) {
 		t.Fatalf("watermark %s != min(ingested_at) %s", oldest, minDB)
 	}
 
@@ -431,6 +423,9 @@ func testLookupOutage(t *testing.T) {
 }
 
 func testRoleSeparation(t *testing.T) {
+	if cellsMode() {
+		t.Skip("about the pooled tables of public; the same checks run in the tenant schemas by TestIngestInBothModes/cells")
+	}
 	svc := newService(t, testOpts{})
 	ctx := context.Background()
 	a, b := newTenant("live"), newTenant("live")
@@ -622,6 +617,9 @@ func testKafkaPaused(t *testing.T) {
 }
 
 func testPartitionMaintenance(t *testing.T) {
+	if cellsMode() {
+		t.Skip("about the pooled table; the tenant tables' maintenance runs in TestIngestInBothModes/cells")
+	}
 	infra(t)
 	ctx := context.Background()
 	now := time.Date(2030, 3, 15, 12, 0, 0, 0, time.UTC)

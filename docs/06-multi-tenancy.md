@@ -13,6 +13,10 @@
 | ClickHouse | Mandatory `tenant_id` predicate in the query builder | analytics-svc |
 | Resources | Per-tenant rate limits (GCRA), batch caps, outbox back-pressure, per-tenant lag metrics | gateway, ingest-svc |
 
+## Isolation modes (phase 28)
+
+[ADR 0018](adr/0018-tenant-isolation-modes.md): the model above is **pooled** mode, the default and the only mode any tenant is in. A tenant can instead be placed in a **cell**, where its tables are in a schema of their own and a transaction for it also sets `search_path` to that schema; where the tenant is, is `tenants.cell` in plans-svc (the directory), read by the other services through `pkg/tenantdir` and acted on by one function, `pkg/pgxx.InTenantTx` over a `Router`. A placement is refused, not guessed, when the tenant is moving or the directory cannot say. The schema is where the data is and row-level security is still the guard against a statement that names another tenant's schema. Operations (moves, the doctor, what turns cells on): [runbooks/cells.md](runbooks/cells.md). Today only ingest-svc and assets-svc can serve a tenant in a cell, and the directory refuses to place one until every service can.
+
 ## Environment guards (phase 45)
 
 The tenant is the unit of isolation; the environment (sandbox or live) is asserted at every edge, never defaulted ([ADR 0023](adr/0023-live-and-sandbox-guards.md)):

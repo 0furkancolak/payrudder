@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
 
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/lookup"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 )
@@ -39,7 +39,8 @@ type Lookups interface {
 
 // Options configure Commands. App and Lookup are required.
 type Options struct {
-	App    *pgxpool.Pool // ingest_app: RLS enforced
+	// App is the ingest_app pool (RLS enforced), or its router when cells are on: a tenant's transaction goes where the directory says its data is.
+	App    pgxx.Beginner
 	Lookup Lookups
 	Log    *slog.Logger
 	// MaxOutboxDepth makes Ingest answer RESOURCE_EXHAUSTED above this many pending rows. 0 disables it.

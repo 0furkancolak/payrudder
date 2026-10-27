@@ -57,12 +57,21 @@ type Beginner interface {
 	BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error)
 }
 
-// InTenantTx runs fn in a transaction scoped to tenantID: it first sets app.tenant_id transaction-locally
+// InTenantTx runs fn in a transaction scoped to tenantID. In the pooled database it first sets app.tenant_id transaction-locally
 // (set_config(..., true)), so RLS policies see the tenant and a pooled connection never carries it into the next request.
-// It is the only way request handlers open a transaction.
+// When db is a Router (cells mode, ADR 0018) the placement of the tenant decides where the transaction runs and what scopes it: a tenant in a cell also gets
+// SET LOCAL search_path to its schema. It is the only way request handlers open a transaction.
 func InTenantTx(ctx context.Context, db Beginner, tenantID uuid.UUID, fn func(pgx.Tx) error) error {
 	if tenantID == uuid.Nil {
 		return errors.New("pgxx: InTenantTx with nil tenant")
+	}
+	if tb, ok := db.(TenantBeginner); ok {
+		err := runTx(ctx, func() (pgx.Tx, error) { return tb.BeginTenantTx(ctx, tenantID, pgx.TxOptions{}) }, fn)
+		if err != nil && isMissingSchema(err) {
+			// The directory sent us to a place the tenant is not: ask it again next time (a move, an answer older than the move).
+			tb.Invalidate(tenantID)
+		}
+		return err
 	}
 	return InTx(ctx, db, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true)`, tenantID.String()); err != nil {
@@ -73,8 +82,12 @@ func InTenantTx(ctx context.Context, db Beginner, tenantID uuid.UUID, fn func(pg
 }
 
 // InTx runs fn in a transaction, committing on nil and rolling back otherwise (also on panic).
-func InTx(ctx context.Context, db Beginner, opts pgx.TxOptions, fn func(pgx.Tx) error) (err error) {
-	tx, err := db.BeginTx(ctx, opts)
+func InTx(ctx context.Context, db Beginner, opts pgx.TxOptions, fn func(pgx.Tx) error) error {
+	return runTx(ctx, func() (pgx.Tx, error) { return db.BeginTx(ctx, opts) }, fn)
+}
+
+func runTx(ctx context.Context, begin func() (pgx.Tx, error), fn func(pgx.Tx) error) (err error) {
+	tx, err := begin()
 	if err != nil {
 		return fmt.Errorf("pgxx: begin: %w", err)
 	}

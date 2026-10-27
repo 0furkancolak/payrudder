@@ -2,7 +2,7 @@
 //
 //	payrudderctl seed --currency TRY --timezone Europe/Istanbul --grace 24h
 //
-// dlq is the exception: it talks to RabbitMQ directly. replay and rerate work through the gateway like any other command.
+// dlq and cells are the exceptions: dlq talks to RabbitMQ directly, cells to plans-svc and the databases. replay and rerate work through the gateway like any other command.
 package main
 
 import (
@@ -28,6 +28,8 @@ func main() {
 		err = seed(os.Args[2:])
 	case "dlq":
 		err = dlq(os.Args[2:])
+	case "cells":
+		err = cellsCmd(os.Args[2:])
 	case "demo":
 		err = demo(os.Args[2:])
 	case "replay":
@@ -63,7 +65,8 @@ commands:
   dev-seed  fill a LOCAL dev stack with sample data (user1@example.com / password123); idempotent; make dev runs it once
   dev     run the services on the host against the infrastructure containers, restarting on change (--only, --skip, --list)
   rename  --name "Acme Billing" [--apply]: list (or make) the changes that rename the product through the whole repository
-  dlq     ls | show | redrive | purge the dead-letter queues (--broker rabbitmq, default) or ls | show | redrive the DLQ topics (--broker kafka)`)
+  dlq     ls | show | redrive | purge the dead-letter queues (--broker rabbitmq, default) or ls | show | redrive the DLQ topics (--broker kafka)
+  cells   jobs | doctor | migrate | move | abort | retired: tenants in cells (schema per tenant, ADR 0018); talks to plans-svc and the databases directly, from inside the network`)
 }
 
 type client struct {

@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/store/sqlc"
 )
@@ -115,6 +116,9 @@ func (c *Commands) mapDBError(ctx context.Context, err error) error {
 		return errkey.New(codes.DeadlineExceeded, "ingest.db.timeout", "ingest timed out; nothing was accepted, retry is safe")
 	case errors.Is(err, context.Canceled):
 		return status.Error(codes.Canceled, "canceled")
+	case errors.Is(err, tenantdir.ErrNotServing):
+		// A move of the tenant's data is in progress (ADR 0018): expected, brief, and the same answer as any unavailable database.
+		return errkey.New(codes.Unavailable, "ingest.db.unavailable", "the tenant is being moved; nothing was accepted, retry is safe")
 	}
 	switch pgxx.ErrCode(err) {
 	case sqlQueryCanceled, sqlIdleInTxTimeout:

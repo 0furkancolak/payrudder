@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+// DirectoryService is the tenant directory of ADR 0018: where each tenant's data lives. It is operator-only and internal (no gateway route): the services that
+// reach a tenant's database call it through pkg/tenantdir, which caches the answers in process.
+service DirectoryService {
+  // GetPlacement returns where one tenant lives. A tenant in the pooled database has an empty cell.
+  rpc GetPlacement(GetPlacementRequest) returns (GetPlacementResponse);
+  // ListPlacements pages through the tenants placed in a cell (every cell when none is named), ordered by tenant id. Pooled tenants are not listed.
+  rpc ListPlacements(ListPlacementsRequest) returns (ListPlacementsResponse);
+  // BeginMove fences a tenant for a move: it goes from READY to MOVING, and every request and job for it is refused until the move ends. A move to a cell is refused
+  // while any job of the platform is not converted to run per tenant schema (pkg/tenantdir.Jobs); a move out of a cell, or between pooled places, is not.
+  rpc BeginMove(BeginMoveRequest) returns (BeginMoveResponse);
+  // FinishMove ends a move: the tenant is served from its new place (READY).
+  rpc FinishMove(FinishMoveRequest) returns (FinishMoveResponse);
+  // AbortMove ends a move where it started: the placement is unchanged and the tenant is served again.
+  rpc AbortMove(AbortMoveRequest) returns (AbortMoveResponse);
+}
+
+// PlacementStatus is the fence of a placement: only READY serves the tenant's traffic.
+enum PlacementStatus {
+  PLACEMENT_STATUS_UNSPECIFIED = 0;
+  PLACEMENT_STATUS_READY = 1;
+  // The tenant is being moved: every request and job for it is refused until the move ends.
+  PLACEMENT_STATUS_MOVING = 2;
+}
+
+// Placement is one row of the directory.
+message Placement {
+  string tenant_id = 1;
+  // The cell holding the tenant's schema; empty for the pooled database (row-level security).
+  string cell = 2;
+  // Where the cell is; informational.
+  string region = 3;
+  PlacementStatus status = 4;
+}
+
+message GetPlacementRequest {
+  string tenant_id = 1;
+}
+
+message GetPlacementResponse {
+  Placement placement = 1;
+}
+
+message ListPlacementsRequest {
+  // Only this cell's tenants; empty lists every cell.
+  string cell = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListPlacementsResponse {
+  repeated Placement placements = 1;
+  string next_page_token = 2;
+}
+
+message BeginMoveRequest {
+  string tenant_id = 1;
+  // Where the tenant is going: a cell, or empty for the pooled database. It must differ from where the tenant is.
+  string to_cell = 2;
+}
+
+message BeginMoveResponse {
+  Placement placement = 1;
+}
+
+message FinishMoveRequest {
+  string tenant_id = 1;
+  // The cell the tenant now lives in (the one BeginMove named), empty for the pooled database.
+  string cell = 2;
+  string region = 3;
+}
+
+message FinishMoveResponse {
+  Placement placement = 1;
+}
+
+message AbortMoveRequest {
+  string tenant_id = 1;
+}
+
+message AbortMoveResponse {
+  Placement placement = 1;
+}

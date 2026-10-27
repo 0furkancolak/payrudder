@@ -21,8 +21,10 @@ payrudder/
 │   ├── otelx/                      # SDK init, Kafka + AMQP header carriers
 │   ├── grpcx/                      # server/client constructors, interceptors (tenant, recovery, otel)
 │   ├── tenant/                     # tenant context type, metadata keys
-│   ├── pgxx/                       # pools (app/system), InTenantTx, migrations runner
-│   ├── outbox/                     # generic outbox table contract + relay (Kafka and AMQP sinks)
+│   ├── pgxx/                       # pools (app/system), InTenantTx, migrations runner; cells: Router, tenant schemas, SchemaShape, Move
+│   ├── tenantdir/                  # the tenant directory as a service sees it (placement cache, schema names) and the inventory of unconverted jobs
+│   ├── cells/                      # the operator's side of cells: MoveTenant, Doctor, the config (payrudderctl cells)
+│   ├── outbox/                     # generic outbox table contract + relay (Kafka and AMQP sinks; tenants in cells)
 │   ├── kafkax/                     # franz-go client factory, DB-offset consumer, DLQ producer, redrive filter
 │   ├── rabbitx/                    # connection mgmt, topology, publisher confirms, retry/DLX helpers, worker skeleton
 │   ├── period/                     # period ids, cutoff, Classify() — shared by aggregator + limits
@@ -55,7 +57,7 @@ payrudder/
 ├── tools/
 │   ├── go.mod                      # pinned dev tools (tools directive)
 │   ├── mockpsp/                    # fake payment provider (HTTP)
-│   ├── payrudderctl/                 # operator CLI: dlq, replay, rerate, close-period, seed
+│   ├── payrudderctl/                 # operator CLI: dlq, replay, rerate, close-period, seed, cells
 │   └── eventgen/                   # load + correctness generator (shared with tests/chaos)
 ├── tests/
 │   ├── go.mod

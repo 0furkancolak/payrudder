@@ -37,6 +37,10 @@ erroring or leaking. The Go helper `pkg/pgxx.InTenantTx(ctx, pool, tenantID, fn)
 is the only way handlers open a transaction. It runs `SELECT set_config('app.tenant_id', $1, true)` first.
 Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
 
+### Cells: a tenant schema (phase 28, [ADR 0018](adr/0018-tenant-isolation-modes.md))
+
+A tenant placed in a cell (`tenants.cell` not empty) has its tables of a service in schema `t_<32 hex digits of the tenant id>` of that service's database in the cell, which holds nothing else but the (so far empty) `shared` schema and, after a move, schemas set aside as `m_<id>_<unix>`. The tables are the ones this document describes, with the same names, columns, constraints, indexes, **policies** (row-level security stays on as the second guard), grants and functions, so the queries do not change; their definitions are the service's `migrations/tenant` set, applied to each schema with its own `goose_db_version`. A transaction for the tenant runs with `app.tenant_id` set as in pooled mode and `search_path = "t_<id>", shared`, both transaction-local. Rules for a tenant set: only tables with a `tenant_id`; no schema named in any statement; functions are `SET search_path FROM CURRENT`, not `= public`; a change to the public migrations is made in the tenant set too (a test per service compares the two). Converted so far: `ingest_db` (`idempotency_keys` partitioned by month in each schema, `outbox`, `enqueue_outbox`, `maintain_idempotency_partitions`) and `assets_db` (`upload_sessions`, `assets`, `storage_usage`). Nothing is in a cell yet.
+
 ---
 
 ## `plans_db`
@@ -79,6 +83,12 @@ CREATE TABLE tenants (                                -- the isolation unit ever
   status        text NOT NULL CHECK (status IN ('inactive','active','suspended')),  -- phase 45: a live tenant starts inactive (no keys, no webhooks, not billed)
   activated_at  timestamptz,                          -- when the go-live checklist was completed (or an operator activated it)
   terms_accepted_at timestamptz, terms_accepted_by uuid REFERENCES users(id),
+  -- phase 28 (migration 00064), the tenant directory of ADR 0018: where the tenant's data lives. cell '' is the pooled database (RLS, the default and the only value
+  -- until an operator places a tenant); any other value names a cell (a schema t_<id> in that cluster). region is informational. placement_status is the fence of a
+  -- move: only 'ready' serves traffic. Read through DirectoryService, cached in process by pkg/tenantdir.
+  cell text NOT NULL DEFAULT '' CHECK (cell = '' OR cell ~ '^[a-z0-9][a-z0-9-]{0,30}$'),
+  region text NOT NULL DEFAULT '' CHECK (region = '' OR region ~ '^[a-z0-9][a-z0-9-]{0,30}$'),
+  placement_status text NOT NULL DEFAULT 'ready' CHECK (placement_status IN ('ready','moving')),
   created_at    timestamptz NOT NULL DEFAULT now(),
   UNIQUE (account_id, environment),
   CONSTRAINT sandbox_is_always_active CHECK (environment = 'live' OR status = 'active')

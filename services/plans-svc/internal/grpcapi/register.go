@@ -10,6 +10,9 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/directory"
+	directorycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/directory/command"
+	directoryqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/directory/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	golivecmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
 	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
@@ -42,6 +45,9 @@ type Deps struct {
 	Sandbox             *sandboxapi.Handler
 	// Saas is the SaaS mode (PAYRUDDER_SAAS, phase 55): Payrudder's own plans, enforced on every account. The zero value is off.
 	Saas saascmd.Config
+	// CellsReady says whether a tenant may be placed in a cell (ADR 0018): nil when every cross-tenant job is converted, an error naming what is left otherwise.
+	// nil in the Deps means pkg/tenantdir's inventory; a test passes its own.
+	CellsReady func() error
 }
 
 // Register serves every gRPC service of plans-svc on srv and returns the SaaS commands (the platform tenant's bootstrap and the sweep that makes every
@@ -56,6 +62,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.SystemPool))
 	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.Log)
 	plansv1.RegisterAdminServiceServer(srv, admin)
+	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
 	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now)
 	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log)
 	plansv1.RegisterSaasServiceServer(srv, saas.New(saasC, saasQ, d.SystemPool))

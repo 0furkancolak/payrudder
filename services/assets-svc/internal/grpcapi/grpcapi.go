@@ -6,9 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/assets-svc/internal/assets"
 	assetscmd "github.com/0furkancolak/payrudder/services/assets-svc/internal/assets/command"
 	assetsquery "github.com/0furkancolak/payrudder/services/assets-svc/internal/assets/query"
@@ -55,8 +54,8 @@ type fallback struct {
 	assetsv1.UnimplementedAssetsServiceServer
 }
 
-// New returns the service over the app pool (assets_app, RLS enforced).
-func New(pool *pgxpool.Pool, b Blob, pol policy.Policy, cfg Config) *Server {
+// New returns the service over the app pool (assets_app, RLS enforced), or over its router when cells are on.
+func New(pool pgxx.Beginner, b Blob, pol policy.Policy, cfg Config) *Server {
 	if cfg.SessionTTL <= 0 {
 		cfg.SessionTTL = 24 * time.Hour
 	}
