@@ -26,31 +26,26 @@ type Customer struct {
 	ExternalID string
 }
 
+// How the caches behave: a hit is trusted for 30 s, a miss for a short MissTTL so a new meter is found soon, and a load that plans-svc does not answer in time is given up.
+const (
+	cacheSize   = 10000 // entries per cache
+	hitTTL      = 30 * time.Second
+	loadTimeout = 2 * time.Second
+	// defaultMissTTL is how long a "does not exist" is kept.
+	defaultMissTTL = 2 * time.Second
+)
+
 // Options tune the caches. Zero values take the defaults noted.
 type Options struct {
-	Size        int           // default 10000 entries per cache
-	HitTTL      time.Duration // default 30s
-	MissTTL     time.Duration // default 2s
-	LoadTimeout time.Duration // default 2s
-}
-
-func (o *Options) defaults() {
-	if o.Size <= 0 {
-		o.Size = 10000
-	}
-	if o.HitTTL <= 0 {
-		o.HitTTL = 30 * time.Second
-	}
-	if o.MissTTL <= 0 {
-		o.MissTTL = 2 * time.Second
-	}
-	if o.LoadTimeout <= 0 {
-		o.LoadTimeout = 2 * time.Second
-	}
+	MissTTL time.Duration // default 2s
 }
 
 func (o Options) cachex() cachex.Options {
-	return cachex.Options{Size: o.Size, HitTTL: o.HitTTL, MissTTL: o.MissTTL, LoadTimeout: o.LoadTimeout}
+	miss := o.MissTTL
+	if miss <= 0 {
+		miss = defaultMissTTL
+	}
+	return cachex.Options{Size: cacheSize, HitTTL: hitTTL, MissTTL: miss, LoadTimeout: loadTimeout}
 }
 
 // notFound turns plans-svc's NotFound into the cache's "does not exist" answer.
@@ -69,7 +64,6 @@ type Plans struct {
 
 // NewPlans returns cached lookups over client. The context of every call must carry the tenant metadata.
 func NewPlans(client plansv1.PlansServiceClient, o Options) *Plans {
-	o.defaults()
 	return &Plans{
 		meters: cachex.New(o.cachex(), func(ctx context.Context, _, code string) (Meter, error) {
 			resp, err := client.GetMeter(ctx, &plansv1.GetMeterRequest{Code: code})
