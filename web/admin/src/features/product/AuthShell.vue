@@ -37,7 +37,7 @@ defineProps<{ title: string; intro: string }>();
             { key: 'c', value: 10, color: 'var(--chart-failed)' },
           ]"
         >
-          <span class="text-lg font-semibold tabular">68%</span>
+          <span class="text-lg font-semibold tabular-nums">68%</span>
         </Donut>
         <div class="flex flex-col gap-2">
           <StatusPill tone="success">{{ t("product.status.paid") }}</StatusPill>
@@ -48,7 +48,7 @@ defineProps<{ title: string; intro: string }>();
       <div class="bg-card/80 flex items-end justify-between gap-4 rounded-3xl p-5 shadow-card backdrop-blur">
         <div>
           <p class="text-muted-foreground text-xs">{{ t("product.kpi.revenue") }}</p>
-          <p class="text-2xl font-semibold tabular">$24,310</p>
+          <p class="text-2xl font-semibold tabular-nums">$24,310</p>
         </div>
         <Sparkline :values="[2, 5, 3, 8, 6, 9, 7, 12, 10, 14]" :width="130" :height="44" />
       </div>

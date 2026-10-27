@@ -18,7 +18,7 @@ const inv = computed(() => invoice.data.value);
     <span class="mono font-medium">{{ inv ? inv.number || t("product.billing.invoices.draft") : invoiceId.slice(0, 8) }}</span>
     <span v-if="inv" class="flex items-center gap-2">
       <StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill>
-      <span class="tabular font-medium">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</span>
+      <span class="tabular-nums font-medium">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</span>
     </span>
   </button>
 </template>

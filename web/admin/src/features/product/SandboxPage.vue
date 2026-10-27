@@ -73,7 +73,7 @@ function go() {
               <Loader v-else-if="running && s.state === 'pending' && s.name === next" class="size-4 animate-spin" /><Circle v-else class="text-muted-foreground size-3.5" />
             </span>
             <span class="w-28 shrink-0 font-medium">{{ t(`product.sandbox.step.${s.name}`) }}</span>
-            <span v-if="s.state === 'done'" class="text-muted-foreground text-xs tabular">{{ t("product.sandbox.deleted", { n: total(s.deleted) }) }}</span>
+            <span v-if="s.state === 'done'" class="text-muted-foreground text-xs tabular-nums">{{ t("product.sandbox.deleted", { n: total(s.deleted) }) }}</span>
             <span v-else-if="s.state === 'skipped'" class="text-muted-foreground text-xs">{{ t("product.sandbox.skipped") }}</span>
             <span v-if="s.error" class="text-destructive basis-full ps-8 text-xs" role="alert">{{ s.error }}</span>
             <span v-if="s.state === 'done' && rows(s.deleted).length > 0" class="text-muted-foreground basis-full ps-8 text-xs">{{ rows(s.deleted).map(([k, v]) => `${k} ${v}`).join(" · ") }}</span>

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { PageHeader } from "@/shared/ui/page-header";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useApp, useDeleteApp, useRenameApp } from "./api";
@@ -70,10 +71,7 @@ const envs = computed(() =>
 
 <template>
   <section class="flex flex-col gap-6">
-    <header class="px-1">
-      <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("shell.items.appSettings") }}</h1>
-      <p class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ t("product.appSettings.intro") }}</p>
-    </header>
+    <PageHeader flush :title="t('shell.items.appSettings')" :description="t('product.appSettings.intro')" />
 
     <Skeleton v-if="app.isPending.value" class="h-40 rounded-3xl" />
     <template v-else>

@@ -11,6 +11,7 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { PageHeader } from "@/shared/ui/page-header";
 import { SegmentedControl } from "@/shared/ui/segmented";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -42,10 +43,7 @@ const themes = computed(() => [
 
 <template>
   <section class="flex flex-col gap-6">
-    <header class="px-1">
-      <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("product.settings.title") }}</h1>
-      <p class="text-muted-foreground mt-1 text-sm">{{ t("product.settings.intro") }}</p>
-    </header>
+    <PageHeader flush :title="t('product.settings.title')" :description="t('product.settings.intro')" />
     <ErrorText :error="firstError(account, me)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
 
     <Link v-if="saas" to="/app/settings/plan" class="surface hover:border-ring flex flex-wrap items-center justify-between gap-2 p-5" data-testid="plan-link">
