@@ -4341,6 +4341,17 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ApiKey" } } } }
         "404": { $ref: "#/components/responses/Error" }
+webhooks:
+  event:
+    post:
+      summary: A delivery to one of your webhook endpoints
+      description: "Payrudder POSTs this body to every active endpoint that wants the event type. Answer with any 2xx within 10 seconds; anything else is retried (1m, 5m, 30m, 2h, 6h, 24h). Verify the Payrudder-Signature header before you trust it."
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/WebhookEvent" } } }
+      responses:
+        "200": { description: Received }
 
 components:
   securitySchemes:
@@ -6602,6 +6613,487 @@ components:
       properties:
         url: { type: string, format: uri }
         expires_at: { type: string, format: date-time, description: "RFC 3339, UTC" }
+    InvoiceFinalizedEventData:
+      type: object
+      description: "The data of an event of type invoice.finalized"
+      required: [invoice_id, number, customer_id, customer_external_id, period_id, currency, total_minor, status]
+      properties:
+        invoice_id: { type: string, format: uuid }
+        number: { type: string, description: "invoice number, e.g. INV-2026-000007" }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string, description: "may be empty string" }
+        period_id: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", description: "billing period YYYY-MM" }
+        currency: { type: string }
+        total_minor: { type: string, format: int64, description: "int64 minor units as a JSON string (strconv.FormatInt)" }
+        status: { type: string, enum: [open] }
+    InvoiceFinalizedEvent:
+      type: object
+      description: "The body of a delivery of type invoice.finalized"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [invoice.finalized] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/InvoiceFinalizedEventData" }
+    InvoicePaidEventData:
+      type: object
+      description: "The data of an event of type invoice.paid"
+      required: [invoice_id, number, customer_id, customer_external_id, period_id, currency, total_minor, status, environment, tax_minor, net_minor]
+      properties:
+        invoice_id: { type: string, format: uuid }
+        number: { type: string, description: "invoice number, e.g. INV-2026-000007" }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string, description: "may be empty string" }
+        period_id: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", description: "billing period YYYY-MM" }
+        currency: { type: string }
+        total_minor: { type: string, format: int64, description: "int64 minor units as a JSON string (strconv.FormatInt)" }
+        status: { type: string, enum: [paid] }
+        environment: { type: string, enum: [sandbox, live] }
+        tax_minor: { type: string, format: int64, description: "sum of the invoice's TAX lines" }
+        net_minor: { type: string, format: int64, description: "max(total-tax,0)" }
+    InvoicePaidEvent:
+      type: object
+      description: "The body of a delivery of type invoice.paid"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [invoice.paid] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/InvoicePaidEventData" }
+    InvoiceVoidedEventData:
+      type: object
+      description: "The data of an event of type invoice.voided"
+      required: [invoice_id, number, customer_id, customer_external_id, period_id, currency, total_minor, status, environment]
+      properties:
+        invoice_id: { type: string, format: uuid }
+        number: { type: string, description: "invoice number, e.g. INV-2026-000007" }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string, description: "may be empty string" }
+        period_id: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", description: "billing period YYYY-MM" }
+        currency: { type: string }
+        total_minor: { type: string, format: int64, description: "int64 minor units as a JSON string (strconv.FormatInt)" }
+        status: { type: string, enum: [void] }
+        environment: { type: string, enum: [sandbox, live] }
+    InvoiceVoidedEvent:
+      type: object
+      description: "The body of a delivery of type invoice.voided"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [invoice.voided] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/InvoiceVoidedEventData" }
+    InvoiceUncollectibleEventData:
+      type: object
+      description: "The data of an event of type invoice.uncollectible"
+      required: [invoice_id, number, customer_id, customer_external_id, period_id, currency, total_minor, status, environment]
+      properties:
+        invoice_id: { type: string, format: uuid }
+        number: { type: string, description: "invoice number, e.g. INV-2026-000007" }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string, description: "may be empty string" }
+        period_id: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", description: "billing period YYYY-MM" }
+        currency: { type: string }
+        total_minor: { type: string, format: int64, description: "int64 minor units as a JSON string (strconv.FormatInt)" }
+        status: { type: string, enum: [uncollectible] }
+        environment: { type: string, enum: [sandbox, live] }
+    InvoiceUncollectibleEvent:
+      type: object
+      description: "The body of a delivery of type invoice.uncollectible"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [invoice.uncollectible] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/InvoiceUncollectibleEventData" }
+    CreditNoteCreatedEventData:
+      type: object
+      description: "The data of an event of type credit_note.created"
+      required: [credit_note_id, number, invoice_id, invoice_number, customer_id, customer_external_id, currency, total_minor, reason, disposition]
+      properties:
+        credit_note_id: { type: string, format: uuid }
+        number: { type: string }
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string, description: "empty string if the invoice has no number" }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        currency: { type: string }
+        total_minor: { type: string, format: int64, description: "string (fmt.Sprint)" }
+        reason: { type: string }
+        disposition: { type: string, enum: [credit, refund] }
+        refund_state: { type: string, enum: [requested, refunded, failed], description: "only when disposition=refund (credit_note.created for a refund carries 'requested')" }
+        refund_error: { type: string, description: "only when refund_state=failed and the error text is non-empty (format '<code>: <message>' or '<noAnswer> after N attempts')" }
+    CreditNoteCreatedEvent:
+      type: object
+      description: "The body of a delivery of type credit_note.created"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [credit_note.created] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/CreditNoteCreatedEventData" }
+    CreditNoteRefundedEventData:
+      type: object
+      description: "The data of an event of type credit_note.refunded"
+      required: [credit_note_id, number, invoice_id, invoice_number, customer_id, customer_external_id, currency, total_minor, reason, disposition]
+      properties:
+        credit_note_id: { type: string, format: uuid }
+        number: { type: string }
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string, description: "empty string if the invoice has no number" }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        currency: { type: string }
+        total_minor: { type: string, format: int64, description: "string (fmt.Sprint)" }
+        reason: { type: string }
+        disposition: { type: string, enum: [credit, refund] }
+        refund_state: { type: string, enum: [requested, refunded, failed], description: "only when disposition=refund (credit_note.created for a refund carries 'requested')" }
+        refund_error: { type: string, description: "only when refund_state=failed and the error text is non-empty (format '<code>: <message>' or '<noAnswer> after N attempts')" }
+    CreditNoteRefundedEvent:
+      type: object
+      description: "The body of a delivery of type credit_note.refunded"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [credit_note.refunded] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/CreditNoteRefundedEventData" }
+    CreditNoteRefundFailedEventData:
+      type: object
+      description: "The data of an event of type credit_note.refund_failed"
+      required: [credit_note_id, number, invoice_id, invoice_number, customer_id, customer_external_id, currency, total_minor, reason, disposition]
+      properties:
+        credit_note_id: { type: string, format: uuid }
+        number: { type: string }
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string, description: "empty string if the invoice has no number" }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        currency: { type: string }
+        total_minor: { type: string, format: int64, description: "string (fmt.Sprint)" }
+        reason: { type: string }
+        disposition: { type: string, enum: [credit, refund] }
+        refund_state: { type: string, enum: [requested, refunded, failed], description: "only when disposition=refund (credit_note.created for a refund carries 'requested')" }
+        refund_error: { type: string, description: "only when refund_state=failed and the error text is non-empty (format '<code>: <message>' or '<noAnswer> after N attempts')" }
+    CreditNoteRefundFailedEvent:
+      type: object
+      description: "The body of a delivery of type credit_note.refund_failed"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [credit_note.refund_failed] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/CreditNoteRefundFailedEventData" }
+    SubscriptionCreatedEventData:
+      type: object
+      description: "The data of an event of type subscription.created"
+      required: [subscription]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+    SubscriptionCreatedEvent:
+      type: object
+      description: "The body of a delivery of type subscription.created"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.created] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionCreatedEventData" }
+    SubscriptionChangedEventData:
+      type: object
+      description: "The data of an event of type subscription.changed"
+      required: [subscription, previous_subscription_id]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+        previous_subscription_id: { type: string, format: uuid }
+        quote: { $ref: "#/components/schemas/WebhookChangeQuote" }
+        scheduled: { type: boolean, description: "only true, only when a scheduled change was applied at period end (no quote then)" }
+    SubscriptionChangedEvent:
+      type: object
+      description: "The body of a delivery of type subscription.changed"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.changed] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionChangedEventData" }
+    SubscriptionChangeScheduledEventData:
+      type: object
+      description: "The data of an event of type subscription.change_scheduled"
+      required: [subscription, quote]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+        quote: { $ref: "#/components/schemas/WebhookChangeQuote" }
+    SubscriptionChangeScheduledEvent:
+      type: object
+      description: "The body of a delivery of type subscription.change_scheduled"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.change_scheduled] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionChangeScheduledEventData" }
+    SubscriptionCancelledEventData:
+      type: object
+      description: "The data of an event of type subscription.cancelled"
+      required: [subscription]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+        credited_minor: { type: string, format: int64, description: "int64 as string (strconv.FormatInt); present only when credit_unused credited > 0" }
+    SubscriptionCancelledEvent:
+      type: object
+      description: "The body of a delivery of type subscription.cancelled"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.cancelled] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionCancelledEventData" }
+    SubscriptionCancellationScheduledEventData:
+      type: object
+      description: "The data of an event of type subscription.cancellation_scheduled"
+      required: [subscription]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+    SubscriptionCancellationScheduledEvent:
+      type: object
+      description: "The body of a delivery of type subscription.cancellation_scheduled"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.cancellation_scheduled] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionCancellationScheduledEventData" }
+    SubscriptionCancellationWithdrawnEventData:
+      type: object
+      description: "The data of an event of type subscription.cancellation_withdrawn"
+      required: [subscription]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+    SubscriptionCancellationWithdrawnEvent:
+      type: object
+      description: "The body of a delivery of type subscription.cancellation_withdrawn"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.cancellation_withdrawn] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionCancellationWithdrawnEventData" }
+    SubscriptionPausedEventData:
+      type: object
+      description: "The data of an event of type subscription.paused"
+      required: [subscription]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+    SubscriptionPausedEvent:
+      type: object
+      description: "The body of a delivery of type subscription.paused"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.paused] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionPausedEventData" }
+    SubscriptionResumedEventData:
+      type: object
+      description: "The data of an event of type subscription.resumed"
+      required: [subscription]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+    SubscriptionResumedEvent:
+      type: object
+      description: "The body of a delivery of type subscription.resumed"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.resumed] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionResumedEventData" }
+    SubscriptionMovedToProviderEventData:
+      type: object
+      description: "The data of an event of type subscription.moved_to_provider"
+      required: [subscription, previous_subscription_id, to_provider]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+        previous_subscription_id: { type: string, format: uuid }
+        to_provider: { type: string, description: "provider name the subscription moved to" }
+    SubscriptionMovedToProviderEvent:
+      type: object
+      description: "The body of a delivery of type subscription.moved_to_provider"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.moved_to_provider] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionMovedToProviderEventData" }
+    SubscriptionTrialWillEndEventData:
+      type: object
+      description: "The data of an event of type subscription.trial_will_end"
+      required: [subscription]
+      properties:
+        subscription: { $ref: "#/components/schemas/WebhookSubscription" }
+    SubscriptionTrialWillEndEvent:
+      type: object
+      description: "The body of a delivery of type subscription.trial_will_end"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [subscription.trial_will_end] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/SubscriptionTrialWillEndEventData" }
+    PaymentLinkCreatedEventData:
+      type: object
+      description: "The data of an event of type payment_link.created"
+      required: [link_id, kind, single_use, expires_at]
+      properties:
+        link_id: { type: string, format: uuid }
+        kind: { type: string, enum: [invoice, adhoc, credit_pack] }
+        single_use: { type: boolean }
+        expires_at: { type: string, format: date-time, description: "UTC, second precision" }
+        invoice_id: { type: string, format: uuid, description: "only kind=invoice" }
+        amount_minor: { type: string, format: int64, description: "only adhoc/credit_pack; string" }
+        currency: { type: string, description: "only when set" }
+        description: { type: string, description: "only when set (adhoc description; credit_pack: pack name)" }
+        pack_id: { type: string, format: uuid, description: "credit_pack only" }
+        quantity: { type: integer, description: "credit_pack only; JSON number" }
+        credits: { type: integer, format: int64, description: "credit_pack only; int64 as JSON NUMBER, not string" }
+        customer_external_id: { type: string, description: "only when set" }
+    PaymentLinkCreatedEvent:
+      type: object
+      description: "The body of a delivery of type payment_link.created"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [payment_link.created] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/PaymentLinkCreatedEventData" }
+    PaymentLinkPaidEventData:
+      type: object
+      description: "The data of an event of type payment_link.paid"
+      required: [link_id, kind, invoice_id, invoice_number, customer_external_id, currency, total_minor, paid_count]
+      properties:
+        link_id: { type: string, format: uuid }
+        kind: { type: string, enum: [invoice, adhoc, credit_pack] }
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string }
+        customer_external_id: { type: string, description: "empty string when the link has none (always present)" }
+        currency: { type: string }
+        total_minor: { type: string, format: int64, description: "string" }
+        paid_count: { type: integer, description: "link's paid_count; JSON number" }
+    PaymentLinkPaidEvent:
+      type: object
+      description: "The body of a delivery of type payment_link.paid"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [payment_link.paid] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/PaymentLinkPaidEventData" }
+    PaymentLinkExpiredEventData:
+      type: object
+      description: "The data of an event of type payment_link.expired"
+      required: [link_id, kind, expires_at]
+      properties:
+        link_id: { type: string, format: uuid }
+        kind: { type: string, enum: [invoice, adhoc, credit_pack] }
+        expires_at: { type: string, format: date-time }
+        invoice_id: { type: string, format: uuid, description: "only when set" }
+        amount_minor: { type: string, format: int64, description: "only when set; string" }
+        currency: { type: string, description: "only when set" }
+        customer_external_id: { type: string, description: "only when set" }
+    PaymentLinkExpiredEvent:
+      type: object
+      description: "The body of a delivery of type payment_link.expired"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [payment_link.expired] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/PaymentLinkExpiredEventData" }
+    CreditsPurchasedEventData:
+      type: object
+      description: "The data of an event of type credits.purchased"
+      required: [link_id, customer_id, customer_external_id, credits, quantity, balance, invoice_id, invoice_number, currency, amount_minor, bonus_credits]
+      properties:
+        link_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string, description: "may be empty" }
+        credits: { type: integer, format: int64, description: "int64 as JSON NUMBER; pack credits + coupon bonus" }
+        quantity: { type: integer, description: "JSON number" }
+        balance: { type: integer, format: int64, description: "JSON NUMBER; spendable after grant" }
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string }
+        currency: { type: string }
+        amount_minor: { type: string, format: int64, description: "string" }
+        bonus_credits: { type: integer, format: int64, description: "JSON NUMBER; 0 without coupon" }
+        pack_id: { type: string, format: uuid, description: "only when the link has a pack" }
+        pack_name: { type: string, description: "only together with pack_id; may be empty" }
+        expires_at: { type: string, format: date-time, description: "only when the lot expires" }
+    CreditsPurchasedEvent:
+      type: object
+      description: "The body of a delivery of type credits.purchased"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [credits.purchased] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/CreditsPurchasedEventData" }
+    CreditsLowEventData:
+      type: object
+      description: "The data of an event of type credits.low"
+      required: [customer_id, customer_external_id, balance, threshold]
+      properties:
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string, description: "may be empty" }
+        balance: { type: integer, format: int64, description: "JSON NUMBER" }
+        threshold: { type: integer, format: int64, description: "JSON NUMBER" }
+    CreditsLowEvent:
+      type: object
+      description: "The body of a delivery of type credits.low"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [credits.low] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/CreditsLowEventData" }
+    PingEventData:
+      type: object
+      description: "The data of an event of type ping"
+      required: [message]
+      properties:
+        message: { type: string, enum: [This is a test event from Payrudder.] }
+    PingEvent:
+      type: object
+      description: "The body of a delivery of type ping"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [ping] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/PingEventData" }
     Error:
       type: object
       required: [error]
@@ -7110,6 +7602,34 @@ components:
         coupon_code: { type: string }
         quantity: { type: integer, description: "Seats: a plain multiplier of the plan's fixed fee, 1 unless set" }
         changed_from_id: { type: string }
+    WebhookSubscription:
+      type: object
+      required: [id, customer_id, plan_version_id, state, interval, currency, plan_code, plan_version, quantity]
+      properties:
+        id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        plan_version_id: { type: string, format: uuid }
+        start_time: { type: string, format: date-time }
+        end_time: { type: string, format: date-time }
+        create_time: { type: string, format: date-time }
+        state: { type: string, enum: [SUBSCRIPTION_STATE_TRIALING, SUBSCRIPTION_STATE_ACTIVE, SUBSCRIPTION_STATE_PAST_DUE, SUBSCRIPTION_STATE_PAUSED, SUBSCRIPTION_STATE_CANCELLED] }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+        currency: { type: string }
+        trial_end_time: { type: string, format: date-time }
+        cancel_at_period_end: { type: boolean }
+        pause_time: { type: string, format: date-time }
+        provider: { type: string }
+        provider_ref: { type: string, description: "The provider's id of the subscription, once it is linked" }
+        owner: { type: string, enum: [quotify, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
+        plan_code: { type: string }
+        plan_version: { type: integer }
+        fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS] }
+        scheduled_change: { $ref: "#/components/schemas/WebhookScheduledChange" }
+        coupon_code: { type: string }
+        quantity: { type: integer, description: "Seats: a plain multiplier of the plan's fixed fee, 1 unless set" }
+        changed_from_id: { type: string }
+      description: "Marshalled without unpopulated fields: a field at its zero value (empty string, 0, false, unset timestamp) is left out."
     CreditNote:
       type: object
       required: [id, number, invoice_id, invoice_number, customer_id, customer_external_id, currency, total_minor, reason, create_time, disposition, refund_state, refund_error]
@@ -7622,24 +8142,67 @@ components:
       properties:
         id: { type: string, format: uuid }
         event_id: { type: string, format: uuid, description: "The id inside the delivered body and the Payrudder-Event-Id header" }
-        event_type: { type: string }
+        event_type: { type: string, description: "A WebhookEventType, or ping for the test event" }
         endpoint_id: { type: string, format: uuid }
         state: { type: string, enum: [WEBHOOK_DELIVERY_STATE_PENDING, WEBHOOK_DELIVERY_STATE_DELIVERED, WEBHOOK_DELIVERY_STATE_FAILED] }
         attempts: { type: integer }
-        next_attempt_time: { type: string, format: date-time, description: "While pending", nullable: true }
-        last_status: { type: integer, description: "HTTP status of the last attempt; absent if none got an answer" }
+        next_attempt_time: { type: string, format: date-time, description: "Set while the delivery is pending", nullable: true }
+        last_status: { type: integer, description: "HTTP status of the last attempt; 0 when no attempt got an answer" }
         last_error: { type: string }
         create_time: { type: string, format: date-time, nullable: true }
-        delivered_time: { type: string, format: date-time, nullable: true }
+        delivered_time: { type: string, format: date-time, nullable: true, description: "Set once the endpoint answered 2xx" }
     WebhookEvent:
-      type: object
-      description: "The body of a delivery. data depends on the type: credits.purchased carries the customer, the credits granted, the new balance and the invoice; credits.low the customer, the balance and the threshold; invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change."
-      properties:
-        id: { type: string, format: uuid }
-        type: { $ref: "#/components/schemas/WebhookEventType" }
-        created: { type: string, format: date-time }
-        tenant_id: { type: string, format: uuid }
-        data: { type: object }
+      description: "The body of a delivery: the common envelope plus data that depends on type. The signature and headers are described in docs/16-webhooks.md. Billing events (invoice, credit_note, payment_link, credits) send int64 values as strings except the credits and balance counts, which are JSON numbers; subscription events embed the subscription without its zero-valued fields."
+      oneOf:
+        - { $ref: "#/components/schemas/InvoiceFinalizedEvent" }
+        - { $ref: "#/components/schemas/InvoicePaidEvent" }
+        - { $ref: "#/components/schemas/InvoiceVoidedEvent" }
+        - { $ref: "#/components/schemas/InvoiceUncollectibleEvent" }
+        - { $ref: "#/components/schemas/CreditNoteCreatedEvent" }
+        - { $ref: "#/components/schemas/CreditNoteRefundedEvent" }
+        - { $ref: "#/components/schemas/CreditNoteRefundFailedEvent" }
+        - { $ref: "#/components/schemas/SubscriptionCreatedEvent" }
+        - { $ref: "#/components/schemas/SubscriptionChangedEvent" }
+        - { $ref: "#/components/schemas/SubscriptionChangeScheduledEvent" }
+        - { $ref: "#/components/schemas/SubscriptionCancelledEvent" }
+        - { $ref: "#/components/schemas/SubscriptionCancellationScheduledEvent" }
+        - { $ref: "#/components/schemas/SubscriptionCancellationWithdrawnEvent" }
+        - { $ref: "#/components/schemas/SubscriptionPausedEvent" }
+        - { $ref: "#/components/schemas/SubscriptionResumedEvent" }
+        - { $ref: "#/components/schemas/SubscriptionMovedToProviderEvent" }
+        - { $ref: "#/components/schemas/SubscriptionTrialWillEndEvent" }
+        - { $ref: "#/components/schemas/PaymentLinkCreatedEvent" }
+        - { $ref: "#/components/schemas/PaymentLinkPaidEvent" }
+        - { $ref: "#/components/schemas/PaymentLinkExpiredEvent" }
+        - { $ref: "#/components/schemas/CreditsPurchasedEvent" }
+        - { $ref: "#/components/schemas/CreditsLowEvent" }
+        - { $ref: "#/components/schemas/PingEvent" }
+      discriminator:
+        propertyName: type
+        mapping:
+          invoice.finalized: "#/components/schemas/InvoiceFinalizedEvent"
+          invoice.paid: "#/components/schemas/InvoicePaidEvent"
+          invoice.voided: "#/components/schemas/InvoiceVoidedEvent"
+          invoice.uncollectible: "#/components/schemas/InvoiceUncollectibleEvent"
+          credit_note.created: "#/components/schemas/CreditNoteCreatedEvent"
+          credit_note.refunded: "#/components/schemas/CreditNoteRefundedEvent"
+          credit_note.refund_failed: "#/components/schemas/CreditNoteRefundFailedEvent"
+          subscription.created: "#/components/schemas/SubscriptionCreatedEvent"
+          subscription.changed: "#/components/schemas/SubscriptionChangedEvent"
+          subscription.change_scheduled: "#/components/schemas/SubscriptionChangeScheduledEvent"
+          subscription.cancelled: "#/components/schemas/SubscriptionCancelledEvent"
+          subscription.cancellation_scheduled: "#/components/schemas/SubscriptionCancellationScheduledEvent"
+          subscription.cancellation_withdrawn: "#/components/schemas/SubscriptionCancellationWithdrawnEvent"
+          subscription.paused: "#/components/schemas/SubscriptionPausedEvent"
+          subscription.resumed: "#/components/schemas/SubscriptionResumedEvent"
+          subscription.moved_to_provider: "#/components/schemas/SubscriptionMovedToProviderEvent"
+          subscription.trial_will_end: "#/components/schemas/SubscriptionTrialWillEndEvent"
+          payment_link.created: "#/components/schemas/PaymentLinkCreatedEvent"
+          payment_link.paid: "#/components/schemas/PaymentLinkPaidEvent"
+          payment_link.expired: "#/components/schemas/PaymentLinkExpiredEvent"
+          credits.purchased: "#/components/schemas/CreditsPurchasedEvent"
+          credits.low: "#/components/schemas/CreditsLowEvent"
+          ping: "#/components/schemas/PingEvent"
     Coupon:
       type: object
       required: [code, name, id, percent_bps, amount_minor, currency, bonus_percent_bps, applies_to, duration, duration_periods, max_redemptions, redeemed, expire_time, active, create_time, promotion_code_count, without_default_code]
@@ -7802,6 +8365,25 @@ components:
         plan_version: { type: integer }
         interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
         quantity: { type: integer, description: The seats after the change }
+    WebhookChangeQuote:
+      type: object
+      properties:
+        timing: { type: string, enum: [CHANGE_TIMING_IMMEDIATELY, CHANGE_TIMING_PERIOD_END] }
+        proration: { type: string, enum: [CHANGE_PRORATION_PRORATE, CHANGE_PRORATION_FULL, CHANGE_PRORATION_NONE] }
+        effective_time: { type: string, format: date-time }
+        period_start: { type: string, format: date-time }
+        period_end: { type: string, format: date-time }
+        credit_minor: { type: string, description: "The unused, prepaid part of the old fee", format: int64 }
+        charge_minor: { type: string, description: What the new plan costs from the change, format: int64 }
+        net_minor: { type: string, description: "charge - credit: positive is invoiced, negative becomes a credit balance", format: int64 }
+        currency: { type: string }
+        next_renewal_time: { type: string, format: date-time }
+        next_renewal_minor: { type: string, format: int64 }
+        plan_code: { type: string }
+        plan_version: { type: integer }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+        quantity: { type: integer, description: The seats after the change }
+      description: "Marshalled without unpopulated fields: a field at its zero value (empty string, 0, false, unset timestamp) is left out."
     ProviderChangeQuote:
       type: object
       required: [timing, credit_minor, charge_minor, net_minor, currency, next_renewal_minor, interval, by_provider]
@@ -7825,6 +8407,15 @@ components:
         interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
         effective_time: { type: string, format: date-time, nullable: true }
         quantity: { type: integer, description: The seats the subscription has from then }
+    WebhookScheduledChange:
+      type: object
+      properties:
+        plan_code: { type: string }
+        plan_version: { type: integer }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+        effective_time: { type: string, format: date-time }
+        quantity: { type: integer, description: The seats the subscription has from then }
+      description: "Marshalled without unpopulated fields: a field at its zero value (empty string, 0, false, unset timestamp) is left out."
     CurrencyFee:
       type: object
       required: [currency, base_fee_minor, interval]
