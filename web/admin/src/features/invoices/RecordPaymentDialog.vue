@@ -5,6 +5,7 @@ import { firstError } from "@/shared/lib/errors";
 import { useFormat } from "@/shared/lib/format";
 import { toast } from "vue-sonner";
 import { label } from "@/shared/lib/labels";
+import { sheetName } from "@/shared/lib/sheets";
 import { minorToMajor, parseMajor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
@@ -92,7 +93,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" :name="sheetName('record-payment', invoiceId)">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ transfer ? t("invoice.payment.confirmTransfer") : t("invoice.payment.record") }}</SheetTitle>

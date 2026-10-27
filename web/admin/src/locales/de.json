@@ -1116,7 +1116,8 @@
         "title": "Guthaben eines Kunden",
         "pick": "Kunden wählen",
         "balance": "Guthaben verfügbar",
-        "nextExpiry": "Ein Teil verfällt am {when}"
+        "nextExpiry": "Ein Teil verfällt am {when}",
+        "empty": "Wählen Sie einen Kunden, um Guthaben, Gewährungen und Verlauf zu sehen."
       },
       "lots": {
         "source": "Quelle",
@@ -1188,6 +1189,13 @@
         "threshold": "Warnen unter (Credits)",
         "save": "Speichern",
         "saved": "Gespeichert."
+      },
+      "tabs": {
+        "lots": "Gewährungen"
+      },
+      "sell": {
+        "title": "Guthaben verkaufen",
+        "hint": "Guthabenpakete, die Kunden über einen Zahlungslink kaufen, und die Warnung bei niedrigem Guthaben."
       }
     },
     "accounting": {

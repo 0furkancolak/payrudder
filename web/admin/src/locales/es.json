@@ -1116,7 +1116,8 @@
         "title": "Créditos de un cliente",
         "pick": "Elegir un cliente",
         "balance": "créditos disponibles",
-        "nextExpiry": "Una parte caduca el {when}"
+        "nextExpiry": "Una parte caduca el {when}",
+        "empty": "Elija un cliente para ver su saldo, sus créditos y su historial."
       },
       "lots": {
         "source": "Origen",
@@ -1188,6 +1189,13 @@
         "threshold": "Avisar por debajo de (créditos)",
         "save": "Guardar",
         "saved": "Guardado."
+      },
+      "tabs": {
+        "lots": "Concesiones"
+      },
+      "sell": {
+        "title": "Vender créditos",
+        "hint": "Los paquetes de créditos que sus clientes compran con un enlace de pago y la alerta de saldo bajo."
       }
     },
     "accounting": {

@@ -85,7 +85,23 @@ const kinds = computed(() => [{ value: "", label: t("billing.paymentLinks.anyKin
 const statuses = computed(() => [{ value: "", label: t("billing.paymentLinks.anyStatus") }, ...["active", "paid", "expired", "revoked"].map((s) => ({ value: s, label: t(`billing.paymentLinks.statuses.${s}`) }))]);
 
 // The link whose detail is open, as its place among the links on screen; the arrows go on to the next and previous page of links.
-const nav = useEdgeDetail(shown, { hasPrev: () => history.value.length > 0, hasNext: () => !!links.data.value?.next_page_token, prev: back, next });
+const nav = useEdgeDetail(
+  shown,
+  { hasPrev: () => history.value.length > 0, hasNext: () => !!links.data.value?.next_page_token, prev: back, next },
+  {
+    kind: "payment-link",
+    id: (l) => l.id ?? "",
+    ready: () => links.isSuccess.value,
+    rewind: filter,
+    // The search box and the date range hide links of the page that is on screen: the address wins.
+    missing: (id) => {
+      if (!list.value.some((l) => l.id === id) || (query.value === "" && range.value.from === "" && range.value.to === "")) return false;
+      query.value = "";
+      range.value = { from: "", to: "" };
+      return true;
+    },
+  },
+);
 const detail = nav.index;
 const current = nav.row;
 // A link from an invoice or a customer opens the payment link it names, when it is on the page of links loaded.

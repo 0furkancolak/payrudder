@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { dashboardFixture } from "./dashboard";
-import { APP, HOME, LIVE, SESSION, billingGateway, liveGateway, openAllApps, productGateway, signInAsAda, user } from "./product";
+import { APP, HOME, INVOICE_2, INVOICE_3, LIVE, SESSION, billingGateway, liveGateway, openAllApps, productGateway, signInAsAda, user } from "./product";
 import { pickCurrency, pickTheme } from "./ui";
 
 // The end-user product: sign up and in, the organisation home, an app's dashboard, API keys. The gateway is mocked; SHOTS=<dir> also writes screenshots
@@ -666,6 +666,28 @@ test.describe("billing pages of the app", () => {
       expect(c.headers["x-payrudder-tenant"], c.path).toBe(LIVE);
     }
     expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
+  });
+
+  test("invoices: the sheet of a row is in the address and comes back on reload; one that is not in the list opens on its own", async ({ page }) => {
+    await open(page);
+    const sheetParam = () => new URL(page.url()).searchParams.get("sheet");
+    await page.goto(`/app/t/${LIVE}/invoices`);
+    await page.getByTestId("invoice-INV-2026-000002").click();
+    await expect.poll(sheetParam).toBe(`invoice:${INVOICE_2}`);
+    await page.reload();
+    await expect(page.getByTestId("detail-sheet")).toContainText("INV-2026-000002");
+    await page.getByTestId("detail-next").click();
+    await expect(page.getByTestId("detail-sheet")).toContainText("INV-2026-000001");
+    await expect.poll(sheetParam).toBe(`invoice:${INVOICE_3}`);
+    await page.keyboard.press("Escape");
+    await expect.poll(sheetParam).toBeNull();
+
+    // The invoice on the second page is looked for in the pages loaded; it is not there, so it opens over the list by itself and the address says so.
+    await page.goto(`/app/t/${LIVE}/invoices?sheet=invoice:${INVOICE_3}`);
+    await expect(page.getByTestId("detail-sheet")).toBeVisible();
+    await expect.poll(sheetParam).toBe(`peek:invoice:${LIVE}:${INVOICE_3}`);
+    await page.reload();
+    await expect(page.getByTestId("detail-sheet")).toBeVisible();
   });
 
   test("payments: charges and refunds as words and per-currency amounts, with a way to the invoice", async ({ page }) => {

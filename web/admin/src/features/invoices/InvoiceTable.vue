@@ -19,7 +19,7 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useTenantInvoices } from "./api";
 import InvoiceDetail from "./InvoiceDetail.vue";
-import InvoiceSheetById from "./InvoiceSheetById.vue";
+import { peek } from "@/features/related/peek";
 
 /** The invoices of a tenant. A row opens the invoice in a sheet that steps through every row the filters leave, across pages. A link from another page opens an invoice with `?invoice=<id>`. */
 const props = defineProps<{ tenantId: string }>();
@@ -47,13 +47,12 @@ const statusOptions = computed(() => [{ value: "", label: t("tenant.allStatuses"
 const kindOptions = computed(() => [{ value: "", label: t("tenant.allKinds") }, ...KINDS.map((k) => ({ value: k, label: label(t, te, "invoiceKind", k) }))]);
 
 const current = table.row;
-// A link names an invoice: found among the rows (a filter that hides it is cleared first), or else opened on its own, since the API sent only the newest ones.
-const alone = ref("");
+// A link names an invoice: found among the rows (a filter that hides it is cleared first), or else opened on its own (see PeekHost), since the API sent only the newest ones.
 useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
   const is = (inv: (typeof list.value)[number]) => inv.id === id;
   if (table.openWhere(is)) return;
   clear();
-  if (!table.openWhere(is)) alone.value = id;
+  if (!table.openWhere(is)) peek("invoice", props.tenantId, id);
 });
 </script>
 
@@ -101,5 +100,4 @@ useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.number || t('tenant.draft')" :description="current ? [label(t, te, 'invoiceKind', current.kind), current.customer_external_id].filter(Boolean).join(' · ') : undefined" wide>
     <InvoiceDetail v-if="current" :key="current.id" :tenant-id="tenantId" :invoice-id="current.id ?? ''" />
   </DetailSheet>
-  <InvoiceSheetById v-if="alone" :tenant-id="tenantId" :invoice-id="alone" @close="alone = ''" />
 </template>

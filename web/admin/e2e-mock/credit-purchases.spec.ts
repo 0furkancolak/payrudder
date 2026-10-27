@@ -113,6 +113,7 @@ test.describe("credit purchases", () => {
     await gw.install(page);
     await openTenantPage(page, "/credits");
     await pickPlace(page.getByLabel("Choose a customer"), "cus_1");
+    await page.getByTestId("credits-tab-ledger").click();
     await expect(page.getByRole("row", { name: /Added/ })).toContainText("credit pack purchase: Starter");
     await expect(page.getByRole("row", { name: /Added/ })).toContainText("Purchase");
 
