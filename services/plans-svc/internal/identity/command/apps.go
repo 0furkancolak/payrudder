@@ -17,7 +17,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
-// What app_audit records (migration 00058).
+// What app_audit records.
 const (
 	auditRenamed  = "renamed"
 	auditArchived = "archived"
@@ -62,7 +62,7 @@ func (c *Commands) RenameApp(ctx context.Context, req *plansv1.RenameMyAppReques
 	return out, nil
 }
 
-// DeleteApp removes an app from its account. Only an owner may. Nothing is erased: the app is archived (migration 00058). It leaves the account's lists and
+// DeleteApp removes an app from its account. Only an owner may. Nothing is erased: the app is archived. It leaves the account's lists and
 // every route of a signed-in person, its API keys are revoked in the same transaction and evicted from the gateway cache after it, and no key can be made
 // for it again, so nothing is ingested for it. Its tenants, customers, subscriptions, invoices, payments and usage stay, and the billing services keep
 // working on what already exists: a customer who owes is still invoiced and charged, and an issued invoice can still be paid.

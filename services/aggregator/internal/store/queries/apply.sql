@@ -70,7 +70,7 @@ SET quantity = CASE WHEN @is_max::boolean THEN GREATEST(late_usage.quantity, EXC
     event_count = late_usage.event_count + EXCLUDED.event_count, updated_at = EXCLUDED.updated_at;
 
 -- name: UpsertUsageWindowAggregates :exec
--- The hour totals of the window quotas (migration 00004); @mode is the merge of UpsertUsageAggregates.
+-- The hour totals of the window quotas; @mode is the merge of UpsertUsageAggregates.
 INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at, last_at, last_event_id)
 SELECT t.v, c.v, m.v, g.v, h.v, q.v::numeric, s.v, e.v, clock_timestamp(), NULLIF(la.v, '')::timestamptz, NULLIF(li.v, '')
 FROM unnest(@tenants::uuid[]) WITH ORDINALITY AS t(v, n)

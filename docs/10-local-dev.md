@@ -169,6 +169,12 @@ make up-infra && make migrate && make topics
 go run ./services/ingest-svc/cmd/ingest-svc     # with .env loaded via direnv
 ```
 
+## Migrations
+
+Every service with a database keeps its goose migrations in `services/<svc>/migrations/` (analytics-svc's ClickHouse ones in the same place, run by `internal/chmigrate`), and `sqlc` reads the same directory. A service applies them when it starts (`PAYRUDDER_MIGRATE_ON_START`).
+
+The baseline `00001_init.sql` of each service was written once, before the first release, from the then-current schema; from now on every change is a new numbered migration (`00002_...` onward) with its own `-- +goose Down`. Nothing is edited in the baseline, and there is no tool that squashes a history. The cells' `migrations/tenant` sets are baselines of their own ([ADR 0018](adr/0018-tenant-isolation-modes.md)). Each service's integration tests include `TestBaselineMigrationsDownUp`: it runs every Down and checks that Up builds the same schema again.
+
 ## The console and Cloudflare
 
 Locally the console is always Vite: `make dev` / `npm run dev` (port 42301 in `web/admin`) proxies `/gw` to the gateway. The compose `admin-ui` service (profile `app`) serves the built app with `vite preview` and the same proxy, for the e2e job; there is no nginx anywhere. To try the production shape (the Worker and static assets) on your machine: `cd web/admin && npm run cf:dev` builds the console and starts `wrangler dev`, which sends `/gw/*` to `API_ORIGIN` (default `http://localhost:42800`, set in `wrangler.jsonc` or in `.dev.vars`). Deploying: [runbook](runbooks/console-first-deploy.md), [ADR 0021](adr/0021-console-on-cloudflare-workers.md).

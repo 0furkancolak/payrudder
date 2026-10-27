@@ -46,4 +46,4 @@ customer), and "latest" needs an order across partitions and late arrivals and a
   invoice moves the unit back to the period but does not amend the invoice (events processed out of ingest order across the cutoff).
 - limits-svc memory per UNIQUE counter is at most the cap times about 40 bytes, for each window the entitlement counts over plus the month.
 - A UNIQUE counter in Redis over-counts by a forgotten value after a Redis loss until the next reconciliation, and lags by the values it could not remember when its set is full.
-- Migrations: aggregator `00005_unique_and_last`, plans-svc `00062_meter_aggregations_unique_last`.
+- Schema: aggregator `usage_distinct_values`, `usage_distinct_hours` and `last_at` / `last_event_id` on the aggregate rows; plans-svc `meters.aggregation` accepts `UNIQUE` and `LAST`.

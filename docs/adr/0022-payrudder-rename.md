@@ -14,7 +14,7 @@ The product is named Payrudder. The brand files and rules live in `payrudder-bra
 4. **Kept on purpose**, because they are stored data or values that other systems already hold:
    - applied migrations are not edited (a rename of a table or column is a data change, not a rename);
    - the column and JSON field `quotify_subscription_id` (sqlc maps it to `PayrudderSubscriptionID` in Go) and the provider custom-data keys `quotify_subscription_id`, `quotify_plan_code`, `quotify_customer_id`, `quotify_migration_id`, which Paddle returns for objects created before the rename;
-   - ~~the subscription `owner` value `quotify`~~ (renamed afterwards, while nothing was released: `owner` is `payrudder` or `provider` in the database check and default (plans-svc migration `00062`), the API enum, the proto comments and the console);
+   - ~~the subscription `owner` value `quotify`~~ (renamed afterwards, while nothing was released: `owner` is `payrudder` or `provider` in the database check and default (plans-svc), the API enum, the proto comments and the console);
    - API key and session token prefixes `qk_` / `qs_`: they are not a name.
 5. **Console.** `BRAND_NAME` still overrides the displayed name; the default is `Payrudder`. A grep test (`tests/brand_test.go`) fails on the old name in the console's locale files, e-mail texts and hosted-page templates.
 

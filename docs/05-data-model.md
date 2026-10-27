@@ -60,11 +60,11 @@ CREATE TABLE apps (                                   -- phase 25: an account's 
   name text NOT NULL CHECK (length(name) BETWEEN 1 AND 200),       -- renamable (owner, admin); the tenants carry the same name
   slug text NOT NULL CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND length(slug) <= 60),
   created_at timestamptz NOT NULL DEFAULT now(),
-  archived_at timestamptz, archived_by uuid REFERENCES users(id),  -- migration 00058: "deleted" = archived, nothing is ever erased (03-services/plans-svc.md, "Renaming and deleting an app")
+  archived_at timestamptz, archived_by uuid REFERENCES users(id),  -- "deleted" = archived, nothing is ever erased (03-services/plans-svc.md, "Renaming and deleting an app")
   UNIQUE (account_id, slug)                           -- an archived app's slug is rewritten to <slug>-archived-<12 hex of its id>, which frees the old one
 );   -- not RLS'd: plans_system only, SELECT, INSERT and UPDATE (name, slug, archived_at, archived_by)
 
-CREATE TABLE app_audit (                              -- migration 00058: what a person did to an app; append-only, nothing updated or deleted
+CREATE TABLE app_audit (                              -- what a person did to an app; append-only, nothing updated or deleted
   id uuid PRIMARY KEY, app_id uuid NOT NULL REFERENCES apps(id), user_id uuid NOT NULL REFERENCES users(id),
   action text NOT NULL CHECK (action IN ('renamed','archived')),
   detail jsonb NOT NULL DEFAULT '{}',                    -- renamed: from and to; archived: how many keys were revoked
@@ -83,7 +83,7 @@ CREATE TABLE tenants (                                -- the isolation unit ever
   status        text NOT NULL CHECK (status IN ('inactive','active','suspended')),  -- phase 45: a live tenant starts inactive (no keys, no webhooks, not billed)
   activated_at  timestamptz,                          -- when the go-live checklist was completed (or an operator activated it)
   terms_accepted_at timestamptz, terms_accepted_by uuid REFERENCES users(id),
-  -- phase 28 (migration 00064), the tenant directory of ADR 0018: where the tenant's data lives. cell '' is the pooled database (RLS, the default and the only value
+  -- phase 28, the tenant directory of ADR 0018: where the tenant's data lives. cell '' is the pooled database (RLS, the default and the only value
   -- until an operator places a tenant); any other value names a cell (a schema t_<id> in that cluster). region is informational. placement_status is the fence of a
   -- move: only 'ready' serves traffic. Read through DirectoryService, cached in process by pkg/tenantdir.
   cell text NOT NULL DEFAULT '' CHECK (cell = '' OR cell ~ '^[a-z0-9][a-z0-9-]{0,30}$'),
@@ -130,7 +130,7 @@ CREATE TABLE tenant_mail_integrations (tenant_id uuid PRIMARY KEY, provider text
 -- and an extended trial does. Customer-side history: a sandbox reset deletes it.
 CREATE TABLE subscription_trial_notices (tenant_id uuid NOT NULL, customer_id uuid NOT NULL, trial_ends_at timestamptz NOT NULL, subscription_id uuid NOT NULL, notified_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, customer_id, trial_ends_at), FOREIGN KEY (tenant_id, customer_id) REFERENCES customers (tenant_id, id));
--- what the console remembers for a person, not an account (migration 00059): the first-run wizard's progress (a JSON object: status, step, what was chosen and made) and the
+-- what the console remembers for a person, not an account: the first-run wizard's progress (a JSON object: status, step, what was chosen and made) and the
 -- page tours already seen. A person-level record like users and user_sessions: no tenant_id, no RLS, no plans_app grant, the system role only. Writes are merges (see plans-svc).
 CREATE TABLE user_onboarding (user_id uuid PRIMARY KEY REFERENCES users (id), wizard jsonb CHECK (jsonb_typeof(wizard) = 'object'), seen_tours text[] NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now());
 
@@ -150,7 +150,7 @@ CREATE TABLE meters (
   tenant_id       uuid NOT NULL,
   code            text NOT NULL,                     -- e.g. 'ai_tokens'
   version         int  NOT NULL,
-  aggregation     text NOT NULL CHECK (aggregation IN ('SUM','COUNT','MAX','UNIQUE','LAST')),  -- UNIQUE, LAST: migration 00062; a code cannot change into or out of them
+  aggregation     text NOT NULL CHECK (aggregation IN ('SUM','COUNT','MAX','UNIQUE','LAST')),  -- UNIQUE, LAST: a code cannot change into or out of them
   value_property  text,                              -- NULL for COUNT; for UNIQUE the property whose distinct values are counted (quantity_scale must be 0)
   quantity_scale  smallint NOT NULL CHECK (quantity_scale BETWEEN 0 AND 6),  -- decimal places; same for all versions of a code
   unit_label      text NOT NULL,                     -- 'GB-h', 'tokens'; shown on invoices
@@ -193,18 +193,18 @@ CREATE TABLE plan_entitlements (
   limit_units          bigint NOT NULL CHECK (limit_units >= 0),      -- scaled units of the meter; 0 = unlimited
   -- plan_prices.config stores quantities as scaled units too: {"tiers":[{"up_to_units":10500,"unit_price":"0","flat_fee_minor":0},…]}
   alert_thresholds_pct int[]  NOT NULL DEFAULT '{80,100}',
-  quota_window         text NOT NULL DEFAULT 'month' CHECK (quota_window IN ('hour','day','week','month','year','lifetime')),   -- 00052, widened by 00061
-  mode                 text NOT NULL DEFAULT 'hard'  CHECK (mode IN ('hard','soft','notify')),             -- 00052
+  quota_window         text NOT NULL DEFAULT 'month' CHECK (quota_window IN ('hour','day','week','month','year','lifetime')),   -- the quota's window: the billing month, or an hour, a day, an ISO week, a calendar year, the customer's lifetime
+  mode                 text NOT NULL DEFAULT 'hard'  CHECK (mode IN ('hard','soft','notify')),             -- how the quota is enforced
   PRIMARY KEY (tenant_id, plan_version_id, meter_code)
 );
 
--- 00052: a customer's own limit on a meter, in place of its plan version's. Same columns as plan_entitlements; RLS like every tenant table.
+-- Quotas: a customer's own limit on a meter, in place of its plan version's. Same columns as plan_entitlements; RLS like every tenant table.
 CREATE TABLE customer_entitlement_overrides (
   tenant_id uuid, customer_id uuid, meter_code text, limit_units bigint, alert_thresholds_pct int[], quota_window text, mode text,
   created_at timestamptz, updated_at timestamptz,
   PRIMARY KEY (tenant_id, customer_id, meter_code), FOREIGN KEY (tenant_id, customer_id) REFERENCES customers (tenant_id, id)
 );
--- 00052: meters.category text NOT NULL DEFAULT '' (at most 64 characters, the tenant's own words). plan_prices.config may carry
+-- meters.category text NOT NULL DEFAULT '' (at most 64 characters, the tenant's own words). plan_prices.config may carry
 -- "included_units" (scaled units free in every billing period) for any model.
 
 CREATE EXTENSION IF NOT EXISTS btree_gist;
@@ -217,11 +217,11 @@ CREATE TABLE subscriptions (
   created_at       timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, id),
   EXCLUDE USING gist (tenant_id WITH =, customer_id WITH =, active WITH &&)  -- one active sub per customer
-  -- Phase 13 (migration 00004):
+  -- Phase 13:
   -- state text ('trialing','active','past_due','paused','cancelled'), interval text ('month'; 'year' is refused for now),
   -- currency char(3) NOT NULL (fixed for the subscription), trial_ends_at, cancel_at_period_end, paused_at,
   -- billing_anchor timestamptz NOT NULL (start of the calendar month it began in), changed_from_id (the subscription a plan change replaced)
-  -- migration 00060: quantity integer NOT NULL DEFAULT 1 CHECK (quantity BETWEEN 1 AND 100000) -- seats, a plain multiplier of the fixed fee;
+  -- quantity integer NOT NULL DEFAULT 1 CHECK (quantity BETWEEN 1 AND 100000) -- seats, a plain multiplier of the fixed fee;
   --   subscription_changes gets the same column, NULL = keep the subscription's own
 );
 
@@ -313,12 +313,12 @@ CREATE TABLE usage_aggregates (
   quantity_scale smallint NOT NULL,                  -- the meter's scale (immutable), to render the decimal; 0 for UNIQUE
   event_count  bigint NOT NULL,
   updated_at   timestamptz NOT NULL,
-  last_at        timestamptz,                        -- LAST only (migration 00005): the event the quantity is of, ordered by (last_at, last_event_id bytewise)
+  last_at        timestamptz,                        -- LAST only: the event the quantity is of, ordered by (last_at, last_event_id bytewise)
   last_event_id  text,
   PRIMARY KEY (tenant_id, period_id, customer_id, meter_code, generation)
 );
 
--- UNIQUE meters (migration 00005): the distinct values, because a distinct count is not additive. One row per SHA-256 of a value; billed_period_id is the state:
+-- UNIQUE meters: the distinct values, because a distinct count is not additive. One row per SHA-256 of a value; billed_period_id is the state:
 -- '' = an on-time event carried it, else the earliest billing period of a late event that carried it (min of the states, commutative). usage_aggregates.quantity and
 -- late_usage.quantity are the number of values in each state, kept by the batch transaction.
 CREATE TABLE usage_distinct_values (
@@ -333,7 +333,7 @@ CREATE TABLE usage_distinct_hours (
   PRIMARY KEY (tenant_id, customer_id, meter_code, generation, hour_id, value_hash)
 );
 
--- Hour totals (migration 00004): what limits-svc reconciles its hour, day and ISO-week quota counters against. Written in the batch
+-- Hour totals: what limits-svc reconciles its hour, day and ISO-week quota counters against. Written in the batch
 -- transaction of the month row, for on-time events only, never read by billing; a rolling window, see aggregator.md "Window totals".
 CREATE TABLE usage_window_aggregates (
   tenant_id    uuid NOT NULL,
@@ -512,7 +512,7 @@ CREATE TABLE credit_balances (
   amount_minor bigint NOT NULL CHECK (amount_minor > 0), source_rerating_job_id uuid NOT NULL,
   applied_invoice_id uuid,                              -- NULL = unapplied
   PRIMARY KEY (tenant_id, id)
-  -- later: currency; exactly one source of source_rerating_job_id, source_adjustment_id, source_credit_note_id and (migration 00055)
+  -- later: currency; exactly one source of source_rerating_job_id, source_adjustment_id, source_credit_note_id and
   -- source_invoice_id, the invoice voided with money recorded by hand against it (unique per invoice)
 );
 
