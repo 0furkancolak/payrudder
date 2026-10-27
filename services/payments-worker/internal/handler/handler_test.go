@@ -37,7 +37,7 @@ func TestDemoModeNeverLeavesTheSandboxProvider(t *testing.T) {
 		// AllowMockLive is what a local stack sets so that live may be the mock at all; the demo needs nothing.
 		h := &Handler{Sandbox: sandbox, Live: live, Demo: demo, AllowMockLive: true}
 		// A live tenant that names a provider of its own.
-		got, err := h.providerFor(context.Background(), uuid.New(), env.Live, uuid.New(), true, "iyzico")
+		got, err := h.providerFor(context.Background(), uuid.New(), env.Live, uuid.New(), true, "iyzico", "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -56,19 +56,19 @@ func TestRoutingNeverCrossesTheEnvironments(t *testing.T) {
 	// Sandbox, with a real provider configured for live: mock-psp, whatever the command names.
 	h := &Handler{Sandbox: mock, Live: real}
 	for _, named := range []string{"", "real", "iyzico"} {
-		got, err := h.providerFor(ctx, uuid.New(), env.Sandbox, uuid.New(), true, named)
+		got, err := h.providerFor(ctx, uuid.New(), env.Sandbox, uuid.New(), true, named, "")
 		if err != nil || got != payments.PaymentProvider(mock) {
 			t.Errorf("sandbox command naming %q: provider %v, %v; want mock-psp", named, got, err)
 		}
 	}
 	// Live, real provider: the real one.
-	if got, err := h.providerFor(ctx, uuid.New(), env.Live, uuid.New(), true, ""); err != nil || got != payments.PaymentProvider(real) {
+	if got, err := h.providerFor(ctx, uuid.New(), env.Live, uuid.New(), true, "", ""); err != nil || got != payments.PaymentProvider(real) {
 		t.Errorf("live command: provider %v, %v; want the real provider", got, err)
 	}
 
 	// Live, the mock as the live provider and no allowance: refused, never executed.
 	h = &Handler{Sandbox: mock, Live: mock}
-	if got, err := h.providerFor(ctx, uuid.New(), env.Live, uuid.New(), true, ""); !errors.Is(err, ErrWrongProvider) || got != nil {
+	if got, err := h.providerFor(ctx, uuid.New(), env.Live, uuid.New(), true, "", ""); !errors.Is(err, ErrWrongProvider) || got != nil {
 		t.Errorf("live command routed to the mock: %v, %v; want ErrWrongProvider", got, err)
 	}
 	// The same command through Handle is answered, not retried and not executed.
@@ -79,7 +79,7 @@ func TestRoutingNeverCrossesTheEnvironments(t *testing.T) {
 	}
 	// ...but with the allowance (a local stack) it goes to the mock, and the demo serves everyone from it.
 	h = &Handler{Sandbox: mock, Live: mock, AllowMockLive: true}
-	if got, err := h.providerFor(ctx, uuid.New(), env.Live, uuid.New(), true, ""); err != nil || got != payments.PaymentProvider(mock) {
+	if got, err := h.providerFor(ctx, uuid.New(), env.Live, uuid.New(), true, "", ""); err != nil || got != payments.PaymentProvider(mock) {
 		t.Errorf("allowed: %v, %v", got, err)
 	}
 }
