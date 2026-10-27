@@ -60,6 +60,8 @@ var defaultMeters = fakeMeters{
 	"peak":   {Code: "peak", Aggregation: usage.Max},
 	"gb":     {Code: "gb", Aggregation: usage.Sum, Scale: 3},
 	"eu_api": {Code: "eu_api", Aggregation: usage.Sum, Filter: map[string][]string{"region": {"eu"}}},
+	"users":  {Code: "users", Aggregation: usage.Unique, ValueProperty: "user"},
+	"seats":  {Code: "seats", Aggregation: usage.Last},
 }
 
 func fixedTenants() tenantinfo.Source {
@@ -305,6 +307,8 @@ type fakeAggregator struct {
 	totals  map[string]int64 // counter key -> scaled units
 	scale   map[string]int
 	offsets map[int32]int64
+	// orders names the event a LAST total is the value of, by counter key.
+	orders map[string]usage.Order
 }
 
 func (f *fakeAggregator) GetUsageBatch(_ context.Context, req *aggregatorv1.GetUsageBatchRequest, _ ...grpc.CallOption) (*aggregatorv1.GetUsageBatchResponse, error) {
@@ -318,10 +322,14 @@ func (f *fakeAggregator) GetUsageBatch(_ context.Context, req *aggregatorv1.GetU
 		key := f.keyFor(k)
 		units := f.totals[key]
 		sc := f.scale[key]
-		resp.Usage = append(resp.Usage, &aggregatorv1.UsageAggregate{
+		u := &aggregatorv1.UsageAggregate{
 			CustomerId: k.GetCustomerId(), MeterCode: k.GetMeterCode(), PeriodId: k.GetPeriodId(),
 			Quantity: quantity.FormatUnits(units, sc), QuantityScale: uint32(sc), //nolint:gosec // 0..6
-		})
+		}
+		if o, ok := f.orders[key]; ok {
+			u.LastEventTime, u.LastEventId = timestamppb.New(time.UnixMicro(o.Micros)), o.ID
+		}
+		resp.Usage = append(resp.Usage, u)
 	}
 	return resp, nil
 }

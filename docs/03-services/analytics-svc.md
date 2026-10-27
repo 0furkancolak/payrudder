@@ -7,6 +7,8 @@ dashboards (tenant-facing usage charts, operator ingest stats).
 
 **Analytics numbers aren't billing numbers.** They're near-real-time and *eventually* deduplicated.
 Invoices always come from aggregator + billing-svc. The UI labels analytics totals "estimated".
+Analytics totals the raw quantities of events and does not know a meter's aggregation. That is also why it cannot give a `UNIQUE` meter's distinct values or a `LAST` meter's latest value
+(see [aggregator.md](aggregator.md#as-built-unique-and-last)): the console shows a dash for those totals instead of a sum of event quantities.
 
 ## Why a Go consumer instead of the ClickHouse Kafka engine
 

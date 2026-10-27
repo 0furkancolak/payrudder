@@ -1409,12 +1409,16 @@
       "aggregation": {
         "sum": "Suma",
         "count": "Número de eventos",
-        "max": "Valor más alto"
+        "max": "Valor más alto",
+        "unique": "Valores distintos",
+        "last": "Último valor"
       },
       "aggregationHint": {
         "sum": "Suma el valor de la propiedad del evento.",
         "count": "Cuenta los eventos; no hace falta ninguna propiedad.",
-        "max": "Toma el valor más alto de la propiedad del evento en el periodo."
+        "max": "Toma el valor más alto de la propiedad del evento en el periodo.",
+        "unique": "Cuenta los valores diferentes de una propiedad del evento en el periodo, por ejemplo los usuarios activos. Un evento sin la propiedad se rechaza.",
+        "last": "Toma la cantidad del evento más reciente del periodo, por ejemplo los puestos a fin de mes. Un evento que llega con el periodo ya cerrado no la cambia."
       },
       "state": {
         "over": "Límite superado",
@@ -1486,9 +1490,16 @@
           "unit": "Da a la unidad un nombre de 32 caracteres como máximo.",
           "property": "Indica la propiedad del evento que contiene la cantidad.",
           "scale": "Los decimales son un número entero de 0 a 6.",
-          "filter": "Cada filtro necesita una propiedad y al menos un valor (sin propiedades repetidas, como máximo 10)."
+          "filter": "Cada filtro necesita una propiedad y al menos un valor (sin propiedades repetidas, como máximo 10).",
+          "propertyUnique": "Indique la propiedad del evento cuyos valores distintos se cuentan.",
+          "uniqueScale": "Un recuento de valores distintos no tiene decimales: use 0."
         },
-        "filterShort": "Filtro"
+        "filterShort": "Filtro",
+        "propertyUnique": "Propiedad a contar",
+        "propertyHintUnique": "La propiedad del evento cuyos valores distintos se cuentan, por ejemplo user_id. Un valor visto dos veces, o en dos meses, cuenta una vez.",
+        "scaleUnique": "Siempre 0: un recuento de valores distintos es un número entero.",
+        "aggregationLocked": "Fijo para este código: un medidor de valores distintos o de último valor mantiene esa agregación en cada versión. Use un código nuevo para cambiarla.",
+        "aggregationOpen": "Una versión nueva puede cambiar entre suma, recuento y máximo, pero no a valores distintos ni a último valor. Use un código nuevo para eso."
       },
       "customers": {
         "search": "Buscar clientes",
@@ -1598,12 +1609,16 @@
       "aggregations": {
         "sum": "Suma",
         "count": "Recuento",
-        "max": "Máximo"
+        "max": "Máximo",
+        "unique": "Distintos",
+        "last": "Último valor"
       },
       "aggregationHelp": {
         "sum": "Suma la cantidad de cada evento del periodo.",
         "count": "Cuenta los eventos; su cantidad se ignora.",
-        "max": "Guarda la cantidad más alta informada en el periodo (puestos, almacenamiento)."
+        "max": "Guarda la cantidad más alta informada en el periodo (puestos, almacenamiento).",
+        "unique": "Cuenta cuántos valores diferentes de una propiedad del evento aparecieron (usuarios activos). Una repetición cuenta una vez.",
+        "last": "Conserva la cantidad del evento más reciente del periodo (puestos a fin de mes)."
       },
       "valueProperty": "Propiedad de cantidad",
       "valuePropertyPlaceholder": "Propiedad del evento con la cantidad (tokens)",
@@ -1622,7 +1637,11 @@
       "noFilter": "todos los eventos",
       "create": "Crear medidor",
       "saveVersion": "Publicar versión",
-      "empty": "Aún no hay medidores. Hace falta uno para que un paquete pueda cobrar o limitar el uso."
+      "empty": "Aún no hay medidores. Hace falta uno para que un paquete pueda cobrar o limitar el uso.",
+      "valuePropertyUnique": "Propiedad a contar",
+      "valuePropertyUniquePlaceholder": "Propiedad del evento cuyos valores distintos se cuentan (user_id)",
+      "aggregationLocked": "Fijo para este código: un medidor de valores distintos o de último valor mantiene esa agregación en cada versión. Use un código nuevo para cambiarla.",
+      "aggregationOpen": "Una versión nueva puede cambiar entre suma, recuento y máximo, pero no a valores distintos ni a último valor. Use un código nuevo para eso."
     },
     "quotas": {
       "action": "Cuotas",

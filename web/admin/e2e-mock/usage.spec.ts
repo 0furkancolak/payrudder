@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { usageReads } from "./usage";
+import { METERS, usageReads } from "./usage";
 import { pickFilter, pickRange, rowAction } from "./ui";
 
 // 21 October 2026, local: the page opens on this month so far, 1 to 21 October; the tests pick the last 30 days (22 September to 21 October). Its billing period is 2026-10.
@@ -14,6 +14,13 @@ async function open(page: Page, gw: MockGateway) {
   await pickRange(page, "30d");
 }
 const gateway = () => baseTenant(new MockGateway()).on(usageReads);
+
+// A tenant that also has a meter counting distinct values and one taking the latest value.
+const ROW_SHAPED = [
+  { code: "active_users", aggregation: "AGGREGATION_UNIQUE", value_property: "user_id", quantity_scale: 0, unit_label: "users", version: 1, create_time: "2026-09-12T09:00:00Z" },
+  { code: "seats_now", aggregation: "AGGREGATION_LAST", value_property: "seats", quantity_scale: 0, unit_label: "seats", version: 1, create_time: "2026-09-13T09:00:00Z" },
+];
+const withRowShaped = (c: { method: string; path: string }) => (c.method === "GET" && c.path === "/v1/meters" ? { body: { meters: [...METERS, ...ROW_SHAPED] } } : undefined);
 
 test.describe("usage overview", () => {
   test("a card per meter with its total and how it moved, the chart, the top customers and who is near or over a limit", async ({ page }) => {
@@ -156,6 +163,76 @@ test.describe("meters", () => {
     await form.getByRole("button", { name: "Save new version" }).click();
     await expect.poll(() => made.length).toBe(1);
     expect(made[0]).toEqual({ code: "storage_gb", aggregation: "AGGREGATION_MAX", unit_label: "GB-h", quantity_scale: 3, value_property: "size", filter: { tier: { values: ["hot", "warm"] } } });
+  });
+
+  test("a meter that counts distinct values or takes the latest value is made in the same sheet", async ({ page }) => {
+    const made: Record<string, unknown>[] = [];
+    const gw = gateway().on(meterRoutes(made));
+    await open(page, gw);
+    await page.getByTestId("usage-tab-meters").click();
+    await page.getByTestId("meters-new").click();
+    const form = page.getByRole("dialog");
+    await form.getByLabel("Code", { exact: true }).fill("active_users");
+    await form.getByLabel("Unit").fill("users");
+    await form.getByLabel("Decimal places").fill("3");
+    await form.getByLabel("Aggregation").selectOption("AGGREGATION_UNIQUE");
+    // A count of distinct values has no decimal places, whatever was typed before, and the property is the one to count.
+    await expect(form.getByLabel("Decimal places")).toBeDisabled();
+    await expect(form.getByLabel("Decimal places")).toHaveValue("0");
+    await expect(form.getByText("Counts the different values of an event property")).toBeVisible();
+    await form.getByRole("button", { name: "Create meter" }).click();
+    await expect(form.getByRole("alert")).toContainText("Name the event property whose distinct values are counted");
+    expect(made).toHaveLength(0);
+    await form.getByLabel("Property to count").fill("user_id");
+    await form.getByRole("button", { name: "Create meter" }).click();
+    await expect.poll(() => made.length).toBe(1);
+    expect(made[0]).toEqual({ code: "active_users", aggregation: "AGGREGATION_UNIQUE", unit_label: "users", quantity_scale: 0, value_property: "user_id" });
+    await expect(form).toBeHidden();
+
+    await page.getByTestId("meters-new").click();
+    const second = page.getByRole("dialog");
+    await second.getByLabel("Code", { exact: true }).fill("seats_now");
+    await second.getByLabel("Unit").fill("seats");
+    await second.getByLabel("Aggregation").selectOption("AGGREGATION_LAST");
+    await expect(second.getByText("Takes the quantity of the most recent event")).toBeVisible();
+    await expect(second.getByLabel("Decimal places")).toBeEnabled();
+    await second.getByLabel("Value property").fill("seats");
+    await second.getByRole("button", { name: "Create meter" }).click();
+    await expect.poll(() => made.length).toBe(2);
+    expect(made[1]).toEqual({ code: "seats_now", aggregation: "AGGREGATION_LAST", unit_label: "seats", quantity_scale: 0, value_property: "seats" });
+  });
+
+  test("a new version cannot change into or out of distinct values or latest value", async ({ page }) => {
+    const made: Record<string, unknown>[] = [];
+    const gw = gateway().on(withRowShaped).on(meterRoutes(made));
+    await open(page, gw);
+    await page.getByTestId("usage-tab-meters").click();
+
+    await rowAction(page.getByTestId("meter-active_users"), "New version");
+    const unique = page.getByRole("dialog", { name: "New version of active_users" });
+    await expect(unique.getByLabel("Aggregation").locator("option")).toHaveText(["Distinct values"]);
+    await expect(unique.getByTestId("aggregation-locked")).toContainText("Fixed for this code");
+    await expect(unique.getByLabel("Decimal places")).toBeDisabled();
+    await unique.getByLabel("Property to count").fill("account_id");
+    await unique.getByRole("button", { name: "Save new version" }).click();
+    await expect.poll(() => made.length).toBe(1);
+    expect(made[0]).toEqual({ code: "active_users", aggregation: "AGGREGATION_UNIQUE", unit_label: "users", quantity_scale: 0, value_property: "account_id" });
+    await expect(unique).toBeHidden();
+
+    await rowAction(page.getByTestId("meter-storage_gb"), "New version");
+    const peak = page.getByRole("dialog", { name: "New version of storage_gb" });
+    await expect(peak.getByLabel("Aggregation").locator("option")).toHaveText(["Sum", "Count of events", "Highest value"]);
+    await expect(peak.getByTestId("aggregation-locked")).toContainText("can switch between sum, count and maximum");
+  });
+
+  test("the overview does not pretend to total a meter whose events do not add up", async ({ page }) => {
+    const gw = gateway().on(withRowShaped);
+    await open(page, gw);
+    await expect(page.getByTestId("meter-total-api_calls")).toHaveText("255");
+    // Distinct values of two days overlap and a bucket holds many events: the buckets of raw events give no total for these, so it is a dash.
+    await expect(page.getByTestId("meter-total-active_users")).toHaveText("—");
+    await expect(page.getByTestId("meter-total-seats_now")).toHaveText("—");
+    await expect(page.getByTestId("meter-delta-active_users")).toHaveCount(0);
   });
 
   test("a viewer-style refusal from the API is shown in the sheet", async ({ page }) => {

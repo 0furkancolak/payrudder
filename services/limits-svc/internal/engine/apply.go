@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
@@ -44,6 +45,13 @@ const firedTTL = 80 * 24 * time.Hour
 // no end and its counter never expires.
 const windowTTL = 2 * 24 * time.Hour
 
+// DefaultUniqueSetCap is how many distinct values a UNIQUE counter remembers (Config.UniqueSetCap).
+const DefaultUniqueSetCap = 100_000
+
+// memberLen is how much of the SHA-256 of a value a UNIQUE set keeps: 128 bits, which makes an accidental collision a non-event. The counters of
+// limits-svc are an enforcement aid reconciled against the aggregator's exact sets, and billing never reads them.
+const memberLen = 16
+
 // ErrMeterNotFound is the answer for a meter plans-svc does not know.
 var ErrMeterNotFound = errkey.New(codes.NotFound, "limits.meter.not_found", "meter not found")
 
@@ -61,6 +69,9 @@ type Config struct {
 	LimitTopic string
 	Log        *slog.Logger
 	Now        func() time.Time
+	// UniqueSetCap bounds the distinct values remembered per UNIQUE counter (default DefaultUniqueSetCap). A counter whose set is full stops
+	// recognising new values until the next reconciliation sets it to the aggregator's exact count.
+	UniqueSetCap int
 	// AfterLua runs after the script committed a batch and before thresholds are evaluated. An error aborts the
 	// batch the way a crash at that point would. Chaos tests only.
 	AfterLua func() error
@@ -79,6 +90,7 @@ type Applier struct {
 	applied    metric.Int64Counter
 	skipped    metric.Int64Counter
 	overflow   metric.Int64Counter
+	setFull    metric.Int64Counter
 	fired      metric.Int64Counter
 	fireErrors metric.Int64Counter
 }
@@ -99,11 +111,15 @@ func NewApplier(cfg Config) (*Applier, error) {
 	if cfg.Now == nil {
 		cfg.Now = time.Now
 	}
+	if cfg.UniqueSetCap <= 0 {
+		cfg.UniqueSetCap = DefaultUniqueSetCap
+	}
 	b := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/limits-svc")
 	a := &Applier{cfg: cfg, log: cfg.Log, script: redis.NewScript(applyBatchLua), cps: newCheckpoints(), parts: map[int32]*partState{}}
 	a.applied = b.Counter("limits_events_applied", "Usage events added to a counter")
 	a.skipped = b.Counter("limits_events_skipped", "Usage events not counted, by reason")
 	a.overflow = b.Counter("limits_counter_overflow", "Counter updates refused because they would pass 2^53")
+	a.setFull = b.Counter("limits_unique_set_full", "UNIQUE counters whose set had no room for a new value (the count is left to reconciliation)")
 	a.fired = b.Counter("limits_thresholds_fired", "LimitExceeded events produced")
 	a.fireErrors = b.Counter("limits_threshold_publish_failures", "LimitExceeded events that could not be produced")
 	if err := b.Err(); err != nil {
@@ -190,12 +206,25 @@ func (a *Applier) Apply(ctx context.Context, p int32, recs []*kgo.Record) error 
 	return a.applyRecords(ctx, p, recs)
 }
 
+// cell is what a batch adds to one counter. op is the script's: 'I' adds delta, 'M' keeps the greater, 'L' keeps the value of the latest event (ord) and
+// 'U' adds the members that are new to the counter's set.
 type cell struct {
 	ref      Ref
-	isMax    bool
+	op       byte
 	delta    int64
+	ord      usage.Order
+	members  map[string]struct{}
+	n        int
 	over     bool
 	expireAt int64
+}
+
+// contribution is one event's share of a counter.
+type contribution struct {
+	op     byte
+	v      int64
+	order  usage.Order
+	member string
 }
 
 func (a *Applier) skip(ctx context.Context, reason string) {
@@ -227,11 +256,21 @@ func (a *Applier) applyRecords(ctx context.Context, p int32, recs []*kgo.Record)
 	args = append(args, first, next, a.cfg.Now().UnixMilli(), ps.expect, len(keys), len(tenantsSorted))
 	for _, k := range keys {
 		c := b.cells[k]
-		op := "I"
-		if c.isMax {
-			op = "M"
+		args = append(args, k, string(c.op), c.delta, c.expireAt)
+		switch c.op {
+		case 'L':
+			args = append(args, c.ord.Micros, c.ord.ID)
+		case 'U':
+			members := make([]string, 0, len(c.members))
+			for m := range c.members {
+				members = append(members, m)
+			}
+			slices.Sort(members)
+			args = append(args, a.cfg.UniqueSetCap, len(members))
+			for _, m := range members {
+				args = append(args, m)
+			}
 		}
-		args = append(args, k, op, c.delta, c.expireAt)
 	}
 	for _, t := range tenantsSorted {
 		args = append(args, TSKey(t), b.stamps[t].UnixMilli())
@@ -291,8 +330,22 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 		return nil
 	}
 	_, end, _ := period.Bounds(ev.Period, tn.Location)
-	isMax, v := m.Aggregation == usage.Max, m.Value(ev)
-	b.add(Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: ev.Period}, isMax, v, end.Add(KeyTTL))
+	contrib := contribution{op: 'I', v: m.Value(ev)}
+	switch m.Aggregation {
+	case usage.Max:
+		contrib.op = 'M'
+	case usage.Last:
+		contrib.op, contrib.order = 'L', usage.OrderOf(ev)
+	case usage.Unique:
+		value, ok := m.DistinctValue(ev)
+		if !ok {
+			a.skip(ctx, "no_value")
+			return nil
+		}
+		digest := usage.Digest(value)
+		contrib.op, contrib.member = 'U', string(digest[:memberLen])
+	}
+	b.add(Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: ev.Period}, contrib, end.Add(KeyTTL))
 	// A quota over another window than the billing period has its own counter, kept only while the entitlement asks for one. Reconciliation
 	// brings it to the aggregator's total of the window, which includes what was used before the entitlement existed.
 	if ent, ok := a.cfg.Ents.Get(ev.TenantID, ev.CustomerID, ev.Meter, a.cfg.Now()); ok && ent.Window != period.Month {
@@ -301,7 +354,7 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 			// An old event of a window that has ended still counts in it, and its key outlives the event by a little.
 			wend = maxTime(wend, a.cfg.Now()).Add(windowTTL)
 		}
-		b.add(Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: id, Windowed: true}, isMax, v, wend)
+		b.add(Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: id, Windowed: true}, contrib, wend)
 	}
 	if ev.IngestedAt.After(b.stamps[ev.TenantID]) {
 		b.stamps[ev.TenantID] = ev.IngestedAt
@@ -310,24 +363,37 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 	return nil
 }
 
-// add folds a value into the cell of ref. A zero expire is a key that never expires.
-func (b *batch) add(ref Ref, isMax bool, v int64, expire time.Time) {
+// add folds a contribution into the cell of ref. A zero expire is a key that never expires. The merges are the ones the aggregator makes of the same
+// events (commutative, so the order of the batch does not matter): a sum, a maximum, the latest event of the batch, a set of values.
+func (b *batch) add(ref Ref, in contribution, expire time.Time) {
 	k := ref.Key()
 	c := b.cells[k]
 	if c == nil {
-		c = &cell{ref: ref, isMax: isMax}
+		c = &cell{ref: ref, op: in.op}
 		if !expire.IsZero() {
 			c.expireAt = expire.Unix()
 		}
 		b.cells[k] = c
 	}
-	switch {
-	case c.isMax:
-		c.delta = max(c.delta, v)
-	case c.delta > domain.MaxCounter-v:
-		c.over = true
+	c.n++
+	switch c.op {
+	case 'M':
+		c.delta = max(c.delta, in.v)
+	case 'L':
+		if c.n == 1 || in.order.After(c.ord) {
+			c.delta, c.ord = in.v, in.order
+		}
+	case 'U':
+		if c.members == nil {
+			c.members = map[string]struct{}{}
+		}
+		c.members[in.member] = struct{}{}
 	default:
-		c.delta += v
+		if c.delta > domain.MaxCounter-in.v {
+			c.over = true
+		} else {
+			c.delta += in.v
+		}
 	}
 }
 
@@ -398,6 +464,11 @@ func (a *Applier) fireCrossed(ctx context.Context, rows []any) {
 			continue
 		}
 		key, _ := row[0].(string)
+		if row[1] == "FULL" {
+			a.setFull.Add(ctx, 1)
+			a.log.WarnContext(ctx, "UNIQUE set is full, new values are counted by the next reconciliation", "key", key)
+			continue
+		}
 		if row[1] == "OVERFLOW" {
 			a.overflow.Add(ctx, 1)
 			a.log.ErrorContext(ctx, "counter would pass 2^53, leaving the key to reconciliation", "key", key)

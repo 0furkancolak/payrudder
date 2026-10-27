@@ -83,6 +83,12 @@ DELETE FROM usage_aggregates WHERE tenant_id = @tenant_id AND generation = @gene
 -- name: DeleteGenerationWindowUsage :exec
 DELETE FROM usage_window_aggregates WHERE tenant_id = @tenant_id AND generation = @generation;
 
+-- name: DeleteGenerationDistinctValues :exec
+DELETE FROM usage_distinct_values WHERE tenant_id = @tenant_id AND generation = @generation;
+
+-- name: DeleteGenerationDistinctHours :exec
+DELETE FROM usage_distinct_hours WHERE tenant_id = @tenant_id AND generation = @generation;
+
 -- name: DeleteGenerationLateUsage :exec
 DELETE FROM late_usage WHERE tenant_id = @tenant_id AND generation = @generation;
 
@@ -122,17 +128,33 @@ ORDER BY 1, 2, 3, 4;
 DELETE FROM usage_aggregates WHERE tenant_id = @tenant_id AND generation = @generation AND (period_id < @from_period::text OR period_id > @to_period::text);
 
 -- name: CopyGenerationUsageOutside :exec
-INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at)
-SELECT s.tenant_id, s.period_id, s.customer_id, s.meter_code, @target::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at, last_at, last_event_id)
+SELECT s.tenant_id, s.period_id, s.customer_id, s.meter_code, @target::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at, s.last_at, s.last_event_id
 FROM usage_aggregates s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.period_id < @from_period::text OR s.period_id > @to_period::text);
 
 -- name: ClearGenerationWindowUsageOutside :exec
 DELETE FROM usage_window_aggregates WHERE tenant_id = @tenant_id AND generation = @generation AND (period_id < @from_period::text OR period_id > @to_period::text);
 
 -- name: CopyGenerationWindowUsageOutside :exec
-INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at)
-SELECT s.tenant_id, s.customer_id, s.meter_code, @target::int, s.hour_id, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at, last_at, last_event_id)
+SELECT s.tenant_id, s.customer_id, s.meter_code, @target::int, s.hour_id, s.quantity, s.quantity_scale, s.event_count, s.updated_at, s.last_at, s.last_event_id
 FROM usage_window_aggregates s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.period_id < @from_period::text OR s.period_id > @to_period::text);
+
+-- name: ClearGenerationDistinctValuesOutside :exec
+DELETE FROM usage_distinct_values WHERE tenant_id = @tenant_id AND generation = @generation AND (period_id < @from_period::text OR period_id > @to_period::text);
+
+-- name: CopyGenerationDistinctValuesOutside :exec
+INSERT INTO usage_distinct_values (tenant_id, customer_id, meter_code, generation, period_id, value_hash, billed_period_id)
+SELECT s.tenant_id, s.customer_id, s.meter_code, @target::int, s.period_id, s.value_hash, s.billed_period_id
+FROM usage_distinct_values s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.period_id < @from_period::text OR s.period_id > @to_period::text);
+
+-- name: ClearGenerationDistinctHoursOutside :exec
+DELETE FROM usage_distinct_hours WHERE tenant_id = @tenant_id AND generation = @generation AND (period_id < @from_period::text OR period_id > @to_period::text);
+
+-- name: CopyGenerationDistinctHoursOutside :exec
+INSERT INTO usage_distinct_hours (tenant_id, customer_id, meter_code, generation, hour_id, value_hash)
+SELECT s.tenant_id, s.customer_id, s.meter_code, @target::int, s.hour_id, s.value_hash
+FROM usage_distinct_hours s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.period_id < @from_period::text OR s.period_id > @to_period::text);
 
 -- name: ClearGenerationLateUsageOutside :exec
 DELETE FROM late_usage WHERE tenant_id = @tenant_id AND generation = @generation AND (origin_period_id < @from_period::text OR origin_period_id > @to_period::text);

@@ -94,7 +94,7 @@ func TestValidatePlanVersionQuotaRefusals(t *testing.T) {
 
 func TestValidateMeterCategoryAndUnit(t *testing.T) {
 	req := &plansv1.CreateMeterRequest{Code: "tokens", Aggregation: plansv1.Aggregation_AGGREGATION_SUM, ValueProperty: "n", UnitLabel: " Jeton (giriş) ", Category: " Yapay zekâ "}
-	in, err := ValidateMeter(req, -1)
+	in, err := ValidateMeter(req, -1, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,7 +105,7 @@ func TestValidateMeterCategoryAndUnit(t *testing.T) {
 		{Code: "tokens", Aggregation: plansv1.Aggregation_AGGREGATION_COUNT, UnitLabel: "calls", Category: strings.Repeat("x", 65)},
 		{Code: "tokens", Aggregation: plansv1.Aggregation_AGGREGATION_COUNT, UnitLabel: "calls", Category: "a\nb"},
 	} {
-		if _, err := ValidateMeter(bad, -1); !contains(fields(t, err), "category") {
+		if _, err := ValidateMeter(bad, -1, ""); !contains(fields(t, err), "category") {
 			t.Errorf("category %q accepted", bad.GetCategory())
 		}
 	}

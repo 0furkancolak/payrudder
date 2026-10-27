@@ -81,8 +81,10 @@ func newFixture(t *testing.T, tz string) *fixture {
 	f.handler = &apply.Handler{
 		Pool: system, Settings: src, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), ConsumerGroup: "g", Topic: "t",
 		Meters: meters{
-			"sum_m": {Code: "sum_m", Aggregation: usage.Sum},
-			"max_m": {Code: "max_m", Aggregation: usage.Max},
+			"sum_m":    {Code: "sum_m", Aggregation: usage.Sum},
+			"max_m":    {Code: "max_m", Aggregation: usage.Max},
+			"unique_m": {Code: "unique_m", Aggregation: usage.Unique, ValueProperty: "user"},
+			"last_m":   {Code: "last_m", Aggregation: usage.Last},
 		},
 		MeterRetryDelays: []time.Duration{time.Millisecond},
 	}

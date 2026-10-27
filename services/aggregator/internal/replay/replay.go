@@ -700,6 +700,18 @@ func carryOverOutsideRange(ctx context.Context, q *sqlc.Queries, j *Job) error {
 	if err := q.CopyGenerationWindowUsageOutside(ctx, sqlc.CopyGenerationWindowUsageOutsideParams{TenantID: j.TenantID, Source: j.SourceGeneration, Target: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
 		return err
 	}
+	if err := q.ClearGenerationDistinctValuesOutside(ctx, sqlc.ClearGenerationDistinctValuesOutsideParams{TenantID: j.TenantID, Generation: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	if err := q.CopyGenerationDistinctValuesOutside(ctx, sqlc.CopyGenerationDistinctValuesOutsideParams{TenantID: j.TenantID, Source: j.SourceGeneration, Target: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	if err := q.ClearGenerationDistinctHoursOutside(ctx, sqlc.ClearGenerationDistinctHoursOutsideParams{TenantID: j.TenantID, Generation: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	if err := q.CopyGenerationDistinctHoursOutside(ctx, sqlc.CopyGenerationDistinctHoursOutsideParams{TenantID: j.TenantID, Source: j.SourceGeneration, Target: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
 	if err := q.ClearGenerationLateUsageOutside(ctx, sqlc.ClearGenerationLateUsageOutsideParams{TenantID: j.TenantID, Generation: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
 		return err
 	}
@@ -752,6 +764,12 @@ func (m *Manager) deleteGeneration(ctx context.Context, tenantID uuid.UUID, gene
 		return err
 	}
 	if err := q.DeleteGenerationWindowUsage(ctx, sqlc.DeleteGenerationWindowUsageParams{TenantID: tenantID, Generation: generation}); err != nil {
+		return err
+	}
+	if err := q.DeleteGenerationDistinctValues(ctx, sqlc.DeleteGenerationDistinctValuesParams{TenantID: tenantID, Generation: generation}); err != nil {
+		return err
+	}
+	if err := q.DeleteGenerationDistinctHours(ctx, sqlc.DeleteGenerationDistinctHoursParams{TenantID: tenantID, Generation: generation}); err != nil {
 		return err
 	}
 	if err := q.DeleteGenerationLateUsage(ctx, sqlc.DeleteGenerationLateUsageParams{TenantID: tenantID, Generation: generation}); err != nil {

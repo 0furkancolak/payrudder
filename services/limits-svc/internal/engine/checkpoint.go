@@ -15,6 +15,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/usage"
 )
 
 var (
@@ -30,6 +31,9 @@ type CheckKey struct {
 	Key  string
 	Want int64
 	Max  bool
+	// Last marks a LAST counter, repaired to Want and to the event it is the value of (nil when the aggregator has none).
+	Last  bool
+	Order *usage.Order
 }
 
 // Result is the outcome of a checkpoint.
@@ -150,6 +154,20 @@ func (a *Applier) resolve(ctx context.Context, cp *Checkpoint) {
 		cp.finish(Result{Skipped: 1, SkipReason: "redis_error"})
 		return
 	}
+	// The events the LAST counters hold, read with the counters (this loop is serial with the apply loop, so they are one snapshot).
+	held := map[string]string{}
+	for _, k := range cp.Keys {
+		if !k.Last {
+			continue
+		}
+		s, err := a.cfg.Redis.Get(ctx, OrderKey(k.Key)).Result()
+		if err != nil && !errors.Is(err, redis.Nil) {
+			a.log.WarnContext(ctx, "reconcile read failed", "error", err)
+			cp.finish(Result{Skipped: 1, SkipReason: "redis_error"})
+			return
+		}
+		held[k.Key] = s
+	}
 	var fixed []string
 	for i, k := range cp.Keys {
 		have := int64(0)
@@ -162,14 +180,29 @@ func (a *Applier) resolve(ctx context.Context, cp *Checkpoint) {
 		}
 		res.Checked++
 		reconChecked.Add(ctx, 1)
-		if have == k.Want {
+		wantOrd := ""
+		if k.Order != nil {
+			wantOrd = strconv.FormatInt(k.Order.Micros, 10) + ":" + k.Order.ID
+		}
+		if have == k.Want && (!k.Last || held[k.Key] == wantOrd) {
 			continue
 		}
 		drift := have - k.Want
 		var err error
-		if k.Max {
+		switch {
+		case k.Last:
+			// Both snapshots describe the same prefix of the partition, so any difference, of the value or of the event it is of, is drift.
 			err = a.cfg.Redis.Set(ctx, k.Key, k.Want, redis.KeepTTL).Err()
-		} else {
+			switch {
+			case err != nil:
+			case wantOrd == "":
+				err = a.cfg.Redis.Del(ctx, OrderKey(k.Key)).Err()
+			default:
+				err = a.cfg.Redis.Set(ctx, OrderKey(k.Key), wantOrd, redis.KeepTTL).Err()
+			}
+		case k.Max:
+			err = a.cfg.Redis.Set(ctx, k.Key, k.Want, redis.KeepTTL).Err()
+		default:
 			err = a.cfg.Redis.IncrBy(ctx, k.Key, -drift).Err()
 		}
 		if err != nil {
@@ -187,8 +220,10 @@ func (a *Applier) resolve(ctx context.Context, cp *Checkpoint) {
 		if !expires {
 			continue
 		}
-		if err := a.cfg.Redis.ExpireNX(ctx, k, at.Sub(a.cfg.Now())).Err(); err != nil {
-			a.log.WarnContext(ctx, "reconcile could not set the expiry of a corrected counter", "key", k, "error", err)
+		for _, key := range []string{k, OrderKey(k)} {
+			if err := a.cfg.Redis.ExpireNX(ctx, key, at.Sub(a.cfg.Now())).Err(); err != nil {
+				a.log.WarnContext(ctx, "reconcile could not set the expiry of a corrected counter", "key", key, "error", err)
+			}
 		}
 	}
 	cp.finish(res)

@@ -32,15 +32,15 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateMeterRequest) 
 		if err != nil {
 			return err
 		}
-		prevScale, nextVersion := -1, int32(1)
+		prevScale, prevAgg, nextVersion := -1, "", int32(1)
 		latest, err := q.LatestMeter(ctx, req.GetCode())
 		switch {
 		case err == nil:
-			prevScale, nextVersion = int(latest.QuantityScale), latest.Version+1
+			prevScale, prevAgg, nextVersion = int(latest.QuantityScale), latest.Aggregation, latest.Version+1
 		case !errors.Is(err, pgx.ErrNoRows):
 			return err
 		}
-		in, err := domain.ValidateMeter(req, prevScale)
+		in, err := domain.ValidateMeter(req, prevScale, prevAgg)
 		if err != nil {
 			return err
 		}

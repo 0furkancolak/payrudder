@@ -7,6 +7,7 @@
 package aggregatorv1
 
 import (
+	v1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -33,7 +34,10 @@ type UsageAggregate struct {
 	QuantityScale uint32 `protobuf:"varint,5,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
 	EventCount    int64  `protobuf:"varint,6,opt,name=event_count,json=eventCount,proto3" json:"event_count,omitempty"`
 	// Generation the row belongs to (billing pins it for the whole run).
-	Generation    int32 `protobuf:"varint,7,opt,name=generation,proto3" json:"generation,omitempty"`
+	Generation int32 `protobuf:"varint,7,opt,name=generation,proto3" json:"generation,omitempty"`
+	// LAST meters only: the event the quantity is the value of, which limits-svc needs to repair its counter to the same event.
+	LastEventTime *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_event_time,json=lastEventTime,proto3" json:"last_event_time,omitempty"`
+	LastEventId   string                 `protobuf:"bytes,9,opt,name=last_event_id,json=lastEventId,proto3" json:"last_event_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -115,6 +119,20 @@ func (x *UsageAggregate) GetGeneration() int32 {
 		return x.Generation
 	}
 	return 0
+}
+
+func (x *UsageAggregate) GetLastEventTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastEventTime
+	}
+	return nil
+}
+
+func (x *UsageAggregate) GetLastEventId() string {
+	if x != nil {
+		return x.LastEventId
+	}
+	return ""
 }
 
 // LateUsage is usage that arrived after its period's cutoff, billed in the period of its ingestion.
@@ -227,8 +245,12 @@ type UsageKey struct {
 	// (months for a month, a year and the lifetime; hours for an hour, a day and a week), or their maximum when `max` is set. The hour totals
 	// are kept for a limited time (about two weeks), so an hour, day or week window is only readable while it is recent.
 	PeriodId string `protobuf:"bytes,3,opt,name=period_id,json=periodId,proto3" json:"period_id,omitempty"`
-	// The meter's aggregation is MAX: combine the rows of a window with GREATEST instead of a sum.
-	Max           bool `protobuf:"varint,4,opt,name=max,proto3" json:"max,omitempty"`
+	// Deprecated spelling of aggregation = AGGREGATION_MAX, honoured when `aggregation` is unset.
+	Max bool `protobuf:"varint,4,opt,name=max,proto3" json:"max,omitempty"`
+	// How the rows of a window combine: a sum (SUM, COUNT, or unset), the maximum (MAX), the value of the latest event (LAST) or the number of
+	// distinct values across the rows (UNIQUE: the aggregator keeps the sets of values, not only the counts, because a distinct count of a year is
+	// not the sum of its months).
+	Aggregation   v1.Aggregation `protobuf:"varint,5,opt,name=aggregation,proto3,enum=payrudder.plans.v1.Aggregation" json:"aggregation,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -289,6 +311,13 @@ func (x *UsageKey) GetMax() bool {
 		return x.Max
 	}
 	return false
+}
+
+func (x *UsageKey) GetAggregation() v1.Aggregation {
+	if x != nil {
+		return x.Aggregation
+	}
+	return v1.Aggregation(0)
 }
 
 type GetCustomerUsageRequest struct {
@@ -974,7 +1003,7 @@ var File_payrudder_aggregator_v1_aggregator_proto protoreflect.FileDescriptor
 
 const file_payrudder_aggregator_v1_aggregator_proto_rawDesc = "" +
 	"\n" +
-	"(payrudder/aggregator/v1/aggregator.proto\x12\x17payrudder.aggregator.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf1\x01\n" +
+	"(payrudder/aggregator/v1/aggregator.proto\x12\x17payrudder.aggregator.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"payrudder/plans/v1/resources.proto\"\xd9\x02\n" +
 	"\x0eUsageAggregate\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +
@@ -987,7 +1016,9 @@ const file_payrudder_aggregator_v1_aggregator_proto_rawDesc = "" +
 	"eventCount\x12\x1e\n" +
 	"\n" +
 	"generation\x18\a \x01(\x05R\n" +
-	"generation\"\xa3\x02\n" +
+	"generation\x12B\n" +
+	"\x0flast_event_time\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rlastEventTime\x12\"\n" +
+	"\rlast_event_id\x18\t \x01(\tR\vlastEventId\"\xa3\x02\n" +
 	"\tLateUsage\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +
@@ -1001,14 +1032,15 @@ const file_payrudder_aggregator_v1_aggregator_proto_rawDesc = "" +
 	"eventCount\x12\x1e\n" +
 	"\n" +
 	"generation\x18\b \x01(\x05R\n" +
-	"generation\"y\n" +
+	"generation\"\xbc\x01\n" +
 	"\bUsageKey\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +
 	"\n" +
 	"meter_code\x18\x02 \x01(\tR\tmeterCode\x12\x1b\n" +
 	"\tperiod_id\x18\x03 \x01(\tR\bperiodId\x12\x10\n" +
-	"\x03max\x18\x04 \x01(\bR\x03max\"w\n" +
+	"\x03max\x18\x04 \x01(\bR\x03max\x12A\n" +
+	"\vaggregation\x18\x05 \x01(\x0e2\x1f.payrudder.plans.v1.AggregationR\vaggregation\"w\n" +
 	"\x17GetCustomerUsageRequest\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1b\n" +
@@ -1108,37 +1140,40 @@ var file_payrudder_aggregator_v1_aggregator_proto_goTypes = []any{
 	nil,                                // 18: payrudder.aggregator.v1.GetIngestWatermarkRequest.RequiredOffsetsEntry
 	nil,                                // 19: payrudder.aggregator.v1.GetIngestWatermarkResponse.CommittedOffsetsEntry
 	(*timestamppb.Timestamp)(nil),      // 20: google.protobuf.Timestamp
+	(v1.Aggregation)(0),                // 21: payrudder.plans.v1.Aggregation
 }
 var file_payrudder_aggregator_v1_aggregator_proto_depIdxs = []int32{
-	0,  // 0: payrudder.aggregator.v1.GetCustomerUsageResponse.usage:type_name -> payrudder.aggregator.v1.UsageAggregate
-	2,  // 1: payrudder.aggregator.v1.GetUsageBatchRequest.keys:type_name -> payrudder.aggregator.v1.UsageKey
-	0,  // 2: payrudder.aggregator.v1.GetUsageBatchResponse.usage:type_name -> payrudder.aggregator.v1.UsageAggregate
-	17, // 3: payrudder.aggregator.v1.GetUsageBatchResponse.consumer_offsets:type_name -> payrudder.aggregator.v1.GetUsageBatchResponse.ConsumerOffsetsEntry
-	0,  // 4: payrudder.aggregator.v1.StreamPeriodUsageResponse.usage:type_name -> payrudder.aggregator.v1.UsageAggregate
-	1,  // 5: payrudder.aggregator.v1.StreamLateUsageResponse.late_usage:type_name -> payrudder.aggregator.v1.LateUsage
-	18, // 6: payrudder.aggregator.v1.GetIngestWatermarkRequest.required_offsets:type_name -> payrudder.aggregator.v1.GetIngestWatermarkRequest.RequiredOffsetsEntry
-	19, // 7: payrudder.aggregator.v1.GetIngestWatermarkResponse.committed_offsets:type_name -> payrudder.aggregator.v1.GetIngestWatermarkResponse.CommittedOffsetsEntry
-	20, // 8: payrudder.aggregator.v1.FreezePeriodResponse.frozen_at:type_name -> google.protobuf.Timestamp
-	20, // 9: payrudder.aggregator.v1.ClosePeriodEarlyResponse.cutoff_at:type_name -> google.protobuf.Timestamp
-	3,  // 10: payrudder.aggregator.v1.UsageQueryService.GetCustomerUsage:input_type -> payrudder.aggregator.v1.GetCustomerUsageRequest
-	5,  // 11: payrudder.aggregator.v1.UsageQueryService.GetUsageBatch:input_type -> payrudder.aggregator.v1.GetUsageBatchRequest
-	7,  // 12: payrudder.aggregator.v1.UsageQueryService.StreamPeriodUsage:input_type -> payrudder.aggregator.v1.StreamPeriodUsageRequest
-	8,  // 13: payrudder.aggregator.v1.UsageQueryService.StreamLateUsage:input_type -> payrudder.aggregator.v1.StreamLateUsageRequest
-	11, // 14: payrudder.aggregator.v1.UsageQueryService.GetIngestWatermark:input_type -> payrudder.aggregator.v1.GetIngestWatermarkRequest
-	13, // 15: payrudder.aggregator.v1.UsageQueryService.FreezePeriod:input_type -> payrudder.aggregator.v1.FreezePeriodRequest
-	15, // 16: payrudder.aggregator.v1.UsageQueryService.ClosePeriodEarly:input_type -> payrudder.aggregator.v1.ClosePeriodEarlyRequest
-	4,  // 17: payrudder.aggregator.v1.UsageQueryService.GetCustomerUsage:output_type -> payrudder.aggregator.v1.GetCustomerUsageResponse
-	6,  // 18: payrudder.aggregator.v1.UsageQueryService.GetUsageBatch:output_type -> payrudder.aggregator.v1.GetUsageBatchResponse
-	9,  // 19: payrudder.aggregator.v1.UsageQueryService.StreamPeriodUsage:output_type -> payrudder.aggregator.v1.StreamPeriodUsageResponse
-	10, // 20: payrudder.aggregator.v1.UsageQueryService.StreamLateUsage:output_type -> payrudder.aggregator.v1.StreamLateUsageResponse
-	12, // 21: payrudder.aggregator.v1.UsageQueryService.GetIngestWatermark:output_type -> payrudder.aggregator.v1.GetIngestWatermarkResponse
-	14, // 22: payrudder.aggregator.v1.UsageQueryService.FreezePeriod:output_type -> payrudder.aggregator.v1.FreezePeriodResponse
-	16, // 23: payrudder.aggregator.v1.UsageQueryService.ClosePeriodEarly:output_type -> payrudder.aggregator.v1.ClosePeriodEarlyResponse
-	17, // [17:24] is the sub-list for method output_type
-	10, // [10:17] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	20, // 0: payrudder.aggregator.v1.UsageAggregate.last_event_time:type_name -> google.protobuf.Timestamp
+	21, // 1: payrudder.aggregator.v1.UsageKey.aggregation:type_name -> payrudder.plans.v1.Aggregation
+	0,  // 2: payrudder.aggregator.v1.GetCustomerUsageResponse.usage:type_name -> payrudder.aggregator.v1.UsageAggregate
+	2,  // 3: payrudder.aggregator.v1.GetUsageBatchRequest.keys:type_name -> payrudder.aggregator.v1.UsageKey
+	0,  // 4: payrudder.aggregator.v1.GetUsageBatchResponse.usage:type_name -> payrudder.aggregator.v1.UsageAggregate
+	17, // 5: payrudder.aggregator.v1.GetUsageBatchResponse.consumer_offsets:type_name -> payrudder.aggregator.v1.GetUsageBatchResponse.ConsumerOffsetsEntry
+	0,  // 6: payrudder.aggregator.v1.StreamPeriodUsageResponse.usage:type_name -> payrudder.aggregator.v1.UsageAggregate
+	1,  // 7: payrudder.aggregator.v1.StreamLateUsageResponse.late_usage:type_name -> payrudder.aggregator.v1.LateUsage
+	18, // 8: payrudder.aggregator.v1.GetIngestWatermarkRequest.required_offsets:type_name -> payrudder.aggregator.v1.GetIngestWatermarkRequest.RequiredOffsetsEntry
+	19, // 9: payrudder.aggregator.v1.GetIngestWatermarkResponse.committed_offsets:type_name -> payrudder.aggregator.v1.GetIngestWatermarkResponse.CommittedOffsetsEntry
+	20, // 10: payrudder.aggregator.v1.FreezePeriodResponse.frozen_at:type_name -> google.protobuf.Timestamp
+	20, // 11: payrudder.aggregator.v1.ClosePeriodEarlyResponse.cutoff_at:type_name -> google.protobuf.Timestamp
+	3,  // 12: payrudder.aggregator.v1.UsageQueryService.GetCustomerUsage:input_type -> payrudder.aggregator.v1.GetCustomerUsageRequest
+	5,  // 13: payrudder.aggregator.v1.UsageQueryService.GetUsageBatch:input_type -> payrudder.aggregator.v1.GetUsageBatchRequest
+	7,  // 14: payrudder.aggregator.v1.UsageQueryService.StreamPeriodUsage:input_type -> payrudder.aggregator.v1.StreamPeriodUsageRequest
+	8,  // 15: payrudder.aggregator.v1.UsageQueryService.StreamLateUsage:input_type -> payrudder.aggregator.v1.StreamLateUsageRequest
+	11, // 16: payrudder.aggregator.v1.UsageQueryService.GetIngestWatermark:input_type -> payrudder.aggregator.v1.GetIngestWatermarkRequest
+	13, // 17: payrudder.aggregator.v1.UsageQueryService.FreezePeriod:input_type -> payrudder.aggregator.v1.FreezePeriodRequest
+	15, // 18: payrudder.aggregator.v1.UsageQueryService.ClosePeriodEarly:input_type -> payrudder.aggregator.v1.ClosePeriodEarlyRequest
+	4,  // 19: payrudder.aggregator.v1.UsageQueryService.GetCustomerUsage:output_type -> payrudder.aggregator.v1.GetCustomerUsageResponse
+	6,  // 20: payrudder.aggregator.v1.UsageQueryService.GetUsageBatch:output_type -> payrudder.aggregator.v1.GetUsageBatchResponse
+	9,  // 21: payrudder.aggregator.v1.UsageQueryService.StreamPeriodUsage:output_type -> payrudder.aggregator.v1.StreamPeriodUsageResponse
+	10, // 22: payrudder.aggregator.v1.UsageQueryService.StreamLateUsage:output_type -> payrudder.aggregator.v1.StreamLateUsageResponse
+	12, // 23: payrudder.aggregator.v1.UsageQueryService.GetIngestWatermark:output_type -> payrudder.aggregator.v1.GetIngestWatermarkResponse
+	14, // 24: payrudder.aggregator.v1.UsageQueryService.FreezePeriod:output_type -> payrudder.aggregator.v1.FreezePeriodResponse
+	16, // 25: payrudder.aggregator.v1.UsageQueryService.ClosePeriodEarly:output_type -> payrudder.aggregator.v1.ClosePeriodEarlyResponse
+	19, // [19:26] is the sub-list for method output_type
+	12, // [12:19] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_aggregator_v1_aggregator_proto_init() }

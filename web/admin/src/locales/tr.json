@@ -1409,12 +1409,16 @@
       "aggregation": {
         "sum": "Toplam",
         "count": "Olay sayısı",
-        "max": "En yüksek değer"
+        "max": "En yüksek değer",
+        "unique": "Benzersiz değerler",
+        "last": "Son değer"
       },
       "aggregationHint": {
         "sum": "Olay özelliğinin değerlerini toplar.",
         "count": "Olayları sayar; özellik gerekmez.",
-        "max": "Dönemdeki olay özelliğinin en yüksek değerini alır."
+        "max": "Dönemdeki olay özelliğinin en yüksek değerini alır.",
+        "unique": "Dönemde bir olay özelliğinin farklı değerlerini sayar, örneğin aktif kullanıcılar. Özelliği taşımayan olay reddedilir.",
+        "last": "Dönemin en son olayının miktarını alır, örneğin ay sonundaki koltuk sayısı. Dönem kapandıktan sonra gelen olay bunu değiştirmez."
       },
       "state": {
         "over": "Limit aşıldı",
@@ -1486,9 +1490,16 @@
           "unit": "Birime en çok 32 karakterlik bir ad verin.",
           "property": "Miktarı taşıyan olay özelliğinin adını yazın.",
           "scale": "Ondalık basamak 0 ile 6 arasında bir tam sayı olmalı.",
-          "filter": "Her filtre bir özellik ve en az bir değer ister (aynı özellik iki kez olmaz, en çok 10)."
+          "filter": "Her filtre bir özellik ve en az bir değer ister (aynı özellik iki kez olmaz, en çok 10).",
+          "propertyUnique": "Farklı değerleri sayılacak olay özelliğinin adını yazın.",
+          "uniqueScale": "Benzersiz değer sayısının ondalık basamağı olmaz: 0 kullanın."
         },
-        "filterShort": "Filtre"
+        "filterShort": "Filtre",
+        "propertyUnique": "Sayılacak özellik",
+        "propertyHintUnique": "Farklı değerleri sayılacak olay özelliği, örneğin user_id. İki kez veya iki ayda görülen değer bir kez sayılır.",
+        "scaleUnique": "Her zaman 0: benzersiz değer sayısı bir tam sayıdır.",
+        "aggregationLocked": "Bu kod için sabit: benzersiz değer veya son değer ölçüsü her sürümde aynı toplamayı korur. Değiştirmek için yeni bir kod kullanın.",
+        "aggregationOpen": "Yeni sürüm toplam, sayı ve en yüksek arasında geçebilir ama benzersiz değer veya son değere geçemez. Bunlar için yeni bir kod kullanın."
       },
       "customers": {
         "search": "Müşteri ara",
@@ -1598,12 +1609,16 @@
       "aggregations": {
         "sum": "Toplam",
         "count": "Sayı",
-        "max": "En yüksek"
+        "max": "En yüksek",
+        "unique": "Benzersiz",
+        "last": "Son değer"
       },
       "aggregationHelp": {
         "sum": "Dönemdeki her olayın miktarını toplar.",
         "count": "Olayları sayar; miktarları yok sayılır.",
-        "max": "Dönemde bildirilen en yüksek miktarı tutar (koltuk, depolama)."
+        "max": "Dönemde bildirilen en yüksek miktarı tutar (koltuk, depolama).",
+        "unique": "Bir olay özelliğinin kaç farklı değer aldığını sayar (aktif kullanıcılar). Tekrar bir kez sayılır.",
+        "last": "Dönemin en son olayının miktarını tutar (ay sonundaki koltuklar)."
       },
       "valueProperty": "Miktar özelliği",
       "valuePropertyPlaceholder": "Miktarı taşıyan olay özelliği (tokens)",
@@ -1622,7 +1637,11 @@
       "noFilter": "her olay",
       "create": "Sayacı oluştur",
       "saveVersion": "Sürümü yayımla",
-      "empty": "Henüz sayaç yok. Bir paketin kullanımı fiyatlaması ya da sınırlaması için önce sayaç gerekir."
+      "empty": "Henüz sayaç yok. Bir paketin kullanımı fiyatlaması ya da sınırlaması için önce sayaç gerekir.",
+      "valuePropertyUnique": "Sayılacak özellik",
+      "valuePropertyUniquePlaceholder": "Farklı değerleri sayılacak olay özelliği (user_id)",
+      "aggregationLocked": "Bu kod için sabit: benzersiz değer veya son değer ölçüsü her sürümde aynı toplamayı korur. Değiştirmek için yeni bir kod kullanın.",
+      "aggregationOpen": "Yeni sürüm toplam, sayı ve en yüksek arasında geçebilir ama benzersiz değer veya son değere geçemez. Bunlar için yeni bir kod kullanın."
     },
     "quotas": {
       "action": "Kotalar",

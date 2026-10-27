@@ -63,6 +63,30 @@ func (q *Queries) ResetUsageAggregates(ctx context.Context, tenantID uuid.UUID) 
 	return result.RowsAffected(), nil
 }
 
+const resetUsageDistinctHours = `-- name: ResetUsageDistinctHours :execrows
+DELETE FROM usage_distinct_hours WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetUsageDistinctHours(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetUsageDistinctHours, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetUsageDistinctValues = `-- name: ResetUsageDistinctValues :execrows
+DELETE FROM usage_distinct_values WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetUsageDistinctValues(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetUsageDistinctValues, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetUsageWindowAggregates = `-- name: ResetUsageWindowAggregates :execrows
 DELETE FROM usage_window_aggregates WHERE tenant_id = $1
 `

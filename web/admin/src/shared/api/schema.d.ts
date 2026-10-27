@@ -6103,9 +6103,15 @@ export interface components {
         };
         CreateMeterRequest: {
             code: string;
-            /** @enum {string} */
-            aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX";
-            /** @description Required for SUM and MAX */
+            /**
+             * @description How a customer's events of a billing period combine into one quantity. SUM adds the quantities, COUNT counts the events, MAX keeps the
+             *     largest quantity. UNIQUE counts the distinct values of the event property named by value_property (an event without the property is not
+             *     counted; quantity_scale must be 0). LAST is the quantity of the latest event of the period by event_time, ties broken by event id; an
+             *     event that arrives after the period's cutoff never changes it. A code cannot change into or out of UNIQUE or LAST in a later version.
+             * @enum {string}
+             */
+            aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX" | "AGGREGATION_UNIQUE" | "AGGREGATION_LAST";
+            /** @description Required for SUM, MAX and LAST (the event property holding the quantity) and for UNIQUE (the property whose distinct values are counted) */
             value_property?: string;
             filter?: {
                 [key: string]: {
