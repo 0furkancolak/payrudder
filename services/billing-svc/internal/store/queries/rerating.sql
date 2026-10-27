@@ -16,6 +16,10 @@ SELECT * FROM rerating_jobs WHERE status = 'RUNNING' AND created_at < @created_b
 -- name: FailReratingJob :exec
 UPDATE rerating_jobs SET status = 'FAILED', last_error = @last_error::text WHERE tenant_id = @tenant_id AND id = @id;
 
+-- A job that failed for good runs again when its start is requested again; whatever it wrote is keyed by the job.
+-- name: RestartReratingJob :execrows
+UPDATE rerating_jobs SET status = 'RUNNING', last_error = NULL WHERE tenant_id = @tenant_id AND id = @id AND status = 'FAILED';
+
 -- name: SetReratingJobGeneration :exec
 UPDATE rerating_jobs SET generation = @generation WHERE tenant_id = @tenant_id AND id = @id;
 

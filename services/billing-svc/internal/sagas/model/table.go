@@ -118,8 +118,10 @@ const (
 // Ctx is what guards look at.
 type Ctx struct {
 	TotalMinor int64
-	// CreditedMinor is what the credit notes of the invoice already gave back; a void refunds the rest.
+	// CreditedMinor is what the credit notes of the invoice already gave back; ByHandMinor is what was received outside a provider (invoice_payments). A void gives
+	// the rest back: the card part through the provider, the hand part as a credit balance (see VoidSplit).
 	CreditedMinor  int64
+	ByHandMinor    int64
 	Paid           bool // the invoice was paid (status = paid)
 	DunningAttempt int
 	MaxDunning     int
@@ -127,6 +129,20 @@ type Ctx struct {
 	ProviderMails bool
 	// Link: the invoice is collected through a payment link (the customer pays), not charged by the saga.
 	Link bool
+}
+
+func (c Ctx) cardRefund() int64 {
+	card, _ := VoidSplit(c.TotalMinor, c.CreditedMinor, c.ByHandMinor)
+	return card
+}
+
+// VoidSplit is what a voided, paid invoice gives back: card goes back through the provider that took it, hand becomes a credit balance of the customer, because money
+// recorded by hand (a bank transfer, cash) never passed a provider and has no card to return to. What credit notes already gave back is taken off the card part first,
+// so the two never add up to more than the invoice total less the notes. Money still owed on an invoice that was not paid in full is all hand: it has no card part.
+func VoidSplit(total, credited, byHand int64) (card, hand int64) {
+	left := max(total-credited, 0)
+	hand = min(max(byHand, 0), left)
+	return left - hand, hand
 }
 
 func (g Guard) holds(c Ctx) bool {
@@ -146,11 +162,11 @@ func (g Guard) holds(c Ctx) bool {
 	case DunningSpent:
 		return !c.Link && c.DunningAttempt >= c.MaxDunning
 	case PaidWithMoney:
-		return c.Paid && c.TotalMinor-c.CreditedMinor > 0
+		return c.Paid && c.cardRefund() > 0
 	case ProviderMails:
 		return c.ProviderMails
 	case NothingToRefund:
-		return !c.Paid || c.TotalMinor-c.CreditedMinor <= 0
+		return !c.Paid || c.cardRefund() <= 0
 	}
 	return false
 }

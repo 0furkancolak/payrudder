@@ -165,11 +165,7 @@ func (m *Manager) priorLate(ctx context.Context, run *model.Run, origins map[str
 		if err != nil {
 			return nil, inputs.Permanent(err)
 		}
-		var q apd.Decimal
-		if _, err := apdCtx.Quo(&q, d, apd.New(1, int32(r.QuantityScale))); err != nil {
-			return nil, inputs.Permanent(err)
-		}
-		out[lateKey{r.CustomerID, store.Deref(r.MeterCode), store.Deref(r.OriginPeriodID)}] = &q
+		out[lateKey{r.CustomerID, store.Deref(r.MeterCode), store.Deref(r.OriginPeriodID)}] = d
 	}
 	return out, nil
 }

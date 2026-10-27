@@ -51,6 +51,14 @@ func (c *Commands) StartJob(ctx context.Context, tenantID uuid.UUID, periodID st
 		return nil, false, err
 	}
 	job, created := model.Of(row), inserted == 1
+	if job.Status == model.Failed {
+		// The cause may be gone (a plan version that was broken for a while): asking again runs the job again.
+		if n, err := c.q.RestartReratingJob(ctx, sqlc.RestartReratingJobParams{TenantID: tenantID, ID: job.ID}); err != nil {
+			return nil, false, err
+		} else if n == 1 {
+			job.Status, job.LastError = model.Running, ""
+		}
+	}
 	if job.Status == model.Running {
 		if job, err = c.rerate(ctx, job); err != nil {
 			return job, created, err

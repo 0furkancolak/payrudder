@@ -90,7 +90,9 @@ JOIN LATERAL (SELECT COALESCE(sum(l.amount_minor) FILTER (WHERE l.amount_minor >
 GROUP BY i.currency, d.coupon_code
 ORDER BY i.currency, d.coupon_code;
 
--- Refunds: a credit note against an invoice that was paid, on the day it was issued; and a whole invoice refunded (a paid invoice that was voided), on the day the refund happened.
+-- Refunds: a credit note against an invoice that was paid, on the day it was issued; the card part of a paid invoice that was voided, on the day the refund happened (what the
+-- credit notes and the hand part already gave back is not counted again); and the part of a paid invoice received by hand that its void made a credit balance, on that day.
+-- The balance of an invoice that was never paid in full is no refund: that invoice was not income.
 -- name: AccountingRefunds :many
 SELECT (CASE WHEN @monthly::boolean THEN date_trunc('month', r.at AT TIME ZONE 'UTC') ELSE date_trunc('day', r.at AT TIME ZONE 'UTC') END)::date AS bucket,
        r.currency::text AS currency,
@@ -103,12 +105,20 @@ FROM (
     AND EXISTS (SELECT 1 FROM invoice_sagas s JOIN saga_events e ON e.tenant_id = s.tenant_id AND e.saga_id = s.id AND e.to_state = 'PAID'
                 WHERE s.tenant_id = c.tenant_id AND s.invoice_id = c.invoice_id)
   UNION ALL
-  SELECT x.at, i.currency, i.total_minor
+  SELECT x.at, i.currency, i.total_minor - COALESCE(n.credited_minor, 0) - COALESCE(h.hand_minor, 0)
   FROM (SELECT DISTINCT ON (s.invoice_id) s.invoice_id, e.at
         FROM saga_events e JOIN invoice_sagas s ON s.tenant_id = e.tenant_id AND s.id = e.saga_id
         WHERE e.tenant_id = @tenant_id AND e.to_state = 'REFUNDED' AND e.at >= @from_at::timestamptz AND e.at < @to_at::timestamptz
         ORDER BY s.invoice_id, e.at) x
   JOIN invoices i ON i.tenant_id = @tenant_id AND i.id = x.invoice_id
+  LEFT JOIN LATERAL (SELECT sum(c.total_minor) AS credited_minor FROM credit_notes c WHERE c.tenant_id = i.tenant_id AND c.invoice_id = i.id) n ON true
+  LEFT JOIN LATERAL (SELECT sum(b.amount_minor) AS hand_minor FROM credit_balances b WHERE b.tenant_id = i.tenant_id AND b.source_invoice_id = i.id) h ON true
+  UNION ALL
+  SELECT b.created_at, b.currency, b.amount_minor
+  FROM credit_balances b
+  WHERE b.tenant_id = @tenant_id AND b.source_invoice_id IS NOT NULL AND b.created_at >= @from_at::timestamptz AND b.created_at < @to_at::timestamptz
+    AND EXISTS (SELECT 1 FROM invoice_sagas s JOIN saga_events e ON e.tenant_id = s.tenant_id AND e.saga_id = s.id AND e.to_state = 'PAID'
+                WHERE s.tenant_id = b.tenant_id AND s.invoice_id = b.source_invoice_id)
 ) r
 GROUP BY 1, 2
 ORDER BY 1, 2;
