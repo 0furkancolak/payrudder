@@ -26,6 +26,7 @@ var subjects = map[string]string{
 	"payment_failed.v1":   "Payment failed for invoice {{.invoice_number}}",
 	"invoice_transfer.v1": "Invoice {{.invoice_number}}: how to pay by bank transfer",
 	"limit_exceeded.v1":   "You have used {{.threshold_pct}}% of your {{.meter_code}} limit",
+	"trial_will_end.v1":   "Your {{.plan_code}} trial ends on {{.trial_end_date}}",
 }
 
 var set = template.Must(template.New("").ParseFS(files, "files/*.html"))

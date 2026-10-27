@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package payrudder.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// TrialWillEnd says a customer's trial ends soon. plans-svc writes it to its outbox, in the transaction that records the notice and queues the
+// subscription.trial_will_end webhook event, and publishes it on subscription.trial-will-end.v1 (key: {tenant_id}/{customer_id}); notifier turns it
+// into the customer's e-mail.
+//
+// Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
+message TrialWillEnd {
+  // uuidv5(tenant|customer|trial_ends_at): one trial end of one customer is one event, so consumers dedup a repeated publish.
+  string event_id = 1;
+  string tenant_id = 2;
+  string customer_id = 3;
+  // The subscription that was trialing when the notice was recorded.
+  string subscription_id = 4;
+  // Code of the plan the customer is trialing.
+  string plan_code = 5;
+  google.protobuf.Timestamp trial_ends_at = 6;
+  google.protobuf.Timestamp detected_at = 7;
+}

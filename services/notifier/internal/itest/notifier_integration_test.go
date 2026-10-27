@@ -38,6 +38,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/trials"
 	"github.com/0furkancolak/payrudder/services/notifier/migrations"
 )
 
@@ -352,6 +353,51 @@ func TestNotifier(t *testing.T) {
 		testkit.Eventually(t, 10*time.Second, "offset saved", func() bool {
 			m, _ := offsets.Load(context.Background(), topic, []int32{0})
 			return m[0] == 3
+		})
+	})
+
+	t.Run("TrialWillEndDeliveredTwiceSendsOneEmail", func(t *testing.T) {
+		topic, dlq := "subscription.trial-will-end.v1", "subscription.trial-will-end.dlq.v1"
+		admin, _ := kgo.NewClient(kgo.SeedBrokers(brokers))
+		if _, err := kadm.NewClient(admin).CreateTopics(context.Background(), 1, 1, nil, topic, dlq); err != nil {
+			t.Fatal(err)
+		}
+		admin.Close()
+		producer, err := kafkax.NewProducer([]string{brokers})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer producer.Close()
+
+		email := "trial-" + uuid.NewString()[:8] + "@example.com"
+		offsets := store.Offsets{DB: pool, Group: "notifier-t-trials", Topic: topic}
+		tc := &trials.Consumer{Mailer: mailer, Plans: fakePlans{email: email}, Admin: fakeAdmin{env: plansv1.Environment_ENVIRONMENT_LIVE}, Offsets: offsets,
+			DLQ: kafkax.DLQ{Client: producer, Topic: dlq, Consumer: "notifier-t-trials"}, Log: log}
+		consumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: []string{brokers}, GroupID: "notifier-t-trials", Topic: topic, LoadOffsets: offsets.Load,
+			Handler: tc, MaxPollRecords: 10, Backoff: 100 * time.Millisecond, Log: log})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() { _ = consumer.Run(ctx); close(done) }()
+		defer func() { cancel(); <-done; consumer.Close() }()
+
+		ev, _ := proto.Marshal(&eventsv1.TrialWillEnd{EventId: uuid.NewString(), TenantId: uuid.NewString(), CustomerId: uuid.NewString(), SubscriptionId: uuid.NewString(),
+			PlanCode: "pro", TrialEndsAt: timestamppb.New(time.Date(2026, 11, 6, 21, 30, 0, 0, time.UTC)), DetectedAt: timestamppb.Now()})
+		rec := func(v []byte) *kgo.Record { return &kgo.Record{Topic: topic, Key: []byte("tenant/customer"), Value: v} }
+		if err := producer.ProduceSync(context.Background(), rec(ev), rec(ev)).FirstErr(); err != nil {
+			t.Fatal(err)
+		}
+		waitMail(t, mp.APIURL, email, 1)
+		time.Sleep(2 * time.Second)
+		got := mailbox(t, mp.APIURL, email)
+		if len(got) != 1 || got[0].Subject != "Your pro trial ends on 6 Nov 2026" {
+			t.Fatalf("mailbox = %+v, want exactly one reminder", got)
+		}
+		testkit.Eventually(t, 10*time.Second, "offset saved", func() bool {
+			m, _ := offsets.Load(context.Background(), topic, []int32{0})
+			return m[0] == 2
 		})
 	})
 }

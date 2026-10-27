@@ -25,6 +25,8 @@
 | `usage.events.dlq.v1` | `tenant_id` | original bytes | 3 | `delete`, 30 days | aggregator, analytics-svc, limits-svc | operator tooling (`payrudderctl dlq`) |
 | `usage.limit-exceeded.v1` | `tenant_id` | `LimitExceeded` | 6 | `delete`, 90 days | limits-svc | analytics-svc (`analytics`), notifier (`notifier`) |
 | `usage.limit-exceeded.dlq.v1` | `tenant_id` | original bytes | 1 | `delete`, 30 days | analytics-svc, notifier | operator |
+| `subscription.trial-will-end.v1` | `{tenant_id}/{customer_id}` | `TrialWillEnd` | 6 | `delete`, 90 days | plans-svc (outbox) | notifier (`notifier-trials`) |
+| `subscription.trial-will-end.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
 | `plans.entitlements.v1` | `{tenant_id}/{customer_id}/{meter_code}` | `EntitlementState` or tombstone | 6 | **`compact`**, `min.compaction.lag.ms=1h`, `delete.retention.ms=1d` | plans-svc (outbox) | limits-svc (per-pod group, reads from earliest) |
 | `billing.invoices.v1` | `tenant_id` | `InvoiceFact` (`oneof`: finalized / paid / voided / corrected) | 6 | `delete`, 400 days | billing-svc (outbox) | analytics-svc (`analytics`) |
 | `billing.invoices.dlq.v1` | `tenant_id` | original bytes | 1 | `delete`, 30 days | analytics-svc | operator |
@@ -88,6 +90,16 @@ message EntitlementState {
   string window = 10;                          // "month" (also empty), "hour", "day", "week"
   string mode = 11;                            // "hard" (also empty), "soft", "notify"
   bool override = 12;                          // the customer's own limit, not its plan version's
+}
+
+message TrialWillEnd {
+  string event_id = 1;                         // uuidv5(tenant|customer|trial_ends_at): one trial end of one customer is one event
+  string tenant_id = 2;
+  string customer_id = 3;
+  string subscription_id = 4;
+  string plan_code = 5;
+  google.protobuf.Timestamp trial_ends_at = 6;
+  google.protobuf.Timestamp detected_at = 7;
 }
 
 message InvoiceFact {
@@ -193,6 +205,7 @@ Kafka has no per-message ack, so a poison record would block its partition forev
 | `UsageEvent` | analytics-svc | `ReplacingMergeTree` on `event_id` | `usage_events` |
 | `LimitExceeded` | notifier | `event_id` | email |
 | `LimitExceeded` | analytics-svc | `event_id` | `limit_events` |
+| `TrialWillEnd` | notifier | `event_id` | email |
 | `EntitlementState` | limits-svc | key (compaction = latest wins) | in-memory map + Redis mirror |
 | `InvoiceFact` | analytics-svc | `(invoice_id, version)` | `invoice_facts` |
 | `RenderInvoicePdf` | invoice-worker | `command_id` + deterministic object key | PDF in S3 object storage (MinIO locally) |

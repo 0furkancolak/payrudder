@@ -25,6 +25,7 @@ A development stack may lift the address rule with `PAYRUDDER_WEBHOOK_ALLOW_PRIV
 | `subscription.cancellation_scheduled` · `subscription.cancellation_withdrawn` | cancel at period end was set / taken back | `subscription` |
 | `subscription.paused` · `subscription.resumed` | | `subscription` |
 | `subscription.moved_to_provider` | a provider migration took over | `subscription`, `previous_subscription_id`, `to_provider` |
+| `subscription.trial_will_end` | a trial ends in 3 days or fewer (`PAYRUDDER_TRIAL_REMINDER_DAYS`); once per trial end: an extended or restarted trial is announced again, a plan change that keeps the trial end is not. Not sent for a subscription a provider runs, or one that is paused or set to cancel | `subscription` (its `trial_end_time` says when) |
 | `payment_link.created` | a payment link was made (not the invoice links an ad-hoc link hands out) | `link_id`, `kind`, `invoice_id` or `amount_minor`, `currency`, `description`, `customer_external_id`, `single_use`, `expires_at` |
 | `payment_link.paid` | an invoice was paid through the link (once per link and invoice) | `link_id`, `kind`, `invoice_id`, `invoice_number`, `customer_external_id`, `currency`, `total_minor`, `paid_count` |
 | `payment_link.expired` | the link expired unpaid (a single-use link that was paid is used, not expired) | `link_id`, `kind`, `invoice_id` or `amount_minor`, `currency`, `expires_at` |

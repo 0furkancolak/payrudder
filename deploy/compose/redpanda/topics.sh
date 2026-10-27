@@ -21,10 +21,12 @@ create() {
   esac
 }
 
-create usage.events.v1              12 30
-create usage.events.dlq.v1           3 30
-create usage.limit-exceeded.v1       6 90
-create usage.limit-exceeded.dlq.v1   1 30
-create plans.entitlements.v1         6 compact
-create billing.invoices.v1           6 400
-create billing.invoices.dlq.v1       1 30
+create usage.events.v1                     12 30
+create usage.events.dlq.v1                  3 30
+create usage.limit-exceeded.v1              6 90
+create usage.limit-exceeded.dlq.v1          1 30
+create subscription.trial-will-end.v1       6 90
+create subscription.trial-will-end.dlq.v1   1 30
+create plans.entitlements.v1                6 compact
+create billing.invoices.v1                  6 400
+create billing.invoices.dlq.v1              1 30
