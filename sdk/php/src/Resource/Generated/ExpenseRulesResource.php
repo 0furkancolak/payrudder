@@ -10,6 +10,7 @@ use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\ExpenseRule;
+use Payrudder\Model\ExpenseRuleInput;
 use Payrudder\Model\ListExpenseRulesResponse;
 use Payrudder\RequestOptions;
 
@@ -33,12 +34,12 @@ final class ExpenseRulesResource extends AbstractResource
     /**
      * Add a recurring-vendor rule (POST /v1/expense-rules).
      *
-     * @param ExpenseRule|array<string,mixed> $body
+     * @param ExpenseRuleInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function createExpenseRule(ExpenseRule|array $body, ?RequestOptions $options = null): ExpenseRule
+    public function createExpenseRule(ExpenseRuleInput|array $body, ?RequestOptions $options = null): ExpenseRule
     {
         return ExpenseRule::fromArray($this->call('POST', '/v1/expense-rules', [], Cast::body($body), $options));
     }
@@ -47,12 +48,12 @@ final class ExpenseRulesResource extends AbstractResource
      * Replace a recurring-vendor rule (PUT /v1/expense-rules/{id}).
      *
      * @param string $id
-     * @param ExpenseRule|array<string,mixed> $body
+     * @param ExpenseRuleInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function updateExpenseRule(string $id, ExpenseRule|array $body, ?RequestOptions $options = null): ExpenseRule
+    public function updateExpenseRule(string $id, ExpenseRuleInput|array $body, ?RequestOptions $options = null): ExpenseRule
     {
         return ExpenseRule::fromArray($this->call('PUT', '/v1/expense-rules/' . rawurlencode($id), [], Cast::body($body), $options));
     }

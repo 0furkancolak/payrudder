@@ -10,8 +10,8 @@ use Generator;
 use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Model\EInvoiceDocument;
-use Payrudder\Model\EInvoiceFileLink;
 use Payrudder\Model\EInvoiceList;
+use Payrudder\Model\SignedUrl;
 use Payrudder\RequestOptions;
 
 /**
@@ -100,8 +100,8 @@ final class EInvoicesResource extends AbstractResource
      *
      * @throws PayrudderException
      */
-    public function getEInvoiceFile(string $id, string $kind, ?RequestOptions $options = null): EInvoiceFileLink
+    public function getEInvoiceFile(string $id, string $kind, ?RequestOptions $options = null): SignedUrl
     {
-        return EInvoiceFileLink::fromArray($this->call('GET', '/v1/e-invoices/' . rawurlencode($id) . '/files/' . rawurlencode($kind), [], null, $options));
+        return SignedUrl::fromArray($this->call('GET', '/v1/e-invoices/' . rawurlencode($id) . '/files/' . rawurlencode($kind), [], null, $options));
     }
 }

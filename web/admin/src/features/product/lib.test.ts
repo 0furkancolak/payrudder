@@ -11,9 +11,9 @@ const payments: NonNullable<AppOverview["payments"]> = {
     { status: "refunded", count: 0 },
   ],
   by_currency: [
-    { currency: "TRY", paid_minor: 25000 },
-    { currency: "USD", paid_minor: 4900 },
-    { currency: "EUR", paid_minor: 4900 },
+    { currency: "TRY", paid_count: 1, paid_minor: 25000, failed_count: 0, failed_minor: 0, pending_count: 0, pending_minor: 0, refunded_minor: 0 },
+    { currency: "USD", paid_count: 1, paid_minor: 4900, failed_count: 0, failed_minor: 0, pending_count: 0, pending_minor: 0, refunded_minor: 0 },
+    { currency: "EUR", paid_count: 1, paid_minor: 4900, failed_count: 0, failed_minor: 0, pending_count: 0, pending_minor: 0, refunded_minor: 0 },
   ],
   series: [{ currency: "USD", points: [{ date: "2026-10-20", amount_minor: 100 }, { date: "2026-10-21", amount_minor: 4800 }] }],
   recent: [],

@@ -16,7 +16,7 @@ type usageJSON struct {
 type meterUsageRow struct {
 	MeterCode  string `json:"meter_code"`
 	Quantity   string `json:"quantity"`
-	EventCount int64  `json:"event_count"`
+	EventCount int64  `json:"event_count,string"`
 }
 
 // getCustomerUsage is GET /v1/customers/{external_id}/usage?period=YYYY-MM: the on-time usage per meter. The period

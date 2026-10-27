@@ -4,8 +4,8 @@ import { parseReceipt } from "@/shared/lib/receipt/parse";
 import type { ExpenseRule } from "./api";
 import { canAutoApprove, matchRule, taxInside, withinTolerance } from "./rules";
 
-const aws: ExpenseRule = { id: "1", vendor_match: "acme cloud", category: "infrastructure", currency: "USD", tax_bps: 825, expected_amount_minor: "12877", tolerance_bps: 500, auto_approve: true };
-const generic: ExpenseRule = { id: "2", vendor_match: "acme", category: "other", currency: "USD" };
+const aws: ExpenseRule = { id: "1", vendor_match: "acme cloud", category: "infrastructure", currency: "USD", tax_bps: 825, expected_amount_minor: "12877", tolerance_bps: 500, auto_approve: true, app_id: "" };
+const generic: ExpenseRule = { id: "2", vendor_match: "acme", category: "other", currency: "USD", tax_bps: 0, expected_amount_minor: "0", tolerance_bps: 0, auto_approve: false, app_id: "" };
 
 describe("matchRule", () => {
   it("matches the vendor by contained text, case-insensitively, the longest rule first", () => {

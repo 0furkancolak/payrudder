@@ -15,7 +15,7 @@ use Payrudder\Internal\Cast;
 final class CreateUploadSessionRequest implements RequestBody
 {
     /**
-     * @param list<CreateUploadSessionRequestFilesItem> $files
+     * @param list<CreateUploadSessionFile> $files
      */
     public function __construct(
         public readonly array $files,

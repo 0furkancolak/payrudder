@@ -10,6 +10,7 @@ use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\DunningSettings;
+use Payrudder\Model\DunningSettingsInput;
 use Payrudder\RequestOptions;
 
 /**
@@ -32,12 +33,12 @@ final class DunningSettingsResource extends AbstractResource
     /**
      * Replace the retry delays (PUT /v1/dunning-settings).
      *
-     * @param DunningSettings|array<string,mixed> $body
+     * @param DunningSettingsInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function setDunningSettings(DunningSettings|array $body, ?RequestOptions $options = null): DunningSettings
+    public function setDunningSettings(DunningSettingsInput|array $body, ?RequestOptions $options = null): DunningSettings
     {
         return DunningSettings::fromArray($this->call('PUT', '/v1/dunning-settings', [], Cast::body($body), $options));
     }

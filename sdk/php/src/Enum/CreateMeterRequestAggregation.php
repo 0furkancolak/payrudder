@@ -11,4 +11,6 @@ enum CreateMeterRequestAggregation: string
     case AggregationSum = 'AGGREGATION_SUM';
     case AggregationCount = 'AGGREGATION_COUNT';
     case AggregationMax = 'AGGREGATION_MAX';
+    case AggregationUnique = 'AGGREGATION_UNIQUE';
+    case AggregationLast = 'AGGREGATION_LAST';
 }

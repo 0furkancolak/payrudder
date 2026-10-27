@@ -10,6 +10,7 @@ use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\MailSettings;
+use Payrudder\Model\MailSettingsInput;
 use Payrudder\RequestOptions;
 
 /**
@@ -32,12 +33,12 @@ final class MailSettingsResource extends AbstractResource
     /**
      * Switch the listed categories on or off; the others keep their setting (PUT /v1/mail-settings).
      *
-     * @param MailSettings|array<string,mixed> $body
+     * @param MailSettingsInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function setMailSettings(MailSettings|array $body, ?RequestOptions $options = null): MailSettings
+    public function setMailSettings(MailSettingsInput|array $body, ?RequestOptions $options = null): MailSettings
     {
         return MailSettings::fromArray($this->call('PUT', '/v1/mail-settings', [], Cast::body($body), $options));
     }

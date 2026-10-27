@@ -45,7 +45,7 @@ final class EInvoiceList implements Model
         return Cast::compact([
             'documents' => Cast::wire($this->documents),
             'next_page_token' => $this->nextPageToken,
-            'total' => $this->total,
+            'total' => Cast::int64($this->total),
         ]);
     }
 }

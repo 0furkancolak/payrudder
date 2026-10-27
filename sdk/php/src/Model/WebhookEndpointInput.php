@@ -17,15 +17,15 @@ final class WebhookEndpointInput implements RequestBody
 {
     /**
      * @param string $url
+     * @param bool $active
      * @param string|null $description
      * @param list<WebhookEventType|string>|null $eventTypes
-     * @param bool|null $active
      */
     public function __construct(
         public readonly string $url,
+        public readonly bool $active,
         public readonly ?string $description = null,
         public readonly ?array $eventTypes = null,
-        public readonly ?bool $active = null,
     ) {}
 
     /**
@@ -35,9 +35,9 @@ final class WebhookEndpointInput implements RequestBody
     {
         return Cast::compact([
             'url' => $this->url,
+            'active' => $this->active,
             'description' => $this->description,
             'event_types' => Cast::wire($this->eventTypes),
-            'active' => $this->active,
         ]);
     }
 }

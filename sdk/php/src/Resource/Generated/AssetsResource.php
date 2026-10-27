@@ -13,9 +13,9 @@ use Payrudder\Internal\Cast;
 use Payrudder\Model\Asset;
 use Payrudder\Model\CompleteUploadFileRequest;
 use Payrudder\Model\CreateUploadSessionRequest;
-use Payrudder\Model\DownloadAssetResponse;
 use Payrudder\Model\ListAssetsResponse;
 use Payrudder\Model\PresignPartsResponse;
+use Payrudder\Model\SignedUrl;
 use Payrudder\Model\UploadFile;
 use Payrudder\Model\UploadSession;
 use Payrudder\RequestOptions;
@@ -200,8 +200,8 @@ final class AssetsResource extends AbstractResource
      *
      * @throws PayrudderException
      */
-    public function downloadAsset(string $id, ?RequestOptions $options = null): DownloadAssetResponse
+    public function downloadAsset(string $id, ?RequestOptions $options = null): SignedUrl
     {
-        return DownloadAssetResponse::fromArray($this->call('GET', '/v1/assets/' . rawurlencode($id) . '/download', [], null, $options));
+        return SignedUrl::fromArray($this->call('GET', '/v1/assets/' . rawurlencode($id) . '/download', [], null, $options));
     }
 }

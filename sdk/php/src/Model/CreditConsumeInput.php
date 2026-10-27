@@ -16,13 +16,13 @@ final class CreditConsumeInput implements RequestBody
 {
     /**
      * @param int $credits
+     * @param string $idempotencyKey
      * @param string|null $reason
-     * @param string|null $idempotencyKey
      */
     public function __construct(
         public readonly int $credits,
+        public readonly string $idempotencyKey,
         public readonly ?string $reason = null,
-        public readonly ?string $idempotencyKey = null,
     ) {}
 
     /**
@@ -32,8 +32,8 @@ final class CreditConsumeInput implements RequestBody
     {
         return Cast::compact([
             'credits' => Cast::int64($this->credits),
-            'reason' => $this->reason,
             'idempotency_key' => $this->idempotencyKey,
+            'reason' => $this->reason,
         ]);
     }
 }

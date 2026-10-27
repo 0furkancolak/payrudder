@@ -165,11 +165,7 @@ func (s *Server) cancelSubscription(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, invalid("credit_unused", "true or false"))
 		return
 	}
+	// Always {subscription, credited_minor}; credited_minor is "0" unless credit_unused credited something.
 	resp, err := s.d.Plans.CancelSubscription(r.Context(), req)
-	if req.CreditUnused {
-		// {subscription, credited_minor}: the caller asked what was credited.
-		respond(w, r, http.StatusOK, resp, err)
-		return
-	}
-	respond(w, r, http.StatusOK, resp.GetSubscription(), err)
+	respond(w, r, http.StatusOK, resp, err)
 }

@@ -8,6 +8,6 @@ namespace Payrudder\Enum;
 
 enum SubscriptionOwner: string
 {
-    case Quotify = 'quotify';
+    case Payrudder = 'payrudder';
     case Provider = 'provider';
 }

@@ -71,7 +71,7 @@ function askReject(outcome: "rejected" | "expired") {
   rejectOutcome.value = outcome;
   rejectOpen.value = true;
 }
-const day = (v?: string) => fmt.date(v, "day");
+const day = (v?: string | null) => fmt.date(v, "day");
 </script>
 
 <template>

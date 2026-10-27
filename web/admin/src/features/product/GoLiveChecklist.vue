@@ -21,7 +21,7 @@ import { checklist, nextStep, progress, type GoLiveKey } from "./golive";
 const props = defineProps<{ appId: string; compact?: boolean }>();
 const { t } = useI18n();
 const app = useApp(() => props.appId);
-const live = computed(() => tenantOf(app.data.value?.app, "live"));
+const live = computed(() => tenantOf(app.data.value?.app ?? undefined, "live"));
 const goLive = useGoLive(() => props.appId, () => live.value !== "");
 const activate = useActivateLive(() => props.appId);
 const acceptTerms = useAcceptTerms(() => props.appId);

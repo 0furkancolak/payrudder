@@ -88,7 +88,7 @@ class CustomersResource:
         """
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
 
-    def set_customer_address(self, external_id: str, body: m.Address, *, options: RequestOptions | None = None) -> m.Customer:
+    def set_customer_address(self, external_id: str, body: m.AddressInput, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's billing address.
 
         ``PUT /v1/customers/{external_id}/address``
@@ -149,28 +149,28 @@ class CustomersResource:
 
         ``GET /v1/customers/{external_id}/credits``
         """
-        return cast("m.CreditBalance", self._client._request("GET", f"/v1/customers/{_p(external_id)}/credits", options=options))
+        return cast("m.CreditBalance", self._client._request("GET", f"/v1/customers/{_p(external_id)}/credits", response_wire='CreditBalance', options=options))
 
     def grant_credits(self, external_id: str, body: m.CreditGrantInput, *, options: RequestOptions | None = None) -> m.CreditResult:
         """Add credits to a customer.
 
         ``POST /v1/customers/{external_id}/credits/grant``
         """
-        return cast("m.CreditResult", self._client._request("POST", f"/v1/customers/{_p(external_id)}/credits/grant", body=body, options=options))
+        return cast("m.CreditResult", self._client._request("POST", f"/v1/customers/{_p(external_id)}/credits/grant", body=body, body_wire='CreditGrantInput', response_wire='CreditResult', options=options))
 
     def consume_credits(self, external_id: str, body: m.CreditConsumeInput, *, options: RequestOptions | None = None) -> m.CreditResult:
         """Spend credits.
 
         ``POST /v1/customers/{external_id}/credits/consume``
         """
-        return cast("m.CreditResult", self._client._request("POST", f"/v1/customers/{_p(external_id)}/credits/consume", body=body, options=options))
+        return cast("m.CreditResult", self._client._request("POST", f"/v1/customers/{_p(external_id)}/credits/consume", body=body, body_wire='CreditConsumeInput', response_wire='CreditResult', options=options))
 
     def list_credit_ledger(self, external_id: str, *, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.CreditLedgerPage:
         """Every change to a customer's credits, newest first.
 
         ``GET /v1/customers/{external_id}/credits/ledger``
         """
-        return cast("m.CreditLedgerPage", self._client._request("GET", f"/v1/customers/{_p(external_id)}/credits/ledger", query={"page_size": page_size, "page_token": page_token}, options=options))
+        return cast("m.CreditLedgerPage", self._client._request("GET", f"/v1/customers/{_p(external_id)}/credits/ledger", query={"page_size": page_size, "page_token": page_token}, response_wire='CreditLedgerPage', options=options))
 
     def iter_credit_ledger(self, external_id: str, *, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.CreditLedgerEntry]:
         """Every item of ``list_credit_ledger``, following ``next_page_token`` until the last page."""
@@ -229,7 +229,7 @@ class EInvoicesResource:
 
         ``GET /v1/e-invoices``
         """
-        return cast("m.EInvoiceList", self._client._request("GET", "/v1/e-invoices", query={"invoice_id": invoice_id, "credit_note_id": credit_note_id, "status": status, "page_size": page_size, "page_token": page_token}, options=options))
+        return cast("m.EInvoiceList", self._client._request("GET", "/v1/e-invoices", query={"invoice_id": invoice_id, "credit_note_id": credit_note_id, "status": status, "page_size": page_size, "page_token": page_token}, response_wire='EInvoiceList', options=options))
 
     def iter_e_invoices(self, *, invoice_id: str | None = None, credit_note_id: str | None = None, status: Literal["pending", "issued", "failed", "cancelled"] | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.EInvoiceDocument]:
         """Every item of ``list_e_invoices``, following ``next_page_token`` until the last page."""
@@ -248,12 +248,12 @@ class EInvoicesResource:
         """
         return cast("m.EInvoiceDocument", self._client._request("GET", f"/v1/e-invoices/{_p(id)}", options=options))
 
-    def get_e_invoice_file(self, id: str, kind: str, *, options: RequestOptions | None = None) -> m.EInvoiceFileLink:
+    def get_e_invoice_file(self, id: str, kind: str, *, options: RequestOptions | None = None) -> m.SignedUrl:
         """A presigned link to the UBL XML or the PDF of an issued e-document (5 minutes).
 
         ``GET /v1/e-invoices/{id}/files/{kind}``
         """
-        return cast("m.EInvoiceFileLink", self._client._request("GET", f"/v1/e-invoices/{_p(id)}/files/{_p(kind)}", options=options))
+        return cast("m.SignedUrl", self._client._request("GET", f"/v1/e-invoices/{_p(id)}/files/{_p(kind)}", options=options))
 
 
 class MetersResource:
@@ -356,12 +356,12 @@ class SubscriptionsResource:
         """
         return cast("m.Subscription", self._client._request("GET", f"/v1/subscriptions/{_p(id)}", options=options))
 
-    def cancel_subscription(self, id: str, *, end_time: str | datetime | None = None, credit_unused: bool | None = None, options: RequestOptions | None = None) -> m.Subscription | m.CancelSubscriptionResponse1:
+    def cancel_subscription(self, id: str, *, end_time: str | datetime | None = None, credit_unused: bool | None = None, options: RequestOptions | None = None) -> m.CancelSubscriptionResponse:
         """End a subscription (now, or at end_time).
 
         ``DELETE /v1/subscriptions/{id}``
         """
-        return cast("m.Subscription | m.CancelSubscriptionResponse1", self._client._request("DELETE", f"/v1/subscriptions/{_p(id)}", query={"end_time": end_time, "credit_unused": credit_unused}, options=options))
+        return cast("m.CancelSubscriptionResponse", self._client._request("DELETE", f"/v1/subscriptions/{_p(id)}", query={"end_time": end_time, "credit_unused": credit_unused}, response_wire='CancelSubscriptionResponse', options=options))
 
     def pause_subscription(self, id: str, *, options: RequestOptions | None = None) -> m.Subscription:
         """Stop the fixed fee until the subscription is resumed (usage is still billed).
@@ -447,7 +447,7 @@ class TaxRatesResource:
         """
         return cast("m.TaxRates", self._client._request("GET", "/v1/tax-rates", options=options))
 
-    def set_tax_rates(self, body: m.TaxRates, *, options: RequestOptions | None = None) -> m.TaxRates:
+    def set_tax_rates(self, body: m.TaxRatesInput, *, options: RequestOptions | None = None) -> m.TaxRates:
         """Replace the tax rates.
 
         ``PUT /v1/tax-rates``
@@ -468,7 +468,7 @@ class DunningSettingsResource:
         """
         return cast("m.DunningSettings", self._client._request("GET", "/v1/dunning-settings", options=options))
 
-    def set_dunning_settings(self, body: m.DunningSettings, *, options: RequestOptions | None = None) -> m.DunningSettings:
+    def set_dunning_settings(self, body: m.DunningSettingsInput, *, options: RequestOptions | None = None) -> m.DunningSettings:
         """Replace the retry delays.
 
         ``PUT /v1/dunning-settings``
@@ -496,19 +496,19 @@ class CreditPacksResource:
         """
         return cast("m.CreditPack", self._client._request("POST", "/v1/credit-packs", body=body, body_wire='CreditPackInput', response_wire='CreditPack', options=options))
 
-    def activate_credit_pack(self, id: str, *, options: RequestOptions | None = None) -> dict[str, Any]:
+    def activate_credit_pack(self, id: str, *, options: RequestOptions | None = None) -> m.EmptyObject:
         """Put a credit pack back on sale.
 
         ``POST /v1/credit-packs/{id}/activate``
         """
-        return cast("dict[str, Any]", self._client._request("POST", f"/v1/credit-packs/{_p(id)}/activate", options=options))
+        return cast("m.EmptyObject", self._client._request("POST", f"/v1/credit-packs/{_p(id)}/activate", options=options))
 
-    def deactivate_credit_pack(self, id: str, *, options: RequestOptions | None = None) -> dict[str, Any]:
+    def deactivate_credit_pack(self, id: str, *, options: RequestOptions | None = None) -> m.EmptyObject:
         """Withdraw a credit pack from sale.
 
         ``POST /v1/credit-packs/{id}/deactivate``
         """
-        return cast("dict[str, Any]", self._client._request("POST", f"/v1/credit-packs/{_p(id)}/deactivate", options=options))
+        return cast("m.EmptyObject", self._client._request("POST", f"/v1/credit-packs/{_p(id)}/deactivate", options=options))
 
 
 class ExpensesResource:
@@ -581,7 +581,7 @@ class ExpenseInboxResource:
 
         ``GET /v1/expense-inbox/items``
         """
-        return cast("m.InboxItemPage", self._client._request("GET", "/v1/expense-inbox/items", query={"status": status, "page_size": page_size}, options=options))
+        return cast("m.InboxItemPage", self._client._request("GET", "/v1/expense-inbox/items", query={"status": status, "page_size": page_size}, response_wire='InboxItemPage', options=options))
 
     def get_inbox_item_file(self, id: str, *, options: RequestOptions | None = None) -> bytes:
         """The bytes of a received attachment.
@@ -595,7 +595,7 @@ class ExpenseInboxResource:
 
         ``POST /v1/expense-inbox/items/{id}/resolve``
         """
-        return cast("m.InboxItem", self._client._request("POST", f"/v1/expense-inbox/items/{_p(id)}/resolve", body=body, options=options))
+        return cast("m.InboxItem", self._client._request("POST", f"/v1/expense-inbox/items/{_p(id)}/resolve", body=body, response_wire='InboxItem', options=options))
 
 
 class ExpenseRulesResource:
@@ -611,19 +611,19 @@ class ExpenseRulesResource:
         """
         return cast("m.ListExpenseRulesResponse", self._client._request("GET", "/v1/expense-rules", response_wire='ListExpenseRulesResponse', options=options))
 
-    def create_expense_rule(self, body: m.ExpenseRule, *, options: RequestOptions | None = None) -> m.ExpenseRule:
+    def create_expense_rule(self, body: m.ExpenseRuleInput, *, options: RequestOptions | None = None) -> m.ExpenseRule:
         """Add a recurring-vendor rule.
 
         ``POST /v1/expense-rules``
         """
-        return cast("m.ExpenseRule", self._client._request("POST", "/v1/expense-rules", body=body, body_wire='ExpenseRule', response_wire='ExpenseRule', options=options))
+        return cast("m.ExpenseRule", self._client._request("POST", "/v1/expense-rules", body=body, body_wire='ExpenseRuleInput', response_wire='ExpenseRule', options=options))
 
-    def update_expense_rule(self, id: str, body: m.ExpenseRule, *, options: RequestOptions | None = None) -> m.ExpenseRule:
+    def update_expense_rule(self, id: str, body: m.ExpenseRuleInput, *, options: RequestOptions | None = None) -> m.ExpenseRule:
         """Replace a recurring-vendor rule.
 
         ``PUT /v1/expense-rules/{id}``
         """
-        return cast("m.ExpenseRule", self._client._request("PUT", f"/v1/expense-rules/{_p(id)}", body=body, body_wire='ExpenseRule', response_wire='ExpenseRule', options=options))
+        return cast("m.ExpenseRule", self._client._request("PUT", f"/v1/expense-rules/{_p(id)}", body=body, body_wire='ExpenseRuleInput', response_wire='ExpenseRule', options=options))
 
     def delete_expense_rule(self, id: str, *, options: RequestOptions | None = None) -> None:
         """Delete a recurring-vendor rule.
@@ -672,14 +672,14 @@ class CreditsResource:
 
         ``GET /v1/credits/settings``
         """
-        return cast("m.CreditSettings", self._client._request("GET", "/v1/credits/settings", options=options))
+        return cast("m.CreditSettings", self._client._request("GET", "/v1/credits/settings", response_wire='CreditSettings', options=options))
 
-    def set_credit_settings(self, body: m.CreditSettings, *, options: RequestOptions | None = None) -> m.CreditSettings:
+    def set_credit_settings(self, body: m.CreditSettingsInput, *, options: RequestOptions | None = None) -> m.CreditSettings:
         """Set the low-balance threshold.
 
         ``PUT /v1/credits/settings``
         """
-        return cast("m.CreditSettings", self._client._request("PUT", "/v1/credits/settings", body=body, options=options))
+        return cast("m.CreditSettings", self._client._request("PUT", "/v1/credits/settings", body=body, body_wire='CreditSettingsInput', response_wire='CreditSettings', options=options))
 
 
 class WebhookEndpointsResource:
@@ -695,7 +695,7 @@ class WebhookEndpointsResource:
         """
         return cast("m.ListWebhookEndpointsResponse", self._client._request("GET", "/v1/webhook-endpoints", options=options))
 
-    def create_webhook_endpoint(self, body: m.WebhookEndpointInput, *, options: RequestOptions | None = None) -> m.WebhookEndpoint:
+    def create_webhook_endpoint(self, body: m.CreateWebhookEndpointRequest, *, options: RequestOptions | None = None) -> m.WebhookEndpoint:
         """Register an HTTPS endpoint that receives Payrudder's events.
 
         ``POST /v1/webhook-endpoints``
@@ -775,12 +775,12 @@ class CouponsResource:
         """
         return cast("m.ListCouponsResponse", self._client._request("GET", "/v1/coupons", response_wire='ListCouponsResponse', options=options))
 
-    def create_coupon(self, body: m.Coupon, *, options: RequestOptions | None = None) -> m.Coupon:
+    def create_coupon(self, body: m.CouponInput, *, options: RequestOptions | None = None) -> m.Coupon:
         """Make a coupon.
 
         ``POST /v1/coupons``
         """
-        return cast("m.Coupon", self._client._request("POST", "/v1/coupons", body=body, body_wire='Coupon', response_wire='Coupon', options=options))
+        return cast("m.Coupon", self._client._request("POST", "/v1/coupons", body=body, body_wire='CouponInput', response_wire='Coupon', options=options))
 
     def deactivate_coupon(self, code: str, *, options: RequestOptions | None = None) -> m.Coupon:
         """Stop new redemptions of a coupon (subscriptions that have it keep it).
@@ -879,19 +879,19 @@ class AffiliatesResource:
         """
         return cast("m.AffiliateProgram", self._client._request("GET", "/v1/affiliates/program", response_wire='AffiliateProgram', options=options))
 
-    def set_affiliate_program(self, body: m.AffiliateProgram, *, options: RequestOptions | None = None) -> m.AffiliateProgram:
+    def set_affiliate_program(self, body: m.AffiliateProgramInput, *, options: RequestOptions | None = None) -> m.AffiliateProgram:
         """Set the rules of the partner program.
 
         ``PUT /v1/affiliates/program``
         """
-        return cast("m.AffiliateProgram", self._client._request("PUT", "/v1/affiliates/program", body=body, body_wire='AffiliateProgram', response_wire='AffiliateProgram', options=options))
+        return cast("m.AffiliateProgram", self._client._request("PUT", "/v1/affiliates/program", body=body, body_wire='AffiliateProgramInput', response_wire='AffiliateProgram', options=options))
 
     def list_affiliates(self, *, status: Literal["pending", "active", "suspended"] | None = None, search: str | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListAffiliatesResponse:
         """Partners, newest first.
 
         ``GET /v1/affiliates``
         """
-        return cast("m.ListAffiliatesResponse", self._client._request("GET", "/v1/affiliates", query={"status": status, "search": search, "page_size": page_size, "page_token": page_token}, options=options))
+        return cast("m.ListAffiliatesResponse", self._client._request("GET", "/v1/affiliates", query={"status": status, "search": search, "page_size": page_size, "page_token": page_token}, response_wire='ListAffiliatesResponse', options=options))
 
     def iter_affiliates(self, *, status: Literal["pending", "active", "suspended"] | None = None, search: str | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.Affiliate]:
         """Every item of ``list_affiliates``, following ``next_page_token`` until the last page."""
@@ -908,7 +908,7 @@ class AffiliatesResource:
 
         ``POST /v1/affiliates``
         """
-        return cast("m.Affiliate", self._client._request("POST", "/v1/affiliates", body=body, options=options))
+        return cast("m.Affiliate", self._client._request("POST", "/v1/affiliates", body=body, response_wire='Affiliate', options=options))
 
     def list_affiliate_referrals(self, *, affiliate_id: str | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListAffiliateReferralsResponse:
         """The customers partners brought, newest first.
@@ -1032,21 +1032,21 @@ class AffiliatesResource:
 
         ``GET /v1/affiliates/{id}``
         """
-        return cast("m.Affiliate", self._client._request("GET", f"/v1/affiliates/{_p(id)}", options=options))
+        return cast("m.Affiliate", self._client._request("GET", f"/v1/affiliates/{_p(id)}", response_wire='Affiliate', options=options))
 
     def update_affiliate(self, id: str, body: m.UpdateAffiliateRequest, *, options: RequestOptions | None = None) -> m.Affiliate:
         """Change a partner's name, payout details or status.
 
         ``PATCH /v1/affiliates/{id}``
         """
-        return cast("m.Affiliate", self._client._request("PATCH", f"/v1/affiliates/{_p(id)}", body=body, options=options))
+        return cast("m.Affiliate", self._client._request("PATCH", f"/v1/affiliates/{_p(id)}", body=body, response_wire='Affiliate', options=options))
 
     def link_affiliate_promotion_code(self, id: str, body: m.LinkAffiliatePromotionCodeRequest, *, options: RequestOptions | None = None) -> m.Affiliate:
         """Make a promotion code the partner's.
 
         ``PUT /v1/affiliates/{id}/promotion-code``
         """
-        return cast("m.Affiliate", self._client._request("PUT", f"/v1/affiliates/{_p(id)}/promotion-code", body=body, options=options))
+        return cast("m.Affiliate", self._client._request("PUT", f"/v1/affiliates/{_p(id)}/promotion-code", body=body, response_wire='Affiliate', options=options))
 
 
 class ReportsResource:
@@ -1090,7 +1090,7 @@ class RoutingRulesResource:
         """
         return cast("m.RoutingRules", self._client._request("GET", "/v1/routing-rules", options=options))
 
-    def set_routing_rules(self, body: m.RoutingRules, *, options: RequestOptions | None = None) -> m.RoutingRules:
+    def set_routing_rules(self, body: m.RoutingRulesInput, *, options: RequestOptions | None = None) -> m.RoutingRules:
         """Replace the rules (first match wins; a rule with neither country nor currency is the catch-all and must be last). Existing subscriptions keep their provider.
 
         ``PUT /v1/routing-rules``
@@ -1118,7 +1118,7 @@ class MailSettingsResource:
         """
         return cast("m.MailSettings", self._client._request("GET", "/v1/mail-settings", options=options))
 
-    def set_mail_settings(self, body: m.MailSettings, *, options: RequestOptions | None = None) -> m.MailSettings:
+    def set_mail_settings(self, body: m.MailSettingsInput, *, options: RequestOptions | None = None) -> m.MailSettings:
         """Switch the listed categories on or off; the others keep their setting.
 
         ``PUT /v1/mail-settings``
@@ -1170,12 +1170,12 @@ class InvoicesResource:
         """
         return cast("m.RevokeInvoiceLinksResponse", self._client._request("DELETE", f"/v1/invoices/{_p(id)}/links", options=options))
 
-    def get_invoice_pdf(self, id: str, *, options: RequestOptions | None = None) -> m.GetInvoicePdfResponse:
+    def get_invoice_pdf(self, id: str, *, options: RequestOptions | None = None) -> m.SignedUrl:
         """A presigned link to the invoice PDF (valid for 5 minutes).
 
         ``GET /v1/invoices/{id}/pdf``
         """
-        return cast("m.GetInvoicePdfResponse", self._client._request("GET", f"/v1/invoices/{_p(id)}/pdf", options=options))
+        return cast("m.SignedUrl", self._client._request("GET", f"/v1/invoices/{_p(id)}/pdf", options=options))
 
 
 class CreditNotesResource:
@@ -1279,28 +1279,28 @@ class AssetsResource:
 
         ``POST /v1/assets/uploads``
         """
-        return cast("m.UploadSession", self._client._request("POST", "/v1/assets/uploads", body=body, body_wire='CreateUploadSessionRequest', options=options))
+        return cast("m.UploadSession", self._client._request("POST", "/v1/assets/uploads", body=body, response_wire='UploadSession', options=options))
 
     def abort_upload_session(self, session: str, *, options: RequestOptions | None = None) -> m.UploadSession:
         """Abort a session and every unfinished file in it.
 
         ``DELETE /v1/assets/uploads/{session}``
         """
-        return cast("m.UploadSession", self._client._request("DELETE", f"/v1/assets/uploads/{_p(session)}", options=options))
+        return cast("m.UploadSession", self._client._request("DELETE", f"/v1/assets/uploads/{_p(session)}", response_wire='UploadSession', options=options))
 
     def get_upload_file(self, session: str, asset: str, *, options: RequestOptions | None = None) -> m.UploadFile:
         """State of one file, including the parts S3 already holds (to resume an interrupted upload).
 
         ``GET /v1/assets/uploads/{session}/files/{asset}``
         """
-        return cast("m.UploadFile", self._client._request("GET", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}", options=options))
+        return cast("m.UploadFile", self._client._request("GET", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}", response_wire='UploadFile', options=options))
 
     def abort_upload_file(self, session: str, asset: str, *, options: RequestOptions | None = None) -> m.UploadSession:
         """Abort one file of a session.
 
         ``DELETE /v1/assets/uploads/{session}/files/{asset}``
         """
-        return cast("m.UploadSession", self._client._request("DELETE", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}", options=options))
+        return cast("m.UploadSession", self._client._request("DELETE", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}", response_wire='UploadSession', options=options))
 
     def presign_parts(self, session: str, asset: str, *, from_: int | None = None, count: int | None = None, options: RequestOptions | None = None) -> m.PresignPartsResponse:
         """More (or refreshed) presigned part URLs of a file.
@@ -1314,14 +1314,14 @@ class AssetsResource:
 
         ``POST /v1/assets/uploads/{session}/files/{asset}/complete``
         """
-        return cast("m.Asset", self._client._request("POST", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}/complete", body=body, options=options))
+        return cast("m.Asset", self._client._request("POST", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}/complete", body=body, response_wire='Asset', options=options))
 
     def list_assets(self, *, purpose: Literal["invoice_logo", "invoice_attachment", "general"] | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListAssetsResponse:
         """List READY assets.
 
         ``GET /v1/assets``
         """
-        return cast("m.ListAssetsResponse", self._client._request("GET", "/v1/assets", query={"purpose": purpose, "page_size": page_size, "page_token": page_token}, options=options))
+        return cast("m.ListAssetsResponse", self._client._request("GET", "/v1/assets", query={"purpose": purpose, "page_size": page_size, "page_token": page_token}, response_wire='ListAssetsResponse', options=options))
 
     def iter_assets(self, *, purpose: Literal["invoice_logo", "invoice_attachment", "general"] | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.Asset]:
         """Every item of ``list_assets``, following ``next_page_token`` until the last page."""
@@ -1338,28 +1338,28 @@ class AssetsResource:
 
         ``POST /v1/assets``
         """
-        return cast("m.UploadAssetsResponse", self._client._request("POST", "/v1/assets", files=files, form=metadata, options=options))
+        return cast("m.UploadAssetsResponse", self._client._request("POST", "/v1/assets", files=files, form=metadata, response_wire='UploadAssetsResponse', options=options))
 
     def get_asset(self, id: str, *, options: RequestOptions | None = None) -> m.Asset:
         """One asset.
 
         ``GET /v1/assets/{id}``
         """
-        return cast("m.Asset", self._client._request("GET", f"/v1/assets/{_p(id)}", options=options))
+        return cast("m.Asset", self._client._request("GET", f"/v1/assets/{_p(id)}", response_wire='Asset', options=options))
 
     def delete_asset(self, id: str, *, options: RequestOptions | None = None) -> m.Asset:
         """Delete a READY asset (its bytes leave the storage quota).
 
         ``DELETE /v1/assets/{id}``
         """
-        return cast("m.Asset", self._client._request("DELETE", f"/v1/assets/{_p(id)}", options=options))
+        return cast("m.Asset", self._client._request("DELETE", f"/v1/assets/{_p(id)}", response_wire='Asset', options=options))
 
-    def download_asset(self, id: str, *, options: RequestOptions | None = None) -> m.DownloadAssetResponse:
+    def download_asset(self, id: str, *, options: RequestOptions | None = None) -> m.SignedUrl:
         """A presigned link (5 minutes) that downloads the file as an attachment.
 
         ``GET /v1/assets/{id}/download``
         """
-        return cast("m.DownloadAssetResponse", self._client._request("GET", f"/v1/assets/{_p(id)}/download", options=options))
+        return cast("m.SignedUrl", self._client._request("GET", f"/v1/assets/{_p(id)}/download", options=options))
 
 
 class TenantResource:
@@ -1394,14 +1394,14 @@ class AnalyticsResource:
 
         ``GET /v1/analytics/usage``
         """
-        return cast("m.GetAnalyticsUsageResponse", self._client._request("GET", "/v1/analytics/usage", query={"meter": meter, "from": from_, "to": to, "granularity": granularity, "customer": customer, "exact": exact}, options=options))
+        return cast("m.GetAnalyticsUsageResponse", self._client._request("GET", "/v1/analytics/usage", query={"meter": meter, "from": from_, "to": to, "granularity": granularity, "customer": customer, "exact": exact}, response_wire='GetAnalyticsUsageResponse', options=options))
 
     def get_top_customers(self, *, meter: str, period: str, limit: int | None = None, options: RequestOptions | None = None) -> m.GetTopCustomersResponse:
         """Customers ranked by usage of a meter in a billing period (deduplicated).
 
         ``GET /v1/analytics/top-customers``
         """
-        return cast("m.GetTopCustomersResponse", self._client._request("GET", "/v1/analytics/top-customers", query={"meter": meter, "period": period, "limit": limit}, options=options))
+        return cast("m.GetTopCustomersResponse", self._client._request("GET", "/v1/analytics/top-customers", query={"meter": meter, "period": period, "limit": limit}, response_wire='GetTopCustomersResponse', options=options))
 
 
 class SandboxResource:
@@ -1580,7 +1580,7 @@ class AsyncCustomersResource:
         """
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/payment-method", body=body, options=options))
 
-    async def set_customer_address(self, external_id: str, body: m.Address, *, options: RequestOptions | None = None) -> m.Customer:
+    async def set_customer_address(self, external_id: str, body: m.AddressInput, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's billing address.
 
         ``PUT /v1/customers/{external_id}/address``
@@ -1641,28 +1641,28 @@ class AsyncCustomersResource:
 
         ``GET /v1/customers/{external_id}/credits``
         """
-        return cast("m.CreditBalance", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/credits", options=options))
+        return cast("m.CreditBalance", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/credits", response_wire='CreditBalance', options=options))
 
     async def grant_credits(self, external_id: str, body: m.CreditGrantInput, *, options: RequestOptions | None = None) -> m.CreditResult:
         """Add credits to a customer.
 
         ``POST /v1/customers/{external_id}/credits/grant``
         """
-        return cast("m.CreditResult", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/credits/grant", body=body, options=options))
+        return cast("m.CreditResult", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/credits/grant", body=body, body_wire='CreditGrantInput', response_wire='CreditResult', options=options))
 
     async def consume_credits(self, external_id: str, body: m.CreditConsumeInput, *, options: RequestOptions | None = None) -> m.CreditResult:
         """Spend credits.
 
         ``POST /v1/customers/{external_id}/credits/consume``
         """
-        return cast("m.CreditResult", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/credits/consume", body=body, options=options))
+        return cast("m.CreditResult", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/credits/consume", body=body, body_wire='CreditConsumeInput', response_wire='CreditResult', options=options))
 
     async def list_credit_ledger(self, external_id: str, *, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.CreditLedgerPage:
         """Every change to a customer's credits, newest first.
 
         ``GET /v1/customers/{external_id}/credits/ledger``
         """
-        return cast("m.CreditLedgerPage", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/credits/ledger", query={"page_size": page_size, "page_token": page_token}, options=options))
+        return cast("m.CreditLedgerPage", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/credits/ledger", query={"page_size": page_size, "page_token": page_token}, response_wire='CreditLedgerPage', options=options))
 
     async def iter_credit_ledger(self, external_id: str, *, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.CreditLedgerEntry]:
         """Every item of ``list_credit_ledger``, following ``next_page_token`` until the last page."""
@@ -1722,7 +1722,7 @@ class AsyncEInvoicesResource:
 
         ``GET /v1/e-invoices``
         """
-        return cast("m.EInvoiceList", await self._client._request("GET", "/v1/e-invoices", query={"invoice_id": invoice_id, "credit_note_id": credit_note_id, "status": status, "page_size": page_size, "page_token": page_token}, options=options))
+        return cast("m.EInvoiceList", await self._client._request("GET", "/v1/e-invoices", query={"invoice_id": invoice_id, "credit_note_id": credit_note_id, "status": status, "page_size": page_size, "page_token": page_token}, response_wire='EInvoiceList', options=options))
 
     async def iter_e_invoices(self, *, invoice_id: str | None = None, credit_note_id: str | None = None, status: Literal["pending", "issued", "failed", "cancelled"] | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.EInvoiceDocument]:
         """Every item of ``list_e_invoices``, following ``next_page_token`` until the last page."""
@@ -1742,12 +1742,12 @@ class AsyncEInvoicesResource:
         """
         return cast("m.EInvoiceDocument", await self._client._request("GET", f"/v1/e-invoices/{_p(id)}", options=options))
 
-    async def get_e_invoice_file(self, id: str, kind: str, *, options: RequestOptions | None = None) -> m.EInvoiceFileLink:
+    async def get_e_invoice_file(self, id: str, kind: str, *, options: RequestOptions | None = None) -> m.SignedUrl:
         """A presigned link to the UBL XML or the PDF of an issued e-document (5 minutes).
 
         ``GET /v1/e-invoices/{id}/files/{kind}``
         """
-        return cast("m.EInvoiceFileLink", await self._client._request("GET", f"/v1/e-invoices/{_p(id)}/files/{_p(kind)}", options=options))
+        return cast("m.SignedUrl", await self._client._request("GET", f"/v1/e-invoices/{_p(id)}/files/{_p(kind)}", options=options))
 
 
 class AsyncMetersResource:
@@ -1851,12 +1851,12 @@ class AsyncSubscriptionsResource:
         """
         return cast("m.Subscription", await self._client._request("GET", f"/v1/subscriptions/{_p(id)}", options=options))
 
-    async def cancel_subscription(self, id: str, *, end_time: str | datetime | None = None, credit_unused: bool | None = None, options: RequestOptions | None = None) -> m.Subscription | m.CancelSubscriptionResponse1:
+    async def cancel_subscription(self, id: str, *, end_time: str | datetime | None = None, credit_unused: bool | None = None, options: RequestOptions | None = None) -> m.CancelSubscriptionResponse:
         """End a subscription (now, or at end_time).
 
         ``DELETE /v1/subscriptions/{id}``
         """
-        return cast("m.Subscription | m.CancelSubscriptionResponse1", await self._client._request("DELETE", f"/v1/subscriptions/{_p(id)}", query={"end_time": end_time, "credit_unused": credit_unused}, options=options))
+        return cast("m.CancelSubscriptionResponse", await self._client._request("DELETE", f"/v1/subscriptions/{_p(id)}", query={"end_time": end_time, "credit_unused": credit_unused}, response_wire='CancelSubscriptionResponse', options=options))
 
     async def pause_subscription(self, id: str, *, options: RequestOptions | None = None) -> m.Subscription:
         """Stop the fixed fee until the subscription is resumed (usage is still billed).
@@ -1942,7 +1942,7 @@ class AsyncTaxRatesResource:
         """
         return cast("m.TaxRates", await self._client._request("GET", "/v1/tax-rates", options=options))
 
-    async def set_tax_rates(self, body: m.TaxRates, *, options: RequestOptions | None = None) -> m.TaxRates:
+    async def set_tax_rates(self, body: m.TaxRatesInput, *, options: RequestOptions | None = None) -> m.TaxRates:
         """Replace the tax rates.
 
         ``PUT /v1/tax-rates``
@@ -1963,7 +1963,7 @@ class AsyncDunningSettingsResource:
         """
         return cast("m.DunningSettings", await self._client._request("GET", "/v1/dunning-settings", options=options))
 
-    async def set_dunning_settings(self, body: m.DunningSettings, *, options: RequestOptions | None = None) -> m.DunningSettings:
+    async def set_dunning_settings(self, body: m.DunningSettingsInput, *, options: RequestOptions | None = None) -> m.DunningSettings:
         """Replace the retry delays.
 
         ``PUT /v1/dunning-settings``
@@ -1991,19 +1991,19 @@ class AsyncCreditPacksResource:
         """
         return cast("m.CreditPack", await self._client._request("POST", "/v1/credit-packs", body=body, body_wire='CreditPackInput', response_wire='CreditPack', options=options))
 
-    async def activate_credit_pack(self, id: str, *, options: RequestOptions | None = None) -> dict[str, Any]:
+    async def activate_credit_pack(self, id: str, *, options: RequestOptions | None = None) -> m.EmptyObject:
         """Put a credit pack back on sale.
 
         ``POST /v1/credit-packs/{id}/activate``
         """
-        return cast("dict[str, Any]", await self._client._request("POST", f"/v1/credit-packs/{_p(id)}/activate", options=options))
+        return cast("m.EmptyObject", await self._client._request("POST", f"/v1/credit-packs/{_p(id)}/activate", options=options))
 
-    async def deactivate_credit_pack(self, id: str, *, options: RequestOptions | None = None) -> dict[str, Any]:
+    async def deactivate_credit_pack(self, id: str, *, options: RequestOptions | None = None) -> m.EmptyObject:
         """Withdraw a credit pack from sale.
 
         ``POST /v1/credit-packs/{id}/deactivate``
         """
-        return cast("dict[str, Any]", await self._client._request("POST", f"/v1/credit-packs/{_p(id)}/deactivate", options=options))
+        return cast("m.EmptyObject", await self._client._request("POST", f"/v1/credit-packs/{_p(id)}/deactivate", options=options))
 
 
 class AsyncExpensesResource:
@@ -2077,7 +2077,7 @@ class AsyncExpenseInboxResource:
 
         ``GET /v1/expense-inbox/items``
         """
-        return cast("m.InboxItemPage", await self._client._request("GET", "/v1/expense-inbox/items", query={"status": status, "page_size": page_size}, options=options))
+        return cast("m.InboxItemPage", await self._client._request("GET", "/v1/expense-inbox/items", query={"status": status, "page_size": page_size}, response_wire='InboxItemPage', options=options))
 
     async def get_inbox_item_file(self, id: str, *, options: RequestOptions | None = None) -> bytes:
         """The bytes of a received attachment.
@@ -2091,7 +2091,7 @@ class AsyncExpenseInboxResource:
 
         ``POST /v1/expense-inbox/items/{id}/resolve``
         """
-        return cast("m.InboxItem", await self._client._request("POST", f"/v1/expense-inbox/items/{_p(id)}/resolve", body=body, options=options))
+        return cast("m.InboxItem", await self._client._request("POST", f"/v1/expense-inbox/items/{_p(id)}/resolve", body=body, response_wire='InboxItem', options=options))
 
 
 class AsyncExpenseRulesResource:
@@ -2107,19 +2107,19 @@ class AsyncExpenseRulesResource:
         """
         return cast("m.ListExpenseRulesResponse", await self._client._request("GET", "/v1/expense-rules", response_wire='ListExpenseRulesResponse', options=options))
 
-    async def create_expense_rule(self, body: m.ExpenseRule, *, options: RequestOptions | None = None) -> m.ExpenseRule:
+    async def create_expense_rule(self, body: m.ExpenseRuleInput, *, options: RequestOptions | None = None) -> m.ExpenseRule:
         """Add a recurring-vendor rule.
 
         ``POST /v1/expense-rules``
         """
-        return cast("m.ExpenseRule", await self._client._request("POST", "/v1/expense-rules", body=body, body_wire='ExpenseRule', response_wire='ExpenseRule', options=options))
+        return cast("m.ExpenseRule", await self._client._request("POST", "/v1/expense-rules", body=body, body_wire='ExpenseRuleInput', response_wire='ExpenseRule', options=options))
 
-    async def update_expense_rule(self, id: str, body: m.ExpenseRule, *, options: RequestOptions | None = None) -> m.ExpenseRule:
+    async def update_expense_rule(self, id: str, body: m.ExpenseRuleInput, *, options: RequestOptions | None = None) -> m.ExpenseRule:
         """Replace a recurring-vendor rule.
 
         ``PUT /v1/expense-rules/{id}``
         """
-        return cast("m.ExpenseRule", await self._client._request("PUT", f"/v1/expense-rules/{_p(id)}", body=body, body_wire='ExpenseRule', response_wire='ExpenseRule', options=options))
+        return cast("m.ExpenseRule", await self._client._request("PUT", f"/v1/expense-rules/{_p(id)}", body=body, body_wire='ExpenseRuleInput', response_wire='ExpenseRule', options=options))
 
     async def delete_expense_rule(self, id: str, *, options: RequestOptions | None = None) -> None:
         """Delete a recurring-vendor rule.
@@ -2168,14 +2168,14 @@ class AsyncCreditsResource:
 
         ``GET /v1/credits/settings``
         """
-        return cast("m.CreditSettings", await self._client._request("GET", "/v1/credits/settings", options=options))
+        return cast("m.CreditSettings", await self._client._request("GET", "/v1/credits/settings", response_wire='CreditSettings', options=options))
 
-    async def set_credit_settings(self, body: m.CreditSettings, *, options: RequestOptions | None = None) -> m.CreditSettings:
+    async def set_credit_settings(self, body: m.CreditSettingsInput, *, options: RequestOptions | None = None) -> m.CreditSettings:
         """Set the low-balance threshold.
 
         ``PUT /v1/credits/settings``
         """
-        return cast("m.CreditSettings", await self._client._request("PUT", "/v1/credits/settings", body=body, options=options))
+        return cast("m.CreditSettings", await self._client._request("PUT", "/v1/credits/settings", body=body, body_wire='CreditSettingsInput', response_wire='CreditSettings', options=options))
 
 
 class AsyncWebhookEndpointsResource:
@@ -2191,7 +2191,7 @@ class AsyncWebhookEndpointsResource:
         """
         return cast("m.ListWebhookEndpointsResponse", await self._client._request("GET", "/v1/webhook-endpoints", options=options))
 
-    async def create_webhook_endpoint(self, body: m.WebhookEndpointInput, *, options: RequestOptions | None = None) -> m.WebhookEndpoint:
+    async def create_webhook_endpoint(self, body: m.CreateWebhookEndpointRequest, *, options: RequestOptions | None = None) -> m.WebhookEndpoint:
         """Register an HTTPS endpoint that receives Payrudder's events.
 
         ``POST /v1/webhook-endpoints``
@@ -2272,12 +2272,12 @@ class AsyncCouponsResource:
         """
         return cast("m.ListCouponsResponse", await self._client._request("GET", "/v1/coupons", response_wire='ListCouponsResponse', options=options))
 
-    async def create_coupon(self, body: m.Coupon, *, options: RequestOptions | None = None) -> m.Coupon:
+    async def create_coupon(self, body: m.CouponInput, *, options: RequestOptions | None = None) -> m.Coupon:
         """Make a coupon.
 
         ``POST /v1/coupons``
         """
-        return cast("m.Coupon", await self._client._request("POST", "/v1/coupons", body=body, body_wire='Coupon', response_wire='Coupon', options=options))
+        return cast("m.Coupon", await self._client._request("POST", "/v1/coupons", body=body, body_wire='CouponInput', response_wire='Coupon', options=options))
 
     async def deactivate_coupon(self, code: str, *, options: RequestOptions | None = None) -> m.Coupon:
         """Stop new redemptions of a coupon (subscriptions that have it keep it).
@@ -2378,19 +2378,19 @@ class AsyncAffiliatesResource:
         """
         return cast("m.AffiliateProgram", await self._client._request("GET", "/v1/affiliates/program", response_wire='AffiliateProgram', options=options))
 
-    async def set_affiliate_program(self, body: m.AffiliateProgram, *, options: RequestOptions | None = None) -> m.AffiliateProgram:
+    async def set_affiliate_program(self, body: m.AffiliateProgramInput, *, options: RequestOptions | None = None) -> m.AffiliateProgram:
         """Set the rules of the partner program.
 
         ``PUT /v1/affiliates/program``
         """
-        return cast("m.AffiliateProgram", await self._client._request("PUT", "/v1/affiliates/program", body=body, body_wire='AffiliateProgram', response_wire='AffiliateProgram', options=options))
+        return cast("m.AffiliateProgram", await self._client._request("PUT", "/v1/affiliates/program", body=body, body_wire='AffiliateProgramInput', response_wire='AffiliateProgram', options=options))
 
     async def list_affiliates(self, *, status: Literal["pending", "active", "suspended"] | None = None, search: str | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListAffiliatesResponse:
         """Partners, newest first.
 
         ``GET /v1/affiliates``
         """
-        return cast("m.ListAffiliatesResponse", await self._client._request("GET", "/v1/affiliates", query={"status": status, "search": search, "page_size": page_size, "page_token": page_token}, options=options))
+        return cast("m.ListAffiliatesResponse", await self._client._request("GET", "/v1/affiliates", query={"status": status, "search": search, "page_size": page_size, "page_token": page_token}, response_wire='ListAffiliatesResponse', options=options))
 
     async def iter_affiliates(self, *, status: Literal["pending", "active", "suspended"] | None = None, search: str | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.Affiliate]:
         """Every item of ``list_affiliates``, following ``next_page_token`` until the last page."""
@@ -2408,7 +2408,7 @@ class AsyncAffiliatesResource:
 
         ``POST /v1/affiliates``
         """
-        return cast("m.Affiliate", await self._client._request("POST", "/v1/affiliates", body=body, options=options))
+        return cast("m.Affiliate", await self._client._request("POST", "/v1/affiliates", body=body, response_wire='Affiliate', options=options))
 
     async def list_affiliate_referrals(self, *, affiliate_id: str | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListAffiliateReferralsResponse:
         """The customers partners brought, newest first.
@@ -2536,21 +2536,21 @@ class AsyncAffiliatesResource:
 
         ``GET /v1/affiliates/{id}``
         """
-        return cast("m.Affiliate", await self._client._request("GET", f"/v1/affiliates/{_p(id)}", options=options))
+        return cast("m.Affiliate", await self._client._request("GET", f"/v1/affiliates/{_p(id)}", response_wire='Affiliate', options=options))
 
     async def update_affiliate(self, id: str, body: m.UpdateAffiliateRequest, *, options: RequestOptions | None = None) -> m.Affiliate:
         """Change a partner's name, payout details or status.
 
         ``PATCH /v1/affiliates/{id}``
         """
-        return cast("m.Affiliate", await self._client._request("PATCH", f"/v1/affiliates/{_p(id)}", body=body, options=options))
+        return cast("m.Affiliate", await self._client._request("PATCH", f"/v1/affiliates/{_p(id)}", body=body, response_wire='Affiliate', options=options))
 
     async def link_affiliate_promotion_code(self, id: str, body: m.LinkAffiliatePromotionCodeRequest, *, options: RequestOptions | None = None) -> m.Affiliate:
         """Make a promotion code the partner's.
 
         ``PUT /v1/affiliates/{id}/promotion-code``
         """
-        return cast("m.Affiliate", await self._client._request("PUT", f"/v1/affiliates/{_p(id)}/promotion-code", body=body, options=options))
+        return cast("m.Affiliate", await self._client._request("PUT", f"/v1/affiliates/{_p(id)}/promotion-code", body=body, response_wire='Affiliate', options=options))
 
 
 class AsyncReportsResource:
@@ -2594,7 +2594,7 @@ class AsyncRoutingRulesResource:
         """
         return cast("m.RoutingRules", await self._client._request("GET", "/v1/routing-rules", options=options))
 
-    async def set_routing_rules(self, body: m.RoutingRules, *, options: RequestOptions | None = None) -> m.RoutingRules:
+    async def set_routing_rules(self, body: m.RoutingRulesInput, *, options: RequestOptions | None = None) -> m.RoutingRules:
         """Replace the rules (first match wins; a rule with neither country nor currency is the catch-all and must be last). Existing subscriptions keep their provider.
 
         ``PUT /v1/routing-rules``
@@ -2622,7 +2622,7 @@ class AsyncMailSettingsResource:
         """
         return cast("m.MailSettings", await self._client._request("GET", "/v1/mail-settings", options=options))
 
-    async def set_mail_settings(self, body: m.MailSettings, *, options: RequestOptions | None = None) -> m.MailSettings:
+    async def set_mail_settings(self, body: m.MailSettingsInput, *, options: RequestOptions | None = None) -> m.MailSettings:
         """Switch the listed categories on or off; the others keep their setting.
 
         ``PUT /v1/mail-settings``
@@ -2675,12 +2675,12 @@ class AsyncInvoicesResource:
         """
         return cast("m.RevokeInvoiceLinksResponse", await self._client._request("DELETE", f"/v1/invoices/{_p(id)}/links", options=options))
 
-    async def get_invoice_pdf(self, id: str, *, options: RequestOptions | None = None) -> m.GetInvoicePdfResponse:
+    async def get_invoice_pdf(self, id: str, *, options: RequestOptions | None = None) -> m.SignedUrl:
         """A presigned link to the invoice PDF (valid for 5 minutes).
 
         ``GET /v1/invoices/{id}/pdf``
         """
-        return cast("m.GetInvoicePdfResponse", await self._client._request("GET", f"/v1/invoices/{_p(id)}/pdf", options=options))
+        return cast("m.SignedUrl", await self._client._request("GET", f"/v1/invoices/{_p(id)}/pdf", options=options))
 
 
 class AsyncCreditNotesResource:
@@ -2786,28 +2786,28 @@ class AsyncAssetsResource:
 
         ``POST /v1/assets/uploads``
         """
-        return cast("m.UploadSession", await self._client._request("POST", "/v1/assets/uploads", body=body, body_wire='CreateUploadSessionRequest', options=options))
+        return cast("m.UploadSession", await self._client._request("POST", "/v1/assets/uploads", body=body, response_wire='UploadSession', options=options))
 
     async def abort_upload_session(self, session: str, *, options: RequestOptions | None = None) -> m.UploadSession:
         """Abort a session and every unfinished file in it.
 
         ``DELETE /v1/assets/uploads/{session}``
         """
-        return cast("m.UploadSession", await self._client._request("DELETE", f"/v1/assets/uploads/{_p(session)}", options=options))
+        return cast("m.UploadSession", await self._client._request("DELETE", f"/v1/assets/uploads/{_p(session)}", response_wire='UploadSession', options=options))
 
     async def get_upload_file(self, session: str, asset: str, *, options: RequestOptions | None = None) -> m.UploadFile:
         """State of one file, including the parts S3 already holds (to resume an interrupted upload).
 
         ``GET /v1/assets/uploads/{session}/files/{asset}``
         """
-        return cast("m.UploadFile", await self._client._request("GET", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}", options=options))
+        return cast("m.UploadFile", await self._client._request("GET", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}", response_wire='UploadFile', options=options))
 
     async def abort_upload_file(self, session: str, asset: str, *, options: RequestOptions | None = None) -> m.UploadSession:
         """Abort one file of a session.
 
         ``DELETE /v1/assets/uploads/{session}/files/{asset}``
         """
-        return cast("m.UploadSession", await self._client._request("DELETE", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}", options=options))
+        return cast("m.UploadSession", await self._client._request("DELETE", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}", response_wire='UploadSession', options=options))
 
     async def presign_parts(self, session: str, asset: str, *, from_: int | None = None, count: int | None = None, options: RequestOptions | None = None) -> m.PresignPartsResponse:
         """More (or refreshed) presigned part URLs of a file.
@@ -2821,14 +2821,14 @@ class AsyncAssetsResource:
 
         ``POST /v1/assets/uploads/{session}/files/{asset}/complete``
         """
-        return cast("m.Asset", await self._client._request("POST", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}/complete", body=body, options=options))
+        return cast("m.Asset", await self._client._request("POST", f"/v1/assets/uploads/{_p(session)}/files/{_p(asset)}/complete", body=body, response_wire='Asset', options=options))
 
     async def list_assets(self, *, purpose: Literal["invoice_logo", "invoice_attachment", "general"] | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListAssetsResponse:
         """List READY assets.
 
         ``GET /v1/assets``
         """
-        return cast("m.ListAssetsResponse", await self._client._request("GET", "/v1/assets", query={"purpose": purpose, "page_size": page_size, "page_token": page_token}, options=options))
+        return cast("m.ListAssetsResponse", await self._client._request("GET", "/v1/assets", query={"purpose": purpose, "page_size": page_size, "page_token": page_token}, response_wire='ListAssetsResponse', options=options))
 
     async def iter_assets(self, *, purpose: Literal["invoice_logo", "invoice_attachment", "general"] | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.Asset]:
         """Every item of ``list_assets``, following ``next_page_token`` until the last page."""
@@ -2846,28 +2846,28 @@ class AsyncAssetsResource:
 
         ``POST /v1/assets``
         """
-        return cast("m.UploadAssetsResponse", await self._client._request("POST", "/v1/assets", files=files, form=metadata, options=options))
+        return cast("m.UploadAssetsResponse", await self._client._request("POST", "/v1/assets", files=files, form=metadata, response_wire='UploadAssetsResponse', options=options))
 
     async def get_asset(self, id: str, *, options: RequestOptions | None = None) -> m.Asset:
         """One asset.
 
         ``GET /v1/assets/{id}``
         """
-        return cast("m.Asset", await self._client._request("GET", f"/v1/assets/{_p(id)}", options=options))
+        return cast("m.Asset", await self._client._request("GET", f"/v1/assets/{_p(id)}", response_wire='Asset', options=options))
 
     async def delete_asset(self, id: str, *, options: RequestOptions | None = None) -> m.Asset:
         """Delete a READY asset (its bytes leave the storage quota).
 
         ``DELETE /v1/assets/{id}``
         """
-        return cast("m.Asset", await self._client._request("DELETE", f"/v1/assets/{_p(id)}", options=options))
+        return cast("m.Asset", await self._client._request("DELETE", f"/v1/assets/{_p(id)}", response_wire='Asset', options=options))
 
-    async def download_asset(self, id: str, *, options: RequestOptions | None = None) -> m.DownloadAssetResponse:
+    async def download_asset(self, id: str, *, options: RequestOptions | None = None) -> m.SignedUrl:
         """A presigned link (5 minutes) that downloads the file as an attachment.
 
         ``GET /v1/assets/{id}/download``
         """
-        return cast("m.DownloadAssetResponse", await self._client._request("GET", f"/v1/assets/{_p(id)}/download", options=options))
+        return cast("m.SignedUrl", await self._client._request("GET", f"/v1/assets/{_p(id)}/download", options=options))
 
 
 class AsyncTenantResource:
@@ -2902,14 +2902,14 @@ class AsyncAnalyticsResource:
 
         ``GET /v1/analytics/usage``
         """
-        return cast("m.GetAnalyticsUsageResponse", await self._client._request("GET", "/v1/analytics/usage", query={"meter": meter, "from": from_, "to": to, "granularity": granularity, "customer": customer, "exact": exact}, options=options))
+        return cast("m.GetAnalyticsUsageResponse", await self._client._request("GET", "/v1/analytics/usage", query={"meter": meter, "from": from_, "to": to, "granularity": granularity, "customer": customer, "exact": exact}, response_wire='GetAnalyticsUsageResponse', options=options))
 
     async def get_top_customers(self, *, meter: str, period: str, limit: int | None = None, options: RequestOptions | None = None) -> m.GetTopCustomersResponse:
         """Customers ranked by usage of a meter in a billing period (deduplicated).
 
         ``GET /v1/analytics/top-customers``
         """
-        return cast("m.GetTopCustomersResponse", await self._client._request("GET", "/v1/analytics/top-customers", query={"meter": meter, "period": period, "limit": limit}, options=options))
+        return cast("m.GetTopCustomersResponse", await self._client._request("GET", "/v1/analytics/top-customers", query={"meter": meter, "period": period, "limit": limit}, response_wire='GetTopCustomersResponse', options=options))
 
 
 class AsyncSandboxResource:

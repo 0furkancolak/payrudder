@@ -19,8 +19,8 @@ final class UploadFile implements Model
      * @param string|null $filename
      * @param string|null $status
      * @param string|null $rejectReason
-     * @param string|null $size
-     * @param string|null $partSize
+     * @param int|null $size
+     * @param int|null $partSize
      * @param int|null $partCount
      * @param list<PresignedPart>|null $presignedParts
      * @param list<UploadFileUploadedPartsItem>|null $uploadedParts
@@ -30,8 +30,8 @@ final class UploadFile implements Model
         public readonly ?string $filename = null,
         public readonly ?string $status = null,
         public readonly ?string $rejectReason = null,
-        public readonly ?string $size = null,
-        public readonly ?string $partSize = null,
+        public readonly ?int $size = null,
+        public readonly ?int $partSize = null,
         public readonly ?int $partCount = null,
         public readonly ?array $presignedParts = null,
         public readonly ?array $uploadedParts = null,
@@ -47,8 +47,8 @@ final class UploadFile implements Model
             filename: Cast::string($data['filename'] ?? null),
             status: Cast::string($data['status'] ?? null),
             rejectReason: Cast::string($data['reject_reason'] ?? null),
-            size: Cast::string($data['size'] ?? null),
-            partSize: Cast::string($data['part_size'] ?? null),
+            size: Cast::int($data['size'] ?? null),
+            partSize: Cast::int($data['part_size'] ?? null),
             partCount: Cast::int($data['part_count'] ?? null),
             presignedParts: Cast::models(PresignedPart::class, $data['presigned_parts'] ?? null),
             uploadedParts: Cast::models(UploadFileUploadedPartsItem::class, $data['uploaded_parts'] ?? null),
@@ -65,8 +65,8 @@ final class UploadFile implements Model
             'filename' => $this->filename,
             'status' => $this->status,
             'reject_reason' => $this->rejectReason,
-            'size' => $this->size,
-            'part_size' => $this->partSize,
+            'size' => Cast::int64($this->size),
+            'part_size' => Cast::int64($this->partSize),
             'part_count' => $this->partCount,
             'presigned_parts' => Cast::wire($this->presignedParts),
             'uploaded_parts' => Cast::wire($this->uploadedParts),

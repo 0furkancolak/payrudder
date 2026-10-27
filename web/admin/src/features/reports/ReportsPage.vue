@@ -90,7 +90,7 @@ const dunningState = computed({ get: () => dunningTable.filters.value.state ?? [
 const dunningCurrency = computed({ get: () => dunningTable.filters.value.currency ?? [], set: (v: string[]) => (dunningTable.filters.value.currency = v) });
 const dunningStates = computed(() => [all.value, ...[...new Set((dunning.data.value?.invoices ?? []).map((d) => d.state ?? "").filter(Boolean))].map((x) => ({ value: x, label: label(t, te, "dunningState", x) }))]);
 const dunningCurrencies = computed(() => distinct((dunning.data.value?.invoices ?? []).map((d) => d.currency)));
-const when = (v?: string) => fmt.date(v, "short", "—");
+const when = (v?: string | null) => fmt.date(v, "short", "—");
 const dunningTone = (state?: string) => (state === "UNCOLLECTIBLE" ? "danger" : "warning");
 const current = dunningTable.row;
 const detailRows = computed(() => {

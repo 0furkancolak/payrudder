@@ -102,6 +102,10 @@ Per call you can add `WithIdempotencyKey`, `WithRequestHeader`, `WithRequestTime
 - In request structs, optional numbers, booleans, times and objects are pointers so that `0` and `false` can be sent;
   use `payrudder.Ptr(25)`. Optional strings are plain strings and are left out when empty. Response structs use plain
   values; a field the server leaves out is the zero value (nullable fields are pointers).
+- Response structs follow the spec's `required` lists: a field the API always sends is a plain value, a timestamp or nested object that is not set is `null`
+  and therefore a pointer. A request object that is also a response has a twin without the server-filled fields (`AddressInput`, `CouponInput`, `PriceInput`,
+  ...): pass the twin where you create or replace one, read the plain type back.
+- `Subscriptions.CancelSubscription` always returns `{Subscription, CreditedMinor}`; `CreditedMinor` is `0` unless `credit_unused` credited something.
 - Enumerations are plain strings; the allowed values are listed in the field comments.
 
 ## Errors

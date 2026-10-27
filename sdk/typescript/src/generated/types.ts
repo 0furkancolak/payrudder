@@ -4,74 +4,84 @@ import type { Int64, Int64Input } from "../int64";
 export type { Int64, Int64Input };
 
 export interface AccountingCoupon {
-  coupon_code?: string;
-  invoices?: string;
+  coupon_code: string;
+  invoices: Int64;
   /** What those invoices came to before the coupon: positive lines, tax excluded */
-  gross_minor?: Int64;
-  discount_minor?: Int64;
+  gross_minor: Int64;
+  discount_minor: Int64;
   /** gross - discount */
-  net_minor?: Int64;
+  net_minor: Int64;
 }
 
 /** One currency of the period. Every amount is int64 minor units as a string. */
 export interface AccountingCurrency {
-  currency?: string;
+  currency: string;
   /** Invoices paid in the period, tax included */
-  gross_income_minor?: Int64;
+  gross_income_minor: Int64;
   /** The tax lines of those invoices */
-  tax_minor?: Int64;
+  tax_minor: Int64;
   /** Credit notes against paid invoices plus invoices refunded in full */
-  refunds_minor?: Int64;
+  refunds_minor: Int64;
   /** gross - tax - refunds */
-  net_income_minor?: Int64;
+  net_income_minor: Int64;
   /** Every live occurrence in the period, provider fees included */
-  expenses_minor?: Int64;
+  expenses_minor: Int64;
   /** The payment_fees expenses; meaningful only when provider_fees_recorded */
-  provider_fees_minor?: Int64;
+  provider_fees_minor: Int64;
   /** False: no commission was entered, which is not the same as zero */
-  provider_fees_recorded?: boolean;
+  provider_fees_recorded: boolean;
   /** net income - expenses; negative for a loss */
-  profit_minor?: Int64;
-  paid_invoices?: string;
-  expense_by_category?: Array<{
-    category?: ExpenseCategory;
-    amount_minor?: Int64;
+  profit_minor: Int64;
+  paid_invoices: Int64;
+  expense_by_category: Array<{
+    category: ExpenseCategory;
+    amount_minor: Int64;
   }>;
-  series?: Array<AccountingPoint>;
+  series: Array<AccountingPoint>;
   /** What coupons took off the paid invoices (contra-revenue, a positive number). gross_income_minor is already after it */
-  discounts_minor?: Int64;
+  discounts_minor: Int64;
   /** Revenue before discounts: gross - tax + discounts */
-  sales_minor?: Int64;
+  sales_minor: Int64;
   /** Gross, discounts and net per coupon, most discount first */
-  coupons?: Array<AccountingCoupon>;
+  coupons: Array<AccountingCoupon>;
 }
 
 export interface AccountingPoint {
   /** The day, or the first day of the month */
-  bucket?: string;
-  gross_income_minor?: Int64;
-  tax_minor?: Int64;
-  refunds_minor?: Int64;
-  net_income_minor?: Int64;
-  expenses_minor?: Int64;
-  profit_minor?: Int64;
+  bucket: string;
+  gross_income_minor: Int64;
+  tax_minor: Int64;
+  refunds_minor: Int64;
+  net_income_minor: Int64;
+  expenses_minor: Int64;
+  profit_minor: Int64;
   /** What coupons took off the invoices paid in this bucket */
-  discounts_minor?: Int64;
+  discounts_minor: Int64;
 }
 
 export interface AccountingSummary {
-  from_date?: string;
-  to_date?: string;
-  granularity?: "day" | "month";
-  app_id?: string;
+  from_date: string;
+  to_date: string;
+  granularity: "day" | "month";
+  app_id: string;
   /** Ordered by currency code; a currency with no income and no expenses has no block */
-  currencies?: Array<AccountingCurrency>;
+  currencies: Array<AccountingCurrency>;
 }
-
-export type ActivateCreditPackResponse = Record<string, unknown>;
 
 /** A postal address as printed on an invoice. Every part is optional. */
 export interface Address {
+  line1: string;
+  line2: string;
+  city: string;
+  /** State, province or county */
+  region: string;
+  postal_code: string;
+  /** ISO 3166-1 alpha-2 */
+  country: string;
+}
+
+/** A postal address as printed on an invoice. Every part is optional. */
+export interface AddressInput {
   line1?: string;
   line2?: string;
   city?: string;
@@ -83,113 +93,140 @@ export interface Address {
 }
 
 export interface Affiliate {
-  id?: string;
-  code?: string;
-  email?: string;
-  name?: string;
-  status?: "pending" | "active" | "suspended";
-  payout_method?: "manual" | "bank_transfer";
-  payout_details?: string;
-  source?: "owner" | "application";
+  id: string;
+  code: string;
+  email: string;
+  name: string;
+  status: "pending" | "active" | "suspended";
+  payout_method: "manual" | "bank_transfer";
+  payout_details: string;
+  source: "owner" | "application";
   /** The partner has signed in and claimed this affiliate */
-  signed_in?: boolean;
-  clicks?: string;
-  referrals?: string;
-  approve_time?: string;
-  create_time?: string;
+  signed_in: boolean;
+  clicks: Int64;
+  referrals: Int64;
+  approve_time: string | null;
+  create_time: string | null;
   /** The partner's public referral link, https://<gateway>/r/<code> */
-  link?: string;
+  link: string;
 }
 
 export interface AffiliateBalance {
-  affiliate_id?: string;
-  currency?: string;
-  pending_minor?: Int64;
-  approved_minor?: Int64;
-  paid_minor?: Int64;
-  reversed_minor?: Int64;
+  affiliate_id: string;
+  currency: string;
+  pending_minor: Int64;
+  approved_minor: Int64;
+  paid_minor: Int64;
+  reversed_minor: Int64;
 }
 
 export interface AffiliateCommission {
-  id?: string;
-  affiliate_id?: string;
-  affiliate_code?: string;
-  customer_external_id?: string;
-  kind?: "commission" | "reversal";
-  invoice_id?: string;
-  invoice_number?: string;
-  currency?: string;
+  id: string;
+  affiliate_id: string;
+  affiliate_code: string;
+  customer_external_id: string;
+  kind: "commission" | "reversal";
+  invoice_id: string;
+  invoice_number: string;
+  currency: string;
   /** What the invoice came to, tax included */
-  invoice_total_minor?: Int64;
+  invoice_total_minor: Int64;
   /** The base: the net, pre-tax amount actually paid */
-  net_minor?: Int64;
+  net_minor: Int64;
   /** The commission; negative on a reversal row */
-  amount_minor?: Int64;
+  amount_minor: Int64;
   /** How much of the commission has been taken back */
-  reversed_minor?: Int64;
-  status?: "pending" | "approved" | "paid" | "reversed";
-  parent_id?: string;
-  earn_time?: string;
-  approve_after_time?: string;
-  approve_time?: string;
-  pay_time?: string;
-  payout_id?: string;
+  reversed_minor: Int64;
+  status: "pending" | "approved" | "paid" | "reversed";
+  parent_id: string;
+  earn_time: string | null;
+  approve_after_time: string | null;
+  approve_time: string | null;
+  pay_time: string | null;
+  payout_id: string;
 }
 
 export interface AffiliateFunnel {
-  from_date?: string;
-  to_date?: string;
-  clicks?: string;
+  from_date: string;
+  to_date: string;
+  clicks: Int64;
   /** Customers attributed in the period */
-  referrals?: string;
+  referrals: Int64;
   /** Customers with a commission earned in the period */
-  paying_customers?: string;
-  commissions?: Array<{
-    currency?: string;
-    earned_minor?: Int64;
-    reversed_minor?: Int64;
+  paying_customers: Int64;
+  commissions: Array<{
+    currency: string;
+    earned_minor: Int64;
+    reversed_minor: Int64;
   }>;
 }
 
 export interface AffiliateJournalEntry {
-  id?: string;
-  payout_id?: string;
-  affiliate_id?: string;
-  post_time?: string;
-  currency?: string;
-  account?: "commission_expense" | "commissions_payable" | "cash";
-  debit_minor?: Int64;
-  credit_minor?: Int64;
-  memo?: string;
-  fake?: boolean;
+  id: string;
+  payout_id: string;
+  affiliate_id: string;
+  post_time: string | null;
+  currency: string;
+  account: "commission_expense" | "commissions_payable" | "cash";
+  debit_minor: Int64;
+  credit_minor: Int64;
+  memo: string;
+  fake: boolean;
 }
 
 export interface AffiliatePayout {
-  id?: string;
-  affiliate_id?: string;
-  affiliate_code?: string;
-  currency?: string;
+  id: string;
+  affiliate_id: string;
+  affiliate_code: string;
+  currency: string;
   /** Open: what its commissions are worth now. Paid: what was paid */
-  total_minor?: Int64;
-  commission_count?: number;
-  method?: "manual" | "bank_transfer";
-  payout_details?: string;
-  reference?: string;
-  status?: "open" | "paid" | "cancelled";
+  total_minor: Int64;
+  commission_count: number;
+  method: "manual" | "bank_transfer";
+  payout_details: string;
+  reference: string;
+  status: "open" | "paid" | "cancelled";
   /** A payout of a sandbox environment: nothing was or will be paid */
-  fake?: boolean;
-  create_time?: string;
-  pay_time?: string;
-  cancel_time?: string;
+  fake: boolean;
+  create_time: string | null;
+  pay_time: string | null;
+  cancel_time: string | null;
 }
 
 /** The rules of the partner program of one environment. */
 export interface AffiliateProgram {
   /** paused and draft earn nothing and turn the links off */
-  status?: "draft" | "active" | "paused";
-  commission_kind?: "percent_bps" | "fixed";
+  status: "draft" | "active" | "paused";
+  commission_kind: "percent_bps" | "fixed";
   /** Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed */
-  commission_value?: string;
+  commission_value: Int64;
+  /** Only for fixed; a percentage follows the currency of each invoice */
+  currency: string;
+  commission_term: "first_invoices" | "months" | "lifetime";
+  /** N invoices or N months; absent for lifetime */
+  commission_term_value: number;
+  attribution_window_days: number;
+  /** How long a commission waits (the refund window) before it can be paid */
+  hold_days: number;
+  min_payout_minor: Int64;
+  /** Coupon a referred customer gets on their next checkout */
+  referred_coupon_code: string;
+  daily_click_cap: number;
+  /** Where /r/<code> sends the visitor; empty shows a plain page */
+  landing_url: string;
+  /** A partner who applies is active at once */
+  auto_approve: boolean;
+  create_time: string | null;
+  update_time: string | null;
+}
+
+/** The rules of the partner program of one environment. */
+export interface AffiliateProgramInput {
+  /** paused and draft earn nothing and turn the links off */
+  status?: "draft" | "active" | "paused";
+  commission_kind: "percent_bps" | "fixed";
+  /** Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed */
+  commission_value: string;
   /** Only for fixed; a percentage follows the currency of each invoice */
   currency?: string;
   commission_term?: "first_invoices" | "months" | "lifetime";
@@ -211,12 +248,12 @@ export interface AffiliateProgram {
 }
 
 /** The rules of the partner program of one environment. */
-export interface AffiliateProgramParams {
+export interface AffiliateProgramInputParams {
   /** paused and draft earn nothing and turn the links off */
   status?: "draft" | "active" | "paused";
-  commission_kind?: "percent_bps" | "fixed";
+  commission_kind: "percent_bps" | "fixed";
   /** Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed */
-  commission_value?: string;
+  commission_value: string;
   /** Only for fixed; a percentage follows the currency of each invoice */
   currency?: string;
   commission_term?: "first_invoices" | "months" | "lifetime";
@@ -238,12 +275,12 @@ export interface AffiliateProgramParams {
 }
 
 export interface AffiliateReferral {
-  affiliate_id?: string;
-  affiliate_code?: string;
-  customer_external_id?: string;
-  customer_email_masked?: string;
-  source?: "link" | "code" | "api";
-  attribute_time?: string;
+  affiliate_id: string;
+  affiliate_code: string;
+  customer_external_id: string;
+  customer_email_masked: string;
+  source: "link" | "code" | "api";
+  attribute_time: string | null;
 }
 
 export interface ApplyCouponRequest {
@@ -251,18 +288,17 @@ export interface ApplyCouponRequest {
 }
 
 export interface Asset {
-  id?: string;
-  session_id?: string;
-  purpose?: "PURPOSE_INVOICE_LOGO" | "PURPOSE_INVOICE_ATTACHMENT" | "PURPOSE_GENERAL";
-  filename?: string;
-  content_type?: string;
-  /** int64 as a string */
-  size_bytes?: Int64;
-  sha256?: string;
-  status?: "ASSET_STATUS_PENDING" | "ASSET_STATUS_UPLOADING" | "ASSET_STATUS_SCANNING" | "ASSET_STATUS_READY" | "ASSET_STATUS_REJECTED" | "ASSET_STATUS_ABORTED" | "ASSET_STATUS_CORRUPT" | "ASSET_STATUS_DELETED";
-  reject_reason?: string;
-  create_time?: string;
-  complete_time?: string;
+  id: string;
+  session_id: string;
+  purpose: "PURPOSE_INVOICE_LOGO" | "PURPOSE_INVOICE_ATTACHMENT" | "PURPOSE_GENERAL";
+  filename: string;
+  content_type: string;
+  size_bytes: Int64;
+  sha256: string;
+  status: "ASSET_STATUS_PENDING" | "ASSET_STATUS_UPLOADING" | "ASSET_STATUS_SCANNING" | "ASSET_STATUS_READY" | "ASSET_STATUS_REJECTED" | "ASSET_STATUS_ABORTED" | "ASSET_STATUS_CORRUPT" | "ASSET_STATUS_DELETED";
+  reject_reason: string;
+  create_time: string | null;
+  complete_time: string | null;
 }
 
 export interface AttributeCustomerRequest {
@@ -273,17 +309,20 @@ export interface AttributeCustomerRequest {
 }
 
 export interface AttributeCustomerResponse {
-  attributed?: boolean;
-  reason?: string;
+  attributed: boolean;
+  reason: string;
 }
 
 export interface BillingRun {
-  tenant_id?: string;
-  period_id?: string;
-  status?: "RUN_STATUS_SCHEDULED" | "RUN_STATUS_WAITING_WATERMARK" | "RUN_STATUS_RATING" | "RUN_STATUS_INVOICING" | "RUN_STATUS_COMPLETED" | "RUN_STATUS_FAILED";
-  cutoff_time?: string;
-  invoice_count?: number;
-  last_error?: string;
+  tenant_id: string;
+  period_id: string;
+  status: "RUN_STATUS_SCHEDULED" | "RUN_STATUS_WAITING_WATERMARK" | "RUN_STATUS_RATING" | "RUN_STATUS_INVOICING" | "RUN_STATUS_COMPLETED" | "RUN_STATUS_FAILED";
+  cutoff_time: string | null;
+  invoice_count: number;
+  last_error: string;
+  generation: number;
+  start_time: string | null;
+  complete_time: string | null;
 }
 
 export interface CancelSubscriptionQuery {
@@ -291,11 +330,11 @@ export interface CancelSubscriptionQuery {
   credit_unused?: boolean;
 }
 
-export type CancelSubscriptionResponse = Subscription | {
-  subscription?: Subscription;
-  /** Minor units of the subscription's currency */
-  credited_minor?: Int64;
-};
+export interface CancelSubscriptionResponse {
+  subscription: Subscription;
+  /** Minor units of the subscription's currency credited to the customer; "0" unless credit_unused credited something */
+  credited_minor: Int64;
+}
 
 export interface ChangePlanRequest {
   plan_code: string;
@@ -306,33 +345,33 @@ export interface ChangePlanRequest {
 }
 
 export interface ChangePlanResponse {
-  subscription?: Subscription;
-  /** Unused part of the old fixed fee */
-  credit_minor?: Int64;
-  /** Remaining part of the new fixed fee */
-  charge_minor?: Int64;
+  subscription: Subscription | null;
+  /** The old plan's share of the current month's fixed fee, up to change_time (informational; billing recomputes it) */
+  old_plan_fee_minor: Int64;
+  /** The new plan's share of the current month's fixed fee, from change_time (informational; billing recomputes it) */
+  new_plan_fee_minor: Int64;
 }
 
 export interface ChangeQuote {
-  timing?: "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
-  proration?: "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
-  effective_time?: string;
-  period_start?: string;
-  period_end?: string;
-  /** The unused */
-  credit_minor?: Int64;
+  timing: "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
+  proration: "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
+  effective_time: string | null;
+  period_start: string | null;
+  period_end: string | null;
+  /** The unused, prepaid part of the old fee */
+  credit_minor: Int64;
   /** What the new plan costs from the change */
-  charge_minor?: Int64;
+  charge_minor: Int64;
   /** charge - credit: positive is invoiced, negative becomes a credit balance */
-  net_minor?: Int64;
-  currency?: string;
-  next_renewal_time?: string;
-  next_renewal_minor?: Int64;
-  plan_code?: string;
-  plan_version?: number;
-  interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+  net_minor: Int64;
+  currency: string;
+  next_renewal_time: string | null;
+  next_renewal_minor: Int64;
+  plan_code: string;
+  plan_version: number;
+  interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
   /** The seats after the change */
-  quantity?: number;
+  quantity: number;
 }
 
 export interface ChangeRequest {
@@ -353,26 +392,58 @@ export interface ChangeRequest {
 }
 
 export interface ChangeSubscriptionResponse {
-  subscription?: Subscription;
-  quote?: ChangeQuote;
+  subscription: Subscription | null;
+  quote: ChangeQuote | null;
   /** True when the change waits for the end of the period */
-  scheduled?: boolean;
+  scheduled: boolean;
 }
 
 export interface ClearInvoiceLogoResponse {
-  invoice_logo_asset_id?: string;
+  invoice_logo_asset_id: string;
+}
+
+export interface CompleteUploadFilePart {
+  part_number: number;
+  etag: string;
 }
 
 export interface CompleteUploadFileRequest {
-  parts: Array<{
-    part_number: number;
-    etag: string;
-  }>;
+  parts: Array<CompleteUploadFilePart>;
 }
 
 export interface Coupon {
   /** 2–40 letters, digits, - or _ */
-  code?: string;
+  code: string;
+  name: string;
+  id: string;
+  /** 1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps */
+  percent_bps: number;
+  /** Minor units of currency; applies only in that currency */
+  amount_minor: Int64;
+  currency: string;
+  /** Extra credits on a credit purchase, in the same lot: 1000 is 10 % more. Credit purchases only */
+  bonus_percent_bps: number;
+  /** Where the coupon works; empty means all three (a bonus coupon: credit purchases) */
+  applies_to: Array<"COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT">;
+  /** How long a subscription keeps the coupon; required when it applies to subscriptions */
+  duration: "COUPON_DURATION_ONCE" | "COUPON_DURATION_REPEATING" | "COUPON_DURATION_FOREVER";
+  /** For a repeating coupon, how many fees */
+  duration_periods: number;
+  /** 0 or absent = unlimited. Counts the uses through all the coupon's codes */
+  max_redemptions: number;
+  /** The uses that count against the limit */
+  redeemed: number;
+  expire_time: string | null;
+  active: boolean;
+  create_time: string | null;
+  promotion_code_count: number;
+  /** Do not make the promotion code with the coupon's own text that a new coupon gets */
+  without_default_code: boolean;
+}
+
+export interface CouponInput {
+  /** 2–40 letters, digits, - or _ */
+  code: string;
   name?: string;
   id?: string;
   /** 1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps */
@@ -400,9 +471,9 @@ export interface Coupon {
   without_default_code?: boolean;
 }
 
-export interface CouponParams {
+export interface CouponInputParams {
   /** 2–40 letters, digits, - or _ */
-  code?: string;
+  code: string;
   name?: string;
   id?: string;
   /** 1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps */
@@ -431,22 +502,22 @@ export interface CouponParams {
 }
 
 export interface CouponRedemption {
-  id?: string;
-  coupon_code?: string;
+  id: string;
+  coupon_code: string;
   /** Empty when an operator applied the coupon or it came from a grant */
-  promotion_code?: string;
-  customer_external_id?: string;
-  target?: "COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
+  promotion_code: string;
+  customer_external_id: string;
+  target: "COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
   /** The subscription, or the invoice */
-  target_id?: string;
-  invoice_id?: string;
+  target_id: string;
+  invoice_id: string;
   /** What it took off; a subscription's grows with each fee */
-  discount_minor?: Int64;
-  bonus_credits?: string;
-  currency?: string;
-  create_time?: string;
+  discount_minor: Int64;
+  bonus_credits: Int64;
+  currency: string;
+  create_time: string | null;
   /** Set when a void or a full refund reversed it */
-  reverse_time?: string;
+  reverse_time: string | null;
 }
 
 export interface CreateAffiliatePayoutsRequest {
@@ -455,13 +526,15 @@ export interface CreateAffiliatePayoutsRequest {
 }
 
 export interface CreateAffiliatePayoutsResponse {
-  payouts?: Array<AffiliatePayout>;
-  skipped?: Array<{
-    affiliate_id?: string;
-    currency?: string;
-    total_minor?: Int64;
-    reason?: "below_minimum" | "not_positive";
-  }>;
+  payouts: Array<AffiliatePayout>;
+  skipped: Array<CreateAffiliatePayoutsSkipped>;
+}
+
+export interface CreateAffiliatePayoutsSkipped {
+  affiliate_id: string;
+  currency: string;
+  total_minor: Int64;
+  reason: "below_minimum" | "not_positive";
 }
 
 export interface CreateAffiliateRequest {
@@ -482,40 +555,76 @@ export interface CreateCustomerRequest {
   country?: string;
   /** ISO 4217; default is the tenant's currency */
   billing_currency?: string;
-  address?: Address;
+  address?: AddressInput;
   /** The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation. */
   referral_code?: string;
   /** When the visitor followed that link; default now */
   referral_touch_time?: string;
 }
 
-export type CreatedPaymentLink = PaymentLink & {
+export interface CreatedPaymentLink {
+  id: string;
+  kind: "invoice" | "adhoc" | "credit_pack";
+  /** paid: a single-use link that was paid */
+  status: "active" | "paid" | "expired" | "revoked";
+  /** kind credit_pack: the pack sold */
+  pack_id: string;
+  /** kind credit_pack: how many packs one use buys */
+  quantity: number;
+  /** kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string */
+  credits: Int64;
+  /** The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
+  promotion_code: string;
+  /** kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
+  invoice_id: string;
+  customer_external_id: string;
+  single_use: boolean;
+  /** kind adhoc: int64 minor units as a string */
+  amount_minor: Int64;
+  currency: string;
+  description: string;
+  create_time: string | null;
+  expire_time: string | null;
+  revoke_time: string | null;
+  /** Invoices paid through the link */
+  paid_count: number;
+  last_paid_time: string | null;
+  /** Invoices the link created (ad hoc) */
+  use_count: number;
+  idempotency_key: string;
   /** The secret part of the link; shown once, empty on a replay */
-  token?: string;
+  token: string;
   /** Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay */
-  url?: string;
-  replayed?: boolean;
-};
+  url: string;
+  replayed: boolean;
+}
 
 export interface CreateInvoiceLinkRequest {
   expires_in_days?: number;
 }
 
 export interface CreateInvoiceLinkResponse {
-  token?: string;
-  url?: string;
-  expires_at?: string;
+  token: string;
+  url: string;
+  expires_at: string;
 }
 
 export interface CreateMeterRequest {
   code: string;
-  aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX";
-  /** Required for SUM and MAX */
+  /**
+   * How a customer's events of a billing period combine into one quantity. SUM adds the quantities, COUNT counts the events, MAX keeps the
+   * largest quantity. UNIQUE counts the distinct values of the event property named by value_property (an event without the property is not
+   * counted; quantity_scale must be 0). LAST is the quantity of the latest event of the period by event_time, ties broken by event id; an
+   * event that arrives after the period's cutoff never changes it. A code cannot change into or out of UNIQUE or LAST in a later version.
+   *
+   */
+  aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX" | "AGGREGATION_UNIQUE" | "AGGREGATION_LAST";
+  /** Required for SUM, MAX and LAST (the event property holding the quantity) and for UNIQUE (the property whose distinct values are counted) */
   value_property?: string;
   filter?: Record<string, {
     values?: Array<string>;
   }>;
-  /** Decimal places */
+  /** Decimal places, fixed per code */
   quantity_scale?: number;
   /** Any unit of your choice: tokens, GB-h, seats, minutes */
   unit_label: string;
@@ -583,14 +692,14 @@ export interface CreatePortalLinkRequest {
 }
 
 export interface CreatePortalLinkResponse {
-  token?: string;
-  url?: string;
-  expires_at?: string;
-  customer_id?: string;
+  token: string;
+  url: string;
+  expires_at: string;
+  customer_id: string;
 }
 
 export interface CreatePromotionCodes {
-  template?: PromotionCode;
+  template?: PromotionCodeInput;
   /** Name the codes, or ask for count */
   codes?: Array<string>;
   count?: number;
@@ -599,7 +708,7 @@ export interface CreatePromotionCodes {
 }
 
 export interface CreatePromotionCodesParams {
-  template?: PromotionCodeParams;
+  template?: PromotionCodeInputParams;
   /** Name the codes, or ask for count */
   codes?: Array<string>;
   count?: number;
@@ -608,7 +717,7 @@ export interface CreatePromotionCodesParams {
 }
 
 export interface CreatePromotionCodesResponse {
-  codes?: Array<PromotionCode>;
+  codes: Array<PromotionCode>;
 }
 
 export interface CreateSubscriptionRequest {
@@ -620,7 +729,7 @@ export interface CreateSubscriptionRequest {
   /** Left out: the package version's own default trial. 0: no trial whatever the default is */
   trial_days?: number;
   interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
-  /** Default is the customer's billing currency */
+  /** Default is the customer's billing currency, then the tenant's */
   currency?: string;
   /** The payment provider that sells it (for example paddle); default is the tenant's default account */
   provider?: string;
@@ -632,23 +741,32 @@ export interface CreateSubscriptionRequest {
   fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
 }
 
+export interface CreateUploadSessionFile {
+  filename: string;
+  content_type: string;
+  size: number;
+  purpose: "invoice_logo" | "invoice_attachment" | "general";
+  /** Optional hex sha256 of the whole file */
+  sha256?: string;
+}
+
 export interface CreateUploadSessionRequest {
-  files: Array<{
-    filename: string;
-    content_type: string;
-    size: Int64Input;
-    purpose: "invoice_logo" | "invoice_attachment" | "general";
-    /** Optional hex sha256 of the whole file */
-    sha256?: string;
-  }>;
+  files: Array<CreateUploadSessionFile>;
+}
+
+export interface CreateWebhookEndpointRequest {
+  /** https only, a public address, no credentials */
+  url: string;
+  description?: string;
+  /** Empty means every type */
+  event_types?: Array<WebhookEventType>;
 }
 
 export interface CreditBalance {
-  /** int64 as a string */
-  balance?: Int64;
+  balance: Int64;
   /** When some of the credits run out; null when none does */
-  next_expire_time?: string | null;
-  lots?: Array<CreditLot>;
+  next_expire_time: string | null;
+  lots: Array<CreditLot>;
 }
 
 export interface CreditConsumeInput {
@@ -656,7 +774,7 @@ export interface CreditConsumeInput {
   credits: Int64;
   reason?: string;
   /** Required, here or in the Idempotency-Key header */
-  idempotency_key?: string;
+  idempotency_key: string;
 }
 
 export interface CreditConsumeInputParams {
@@ -664,7 +782,7 @@ export interface CreditConsumeInputParams {
   credits: Int64Input;
   reason?: string;
   /** Required, here or in the Idempotency-Key header */
-  idempotency_key?: string;
+  idempotency_key: string;
 }
 
 export interface CreditGrantInput {
@@ -688,66 +806,62 @@ export interface CreditGrantInputParams {
 }
 
 export interface CreditLedgerEntry {
-  id?: string;
-  lot_id?: string;
-  kind?: "grant" | "consume" | "expire";
+  id: string;
+  lot_id: string;
+  kind: "grant" | "consume" | "expire";
   /** int64 as a string; negative for consume and expire */
-  amount?: Int64;
-  reason?: string;
-  idempotency_key?: string;
+  amount: Int64;
+  reason: string;
+  idempotency_key: string;
   /** Where the credits it touched came from; a purchase is a credit pack that was paid for */
-  source?: "purchase" | "promo" | "manual";
-  create_time?: string;
+  source: "purchase" | "promo" | "manual";
+  create_time: string | null;
 }
 
 export interface CreditLedgerPage {
-  entries?: Array<CreditLedgerEntry>;
-  next_page_token?: string;
+  entries: Array<CreditLedgerEntry>;
+  next_page_token: string;
 }
 
 export interface CreditLot {
-  id?: string;
-  /** int64 as a string */
-  granted?: Int64;
-  /** int64 as a string */
-  remaining?: Int64;
-  source?: "purchase" | "promo" | "manual";
+  id: string;
+  granted: Int64;
+  remaining: Int64;
+  source: "purchase" | "promo" | "manual";
   /** Null: the credits never expire */
-  expire_time?: string | null;
-  create_time?: string;
+  expire_time: string | null;
+  create_time: string | null;
 }
 
 export interface CreditNote {
-  id?: string;
+  id: string;
   /** CN-2026-000007 (live) or SBX-CN-2026-000007 (sandbox) */
-  number?: string;
-  invoice_id?: string;
-  invoice_number?: string;
-  customer_id?: string;
-  customer_external_id?: string;
-  currency?: string;
-  total_minor?: Int64;
-  reason?: string;
-  create_time?: string;
+  number: string;
+  invoice_id: string;
+  invoice_number: string;
+  customer_id: string;
+  customer_external_id: string;
+  currency: string;
+  total_minor: Int64;
+  reason: string;
+  create_time: string | null;
   /** Where the amount went: the credit balance, or back to the card */
-  disposition?: "CREDIT_NOTE_DISPOSITION_CREDIT" | "CREDIT_NOTE_DISPOSITION_REFUND";
+  disposition: "CREDIT_NOTE_DISPOSITION_CREDIT" | "CREDIT_NOTE_DISPOSITION_REFUND";
   /** Only for a refund to the card */
-  refund_state?: "REFUND_STATE_REQUESTED" | "REFUND_STATE_REFUNDED" | "REFUND_STATE_FAILED";
-  refund_error?: string;
+  refund_state: "REFUND_STATE_REQUESTED" | "REFUND_STATE_REFUNDED" | "REFUND_STATE_FAILED";
+  refund_error: string;
 }
 
 export interface CreditPack {
-  id?: string;
-  name?: string;
-  /** int64 as a string */
-  credits?: Int64;
-  /** int64 as a string */
-  price_minor?: Int64;
-  currency?: string;
-  active?: boolean;
-  create_time?: string;
+  id: string;
+  name: string;
+  credits: Int64;
+  price_minor: Int64;
+  currency: string;
+  active: boolean;
+  create_time: string | null;
   /** 0: the credits bought never expire */
-  validity_days?: number;
+  validity_days: number;
 }
 
 export interface CreditPackInput {
@@ -773,34 +887,46 @@ export interface CreditPackInputParams {
 }
 
 export interface CreditPackList {
-  packs?: Array<CreditPack>;
+  packs: Array<CreditPack>;
 }
 
 export interface CreditResult {
   /** int64 as a string: what the customer can spend after the call */
-  balance?: Int64;
+  balance: Int64;
   /** True when the key had been used: nothing changed */
-  replayed?: boolean;
+  replayed: boolean;
 }
 
 export interface CreditSettings {
   /** int64 credits; 0 turns credits.low off */
+  low_threshold: Int64;
+}
+
+export interface CreditSettingsInput {
+  /** int64 credits; 0 turns credits.low off */
   low_threshold?: Int64;
 }
 
-export interface CreditSettingsParams {
+export interface CreditSettingsInputParams {
   /** int64 credits; 0 turns credits.low off */
   low_threshold?: Int64Input;
 }
 
 export interface CurrencyFee {
+  currency: string;
+  base_fee_minor: Int64;
+  /** Default month */
+  interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+}
+
+export interface CurrencyFeeInput {
   currency?: string;
   base_fee_minor?: Int64;
   /** Default month */
   interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
 }
 
-export interface CurrencyFeeParams {
+export interface CurrencyFeeInputParams {
   currency?: string;
   base_fee_minor?: Int64Input;
   /** Default month */
@@ -808,32 +934,32 @@ export interface CurrencyFeeParams {
 }
 
 export interface Customer {
-  id?: string;
-  external_id?: string;
-  name?: string;
-  email?: string;
-  payment_method?: string;
-  create_time?: string;
+  id: string;
+  external_id: string;
+  name: string;
+  email: string;
+  payment_method: string;
+  create_time: string | null;
   /** ISO 3166-1 alpha-2 */
-  country?: string;
+  country: string;
   /** ISO 4217 */
-  billing_currency?: string;
-  address?: Address;
-  tax_id?: string;
-  tax_office?: string;
-  e_invoice_registered?: boolean;
+  billing_currency: string;
+  address: Address | null;
+  tax_id: string;
+  tax_office: string;
+  e_invoice_registered: boolean;
 }
 
 export interface CustomerPayment {
-  invoice_id?: string;
-  invoice_number?: string;
-  kind?: "charge" | "refund";
-  status?: "succeeded" | "declined" | "failed" | "pending";
-  amount_minor?: Int64;
-  currency?: string;
-  provider?: string;
-  environment?: "sandbox" | "live";
-  occurred_at?: string;
+  invoice_id: string;
+  invoice_number: string;
+  kind: "charge" | "refund";
+  status: "succeeded" | "declined" | "failed" | "pending";
+  amount_minor: Int64;
+  currency: string;
+  provider: string;
+  environment: "sandbox" | "live";
+  occurred_at: string;
 }
 
 export interface CustomerTax {
@@ -845,91 +971,108 @@ export interface CustomerTax {
   e_invoice_registered?: boolean;
 }
 
-export type DeactivateCreditPackResponse = Record<string, unknown>;
-
-export interface DownloadAssetResponse {
-  url?: string;
-  expires_at?: string;
+export interface DunningSettings {
+  retry_hours: Array<number>;
+  /** True when nothing was set and the service-wide delays apply */
+  defaults_in_use: boolean;
+  update_time: string | null;
 }
 
-export interface DunningSettings {
+export interface DunningSettingsInput {
   retry_hours?: Array<number>;
-  /** True when nothing was set and the service-wide delays apply */
-  defaults_in_use?: boolean;
-  update_time?: string;
 }
 
 export interface EInvoiceDocument {
-  id?: string;
-  kind?: "invoice" | "credit_note";
-  invoice_id?: string;
-  credit_note_id?: string | null;
+  id: string;
+  kind: "invoice" | "credit_note";
+  invoice_id: string;
+  credit_note_id: string | null;
   /** Payrudder's invoice or credit note number */
-  number?: string;
-  status?: "pending" | "issued" | "failed" | "cancelled";
+  number: string;
+  status: "pending" | "issued" | "failed" | "cancelled";
   /** Empty until known */
-  document_type?: "" | "e-fatura" | "e-arsiv" | "peppol";
-  provider?: string;
-  environment?: "sandbox" | "live";
-  legal_number?: string;
-  external_id?: string;
-  attempts?: number;
-  next_attempt_at?: string | null;
-  last_error_key?: string;
+  document_type: "" | "e-fatura" | "e-arsiv" | "peppol";
+  provider: string;
+  environment: "sandbox" | "live";
+  legal_number: string;
+  external_id: string;
+  attempts: number;
+  next_attempt_at: string | null;
+  last_error_key: string;
   /** English text */
-  last_error?: string;
-  has_xml?: boolean;
-  has_pdf?: boolean;
-  created_at?: string;
-  issued_at?: string | null;
-  updated_at?: string;
-}
-
-export interface EInvoiceFileLink {
-  url?: string;
-  expires_at?: string;
+  last_error: string;
+  has_xml: boolean;
+  has_pdf: boolean;
+  created_at: string | null;
+  issued_at: string | null;
+  updated_at: string | null;
 }
 
 export interface EInvoiceList {
-  documents?: Array<EInvoiceDocument>;
-  next_page_token?: string;
-  total?: number;
+  documents: Array<EInvoiceDocument>;
+  next_page_token: string;
+  total: Int64;
 }
 
-export type Entitlement = {
-  meter_code: string;
-} & EntitlementTerms;
+/** An empty JSON object */
+export type EmptyObject = Record<string, unknown>;
 
-export type EntitlementOverride = {
-  customer_external_id?: string;
-  meter_code?: string;
-  create_time?: string;
-  update_time?: string;
-} & EntitlementTerms;
+export interface Entitlement {
+  meter_code: string;
+  /** Decimal in meter units; "0" = unlimited */
+  limit: string;
+  /** Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100 */
+  alert_thresholds_pct: Array<number>;
+  window: QuotaWindow;
+  mode: QuotaMode;
+}
+
+export interface EntitlementInput {
+  meter_code: string;
+  /** Decimal in meter units; "0" = unlimited */
+  limit: string;
+  /** Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100 */
+  alert_thresholds_pct?: Array<number>;
+  window?: QuotaWindow;
+  mode?: QuotaMode;
+}
+
+export interface EntitlementOverride {
+  customer_external_id: string;
+  meter_code: string;
+  create_time: string | null;
+  update_time: string | null;
+  /** Decimal in meter units; "0" = unlimited */
+  limit: string;
+  /** Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100 */
+  alert_thresholds_pct: Array<number>;
+  window: QuotaWindow;
+  mode: QuotaMode;
+}
 
 export interface EntitlementStatus {
-  customer_external_id?: string;
-  meter_code?: string;
-  period_id?: string;
+  customer_external_id: string;
+  meter_code: string;
+  period_id: string;
   /** Exact decimal with the meter's scale */
-  used?: string;
+  used: string;
   /** Exact decimal; null when unlimited */
-  limit?: string | null;
-  unlimited?: boolean;
+  limit: string | null;
+  unlimited: boolean;
   /** unlimited, used < limit, or a soft or notify limit */
-  allowed?: boolean;
-  as_of?: string | null;
+  allowed: boolean;
+  as_of: string | null;
   /** What the limit counts over; month for a meter without a limit */
-  window?: "hour" | "day" | "week" | "month" | "year" | "lifetime";
+  window: "hour" | "day" | "week" | "month" | "year" | "lifetime";
   /** The window used counts in: period_id for a month, 2026-11-05T13, 2026-11-05, 2026-W45, 2026 for a year or all for the lifetime */
-  window_id?: string;
+  window_id: string;
   /** When the window ends and used starts again from zero; null for the lifetime window */
-  resets_at?: string | null;
-  mode?: "hard" | "soft" | "notify";
+  resets_at: string | null;
+  mode: "hard" | "soft" | "notify";
   /** not unlimited and used >= limit, whatever the mode */
-  over_limit?: boolean;
-  /** The limit is the customer's own override */
-  overridden?: boolean;
+  over_limit: boolean;
+  /** The limit is the customer's own override, not its package's */
+  overridden: boolean;
 }
 
 export interface EntitlementTerms {
@@ -942,7 +1085,7 @@ export interface EntitlementTerms {
 }
 
 export interface EventResult {
-  status?: "accepted" | "duplicate" | "rejected";
+  status: "accepted" | "duplicate" | "rejected";
   /** Set for accepted and duplicate (the original id). */
   event_id?: string;
   error_code?: "UNKNOWN_METER" | "UNKNOWN_CUSTOMER" | "EVENT_TOO_OLD" | "EVENT_IN_FUTURE" | "INVALID_EVENT_TIME" | "INVALID_QUANTITY" | "INVALID_QUANTITY_PRECISION" | "IDEMPOTENCY_KEY_REQUIRED" | "IDEMPOTENCY_KEY_INVALID" | "IDEMPOTENCY_KEY_REUSED" | "INVALID_PROPERTIES";
@@ -950,33 +1093,31 @@ export interface EventResult {
 }
 
 export interface Expense {
-  id?: string;
-  app_id?: string;
-  vendor?: string;
-  category?: ExpenseCategory;
-  /** int64 as a string */
-  amount_minor?: Int64;
-  currency?: string;
-  incurred_on?: string;
-  note?: string;
-  recurring?: "none" | "monthly" | "yearly";
-  recurring_until?: string;
-  void_time?: string | null;
-  void_reason?: string;
-  create_time?: string;
-  update_time?: string;
-  /** int64 as a string */
-  tax_minor?: Int64;
-  attachment_asset_id?: string;
+  id: string;
+  app_id: string;
+  vendor: string;
+  category: ExpenseCategory;
+  amount_minor: Int64;
+  currency: string;
+  incurred_on: string;
+  note: string;
+  recurring: "none" | "monthly" | "yearly";
+  recurring_until: string;
+  void_time: string | null;
+  void_reason: string;
+  create_time: string | null;
+  update_time: string | null;
+  tax_minor: Int64;
+  attachment_asset_id: string;
 }
 
 export type ExpenseCategory = "infrastructure" | "payment_fees" | "marketing" | "payroll" | "tax" | "software" | "other";
 
 export interface ExpenseInbox {
-  token?: string;
-  app_id?: string;
+  token: string;
+  app_id: string;
   /** invoices+<token>@<inbound domain>; empty when no inbound domain is configured */
-  address?: string;
+  address: string;
 }
 
 export interface ExpenseInput {
@@ -1020,11 +1161,27 @@ export interface ExpenseInputParams {
 }
 
 export interface ExpensePage {
-  expenses?: Array<Expense>;
-  next_page_token?: string;
+  expenses: Array<Expense>;
+  next_page_token: string;
 }
 
 export interface ExpenseRule {
+  id: string;
+  /** Case-insensitive text the vendor name contains */
+  vendor_match: string;
+  category: ExpenseCategory;
+  currency: string;
+  /** The tax share of the amount, in basis points */
+  tax_bps: number;
+  /** What this vendor usually bills, in minor units; 0: no expectation */
+  expected_amount_minor: Int64;
+  tolerance_bps: number;
+  /** Needs an expected amount */
+  auto_approve: boolean;
+  app_id: string;
+}
+
+export interface ExpenseRuleInput {
   id?: string;
   /** Case-insensitive text the vendor name contains */
   vendor_match: string;
@@ -1040,7 +1197,7 @@ export interface ExpenseRule {
   app_id?: string;
 }
 
-export interface ExpenseRuleParams {
+export interface ExpenseRuleInputParams {
   id?: string;
   /** Case-insensitive text the vendor name contains */
   vendor_match: string;
@@ -1092,7 +1249,7 @@ export interface GetAffiliateBalancesQuery {
 }
 
 export interface GetAffiliateBalancesResponse {
-  balances?: Array<AffiliateBalance>;
+  balances: Array<AffiliateBalance>;
 }
 
 export interface GetAffiliateFunnelQuery {
@@ -1101,6 +1258,12 @@ export interface GetAffiliateFunnelQuery {
   /** Last day, UTC; default today */
   to?: string;
   affiliate_id?: string;
+}
+
+export interface GetAnalyticsUsagePoint {
+  start: string | null;
+  quantity: string;
+  event_count: Int64;
 }
 
 export interface GetAnalyticsUsageQuery {
@@ -1114,14 +1277,9 @@ export interface GetAnalyticsUsageQuery {
 }
 
 export interface GetAnalyticsUsageResponse {
-  precision?: "estimated" | "exact";
-  quantity_scale?: number;
-  points?: Array<{
-    start?: string;
-    quantity?: string;
-    /** int64 as a string */
-    event_count?: Int64;
-  }>;
+  precision: "estimated" | "exact";
+  quantity_scale: number;
+  points: Array<GetAnalyticsUsagePoint>;
 }
 
 export interface GetCustomerUsageQuery {
@@ -1129,13 +1287,29 @@ export interface GetCustomerUsageQuery {
 }
 
 export interface GetCustomerUsageResponse {
-  customer_external_id?: string;
-  period_id?: string;
-  usage?: Array<{
-    meter_code?: string;
-    quantity?: string;
-    event_count?: Int64;
-  }>;
+  customer_external_id: string;
+  period_id: string;
+  usage: Array<GetCustomerUsageUsage>;
+}
+
+export interface GetCustomerUsageUsage {
+  meter_code: string;
+  quantity: string;
+  event_count: Int64;
+}
+
+export interface GetDunningReportInvoice {
+  invoice_id: string;
+  number: string;
+  customer_external_id: string;
+  period: string;
+  provider: string;
+  currency: string;
+  total_minor: Int64;
+  state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
+  dunning_attempt: number;
+  next_attempt_time: string | null;
+  last_error: string;
 }
 
 export interface GetDunningReportQuery {
@@ -1143,26 +1317,16 @@ export interface GetDunningReportQuery {
 }
 
 export interface GetDunningReportResponse {
-  invoices?: Array<{
-    invoice_id?: string;
-    number?: string;
-    customer_external_id?: string;
-    period?: string;
-    provider?: string;
-    currency?: string;
-    total_minor?: Int64;
-    state?: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
-    dunning_attempt?: number;
-    next_attempt_time?: string;
-    last_error?: string;
-  }>;
-  summary?: Array<{
-    state?: string;
-    provider?: string;
-    currency?: string;
-    invoices?: string;
-    total_minor?: Int64;
-  }>;
+  invoices: Array<GetDunningReportInvoice>;
+  summary: Array<GetDunningReportSummary>;
+}
+
+export interface GetDunningReportSummary {
+  state: string;
+  provider: string;
+  currency: string;
+  invoices: Int64;
+  total_minor: Int64;
 }
 
 export interface GetEntitlementQuery {
@@ -1174,40 +1338,37 @@ export interface GetExpenseInboxQuery {
   app_id?: string;
 }
 
-export interface GetInvoicePdfResponse {
-  url?: string;
-  expires_at?: string;
-}
-
 export interface GetRevenueReportQuery {
-  /** First period */
+  /** First period, YYYY-MM */
   from?: string;
-  /** Last period */
+  /** Last period, YYYY-MM */
   to?: string;
   /** Comma-separated: period, provider, country (default period). Currency is always split */
   group_by?: string;
 }
 
 export interface GetRevenueReportResponse {
-  rows?: Array<{
-    period?: string;
-    provider?: string;
-    country?: string;
-    currency?: string;
-    invoices?: string;
-    /** Finalized invoices that are not void */
-    billed_minor?: Int64;
-    /** Paid */
-    collected_minor?: Int64;
-    /** Invoices that were refunded */
-    refunded_minor?: Int64;
-    /** Open */
-    outstanding_minor?: Int64;
-    uncollectible_minor?: Int64;
-    void_minor?: Int64;
-    /** Credit notes issued against these invoices */
-    credited_minor?: Int64;
-  }>;
+  rows: Array<GetRevenueReportRow>;
+}
+
+export interface GetRevenueReportRow {
+  period: string;
+  provider: string;
+  country: string;
+  currency: string;
+  invoices: Int64;
+  /** Finalized invoices that are not void */
+  billed_minor: Int64;
+  /** Paid */
+  collected_minor: Int64;
+  /** Invoices that were refunded */
+  refunded_minor: Int64;
+  /** Open */
+  outstanding_minor: Int64;
+  uncollectible_minor: Int64;
+  void_minor: Int64;
+  /** Credit notes issued against these invoices */
+  credited_minor: Int64;
 }
 
 export interface GetSubscriptionReportQuery {
@@ -1218,23 +1379,33 @@ export interface GetSubscriptionReportQuery {
 }
 
 export interface GetSubscriptionReportResponse {
-  month?: string;
-  rows?: Array<{
-    provider?: string;
-    country?: string;
-    currency?: string;
-    active?: string;
-    trialing?: string;
-    paused?: string;
-    past_due?: string;
-    /** Fixed fees per month of active and past due subscriptions */
-    mrr_minor?: Int64;
-    new_subscriptions?: string;
-    new_mrr_minor?: Int64;
-    /** Ended with no successor; a plan change or provider migration is not churn */
-    churned?: string;
-    churned_mrr_minor?: Int64;
-  }>;
+  month: string;
+  rows: Array<GetSubscriptionReportRow>;
+}
+
+export interface GetSubscriptionReportRow {
+  provider: string;
+  country: string;
+  currency: string;
+  active: Int64;
+  trialing: Int64;
+  paused: Int64;
+  past_due: Int64;
+  /** Fixed fees per month of active and past due subscriptions */
+  mrr_minor: Int64;
+  new_subscriptions: Int64;
+  new_mrr_minor: Int64;
+  /** Ended with no successor; a plan change or provider migration is not churn */
+  churned: Int64;
+  churned_mrr_minor: Int64;
+  plan_code: string;
+}
+
+export interface GetTopCustomersCustomer {
+  customer_id: string;
+  customer_external_id: string;
+  quantity: string;
+  event_count: Int64;
 }
 
 export interface GetTopCustomersQuery {
@@ -1244,14 +1415,9 @@ export interface GetTopCustomersQuery {
 }
 
 export interface GetTopCustomersResponse {
-  precision?: string;
-  quantity_scale?: number;
-  customers?: Array<{
-    customer_id?: string;
-    customer_external_id?: string;
-    quantity?: string;
-    event_count?: string;
-  }>;
+  precision: string;
+  quantity_scale: number;
+  customers: Array<GetTopCustomersCustomer>;
 }
 
 export interface GrantCustomerCouponRequest {
@@ -1262,24 +1428,24 @@ export interface GrantCustomerCouponRequest {
 }
 
 export interface GrantCustomerCouponResponse {
-  granted?: boolean;
+  granted: boolean;
 }
 
 export interface InboxItem {
-  id?: string;
-  app_id?: string;
-  from?: string;
-  subject?: string;
-  filename?: string;
-  content_type?: string;
-  size_bytes?: string;
-  status?: "to_review" | "accepted" | "dismissed";
-  expense_id?: string;
-  receive_time?: string;
+  id: string;
+  app_id: string;
+  from: string;
+  subject: string;
+  filename: string;
+  content_type: string;
+  size_bytes: Int64;
+  status: "to_review" | "accepted" | "dismissed";
+  expense_id: string;
+  receive_time: string | null;
 }
 
 export interface InboxItemPage {
-  items?: Array<InboxItem>;
+  items: Array<InboxItem>;
 }
 
 export interface IncomingEvent {
@@ -1289,7 +1455,7 @@ export interface IncomingEvent {
   meter_code: string;
   /** Non-negative decimal with at most the meter's quantity_scale decimal places. A string or a JSON number. */
   quantity: string;
-  /** Not older than 35 days */
+  /** Not older than 35 days, not more than 5 minutes ahead. */
   event_time: string;
   /** At most 32 entries and 4 KiB in total. */
   properties?: Record<string, string>;
@@ -1301,56 +1467,55 @@ export interface IngestEventsRequest {
 
 export interface IngestEventsResponse {
   /** One per request event, same order. */
-  results?: Array<EventResult>;
+  results: Array<EventResult>;
 }
 
 export interface Invoice {
-  id?: string;
-  customer_id?: string;
-  customer_external_id?: string;
-  period_id?: string;
+  id: string;
+  customer_id: string;
+  customer_external_id: string;
+  period_id: string;
   /** FEE: a fixed fee invoiced in advance for one period, or what a plan change moved. LINK: made from an ad-hoc payment link */
-  kind?: "REGULAR" | "CORRECTION" | "FEE" | "LINK";
-  number?: string;
-  currency?: string;
-  subtotal_minor?: Int64;
-  /** int64 minor units as a string */
-  total_minor?: Int64;
-  status?: "draft" | "open" | "paid" | "uncollectible" | "void";
-  saga_state?: string;
-  create_time?: string;
-  finalize_time?: string;
-  lines?: Array<InvoiceLine>;
+  kind: "REGULAR" | "CORRECTION" | "FEE" | "LINK";
+  number: string;
+  currency: string;
+  subtotal_minor: Int64;
+  total_minor: Int64;
+  status: "draft" | "open" | "paid" | "uncollectible" | "void";
+  saga_state: string;
+  create_time: string | null;
+  finalize_time: string | null;
+  lines: Array<InvoiceLine>;
   /** Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice reads fill it. */
-  payments?: Array<InvoicePayment>;
+  payments: Array<InvoicePayment>;
+  plan_version_id: string;
+  pdf_object_key: string;
 }
 
 export interface InvoiceLine {
-  line_no?: number;
-  kind?: "BASE_FEE" | "USAGE" | "LATE_USAGE" | "CREDIT" | "CORRECTION" | "DISCOUNT" | "TAX";
-  meter_code?: string;
-  origin_period_id?: string;
-  quantity?: string;
-  /** int64 minor units as a string */
-  amount_minor?: Int64;
-  description?: string;
+  line_no: number;
+  kind: "BASE_FEE" | "USAGE" | "LATE_USAGE" | "CREDIT" | "CORRECTION" | "DISCOUNT" | "TAX";
+  meter_code: string;
+  origin_period_id: string;
+  quantity: string;
+  amount_minor: Int64;
+  description: string;
   /** The service period the line covers */
-  service_from?: string;
-  service_to?: string;
+  service_from: string | null;
+  service_to: string | null;
 }
 
 export interface InvoicePayment {
-  id?: string;
-  invoice_id?: string;
-  method?: "bank_transfer" | "cash" | "other";
-  /** int64 minor units as a string */
-  amount_minor?: Int64;
-  currency?: string;
-  received_at?: string;
-  reference?: string;
-  note?: string;
-  recorded_by?: string;
-  recorded_at?: string;
+  id: string;
+  invoice_id: string;
+  method: "bank_transfer" | "cash" | "other";
+  amount_minor: Int64;
+  currency: string;
+  received_at: string | null;
+  reference: string;
+  note: string;
+  recorded_by: string;
+  recorded_at: string | null;
 }
 
 export interface LinkAffiliatePromotionCodeRequest {
@@ -1372,9 +1537,9 @@ export interface ListAffiliateCommissionsQuery {
 }
 
 export interface ListAffiliateCommissionsResponse {
-  commissions?: Array<AffiliateCommission>;
-  next_page_token?: string;
-  total?: number;
+  commissions: Array<AffiliateCommission>;
+  next_page_token: string;
+  total: number;
 }
 
 export interface ListAffiliateJournalQuery {
@@ -1387,14 +1552,16 @@ export interface ListAffiliateJournalQuery {
 }
 
 export interface ListAffiliateJournalResponse {
-  entries?: Array<AffiliateJournalEntry>;
-  totals?: Array<{
-    currency?: string;
-    debit_minor?: Int64;
-    credit_minor?: Int64;
-  }>;
-  next_page_token?: string;
-  total?: number;
+  entries: Array<AffiliateJournalEntry>;
+  totals: Array<ListAffiliateJournalTotal>;
+  next_page_token: string;
+  total: number;
+}
+
+export interface ListAffiliateJournalTotal {
+  currency: string;
+  debit_minor: Int64;
+  credit_minor: Int64;
 }
 
 export interface ListAffiliatePayoutsQuery {
@@ -1405,9 +1572,9 @@ export interface ListAffiliatePayoutsQuery {
 }
 
 export interface ListAffiliatePayoutsResponse {
-  payouts?: Array<AffiliatePayout>;
-  next_page_token?: string;
-  total?: number;
+  payouts: Array<AffiliatePayout>;
+  next_page_token: string;
+  total: number;
 }
 
 export interface ListAffiliateReferralsQuery {
@@ -1418,23 +1585,23 @@ export interface ListAffiliateReferralsQuery {
 }
 
 export interface ListAffiliateReferralsResponse {
-  referrals?: Array<AffiliateReferral>;
-  next_page_token?: string;
-  total?: number;
+  referrals: Array<AffiliateReferral>;
+  next_page_token: string;
+  total: number;
 }
 
 export interface ListAffiliatesQuery {
   status?: "pending" | "active" | "suspended";
-  /** Part of the code */
+  /** Part of the code, e-mail address or name */
   search?: string;
   page_size?: number;
   page_token?: string;
 }
 
 export interface ListAffiliatesResponse {
-  affiliates?: Array<Affiliate>;
-  next_page_token?: string;
-  total?: number;
+  affiliates: Array<Affiliate>;
+  next_page_token: string;
+  total: number;
 }
 
 export interface ListAssetsQuery {
@@ -1444,8 +1611,8 @@ export interface ListAssetsQuery {
 }
 
 export interface ListAssetsResponse {
-  assets?: Array<Asset>;
-  next_page_token?: string;
+  assets: Array<Asset>;
+  next_page_token: string;
 }
 
 export interface ListCouponRedemptionsQuery {
@@ -1457,13 +1624,13 @@ export interface ListCouponRedemptionsQuery {
 }
 
 export interface ListCouponRedemptionsResponse {
-  redemptions?: Array<CouponRedemption>;
-  next_page_token?: string;
-  total?: number;
+  redemptions: Array<CouponRedemption>;
+  next_page_token: string;
+  total: number;
 }
 
 export interface ListCouponsResponse {
-  coupons?: Array<Coupon>;
+  coupons: Array<Coupon>;
 }
 
 export interface ListCreditLedgerQuery {
@@ -1480,8 +1647,8 @@ export interface ListCreditNotesQuery {
 }
 
 export interface ListCreditNotesResponse {
-  credit_notes?: Array<CreditNote>;
-  next_page_token?: string;
+  credit_notes: Array<CreditNote>;
+  next_page_token: string;
 }
 
 export interface ListCreditPacksQuery {
@@ -1490,12 +1657,13 @@ export interface ListCreditPacksQuery {
 }
 
 export interface ListCustomerPaymentsQuery {
+  /** How many invoices to read; there is no page_token, so a customer with more invoices cannot be listed completely */
   limit?: number;
 }
 
 export interface ListCustomerPaymentsResponse {
-  invoices?: Array<Invoice>;
-  payments?: Array<CustomerPayment>;
+  invoices: Array<Invoice>;
+  payments: Array<CustomerPayment>;
 }
 
 export interface ListCustomersQuery {
@@ -1504,8 +1672,8 @@ export interface ListCustomersQuery {
 }
 
 export interface ListCustomersResponse {
-  customers?: Array<Customer>;
-  next_page_token?: string;
+  customers: Array<Customer>;
+  next_page_token: string;
 }
 
 export interface ListEInvoicesQuery {
@@ -1517,7 +1685,7 @@ export interface ListEInvoicesQuery {
 }
 
 export interface ListEntitlementOverridesResponse {
-  overrides?: Array<EntitlementOverride>;
+  overrides: Array<EntitlementOverride>;
 }
 
 export interface ListEntitlementsQuery {
@@ -1525,11 +1693,11 @@ export interface ListEntitlementsQuery {
 }
 
 export interface ListEntitlementsResponse {
-  items?: Array<EntitlementStatus>;
+  items: Array<EntitlementStatus>;
 }
 
 export interface ListExpenseRulesResponse {
-  rules?: Array<ExpenseRule>;
+  rules: Array<ExpenseRule>;
 }
 
 export interface ListExpensesQuery {
@@ -1560,12 +1728,12 @@ export interface ListInvoicesQuery {
 }
 
 export interface ListInvoicesResponse {
-  invoices?: Array<Invoice>;
-  next_page_token?: string;
+  invoices: Array<Invoice>;
+  next_page_token: string;
 }
 
 export interface ListMetersResponse {
-  meters?: Array<Meter>;
+  meters: Array<Meter>;
 }
 
 export interface ListPaymentLinksQuery {
@@ -1579,21 +1747,22 @@ export interface ListPaymentLinksQuery {
 }
 
 export interface ListPaymentLinksResponse {
-  links?: Array<PaymentLink>;
-  next_page_token?: string;
+  links: Array<PaymentLink>;
+  next_page_token: string;
 }
 
 export interface ListPaymentsQuery {
+  /** The answer folds the newest 1000 ledger rows and returns the first limit payments; there is no page_token (truncated says when the window was full) */
   limit?: number;
 }
 
 export interface ListPaymentsResponse {
-  payments?: Array<Payment>;
-  truncated?: boolean;
+  payments: Array<Payment>;
+  truncated: boolean;
 }
 
 export interface ListPlansResponse {
-  plans?: Array<Plan>;
+  plans: Array<Plan>;
 }
 
 export interface ListPromotionCodesQuery {
@@ -1607,9 +1776,9 @@ export interface ListPromotionCodesQuery {
 }
 
 export interface ListPromotionCodesResponse {
-  codes?: Array<PromotionCode>;
-  next_page_token?: string;
-  total?: number;
+  codes: Array<PromotionCode>;
+  next_page_token: string;
+  total: number;
 }
 
 export interface ListSubscriptionsQuery {
@@ -1620,8 +1789,8 @@ export interface ListSubscriptionsQuery {
 }
 
 export interface ListSubscriptionsResponse {
-  subscriptions?: Array<Subscription>;
-  next_page_token?: string;
+  subscriptions: Array<Subscription>;
+  next_page_token: string;
 }
 
 export interface ListWebhookDeliveriesQuery {
@@ -1632,15 +1801,22 @@ export interface ListWebhookDeliveriesQuery {
 }
 
 export interface ListWebhookDeliveriesResponse {
-  deliveries?: Array<WebhookDelivery>;
-  next_page_token?: string;
+  deliveries: Array<WebhookDelivery>;
+  next_page_token: string;
 }
 
 export interface ListWebhookEndpointsResponse {
-  endpoints?: Array<WebhookEndpoint>;
+  endpoints: Array<WebhookEndpoint>;
 }
 
 export interface MailSettings {
+  categories: Array<{
+    category: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
+    enabled: boolean;
+  }>;
+}
+
+export interface MailSettingsInput {
   categories?: Array<{
     category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
     enabled?: boolean;
@@ -1652,82 +1828,94 @@ export interface MarkAffiliatePayoutPaidRequest {
   reference?: string;
 }
 
-export type Meter = CreateMeterRequest & {
-  version?: number;
-  create_time?: string;
-};
+export interface Meter {
+  code: string;
+  aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX" | "AGGREGATION_UNIQUE" | "AGGREGATION_LAST";
+  /** Required for SUM, MAX, UNIQUE and LAST */
+  value_property: string;
+  filter: Record<string, {
+    values: Array<string>;
+  }>;
+  /** Decimal places, fixed per code */
+  quantity_scale: number;
+  /** Any unit of your choice: tokens, GB-h, seats, minutes */
+  unit_label: string;
+  /** Any group of your choice to file the meter under (compute, storage, AI); changes nothing in metering or billing */
+  category: string;
+  version: number;
+  create_time: string | null;
+}
 
 export interface Payment {
   /** The ledger row that carries the outcome */
-  id?: string;
-  invoice_id?: string;
-  provider?: string;
-  kind?: "charge" | "refund";
-  status?: "paid" | "processing" | "failed" | "refunded";
-  /** int64 minor units as a string */
-  amount_minor?: Int64;
-  currency?: string;
-  occurred_at?: string;
+  id: string;
+  invoice_id: string;
+  provider: string;
+  kind: "charge" | "refund";
+  status: "paid" | "processing" | "failed" | "refunded";
+  amount_minor: Int64;
+  currency: string;
+  occurred_at: string;
 }
 
 export interface PaymentLink {
-  id?: string;
-  kind?: "invoice" | "adhoc" | "credit_pack";
+  id: string;
+  kind: "invoice" | "adhoc" | "credit_pack";
   /** paid: a single-use link that was paid */
-  status?: "active" | "paid" | "expired" | "revoked";
+  status: "active" | "paid" | "expired" | "revoked";
   /** kind credit_pack: the pack sold */
-  pack_id?: string;
+  pack_id: string;
   /** kind credit_pack: how many packs one use buys */
-  quantity?: number;
+  quantity: number;
   /** kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string */
-  credits?: Int64;
+  credits: Int64;
   /** The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
-  promotion_code?: string;
+  promotion_code: string;
   /** kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
-  invoice_id?: string;
-  customer_external_id?: string;
-  single_use?: boolean;
+  invoice_id: string;
+  customer_external_id: string;
+  single_use: boolean;
   /** kind adhoc: int64 minor units as a string */
-  amount_minor?: Int64;
-  currency?: string;
-  description?: string;
-  create_time?: string;
-  expire_time?: string;
-  revoke_time?: string | null;
+  amount_minor: Int64;
+  currency: string;
+  description: string;
+  create_time: string | null;
+  expire_time: string | null;
+  revoke_time: string | null;
   /** Invoices paid through the link */
-  paid_count?: number;
-  last_paid_time?: string | null;
+  paid_count: number;
+  last_paid_time: string | null;
   /** Invoices the link created (ad hoc) */
-  use_count?: number;
-  idempotency_key?: string;
+  use_count: number;
+  idempotency_key: string;
 }
 
 export interface Plan {
-  id?: string;
-  code?: string;
-  name?: string;
-  latest_version?: number;
-  create_time?: string;
+  id: string;
+  code: string;
+  name: string;
+  latest_version: number;
+  create_time: string | null;
 }
 
 export interface PlanVersion {
-  id?: string;
-  plan_id?: string;
-  plan_code?: string;
-  version?: number;
-  base_fee_minor?: Int64;
-  prices?: Array<Price>;
-  entitlements?: Array<Entitlement>;
-  publish_time?: string;
+  id: string;
+  plan_id: string;
+  plan_code: string;
+  version: number;
+  base_fee_minor: Int64;
+  prices: Array<Price>;
+  entitlements: Array<Entitlement>;
+  publish_time: string | null;
   /** The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
-  trial_days?: number;
+  trial_days: number;
   /** Fixed fees other than the tenant currency's monthly one, per currency and interval */
-  fees?: Array<CurrencyFee>;
+  fees: Array<CurrencyFee>;
 }
 
 export interface PresignedPart {
-  part_number?: number;
-  url?: string;
+  part_number: number;
+  url: string;
 }
 
 export interface PresignPartsQuery {
@@ -1736,7 +1924,7 @@ export interface PresignPartsQuery {
 }
 
 export interface PresignPartsResponse {
-  parts?: Array<PresignedPart>;
+  parts: Array<PresignedPart>;
 }
 
 export interface PreviewRoutingRequest {
@@ -1746,14 +1934,35 @@ export interface PreviewRoutingRequest {
 
 export interface PreviewRoutingResponse {
   /** Empty when no rule matches (the tenant's default account) */
-  provider?: string;
+  provider: string;
   /** -1 when no rule matches */
-  rule_index?: number;
-  owner?: "quotify" | "provider";
-  can_charge?: boolean;
+  rule_index: number;
+  owner: "payrudder" | "provider";
+  can_charge: boolean;
 }
 
 export interface Price {
+  meter_code: string;
+  per_unit?: {
+    unit_price: string;
+  };
+  tiered?: {
+    tiers: Array<{
+      /** Empty on the last (unbounded) tier */
+      up_to: string;
+      unit_price: string;
+      flat_fee_minor: Int64;
+    }>;
+  };
+  package?: {
+    package_size: string;
+    package_price_minor: Int64;
+  };
+  /** Quantity of every billing period that is free: the model prices only what is above it. Empty or 0 = none */
+  included: string;
+}
+
+export interface PriceInput {
   meter_code: string;
   per_unit?: {
     unit_price?: string;
@@ -1774,7 +1983,7 @@ export interface Price {
   included?: string;
 }
 
-export interface PriceParams {
+export interface PriceInputParams {
   meter_code: string;
   per_unit?: {
     unit_price?: string;
@@ -1797,6 +2006,34 @@ export interface PriceParams {
 
 /** What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions. */
 export interface PromotionCode {
+  id: string;
+  coupon_id: string;
+  coupon_code: string;
+  code: string;
+  active: boolean;
+  /** 0 or absent = unlimited */
+  max_redemptions: number;
+  redeemed: number;
+  expire_time: string | null;
+  /** Only a customer who has paid for nothing yet */
+  first_purchase_only: boolean;
+  one_per_customer: boolean;
+  /** A purchase under this amount cannot use the code; needs min_amount_currency */
+  min_amount_minor: Int64;
+  min_amount_currency: string;
+  /** Plan codes; empty means any */
+  allowed_plans: Array<string>;
+  /** Credit pack ids; empty means any */
+  allowed_packs: Array<string>;
+  /** Empty means any */
+  allowed_currencies: Array<string>;
+  /** A void or full refund gives the use back to the count. Off by default */
+  restore_on_reversal: boolean;
+  create_time: string | null;
+}
+
+/** What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions. */
+export interface PromotionCodeInput {
   id?: string;
   coupon_id?: string;
   coupon_code?: string;
@@ -1824,7 +2061,7 @@ export interface PromotionCode {
 }
 
 /** What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions. */
-export interface PromotionCodeParams {
+export interface PromotionCodeInputParams {
   id?: string;
   coupon_id?: string;
   coupon_code?: string;
@@ -1852,24 +2089,25 @@ export interface PromotionCodeParams {
 }
 
 export interface PromotionQuote {
-  applied?: boolean;
-  coupon_code?: string;
-  coupon_name?: string;
-  promotion_code?: string;
-  discount_minor?: Int64;
-  bonus_credits?: string;
-  /** The price after the discount */
-  total_minor?: Int64;
-  currency?: string;
+  applied: boolean;
+  coupon_code: string;
+  coupon_name: string;
+  promotion_code: string;
+  discount_minor: Int64;
+  bonus_credits: Int64;
+  /** The price after the discount, never below zero */
+  total_minor: Int64;
+  currency: string;
+  redemption_id: string;
 }
 
 export interface PromotionQuoteRequest {
-  code: string;
+  code?: string;
   /** Needed by codes that are first-purchase-only or one per customer */
   customer_external_id?: string;
   target: "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
   /** The price before the discount */
-  amount_minor: Int64;
+  amount_minor?: Int64;
   currency: string;
   /** The credit pack id, for codes restricted to some packs */
   item?: string;
@@ -1880,12 +2118,12 @@ export interface PromotionQuoteRequest {
 }
 
 export interface PromotionQuoteRequestParams {
-  code: string;
+  code?: string;
   /** Needed by codes that are first-purchase-only or one per customer */
   customer_external_id?: string;
   target: "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
   /** The price before the discount */
-  amount_minor: Int64Input;
+  amount_minor?: Int64Input;
   currency: string;
   /** The credit pack id, for codes restricted to some packs */
   item?: string;
@@ -1896,12 +2134,21 @@ export interface PromotionQuoteRequestParams {
 }
 
 export interface PublishPlanVersionRequest {
-  /** int64 minor units */
+  base_fee_minor?: Int64;
+  /** Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's */
+  fees?: Array<CurrencyFeeInput>;
+  prices?: Array<PriceInput>;
+  entitlements?: Array<EntitlementInput>;
+  /** The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
+  trial_days?: number;
+}
+
+export interface PublishPlanVersionRequestParams {
   base_fee_minor?: Int64Input;
   /** Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's */
-  fees?: Array<CurrencyFeeParams>;
-  prices?: Array<PriceParams>;
-  entitlements?: Array<Entitlement>;
+  fees?: Array<CurrencyFeeInputParams>;
+  prices?: Array<PriceInputParams>;
+  entitlements?: Array<EntitlementInput>;
   /** The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
   trial_days?: number;
 }
@@ -1928,22 +2175,32 @@ export interface ReverseAffiliateCommissionRequest {
   /** Names this reversal; required for manual */
   reference?: string;
   /** How much to take back; 0 or absent is all that is left */
+  amount_minor?: Int64;
+  note?: string;
+}
+
+export interface ReverseAffiliateCommissionRequestParams {
+  invoice_id: string;
+  reason: "chargeback" | "manual";
+  /** Names this reversal; required for manual */
+  reference?: string;
+  /** How much to take back; 0 or absent is all that is left */
   amount_minor?: Int64Input;
   note?: string;
 }
 
 export interface ReverseAffiliateCommissionResponse {
   /** How much this call took back; 0 on a repeat */
-  reversed_minor?: Int64;
-  commission?: AffiliateCommission;
+  reversed_minor: Int64;
+  commission: AffiliateCommission | null;
 }
 
 export interface RevokeInvoiceLinksResponse {
-  revoked?: number;
+  revoked: number;
 }
 
 export interface RevokePortalLinksResponse {
-  revoked?: number;
+  revoked: number;
 }
 
 export interface RotateExpenseInboxQuery {
@@ -1951,6 +2208,16 @@ export interface RotateExpenseInboxQuery {
 }
 
 export interface RoutingRules {
+  rules: Array<{
+    /** ISO 3166-1 alpha-2; empty matches any country */
+    country: string;
+    /** ISO 4217; empty matches any currency */
+    currency: string;
+    provider: "iyzico" | "paddle" | "banktransfer";
+  }>;
+}
+
+export interface RoutingRulesInput {
   rules?: Array<{
     /** ISO 3166-1 alpha-2; empty matches any country */
     country?: string;
@@ -1965,13 +2232,15 @@ export interface SandboxClosePeriodRequest {
 }
 
 export interface SandboxScenariosResponse {
-  scenarios?: Array<{
-    scenario?: string;
-    payment_method?: string;
-    outcome?: "paid" | "uncollectible" | "paid_after_retry" | "paid_after_status_query" | "paid_after_recharge";
-    default?: boolean;
-    description?: string;
-  }>;
+  scenarios: Array<SandboxScenariosScenario>;
+}
+
+export interface SandboxScenariosScenario {
+  scenario: string;
+  payment_method: string;
+  outcome: "paid" | "uncollectible" | "paid_after_retry" | "paid_after_status_query" | "paid_after_recharge";
+  default?: boolean;
+  description: string;
 }
 
 export interface SandboxSimulateInvoiceRequest {
@@ -1980,21 +2249,21 @@ export interface SandboxSimulateInvoiceRequest {
 }
 
 export interface SandboxSimulateInvoiceResponse {
-  invoice_id?: string;
-  customer_external_id?: string;
-  scenario?: string;
-  payment_method?: string;
-  retried?: boolean;
+  invoice_id: string;
+  customer_external_id: string;
+  scenario: string;
+  payment_method: string;
+  retried: boolean;
   retry_error?: string;
 }
 
 export interface ScheduledChange {
-  plan_code?: string;
-  plan_version?: number;
-  interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
-  effective_time?: string;
+  plan_code: string;
+  plan_version: number;
+  interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+  effective_time: string | null;
   /** The seats the subscription has from then */
-  quantity?: number;
+  quantity: number;
 }
 
 export interface SetInvoiceLogoRequest {
@@ -2002,7 +2271,7 @@ export interface SetInvoiceLogoRequest {
 }
 
 export interface SetInvoiceLogoResponse {
-  invoice_logo_asset_id?: string;
+  invoice_logo_asset_id: string;
 }
 
 export interface SetPaymentMethodRequest {
@@ -2013,35 +2282,54 @@ export interface SetPaymentScenarioRequest {
   scenario: "success" | "declined" | "insufficient_funds_once" | "error_then_success" | "timeout_committed" | "timeout_not_committed";
 }
 
+/** A time-limited link to a stored file (invoice PDF, uploaded asset, e-invoice document). GET it without credentials until expires_at. */
+export interface SignedUrl {
+  url: string;
+  /** RFC 3339, UTC */
+  expires_at: string;
+}
+
 export interface Subscription {
-  id?: string;
-  customer_id?: string;
-  customer_external_id?: string;
-  plan_version_id?: string;
-  start_time?: string;
-  end_time?: string | null;
-  create_time?: string;
-  state?: "SUBSCRIPTION_STATE_TRIALING" | "SUBSCRIPTION_STATE_ACTIVE" | "SUBSCRIPTION_STATE_PAST_DUE" | "SUBSCRIPTION_STATE_PAUSED" | "SUBSCRIPTION_STATE_CANCELLED";
-  interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
-  currency?: string;
-  trial_end_time?: string | null;
-  cancel_at_period_end?: boolean;
-  pause_time?: string | null;
-  provider?: string;
-  /** The provider's id of the subscription */
-  provider_ref?: string;
+  id: string;
+  customer_id: string;
+  customer_external_id: string;
+  plan_version_id: string;
+  start_time: string | null;
+  end_time: string | null;
+  create_time: string | null;
+  state: "SUBSCRIPTION_STATE_TRIALING" | "SUBSCRIPTION_STATE_ACTIVE" | "SUBSCRIPTION_STATE_PAST_DUE" | "SUBSCRIPTION_STATE_PAUSED" | "SUBSCRIPTION_STATE_CANCELLED";
+  interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+  currency: string;
+  trial_end_time: string | null;
+  cancel_at_period_end: boolean;
+  pause_time: string | null;
+  provider: string;
+  /** The provider's id of the subscription, once it is linked */
+  provider_ref: string;
   /** Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider */
-  owner?: "quotify" | "provider";
-  plan_code?: string;
-  plan_version?: number;
-  fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
-  scheduled_change?: ScheduledChange;
-  coupon_code?: string;
+  owner: "payrudder" | "provider";
+  plan_code: string;
+  plan_version: number;
+  fee_timing: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
+  scheduled_change: ScheduledChange | null;
+  coupon_code: string;
   /** Seats: a plain multiplier of the plan's fixed fee, 1 unless set */
-  quantity?: number;
+  quantity: number;
+  changed_from_id: string;
 }
 
 export interface TaxRates {
+  rates: Array<{
+    /** ISO 3166-1 alpha-2; empty for every country without a rate of its own */
+    country: string;
+    /** Shown on the invoice, e.g. VAT */
+    name: string;
+    /** 2000 is 20 % */
+    rate_bps: number;
+  }>;
+}
+
+export interface TaxRatesInput {
   rates?: Array<{
     /** ISO 3166-1 alpha-2; empty for every country without a rate of its own */
     country?: string;
@@ -2060,36 +2348,38 @@ export interface UpdateAffiliateRequest {
 }
 
 export interface UploadAssetsResponse {
-  results?: Array<{
-    filename?: string;
-    status?: "created" | "rejected";
-    asset?: Asset;
-    error_code?: string;
-    message?: string;
-  }>;
+  results: Array<UploadAssetsResult>;
+}
+
+export interface UploadAssetsResult {
+  filename: string;
+  status: "created" | "rejected";
+  asset?: Asset;
+  error_code?: string;
+  message?: string;
 }
 
 export interface UploadFile {
-  asset_id?: string;
-  filename?: string;
-  status?: string;
-  reject_reason?: string;
-  size?: string;
-  part_size?: string;
-  part_count?: number;
-  presigned_parts?: Array<PresignedPart>;
-  uploaded_parts?: Array<{
-    part_number?: number;
-    size?: string;
-    etag?: string;
+  asset_id: string;
+  filename: string;
+  status: string;
+  reject_reason: string;
+  size: Int64;
+  part_size: Int64;
+  part_count: number;
+  presigned_parts: Array<PresignedPart>;
+  uploaded_parts: Array<{
+    part_number: number;
+    size: Int64;
+    etag: string;
   }>;
 }
 
 export interface UploadSession {
-  id?: string;
-  status?: "OPEN" | "COMPLETED" | "EXPIRED" | "ABORTED";
-  expire_time?: string;
-  files?: Array<UploadFile>;
+  id: string;
+  status: "OPEN" | "COMPLETED" | "EXPIRED" | "ABORTED";
+  expire_time: string | null;
+  files: Array<UploadFile>;
 }
 
 export interface VoidExpenseQuery {
@@ -2097,35 +2387,37 @@ export interface VoidExpenseQuery {
 }
 
 export interface VoidExpenseRequest {
-  reason?: string;
+  reason: string;
 }
 
 export interface WebhookDelivery {
-  id?: string;
+  id: string;
   /** The id inside the delivered body and the Payrudder-Event-Id header */
-  event_id?: string;
-  event_type?: string;
-  endpoint_id?: string;
-  state?: "WEBHOOK_DELIVERY_STATE_PENDING" | "WEBHOOK_DELIVERY_STATE_DELIVERED" | "WEBHOOK_DELIVERY_STATE_FAILED";
-  attempts?: number;
-  /** While pending */
-  next_attempt_time?: string;
-  /** HTTP status of the last attempt; absent if none got an answer */
-  last_status?: number;
-  last_error?: string;
-  create_time?: string;
-  delivered_time?: string;
+  event_id: string;
+  /** A WebhookEventType, or ping for the test event */
+  event_type: string;
+  endpoint_id: string;
+  state: "WEBHOOK_DELIVERY_STATE_PENDING" | "WEBHOOK_DELIVERY_STATE_DELIVERED" | "WEBHOOK_DELIVERY_STATE_FAILED";
+  attempts: number;
+  /** Set while the delivery is pending */
+  next_attempt_time: string | null;
+  /** HTTP status of the last attempt; 0 when no attempt got an answer */
+  last_status: number;
+  last_error: string;
+  create_time: string | null;
+  /** Set once the endpoint answered 2xx */
+  delivered_time: string | null;
 }
 
 export interface WebhookEndpoint {
-  id?: string;
-  url?: string;
-  description?: string;
-  event_types?: Array<string>;
-  active?: boolean;
+  id: string;
+  url: string;
+  description: string;
+  event_types: Array<string>;
+  active: boolean;
   /** whsec_…; only in the response of create and rotate-secret */
-  secret?: string;
-  create_time?: string;
+  secret: string;
+  create_time: string | null;
 }
 
 export interface WebhookEndpointInput {
@@ -2134,8 +2426,8 @@ export interface WebhookEndpointInput {
   description?: string;
   /** Empty means every type */
   event_types?: Array<WebhookEventType>;
-  /** Only on update; a new endpoint is active */
-  active?: boolean;
+  /** A PUT replaces the endpoint: leaving active out deactivates it */
+  active: boolean;
 }
 
 export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low";

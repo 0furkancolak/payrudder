@@ -16,6 +16,7 @@ import {
   percentToBps,
   programToForm,
   sumBalances,
+  type Funnel,
 } from "./logic";
 import { usePager } from "./paging";
 
@@ -98,6 +99,9 @@ describe("the program form", () => {
 });
 
 describe("balances and the funnel", () => {
+  const balance = (affiliate_id: string, currency: string) => ({ affiliate_id, currency, pending_minor: "0", approved_minor: "0", paid_minor: "0", reversed_minor: "0" });
+  const funnel = (o: Partial<Funnel> = {}): Funnel => ({ from_date: "2026-10-01", to_date: "2026-10-31", clicks: "0", referrals: "0", paying_customers: "0", commissions: [], ...o });
+
   it("adds partners up per currency and never across currencies", () => {
     const sums = sumBalances([
       { affiliate_id: "a", currency: "USD", pending_minor: "100", approved_minor: "200", paid_minor: "300", reversed_minor: "10" },
@@ -113,28 +117,28 @@ describe("balances and the funnel", () => {
 
   it("groups the rows by partner", () => {
     const by = balancesByAffiliate([
-      { affiliate_id: "a", currency: "USD" },
-      { affiliate_id: "a", currency: "EUR" },
-      { affiliate_id: "b", currency: "USD" },
+      balance("a", "USD"),
+      balance("a", "EUR"),
+      balance("b", "USD"),
     ]);
     expect(by.get("a")?.map((b) => b.currency)).toEqual(["USD", "EUR"]);
     expect(by.get("b")?.length).toBe(1);
   });
 
   it("shapes the funnel steps with the conversion from the step before", () => {
-    const steps = funnelSteps({ clicks: "200", referrals: "50", paying_customers: "10", commissions: [] });
+    const steps = funnelSteps(funnel({ clicks: "200", referrals: "50", paying_customers: "10" }));
     expect(steps).toEqual([
       { key: "clicks", count: 200, rate: null },
       { key: "referrals", count: 50, rate: 25 },
       { key: "paying", count: 10, rate: 20 },
     ]);
     // No clicks: no rate for the referrals rather than a division by zero; no paying customer of 3 referrals is 0 %.
-    expect(funnelSteps({ clicks: "0", referrals: "3" }).map((s) => s.rate)).toEqual([null, null, 0]);
+    expect(funnelSteps(funnel({ clicks: "0", referrals: "3" })).map((s) => s.rate)).toEqual([null, null, 0]);
     expect(funnelSteps(undefined).map((s) => s.count)).toEqual([0, 0, 0]);
   });
 
   it("keeps the funnel's commission per currency with what remains after reversals", () => {
-    const rows = funnelCommissions({ commissions: [{ currency: "USD", earned_minor: "1000", reversed_minor: "250" }, { currency: "EUR", earned_minor: "500", reversed_minor: "0" }] });
+    const rows = funnelCommissions(funnel({ commissions: [{ currency: "USD", earned_minor: "1000", reversed_minor: "250" }, { currency: "EUR", earned_minor: "500", reversed_minor: "0" }] }));
     expect(rows).toEqual([
       { currency: "EUR", earned: "500", reversed: "0", net: "500" },
       { currency: "USD", earned: "1000", reversed: "250", net: "750" },

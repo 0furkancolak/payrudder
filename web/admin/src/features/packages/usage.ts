@@ -3,7 +3,7 @@ import type { components } from "@/shared/api/schema";
 import { parseMajor, parseUnitPrice } from "@/shared/lib/money";
 import { isQuantity, quotaTerms, scaleOf, type Entitlement, type Meter, type QuotaDraft } from "@/features/meters/quota";
 
-export type Price = components["schemas"]["Price"];
+export type Price = components["schemas"]["PriceInput"];
 export type PriceModel = "per_unit" | "tiered" | "package";
 
 /** One usage price as a person types it, in major units of the tenant's currency. */
@@ -98,7 +98,7 @@ export function buildUsage(prices: readonly PriceDraft[], quotas: readonly Quota
 }
 
 /** A free tier: no fixed fee in any currency and no usage price, only limits (and perhaps a trial). */
-export function isFreeTier(v: PlanVersion | undefined): boolean {
+export function isFreeTier(v: Partial<PlanVersion> | undefined): boolean {
   if (!v) return false;
   return (v.base_fee_minor ?? "0") === "0" && (v.fees ?? []).every((f) => (f.base_fee_minor ?? "0") === "0") && (v.prices ?? []).length === 0;
 }

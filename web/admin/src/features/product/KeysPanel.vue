@@ -45,7 +45,7 @@ const me = useMe();
 
 const live = computed(() => props.env === "live");
 /** A live key is refused while the live environment is not active (the server says so too); the page points to the checklist instead. */
-const liveBlocked = computed(() => live.value && app.data.value?.app !== undefined && liveState(app.data.value.app) !== "active");
+const liveBlocked = computed(() => live.value && app.data.value?.app !== undefined && liveState(app.data.value.app ?? undefined) !== "active");
 /** A live key needs a verified address; until the profile has loaded the button stays usable and the server decides. */
 const unverified = computed(() => live.value && me.data.value?.user?.email_verified === false);
 const gate = computed(() => (unverified.value ? "needsVerified" : liveBlocked.value ? "liveInactive" : ""));
@@ -62,7 +62,7 @@ const table = useTableState(list, {
   searchFields: (k) => [k.prefix, k.id, roleOfKey(k)],
   url: "f_", filters: { role: (k, v) => roleOfKey(k) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
 });
-const when = (v?: string) => fmt.date(v, "day");
+const when = (v?: string | null) => fmt.date(v, "day");
 const keyEnv = (k: ApiKey): Environment => envOf(k.environment);
 /** What the list may show of a key: its kind and prefix. The secret part is never known here after creation. */
 const shown = (k: ApiKey) => `${keyMask(keyEnv(k), k.prefix)}_••••••••`;

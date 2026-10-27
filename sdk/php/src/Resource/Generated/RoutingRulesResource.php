@@ -12,6 +12,7 @@ use Payrudder\Internal\Cast;
 use Payrudder\Model\PreviewRoutingRequest;
 use Payrudder\Model\PreviewRoutingResponse;
 use Payrudder\Model\RoutingRules;
+use Payrudder\Model\RoutingRulesInput;
 use Payrudder\RequestOptions;
 
 /**
@@ -34,12 +35,12 @@ final class RoutingRulesResource extends AbstractResource
     /**
      * Replace the rules (first match wins; a rule with neither country nor currency is the catch-all and must be last). Existing subscriptions keep their provider (PUT /v1/routing-rules).
      *
-     * @param RoutingRules|array<string,mixed> $body
+     * @param RoutingRulesInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function setRoutingRules(RoutingRules|array $body, ?RequestOptions $options = null): RoutingRules
+    public function setRoutingRules(RoutingRulesInput|array $body, ?RequestOptions $options = null): RoutingRules
     {
         return RoutingRules::fromArray($this->call('PUT', '/v1/routing-rules', [], Cast::body($body), $options));
     }

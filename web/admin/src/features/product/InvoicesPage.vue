@@ -78,7 +78,7 @@ function openInvoice(id: string) {
 }
 useOpenParam("invoice", () => invoices.isSuccess.value, openInvoice);
 const statuses = ["draft", "open", "paid", "uncollectible", "void"] as const;
-const day = (v?: string) => fmt.date(v, "day");
+const day = (v?: string | null) => fmt.date(v, "day");
 </script>
 
 <template>

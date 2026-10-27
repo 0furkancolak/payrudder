@@ -16,7 +16,7 @@ final class CreateAffiliatePayoutsResponse implements Model
 {
     /**
      * @param list<AffiliatePayout>|null $payouts
-     * @param list<CreateAffiliatePayoutsResponseSkippedItem>|null $skipped
+     * @param list<CreateAffiliatePayoutsSkipped>|null $skipped
      */
     public function __construct(
         public readonly ?array $payouts = null,
@@ -30,7 +30,7 @@ final class CreateAffiliatePayoutsResponse implements Model
     {
         return new static(
             payouts: Cast::models(AffiliatePayout::class, $data['payouts'] ?? null),
-            skipped: Cast::models(CreateAffiliatePayoutsResponseSkippedItem::class, $data['skipped'] ?? null),
+            skipped: Cast::models(CreateAffiliatePayoutsSkipped::class, $data['skipped'] ?? null),
         );
     }
 

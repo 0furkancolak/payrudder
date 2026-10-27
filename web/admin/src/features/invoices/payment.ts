@@ -26,7 +26,7 @@ export function wantsTransferState(status: string | undefined, sagaState: string
  * Whether the invoice was charged by bank transfer and money is still expected or was given up on (so "Record payment" confirms a transfer
  * through the transfer endpoint). `none` or no information at all means the offline payment endpoint.
  */
-export function isTransferCharge(transfer: InvoiceTransfer | undefined | null, invoiceStatus?: string): boolean {
+export function isTransferCharge(transfer: Pick<InvoiceTransfer, "state"> | undefined | null, invoiceStatus?: string): boolean {
   const s = transfer?.state;
   // An uncollectible invoice is past the saga's waiting: a payment is recorded on the invoice (which settles it), not confirmed through the transfer.
   return invoiceStatus !== "uncollectible" && (s === "pending" || s === "expired" || s === "rejected");

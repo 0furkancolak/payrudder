@@ -26,18 +26,21 @@ class IngestEventsRequest(TypedDict):
     events: list[IncomingEvent]
 
 
-class EventResult(TypedDict, total=False):
+class _EventResultRequired(TypedDict):
     status: Literal["accepted", "duplicate", "rejected"]
+
+
+class EventResult(_EventResultRequired, total=False):
     event_id: str
     error_code: Literal["UNKNOWN_METER", "UNKNOWN_CUSTOMER", "EVENT_TOO_OLD", "EVENT_IN_FUTURE", "INVALID_EVENT_TIME", "INVALID_QUANTITY", "INVALID_QUANTITY_PRECISION", "IDEMPOTENCY_KEY_REQUIRED", "IDEMPOTENCY_KEY_INVALID", "IDEMPOTENCY_KEY_REUSED", "INVALID_PROPERTIES"]
     error_message: str
 
 
-class IngestEventsResponse(TypedDict, total=False):
+class IngestEventsResponse(TypedDict):
     results: list[EventResult]
 
 
-class Address(TypedDict, total=False):
+class Address(TypedDict):
     """A postal address as printed on an invoice. Every part is optional."""
     line1: str
     line2: str
@@ -47,24 +50,34 @@ class Address(TypedDict, total=False):
     country: str
 
 
-class Customer(TypedDict, total=False):
+class Customer(TypedDict):
     id: str
     external_id: str
     name: str
     email: str
     payment_method: str
-    create_time: str
+    create_time: str | None
     country: str
     billing_currency: str
-    address: Address
+    address: Address | None
     tax_id: str
     tax_office: str
     e_invoice_registered: bool
 
 
-class ListCustomersResponse(TypedDict, total=False):
+class ListCustomersResponse(TypedDict):
     customers: list[Customer]
     next_page_token: str
+
+
+class AddressInput(TypedDict, total=False):
+    """A postal address as printed on an invoice. Every part is optional."""
+    line1: str
+    line2: str
+    city: str
+    region: str
+    postal_code: str
+    country: str
 
 
 class _CreateCustomerRequestRequired(TypedDict):
@@ -77,7 +90,7 @@ class CreateCustomerRequest(_CreateCustomerRequestRequired, total=False):
     payment_method: str
     country: str
     billing_currency: str
-    address: Address
+    address: AddressInput
     referral_code: str
     referral_touch_time: str | datetime
 
@@ -92,7 +105,7 @@ class CustomerTax(TypedDict, total=False):
     e_invoice_registered: bool
 
 
-class EInvoiceDocument(TypedDict, total=False):
+class EInvoiceDocument(TypedDict):
     id: str
     kind: Literal["invoice", "credit_note"]
     invoice_id: str
@@ -110,42 +123,40 @@ class EInvoiceDocument(TypedDict, total=False):
     last_error: str
     has_xml: bool
     has_pdf: bool
-    created_at: str
+    created_at: str | None
     issued_at: str | None
-    updated_at: str
+    updated_at: str | None
 
 
-class EInvoiceList(TypedDict, total=False):
+class EInvoiceList(TypedDict):
     documents: list[EInvoiceDocument]
     next_page_token: str
     total: int
 
 
-class EInvoiceFileLink(TypedDict, total=False):
+class SignedUrl(TypedDict):
+    """A time-limited link to a stored file (invoice PDF, uploaded asset, e-invoice document). GET it without credentials until expires_at."""
     url: str
     expires_at: str
 
 
-class MeterFilterValue(TypedDict, total=False):
+class MeterFilterValue(TypedDict):
     values: list[str]
 
 
-class _MeterRequired(TypedDict):
+class Meter(TypedDict):
     code: str
-    aggregation: Literal["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"]
-    unit_label: str
-
-
-class Meter(_MeterRequired, total=False):
+    aggregation: Literal["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX", "AGGREGATION_UNIQUE", "AGGREGATION_LAST"]
     value_property: str
     filter: dict[str, MeterFilterValue]
     quantity_scale: int
+    unit_label: str
     category: str
     version: int
-    create_time: str
+    create_time: str | None
 
 
-class ListMetersResponse(TypedDict, total=False):
+class ListMetersResponse(TypedDict):
     meters: list[Meter]
 
 
@@ -155,7 +166,7 @@ class CreateMeterRequestFilterValue(TypedDict, total=False):
 
 class _CreateMeterRequestRequired(TypedDict):
     code: str
-    aggregation: Literal["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"]
+    aggregation: Literal["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX", "AGGREGATION_UNIQUE", "AGGREGATION_LAST"]
     unit_label: str
 
 
@@ -166,19 +177,19 @@ class CreateMeterRequest(_CreateMeterRequestRequired, total=False):
     category: str
 
 
-class GetCustomerUsageResponseUsageItem(TypedDict, total=False):
+class GetCustomerUsageUsage(TypedDict):
     meter_code: str
     quantity: str
     event_count: int
 
 
-class GetCustomerUsageResponse(TypedDict, total=False):
+class GetCustomerUsageResponse(TypedDict):
     customer_external_id: str
     period_id: str
-    usage: list[GetCustomerUsageResponseUsageItem]
+    usage: list[GetCustomerUsageUsage]
 
 
-class EntitlementStatus(TypedDict, total=False):
+class EntitlementStatus(TypedDict):
     customer_external_id: str
     meter_code: str
     period_id: str
@@ -195,7 +206,7 @@ class EntitlementStatus(TypedDict, total=False):
     overridden: bool
 
 
-class ListEntitlementsResponse(TypedDict, total=False):
+class ListEntitlementsResponse(TypedDict):
     items: list[EntitlementStatus]
 
 
@@ -205,21 +216,18 @@ QuotaWindow = Literal["QUOTA_WINDOW_UNSPECIFIED", "QUOTA_WINDOW_MONTH", "QUOTA_W
 QuotaMode = Literal["QUOTA_MODE_UNSPECIFIED", "QUOTA_MODE_HARD", "QUOTA_MODE_SOFT", "QUOTA_MODE_NOTIFY"]
 
 
-class _EntitlementOverrideRequired(TypedDict):
-    limit: str
-
-
-class EntitlementOverride(_EntitlementOverrideRequired, total=False):
+class EntitlementOverride(TypedDict):
     customer_external_id: str
     meter_code: str
-    create_time: str
-    update_time: str
+    create_time: str | None
+    update_time: str | None
+    limit: str
     alert_thresholds_pct: list[int]
     window: QuotaWindow
     mode: QuotaMode
 
 
-class ListEntitlementOverridesResponse(TypedDict, total=False):
+class ListEntitlementOverridesResponse(TypedDict):
     overrides: list[EntitlementOverride]
 
 
@@ -233,15 +241,15 @@ class EntitlementTerms(_EntitlementTermsRequired, total=False):
     mode: QuotaMode
 
 
-class Plan(TypedDict, total=False):
+class Plan(TypedDict):
     id: str
     code: str
     name: str
     latest_version: int
-    create_time: str
+    create_time: str | None
 
 
-class ListPlansResponse(TypedDict, total=False):
+class ListPlansResponse(TypedDict):
     plans: list[Plan]
 
 
@@ -250,48 +258,48 @@ class CreatePlanRequest(TypedDict):
     name: str
 
 
-class CurrencyFee(TypedDict, total=False):
+class CurrencyFeeInput(TypedDict, total=False):
     currency: str
     base_fee_minor: int
     interval: Literal["SUBSCRIPTION_INTERVAL_MONTH", "SUBSCRIPTION_INTERVAL_YEAR"]
 
 
-class PricePerUnit(TypedDict, total=False):
+class PriceInputPerUnit(TypedDict, total=False):
     unit_price: str
 
 
-class PriceTieredTiersItem(TypedDict, total=False):
+class PriceInputTieredTiersItem(TypedDict, total=False):
     up_to: str
     unit_price: str
     flat_fee_minor: int
 
 
-class PriceTiered(TypedDict, total=False):
-    tiers: list[PriceTieredTiersItem]
+class PriceInputTiered(TypedDict, total=False):
+    tiers: list[PriceInputTieredTiersItem]
 
 
-class PricePackage(TypedDict, total=False):
+class PriceInputPackage(TypedDict, total=False):
     package_size: str
     package_price_minor: int
 
 
-class _PriceRequired(TypedDict):
+class _PriceInputRequired(TypedDict):
     meter_code: str
 
 
-class Price(_PriceRequired, total=False):
-    per_unit: PricePerUnit
-    tiered: PriceTiered
-    package: PricePackage
+class PriceInput(_PriceInputRequired, total=False):
+    per_unit: PriceInputPerUnit
+    tiered: PriceInputTiered
+    package: PriceInputPackage
     included: str
 
 
-class _EntitlementRequired(TypedDict):
+class _EntitlementInputRequired(TypedDict):
     meter_code: str
     limit: str
 
 
-class Entitlement(_EntitlementRequired, total=False):
+class EntitlementInput(_EntitlementInputRequired, total=False):
     alert_thresholds_pct: list[int]
     window: QuotaWindow
     mode: QuotaMode
@@ -299,13 +307,57 @@ class Entitlement(_EntitlementRequired, total=False):
 
 class PublishPlanVersionRequest(TypedDict, total=False):
     base_fee_minor: int
-    fees: list[CurrencyFee]
-    prices: list[Price]
-    entitlements: list[Entitlement]
+    fees: list[CurrencyFeeInput]
+    prices: list[PriceInput]
+    entitlements: list[EntitlementInput]
     trial_days: int
 
 
-class PlanVersion(TypedDict, total=False):
+class PricePerUnit(TypedDict):
+    unit_price: str
+
+
+class PriceTieredTiersItem(TypedDict):
+    up_to: str
+    unit_price: str
+    flat_fee_minor: int
+
+
+class PriceTiered(TypedDict):
+    tiers: list[PriceTieredTiersItem]
+
+
+class PricePackage(TypedDict):
+    package_size: str
+    package_price_minor: int
+
+
+class _PriceRequired(TypedDict):
+    meter_code: str
+    included: str
+
+
+class Price(_PriceRequired, total=False):
+    per_unit: PricePerUnit
+    tiered: PriceTiered
+    package: PricePackage
+
+
+class Entitlement(TypedDict):
+    meter_code: str
+    limit: str
+    alert_thresholds_pct: list[int]
+    window: QuotaWindow
+    mode: QuotaMode
+
+
+class CurrencyFee(TypedDict):
+    currency: str
+    base_fee_minor: int
+    interval: Literal["SUBSCRIPTION_INTERVAL_MONTH", "SUBSCRIPTION_INTERVAL_YEAR"]
+
+
+class PlanVersion(TypedDict):
     id: str
     plan_id: str
     plan_code: str
@@ -313,27 +365,27 @@ class PlanVersion(TypedDict, total=False):
     base_fee_minor: int
     prices: list[Price]
     entitlements: list[Entitlement]
-    publish_time: str
+    publish_time: str | None
     trial_days: int
     fees: list[CurrencyFee]
 
 
-class ScheduledChange(TypedDict, total=False):
+class ScheduledChange(TypedDict):
     plan_code: str
     plan_version: int
     interval: Literal["SUBSCRIPTION_INTERVAL_MONTH", "SUBSCRIPTION_INTERVAL_YEAR"]
-    effective_time: str
+    effective_time: str | None
     quantity: int
 
 
-class Subscription(TypedDict, total=False):
+class Subscription(TypedDict):
     id: str
     customer_id: str
     customer_external_id: str
     plan_version_id: str
-    start_time: str
+    start_time: str | None
     end_time: str | None
-    create_time: str
+    create_time: str | None
     state: Literal["SUBSCRIPTION_STATE_TRIALING", "SUBSCRIPTION_STATE_ACTIVE", "SUBSCRIPTION_STATE_PAST_DUE", "SUBSCRIPTION_STATE_PAUSED", "SUBSCRIPTION_STATE_CANCELLED"]
     interval: Literal["SUBSCRIPTION_INTERVAL_MONTH", "SUBSCRIPTION_INTERVAL_YEAR"]
     currency: str
@@ -342,16 +394,17 @@ class Subscription(TypedDict, total=False):
     pause_time: str | None
     provider: str
     provider_ref: str
-    owner: Literal["quotify", "provider"]
+    owner: Literal["payrudder", "provider"]
     plan_code: str
     plan_version: int
     fee_timing: Literal["FEE_TIMING_ADVANCE", "FEE_TIMING_ARREARS"]
-    scheduled_change: ScheduledChange
+    scheduled_change: ScheduledChange | None
     coupon_code: str
     quantity: int
+    changed_from_id: str
 
 
-class ListSubscriptionsResponse(TypedDict, total=False):
+class ListSubscriptionsResponse(TypedDict):
     subscriptions: list[Subscription]
     next_page_token: str
 
@@ -373,7 +426,7 @@ class CreateSubscriptionRequest(_CreateSubscriptionRequestRequired, total=False)
     fee_timing: Literal["FEE_TIMING_ADVANCE", "FEE_TIMING_ARREARS"]
 
 
-class CancelSubscriptionResponse1(TypedDict, total=False):
+class CancelSubscriptionResponse(TypedDict):
     subscription: Subscription
     credited_minor: int
 
@@ -387,10 +440,10 @@ class ChangePlanRequest(_ChangePlanRequestRequired, total=False):
     change_time: str | datetime
 
 
-class ChangePlanResponse(TypedDict, total=False):
-    subscription: Subscription
-    credit_minor: int
-    charge_minor: int
+class ChangePlanResponse(TypedDict):
+    subscription: Subscription | None
+    old_plan_fee_minor: int
+    new_plan_fee_minor: int
 
 
 class ChangeRequest(TypedDict, total=False):
@@ -403,17 +456,17 @@ class ChangeRequest(TypedDict, total=False):
     quantity: int
 
 
-class ChangeQuote(TypedDict, total=False):
+class ChangeQuote(TypedDict):
     timing: Literal["CHANGE_TIMING_IMMEDIATELY", "CHANGE_TIMING_PERIOD_END"]
     proration: Literal["CHANGE_PRORATION_PRORATE", "CHANGE_PRORATION_FULL", "CHANGE_PRORATION_NONE"]
-    effective_time: str
-    period_start: str
-    period_end: str
+    effective_time: str | None
+    period_start: str | None
+    period_end: str | None
     credit_minor: int
     charge_minor: int
     net_minor: int
     currency: str
-    next_renewal_time: str
+    next_renewal_time: str | None
     next_renewal_minor: int
     plan_code: str
     plan_version: int
@@ -421,9 +474,9 @@ class ChangeQuote(TypedDict, total=False):
     quantity: int
 
 
-class ChangeSubscriptionResponse(TypedDict, total=False):
-    subscription: Subscription
-    quote: ChangeQuote
+class ChangeSubscriptionResponse(TypedDict):
+    subscription: Subscription | None
+    quote: ChangeQuote | None
     scheduled: bool
 
 
@@ -431,40 +484,54 @@ class ApplyCouponRequest(TypedDict):
     code: str
 
 
-class TaxRatesRatesItem(TypedDict, total=False):
+class TaxRatesRatesItem(TypedDict):
     country: str
     name: str
     rate_bps: int
 
 
-class TaxRates(TypedDict, total=False):
+class TaxRates(TypedDict):
     rates: list[TaxRatesRatesItem]
 
 
-class DunningSettings(TypedDict, total=False):
+class TaxRatesInputRatesItem(TypedDict, total=False):
+    country: str
+    name: str
+    rate_bps: int
+
+
+class TaxRatesInput(TypedDict, total=False):
+    rates: list[TaxRatesInputRatesItem]
+
+
+class DunningSettings(TypedDict):
     retry_hours: list[int]
     defaults_in_use: bool
-    update_time: str
+    update_time: str | None
 
 
-class CreditPack(TypedDict, total=False):
+class DunningSettingsInput(TypedDict, total=False):
+    retry_hours: list[int]
+
+
+class CreditPack(TypedDict):
     id: str
     name: str
-    credits: str
+    credits: int
     price_minor: int
     currency: str
     active: bool
-    create_time: str
+    create_time: str | None
     validity_days: int
 
 
-class CreditPackList(TypedDict, total=False):
+class CreditPackList(TypedDict):
     packs: list[CreditPack]
 
 
 class _CreditPackInputRequired(TypedDict):
     name: str
-    credits: str
+    credits: int
     price_minor: int
     currency: str
 
@@ -473,23 +540,26 @@ class CreditPackInput(_CreditPackInputRequired, total=False):
     validity_days: int
 
 
-class CreditLot(TypedDict, total=False):
+EmptyObject = dict[str, Any]
+
+
+class CreditLot(TypedDict):
     id: str
-    granted: str
-    remaining: str
+    granted: int
+    remaining: int
     source: Literal["purchase", "promo", "manual"]
     expire_time: str | None
-    create_time: str
+    create_time: str | None
 
 
-class CreditBalance(TypedDict, total=False):
-    balance: str
+class CreditBalance(TypedDict):
+    balance: int
     next_expire_time: str | None
     lots: list[CreditLot]
 
 
 class _CreditGrantInputRequired(TypedDict):
-    credits: str
+    credits: int
     source: Literal["promo", "manual"]
 
 
@@ -499,32 +569,32 @@ class CreditGrantInput(_CreditGrantInputRequired, total=False):
     idempotency_key: str
 
 
-class CreditResult(TypedDict, total=False):
-    balance: str
+class CreditResult(TypedDict):
+    balance: int
     replayed: bool
 
 
 class _CreditConsumeInputRequired(TypedDict):
-    credits: str
+    credits: int
+    idempotency_key: str
 
 
 class CreditConsumeInput(_CreditConsumeInputRequired, total=False):
     reason: str
-    idempotency_key: str
 
 
-class CreditLedgerEntry(TypedDict, total=False):
+class CreditLedgerEntry(TypedDict):
     id: str
     lot_id: str
     kind: Literal["grant", "consume", "expire"]
-    amount: str
+    amount: int
     reason: str
     idempotency_key: str
     source: Literal["purchase", "promo", "manual"]
-    create_time: str
+    create_time: str | None
 
 
-class CreditLedgerPage(TypedDict, total=False):
+class CreditLedgerPage(TypedDict):
     entries: list[CreditLedgerEntry]
     next_page_token: str
 
@@ -532,7 +602,7 @@ class CreditLedgerPage(TypedDict, total=False):
 ExpenseCategory = Literal["infrastructure", "payment_fees", "marketing", "payroll", "tax", "software", "other"]
 
 
-class Expense(TypedDict, total=False):
+class Expense(TypedDict):
     id: str
     app_id: str
     vendor: str
@@ -545,13 +615,13 @@ class Expense(TypedDict, total=False):
     recurring_until: str
     void_time: str | None
     void_reason: str
-    create_time: str
-    update_time: str
+    create_time: str | None
+    update_time: str | None
     tax_minor: int
     attachment_asset_id: str
 
 
-class ExpensePage(TypedDict, total=False):
+class ExpensePage(TypedDict):
     expenses: list[Expense]
     next_page_token: str
 
@@ -573,21 +643,21 @@ class ExpenseInput(_ExpenseInputRequired, total=False):
     attachment_asset_id: str
 
 
-class VoidExpenseRequest(TypedDict, total=False):
+class VoidExpenseRequest(TypedDict):
     reason: str
 
 
-class ExpenseInbox(TypedDict, total=False):
+class ExpenseInbox(TypedDict):
     token: str
     app_id: str
     address: str
 
 
 # InboxItem: a field is a Python keyword, so the functional form is used and every key is optional.
-InboxItem = TypedDict("InboxItem", {"id": "str", "app_id": "str", "from": "str", "subject": "str", "filename": "str", "content_type": "str", "size_bytes": "str", "status": "Literal['to_review', 'accepted', 'dismissed']", "expense_id": "str", "receive_time": "str"}, total=False)
+InboxItem = TypedDict("InboxItem", {"id": "str", "app_id": "str", "from": "str", "subject": "str", "filename": "str", "content_type": "str", "size_bytes": "int", "status": "Literal['to_review', 'accepted', 'dismissed']", "expense_id": "str", "receive_time": "str | None"}, total=False)
 
 
-class InboxItemPage(TypedDict, total=False):
+class InboxItemPage(TypedDict):
     items: list[InboxItem]
 
 
@@ -599,13 +669,29 @@ class ResolveInboxItemRequest(_ResolveInboxItemRequestRequired, total=False):
     expense_id: str
 
 
-class _ExpenseRuleRequired(TypedDict):
+class ExpenseRule(TypedDict):
+    id: str
+    vendor_match: str
+    category: ExpenseCategory
+    currency: str
+    tax_bps: int
+    expected_amount_minor: int
+    tolerance_bps: int
+    auto_approve: bool
+    app_id: str
+
+
+class ListExpenseRulesResponse(TypedDict):
+    rules: list[ExpenseRule]
+
+
+class _ExpenseRuleInputRequired(TypedDict):
     vendor_match: str
     category: ExpenseCategory
     currency: str
 
 
-class ExpenseRule(_ExpenseRuleRequired, total=False):
+class ExpenseRuleInput(_ExpenseRuleInputRequired, total=False):
     id: str
     tax_bps: int
     expected_amount_minor: int
@@ -614,16 +700,12 @@ class ExpenseRule(_ExpenseRuleRequired, total=False):
     app_id: str
 
 
-class ListExpenseRulesResponse(TypedDict, total=False):
-    rules: list[ExpenseRule]
-
-
-class AccountingCurrencyExpenseByCategoryItem(TypedDict, total=False):
+class AccountingCurrencyExpenseByCategoryItem(TypedDict):
     category: ExpenseCategory
     amount_minor: int
 
 
-class AccountingPoint(TypedDict, total=False):
+class AccountingPoint(TypedDict):
     bucket: str
     gross_income_minor: int
     tax_minor: int
@@ -634,15 +716,15 @@ class AccountingPoint(TypedDict, total=False):
     discounts_minor: int
 
 
-class AccountingCoupon(TypedDict, total=False):
+class AccountingCoupon(TypedDict):
     coupon_code: str
-    invoices: str
+    invoices: int
     gross_minor: int
     discount_minor: int
     net_minor: int
 
 
-class AccountingCurrency(TypedDict, total=False):
+class AccountingCurrency(TypedDict):
     """One currency of the period. Every amount is int64 minor units as a string."""
     currency: str
     gross_income_minor: int
@@ -653,7 +735,7 @@ class AccountingCurrency(TypedDict, total=False):
     provider_fees_minor: int
     provider_fees_recorded: bool
     profit_minor: int
-    paid_invoices: str
+    paid_invoices: int
     expense_by_category: list[AccountingCurrencyExpenseByCategoryItem]
     series: list[AccountingPoint]
     discounts_minor: int
@@ -661,7 +743,7 @@ class AccountingCurrency(TypedDict, total=False):
     coupons: list[AccountingCoupon]
 
 
-class AccountingSummary(TypedDict, total=False):
+class AccountingSummary(TypedDict):
     from_date: str
     to_date: str
     granularity: Literal["day", "month"]
@@ -669,57 +751,70 @@ class AccountingSummary(TypedDict, total=False):
     currencies: list[AccountingCurrency]
 
 
-class CreditSettings(TypedDict, total=False):
-    low_threshold: str
+class CreditSettings(TypedDict):
+    low_threshold: int
 
 
-class WebhookEndpoint(TypedDict, total=False):
+class CreditSettingsInput(TypedDict, total=False):
+    low_threshold: int
+
+
+class WebhookEndpoint(TypedDict):
     id: str
     url: str
     description: str
     event_types: list[str]
     active: bool
     secret: str
-    create_time: str
+    create_time: str | None
 
 
-class ListWebhookEndpointsResponse(TypedDict, total=False):
+class ListWebhookEndpointsResponse(TypedDict):
     endpoints: list[WebhookEndpoint]
 
 
 WebhookEventType = Literal["invoice.finalized", "invoice.paid", "invoice.voided", "invoice.uncollectible", "credit_note.created", "credit_note.refunded", "credit_note.refund_failed", "subscription.created", "subscription.changed", "subscription.change_scheduled", "subscription.cancelled", "subscription.cancellation_scheduled", "subscription.cancellation_withdrawn", "subscription.paused", "subscription.resumed", "subscription.moved_to_provider", "subscription.trial_will_end", "payment_link.created", "payment_link.paid", "payment_link.expired", "credits.purchased", "credits.low"]
 
 
+class _CreateWebhookEndpointRequestRequired(TypedDict):
+    url: str
+
+
+class CreateWebhookEndpointRequest(_CreateWebhookEndpointRequestRequired, total=False):
+    description: str
+    event_types: list[WebhookEventType]
+
+
 class _WebhookEndpointInputRequired(TypedDict):
     url: str
+    active: bool
 
 
 class WebhookEndpointInput(_WebhookEndpointInputRequired, total=False):
     description: str
     event_types: list[WebhookEventType]
-    active: bool
 
 
-class WebhookDelivery(TypedDict, total=False):
+class WebhookDelivery(TypedDict):
     id: str
     event_id: str
     event_type: str
     endpoint_id: str
     state: Literal["WEBHOOK_DELIVERY_STATE_PENDING", "WEBHOOK_DELIVERY_STATE_DELIVERED", "WEBHOOK_DELIVERY_STATE_FAILED"]
     attempts: int
-    next_attempt_time: str
+    next_attempt_time: str | None
     last_status: int
     last_error: str
-    create_time: str
-    delivered_time: str
+    create_time: str | None
+    delivered_time: str | None
 
 
-class ListWebhookDeliveriesResponse(TypedDict, total=False):
+class ListWebhookDeliveriesResponse(TypedDict):
     deliveries: list[WebhookDelivery]
     next_page_token: str
 
 
-class Coupon(TypedDict, total=False):
+class Coupon(TypedDict):
     code: str
     name: str
     id: str
@@ -732,18 +827,41 @@ class Coupon(TypedDict, total=False):
     duration_periods: int
     max_redemptions: int
     redeemed: int
-    expire_time: str
+    expire_time: str | None
     active: bool
-    create_time: str
+    create_time: str | None
     promotion_code_count: int
     without_default_code: bool
 
 
-class ListCouponsResponse(TypedDict, total=False):
+class ListCouponsResponse(TypedDict):
     coupons: list[Coupon]
 
 
-class PromotionCode(TypedDict, total=False):
+class _CouponInputRequired(TypedDict):
+    code: str
+
+
+class CouponInput(_CouponInputRequired, total=False):
+    name: str
+    id: str
+    percent_bps: int
+    amount_minor: int
+    currency: str
+    bonus_percent_bps: int
+    applies_to: list[Literal["COUPON_TARGET_SUBSCRIPTION", "COUPON_TARGET_CREDIT_PURCHASE", "COUPON_TARGET_PAYMENT"]]
+    duration: Literal["COUPON_DURATION_ONCE", "COUPON_DURATION_REPEATING", "COUPON_DURATION_FOREVER"]
+    duration_periods: int
+    max_redemptions: int
+    redeemed: int
+    expire_time: str | datetime
+    active: bool
+    create_time: str | datetime
+    promotion_code_count: int
+    without_default_code: bool
+
+
+class PromotionCodeInput(TypedDict, total=False):
     """What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions."""
     id: str
     coupon_id: str
@@ -752,7 +870,7 @@ class PromotionCode(TypedDict, total=False):
     active: bool
     max_redemptions: int
     redeemed: int
-    expire_time: str
+    expire_time: str | datetime
     first_purchase_only: bool
     one_per_customer: bool
     min_amount_minor: int
@@ -761,27 +879,48 @@ class PromotionCode(TypedDict, total=False):
     allowed_packs: list[str]
     allowed_currencies: list[str]
     restore_on_reversal: bool
-    create_time: str
+    create_time: str | datetime
 
 
 class CreatePromotionCodes(TypedDict, total=False):
-    template: PromotionCode
+    template: PromotionCodeInput
     codes: list[str]
     count: int
     prefix: str
 
 
-class CreatePromotionCodesResponse(TypedDict, total=False):
+class PromotionCode(TypedDict):
+    """What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions."""
+    id: str
+    coupon_id: str
+    coupon_code: str
+    code: str
+    active: bool
+    max_redemptions: int
+    redeemed: int
+    expire_time: str | None
+    first_purchase_only: bool
+    one_per_customer: bool
+    min_amount_minor: int
+    min_amount_currency: str
+    allowed_plans: list[str]
+    allowed_packs: list[str]
+    allowed_currencies: list[str]
+    restore_on_reversal: bool
+    create_time: str | None
+
+
+class CreatePromotionCodesResponse(TypedDict):
     codes: list[PromotionCode]
 
 
-class ListPromotionCodesResponse(TypedDict, total=False):
+class ListPromotionCodesResponse(TypedDict):
     codes: list[PromotionCode]
     next_page_token: str
     total: int
 
 
-class CouponRedemption(TypedDict, total=False):
+class CouponRedemption(TypedDict):
     id: str
     coupon_code: str
     promotion_code: str
@@ -790,41 +929,42 @@ class CouponRedemption(TypedDict, total=False):
     target_id: str
     invoice_id: str
     discount_minor: int
-    bonus_credits: str
+    bonus_credits: int
     currency: str
-    create_time: str
-    reverse_time: str
+    create_time: str | None
+    reverse_time: str | None
 
 
-class ListCouponRedemptionsResponse(TypedDict, total=False):
+class ListCouponRedemptionsResponse(TypedDict):
     redemptions: list[CouponRedemption]
     next_page_token: str
     total: int
 
 
 class _PromotionQuoteRequestRequired(TypedDict):
-    code: str
     target: Literal["COUPON_TARGET_CREDIT_PURCHASE", "COUPON_TARGET_PAYMENT"]
-    amount_minor: int
     currency: str
 
 
 class PromotionQuoteRequest(_PromotionQuoteRequestRequired, total=False):
+    code: str
     customer_external_id: str
+    amount_minor: int
     item: str
     credits: str
     prior_purchases: bool
 
 
-class PromotionQuote(TypedDict, total=False):
+class PromotionQuote(TypedDict):
     applied: bool
     coupon_code: str
     coupon_name: str
     promotion_code: str
     discount_minor: int
-    bonus_credits: str
+    bonus_credits: int
     total_minor: int
     currency: str
+    redemption_id: str
 
 
 class GrantCustomerCouponRequest(TypedDict):
@@ -833,15 +973,15 @@ class GrantCustomerCouponRequest(TypedDict):
     source_ref: str
 
 
-class GrantCustomerCouponResponse(TypedDict, total=False):
+class GrantCustomerCouponResponse(TypedDict):
     granted: bool
 
 
-class AffiliateProgram(TypedDict, total=False):
+class AffiliateProgram(TypedDict):
     """The rules of the partner program of one environment."""
     status: Literal["draft", "active", "paused"]
     commission_kind: Literal["percent_bps", "fixed"]
-    commission_value: str
+    commission_value: int
     currency: str
     commission_term: Literal["first_invoices", "months", "lifetime"]
     commission_term_value: int
@@ -852,11 +992,33 @@ class AffiliateProgram(TypedDict, total=False):
     daily_click_cap: int
     landing_url: str
     auto_approve: bool
-    create_time: str
-    update_time: str
+    create_time: str | None
+    update_time: str | None
 
 
-class Affiliate(TypedDict, total=False):
+class _AffiliateProgramInputRequired(TypedDict):
+    commission_kind: Literal["percent_bps", "fixed"]
+    commission_value: str
+
+
+class AffiliateProgramInput(_AffiliateProgramInputRequired, total=False):
+    """The rules of the partner program of one environment."""
+    status: Literal["draft", "active", "paused"]
+    currency: str
+    commission_term: Literal["first_invoices", "months", "lifetime"]
+    commission_term_value: int
+    attribution_window_days: int
+    hold_days: int
+    min_payout_minor: int
+    referred_coupon_code: str
+    daily_click_cap: int
+    landing_url: str
+    auto_approve: bool
+    create_time: str | datetime
+    update_time: str | datetime
+
+
+class Affiliate(TypedDict):
     id: str
     code: str
     email: str
@@ -866,14 +1028,14 @@ class Affiliate(TypedDict, total=False):
     payout_details: str
     source: Literal["owner", "application"]
     signed_in: bool
-    clicks: str
-    referrals: str
-    approve_time: str
-    create_time: str
+    clicks: int
+    referrals: int
+    approve_time: str | None
+    create_time: str | None
     link: str
 
 
-class ListAffiliatesResponse(TypedDict, total=False):
+class ListAffiliatesResponse(TypedDict):
     affiliates: list[Affiliate]
     next_page_token: str
     total: int
@@ -891,22 +1053,22 @@ class CreateAffiliateRequest(_CreateAffiliateRequestRequired, total=False):
     pending: bool
 
 
-class AffiliateReferral(TypedDict, total=False):
+class AffiliateReferral(TypedDict):
     affiliate_id: str
     affiliate_code: str
     customer_external_id: str
     customer_email_masked: str
     source: Literal["link", "code", "api"]
-    attribute_time: str
+    attribute_time: str | None
 
 
-class ListAffiliateReferralsResponse(TypedDict, total=False):
+class ListAffiliateReferralsResponse(TypedDict):
     referrals: list[AffiliateReferral]
     next_page_token: str
     total: int
 
 
-class AffiliateCommission(TypedDict, total=False):
+class AffiliateCommission(TypedDict):
     id: str
     affiliate_id: str
     affiliate_code: str
@@ -921,14 +1083,14 @@ class AffiliateCommission(TypedDict, total=False):
     reversed_minor: int
     status: Literal["pending", "approved", "paid", "reversed"]
     parent_id: str
-    earn_time: str
-    approve_after_time: str
-    approve_time: str
-    pay_time: str
+    earn_time: str | None
+    approve_after_time: str | None
+    approve_time: str | None
+    pay_time: str | None
     payout_id: str
 
 
-class ListAffiliateCommissionsResponse(TypedDict, total=False):
+class ListAffiliateCommissionsResponse(TypedDict):
     commissions: list[AffiliateCommission]
     next_page_token: str
     total: int
@@ -945,12 +1107,12 @@ class ReverseAffiliateCommissionRequest(_ReverseAffiliateCommissionRequestRequir
     note: str
 
 
-class ReverseAffiliateCommissionResponse(TypedDict, total=False):
+class ReverseAffiliateCommissionResponse(TypedDict):
     reversed_minor: int
-    commission: AffiliateCommission
+    commission: AffiliateCommission | None
 
 
-class AffiliateBalance(TypedDict, total=False):
+class AffiliateBalance(TypedDict):
     affiliate_id: str
     currency: str
     pending_minor: int
@@ -959,26 +1121,26 @@ class AffiliateBalance(TypedDict, total=False):
     reversed_minor: int
 
 
-class GetAffiliateBalancesResponse(TypedDict, total=False):
+class GetAffiliateBalancesResponse(TypedDict):
     balances: list[AffiliateBalance]
 
 
-class AffiliateFunnelCommissionsItem(TypedDict, total=False):
+class AffiliateFunnelCommissionsItem(TypedDict):
     currency: str
     earned_minor: int
     reversed_minor: int
 
 
-class AffiliateFunnel(TypedDict, total=False):
+class AffiliateFunnel(TypedDict):
     from_date: str
     to_date: str
-    clicks: str
-    referrals: str
-    paying_customers: str
+    clicks: int
+    referrals: int
+    paying_customers: int
     commissions: list[AffiliateFunnelCommissionsItem]
 
 
-class AffiliatePayout(TypedDict, total=False):
+class AffiliatePayout(TypedDict):
     id: str
     affiliate_id: str
     affiliate_code: str
@@ -990,12 +1152,12 @@ class AffiliatePayout(TypedDict, total=False):
     reference: str
     status: Literal["open", "paid", "cancelled"]
     fake: bool
-    create_time: str
-    pay_time: str
-    cancel_time: str
+    create_time: str | None
+    pay_time: str | None
+    cancel_time: str | None
 
 
-class ListAffiliatePayoutsResponse(TypedDict, total=False):
+class ListAffiliatePayoutsResponse(TypedDict):
     payouts: list[AffiliatePayout]
     next_page_token: str
     total: int
@@ -1006,27 +1168,27 @@ class CreateAffiliatePayoutsRequest(TypedDict, total=False):
     currency: str
 
 
-class CreateAffiliatePayoutsResponseSkippedItem(TypedDict, total=False):
+class CreateAffiliatePayoutsSkipped(TypedDict):
     affiliate_id: str
     currency: str
     total_minor: int
     reason: Literal["below_minimum", "not_positive"]
 
 
-class CreateAffiliatePayoutsResponse(TypedDict, total=False):
+class CreateAffiliatePayoutsResponse(TypedDict):
     payouts: list[AffiliatePayout]
-    skipped: list[CreateAffiliatePayoutsResponseSkippedItem]
+    skipped: list[CreateAffiliatePayoutsSkipped]
 
 
 class MarkAffiliatePayoutPaidRequest(TypedDict, total=False):
     reference: str
 
 
-class AffiliateJournalEntry(TypedDict, total=False):
+class AffiliateJournalEntry(TypedDict):
     id: str
     payout_id: str
     affiliate_id: str
-    post_time: str
+    post_time: str | None
     currency: str
     account: Literal["commission_expense", "commissions_payable", "cash"]
     debit_minor: int
@@ -1035,15 +1197,15 @@ class AffiliateJournalEntry(TypedDict, total=False):
     fake: bool
 
 
-class ListAffiliateJournalResponseTotalsItem(TypedDict, total=False):
+class ListAffiliateJournalTotal(TypedDict):
     currency: str
     debit_minor: int
     credit_minor: int
 
 
-class ListAffiliateJournalResponse(TypedDict, total=False):
+class ListAffiliateJournalResponse(TypedDict):
     entries: list[AffiliateJournalEntry]
-    totals: list[ListAffiliateJournalResponseTotalsItem]
+    totals: list[ListAffiliateJournalTotal]
     next_page_token: str
     total: int
 
@@ -1068,17 +1230,17 @@ class AttributeCustomerRequest(_AttributeCustomerRequestRequired, total=False):
     touch_time: str | datetime
 
 
-class AttributeCustomerResponse(TypedDict, total=False):
+class AttributeCustomerResponse(TypedDict):
     attributed: bool
     reason: str
 
 
-class GetRevenueReportResponseRowsItem(TypedDict, total=False):
+class GetRevenueReportRow(TypedDict):
     period: str
     provider: str
     country: str
     currency: str
-    invoices: str
+    invoices: int
     billed_minor: int
     collected_minor: int
     refunded_minor: int
@@ -1088,11 +1250,11 @@ class GetRevenueReportResponseRowsItem(TypedDict, total=False):
     credited_minor: int
 
 
-class GetRevenueReportResponse(TypedDict, total=False):
-    rows: list[GetRevenueReportResponseRowsItem]
+class GetRevenueReportResponse(TypedDict):
+    rows: list[GetRevenueReportRow]
 
 
-class GetDunningReportResponseInvoicesItem(TypedDict, total=False):
+class GetDunningReportInvoice(TypedDict):
     invoice_id: str
     number: str
     customer_external_id: str
@@ -1102,60 +1264,80 @@ class GetDunningReportResponseInvoicesItem(TypedDict, total=False):
     total_minor: int
     state: Literal["PAYMENT_DECLINED", "PAYMENT_UNKNOWN", "PAYMENT_PENDING", "UNCOLLECTIBLE"]
     dunning_attempt: int
-    next_attempt_time: str
+    next_attempt_time: str | None
     last_error: str
 
 
-class GetDunningReportResponseSummaryItem(TypedDict, total=False):
+class GetDunningReportSummary(TypedDict):
     state: str
     provider: str
     currency: str
-    invoices: str
+    invoices: int
     total_minor: int
 
 
-class GetDunningReportResponse(TypedDict, total=False):
-    invoices: list[GetDunningReportResponseInvoicesItem]
-    summary: list[GetDunningReportResponseSummaryItem]
+class GetDunningReportResponse(TypedDict):
+    invoices: list[GetDunningReportInvoice]
+    summary: list[GetDunningReportSummary]
 
 
-class GetSubscriptionReportResponseRowsItem(TypedDict, total=False):
+class GetSubscriptionReportRow(TypedDict):
     provider: str
     country: str
     currency: str
-    active: str
-    trialing: str
-    paused: str
-    past_due: str
+    active: int
+    trialing: int
+    paused: int
+    past_due: int
     mrr_minor: int
-    new_subscriptions: str
+    new_subscriptions: int
     new_mrr_minor: int
-    churned: str
+    churned: int
     churned_mrr_minor: int
+    plan_code: str
 
 
-class GetSubscriptionReportResponse(TypedDict, total=False):
+class GetSubscriptionReportResponse(TypedDict):
     month: str
-    rows: list[GetSubscriptionReportResponseRowsItem]
+    rows: list[GetSubscriptionReportRow]
 
 
-class RoutingRulesRulesItem(TypedDict, total=False):
+class RoutingRulesRulesItem(TypedDict):
     country: str
     currency: str
     provider: Literal["iyzico", "paddle", "banktransfer"]
 
 
-class RoutingRules(TypedDict, total=False):
+class RoutingRules(TypedDict):
     rules: list[RoutingRulesRulesItem]
 
 
-class MailSettingsCategoriesItem(TypedDict, total=False):
+class RoutingRulesInputRulesItem(TypedDict, total=False):
+    country: str
+    currency: str
+    provider: Literal["iyzico", "paddle", "banktransfer"]
+
+
+class RoutingRulesInput(TypedDict, total=False):
+    rules: list[RoutingRulesInputRulesItem]
+
+
+class MailSettingsCategoriesItem(TypedDict):
     category: Literal["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system"]
     enabled: bool
 
 
-class MailSettings(TypedDict, total=False):
+class MailSettings(TypedDict):
     categories: list[MailSettingsCategoriesItem]
+
+
+class MailSettingsInputCategoriesItem(TypedDict, total=False):
+    category: Literal["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system"]
+    enabled: bool
+
+
+class MailSettingsInput(TypedDict, total=False):
+    categories: list[MailSettingsInputCategoriesItem]
 
 
 class PreviewRoutingRequest(TypedDict, total=False):
@@ -1163,14 +1345,14 @@ class PreviewRoutingRequest(TypedDict, total=False):
     currency: str
 
 
-class PreviewRoutingResponse(TypedDict, total=False):
+class PreviewRoutingResponse(TypedDict):
     provider: str
     rule_index: int
-    owner: Literal["quotify", "provider"]
+    owner: Literal["payrudder", "provider"]
     can_charge: bool
 
 
-class InvoiceLine(TypedDict, total=False):
+class InvoiceLine(TypedDict):
     line_no: int
     kind: Literal["BASE_FEE", "USAGE", "LATE_USAGE", "CREDIT", "CORRECTION", "DISCOUNT", "TAX"]
     meter_code: str
@@ -1178,24 +1360,24 @@ class InvoiceLine(TypedDict, total=False):
     quantity: str
     amount_minor: int
     description: str
-    service_from: str
-    service_to: str
+    service_from: str | None
+    service_to: str | None
 
 
-class InvoicePayment(TypedDict, total=False):
+class InvoicePayment(TypedDict):
     id: str
     invoice_id: str
     method: Literal["bank_transfer", "cash", "other"]
     amount_minor: int
     currency: str
-    received_at: str
+    received_at: str | None
     reference: str
     note: str
     recorded_by: str
-    recorded_at: str
+    recorded_at: str | None
 
 
-class Invoice(TypedDict, total=False):
+class Invoice(TypedDict):
     id: str
     customer_id: str
     customer_external_id: str
@@ -1207,18 +1389,20 @@ class Invoice(TypedDict, total=False):
     total_minor: int
     status: Literal["draft", "open", "paid", "uncollectible", "void"]
     saga_state: str
-    create_time: str
-    finalize_time: str
+    create_time: str | None
+    finalize_time: str | None
     lines: list[InvoiceLine]
     payments: list[InvoicePayment]
+    plan_version_id: str
+    pdf_object_key: str
 
 
-class ListInvoicesResponse(TypedDict, total=False):
+class ListInvoicesResponse(TypedDict):
     invoices: list[Invoice]
     next_page_token: str
 
 
-class CreditNote(TypedDict, total=False):
+class CreditNote(TypedDict):
     id: str
     number: str
     invoice_id: str
@@ -1228,13 +1412,13 @@ class CreditNote(TypedDict, total=False):
     currency: str
     total_minor: int
     reason: str
-    create_time: str
+    create_time: str | None
     disposition: Literal["CREDIT_NOTE_DISPOSITION_CREDIT", "CREDIT_NOTE_DISPOSITION_REFUND"]
     refund_state: Literal["REFUND_STATE_REQUESTED", "REFUND_STATE_REFUNDED", "REFUND_STATE_FAILED"]
     refund_error: str
 
 
-class ListCreditNotesResponse(TypedDict, total=False):
+class ListCreditNotesResponse(TypedDict):
     credit_notes: list[CreditNote]
     next_page_token: str
 
@@ -1243,23 +1427,23 @@ class CreateInvoiceLinkRequest(TypedDict, total=False):
     expires_in_days: int
 
 
-class CreateInvoiceLinkResponse(TypedDict, total=False):
+class CreateInvoiceLinkResponse(TypedDict):
     token: str
     url: str
     expires_at: str
 
 
-class RevokeInvoiceLinksResponse(TypedDict, total=False):
+class RevokeInvoiceLinksResponse(TypedDict):
     revoked: int
 
 
-class PaymentLink(TypedDict, total=False):
+class PaymentLink(TypedDict):
     id: str
     kind: Literal["invoice", "adhoc", "credit_pack"]
     status: Literal["active", "paid", "expired", "revoked"]
     pack_id: str
     quantity: int
-    credits: str
+    credits: int
     promotion_code: str
     invoice_id: str
     customer_external_id: str
@@ -1267,8 +1451,8 @@ class PaymentLink(TypedDict, total=False):
     amount_minor: int
     currency: str
     description: str
-    create_time: str
-    expire_time: str
+    create_time: str | None
+    expire_time: str | None
     revoke_time: str | None
     paid_count: int
     last_paid_time: str | None
@@ -1276,7 +1460,7 @@ class PaymentLink(TypedDict, total=False):
     idempotency_key: str
 
 
-class ListPaymentLinksResponse(TypedDict, total=False):
+class ListPaymentLinksResponse(TypedDict):
     links: list[PaymentLink]
     next_page_token: str
 
@@ -1296,13 +1480,13 @@ class CreatePaymentLinkRequest(TypedDict, total=False):
     idempotency_key: str
 
 
-class CreatedPaymentLink(TypedDict, total=False):
+class CreatedPaymentLink(TypedDict):
     id: str
     kind: Literal["invoice", "adhoc", "credit_pack"]
     status: Literal["active", "paid", "expired", "revoked"]
     pack_id: str
     quantity: int
-    credits: str
+    credits: int
     promotion_code: str
     invoice_id: str
     customer_external_id: str
@@ -1310,8 +1494,8 @@ class CreatedPaymentLink(TypedDict, total=False):
     amount_minor: int
     currency: str
     description: str
-    create_time: str
-    expire_time: str
+    create_time: str | None
+    expire_time: str | None
     revoke_time: str | None
     paid_count: int
     last_paid_time: str | None
@@ -1326,18 +1510,18 @@ class CreatePortalLinkRequest(TypedDict, total=False):
     expires_in_days: int
 
 
-class CreatePortalLinkResponse(TypedDict, total=False):
+class CreatePortalLinkResponse(TypedDict):
     token: str
     url: str
     expires_at: str
     customer_id: str
 
 
-class RevokePortalLinksResponse(TypedDict, total=False):
+class RevokePortalLinksResponse(TypedDict):
     revoked: int
 
 
-class CustomerPayment(TypedDict, total=False):
+class CustomerPayment(TypedDict):
     invoice_id: str
     invoice_number: str
     kind: Literal["charge", "refund"]
@@ -1349,17 +1533,12 @@ class CustomerPayment(TypedDict, total=False):
     occurred_at: str
 
 
-class ListCustomerPaymentsResponse(TypedDict, total=False):
+class ListCustomerPaymentsResponse(TypedDict):
     invoices: list[Invoice]
     payments: list[CustomerPayment]
 
 
-class GetInvoicePdfResponse(TypedDict, total=False):
-    url: str
-    expires_at: str
-
-
-class Payment(TypedDict, total=False):
+class Payment(TypedDict):
     id: str
     invoice_id: str
     provider: str
@@ -1370,179 +1549,186 @@ class Payment(TypedDict, total=False):
     occurred_at: str
 
 
-class ListPaymentsResponse(TypedDict, total=False):
+class ListPaymentsResponse(TypedDict):
     payments: list[Payment]
     truncated: bool
 
 
-class _CreateUploadSessionRequestFilesItemRequired(TypedDict):
+class _CreateUploadSessionFileRequired(TypedDict):
     filename: str
     content_type: str
     size: int
     purpose: Literal["invoice_logo", "invoice_attachment", "general"]
 
 
-class CreateUploadSessionRequestFilesItem(_CreateUploadSessionRequestFilesItemRequired, total=False):
+class CreateUploadSessionFile(_CreateUploadSessionFileRequired, total=False):
     sha256: str
 
 
 class CreateUploadSessionRequest(TypedDict):
-    files: list[CreateUploadSessionRequestFilesItem]
+    files: list[CreateUploadSessionFile]
 
 
-class PresignedPart(TypedDict, total=False):
+class PresignedPart(TypedDict):
     part_number: int
     url: str
 
 
-class UploadFileUploadedPartsItem(TypedDict, total=False):
+class UploadFileUploadedPartsItem(TypedDict):
     part_number: int
-    size: str
+    size: int
     etag: str
 
 
-class UploadFile(TypedDict, total=False):
+class UploadFile(TypedDict):
     asset_id: str
     filename: str
     status: str
     reject_reason: str
-    size: str
-    part_size: str
+    size: int
+    part_size: int
     part_count: int
     presigned_parts: list[PresignedPart]
     uploaded_parts: list[UploadFileUploadedPartsItem]
 
 
-class UploadSession(TypedDict, total=False):
+class UploadSession(TypedDict):
     id: str
     status: Literal["OPEN", "COMPLETED", "EXPIRED", "ABORTED"]
-    expire_time: str
+    expire_time: str | None
     files: list[UploadFile]
 
 
-class PresignPartsResponse(TypedDict, total=False):
+class PresignPartsResponse(TypedDict):
     parts: list[PresignedPart]
 
 
-class CompleteUploadFileRequestPartsItem(TypedDict):
+class CompleteUploadFilePart(TypedDict):
     part_number: int
     etag: str
 
 
 class CompleteUploadFileRequest(TypedDict):
-    parts: list[CompleteUploadFileRequestPartsItem]
+    parts: list[CompleteUploadFilePart]
 
 
-class Asset(TypedDict, total=False):
+class Asset(TypedDict):
     id: str
     session_id: str
     purpose: Literal["PURPOSE_INVOICE_LOGO", "PURPOSE_INVOICE_ATTACHMENT", "PURPOSE_GENERAL"]
     filename: str
     content_type: str
-    size_bytes: str
+    size_bytes: int
     sha256: str
     status: Literal["ASSET_STATUS_PENDING", "ASSET_STATUS_UPLOADING", "ASSET_STATUS_SCANNING", "ASSET_STATUS_READY", "ASSET_STATUS_REJECTED", "ASSET_STATUS_ABORTED", "ASSET_STATUS_CORRUPT", "ASSET_STATUS_DELETED"]
     reject_reason: str
-    create_time: str
-    complete_time: str
+    create_time: str | None
+    complete_time: str | None
 
 
-class ListAssetsResponse(TypedDict, total=False):
+class ListAssetsResponse(TypedDict):
     assets: list[Asset]
     next_page_token: str
 
 
-class UploadAssetsResponseResultsItem(TypedDict, total=False):
+class _UploadAssetsResultRequired(TypedDict):
     filename: str
     status: Literal["created", "rejected"]
+
+
+class UploadAssetsResult(_UploadAssetsResultRequired, total=False):
     asset: Asset
     error_code: str
     message: str
 
 
-class UploadAssetsResponse(TypedDict, total=False):
-    results: list[UploadAssetsResponseResultsItem]
+class UploadAssetsResponse(TypedDict):
+    results: list[UploadAssetsResult]
 
 
 class SetInvoiceLogoRequest(TypedDict):
     asset_id: str
 
 
-class SetInvoiceLogoResponse(TypedDict, total=False):
+class SetInvoiceLogoResponse(TypedDict):
     invoice_logo_asset_id: str
 
 
-class ClearInvoiceLogoResponse(TypedDict, total=False):
+class ClearInvoiceLogoResponse(TypedDict):
     invoice_logo_asset_id: str
 
 
-class DownloadAssetResponse(TypedDict, total=False):
-    url: str
-    expires_at: str
-
-
-class GetAnalyticsUsageResponsePointsItem(TypedDict, total=False):
-    start: str
+class GetAnalyticsUsagePoint(TypedDict):
+    start: str | None
     quantity: str
-    event_count: str
+    event_count: int
 
 
-class GetAnalyticsUsageResponse(TypedDict, total=False):
+class GetAnalyticsUsageResponse(TypedDict):
     precision: Literal["estimated", "exact"]
     quantity_scale: int
-    points: list[GetAnalyticsUsageResponsePointsItem]
+    points: list[GetAnalyticsUsagePoint]
 
 
-class GetTopCustomersResponseCustomersItem(TypedDict, total=False):
+class GetTopCustomersCustomer(TypedDict):
     customer_id: str
     customer_external_id: str
     quantity: str
-    event_count: str
+    event_count: int
 
 
-class GetTopCustomersResponse(TypedDict, total=False):
+class GetTopCustomersResponse(TypedDict):
     precision: str
     quantity_scale: int
-    customers: list[GetTopCustomersResponseCustomersItem]
+    customers: list[GetTopCustomersCustomer]
 
 
 class SandboxClosePeriodRequest(TypedDict, total=False):
     period: str
 
 
-class BillingRun(TypedDict, total=False):
+class BillingRun(TypedDict):
     tenant_id: str
     period_id: str
     status: Literal["RUN_STATUS_SCHEDULED", "RUN_STATUS_WAITING_WATERMARK", "RUN_STATUS_RATING", "RUN_STATUS_INVOICING", "RUN_STATUS_COMPLETED", "RUN_STATUS_FAILED"]
-    cutoff_time: str
+    cutoff_time: str | None
     invoice_count: int
     last_error: str
+    generation: int
+    start_time: str | None
+    complete_time: str | None
 
 
 class SetPaymentScenarioRequest(TypedDict):
     scenario: Literal["success", "declined", "insufficient_funds_once", "error_then_success", "timeout_committed", "timeout_not_committed"]
 
 
-class SandboxScenariosResponseScenariosItem(TypedDict, total=False):
+class _SandboxScenariosScenarioRequired(TypedDict):
     scenario: str
     payment_method: str
     outcome: Literal["paid", "uncollectible", "paid_after_retry", "paid_after_status_query", "paid_after_recharge"]
-    default: bool
     description: str
 
 
-class SandboxScenariosResponse(TypedDict, total=False):
-    scenarios: list[SandboxScenariosResponseScenariosItem]
+class SandboxScenariosScenario(_SandboxScenariosScenarioRequired, total=False):
+    default: bool
+
+
+class SandboxScenariosResponse(TypedDict):
+    scenarios: list[SandboxScenariosScenario]
 
 
 class SandboxSimulateInvoiceRequest(TypedDict):
     scenario: str
 
 
-class SandboxSimulateInvoiceResponse(TypedDict, total=False):
+class _SandboxSimulateInvoiceResponseRequired(TypedDict):
     invoice_id: str
     customer_external_id: str
     scenario: str
     payment_method: str
     retried: bool
+
+
+class SandboxSimulateInvoiceResponse(_SandboxSimulateInvoiceResponseRequired, total=False):
     retry_error: str

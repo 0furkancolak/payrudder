@@ -32,6 +32,8 @@ final class Invoice implements Model
      * @param string|null $finalizeTime
      * @param list<InvoiceLine>|null $lines
      * @param list<InvoicePayment>|null $payments
+     * @param string|null $planVersionId
+     * @param string|null $pdfObjectKey
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -49,6 +51,8 @@ final class Invoice implements Model
         public readonly ?string $finalizeTime = null,
         public readonly ?array $lines = null,
         public readonly ?array $payments = null,
+        public readonly ?string $planVersionId = null,
+        public readonly ?string $pdfObjectKey = null,
     ) {}
 
     /**
@@ -72,6 +76,8 @@ final class Invoice implements Model
             finalizeTime: Cast::string($data['finalize_time'] ?? null),
             lines: Cast::models(InvoiceLine::class, $data['lines'] ?? null),
             payments: Cast::models(InvoicePayment::class, $data['payments'] ?? null),
+            planVersionId: Cast::string($data['plan_version_id'] ?? null),
+            pdfObjectKey: Cast::string($data['pdf_object_key'] ?? null),
         );
     }
 
@@ -96,6 +102,8 @@ final class Invoice implements Model
             'finalize_time' => $this->finalizeTime,
             'lines' => Cast::wire($this->lines),
             'payments' => Cast::wire($this->payments),
+            'plan_version_id' => $this->planVersionId,
+            'pdf_object_key' => $this->pdfObjectKey,
         ]);
     }
 }

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { toApiError, tenantApi, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
-import { PROGRAM_NOT_SET, type Affiliate, type Balance, type Commission, type Funnel, type JournalEntry, type Payout, type Program, type Referral } from "./logic";
+import { PROGRAM_NOT_SET, type Affiliate, type Balance, type Commission, type Funnel, type JournalEntry, type Payout, type Program, type ProgramInput, type Referral } from "./logic";
 
 type Id = MaybeRefOrGetter<string>;
 const tid = toValue<string>;
@@ -44,7 +44,7 @@ function useRefresh(tenantId: Id) {
 
 export function useSetProgram(tenantId: Id) {
   const refresh = useRefresh(tenantId);
-  return useMutation({ mutationFn: (body: Program) => unwrap(tenantApi(tid(tenantId)).PUT("/v1/affiliates/program", { body })), onSuccess: refresh });
+  return useMutation({ mutationFn: (body: ProgramInput) => unwrap(tenantApi(tid(tenantId)).PUT("/v1/affiliates/program", { body })), onSuccess: refresh });
 }
 
 // --- partners

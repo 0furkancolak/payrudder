@@ -24,7 +24,7 @@ export function rangeOf(p: RangePreset, now: Date): { from: string; to: string }
 }
 
 /** Whether a timestamp (RFC 3339, or a bare date) falls on a day inside the range; an empty end is open. */
-export function inRange(when: string | undefined, r: { from: string; to: string }): boolean {
+export function inRange(when: string | null | undefined, r: { from: string; to: string }): boolean {
   if (r.from === "" && r.to === "") return true;
   if (!when) return false;
   const d = new Date(when);

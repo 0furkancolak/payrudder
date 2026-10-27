@@ -17,17 +17,17 @@ final class AffiliateFunnel implements Model
     /**
      * @param string|null $fromDate
      * @param string|null $toDate
-     * @param string|null $clicks
-     * @param string|null $referrals
-     * @param string|null $payingCustomers
+     * @param int|null $clicks
+     * @param int|null $referrals
+     * @param int|null $payingCustomers
      * @param list<AffiliateFunnelCommissionsItem>|null $commissions
      */
     public function __construct(
         public readonly ?string $fromDate = null,
         public readonly ?string $toDate = null,
-        public readonly ?string $clicks = null,
-        public readonly ?string $referrals = null,
-        public readonly ?string $payingCustomers = null,
+        public readonly ?int $clicks = null,
+        public readonly ?int $referrals = null,
+        public readonly ?int $payingCustomers = null,
         public readonly ?array $commissions = null,
     ) {}
 
@@ -39,9 +39,9 @@ final class AffiliateFunnel implements Model
         return new static(
             fromDate: Cast::string($data['from_date'] ?? null),
             toDate: Cast::string($data['to_date'] ?? null),
-            clicks: Cast::string($data['clicks'] ?? null),
-            referrals: Cast::string($data['referrals'] ?? null),
-            payingCustomers: Cast::string($data['paying_customers'] ?? null),
+            clicks: Cast::int($data['clicks'] ?? null),
+            referrals: Cast::int($data['referrals'] ?? null),
+            payingCustomers: Cast::int($data['paying_customers'] ?? null),
             commissions: Cast::models(AffiliateFunnelCommissionsItem::class, $data['commissions'] ?? null),
         );
     }
@@ -54,9 +54,9 @@ final class AffiliateFunnel implements Model
         return Cast::compact([
             'from_date' => $this->fromDate,
             'to_date' => $this->toDate,
-            'clicks' => $this->clicks,
-            'referrals' => $this->referrals,
-            'paying_customers' => $this->payingCustomers,
+            'clicks' => Cast::int64($this->clicks),
+            'referrals' => Cast::int64($this->referrals),
+            'paying_customers' => Cast::int64($this->payingCustomers),
             'commissions' => Cast::wire($this->commissions),
         ]);
     }

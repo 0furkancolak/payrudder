@@ -15,10 +15,10 @@ use Payrudder\Internal\Cast;
 final class VoidExpenseRequest implements RequestBody
 {
     /**
-     * @param string|null $reason
+     * @param string $reason
      */
     public function __construct(
-        public readonly ?string $reason = null,
+        public readonly string $reason,
     ) {}
 
     /**

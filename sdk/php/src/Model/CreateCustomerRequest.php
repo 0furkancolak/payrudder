@@ -21,7 +21,7 @@ final class CreateCustomerRequest implements RequestBody
      * @param string|null $paymentMethod
      * @param string|null $country
      * @param string|null $billingCurrency
-     * @param Address|null $address
+     * @param AddressInput|null $address
      * @param string|null $referralCode
      * @param string|null $referralTouchTime
      */
@@ -32,7 +32,7 @@ final class CreateCustomerRequest implements RequestBody
         public readonly ?string $paymentMethod = null,
         public readonly ?string $country = null,
         public readonly ?string $billingCurrency = null,
-        public readonly ?Address $address = null,
+        public readonly ?AddressInput $address = null,
         public readonly ?string $referralCode = null,
         public readonly ?string $referralTouchTime = null,
     ) {}

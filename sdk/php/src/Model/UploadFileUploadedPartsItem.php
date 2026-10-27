@@ -16,12 +16,12 @@ final class UploadFileUploadedPartsItem implements Model
 {
     /**
      * @param int|null $partNumber
-     * @param string|null $size
+     * @param int|null $size
      * @param string|null $etag
      */
     public function __construct(
         public readonly ?int $partNumber = null,
-        public readonly ?string $size = null,
+        public readonly ?int $size = null,
         public readonly ?string $etag = null,
     ) {}
 
@@ -32,7 +32,7 @@ final class UploadFileUploadedPartsItem implements Model
     {
         return new static(
             partNumber: Cast::int($data['part_number'] ?? null),
-            size: Cast::string($data['size'] ?? null),
+            size: Cast::int($data['size'] ?? null),
             etag: Cast::string($data['etag'] ?? null),
         );
     }
@@ -44,7 +44,7 @@ final class UploadFileUploadedPartsItem implements Model
     {
         return Cast::compact([
             'part_number' => $this->partNumber,
-            'size' => $this->size,
+            'size' => Cast::int64($this->size),
             'etag' => $this->etag,
         ]);
     }

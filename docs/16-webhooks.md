@@ -15,20 +15,20 @@ A development stack may lift the address rule with `PAYRUDDER_WEBHOOK_ALLOW_PRIV
 | Type | When | `data` |
 |---|---|---|
 | `invoice.finalized` | an invoice gets its number | `invoice_id`, `number`, `customer_id`, `customer_external_id`, `period_id`, `currency`, `total_minor`, `status` |
-| `invoice.paid` · `invoice.voided` · `invoice.uncollectible` | the invoice reaches that state | the same; every invoice event carries `environment`, and `invoice.paid` also `tax_minor` and `net_minor` (the total less its TAX lines: what a partner commission is a share of) |
+| `invoice.paid` · `invoice.voided` · `invoice.uncollectible` | the invoice reaches that state | the same, plus `environment` (`sandbox` or `live`; `invoice.finalized` does not carry it); `invoice.paid` also `tax_minor` and `net_minor` (the total less its TAX lines: what a partner commission is a share of). `status` is `paid`, `void` (not `voided`) or `uncollectible` |
 | `credit_note.created` | a credit note is issued | `credit_note_id`, `number`, `invoice_id`, `invoice_number`, `customer_id`, `customer_external_id`, `currency`, `total_minor`, `reason`, `disposition` (`credit`/`refund`), and for a refund `refund_state` |
 | `credit_note.refunded` · `credit_note.refund_failed` | the provider settled (or refused) a refund to the card | the same, with the outcome (`refund_error` on failure) |
-| `subscription.created` | a subscription is created | `subscription`, as the API returns it |
-| `subscription.changed` | a plan or interval change took effect (now, or at the end of the period) | `subscription` (the new one), `previous_subscription_id`, `quote` |
+| `subscription.created` | a subscription is created | `subscription`, as the API returns it but without the fields at their zero value (an empty string, `0`, `false` and an unset time are left out); `scheduled_change` and `coupon_code` only on `subscription.created`, `subscription.changed` and `subscription.change_scheduled` |
+| `subscription.changed` | a plan or interval change took effect (now, or at the end of the period) | `subscription` (the new one), `previous_subscription_id`, `quote`; a change that was scheduled and applied at the end of the period has `scheduled: true` and no `quote` |
 | `subscription.change_scheduled` | a change was set for the end of the period | `subscription`, `quote` |
-| `subscription.cancelled` | it ended (`credited_minor` when the unused fee was credited) | `subscription` |
+| `subscription.cancelled` | it ended now (`credited_minor`, a string, when the unused fee was credited). A cancellation with a future `end_time` is `subscription.cancellation_scheduled`; nothing is sent when that day arrives | `subscription` |
 | `subscription.cancellation_scheduled` · `subscription.cancellation_withdrawn` | cancel at period end was set / taken back | `subscription` |
 | `subscription.paused` · `subscription.resumed` | | `subscription` |
 | `subscription.moved_to_provider` | a provider migration took over | `subscription`, `previous_subscription_id`, `to_provider` |
 | `subscription.trial_will_end` | a trial ends in 3 days or fewer (`PAYRUDDER_TRIAL_REMINDER_DAYS`); once per trial end: an extended or restarted trial is announced again, a plan change that keeps the trial end is not. Not sent for a subscription a provider runs, or one that is paused or set to cancel | `subscription` (its `trial_end_time` says when) |
-| `payment_link.created` | a payment link was made (not the invoice links an ad-hoc link hands out) | `link_id`, `kind`, `invoice_id` or `amount_minor`, `currency`, `description`, `customer_external_id`, `single_use`, `expires_at` |
+| `payment_link.created` | a payment link was made (not the invoice links an ad-hoc link hands out) | `link_id`, `kind` (`invoice`, `adhoc` or `credit_pack`), `single_use`, `expires_at`; when set: `invoice_id`, `amount_minor`, `currency`, `description`, `customer_external_id`, and for a credit pack `pack_id`, `quantity`, `credits` |
 | `payment_link.paid` | an invoice was paid through the link (once per link and invoice) | `link_id`, `kind`, `invoice_id`, `invoice_number`, `customer_external_id`, `currency`, `total_minor`, `paid_count` |
-| `payment_link.expired` | the link expired unpaid (a single-use link that was paid is used, not expired) | `link_id`, `kind`, `invoice_id` or `amount_minor`, `currency`, `expires_at` |
+| `payment_link.expired` | the link expired unpaid (a single-use link that was paid is used, not expired) | `link_id`, `kind`, `expires_at`; when set: `invoice_id`, `amount_minor`, `currency`, `customer_external_id` |
 | `credits.purchased` | a credit pack was paid and its credits granted (once per paid invoice) | `customer_id`, `customer_external_id`, `credits` (the pack's and the bonus of a coupon, in one lot), `bonus_credits` (the part a coupon added, 0 without one), `quantity`, `balance` (spendable after the grant), `pack_id`, `pack_name`, `link_id`, `invoice_id`, `invoice_number`, `currency`, `amount_minor`, `expires_at` (absent when they never expire) |
 | `credits.low` | a consume took a customer's balance from at least the tenant's threshold (`PUT /v1/credits/settings`, default off) to below it; once per crossing | `customer_id`, `customer_external_id`, `balance`, `threshold` |
 
@@ -38,7 +38,7 @@ A delivery is a JSON `POST`:
 { "id": "0192…", "type": "invoice.paid", "created": "2026-10-20T10:00:00Z", "tenant_id": "0192…", "data": { "invoice_id": "…", "number": "INV-2026-000007", "total_minor": "1116", "tax_minor": "186", "net_minor": "930", "environment": "live", "status": "paid" } }
 ```
 
-Money is a string of minor units, as in the REST API. Events are delivered **at least once and not in order**: use `id` to ignore a repeat, and fetch the object from the API when you need its present state. A `ping` event is sent by `POST …/test`.
+The body is exactly `id`, `type`, `created` (second precision, UTC), `tenant_id` and `data`; there is no API version field. Money is a string of minor units, as in the REST API; the credit counts of `credits.*` events (`credits`, `bonus_credits`, `balance`, `threshold`, and `credits` of `payment_link.created`) are JSON numbers. The machine-readable shape of every `data` is in `api/openapi/v1.yaml` (`WebhookEvent`, one schema per type). Events are delivered **at least once and not in order**: use `id` to ignore a repeat, and fetch the object from the API when you need its present state. A `ping` event is sent by `POST …/test`; its `data` is `{"message": "This is a test event from Payrudder."}` and it cannot be subscribed to.
 
 ## Verifying a delivery
 

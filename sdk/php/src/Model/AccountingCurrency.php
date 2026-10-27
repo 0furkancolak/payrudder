@@ -24,7 +24,7 @@ final class AccountingCurrency implements Model
      * @param int|null $providerFeesMinor
      * @param bool|null $providerFeesRecorded
      * @param int|null $profitMinor
-     * @param string|null $paidInvoices
+     * @param int|null $paidInvoices
      * @param list<AccountingCurrencyExpenseByCategoryItem>|null $expenseByCategory
      * @param list<AccountingPoint>|null $series
      * @param int|null $discountsMinor
@@ -41,7 +41,7 @@ final class AccountingCurrency implements Model
         public readonly ?int $providerFeesMinor = null,
         public readonly ?bool $providerFeesRecorded = null,
         public readonly ?int $profitMinor = null,
-        public readonly ?string $paidInvoices = null,
+        public readonly ?int $paidInvoices = null,
         public readonly ?array $expenseByCategory = null,
         public readonly ?array $series = null,
         public readonly ?int $discountsMinor = null,
@@ -64,7 +64,7 @@ final class AccountingCurrency implements Model
             providerFeesMinor: Cast::int($data['provider_fees_minor'] ?? null),
             providerFeesRecorded: Cast::bool($data['provider_fees_recorded'] ?? null),
             profitMinor: Cast::int($data['profit_minor'] ?? null),
-            paidInvoices: Cast::string($data['paid_invoices'] ?? null),
+            paidInvoices: Cast::int($data['paid_invoices'] ?? null),
             expenseByCategory: Cast::models(AccountingCurrencyExpenseByCategoryItem::class, $data['expense_by_category'] ?? null),
             series: Cast::models(AccountingPoint::class, $data['series'] ?? null),
             discountsMinor: Cast::int($data['discounts_minor'] ?? null),
@@ -88,7 +88,7 @@ final class AccountingCurrency implements Model
             'provider_fees_minor' => Cast::int64($this->providerFeesMinor),
             'provider_fees_recorded' => $this->providerFeesRecorded,
             'profit_minor' => Cast::int64($this->profitMinor),
-            'paid_invoices' => $this->paidInvoices,
+            'paid_invoices' => Cast::int64($this->paidInvoices),
             'expense_by_category' => Cast::wire($this->expenseByCategory),
             'series' => Cast::wire($this->series),
             'discounts_minor' => Cast::int64($this->discountsMinor),

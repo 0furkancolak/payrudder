@@ -4,11 +4,11 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { changeOutcome } from "./lib";
 
-/** The price of a change of plan, before it is made: the credit, the charge, what that comes to now, and the next renewal (and, for Quotify's own, when it takes effect). */
+/** The price of a change of plan, before it is made: the credit, the charge, what that comes to now, and the next renewal (and, for Payrudder's own, when it takes effect). */
 const props = defineProps<{
-  quote: { quantity?: number; credit_minor?: string; charge_minor?: string; net_minor?: string; next_renewal_minor?: string; next_renewal_time?: string; effective_time?: string; timing?: string };
+  quote: { quantity?: number; credit_minor?: string; charge_minor?: string; net_minor?: string; next_renewal_minor?: string; next_renewal_time?: string | null; effective_time?: string | null; timing?: string };
   currency: string | undefined;
-  /** Quotify's own subscriptions say when the change takes effect and the date of the next renewal; a provider's quote has neither. */
+  /** Payrudder's own subscriptions say when the change takes effect and the date of the next renewal; a provider's quote has neither. */
   detailed?: boolean;
 }>();
 const { t } = useI18n();

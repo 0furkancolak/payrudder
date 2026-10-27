@@ -27,7 +27,7 @@ export function sortAffiliations(list: readonly Affiliation[] | undefined): Affi
 const big = (v: string | undefined): bigint => (v && /^-?\d+$/.test(v) ? BigInt(v) : 0n);
 
 /** What was earned in the period per currency, with what was taken back and what is left. Currencies are never added together. */
-export function earnedByCurrency(rows: AffiliationDetail["earned"]): { currency: string; earned: string; reversed: string; net: string }[] {
+export function earnedByCurrency(rows: AffiliationDetail["earned"] | undefined): { currency: string; earned: string; reversed: string; net: string }[] {
   return [...(rows ?? [])]
     .sort((a, b) => (a.currency ?? "").localeCompare(b.currency ?? ""))
     .map((r) => ({ currency: r.currency ?? "", earned: r.earned_minor ?? "0", reversed: r.reversed_minor ?? "0", net: String(big(r.earned_minor) - big(r.reversed_minor)) }));
@@ -47,7 +47,7 @@ export interface TermLine {
  * the attribution window, the hold and the minimum payout. `money` formats minor units in a currency; the minimum is left out when the program names
  * no currency to read it in.
  */
-export function programTerms(p: MyProgram | undefined, money: (minor: string, currency: string) => string): TermLine[] {
+export function programTerms(p: MyProgram | null | undefined, money: (minor: string, currency: string) => string): TermLine[] {
   if (!p) return [];
   const lines: TermLine[] = [];
   if (p.commission_kind === "fixed") lines.push({ key: "fixed", params: { amount: money(p.commission_value ?? "0", p.currency ?? "") } });

@@ -20,9 +20,10 @@ final class PromotionQuote implements Model
      * @param string|null $couponName
      * @param string|null $promotionCode
      * @param int|null $discountMinor
-     * @param string|null $bonusCredits
+     * @param int|null $bonusCredits
      * @param int|null $totalMinor
      * @param string|null $currency
+     * @param string|null $redemptionId
      */
     public function __construct(
         public readonly ?bool $applied = null,
@@ -30,9 +31,10 @@ final class PromotionQuote implements Model
         public readonly ?string $couponName = null,
         public readonly ?string $promotionCode = null,
         public readonly ?int $discountMinor = null,
-        public readonly ?string $bonusCredits = null,
+        public readonly ?int $bonusCredits = null,
         public readonly ?int $totalMinor = null,
         public readonly ?string $currency = null,
+        public readonly ?string $redemptionId = null,
     ) {}
 
     /**
@@ -46,9 +48,10 @@ final class PromotionQuote implements Model
             couponName: Cast::string($data['coupon_name'] ?? null),
             promotionCode: Cast::string($data['promotion_code'] ?? null),
             discountMinor: Cast::int($data['discount_minor'] ?? null),
-            bonusCredits: Cast::string($data['bonus_credits'] ?? null),
+            bonusCredits: Cast::int($data['bonus_credits'] ?? null),
             totalMinor: Cast::int($data['total_minor'] ?? null),
             currency: Cast::string($data['currency'] ?? null),
+            redemptionId: Cast::string($data['redemption_id'] ?? null),
         );
     }
 
@@ -63,9 +66,10 @@ final class PromotionQuote implements Model
             'coupon_name' => $this->couponName,
             'promotion_code' => $this->promotionCode,
             'discount_minor' => Cast::int64($this->discountMinor),
-            'bonus_credits' => $this->bonusCredits,
+            'bonus_credits' => Cast::int64($this->bonusCredits),
             'total_minor' => Cast::int64($this->totalMinor),
             'currency' => $this->currency,
+            'redemption_id' => $this->redemptionId,
         ]);
     }
 }

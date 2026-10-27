@@ -58,7 +58,7 @@ export function bucketStarts(r: Range, g: Granularity): string[] {
 const keyOf = (iso: string, g: Granularity) => (g === "hour" ? iso.slice(0, 13) : iso.slice(0, 10));
 
 export interface RawPoint {
-  start?: string;
+  start?: string | null;
   quantity?: string;
   event_count?: string;
 }

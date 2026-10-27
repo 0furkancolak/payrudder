@@ -27,7 +27,7 @@ service PlansService {
   rpc GetPlanVersion(GetPlanVersionRequest) returns (PlanVersion);
 
   rpc CreateSubscription(CreateSubscriptionRequest) returns (Subscription);
-  rpc CancelSubscription(CancelSubscriptionRequest) returns (Subscription);
+  rpc CancelSubscription(CancelSubscriptionRequest) returns (CancelSubscriptionResponse);
   rpc ListSubscriptionsFeeDue(ListSubscriptionsFeeDueRequest)
   rpc AdvanceSubscriptionFee(AdvanceSubscriptionFeeRequest)
   rpc ListSubscriptionsForPeriod(ListSubscriptionsForPeriodRequest)

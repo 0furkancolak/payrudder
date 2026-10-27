@@ -15,7 +15,7 @@ use Payrudder\Internal\Cast;
 final class SandboxScenariosResponse implements Model
 {
     /**
-     * @param list<SandboxScenariosResponseScenariosItem>|null $scenarios
+     * @param list<SandboxScenariosScenario>|null $scenarios
      */
     public function __construct(
         public readonly ?array $scenarios = null,
@@ -27,7 +27,7 @@ final class SandboxScenariosResponse implements Model
     public static function fromArray(array $data): static
     {
         return new static(
-            scenarios: Cast::models(SandboxScenariosResponseScenariosItem::class, $data['scenarios'] ?? null),
+            scenarios: Cast::models(SandboxScenariosScenario::class, $data['scenarios'] ?? null),
         );
     }
 

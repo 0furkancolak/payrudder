@@ -31,7 +31,7 @@ const invoiceId = computed(() => props.invoiceId);
 const invoice = useTenantInvoice(tenantId, invoiceId);
 const pdf = useOpenInvoicePdf(tenantId, invoiceId);
 const inv = computed(() => invoice.data.value);
-const day = (v?: string) => fmt.date(v, "day");
+const day = (v?: string | null) => fmt.date(v, "day");
 
 // Sandbox only: run the payment of this invoice again as one of the scenarios (the customer keeps the scenario as their payment method).
 const apps = useApps();

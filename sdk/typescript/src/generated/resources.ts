@@ -3,13 +3,12 @@ import type { RequestOptions, Transport } from "../transport";
 import { seg } from "../transport";
 import type {
   AccountingSummary,
-  ActivateCreditPackResponse,
-  Address,
+  AddressInput,
   Affiliate,
   AffiliateFunnel,
   AffiliatePayout,
   AffiliateProgram,
-  AffiliateProgramParams,
+  AffiliateProgramInputParams,
   ApplyCouponRequest,
   Asset,
   AttributeCustomerRequest,
@@ -25,7 +24,7 @@ import type {
   ClearInvoiceLogoResponse,
   CompleteUploadFileRequest,
   Coupon,
-  CouponParams,
+  CouponInputParams,
   CreateAffiliatePayoutsRequest,
   CreateAffiliatePayoutsResponse,
   CreateAffiliateRequest,
@@ -41,6 +40,7 @@ import type {
   CreatePromotionCodesResponse,
   CreateSubscriptionRequest,
   CreateUploadSessionRequest,
+  CreateWebhookEndpointRequest,
   CreatedPaymentLink,
   CreditBalance,
   CreditConsumeInputParams,
@@ -52,15 +52,14 @@ import type {
   CreditPackList,
   CreditResult,
   CreditSettings,
-  CreditSettingsParams,
+  CreditSettingsInputParams,
   Customer,
   CustomerTax,
-  DeactivateCreditPackResponse,
-  DownloadAssetResponse,
   DunningSettings,
+  DunningSettingsInput,
   EInvoiceDocument,
-  EInvoiceFileLink,
   EInvoiceList,
+  EmptyObject,
   EntitlementOverride,
   EntitlementStatus,
   EntitlementTerms,
@@ -69,7 +68,7 @@ import type {
   ExpenseInputParams,
   ExpensePage,
   ExpenseRule,
-  ExpenseRuleParams,
+  ExpenseRuleInputParams,
   ExportAccountingCouponsCsvQuery,
   ExportAccountingCsvQuery,
   ExportAffiliateJournalQuery,
@@ -85,7 +84,6 @@ import type {
   GetDunningReportResponse,
   GetEntitlementQuery,
   GetExpenseInboxQuery,
-  GetInvoicePdfResponse,
   GetRevenueReportQuery,
   GetRevenueReportResponse,
   GetSubscriptionReportQuery,
@@ -146,6 +144,7 @@ import type {
   ListWebhookDeliveriesResponse,
   ListWebhookEndpointsResponse,
   MailSettings,
+  MailSettingsInput,
   MarkAffiliatePayoutPaidRequest,
   Meter,
   PaymentLink,
@@ -158,14 +157,15 @@ import type {
   PromotionCode,
   PromotionQuote,
   PromotionQuoteRequestParams,
-  PublishPlanVersionRequest,
+  PublishPlanVersionRequestParams,
   ResolveInboxItemRequest,
-  ReverseAffiliateCommissionRequest,
+  ReverseAffiliateCommissionRequestParams,
   ReverseAffiliateCommissionResponse,
   RevokeInvoiceLinksResponse,
   RevokePortalLinksResponse,
   RotateExpenseInboxQuery,
   RoutingRules,
+  RoutingRulesInput,
   SandboxClosePeriodRequest,
   SandboxScenariosResponse,
   SandboxSimulateInvoiceRequest,
@@ -174,8 +174,10 @@ import type {
   SetInvoiceLogoResponse,
   SetPaymentMethodRequest,
   SetPaymentScenarioRequest,
+  SignedUrl,
   Subscription,
   TaxRates,
+  TaxRatesInput,
   UpdateAffiliateRequest,
   UploadAssetsResponse,
   UploadFile,
@@ -245,7 +247,7 @@ export class AffiliatesResource {
    *
    * `PUT /v1/affiliates/program`
    */
-  setAffiliateProgram(body: AffiliateProgramParams, options?: RequestOptions): Promise<AffiliateProgram> {
+  setAffiliateProgram(body: AffiliateProgramInputParams, options?: RequestOptions): Promise<AffiliateProgram> {
     return this.t.request<AffiliateProgram>({ method: "PUT", path: `/v1/affiliates/program`, body, bodyKind: "json", response: "json" }, options);
   }
 
@@ -298,7 +300,7 @@ export class AffiliatesResource {
    *
    * `POST /v1/affiliates/commissions/reverse`
    */
-  reverseAffiliateCommission(body: ReverseAffiliateCommissionRequest, options?: RequestOptions): Promise<ReverseAffiliateCommissionResponse> {
+  reverseAffiliateCommission(body: ReverseAffiliateCommissionRequestParams, options?: RequestOptions): Promise<ReverseAffiliateCommissionResponse> {
     return this.t.request<ReverseAffiliateCommissionResponse>({ method: "POST", path: `/v1/affiliates/commissions/reverse`, body, bodyKind: "json", response: "json" }, options);
   }
 
@@ -555,8 +557,8 @@ export class AssetsResource {
    *
    * `GET /v1/assets/{id}/download`
    */
-  downloadAsset(id: string, options?: RequestOptions): Promise<DownloadAssetResponse> {
-    return this.t.request<DownloadAssetResponse>({ method: "GET", path: `/v1/assets/${seg(id)}/download`, response: "json" }, options);
+  downloadAsset(id: string, options?: RequestOptions): Promise<SignedUrl> {
+    return this.t.request<SignedUrl>({ method: "GET", path: `/v1/assets/${seg(id)}/download`, response: "json" }, options);
   }
 }
 
@@ -581,6 +583,8 @@ export class CouponsResource {
   /**
    * Coupons, newest first
    *
+   * Not paged: the response is the complete list.
+   *
    * `GET /v1/coupons`
    */
   listCoupons(options?: RequestOptions): Promise<ListCouponsResponse> {
@@ -592,7 +596,7 @@ export class CouponsResource {
    *
    * `POST /v1/coupons`
    */
-  createCoupon(body: CouponParams, options?: RequestOptions): Promise<Coupon> {
+  createCoupon(body: CouponInputParams, options?: RequestOptions): Promise<Coupon> {
     return this.t.request<Coupon>({ method: "POST", path: `/v1/coupons`, body, bodyKind: "json", response: "json" }, options);
   }
 
@@ -645,6 +649,8 @@ export class CreditPacksResource {
   /**
    * The credit packs the tenant sells
    *
+   * Not paged: the response is the complete list.
+   *
    * `GET /v1/credit-packs`
    */
   listCreditPacks(query?: ListCreditPacksQuery, options?: RequestOptions): Promise<CreditPackList> {
@@ -667,8 +673,8 @@ export class CreditPacksResource {
    *
    * `POST /v1/credit-packs/{id}/activate`
    */
-  activateCreditPack(id: string, options?: RequestOptions): Promise<ActivateCreditPackResponse> {
-    return this.t.request<ActivateCreditPackResponse>({ method: "POST", path: `/v1/credit-packs/${seg(id)}/activate`, response: "json" }, options);
+  activateCreditPack(id: string, options?: RequestOptions): Promise<EmptyObject> {
+    return this.t.request<EmptyObject>({ method: "POST", path: `/v1/credit-packs/${seg(id)}/activate`, response: "json" }, options);
   }
 
   /**
@@ -678,8 +684,8 @@ export class CreditPacksResource {
    *
    * `POST /v1/credit-packs/{id}/deactivate`
    */
-  deactivateCreditPack(id: string, options?: RequestOptions): Promise<DeactivateCreditPackResponse> {
-    return this.t.request<DeactivateCreditPackResponse>({ method: "POST", path: `/v1/credit-packs/${seg(id)}/deactivate`, response: "json" }, options);
+  deactivateCreditPack(id: string, options?: RequestOptions): Promise<EmptyObject> {
+    return this.t.request<EmptyObject>({ method: "POST", path: `/v1/credit-packs/${seg(id)}/deactivate`, response: "json" }, options);
   }
 }
 
@@ -702,7 +708,7 @@ export class CreditsResource {
    *
    * `PUT /v1/credits/settings`
    */
-  setCreditSettings(body: CreditSettingsParams, options?: RequestOptions): Promise<CreditSettings> {
+  setCreditSettings(body: CreditSettingsInputParams, options?: RequestOptions): Promise<CreditSettings> {
     return this.t.request<CreditSettings>({ method: "PUT", path: `/v1/credits/settings`, body, bodyKind: "json", response: "json" }, options);
   }
 }
@@ -753,7 +759,7 @@ export class CustomersResource {
    *
    * `PUT /v1/customers/{external_id}/address`
    */
-  setCustomerAddress(externalId: string, body: Address, options?: RequestOptions): Promise<Customer> {
+  setCustomerAddress(externalId: string, body: AddressInput, options?: RequestOptions): Promise<Customer> {
     return this.t.request<Customer>({ method: "PUT", path: `/v1/customers/${seg(externalId)}/address`, body, bodyKind: "json", response: "json" }, options);
   }
 
@@ -784,7 +790,7 @@ export class CustomersResource {
   /**
    * Usage against the limits of every meter the customer has an entitlement on
    *
-   * See `getEntitlement` for the semantics of each item.
+   * See `getEntitlement` for the semantics of each item. Not paged: the response is the complete list.
    *
    * `GET /v1/customers/{external_id}/entitlements`
    */
@@ -815,6 +821,8 @@ export class CustomersResource {
 
   /**
    * The customer's own limits, which replace its package's on their meters
+   *
+   * Not paged: the response is the complete list.
    *
    * `GET /v1/customers/{external_id}/entitlement-overrides`
    */
@@ -863,7 +871,7 @@ export class CustomersResource {
    * `POST /v1/customers/{external_id}/credits/grant`
    */
   grantCredits(externalId: string, body: CreditGrantInputParams, options?: RequestOptions): Promise<CreditResult> {
-    return this.t.request<CreditResult>({ method: "POST", path: `/v1/customers/${seg(externalId)}/credits/grant`, body, bodyKind: "json", response: "json" }, options);
+    return this.t.request<CreditResult>({ method: "POST", path: `/v1/customers/${seg(externalId)}/credits/grant`, body, bodyKind: "json", response: "json", idempotencyHeader: true }, options);
   }
 
   /**
@@ -874,7 +882,7 @@ export class CustomersResource {
    * `POST /v1/customers/{external_id}/credits/consume`
    */
   consumeCredits(externalId: string, body: CreditConsumeInputParams, options?: RequestOptions): Promise<CreditResult> {
-    return this.t.request<CreditResult>({ method: "POST", path: `/v1/customers/${seg(externalId)}/credits/consume`, body, bodyKind: "json", response: "json" }, options);
+    return this.t.request<CreditResult>({ method: "POST", path: `/v1/customers/${seg(externalId)}/credits/consume`, body, bodyKind: "json", response: "json", idempotencyHeader: true }, options);
   }
 
   /**
@@ -959,7 +967,7 @@ export class DunningSettingsResource {
    *
    * `PUT /v1/dunning-settings`
    */
-  setDunningSettings(body: DunningSettings, options?: RequestOptions): Promise<DunningSettings> {
+  setDunningSettings(body: DunningSettingsInput, options?: RequestOptions): Promise<DunningSettings> {
     return this.t.request<DunningSettings>({ method: "PUT", path: `/v1/dunning-settings`, body, bodyKind: "json", response: "json" }, options);
   }
 }
@@ -990,8 +998,8 @@ export class EInvoicesResource {
    *
    * `GET /v1/e-invoices/{id}/files/{kind}`
    */
-  getEInvoiceFile(id: string, kind: "xml" | "pdf", options?: RequestOptions): Promise<EInvoiceFileLink> {
-    return this.t.request<EInvoiceFileLink>({ method: "GET", path: `/v1/e-invoices/${seg(id)}/files/${seg(kind)}`, response: "json" }, options);
+  getEInvoiceFile(id: string, kind: "xml" | "pdf", options?: RequestOptions): Promise<SignedUrl> {
+    return this.t.request<SignedUrl>({ method: "GET", path: `/v1/e-invoices/${seg(id)}/files/${seg(kind)}`, response: "json" }, options);
   }
 }
 
@@ -1042,6 +1050,8 @@ export class ExpenseInboxResource {
   /**
    * The attachments received by mail, newest first
    *
+   * Not paged: the newest page_size items; there is no page_token, so older items come into view once the newer ones are resolved.
+   *
    * `GET /v1/expense-inbox/items`
    */
   listInboxItems(query?: ListInboxItemsQuery, options?: RequestOptions): Promise<InboxItemPage> {
@@ -1075,6 +1085,8 @@ export class ExpenseRulesResource {
   /**
    * The recurring-vendor rules
    *
+   * Not paged: the response is the complete list.
+   *
    * `GET /v1/expense-rules`
    */
   listExpenseRules(options?: RequestOptions): Promise<ListExpenseRulesResponse> {
@@ -1088,7 +1100,7 @@ export class ExpenseRulesResource {
    *
    * `POST /v1/expense-rules`
    */
-  createExpenseRule(body: ExpenseRuleParams, options?: RequestOptions): Promise<ExpenseRule> {
+  createExpenseRule(body: ExpenseRuleInputParams, options?: RequestOptions): Promise<ExpenseRule> {
     return this.t.request<ExpenseRule>({ method: "POST", path: `/v1/expense-rules`, body, bodyKind: "json", response: "json" }, options);
   }
 
@@ -1097,7 +1109,7 @@ export class ExpenseRulesResource {
    *
    * `PUT /v1/expense-rules/{id}`
    */
-  updateExpenseRule(id: string, body: ExpenseRuleParams, options?: RequestOptions): Promise<ExpenseRule> {
+  updateExpenseRule(id: string, body: ExpenseRuleInputParams, options?: RequestOptions): Promise<ExpenseRule> {
     return this.t.request<ExpenseRule>({ method: "PUT", path: `/v1/expense-rules/${seg(id)}`, body, bodyKind: "json", response: "json" }, options);
   }
 
@@ -1205,8 +1217,8 @@ export class InvoicesResource {
    *
    * `GET /v1/invoices/{id}/pdf`
    */
-  getInvoicePdf(id: string, options?: RequestOptions): Promise<GetInvoicePdfResponse> {
-    return this.t.request<GetInvoicePdfResponse>({ method: "GET", path: `/v1/invoices/${seg(id)}/pdf`, response: "json" }, options);
+  getInvoicePdf(id: string, options?: RequestOptions): Promise<SignedUrl> {
+    return this.t.request<SignedUrl>({ method: "GET", path: `/v1/invoices/${seg(id)}/pdf`, response: "json" }, options);
   }
 }
 
@@ -1232,7 +1244,7 @@ export class MailSettingsResource {
    *
    * `PUT /v1/mail-settings`
    */
-  setMailSettings(body: MailSettings, options?: RequestOptions): Promise<MailSettings> {
+  setMailSettings(body: MailSettingsInput, options?: RequestOptions): Promise<MailSettings> {
     return this.t.request<MailSettings>({ method: "PUT", path: `/v1/mail-settings`, body, bodyKind: "json", response: "json" }, options);
   }
 }
@@ -1242,6 +1254,8 @@ export class MetersResource {
 
   /**
    * List meters (latest version of each code)
+   *
+   * Not paged: the response is the complete list.
    *
    * `GET /v1/meters`
    */
@@ -1333,6 +1347,8 @@ export class PlansResource {
   /**
    * List plans
    *
+   * Not paged: the response is the complete list.
+   *
    * `GET /v1/plans`
    */
   listPlans(options?: RequestOptions): Promise<ListPlansResponse> {
@@ -1353,7 +1369,7 @@ export class PlansResource {
    *
    * `POST /v1/plans/{code}/versions`
    */
-  publishPlanVersion(code: string, body: PublishPlanVersionRequest, options?: RequestOptions): Promise<PlanVersion> {
+  publishPlanVersion(code: string, body: PublishPlanVersionRequestParams, options?: RequestOptions): Promise<PlanVersion> {
     return this.t.request<PlanVersion>({ method: "POST", path: `/v1/plans/${seg(code)}/versions`, body, bodyKind: "json", response: "json" }, options);
   }
 
@@ -1452,7 +1468,7 @@ export class RoutingRulesResource {
    *
    * `PUT /v1/routing-rules`
    */
-  setRoutingRules(body: RoutingRules, options?: RequestOptions): Promise<RoutingRules> {
+  setRoutingRules(body: RoutingRulesInput, options?: RequestOptions): Promise<RoutingRules> {
     return this.t.request<RoutingRules>({ method: "PUT", path: `/v1/routing-rules`, body, bodyKind: "json", response: "json" }, options);
   }
 
@@ -1549,7 +1565,7 @@ export class SubscriptionsResource {
   /**
    * End a subscription (now, or at end_time)
    *
-   * With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in advance that Payrudder runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
+   * With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in advance that Payrudder runs, ended now, without a coupon). The response is always {subscription, credited_minor}; credited_minor is "0" when nothing was credited.
    *
    * `DELETE /v1/subscriptions/{id}`
    */
@@ -1675,7 +1691,7 @@ export class TaxRatesResource {
    *
    * `PUT /v1/tax-rates`
    */
-  setTaxRates(body: TaxRates, options?: RequestOptions): Promise<TaxRates> {
+  setTaxRates(body: TaxRatesInput, options?: RequestOptions): Promise<TaxRates> {
     return this.t.request<TaxRates>({ method: "PUT", path: `/v1/tax-rates`, body, bodyKind: "json", response: "json" }, options);
   }
 }
@@ -1730,6 +1746,8 @@ export class WebhookEndpointsResource {
   /**
    * The tenant's webhook endpoints
    *
+   * Not paged: the response is the complete list.
+   *
    * `GET /v1/webhook-endpoints`
    */
   listWebhookEndpoints(options?: RequestOptions): Promise<ListWebhookEndpointsResponse> {
@@ -1743,7 +1761,7 @@ export class WebhookEndpointsResource {
    *
    * `POST /v1/webhook-endpoints`
    */
-  createWebhookEndpoint(body: WebhookEndpointInput, options?: RequestOptions): Promise<WebhookEndpoint> {
+  createWebhookEndpoint(body: CreateWebhookEndpointRequest, options?: RequestOptions): Promise<WebhookEndpoint> {
     return this.t.request<WebhookEndpoint>({ method: "POST", path: `/v1/webhook-endpoints`, body, bodyKind: "json", response: "json" }, options);
   }
 

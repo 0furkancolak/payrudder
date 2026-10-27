@@ -20,7 +20,7 @@ final class AffiliateProgram implements Model
     /**
      * @param AffiliateProgramStatus|string|null $status
      * @param AffiliateProgramCommissionKind|string|null $commissionKind
-     * @param string|null $commissionValue
+     * @param int|null $commissionValue
      * @param string|null $currency
      * @param AffiliateProgramCommissionTerm|string|null $commissionTerm
      * @param int|null $commissionTermValue
@@ -37,7 +37,7 @@ final class AffiliateProgram implements Model
     public function __construct(
         public readonly AffiliateProgramStatus|string|null $status = null,
         public readonly AffiliateProgramCommissionKind|string|null $commissionKind = null,
-        public readonly ?string $commissionValue = null,
+        public readonly ?int $commissionValue = null,
         public readonly ?string $currency = null,
         public readonly AffiliateProgramCommissionTerm|string|null $commissionTerm = null,
         public readonly ?int $commissionTermValue = null,
@@ -60,7 +60,7 @@ final class AffiliateProgram implements Model
         return new static(
             status: Cast::enum(AffiliateProgramStatus::class, $data['status'] ?? null),
             commissionKind: Cast::enum(AffiliateProgramCommissionKind::class, $data['commission_kind'] ?? null),
-            commissionValue: Cast::string($data['commission_value'] ?? null),
+            commissionValue: Cast::int($data['commission_value'] ?? null),
             currency: Cast::string($data['currency'] ?? null),
             commissionTerm: Cast::enum(AffiliateProgramCommissionTerm::class, $data['commission_term'] ?? null),
             commissionTermValue: Cast::int($data['commission_term_value'] ?? null),
@@ -84,7 +84,7 @@ final class AffiliateProgram implements Model
         return Cast::compact([
             'status' => Cast::wire($this->status),
             'commission_kind' => Cast::wire($this->commissionKind),
-            'commission_value' => $this->commissionValue,
+            'commission_value' => Cast::int64($this->commissionValue),
             'currency' => $this->currency,
             'commission_term' => Cast::wire($this->commissionTerm),
             'commission_term_value' => $this->commissionTermValue,

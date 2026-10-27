@@ -41,6 +41,7 @@ final class Subscription implements Model
      * @param ScheduledChange|null $scheduledChange
      * @param string|null $couponCode
      * @param int|null $quantity
+     * @param string|null $changedFromId
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -65,6 +66,7 @@ final class Subscription implements Model
         public readonly ?ScheduledChange $scheduledChange = null,
         public readonly ?string $couponCode = null,
         public readonly ?int $quantity = null,
+        public readonly ?string $changedFromId = null,
     ) {}
 
     /**
@@ -95,6 +97,7 @@ final class Subscription implements Model
             scheduledChange: Cast::model(ScheduledChange::class, $data['scheduled_change'] ?? null),
             couponCode: Cast::string($data['coupon_code'] ?? null),
             quantity: Cast::int($data['quantity'] ?? null),
+            changedFromId: Cast::string($data['changed_from_id'] ?? null),
         );
     }
 
@@ -126,6 +129,7 @@ final class Subscription implements Model
             'scheduled_change' => Cast::wire($this->scheduledChange),
             'coupon_code' => $this->couponCode,
             'quantity' => $this->quantity,
+            'changed_from_id' => $this->changedFromId,
         ]);
     }
 }

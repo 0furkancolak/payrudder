@@ -17,9 +17,7 @@ var handwritten = map[string]string{
 }
 
 // responseOverride names a hand-written result type for an operation whose success schema is a oneOf.
-var responseOverride = map[string]string{
-	"cancelSubscription": "CancelSubscriptionResult",
-}
+var responseOverride = map[string]string{}
 
 // pageItemsOverride picks the list property to iterate when a page has more than one array.
 var pageItemsOverride = map[string]string{
@@ -30,7 +28,6 @@ var pageItemsOverride = map[string]string{
 var reserved = map[string]bool{
 	"Client": true, "Error": true, "Int64": true, "Decimal": true, "Option": true, "RequestOption": true,
 	"WebhookEvent": true, "Page": true,
-	"CancelSubscriptionResult": true,
 }
 
 var initialisms = map[string]string{

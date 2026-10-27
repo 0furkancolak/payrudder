@@ -2,7 +2,7 @@ import type { components } from "@/shared/api/schema";
 
 type S = components["schemas"];
 export type Customer = S["Customer"];
-type Invoice = Pick<S["Invoice"], "id" | "customer_external_id" | "currency" | "total_minor" | "status" | "finalize_time" | "create_time" | "payments">;
+type Invoice = Pick<S["Invoice"], "id" | "customer_external_id" | "currency" | "total_minor" | "status"> & Partial<Pick<S["Invoice"], "finalize_time" | "create_time">> & { payments?: readonly Pick<S["Invoice"]["payments"][number], "amount_minor" | "received_at">[] };
 type Payment = Pick<S["Payment"], "invoice_id" | "kind" | "status" | "amount_minor" | "currency" | "occurred_at">;
 type Subscription = Pick<S["Subscription"], "customer_external_id" | "state" | "plan_code">;
 
@@ -48,7 +48,7 @@ const add = (m: Amounts, currency: string | undefined, minor: bigint) => {
   if (!currency || minor === ZERO) return;
   m.set(currency, (m.get(currency) ?? ZERO) + minor);
 };
-const later = (a: string | undefined, b: string | undefined) => (!a ? b : !b ? a : a >= b ? a : b);
+const later = (a: string | null | undefined, b: string | null | undefined) => (!a ? (b ?? undefined) : !b ? a : a >= b ? a : b);
 
 export function emptySummary(): CustomerSummary {
   return { spend: new Map(), open: new Map(), openInvoices: 0, uncollectibleInvoices: 0, invoices: 0, activeSubscriptions: 0, subscriptions: 0, subscriptionStatus: "none", plans: [], delinquent: false };
@@ -151,7 +151,7 @@ export function countryName(country: string | undefined, locale: string): string
 }
 
 /** One or two letters for a customer's avatar: the first letters of the first two words of the name, else of the e-mail, else of the id. */
-export function initialsOf(c: Pick<Customer, "name" | "email" | "external_id">, locale = "en"): string {
+export function initialsOf(c: Partial<Pick<Customer, "name" | "email" | "external_id">>, locale = "en"): string {
   const source = (c.name ?? "").trim() || (c.email ?? "").split("@")[0]?.trim() || (c.external_id ?? "").trim();
   if (!source) return "?";
   const words = source.split(/[\s._-]+/u).filter(Boolean);

@@ -14,7 +14,7 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 | Method & path | Maps to | Rate class |
 |---|---|---|
 | `POST /v1/events` | `ingest.v1.IngestService/IngestEvents` | `ingest` |
-| `GET /v1/customers/{external_id}/entitlements/{meter_code}` | `limits.v1.LimitsService/CheckEntitlement` | `read_hot` |
+| `GET /v1/customers/{external_id}/entitlements/{meter}` | `limits.v1.LimitsService/CheckEntitlement` | `read_hot` |
 | `POST /v1/customers` · `GET /v1/customers` · `GET /v1/customers/{external_id}` | `plans.v1.PlansService/CreateCustomer`, `ListCustomers`, `GetCustomer` | `write` / `read` |
 | `PUT /v1/customers/{external_id}/payment-method` | `SetPaymentMethod` | `write` |
 | `POST /v1/meters` · `GET /v1/meters` · `GET /v1/meters/{code}` | `CreateMeter`, `ListMeters`, `GetMeter` | `write` / `read` |
@@ -26,7 +26,7 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 | `POST /v1/assets` (`multipart/form-data`, ≤ 20 files, streamed) | `assets.v1.AssetsService/UploadAsset` (one client stream per file) | `write` (per file) |
 | `POST /v1/assets/uploads` · `POST /v1/assets/uploads/{session}/files/{asset}/complete` · `…/parts` · `DELETE /v1/assets/uploads/{session}` | `CreateUploadSession`, `CompleteFile`, `PresignParts`, `AbortUpload` (direct multipart to S3) | `write` |
 | `GET /v1/assets` · `GET /v1/assets/{id}` · `GET /v1/assets/{id}/download` · `DELETE /v1/assets/{id}` | `ListAssets`, `GetAsset`, `GetDownloadUrl`, `DeleteAsset` | `read` / `write` |
-| `POST /v1/sandbox/periods/{period}/close` | `billing.v1.SandboxService/ClosePeriodNow` (sandbox keys only, else `403`) | `write` |
+| `POST /v1/sandbox/close-period` `{"period":"2026-11"}` | `billing.v1.SandboxService/ClosePeriodNow` (sandbox keys only, else `403`) | `write` |
 | `POST /v1/sandbox/customers/{external_id}/payment-scenario` `{"scenario":"declined"}` | `plans.v1.PlansService/SetPaymentMethod` with `pm_sandbox_<scenario>` (sandbox keys only, else `403`) | `write` |
 | `POST /admin/v1/accounts` · `GET`/`PATCH /admin/v1/tenants/{id}` · `POST /admin/v1/tenants/{id}/api-keys` · `DELETE /admin/v1/api-keys/{id}` | `plans.v1.AdminService/*` | operator access only: the machine token, or the session of a platform operator (phase 42) |
 
@@ -36,7 +36,9 @@ All routes require `Authorization: Bearer qk_{live|test}_<prefix>_<secret>`. A `
 JSON shapes follow the protobuf JSON mapping (`protojson`, snake_case, enums as strings such as `AGGREGATION_SUM`).
 `int64` fields (`*_minor`) are rendered as JSON strings and accepted as strings or numbers. Single-resource responses return
 the resource itself (`201` + `Customer`), list responses an object (`{"customers": [...], "next_page_token": "..."}`).
-Error envelope: `{"error": {"code": "INVALID_ARGUMENT", "message": "...", "details": [{"field": "...", "description": "..."}], "request_id": "..."}}`.
+Error envelope: `{"error": {"code": "INVALID_ARGUMENT", "key": "gateway.request.invalid", "message": "...", "details": [{"field": "...", "description": "..."}], "request_id": "..."}}`.
+`key` is always there: stable and dotted, service first (`billing.credit_note.not_paid`; an error without a key of its own gets `common.<reason>`), so a client translates the key and not the message.
+`details` is left out when empty, and `request_id` (the `X-Request-Id` of the call) is missing on an answer that payments-worker wrote (provider webhooks, the operator routes it serves).
 gRPC → HTTP: `INVALID_ARGUMENT` 400, `UNAUTHENTICATED` 401, `PERMISSION_DENIED` 403, `NOT_FOUND` 404,
 `ALREADY_EXISTS`/`ABORTED`/`FAILED_PRECONDITION` 409, body over 1 MiB 413 (`REQUEST_TOO_LARGE`), `RESOURCE_EXHAUSTED` 429,
 `UNAVAILABLE` 503, `DEADLINE_EXCEEDED` 504. `INTERNAL` messages are never passed through.

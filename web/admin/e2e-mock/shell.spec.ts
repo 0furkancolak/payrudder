@@ -110,7 +110,8 @@ test.describe("sidebar on a desktop", () => {
     // it is out of the way of what this test is about, and the test does not depend on it starting.
     await page.getByTestId("tour-skip").click({ timeout: 20_000 }).catch(() => undefined);
     await expect(page.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "false");
-    await page.getByTestId("sidebar-toggle").click();
+    // A tour that started after the skip would sit over the button: the click is delivered to the button itself.
+    await page.getByTestId("sidebar-toggle").dispatchEvent("click");
     await expect(page.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "true");
   });
 });

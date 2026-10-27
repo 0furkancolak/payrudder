@@ -10,7 +10,7 @@ use Generator;
 use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
-use Payrudder\Model\Address;
+use Payrudder\Model\AddressInput;
 use Payrudder\Model\AttributeCustomerRequest;
 use Payrudder\Model\AttributeCustomerResponse;
 use Payrudder\Model\CreateCustomerRequest;
@@ -137,12 +137,12 @@ final class CustomersResource extends AbstractResource
      * Replace the customer's billing address (PUT /v1/customers/{external_id}/address).
      *
      * @param string $externalId
-     * @param Address|array<string,mixed> $body
+     * @param AddressInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function setCustomerAddress(string $externalId, Address|array $body, ?RequestOptions $options = null): Customer
+    public function setCustomerAddress(string $externalId, AddressInput|array $body, ?RequestOptions $options = null): Customer
     {
         return Customer::fromArray($this->call('PUT', '/v1/customers/' . rawurlencode($externalId) . '/address', [], Cast::body($body), $options));
     }

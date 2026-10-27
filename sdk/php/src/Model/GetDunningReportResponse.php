@@ -15,8 +15,8 @@ use Payrudder\Internal\Cast;
 final class GetDunningReportResponse implements Model
 {
     /**
-     * @param list<GetDunningReportResponseInvoicesItem>|null $invoices
-     * @param list<GetDunningReportResponseSummaryItem>|null $summary
+     * @param list<GetDunningReportInvoice>|null $invoices
+     * @param list<GetDunningReportSummary>|null $summary
      */
     public function __construct(
         public readonly ?array $invoices = null,
@@ -29,8 +29,8 @@ final class GetDunningReportResponse implements Model
     public static function fromArray(array $data): static
     {
         return new static(
-            invoices: Cast::models(GetDunningReportResponseInvoicesItem::class, $data['invoices'] ?? null),
-            summary: Cast::models(GetDunningReportResponseSummaryItem::class, $data['summary'] ?? null),
+            invoices: Cast::models(GetDunningReportInvoice::class, $data['invoices'] ?? null),
+            summary: Cast::models(GetDunningReportSummary::class, $data['summary'] ?? null),
         );
     }
 

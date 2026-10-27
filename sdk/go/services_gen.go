@@ -417,9 +417,9 @@ func (s *AffiliatesService) GetAffiliateProgram(ctx context.Context, opts ...Req
 // Replaces the program. A change applies to commissions earned from then on, never to those already earned. A
 // commission is a share of the net, pre-tax amount of a paid invoice (percent_bps) or a fixed amount in one
 // currency (fixed, earned only on invoices in that currency).
-func (s *AffiliatesService) SetAffiliateProgram(ctx context.Context, req *AffiliateProgram, opts ...RequestOption) (*AffiliateProgram, error) {
+func (s *AffiliatesService) SetAffiliateProgram(ctx context.Context, req *AffiliateProgramInput, opts ...RequestOption) (*AffiliateProgram, error) {
 	if req == nil {
-		req = &AffiliateProgram{}
+		req = &AffiliateProgramInput{}
 	}
 	var body any = req
 	var out AffiliateProgram
@@ -647,8 +647,8 @@ func (s *AssetsService) GetAsset(ctx context.Context, id string, opts ...Request
 
 // DownloadAsset: A presigned link (5 minutes) that downloads the file as an attachment (GET
 // /v1/assets/{id}/download).
-func (s *AssetsService) DownloadAsset(ctx context.Context, id string, opts ...RequestOption) (*DownloadAssetResponse, error) {
-	var out DownloadAssetResponse
+func (s *AssetsService) DownloadAsset(ctx context.Context, id string, opts ...RequestOption) (*SignedUrl, error) {
+	var out SignedUrl
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/assets/" + url.PathEscape(id) + "/download", query: nil, body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
@@ -691,6 +691,8 @@ func (s *CouponRedemptionsService) ListCouponRedemptionsAll(ctx context.Context,
 type CouponsService service
 
 // ListCoupons: Coupons, newest first (GET /v1/coupons).
+//
+// Not paged: the response is the complete list.
 func (s *CouponsService) ListCoupons(ctx context.Context, opts ...RequestOption) (*ListCouponsResponse, error) {
 	var out ListCouponsResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/coupons", query: nil, body: nil}, &out, opts); err != nil {
@@ -700,9 +702,9 @@ func (s *CouponsService) ListCoupons(ctx context.Context, opts ...RequestOption)
 }
 
 // CreateCoupon: Make a coupon (POST /v1/coupons).
-func (s *CouponsService) CreateCoupon(ctx context.Context, req *Coupon, opts ...RequestOption) (*Coupon, error) {
+func (s *CouponsService) CreateCoupon(ctx context.Context, req *CouponInput, opts ...RequestOption) (*Coupon, error) {
 	if req == nil {
-		req = &Coupon{}
+		req = &CouponInput{}
 	}
 	var body any = req
 	var out Coupon
@@ -780,6 +782,8 @@ func (s *CreditNotesService) GetCreditNote(ctx context.Context, id string, opts 
 type CreditPacksService service
 
 // ListCreditPacks: The credit packs the tenant sells (GET /v1/credit-packs).
+//
+// Not paged: the response is the complete list.
 func (s *CreditPacksService) ListCreditPacks(ctx context.Context, params *ListCreditPacksParams, opts ...RequestOption) (*CreditPackList, error) {
 	var out CreditPackList
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/credit-packs", query: params.values(), body: nil}, &out, opts); err != nil {
@@ -840,9 +844,9 @@ func (s *CreditsService) GetCreditSettings(ctx context.Context, opts ...RequestO
 //
 // A consume that takes a customer's balance from at least `low_threshold` credits to fewer announces
 // `credits.low` once (the webhook event). 0, the default, turns it off.
-func (s *CreditsService) SetCreditSettings(ctx context.Context, req *CreditSettings, opts ...RequestOption) (*CreditSettings, error) {
+func (s *CreditsService) SetCreditSettings(ctx context.Context, req *CreditSettingsInput, opts ...RequestOption) (*CreditSettings, error) {
 	if req == nil {
-		req = &CreditSettings{}
+		req = &CreditSettingsInput{}
 	}
 	var body any = req
 	var out CreditSettings
@@ -907,9 +911,9 @@ func (s *CustomersService) GetCustomer(ctx context.Context, externalID string, o
 //
 // The address is printed on the customer's invoices (PDF and hosted page). Its country becomes the customer's
 // country, which provider routing and tax read. An empty object clears the address and keeps the country.
-func (s *CustomersService) SetCustomerAddress(ctx context.Context, externalID string, req *Address, opts ...RequestOption) (*Customer, error) {
+func (s *CustomersService) SetCustomerAddress(ctx context.Context, externalID string, req *AddressInput, opts ...RequestOption) (*Customer, error) {
 	if req == nil {
-		req = &Address{}
+		req = &AddressInput{}
 	}
 	var body any = req
 	var out Customer
@@ -952,6 +956,8 @@ func (s *CustomersService) GetCreditBalance(ctx context.Context, externalID stri
 // Takes the credits that expire first. With too few credits nothing is taken and the answer is 409
 // `billing.credits.insufficient`. An `idempotency_key` (or the `Idempotency-Key` header) is required: a retried
 // call returns the first result with `replayed: true` instead of charging twice.
+//
+// Pass WithIdempotencyKey to make a retry safe.
 func (s *CustomersService) ConsumeCredits(ctx context.Context, externalID string, req *CreditConsumeInput, opts ...RequestOption) (*CreditResult, error) {
 	if req == nil {
 		req = &CreditConsumeInput{}
@@ -969,6 +975,8 @@ func (s *CustomersService) ConsumeCredits(ctx context.Context, externalID string
 // For a promotion, a goodwill gesture or a sale made outside Payrudder. With an `idempotency_key` (or the
 // `Idempotency-Key` header) a repeat of the call adds nothing and returns `replayed: true`; the same key with
 // other values is `billing.credits.key_reused`.
+//
+// Pass WithIdempotencyKey to make a retry safe.
 func (s *CustomersService) GrantCredits(ctx context.Context, externalID string, req *CreditGrantInput, opts ...RequestOption) (*CreditResult, error) {
 	if req == nil {
 		req = &CreditGrantInput{}
@@ -1010,6 +1018,8 @@ func (s *CustomersService) ListCreditLedgerAll(ctx context.Context, externalID s
 
 // ListEntitlementOverrides: The customer's own limits, which replace its package's on their meters (GET
 // /v1/customers/{external_id}/entitlement-overrides).
+//
+// Not paged: the response is the complete list.
 func (s *CustomersService) ListEntitlementOverrides(ctx context.Context, externalID string, opts ...RequestOption) (*ListEntitlementOverridesResponse, error) {
 	var out ListEntitlementOverridesResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/entitlement-overrides", query: nil, body: nil}, &out, opts); err != nil {
@@ -1031,22 +1041,22 @@ func (s *CustomersService) DeleteEntitlementOverride(ctx context.Context, extern
 // not limit, for every subscription of the customer until the override is deleted. limits-svc applies it within
 // seconds. `QUOTA_MODE_SOFT` needs every current package of the customer to price the meter (the usage over the
 // limit is billed at that price).
-func (s *CustomersService) SetEntitlementOverride(ctx context.Context, externalID string, meter string, req *EntitlementTerms, opts ...RequestOption) (any, error) {
+func (s *CustomersService) SetEntitlementOverride(ctx context.Context, externalID string, meter string, req *EntitlementTerms, opts ...RequestOption) (*EntitlementOverride, error) {
 	if req == nil {
 		req = &EntitlementTerms{}
 	}
 	var body any = req
-	var out any
+	var out EntitlementOverride
 	if err := s.c.do(ctx, requestSpec{method: http.MethodPut, path: "/v1/customers/" + url.PathEscape(externalID) + "/entitlement-overrides/" + url.PathEscape(meter), query: nil, body: body}, &out, opts); err != nil {
-		return out, err
+		return nil, err
 	}
-	return out, nil
+	return &out, nil
 }
 
 // ListEntitlements: Usage against the limits of every meter the customer has an entitlement on (GET
 // /v1/customers/{external_id}/entitlements).
 //
-// See `getEntitlement` for the semantics of each item.
+// See `getEntitlement` for the semantics of each item. Not paged: the response is the complete list.
 func (s *CustomersService) ListEntitlements(ctx context.Context, externalID string, params *ListEntitlementsParams, opts ...RequestOption) (*ListEntitlementsResponse, error) {
 	var out ListEntitlementsResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/entitlements", query: params.values(), body: nil}, &out, opts); err != nil {
@@ -1192,9 +1202,9 @@ func (s *DunningSettingsService) GetDunningSettings(ctx context.Context, opts ..
 // Up to six delays, each 1 to 720 hours (minutes in a sandbox tenant). A declined charge is retried after the
 // first delay, then the second, and so on; when the delays run out the invoice is given up as uncollectible. An
 // empty list gives up on the first decline.
-func (s *DunningSettingsService) SetDunningSettings(ctx context.Context, req *DunningSettings, opts ...RequestOption) (*DunningSettings, error) {
+func (s *DunningSettingsService) SetDunningSettings(ctx context.Context, req *DunningSettingsInput, opts ...RequestOption) (*DunningSettings, error) {
 	if req == nil {
-		req = &DunningSettings{}
+		req = &DunningSettingsInput{}
 	}
 	var body any = req
 	var out DunningSettings
@@ -1245,8 +1255,8 @@ func (s *EInvoicesService) GetEInvoice(ctx context.Context, id string, opts ...R
 
 // GetEInvoiceFile: A presigned link to the UBL XML or the PDF of an issued e-document (5 minutes) (GET
 // /v1/e-invoices/{id}/files/{kind}).
-func (s *EInvoicesService) GetEInvoiceFile(ctx context.Context, id string, kind string, opts ...RequestOption) (*EInvoiceFileLink, error) {
-	var out EInvoiceFileLink
+func (s *EInvoicesService) GetEInvoiceFile(ctx context.Context, id string, kind string, opts ...RequestOption) (*SignedUrl, error) {
+	var out SignedUrl
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/e-invoices/" + url.PathEscape(id) + "/files/" + url.PathEscape(kind), query: nil, body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
@@ -1273,6 +1283,9 @@ func (s *ExpenseInboxService) GetExpenseInbox(ctx context.Context, params *GetEx
 }
 
 // ListInboxItems: The attachments received by mail, newest first (GET /v1/expense-inbox/items).
+//
+// Not paged: the newest page_size items; there is no page_token, so older items come into view once the newer
+// ones are resolved.
 func (s *ExpenseInboxService) ListInboxItems(ctx context.Context, params *ListInboxItemsParams, opts ...RequestOption) (*InboxItemPage, error) {
 	var out InboxItemPage
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/expense-inbox/items", query: params.values(), body: nil}, &out, opts); err != nil {
@@ -1321,6 +1334,8 @@ func (s *ExpenseInboxService) RotateExpenseInbox(ctx context.Context, params *Ro
 type ExpenseRulesService service
 
 // ListExpenseRules: The recurring-vendor rules (GET /v1/expense-rules).
+//
+// Not paged: the response is the complete list.
 func (s *ExpenseRulesService) ListExpenseRules(ctx context.Context, opts ...RequestOption) (*ListExpenseRulesResponse, error) {
 	var out ListExpenseRulesResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/expense-rules", query: nil, body: nil}, &out, opts); err != nil {
@@ -1334,9 +1349,9 @@ func (s *ExpenseRulesService) ListExpenseRules(ctx context.Context, opts ...Requ
 // A vendor whose name contains `vendor_match` gets the category, currency and tax of the rule. With
 // `auto_approve` the console records the expense on its own when the amount read from the document is within
 // `tolerance_bps` of `expected_amount_minor`.
-func (s *ExpenseRulesService) CreateExpenseRule(ctx context.Context, req *ExpenseRule, opts ...RequestOption) (*ExpenseRule, error) {
+func (s *ExpenseRulesService) CreateExpenseRule(ctx context.Context, req *ExpenseRuleInput, opts ...RequestOption) (*ExpenseRule, error) {
 	if req == nil {
-		req = &ExpenseRule{}
+		req = &ExpenseRuleInput{}
 	}
 	var body any = req
 	var out ExpenseRule
@@ -1352,9 +1367,9 @@ func (s *ExpenseRulesService) DeleteExpenseRule(ctx context.Context, id string, 
 }
 
 // UpdateExpenseRule: Replace a recurring-vendor rule (PUT /v1/expense-rules/{id}).
-func (s *ExpenseRulesService) UpdateExpenseRule(ctx context.Context, id string, req *ExpenseRule, opts ...RequestOption) (*ExpenseRule, error) {
+func (s *ExpenseRulesService) UpdateExpenseRule(ctx context.Context, id string, req *ExpenseRuleInput, opts ...RequestOption) (*ExpenseRule, error) {
 	if req == nil {
-		req = &ExpenseRule{}
+		req = &ExpenseRuleInput{}
 	}
 	var body any = req
 	var out ExpenseRule
@@ -1513,8 +1528,8 @@ func (s *InvoicesService) CreateInvoiceLink(ctx context.Context, id string, req 
 }
 
 // GetInvoicePdf: A presigned link to the invoice PDF (valid for 5 minutes) (GET /v1/invoices/{id}/pdf).
-func (s *InvoicesService) GetInvoicePdf(ctx context.Context, id string, opts ...RequestOption) (*GetInvoicePdfResponse, error) {
-	var out GetInvoicePdfResponse
+func (s *InvoicesService) GetInvoicePdf(ctx context.Context, id string, opts ...RequestOption) (*SignedUrl, error) {
+	var out SignedUrl
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/invoices/" + url.PathEscape(id) + "/pdf", query: nil, body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
@@ -1544,9 +1559,9 @@ func (s *MailSettingsService) GetMailSettings(ctx context.Context, opts ...Reque
 //
 // An unknown category is rejected with the error key `plans.mail.unknown_category`. A category listed twice
 // takes its last value.
-func (s *MailSettingsService) SetMailSettings(ctx context.Context, req *MailSettings, opts ...RequestOption) (*MailSettings, error) {
+func (s *MailSettingsService) SetMailSettings(ctx context.Context, req *MailSettingsInput, opts ...RequestOption) (*MailSettings, error) {
 	if req == nil {
-		req = &MailSettings{}
+		req = &MailSettingsInput{}
 	}
 	var body any = req
 	var out MailSettings
@@ -1560,6 +1575,8 @@ func (s *MailSettingsService) SetMailSettings(ctx context.Context, req *MailSett
 type MetersService service
 
 // ListMeters: List meters (latest version of each code) (GET /v1/meters).
+//
+// Not paged: the response is the complete list.
 func (s *MetersService) ListMeters(ctx context.Context, opts ...RequestOption) (*ListMetersResponse, error) {
 	var out ListMetersResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/meters", query: nil, body: nil}, &out, opts); err != nil {
@@ -1569,25 +1586,25 @@ func (s *MetersService) ListMeters(ctx context.Context, opts ...RequestOption) (
 }
 
 // CreateMeter: Create a meter, or the next version of an existing code (POST /v1/meters).
-func (s *MetersService) CreateMeter(ctx context.Context, req *CreateMeterRequest, opts ...RequestOption) (any, error) {
+func (s *MetersService) CreateMeter(ctx context.Context, req *CreateMeterRequest, opts ...RequestOption) (*Meter, error) {
 	if req == nil {
 		req = &CreateMeterRequest{}
 	}
 	var body any = req
-	var out any
+	var out Meter
 	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/meters", query: nil, body: body}, &out, opts); err != nil {
-		return out, err
+		return nil, err
 	}
-	return out, nil
+	return &out, nil
 }
 
 // GetMeter: Get the latest version of a meter (GET /v1/meters/{code}).
-func (s *MetersService) GetMeter(ctx context.Context, code string, opts ...RequestOption) (any, error) {
-	var out any
+func (s *MetersService) GetMeter(ctx context.Context, code string, opts ...RequestOption) (*Meter, error) {
+	var out Meter
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/meters/" + url.PathEscape(code), query: nil, body: nil}, &out, opts); err != nil {
-		return out, err
+		return nil, err
 	}
-	return out, nil
+	return &out, nil
 }
 
 // PaymentLinksService is the payment links namespace of the API.
@@ -1630,16 +1647,16 @@ func (s *PaymentLinksService) ListPaymentLinksAll(ctx context.Context, params *L
 // ad-hoc link makes one invoice per use.
 //
 // Pass WithIdempotencyKey to make a retry safe.
-func (s *PaymentLinksService) CreatePaymentLink(ctx context.Context, req *CreatePaymentLinkRequest, opts ...RequestOption) (any, error) {
+func (s *PaymentLinksService) CreatePaymentLink(ctx context.Context, req *CreatePaymentLinkRequest, opts ...RequestOption) (*CreatedPaymentLink, error) {
 	if req == nil {
 		req = &CreatePaymentLinkRequest{}
 	}
 	var body any = req
-	var out any
+	var out CreatedPaymentLink
 	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/payment-links", query: nil, body: body}, &out, opts); err != nil {
-		return out, err
+		return nil, err
 	}
-	return out, nil
+	return &out, nil
 }
 
 // RevokePaymentLink: Revoke a payment link (DELETE /v1/payment-links/{id}).
@@ -1686,6 +1703,8 @@ func (s *PaymentsService) ListPayments(ctx context.Context, params *ListPayments
 type PlansService service
 
 // ListPlans: List plans (GET /v1/plans).
+//
+// Not paged: the response is the complete list.
 func (s *PlansService) ListPlans(ctx context.Context, opts ...RequestOption) (*ListPlansResponse, error) {
 	var out ListPlansResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/plans", query: nil, body: nil}, &out, opts); err != nil {
@@ -1836,9 +1855,9 @@ func (s *RoutingRulesService) GetRoutingRules(ctx context.Context, opts ...Reque
 
 // SetRoutingRules: Replace the rules (first match wins; a rule with neither country nor currency is the
 // catch-all and must be last). Existing subscriptions keep their provider (PUT /v1/routing-rules).
-func (s *RoutingRulesService) SetRoutingRules(ctx context.Context, req *RoutingRules, opts ...RequestOption) (*RoutingRules, error) {
+func (s *RoutingRulesService) SetRoutingRules(ctx context.Context, req *RoutingRulesInput, opts ...RequestOption) (*RoutingRules, error) {
 	if req == nil {
-		req = &RoutingRules{}
+		req = &RoutingRulesInput{}
 	}
 	var body any = req
 	var out RoutingRules
@@ -1974,10 +1993,10 @@ func (s *SubscriptionsService) CreateSubscription(ctx context.Context, req *Crea
 // CancelSubscription: End a subscription (now, or at end_time) (DELETE /v1/subscriptions/{id}).
 //
 // With credit_unused=true the fee paid in advance for the rest of the current period is credited to the
-// customer's balance (for a subscription billed in advance that Payrudder runs, ended now, without a coupon);
-// the response is then {subscription, credited_minor}.
-func (s *SubscriptionsService) CancelSubscription(ctx context.Context, id string, params *CancelSubscriptionParams, opts ...RequestOption) (*CancelSubscriptionResult, error) {
-	var out CancelSubscriptionResult
+// customer's balance (for a subscription billed in advance that Payrudder runs, ended now, without a coupon).
+// The response is always {subscription, credited_minor}; credited_minor is "0" when nothing was credited.
+func (s *SubscriptionsService) CancelSubscription(ctx context.Context, id string, params *CancelSubscriptionParams, opts ...RequestOption) (*CancelSubscriptionResponse, error) {
+	var out CancelSubscriptionResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodDelete, path: "/v1/subscriptions/" + url.PathEscape(id), query: params.values(), body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
@@ -2136,9 +2155,9 @@ func (s *TaxRatesService) GetTaxRates(ctx context.Context, opts ...RequestOption
 // in advance, plan changes) for customers whose country has a rate, or the rate with an empty country. It does
 // not work out what is due where; the rates and their correctness are the tenant's. Invoices of a subscription
 // a provider runs are taxed by the provider.
-func (s *TaxRatesService) SetTaxRates(ctx context.Context, req *TaxRates, opts ...RequestOption) (*TaxRates, error) {
+func (s *TaxRatesService) SetTaxRates(ctx context.Context, req *TaxRatesInput, opts ...RequestOption) (*TaxRates, error) {
 	if req == nil {
-		req = &TaxRates{}
+		req = &TaxRatesInput{}
 	}
 	var body any = req
 	var out TaxRates
@@ -2216,6 +2235,8 @@ func (s *WebhookDeliveriesService) RedeliverWebhook(ctx context.Context, id stri
 type WebhookEndpointsService service
 
 // ListWebhookEndpoints: The tenant's webhook endpoints (GET /v1/webhook-endpoints).
+//
+// Not paged: the response is the complete list.
 func (s *WebhookEndpointsService) ListWebhookEndpoints(ctx context.Context, opts ...RequestOption) (*ListWebhookEndpointsResponse, error) {
 	var out ListWebhookEndpointsResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/webhook-endpoints", query: nil, body: nil}, &out, opts); err != nil {
@@ -2235,9 +2256,9 @@ func (s *WebhookEndpointsService) ListWebhookEndpoints(ctx context.Context, opts
 // minutes, 2 hours, 6 hours and 24 hours, then given up (a delivery can be sent again by hand). Events are
 // delivered at least once and not in order: use the event `id` to ignore repeats. The URL must be https and
 // public; at most 20 endpoints.
-func (s *WebhookEndpointsService) CreateWebhookEndpoint(ctx context.Context, req *WebhookEndpointInput, opts ...RequestOption) (*WebhookEndpoint, error) {
+func (s *WebhookEndpointsService) CreateWebhookEndpoint(ctx context.Context, req *CreateWebhookEndpointRequest, opts ...RequestOption) (*WebhookEndpoint, error) {
 	if req == nil {
-		req = &WebhookEndpointInput{}
+		req = &CreateWebhookEndpointRequest{}
 	}
 	var body any = req
 	var out WebhookEndpoint

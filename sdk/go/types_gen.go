@@ -18,80 +18,92 @@ var (
 
 // AccountingCoupon is an object of the API; see components.schemas.AccountingCoupon in api/openapi/v1.yaml.
 type AccountingCoupon struct {
-	CouponCode string `json:"coupon_code,omitempty"`
-	Invoices   string `json:"invoices,omitempty"`
+	CouponCode string `json:"coupon_code"`
+	Invoices   string `json:"invoices"`
 	// What those invoices came to before the coupon: positive lines, tax excluded
-	GrossMinor    Int64 `json:"gross_minor,omitempty"`
-	DiscountMinor Int64 `json:"discount_minor,omitempty"`
+	GrossMinor    Int64 `json:"gross_minor"`
+	DiscountMinor Int64 `json:"discount_minor"`
 	// gross - discount
-	NetMinor Int64 `json:"net_minor,omitempty"`
+	NetMinor Int64 `json:"net_minor"`
 }
 
 // AccountingCurrency: One currency of the period. Every amount is int64 minor units as a string.
 type AccountingCurrency struct {
-	Currency string `json:"currency,omitempty"`
+	Currency string `json:"currency"`
 	// Invoices paid in the period, tax included
-	GrossIncomeMinor Int64 `json:"gross_income_minor,omitempty"`
+	GrossIncomeMinor Int64 `json:"gross_income_minor"`
 	// The tax lines of those invoices
-	TaxMinor Int64 `json:"tax_minor,omitempty"`
+	TaxMinor Int64 `json:"tax_minor"`
 	// Credit notes against paid invoices plus invoices refunded in full
-	RefundsMinor Int64 `json:"refunds_minor,omitempty"`
+	RefundsMinor Int64 `json:"refunds_minor"`
 	// gross - tax - refunds
-	NetIncomeMinor Int64 `json:"net_income_minor,omitempty"`
+	NetIncomeMinor Int64 `json:"net_income_minor"`
 	// Every live occurrence in the period, provider fees included
-	ExpensesMinor Int64 `json:"expenses_minor,omitempty"`
+	ExpensesMinor Int64 `json:"expenses_minor"`
 	// The payment_fees expenses; meaningful only when provider_fees_recorded
-	ProviderFeesMinor Int64 `json:"provider_fees_minor,omitempty"`
+	ProviderFeesMinor Int64 `json:"provider_fees_minor"`
 	// False: no commission was entered, which is not the same as zero
-	ProviderFeesRecorded bool `json:"provider_fees_recorded,omitempty"`
+	ProviderFeesRecorded bool `json:"provider_fees_recorded"`
 	// net income - expenses; negative for a loss
-	ProfitMinor       Int64                                 `json:"profit_minor,omitempty"`
-	PaidInvoices      string                                `json:"paid_invoices,omitempty"`
-	ExpenseByCategory []AccountingCurrencyExpenseByCategory `json:"expense_by_category,omitempty"`
-	Series            []AccountingPoint                     `json:"series,omitempty"`
+	ProfitMinor       Int64                                 `json:"profit_minor"`
+	PaidInvoices      string                                `json:"paid_invoices"`
+	ExpenseByCategory []AccountingCurrencyExpenseByCategory `json:"expense_by_category"`
+	Series            []AccountingPoint                     `json:"series"`
 	// What coupons took off the paid invoices (contra-revenue, a positive number). gross_income_minor is already
 	// after it
-	DiscountsMinor Int64 `json:"discounts_minor,omitempty"`
+	DiscountsMinor Int64 `json:"discounts_minor"`
 	// Revenue before discounts: gross - tax + discounts
-	SalesMinor Int64 `json:"sales_minor,omitempty"`
+	SalesMinor Int64 `json:"sales_minor"`
 	// Gross, discounts and net per coupon, most discount first
-	Coupons []AccountingCoupon `json:"coupons,omitempty"`
+	Coupons []AccountingCoupon `json:"coupons"`
 }
 
 // AccountingCurrencyExpenseByCategory is an object of the API; see
 // components.schemas.AccountingCurrencyExpenseByCategory in api/openapi/v1.yaml.
 type AccountingCurrencyExpenseByCategory struct {
-	Category    string `json:"category,omitempty"`
-	AmountMinor Int64  `json:"amount_minor,omitempty"`
+	Category    string `json:"category"`
+	AmountMinor Int64  `json:"amount_minor"`
 }
 
 // AccountingPoint is an object of the API; see components.schemas.AccountingPoint in api/openapi/v1.yaml.
 type AccountingPoint struct {
 	// The day, or the first day of the month
-	Bucket           string `json:"bucket,omitempty"`
-	GrossIncomeMinor Int64  `json:"gross_income_minor,omitempty"`
-	TaxMinor         Int64  `json:"tax_minor,omitempty"`
-	RefundsMinor     Int64  `json:"refunds_minor,omitempty"`
-	NetIncomeMinor   Int64  `json:"net_income_minor,omitempty"`
-	ExpensesMinor    Int64  `json:"expenses_minor,omitempty"`
-	ProfitMinor      Int64  `json:"profit_minor,omitempty"`
+	Bucket           string `json:"bucket"`
+	GrossIncomeMinor Int64  `json:"gross_income_minor"`
+	TaxMinor         Int64  `json:"tax_minor"`
+	RefundsMinor     Int64  `json:"refunds_minor"`
+	NetIncomeMinor   Int64  `json:"net_income_minor"`
+	ExpensesMinor    Int64  `json:"expenses_minor"`
+	ProfitMinor      Int64  `json:"profit_minor"`
 	// What coupons took off the invoices paid in this bucket
-	DiscountsMinor Int64 `json:"discounts_minor,omitempty"`
+	DiscountsMinor Int64 `json:"discounts_minor"`
 }
 
 // AccountingSummary is an object of the API; see components.schemas.AccountingSummary in api/openapi/v1.yaml.
 type AccountingSummary struct {
-	FromDate string `json:"from_date,omitempty"`
-	ToDate   string `json:"to_date,omitempty"`
+	FromDate string `json:"from_date"`
+	ToDate   string `json:"to_date"`
 	// One of: day, month.
-	Granularity string `json:"granularity,omitempty"`
-	AppID       string `json:"app_id,omitempty"`
+	Granularity string `json:"granularity"`
+	AppID       string `json:"app_id"`
 	// Ordered by currency code; a currency with no income and no expenses has no block
-	Currencies []AccountingCurrency `json:"currencies,omitempty"`
+	Currencies []AccountingCurrency `json:"currencies"`
 }
 
 // Address: A postal address as printed on an invoice. Every part is optional.
 type Address struct {
+	Line1 string `json:"line1"`
+	Line2 string `json:"line2"`
+	City  string `json:"city"`
+	// State, province or county
+	Region     string `json:"region"`
+	PostalCode string `json:"postal_code"`
+	// ISO 3166-1 alpha-2
+	Country string `json:"country"`
+}
+
+// AddressInput: A postal address as printed on an invoice. Every part is optional.
+type AddressInput struct {
 	Line1 string `json:"line1,omitempty"`
 	Line2 string `json:"line2,omitempty"`
 	City  string `json:"city,omitempty"`
@@ -104,133 +116,162 @@ type Address struct {
 
 // Affiliate is an object of the API; see components.schemas.Affiliate in api/openapi/v1.yaml.
 type Affiliate struct {
-	ID    string `json:"id,omitempty"`
-	Code  string `json:"code,omitempty"`
-	Email string `json:"email,omitempty"`
-	Name  string `json:"name,omitempty"`
+	ID    string `json:"id"`
+	Code  string `json:"code"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
 	// One of: pending, active, suspended.
-	Status string `json:"status,omitempty"`
+	Status string `json:"status"`
 	// One of: manual, bank_transfer.
-	PayoutMethod  string `json:"payout_method,omitempty"`
-	PayoutDetails string `json:"payout_details,omitempty"`
+	PayoutMethod  string `json:"payout_method"`
+	PayoutDetails string `json:"payout_details"`
 	// One of: owner, application.
-	Source string `json:"source,omitempty"`
+	Source string `json:"source"`
 	// The partner has signed in and claimed this affiliate
-	SignedIn    bool      `json:"signed_in,omitempty"`
-	Clicks      string    `json:"clicks,omitempty"`
-	Referrals   string    `json:"referrals,omitempty"`
-	ApproveTime time.Time `json:"approve_time,omitempty"`
-	CreateTime  time.Time `json:"create_time,omitempty"`
+	SignedIn    bool       `json:"signed_in"`
+	Clicks      string     `json:"clicks"`
+	Referrals   string     `json:"referrals"`
+	ApproveTime *time.Time `json:"approve_time"`
+	CreateTime  *time.Time `json:"create_time"`
 	// The partner's public referral link, https://<gateway>/r/<code>
-	Link string `json:"link,omitempty"`
+	Link string `json:"link"`
 }
 
 // AffiliateBalance is an object of the API; see components.schemas.AffiliateBalance in api/openapi/v1.yaml.
 type AffiliateBalance struct {
-	AffiliateID   string `json:"affiliate_id,omitempty"`
-	Currency      string `json:"currency,omitempty"`
-	PendingMinor  Int64  `json:"pending_minor,omitempty"`
-	ApprovedMinor Int64  `json:"approved_minor,omitempty"`
-	PaidMinor     Int64  `json:"paid_minor,omitempty"`
-	ReversedMinor Int64  `json:"reversed_minor,omitempty"`
+	AffiliateID   string `json:"affiliate_id"`
+	Currency      string `json:"currency"`
+	PendingMinor  Int64  `json:"pending_minor"`
+	ApprovedMinor Int64  `json:"approved_minor"`
+	PaidMinor     Int64  `json:"paid_minor"`
+	ReversedMinor Int64  `json:"reversed_minor"`
 }
 
 // AffiliateCommission is an object of the API; see components.schemas.AffiliateCommission in
 // api/openapi/v1.yaml.
 type AffiliateCommission struct {
-	ID                 string `json:"id,omitempty"`
-	AffiliateID        string `json:"affiliate_id,omitempty"`
-	AffiliateCode      string `json:"affiliate_code,omitempty"`
-	CustomerExternalID string `json:"customer_external_id,omitempty"`
+	ID                 string `json:"id"`
+	AffiliateID        string `json:"affiliate_id"`
+	AffiliateCode      string `json:"affiliate_code"`
+	CustomerExternalID string `json:"customer_external_id"`
 	// One of: commission, reversal.
-	Kind          string `json:"kind,omitempty"`
-	InvoiceID     string `json:"invoice_id,omitempty"`
-	InvoiceNumber string `json:"invoice_number,omitempty"`
-	Currency      string `json:"currency,omitempty"`
+	Kind          string `json:"kind"`
+	InvoiceID     string `json:"invoice_id"`
+	InvoiceNumber string `json:"invoice_number"`
+	Currency      string `json:"currency"`
 	// What the invoice came to, tax included
-	InvoiceTotalMinor Int64 `json:"invoice_total_minor,omitempty"`
+	InvoiceTotalMinor Int64 `json:"invoice_total_minor"`
 	// The base: the net, pre-tax amount actually paid
-	NetMinor Int64 `json:"net_minor,omitempty"`
+	NetMinor Int64 `json:"net_minor"`
 	// The commission; negative on a reversal row
-	AmountMinor Int64 `json:"amount_minor,omitempty"`
+	AmountMinor Int64 `json:"amount_minor"`
 	// How much of the commission has been taken back
-	ReversedMinor Int64 `json:"reversed_minor,omitempty"`
+	ReversedMinor Int64 `json:"reversed_minor"`
 	// One of: pending, approved, paid, reversed.
-	Status           string    `json:"status,omitempty"`
-	ParentID         string    `json:"parent_id,omitempty"`
-	EarnTime         time.Time `json:"earn_time,omitempty"`
-	ApproveAfterTime time.Time `json:"approve_after_time,omitempty"`
-	ApproveTime      time.Time `json:"approve_time,omitempty"`
-	PayTime          time.Time `json:"pay_time,omitempty"`
-	PayoutID         string    `json:"payout_id,omitempty"`
+	Status           string     `json:"status"`
+	ParentID         string     `json:"parent_id"`
+	EarnTime         *time.Time `json:"earn_time"`
+	ApproveAfterTime *time.Time `json:"approve_after_time"`
+	ApproveTime      *time.Time `json:"approve_time"`
+	PayTime          *time.Time `json:"pay_time"`
+	PayoutID         string     `json:"payout_id"`
 }
 
 // AffiliateFunnel is an object of the API; see components.schemas.AffiliateFunnel in api/openapi/v1.yaml.
 type AffiliateFunnel struct {
-	FromDate string `json:"from_date,omitempty"`
-	ToDate   string `json:"to_date,omitempty"`
-	Clicks   string `json:"clicks,omitempty"`
+	FromDate string `json:"from_date"`
+	ToDate   string `json:"to_date"`
+	Clicks   string `json:"clicks"`
 	// Customers attributed in the period
-	Referrals string `json:"referrals,omitempty"`
+	Referrals string `json:"referrals"`
 	// Customers with a commission earned in the period
-	PayingCustomers string                       `json:"paying_customers,omitempty"`
-	Commissions     []AffiliateFunnelCommissions `json:"commissions,omitempty"`
+	PayingCustomers string                       `json:"paying_customers"`
+	Commissions     []AffiliateFunnelCommissions `json:"commissions"`
 }
 
 // AffiliateFunnelCommissions is an object of the API; see components.schemas.AffiliateFunnelCommissions in
 // api/openapi/v1.yaml.
 type AffiliateFunnelCommissions struct {
-	Currency      string `json:"currency,omitempty"`
-	EarnedMinor   Int64  `json:"earned_minor,omitempty"`
-	ReversedMinor Int64  `json:"reversed_minor,omitempty"`
+	Currency      string `json:"currency"`
+	EarnedMinor   Int64  `json:"earned_minor"`
+	ReversedMinor Int64  `json:"reversed_minor"`
 }
 
 // AffiliateJournalEntry is an object of the API; see components.schemas.AffiliateJournalEntry in
 // api/openapi/v1.yaml.
 type AffiliateJournalEntry struct {
-	ID          string    `json:"id,omitempty"`
-	PayoutID    string    `json:"payout_id,omitempty"`
-	AffiliateID string    `json:"affiliate_id,omitempty"`
-	PostTime    time.Time `json:"post_time,omitempty"`
-	Currency    string    `json:"currency,omitempty"`
+	ID          string     `json:"id"`
+	PayoutID    string     `json:"payout_id"`
+	AffiliateID string     `json:"affiliate_id"`
+	PostTime    *time.Time `json:"post_time"`
+	Currency    string     `json:"currency"`
 	// One of: commission_expense, commissions_payable, cash.
-	Account     string `json:"account,omitempty"`
-	DebitMinor  Int64  `json:"debit_minor,omitempty"`
-	CreditMinor Int64  `json:"credit_minor,omitempty"`
-	Memo        string `json:"memo,omitempty"`
-	Fake        bool   `json:"fake,omitempty"`
+	Account     string `json:"account"`
+	DebitMinor  Int64  `json:"debit_minor"`
+	CreditMinor Int64  `json:"credit_minor"`
+	Memo        string `json:"memo"`
+	Fake        bool   `json:"fake"`
 }
 
 // AffiliatePayout is an object of the API; see components.schemas.AffiliatePayout in api/openapi/v1.yaml.
 type AffiliatePayout struct {
-	ID            string `json:"id,omitempty"`
-	AffiliateID   string `json:"affiliate_id,omitempty"`
-	AffiliateCode string `json:"affiliate_code,omitempty"`
-	Currency      string `json:"currency,omitempty"`
+	ID            string `json:"id"`
+	AffiliateID   string `json:"affiliate_id"`
+	AffiliateCode string `json:"affiliate_code"`
+	Currency      string `json:"currency"`
 	// Open: what its commissions are worth now. Paid: what was paid
-	TotalMinor      Int64 `json:"total_minor,omitempty"`
-	CommissionCount int   `json:"commission_count,omitempty"`
+	TotalMinor      Int64 `json:"total_minor"`
+	CommissionCount int   `json:"commission_count"`
 	// One of: manual, bank_transfer.
-	Method        string `json:"method,omitempty"`
-	PayoutDetails string `json:"payout_details,omitempty"`
-	Reference     string `json:"reference,omitempty"`
+	Method        string `json:"method"`
+	PayoutDetails string `json:"payout_details"`
+	Reference     string `json:"reference"`
 	// One of: open, paid, cancelled.
-	Status string `json:"status,omitempty"`
+	Status string `json:"status"`
 	// A payout of a sandbox environment: nothing was or will be paid
-	Fake       bool      `json:"fake,omitempty"`
-	CreateTime time.Time `json:"create_time,omitempty"`
-	PayTime    time.Time `json:"pay_time,omitempty"`
-	CancelTime time.Time `json:"cancel_time,omitempty"`
+	Fake       bool       `json:"fake"`
+	CreateTime *time.Time `json:"create_time"`
+	PayTime    *time.Time `json:"pay_time"`
+	CancelTime *time.Time `json:"cancel_time"`
 }
 
 // AffiliateProgram: The rules of the partner program of one environment.
 type AffiliateProgram struct {
 	// paused and draft earn nothing and turn the links off. One of: draft, active, paused.
+	Status string `json:"status"`
+	// One of: percent_bps, fixed.
+	CommissionKind string `json:"commission_kind"`
+	// Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed
+	CommissionValue string `json:"commission_value"`
+	// Only for fixed; a percentage follows the currency of each invoice
+	Currency string `json:"currency"`
+	// One of: first_invoices, months, lifetime.
+	CommissionTerm string `json:"commission_term"`
+	// N invoices or N months; absent for lifetime
+	CommissionTermValue   int `json:"commission_term_value"`
+	AttributionWindowDays int `json:"attribution_window_days"`
+	// How long a commission waits (the refund window) before it can be paid
+	HoldDays       int   `json:"hold_days"`
+	MinPayoutMinor Int64 `json:"min_payout_minor"`
+	// Coupon a referred customer gets on their next checkout
+	ReferredCouponCode string `json:"referred_coupon_code"`
+	DailyClickCap      int    `json:"daily_click_cap"`
+	// Where /r/<code> sends the visitor; empty shows a plain page
+	LandingURL string `json:"landing_url"`
+	// A partner who applies is active at once
+	AutoApprove bool       `json:"auto_approve"`
+	CreateTime  *time.Time `json:"create_time"`
+	UpdateTime  *time.Time `json:"update_time"`
+}
+
+// AffiliateProgramInput: The rules of the partner program of one environment.
+type AffiliateProgramInput struct {
+	// paused and draft earn nothing and turn the links off. One of: draft, active, paused.
 	Status string `json:"status,omitempty"`
 	// One of: percent_bps, fixed.
-	CommissionKind string `json:"commission_kind,omitempty"`
+	CommissionKind string `json:"commission_kind"`
 	// Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed
-	CommissionValue string `json:"commission_value,omitempty"`
+	CommissionValue string `json:"commission_value"`
 	// Only for fixed; a percentage follows the currency of each invoice
 	Currency string `json:"currency,omitempty"`
 	// One of: first_invoices, months, lifetime.
@@ -254,13 +295,13 @@ type AffiliateProgram struct {
 
 // AffiliateReferral is an object of the API; see components.schemas.AffiliateReferral in api/openapi/v1.yaml.
 type AffiliateReferral struct {
-	AffiliateID         string `json:"affiliate_id,omitempty"`
-	AffiliateCode       string `json:"affiliate_code,omitempty"`
-	CustomerExternalID  string `json:"customer_external_id,omitempty"`
-	CustomerEmailMasked string `json:"customer_email_masked,omitempty"`
+	AffiliateID         string `json:"affiliate_id"`
+	AffiliateCode       string `json:"affiliate_code"`
+	CustomerExternalID  string `json:"customer_external_id"`
+	CustomerEmailMasked string `json:"customer_email_masked"`
 	// One of: link, code, api.
-	Source        string    `json:"source,omitempty"`
-	AttributeTime time.Time `json:"attribute_time,omitempty"`
+	Source        string     `json:"source"`
+	AttributeTime *time.Time `json:"attribute_time"`
 }
 
 // ApplyCouponRequest is the request body of ApplyCoupon.
@@ -270,21 +311,20 @@ type ApplyCouponRequest struct {
 
 // Asset is an object of the API; see components.schemas.Asset in api/openapi/v1.yaml.
 type Asset struct {
-	ID        string `json:"id,omitempty"`
-	SessionID string `json:"session_id,omitempty"`
+	ID        string `json:"id"`
+	SessionID string `json:"session_id"`
 	// One of: PURPOSE_INVOICE_LOGO, PURPOSE_INVOICE_ATTACHMENT, PURPOSE_GENERAL.
-	Purpose     string `json:"purpose,omitempty"`
-	Filename    string `json:"filename,omitempty"`
-	ContentType string `json:"content_type,omitempty"`
-	// int64 as a string
-	SizeBytes Int64  `json:"size_bytes,omitempty"`
-	SHA256    string `json:"sha256,omitempty"`
+	Purpose     string `json:"purpose"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	SizeBytes   string `json:"size_bytes"`
+	SHA256      string `json:"sha256"`
 	// One of: ASSET_STATUS_PENDING, ASSET_STATUS_UPLOADING, ASSET_STATUS_SCANNING, ASSET_STATUS_READY,
 	// ASSET_STATUS_REJECTED, ASSET_STATUS_ABORTED, ASSET_STATUS_CORRUPT, ASSET_STATUS_DELETED.
-	Status       string    `json:"status,omitempty"`
-	RejectReason string    `json:"reject_reason,omitempty"`
-	CreateTime   time.Time `json:"create_time,omitempty"`
-	CompleteTime time.Time `json:"complete_time,omitempty"`
+	Status       string     `json:"status"`
+	RejectReason string     `json:"reject_reason"`
+	CreateTime   *time.Time `json:"create_time"`
+	CompleteTime *time.Time `json:"complete_time"`
 }
 
 // AttributeCustomerRequest is the request body of AttributeCustomer.
@@ -298,20 +338,31 @@ type AttributeCustomerRequest struct {
 
 // AttributeCustomerResponse is the response of AttributeCustomer.
 type AttributeCustomerResponse struct {
-	Attributed bool   `json:"attributed,omitempty"`
-	Reason     string `json:"reason,omitempty"`
+	Attributed bool   `json:"attributed"`
+	Reason     string `json:"reason"`
 }
 
 // BillingRun is an object of the API; see components.schemas.BillingRun in api/openapi/v1.yaml.
 type BillingRun struct {
-	TenantID string `json:"tenant_id,omitempty"`
-	PeriodID string `json:"period_id,omitempty"`
+	TenantID string `json:"tenant_id"`
+	PeriodID string `json:"period_id"`
 	// One of: RUN_STATUS_SCHEDULED, RUN_STATUS_WAITING_WATERMARK, RUN_STATUS_RATING, RUN_STATUS_INVOICING,
 	// RUN_STATUS_COMPLETED, RUN_STATUS_FAILED.
-	Status       string    `json:"status,omitempty"`
-	CutoffTime   time.Time `json:"cutoff_time,omitempty"`
-	InvoiceCount int       `json:"invoice_count,omitempty"`
-	LastError    string    `json:"last_error,omitempty"`
+	Status       string     `json:"status"`
+	CutoffTime   *time.Time `json:"cutoff_time"`
+	InvoiceCount int        `json:"invoice_count"`
+	LastError    string     `json:"last_error"`
+	Generation   int        `json:"generation"`
+	StartTime    *time.Time `json:"start_time"`
+	CompleteTime *time.Time `json:"complete_time"`
+}
+
+// CancelSubscriptionResponse is the response of CancelSubscription.
+type CancelSubscriptionResponse struct {
+	Subscription Subscription `json:"subscription"`
+	// Minor units of the subscription's currency credited to the customer; "0" unless credit_unused credited
+	// something
+	CreditedMinor Int64 `json:"credited_minor"`
 }
 
 // ChangePlanRequest is the request body of ChangePlan.
@@ -325,37 +376,38 @@ type ChangePlanRequest struct {
 
 // ChangePlanResponse is the response of ChangePlan.
 type ChangePlanResponse struct {
-	Subscription Subscription `json:"subscription,omitempty"`
-	// Unused part of the old fixed fee
-	CreditMinor Int64 `json:"credit_minor,omitempty"`
-	// Remaining part of the new fixed fee
-	ChargeMinor Int64 `json:"charge_minor,omitempty"`
+	Subscription *Subscription `json:"subscription"`
+	// The old plan's share of the current month's fixed fee, up to change_time (informational; billing recomputes
+	// it)
+	OldPlanFeeMinor Int64 `json:"old_plan_fee_minor"`
+	// The new plan's share of the current month's fixed fee, from change_time (informational; billing recomputes it)
+	NewPlanFeeMinor Int64 `json:"new_plan_fee_minor"`
 }
 
 // ChangeQuote is an object of the API; see components.schemas.ChangeQuote in api/openapi/v1.yaml.
 type ChangeQuote struct {
 	// One of: CHANGE_TIMING_IMMEDIATELY, CHANGE_TIMING_PERIOD_END.
-	Timing string `json:"timing,omitempty"`
+	Timing string `json:"timing"`
 	// One of: CHANGE_PRORATION_PRORATE, CHANGE_PRORATION_FULL, CHANGE_PRORATION_NONE.
-	Proration     string    `json:"proration,omitempty"`
-	EffectiveTime time.Time `json:"effective_time,omitempty"`
-	PeriodStart   time.Time `json:"period_start,omitempty"`
-	PeriodEnd     time.Time `json:"period_end,omitempty"`
-	// The unused
-	CreditMinor Int64 `json:"credit_minor,omitempty"`
+	Proration     string     `json:"proration"`
+	EffectiveTime *time.Time `json:"effective_time"`
+	PeriodStart   *time.Time `json:"period_start"`
+	PeriodEnd     *time.Time `json:"period_end"`
+	// The unused, prepaid part of the old fee
+	CreditMinor Int64 `json:"credit_minor"`
 	// What the new plan costs from the change
-	ChargeMinor Int64 `json:"charge_minor,omitempty"`
+	ChargeMinor Int64 `json:"charge_minor"`
 	// charge - credit: positive is invoiced, negative becomes a credit balance
-	NetMinor         Int64     `json:"net_minor,omitempty"`
-	Currency         string    `json:"currency,omitempty"`
-	NextRenewalTime  time.Time `json:"next_renewal_time,omitempty"`
-	NextRenewalMinor Int64     `json:"next_renewal_minor,omitempty"`
-	PlanCode         string    `json:"plan_code,omitempty"`
-	PlanVersion      int       `json:"plan_version,omitempty"`
+	NetMinor         Int64      `json:"net_minor"`
+	Currency         string     `json:"currency"`
+	NextRenewalTime  *time.Time `json:"next_renewal_time"`
+	NextRenewalMinor Int64      `json:"next_renewal_minor"`
+	PlanCode         string     `json:"plan_code"`
+	PlanVersion      int        `json:"plan_version"`
 	// One of: SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR.
-	Interval string `json:"interval,omitempty"`
+	Interval string `json:"interval"`
 	// The seats after the change
-	Quantity int `json:"quantity,omitempty"`
+	Quantity int `json:"quantity"`
 }
 
 // ChangeRequest is the request body of Change.
@@ -381,33 +433,65 @@ type ChangeRequest struct {
 
 // ChangeSubscriptionResponse is the response of ChangeSubscription.
 type ChangeSubscriptionResponse struct {
-	Subscription Subscription `json:"subscription,omitempty"`
-	Quote        ChangeQuote  `json:"quote,omitempty"`
+	Subscription *Subscription `json:"subscription"`
+	Quote        *ChangeQuote  `json:"quote"`
 	// True when the change waits for the end of the period
-	Scheduled bool `json:"scheduled,omitempty"`
+	Scheduled bool `json:"scheduled"`
 }
 
 // ClearInvoiceLogoResponse is the response of ClearInvoiceLogo.
 type ClearInvoiceLogoResponse struct {
-	InvoiceLogoAssetID string `json:"invoice_logo_asset_id,omitempty"`
+	InvoiceLogoAssetID string `json:"invoice_logo_asset_id"`
+}
+
+// CompleteUploadFilePart is an object of the API; see components.schemas.CompleteUploadFilePart in
+// api/openapi/v1.yaml.
+type CompleteUploadFilePart struct {
+	PartNumber int    `json:"part_number"`
+	Etag       string `json:"etag"`
 }
 
 // CompleteUploadFileRequest is the request body of CompleteUploadFile.
 type CompleteUploadFileRequest struct {
-	Parts []CompleteUploadFileRequestParts `json:"parts"`
-}
-
-// CompleteUploadFileRequestParts is an object of the API; see components.schemas.CompleteUploadFileRequestParts
-// in api/openapi/v1.yaml.
-type CompleteUploadFileRequestParts struct {
-	PartNumber int    `json:"part_number"`
-	Etag       string `json:"etag"`
+	Parts []CompleteUploadFilePart `json:"parts"`
 }
 
 // Coupon is an object of the API; see components.schemas.Coupon in api/openapi/v1.yaml.
 type Coupon struct {
 	// 2–40 letters, digits, - or _
-	Code string `json:"code,omitempty"`
+	Code string `json:"code"`
+	Name string `json:"name"`
+	ID   string `json:"id"`
+	// 1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps
+	PercentBps int `json:"percent_bps"`
+	// Minor units of currency; applies only in that currency
+	AmountMinor Int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
+	// Extra credits on a credit purchase, in the same lot: 1000 is 10 % more. Credit purchases only
+	BonusPercentBps int `json:"bonus_percent_bps"`
+	// Where the coupon works; empty means all three (a bonus coupon: credit purchases)
+	AppliesTo []string `json:"applies_to"`
+	// How long a subscription keeps the coupon; required when it applies to subscriptions. One of:
+	// COUPON_DURATION_ONCE, COUPON_DURATION_REPEATING, COUPON_DURATION_FOREVER.
+	Duration string `json:"duration"`
+	// For a repeating coupon, how many fees
+	DurationPeriods int `json:"duration_periods"`
+	// 0 or absent = unlimited. Counts the uses through all the coupon's codes
+	MaxRedemptions int `json:"max_redemptions"`
+	// The uses that count against the limit
+	Redeemed           int        `json:"redeemed"`
+	ExpireTime         *time.Time `json:"expire_time"`
+	Active             bool       `json:"active"`
+	CreateTime         *time.Time `json:"create_time"`
+	PromotionCodeCount int        `json:"promotion_code_count"`
+	// Do not make the promotion code with the coupon's own text that a new coupon gets
+	WithoutDefaultCode bool `json:"without_default_code"`
+}
+
+// CouponInput is an object of the API; see components.schemas.CouponInput in api/openapi/v1.yaml.
+type CouponInput struct {
+	// 2–40 letters, digits, - or _
+	Code string `json:"code"`
 	Name string `json:"name,omitempty"`
 	ID   string `json:"id,omitempty"`
 	// 1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps
@@ -438,23 +522,23 @@ type Coupon struct {
 
 // CouponRedemption is an object of the API; see components.schemas.CouponRedemption in api/openapi/v1.yaml.
 type CouponRedemption struct {
-	ID         string `json:"id,omitempty"`
-	CouponCode string `json:"coupon_code,omitempty"`
+	ID         string `json:"id"`
+	CouponCode string `json:"coupon_code"`
 	// Empty when an operator applied the coupon or it came from a grant
-	PromotionCode      string `json:"promotion_code,omitempty"`
-	CustomerExternalID string `json:"customer_external_id,omitempty"`
+	PromotionCode      string `json:"promotion_code"`
+	CustomerExternalID string `json:"customer_external_id"`
 	// One of: COUPON_TARGET_SUBSCRIPTION, COUPON_TARGET_CREDIT_PURCHASE, COUPON_TARGET_PAYMENT.
-	Target string `json:"target,omitempty"`
+	Target string `json:"target"`
 	// The subscription, or the invoice
-	TargetID  string `json:"target_id,omitempty"`
-	InvoiceID string `json:"invoice_id,omitempty"`
+	TargetID  string `json:"target_id"`
+	InvoiceID string `json:"invoice_id"`
 	// What it took off; a subscription's grows with each fee
-	DiscountMinor Int64     `json:"discount_minor,omitempty"`
-	BonusCredits  string    `json:"bonus_credits,omitempty"`
-	Currency      string    `json:"currency,omitempty"`
-	CreateTime    time.Time `json:"create_time,omitempty"`
+	DiscountMinor Int64      `json:"discount_minor"`
+	BonusCredits  string     `json:"bonus_credits"`
+	Currency      string     `json:"currency"`
+	CreateTime    *time.Time `json:"create_time"`
 	// Set when a void or a full refund reversed it
-	ReverseTime time.Time `json:"reverse_time,omitempty"`
+	ReverseTime *time.Time `json:"reverse_time"`
 }
 
 // CreateAffiliatePayoutsRequest is the request body of CreateAffiliatePayouts.
@@ -465,18 +549,18 @@ type CreateAffiliatePayoutsRequest struct {
 
 // CreateAffiliatePayoutsResponse is the response of CreateAffiliatePayouts.
 type CreateAffiliatePayoutsResponse struct {
-	Payouts []AffiliatePayout                       `json:"payouts,omitempty"`
-	Skipped []CreateAffiliatePayoutsResponseSkipped `json:"skipped,omitempty"`
+	Payouts []AffiliatePayout               `json:"payouts"`
+	Skipped []CreateAffiliatePayoutsSkipped `json:"skipped"`
 }
 
-// CreateAffiliatePayoutsResponseSkipped is an object of the API; see
-// components.schemas.CreateAffiliatePayoutsResponseSkipped in api/openapi/v1.yaml.
-type CreateAffiliatePayoutsResponseSkipped struct {
-	AffiliateID string `json:"affiliate_id,omitempty"`
-	Currency    string `json:"currency,omitempty"`
-	TotalMinor  Int64  `json:"total_minor,omitempty"`
+// CreateAffiliatePayoutsSkipped is an object of the API; see components.schemas.CreateAffiliatePayoutsSkipped
+// in api/openapi/v1.yaml.
+type CreateAffiliatePayoutsSkipped struct {
+	AffiliateID string `json:"affiliate_id"`
+	Currency    string `json:"currency"`
+	TotalMinor  Int64  `json:"total_minor"`
 	// One of: below_minimum, not_positive.
-	Reason string `json:"reason,omitempty"`
+	Reason string `json:"reason"`
 }
 
 // CreateAffiliateRequest is the request body of CreateAffiliate.
@@ -499,8 +583,8 @@ type CreateCustomerRequest struct {
 	// ISO 3166-1 alpha-2
 	Country string `json:"country,omitempty"`
 	// ISO 4217; default is the tenant's currency
-	BillingCurrency string   `json:"billing_currency,omitempty"`
-	Address         *Address `json:"address,omitempty"`
+	BillingCurrency string        `json:"billing_currency,omitempty"`
+	Address         *AddressInput `json:"address,omitempty"`
 	// The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute
 	// does not fail the creation.
 	ReferralCode string `json:"referral_code,omitempty"`
@@ -515,20 +599,26 @@ type CreateInvoiceLinkRequest struct {
 
 // CreateInvoiceLinkResponse is the response of CreateInvoiceLink.
 type CreateInvoiceLinkResponse struct {
-	Token     string    `json:"token,omitempty"`
-	URL       string    `json:"url,omitempty"`
-	ExpiresAt time.Time `json:"expires_at,omitempty"`
+	Token     string    `json:"token"`
+	URL       string    `json:"url"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 // CreateMeterRequest is the request body of CreateMeter.
 type CreateMeterRequest struct {
 	Code string `json:"code"`
-	// One of: AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX.
+	// How a customer's events of a billing period combine into one quantity. SUM adds the quantities, COUNT counts
+	// the events, MAX keeps the largest quantity. UNIQUE counts the distinct values of the event property named by
+	// value_property (an event without the property is not counted; quantity_scale must be 0). LAST is the quantity
+	// of the latest event of the period by event_time, ties broken by event id; an event that arrives after the
+	// period's cutoff never changes it. A code cannot change into or out of UNIQUE or LAST in a later version. One
+	// of: AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_UNIQUE, AGGREGATION_LAST.
 	Aggregation string `json:"aggregation"`
-	// Required for SUM and MAX
+	// Required for SUM, MAX and LAST (the event property holding the quantity) and for UNIQUE (the property whose
+	// distinct values are counted)
 	ValueProperty string                                   `json:"value_property,omitempty"`
 	Filter        map[string]CreateMeterRequestFilterValue `json:"filter,omitempty"`
-	// Decimal places
+	// Decimal places, fixed per code
 	QuantityScale *int `json:"quantity_scale,omitempty"`
 	// Any unit of your choice: tokens, GB-h, seats, minutes
 	UnitLabel string `json:"unit_label"`
@@ -586,16 +676,16 @@ type CreatePortalLinkRequest struct {
 
 // CreatePortalLinkResponse is the response of CreatePortalLink.
 type CreatePortalLinkResponse struct {
-	Token      string    `json:"token,omitempty"`
-	URL        string    `json:"url,omitempty"`
-	ExpiresAt  time.Time `json:"expires_at,omitempty"`
-	CustomerID string    `json:"customer_id,omitempty"`
+	Token      string    `json:"token"`
+	URL        string    `json:"url"`
+	ExpiresAt  time.Time `json:"expires_at"`
+	CustomerID string    `json:"customer_id"`
 }
 
 // CreatePromotionCodes is an object of the API; see components.schemas.CreatePromotionCodes in
 // api/openapi/v1.yaml.
 type CreatePromotionCodes struct {
-	Template *PromotionCode `json:"template,omitempty"`
+	Template *PromotionCodeInput `json:"template,omitempty"`
 	// Name the codes, or ask for count
 	Codes []string `json:"codes,omitempty"`
 	Count *int     `json:"count,omitempty"`
@@ -605,7 +695,7 @@ type CreatePromotionCodes struct {
 
 // CreatePromotionCodesResponse is the response of CreatePromotionCodes.
 type CreatePromotionCodesResponse struct {
-	Codes []PromotionCode `json:"codes,omitempty"`
+	Codes []PromotionCode `json:"codes"`
 }
 
 // CreateSubscriptionRequest is the request body of CreateSubscription.
@@ -619,7 +709,7 @@ type CreateSubscriptionRequest struct {
 	TrialDays *int `json:"trial_days,omitempty"`
 	// One of: SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR.
 	Interval string `json:"interval,omitempty"`
-	// Default is the customer's billing currency
+	// Default is the customer's billing currency, then the tenant's
 	Currency string `json:"currency,omitempty"`
 	// The payment provider that sells it (for example paddle); default is the tenant's default account
 	Provider string `json:"provider,omitempty"`
@@ -634,30 +724,79 @@ type CreateSubscriptionRequest struct {
 	FeeTiming string `json:"fee_timing,omitempty"`
 }
 
-// CreateUploadSessionRequest is the request body of CreateUploadSession.
-type CreateUploadSessionRequest struct {
-	Files []CreateUploadSessionRequestFiles `json:"files"`
-}
-
-// CreateUploadSessionRequestFiles is an object of the API; see
-// components.schemas.CreateUploadSessionRequestFiles in api/openapi/v1.yaml.
-type CreateUploadSessionRequestFiles struct {
+// CreateUploadSessionFile is an object of the API; see components.schemas.CreateUploadSessionFile in
+// api/openapi/v1.yaml.
+type CreateUploadSessionFile struct {
 	Filename    string `json:"filename"`
 	ContentType string `json:"content_type"`
-	Size        Int64  `json:"size"`
+	Size        int    `json:"size"`
 	// One of: invoice_logo, invoice_attachment, general.
 	Purpose string `json:"purpose"`
 	// Optional hex sha256 of the whole file
 	SHA256 string `json:"sha256,omitempty"`
 }
 
+// CreateUploadSessionRequest is the request body of CreateUploadSession.
+type CreateUploadSessionRequest struct {
+	Files []CreateUploadSessionFile `json:"files"`
+}
+
+// CreateWebhookEndpointRequest is the request body of CreateWebhookEndpoint.
+type CreateWebhookEndpointRequest struct {
+	// https only, a public address, no credentials
+	URL         string `json:"url"`
+	Description string `json:"description,omitempty"`
+	// Empty means every type
+	EventTypes []string `json:"event_types,omitempty"`
+}
+
+// CreatedPaymentLink is an object of the API; see components.schemas.CreatedPaymentLink in api/openapi/v1.yaml.
+type CreatedPaymentLink struct {
+	ID string `json:"id"`
+	// One of: invoice, adhoc, credit_pack.
+	Kind string `json:"kind"`
+	// paid: a single-use link that was paid. One of: active, paid, expired, revoked.
+	Status string `json:"status"`
+	// kind credit_pack: the pack sold
+	PackID string `json:"pack_id"`
+	// kind credit_pack: how many packs one use buys
+	Quantity int `json:"quantity"`
+	// kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the
+	// link was made); int64 as a string
+	Credits Int64 `json:"credits"`
+	// The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the
+	// payer types another
+	PromotionCode string `json:"promotion_code"`
+	// kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)
+	InvoiceID          string `json:"invoice_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	SingleUse          bool   `json:"single_use"`
+	// kind adhoc: int64 minor units as a string
+	AmountMinor Int64      `json:"amount_minor"`
+	Currency    string     `json:"currency"`
+	Description string     `json:"description"`
+	CreateTime  *time.Time `json:"create_time"`
+	ExpireTime  *time.Time `json:"expire_time"`
+	RevokeTime  *time.Time `json:"revoke_time"`
+	// Invoices paid through the link
+	PaidCount    int        `json:"paid_count"`
+	LastPaidTime *time.Time `json:"last_paid_time"`
+	// Invoices the link created (ad hoc)
+	UseCount       int    `json:"use_count"`
+	IdempotencyKey string `json:"idempotency_key"`
+	// The secret part of the link; shown once, empty on a replay
+	Token string `json:"token"`
+	// Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay
+	URL      string `json:"url"`
+	Replayed bool   `json:"replayed"`
+}
+
 // CreditBalance is an object of the API; see components.schemas.CreditBalance in api/openapi/v1.yaml.
 type CreditBalance struct {
-	// int64 as a string
-	Balance Int64 `json:"balance,omitempty"`
+	Balance string `json:"balance"`
 	// When some of the credits run out; null when none does
-	NextExpireTime *time.Time  `json:"next_expire_time,omitempty"`
-	Lots           []CreditLot `json:"lots,omitempty"`
+	NextExpireTime *time.Time  `json:"next_expire_time"`
+	Lots           []CreditLot `json:"lots"`
 }
 
 // CreditConsumeInput is an object of the API; see components.schemas.CreditConsumeInput in api/openapi/v1.yaml.
@@ -666,7 +805,7 @@ type CreditConsumeInput struct {
 	Credits Int64  `json:"credits"`
 	Reason  string `json:"reason,omitempty"`
 	// Required, here or in the Idempotency-Key header
-	IdempotencyKey string `json:"idempotency_key,omitempty"`
+	IdempotencyKey string `json:"idempotency_key"`
 }
 
 // CreditGrantInput is an object of the API; see components.schemas.CreditGrantInput in api/openapi/v1.yaml.
@@ -683,74 +822,70 @@ type CreditGrantInput struct {
 
 // CreditLedgerEntry is an object of the API; see components.schemas.CreditLedgerEntry in api/openapi/v1.yaml.
 type CreditLedgerEntry struct {
-	ID    string `json:"id,omitempty"`
-	LotID string `json:"lot_id,omitempty"`
+	ID    string `json:"id"`
+	LotID string `json:"lot_id"`
 	// One of: grant, consume, expire.
-	Kind string `json:"kind,omitempty"`
+	Kind string `json:"kind"`
 	// int64 as a string; negative for consume and expire
-	Amount         Int64  `json:"amount,omitempty"`
-	Reason         string `json:"reason,omitempty"`
-	IdempotencyKey string `json:"idempotency_key,omitempty"`
+	Amount         Int64  `json:"amount"`
+	Reason         string `json:"reason"`
+	IdempotencyKey string `json:"idempotency_key"`
 	// Where the credits it touched came from; a purchase is a credit pack that was paid for. One of: purchase,
 	// promo, manual.
-	Source     string    `json:"source,omitempty"`
-	CreateTime time.Time `json:"create_time,omitempty"`
+	Source     string     `json:"source"`
+	CreateTime *time.Time `json:"create_time"`
 }
 
 // CreditLedgerPage is an object of the API; see components.schemas.CreditLedgerPage in api/openapi/v1.yaml.
 type CreditLedgerPage struct {
-	Entries       []CreditLedgerEntry `json:"entries,omitempty"`
-	NextPageToken string              `json:"next_page_token,omitempty"`
+	Entries       []CreditLedgerEntry `json:"entries"`
+	NextPageToken string              `json:"next_page_token"`
 }
 
 // CreditLot is an object of the API; see components.schemas.CreditLot in api/openapi/v1.yaml.
 type CreditLot struct {
-	ID string `json:"id,omitempty"`
-	// int64 as a string
-	Granted Int64 `json:"granted,omitempty"`
-	// int64 as a string
-	Remaining Int64 `json:"remaining,omitempty"`
+	ID        string `json:"id"`
+	Granted   string `json:"granted"`
+	Remaining string `json:"remaining"`
 	// One of: purchase, promo, manual.
-	Source string `json:"source,omitempty"`
+	Source string `json:"source"`
 	// Null: the credits never expire
-	ExpireTime *time.Time `json:"expire_time,omitempty"`
-	CreateTime time.Time  `json:"create_time,omitempty"`
+	ExpireTime *time.Time `json:"expire_time"`
+	CreateTime *time.Time `json:"create_time"`
 }
 
 // CreditNote is an object of the API; see components.schemas.CreditNote in api/openapi/v1.yaml.
 type CreditNote struct {
-	ID string `json:"id,omitempty"`
+	ID string `json:"id"`
 	// CN-2026-000007 (live) or SBX-CN-2026-000007 (sandbox)
-	Number             string    `json:"number,omitempty"`
-	InvoiceID          string    `json:"invoice_id,omitempty"`
-	InvoiceNumber      string    `json:"invoice_number,omitempty"`
-	CustomerID         string    `json:"customer_id,omitempty"`
-	CustomerExternalID string    `json:"customer_external_id,omitempty"`
-	Currency           string    `json:"currency,omitempty"`
-	TotalMinor         Int64     `json:"total_minor,omitempty"`
-	Reason             string    `json:"reason,omitempty"`
-	CreateTime         time.Time `json:"create_time,omitempty"`
+	Number             string     `json:"number"`
+	InvoiceID          string     `json:"invoice_id"`
+	InvoiceNumber      string     `json:"invoice_number"`
+	CustomerID         string     `json:"customer_id"`
+	CustomerExternalID string     `json:"customer_external_id"`
+	Currency           string     `json:"currency"`
+	TotalMinor         Int64      `json:"total_minor"`
+	Reason             string     `json:"reason"`
+	CreateTime         *time.Time `json:"create_time"`
 	// Where the amount went: the credit balance, or back to the card. One of: CREDIT_NOTE_DISPOSITION_CREDIT,
 	// CREDIT_NOTE_DISPOSITION_REFUND.
-	Disposition string `json:"disposition,omitempty"`
+	Disposition string `json:"disposition"`
 	// Only for a refund to the card. One of: REFUND_STATE_REQUESTED, REFUND_STATE_REFUNDED, REFUND_STATE_FAILED.
-	RefundState string `json:"refund_state,omitempty"`
-	RefundError string `json:"refund_error,omitempty"`
+	RefundState string `json:"refund_state"`
+	RefundError string `json:"refund_error"`
 }
 
 // CreditPack is an object of the API; see components.schemas.CreditPack in api/openapi/v1.yaml.
 type CreditPack struct {
-	ID   string `json:"id,omitempty"`
-	Name string `json:"name,omitempty"`
-	// int64 as a string
-	Credits Int64 `json:"credits,omitempty"`
-	// int64 as a string
-	PriceMinor Int64     `json:"price_minor,omitempty"`
-	Currency   string    `json:"currency,omitempty"`
-	Active     bool      `json:"active,omitempty"`
-	CreateTime time.Time `json:"create_time,omitempty"`
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Credits    string     `json:"credits"`
+	PriceMinor Int64      `json:"price_minor"`
+	Currency   string     `json:"currency"`
+	Active     bool       `json:"active"`
+	CreateTime *time.Time `json:"create_time"`
 	// 0: the credits bought never expire
-	ValidityDays int `json:"validity_days,omitempty"`
+	ValidityDays int `json:"validity_days"`
 }
 
 // CreditPackInput is an object of the API; see components.schemas.CreditPackInput in api/openapi/v1.yaml.
@@ -767,25 +902,40 @@ type CreditPackInput struct {
 
 // CreditPackList is an object of the API; see components.schemas.CreditPackList in api/openapi/v1.yaml.
 type CreditPackList struct {
-	Packs []CreditPack `json:"packs,omitempty"`
+	Packs []CreditPack `json:"packs"`
 }
 
 // CreditResult is an object of the API; see components.schemas.CreditResult in api/openapi/v1.yaml.
 type CreditResult struct {
 	// int64 as a string: what the customer can spend after the call
-	Balance Int64 `json:"balance,omitempty"`
+	Balance Int64 `json:"balance"`
 	// True when the key had been used: nothing changed
-	Replayed bool `json:"replayed,omitempty"`
+	Replayed bool `json:"replayed"`
 }
 
 // CreditSettings is an object of the API; see components.schemas.CreditSettings in api/openapi/v1.yaml.
 type CreditSettings struct {
+	// int64 credits; 0 turns credits.low off
+	LowThreshold Int64 `json:"low_threshold"`
+}
+
+// CreditSettingsInput is an object of the API; see components.schemas.CreditSettingsInput in
+// api/openapi/v1.yaml.
+type CreditSettingsInput struct {
 	// int64 credits; 0 turns credits.low off
 	LowThreshold *Int64 `json:"low_threshold,omitempty"`
 }
 
 // CurrencyFee is an object of the API; see components.schemas.CurrencyFee in api/openapi/v1.yaml.
 type CurrencyFee struct {
+	Currency     string `json:"currency"`
+	BaseFeeMinor Int64  `json:"base_fee_minor"`
+	// Default month. One of: SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR.
+	Interval string `json:"interval"`
+}
+
+// CurrencyFeeInput is an object of the API; see components.schemas.CurrencyFeeInput in api/openapi/v1.yaml.
+type CurrencyFeeInput struct {
 	Currency     string `json:"currency,omitempty"`
 	BaseFeeMinor *Int64 `json:"base_fee_minor,omitempty"`
 	// Default month. One of: SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR.
@@ -794,36 +944,36 @@ type CurrencyFee struct {
 
 // Customer is an object of the API; see components.schemas.Customer in api/openapi/v1.yaml.
 type Customer struct {
-	ID            string    `json:"id,omitempty"`
-	ExternalID    string    `json:"external_id,omitempty"`
-	Name          string    `json:"name,omitempty"`
-	Email         string    `json:"email,omitempty"`
-	PaymentMethod string    `json:"payment_method,omitempty"`
-	CreateTime    time.Time `json:"create_time,omitempty"`
+	ID            string     `json:"id"`
+	ExternalID    string     `json:"external_id"`
+	Name          string     `json:"name"`
+	Email         string     `json:"email"`
+	PaymentMethod string     `json:"payment_method"`
+	CreateTime    *time.Time `json:"create_time"`
 	// ISO 3166-1 alpha-2
-	Country string `json:"country,omitempty"`
+	Country string `json:"country"`
 	// ISO 4217
-	BillingCurrency    string  `json:"billing_currency,omitempty"`
-	Address            Address `json:"address,omitempty"`
-	TaxID              string  `json:"tax_id,omitempty"`
-	TaxOffice          string  `json:"tax_office,omitempty"`
-	EInvoiceRegistered bool    `json:"e_invoice_registered,omitempty"`
+	BillingCurrency    string   `json:"billing_currency"`
+	Address            *Address `json:"address"`
+	TaxID              string   `json:"tax_id"`
+	TaxOffice          string   `json:"tax_office"`
+	EInvoiceRegistered bool     `json:"e_invoice_registered"`
 }
 
 // CustomerPayment is an object of the API; see components.schemas.CustomerPayment in api/openapi/v1.yaml.
 type CustomerPayment struct {
-	InvoiceID     string `json:"invoice_id,omitempty"`
-	InvoiceNumber string `json:"invoice_number,omitempty"`
+	InvoiceID     string `json:"invoice_id"`
+	InvoiceNumber string `json:"invoice_number"`
 	// One of: charge, refund.
-	Kind string `json:"kind,omitempty"`
+	Kind string `json:"kind"`
 	// One of: succeeded, declined, failed, pending.
-	Status      string `json:"status,omitempty"`
-	AmountMinor Int64  `json:"amount_minor,omitempty"`
-	Currency    string `json:"currency,omitempty"`
-	Provider    string `json:"provider,omitempty"`
+	Status      string `json:"status"`
+	AmountMinor Int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
+	Provider    string `json:"provider"`
 	// One of: sandbox, live.
-	Environment string    `json:"environment,omitempty"`
-	OccurredAt  time.Time `json:"occurred_at,omitempty"`
+	Environment string    `json:"environment"`
+	OccurredAt  time.Time `json:"occurred_at"`
 }
 
 // CustomerTax is an object of the API; see components.schemas.CustomerTax in api/openapi/v1.yaml.
@@ -836,89 +986,120 @@ type CustomerTax struct {
 	EInvoiceRegistered *bool `json:"e_invoice_registered,omitempty"`
 }
 
-// DownloadAssetResponse is the response of DownloadAsset.
-type DownloadAssetResponse struct {
-	URL       string    `json:"url,omitempty"`
-	ExpiresAt time.Time `json:"expires_at,omitempty"`
-}
-
 // DunningSettings is an object of the API; see components.schemas.DunningSettings in api/openapi/v1.yaml.
 type DunningSettings struct {
-	RetryHours []int `json:"retry_hours,omitempty"`
+	RetryHours []int `json:"retry_hours"`
 	// True when nothing was set and the service-wide delays apply
-	DefaultsInUse *bool      `json:"defaults_in_use,omitempty"`
-	UpdateTime    *time.Time `json:"update_time,omitempty"`
+	DefaultsInUse bool       `json:"defaults_in_use"`
+	UpdateTime    *time.Time `json:"update_time"`
+}
+
+// DunningSettingsInput is an object of the API; see components.schemas.DunningSettingsInput in
+// api/openapi/v1.yaml.
+type DunningSettingsInput struct {
+	RetryHours []int `json:"retry_hours,omitempty"`
 }
 
 // EInvoiceDocument is an object of the API; see components.schemas.EInvoiceDocument in api/openapi/v1.yaml.
 type EInvoiceDocument struct {
-	ID string `json:"id,omitempty"`
+	ID string `json:"id"`
 	// One of: invoice, credit_note.
-	Kind         string  `json:"kind,omitempty"`
-	InvoiceID    string  `json:"invoice_id,omitempty"`
-	CreditNoteID *string `json:"credit_note_id,omitempty"`
+	Kind         string  `json:"kind"`
+	InvoiceID    string  `json:"invoice_id"`
+	CreditNoteID *string `json:"credit_note_id"`
 	// Payrudder's invoice or credit note number
-	Number string `json:"number,omitempty"`
+	Number string `json:"number"`
 	// One of: pending, issued, failed, cancelled.
-	Status string `json:"status,omitempty"`
+	Status string `json:"status"`
 	// Empty until known. One of: , e-fatura, e-arsiv, peppol.
-	DocumentType string `json:"document_type,omitempty"`
-	Provider     string `json:"provider,omitempty"`
+	DocumentType string `json:"document_type"`
+	Provider     string `json:"provider"`
 	// One of: sandbox, live.
-	Environment   string     `json:"environment,omitempty"`
-	LegalNumber   string     `json:"legal_number,omitempty"`
-	ExternalID    string     `json:"external_id,omitempty"`
-	Attempts      int        `json:"attempts,omitempty"`
-	NextAttemptAt *time.Time `json:"next_attempt_at,omitempty"`
-	LastErrorKey  string     `json:"last_error_key,omitempty"`
+	Environment   string     `json:"environment"`
+	LegalNumber   string     `json:"legal_number"`
+	ExternalID    string     `json:"external_id"`
+	Attempts      int        `json:"attempts"`
+	NextAttemptAt *time.Time `json:"next_attempt_at"`
+	LastErrorKey  string     `json:"last_error_key"`
 	// English text
-	LastError string     `json:"last_error,omitempty"`
-	HasXml    bool       `json:"has_xml,omitempty"`
-	HasPDF    bool       `json:"has_pdf,omitempty"`
-	CreatedAt time.Time  `json:"created_at,omitempty"`
-	IssuedAt  *time.Time `json:"issued_at,omitempty"`
-	UpdatedAt time.Time  `json:"updated_at,omitempty"`
-}
-
-// EInvoiceFileLink is an object of the API; see components.schemas.EInvoiceFileLink in api/openapi/v1.yaml.
-type EInvoiceFileLink struct {
-	URL       string    `json:"url,omitempty"`
-	ExpiresAt time.Time `json:"expires_at,omitempty"`
+	LastError string     `json:"last_error"`
+	HasXml    bool       `json:"has_xml"`
+	HasPDF    bool       `json:"has_pdf"`
+	CreatedAt *time.Time `json:"created_at"`
+	IssuedAt  *time.Time `json:"issued_at"`
+	UpdatedAt *time.Time `json:"updated_at"`
 }
 
 // EInvoiceList is an object of the API; see components.schemas.EInvoiceList in api/openapi/v1.yaml.
 type EInvoiceList struct {
-	Documents     []EInvoiceDocument `json:"documents,omitempty"`
-	NextPageToken string             `json:"next_page_token,omitempty"`
-	Total         int                `json:"total,omitempty"`
+	Documents     []EInvoiceDocument `json:"documents"`
+	NextPageToken string             `json:"next_page_token"`
+	Total         string             `json:"total"`
+}
+
+// Entitlement is an object of the API; see components.schemas.Entitlement in api/openapi/v1.yaml.
+type Entitlement struct {
+	MeterCode string `json:"meter_code"`
+	// Decimal in meter units; "0" = unlimited
+	Limit string `json:"limit"`
+	// Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100
+	AlertThresholdsPct []int  `json:"alert_thresholds_pct"`
+	Window             string `json:"window"`
+	Mode               string `json:"mode"`
+}
+
+// EntitlementInput is an object of the API; see components.schemas.EntitlementInput in api/openapi/v1.yaml.
+type EntitlementInput struct {
+	MeterCode string `json:"meter_code"`
+	// Decimal in meter units; "0" = unlimited
+	Limit string `json:"limit"`
+	// Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100
+	AlertThresholdsPct []int  `json:"alert_thresholds_pct,omitempty"`
+	Window             string `json:"window,omitempty"`
+	Mode               string `json:"mode,omitempty"`
+}
+
+// EntitlementOverride is an object of the API; see components.schemas.EntitlementOverride in
+// api/openapi/v1.yaml.
+type EntitlementOverride struct {
+	CustomerExternalID string     `json:"customer_external_id"`
+	MeterCode          string     `json:"meter_code"`
+	CreateTime         *time.Time `json:"create_time"`
+	UpdateTime         *time.Time `json:"update_time"`
+	// Decimal in meter units; "0" = unlimited
+	Limit string `json:"limit"`
+	// Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100
+	AlertThresholdsPct []int  `json:"alert_thresholds_pct"`
+	Window             string `json:"window"`
+	Mode               string `json:"mode"`
 }
 
 // EntitlementStatus is an object of the API; see components.schemas.EntitlementStatus in api/openapi/v1.yaml.
 type EntitlementStatus struct {
-	CustomerExternalID string `json:"customer_external_id,omitempty"`
-	MeterCode          string `json:"meter_code,omitempty"`
-	PeriodID           string `json:"period_id,omitempty"`
+	CustomerExternalID string `json:"customer_external_id"`
+	MeterCode          string `json:"meter_code"`
+	PeriodID           string `json:"period_id"`
 	// Exact decimal with the meter's scale
-	Used string `json:"used,omitempty"`
+	Used string `json:"used"`
 	// Exact decimal; null when unlimited
-	Limit     *string `json:"limit,omitempty"`
-	Unlimited bool    `json:"unlimited,omitempty"`
+	Limit     *string `json:"limit"`
+	Unlimited bool    `json:"unlimited"`
 	// unlimited, used < limit, or a soft or notify limit
-	Allowed bool       `json:"allowed,omitempty"`
-	AsOf    *time.Time `json:"as_of,omitempty"`
+	Allowed bool       `json:"allowed"`
+	AsOf    *time.Time `json:"as_of"`
 	// What the limit counts over; month for a meter without a limit. One of: hour, day, week, month, year, lifetime.
-	Window string `json:"window,omitempty"`
+	Window string `json:"window"`
 	// The window used counts in: period_id for a month, 2026-11-05T13, 2026-11-05, 2026-W45, 2026 for a year or all
 	// for the lifetime
-	WindowID string `json:"window_id,omitempty"`
+	WindowID string `json:"window_id"`
 	// When the window ends and used starts again from zero; null for the lifetime window
-	ResetsAt *time.Time `json:"resets_at,omitempty"`
+	ResetsAt *time.Time `json:"resets_at"`
 	// One of: hard, soft, notify.
-	Mode string `json:"mode,omitempty"`
+	Mode string `json:"mode"`
 	// not unlimited and used >= limit, whatever the mode
-	OverLimit bool `json:"over_limit,omitempty"`
-	// The limit is the customer's own override
-	Overridden bool `json:"overridden,omitempty"`
+	OverLimit bool `json:"over_limit"`
+	// The limit is the customer's own override, not its package's
+	Overridden bool `json:"overridden"`
 }
 
 // EntitlementTerms is an object of the API; see components.schemas.EntitlementTerms in api/openapi/v1.yaml.
@@ -934,7 +1115,7 @@ type EntitlementTerms struct {
 // EventResult is an object of the API; see components.schemas.EventResult in api/openapi/v1.yaml.
 type EventResult struct {
 	// One of: accepted, duplicate, rejected.
-	Status string `json:"status,omitempty"`
+	Status string `json:"status"`
 	// Set for accepted and duplicate (the original id).
 	EventID string `json:"event_id,omitempty"`
 	// One of: UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME,
@@ -946,33 +1127,31 @@ type EventResult struct {
 
 // Expense is an object of the API; see components.schemas.Expense in api/openapi/v1.yaml.
 type Expense struct {
-	ID       string `json:"id,omitempty"`
-	AppID    string `json:"app_id,omitempty"`
-	Vendor   string `json:"vendor,omitempty"`
-	Category string `json:"category,omitempty"`
-	// int64 as a string
-	AmountMinor Int64  `json:"amount_minor,omitempty"`
-	Currency    string `json:"currency,omitempty"`
-	IncurredOn  string `json:"incurred_on,omitempty"`
-	Note        string `json:"note,omitempty"`
+	ID          string `json:"id"`
+	AppID       string `json:"app_id"`
+	Vendor      string `json:"vendor"`
+	Category    string `json:"category"`
+	AmountMinor Int64  `json:"amount_minor"`
+	Currency    string `json:"currency"`
+	IncurredOn  string `json:"incurred_on"`
+	Note        string `json:"note"`
 	// One of: none, monthly, yearly.
-	Recurring      string     `json:"recurring,omitempty"`
-	RecurringUntil string     `json:"recurring_until,omitempty"`
-	VoidTime       *time.Time `json:"void_time,omitempty"`
-	VoidReason     string     `json:"void_reason,omitempty"`
-	CreateTime     time.Time  `json:"create_time,omitempty"`
-	UpdateTime     time.Time  `json:"update_time,omitempty"`
-	// int64 as a string
-	TaxMinor          Int64  `json:"tax_minor,omitempty"`
-	AttachmentAssetID string `json:"attachment_asset_id,omitempty"`
+	Recurring         string     `json:"recurring"`
+	RecurringUntil    string     `json:"recurring_until"`
+	VoidTime          *time.Time `json:"void_time"`
+	VoidReason        string     `json:"void_reason"`
+	CreateTime        *time.Time `json:"create_time"`
+	UpdateTime        *time.Time `json:"update_time"`
+	TaxMinor          Int64      `json:"tax_minor"`
+	AttachmentAssetID string     `json:"attachment_asset_id"`
 }
 
 // ExpenseInbox is an object of the API; see components.schemas.ExpenseInbox in api/openapi/v1.yaml.
 type ExpenseInbox struct {
-	Token string `json:"token,omitempty"`
-	AppID string `json:"app_id,omitempty"`
+	Token string `json:"token"`
+	AppID string `json:"app_id"`
 	// invoices+<token>@<inbound domain>; empty when no inbound domain is configured
-	Address string `json:"address,omitempty"`
+	Address string `json:"address"`
 }
 
 // ExpenseInput is an object of the API; see components.schemas.ExpenseInput in api/openapi/v1.yaml.
@@ -999,12 +1178,29 @@ type ExpenseInput struct {
 
 // ExpensePage is an object of the API; see components.schemas.ExpensePage in api/openapi/v1.yaml.
 type ExpensePage struct {
-	Expenses      []Expense `json:"expenses,omitempty"`
-	NextPageToken string    `json:"next_page_token,omitempty"`
+	Expenses      []Expense `json:"expenses"`
+	NextPageToken string    `json:"next_page_token"`
 }
 
 // ExpenseRule is an object of the API; see components.schemas.ExpenseRule in api/openapi/v1.yaml.
 type ExpenseRule struct {
+	ID string `json:"id"`
+	// Case-insensitive text the vendor name contains
+	VendorMatch string `json:"vendor_match"`
+	Category    string `json:"category"`
+	Currency    string `json:"currency"`
+	// The tax share of the amount, in basis points
+	TaxBps int `json:"tax_bps"`
+	// What this vendor usually bills, in minor units; 0: no expectation
+	ExpectedAmountMinor Int64 `json:"expected_amount_minor"`
+	ToleranceBps        int   `json:"tolerance_bps"`
+	// Needs an expected amount
+	AutoApprove bool   `json:"auto_approve"`
+	AppID       string `json:"app_id"`
+}
+
+// ExpenseRuleInput is an object of the API; see components.schemas.ExpenseRuleInput in api/openapi/v1.yaml.
+type ExpenseRuleInput struct {
 	ID string `json:"id,omitempty"`
 	// Case-insensitive text the vendor name contains
 	VendorMatch string `json:"vendor_match"`
@@ -1022,146 +1218,140 @@ type ExpenseRule struct {
 
 // GetAffiliateBalancesResponse is the response of GetAffiliateBalances.
 type GetAffiliateBalancesResponse struct {
-	Balances []AffiliateBalance `json:"balances,omitempty"`
+	Balances []AffiliateBalance `json:"balances"`
+}
+
+// GetAnalyticsUsagePoint is an object of the API; see components.schemas.GetAnalyticsUsagePoint in
+// api/openapi/v1.yaml.
+type GetAnalyticsUsagePoint struct {
+	Start      *time.Time `json:"start"`
+	Quantity   string     `json:"quantity"`
+	EventCount string     `json:"event_count"`
 }
 
 // GetAnalyticsUsageResponse is the response of GetAnalyticsUsage.
 type GetAnalyticsUsageResponse struct {
 	// One of: estimated, exact.
-	Precision     string                            `json:"precision,omitempty"`
-	QuantityScale int                               `json:"quantity_scale,omitempty"`
-	Points        []GetAnalyticsUsageResponsePoints `json:"points,omitempty"`
-}
-
-// GetAnalyticsUsageResponsePoints is an object of the API; see
-// components.schemas.GetAnalyticsUsageResponsePoints in api/openapi/v1.yaml.
-type GetAnalyticsUsageResponsePoints struct {
-	Start    time.Time `json:"start,omitempty"`
-	Quantity string    `json:"quantity,omitempty"`
-	// int64 as a string
-	EventCount Int64 `json:"event_count,omitempty"`
+	Precision     string                   `json:"precision"`
+	QuantityScale int                      `json:"quantity_scale"`
+	Points        []GetAnalyticsUsagePoint `json:"points"`
 }
 
 // GetCustomerUsageResponse is the response of GetCustomerUsage.
 type GetCustomerUsageResponse struct {
-	CustomerExternalID string                          `json:"customer_external_id,omitempty"`
-	PeriodID           string                          `json:"period_id,omitempty"`
-	Usage              []GetCustomerUsageResponseUsage `json:"usage,omitempty"`
+	CustomerExternalID string                  `json:"customer_external_id"`
+	PeriodID           string                  `json:"period_id"`
+	Usage              []GetCustomerUsageUsage `json:"usage"`
 }
 
-// GetCustomerUsageResponseUsage is an object of the API; see components.schemas.GetCustomerUsageResponseUsage
-// in api/openapi/v1.yaml.
-type GetCustomerUsageResponseUsage struct {
-	MeterCode  string `json:"meter_code,omitempty"`
-	Quantity   string `json:"quantity,omitempty"`
-	EventCount Int64  `json:"event_count,omitempty"`
+// GetCustomerUsageUsage is an object of the API; see components.schemas.GetCustomerUsageUsage in
+// api/openapi/v1.yaml.
+type GetCustomerUsageUsage struct {
+	MeterCode  string `json:"meter_code"`
+	Quantity   string `json:"quantity"`
+	EventCount string `json:"event_count"`
+}
+
+// GetDunningReportInvoice is an object of the API; see components.schemas.GetDunningReportInvoice in
+// api/openapi/v1.yaml.
+type GetDunningReportInvoice struct {
+	InvoiceID          string `json:"invoice_id"`
+	Number             string `json:"number"`
+	CustomerExternalID string `json:"customer_external_id"`
+	Period             string `json:"period"`
+	Provider           string `json:"provider"`
+	Currency           string `json:"currency"`
+	TotalMinor         Int64  `json:"total_minor"`
+	// One of: PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, UNCOLLECTIBLE.
+	State           string     `json:"state"`
+	DunningAttempt  int        `json:"dunning_attempt"`
+	NextAttemptTime *time.Time `json:"next_attempt_time"`
+	LastError       string     `json:"last_error"`
 }
 
 // GetDunningReportResponse is the response of GetDunningReport.
 type GetDunningReportResponse struct {
-	Invoices []GetDunningReportResponseInvoices `json:"invoices,omitempty"`
-	Summary  []GetDunningReportResponseSummary  `json:"summary,omitempty"`
+	Invoices []GetDunningReportInvoice `json:"invoices"`
+	Summary  []GetDunningReportSummary `json:"summary"`
 }
 
-// GetDunningReportResponseInvoices is an object of the API; see
-// components.schemas.GetDunningReportResponseInvoices in api/openapi/v1.yaml.
-type GetDunningReportResponseInvoices struct {
-	InvoiceID          string `json:"invoice_id,omitempty"`
-	Number             string `json:"number,omitempty"`
-	CustomerExternalID string `json:"customer_external_id,omitempty"`
-	Period             string `json:"period,omitempty"`
-	Provider           string `json:"provider,omitempty"`
-	Currency           string `json:"currency,omitempty"`
-	TotalMinor         Int64  `json:"total_minor,omitempty"`
-	// One of: PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, UNCOLLECTIBLE.
-	State           string    `json:"state,omitempty"`
-	DunningAttempt  int       `json:"dunning_attempt,omitempty"`
-	NextAttemptTime time.Time `json:"next_attempt_time,omitempty"`
-	LastError       string    `json:"last_error,omitempty"`
-}
-
-// GetDunningReportResponseSummary is an object of the API; see
-// components.schemas.GetDunningReportResponseSummary in api/openapi/v1.yaml.
-type GetDunningReportResponseSummary struct {
-	State      string `json:"state,omitempty"`
-	Provider   string `json:"provider,omitempty"`
-	Currency   string `json:"currency,omitempty"`
-	Invoices   string `json:"invoices,omitempty"`
-	TotalMinor Int64  `json:"total_minor,omitempty"`
-}
-
-// GetInvoicePdfResponse is the response of GetInvoicePdf.
-type GetInvoicePdfResponse struct {
-	URL       string    `json:"url,omitempty"`
-	ExpiresAt time.Time `json:"expires_at,omitempty"`
+// GetDunningReportSummary is an object of the API; see components.schemas.GetDunningReportSummary in
+// api/openapi/v1.yaml.
+type GetDunningReportSummary struct {
+	State      string `json:"state"`
+	Provider   string `json:"provider"`
+	Currency   string `json:"currency"`
+	Invoices   string `json:"invoices"`
+	TotalMinor Int64  `json:"total_minor"`
 }
 
 // GetRevenueReportResponse is the response of GetRevenueReport.
 type GetRevenueReportResponse struct {
-	Rows []GetRevenueReportResponseRows `json:"rows,omitempty"`
+	Rows []GetRevenueReportRow `json:"rows"`
 }
 
-// GetRevenueReportResponseRows is an object of the API; see components.schemas.GetRevenueReportResponseRows in
+// GetRevenueReportRow is an object of the API; see components.schemas.GetRevenueReportRow in
 // api/openapi/v1.yaml.
-type GetRevenueReportResponseRows struct {
-	Period   string `json:"period,omitempty"`
-	Provider string `json:"provider,omitempty"`
-	Country  string `json:"country,omitempty"`
-	Currency string `json:"currency,omitempty"`
-	Invoices string `json:"invoices,omitempty"`
+type GetRevenueReportRow struct {
+	Period   string `json:"period"`
+	Provider string `json:"provider"`
+	Country  string `json:"country"`
+	Currency string `json:"currency"`
+	Invoices string `json:"invoices"`
 	// Finalized invoices that are not void
-	BilledMinor Int64 `json:"billed_minor,omitempty"`
+	BilledMinor Int64 `json:"billed_minor"`
 	// Paid
-	CollectedMinor Int64 `json:"collected_minor,omitempty"`
+	CollectedMinor Int64 `json:"collected_minor"`
 	// Invoices that were refunded
-	RefundedMinor Int64 `json:"refunded_minor,omitempty"`
+	RefundedMinor Int64 `json:"refunded_minor"`
 	// Open
-	OutstandingMinor   Int64 `json:"outstanding_minor,omitempty"`
-	UncollectibleMinor Int64 `json:"uncollectible_minor,omitempty"`
-	VoidMinor          Int64 `json:"void_minor,omitempty"`
+	OutstandingMinor   Int64 `json:"outstanding_minor"`
+	UncollectibleMinor Int64 `json:"uncollectible_minor"`
+	VoidMinor          Int64 `json:"void_minor"`
 	// Credit notes issued against these invoices
-	CreditedMinor Int64 `json:"credited_minor,omitempty"`
+	CreditedMinor Int64 `json:"credited_minor"`
 }
 
 // GetSubscriptionReportResponse is the response of GetSubscriptionReport.
 type GetSubscriptionReportResponse struct {
-	Month string                              `json:"month,omitempty"`
-	Rows  []GetSubscriptionReportResponseRows `json:"rows,omitempty"`
+	Month string                     `json:"month"`
+	Rows  []GetSubscriptionReportRow `json:"rows"`
 }
 
-// GetSubscriptionReportResponseRows is an object of the API; see
-// components.schemas.GetSubscriptionReportResponseRows in api/openapi/v1.yaml.
-type GetSubscriptionReportResponseRows struct {
-	Provider string `json:"provider,omitempty"`
-	Country  string `json:"country,omitempty"`
-	Currency string `json:"currency,omitempty"`
-	Active   string `json:"active,omitempty"`
-	Trialing string `json:"trialing,omitempty"`
-	Paused   string `json:"paused,omitempty"`
-	PastDue  string `json:"past_due,omitempty"`
+// GetSubscriptionReportRow is an object of the API; see components.schemas.GetSubscriptionReportRow in
+// api/openapi/v1.yaml.
+type GetSubscriptionReportRow struct {
+	Provider string `json:"provider"`
+	Country  string `json:"country"`
+	Currency string `json:"currency"`
+	Active   string `json:"active"`
+	Trialing string `json:"trialing"`
+	Paused   string `json:"paused"`
+	PastDue  string `json:"past_due"`
 	// Fixed fees per month of active and past due subscriptions
-	MrrMinor         Int64  `json:"mrr_minor,omitempty"`
-	NewSubscriptions string `json:"new_subscriptions,omitempty"`
-	NewMrrMinor      Int64  `json:"new_mrr_minor,omitempty"`
+	MrrMinor         Int64  `json:"mrr_minor"`
+	NewSubscriptions string `json:"new_subscriptions"`
+	NewMrrMinor      Int64  `json:"new_mrr_minor"`
 	// Ended with no successor; a plan change or provider migration is not churn
-	Churned         string `json:"churned,omitempty"`
-	ChurnedMrrMinor Int64  `json:"churned_mrr_minor,omitempty"`
+	Churned         string `json:"churned"`
+	ChurnedMrrMinor Int64  `json:"churned_mrr_minor"`
+	PlanCode        string `json:"plan_code"`
+}
+
+// GetTopCustomersCustomer is an object of the API; see components.schemas.GetTopCustomersCustomer in
+// api/openapi/v1.yaml.
+type GetTopCustomersCustomer struct {
+	CustomerID         string `json:"customer_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	Quantity           string `json:"quantity"`
+	EventCount         string `json:"event_count"`
 }
 
 // GetTopCustomersResponse is the response of GetTopCustomers.
 type GetTopCustomersResponse struct {
-	Precision     string                             `json:"precision,omitempty"`
-	QuantityScale int                                `json:"quantity_scale,omitempty"`
-	Customers     []GetTopCustomersResponseCustomers `json:"customers,omitempty"`
-}
-
-// GetTopCustomersResponseCustomers is an object of the API; see
-// components.schemas.GetTopCustomersResponseCustomers in api/openapi/v1.yaml.
-type GetTopCustomersResponseCustomers struct {
-	CustomerID         string `json:"customer_id,omitempty"`
-	CustomerExternalID string `json:"customer_external_id,omitempty"`
-	Quantity           string `json:"quantity,omitempty"`
-	EventCount         string `json:"event_count,omitempty"`
+	Precision     string                    `json:"precision"`
+	QuantityScale int                       `json:"quantity_scale"`
+	Customers     []GetTopCustomersCustomer `json:"customers"`
 }
 
 // GrantCustomerCouponRequest is the request body of GrantCustomerCoupon.
@@ -1174,27 +1364,27 @@ type GrantCustomerCouponRequest struct {
 
 // GrantCustomerCouponResponse is the response of GrantCustomerCoupon.
 type GrantCustomerCouponResponse struct {
-	Granted bool `json:"granted,omitempty"`
+	Granted bool `json:"granted"`
 }
 
 // InboxItem is an object of the API; see components.schemas.InboxItem in api/openapi/v1.yaml.
 type InboxItem struct {
-	ID          string `json:"id,omitempty"`
-	AppID       string `json:"app_id,omitempty"`
-	From        string `json:"from,omitempty"`
-	Subject     string `json:"subject,omitempty"`
-	Filename    string `json:"filename,omitempty"`
-	ContentType string `json:"content_type,omitempty"`
-	SizeBytes   string `json:"size_bytes,omitempty"`
+	ID          string `json:"id"`
+	AppID       string `json:"app_id"`
+	From        string `json:"from"`
+	Subject     string `json:"subject"`
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type"`
+	SizeBytes   string `json:"size_bytes"`
 	// One of: to_review, accepted, dismissed.
-	Status      string    `json:"status,omitempty"`
-	ExpenseID   string    `json:"expense_id,omitempty"`
-	ReceiveTime time.Time `json:"receive_time,omitempty"`
+	Status      string     `json:"status"`
+	ExpenseID   string     `json:"expense_id"`
+	ReceiveTime *time.Time `json:"receive_time"`
 }
 
 // InboxItemPage is an object of the API; see components.schemas.InboxItemPage in api/openapi/v1.yaml.
 type InboxItemPage struct {
-	Items []InboxItem `json:"items,omitempty"`
+	Items []InboxItem `json:"items"`
 }
 
 // IncomingEvent is an object of the API; see components.schemas.IncomingEvent in api/openapi/v1.yaml.
@@ -1205,7 +1395,7 @@ type IncomingEvent struct {
 	MeterCode          string `json:"meter_code"`
 	// Non-negative decimal with at most the meter's quantity_scale decimal places. A string or a JSON number.
 	Quantity Decimal `json:"quantity"`
-	// Not older than 35 days
+	// Not older than 35 days, not more than 5 minutes ahead.
 	EventTime time.Time `json:"event_time"`
 	// At most 32 entries and 4 KiB in total.
 	Properties map[string]string `json:"properties,omitempty"`
@@ -1219,64 +1409,63 @@ type IngestEventsRequest struct {
 // IngestEventsResponse is the response of IngestEvents.
 type IngestEventsResponse struct {
 	// One per request event, same order.
-	Results []EventResult `json:"results,omitempty"`
+	Results []EventResult `json:"results"`
 }
 
 // Invoice is an object of the API; see components.schemas.Invoice in api/openapi/v1.yaml.
 type Invoice struct {
-	ID                 string `json:"id,omitempty"`
-	CustomerID         string `json:"customer_id,omitempty"`
-	CustomerExternalID string `json:"customer_external_id,omitempty"`
-	PeriodID           string `json:"period_id,omitempty"`
+	ID                 string `json:"id"`
+	CustomerID         string `json:"customer_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	PeriodID           string `json:"period_id"`
 	// FEE: a fixed fee invoiced in advance for one period, or what a plan change moved. LINK: made from an ad-hoc
 	// payment link. One of: REGULAR, CORRECTION, FEE, LINK.
-	Kind          string `json:"kind,omitempty"`
-	Number        string `json:"number,omitempty"`
-	Currency      string `json:"currency,omitempty"`
-	SubtotalMinor Int64  `json:"subtotal_minor,omitempty"`
-	// int64 minor units as a string
-	TotalMinor Int64 `json:"total_minor,omitempty"`
+	Kind          string `json:"kind"`
+	Number        string `json:"number"`
+	Currency      string `json:"currency"`
+	SubtotalMinor Int64  `json:"subtotal_minor"`
+	TotalMinor    Int64  `json:"total_minor"`
 	// One of: draft, open, paid, uncollectible, void.
-	Status       string        `json:"status,omitempty"`
-	SagaState    string        `json:"saga_state,omitempty"`
-	CreateTime   time.Time     `json:"create_time,omitempty"`
-	FinalizeTime time.Time     `json:"finalize_time,omitempty"`
-	Lines        []InvoiceLine `json:"lines,omitempty"`
+	Status       string        `json:"status"`
+	SagaState    string        `json:"saga_state"`
+	CreateTime   *time.Time    `json:"create_time"`
+	FinalizeTime *time.Time    `json:"finalize_time"`
+	Lines        []InvoiceLine `json:"lines"`
 	// Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice
 	// reads fill it.
-	Payments []InvoicePayment `json:"payments,omitempty"`
+	Payments      []InvoicePayment `json:"payments"`
+	PlanVersionID string           `json:"plan_version_id"`
+	PDFObjectKey  string           `json:"pdf_object_key"`
 }
 
 // InvoiceLine is an object of the API; see components.schemas.InvoiceLine in api/openapi/v1.yaml.
 type InvoiceLine struct {
-	LineNo int `json:"line_no,omitempty"`
+	LineNo int `json:"line_no"`
 	// One of: BASE_FEE, USAGE, LATE_USAGE, CREDIT, CORRECTION, DISCOUNT, TAX.
-	Kind           string `json:"kind,omitempty"`
-	MeterCode      string `json:"meter_code,omitempty"`
-	OriginPeriodID string `json:"origin_period_id,omitempty"`
-	Quantity       string `json:"quantity,omitempty"`
-	// int64 minor units as a string
-	AmountMinor Int64  `json:"amount_minor,omitempty"`
-	Description string `json:"description,omitempty"`
+	Kind           string `json:"kind"`
+	MeterCode      string `json:"meter_code"`
+	OriginPeriodID string `json:"origin_period_id"`
+	Quantity       string `json:"quantity"`
+	AmountMinor    Int64  `json:"amount_minor"`
+	Description    string `json:"description"`
 	// The service period the line covers
-	ServiceFrom time.Time `json:"service_from,omitempty"`
-	ServiceTo   time.Time `json:"service_to,omitempty"`
+	ServiceFrom *time.Time `json:"service_from"`
+	ServiceTo   *time.Time `json:"service_to"`
 }
 
 // InvoicePayment is an object of the API; see components.schemas.InvoicePayment in api/openapi/v1.yaml.
 type InvoicePayment struct {
-	ID        string `json:"id,omitempty"`
-	InvoiceID string `json:"invoice_id,omitempty"`
+	ID        string `json:"id"`
+	InvoiceID string `json:"invoice_id"`
 	// One of: bank_transfer, cash, other.
-	Method string `json:"method,omitempty"`
-	// int64 minor units as a string
-	AmountMinor Int64     `json:"amount_minor,omitempty"`
-	Currency    string    `json:"currency,omitempty"`
-	ReceivedAt  time.Time `json:"received_at,omitempty"`
-	Reference   string    `json:"reference,omitempty"`
-	Note        string    `json:"note,omitempty"`
-	RecordedBy  string    `json:"recorded_by,omitempty"`
-	RecordedAt  time.Time `json:"recorded_at,omitempty"`
+	Method      string     `json:"method"`
+	AmountMinor Int64      `json:"amount_minor"`
+	Currency    string     `json:"currency"`
+	ReceivedAt  *time.Time `json:"received_at"`
+	Reference   string     `json:"reference"`
+	Note        string     `json:"note"`
+	RecordedBy  string     `json:"recorded_by"`
+	RecordedAt  *time.Time `json:"recorded_at"`
 }
 
 // LinkAffiliatePromotionCodeRequest is the request body of LinkAffiliatePromotionCode.
@@ -1286,159 +1475,172 @@ type LinkAffiliatePromotionCodeRequest struct {
 
 // ListAffiliateCommissionsResponse is the response of ListAffiliateCommissions.
 type ListAffiliateCommissionsResponse struct {
-	Commissions   []AffiliateCommission `json:"commissions,omitempty"`
-	NextPageToken string                `json:"next_page_token,omitempty"`
-	Total         int                   `json:"total,omitempty"`
+	Commissions   []AffiliateCommission `json:"commissions"`
+	NextPageToken string                `json:"next_page_token"`
+	Total         int                   `json:"total"`
 }
 
 // ListAffiliateJournalResponse is the response of ListAffiliateJournal.
 type ListAffiliateJournalResponse struct {
-	Entries       []AffiliateJournalEntry              `json:"entries,omitempty"`
-	Totals        []ListAffiliateJournalResponseTotals `json:"totals,omitempty"`
-	NextPageToken string                               `json:"next_page_token,omitempty"`
-	Total         int                                  `json:"total,omitempty"`
+	Entries       []AffiliateJournalEntry     `json:"entries"`
+	Totals        []ListAffiliateJournalTotal `json:"totals"`
+	NextPageToken string                      `json:"next_page_token"`
+	Total         int                         `json:"total"`
 }
 
-// ListAffiliateJournalResponseTotals is an object of the API; see
-// components.schemas.ListAffiliateJournalResponseTotals in api/openapi/v1.yaml.
-type ListAffiliateJournalResponseTotals struct {
-	Currency    string `json:"currency,omitempty"`
-	DebitMinor  Int64  `json:"debit_minor,omitempty"`
-	CreditMinor Int64  `json:"credit_minor,omitempty"`
+// ListAffiliateJournalTotal is an object of the API; see components.schemas.ListAffiliateJournalTotal in
+// api/openapi/v1.yaml.
+type ListAffiliateJournalTotal struct {
+	Currency    string `json:"currency"`
+	DebitMinor  Int64  `json:"debit_minor"`
+	CreditMinor Int64  `json:"credit_minor"`
 }
 
 // ListAffiliatePayoutsResponse is the response of ListAffiliatePayouts.
 type ListAffiliatePayoutsResponse struct {
-	Payouts       []AffiliatePayout `json:"payouts,omitempty"`
-	NextPageToken string            `json:"next_page_token,omitempty"`
-	Total         int               `json:"total,omitempty"`
+	Payouts       []AffiliatePayout `json:"payouts"`
+	NextPageToken string            `json:"next_page_token"`
+	Total         int               `json:"total"`
 }
 
 // ListAffiliateReferralsResponse is the response of ListAffiliateReferrals.
 type ListAffiliateReferralsResponse struct {
-	Referrals     []AffiliateReferral `json:"referrals,omitempty"`
-	NextPageToken string              `json:"next_page_token,omitempty"`
-	Total         int                 `json:"total,omitempty"`
+	Referrals     []AffiliateReferral `json:"referrals"`
+	NextPageToken string              `json:"next_page_token"`
+	Total         int                 `json:"total"`
 }
 
 // ListAffiliatesResponse is the response of ListAffiliates.
 type ListAffiliatesResponse struct {
-	Affiliates    []Affiliate `json:"affiliates,omitempty"`
-	NextPageToken string      `json:"next_page_token,omitempty"`
-	Total         int         `json:"total,omitempty"`
+	Affiliates    []Affiliate `json:"affiliates"`
+	NextPageToken string      `json:"next_page_token"`
+	Total         int         `json:"total"`
 }
 
 // ListAssetsResponse is the response of ListAssets.
 type ListAssetsResponse struct {
-	Assets        []Asset `json:"assets,omitempty"`
-	NextPageToken string  `json:"next_page_token,omitempty"`
+	Assets        []Asset `json:"assets"`
+	NextPageToken string  `json:"next_page_token"`
 }
 
 // ListCouponRedemptionsResponse is the response of ListCouponRedemptions.
 type ListCouponRedemptionsResponse struct {
-	Redemptions   []CouponRedemption `json:"redemptions,omitempty"`
-	NextPageToken string             `json:"next_page_token,omitempty"`
-	Total         int                `json:"total,omitempty"`
+	Redemptions   []CouponRedemption `json:"redemptions"`
+	NextPageToken string             `json:"next_page_token"`
+	Total         int                `json:"total"`
 }
 
 // ListCouponsResponse is the response of ListCoupons.
 type ListCouponsResponse struct {
-	Coupons []Coupon `json:"coupons,omitempty"`
+	Coupons []Coupon `json:"coupons"`
 }
 
 // ListCreditNotesResponse is the response of ListCreditNotes.
 type ListCreditNotesResponse struct {
-	CreditNotes   []CreditNote `json:"credit_notes,omitempty"`
-	NextPageToken string       `json:"next_page_token,omitempty"`
+	CreditNotes   []CreditNote `json:"credit_notes"`
+	NextPageToken string       `json:"next_page_token"`
 }
 
 // ListCustomerPaymentsResponse is the response of ListCustomerPayments.
 type ListCustomerPaymentsResponse struct {
-	Invoices []Invoice         `json:"invoices,omitempty"`
-	Payments []CustomerPayment `json:"payments,omitempty"`
+	Invoices []Invoice         `json:"invoices"`
+	Payments []CustomerPayment `json:"payments"`
 }
 
 // ListCustomersResponse is the response of ListCustomers.
 type ListCustomersResponse struct {
-	Customers     []Customer `json:"customers,omitempty"`
-	NextPageToken string     `json:"next_page_token,omitempty"`
+	Customers     []Customer `json:"customers"`
+	NextPageToken string     `json:"next_page_token"`
 }
 
 // ListEntitlementOverridesResponse is the response of ListEntitlementOverrides.
 type ListEntitlementOverridesResponse struct {
-	Overrides []any `json:"overrides,omitempty"`
+	Overrides []EntitlementOverride `json:"overrides"`
 }
 
 // ListEntitlementsResponse is the response of ListEntitlements.
 type ListEntitlementsResponse struct {
-	Items []EntitlementStatus `json:"items,omitempty"`
+	Items []EntitlementStatus `json:"items"`
 }
 
 // ListExpenseRulesResponse is the response of ListExpenseRules.
 type ListExpenseRulesResponse struct {
-	Rules []ExpenseRule `json:"rules,omitempty"`
+	Rules []ExpenseRule `json:"rules"`
 }
 
 // ListInvoicesResponse is the response of ListInvoices.
 type ListInvoicesResponse struct {
-	Invoices      []Invoice `json:"invoices,omitempty"`
-	NextPageToken string    `json:"next_page_token,omitempty"`
+	Invoices      []Invoice `json:"invoices"`
+	NextPageToken string    `json:"next_page_token"`
 }
 
 // ListMetersResponse is the response of ListMeters.
 type ListMetersResponse struct {
-	Meters []any `json:"meters,omitempty"`
+	Meters []Meter `json:"meters"`
 }
 
 // ListPaymentLinksResponse is the response of ListPaymentLinks.
 type ListPaymentLinksResponse struct {
-	Links         []PaymentLink `json:"links,omitempty"`
-	NextPageToken string        `json:"next_page_token,omitempty"`
+	Links         []PaymentLink `json:"links"`
+	NextPageToken string        `json:"next_page_token"`
 }
 
 // ListPaymentsResponse is the response of ListPayments.
 type ListPaymentsResponse struct {
-	Payments  []Payment `json:"payments,omitempty"`
-	Truncated bool      `json:"truncated,omitempty"`
+	Payments  []Payment `json:"payments"`
+	Truncated bool      `json:"truncated"`
 }
 
 // ListPlansResponse is the response of ListPlans.
 type ListPlansResponse struct {
-	Plans []Plan `json:"plans,omitempty"`
+	Plans []Plan `json:"plans"`
 }
 
 // ListPromotionCodesResponse is the response of ListPromotionCodes.
 type ListPromotionCodesResponse struct {
-	Codes         []PromotionCode `json:"codes,omitempty"`
-	NextPageToken string          `json:"next_page_token,omitempty"`
-	Total         int             `json:"total,omitempty"`
+	Codes         []PromotionCode `json:"codes"`
+	NextPageToken string          `json:"next_page_token"`
+	Total         int             `json:"total"`
 }
 
 // ListSubscriptionsResponse is the response of ListSubscriptions.
 type ListSubscriptionsResponse struct {
-	Subscriptions []Subscription `json:"subscriptions,omitempty"`
-	NextPageToken string         `json:"next_page_token,omitempty"`
+	Subscriptions []Subscription `json:"subscriptions"`
+	NextPageToken string         `json:"next_page_token"`
 }
 
 // ListWebhookDeliveriesResponse is the response of ListWebhookDeliveries.
 type ListWebhookDeliveriesResponse struct {
-	Deliveries    []WebhookDelivery `json:"deliveries,omitempty"`
-	NextPageToken string            `json:"next_page_token,omitempty"`
+	Deliveries    []WebhookDelivery `json:"deliveries"`
+	NextPageToken string            `json:"next_page_token"`
 }
 
 // ListWebhookEndpointsResponse is the response of ListWebhookEndpoints.
 type ListWebhookEndpointsResponse struct {
-	Endpoints []WebhookEndpoint `json:"endpoints,omitempty"`
+	Endpoints []WebhookEndpoint `json:"endpoints"`
 }
 
 // MailSettings is an object of the API; see components.schemas.MailSettings in api/openapi/v1.yaml.
 type MailSettings struct {
-	Categories []MailSettingsCategories `json:"categories,omitempty"`
+	Categories []MailSettingsCategories `json:"categories"`
 }
 
 // MailSettingsCategories is an object of the API; see components.schemas.MailSettingsCategories in
 // api/openapi/v1.yaml.
 type MailSettingsCategories struct {
+	// One of: invoice_issued, payment_receipts, payment_failed, usage_alerts, system.
+	Category string `json:"category"`
+	Enabled  bool   `json:"enabled"`
+}
+
+// MailSettingsInput is an object of the API; see components.schemas.MailSettingsInput in api/openapi/v1.yaml.
+type MailSettingsInput struct {
+	Categories []MailSettingsInputCategories `json:"categories,omitempty"`
+}
+
+// MailSettingsInputCategories is an object of the API; see components.schemas.MailSettingsInputCategories in
+// api/openapi/v1.yaml.
+type MailSettingsInputCategories struct {
 	// One of: invoice_issued, payment_receipts, payment_failed, usage_alerts, system.
 	Category string `json:"category,omitempty"`
 	Enabled  *bool  `json:"enabled,omitempty"`
@@ -1450,92 +1652,115 @@ type MarkAffiliatePayoutPaidRequest struct {
 	Reference string `json:"reference,omitempty"`
 }
 
+// Meter is an object of the API; see components.schemas.Meter in api/openapi/v1.yaml.
+type Meter struct {
+	Code string `json:"code"`
+	// One of: AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX, AGGREGATION_UNIQUE, AGGREGATION_LAST.
+	Aggregation string `json:"aggregation"`
+	// Required for SUM, MAX, UNIQUE and LAST
+	ValueProperty string                      `json:"value_property"`
+	Filter        map[string]MeterFilterValue `json:"filter"`
+	// Decimal places, fixed per code
+	QuantityScale int `json:"quantity_scale"`
+	// Any unit of your choice: tokens, GB-h, seats, minutes
+	UnitLabel string `json:"unit_label"`
+	// Any group of your choice to file the meter under (compute, storage, AI); changes nothing in metering or
+	// billing
+	Category   string     `json:"category"`
+	Version    int        `json:"version"`
+	CreateTime *time.Time `json:"create_time"`
+}
+
+// MeterFilterValue is an object of the API; see components.schemas.MeterFilterValue in api/openapi/v1.yaml.
+type MeterFilterValue struct {
+	Values []string `json:"values"`
+}
+
 // Payment is an object of the API; see components.schemas.Payment in api/openapi/v1.yaml.
 type Payment struct {
 	// The ledger row that carries the outcome
-	ID        string `json:"id,omitempty"`
-	InvoiceID string `json:"invoice_id,omitempty"`
-	Provider  string `json:"provider,omitempty"`
+	ID        string `json:"id"`
+	InvoiceID string `json:"invoice_id"`
+	Provider  string `json:"provider"`
 	// One of: charge, refund.
-	Kind string `json:"kind,omitempty"`
+	Kind string `json:"kind"`
 	// One of: paid, processing, failed, refunded.
-	Status string `json:"status,omitempty"`
-	// int64 minor units as a string
-	AmountMinor Int64     `json:"amount_minor,omitempty"`
-	Currency    string    `json:"currency,omitempty"`
-	OccurredAt  time.Time `json:"occurred_at,omitempty"`
+	Status      string    `json:"status"`
+	AmountMinor Int64     `json:"amount_minor"`
+	Currency    string    `json:"currency"`
+	OccurredAt  time.Time `json:"occurred_at"`
 }
 
 // PaymentLink is an object of the API; see components.schemas.PaymentLink in api/openapi/v1.yaml.
 type PaymentLink struct {
-	ID string `json:"id,omitempty"`
+	ID string `json:"id"`
 	// One of: invoice, adhoc, credit_pack.
-	Kind string `json:"kind,omitempty"`
+	Kind string `json:"kind"`
 	// paid: a single-use link that was paid. One of: active, paid, expired, revoked.
-	Status string `json:"status,omitempty"`
+	Status string `json:"status"`
 	// kind credit_pack: the pack sold
-	PackID string `json:"pack_id,omitempty"`
+	PackID string `json:"pack_id"`
 	// kind credit_pack: how many packs one use buys
-	Quantity int `json:"quantity,omitempty"`
+	Quantity int `json:"quantity"`
 	// kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the
 	// link was made); int64 as a string
-	Credits Int64 `json:"credits,omitempty"`
+	Credits Int64 `json:"credits"`
 	// The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the
 	// payer types another
-	PromotionCode string `json:"promotion_code,omitempty"`
+	PromotionCode string `json:"promotion_code"`
 	// kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)
-	InvoiceID          string `json:"invoice_id,omitempty"`
-	CustomerExternalID string `json:"customer_external_id,omitempty"`
-	SingleUse          bool   `json:"single_use,omitempty"`
+	InvoiceID          string `json:"invoice_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	SingleUse          bool   `json:"single_use"`
 	// kind adhoc: int64 minor units as a string
-	AmountMinor Int64      `json:"amount_minor,omitempty"`
-	Currency    string     `json:"currency,omitempty"`
-	Description string     `json:"description,omitempty"`
-	CreateTime  time.Time  `json:"create_time,omitempty"`
-	ExpireTime  time.Time  `json:"expire_time,omitempty"`
-	RevokeTime  *time.Time `json:"revoke_time,omitempty"`
+	AmountMinor Int64      `json:"amount_minor"`
+	Currency    string     `json:"currency"`
+	Description string     `json:"description"`
+	CreateTime  *time.Time `json:"create_time"`
+	ExpireTime  *time.Time `json:"expire_time"`
+	RevokeTime  *time.Time `json:"revoke_time"`
 	// Invoices paid through the link
-	PaidCount    int        `json:"paid_count,omitempty"`
-	LastPaidTime *time.Time `json:"last_paid_time,omitempty"`
+	PaidCount    int        `json:"paid_count"`
+	LastPaidTime *time.Time `json:"last_paid_time"`
 	// Invoices the link created (ad hoc)
-	UseCount       int    `json:"use_count,omitempty"`
-	IdempotencyKey string `json:"idempotency_key,omitempty"`
+	UseCount       int    `json:"use_count"`
+	IdempotencyKey string `json:"idempotency_key"`
 }
 
 // Plan is an object of the API; see components.schemas.Plan in api/openapi/v1.yaml.
 type Plan struct {
-	ID            string    `json:"id,omitempty"`
-	Code          string    `json:"code,omitempty"`
-	Name          string    `json:"name,omitempty"`
-	LatestVersion int       `json:"latest_version,omitempty"`
-	CreateTime    time.Time `json:"create_time,omitempty"`
+	ID            string     `json:"id"`
+	Code          string     `json:"code"`
+	Name          string     `json:"name"`
+	LatestVersion int        `json:"latest_version"`
+	CreateTime    *time.Time `json:"create_time"`
 }
 
 // PlanVersion is an object of the API; see components.schemas.PlanVersion in api/openapi/v1.yaml.
 type PlanVersion struct {
-	ID           string    `json:"id,omitempty"`
-	PlanID       string    `json:"plan_id,omitempty"`
-	PlanCode     string    `json:"plan_code,omitempty"`
-	Version      int       `json:"version,omitempty"`
-	BaseFeeMinor Int64     `json:"base_fee_minor,omitempty"`
-	Prices       []Price   `json:"prices,omitempty"`
-	Entitlements []any     `json:"entitlements,omitempty"`
-	PublishTime  time.Time `json:"publish_time,omitempty"`
+	ID           string        `json:"id"`
+	PlanID       string        `json:"plan_id"`
+	PlanCode     string        `json:"plan_code"`
+	Version      int           `json:"version"`
+	BaseFeeMinor Int64         `json:"base_fee_minor"`
+	Prices       []Price       `json:"prices"`
+	Entitlements []Entitlement `json:"entitlements"`
+	PublishTime  *time.Time    `json:"publish_time"`
 	// The trial a new subscription to this version gets unless its request says otherwise; 0 is none
-	TrialDays int `json:"trial_days,omitempty"`
+	TrialDays int `json:"trial_days"`
 	// Fixed fees other than the tenant currency's monthly one, per currency and interval
-	Fees []CurrencyFee `json:"fees,omitempty"`
+	Fees []CurrencyFee `json:"fees"`
 }
 
 // PresignPartsResponse is the response of PresignParts.
 type PresignPartsResponse struct {
-	Parts []PresignedPart `json:"parts,omitempty"`
+	Parts []PresignedPart `json:"parts"`
 }
 
 // PresignedPart is an object of the API; see components.schemas.PresignedPart in api/openapi/v1.yaml.
 type PresignedPart struct {
-	PartNumber int    `json:"part_number,omitempty"`
-	URL        string `json:"url,omitempty"`
+	PartNumber int    `json:"part_number"`
+	URL        string `json:"url"`
 }
 
 // PreviewRoutingRequest is the request body of PreviewRouting.
@@ -1547,51 +1772,115 @@ type PreviewRoutingRequest struct {
 // PreviewRoutingResponse is the response of PreviewRouting.
 type PreviewRoutingResponse struct {
 	// Empty when no rule matches (the tenant's default account)
-	Provider string `json:"provider,omitempty"`
+	Provider string `json:"provider"`
 	// -1 when no rule matches
-	RuleIndex int `json:"rule_index,omitempty"`
-	// One of: quotify, provider.
-	Owner     string `json:"owner,omitempty"`
-	CanCharge bool   `json:"can_charge,omitempty"`
+	RuleIndex int `json:"rule_index"`
+	// One of: payrudder, provider.
+	Owner     string `json:"owner"`
+	CanCharge bool   `json:"can_charge"`
 }
 
 // Price is an object of the API; see components.schemas.Price in api/openapi/v1.yaml.
 type Price struct {
-	MeterCode string        `json:"meter_code"`
-	PerUnit   *PricePerUnit `json:"per_unit,omitempty"`
-	Tiered    *PriceTiered  `json:"tiered,omitempty"`
-	Package   *PricePackage `json:"package,omitempty"`
+	MeterCode string       `json:"meter_code"`
+	PerUnit   PricePerUnit `json:"per_unit,omitempty"`
+	Tiered    PriceTiered  `json:"tiered,omitempty"`
+	Package   PricePackage `json:"package,omitempty"`
+	// Quantity of every billing period that is free: the model prices only what is above it. Empty or 0 = none
+	Included string `json:"included"`
+}
+
+// PriceInput is an object of the API; see components.schemas.PriceInput in api/openapi/v1.yaml.
+type PriceInput struct {
+	MeterCode string             `json:"meter_code"`
+	PerUnit   *PriceInputPerUnit `json:"per_unit,omitempty"`
+	Tiered    *PriceInputTiered  `json:"tiered,omitempty"`
+	Package   *PriceInputPackage `json:"package,omitempty"`
 	// Quantity of every billing period that is free: the model prices only what is above it. Empty or 0 = none
 	Included string `json:"included,omitempty"`
 }
 
-// PricePackage is an object of the API; see components.schemas.PricePackage in api/openapi/v1.yaml.
-type PricePackage struct {
+// PriceInputPackage is an object of the API; see components.schemas.PriceInputPackage in api/openapi/v1.yaml.
+type PriceInputPackage struct {
 	PackageSize       string `json:"package_size,omitempty"`
 	PackagePriceMinor *Int64 `json:"package_price_minor,omitempty"`
 }
 
-// PricePerUnit is an object of the API; see components.schemas.PricePerUnit in api/openapi/v1.yaml.
-type PricePerUnit struct {
+// PriceInputPerUnit is an object of the API; see components.schemas.PriceInputPerUnit in api/openapi/v1.yaml.
+type PriceInputPerUnit struct {
 	UnitPrice string `json:"unit_price,omitempty"`
 }
 
-// PriceTiered is an object of the API; see components.schemas.PriceTiered in api/openapi/v1.yaml.
-type PriceTiered struct {
-	Tiers []PriceTieredTiers `json:"tiers,omitempty"`
+// PriceInputTiered is an object of the API; see components.schemas.PriceInputTiered in api/openapi/v1.yaml.
+type PriceInputTiered struct {
+	Tiers []PriceInputTieredTiers `json:"tiers,omitempty"`
 }
 
-// PriceTieredTiers is an object of the API; see components.schemas.PriceTieredTiers in api/openapi/v1.yaml.
-type PriceTieredTiers struct {
+// PriceInputTieredTiers is an object of the API; see components.schemas.PriceInputTieredTiers in
+// api/openapi/v1.yaml.
+type PriceInputTieredTiers struct {
 	// Empty on the last (unbounded) tier
 	UpTo         string `json:"up_to,omitempty"`
 	UnitPrice    string `json:"unit_price,omitempty"`
 	FlatFeeMinor *Int64 `json:"flat_fee_minor,omitempty"`
 }
 
+// PricePackage is an object of the API; see components.schemas.PricePackage in api/openapi/v1.yaml.
+type PricePackage struct {
+	PackageSize       string `json:"package_size"`
+	PackagePriceMinor Int64  `json:"package_price_minor"`
+}
+
+// PricePerUnit is an object of the API; see components.schemas.PricePerUnit in api/openapi/v1.yaml.
+type PricePerUnit struct {
+	UnitPrice string `json:"unit_price"`
+}
+
+// PriceTiered is an object of the API; see components.schemas.PriceTiered in api/openapi/v1.yaml.
+type PriceTiered struct {
+	Tiers []PriceTieredTiers `json:"tiers"`
+}
+
+// PriceTieredTiers is an object of the API; see components.schemas.PriceTieredTiers in api/openapi/v1.yaml.
+type PriceTieredTiers struct {
+	// Empty on the last (unbounded) tier
+	UpTo         string `json:"up_to"`
+	UnitPrice    string `json:"unit_price"`
+	FlatFeeMinor Int64  `json:"flat_fee_minor"`
+}
+
 // PromotionCode: What a customer types. Many codes point to one coupon, each with its own limit, expiry and
 // restrictions.
 type PromotionCode struct {
+	ID         string `json:"id"`
+	CouponID   string `json:"coupon_id"`
+	CouponCode string `json:"coupon_code"`
+	Code       string `json:"code"`
+	Active     bool   `json:"active"`
+	// 0 or absent = unlimited
+	MaxRedemptions int        `json:"max_redemptions"`
+	Redeemed       int        `json:"redeemed"`
+	ExpireTime     *time.Time `json:"expire_time"`
+	// Only a customer who has paid for nothing yet
+	FirstPurchaseOnly bool `json:"first_purchase_only"`
+	OnePerCustomer    bool `json:"one_per_customer"`
+	// A purchase under this amount cannot use the code; needs min_amount_currency
+	MinAmountMinor    Int64  `json:"min_amount_minor"`
+	MinAmountCurrency string `json:"min_amount_currency"`
+	// Plan codes; empty means any
+	AllowedPlans []string `json:"allowed_plans"`
+	// Credit pack ids; empty means any
+	AllowedPacks []string `json:"allowed_packs"`
+	// Empty means any
+	AllowedCurrencies []string `json:"allowed_currencies"`
+	// A void or full refund gives the use back to the count. Off by default
+	RestoreOnReversal bool       `json:"restore_on_reversal"`
+	CreateTime        *time.Time `json:"create_time"`
+}
+
+// PromotionCodeInput: What a customer types. Many codes point to one coupon, each with its own limit, expiry
+// and restrictions.
+type PromotionCodeInput struct {
 	ID         string `json:"id,omitempty"`
 	CouponID   string `json:"coupon_id,omitempty"`
 	CouponCode string `json:"coupon_code,omitempty"`
@@ -1620,26 +1909,27 @@ type PromotionCode struct {
 
 // PromotionQuote is an object of the API; see components.schemas.PromotionQuote in api/openapi/v1.yaml.
 type PromotionQuote struct {
-	Applied       bool   `json:"applied,omitempty"`
-	CouponCode    string `json:"coupon_code,omitempty"`
-	CouponName    string `json:"coupon_name,omitempty"`
-	PromotionCode string `json:"promotion_code,omitempty"`
-	DiscountMinor Int64  `json:"discount_minor,omitempty"`
-	BonusCredits  string `json:"bonus_credits,omitempty"`
-	// The price after the discount
-	TotalMinor Int64  `json:"total_minor,omitempty"`
-	Currency   string `json:"currency,omitempty"`
+	Applied       bool   `json:"applied"`
+	CouponCode    string `json:"coupon_code"`
+	CouponName    string `json:"coupon_name"`
+	PromotionCode string `json:"promotion_code"`
+	DiscountMinor Int64  `json:"discount_minor"`
+	BonusCredits  string `json:"bonus_credits"`
+	// The price after the discount, never below zero
+	TotalMinor   Int64  `json:"total_minor"`
+	Currency     string `json:"currency"`
+	RedemptionID string `json:"redemption_id"`
 }
 
 // PromotionQuoteRequest is the request body of PromotionQuote.
 type PromotionQuoteRequest struct {
-	Code string `json:"code"`
+	Code string `json:"code,omitempty"`
 	// Needed by codes that are first-purchase-only or one per customer
 	CustomerExternalID string `json:"customer_external_id,omitempty"`
 	// One of: COUPON_TARGET_CREDIT_PURCHASE, COUPON_TARGET_PAYMENT.
 	Target string `json:"target"`
 	// The price before the discount
-	AmountMinor Int64  `json:"amount_minor"`
+	AmountMinor *Int64 `json:"amount_minor,omitempty"`
 	Currency    string `json:"currency"`
 	// The credit pack id, for codes restricted to some packs
 	Item string `json:"item,omitempty"`
@@ -1651,13 +1941,12 @@ type PromotionQuoteRequest struct {
 
 // PublishPlanVersionRequest is the request body of PublishPlanVersion.
 type PublishPlanVersionRequest struct {
-	// int64 minor units
 	BaseFeeMinor *Int64 `json:"base_fee_minor,omitempty"`
 	// Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no
 	// duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's
-	Fees         []CurrencyFee `json:"fees,omitempty"`
-	Prices       []Price       `json:"prices,omitempty"`
-	Entitlements []any         `json:"entitlements,omitempty"`
+	Fees         []CurrencyFeeInput `json:"fees,omitempty"`
+	Prices       []PriceInput       `json:"prices,omitempty"`
+	Entitlements []EntitlementInput `json:"entitlements,omitempty"`
 	// The trial a new subscription to this version gets unless its request says otherwise; 0 is none
 	TrialDays *int `json:"trial_days,omitempty"`
 }
@@ -1684,33 +1973,49 @@ type ReverseAffiliateCommissionRequest struct {
 // ReverseAffiliateCommissionResponse is the response of ReverseAffiliateCommission.
 type ReverseAffiliateCommissionResponse struct {
 	// How much this call took back; 0 on a repeat
-	ReversedMinor Int64               `json:"reversed_minor,omitempty"`
-	Commission    AffiliateCommission `json:"commission,omitempty"`
+	ReversedMinor Int64                `json:"reversed_minor"`
+	Commission    *AffiliateCommission `json:"commission"`
 }
 
 // RevokeInvoiceLinksResponse is the response of RevokeInvoiceLinks.
 type RevokeInvoiceLinksResponse struct {
-	Revoked int `json:"revoked,omitempty"`
+	Revoked int `json:"revoked"`
 }
 
 // RevokePortalLinksResponse is the response of RevokePortalLinks.
 type RevokePortalLinksResponse struct {
-	Revoked int `json:"revoked,omitempty"`
+	Revoked int `json:"revoked"`
 }
 
 // RoutingRules is an object of the API; see components.schemas.RoutingRules in api/openapi/v1.yaml.
 type RoutingRules struct {
-	Rules []RoutingRulesRules `json:"rules,omitempty"`
+	Rules []RoutingRulesRules `json:"rules"`
 }
 
-// RoutingRulesRules is an object of the API; see components.schemas.RoutingRulesRules in api/openapi/v1.yaml.
-type RoutingRulesRules struct {
+// RoutingRulesInput is an object of the API; see components.schemas.RoutingRulesInput in api/openapi/v1.yaml.
+type RoutingRulesInput struct {
+	Rules []RoutingRulesInputRules `json:"rules,omitempty"`
+}
+
+// RoutingRulesInputRules is an object of the API; see components.schemas.RoutingRulesInputRules in
+// api/openapi/v1.yaml.
+type RoutingRulesInputRules struct {
 	// ISO 3166-1 alpha-2; empty matches any country
 	Country string `json:"country,omitempty"`
 	// ISO 4217; empty matches any currency
 	Currency string `json:"currency,omitempty"`
 	// One of: iyzico, paddle, banktransfer.
 	Provider string `json:"provider,omitempty"`
+}
+
+// RoutingRulesRules is an object of the API; see components.schemas.RoutingRulesRules in api/openapi/v1.yaml.
+type RoutingRulesRules struct {
+	// ISO 3166-1 alpha-2; empty matches any country
+	Country string `json:"country"`
+	// ISO 4217; empty matches any currency
+	Currency string `json:"currency"`
+	// One of: iyzico, paddle, banktransfer.
+	Provider string `json:"provider"`
 }
 
 // SandboxClosePeriodRequest is the request body of SandboxClosePeriod.
@@ -1720,18 +2025,18 @@ type SandboxClosePeriodRequest struct {
 
 // SandboxScenariosResponse is the response of SandboxScenarios.
 type SandboxScenariosResponse struct {
-	Scenarios []SandboxScenariosResponseScenarios `json:"scenarios,omitempty"`
+	Scenarios []SandboxScenariosScenario `json:"scenarios"`
 }
 
-// SandboxScenariosResponseScenarios is an object of the API; see
-// components.schemas.SandboxScenariosResponseScenarios in api/openapi/v1.yaml.
-type SandboxScenariosResponseScenarios struct {
-	Scenario      string `json:"scenario,omitempty"`
-	PaymentMethod string `json:"payment_method,omitempty"`
+// SandboxScenariosScenario is an object of the API; see components.schemas.SandboxScenariosScenario in
+// api/openapi/v1.yaml.
+type SandboxScenariosScenario struct {
+	Scenario      string `json:"scenario"`
+	PaymentMethod string `json:"payment_method"`
 	// One of: paid, uncollectible, paid_after_retry, paid_after_status_query, paid_after_recharge.
-	Outcome     string `json:"outcome,omitempty"`
+	Outcome     string `json:"outcome"`
 	Default     bool   `json:"default,omitempty"`
-	Description string `json:"description,omitempty"`
+	Description string `json:"description"`
 }
 
 // SandboxSimulateInvoiceRequest is the request body of SandboxSimulateInvoice.
@@ -1742,23 +2047,23 @@ type SandboxSimulateInvoiceRequest struct {
 
 // SandboxSimulateInvoiceResponse is the response of SandboxSimulateInvoice.
 type SandboxSimulateInvoiceResponse struct {
-	InvoiceID          string `json:"invoice_id,omitempty"`
-	CustomerExternalID string `json:"customer_external_id,omitempty"`
-	Scenario           string `json:"scenario,omitempty"`
-	PaymentMethod      string `json:"payment_method,omitempty"`
-	Retried            bool   `json:"retried,omitempty"`
+	InvoiceID          string `json:"invoice_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	Scenario           string `json:"scenario"`
+	PaymentMethod      string `json:"payment_method"`
+	Retried            bool   `json:"retried"`
 	RetryError         string `json:"retry_error,omitempty"`
 }
 
 // ScheduledChange is an object of the API; see components.schemas.ScheduledChange in api/openapi/v1.yaml.
 type ScheduledChange struct {
-	PlanCode    string `json:"plan_code,omitempty"`
-	PlanVersion int    `json:"plan_version,omitempty"`
+	PlanCode    string `json:"plan_code"`
+	PlanVersion int    `json:"plan_version"`
 	// One of: SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR.
-	Interval      string    `json:"interval,omitempty"`
-	EffectiveTime time.Time `json:"effective_time,omitempty"`
+	Interval      string     `json:"interval"`
+	EffectiveTime *time.Time `json:"effective_time"`
 	// The seats the subscription has from then
-	Quantity int `json:"quantity,omitempty"`
+	Quantity int `json:"quantity"`
 }
 
 // SetInvoiceLogoRequest is the request body of SetInvoiceLogo.
@@ -1768,7 +2073,7 @@ type SetInvoiceLogoRequest struct {
 
 // SetInvoiceLogoResponse is the response of SetInvoiceLogo.
 type SetInvoiceLogoResponse struct {
-	InvoiceLogoAssetID string `json:"invoice_logo_asset_id,omitempty"`
+	InvoiceLogoAssetID string `json:"invoice_logo_asset_id"`
 }
 
 // SetPaymentMethodRequest is the request body of SetPaymentMethod.
@@ -1783,53 +2088,77 @@ type SetPaymentScenarioRequest struct {
 	Scenario string `json:"scenario"`
 }
 
+// SignedUrl: A time-limited link to a stored file (invoice PDF, uploaded asset, e-invoice document). GET it
+// without credentials until expires_at.
+type SignedUrl struct {
+	URL string `json:"url"`
+	// RFC 3339, UTC
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
 // Subscription is an object of the API; see components.schemas.Subscription in api/openapi/v1.yaml.
 type Subscription struct {
-	ID                 string     `json:"id,omitempty"`
-	CustomerID         string     `json:"customer_id,omitempty"`
-	CustomerExternalID string     `json:"customer_external_id,omitempty"`
-	PlanVersionID      string     `json:"plan_version_id,omitempty"`
-	StartTime          time.Time  `json:"start_time,omitempty"`
-	EndTime            *time.Time `json:"end_time,omitempty"`
-	CreateTime         time.Time  `json:"create_time,omitempty"`
+	ID                 string     `json:"id"`
+	CustomerID         string     `json:"customer_id"`
+	CustomerExternalID string     `json:"customer_external_id"`
+	PlanVersionID      string     `json:"plan_version_id"`
+	StartTime          *time.Time `json:"start_time"`
+	EndTime            *time.Time `json:"end_time"`
+	CreateTime         *time.Time `json:"create_time"`
 	// One of: SUBSCRIPTION_STATE_TRIALING, SUBSCRIPTION_STATE_ACTIVE, SUBSCRIPTION_STATE_PAST_DUE,
 	// SUBSCRIPTION_STATE_PAUSED, SUBSCRIPTION_STATE_CANCELLED.
-	State string `json:"state,omitempty"`
+	State string `json:"state"`
 	// One of: SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR.
-	Interval          string     `json:"interval,omitempty"`
-	Currency          string     `json:"currency,omitempty"`
-	TrialEndTime      *time.Time `json:"trial_end_time,omitempty"`
-	CancelAtPeriodEnd bool       `json:"cancel_at_period_end,omitempty"`
-	PauseTime         *time.Time `json:"pause_time,omitempty"`
-	Provider          string     `json:"provider,omitempty"`
-	// The provider's id of the subscription
-	ProviderRef string `json:"provider_ref,omitempty"`
+	Interval          string     `json:"interval"`
+	Currency          string     `json:"currency"`
+	TrialEndTime      *time.Time `json:"trial_end_time"`
+	CancelAtPeriodEnd bool       `json:"cancel_at_period_end"`
+	PauseTime         *time.Time `json:"pause_time"`
+	Provider          string     `json:"provider"`
+	// The provider's id of the subscription, once it is linked
+	ProviderRef string `json:"provider_ref"`
 	// Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider. One of:
-	// quotify, provider.
-	Owner       string `json:"owner,omitempty"`
-	PlanCode    string `json:"plan_code,omitempty"`
-	PlanVersion int    `json:"plan_version,omitempty"`
+	// payrudder, provider.
+	Owner       string `json:"owner"`
+	PlanCode    string `json:"plan_code"`
+	PlanVersion int    `json:"plan_version"`
 	// One of: FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS.
-	FeeTiming       string          `json:"fee_timing,omitempty"`
-	ScheduledChange ScheduledChange `json:"scheduled_change,omitempty"`
-	CouponCode      string          `json:"coupon_code,omitempty"`
+	FeeTiming       string           `json:"fee_timing"`
+	ScheduledChange *ScheduledChange `json:"scheduled_change"`
+	CouponCode      string           `json:"coupon_code"`
 	// Seats: a plain multiplier of the plan's fixed fee, 1 unless set
-	Quantity int `json:"quantity,omitempty"`
+	Quantity      int    `json:"quantity"`
+	ChangedFromID string `json:"changed_from_id"`
 }
 
 // TaxRates is an object of the API; see components.schemas.TaxRates in api/openapi/v1.yaml.
 type TaxRates struct {
-	Rates []TaxRatesRates `json:"rates,omitempty"`
+	Rates []TaxRatesRates `json:"rates"`
 }
 
-// TaxRatesRates is an object of the API; see components.schemas.TaxRatesRates in api/openapi/v1.yaml.
-type TaxRatesRates struct {
+// TaxRatesInput is an object of the API; see components.schemas.TaxRatesInput in api/openapi/v1.yaml.
+type TaxRatesInput struct {
+	Rates []TaxRatesInputRates `json:"rates,omitempty"`
+}
+
+// TaxRatesInputRates is an object of the API; see components.schemas.TaxRatesInputRates in api/openapi/v1.yaml.
+type TaxRatesInputRates struct {
 	// ISO 3166-1 alpha-2; empty for every country without a rate of its own
 	Country string `json:"country,omitempty"`
 	// Shown on the invoice, e.g. VAT
 	Name string `json:"name,omitempty"`
 	// 2000 is 20 %
 	RateBps *int `json:"rate_bps,omitempty"`
+}
+
+// TaxRatesRates is an object of the API; see components.schemas.TaxRatesRates in api/openapi/v1.yaml.
+type TaxRatesRates struct {
+	// ISO 3166-1 alpha-2; empty for every country without a rate of its own
+	Country string `json:"country"`
+	// Shown on the invoice, e.g. VAT
+	Name string `json:"name"`
+	// 2000 is 20 %
+	RateBps int `json:"rate_bps"`
 }
 
 // UpdateAffiliateRequest is the request body of UpdateAffiliate.
@@ -1844,15 +2173,14 @@ type UpdateAffiliateRequest struct {
 
 // UploadAssetsResponse is the response of UploadAssets.
 type UploadAssetsResponse struct {
-	Results []UploadAssetsResponseResults `json:"results,omitempty"`
+	Results []UploadAssetsResult `json:"results"`
 }
 
-// UploadAssetsResponseResults is an object of the API; see components.schemas.UploadAssetsResponseResults in
-// api/openapi/v1.yaml.
-type UploadAssetsResponseResults struct {
-	Filename string `json:"filename,omitempty"`
+// UploadAssetsResult is an object of the API; see components.schemas.UploadAssetsResult in api/openapi/v1.yaml.
+type UploadAssetsResult struct {
+	Filename string `json:"filename"`
 	// One of: created, rejected.
-	Status    string `json:"status,omitempty"`
+	Status    string `json:"status"`
 	Asset     Asset  `json:"asset,omitempty"`
 	ErrorCode string `json:"error_code,omitempty"`
 	Message   string `json:"message,omitempty"`
@@ -1860,68 +2188,70 @@ type UploadAssetsResponseResults struct {
 
 // UploadFile is an object of the API; see components.schemas.UploadFile in api/openapi/v1.yaml.
 type UploadFile struct {
-	AssetID        string                    `json:"asset_id,omitempty"`
-	Filename       string                    `json:"filename,omitempty"`
-	Status         string                    `json:"status,omitempty"`
-	RejectReason   string                    `json:"reject_reason,omitempty"`
-	Size           string                    `json:"size,omitempty"`
-	PartSize       string                    `json:"part_size,omitempty"`
-	PartCount      int                       `json:"part_count,omitempty"`
-	PresignedParts []PresignedPart           `json:"presigned_parts,omitempty"`
-	UploadedParts  []UploadFileUploadedParts `json:"uploaded_parts,omitempty"`
+	AssetID        string                    `json:"asset_id"`
+	Filename       string                    `json:"filename"`
+	Status         string                    `json:"status"`
+	RejectReason   string                    `json:"reject_reason"`
+	Size           string                    `json:"size"`
+	PartSize       string                    `json:"part_size"`
+	PartCount      int                       `json:"part_count"`
+	PresignedParts []PresignedPart           `json:"presigned_parts"`
+	UploadedParts  []UploadFileUploadedParts `json:"uploaded_parts"`
 }
 
 // UploadFileUploadedParts is an object of the API; see components.schemas.UploadFileUploadedParts in
 // api/openapi/v1.yaml.
 type UploadFileUploadedParts struct {
-	PartNumber int    `json:"part_number,omitempty"`
-	Size       string `json:"size,omitempty"`
-	Etag       string `json:"etag,omitempty"`
+	PartNumber int    `json:"part_number"`
+	Size       string `json:"size"`
+	Etag       string `json:"etag"`
 }
 
 // UploadSession is an object of the API; see components.schemas.UploadSession in api/openapi/v1.yaml.
 type UploadSession struct {
-	ID string `json:"id,omitempty"`
+	ID string `json:"id"`
 	// One of: OPEN, COMPLETED, EXPIRED, ABORTED.
-	Status     string       `json:"status,omitempty"`
-	ExpireTime time.Time    `json:"expire_time,omitempty"`
-	Files      []UploadFile `json:"files,omitempty"`
+	Status     string       `json:"status"`
+	ExpireTime *time.Time   `json:"expire_time"`
+	Files      []UploadFile `json:"files"`
 }
 
 // VoidExpenseRequest is the request body of VoidExpense.
 type VoidExpenseRequest struct {
-	Reason string `json:"reason,omitempty"`
+	Reason string `json:"reason"`
 }
 
 // WebhookDelivery is an object of the API; see components.schemas.WebhookDelivery in api/openapi/v1.yaml.
 type WebhookDelivery struct {
-	ID string `json:"id,omitempty"`
+	ID string `json:"id"`
 	// The id inside the delivered body and the Payrudder-Event-Id header
-	EventID    string `json:"event_id,omitempty"`
-	EventType  string `json:"event_type,omitempty"`
-	EndpointID string `json:"endpoint_id,omitempty"`
+	EventID string `json:"event_id"`
+	// A WebhookEventType, or ping for the test event
+	EventType  string `json:"event_type"`
+	EndpointID string `json:"endpoint_id"`
 	// One of: WEBHOOK_DELIVERY_STATE_PENDING, WEBHOOK_DELIVERY_STATE_DELIVERED, WEBHOOK_DELIVERY_STATE_FAILED.
-	State    string `json:"state,omitempty"`
-	Attempts int    `json:"attempts,omitempty"`
-	// While pending
-	NextAttemptTime time.Time `json:"next_attempt_time,omitempty"`
-	// HTTP status of the last attempt; absent if none got an answer
-	LastStatus    int       `json:"last_status,omitempty"`
-	LastError     string    `json:"last_error,omitempty"`
-	CreateTime    time.Time `json:"create_time,omitempty"`
-	DeliveredTime time.Time `json:"delivered_time,omitempty"`
+	State    string `json:"state"`
+	Attempts int    `json:"attempts"`
+	// Set while the delivery is pending
+	NextAttemptTime *time.Time `json:"next_attempt_time"`
+	// HTTP status of the last attempt; 0 when no attempt got an answer
+	LastStatus int        `json:"last_status"`
+	LastError  string     `json:"last_error"`
+	CreateTime *time.Time `json:"create_time"`
+	// Set once the endpoint answered 2xx
+	DeliveredTime *time.Time `json:"delivered_time"`
 }
 
 // WebhookEndpoint is an object of the API; see components.schemas.WebhookEndpoint in api/openapi/v1.yaml.
 type WebhookEndpoint struct {
-	ID          string   `json:"id,omitempty"`
-	URL         string   `json:"url,omitempty"`
-	Description string   `json:"description,omitempty"`
-	EventTypes  []string `json:"event_types,omitempty"`
-	Active      bool     `json:"active,omitempty"`
+	ID          string   `json:"id"`
+	URL         string   `json:"url"`
+	Description string   `json:"description"`
+	EventTypes  []string `json:"event_types"`
+	Active      bool     `json:"active"`
 	// whsec_…; only in the response of create and rotate-secret
-	Secret     string    `json:"secret,omitempty"`
-	CreateTime time.Time `json:"create_time,omitempty"`
+	Secret     string     `json:"secret"`
+	CreateTime *time.Time `json:"create_time"`
 }
 
 // WebhookEndpointInput is an object of the API; see components.schemas.WebhookEndpointInput in
@@ -1932,8 +2262,8 @@ type WebhookEndpointInput struct {
 	Description string `json:"description,omitempty"`
 	// Empty means every type
 	EventTypes []string `json:"event_types,omitempty"`
-	// Only on update; a new endpoint is active
-	Active *bool `json:"active,omitempty"`
+	// A PUT replaces the endpoint: leaving active out deactivates it
+	Active bool `json:"active"`
 }
 
 // ExportAccountingCouponsCsvParams are the query parameters of ExportAccountingCouponsCsv.
@@ -2029,7 +2359,7 @@ func (p *GetAccountingSummaryParams) values() url.Values {
 type ListAffiliatesParams struct {
 	// One of: pending, active, suspended.
 	Status string
-	// Part of the code
+	// Part of the code, e-mail address or name
 	Search    string
 	PageSize  *int
 	PageToken string
@@ -2526,6 +2856,8 @@ func (p *GetEntitlementParams) values() url.Values {
 
 // ListCustomerPaymentsParams are the query parameters of ListCustomerPayments.
 type ListCustomerPaymentsParams struct {
+	// How many invoices to read; there is no page_token, so a customer with more invoices cannot be listed
+	// completely
 	Limit *int
 }
 
@@ -2781,6 +3113,8 @@ func (p *ListPaymentLinksParams) values() url.Values {
 
 // ListPaymentsParams are the query parameters of ListPayments.
 type ListPaymentsParams struct {
+	// The answer folds the newest 1000 ledger rows and returns the first limit payments; there is no page_token
+	// (truncated says when the window was full)
 	Limit *int
 }
 
@@ -2848,9 +3182,9 @@ func (p *GetDunningReportParams) values() url.Values {
 
 // GetRevenueReportParams are the query parameters of GetRevenueReport.
 type GetRevenueReportParams struct {
-	// First period
+	// First period, YYYY-MM
 	From string
-	// Last period
+	// Last period, YYYY-MM
 	To string
 	// Comma-separated: period, provider, country (default period). Currency is always split
 	GroupBy string

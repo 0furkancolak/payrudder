@@ -10,6 +10,7 @@ use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\CreditSettings;
+use Payrudder\Model\CreditSettingsInput;
 use Payrudder\RequestOptions;
 
 /**
@@ -32,12 +33,12 @@ final class CreditsResource extends AbstractResource
     /**
      * Set the low-balance threshold (PUT /v1/credits/settings).
      *
-     * @param CreditSettings|array<string,mixed> $body
+     * @param CreditSettingsInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function setCreditSettings(CreditSettings|array $body, ?RequestOptions $options = null): CreditSettings
+    public function setCreditSettings(CreditSettingsInput|array $body, ?RequestOptions $options = null): CreditSettings
     {
         return CreditSettings::fromArray($this->call('PUT', '/v1/credits/settings', [], Cast::body($body), $options));
     }

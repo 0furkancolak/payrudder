@@ -294,7 +294,7 @@ export type LiveProviders = S["LiveProviders"];
 export function useSaveBillingProfile(id: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (body: { legal: S["LegalInfo"]; address: S["Address"] }) => unwrap(api.PUT("/app/v1/apps/{id}/billing-profile", { params: { path: { id: toValue(id) } }, body })),
+    mutationFn: (body: { legal: S["LegalInfoInput"]; address: S["AddressInput"] }) => unwrap(api.PUT("/app/v1/apps/{id}/billing-profile", { params: { path: { id: toValue(id) } }, body })),
     onSuccess: () => Promise.all([queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) }), queries.invalidateQueries({ queryKey: productKeys.apps })]),
   });
 }

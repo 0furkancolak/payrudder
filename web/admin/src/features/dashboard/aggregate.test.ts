@@ -1,18 +1,45 @@
 import { describe, expect, it } from "vitest";
 import { kpiFigures, mergedCurrencies, mergedSeries, nextTabIndex, ratioBp, sumBlocks, type DashCurrency, type Dashboard } from "./lib";
 
-const block = (over: Partial<DashCurrency> = {}): DashCurrency => ({
+// The generated types require every figure; a test names the ones it cares about and the rest are zero.
+const rev = (o: Partial<DashCurrency["revenue"]> = {}): DashCurrency["revenue"] => ({ gross_minor: 0, tax_minor: 0, refunds_minor: 0, net_minor: 0, expenses_minor: 0, profit_minor: 0, paid_invoices: 0, ...o });
+const subs = (o: Partial<DashCurrency["subscriptions"]> = {}): DashCurrency["subscriptions"] => ({
+  month: "2026-10",
+  active: 0,
+  trialing: 0,
+  paused: 0,
+  past_due: 0,
+  mrr_minor: 0,
+  arr_minor: 0,
+  new: 0,
+  new_mrr_minor: 0,
+  churned: 0,
+  churned_mrr_minor: 0,
+  churn_rate_bp: null,
+  ...o,
+});
+const pay = (o: Partial<DashCurrency["payments"]> = {}): DashCurrency["payments"] => ({ paid: 0, failed: 0, processing: 0, refunds: 0, paid_minor: 0, failed_minor: 0, refunded_minor: 0, failed_rate_bp: null, ...o });
+
+const base: DashCurrency = {
   currency: "USD",
-  revenue: { net_minor: 2000, gross_minor: 2200, refunds_minor: 200 },
-  prev_revenue: { net_minor: 1000, gross_minor: 1000, refunds_minor: 0 },
-  subscriptions: { mrr_minor: 500, churn_rate_bp: 250 },
-  prev_subscriptions: { mrr_minor: 500, churn_rate_bp: 500 },
-  payments: { failed_rate_bp: 1000 },
-  prev_payments: { failed_rate_bp: 1000 },
+  revenue: rev({ net_minor: 2000, gross_minor: 2200, refunds_minor: 200 }),
+  prev_revenue: rev({ net_minor: 1000, gross_minor: 1000, refunds_minor: 0 }),
+  subscriptions: subs({ mrr_minor: 500, churn_rate_bp: 250 }),
+  prev_subscriptions: subs({ mrr_minor: 500, churn_rate_bp: 500 }),
+  payments: pay({ failed_rate_bp: 1000 }),
+  prev_payments: pay({ failed_rate_bp: 1000 }),
   arpu_minor: 40,
   prev_arpu_minor: 20,
-  ...over,
-});
+  series: [],
+  top_customers: [],
+  top_packages: [],
+  aging: [],
+  open_count: 0,
+  open_minor: 0,
+  renewals: [],
+};
+// A spread of a Partial may leave a key undefined as far as the compiler knows; a test never passes undefined.
+const block = (over: Partial<DashCurrency> = {}): DashCurrency => ({ ...base, ...over }) as DashCurrency;
 
 describe("kpiFigures", () => {
   it("compares every figure with the period before", () => {
@@ -58,8 +85,8 @@ describe("putting apps together", () => {
   });
 
   it("orders the currencies of several dashboards by net revenue, then by code", () => {
-    const a = { currencies: [block({ currency: "EUR", revenue: { net_minor: 10 } }), block({ currency: "USD", revenue: { net_minor: 50 } })] } as Dashboard;
-    const b = { currencies: [block({ currency: "EUR", revenue: { net_minor: 100 } }), block({ currency: "TRY", revenue: { net_minor: 0 } }), block({ currency: "GBP", revenue: { net_minor: 0 } })] } as Dashboard;
+    const a = { currencies: [block({ currency: "EUR", revenue: rev({ net_minor: 10 }) }), block({ currency: "USD", revenue: rev({ net_minor: 50 }) })] } as Dashboard;
+    const b = { currencies: [block({ currency: "EUR", revenue: rev({ net_minor: 100 }) }), block({ currency: "TRY", revenue: rev({ net_minor: 0 }) }), block({ currency: "GBP", revenue: rev({ net_minor: 0 }) })] } as Dashboard;
     expect(mergedCurrencies([a, b, undefined])).toEqual(["EUR", "USD", "GBP", "TRY"]);
   });
 

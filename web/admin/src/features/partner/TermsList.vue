@@ -5,7 +5,7 @@ import { useFormat } from "@/shared/lib/format";
 import { programTerms, type MyProgram } from "./logic";
 
 /** The seller's rules in words: what the partner earns, for how long, and when it can be paid. */
-const props = defineProps<{ program: MyProgram | undefined }>();
+const props = defineProps<{ program: MyProgram | null | undefined }>();
 const { t } = useI18n();
 const fmt = useFormat();
 const lines = computed(() => programTerms(props.program, (minor, currency) => fmt.amount(minor, currency)));

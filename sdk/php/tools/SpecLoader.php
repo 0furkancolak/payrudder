@@ -10,10 +10,7 @@ use Symfony\Component\Yaml\Yaml;
 /**
  * Reads api/openapi/v1.yaml for the generator and the drift test.
  *
- * The spec has unquoted flow-mapping descriptions with commas or apostrophes
- * (`{ type: string, description: The seller's id, for x }`). That is accepted by the YAML parser
- * of the gateway but not by symfony/yaml, so those descriptions are quoted before parsing.
- * Only descriptions are touched, never structure.
+ * The spec is plain YAML that every parser reads the same way (descriptions with commas or apostrophes are quoted), so it is parsed as it is.
  */
 final class SpecLoader
 {
@@ -32,26 +29,9 @@ final class SpecLoader
         if ($text === false) {
             throw new RuntimeException("cannot read $path");
         }
-        $lines = explode("\n", $text);
-        foreach ($lines as $i => $line) {
-            if (!str_contains($line, '{') || !str_contains($line, 'description:')) {
-                continue;
-            }
-            $lines[$i] = preg_replace_callback(
-                '/(\bdescription:\s*)([^"\'{\[\s][^}]*?)(\s*\}\s*,?\s*)$/',
-                static function (array $m): string {
-                    if (!str_contains($m[2], ',') && !str_contains($m[2], "'")) {
-                        return $m[0];
-                    }
-
-                    return $m[1] . '"' . addcslashes($m[2], '"\\') . '"' . $m[3];
-                },
-                $line,
-            ) ?? $line;
-        }
 
         /** @var array{paths: array<string,array<string,array<string,mixed>>>, components: array{schemas: array<string,array<string,mixed>>}} $spec */
-        $spec = Yaml::parse(implode("\n", $lines));
+        $spec = Yaml::parse($text);
 
         return $spec;
     }

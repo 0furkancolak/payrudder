@@ -22,7 +22,7 @@ final class InboxItem implements Model
      * @param string|null $subject
      * @param string|null $filename
      * @param string|null $contentType
-     * @param string|null $sizeBytes
+     * @param int|null $sizeBytes
      * @param InboxItemStatus|string|null $status
      * @param string|null $expenseId
      * @param string|null $receiveTime
@@ -34,7 +34,7 @@ final class InboxItem implements Model
         public readonly ?string $subject = null,
         public readonly ?string $filename = null,
         public readonly ?string $contentType = null,
-        public readonly ?string $sizeBytes = null,
+        public readonly ?int $sizeBytes = null,
         public readonly InboxItemStatus|string|null $status = null,
         public readonly ?string $expenseId = null,
         public readonly ?string $receiveTime = null,
@@ -52,7 +52,7 @@ final class InboxItem implements Model
             subject: Cast::string($data['subject'] ?? null),
             filename: Cast::string($data['filename'] ?? null),
             contentType: Cast::string($data['content_type'] ?? null),
-            sizeBytes: Cast::string($data['size_bytes'] ?? null),
+            sizeBytes: Cast::int($data['size_bytes'] ?? null),
             status: Cast::enum(InboxItemStatus::class, $data['status'] ?? null),
             expenseId: Cast::string($data['expense_id'] ?? null),
             receiveTime: Cast::string($data['receive_time'] ?? null),
@@ -71,7 +71,7 @@ final class InboxItem implements Model
             'subject' => $this->subject,
             'filename' => $this->filename,
             'content_type' => $this->contentType,
-            'size_bytes' => $this->sizeBytes,
+            'size_bytes' => Cast::int64($this->sizeBytes),
             'status' => Cast::wire($this->status),
             'expense_id' => $this->expenseId,
             'receive_time' => $this->receiveTime,
