@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Payrudder operator console",
+    "title": "Payrudder",
     "language": "Language",
     "demo": "Demo mode: sample data, a mock payment provider, mail goes to the local mail catcher. Nothing here is real.",
     "themeLight": "Switch to light mode",

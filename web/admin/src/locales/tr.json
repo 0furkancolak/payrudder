@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Payrudder operatör konsolu",
+    "title": "Payrudder",
     "language": "Dil",
     "demo": "Demo modu: örnek veriler, sahte bir ödeme sağlayıcısı, e-postalar yerel posta yakalayıcıya gider. Buradaki hiçbir şey gerçek değildir.",
     "themeLight": "Açık temaya geç",

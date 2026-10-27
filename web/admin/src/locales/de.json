@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Payrudder-Operator-Konsole",
+    "title": "Payrudder",
     "language": "Sprache",
     "demo": "Demo-Modus: Beispieldaten, ein simulierter Zahlungsanbieter, Mails gehen an den lokalen Mail-Catcher. Nichts davon ist echt.",
     "themeLight": "Zum hellen Design wechseln",

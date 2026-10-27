@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Consola de operador de Payrudder",
+    "title": "Payrudder",
     "language": "Idioma",
     "demo": "Modo demo: datos de ejemplo, un proveedor de pago simulado y el correo va al receptor local. Nada de esto es real.",
     "themeLight": "Cambiar al tema claro",

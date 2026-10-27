@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Console opérateur Payrudder",
+    "title": "Payrudder",
     "language": "Langue",
     "demo": "Mode démo : données d'exemple, un faux prestataire de paiement, les mails vont au récepteur local. Rien ici n'est réel.",
     "themeLight": "Passer au thème clair",

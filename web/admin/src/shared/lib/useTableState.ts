@@ -17,7 +17,7 @@ import { idOf, searchParams, setKind, updateSearch } from "./sheets";
  * With `sheet` ({ kind, id }) the open row is written into the address as `?sheet=<kind>:<id>` and the sheet opens by itself when the address names a
  * row (a reload, a shared link, "forward" in the strip of sheets); a filter that hides the named row is cleared.
  */
-export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined>, opts: { searchFields: (row: T) => (string | number | null | undefined)[]; filters?: Record<string, (row: T, value: string) => boolean>; url?: boolean | string; size?: number; sheet?: { kind: string; id: (row: T) => string | undefined } }) {
+export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined>, opts: { searchFields: (row: T) => (string | number | null | undefined)[]; filters?: Record<string, (row: T, value: string) => boolean>; url?: boolean | string; size?: number; sheet?: { kind: string; id: (row: T) => string | undefined; loaded?: MaybeRefOrGetter<boolean> } }) {
   const search = ref("");
   const filters = ref<Record<string, string[]>>({});
   const page = ref(1);
@@ -73,7 +73,7 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
   });
 
   if (opts.sheet) {
-    const { kind, id } = opts.sheet;
+    const { kind, id, loaded } = opts.sheet;
     // Synchronous: the watcher below closes the sheet when the address names no row, and must not run between a row being opened and the address hearing of it.
     watch(
       detail,
@@ -83,7 +83,7 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
       },
       { flush: "sync" },
     );
-    watch([() => idOf(kind), filtered], ([named]) => {
+    watch([() => idOf(kind), filtered, () => (loaded === undefined ? false : toValue(loaded))], ([named, , isLoaded]) => {
       if (named === undefined) {
         if (detail.value !== null) detail.value = null;
         return;
@@ -99,6 +99,8 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
         at = find();
       }
       if (at >= 0) detail.value = at;
+      // The list has arrived and no row is the named one (a dead link, a deleted record): the name leaves the address rather than staying there for ever.
+      else if (isLoaded && !(toValue(rows) ?? []).some((r) => id(r) === named)) setKind(kind, null);
     });
   }
 
