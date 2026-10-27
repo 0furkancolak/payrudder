@@ -25,13 +25,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
 	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 type fakePaddle struct {
@@ -170,12 +168,8 @@ func (r *recPlans) AbortProviderMigration(_ context.Context, _ uuid.UUID, id str
 
 func TestPaddleThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	fake := newFakePaddle(t)
 
@@ -329,7 +323,7 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 			t.Fatalf("webhook: %d %s", code, resp)
 		}
 		var n int
-		if err := pool.QueryRow(ctx, `SELECT count(*) FROM payment_ledger WHERE tenant_id = $1 AND provider_ref = 'txn_renew' AND invoice_id IS NULL AND amount_minor = 2900`, tenant).Scan(&n); err != nil || n != 1 {
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT count(*) FROM payment_ledger WHERE tenant_id = $1 AND provider_ref = 'txn_renew' AND invoice_id IS NULL AND amount_minor = 2900`, tenant).Scan(&n); err != nil || n != 1 {
 			t.Fatalf("renewal rows = %d, %v", n, err)
 		}
 	})
@@ -383,7 +377,7 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 			t.Fatalf("webhook: %d %s", code, resp)
 		}
 		var n int
-		if err := pool.QueryRow(ctx, `SELECT count(*) FROM payment_ledger WHERE tenant_id = $1 AND kind = 'refund' AND provider_ref = 'adj_01'`, tenant).Scan(&n); err != nil || n != 1 {
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT count(*) FROM payment_ledger WHERE tenant_id = $1 AND kind = 'refund' AND provider_ref = 'adj_01'`, tenant).Scan(&n); err != nil || n != 1 {
 			t.Fatalf("refund rows = %d, %v; the command's answer and the approval are one fact", n, err)
 		}
 	})
@@ -418,12 +412,8 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 // A charge that names its provider goes to that account even when another is the tenant's default.
 func TestChargeNamesItsProvider(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	paddleAPI, iyzicoAPI := newFakePaddle(t), newFakeIyzico(t)
 	box, _ := secretbox.New(bytes.Repeat([]byte{3}, 32))
@@ -462,12 +452,8 @@ func TestChargeNamesItsProvider(t *testing.T) {
 
 func TestProviderMigrationThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	fakeP, fakeI := newFakePaddle(t), newFakeIyzico(t)
 	box, _ := secretbox.New(bytes.Repeat([]byte{5}, 32))

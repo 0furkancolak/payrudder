@@ -20,13 +20,11 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // fakeIyzico answers the three iyzico endpoints the adapter calls and counts them.
@@ -92,12 +90,8 @@ func liveCharge(tenant, invoice uuid.UUID, command uuid.UUID, currency string) *
 
 func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	fake := newFakeIyzico(t)
 
@@ -158,7 +152,7 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 			t.Fatalf("list: %d %s", code, body)
 		}
 		var raw []byte
-		if err := pool.QueryRow(ctx, `SELECT settings_enc FROM provider_accounts WHERE tenant_id = $1`, tenant).Scan(&raw); err != nil {
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT settings_enc FROM provider_accounts WHERE tenant_id = $1`, tenant).Scan(&raw); err != nil {
 			t.Fatal(err)
 		}
 		if bytes.Contains(raw, []byte("TOP-SECRET-KEY")) {
@@ -166,7 +160,7 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 		}
 		// A copy of the sealed settings in another tenant's row does not open.
 		other := uuid.New()
-		if _, err := pool.Exec(ctx, `INSERT INTO provider_accounts (tenant_id, provider, environment, settings_enc) VALUES ($1,'iyzico','live',$2)`, other, raw); err != nil {
+		if _, err := cdb.At(other).Exec(ctx, `INSERT INTO provider_accounts (tenant_id, provider, environment, settings_enc) VALUES ($1,'iyzico','live',$2)`, other, raw); err != nil {
 			t.Fatal(err)
 		}
 		if _, _, err := accounts.Settings(ctx, other, "iyzico", "live"); err == nil {
@@ -211,11 +205,11 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 		}
 		// A live record that no longer opens (here: sealed for another tenant) is not a working provider.
 		var raw []byte
-		if err := pool.QueryRow(ctx, `SELECT settings_enc FROM provider_accounts WHERE tenant_id = $1 AND environment = 'live'`, tenant).Scan(&raw); err != nil {
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT settings_enc FROM provider_accounts WHERE tenant_id = $1 AND environment = 'live'`, tenant).Scan(&raw); err != nil {
 			t.Fatal(err)
 		}
 		broken := uuid.New()
-		if _, err := pool.Exec(ctx, `INSERT INTO provider_accounts (tenant_id, provider, environment, settings_enc) VALUES ($1,'iyzico','live',$2)`, broken, raw); err != nil {
+		if _, err := cdb.At(broken).Exec(ctx, `INSERT INTO provider_accounts (tenant_id, provider, environment, settings_enc) VALUES ($1,'iyzico','live',$2)`, broken, raw); err != nil {
 			t.Fatal(err)
 		}
 		if ready(broken) {
@@ -319,7 +313,7 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 			t.Fatalf("the same event again: %d %s", code, body)
 		}
 		var n int
-		if err := pool.QueryRow(ctx, `SELECT count(*) FROM payment_ledger WHERE tenant_id = $1 AND kind = 'charge' AND provider_ref = 'P1'`, tenant).Scan(&n); err != nil || n != 1 {
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT count(*) FROM payment_ledger WHERE tenant_id = $1 AND kind = 'charge' AND provider_ref = 'P1'`, tenant).Scan(&n); err != nil || n != 1 {
 			t.Fatalf("charge rows for P1 = %d, %v; the command's answer and the webhook are one fact", n, err)
 		}
 	})

@@ -162,6 +162,10 @@ var codeNames = map[codes.Code]string{
 // fail writes the gateway's error envelope, so the response reads the same whether the gateway or this worker produced it:
 // {"error": {"code": "FAILED_PRECONDITION", "key": "payments.transfer.overpayment", "message": "…"}}.
 func (h *Handler) fail(w http.ResponseWriter, r *http.Request, err error) {
+	if httpx.IsMoving(err) {
+		httpx.Moving(w)
+		return
+	}
 	st := status.Convert(err)
 	code, ok := httpCodes[st.Code()]
 	body := map[string]string{"code": codeNames[st.Code()], "key": errkey.Of(err), "message": st.Message()}

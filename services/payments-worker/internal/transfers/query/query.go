@@ -93,7 +93,7 @@ func Get(ctx context.Context, d Deps, tenant, invoice uuid.UUID) (State, error) 
 		}
 	}
 
-	pending, hasPending, err := d.Transfers.Pending(ctx, banktransfer.Name, charge.IdempotencyKey)
+	pending, hasPending, err := d.Transfers.Pending(ctx, tenant, banktransfer.Name, charge.IdempotencyKey)
 	if err != nil {
 		return out, err
 	}
@@ -105,7 +105,7 @@ func Get(ctx context.Context, d Deps, tenant, invoice uuid.UUID) (State, error) 
 			out.Reference = pending.Reference
 		}
 	}
-	closure, closed, err := d.Transfers.Closure(ctx, banktransfer.Name, charge.IdempotencyKey)
+	closure, closed, err := d.Transfers.Closure(ctx, tenant, banktransfer.Name, charge.IdempotencyKey)
 	if err != nil {
 		return out, err
 	}

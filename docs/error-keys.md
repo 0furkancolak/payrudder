@@ -386,6 +386,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.subscription.change_refused`
 - `payments.subscription.period_end_unknown`
 - `payments.subscription.wrong_provider`
+- `payments.tenant.unavailable`
 - `payments.transfer.bad_amount`
 - `payments.transfer.bad_body`
 - `payments.transfer.bad_currency`

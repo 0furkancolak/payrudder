@@ -22,7 +22,7 @@ PAYRUDDER_CELLS={"c1":{"app":"postgres://ingest_app:…@c1-db/ingest_db","system
 
 The cell database is prepared like a service database (`deploy/compose/postgres/01-databases.sh`: the three roles, `REVOKE CREATE ON SCHEMA public FROM PUBLIC`), and nothing is migrated into its `public` schema. With `PAYRUDDER_MIGRATE_ON_START=true` the service creates the `shared` schema and applies its tenant migrations to every tenant schema of every cell (a failing tenant is logged and the service starts; with `PAYRUDDER_MIGRATE_ONLY=true` a failing tenant fails the job). `payrudderctl cells migrate` does the same from outside. A service in cells mode needs `PAYRUDDER_PLANS_ADDR` (assets-svc did not have it before; ingest-svc already did): the directory is plans-svc's.
 
-Services converted so far: **ingest-svc**, **assets-svc**, **aggregator**. Every other service has no tenant schema yet; do not set `PAYRUDDER_CELLS` for it.
+Services converted so far: **ingest-svc**, **assets-svc**, **aggregator**, **payments-worker** (it needs `PAYRUDDER_PLANS_ADDR` too, and it uses only the `system` DSN of each cell; the `app` one must still be given and is not used). Every other service has no tenant schema yet; do not set `PAYRUDDER_CELLS` for it.
 
 ## The operator tool
 
@@ -38,7 +38,9 @@ Services converted so far: **ingest-svc**, **assets-svc**, **aggregator**. Every
     "assets": {"migrations": "services/assets-svc/migrations/tenant", "roles": ["assets_app", "assets_system"],
                "pooled": "${ASSETS_MIGRATOR_DSN}", "cells": {"c1": "${ASSETS_C1_MIGRATOR_DSN}", "c2": "${ASSETS_C2_MIGRATOR_DSN}"}},
     "aggregator": {"migrations": "services/aggregator/migrations/tenant", "roles": ["aggregator_app", "aggregator_system"],
-                   "pooled": "${AGGREGATOR_MIGRATOR_DSN}", "cells": {"c1": "${AGGREGATOR_C1_MIGRATOR_DSN}", "c2": "${AGGREGATOR_C2_MIGRATOR_DSN}"}}
+                   "pooled": "${AGGREGATOR_MIGRATOR_DSN}", "cells": {"c1": "${AGGREGATOR_C1_MIGRATOR_DSN}", "c2": "${AGGREGATOR_C2_MIGRATOR_DSN}"}},
+    "payments": {"migrations": "services/payments-worker/migrations/tenant", "roles": ["payments_app", "payments_system"],
+                 "pooled": "${PAYMENTS_MIGRATOR_DSN}", "cells": {"c1": "${PAYMENTS_C1_MIGRATOR_DSN}", "c2": "${PAYMENTS_C2_MIGRATOR_DSN}"}}
   }
 }
 ```
@@ -99,3 +101,6 @@ Moves are offline by design: a large tenant is down for the time of its copy. Th
 - **The aggregator's consumer and moves.** `consumer_offsets` stays in the pooled database whatever the placements, and the usage consumer writes each cell tenant in its own transaction before the offset moves, so a batch with a failing tenant is retried whole (the tenants that were durable are skipped by their inbox). A tenant that is `moving` stops the partitions that carry its events, because skipping its events would lose them; moves are offline, so keep them short. A tenant with an open replay keeps the job across the move (the job is not counted as failed while the tenant is not serving).
 - **Adding a table.** A new migration of a converted service is written twice: `migrations/NNNNN_….sql` and `migrations/tenant/NNNNN_….sql`. `TestTenantSchemaMatchesPublic` fails until the second exists and matches. Roll it out with the service (`PAYRUDDER_MIGRATE_ON_START`) or `cells migrate`.
 - **Deleting a tenant** in a cell is `DROP SCHEMA t_<id> CASCADE` in each service's cell database after its placement is gone; there is no tool for it.
+- **payments-worker has no row-level security** (its tables never had), so in a cell the schema is the only guard: a statement that names another tenant's schema is allowed by the grants. No code path does that and a test checks that no schema holds a row of another tenant; do not give `payments_system` of a cell to anything that is not payments-worker.
+- **payments-worker's index of charge keys** is `shared.charge_keys` in each cell database (key to tenant), filled by a trigger on `payment_attempts`. It is how a notification of a provider whose URL names no tenant (iyzico) finds its tenant without looking in every schema. Nothing to maintain: a move re-fills it through the copy, a sandbox reset deletes the tenant's keys, and an entry left behind by a move names the same tenant (the directory says where it is). If a provider notification is answered `ignored` ("no charge with this reference") for a charge that exists, look for the key in `shared.charge_keys` of the tenant's cell first.
+- **A payments-worker tenant cannot be moved into the pooled database** while the schema has `manual_receipts` pointing at `payment_ledger.id`: `cells move --to pooled` stops at the copy with the identity-column message and changes nothing. Cell to cell and pooled to cell work.

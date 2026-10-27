@@ -27,14 +27,12 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/einvoice/nilvera"
 	einvoicewebhook "github.com/0furkancolak/payrudder/pkg/einvoice/webhook"
 	"github.com/0furkancolak/payrudder/pkg/payments"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/webhooksig"
 	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 type memBlobs struct {
@@ -131,12 +129,8 @@ func issueCmd(tenant uuid.UUID, env plansv1.Environment, doc uuid.UUID, kind str
 
 func TestEInvoiceWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	box, _ := secretbox.New(bytes.Repeat([]byte{9}, 32))
@@ -219,12 +213,16 @@ func TestEInvoiceWorker(t *testing.T) {
 		}
 		// The key is sealed in the table.
 		var enc []byte
-		if err := pool.QueryRow(ctx, `SELECT settings_enc FROM einvoice_accounts WHERE tenant_id = $1 AND environment = 'live'`, tenant).Scan(&enc); err != nil || bytes.Contains(enc, []byte("sk_secret_value")) {
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT settings_enc FROM einvoice_accounts WHERE tenant_id = $1 AND environment = 'live'`, tenant).Scan(&enc); err != nil || bytes.Contains(enc, []byte("sk_secret_value")) {
 			t.Fatalf("settings_enc = %q, %v", enc, err)
 		}
 		// Another tenant's account is not this tenant's (the box is bound to the tenant).
-		if _, err := pool.Exec(ctx, `INSERT INTO einvoice_accounts (tenant_id, environment, provider, mode, settings_enc)
-			SELECT $1, environment, provider, mode, settings_enc FROM einvoice_accounts WHERE tenant_id = $2`, uuid.New(), tenant); err != nil {
+		var sealedProvider, sealedMode string
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT provider, mode, settings_enc FROM einvoice_accounts WHERE tenant_id = $1 AND environment = 'live'`, tenant).Scan(&sealedProvider, &sealedMode, &enc); err != nil {
+			t.Fatal(err)
+		}
+		copied := uuid.New()
+		if _, err := cdb.At(copied).Exec(ctx, `INSERT INTO einvoice_accounts (tenant_id, environment, provider, mode, settings_enc) VALUES ($1, 'live', $2, $3, $4)`, copied, sealedProvider, sealedMode, enc); err != nil {
 			t.Fatal(err)
 		}
 		if code, _ := do("DELETE", base+"/live", ""); code != 204 {
@@ -283,17 +281,17 @@ func TestEInvoiceWorker(t *testing.T) {
 			t.Fatalf("integrator saw %d issues, %d bad signatures; want 1 and 0", in.count("issue"), in.sigBad)
 		}
 		var n int
-		if err := pool.QueryRow(ctx, `SELECT count(*) FROM einvoice_issuances WHERE tenant_id = $1 AND legal_number = $2`, tenant, invoiceLegal).Scan(&n); err != nil || n != 1 {
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT count(*) FROM einvoice_issuances WHERE tenant_id = $1 AND legal_number = $2`, tenant, invoiceLegal).Scan(&n); err != nil || n != 1 {
 			t.Fatalf("issuances with the legal number: %d, %v", n, err)
 		}
 	})
 
 	t.Run("a legal number cannot be given to a second document", func(t *testing.T) {
 		other := uuid.New()
-		if _, err := pool.Exec(ctx, `INSERT INTO einvoice_issuances (document_id, tenant_id, environment, provider, kind, document_type, status) VALUES ($1,$2,'live','webhook','invoice','e-arsiv','started')`, other, tenant); err != nil {
+		if _, err := cdb.At(tenant).Exec(ctx, `INSERT INTO einvoice_issuances (document_id, tenant_id, environment, provider, kind, document_type, status) VALUES ($1,$2,'live','webhook','invoice','e-arsiv','started')`, other, tenant); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := pool.Exec(ctx, `UPDATE einvoice_issuances SET status = 'issued', legal_number = $1 WHERE document_id = $2`, invoiceLegal, other); err == nil {
+		if _, err := cdb.At(tenant).Exec(ctx, `UPDATE einvoice_issuances SET status = 'issued', legal_number = $1 WHERE document_id = $2`, invoiceLegal, other); err == nil {
 			t.Fatal("the same legal number was accepted for two documents")
 		}
 	})

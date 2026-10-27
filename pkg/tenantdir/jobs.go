@@ -65,10 +65,10 @@ var Jobs = []Job{
 	{"assets-svc", "upload verifier", true, "internal/background"},
 	{"assets-svc", "orphan reconciler", true, "internal/background"},
 
-	{"payments-worker", "tenant schema", false, "migrations"},
-	{"payments-worker", "command worker", false, "cmd/payments-worker"},
-	{"payments-worker", "provider webhook server", false, "internal/webhook"},
-	{"payments-worker", "transfers and sandbox reset", false, "internal/store"},
+	{"payments-worker", "tenant schema", true, "migrations/tenant"},
+	{"payments-worker", "command worker", true, "internal/handler, internal/store"},
+	{"payments-worker", "provider webhook server", true, "internal/webhook"},
+	{"payments-worker", "transfers and sandbox reset", true, "internal/store, internal/sandboxreset"},
 }
 
 // Unconverted lists the jobs that are not converted yet, in the order of Jobs.

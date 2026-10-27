@@ -2685,6 +2685,9 @@
         "period_end_unknown": "Das Ende des bezahlten Zeitraums beim Anbieter ist noch nicht bekannt: Es ist noch keine Benachrichtigung eingegangen.",
         "wrong_provider": "Dieses Abonnement wird nicht von diesem Anbieter geführt."
       },
+      "tenant": {
+        "unavailable": "Die Daten des Kontos werden gerade verschoben. Es wurde nichts geändert; versuchen Sie es gleich erneut."
+      },
       "webhook": {
         "malformed": "Die Benachrichtigung konnte nicht gelesen werden.",
         "not_found": "Diese Benachrichtigungsadresse gibt es nicht.",
