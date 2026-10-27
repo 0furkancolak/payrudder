@@ -107,7 +107,7 @@ integrations, new-* forms restore from the URL after a reload.
   error; credit note amount; tax rates save shows the old retry error "Her gecikme 1 ile 720..." next to "Oranlar kaydedildi.").
 - Duplicate customer id shows only "Zaten var." rendered above the buttons, not at the Müşteri kimliği field.
 
-### UI-10 (minor) Untranslated or raw backend text in the Turkish UI
+### UI-10 (minor) Untranslated or raw backend text in the Turkish UI — fixed in #232
 - Package with no price: "prices geçerli değil: a plan version needs at least one price, a base fee or a quota".
 - Invoice lines: "Base fee (monthly) x 2 seats — pro — 2026-10-27 to 2026-11-27", "Unused time on starter — ..." (English, ISO dates).
 - Operator invoice sheet: raw enums `COMPLETED`, saga states `FINALIZED`/`PDF_REQUESTED`, lowercase `ödendi` while the app side says `Ödendi`.
@@ -124,7 +124,7 @@ integrations, new-* forms restore from the URL after a reload.
   the customer sheet show names.
 - Customer sheet "Düzenle" is a menu with only "Adresi düzenle" and "Vergi bilgisi"; no way to change name or e-mail (confirm if intended). Update: the API has no endpoint to change name or e-mail (only address and tax), so that stays as is until the backend offers one.
 
-### UI-13 (minor) Subscription change panel
+### UI-13 (minor) Subscription change panel — fixed in #232
 - The four selects (package, period, when, proration) share one row in the 670 px sheet and are truncated: "Dönem aynı ka", "Ne zaman: değ",
   "Orantılı (varsay".
 - After "Değişikliği uygula" (immediate change) the sheet keeps showing the old, now cancelled subscription (2 / 9) with no actions; the new
@@ -132,11 +132,11 @@ integrations, new-* forms restore from the URL after a reload.
 - "Önizle" is disabled until something changes (good) but nothing says why.
 - "Şimdi bitir" and "Şimdi bitir, kullanılmayanı kredilendir" are solid red next to harmless buttons; not clicked (confirm behaviour untested).
 
-### UI-14 (minor) Arabic / RTL
+### UI-14 (minor) Arabic / RTL — fixed in #232
 - Sheet pager reads "8 / 1" (should be 1 / 8), dates inside Latin text are mangled (`TRY · 272026/10/` for "27 Oct 2026"): missing `dir="ltr"`/`<bdi>` on
   mixed content. Layout otherwise mirrors correctly, no overflow.
 
-### UI-15 (minor) Navigation state not kept in the URL
+### UI-15 (minor) Navigation state not kept in the URL — fixed in #232
 - Tabs: Usage (Genel bakış / Sayaçlar / Müşteriler), Affiliates (6 tabs), Reports reset to the first tab on reload and cannot be shared.
 - Credits: the selected customer is not in the URL (only the grant sheet is). Search boxes are not kept either (filters are).
 - Opening a subscription from a customer sheet navigates to `/subscriptions?...&sheet=` and drops `env=sandbox` from the query.
@@ -153,10 +153,10 @@ integrations, new-* forms restore from the URL after a reload.
 - A new Free-plan organisation with 1 app: "Uygulama oluştur" stays offered; the full form is filled and only the submit answers "Planınızın uygulama
   limitine ulaşıldı". Currency/time zone are free combobox text (`ZZZ`, `Mars/Phobos` are accepted by the field; not reached the server because of the limit).
 
-### UI-19 (polish) Mobile header (375)
+### UI-19 (polish) Mobile header (375) — fixed in #232
 - The avatar wraps to a second row under the toolbar; the breadcrumb is cut to "Abo…" / "Sto…". The sandbox banner uses ~25 % of the first screen.
 
-### UI-20 (polish) Navigation naming
+### UI-20 (polish) Navigation naming — fixed in #232
 - Sidebar "Vergi ve yeniden denemeler" is truncated ("Vergi ve yeniden denem...") and lives at `/pricing`; "Sandbox araçları" stays in the sidebar and works
   in `env=live` (shows a "Sandbox" badge). Settings (org) and "Entegrasyonlar" exist twice in the sidebar (app and org) with the same label.
 
@@ -193,7 +193,7 @@ integrations, new-* forms restore from the URL after a reload.
 - New key defaults to the "Yönetici" role (all 24 permissions); a least-privilege default (read-only or usage-only) is safer. Keys cannot be named, so a list
   of several keys is `qk_test_xxxx_••••` rows only.
 
-### UI-29 (polish) Smaller flow notes
+### UI-29 (polish) Smaller flow notes — fixed in #232
 - Members: the sole owner is offered "Ayrıl" (the dialog says an owner can invite you again); the server answer was not tested.
 - Onboarding: the wizard returns on the "Her şey hazır" screen if the person leaves before pressing "Panoma git". The new account lands with the wizard
   default currency USD while the time zone is Europe/Istanbul. "1 calls" in the test event line.

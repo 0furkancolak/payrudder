@@ -2,6 +2,7 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { useTabParam } from "@/shared/lib/useSearchValue";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { useCoupons } from "./api";
 import CodeSheet from "./CodeSheet.vue";
@@ -17,7 +18,7 @@ const TABS = ["coupons", "codes", "redemptions"] as const;
 const { t } = useI18n();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
-const tab = ref<(typeof TABS)[number]>("coupons");
+const tab = useTabParam("tab", TABS, "coupons");
 
 const coupons = useCoupons(tenantId);
 const active = computed(() => (coupons.data.value?.coupons ?? []).filter((c) => c.active));

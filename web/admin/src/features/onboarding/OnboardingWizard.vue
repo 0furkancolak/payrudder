@@ -8,7 +8,7 @@ import { useCreateMeter, useMeters } from "@/features/meters/api";
 import { useCreatePackage } from "@/features/packages/api";
 import { buildUsage, newPrice } from "@/features/packages/usage";
 import { useAccount, useApps, useCreateApp, useRenameAccount } from "@/features/product/api";
-import { FALLBACK_CURRENCY, type Currency } from "@/shared/lib/currencies";
+import { currencyOfZone, FALLBACK_CURRENCY, type Currency } from "@/shared/lib/currencies";
 import { tenantOf } from "@/shared/lib/environment";
 import { ownZone } from "@/shared/lib/intl";
 import { parseMajor } from "@/shared/lib/money";
@@ -44,8 +44,9 @@ const currency = computed(() => progress.value?.currency ?? app.value?.tenants?.
 
 // --- the fields, filled from what is stored so a returning person sees their own choices
 const orgName = ref("");
-const orgCurrency = ref<Currency>((progress.value?.currency as Currency | undefined) ?? FALLBACK_CURRENCY);
+// A new account starts on the currency of the time zone the browser is in (a person in Istanbul does not start on USD); a stored choice wins.
 const orgZone = ref(progress.value?.timezone ?? ownZone());
+const orgCurrency = ref<Currency>((progress.value?.currency as Currency | undefined) ?? currencyOfZone(orgZone.value) ?? FALLBACK_CURRENCY);
 const appName = ref("");
 const chosen = ref<MeterTemplate["key"]>(templateByCode(progress.value?.meter)?.key ?? METER_TEMPLATES[0]!.key);
 const pkgName = ref("");

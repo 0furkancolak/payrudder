@@ -7,7 +7,7 @@ import type { Package } from "@/features/packages";
 import type { Subscription } from "@/shared/api/client";
 import { PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import type { Environment } from "@/shared/lib/environment";
-import { enumWord } from "@/shared/lib/labels";
+import { enumWord, label } from "@/shared/lib/labels";
 import { useFormat } from "@/shared/lib/format";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -16,6 +16,7 @@ import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { useMigrateSubscription, type SubscriptionActions } from "./api";
 import ChangePanel from "./ChangePanel.vue";
+import ChangeTrail from "./ChangeTrail.vue";
 import EntitlementsTable from "./EntitlementsTable.vue";
 import { seatsOf, subscriptionAbilities, trialDaysLeft } from "./lib";
 import ProviderRunPanel from "./ProviderRunPanel.vue";
@@ -26,7 +27,7 @@ import ProviderRunPanel from "./ProviderRunPanel.vue";
  * detail sheet of the subscriptions list, which carries the title.
  */
 const props = defineProps<{ tenantId: string; subscription: Subscription; packages: Package[]; environment: Environment; operator: boolean; act: SubscriptionActions }>();
-const { t } = useI18n();
+const { t, te } = useI18n();
 const fmt = useFormat();
 
 const can = computed(() => subscriptionAbilities(props.subscription));
@@ -59,13 +60,14 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
 
 <template>
   <div role="region" class="flex flex-col gap-4" :aria-label="t('billing.subscriptions.managing', { customer: subscription.customer_external_id ?? '' })">
+    <ChangeTrail :tenant-id="tenantId" :subscription="subscription" />
     <p v-if="trialLeft !== null" class="bg-muted rounded-2xl px-4 py-3 text-sm" role="status" data-testid="trial-banner">
       {{ t("billing.subscriptions.trialBanner", { date: fmt.date(subscription.trial_end_time, "day"), n: trialLeft }, trialLeft) }}
     </p>
     <p class="text-sm" data-testid="sub-seats">
       <span class="text-muted-foreground">{{ t("billing.subscriptions.seats") }}: </span><span class="font-medium tabular-nums">{{ seatsOf(subscription) }}</span>
     </p>
-    <p v-if="can.providerRuns" class="text-muted-foreground text-sm">{{ t("billing.subscriptions.providerRuns", { provider: subscription.provider ?? "" }) }}</p>
+    <p v-if="can.providerRuns" class="text-muted-foreground text-sm">{{ t("billing.subscriptions.providerRuns", { provider: label(t, te, "provider", subscription.provider) }) }}</p>
     <ProviderRunPanel v-if="can.providerRuns && operator && !subscription.end_time" :subscription="subscription" :packages="packages" :tenant-id="tenantId" :environment="environment" />
     <div v-else-if="!can.providerRuns" class="flex flex-wrap gap-2">
       <Button v-if="state === 'active'" variant="outline" :disabled="act.pause.isPending.value" @click="act.pause.mutate(id)">{{ t("billing.subscriptions.pause") }}</Button>
@@ -73,8 +75,8 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
       <Button v-if="!subscription.end_time || subscription.cancel_at_period_end" variant="outline" @click="subscription.cancel_at_period_end ? act.withdrawCancel.mutate(id) : act.scheduleCancel.mutate(id)">
         {{ t(`billing.subscriptions.${cancelLabel}`) }}
       </Button>
-      <Button v-if="!subscription.end_time" variant="destructive" @click="end">{{ t("billing.subscriptions.endNow") }}</Button>
-      <Button v-if="can.canEndWithCredit" variant="destructive" :disabled="act.endNowCredit.isPending.value" @click="endAndCredit">{{ t("billing.subscriptions.endNowCredit") }}</Button>
+      <Button v-if="!subscription.end_time" variant="outline" class="text-destructive hover:text-destructive" data-testid="sub-end-now" @click="end">{{ t("billing.subscriptions.endNow") }}</Button>
+      <Button v-if="can.canEndWithCredit" variant="outline" class="text-destructive hover:text-destructive" data-testid="sub-end-credit" :disabled="act.endNowCredit.isPending.value" @click="endAndCredit">{{ t("billing.subscriptions.endNowCredit") }}</Button>
     </div>
     <p v-if="act.endNowCredit.isSuccess.value" class="text-success text-sm" role="status">
       {{ t("billing.subscriptions.credited", { amount: fmt.money(credited, subscription.currency) }) }}
@@ -104,7 +106,7 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
     <div v-if="operator && !subscription.end_time" class="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
       <NativeSelect v-model="target" :aria-label="t('billing.subscriptions.moveTo')">
         <option value="" disabled>{{ t("billing.subscriptions.moveTo") }}</option>
-        <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name" :disabled="p.name === subscription.provider">{{ p.name }}</option>
+        <option v-for="p in ROUTABLE_PROVIDERS" :key="p.name" :value="p.name" :disabled="p.name === subscription.provider">{{ label(t, te, 'provider', p.name) }}</option>
       </NativeSelect>
       <Input v-if="targetRunsSubscriptions" v-model="priceRef" :aria-label="t('billing.subscriptions.priceRef')" :placeholder="t('billing.subscriptions.priceRef')" />
       <span v-else />

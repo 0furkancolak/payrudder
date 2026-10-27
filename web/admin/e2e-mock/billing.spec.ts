@@ -499,7 +499,7 @@ test.describe("subscriptions", () => {
     await expect(page.getByRole("row", { name: /cus_1/ })).toContainText("run by provider");
     await page.getByRole("button", { name: "Manage" }).click();
     const panel = page.getByRole("region", { name: "Manage cus_1" });
-    await expect(panel).toContainText("paddle runs this subscription");
+    await expect(panel).toContainText("Paddle runs this subscription");
     await expect(panel.getByRole("button", { name: "Change package" })).toHaveCount(0);
     await expect(panel.getByRole("region", { name: "Run by paddle" })).toBeVisible();
     await expect(panel.getByLabel("Move to provider")).toBeVisible();

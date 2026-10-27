@@ -50,11 +50,21 @@ function numberFormat(locale: string, oneDecimal: boolean): Intl.NumberFormat {
   return f;
 }
 
+const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
+
+/**
+ * A date in a right-to-left language is wrapped in a left-to-right isolate, so it keeps its own order when it sits inside Latin text ("TRY · 27 Oct 2026"
+ * in an Arabic page would otherwise be reordered into "272026/10/"). Left-to-right languages get the text unchanged.
+ */
+export function isolateDate(text: string, locale: string): string {
+  return text && RTL_LANGUAGES.has(locale.toLowerCase().split("-")[0]!) ? `\u2066${text}\u2069` : text;
+}
+
 /** An instant (an RFC 3339 text from the API) as text in the reader's time zone; `empty` for nothing or for something that is not a date. */
 export function formatDate(value: string | null | undefined, locale: string, style: DateStyle = "day", empty = ""): string {
   if (!value) return empty;
   const at = new Date(value);
-  return Number.isNaN(at.getTime()) ? empty : dateFormat(locale, style).format(at);
+  return Number.isNaN(at.getTime()) ? empty : isolateDate(dateFormat(locale, style).format(at), locale);
 }
 
 /** A calendar day sent as 2026-10-21 (no time zone: the server counts UTC days) as text, `day` or `monthDay` style, without shifting it by the reader's zone. */
@@ -63,7 +73,7 @@ export function formatUtcDay(value: string | null | undefined, locale: string, s
   const at = new Date(`${value}T00:00:00Z`);
   if (Number.isNaN(at.getTime())) return empty;
   const options: Intl.DateTimeFormatOptions = style === "month" ? { month: "short", year: "numeric", timeZone: "UTC" } : { ...OPTIONS[style], timeZone: "UTC" };
-  return new Intl.DateTimeFormat(locale, options).format(at);
+  return isolateDate(new Intl.DateTimeFormat(locale, options).format(at), locale);
 }
 
 /** A whole number with the locale's separators; `empty` for a missing one. */

@@ -116,7 +116,25 @@
       "UNCOLLECTIBLE": "abandonné"
     },
     "sagaState": {
-      "PAYMENT_PENDING": "virement attendu"
+      "PAYMENT_PENDING": "virement attendu",
+      "DRAFT": "brouillon",
+      "FINALIZED": "finalisée",
+      "PDF_REQUESTED": "PDF demandé",
+      "PDF_RENDERED": "PDF prêt",
+      "PDF_FAILED": "PDF en échec",
+      "PAYMENT_REQUESTED": "paiement demandé",
+      "PAID": "payée",
+      "PAYMENT_DECLINED": "paiement refusé",
+      "PAYMENT_UNKNOWN": "résultat du paiement inconnu",
+      "UNCOLLECTIBLE": "irrécouvrable",
+      "NOTIFY_REQUESTED": "notification demandée",
+      "NOTIFY_FAILED": "notification en échec",
+      "COMPLETED": "terminée",
+      "REFUND_REQUESTED": "remboursement demandé",
+      "REFUND_FAILED": "remboursement en échec",
+      "REFUNDED": "remboursée",
+      "VOIDED": "annulée",
+      "AWAITING_PAYMENT": "en attente de paiement"
     },
     "paymentMethod": {
       "bank_transfer": "Virement bancaire",
@@ -129,6 +147,12 @@
       "paid": "payé",
       "expired": "expiré",
       "rejected": "rejeté"
+    },
+    "provider": {
+      "iyzico": "iyzico",
+      "paddle": "Paddle",
+      "mockpsp": "Mock PSP",
+      "banktransfer": "Virement bancaire"
     }
   },
   "tenants": {
@@ -274,6 +298,18 @@
         "rejected": "Virement rejeté. La relance s'applique.",
         "expired": "Virement marqué comme expiré. La relance s'applique."
       }
+    },
+    "lineText": {
+      "monthly": "mensuel",
+      "yearly": "annuel",
+      "baseFee": "Frais de base ({interval}) — {plan} — du {from} au {to}",
+      "baseFeeSeats": "Frais de base ({interval}) × {seats} places — {plan} — du {from} au {to}",
+      "baseFeePlain": "Frais de base",
+      "priceChange": "Frais de base : changement de prix",
+      "unused": "Temps non utilisé sur {plan} — du {from} au {to}",
+      "coupon": "Coupon {code}",
+      "usage": "Consommation — {meter} — {rest}",
+      "late": "Consommation tardive — {meter} — {origin} ({rest})"
     }
   },
   "deadLetters": {
@@ -328,7 +364,8 @@
       "title": "3. Consommation",
       "calls": "Appels",
       "send": "Envoyer la consommation",
-      "sent": "{n} appels envoyés"
+      "sent": "{n} appels envoyés",
+      "sentOne": "{n} appel envoyé"
     },
     "close": {
       "title": "4. Clôturer la période",
@@ -351,7 +388,8 @@
       "subscription": "Abonnement à starter",
       "outcome": "Résultat du paiement : {scenario}",
       "usage": "Consommation envoyée : {n} appels",
-      "closed": "Période clôturée (sandbox) : la facturation s'exécute maintenant"
+      "closed": "Période clôturée (sandbox) : la facturation s'exécute maintenant",
+      "usageOne": "Consommation envoyée : {n} appel"
     },
     "components": {
       "title": "Composants",
@@ -643,7 +681,8 @@
         "keepSeats": "Sièges : garder {n}",
         "seatsHint": "Un changement de sièges seul est immédiat et calculé au prorata : les sièges ajoutés sont facturés pour le reste de la période, les sièges retirés deviennent un avoir. L'aperçu montre le montant.",
         "seatsAfter": "Sièges après le changement",
-        "scheduledSeats": "Programmé : {plan} ({interval}), {seats} sièges à partir du {date}"
+        "scheduledSeats": "Programmé : {plan} ({interval}), {seats} sièges à partir du {date}",
+        "previewHint": "Choisissez un nouveau forfait, un intervalle ou un nombre de places pour prévisualiser le changement."
       },
       "providerRun": {
         "title": "Géré par {provider}",
@@ -676,7 +715,12 @@
       "seatsDefault": "Sièges (1 par défaut)",
       "seatsHint": "Le tarif fixe est multiplié par le nombre de sièges, pas les prix à l'usage. Uniquement pour un abonnement que Payrudder gère et facture à l'avance.",
       "seatsBad": "Le nombre de sièges doit être un entier de 1 à {max}.",
-      "seatsCount": "{n} siège | {n} sièges"
+      "seatsCount": "{n} siège | {n} sièges",
+      "trail": {
+        "replacedBy": "Remplacé par un changement de formule : {plan} a pris le relais.",
+        "changedFrom": "Créé par un changement depuis {plan}.",
+        "open": "Ouvrir"
+      }
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",
@@ -3081,6 +3125,27 @@
         "live_refused": "Seul un environnement sandbox peut être réinitialisé. Un environnement live n'est jamais touché.",
         "bad_tenant": "L'environnement à réinitialiser n'est pas valide."
       }
+    },
+    "details": {
+      "required": "obligatoire",
+      "at_most_200_characters": "200 caractères au plus",
+      "required_at_most_200_characters": "obligatoire, 200 caractères au plus",
+      "must_not_be_negative": "ne peut pas être négatif",
+      "must_be_a_plain_e_mail_address": "doit être une adresse e-mail simple",
+      "must_be_a_uuid": "doit être un UUID",
+      "invalid_timestamp": "horodatage non valide",
+      "must_be_between_0_and_365": "doit être compris entre 0 et 365",
+      "must_be_a_time_in_the_future": "doit être dans le futur",
+      "a_plan_version_needs_at_least_one_price_a_base_fee_or_a_quot": "un forfait a besoin d'au moins un prix, de frais de base ou d'un quota"
+    },
+    "fields": {
+      "prices": "Prix",
+      "base_fee_minor": "Frais de base",
+      "trial_days": "Jours d'essai",
+      "name": "Nom",
+      "email": "E-mail",
+      "currency": "Devise",
+      "code": "Code"
     }
   },
   "product": {
@@ -3460,7 +3525,8 @@
       "removeTitle": "Retirer ce membre ?",
       "removeBody": "{name} perd aussitôt l'accès aux applications et aux données de ce compte.",
       "allRoles": "Tous les rôles",
-      "expiresHead": "Valable jusqu'au"
+      "expiresHead": "Valable jusqu'au",
+      "soleOwner": "Vous êtes le seul propriétaire, vous ne pouvez donc pas encore partir. Nommez d'abord un autre propriétaire."
     },
     "account": {
       "switch": "Compte",
@@ -4005,7 +4071,7 @@
     "items": {
       "overview": "Applications",
       "members": "Membres",
-      "settings": "Paramètres",
+      "settings": "Paramètres de l'organisation",
       "tenants": "Locataires",
       "playground": "Bac à sable",
       "deadLetters": "Lettres mortes",
@@ -4038,7 +4104,7 @@
       "coupons": "Coupons",
       "meters": "Compteurs",
       "integrations": "Intégrations",
-      "orgIntegrations": "Intégrations",
+      "orgIntegrations": "Intégrations de l'organisation",
       "plan": "Offre et facturation",
       "organisations": "Organisations",
       "platformPlans": "Offres de la plateforme"

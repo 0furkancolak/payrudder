@@ -116,7 +116,25 @@
       "UNCOLLECTIBLE": "aufgegeben"
     },
     "sagaState": {
-      "PAYMENT_PENDING": "wartet auf Überweisung"
+      "PAYMENT_PENDING": "wartet auf Überweisung",
+      "DRAFT": "Entwurf",
+      "FINALIZED": "abgeschlossen",
+      "PDF_REQUESTED": "PDF angefordert",
+      "PDF_RENDERED": "PDF erstellt",
+      "PDF_FAILED": "PDF fehlgeschlagen",
+      "PAYMENT_REQUESTED": "Zahlung angefordert",
+      "PAID": "bezahlt",
+      "PAYMENT_DECLINED": "Zahlung abgelehnt",
+      "PAYMENT_UNKNOWN": "Zahlungsergebnis unbekannt",
+      "UNCOLLECTIBLE": "uneinbringlich",
+      "NOTIFY_REQUESTED": "Benachrichtigung angefordert",
+      "NOTIFY_FAILED": "Benachrichtigung fehlgeschlagen",
+      "COMPLETED": "abgeschlossen",
+      "REFUND_REQUESTED": "Erstattung angefordert",
+      "REFUND_FAILED": "Erstattung fehlgeschlagen",
+      "REFUNDED": "erstattet",
+      "VOIDED": "storniert",
+      "AWAITING_PAYMENT": "wartet auf Zahlung"
     },
     "paymentMethod": {
       "bank_transfer": "Banküberweisung",
@@ -129,6 +147,12 @@
       "paid": "bezahlt",
       "expired": "abgelaufen",
       "rejected": "abgelehnt"
+    },
+    "provider": {
+      "iyzico": "iyzico",
+      "paddle": "Paddle",
+      "mockpsp": "Mock PSP",
+      "banktransfer": "Banküberweisung"
     }
   },
   "tenants": {
@@ -274,6 +298,18 @@
         "rejected": "Überweisung abgelehnt. Der Mahnplan greift.",
         "expired": "Überweisung als abgelaufen markiert. Der Mahnplan greift."
       }
+    },
+    "lineText": {
+      "monthly": "monatlich",
+      "yearly": "jährlich",
+      "baseFee": "Grundgebühr ({interval}) — {plan} — {from} bis {to}",
+      "baseFeeSeats": "Grundgebühr ({interval}) × {seats} Plätze — {plan} — {from} bis {to}",
+      "baseFeePlain": "Grundgebühr",
+      "priceChange": "Grundgebühr: Preisänderung",
+      "unused": "Ungenutzte Zeit auf {plan} — {from} bis {to}",
+      "coupon": "Gutschein {code}",
+      "usage": "Nutzung — {meter} — {rest}",
+      "late": "Verspätete Nutzung — {meter} — {origin} ({rest})"
     }
   },
   "deadLetters": {
@@ -328,7 +364,8 @@
       "title": "3. Nutzung",
       "calls": "Aufrufe",
       "send": "Nutzung senden",
-      "sent": "{n} Aufrufe gesendet"
+      "sent": "{n} Aufrufe gesendet",
+      "sentOne": "{n} Aufruf gesendet"
     },
     "close": {
       "title": "4. Zeitraum abschließen",
@@ -351,7 +388,8 @@
       "subscription": "Abonnement auf starter",
       "outcome": "Zahlungsergebnis: {scenario}",
       "usage": "Nutzung gesendet: {n} Aufrufe",
-      "closed": "Zeitraum abgeschlossen (Sandbox): Abrechnung läuft jetzt"
+      "closed": "Zeitraum abgeschlossen (Sandbox): Abrechnung läuft jetzt",
+      "usageOne": "Nutzung gesendet: {n} Aufruf"
     },
     "components": {
       "title": "Komponenten",
@@ -643,7 +681,8 @@
         "keepSeats": "Plätze: {n} beibehalten",
         "seatsHint": "Eine reine Änderung der Plätze gilt sofort und wird anteilig berechnet: zusätzliche Plätze werden für den Rest des Zeitraums berechnet, weniger Plätze werden zum Guthaben. Die Vorschau zeigt den Betrag.",
         "seatsAfter": "Plätze nach der Änderung",
-        "scheduledSeats": "Geplant: {plan} ({interval}), {seats} Plätze ab {date}"
+        "scheduledSeats": "Geplant: {plan} ({interval}), {seats} Plätze ab {date}",
+        "previewHint": "Wählen Sie ein neues Paket, ein Intervall oder eine Platzzahl, um die Änderung zu prüfen."
       },
       "providerRun": {
         "title": "Betrieben von {provider}",
@@ -676,7 +715,12 @@
       "seatsDefault": "Plätze (Standard 1)",
       "seatsHint": "Die Grundgebühr wird mit den Plätzen multipliziert, Nutzungspreise nicht. Nur für ein Abonnement, das Payrudder führt und im Voraus abrechnet.",
       "seatsBad": "Die Plätze müssen eine ganze Zahl von 1 bis {max} sein.",
-      "seatsCount": "{n} Platz | {n} Plätze"
+      "seatsCount": "{n} Platz | {n} Plätze",
+      "trail": {
+        "replacedBy": "Durch einen Planwechsel ersetzt: {plan} hat übernommen.",
+        "changedFrom": "Durch einen Planwechsel von {plan} entstanden.",
+        "open": "Öffnen"
+      }
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",
@@ -3081,6 +3125,27 @@
         "live_refused": "Nur eine Sandbox-Umgebung kann zurückgesetzt werden. Eine Live-Umgebung wird nie angetastet.",
         "bad_tenant": "Die zurückzusetzende Umgebung ist ungültig."
       }
+    },
+    "details": {
+      "required": "erforderlich",
+      "at_most_200_characters": "höchstens 200 Zeichen",
+      "required_at_most_200_characters": "erforderlich, höchstens 200 Zeichen",
+      "must_not_be_negative": "darf nicht negativ sein",
+      "must_be_a_plain_e_mail_address": "muss eine einfache E-Mail-Adresse sein",
+      "must_be_a_uuid": "muss eine UUID sein",
+      "invalid_timestamp": "ungültiger Zeitstempel",
+      "must_be_between_0_and_365": "muss zwischen 0 und 365 liegen",
+      "must_be_a_time_in_the_future": "muss ein Zeitpunkt in der Zukunft sein",
+      "a_plan_version_needs_at_least_one_price_a_base_fee_or_a_quot": "ein Paket braucht mindestens einen Preis, eine Grundgebühr oder ein Kontingent"
+    },
+    "fields": {
+      "prices": "Preise",
+      "base_fee_minor": "Grundgebühr",
+      "trial_days": "Testtage",
+      "name": "Name",
+      "email": "E-Mail",
+      "currency": "Währung",
+      "code": "Code"
     }
   },
   "product": {
@@ -3460,7 +3525,8 @@
       "removeTitle": "Dieses Mitglied entfernen?",
       "removeBody": "{name} verliert sofort den Zugriff auf Apps und Daten dieses Kontos.",
       "allRoles": "Alle Rollen",
-      "expiresHead": "Gültig bis"
+      "expiresHead": "Gültig bis",
+      "soleOwner": "Sie sind der einzige Inhaber und können daher noch nicht gehen. Machen Sie zuerst jemand anderen zum Inhaber."
     },
     "account": {
       "switch": "Konto",
@@ -4005,7 +4071,7 @@
     "items": {
       "overview": "Apps",
       "members": "Mitglieder",
-      "settings": "Einstellungen",
+      "settings": "Organisationseinstellungen",
       "tenants": "Mandanten",
       "playground": "Spielwiese",
       "deadLetters": "Dead Letters",
@@ -4014,7 +4080,7 @@
       "subscriptions": "Abonnements",
       "credits": "Guthaben",
       "packages": "Pakete",
-      "pricing": "Steuer und Wiederholungen",
+      "pricing": "Steuer, Wiederholungen",
       "invoices": "Rechnungen",
       "payments": "Zahlungen",
       "paymentLinks": "Zahlungslinks",
@@ -4038,7 +4104,7 @@
       "coupons": "Gutscheine",
       "meters": "Zähler",
       "integrations": "Integrationen",
-      "orgIntegrations": "Integrationen",
+      "orgIntegrations": "Organisations-Integrationen",
       "plan": "Tarif und Abrechnung",
       "organisations": "Organisationen",
       "platformPlans": "Plattform-Tarife"

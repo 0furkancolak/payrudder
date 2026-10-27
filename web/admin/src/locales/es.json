@@ -116,7 +116,25 @@
       "UNCOLLECTIBLE": "abandonado"
     },
     "sagaState": {
-      "PAYMENT_PENDING": "esperando la transferencia"
+      "PAYMENT_PENDING": "esperando la transferencia",
+      "DRAFT": "borrador",
+      "FINALIZED": "finalizada",
+      "PDF_REQUESTED": "PDF solicitado",
+      "PDF_RENDERED": "PDF listo",
+      "PDF_FAILED": "PDF fallido",
+      "PAYMENT_REQUESTED": "cobro solicitado",
+      "PAID": "pagada",
+      "PAYMENT_DECLINED": "pago rechazado",
+      "PAYMENT_UNKNOWN": "resultado del pago desconocido",
+      "UNCOLLECTIBLE": "incobrable",
+      "NOTIFY_REQUESTED": "aviso solicitado",
+      "NOTIFY_FAILED": "aviso fallido",
+      "COMPLETED": "completada",
+      "REFUND_REQUESTED": "reembolso solicitado",
+      "REFUND_FAILED": "reembolso fallido",
+      "REFUNDED": "reembolsada",
+      "VOIDED": "anulada",
+      "AWAITING_PAYMENT": "pendiente de pago"
     },
     "paymentMethod": {
       "bank_transfer": "Transferencia bancaria",
@@ -129,6 +147,12 @@
       "paid": "pagada",
       "expired": "caducada",
       "rejected": "rechazada"
+    },
+    "provider": {
+      "iyzico": "iyzico",
+      "paddle": "Paddle",
+      "mockpsp": "Mock PSP",
+      "banktransfer": "Transferencia bancaria"
     }
   },
   "tenants": {
@@ -274,6 +298,18 @@
         "rejected": "Transferencia rechazada. Se aplica la reclamación.",
         "expired": "Transferencia marcada como caducada. Se aplica la reclamación."
       }
+    },
+    "lineText": {
+      "monthly": "mensual",
+      "yearly": "anual",
+      "baseFee": "Tarifa base ({interval}) — {plan} — del {from} al {to}",
+      "baseFeeSeats": "Tarifa base ({interval}) × {seats} plazas — {plan} — del {from} al {to}",
+      "baseFeePlain": "Tarifa base",
+      "priceChange": "Tarifa base: cambio de precio",
+      "unused": "Tiempo no utilizado en {plan} — del {from} al {to}",
+      "coupon": "Cupón {code}",
+      "usage": "Uso — {meter} — {rest}",
+      "late": "Uso tardío — {meter} — {origin} ({rest})"
     }
   },
   "deadLetters": {
@@ -328,7 +364,8 @@
       "title": "3. Consumo",
       "calls": "Llamadas",
       "send": "Enviar consumo",
-      "sent": "{n} llamadas enviadas"
+      "sent": "{n} llamadas enviadas",
+      "sentOne": "{n} llamada enviada"
     },
     "close": {
       "title": "4. Cerrar el periodo",
@@ -351,7 +388,8 @@
       "subscription": "Suscripción a starter",
       "outcome": "Resultado del pago: {scenario}",
       "usage": "Consumo enviado: {n} llamadas",
-      "closed": "Periodo cerrado (sandbox): la facturación se ejecuta ahora"
+      "closed": "Periodo cerrado (sandbox): la facturación se ejecuta ahora",
+      "usageOne": "Consumo enviado: {n} llamada"
     },
     "components": {
       "title": "Componentes",
@@ -643,7 +681,8 @@
         "keepSeats": "Asientos: mantener {n}",
         "seatsHint": "Un cambio solo de asientos es inmediato y prorrateado: los asientos añadidos se cobran por el resto del periodo y los quitados pasan a saldo a favor. La vista previa muestra el importe.",
         "seatsAfter": "Asientos tras el cambio",
-        "scheduledSeats": "Programado: {plan} ({interval}), {seats} asientos desde {date}"
+        "scheduledSeats": "Programado: {plan} ({interval}), {seats} asientos desde {date}",
+        "previewHint": "Elija un paquete, un intervalo o un número de plazas nuevos para previsualizar el cambio."
       },
       "providerRun": {
         "title": "Gestionado por {provider}",
@@ -676,7 +715,12 @@
       "seatsDefault": "Asientos (1 por defecto)",
       "seatsHint": "La tarifa fija se multiplica por los asientos; los precios por uso no. Solo para una suscripción que Payrudder gestiona y factura por adelantado.",
       "seatsBad": "Los asientos deben ser un número entero de 1 a {max}.",
-      "seatsCount": "{n} asiento | {n} asientos"
+      "seatsCount": "{n} asiento | {n} asientos",
+      "trail": {
+        "replacedBy": "Sustituida por un cambio de plan: ahora es {plan}.",
+        "changedFrom": "Iniciada por un cambio de plan desde {plan}.",
+        "open": "Abrir"
+      }
     },
     "payments": {
       "reconcile": "Conciliar con el libro",
@@ -3081,6 +3125,27 @@
         "live_refused": "Solo se puede restablecer un entorno sandbox. Un entorno live nunca se toca.",
         "bad_tenant": "El entorno que se quiere restablecer no es válido."
       }
+    },
+    "details": {
+      "required": "obligatorio",
+      "at_most_200_characters": "como máximo 200 caracteres",
+      "required_at_most_200_characters": "obligatorio, como máximo 200 caracteres",
+      "must_not_be_negative": "no puede ser negativo",
+      "must_be_a_plain_e_mail_address": "debe ser una dirección de correo simple",
+      "must_be_a_uuid": "debe ser un UUID",
+      "invalid_timestamp": "marca de tiempo no válida",
+      "must_be_between_0_and_365": "debe estar entre 0 y 365",
+      "must_be_a_time_in_the_future": "debe ser un momento futuro",
+      "a_plan_version_needs_at_least_one_price_a_base_fee_or_a_quot": "un paquete necesita al menos un precio, una tarifa base o una cuota"
+    },
+    "fields": {
+      "prices": "Precios",
+      "base_fee_minor": "Tarifa base",
+      "trial_days": "Días de prueba",
+      "name": "Nombre",
+      "email": "Correo",
+      "currency": "Moneda",
+      "code": "Código"
     }
   },
   "product": {
@@ -3460,7 +3525,8 @@
       "removeTitle": "¿Quitar a este miembro?",
       "removeBody": "{name} pierde de inmediato el acceso a las aplicaciones y los datos de esta cuenta.",
       "allRoles": "Todos los roles",
-      "expiresHead": "Válida hasta"
+      "expiresHead": "Válida hasta",
+      "soleOwner": "Eres el único propietario, así que aún no puedes salir. Nombra primero a otro propietario."
     },
     "account": {
       "switch": "Cuenta",
@@ -4005,7 +4071,7 @@
     "items": {
       "overview": "Aplicaciones",
       "members": "Miembros",
-      "settings": "Ajustes",
+      "settings": "Ajustes de la organización",
       "tenants": "Inquilinos",
       "playground": "Zona de pruebas",
       "deadLetters": "Cartas muertas",
@@ -4014,7 +4080,7 @@
       "subscriptions": "Suscripciones",
       "credits": "Créditos",
       "packages": "Paquetes",
-      "pricing": "Impuestos y reintentos",
+      "pricing": "Impuestos, reintentos",
       "invoices": "Facturas",
       "payments": "Pagos",
       "paymentLinks": "Enlaces de pago",
@@ -4038,7 +4104,7 @@
       "coupons": "Cupones",
       "meters": "Medidores",
       "integrations": "Integraciones",
-      "orgIntegrations": "Integraciones",
+      "orgIntegrations": "Integraciones de la organización",
       "plan": "Plan y facturación",
       "organisations": "Organizaciones",
       "platformPlans": "Planes de la plataforma"

@@ -19,13 +19,14 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { PaymentContext } from "@/features/related";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
+import { label } from "@/shared/lib/labels";
 import { usePayments } from "./billingApi";
 
 /**
  * The environment's payments, newest first: charges and refunds, each as the one outcome it settled on (pending, paid, failed, refunded). Reads /v1/payments.
  * The operator's ledger (provider references, decline details) and the reconciliation are operator tools and are not here.
  */
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
 const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -89,7 +90,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
             <TableCell class="font-medium whitespace-nowrap">{{ when(p.occurred_at) }}</TableCell>
             <TableCell>{{ t(`product.billing.payments.kinds.${p.kind}`) }}</TableCell>
             <TableCell><StatusPill :tone="toneOf(p.status)">{{ t(`product.status.${p.status}`) }}</StatusPill></TableCell>
-            <TableCell class="text-muted-foreground capitalize max-md:hidden">{{ p.provider }}</TableCell>
+            <TableCell class="text-muted-foreground max-md:hidden">{{ label(t, te, "provider", p.provider) }}</TableCell>
             <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">{{ signed(p) }}</TableCell>
             <TableCell>
               <RowActions

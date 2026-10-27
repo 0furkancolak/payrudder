@@ -18,6 +18,7 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill } from "@/shared/ui/status-pill";
+import { useTabParam } from "@/shared/lib/useSearchValue";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDunningReport, useRevenueReport, useSubscriptionReport } from "./api";
@@ -28,7 +29,7 @@ const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const tabs = ["revenue", "subscriptions", "dunning"] as const;
-const tab = ref<(typeof tabs)[number]>("revenue");
+const tab = useTabParam("tab", tabs, "revenue");
 
 // Revenue
 // The date range chip drives the period: the report counts whole months, so the days are cut to their month.

@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { idOf } from "@/shared/lib/sheets";
+import { useSearchValue } from "@/shared/lib/useSearchValue";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useCreditPacks } from "./api";
 import CreditPacksCard from "./CreditPacksCard.vue";
@@ -17,7 +18,8 @@ import PurchaseLinkCard from "./PurchaseLinkCard.vue";
 const { t } = useI18n();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
-const customer = ref("");
+// The customer picked is in the address, so a reload or a shared link shows the same balance.
+const customer = useSearchValue("customer");
 // The grant sheet is in the address with the customer it is for: a reload or a shared link chooses that customer again.
 watch(
   () => idOf("grant-credits"),

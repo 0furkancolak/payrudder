@@ -154,7 +154,7 @@ test.describe("the tour icon of a page header", () => {
       [`/app/t/${LIVE}/payments`, "Payments", /Every attempt to collect money/],
       [`/app/apps/${APP}/keys`, "API keys", /API keys let your server talk to Payrudder/],
       ["/app/members", "Members", /Who belongs to this organisation/],
-      ["/app/settings", "Settings", /Your organisation's name/],
+      ["/app/settings", "Organisation settings", /Your organisation's name/],
     ];
     for (const [path, name, words] of pages) {
       await page.goto(path);

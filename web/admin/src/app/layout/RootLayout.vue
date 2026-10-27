@@ -167,9 +167,10 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           >
             <Menu class="size-5" aria-hidden="true" />
           </button>
-          <Breadcrumbs :crumbs="shell.crumbs.value" class="min-w-0 flex-1" />
+          <!-- On a phone the breadcrumb takes a row of its own below the buttons, so the page name is not squeezed to two letters. -->
+          <Breadcrumbs :crumbs="shell.crumbs.value" class="min-w-0 flex-1 max-sm:order-last max-sm:basis-full" />
           <!-- The tour button of the guided tour (phase 52) mounts here, in the header of every page. -->
-          <div id="tour-slot" data-testid="tour-slot" class="flex shrink-0 items-center gap-2"></div>
+          <div id="tour-slot" data-testid="tour-slot" class="flex shrink-0 items-center gap-2 max-sm:ms-auto"></div>
           <div class="flex shrink-0 items-center gap-2">
             <TourButton v-if="pageTour" :tour="pageTour" />
             <PrivacyToggle />

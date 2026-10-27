@@ -3,6 +3,7 @@ import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { thisMonth } from "@/shared/lib/dateRange";
+import { useTabParam } from "@/shared/lib/useSearchValue";
 import type { DateRange } from "@/shared/ui/date-range";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import CustomersTab from "./CustomersTab.vue";
@@ -19,7 +20,7 @@ const TABS = ["overview", "meters", "customers"] as const;
 const { t } = useI18n();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
-const tab = ref<(typeof TABS)[number]>("overview");
+const tab = useTabParam("tab", TABS, "overview");
 
 const range = ref<DateRange>(thisMonth());
 const compare = ref(true);

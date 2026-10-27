@@ -116,7 +116,25 @@
       "UNCOLLECTIBLE": "given up"
     },
     "sagaState": {
-      "PAYMENT_PENDING": "waiting for transfer"
+      "PAYMENT_PENDING": "waiting for transfer",
+      "DRAFT": "draft",
+      "FINALIZED": "finalized",
+      "PDF_REQUESTED": "PDF requested",
+      "PDF_RENDERED": "PDF ready",
+      "PDF_FAILED": "PDF failed",
+      "PAYMENT_REQUESTED": "payment requested",
+      "PAID": "paid",
+      "PAYMENT_DECLINED": "payment declined",
+      "PAYMENT_UNKNOWN": "payment outcome unknown",
+      "UNCOLLECTIBLE": "uncollectible",
+      "NOTIFY_REQUESTED": "notification requested",
+      "NOTIFY_FAILED": "notification failed",
+      "COMPLETED": "completed",
+      "REFUND_REQUESTED": "refund requested",
+      "REFUND_FAILED": "refund failed",
+      "REFUNDED": "refunded",
+      "VOIDED": "voided",
+      "AWAITING_PAYMENT": "awaiting payment"
     },
     "paymentMethod": {
       "bank_transfer": "Bank transfer",
@@ -129,6 +147,12 @@
       "paid": "paid",
       "expired": "expired",
       "rejected": "rejected"
+    },
+    "provider": {
+      "iyzico": "iyzico",
+      "paddle": "Paddle",
+      "mockpsp": "Mock PSP",
+      "banktransfer": "Bank transfer"
     }
   },
   "tenants": {
@@ -274,6 +298,18 @@
         "rejected": "Transfer rejected. Dunning applies.",
         "expired": "Transfer marked expired. Dunning applies."
       }
+    },
+    "lineText": {
+      "monthly": "monthly",
+      "yearly": "yearly",
+      "baseFee": "Base fee ({interval}) — {plan} — {from} to {to}",
+      "baseFeeSeats": "Base fee ({interval}) × {seats} seats — {plan} — {from} to {to}",
+      "baseFeePlain": "Base fee",
+      "priceChange": "Base fee: price change",
+      "unused": "Unused time on {plan} — {from} to {to}",
+      "coupon": "Coupon {code}",
+      "usage": "Usage — {meter} — {rest}",
+      "late": "Late usage — {meter} — {origin} ({rest})"
     }
   },
   "deadLetters": {
@@ -328,7 +364,8 @@
       "title": "3. Usage",
       "calls": "Calls",
       "send": "Send usage",
-      "sent": "{n} calls sent"
+      "sent": "{n} calls sent",
+      "sentOne": "{n} call sent"
     },
     "close": {
       "title": "4. Close the period",
@@ -351,7 +388,8 @@
       "subscription": "Subscription to starter",
       "outcome": "Payment outcome: {scenario}",
       "usage": "Sent usage: {n} calls",
-      "closed": "Period closed (sandbox): billing runs now"
+      "closed": "Period closed (sandbox): billing runs now",
+      "usageOne": "Sent usage: {n} call"
     },
     "components": {
       "title": "Components",
@@ -643,7 +681,8 @@
         "keepSeats": "Seats: keep {n}",
         "seatsHint": "A change of seats alone is immediate and prorated: more seats are charged for the rest of the period, fewer seats become a credit. Preview shows the amount.",
         "seatsAfter": "Seats after the change",
-        "scheduledSeats": "Scheduled: {plan} ({interval}), {seats} seats from {date}"
+        "scheduledSeats": "Scheduled: {plan} ({interval}), {seats} seats from {date}",
+        "previewHint": "Choose a new package, interval or number of seats to preview the change."
       },
       "providerRun": {
         "title": "Run by {provider}",
@@ -676,7 +715,12 @@
       "seatsDefault": "Seats (default 1)",
       "seatsHint": "The fixed fee is multiplied by the seats; usage prices are not. Only for a subscription Payrudder runs and bills in advance.",
       "seatsBad": "Seats must be a whole number from 1 to {max}.",
-      "seatsCount": "{n} seat | {n} seats"
+      "seatsCount": "{n} seat | {n} seats",
+      "trail": {
+        "replacedBy": "Replaced by a plan change: {plan} took over.",
+        "changedFrom": "Started by a plan change from {plan}.",
+        "open": "Open"
+      }
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",
@@ -3081,6 +3125,27 @@
         "live_refused": "Only a sandbox environment can be reset. A live environment is never touched.",
         "bad_tenant": "The environment to reset is not valid."
       }
+    },
+    "details": {
+      "required": "required",
+      "at_most_200_characters": "at most 200 characters",
+      "required_at_most_200_characters": "required, at most 200 characters",
+      "must_not_be_negative": "must not be negative",
+      "must_be_a_plain_e_mail_address": "must be a plain e-mail address",
+      "must_be_a_uuid": "must be a UUID",
+      "invalid_timestamp": "invalid timestamp",
+      "must_be_between_0_and_365": "must be between 0 and 365",
+      "must_be_a_time_in_the_future": "must be a time in the future",
+      "a_plan_version_needs_at_least_one_price_a_base_fee_or_a_quot": "a package needs at least one price, a base fee or a quota"
+    },
+    "fields": {
+      "prices": "Prices",
+      "base_fee_minor": "Base fee",
+      "trial_days": "Trial days",
+      "name": "Name",
+      "email": "E-mail",
+      "currency": "Currency",
+      "code": "Code"
     }
   },
   "product": {
@@ -3460,7 +3525,8 @@
       "removeTitle": "Remove this member?",
       "removeBody": "{name} loses access to this account's apps and data at once.",
       "allRoles": "All roles",
-      "expiresHead": "Valid until"
+      "expiresHead": "Valid until",
+      "soleOwner": "You are the only owner, so you cannot leave yet. Make someone else an owner first."
     },
     "account": {
       "switch": "Account",
@@ -4005,7 +4071,7 @@
     "items": {
       "overview": "Apps",
       "members": "Members",
-      "settings": "Settings",
+      "settings": "Organisation settings",
       "tenants": "Tenants",
       "playground": "Playground",
       "deadLetters": "Dead letters",
@@ -4038,7 +4104,7 @@
       "coupons": "Coupons",
       "meters": "Meters",
       "integrations": "Integrations",
-      "orgIntegrations": "Integrations",
+      "orgIntegrations": "Organisation integrations",
       "plan": "Plan and billing",
       "organisations": "Organisations",
       "platformPlans": "Platform plans"

@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import CustomerSelect from "@/features/customers/CustomerSelect.vue";
 import { useFormat } from "@/shared/lib/format";
+import { useTabParam } from "@/shared/lib/useSearchValue";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -41,7 +42,7 @@ const reasonOfLot = computed(() => {
 });
 
 const open = ref(false);
-const view = ref<"lots" | "ledger">("lots");
+const view = useTabParam("view", ["lots", "ledger"] as const, "lots");
 type Lot = NonNullable<NonNullable<typeof balance.data.value>["lots"]>[number];
 const lots = useTableState<Lot>(() => balance.data.value?.lots ?? [], {
   searchFields: (l) => [l.source ? t(`billing.credits.source.${l.source}`) : ""],

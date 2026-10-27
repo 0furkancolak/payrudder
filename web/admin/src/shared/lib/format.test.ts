@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCount, formatDate, formatPercent, formatUtcDay } from "./format";
+import { formatCount, formatDate, formatPercent, formatUtcDay, isolateDate } from "./format";
 
 describe("formatDate", () => {
   it("gives the empty text for nothing and for an unreadable date instead of throwing", () => {
@@ -39,5 +39,18 @@ describe("counts and percentages", () => {
   it("shows one decimal at most, and a dash for no value", () => {
     expect(formatPercent(12.34, "en-US")).toBe("12.3%");
     expect(formatPercent(null, "en-US")).toBe("—");
+  });
+});
+
+describe("dates in right-to-left languages", () => {
+  it("are isolated so they keep their order inside Latin text", () => {
+    expect(isolateDate("27 Oct 2026", "ar")).toBe("\u206627 Oct 2026\u2069");
+    expect(formatDate("2026-10-27T12:00:00Z", "ar", "day").startsWith("\u2066")).toBe(true);
+    expect(formatUtcDay("2026-10-27", "ar-EG", "day").endsWith("\u2069")).toBe(true);
+  });
+
+  it("leave left-to-right languages unchanged", () => {
+    expect(isolateDate("27 Oct 2026", "en")).toBe("27 Oct 2026");
+    expect(formatUtcDay("2026-10-21", "tr", "day")).not.toContain("\u2066");
   });
 });
