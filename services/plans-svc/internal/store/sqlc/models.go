@@ -586,6 +586,13 @@ type UserIdentity struct {
 	LastLoginAt time.Time
 }
 
+type UserOnboarding struct {
+	UserID    uuid.UUID
+	Wizard    []byte
+	SeenTours []string
+	UpdatedAt time.Time
+}
+
 type UserSession struct {
 	ID         uuid.UUID
 	UserID     uuid.UUID

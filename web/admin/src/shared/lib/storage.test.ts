@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { safeGet, safeSet } from "./storage";
+import { safeGet, safeKeys, safeSet } from "./storage";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -30,5 +30,13 @@ describe("storage that may be blocked", () => {
     vi.stubGlobal("window", blocked);
     expect(safeGet("local", "a")).toBeNull();
     expect(safeSet("session", "a", "1")).toBe(false);
+    expect(safeKeys("local", "a")).toEqual([]);
+  });
+
+  it("lists the keys that start with a prefix", () => {
+    const m = new Map([["x.1", "a"], ["x.2", "b"], ["y.1", "c"]]);
+    vi.stubGlobal("window", { localStorage: { length: m.size, key: (i: number) => [...m.keys()][i] ?? null } });
+    expect(safeKeys("local", "x.")).toEqual(["x.1", "x.2"]);
+    expect(safeKeys("local", "z")).toEqual([]);
   });
 });

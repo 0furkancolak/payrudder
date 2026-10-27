@@ -238,3 +238,19 @@ UPDATE account_invites SET accepted_at = now() WHERE id = $1 AND accepted_at IS 
 -- The address of an invited person is proven by the mail that carried the token.
 -- name: InsertVerifiedUser :one
 INSERT INTO users (id, email, display_name, password_hash, locale, email_verified_at) VALUES ($1, $2, $3, $4, $5, now()) RETURNING *;
+
+-- name: GetUserOnboarding :one
+-- system. The person's wizard progress and seen tours; no row: nothing stored yet.
+SELECT user_id, wizard, seen_tours, updated_at FROM user_onboarding WHERE user_id = @user_id;
+
+-- name: EnsureUserOnboarding :exec
+-- system. Creates the person's row when it is missing (a second writer doing the same is a no-op).
+INSERT INTO user_onboarding (user_id) VALUES (@user_id) ON CONFLICT (user_id) DO NOTHING;
+
+-- name: LockUserOnboarding :one
+-- system. The person's row, locked for the rest of the transaction, so two writers merge one after the other.
+SELECT user_id, wizard, seen_tours, updated_at FROM user_onboarding WHERE user_id = @user_id FOR UPDATE;
+
+-- name: SaveUserOnboarding :exec
+-- system. Writes the merged document.
+UPDATE user_onboarding SET wizard = @wizard, seen_tours = @seen_tours, updated_at = @updated_at WHERE user_id = @user_id;

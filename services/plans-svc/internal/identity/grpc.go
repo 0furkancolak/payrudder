@@ -11,6 +11,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/onboarding"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
@@ -24,15 +25,32 @@ type Handler struct {
 	goLive *golive.Handler
 	promo  *promote.Handler
 	sbx    *sandboxapi.Handler
+	onb    *onboarding.Service
 }
 
 // New returns the identity handlers. goLive serves the two go-live calls (phase 45).
-func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler, promo *promote.Handler, sbx *sandboxapi.Handler) *Handler {
-	return &Handler{cmd: cmd, qry: qry, goLive: goLive, promo: promo, sbx: sbx}
+func New(cmd *command.Commands, qry *query.Queries, goLive *golive.Handler, promo *promote.Handler, sbx *sandboxapi.Handler, onb *onboarding.Service) *Handler {
+	return &Handler{cmd: cmd, qry: qry, goLive: goLive, promo: promo, sbx: sbx, onb: onb}
 }
 
 func (h *Handler) ResetMySandbox(ctx context.Context, req *plansv1.ResetMySandboxRequest) (*plansv1.ResetMySandboxResponse, error) {
 	return h.sbx.ResetMySandbox(ctx, req)
+}
+
+func (h *Handler) GetMyOnboarding(ctx context.Context, req *plansv1.GetMyOnboardingRequest) (*plansv1.GetMyOnboardingResponse, error) {
+	o, err := h.onb.Get(ctx, req.GetUserId())
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GetMyOnboardingResponse{Onboarding: o}, nil
+}
+
+func (h *Handler) UpdateMyOnboarding(ctx context.Context, req *plansv1.UpdateMyOnboardingRequest) (*plansv1.UpdateMyOnboardingResponse, error) {
+	o, err := h.onb.Update(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.UpdateMyOnboardingResponse{Onboarding: o}, nil
 }
 
 func (h *Handler) GetMySandboxReset(ctx context.Context, req *plansv1.GetMySandboxResetRequest) (*plansv1.GetMySandboxResetResponse, error) {

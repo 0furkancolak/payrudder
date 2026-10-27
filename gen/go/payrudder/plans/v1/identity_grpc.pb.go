@@ -59,6 +59,8 @@ const (
 	IdentityService_PromoteMyApp_FullMethodName           = "/payrudder.plans.v1.IdentityService/PromoteMyApp"
 	IdentityService_ResetMySandbox_FullMethodName         = "/payrudder.plans.v1.IdentityService/ResetMySandbox"
 	IdentityService_GetMySandboxReset_FullMethodName      = "/payrudder.plans.v1.IdentityService/GetMySandboxReset"
+	IdentityService_GetMyOnboarding_FullMethodName        = "/payrudder.plans.v1.IdentityService/GetMyOnboarding"
+	IdentityService_UpdateMyOnboarding_FullMethodName     = "/payrudder.plans.v1.IdentityService/UpdateMyOnboarding"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -154,6 +156,12 @@ type IdentityServiceClient interface {
 	ResetMySandbox(ctx context.Context, in *ResetMySandboxRequest, opts ...grpc.CallOption) (*ResetMySandboxResponse, error)
 	// GetMySandboxReset returns the latest reset of an app's sandbox, running or finished; unset when there has been none.
 	GetMySandboxReset(ctx context.Context, in *GetMySandboxResetRequest, opts ...grpc.CallOption) (*GetMySandboxResetResponse, error)
+	// GetMyOnboarding returns what the console keeps for the person, not for an account: how far they are in the first-run wizard and which page tours they have
+	// seen. Both follow them to another browser. Nothing stored yet reads as no wizard and no tours.
+	GetMyOnboarding(ctx context.Context, in *GetMyOnboardingRequest, opts ...grpc.CallOption) (*GetMyOnboardingResponse, error)
+	// UpdateMyOnboarding merges a change into it and returns the result. The wizard fields given overwrite (a flag that is set stays set); seen_tours are added to
+	// the set and never replace it, so two browsers writing lose nothing; forget_tours removes tours (a person asking to see a tour again).
+	UpdateMyOnboarding(ctx context.Context, in *UpdateMyOnboardingRequest, opts ...grpc.CallOption) (*UpdateMyOnboardingResponse, error)
 }
 
 type identityServiceClient struct {
@@ -564,6 +572,26 @@ func (c *identityServiceClient) GetMySandboxReset(ctx context.Context, in *GetMy
 	return out, nil
 }
 
+func (c *identityServiceClient) GetMyOnboarding(ctx context.Context, in *GetMyOnboardingRequest, opts ...grpc.CallOption) (*GetMyOnboardingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMyOnboardingResponse)
+	err := c.cc.Invoke(ctx, IdentityService_GetMyOnboarding_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) UpdateMyOnboarding(ctx context.Context, in *UpdateMyOnboardingRequest, opts ...grpc.CallOption) (*UpdateMyOnboardingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateMyOnboardingResponse)
+	err := c.cc.Invoke(ctx, IdentityService_UpdateMyOnboarding_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IdentityServiceServer is the server API for IdentityService service.
 // All implementations must embed UnimplementedIdentityServiceServer
 // for forward compatibility.
@@ -657,6 +685,12 @@ type IdentityServiceServer interface {
 	ResetMySandbox(context.Context, *ResetMySandboxRequest) (*ResetMySandboxResponse, error)
 	// GetMySandboxReset returns the latest reset of an app's sandbox, running or finished; unset when there has been none.
 	GetMySandboxReset(context.Context, *GetMySandboxResetRequest) (*GetMySandboxResetResponse, error)
+	// GetMyOnboarding returns what the console keeps for the person, not for an account: how far they are in the first-run wizard and which page tours they have
+	// seen. Both follow them to another browser. Nothing stored yet reads as no wizard and no tours.
+	GetMyOnboarding(context.Context, *GetMyOnboardingRequest) (*GetMyOnboardingResponse, error)
+	// UpdateMyOnboarding merges a change into it and returns the result. The wizard fields given overwrite (a flag that is set stays set); seen_tours are added to
+	// the set and never replace it, so two browsers writing lose nothing; forget_tours removes tours (a person asking to see a tour again).
+	UpdateMyOnboarding(context.Context, *UpdateMyOnboardingRequest) (*UpdateMyOnboardingResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -786,6 +820,12 @@ func (UnimplementedIdentityServiceServer) ResetMySandbox(context.Context, *Reset
 }
 func (UnimplementedIdentityServiceServer) GetMySandboxReset(context.Context, *GetMySandboxResetRequest) (*GetMySandboxResetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMySandboxReset not implemented")
+}
+func (UnimplementedIdentityServiceServer) GetMyOnboarding(context.Context, *GetMyOnboardingRequest) (*GetMyOnboardingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMyOnboarding not implemented")
+}
+func (UnimplementedIdentityServiceServer) UpdateMyOnboarding(context.Context, *UpdateMyOnboardingRequest) (*UpdateMyOnboardingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateMyOnboarding not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -1528,6 +1568,42 @@ func _IdentityService_GetMySandboxReset_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_GetMyOnboarding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMyOnboardingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).GetMyOnboarding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_GetMyOnboarding_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).GetMyOnboarding(ctx, req.(*GetMyOnboardingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_UpdateMyOnboarding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMyOnboardingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).UpdateMyOnboarding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_UpdateMyOnboarding_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).UpdateMyOnboarding(ctx, req.(*UpdateMyOnboardingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1694,6 +1770,14 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMySandboxReset",
 			Handler:    _IdentityService_GetMySandboxReset_Handler,
+		},
+		{
+			MethodName: "GetMyOnboarding",
+			Handler:    _IdentityService_GetMyOnboarding_Handler,
+		},
+		{
+			MethodName: "UpdateMyOnboarding",
+			Handler:    _IdentityService_UpdateMyOnboarding_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
