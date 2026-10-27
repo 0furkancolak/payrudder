@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { ALL_PERMISSIONS, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission } from "./apiKeys";
+import { ALL_PERMISSIONS, DEFAULT_KEY_ROLE, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission } from "./apiKeys";
 
 describe("key roles", () => {
+  it("a new key starts on a role that can only read", () => {
+    expect(DEFAULT_KEY_ROLE).not.toBe("admin");
+    expect((permissionsOfRole(DEFAULT_KEY_ROLE) ?? []).every((p) => p.endsWith(":read"))).toBe(true);
+  });
+
   it("the admin role holds every permission and read_only every read", () => {
     expect(permissionsOfRole("admin")).toEqual(ALL_PERMISSIONS);
     const ro = permissionsOfRole("read_only") ?? [];

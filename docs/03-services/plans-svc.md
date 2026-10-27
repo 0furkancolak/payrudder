@@ -142,7 +142,7 @@ A subscription is created `month` or `year`, needs a fee for that interval in it
 and still running at that period's start, each with the period `start, end)` and the fee. `AdvanceSubscriptionFee(subscription_id,
 period_start)` moves `fee_due_at` to the period's end by compare-and-set, so calling it twice, or with a time that is not the next period,
 changes nothing (the latter is refused). `ChangePlan` of an advance-billed subscription is refused: those are changed with `ChangeSubscription` (phase 20). The subscription report
-counts a yearly fee as a twelfth in MRR.
+counts a yearly fee as a twelfth in MRR. MRR is the plan's fixed fee times the subscription's quantity (seats), per currency, for active and past-due subscriptions; usage charges are not part of it. It therefore agrees with what the advance fee invoices charge.
 
 ## As built: plan and interval changes (Phase 20)
 

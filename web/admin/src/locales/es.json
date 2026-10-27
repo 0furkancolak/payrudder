@@ -392,7 +392,7 @@
       "email": "Correo electrónico",
       "country": "País",
       "currency": "Moneda de facturación",
-      "tenantCurrency": "Moneda del cliente",
+      "tenantCurrency": "Moneda de la cuenta",
       "create": "Crear cliente",
       "empty": "Aún no hay clientes.",
       "address": {
@@ -1368,7 +1368,7 @@
         "nothing": "Nada que revisar",
         "rotate": "Nueva dirección",
         "confirmRotate": "¿Crear una nueva dirección? El correo enviado a la anterior se descarta.",
-        "noDomain": "Esta instalación no tiene dominio de correo entrante (PAYRUDDER_INBOUND_DOMAIN); solo se muestra el token."
+        "noDomain": "El reenvío de facturas por correo no está disponible en esta instalación; aún puede añadir facturas a mano."
       },
       "rules": {
         "open": "Reglas de proveedores",
@@ -4089,7 +4089,8 @@
     },
     "currency": {
       "label": "Moneda",
-      "own": "propia"
+      "own": "predeterminada",
+      "ownHint": "Moneda predeterminada de la cuenta"
     },
     "kpi": {
       "net": "Ingresos netos",

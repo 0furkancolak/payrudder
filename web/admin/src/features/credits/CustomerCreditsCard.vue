@@ -15,7 +15,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
-import { useCreditBalance } from "./api";
+import { useCreditBalance, useCreditLedger } from "./api";
 import GrantCreditsSheet from "./GrantCreditsSheet.vue";
 import LedgerCard from "./LedgerCard.vue";
 import { formatCredits } from "./lib";
@@ -31,6 +31,14 @@ const fmt = useFormat();
 
 const balance = useCreditBalance(() => props.tenantId, customer);
 const credits = (v: string | number | undefined) => formatCredits(v, locale.value);
+
+// A lot only knows its kind (promotion, manual, purchase); why it was granted ("Welcome gift", "Goodwill") is the reason of the ledger entry that made it.
+const ledger = useCreditLedger(() => props.tenantId, customer);
+const reasonOfLot = computed(() => {
+  const m = new Map<string, string>();
+  for (const e of ledger.data.value?.entries ?? []) if (e.kind === "grant" && e.reason && !m.has(e.lot_id)) m.set(e.lot_id, e.reason);
+  return m;
+});
 
 const open = ref(false);
 const view = ref<"lots" | "ledger">("lots");
@@ -89,7 +97,7 @@ const TAB_CLASS =
             </TableHeader>
             <TableBody>
               <TableRow v-for="l in lots.items.value" :key="l.id">
-                <TableCell><StatusPill :tone="l.source === 'purchase' ? 'success' : 'neutral'">{{ t(`billing.credits.source.${l.source}`) }}</StatusPill></TableCell>
+                <TableCell><StatusPill :tone="l.source === 'purchase' ? 'success' : 'neutral'">{{ t(`billing.credits.source.${l.source}`) }}</StatusPill><span v-if="reasonOfLot.get(l.id)" class="text-muted-foreground ms-2 text-xs" data-testid="lot-reason">{{ reasonOfLot.get(l.id) }}</span></TableCell>
                 <TableCell class="text-end tabular-nums">{{ credits(l.remaining) }}</TableCell>
                 <TableCell class="text-end tabular-nums">{{ credits(l.granted) }}</TableCell>
                 <TableCell>{{ l.expire_time ? fmt.date(l.expire_time, "dateTime") : t("billing.credits.lots.never") }}</TableCell>
