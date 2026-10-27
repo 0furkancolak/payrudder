@@ -20,7 +20,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
 	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts"
@@ -28,7 +27,6 @@ import (
 	accountsquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 func sandboxCharge(tenant, invoice uuid.UUID, method string) *commandsv1.CommandEnvelope {
@@ -41,12 +39,8 @@ func sandboxCharge(tenant, invoice uuid.UUID, method string) *commandsv1.Command
 // sandbox charge that carries the provider's own token and by nothing else, and never by a live command.
 func TestSandboxProviderAccounts(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	fake := newFakeIyzico(t)
 	mockCalls := 0
@@ -136,7 +130,7 @@ func TestSandboxProviderAccounts(t *testing.T) {
 			t.Fatalf("provider charge = %v, %v (auth %d, mock %d)", r, err, fake.count("/payment/auth"), mockCalls)
 		}
 		var env, provider string
-		if err := pool.QueryRow(ctx, `SELECT environment, provider FROM payment_ledger WHERE tenant_id = $1 AND invoice_id = $2`, tenant, inv).Scan(&env, &provider); err != nil || env != "sandbox" || provider != "iyzico" {
+		if err := cdb.At(tenant).QueryRow(ctx, `SELECT environment, provider FROM payment_ledger WHERE tenant_id = $1 AND invoice_id = $2`, tenant, inv).Scan(&env, &provider); err != nil || env != "sandbox" || provider != "iyzico" {
 			t.Errorf("ledger row: %q %q, %v", env, provider, err)
 		}
 		r, err = h.Handle(ctx, sandboxCharge(tenant, uuid.New(), "pm_sandbox_success"))

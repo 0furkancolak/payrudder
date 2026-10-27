@@ -8,6 +8,8 @@ import (
 	"io"
 	"log/slog"
 	"math/big"
+	"net/url"
+	"os"
 	"testing"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/usage"
@@ -42,11 +45,18 @@ func (m meters) Get(_ context.Context, _ uuid.UUID, code string) (usage.Meter, e
 	return usage.Meter{}, apply.ErrMeterNotFound
 }
 
+// cellsMode runs the fixture's tenant in a cell (its own schema of a second database) instead of the pooled database: ITEST_CELLS=1 go test -tags integration.
+func cellsMode() bool { return os.Getenv("ITEST_CELLS") != "" }
+
 type fixture struct {
-	t        *testing.T
-	handler  *apply.Handler
-	queries  *query.Queries
+	t       *testing.T
+	handler *apply.Handler
+	queries *query.Queries
+	// system is the pool the scenarios run direct SQL on: the system role of the pooled database, or in cells mode of the tenant's schema in the cell.
 	system   *pgxpool.Pool
+	pooled   *pgxpool.Pool
+	cell     *testkit.ServiceDB // cells mode
+	dir      *testkit.Directory
 	offset   int64
 	tenant   uuid.UUID
 	customer uuid.UUID
@@ -78,8 +88,32 @@ func newFixture(t *testing.T, tz string) *fixture {
 		return tenantinfo.Settings{Timezone: tz, Location: loc, Grace: time.Hour}, nil
 	}, time.Minute)
 	f := &fixture{t: t, tenant: uuid.New(), customer: uuid.New(), loc: loc, now: time.Now()}
+	var appDB pgxx.Beginner = app
+	var cells *pgxx.Router
+	f.system, f.pooled = system, system
+	if cellsMode() {
+		cell := testkit.CreateCellDB(t, pg, "aggregator", "c1")
+		f.cell, f.dir = &cell, testkit.NewDirectory()
+		cellApp, err := pgxx.NewPool(ctx, cell.App)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(cellApp.Close)
+		cellSystem, err := pgxx.NewPool(ctx, cell.System)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(cellSystem.Close)
+		if appDB, err = pgxx.NewRouter(app, map[string]*pgxpool.Pool{"c1": cellApp}, f.dir); err != nil {
+			t.Fatal(err)
+		}
+		if cells, err = pgxx.NewRouter(system, map[string]*pgxpool.Pool{"c1": cellSystem}, f.dir); err != nil {
+			t.Fatal(err)
+		}
+		f.switchTenant(f.tenant)
+	}
 	f.handler = &apply.Handler{
-		Pool: system, Settings: src, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), ConsumerGroup: "g", Topic: "t",
+		Pool: system, Cells: cells, Settings: src, Log: slog.New(slog.NewTextHandler(io.Discard, nil)), ConsumerGroup: "g", Topic: "t",
 		Meters: meters{
 			"sum_m":    {Code: "sum_m", Aggregation: usage.Sum},
 			"max_m":    {Code: "max_m", Aggregation: usage.Max},
@@ -88,9 +122,35 @@ func newFixture(t *testing.T, tz string) *fixture {
 		},
 		MeterRetryDelays: []time.Duration{time.Millisecond},
 	}
-	f.queries = query.New(app, "g", "t")
-	f.system = system
+	f.queries = query.New(appDB, "g", "t")
 	return f
+}
+
+// switchTenant makes id the fixture's tenant. In cells mode it is placed in the cell, and f.system, which the scenarios use for direct SQL, becomes the cell's
+// system role with the tenant's schema first on its search path, so the same statements read the tenant's own tables.
+func (f *fixture) switchTenant(id uuid.UUID) {
+	f.t.Helper()
+	f.tenant = id
+	if f.cell == nil {
+		return
+	}
+	ctx := context.Background()
+	ts := pgxx.TenantSchemas{Migrations: migrations.Tenant(), Roles: []string{"aggregator_app", "aggregator_system"}}
+	if _, err := pgxx.ProvisionTenant(ctx, f.cell.Migrator, ts, id, nil); err != nil {
+		f.t.Fatal(err)
+	}
+	f.dir.Place(id, "c1")
+	u, err := url.Parse(f.cell.System)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	q := u.Query()
+	q.Set("search_path", pgxx.SearchPath(tenantdir.Schema(id)))
+	u.RawQuery = q.Encode()
+	if f.system, err = pgxx.NewPool(ctx, u.String()); err != nil {
+		f.t.Fatal(err)
+	}
+	f.t.Cleanup(f.system.Close)
 }
 
 type sent struct {

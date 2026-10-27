@@ -23,13 +23,11 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // recordingProvider stands in for PAYMENTS_LIVE_PROVIDER and records its calls.
@@ -103,12 +101,8 @@ func chargeCmd(env plansv1.Environment, id uuid.UUID, invoice uuid.UUID, dunning
 
 func TestPaymentsWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	url := testkit.StartRabbitMQ(t)
 	if err := rabbitx.DeclareTopology(url); err != nil {
 		t.Fatal(err)
@@ -178,12 +172,8 @@ func TestPaymentsWorker(t *testing.T) {
 // A sandbox command never reaches the live provider, whatever is configured; a live one does.
 func TestRoutingByEnvironment(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	psp := newScripted(t, 200)
 	live := &recordingProvider{}
 	h := &handler.Handler{Sandbox: payments.NewMockPSP(psp.srv.URL, time.Second), Live: live, Attempts: store.Attempts{DB: pool}}

@@ -2685,6 +2685,9 @@
         "period_end_unknown": "La fin de la période payée chez le prestataire n'est pas encore connue : aucune notification ne nous l'a indiquée.",
         "wrong_provider": "Cet abonnement n'est pas géré par ce prestataire."
       },
+      "tenant": {
+        "unavailable": "Les données du compte sont en cours de déplacement. Rien n'a été modifié ; réessayez dans un instant."
+      },
       "webhook": {
         "malformed": "La notification n'a pas pu être lue.",
         "not_found": "Cette adresse de notification n'existe pas.",

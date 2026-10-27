@@ -8,27 +8,16 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // Two tenants may both have an invoice "INV-2026-000001", and the bank-transfer reference is the invoice number: the same (provider, kind, ref, status) in
 // two tenants' ledgers is two facts, not one. A tenant's facts must not swallow another tenant's, nor count as its outcomes.
 func TestLedgerFactsAreUniquePerTenant(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "payments")
 	ctx := context.Background()
-	if err := pgxx.Migrate(ctx, db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
-	pool, err := pgxx.NewPool(ctx, db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
-	ledger := store.Ledger{DB: pool}
+	ledger := store.Ledger{DB: openDB(t, pg).DB}
 
 	a, b := uuid.New(), uuid.New()
 	entry := func(tenant uuid.UUID, status string) store.LedgerEntry {

@@ -8,11 +8,13 @@ import (
 	"math/rand/v2"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -565,6 +567,30 @@ func testRLSAndPartitions(t *testing.T) {
 	// Inbox partitions: the workloads created 2026-10 and 2026-11. On 2026-12-31 October ended more than 45 days
 	// ago (Nov 1 + 1 day of slack + 45 days = Dec 17) and November has not (Jan 16).
 	now := time.Date(2026, 12, 31, 0, 0, 0, 0, time.UTC)
+	if shared.router != nil {
+		// Cells mode: the same functions run in the schema of every tenant placed in the cell; the pooled database has no inbox rows of the suite.
+		cellsRLS(t)
+		dropped, _, err := maintenance.OnceCells(ctx, shared.router, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		oct, nov := 0, 0
+		for _, d := range dropped {
+			switch {
+			case strings.HasSuffix(d, ".processed_events_2026_10"):
+				oct++
+			case strings.HasSuffix(d, ".processed_events_2026_11"):
+				nov++
+			}
+		}
+		if oct == 0 || nov != 0 {
+			t.Fatalf("dropped = %v: want October gone from the tenants that have it and November kept", dropped)
+		}
+		if again, _, err := maintenance.OnceCells(ctx, shared.router, now); err != nil || len(again) != 0 {
+			t.Fatalf("second run: %v %v", again, err)
+		}
+		return
+	}
 	dropped, err := maintenance.Once(ctx, shared.system, now)
 	if err != nil {
 		t.Fatal(err)
@@ -574,6 +600,34 @@ func testRLSAndPartitions(t *testing.T) {
 	}
 	if again, err := maintenance.Once(ctx, shared.system, now); err != nil || len(again) != 0 {
 		t.Fatalf("second run: %v %v", again, err)
+	}
+}
+
+// cellsRLS is the app-role check of testRLSAndPartitions in a tenant's schema of the cell: nothing without a tenant, no write, no inbox.
+func cellsRLS(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+	placed, err := shared.dir.Placed(ctx, "")
+	if err != nil || len(placed) == 0 {
+		t.Fatalf("no tenant in the cell: %v", err)
+	}
+	id := placed[0].TenantID
+	for _, stmt := range []string{`SELECT 1 FROM processed_events`, `DELETE FROM usage_aggregates`, `INSERT INTO usage_aggregates VALUES (gen_random_uuid(), 'x', gen_random_uuid(), 'm', 1, 1, 0, 1, now())`} {
+		tx, err := pgxx.BeginTenantSchema(ctx, shared.cellApp, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tx.Exec(ctx, stmt); pgxx.ErrCode(err) != "42501" {
+			t.Errorf("app role ran %q in a tenant schema: %v", stmt, err)
+		}
+		_ = tx.Rollback(ctx)
+	}
+	var n int
+	err = pgxx.InTenantSchemaTx(ctx, shared.cellApp, id, func(tx pgx.Tx) error {
+		return tx.QueryRow(ctx, `SELECT count(*) FROM usage_aggregates`).Scan(&n)
+	})
+	if err != nil || n != 0 {
+		t.Fatalf("app without tenant sees %d aggregate rows in a tenant schema (%v)", n, err)
 	}
 }
 

@@ -2685,6 +2685,9 @@
         "period_end_unknown": "The end of the paid period at the provider is not known yet: no notification has told us.",
         "wrong_provider": "This subscription is not run by this provider."
       },
+      "tenant": {
+        "unavailable": "The account's data is being moved. Nothing was changed; try again in a moment."
+      },
       "webhook": {
         "malformed": "The notification could not be read.",
         "not_found": "There is no such notification address.",

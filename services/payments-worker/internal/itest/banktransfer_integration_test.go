@@ -23,7 +23,6 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
@@ -32,7 +31,6 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/command"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/transfers/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // transferBilling answers for billing-svc: the status of an invoice, and what the saga nudges count.
@@ -88,12 +86,8 @@ const bankSettings = `{"bank_name":"Example Bank","account_holder":"Acme Ltd","i
 // A tenant pays by bank transfer: the charge only announces it, the status waits, an operator confirms what arrived, and the saga's status query finds the payment.
 func TestBankTransferThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 
 	box, _ := secretbox.New(bytes.Repeat([]byte{7}, 32))
@@ -323,12 +317,8 @@ func TestBankTransferThroughTheWorker(t *testing.T) {
 // transfer still pays the invoice.
 func TestBankTransferExpiryRejectionAndLatePayment(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	box, _ := secretbox.New(bytes.Repeat([]byte{7}, 32))
 	registry := payments.NewRegistry()

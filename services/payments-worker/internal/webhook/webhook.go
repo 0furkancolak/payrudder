@@ -27,6 +27,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts"
 	accountscommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts/command"
 	accountsquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/accounts/query"
@@ -200,9 +201,38 @@ func (s *Server) receive(w http.ResponseWriter, r *http.Request, name string, te
 		httpx.Fail(w, http.StatusBadRequest, "payments.webhook.malformed", err.Error())
 		return
 	}
-	fresh, err := s.Events.Receive(ctx, name, ref.EventID, inboxBody(body))
+	var charge store.Attempt
+	if tenantID == uuid.Nil && s.Events.ByTenant() {
+		// Cells are on (ADR 0018), where a notification is kept with its tenant's data, so whose it is must be known before it is written: the charge its
+		// reference points at is found first, through the index of keys of all places. A notification that names no known charge belongs to no tenant and is
+		// kept in the pooled database, as it is without cells.
+		a, found, err := s.Attempts.ChargeByKey(ctx, ref.IdempotencyKey)
+		if err != nil {
+			s.result(ctx, name, "retry")
+			s.Log.WarnContext(ctx, "webhook tenant not found", "provider", name, "err", err)
+			if httpx.IsMoving(err) {
+				httpx.Moving(w)
+				return
+			}
+			httpx.Fail(w, http.StatusServiceUnavailable, "payments.webhook.try_again", "try again")
+			return
+		}
+		if found {
+			charge, tenantID, env = a, a.TenantID, a.Environment
+		}
+	}
+	fresh, err := s.Events.Receive(ctx, tenantID, name, ref.EventID, inboxBody(body))
 	if err != nil {
 		s.Log.ErrorContext(ctx, "webhook inbox write failed", "provider", name, "err", err)
+		if httpx.IsMoving(err) {
+			httpx.Moving(w)
+			return
+		}
+		if errors.Is(err, tenantdir.ErrNotFound) {
+			// Cells are on and the directory does not know the tenant of the URL: there is no such webhook, and nothing is written for it.
+			httpx.Fail(w, http.StatusNotFound, "payments.webhook.not_found", "no such webhook")
+			return
+		}
 		httpx.Fail(w, http.StatusInternalServerError, "payments.webhook.not_recorded", "try again")
 		return
 	}
@@ -211,7 +241,7 @@ func (s *Server) receive(w http.ResponseWriter, r *http.Request, name string, te
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"status": "duplicate"})
 		return
 	}
-	d := &delivery{s: s, w: w, r: r, name: name, eventID: ref.EventID, tenant: tenantID, env: env}
+	d := &delivery{s: s, w: w, r: r, name: name, eventID: ref.EventID, tenant: tenantID, env: env, at: charge}
 	d.process(body, ref.IdempotencyKey)
 }
 
@@ -250,7 +280,7 @@ func (d *delivery) retry(tenant uuid.UUID, err error) {
 	ctx := d.r.Context()
 	d.s.Log.WarnContext(ctx, "webhook not confirmed", "provider", d.name, "event", d.eventID, "err", err)
 	d.finish(tenant, "failed", err.Error())
-	if err := d.s.Events.Forget(ctx, d.name, d.eventID); err != nil {
+	if err := d.s.Events.Forget(ctx, tenant, d.name, d.eventID); err != nil {
 		d.s.Log.ErrorContext(ctx, "webhook inbox cleanup failed", "provider", d.name, "event", d.eventID, "err", err)
 	}
 	d.s.result(ctx, d.name, "retry")
@@ -310,7 +340,7 @@ func (d *delivery) confirm(body []byte) (payments.Notification, bool) {
 	if errors.Is(err, payments.ErrUnverified) {
 		// Not from the provider: nothing to retry. Forget it so a genuine event with the same id is not taken for a duplicate.
 		d.s.Log.WarnContext(ctx, "webhook failed verification", "provider", d.name, "tenant", d.tenant, "err", err)
-		if err := d.s.Events.Forget(ctx, d.name, d.eventID); err != nil {
+		if err := d.s.Events.Forget(ctx, d.tenant, d.name, d.eventID); err != nil {
 			d.s.Log.ErrorContext(ctx, "webhook inbox cleanup failed", "provider", d.name, "event", d.eventID, "err", err)
 		}
 		d.s.result(ctx, d.name, "unverified")
@@ -399,7 +429,7 @@ func (d *delivery) ledgerEntry(conf payments.Notification) (store.LedgerEntry, e
 		}
 	} else if conf.Ref.IdempotencyKey != "" {
 		// A charge of ours the provider settled later (a notification found by its key rather than by the URL).
-		if a, found, err := d.s.Attempts.ChargeByKey(d.r.Context(), conf.Ref.IdempotencyKey); err == nil && found && a.TenantID == d.tenant {
+		if a, found, err := d.s.Attempts.ChargeOf(d.r.Context(), d.tenant, conf.Ref.IdempotencyKey); err == nil && found && a.TenantID == d.tenant {
 			entry.InvoiceID = a.InvoiceID
 			if entry.AmountMinor == 0 {
 				entry.AmountMinor, entry.Currency = a.AmountMinor, a.Currency

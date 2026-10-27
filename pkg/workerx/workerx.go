@@ -47,6 +47,14 @@ type Inbox interface {
 	Store(ctx context.Context, commandID uuid.UUID, reply *commandsv1.ReplyEnvelope) error
 }
 
+// TenantInbox is an Inbox that keeps its replies where the tenant's data is (cells, ADR 0018) and so has to know whose command it is. A Worker whose Inbox is one
+// uses LookupFor and StoreFor, with the tenant of the command envelope (the nil UUID when it carries none), instead of Lookup and Store.
+type TenantInbox interface {
+	Inbox
+	LookupFor(ctx context.Context, tenant, commandID uuid.UUID) (*commandsv1.ReplyEnvelope, bool, error)
+	StoreFor(ctx context.Context, tenant, commandID uuid.UUID, reply *commandsv1.ReplyEnvelope) error
+}
+
 // Worker consumes command queues.
 type Worker struct {
 	URL      string
@@ -144,8 +152,9 @@ func (w *Worker) handle(ctx context.Context, queue string, d amqp.Delivery) rabb
 	// (deterministic object keys, PSP idempotency keys, the notification claim).
 	defer w.locks.Lock(commandID.String())()
 
+	tenantID, _ := uuid.Parse(cmd.GetTenantId())
 	if w.Inbox != nil {
-		reply, found, err := w.Inbox.Lookup(ctx, commandID)
+		reply, found, err := w.lookup(ctx, tenantID, commandID)
 		if err != nil {
 			w.result(ctx, queue, "retry")
 			return rabbitx.Retry
@@ -173,13 +182,27 @@ func (w *Worker) handle(ctx context.Context, queue string, d amqp.Delivery) rabb
 	reply.CommandId, reply.SagaId, reply.TenantId = cmd.GetCommandId(), cmd.GetSagaId(), cmd.GetTenantId()
 	reply.ReplyId = ReplyID(cmd.GetCommandId())
 	if w.Inbox != nil {
-		if err := w.Inbox.Store(ctx, commandID, reply); err != nil {
+		if err := w.store(ctx, tenantID, commandID, reply); err != nil {
 			w.Log.WarnContext(ctx, "could not store the reply, retrying", "error", err)
 			w.result(ctx, queue, "retry")
 			return rabbitx.Retry
 		}
 	}
 	return w.publish(ctx, queue, &cmd, reply)
+}
+
+func (w *Worker) lookup(ctx context.Context, tenant, commandID uuid.UUID) (*commandsv1.ReplyEnvelope, bool, error) {
+	if ti, ok := w.Inbox.(TenantInbox); ok {
+		return ti.LookupFor(ctx, tenant, commandID)
+	}
+	return w.Inbox.Lookup(ctx, commandID)
+}
+
+func (w *Worker) store(ctx context.Context, tenant, commandID uuid.UUID, reply *commandsv1.ReplyEnvelope) error {
+	if ti, ok := w.Inbox.(TenantInbox); ok {
+		return ti.StoreFor(ctx, tenant, commandID, reply)
+	}
+	return w.Inbox.Store(ctx, commandID, reply)
 }
 
 func (w *Worker) publish(ctx context.Context, queue string, cmd *commandsv1.CommandEnvelope, reply *commandsv1.ReplyEnvelope) rabbitx.Outcome {

@@ -16,30 +16,21 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/0furkancolak/payrudder/pkg/payments"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	paymentsreset "github.com/0furkancolak/payrudder/services/payments-worker/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // A sandbox reset takes a tenant's attempts and ledger (append-only for the product) and keeps its provider accounts; it is refused for anything but a sandbox
 // tenant, needs the internal token, leaves another tenant alone and finds nothing the second time.
 func TestSandboxResetEndpoint(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.CreateServiceDB(t, pg, "payments")
 	ctx := context.Background()
-	if err := pgxx.Migrate(ctx, db.Migrator, migrations.FS, nil); err != nil {
-		t.Fatal(err)
-	}
-	pool, err := pgxx.NewPool(ctx, db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	box, _ := secretbox.New(bytes.Repeat([]byte{7}, 32))
 	attempts, ledger := store.Attempts{DB: pool}, store.Ledger{DB: pool}
 	accounts := store.Accounts{DB: pool, Box: box}
@@ -66,7 +57,7 @@ func TestSandboxResetEndpoint(t *testing.T) {
 		q := map[string]string{"payment_attempts": `SELECT count(*) FROM payment_attempts WHERE tenant_id = $1`, "payment_ledger": `SELECT count(*) FROM payment_ledger WHERE tenant_id = $1`,
 			"provider_accounts": `SELECT count(*) FROM provider_accounts WHERE tenant_id = $1`}[table]
 		var n int
-		if err := pool.QueryRow(ctx, q, tid).Scan(&n); err != nil {
+		if err := cdb.At(tid).QueryRow(ctx, q, tid).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
@@ -117,7 +108,7 @@ func TestSandboxResetEndpoint(t *testing.T) {
 	if code, out := call(sbx, "internal", `{"environment":"sandbox"}`); code != 200 || strings.Contains(out, `"payment_ledger"`) {
 		t.Errorf("a second reset: %d %s", code, out)
 	}
-	missing, err := sandboxreset.MissingTables(ctx, pool, paymentsreset.Tables, paymentsreset.Kept)
+	missing, err := sandboxreset.MissingTables(ctx, cdb.Pooled, paymentsreset.Tables, paymentsreset.Kept)
 	if err != nil || len(missing) != 0 {
 		t.Errorf("tables a reset does not cover: %v, %v", missing, err)
 	}

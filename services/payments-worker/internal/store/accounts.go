@@ -8,9 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
@@ -22,7 +20,7 @@ var ErrNoAccount = errors.New("store: no such provider account")
 // Accounts is the table of a tenant's provider credentials. Settings are sealed; the box is bound to tenant, provider and
 // environment, so a row copied elsewhere does not open.
 type Accounts struct {
-	DB  *pgxpool.Pool
+	DB  DB
 	Box *secretbox.Box
 }
 
@@ -57,8 +55,7 @@ func (a Accounts) PutAudited(ctx context.Context, tenant uuid.UUID, provider, en
 	if err != nil {
 		return err
 	}
-	return pgxx.InTx(ctx, a.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		q := sqlc.New(tx)
+	return tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
 		if makeDefault {
 			if err := q.ClearDefaultProviderAccounts(ctx, sqlc.ClearDefaultProviderAccountsParams{TenantID: tenant, Environment: env, Provider: provider}); err != nil {
 				return err
@@ -90,8 +87,7 @@ func (a Accounts) Delete(ctx context.Context, tenant uuid.UUID, provider, env st
 // DeleteAudited is Delete with the entry of the audit trail (written only when there was an account to remove).
 func (a Accounts) DeleteAudited(ctx context.Context, tenant uuid.UUID, provider, env string, audit Audit) (bool, error) {
 	var deleted bool
-	err := pgxx.InTx(ctx, a.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		q := sqlc.New(tx)
+	err := tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
 		n, err := q.DeleteProviderAccount(ctx, sqlc.DeleteProviderAccountParams{TenantID: tenant, Provider: provider, Environment: env})
 		if err != nil || n != 1 {
 			return err
@@ -104,7 +100,9 @@ func (a Accounts) DeleteAudited(ctx context.Context, tenant uuid.UUID, provider,
 
 // List returns a tenant's accounts without secrets.
 func (a Accounts) List(ctx context.Context, tenant uuid.UUID) ([]AccountInfo, error) {
-	rows, err := sqlc.New(a.DB).ListProviderAccounts(ctx, tenant)
+	rows, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListProviderAccountsRow, error) {
+		return q.ListProviderAccounts(ctx, tenant)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +115,9 @@ func (a Accounts) List(ctx context.Context, tenant uuid.UUID) ([]AccountInfo, er
 
 // Settings opens an account's settings. updated lets callers cache what they built from it.
 func (a Accounts) Settings(ctx context.Context, tenant uuid.UUID, provider, env string) (settings []byte, updated time.Time, err error) {
-	row, ok, err := found(sqlc.New(a.DB).GetProviderAccountSettings(ctx, sqlc.GetProviderAccountSettingsParams{TenantID: tenant, Provider: provider, Environment: env}))
+	row, ok, err := lookup(ctx, a.DB, tenant, func(q *sqlc.Queries) (sqlc.GetProviderAccountSettingsRow, error) {
+		return q.GetProviderAccountSettings(ctx, sqlc.GetProviderAccountSettingsParams{TenantID: tenant, Provider: provider, Environment: env})
+	})
 	if err != nil {
 		return nil, time.Time{}, err
 	}
@@ -130,6 +130,7 @@ func (a Accounts) Settings(ctx context.Context, tenant uuid.UUID, provider, env 
 
 // Default returns the provider live charges of the tenant go to.
 func (a Accounts) Default(ctx context.Context, tenant uuid.UUID, env string) (string, bool, error) {
-	p, err := sqlc.New(a.DB).GetDefaultProvider(ctx, sqlc.GetDefaultProviderParams{TenantID: tenant, Environment: env})
-	return found(p, err)
+	return lookup(ctx, a.DB, tenant, func(q *sqlc.Queries) (string, error) {
+		return q.GetDefaultProvider(ctx, sqlc.GetDefaultProviderParams{TenantID: tenant, Environment: env})
+	})
 }
