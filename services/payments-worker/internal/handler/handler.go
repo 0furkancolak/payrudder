@@ -103,7 +103,7 @@ func (h *Handler) guard(environment env.Env, p payments.PaymentProvider) error {
 			return fmt.Errorf("%w: a sandbox command was routed to %q", ErrWrongProvider, p.Name())
 		}
 		if err := payments.CheckLivemode(acct, env.Sandbox.String()); err != nil {
-			return fmt.Errorf("%w: a sandbox command was routed to %q: %v", ErrWrongProvider, p.Name(), err)
+			return fmt.Errorf("%w: a sandbox command was routed to %q: %w", ErrWrongProvider, p.Name(), err)
 		}
 	case environment.IsLive() && IsMock(p) && !h.AllowMockLive:
 		return fmt.Errorf("%w: a live command was routed to the mock provider %q", ErrWrongProvider, p.Name())

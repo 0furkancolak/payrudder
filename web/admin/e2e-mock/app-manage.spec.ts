@@ -51,8 +51,11 @@ test.describe("rename an app", () => {
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(SETTINGS);
+    const input = page.getByTestId("app-name-input");
+    // The page is open with the form once the name is in it; a role that changed before that would have the page built for a viewer, without the form.
+    await expect(input).toHaveValue("Web shop");
     state.role = "viewer"; // the role changed since the page was opened: the server decides
-    await page.getByTestId("app-name-input").fill("Sneaky");
+    await input.fill("Sneaky");
     await page.getByTestId("app-rename-save").click();
     await expect(page.getByTestId("app-rename").getByRole("alert")).toBeVisible();
   });

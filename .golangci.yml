@@ -45,6 +45,10 @@ linters:
         # this pattern to those packages (rating included).
         - pattern: ^float(32|64)$
           msg: no floating point in money and quantity code (ADR 0010)
+    misspell:
+      # "Provincie" is the Dutch generic prefix in the gateway's list of place-name prefixes (services/gateway/internal/geo/names.go), not a typo of "Province".
+      ignore-rules:
+        - Provincie
     revive:
       rules:
         - name: exported

@@ -50,7 +50,7 @@ geo-data: ## Rebuild the gateway's embedded GeoNames country/region/district lis
 .PHONY: lint
 lint: tools ## golangci-lint every module + buf lint
 	$(BIN)/buf lint
-	@for m in $(MODULES); do echo "lint $$m"; (cd $$m && $(BIN)/golangci-lint run ./...); done
+	@rc=0; for m in $(MODULES); do echo "lint $$m"; (cd $$m && $(BIN)/golangci-lint run ./...) || rc=1; done; exit $$rc
 
 .PHONY: fmt
 fmt: tools ## Format Go code
