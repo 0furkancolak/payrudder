@@ -16,6 +16,10 @@ permissions:
 
 env:
   GOPRIVATE: github.com/0furkancolak/*
+  # Both jobs push far more events through a tenant than a plan allows (the k6 tenants are live ones of an account on the Free plan, 10,000 events a month, a
+  # hard limit: ingest_steady got exactly 100 batches per tenant accepted and the rest refused). They test the platform, not Payrudder's own plans, so the
+  # stack runs without the SaaS mode (docs/adr/0024-payrudder-as-a-saas.md).
+  PAYRUDDER_SAAS: "off"
 
 jobs:
   chaos-1m:
