@@ -535,7 +535,7 @@
         "softNeedsPrice": "Cuota {n}: un límite flexible cobra lo que lo supera, así que {meter} necesita un precio de uso; si no, elija Solo avisar."
       },
       "trialDays": "Prueba gratuita en días (opcional)",
-      "trialHelp": "Una suscripción a este paquete empieza en prueba durante estos días, sin tarjeta; la primera cuota se factura al terminar. Una suscripción aún puede elegir la suya.",
+      "trialHelp": "Una suscripción a este paquete empieza en prueba durante estos días, sin tarjeta; la primera cuota se factura al terminar. Una suscripción aún puede elegir la suya. Unos días antes de que termine la prueba se envía un correo al cliente y el evento webhook subscription.trial_will_end.",
       "freeTier": "Nivel gratuito",
       "freeTierHelp": "Sin cuota fija: los clientes obtienen los límites que fijes abajo. Añade al menos un límite.",
       "freeNeedsLimit": "Un nivel gratuito necesita al menos un límite.",

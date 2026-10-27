@@ -535,7 +535,7 @@
         "softNeedsPrice": "Quota {n} : une limite souple facture le dépassement, donc {meter} a besoin d'un prix d'usage ; sinon choisissez Notifier seulement."
       },
       "trialDays": "Essai gratuit en jours (facultatif)",
-      "trialHelp": "Un abonnement à ce forfait démarre en essai pour ce nombre de jours, sans carte ; le premier tarif est facturé à la fin. Un abonnement peut quand même choisir sa propre durée.",
+      "trialHelp": "Un abonnement à ce forfait démarre en essai pour ce nombre de jours, sans carte ; le premier tarif est facturé à la fin. Un abonnement peut quand même choisir sa propre durée. Quelques jours avant la fin de l'essai, le client reçoit un e-mail et l'événement webhook subscription.trial_will_end est envoyé.",
       "freeTier": "Offre gratuite",
       "freeTierHelp": "Pas de tarif fixe : les clients reçoivent les limites définies ci-dessous. Ajoutez au moins une limite.",
       "freeNeedsLimit": "Une offre gratuite a besoin d'au moins une limite.",

@@ -132,10 +132,10 @@ deployment, are delivered only to Mailpit (`SANDBOX_SMTP_URL`), never to the cus
 
 | | |
 |---|---|
-| Consumes | queue `notification.send` (`SendNotification{template, to, data}`). Also subscribes to `usage.limit-exceeded.v1` through a small Kafka→command bridge in notifier (see below) |
+| Consumes | queue `notification.send` (`SendNotification{template, to, data}`). Also subscribes to `usage.limit-exceeded.v1` and `subscription.trial-will-end.v1` through small Kafka consumers in notifier (see below) |
 | Replies | `NotificationSent{message_id}` |
 | Owned data | `notifier_db.sent_notifications(dedup_key PK, command_id, sent_at, smtp_message_id)` |
-| Idempotency | `dedup_key = command_id` (billing) or `LimitExceeded.event_id` (limits). SMTP isn't idempotent, so the row is inserted **before** sending with status `SENDING`. On redelivery with status `SENDING` older than 5 min, re-send (at-least-once email, duplicates possible and documented) |
+| Idempotency | `dedup_key = command_id` (billing), `LimitExceeded.event_id` (limits) or `TrialWillEnd.event_id` (trials). SMTP isn't idempotent, so the row is inserted **before** sending with status `SENDING`. On redelivery with status `SENDING` older than 5 min, re-send (at-least-once email, duplicates possible and documented) |
 
 **Tenant's own provider (Phase 53).** A live tenant can connect Nafru Email (`MailIntegrationService` of plans-svc). Before a live send the notifier asks `ResolveMailSender` for the tenant (`delivery.PlansProviders`, remembered for `NOTIFIER_MAIL_SWITCH_TTL`); when one is connected the mail goes through `mailx.Resend` (`POST {base_url}/emails`, `Authorization: Bearer <key>`, `Idempotency-Key` = the dedup key, JSON `from`, `to`, `subject`, `html`, `text`) from the tenant's From address instead of SMTP. Sandbox mail never does (ADR 0011), and a failed lookup is an error, so the mail is retried and never sent through the built-in sender against the tenant's choice. A refusal the provider will repeat (4xx other than 429: a wrong key, an unverified sender) is a poison message with the claim released; a connection refused before the request left is `NotSentError`; 429 and 5xx are retried. The provider's address must be https and public (`NOTIFIER_MAIL_ALLOW_PRIVATE` lifts that for development and tests).
 
@@ -143,6 +143,8 @@ Limit alerts: notifier runs a Kafka consumer on `usage.limit-exceeded.v1` (group
 It doesn't round-trip through RabbitMQ because there is no saga to reply to. The same `sent_notifications` dedup applies.
 This is the one place a worker reads Kafka, and it's justified: the input is a *fact* ("threshold crossed")
 and the email is the consumer's own side effect.
+
+Trial reminders: a second Kafka consumer on `subscription.trial-will-end.v1` (group `notifier-trials`, own DLQ `subscription.trial-will-end.dlq.v1`, `sent_notifications.kind = 'trial'`, migration `00002`) mails the customer that their trial ends soon (`trial_will_end.v1`). The end of the trial is written in the tenant's time zone. The template is in the mail category `system` (it is in no family of `pkg/mailcategory`), so a tenant switches it off with the other system mail. Like all customer mail it is English only; a customer has no language on file.
 
 Templates: Go `html/template`, embedded with `embed.FS`, versioned by name (`invoice_paid.v1.html`).
 

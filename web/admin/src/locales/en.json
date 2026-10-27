@@ -535,7 +535,7 @@
         "softNeedsPrice": "Quota {n}: a soft limit bills what is over it, so {meter} needs a usage price; use notify only otherwise."
       },
       "trialDays": "Free trial in days (optional)",
-      "trialHelp": "A subscription to this package starts trialing for this many days, with no card; the first fee is invoiced when the trial ends. A subscription can still choose its own.",
+      "trialHelp": "A subscription to this package starts trialing for this many days, with no card; the first fee is invoiced when the trial ends. A subscription can still choose its own. A few days before a trial ends the customer is e-mailed and a subscription.trial_will_end webhook event is sent.",
       "freeTier": "Free tier",
       "freeTierHelp": "No fixed fee: customers get the limits you set below. Add at least one limit.",
       "freeNeedsLimit": "A free tier needs at least one limit.",

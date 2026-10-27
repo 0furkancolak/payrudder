@@ -1,0 +1,9 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real reminder.</strong></p>{{end}}
+<h2>Your trial ends soon</h2>
+<p>Hi {{index .D "customer_name"}}, your free trial of <strong>{{index .D "plan_code"}}</strong> ends on <strong>{{index .D "trial_end"}}</strong>.
+No card is needed until then; after that, the fee of the plan, if it has one, is invoiced.</p>
+<p>If you do not want to continue, please tell us before then.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

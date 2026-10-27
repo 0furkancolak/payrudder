@@ -535,7 +535,7 @@
         "softNeedsPrice": "Kota {n}: esnek sınır aşan kısmı faturalar, bu yüzden {meter} için kullanım fiyatı gerekir; yoksa yalnızca bildirim seçin."
       },
       "trialDays": "Gün olarak ücretsiz deneme (isteğe bağlı)",
-      "trialHelp": "Bu pakete abonelik, kartsız olarak bu kadar gün denemeyle başlar; ilk ücret deneme bitince faturalanır. Bir abonelik yine de kendi süresini seçebilir.",
+      "trialHelp": "Bu pakete abonelik, kartsız olarak bu kadar gün denemeyle başlar; ilk ücret deneme bitince faturalanır. Bir abonelik yine de kendi süresini seçebilir. Deneme bitmeden birkaç gün önce müşteriye e-posta gönderilir ve subscription.trial_will_end webhook olayı iletilir.",
       "freeTier": "Ücretsiz katman",
       "freeTierHelp": "Sabit ücret yok: müşteriler aşağıda belirlediğiniz limitleri alır. En az bir limit ekleyin.",
       "freeNeedsLimit": "Ücretsiz katman için en az bir limit gerekir.",

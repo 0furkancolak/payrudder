@@ -40,6 +40,7 @@ import (
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
+	trialcmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/trialnotices/command"
 	webhooksworker "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/worker"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
 )
@@ -83,6 +84,10 @@ type Config struct {
 	OTPPepper string `env:"PAYRUDDER_OTP_PEPPER"`
 	// AffiliateApproveEvery is how often the job that ends the hold of affiliate commissions looks (phase 47). The holds are days long; an hour is plenty.
 	AffiliateApproveEvery time.Duration `env:"PAYRUDDER_AFFILIATE_APPROVE_EVERY"`
+	// TrialReminderDays is how many days before its end a trialing subscription is reminded (the subscription.trial_will_end event and the customer's mail),
+	// once per trial end. TrialReminderEvery is how often the job that does it looks.
+	TrialReminderDays  int           `env:"PAYRUDDER_TRIAL_REMINDER_DAYS"`
+	TrialReminderEvery time.Duration `env:"PAYRUDDER_TRIAL_REMINDER_EVERY"`
 	// Saas switches Payrudder's own plans on ("on") or off ("off", the default): a platform tenant that owns Free, Pro and Scale, every account a customer of it,
 	// and the plan's limits enforced where apps, members and keys are created and on ingest volume (phase 55, ADR 0024). Off: no limits, no plan page.
 	Saas string `env:"PAYRUDDER_SAAS"`
@@ -117,6 +122,12 @@ func (c *Config) Validate() error {
 	}
 	if c.AffiliateApproveEvery < time.Minute {
 		errs = append(errs, errors.New("PAYRUDDER_AFFILIATE_APPROVE_EVERY must be at least a minute"))
+	}
+	if c.TrialReminderDays < 1 || c.TrialReminderDays > 30 {
+		errs = append(errs, errors.New("PAYRUDDER_TRIAL_REMINDER_DAYS must be between 1 and 30"))
+	}
+	if c.TrialReminderEvery < time.Minute {
+		errs = append(errs, errors.New("PAYRUDDER_TRIAL_REMINDER_EVERY must be at least a minute"))
 	}
 	if !slices.Contains(c.AllowedEnvs, tenant.EnvSandbox) {
 		errs = append(errs, errors.New("PAYRUDDER_ALLOWED_ENVIRONMENTS must include sandbox"))
@@ -193,7 +204,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd}
+	w := &workers{cfg: cfg, log: log, pool: systemPool, app: appPool, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd}
 	return w.run(ctx)
 }
 
@@ -308,7 +319,8 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.P
 type workers struct {
 	cfg        *Config
 	log        *slog.Logger
-	pool       *pgxpool.Pool
+	pool       *pgxpool.Pool // the system pool
+	app        *pgxpool.Pool
 	relay      *outbox.Relay  // nil without Kafka
 	box        *secretbox.Box // nil without a secrets key
 	health     *health.Handler
@@ -334,6 +346,8 @@ func (w *workers) run(ctx context.Context) error {
 		g.Go(func() error { return w.sandbox.Run(gctx) })
 	}
 	g.Go(func() error { return affiliatescmd.NewApprover(w.pool, w.cfg.AffiliateApproveEvery, w.log).Run(gctx) })
+	trials := trialcmd.New(w.pool, w.app, trialcmd.Config{Days: w.cfg.TrialReminderDays, Every: w.cfg.TrialReminderEvery}, w.log)
+	g.Go(func() error { return trials.Run(gctx) })
 	if w.saas.Enabled() {
 		g.Go(func() error { return w.saas.Run(gctx) })
 	}

@@ -424,6 +424,18 @@ func (q *Queries) ResetSubscriptions(ctx context.Context, tenantID uuid.UUID) (i
 	return result.RowsAffected(), nil
 }
 
+const resetTrialNotices = `-- name: ResetTrialNotices :execrows
+DELETE FROM subscription_trial_notices WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetTrialNotices(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetTrialNotices, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetWebhookDeliveries = `-- name: ResetWebhookDeliveries :execrows
 DELETE FROM webhook_deliveries WHERE tenant_id = $1
 `

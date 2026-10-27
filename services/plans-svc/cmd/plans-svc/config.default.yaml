@@ -19,6 +19,10 @@ PAYRUDDER_SANDBOX_RETENTION: "2160h"
 PAYRUDDER_SANDBOX_RESET_COOLDOWN: "5m"
 # How often the job that ends the hold of affiliate commissions (pending to approved) looks. The holds are days long; an hour is plenty.
 PAYRUDDER_AFFILIATE_APPROVE_EVERY: "1h"
+# A trialing subscription is reminded once, this many days before its trial ends: the subscription.trial_will_end webhook event and an e-mail to the customer
+# (docs/03-services/plans-svc.md). The job that does it looks this often.
+PAYRUDDER_TRIAL_REMINDER_DAYS: "3"
+PAYRUDDER_TRIAL_REMINDER_EVERY: "10m"
 # Payrudder as a SaaS (phase 55, ADR 0024). "on": a platform tenant owns the plans Free, Pro and Scale, every account is a customer of it, and the plan's limits
 # are enforced where apps, members and keys are created and on ingest volume. "off" (the default, and what a self-hoster wants): no limits, no plan page.
 # Set it on the gateway too. make setup and make dev switch it on.

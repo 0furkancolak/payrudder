@@ -35,7 +35,6 @@ These need an account or an environment the repository does not have. Each is a 
 - The sandbox provider connection has no backend.
 - A dialog opened from a row of a token-paged list (reverse a commission, mark a payout paid, a partner's forms) comes back from the address only when its row is on the first page after a reload; the sheet of the row itself is looked for on later pages. A sheet that holds typed values or a one-time secret (the new key's plaintext, a scanned receipt) comes back empty.
 - Apps cannot be renamed or deleted (no API); credit for quantity changes and tax calculation are not built.
-- A trial's end is shown and reminded in the console only: there is no `subscription.trial_will_end` webhook or e-mail yet (it needs a job over all tenants that emits the event once per trial).
 - The first-run wizard's progress and the tours that were seen are kept per person in the browser, not on the server, so a second browser starts them again (the wizard only for somebody who still has no app).
 
 ## Definition of done (every phase)

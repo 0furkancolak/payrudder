@@ -535,7 +535,7 @@
         "softNeedsPrice": "Kontingent {n}: ein weiches Limit rechnet ab, was darüber liegt, daher braucht {meter} einen Nutzungspreis; sonst Nur benachrichtigen wählen."
       },
       "trialDays": "Kostenlose Testphase in Tagen (optional)",
-      "trialHelp": "Ein Abo dieses Pakets startet für so viele Tage als Test, ohne Karte; die erste Gebühr wird nach der Testphase berechnet. Ein Abo kann trotzdem eine eigene wählen.",
+      "trialHelp": "Ein Abo dieses Pakets startet für so viele Tage als Test, ohne Karte; die erste Gebühr wird nach der Testphase berechnet. Ein Abo kann trotzdem eine eigene wählen. Einige Tage vor dem Ende der Testphase erhält der Kunde eine E-Mail und das Webhook-Ereignis subscription.trial_will_end wird gesendet.",
       "freeTier": "Gratisstufe",
       "freeTierHelp": "Keine Fixgebühr: Kunden erhalten die unten gesetzten Limits. Fügen Sie mindestens ein Limit hinzu.",
       "freeNeedsLimit": "Eine Gratisstufe braucht mindestens ein Limit.",

@@ -52,6 +52,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("ProviderMigrationKeepsTheFeeTiming", testProviderMigrationKeepsTheFeeTiming)
 	t.Run("PlanChangeWithACouponIsPricedAfterTheCoupon", testPlanChangeWithACouponIsPricedAfterTheCoupon)
 	t.Run("Webhooks", testWebhooks)
+	t.Run("TrialReminders", testTrialReminders)
 	t.Run("Apps", testApps)
 	t.Run("Identity", testIdentity)
 	t.Run("GoLive", testGoLive)
@@ -136,6 +137,11 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		_, err = tx.Exec(context.Background(), `INSERT INTO subscription_adjustments (tenant_id, id, subscription_id, old_plan_code, from_at, to_at, credit_minor, charge_minor, billed_at)
 			SELECT app_tenant_id(), gen_random_uuid(), id, 'pro', now(), now(), 1, 2, now() FROM subscriptions LIMIT 1`)
 		if err != nil {
+			return err
+		}
+		// The notice of a trial reminder is written by the job over all tenants (trialnotice_integration_test.go), which would also queue an event.
+		if _, err = tx.Exec(context.Background(), `INSERT INTO subscription_trial_notices (tenant_id, customer_id, trial_ends_at, subscription_id)
+			SELECT app_tenant_id(), customer_id, now(), id FROM subscriptions LIMIT 1`); err != nil {
 			return err
 		}
 		// An override row without SetEntitlementOverride, which would publish the subscription's entitlements again (testEntitlementOutbox counts them).
