@@ -11,6 +11,7 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { useTableState } from "@/shared/lib/useTableState";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useTenants } from "./api";
 
@@ -33,7 +34,7 @@ const currencies = distinct((x) => x.currency);
 
 <template>
   <PageHeader :title="t('tenants.title')" />
-  <p v-if="tenants.isPending.value" class="text-muted-foreground">{{ t("common.loading") }}</p>
+  <Skeleton v-if="tenants.isPending.value" class="mb-3 h-6 w-40" aria-busy="true" />
   <ErrorText :error="tenants.error.value" class="mb-3" />
   <Card class="p-3">
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">

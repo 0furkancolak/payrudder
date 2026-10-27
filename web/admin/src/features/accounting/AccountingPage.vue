@@ -6,7 +6,8 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { toast } from "vue-sonner";
 import { useShell } from "@/app/layout/useShell";
-import { useApps } from "@/features/apps/api";
+import { useAccountApps } from "@/features/apps/api";
+import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 import { ALL_APPS } from "@/shared/lib/scope";
 import { useTenant } from "@/features/tenants";
 import { useErrorText } from "@/shared/lib/errors";
@@ -27,8 +28,7 @@ import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CATEGORIES, downloadCsv, receiptUrl, useAccountingSummary, useExpenseRules, useExpenses, useInboxItems, type Expense, type InboxItem } from "./api";
-import BarSeries from "./BarSeries.vue";
-import DonutChart from "./DonutChart.vue";
+import CurrencySummaryCard from "./CurrencySummaryCard.vue";
 import ExpenseDialog from "./ExpenseDialog.vue";
 import ExpenseRulesSheet from "./ExpenseRulesSheet.vue";
 import InboxCard from "./InboxCard.vue";
@@ -52,13 +52,14 @@ const app = ref("");
 const shell = useShell();
 watch(() => shell.scope.value, (sc) => (app.value = sc && sc !== ALL_APPS ? sc : ""), { immediate: true });
 const accountId = computed(() => tenant.data.value?.account_id ?? "");
-const apps = useApps(accountId);
+const apps = useAccountApps(accountId);
 const appList = computed(() => (apps.data.value?.apps ?? []).map((a) => ({ id: a.id ?? "", name: a.name ?? a.id ?? "" })).filter((a) => a.id !== ""));
 const appName = (id?: string) => appList.value.find((a) => a.id === id)?.name ?? id ?? "";
 
 const summary = useAccountingSummary(tenantId, () => range.value.from, () => range.value.to, app, granularity, rangeOk);
 const currencies = computed(() => summary.data.value?.currencies ?? []);
 const money = (v: string | number | undefined, currency?: string) => fmt.amount(v, currency);
+const defaultCurrency = computed(() => tenant.data.value?.currency || FALLBACK_CURRENCY);
 
 // --- the expenses
 const showVoided = ref(false);
@@ -193,93 +194,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
   <ErrorState :error="summary.error.value" :retrying="summary.isFetching.value" class="mb-4" @retry="summary.refetch()" />
   <p v-if="rangeOk && summary.data.value && !currencies.length" class="text-muted-foreground mb-6 text-sm">{{ t("billing.accounting.empty") }}</p>
 
-  <section v-for="c in currencies" :key="c.currency" class="mb-6" :aria-label="c.currency">
-    <Card>
-      <div class="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 class="text-lg font-semibold">{{ c.currency }}</h3>
-        <span class="text-muted-foreground text-sm">{{ t("billing.accounting.paidInvoices", { count: Number(c.paid_invoices ?? 0) }) }}</span>
-      </div>
-      <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div data-stat="income">
-          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.income") }}</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ money(c.gross_income_minor, c.currency) }}</dd>
-        </div>
-        <div data-stat="tax">
-          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.tax") }}</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ money(c.tax_minor, c.currency) }}</dd>
-        </div>
-        <div v-if="c.discounts_minor && c.discounts_minor !== '0'" data-stat="discounts">
-          <dt class="text-muted-foreground text-sm" :title="t('billing.accounting.stat.discountsHint')">{{ t("billing.accounting.stat.discounts") }}</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ money(c.discounts_minor, c.currency) }}</dd>
-        </div>
-        <div v-if="c.discounts_minor && c.discounts_minor !== '0'" data-stat="sales">
-          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.sales") }}</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ money(c.sales_minor, c.currency) }}</dd>
-        </div>
-        <div data-stat="refunds">
-          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.refunds") }}</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ money(c.refunds_minor, c.currency) }}</dd>
-        </div>
-        <div data-stat="net">
-          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.net") }}</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ money(c.net_income_minor, c.currency) }}</dd>
-        </div>
-        <div data-stat="fees">
-          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.fees") }}</dt>
-          <dd v-if="c.provider_fees_recorded" class="text-xl font-semibold tabular-nums">{{ money(c.provider_fees_minor, c.currency) }}</dd>
-          <dd v-else class="text-muted-foreground text-xl" :title="t('billing.accounting.stat.feesHint')">{{ t("billing.accounting.stat.feesNotRecorded") }}</dd>
-        </div>
-        <div data-stat="expenses">
-          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.expenses") }}</dt>
-          <dd class="text-xl font-semibold tabular-nums">{{ money(c.expenses_minor, c.currency) }}</dd>
-        </div>
-        <div data-stat="profit" class="sm:col-span-2">
-          <dt class="text-muted-foreground text-sm">{{ t("billing.accounting.stat.profit") }}</dt>
-          <dd class="text-2xl font-semibold tabular-nums" :class="(c.profit_minor ?? '').startsWith('-') ? 'text-destructive' : 'text-success'">{{ money(c.profit_minor, c.currency) }}</dd>
-        </div>
-      </dl>
-
-      <div class="grid gap-6 lg:grid-cols-2">
-        <div>
-          <h4 class="mb-2 text-sm font-medium">{{ t("billing.accounting.donut.title") }}</h4>
-          <DonutChart v-if="(c.expense_by_category ?? []).length" :items="c.expense_by_category ?? []" :currency="c.currency ?? ''" />
-          <p v-else class="text-muted-foreground text-sm">{{ t("billing.accounting.donut.none") }}</p>
-        </div>
-        <div>
-          <h4 class="mb-2 text-sm font-medium">{{ t("billing.accounting.bars.title") }}</h4>
-          <BarSeries :points="c.series ?? []" :currency="c.currency ?? ''" :granularity="granularity" />
-        </div>
-      </div>
-
-      <div v-if="(c.coupons ?? []).length" data-section="coupons">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h4 class="text-sm font-medium">{{ t("billing.accounting.coupons.title") }}</h4>
-          <Button type="button" variant="outline" size="sm" :disabled="!rangeOk || exporting" @click="exportCsv('coupons')">{{ t("billing.accounting.coupons.export") }}</Button>
-        </div>
-        <p class="text-muted-foreground text-xs">{{ t("billing.accounting.coupons.hint") }}</p>
-        <Table>
-          <TableHeader>
-            <TableRow class="hover:bg-transparent">
-              <TableHead>{{ t("billing.accounting.coupons.coupon") }}</TableHead>
-              <TableHead class="text-end">{{ t("billing.accounting.coupons.invoices") }}</TableHead>
-              <TableHead class="text-end">{{ t("billing.accounting.coupons.gross") }}</TableHead>
-              <TableHead class="text-end">{{ t("billing.accounting.coupons.discount") }}</TableHead>
-              <TableHead class="text-end">{{ t("billing.accounting.coupons.net") }}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="k in c.coupons" :key="k.coupon_code">
-              <TableCell class="mono font-medium">{{ k.coupon_code }}</TableCell>
-              <TableCell class="text-end tabular-nums">{{ k.invoices }}</TableCell>
-              <TableCell class="text-end tabular-nums">{{ money(k.gross_minor, c.currency) }}</TableCell>
-              <TableCell class="text-end tabular-nums">{{ money(k.discount_minor, c.currency) }}</TableCell>
-              <TableCell class="text-end tabular-nums">{{ money(k.net_minor, c.currency) }}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </Card>
-  </section>
+  <CurrencySummaryCard v-for="c in currencies" :key="c.currency" :summary="c" :granularity="granularity" :can-export="rangeOk && !exporting" @export-coupons="exportCsv('coupons')" />
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.accounting.expenses.title") }}</h2>
@@ -360,8 +275,8 @@ async function exportCsv(report: "export" | "coupons" = "export") {
     </template>
   </DetailSheet>
 
-  <ExpenseDialog v-model:open="dialogOpen" :tenant-id="tenantId" :expense="editing" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" :default-app="app" />
+  <ExpenseDialog v-model:open="dialogOpen" :tenant-id="tenantId" :expense="editing" :default-currency="defaultCurrency" :apps="appList" :default-app="app" />
   <VoidDialog v-model:open="voidOpen" :tenant-id="tenantId" :expense="voiding" />
-  <ReceiptScanSheet v-model:open="scanOpen" :tenant-id="tenantId" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" :rules="rules.data.value?.rules ?? []" :inbox="scanInbox" />
-  <ExpenseRulesSheet v-model:open="rulesOpen" :tenant-id="tenantId" :default-currency="tenant.data.value?.currency ?? 'USD'" :apps="appList" />
+  <ReceiptScanSheet v-model:open="scanOpen" :tenant-id="tenantId" :default-currency="defaultCurrency" :apps="appList" :rules="rules.data.value?.rules ?? []" :inbox="scanInbox" />
+  <ExpenseRulesSheet v-model:open="rulesOpen" :tenant-id="tenantId" :default-currency="defaultCurrency" :apps="appList" />
 </template>

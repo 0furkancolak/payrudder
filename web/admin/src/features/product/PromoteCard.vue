@@ -43,7 +43,7 @@ function apply() {
       <Button variant="outline" :disabled="!canPromote || promote.isPending.value" data-testid="promote-preview" @click="preview"><ArrowRight class="rtl:rotate-180" />{{ t("product.promote.preview") }}</Button>
     </div>
     <p v-if="!canPromote" class="text-muted-foreground text-xs">{{ t("product.promote.adminOnly") }}</p>
-    <ErrorText :error="promote.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorText :error="promote.error.value" box />
 
     <template v-if="result">
       <div class="flex flex-wrap items-center gap-2" data-testid="promote-summary">

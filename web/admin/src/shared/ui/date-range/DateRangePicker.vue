@@ -49,7 +49,7 @@ function clear() {
     <PopoverTrigger as-child>
       <button type="button" :aria-label="t('dateRange.label')" :data-active="active ? '' : undefined" :class="cn('field inline-flex h-10 max-w-full items-center gap-2 rounded-xl px-3.5 text-sm font-medium', active ? '' : 'text-foreground hover:bg-muted')" data-testid="date-range">
         <CalendarDays class="size-4" aria-hidden="true" />
-        <span class="tabular">{{ label }}</span>
+        <span class="tabular-nums">{{ label }}</span>
       </button>
     </PopoverTrigger>
     <PopoverPortal>

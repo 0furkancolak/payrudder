@@ -4,6 +4,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { firstError } from "@/shared/lib/errors";
+import { FormField } from "@/shared/ui/form-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Button } from "@/shared/ui/button";
@@ -12,7 +13,6 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { useTableState } from "@/shared/lib/useTableState";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import { Card } from "@/shared/ui/card";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -200,15 +200,13 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
         </SheetHeader>
         <SheetBody>
           <form id="invite-member" class="flex flex-col gap-4" :aria-label="t('product.members.inviteTitle')" @submit.prevent="submitInvite">
-            <div class="flex flex-col gap-1.5">
-              <Label for="inv-email">{{ t("product.auth.email") }}</Label>
+            <FormField for="inv-email" :label="t('product.auth.email')">
               <Input id="inv-email" v-model="email" type="email" inputmode="email" autocomplete="off" required />
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <Label for="inv-role">{{ t("product.members.role") }}</Label>
+            </FormField>
+            <FormField for="inv-role" :label="t('product.members.role')">
               <NativeSelect id="inv-role" v-model="role"><option v-for="r in roleChoices" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option></NativeSelect>
-            </div>
-            <ErrorText :error="invite.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+            </FormField>
+            <ErrorText :error="invite.error.value" box />
             <UpgradeHint :error="invite.error.value" />
           </form>
         </SheetBody>
@@ -225,7 +223,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
           <DialogTitle>{{ removing?.self ? t("product.members.leaveTitle") : t("product.members.removeTitle") }}</DialogTitle>
           <DialogDescription>{{ removing?.self ? t("product.members.leaveBody") : t("product.members.removeBody", { name: removing?.name ?? "" }) }}</DialogDescription>
         </DialogHeader>
-        <ErrorText :error="remove.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+        <ErrorText :error="remove.error.value" box />
         <DialogFooter>
           <Button variant="ghost" @click="confirm = false">{{ t("common.cancel") }}</Button>
           <Button variant="destructive" :disabled="remove.isPending.value" @click="doRemove">{{ removing?.self ? t("product.members.leave") : t("product.members.remove") }}</Button>

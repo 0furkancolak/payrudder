@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { FormField } from "@/shared/ui/form-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import { useRequestCode, useVerifyCode } from "./api";
 import OtpInput from "./OtpInput.vue";
 import { useAfterSignIn } from "./afterSignIn";
@@ -101,27 +101,24 @@ function change(): void {
   <form v-if="step === 'email'" class="flex flex-col gap-4" :aria-label="t('product.signIn.code.formLabel')" @submit.prevent="send">
     <p class="text-muted-foreground text-sm">{{ props.mode === "signup" ? t("product.signUp.code.intro") : t("product.signIn.code.intro") }}</p>
     <div v-if="props.mode === 'signup'" class="grid gap-4 sm:grid-cols-2">
-      <div class="flex flex-col gap-1.5">
-        <Label for="otp-name">{{ t("product.auth.name") }}</Label>
+      <FormField for="otp-name" :label="t('product.auth.name')">
         <Input id="otp-name" v-model="name" autocomplete="name" />
-      </div>
-      <div class="flex flex-col gap-1.5">
-        <Label for="otp-org">{{ t("product.signUp.code.organisation") }}</Label>
+      </FormField>
+      <FormField for="otp-org" :label="t('product.signUp.code.organisation')">
         <Input id="otp-org" v-model="organisation" autocomplete="organization" />
-      </div>
+      </FormField>
     </div>
-    <div class="flex flex-col gap-1.5">
-      <Label for="otp-email">{{ t("product.auth.email") }}</Label>
+    <FormField for="otp-email" :label="t('product.auth.email')">
       <Input id="otp-email" v-model="email" type="email" autocomplete="username" inputmode="email" required />
-    </div>
-    <ErrorText :error="request.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    </FormField>
+    <ErrorText :error="request.error.value" box />
     <Button type="submit" size="lg" :disabled="!canSend">{{ t("product.signIn.code.send") }}</Button>
   </form>
 
   <form v-else class="flex flex-col gap-4" :aria-label="t('product.signIn.code.verifyLabel')" @submit.prevent="submit()">
     <p class="text-muted-foreground text-sm" role="status">{{ t("product.signIn.code.sentTo", { email: email.trim() }) }}</p>
     <OtpInput ref="otp" v-model="code" :disabled="verify.isPending.value" :invalid="verify.isError.value" @complete="submit" />
-    <ErrorText v-if="verify.error.value" :error="verify.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorText v-if="verify.error.value" :error="verify.error.value" box />
     <p v-else-if="resent" class="bg-success-soft text-success rounded-2xl px-4 py-3 text-sm" role="status">{{ t("product.signIn.code.resent") }}</p>
     <Button type="submit" size="lg" :disabled="code.length !== 6 || verify.isPending.value">
       {{ props.mode === "signup" ? t("product.signUp.submit") : t("product.signIn.submit") }}

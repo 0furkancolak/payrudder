@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
-	"github.com/0furkancolak/payrudder/pkg/env"
 )
 
 // HealthChecker is implemented by an adapter that can ask its provider one cheap, authenticated, read-only question: do these credentials work? It moves no
@@ -35,13 +33,12 @@ type Health struct {
 // point anywhere, so it passes that part.
 func Verify(ctx context.Context, p Provider, environment string) (Health, error) {
 	if lm, ok := p.(LiveModer); ok {
-		live, known := lm.Livemode()
-		if !known {
+		if _, known := lm.Livemode(); !known {
 			return Health{}, ErrUnknownEndpoint
 		}
-		if want := environment == env.Live.String(); live != want {
-			return Health{}, fmt.Errorf("%w: %s endpoint for a %s-environment account", ErrLivemodeMismatch, map[bool]string{true: "live", false: "test"}[live], environment)
-		}
+	}
+	if err := CheckLivemode(p, environment); err != nil {
+		return Health{}, err
 	}
 	return Check(ctx, p)
 }

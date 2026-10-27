@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,7 +26,8 @@ import (
 
 // Handler routes commands by environment (ADR 0011) and, for live tenants, by their provider account.
 type Handler struct {
-	// Sandbox is always mock-psp: a sandbox command can never reach a real provider, whatever the configuration says.
+	// Sandbox is mock-psp, which serves every sandbox command except one the tenant has connected a provider's test mode for (see pickSandbox): a sandbox
+	// command can never reach a live account of a provider, whatever the configuration says.
 	Sandbox payments.PaymentProvider
 	// Live is PAYMENTS_LIVE_PROVIDER, the provider for live tenants that have no account of their own. Nil replies
 	// PaymentErrored{PROVIDER_NOT_CONFIGURED}.
@@ -75,21 +77,37 @@ const (
 // providerFor picks the provider of a command. A live tenant with its own provider account is served by it; the others by the
 // configured live provider. Refunds and status queries follow the provider the invoice was charged through.
 //
-// Both directions are guarded here, in one place: a sandbox command is served by h.Sandbox and by nothing else, and a live command is never served by the mock
-// unless the stack says it has no real provider (AllowMockLive, or Demo, which serves everyone from the mock).
-func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, environment env.Env, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, error) {
-	p, err := h.pickProvider(ctx, tenant, environment, invoice, charge, named)
+// Both directions are guarded here, in one place: a sandbox command is served by h.Sandbox or by the tenant's own sandbox account at a provider, which must be a
+// test-mode one (a live endpoint or a live key is refused), and a live command is never served by the mock unless the stack says it has no real provider
+// (AllowMockLive, or Demo, which serves everyone from the mock). method is the payment method of a charge, empty for the others.
+func (h *Handler) providerFor(ctx context.Context, tenant uuid.UUID, environment env.Env, invoice uuid.UUID, charge bool, named, method string) (payments.PaymentProvider, error) {
+	p, err := h.pickProvider(ctx, tenant, environment, invoice, charge, named, method)
 	if err != nil || p == nil {
 		return p, err
 	}
+	if err := h.guard(environment, p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+// guard refuses a provider that does not belong to the environment of the command.
+func (h *Handler) guard(environment env.Env, p payments.PaymentProvider) error {
 	switch {
 	case h.Demo:
 	case environment.IsSandbox() && p != h.Sandbox:
-		return nil, fmt.Errorf("%w: a sandbox command was routed to %q", ErrWrongProvider, p.Name())
+		// Only an account adapter (the resolver builds them) can be the tenant's own, and it must not be a live one.
+		acct, ok := p.(payments.Provider)
+		if !ok || IsMock(p) {
+			return fmt.Errorf("%w: a sandbox command was routed to %q", ErrWrongProvider, p.Name())
+		}
+		if err := payments.CheckLivemode(acct, env.Sandbox.String()); err != nil {
+			return fmt.Errorf("%w: a sandbox command was routed to %q: %v", ErrWrongProvider, p.Name(), err)
+		}
 	case environment.IsLive() && IsMock(p) && !h.AllowMockLive:
-		return nil, fmt.Errorf("%w: a live command was routed to the mock provider %q", ErrWrongProvider, p.Name())
+		return fmt.Errorf("%w: a live command was routed to the mock provider %q", ErrWrongProvider, p.Name())
 	}
-	return p, nil
+	return nil
 }
 
 // ErrWrongProvider is a routing that crosses the environments; the command is answered PROVIDER_NOT_CONFIGURED, never executed.
@@ -101,9 +119,51 @@ func IsMock(p payments.PaymentProvider) bool {
 	return ok
 }
 
-func (h *Handler) pickProvider(ctx context.Context, tenant uuid.UUID, environment env.Env, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, error) {
-	if h.Demo || environment.IsSandbox() {
+// ScenarioPrefix starts the payment methods of the sandbox scenarios (pm_sandbox_success, pm_sandbox_declined...): mock-psp plays them, a provider never sees one.
+const ScenarioPrefix = "pm_sandbox_"
+
+// pickSandbox picks the provider of a command of a sandbox tenant: mock-psp, unless the tenant connected a provider's test mode (an account stored for the
+// sandbox, never a live one: the lookup names the sandbox environment, and the resolver refuses a live endpoint or key). A charge goes to that account when the
+// payment method is the provider's own token, not one of the scenarios, and the subscription's provider or else the tenant's default account has one; a refund
+// or a status query follows the provider the invoice was charged through. Anything else is mock-psp, so the scenarios keep working beside a connection.
+func (h *Handler) pickSandbox(ctx context.Context, tenant uuid.UUID, invoice uuid.UUID, charge bool, named, method string) (payments.PaymentProvider, error) {
+	sandbox := env.Sandbox.String()
+	if h.Resolver == nil {
 		return h.Sandbox, nil
+	}
+	if charge {
+		if method == "" || strings.HasPrefix(method, ScenarioPrefix) {
+			return h.Sandbox, nil
+		}
+		if named != "" && named != h.Sandbox.Name() {
+			p, err := h.Resolver.Named(ctx, tenant, named, sandbox)
+			if errors.Is(err, store.ErrNoAccount) {
+				return h.Sandbox, nil
+			}
+			return p, err
+		}
+		p, ok, err := h.Resolver.Default(ctx, tenant, sandbox)
+		if err != nil || !ok {
+			return h.Sandbox, err
+		}
+		return p, nil
+	}
+	name, ok, err := h.Attempts.ChargeProvider(ctx, tenant, invoice)
+	if err != nil {
+		return nil, err
+	}
+	if !ok || name == h.Sandbox.Name() {
+		return h.Sandbox, nil
+	}
+	return h.Resolver.Named(ctx, tenant, name, sandbox)
+}
+
+func (h *Handler) pickProvider(ctx context.Context, tenant uuid.UUID, environment env.Env, invoice uuid.UUID, charge bool, named, method string) (payments.PaymentProvider, error) {
+	if h.Demo {
+		return h.Sandbox, nil
+	}
+	if environment.IsSandbox() {
+		return h.pickSandbox(ctx, tenant, invoice, charge, named, method)
 	}
 	if h.Resolver != nil {
 		if charge && named != "" {
@@ -263,8 +323,8 @@ type commandRun struct {
 }
 
 // providerForCommand resolves the provider of a command; a non-nil reply is the answer when there is none.
-func (h *Handler) providerForCommand(ctx context.Context, run commandRun, invoice uuid.UUID, charge bool, named string) (payments.PaymentProvider, *commandsv1.ReplyEnvelope) {
-	prov, err := h.providerFor(ctx, run.tenant, run.environment, invoice, charge, named)
+func (h *Handler) providerForCommand(ctx context.Context, run commandRun, invoice uuid.UUID, charge bool, named, method string) (payments.PaymentProvider, *commandsv1.ReplyEnvelope) {
+	prov, err := h.providerFor(ctx, run.tenant, run.environment, invoice, charge, named, method)
 	if err != nil {
 		return nil, unavailable(err)
 	}
@@ -287,7 +347,7 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 	if err != nil || ch.GetIdempotencyKey() == "" {
 		return nil, fmt.Errorf("%w: charge needs invoice_id and idempotency_key", workerx.ErrPoison)
 	}
-	prov, reply := h.providerForCommand(ctx, run, invoiceID, true, ch.GetProvider())
+	prov, reply := h.providerForCommand(ctx, run, invoiceID, true, ch.GetProvider(), ch.GetPaymentMethod())
 	if reply != nil {
 		return reply, nil
 	}
@@ -378,7 +438,7 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 	if err != nil || rf.GetIdempotencyKey() == "" {
 		return nil, fmt.Errorf("%w: refund needs invoice_id and idempotency_key", workerx.ErrPoison)
 	}
-	prov, reply := h.providerForCommand(ctx, run, invoiceID, false, "")
+	prov, reply := h.providerForCommand(ctx, run, invoiceID, false, "", "")
 	if reply != nil {
 		return reply, nil
 	}
@@ -404,7 +464,7 @@ func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1
 	if err != nil || q.GetIdempotencyKey() == "" {
 		return nil, fmt.Errorf("%w: status needs invoice_id and idempotency_key", workerx.ErrPoison)
 	}
-	prov, reply := h.providerForCommand(ctx, run, invoiceID, false, "")
+	prov, reply := h.providerForCommand(ctx, run, invoiceID, false, "", "")
 	if reply != nil {
 		return reply, nil
 	}

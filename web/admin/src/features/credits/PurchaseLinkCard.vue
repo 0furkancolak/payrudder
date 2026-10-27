@@ -42,7 +42,7 @@ watch(
   },
 );
 const quantityValid = computed(() => validQuantity(quantity.value, PURCHASE_QUANTITY_MAX));
-const created = computed(() => createLink.data.value as { url?: string; replayed?: boolean } | undefined);
+const created = computed(() => createLink.data.value);
 const shownUrl = computed(() => absoluteUrl(created.value?.url, window.location.origin));
 
 function submit() {

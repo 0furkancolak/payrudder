@@ -3,6 +3,7 @@ import { useParams, useSearch } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { defaultEnv, isEnvironment, type Environment } from "@/shared/lib/environment";
+import { PageHeader } from "@/shared/ui/page-header";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useAccount, useApp } from "./api";
@@ -29,13 +30,9 @@ const env = computed<Environment | null>(() => {
 
 <template>
   <section class="flex flex-col gap-6">
-    <header class="px-1">
-      <div class="flex flex-wrap items-center gap-3">
-        <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("shell.items.apiKeys") }}</h1>
-        <StatusPill v-if="env" :tone="env === 'live' ? 'info' : 'neutral'" data-testid="keys-env">{{ t(`product.env.${env}`) }}</StatusPill>
-      </div>
-      <p class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ t("product.apiKeysPage.intro") }}</p>
-    </header>
+    <PageHeader flush :title="t('shell.items.apiKeys')" :description="t('product.apiKeysPage.intro')">
+      <template #badge><StatusPill v-if="env" :tone="env === 'live' ? 'info' : 'neutral'" data-testid="keys-env">{{ t(`product.env.${env}`) }}</StatusPill></template>
+    </PageHeader>
     <Skeleton v-if="!env" class="h-48 rounded-3xl" aria-busy="true" />
     <KeysPanel v-else :app-id="appId" :can-manage="canManage" :env="env" />
   </section>

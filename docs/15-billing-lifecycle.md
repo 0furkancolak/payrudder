@@ -75,7 +75,7 @@ A provider-neutral `Catalogue` capability (optional interface, like `CheckoutPro
 - **Invoice numbering**: gapless per tenant and year (`INV-2026-000123`), assigned at finalisation, not at draft.
 - **Line items** carry a kind (`fixed_fee`, `usage`, `proration_credit`, `proration_charge`, `discount`, `tax`), the service period, quantity and unit amount.
 - **Credit notes**: issued against a paid or open invoice (full or partial, with reason), numbered `CN-…`, reduce the amount owed or add to the credit balance, or trigger a provider refund when asked. The ledger links refund ↔ credit note ↔ invoice.
-- **Credit balance** per customer and currency, applied automatically at finalisation, shown on reports.
+- **Credit balance** per customer and currency, applied automatically at finalisation, shown on reports. A voided invoice gives back what was paid: money recorded by hand (bank transfer, cash) becomes a credit balance, never a provider refund; the card part is refunded to the card; credit notes already issued come off the card part first. A credit balance, like a credit note, has no tax document: the reports do not reverse the original tax, the tenant does it in its own books.
 - **Coupons**: percentage or amount, once / repeating N periods / forever, redeem limits and expiry, applied as a discount line; for Paddle-owned subscriptions mapped to a Paddle discount.
 - **Tax lines**: stored as given (tenant-supplied rate by country, or the provider's amount for Paddle); never calculated by Payrudder beyond applying a configured rate.
 - **PDF and hosted invoice page**: rendered from the invoice by the existing PDF worker; link in the API and console.

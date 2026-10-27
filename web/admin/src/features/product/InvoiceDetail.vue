@@ -15,8 +15,9 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { ErrorState } from "@/shared/ui/error-state";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { useInvoice, useOpenInvoicePdf, useSimulateInvoice } from "./billingApi";
+import { useTenantInvoice, useOpenInvoicePdf, useSimulateInvoice } from "./billingApi";
 
 /**
  * The content of one invoice, for the sheet the invoice list opens (the sheet's header already names the invoice): its total and status, who it is for, its lines and the payments recorded for it by hand, the records related to it, and a link to the PDF (a presigned link, valid five
@@ -27,7 +28,7 @@ const fmt = useFormat();
 const props = defineProps<{ tenantId: string; invoiceId: string }>();
 const tenantId = computed(() => props.tenantId);
 const invoiceId = computed(() => props.invoiceId);
-const invoice = useInvoice(tenantId, invoiceId);
+const invoice = useTenantInvoice(tenantId, invoiceId);
 const pdf = useOpenInvoicePdf(tenantId, invoiceId);
 const inv = computed(() => invoice.data.value);
 const day = (v?: string) => fmt.date(v, "day");
@@ -50,7 +51,7 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
         <div class="flex flex-col gap-1">
           <p class="text-muted-foreground text-sm">{{ label(t, te, "invoiceKind", inv.kind) }}</p>
           <h2 class="sr-only" data-testid="invoice-number">{{ inv.number || t("product.billing.invoices.draft") }}</h2>
-          <p class="text-4xl font-semibold tracking-tight tabular" data-testid="invoice-total">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</p>
+          <p class="text-4xl font-semibold tracking-tight tabular-nums" data-testid="invoice-total">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</p>
           <div class="mt-1"><StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill></div>
         </div>
         <div class="flex flex-col items-start gap-3 sm:items-end">
@@ -86,32 +87,28 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
 
       <section class="flex flex-col gap-3" :aria-label="t('product.billing.invoice.lines')">
         <h2 class="text-lg font-semibold tracking-tight">{{ t("product.billing.invoice.lines") }}</h2>
-        <div class="relative -mx-2 overflow-x-auto px-2">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-muted-foreground text-xs">
-                <th scope="col" class="py-2 pe-4 text-start font-medium">{{ t("product.billing.invoice.description") }}</th>
-                <th scope="col" class="py-2 pe-4 text-start font-medium">{{ t("product.billing.invoice.service") }}</th>
-                <th scope="col" class="py-2 pe-4 text-end font-medium">{{ t("product.billing.invoice.quantity") }}</th>
-                <th scope="col" class="py-2 text-end font-medium">{{ t("product.billing.invoice.amount") }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="line in inv.lines ?? []" :key="line.line_no" class="border-border/70 border-t">
-                <td class="py-3 pe-4">{{ line.description }}<span v-if="line.meter_code" class="text-muted-foreground mono block text-xs">{{ line.meter_code }}</span></td>
-                <td class="text-muted-foreground py-3 pe-4 whitespace-nowrap">{{ day(line.service_from) }}<template v-if="line.service_from"> – {{ day(line.service_to) }}</template></td>
-                <td class="py-3 pe-4 text-end tabular">{{ line.quantity }}</td>
-                <td class="py-3 text-end font-medium whitespace-nowrap tabular">{{ formatMinor(line.amount_minor, inv.currency, locale) }}</td>
-              </tr>
-            </tbody>
-            <tfoot>
-              <tr class="border-border/70 border-t">
-                <th scope="row" colspan="3" class="py-3 pe-4 text-end font-medium">{{ t("product.billing.invoice.total") }}</th>
-                <td class="py-3 text-end font-semibold whitespace-nowrap tabular">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow class="hover:bg-transparent">
+              <TableHead>{{ t("product.billing.invoice.description") }}</TableHead>
+              <TableHead>{{ t("product.billing.invoice.service") }}</TableHead>
+              <TableHead class="text-end">{{ t("product.billing.invoice.quantity") }}</TableHead>
+              <TableHead class="text-end">{{ t("product.billing.invoice.amount") }}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow v-for="line in inv.lines ?? []" :key="line.line_no" class="hover:bg-transparent">
+              <TableCell>{{ line.description }}<span v-if="line.meter_code" class="text-muted-foreground mono block text-xs">{{ line.meter_code }}</span></TableCell>
+              <TableCell class="text-muted-foreground whitespace-nowrap">{{ day(line.service_from) }}<template v-if="line.service_from"> – {{ day(line.service_to) }}</template></TableCell>
+              <TableCell class="text-end tabular-nums">{{ line.quantity }}</TableCell>
+              <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">{{ formatMinor(line.amount_minor, inv.currency, locale) }}</TableCell>
+            </TableRow>
+            <TableRow class="hover:bg-transparent">
+              <TableHead scope="row" colspan="3" class="text-foreground text-end text-sm font-medium">{{ t("product.billing.invoice.total") }}</TableHead>
+              <TableCell class="text-end font-semibold whitespace-nowrap tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </section>
 
       <ManualPaymentsCard v-if="(inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />

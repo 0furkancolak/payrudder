@@ -66,7 +66,7 @@ const trialNote = (o: PlanOffer) => ((o.trial_days ?? 0) > 0 ? t("saas.trialDays
       <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("saas.title") }}</h1>
       <p class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ t("saas.intro") }}</p>
     </header>
-    <ErrorText :error="firstError(plan)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorText :error="firstError(plan)" box />
     <Skeleton v-if="plan.isPending.value" class="h-40 rounded-2xl" />
     <p v-else-if="!enabled" class="surface text-muted-foreground p-6 text-sm" data-testid="plan-disabled">{{ t("saas.disabled") }}</p>
 
@@ -88,7 +88,7 @@ const trialNote = (o: PlanOffer) => ((o.trial_days ?? 0) > 0 ? t("saas.trialDays
           <ExternalLink />{{ t("saas.portal") }}
         </Button>
       </section>
-      <ErrorText :error="firstError(portal, payLink)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+      <ErrorText :error="firstError(portal, payLink)" box />
 
       <section class="surface flex flex-col gap-4 p-6" :aria-label="t('saas.usage')" data-testid="plan-usage">
         <h2 class="text-lg font-semibold tracking-tight">{{ t("saas.usage") }}</h2>
@@ -175,7 +175,7 @@ const trialNote = (o: PlanOffer) => ((o.trial_days ?? 0) > 0 ? t("saas.trialDays
         </SheetHeader>
         <SheetBody>
           <p v-if="target && trialNote(target) && offerMove(target, current) === 'upgrade'" class="text-sm">{{ trialNote(target) }}</p>
-          <ErrorText :error="change.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+          <ErrorText :error="change.error.value" box />
         </SheetBody>
         <SheetFooter>
           <Button variant="ghost" type="button" @click="confirming = false">{{ t("common.cancel") }}</Button>

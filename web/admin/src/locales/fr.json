@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Normale",
       "CORRECTION": "Correction",
-      "CREDIT_NOTE": "Avoir"
+      "CREDIT_NOTE": "Avoir",
+      "FEE": "Frais payés d'avance",
+      "LINK": "Lien de paiement"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Frais de base",
+      "USAGE": "Utilisation",
+      "LATE_USAGE": "Utilisation tardive",
+      "CREDIT": "Crédit",
+      "CORRECTION": "Correction",
+      "DISCOUNT": "Remise",
+      "TAX": "Taxe"
     },
     "subscriptionState": {
       "trialing": "en essai",
@@ -594,7 +605,7 @@
       "monthly": "Mensuel",
       "yearly": "Annuel",
       "change": {
-        "title": "Changer de forfait ou de période",
+        "title": "Changer de forfait, de période ou de nombre de sièges",
         "plan": "Nouveau forfait",
         "keepPlan": "Garder le forfait",
         "interval": "Nouvelle période",
@@ -619,7 +630,12 @@
         "due": "{amount} sont facturés maintenant",
         "creditAdded": "{amount} sont ajoutés au solde créditeur",
         "scheduled": "Programmé : {plan} ({interval}) à partir du {date}",
-        "withdraw": "Retirer"
+        "withdraw": "Retirer",
+        "seats": "Nouveau nombre de sièges",
+        "keepSeats": "Sièges : garder {n}",
+        "seatsHint": "Un changement de sièges seul est immédiat et calculé au prorata : les sièges ajoutés sont facturés pour le reste de la période, les sièges retirés deviennent un avoir. L'aperçu montre le montant.",
+        "seatsAfter": "Sièges après le changement",
+        "scheduledSeats": "Programmé : {plan} ({interval}), {seats} sièges à partir du {date}"
       },
       "providerRun": {
         "title": "Géré par {provider}",
@@ -647,7 +663,12 @@
       "trialEnds": "essai jusqu'au {date}",
       "trialsEnding": "{n} essai se termine dans les {days} jours | {n} essais se terminent dans les {days} jours",
       "showTrials": "Afficher les essais",
-      "trialBanner": "L'essai se termine le {date}, dans {n} jour. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin. | L'essai se termine le {date}, dans {n} jours. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin."
+      "trialBanner": "L'essai se termine le {date}, dans {n} jour. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin. | L'essai se termine le {date}, dans {n} jours. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin.",
+      "seats": "Sièges",
+      "seatsDefault": "Sièges (1 par défaut)",
+      "seatsHint": "Le tarif fixe est multiplié par le nombre de sièges, pas les prix à l'usage. Uniquement pour un abonnement que Payrudder gère et facture à l'avance.",
+      "seatsBad": "Le nombre de sièges doit être un entier de 1 à {max}.",
+      "seatsCount": "{n} siège | {n} sièges"
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",
@@ -1794,7 +1815,7 @@
       "minPayoutHint": "Un partenaire en dessous de ce montant est ignoré à la création des versements. Laissez vide pour aucun minimum.",
       "coupon": "Coupon pour les clients recommandés",
       "noCoupon": "Aucun coupon",
-      "couponHint": "Un client recommandé le reçoit à son prochain paiement. Les coupons se créent dans Tarification.",
+      "couponHint": "Un client recommandé le reçoit à son prochain paiement. Les coupons se créent dans Coupons.",
       "clickCap": "Plafond de clics par jour et par partenaire",
       "clickCapHint": "Les clics au-dessus de ce nombre par jour ne sont pas comptés.",
       "landing": "Page d'atterrissage",
@@ -1858,7 +1879,7 @@
       "copy": "Copier le lien",
       "noLink": "Le lien de {code} est https://votre-passerelle/r/{code}.",
       "promotionCode": "Code promo",
-      "promotionHint": "Un code promo existant de Tarification. L'utiliser compte comme avoir suivi le lien.",
+      "promotionHint": "Un code promo existant de Coupons. L'utiliser compte comme avoir suivi le lien.",
       "submit": "Lier le code",
       "done": "Code {code} lié."
     },
@@ -2304,6 +2325,8 @@
         "bad_method": "Le moyen doit être virement bancaire, espèces ou autre.",
         "bad_amount": "Le montant doit être un nombre entier d'unités mineures supérieur à zéro.",
         "bad_date": "La date de réception est invalide ou dans le futur.",
+        "bad_reference": "La référence doit tenir sur une seule ligne de 128 caractères au plus.",
+        "bad_note": "La note peut comporter 500 caractères au plus.",
         "overpayment": "C'est plus que le reste à payer. Enregistrez seulement le reste à payer.",
         "already_paid": "La facture est déjà payée.",
         "not_payable": "L'état de paiement de la facture n'autorise pas de paiement manuel pour le moment.",
@@ -3322,7 +3345,7 @@
       "invoices": "Factures",
       "payments": "Paiements",
       "packages": "Forfaits",
-      "pricing": "Tarification",
+      "pricing": "Taxes et relances",
       "reports": "Rapports",
       "readOnly": "Votre rôle est lecteur : vous pouvez tout lire ici, mais pas modifier."
     },
@@ -3688,7 +3711,7 @@
       "connect": "Connecter",
       "manage": "Gérer",
       "simulator": "Simulateur intégré",
-      "sandboxNote": "Le sandbox n'atteint jamais un vrai prestataire : il tourne sur un simulateur intégré, il n'y a donc rien à y connecter.",
+      "sandboxNote": "Le sandbox fonctionne sur un simulateur intégré et ne débite jamais une vraie carte. Pour essayer le paiement propre à un prestataire, connectez iyzico ou Paddle en mode test ; les moyens de paiement nommés pm_sandbox_ restent sur le simulateur.",
       "state": {
         "none": "Non connecté",
         "working": "Connecté et fonctionnel",
@@ -3735,7 +3758,19 @@
         "replaceNote": "Une connexion existe. Saisissez de nouvelles clés seulement pour la remplacer ; les clés actuelles ne sont jamais affichées.",
         "openDashboard": "Ouvrir le tableau de bord {provider}",
         "partial": "Connecté sur {ok} app(s) avant l'échec.",
-        "disconnectOrg": "Déconnecter de {count} app(s)"
+        "disconnectOrg": "Déconnecter de {count} app(s)",
+        "sandboxConnectTitle": "Connecter le mode test de {provider}",
+        "sandboxManageTitle": "Mode test de {provider}",
+        "sandboxIntro": {
+          "iyzico": "Saisissez les clés de votre compte sandbox iyzico. Elles sont vérifiées auprès de l'hôte de test d'iyzico avant d'être enregistrées.",
+          "paddle": "Saisissez les clés de votre compte sandbox Paddle et son secret de webhook. Elles sont vérifiées auprès du sandbox de Paddle avant d'être enregistrées.",
+          "banktransfer": "Le virement bancaire n'a pas de mode test : le sandbox utilise le simulateur intégré."
+        },
+        "sandboxEnvNote": "Cela connecte l'environnement sandbox au mode test du prestataire. Un débit sandbox dont le moyen de paiement est le jeton propre du prestataire y est envoyé ; les scénarios pm_sandbox_ restent sur le simulateur. Les clés live sont refusées et le live n'est pas touché.",
+        "sandboxKeys": {
+          "iyzico": "Utilisez les clés du panneau sandbox d'iyzico (la clé d'API commence par sandbox-).",
+          "paddle": "Utilisez une clé de votre compte sandbox Paddle (elle commence par pdl_sdbx_)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3749,7 +3784,15 @@
           "webhook_secret": "Sous Developer tools, Notifications : créez une destination pour Payrudder et copiez sa clé secrète.",
           "usage_product_id": "L'identifiant du produit que Paddle utilise pour les frais d'usage. Dans le Catalog, ouvrez le produit et copiez son identifiant, qui commence par pro_."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Mode test",
+        "manage": "Gérer le mode test",
+        "working": "Mode test connecté",
+        "problem": "Mode test : problème",
+        "done": "Mode test de {provider} connecté pour le sandbox."
+      },
+      "confirmDisconnectSandbox": "Retirer le compte sandbox chez {provider} ? Le sandbox repasse sur le simulateur intégré."
     },
     "integrations": {
       "introApp": "Connectez les prestataires de paiement, l'intégrateur de facturation électronique et le fournisseur d'e-mail de {app}. Les clients sont servis par les connexions live ; la sandbox n'en a pas besoin.",
@@ -3938,7 +3981,7 @@
       "subscriptions": "Abonnements",
       "credits": "Crédits",
       "packages": "Forfaits",
-      "pricing": "Prix et taxes",
+      "pricing": "Taxes et relances",
       "invoices": "Factures",
       "payments": "Paiements",
       "paymentLinks": "Liens de paiement",
@@ -4288,7 +4331,7 @@
         "trials": "Donnez à un forfait un essai par défaut en jours : les abonnements démarrent en essai sans carte. Une offre gratuite est un forfait sans tarif, avec seulement des limites."
       },
       "pricing": {
-        "intro": "Taux de taxe et promotions : ce qui s'ajoute à ce que vous facturez ou s'en retranche.",
+        "intro": "Délais de nouvelle tentative de paiement et taux de taxe : ce qui se passe quand un prélèvement est refusé, et ce qui s'ajoute à ce que vous facturez.",
         "tabs": "Passez d'une section de cette page à l'autre."
       },
       "coupons": {

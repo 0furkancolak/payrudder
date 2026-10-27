@@ -4,11 +4,12 @@ import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { takeFragmentToken } from "@/shared/lib/fragment";
 import { isPerson } from "@/shared/lib/session";
+import { FormField } from "@/shared/ui/form-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import { useAcceptInvitation, useAcceptInvitationAsMe, useLookupInvitation, useMe, useSignIn, useSignOut } from "./api";
+import { PASSWORD_MIN } from "./lib";
 import AuthShell from "./AuthShell.vue";
 import PasswordField from "./PasswordField.vue";
 
@@ -29,8 +30,7 @@ const me = useMe();
 const info = computed(() => lookup.data.value);
 const name = ref("");
 const password = ref("");
-const MIN = 10;
-const longEnough = computed(() => password.value.length >= MIN);
+const longEnough = computed(() => password.value.length >= PASSWORD_MIN);
 const missing = token === "";
 
 onMounted(() => {
@@ -61,7 +61,7 @@ const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", passw
       <!-- Signed in with the address that was invited: one click. -->
       <div v-if="signedInAsInvitee" class="flex flex-col gap-4">
         <p class="text-sm">{{ t("product.invite.joinAs", { email: info.email ?? '' }) }}</p>
-        <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+        <ErrorText :error="error" box />
         <Button size="lg" :disabled="acceptMe.isPending.value" @click="joinAsMe">{{ t("product.invite.join") }}</Button>
       </div>
 
@@ -74,34 +74,29 @@ const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", passw
       <!-- The address has an account: sign in, then join. -->
       <form v-else-if="info.has_account" class="flex flex-col gap-4" :aria-label="t('product.invite.signInTitle')" @submit.prevent="signInAndJoin">
         <p class="text-sm">{{ t("product.invite.hasAccount", { email: info.email ?? '' }) }}</p>
-        <div class="flex flex-col gap-1.5">
-          <Label for="iv-email">{{ t("product.auth.email") }}</Label>
+        <FormField for="iv-email" :label="t('product.auth.email')">
           <Input id="iv-email" :model-value="info.email" type="email" readonly />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="iv-password">{{ t("product.auth.password") }}</Label>
+        </FormField>
+        <FormField for="iv-password" :label="t('product.auth.password')">
           <PasswordField id="iv-password" v-model="password" autocomplete="current-password" />
-        </div>
-        <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+        </FormField>
+        <ErrorText :error="error" box />
         <Button type="submit" size="lg" :disabled="login.isPending.value || acceptMe.isPending.value || password === ''">{{ t("product.invite.signInJoin") }}</Button>
       </form>
 
       <!-- A new person: a name and a password, and they are in. -->
       <form v-else class="flex flex-col gap-4" :aria-label="t('product.invite.createTitle')" @submit.prevent="joinNew">
-        <div class="flex flex-col gap-1.5">
-          <Label for="iv-new-email">{{ t("product.auth.email") }}</Label>
+        <FormField for="iv-new-email" :label="t('product.auth.email')">
           <Input id="iv-new-email" :model-value="info.email" type="email" readonly />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="iv-name">{{ t("product.auth.name") }}</Label>
+        </FormField>
+        <FormField for="iv-name" :label="t('product.auth.name')">
           <Input id="iv-name" v-model="name" autocomplete="name" />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="iv-new-password">{{ t("product.auth.password") }}</Label>
+        </FormField>
+        <FormField for="iv-new-password" :label="t('product.auth.password')">
           <PasswordField id="iv-new-password" v-model="password" autocomplete="new-password" describedby="iv-password-hint" />
-          <p id="iv-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: MIN }) }}</p>
-        </div>
-        <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+          <p id="iv-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: PASSWORD_MIN }) }}</p>
+        </FormField>
+        <ErrorText :error="error" box />
         <Button type="submit" size="lg" :disabled="acceptNew.isPending.value || !longEnough">{{ t("product.invite.createJoin") }}</Button>
       </form>
     </template>

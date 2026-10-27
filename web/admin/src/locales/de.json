@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Regulär",
       "CORRECTION": "Korrektur",
-      "CREDIT_NOTE": "Gutschrift"
+      "CREDIT_NOTE": "Gutschrift",
+      "FEE": "Vorauszahlung",
+      "LINK": "Zahlungslink"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Grundgebühr",
+      "USAGE": "Nutzung",
+      "LATE_USAGE": "Verspätete Nutzung",
+      "CREDIT": "Gutschrift",
+      "CORRECTION": "Korrektur",
+      "DISCOUNT": "Rabatt",
+      "TAX": "Steuer"
     },
     "subscriptionState": {
       "trialing": "im Test",
@@ -594,7 +605,7 @@
       "monthly": "Monatlich",
       "yearly": "Jährlich",
       "change": {
-        "title": "Paket oder Zeitraum ändern",
+        "title": "Paket, Zeitraum oder Plätze ändern",
         "plan": "Neues Paket",
         "keepPlan": "Paket beibehalten",
         "interval": "Neuer Zeitraum",
@@ -619,7 +630,12 @@
         "due": "{amount} werden jetzt in Rechnung gestellt",
         "creditAdded": "{amount} werden dem Guthaben gutgeschrieben",
         "scheduled": "Geplant: {plan} ({interval}) ab {date}",
-        "withdraw": "Zurückziehen"
+        "withdraw": "Zurückziehen",
+        "seats": "Neue Anzahl Plätze",
+        "keepSeats": "Plätze: {n} beibehalten",
+        "seatsHint": "Eine reine Änderung der Plätze gilt sofort und wird anteilig berechnet: zusätzliche Plätze werden für den Rest des Zeitraums berechnet, weniger Plätze werden zum Guthaben. Die Vorschau zeigt den Betrag.",
+        "seatsAfter": "Plätze nach der Änderung",
+        "scheduledSeats": "Geplant: {plan} ({interval}), {seats} Plätze ab {date}"
       },
       "providerRun": {
         "title": "Betrieben von {provider}",
@@ -647,7 +663,12 @@
       "trialEnds": "Test endet am {date}",
       "trialsEnding": "{n} Testphase endet innerhalb von {days} Tagen | {n} Testphasen enden innerhalb von {days} Tagen",
       "showTrials": "Testphasen anzeigen",
-      "trialBanner": "Die Testphase endet am {date}, in {n} Tag. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet. | Die Testphase endet am {date}, in {n} Tagen. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet."
+      "trialBanner": "Die Testphase endet am {date}, in {n} Tag. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet. | Die Testphase endet am {date}, in {n} Tagen. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet.",
+      "seats": "Plätze",
+      "seatsDefault": "Plätze (Standard 1)",
+      "seatsHint": "Die Grundgebühr wird mit den Plätzen multipliziert, Nutzungspreise nicht. Nur für ein Abonnement, das Payrudder führt und im Voraus abrechnet.",
+      "seatsBad": "Die Plätze müssen eine ganze Zahl von 1 bis {max} sein.",
+      "seatsCount": "{n} Platz | {n} Plätze"
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",
@@ -1794,7 +1815,7 @@
       "minPayoutHint": "Ein Partner unterhalb dieses Betrags wird beim Erstellen von Auszahlungen übersprungen. Leer lassen für keine Grenze.",
       "coupon": "Gutschein für geworbene Kunden",
       "noCoupon": "Kein Gutschein",
-      "couponHint": "Ein geworbener Kunde erhält ihn bei der nächsten Zahlung. Gutscheine legen Sie unter Preise an.",
+      "couponHint": "Ein geworbener Kunde erhält ihn bei der nächsten Zahlung. Gutscheine legen Sie unter Gutscheine an.",
       "clickCap": "Tägliches Klicklimit je Partner",
       "clickCapHint": "Klicks über diesem Wert pro Tag werden nicht gezählt.",
       "landing": "Zielseite",
@@ -1858,7 +1879,7 @@
       "copy": "Link kopieren",
       "noLink": "Der Link von {code} lautet https://ihr-gateway/r/{code}.",
       "promotionCode": "Aktionscode",
-      "promotionHint": "Ein vorhandener Aktionscode aus Preise. Seine Einlösung zählt wie ein Klick auf den Link.",
+      "promotionHint": "Ein vorhandener Aktionscode aus Gutscheine. Seine Einlösung zählt wie ein Klick auf den Link.",
       "submit": "Code verknüpfen",
       "done": "Code {code} verknüpft."
     },
@@ -2304,6 +2325,8 @@
         "bad_method": "Die Zahlungsart muss Banküberweisung, Bar oder Sonstiges sein.",
         "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
         "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "bad_reference": "Die Referenz muss eine einzelne Zeile mit höchstens 128 Zeichen sein.",
+        "bad_note": "Die Notiz darf höchstens 500 Zeichen lang sein.",
         "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag.",
         "already_paid": "Die Rechnung ist bereits bezahlt.",
         "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
@@ -3322,7 +3345,7 @@
       "invoices": "Rechnungen",
       "payments": "Zahlungen",
       "packages": "Pakete",
-      "pricing": "Preise",
+      "pricing": "Steuer und Wiederholungen",
       "reports": "Berichte",
       "readOnly": "Ihre Rolle ist Betrachter: Sie können hier alles lesen, aber nichts ändern."
     },
@@ -3688,7 +3711,7 @@
       "connect": "Verbinden",
       "manage": "Verwalten",
       "simulator": "Eingebauter Simulator",
-      "sandboxNote": "Die Sandbox erreicht nie einen echten Anbieter: Sie läuft gegen einen eingebauten Simulator, es gibt dort also nichts zu verbinden.",
+      "sandboxNote": "Die Sandbox läuft auf einem eingebauten Simulator und belastet nie eine echte Karte. Um den eigenen Checkout eines Anbieters auszuprobieren, verbinden Sie iyzico oder Paddle im Testmodus; Zahlungsmethoden namens pm_sandbox_ bleiben beim Simulator.",
       "state": {
         "none": "Nicht verbunden",
         "working": "Verbunden und funktionsfähig",
@@ -3735,7 +3758,19 @@
         "replaceNote": "Es besteht eine Verbindung. Geben Sie neue Schlüssel nur ein, wenn Sie sie ersetzen wollen; die aktuellen werden nie angezeigt.",
         "openDashboard": "Dashboard von {provider} öffnen",
         "partial": "Vor dem Fehler bei {ok} App(s) verbunden.",
-        "disconnectOrg": "Von {count} App(s) trennen"
+        "disconnectOrg": "Von {count} App(s) trennen",
+        "sandboxConnectTitle": "{provider}-Testmodus verbinden",
+        "sandboxManageTitle": "{provider}-Testmodus",
+        "sandboxIntro": {
+          "iyzico": "Geben Sie die Schlüssel Ihres iyzico-Sandbox-Kontos ein. Sie werden vor dem Speichern beim Test-Host von iyzico geprüft.",
+          "paddle": "Geben Sie die Schlüssel Ihres Paddle-Sandbox-Kontos und das Webhook-Geheimnis ein. Sie werden vor dem Speichern in der Paddle-Sandbox geprüft.",
+          "banktransfer": "Eine Banküberweisung hat keinen Testmodus: Die Sandbox nutzt den eingebauten Simulator."
+        },
+        "sandboxEnvNote": "Das verbindet die Sandbox-Umgebung mit dem Testmodus des Anbieters. Eine Sandbox-Zahlung, deren Zahlungsmethode das eigene Token des Anbieters ist, geht dorthin; die pm_sandbox_-Szenarien bleiben beim Simulator. Live-Schlüssel werden abgelehnt, und Live bleibt unberührt.",
+        "sandboxKeys": {
+          "iyzico": "Verwenden Sie die Schlüssel des iyzico-Sandbox-Panels (der API-Schlüssel beginnt mit sandbox-).",
+          "paddle": "Verwenden Sie einen Schlüssel Ihres Paddle-Sandbox-Kontos (er beginnt mit pdl_sdbx_)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3749,7 +3784,15 @@
           "webhook_secret": "Unter Developer tools, Notifications ein Ziel für Payrudder anlegen und dessen geheimen Schlüssel kopieren.",
           "usage_product_id": "Die ID des Produkts, das Paddle für Nutzungsgebühren verwendet. Im Catalog das Produkt öffnen und seine ID kopieren, sie beginnt mit pro_."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Testmodus",
+        "manage": "Testmodus verwalten",
+        "working": "Testmodus verbunden",
+        "problem": "Testmodus: Problem",
+        "done": "{provider}-Testmodus für die Sandbox verbunden."
+      },
+      "confirmDisconnectSandbox": "Das Sandbox-Konto bei {provider} entfernen? Die Sandbox läuft dann wieder auf dem eingebauten Simulator."
     },
     "integrations": {
       "introApp": "Verbinden Sie die Zahlungsanbieter, den E-Rechnungs-Integrator und den E-Mail-Anbieter von {app}. Kunden werden über die Live-Verbindungen bedient; die Sandbox braucht keine.",
@@ -3938,7 +3981,7 @@
       "subscriptions": "Abonnements",
       "credits": "Guthaben",
       "packages": "Pakete",
-      "pricing": "Preise und Steuer",
+      "pricing": "Steuer und Wiederholungen",
       "invoices": "Rechnungen",
       "payments": "Zahlungen",
       "paymentLinks": "Zahlungslinks",
@@ -4288,7 +4331,7 @@
         "trials": "Geben Sie einem Paket eine Standard-Testphase in Tagen, und Abos darauf starten ohne Karte als Test. Eine Gratisstufe ist ein Paket ohne Gebühr, nur mit Limits."
       },
       "pricing": {
-        "intro": "Steuersätze und Aktionen: was auf Ihre Rechnungen aufgeschlagen oder abgezogen wird.",
+        "intro": "Wartezeiten für Zahlungswiederholungen und Steuersätze: was nach einer abgelehnten Zahlung geschieht und was auf Ihre Rechnungsbeträge aufgeschlagen wird.",
         "tabs": "Wechseln Sie zwischen den Bereichen dieser Seite."
       },
       "coupons": {

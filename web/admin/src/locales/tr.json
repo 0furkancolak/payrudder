@@ -57,7 +57,18 @@
     "invoiceKind": {
       "REGULAR": "Normal",
       "CORRECTION": "Düzeltme",
-      "CREDIT_NOTE": "Alacak dekontu"
+      "CREDIT_NOTE": "Alacak dekontu",
+      "FEE": "Peşin ücret",
+      "LINK": "Ödeme bağlantısı"
+    },
+    "invoiceLineKind": {
+      "BASE_FEE": "Temel ücret",
+      "USAGE": "Kullanım",
+      "LATE_USAGE": "Geç gelen kullanım",
+      "CREDIT": "Kredi",
+      "CORRECTION": "Düzeltme",
+      "DISCOUNT": "İndirim",
+      "TAX": "Vergi"
     },
     "subscriptionState": {
       "trialing": "denemede",
@@ -594,7 +605,7 @@
       "monthly": "Aylık",
       "yearly": "Yıllık",
       "change": {
-        "title": "Paketi veya dönemi değiştir",
+        "title": "Paketi, dönemi veya koltukları değiştir",
         "plan": "Yeni paket",
         "keepPlan": "Paket aynı kalsın",
         "interval": "Yeni dönem",
@@ -619,7 +630,12 @@
         "due": "{amount} şimdi faturalanır",
         "creditAdded": "{amount} kredi bakiyesine eklenir",
         "scheduled": "Planlandı: {plan} ({interval}), {date} tarihinden itibaren",
-        "withdraw": "Geri çek"
+        "withdraw": "Geri çek",
+        "seats": "Yeni koltuk sayısı",
+        "keepSeats": "Koltuk: {n} kalsın",
+        "seatsHint": "Yalnızca koltuk değişikliği hemen yapılır ve orantılanır: fazla koltuklar dönemin kalanı için ücretlendirilir, eksilen koltuklar alacağa dönüşür. Önizleme tutarı gösterir.",
+        "seatsAfter": "Değişiklikten sonraki koltuk",
+        "scheduledSeats": "Planlandı: {plan} ({interval}), {seats} koltuk, {date} tarihinden itibaren"
       },
       "providerRun": {
         "title": "{provider} yönetiyor",
@@ -647,7 +663,12 @@
       "trialEnds": "deneme {date} tarihinde biter",
       "trialsEnding": "{n} deneme {days} gün içinde bitiyor | {n} deneme {days} gün içinde bitiyor",
       "showTrials": "Denemeleri göster",
-      "trialBanner": "Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır. | Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır."
+      "trialBanner": "Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır. | Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır.",
+      "seats": "Koltuk",
+      "seatsDefault": "Koltuk sayısı (varsayılan 1)",
+      "seatsHint": "Sabit ücret koltuk sayısıyla çarpılır; kullanım fiyatları çarpılmaz. Yalnızca Payrudder'ın yürüttüğü ve peşin faturaladığı abonelik için.",
+      "seatsBad": "Koltuk sayısı 1 ile {max} arasında bir tam sayı olmalıdır.",
+      "seatsCount": "{n} koltuk | {n} koltuk"
     },
     "payments": {
       "reconcile": "Defterle mutabakat",
@@ -1794,7 +1815,7 @@
       "minPayoutHint": "Bu tutarın altındaki ortak, ödemeler oluşturulurken atlanır. Sınır istemiyorsanız boş bırakın.",
       "coupon": "Yönlendirilen müşteriler için kupon",
       "noCoupon": "Kupon yok",
-      "couponHint": "Yönlendirilen müşteri bir sonraki ödemesinde alır. Kuponlar Fiyatlandırma bölümünde oluşturulur.",
+      "couponHint": "Yönlendirilen müşteri bir sonraki ödemesinde alır. Kuponlar Kuponlar bölümünde oluşturulur.",
       "clickCap": "Ortak başına günlük tıklama sınırı",
       "clickCapHint": "Günlük bu sayıyı aşan tıklamalar sayılmaz.",
       "landing": "Açılış sayfası",
@@ -1858,7 +1879,7 @@
       "copy": "Bağlantıyı kopyala",
       "noLink": "{code} bağlantısı https://sizin-gateway/r/{code} biçimindedir.",
       "promotionCode": "Promosyon kodu",
-      "promotionHint": "Fiyatlandırma'da var olan bir promosyon kodu. Kullanılması, bağlantının izlenmesi sayılır.",
+      "promotionHint": "Kuponlar'da var olan bir promosyon kodu. Kullanılması, bağlantının izlenmesi sayılır.",
       "submit": "Kodu bağla",
       "done": "{code} kodu bağlandı."
     },
@@ -2304,6 +2325,8 @@
         "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
         "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
         "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "bad_reference": "Referans en fazla 128 karakterlik tek bir satır olmalıdır.",
+        "bad_note": "Not en fazla 500 karakter olabilir.",
         "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
         "already_paid": "Fatura zaten ödenmiş.",
         "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",
@@ -3322,7 +3345,7 @@
       "invoices": "Faturalar",
       "payments": "Ödemeler",
       "packages": "Paketler",
-      "pricing": "Fiyatlandırma",
+      "pricing": "Vergi ve yeniden denemeler",
       "reports": "Raporlar",
       "readOnly": "Rolünüz görüntüleyici: burada her şeyi okuyabilirsiniz, ancak değişiklik yapamazsınız."
     },
@@ -3688,7 +3711,7 @@
       "connect": "Bağla",
       "manage": "Yönet",
       "simulator": "Yerleşik simülatör",
-      "sandboxNote": "Sandbox hiçbir zaman gerçek bir sağlayıcıya ulaşmaz: yerleşik bir simülatörle çalışır, bu yüzden orada bağlanacak bir şey yoktur.",
+      "sandboxNote": "Sandbox yerleşik bir simülatörde çalışır ve gerçek bir karttan asla çekim yapmaz. Bir sağlayıcının kendi ödeme akışını denemek için iyzico veya Paddle'ı test modunda bağlayın; pm_sandbox_ adlı ödeme yöntemleri simülatörde kalır.",
       "state": {
         "none": "Bağlı değil",
         "working": "Bağlı ve çalışıyor",
@@ -3735,7 +3758,19 @@
         "replaceNote": "Bir bağlantı var. Yalnızca değiştirmek istiyorsanız yeni anahtarlar yazın; mevcut anahtarlar hiçbir zaman gösterilmez.",
         "openDashboard": "{provider} panelini aç",
         "partial": "Hata öncesinde {ok} uygulamada bağlandı.",
-        "disconnectOrg": "{count} uygulamadan ayır"
+        "disconnectOrg": "{count} uygulamadan ayır",
+        "sandboxConnectTitle": "{provider} test modunu bağla",
+        "sandboxManageTitle": "{provider} test modu",
+        "sandboxIntro": {
+          "iyzico": "iyzico sandbox hesabınızın anahtarlarını girin. Saklanmadan önce iyzico'nun test sunucusunda doğrulanır.",
+          "paddle": "Paddle sandbox hesabınızın anahtarlarını ve webhook gizli anahtarını girin. Saklanmadan önce Paddle sandbox'ında doğrulanır.",
+          "banktransfer": "Banka havalesinin test modu yoktur: sandbox yerleşik simülatörü kullanır."
+        },
+        "sandboxEnvNote": "Bu, sandbox ortamını sağlayıcının test moduna bağlar. Ödeme yöntemi sağlayıcının kendi jetonu olan bir sandbox çekimi buraya gider; pm_sandbox_ senaryoları simülatörde kalır. Canlı anahtarlar reddedilir ve canlı ortama dokunulmaz.",
+        "sandboxKeys": {
+          "iyzico": "iyzico sandbox panelinin anahtarlarını kullanın (API anahtarı sandbox- ile başlar).",
+          "paddle": "Paddle sandbox hesabınızın bir anahtarını kullanın (pdl_sdbx_ ile başlar)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3749,7 +3784,15 @@
           "webhook_secret": "Developer tools, Notifications altında Payrudder için bir hedef oluşturun ve gizli anahtarını kopyalayın.",
           "usage_product_id": "Paddle'ın kullanım ücretleri için kullandığı ürünün kimliği. Catalog'da ürünü açıp pro_ ile başlayan kimliğini kopyalayın."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Test modu",
+        "manage": "Test modunu yönet",
+        "working": "Test modu bağlı",
+        "problem": "Test modu: sorun var",
+        "done": "{provider} test modu sandbox için bağlandı."
+      },
+      "confirmDisconnectSandbox": "{provider} sandbox hesabı kaldırılsın mı? Sandbox yeniden yerleşik simülatöre döner."
     },
     "integrations": {
       "introApp": "{app} için ödeme sağlayıcılarını, e-fatura entegratörünü ve e-posta sağlayıcısını bağlayın. Müşteriler canlı bağlantılarla hizmet alır; sandbox'ta bağlantı gerekmez.",
@@ -3938,7 +3981,7 @@
       "subscriptions": "Abonelikler",
       "credits": "Krediler",
       "packages": "Paketler",
-      "pricing": "Fiyat ve vergi",
+      "pricing": "Vergi ve yeniden denemeler",
       "invoices": "Faturalar",
       "payments": "Ödemeler",
       "paymentLinks": "Ödeme bağlantıları",
@@ -4288,7 +4331,7 @@
         "trials": "Bir pakete gün olarak varsayılan bir deneme verin; abonelikler kartsız denemeyle başlar. Ücretsiz katman, ücreti olmayan ve yalnızca limitli bir pakettir."
       },
       "pricing": {
-        "intro": "Vergi oranları ve promosyonlar: faturaladığınız tutara eklenen veya ondan düşülen şeyler.",
+        "intro": "Ödeme yeniden deneme gecikmeleri ve vergi oranları: bir tahsilat reddedilince ne olacağı ve faturaladığınız tutara neyin eklendiği.",
         "tabs": "Bu sayfanın bölümleri arasında geçiş yapın."
       },
       "coupons": {

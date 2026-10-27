@@ -109,21 +109,33 @@ func (s *Server) appAcceptTerms(w http.ResponseWriter, r *http.Request) {
 // liveTenantOf is the live tenant of an app the person belongs to, and whether they own it. An app that is not theirs is not found; a deployment without a
 // live environment says so.
 func (s *Server) liveTenantOf(r *http.Request, userID, appID string) (tenantID string, owner bool, err error) {
+	return s.envTenantOf(r, userID, appID, env.Live)
+}
+
+// envTenantOf is the tenant of an app in an environment, found through the signed-in person's membership, and whether they own the app.
+func (s *Server) envTenantOf(r *http.Request, userID, appID string, e env.Env) (tenantID string, owner bool, err error) {
 	app, err := s.d.Identity.GetMyApp(r.Context(), &plansv1.GetMyAppRequest{UserId: userID, AppId: appID})
 	if err != nil {
 		return "", false, err
 	}
 	for _, t := range app.GetApp().GetTenants() {
-		if t.GetEnvironment() == env.Live.Proto() {
+		if t.GetEnvironment() == e.Proto() {
 			return t.GetId(), app.GetRole() == "owner", nil
 		}
+	}
+	if e == env.Sandbox {
+		return "", false, errkey.New(codes.NotFound, "identity.app.not_found", "app not found")
 	}
 	return "", false, errkey.New(codes.FailedPrecondition, "identity.go_live.no_live", "this deployment has no live environment")
 }
 
 // ownerLiveTenant is liveTenantOf for a change: only the owner passes.
 func (s *Server) ownerLiveTenant(r *http.Request, userID, appID string) (string, error) {
-	tenant, owner, err := s.liveTenantOf(r, userID, appID)
+	return s.ownerEnvTenant(r, userID, appID, env.Live)
+}
+
+func (s *Server) ownerEnvTenant(r *http.Request, userID, appID string, e env.Env) (string, error) {
+	tenant, owner, err := s.envTenantOf(r, userID, appID, e)
 	if err != nil {
 		return "", err
 	}

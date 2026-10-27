@@ -210,34 +210,7 @@ func (c *Commands) InviteMember(ctx context.Context, req *plansv1.InviteMemberRe
 			return status.Error(codes.Internal, "token generation failed")
 		}
 		token = plain
-		expires := c.now().Add(InviteTTL)
-		open, err := q.GetOpenInvite(ctx, sqlc.GetOpenInviteParams{AccountID: aid, Email: email})
-		switch {
-		case err == nil:
-			if c.now().Sub(open.SentAt) < ResendEvery {
-				return throttledInvite()
-			}
-			inv, err = q.RefreshInvite(ctx, sqlc.RefreshInviteParams{ID: open.ID, Role: req.GetRole(), InvitedBy: uid, TokenHash: hash, ExpiresAt: expires})
-			return err
-		case !errors.Is(err, pgx.ErrNoRows):
-			return err
-		}
-		// A new invitation holds a seat of the plan; refreshing one (above) does not take another.
-		if err := c.room(ctx, tx, aid, saasmodel.Members); err != nil {
-			return err
-		}
-		open2, err := q.CountOpenInvites(ctx, aid)
-		if err != nil {
-			return err
-		}
-		today, err := q.CountInvitesSince(ctx, aid)
-		if err != nil {
-			return err
-		}
-		if open2 >= MaxOpenInvites || today >= MaxInvitesPerDay {
-			return errkey.New(codes.ResourceExhausted, "identity.invite.quota", "too many invitations: revoke some or wait a day")
-		}
-		inv, err = q.InsertInvite(ctx, sqlc.InsertInviteParams{ID: idgen.NewUUIDv7(), AccountID: aid, Email: email, Role: req.GetRole(), InvitedBy: uid, TokenHash: hash, ExpiresAt: expires})
+		inv, err = c.placeInvite(ctx, tx, newInvite{account: aid, inviter: uid, email: email, role: req.GetRole(), tokenHash: hash, expires: c.now().Add(InviteTTL)})
 		return err
 	})
 	if err != nil {
@@ -251,6 +224,46 @@ func (c *Commands) InviteMember(ctx context.Context, req *plansv1.InviteMemberRe
 		Account: accountName, Inviter: query.DisplayOf(inviter.DisplayName, inviter.Email), Role: inv.Role})
 	c.log.InfoContext(ctx, "member invited", "account_id", inv.AccountID, "invitation_id", inv.ID, "by", inviter.ID)
 	return invitationOf(inv, inviter.Email, inviter.DisplayName), nil
+}
+
+// newInvite is an invitation about to be stored.
+type newInvite struct {
+	account, inviter uuid.UUID
+	email, role      string
+	tokenHash        []byte
+	expires          time.Time
+}
+
+// placeInvite stores the invitation: a fresh link on the address's open one (at most once a minute), or, when there is none, a new one that holds a seat of the
+// plan and counts against the limits on open and daily invitations.
+func (c *Commands) placeInvite(ctx context.Context, tx pgx.Tx, in newInvite) (sqlc.AccountInvite, error) {
+	q := sqlc.New(tx)
+	open, err := q.GetOpenInvite(ctx, sqlc.GetOpenInviteParams{AccountID: in.account, Email: in.email})
+	switch {
+	case err == nil:
+		if c.now().Sub(open.SentAt) < ResendEvery {
+			return sqlc.AccountInvite{}, throttledInvite()
+		}
+		return q.RefreshInvite(ctx, sqlc.RefreshInviteParams{ID: open.ID, Role: in.role, InvitedBy: in.inviter, TokenHash: in.tokenHash, ExpiresAt: in.expires})
+	case !errors.Is(err, pgx.ErrNoRows):
+		return sqlc.AccountInvite{}, err
+	}
+	// A new invitation holds a seat of the plan; refreshing one (above) does not take another.
+	if err := c.room(ctx, tx, in.account, saasmodel.Members); err != nil {
+		return sqlc.AccountInvite{}, err
+	}
+	openCount, err := q.CountOpenInvites(ctx, in.account)
+	if err != nil {
+		return sqlc.AccountInvite{}, err
+	}
+	today, err := q.CountInvitesSince(ctx, in.account)
+	if err != nil {
+		return sqlc.AccountInvite{}, err
+	}
+	if openCount >= MaxOpenInvites || today >= MaxInvitesPerDay {
+		return sqlc.AccountInvite{}, errkey.New(codes.ResourceExhausted, "identity.invite.quota", "too many invitations: revoke some or wait a day")
+	}
+	return q.InsertInvite(ctx, sqlc.InsertInviteParams{ID: idgen.NewUUIDv7(), AccountID: in.account, Email: in.email, Role: in.role, InvitedBy: in.inviter, TokenHash: in.tokenHash, ExpiresAt: in.expires})
 }
 
 func throttledInvite() error {

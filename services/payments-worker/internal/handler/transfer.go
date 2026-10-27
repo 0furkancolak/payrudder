@@ -18,9 +18,6 @@ const (
 	TransferRejected = "transfer_rejected"
 )
 
-// DefaultTransferWindow is how long a bank transfer waits for its money when neither the tenant's account nor the deployment says.
-const DefaultTransferWindow = 14 * 24 * time.Hour
-
 // DeclineCode is the code at the start of a closure's detail.
 func DeclineCode(detail string) string {
 	code, _, _ := strings.Cut(detail, ":")
@@ -32,15 +29,13 @@ func statusReply(state commandsv1.PaymentStatus_State, declineCode string) *comm
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentStatus{PaymentStatus: &commandsv1.PaymentStatus{State: state, DeclineCode: declineCode}}}
 }
 
-// window is how long this account lets a transfer wait.
+// window is how long this account lets a transfer wait: its own setting, else the deployment's (PAYMENTS_TRANSFER_WINDOW_DAYS, which Config.Validate
+// requires and the YAML defaults to 14).
 func (h *Handler) window(mc payments.ManualCollector) time.Duration {
-	switch {
-	case mc.PaymentWindow() > 0:
-		return mc.PaymentWindow()
-	case h.TransferWindow > 0:
-		return h.TransferWindow
+	if w := mc.PaymentWindow(); w > 0 {
+		return w
 	}
-	return DefaultTransferWindow
+	return h.TransferWindow
 }
 
 // manualStatus answers a status query for a provider whose payments an operator confirms by hand. The ledger is the only source:

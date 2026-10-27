@@ -45,16 +45,22 @@ func (e *Engine) issue(ctx context.Context, tx pgx.Tx, s *saga, eff model.Effect
 			InvoiceId: s.InvoiceID.String(), IdempotencyKey: ChargeKey(s.InvoiceID, s.DunningAttempt)}}
 	case model.EffRefund:
 		step, route = "refund", rabbitx.QueuePaymentRefund
-		// Credit notes already gave part of the invoice back (to the card, or as a credit balance).
-		credited, err := sqlc.New(tx).SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+		// Credit notes already gave part of the invoice back (to the card, or as a credit balance), and money recorded by hand has no card to return to.
+		q := sqlc.New(tx)
+		credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
 		if err != nil {
 			return err
 		}
-		if s.TotalMinor-credited <= 0 {
-			return fmt.Errorf("saga %s: invoice %s is credited in full, there is nothing to refund", s.ID, s.InvoiceID)
+		byHand, err := q.SumInvoicePayments(ctx, sqlc.SumInvoicePaymentsParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+		if err != nil {
+			return err
+		}
+		card, _ := model.VoidSplit(s.TotalMinor, credited, byHand)
+		if card <= 0 {
+			return fmt.Errorf("saga %s: invoice %s has no card payment left to refund", s.ID, s.InvoiceID)
 		}
 		env.Command = &commandsv1.CommandEnvelope_RefundPayment{RefundPayment: &commandsv1.RefundPayment{
-			InvoiceId: s.InvoiceID.String(), AmountMinor: s.TotalMinor - credited, Currency: s.Currency,
+			InvoiceId: s.InvoiceID.String(), AmountMinor: card, Currency: s.Currency,
 			IdempotencyKey: s.InvoiceID.String() + ":refund"}}
 	case model.EffNotify:
 		step, route = "notify", rabbitx.QueueNotificationSend

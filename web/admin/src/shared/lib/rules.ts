@@ -8,6 +8,9 @@ export function validLinkDays(days: number): boolean {
   return Number.isInteger(days) && days >= LINK_DAYS.min && days <= LINK_DAYS.max;
 }
 
+/** How long (hours) after a failed payment the next try may be: the retry schedule of a tenant's dunning settings. */
+export const RETRY_HOURS = { min: 1, max: 720 } as const;
+
 /** A positive whole number of credits (up to 12 digits: the server holds them as int64 text). */
 export const CREDITS_RE = /^[1-9]\d{0,11}$/;
 /** The same, or zero (a threshold that is off). */

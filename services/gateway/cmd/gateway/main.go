@@ -177,7 +177,6 @@ func dialUpstreams(cfg *Config) (u *upstreams, err error) {
 			u.close()
 		}
 	}()
-	unary := grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor())
 	stream := grpc.WithChainStreamInterceptor(tenant.StreamClientInterceptor())
 	targets := []struct {
 		dst  **grpc.ClientConn
@@ -185,18 +184,18 @@ func dialUpstreams(cfg *Config) (u *upstreams, err error) {
 		addr string
 		opts []grpc.DialOption
 	}{
-		{&u.plans, "plans-svc", cfg.PlansAddr, []grpc.DialOption{unary, stream}},
-		{&u.ingest, "ingest-svc", cfg.IngestAddr, []grpc.DialOption{unary}},
-		{&u.aggregator, "aggregator", cfg.AggregatorAddr, []grpc.DialOption{unary}},
-		{&u.limits, "limits-svc", cfg.LimitsAddr, []grpc.DialOption{unary}},
-		{&u.billing, "billing-svc", cfg.BillingAddr, []grpc.DialOption{unary}},
-		{&u.analytics, "analytics-svc", cfg.AnalyticsAddr, []grpc.DialOption{unary}},
-		{&u.assets, "assets-svc", cfg.AssetsAddr, []grpc.DialOption{unary, stream}},
+		{&u.plans, "plans-svc", cfg.PlansAddr, []grpc.DialOption{stream}},
+		{&u.ingest, "ingest-svc", cfg.IngestAddr, nil},
+		{&u.aggregator, "aggregator", cfg.AggregatorAddr, nil},
+		{&u.limits, "limits-svc", cfg.LimitsAddr, nil},
+		{&u.billing, "billing-svc", cfg.BillingAddr, nil},
+		{&u.analytics, "analytics-svc", cfg.AnalyticsAddr, nil},
+		{&u.assets, "assets-svc", cfg.AssetsAddr, []grpc.DialOption{stream}},
 	}
 	for _, t := range targets {
-		conn, dialErr := grpcx.NewClient(t.addr, t.opts...)
+		conn, dialErr := grpcx.NewTenantClient(t.name, t.addr, t.opts...)
 		if dialErr != nil {
-			return u, fmt.Errorf("%s client: %w", t.name, dialErr)
+			return u, dialErr
 		}
 		*t.dst = conn
 	}
