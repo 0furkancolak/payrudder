@@ -129,7 +129,7 @@ test.describe("the first-run wizard", () => {
     await card.getByTestId("getting-started-hide").click();
     await expect(card).toHaveCount(0);
     await page.reload();
-    await expect(page.getByRole("heading", { name: /^Welcome/ })).toBeVisible();
+    await expect(page.getByTestId("app-switcher")).toBeVisible();
     await expect(page.getByTestId("getting-started")).toHaveCount(0);
   });
 
@@ -220,7 +220,7 @@ test.describe("the first-run wizard", () => {
     const withApp = productGateway(new MockGateway());
     await withApp.gw.install(page, { onboarded: false, tourSeen: true });
     await signInAsAda(page);
-    await expect(page.getByRole("heading", { name: /^Welcome/ })).toBeVisible();
+    await expect(page.getByTestId("app-switcher")).toBeVisible();
     await expect(wizard(page)).toHaveCount(0);
     await expect(page.getByTestId("getting-started")).toHaveCount(0);
 

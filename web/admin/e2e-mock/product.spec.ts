@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { dashboardFixture } from "./dashboard";
-import { APP, LIVE, SESSION, billingGateway, liveGateway, productGateway, signInAsAda, user } from "./product";
-import { pickCurrency } from "./ui";
+import { APP, HOME, LIVE, SESSION, billingGateway, liveGateway, openAllApps, productGateway, signInAsAda, user } from "./product";
+import { pickCurrency, pickTheme } from "./ui";
 
 // The end-user product: sign up and in, the organisation home, an app's dashboard, API keys. The gateway is mocked; SHOTS=<dir> also writes screenshots
 // of the pages (desktop and phone, light and dark) so the look can be reviewed.
@@ -30,7 +30,7 @@ test.describe("sign up and sign in", () => {
     await shoot(page, "02-signup");
     await page.getByRole("button", { name: "Create account" }).click();
 
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     expect(gw.called("POST", "/auth/signup")[0]?.body).toEqual({ email: "ada@example.com", password: "a long enough password", display_name: "Ada Lovelace", account_name: "Ada Labs", locale: "en" });
     // Sign-up opens no session; the page signed in with the password just chosen.
     expect(gw.called("POST", "/auth/signin")[0]?.body).toEqual({ email: "ada@example.com", password: "a long enough password" });
@@ -59,7 +59,9 @@ test.describe("sign up and sign in", () => {
     await expect(page.getByRole("alert")).toContainText("Wrong e-mail or password");
     await page.getByLabel("Password", { exact: true }).fill("right password!");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("**/app");
+    // An app is always selected: signing in lands inside the app used last, else the first.
+    await page.waitForURL(new RegExp(`/app/apps/${APP}`));
+    await openAllApps(page);
     await expect(page.getByRole("heading", { name: "Welcome, Ada" })).toBeVisible();
   });
 
@@ -77,6 +79,7 @@ test.describe("sign up and sign in", () => {
     const { gw, state } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
+    await openAllApps(page);
     await expect(page.getByRole("main").getByRole("link", { name: /Web shop/ })).toBeVisible();
     state.sessionOk = false;
     await page.reload();
@@ -102,6 +105,7 @@ test.describe("organisation home", () => {
   test("an app card shows its status, thirty days of money per currency and what needs a look", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await signInAsAda(page);
+    await openAllApps(page);
     const card = page.getByRole("main").getByRole("link", { name: "Web shop" });
     await expect(card).toContainText("Needs attention");
     await expect(card).toContainText("$12,840.50");
@@ -110,7 +114,7 @@ test.describe("organisation home", () => {
     await shoot(page, "05-home");
     await card.click();
     // The card opens the app in the environment the home is showing, and says so in the address.
-    await page.waitForURL(`**/app/apps/${APP}?env=live`);
+    await page.waitForURL(new RegExp(`/app/apps/${APP}\\?.*env=live`));
   });
 });
 
@@ -139,7 +143,8 @@ test.describe("app dashboard", () => {
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}`);
     await expect(page.getByTestId("sandbox-banner")).toHaveCount(0);
-    await page.getByTestId("env-switch").getByRole("radio", { name: "Sandbox" }).check({ force: true });
+    await page.getByTestId("env-switch").click();
+    await page.getByTestId("env-switch-confirm").click();
     await expect(page.getByTestId("sandbox-banner")).toContainText("Nothing here is real money");
     await expect(page).toHaveURL(/env=sandbox/);
     await expect.poll(() => gw.called("GET", `/app/v1/apps/${APP}/dashboard`).some((c) => c.query.get("environment") === "sandbox")).toBe(true);
@@ -198,7 +203,7 @@ test.describe("app dashboard", () => {
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}`);
     await page.getByRole("link", { name: /^Customers/ }).click();
-    await page.waitForURL(`**/app/t/${LIVE}/customers`);
+    await page.waitForURL(`**/app/t/${LIVE}/customers*`);
     await expect(page.getByRole("cell", { name: "Acme Ltd" })).toBeVisible();
     const call = gw.called("GET", "/v1/customers")[0];
     expect(call?.headers.authorization).toBe(`Bearer ${SESSION}`);
@@ -213,13 +218,13 @@ test.describe("settings and chrome", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
     await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
     await shoot(page, "09-settings");
     await page.getByRole("link", { name: "Members" }).click();
-    await page.waitForURL("**/app/members");
+    await page.waitForURL("**/app/members*");
     await expect(page.getByRole("region", { name: "Members" })).toContainText(user.email);
-    await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
     await page.getByRole("button", { name: "Sign out" }).click();
     await page.waitForURL("**/signin");
     expect(gw.called("POST", "/auth/signout")).toHaveLength(1);
@@ -243,7 +248,7 @@ test.describe("settings and chrome", () => {
     await page.getByLabel("E-mail").fill("ada@example.com");
     await page.getByLabel("Password", { exact: true }).fill("right password!");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByRole("link", { name: "Settings" }).click();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
     await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
     await page.waitForTimeout(900); // the held chunk arrives now
     await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
@@ -255,11 +260,11 @@ test.describe("settings and chrome", () => {
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}`);
     await expect(page.getByRole("heading", { name: "Web shop" })).toBeVisible();
-    await page.getByRole("button", { name: "Switch to dark mode" }).click();
+    await pickTheme(page, "dark");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await page.waitForTimeout(400); // let the colour transitions finish before the picture
     await shoot(page, "10-dashboard-dark");
-    await page.getByRole("button", { name: "Switch to light mode" }).click();
+    await pickTheme(page, "light");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   });
 
@@ -298,7 +303,7 @@ test.describe("on a phone", () => {
     await expect(menu).toBeFocused();
     await menu.click();
     await page.getByRole("dialog").getByRole("link", { name: "Customers" }).click();
-    await page.waitForURL(`**/app/t/${LIVE}/customers`);
+    await page.waitForURL(`**/app/t/${LIVE}/customers*`);
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
 });
@@ -511,7 +516,7 @@ test.describe("members and invitations", () => {
     await sheet.getByRole("button", { name: "Create organisation" }).click();
     await expect(sheet).toHaveCount(0);
     expect(gw.called("POST", "/app/v1/accounts")[0]?.body).toEqual({ name: "Second Co" });
-    await expect(page).toHaveURL(/\/app$/);
+    await expect(page).toHaveURL(HOME);
     // The new organisation is in the menu, ticked, and the console now asks for it.
     await page.getByRole("button", { name: "Account menu" }).click();
     await expect(page.getByTestId("switch-org-dddddddd-dddd-4ddd-8ddd-000000000001")).toContainText("Second Co");
@@ -545,7 +550,7 @@ test.describe("members and invitations", () => {
     await page.getByLabel("Password", { exact: true }).fill("a long enough password");
     await shoot(page, "21-invite");
     await page.getByRole("button", { name: "Create login and join" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     expect(gw.called("POST", "/auth/invitations/accept")[0]?.body).toEqual({ token: "qi_new", password: "a long enough password", display_name: "Ned", locale: "en" });
     expect(await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"))).toBe(SESSION);
   });
@@ -557,7 +562,7 @@ test.describe("members and invitations", () => {
     await expect(page.getByText("ada@example.com already has an account")).toBeVisible();
     await page.getByLabel("Password", { exact: true }).fill("right password!");
     await page.getByRole("button", { name: "Sign in and join" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     expect(gw.called("POST", "/auth/signin")).toHaveLength(1);
     expect(gw.called("POST", "/app/v1/invitations/accept")[0]?.body).toEqual({ token: "qi_has" });
   });
@@ -568,7 +573,7 @@ test.describe("members and invitations", () => {
     await signInAsAda(page);
     await page.goto("/invite#token=qi_has");
     await page.getByRole("button", { name: "Join the account" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
     expect(gw.called("POST", "/app/v1/invitations/accept")).toHaveLength(1);
     await page.goto("/invite#token=qi_other");
     await expect(page.getByRole("status")).toContainText("This invitation is for grace@example.com, but you are signed in as ada@example.com");
@@ -592,6 +597,7 @@ test.describe("members and invitations", () => {
     });
     await gw.install(page);
     await signInAsAda(page);
+    await openAllApps(page);
     const switcher = page.getByLabel("Account", { exact: true });
     await expect(switcher).toHaveValue("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
     await switcher.selectOption("cccccccc-cccc-4ccc-8ccc-cccccccccccc");
@@ -677,7 +683,7 @@ test.describe("billing pages of the app", () => {
     await rows.nth(0).getByTestId("row-actions").click();
     await page.getByTestId("row-action-invoice").click();
     // The invoice list opens with the invoice's sheet on top.
-    await page.waitForURL(`**/app/t/${LIVE}/invoices`);
+    await page.waitForURL(`**/app/t/${LIVE}/invoices*`);
     await expect(page.getByTestId("detail-sheet")).toContainText("INV-2026-000003");
     expect(gw.called("GET", "/v1/payments")[0]?.headers["x-payrudder-tenant"]).toBe(LIVE);
     expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
+import AppField from "@/app/layout/AppField.vue";
 import { ListTree, Pause, Play, Plus, RefreshCw, Send, Trash2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -106,6 +107,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       </SheetHeader>
       <SheetBody>
         <form id="create-webhook" class="grid gap-3" role="form" :aria-label="t('billing.webhooks.formLabel')" @submit.prevent="create">
+          <AppField />
           <Input v-model="url" type="url" required :aria-label="t('billing.webhooks.url')" placeholder="https://example.com/payrudder-webhook" />
           <Input v-model="description" maxlength="200" :aria-label="t('billing.webhooks.description')" :placeholder="t('billing.webhooks.description')" />
           <fieldset class="grid gap-1">

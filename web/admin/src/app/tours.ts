@@ -12,7 +12,7 @@ import { paymentLinksTour } from "@/features/paymentlinks/tour";
 import { playgroundTour } from "@/features/playground/tour";
 import { couponsTour, pricingTour } from "@/features/pricing/tour";
 import { useMe } from "@/features/product/api";
-import { apiKeysTour, appSettingsTour, dashboardTour, goLiveTour, homeTour, invoicesTour, membersTour, paymentsTour, sandboxTour, settingsTour } from "@/features/product/tour";
+import { apiKeysTour, appSettingsTour, goLiveTour, homeTour, invoicesTour, membersTour, paymentsTour, sandboxTour, settingsTour } from "@/features/product/tour";
 import { providersTour } from "@/features/providers/tour";
 import { reportsTour } from "@/features/reports/tour";
 import { subscriptionsTour } from "@/features/subscriptions/tour";
@@ -27,7 +27,7 @@ import { setTourScope, type Tour } from "@/shared/ui/tour";
  */
 const TOURS: Readonly<Record<string, Tour>> = {
   overview: homeTour,
-  dashboard: dashboardTour,
+  dashboard: homeTour,
   goLive: goLiveTour,
   apiKeys: apiKeysTour,
   sandbox: sandboxTour,
@@ -36,6 +36,7 @@ const TOURS: Readonly<Record<string, Tour>> = {
   settings: settingsTour,
   partner: partnerTour,
   integrations: providersTour,
+  orgIntegrations: providersTour,
   providers: providersTour,
   customers: customersTour,
   subscriptions: subscriptionsTour,

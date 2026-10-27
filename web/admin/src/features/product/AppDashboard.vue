@@ -10,6 +10,7 @@ import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { useApp, type Environment } from "./api";
 import { defaultEnv, isEnvironment, liveState, tenantOf } from "@/shared/lib/environment";
 import GoLiveChecklist from "./GoLiveChecklist.vue";
+import HomeFirstRun from "./HomeFirstRun.vue";
 
 /**
  * The dashboard of one environment of an app: the page head, and the dashboard (period, currencies, figures) which keeps its choices in the address so a
@@ -56,6 +57,8 @@ function setQuery(q: DashQuery) {
         <p v-if="app.data.value?.app?.slug" class="text-muted-foreground mono mt-1 text-xs">{{ app.data.value.app.slug }}</p>
       </div>
     </header>
+
+    <HomeFirstRun :app="app.data.value?.app" />
 
     <Skeleton v-if="!env" class="h-64 rounded-3xl" aria-busy="true" />
 

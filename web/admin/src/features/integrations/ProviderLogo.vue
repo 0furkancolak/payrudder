@@ -10,13 +10,15 @@ import { BRANDS, type IntegrationId } from "./brands";
  */
 const props = defineProps<{ id: IntegrationId; class?: string }>();
 const brand = computed(() => BRANDS[props.id]);
-const box = "bg-muted flex size-11 shrink-0 items-center justify-center rounded-2xl";
+const box = "bg-muted flex h-11 shrink-0 items-center justify-center rounded-2xl";
+// A wordmark is wider than tall: it gets a wider tile (never wider than a third of a card) and keeps its proportions.
+const wide = computed(() => !!brand.value.wide);
 </script>
 
 <template>
-  <span v-if="brand.logo" :class="cn(box, 'p-2.5', props.class)" :data-logo="id">
-    <img :src="brand.logo.light" alt="" :class="brand.logo.light === brand.logo.dark ? 'size-full' : 'logo-on-light size-full'" draggable="false" />
-    <img v-if="brand.logo.light !== brand.logo.dark" :src="brand.logo.dark" alt="" aria-hidden="true" class="logo-on-dark size-full" draggable="false" />
+  <span v-if="brand.logo" :class="cn(box, wide ? 'w-28 max-w-[40%] px-2.5 py-2' : 'size-11 p-2.5', props.class)" :data-logo="id">
+    <img :src="brand.logo.light" alt="" :class="cn('size-full object-contain', brand.logo.light !== brand.logo.dark && 'logo-on-light')" draggable="false" />
+    <img v-if="brand.logo.light !== brand.logo.dark" :src="brand.logo.dark" alt="" aria-hidden="true" class="logo-on-dark size-full object-contain" draggable="false" />
   </span>
-  <span v-else-if="brand.icon" :class="cn(box, 'text-muted-foreground', props.class)" :data-icon="id" aria-hidden="true"><component :is="brand.icon" class="size-5" /></span>
+  <span v-else-if="brand.icon" :class="cn(box, 'size-11 text-muted-foreground', props.class)" :data-icon="id" aria-hidden="true"><component :is="brand.icon" class="size-5" /></span>
 </template>

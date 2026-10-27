@@ -50,7 +50,7 @@ test.describe("sign-in methods, real stack", () => {
     await signInAsOperator(page);
     await expect(page.getByRole("heading", { name: "Tenants" })).toBeVisible();
     await page.getByRole("link", { name: "My apps" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     await expect(page.getByRole("link", { name: "Operator console" })).toBeVisible();
   });
 
@@ -63,7 +63,7 @@ test.describe("sign-in methods, real stack", () => {
     await page.getByRole("button", { name: "Email me a code" }).click();
     await expect(page.getByLabel("Digit 1 of 6")).toBeVisible();
     await enterCode(page, await mailedCode(address, since));
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     // The code proved the mailbox: no "confirm your address" banner, and the API agrees.
     await expect(page.getByTestId("verify-banner")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: /^Welcome/ })).toBeVisible();
@@ -118,7 +118,7 @@ test.describe("sign-in methods, real stack", () => {
     // The stand-in's consent page asks for any address.
     await page.getByLabel("E-mail").fill(address);
     await page.getByRole("button", { name: "Continue" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     expect(page.url()).not.toContain("qs_");
     const token = await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"));
     expect(token).toMatch(/^qs_/);
@@ -131,7 +131,7 @@ test.describe("sign-in methods, real stack", () => {
     await page.getByRole("link", { name: "Continue with Google" }).click();
     await page.getByLabel("E-mail").fill(address);
     await page.getByRole("button", { name: "Continue" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     const again = await page.evaluate(() => window.sessionStorage.getItem("payrudder.sessionToken"));
     const me2 = await (await fetch(`${gateway}/auth/me`, { headers: { authorization: `Bearer ${again}` } })).json();
     expect(me2.user.id).toBe(me.user.id);

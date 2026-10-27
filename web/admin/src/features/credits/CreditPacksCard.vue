@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Ban, Link2, Plus, Undo2 } from "@lucide/vue";
+import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useTenantCurrency } from "@/features/tenants/currency";
@@ -123,6 +124,7 @@ function submitPack() {
         </SheetHeader>
         <SheetBody>
           <form id="credit-pack-form" class="grid gap-4" role="form" :aria-label="t('billing.credits.packs.formLabel')" @submit.prevent="submitPack">
+            <AppField />
             <Input v-model="packName" :aria-label="t('billing.credits.packs.name')" :placeholder="t('billing.credits.packs.name')" maxlength="80" required />
             <Input v-model="packCredits" inputmode="numeric" :aria-label="t('billing.credits.packs.credits')" :placeholder="t('billing.credits.packs.credits')" required />
             <Input v-model="packPrice" inputmode="decimal" :aria-label="t('billing.credits.packs.price')" :placeholder="t('billing.credits.packs.price')" required />

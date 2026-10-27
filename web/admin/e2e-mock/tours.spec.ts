@@ -35,7 +35,7 @@ test.describe("the tour of the home", () => {
     await expect(page.getByTestId("tour-next")).toBeFocused();
 
     const steps: [string, string][] = [
-      ["Your apps", "sidebar-apps"],
+      ["Your apps", "app-switcher"],
       ["Find your way", "sidebar-nav"],
       ["Sandbox and live", "env-switch"],
       ["You and your organisation", "user-menu"],
@@ -59,7 +59,7 @@ test.describe("the tour of the home", () => {
 
     // Seen: it does not start again, for this person, on this browser.
     await page.reload();
-    await expect(page.getByRole("heading", { name: /^Welcome/ })).toBeVisible();
+    await expect(page.getByTestId("app-switcher")).toBeVisible();
     await expect(page.getByTestId("tour")).toHaveCount(0);
     await expect(page.getByTestId("tour-unseen")).toHaveCount(0);
   });
@@ -88,7 +88,7 @@ test.describe("the tour of the home", () => {
     await expect(page.getByTestId("tour")).toHaveCount(0);
     // Skipping counts as seen.
     await page.reload();
-    await expect(page.getByRole("heading", { name: /^Welcome/ })).toBeVisible();
+    await expect(page.getByTestId("app-switcher")).toBeVisible();
     await expect(page.getByTestId("tour")).toHaveCount(0);
   });
 

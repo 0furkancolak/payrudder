@@ -3,11 +3,13 @@ import { Link, useNavigate, useSearch } from "@tanstack/vue-router";
 import { Plus, Rocket } from "@lucide/vue";
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useShell } from "@/app/layout/useShell";
 import OrgDashboard from "@/features/dashboard/OrgDashboard.vue";
 import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
 import { GettingStarted, loadProgress, OnboardingWizard, progress, wizardOpen } from "@/features/onboarding";
-import { startTourOnce, welcomeOff } from "@/shared/ui/tour";
+import { ALL_APPS } from "@/shared/lib/scope";
 import { ErrorState } from "@/shared/ui/error-state";
+import { startTourOnce, welcomeOff } from "@/shared/ui/tour";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useAccount, useApps, useMe } from "./api";
@@ -21,6 +23,7 @@ import { defaultOrgEnv, isEnvironment, liveState, tenantOf, type Environment } f
 import type { App } from "./api";
 
 const { t } = useI18n();
+const shell = useShell();
 const me = useMe();
 const account = useAccount();
 const apps = useApps();
@@ -38,7 +41,7 @@ const env = computed<Environment | null>(() => {
 
 /** The dashboard keeps its period, currency and environment in the address, like an app's dashboard does. */
 function go(q: DashQuery, e: Environment) {
-  void navigate({ to: "/app", search: { env: e, ...toSearch(q) } as never, replace: true });
+  void navigate({ to: "/app", search: { app: ALL_APPS, env: e, ...toSearch(q) } as never, replace: true });
 }
 
 /** Apps with something to add up in this environment: every app in the sandbox, and in live the ones whose live environment is active. */
@@ -58,7 +61,8 @@ const known = computed(() => !!me.data.value?.user?.id && !!apps.data.value && !
 const showWizard = computed(() => !noAccount.value && !welcomeOff() && wizardOpen(progress.value, { appCount: known.value ? list.value.length : undefined, canCreate: account.data.value?.role !== "viewer" }));
 const showChecklist = computed(() => !!progress.value && !progress.value.hidden && !showWizard.value && !noAccount.value && known.value);
 watch(
-  () => known.value && !showWizard.value && !noAccount.value,
+  // Not while this page is only a doorway into an app: the tour starts on that app's home (HomeFirstRun) and must not be cut short by the redirect.
+  () => known.value && !showWizard.value && !noAccount.value && (shell.path.value !== "/app" || shell.scope.value === ALL_APPS || list.value.length === 0),
   async (quiet) => {
     if (!quiet) return;
     await nextTick();
@@ -67,6 +71,24 @@ watch(
   { immediate: true, flush: "post" },
 );
 const first = computed(() => (me.data.value?.user?.display_name || me.data.value?.user?.email?.split("@")[0] || "").split(/\s+/)[0]);
+
+// An app is always selected: this page is the view of every app together (`?app=all`); without that choice the person lands in the app used last (else the first).
+const enteringApp = computed(() => {
+  const s = shell.scope.value;
+  // Somebody without an account of their own has nothing to be inside of: the page explains that instead.
+  // Only while the address is this page's own: a link to an app's page changes the scope before this page is gone, and must not be turned back.
+  // The first-run wizard stays on this page even once it has made the app: it is finished by the person, not by the app existing.
+  return shell.path.value === "/app" && !noAccount.value && !showWizard.value && s && s !== ALL_APPS ? s : "";
+});
+watch(
+  [enteringApp, env],
+  ([appId, e]) => {
+    if (!appId || !e) return;
+    const { sheet } = search.value as { sheet?: string };
+    void navigate({ to: "/app/apps/$appId", params: { appId }, search: { app: appId, env: e, ...toSearch(query.value), ...(sheet ? { sheet } : {}) } as never, replace: true });
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -94,7 +116,7 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
       <Skeleton v-for="n in 3" :key="n" class="h-52 rounded-3xl" />
     </div>
 
-    <OrgDashboard v-else-if="env && withFigures.length > 0" :apps="list" :query="query" :env="env" @update:query="go($event, env)" />
+    <OrgDashboard v-else-if="env && !enteringApp && withFigures.length > 0" :apps="list" :query="query" :env="env" @update:query="go($event, env)" />
 
     <section v-if="env && list.length > 0" class="flex flex-col gap-3" :aria-label="t('shell.items.overview')">
       <h2 class="px-1 text-xl font-semibold tracking-tight">{{ t("shell.items.overview") }}</h2>

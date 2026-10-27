@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { verifyAddress } from "./operator";
-import { pickLanguage } from "../e2e-mock/ui";
+import { pickLanguage, pickTheme } from "../e2e-mock/ui";
 
 // The product app against the REAL stack (make dev / make up): nothing is mocked. It signs a fresh person up, seeds real money data in the app's sandbox
 // through the public API (the mock payment provider plays the payments out), and checks what the pages show against what was seeded.
@@ -139,7 +139,7 @@ test.describe("product app, real stack", () => {
   test("the dashboard shows what was seeded, per currency, in both environments", async ({ page }) => {
     const problems = watch(page);
     await signInUi(page, email);
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     await expect(page.getByRole("main").getByRole("link", { name: /Seed Shop/ })).toBeVisible();
     await shoot(page, "r1-home");
 
@@ -169,7 +169,7 @@ test.describe("product app, real stack", () => {
   test("keys: create a sandbox key, see it once, revoke it", async ({ page, context }) => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     await signInUi(page, email);
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     await page.goto(`/app/apps/${appId}/keys?env=sandbox`);
     const keys = page.getByRole("region", { name: "API keys" });
     await keys.getByRole("button", { name: "New sandbox key" }).click();
@@ -193,7 +193,7 @@ test.describe("product app, real stack", () => {
     test.setTimeout(900_000); // every page of the menu at three widths, each waiting for the network to settle
     const problems = watch(page);
     await signInUi(page, email);
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     const overflow = async (tag: string) => {
       const o = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth }));
       expect(o.sw, `horizontal overflow on ${tag}`).toBeLessThanOrEqual(o.cw);
@@ -226,7 +226,7 @@ test.describe("product app, real stack", () => {
       await overflow(`dashboard in ${code}`);
       await shoot(page, `r5-lang-${code}`);
     }
-    await page.getByRole("button", { name: "Switch to dark mode" }).click();
+    await pickTheme(page, "dark");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
     await shoot(page, "r6-dark");
     // The affiliate program answers 404 until a seller sets one up: a normal state the page handles (the browser still logs the failed load, with no URL).
@@ -260,7 +260,7 @@ test.describe("product app, real stack", () => {
 
   test("sign out and in; a wrong password says so; five wrong passwords lock the person out", async ({ page }) => {
     await signInUi(page, email);
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     await page.getByRole("link", { name: "Settings" }).click();
     await page.getByRole("button", { name: "Sign out" }).click();
     await page.waitForURL("**/signin");
@@ -281,7 +281,7 @@ test.describe("product app, real stack", () => {
   test("another person cannot open this app; a person is not an operator; a dead session goes back to sign-in", async ({ page }) => {
     const other = await signUp();
     await signInUi(page, other.email);
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     await page.goto(`/app/apps/${appId}?env=sandbox`);
     await page.waitForLoadState("networkidle");
     await expect(page.getByRole("main")).not.toContainText("TRY 198.00");
@@ -297,7 +297,7 @@ test.describe("product app, real stack", () => {
 
     // The operator console with a person's session: the page sends a non-operator home.
     await page.goto("/tenants");
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     await expect(page.getByRole("link", { name: "Operator console" })).toHaveCount(0);
 
     // The session is revoked behind the page's back: the next request ends in the sign-in page with a reason.

@@ -9,27 +9,28 @@ import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
-import { envOf, rememberEnv } from "@/shared/lib/environment";
 import PageBoundary from "@/app/errors/PageBoundary.vue";
+import { envOf, isEnvironment, rememberEnv } from "@/shared/lib/environment";
+import { ALL_APPS, appInSearch, rememberApp } from "@/shared/lib/scope";
 import Breadcrumbs from "./Breadcrumbs.vue";
-import ContextSwitcher from "./ContextSwitcher.vue";
 import EnvBanner from "./EnvBanner.vue";
-import OrgEnvSwitch from "./OrgEnvSwitch.vue";
+import EnvSwitch from "./EnvSwitch.vue";
 import LanguageSwitcher from "./LanguageSwitcher.vue";
 import MobileDrawer from "./MobileDrawer.vue";
 import PrivacyToggle from "./PrivacyToggle.vue";
 import Sidebar from "./Sidebar.vue";
 import ThemeToggle from "./ThemeToggle.vue";
 import UserMenu from "./UserMenu.vue";
-import { useSheetUrlSync } from "@/shared/lib/sheets";
+import { updateSearch, useSheetUrlSync } from "@/shared/lib/sheets";
 import { TourButton, TourHost } from "@/shared/ui/tour";
 import { tourFor, useTourScope } from "../tours";
 import { useShell } from "./useShell";
 
 /**
  * The frame of every page. Signed out: a plain header with the brand, the language and the theme. Signed in: the sidebar (open by default on a wide
- * screen, a drawer on a phone or tablet), and a header with the breadcrumbs, the app and environment switchers, the privacy switch, the language, the
- * theme and the person's menu. What the sidebar lists follows the route (see nav.ts).
+ * screen, a drawer on a phone or tablet) with the app switcher at its top, and a header with the breadcrumbs, a slot for the tour button, the privacy
+ * switch, the sandbox / live switch and the person's menu (which also holds the language and the theme). What the sidebar lists follows the route (see
+ * nav.ts) and the scope in the address (`?app=<id|all>`, see shared/lib/scope).
  */
 const { t } = useI18n();
 const navigate = useNavigate();
@@ -46,30 +47,52 @@ const drawer = ref(false);
 // A route change closes the drawer (the links also do; this covers the browser's back button).
 watch(shell.path, () => (drawer.value = false));
 
-/** The environment of the page, once known: an app's pages (any of them) or the organisation's home. */
-const pageEnv = computed(() => {
-  const c = shell.context.value;
-  return isPerson.value && (c.level === "app" || (c.level === "org" && shell.path.value === "/app")) ? c.env : undefined;
+/** The pages that are about one environment's data: the dashboards and the pages of an app. The organisation's own pages (members, settings) are about none. */
+const envPage = computed(() => {
+  const p = shell.path.value;
+  return isPerson.value && !shell.inOperatorArea.value && (p === "/app" || p.startsWith("/app/apps/") || p.startsWith("/app/t/"));
 });
+/** The environment of the page, once known. */
+const pageEnv = computed(() => (envPage.value ? shell.env.value : undefined));
 /** The environment of the tenant an operator is looking at (/tenants/<id>), once the tenant has arrived: a sandbox tenant is marked like any sandbox page. */
 const operatorTenantEnv = computed(() => {
   const tenant = shell.tenant.data.value;
   return shell.context.value.level === "tenant" && tenant?.environment ? envOf(tenant.environment) : undefined;
 });
 const sandboxPage = computed(() => (operatorTenantEnv.value ?? pageEnv.value) === "sandbox");
-const orgHome = computed(() => isPerson.value && shell.context.value.level === "org" && shell.path.value === "/app");
 
-// The app opens next time where the person was: every app page that knows its environment remembers it.
+// An app opens next time where the person was: the app and, on a page that names its environment, the environment are remembered.
 watch(
-  () => [shell.context.value.appId, shell.context.value.env] as const,
-  ([appId, env]) => {
-    if (appId && env && isPerson.value) rememberEnv(appId, env);
+  () => shell.scope.value,
+  (scope) => {
+    if (scope && scope !== ALL_APPS && isPerson.value) rememberApp(scope);
+  },
+  { immediate: true },
+);
+watch(
+  () => [shell.context.value.appId, shell.context.value.env, shell.located.value, shell.search.value.env] as const,
+  ([appId, env, located, searched]) => {
+    if (appId && env && isPerson.value && (located || isEnvironment(searched))) rememberEnv(appId, env);
   },
   { immediate: true },
 );
 
-/** The apps the sidebar lists: a person's own, on the organisation's pages (inside an app the sidebar is that app's pages, as before). */
-const sidebarApps = computed(() => (isPerson.value && shell.context.value.level === "org" ? (shell.apps.data.value?.apps ?? []) : undefined));
+/** The pages whose address carries the scope: the dashboards, an app's pages and the organisation's own pages. */
+const SCOPED = /^\/app(?:\/(?:apps|t)\/[^/]+.*|\/members|\/settings|\/providers)?$/;
+// The address always says which app (or all apps) the page is about: a page that arrives without it, or with another one than its path's, is corrected in place.
+watch(
+  [shell.scope, shell.path, () => appInSearch(shell.search.value)],
+  ([scope, path, inAddress]) => {
+    if (!scope || !isPerson.value || shell.inOperatorArea.value || !SCOPED.test(path) || inAddress === scope) return;
+    updateSearch((prev) => ({ ...prev, app: scope }));
+  },
+  { immediate: true },
+);
+
+
+/** What the app switcher needs: the apps and an environment (the switcher is not drawn before the apps have arrived). */
+const switcherApps = computed(() => (isPerson.value && !shell.inOperatorArea.value ? shell.apps.data.value?.apps : undefined));
+const switcherEnv = computed(() => shell.env.value);
 
 const home = computed(() => (isPerson.value ? "/app" : "/signin"));
 
@@ -93,8 +116,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
     <a href="#main" class="bg-primary text-primary-foreground sr-only z-[60] rounded-xl px-4 py-2 focus:not-sr-only focus:fixed focus:start-4 focus:top-4">{{ t("shell.skip") }}</a>
 
     <template v-if="signedIn">
-      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" :apps="sidebarApps" :app-id="shell.context.value.appId" :env="pageEnv" />
-      <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :apps="sidebarApps" :app-id="shell.context.value.appId" :env="pageEnv" />
+      <Sidebar :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :home="home" :apps="switcherApps" :scope="shell.scope.value" :env="switcherEnv" :path="shell.path.value" />
+      <MobileDrawer v-model:open="drawer" :sections="shell.sections.value" :current="shell.current.value" :brand="brand" :apps="switcherApps" :scope="shell.scope.value" :env="switcherEnv" :path="shell.path.value" />
     </template>
 
     <!-- One wrapper and one <main> for both states: signing in must not remount the page that is signing in (its onSuccess would be lost). -->
@@ -113,20 +136,13 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
             <Menu class="size-5" aria-hidden="true" />
           </button>
           <Breadcrumbs :crumbs="shell.crumbs.value" class="min-w-0 flex-1" />
+          <!-- The tour button of the guided tour (phase 52) mounts here, in the header of every page. -->
+          <div id="tour-slot" data-testid="tour-slot" class="flex shrink-0 items-center gap-2"></div>
           <div class="flex shrink-0 items-center gap-2">
             <TourButton v-if="pageTour" :tour="pageTour" />
             <PrivacyToggle />
-            <LanguageSwitcher />
-            <ThemeToggle />
           </div>
-          <OrgEnvSwitch v-if="orgHome && pageEnv" :env="pageEnv" />
-          <ContextSwitcher
-            v-if="isPerson && shell.context.value.level === 'app'"
-            :context="shell.context.value"
-            :apps="shell.apps.data.value?.apps ?? []"
-            :app-name="shell.appName.value"
-            :path="shell.path.value"
-          />
+          <EnvSwitch v-if="pageEnv && shell.scope.value" :env="pageEnv" :scope="shell.scope.value" :app="shell.scopeApp.value" :path="shell.path.value" />
           <UserMenu v-if="isPerson" />
         </div>
       </header>

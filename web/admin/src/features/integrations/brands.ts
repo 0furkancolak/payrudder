@@ -13,6 +13,8 @@ export interface Brand {
   group: GroupId;
   /** The company's own name, shown as it is written; absent for a generic method, whose name is translated (`product.integrations.names.<id>`). */
   name?: string;
+  /** A wordmark (wider than tall): its tile is wider. */
+  wide?: boolean;
   /** Files under /brand/providers/, one per theme, or one that serves both. */
   logo?: { light: string; dark: string };
   /** A general-purpose icon, for a method with no company behind it. */
@@ -25,11 +27,11 @@ export interface Brand {
 export const NAFRU_EMAIL_URL = "https://nafru.com";
 
 export const BRANDS: Record<IntegrationId, Brand> = {
-  iyzico: { group: "payments", name: "iyzico", logo: { light: "/brand/providers/iyzico-light.svg", dark: "/brand/providers/iyzico-dark.svg" }, url: "https://www.iyzico.com" },
+  iyzico: { group: "payments", name: "iyzico", logo: { light: "/brand/providers/iyzico-light.svg", dark: "/brand/providers/iyzico-dark.svg" }, wide: true, url: "https://www.iyzico.com" },
   paddle: { group: "payments", name: "Paddle", logo: { light: "/brand/providers/paddle-light.svg", dark: "/brand/providers/paddle-dark.svg" }, url: "https://www.paddle.com" },
   banktransfer: { group: "payments", icon: Banknote },
   simulator: { group: "payments", icon: FlaskConical },
-  nilvera: { group: "einvoice", name: "Nilvera", logo: { light: "/brand/providers/nilvera-light.svg", dark: "/brand/providers/nilvera-dark.svg" }, url: "https://nilvera.com" },
+  nilvera: { group: "einvoice", name: "Nilvera", logo: { light: "/brand/providers/nilvera-light.svg", dark: "/brand/providers/nilvera-dark.svg" }, wide: true, url: "https://nilvera.com" },
   webhook: { group: "einvoice", icon: Webhook },
   einvoiceSimulator: { group: "einvoice", icon: FlaskConical },
   payrudderMail: { group: "email", icon: Mail },

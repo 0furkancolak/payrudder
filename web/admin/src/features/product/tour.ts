@@ -6,16 +6,11 @@ import { pageTour } from "@/shared/ui/tour";
  */
 export const homeTour = pageTour("overview", "tour.pages.overview.welcomeTitle", [
   { id: "welcome" },
-  { id: "apps", target: '[data-testid="sidebar-apps"]', optional: true },
+  { id: "apps", target: '[data-testid="app-switcher"]', optional: true },
   { id: "groups", target: '[data-testid="sidebar-nav"]', optional: true },
   { id: "sandbox", target: '[data-testid="env-switch"]', optional: true },
   { id: "account", target: '[data-testid="user-menu"]' },
   { id: "again", target: '[data-testid="tour-button"]', optional: true },
-]);
-
-export const dashboardTour = pageTour("dashboard", "shell.items.dashboard", [
-  { id: "intro", target: "h1" },
-  { id: "figures", target: '[data-testid="dashboard"]' },
 ]);
 
 export const goLiveTour = pageTour("goLive", "shell.items.goLive", [

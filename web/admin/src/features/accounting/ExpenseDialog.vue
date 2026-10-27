@@ -15,7 +15,7 @@ import { CurrencySelect } from "@/shared/ui/search-select";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
 
 /** Adds an expense, or edits `expense`. A recurring expense is edited as a whole: every occurrence changes with it. */
-const props = defineProps<{ tenantId: string; expense: Expense | null; defaultCurrency: string; apps: { id: string; name: string }[] }>();
+const props = defineProps<{ tenantId: string; expense: Expense | null; defaultCurrency: string; apps: { id: string; name: string }[]; defaultApp?: string }>();
 const open = defineModel<boolean>("open", { required: true });
 const { t } = useI18n();
 const save = useSaveExpense(() => props.tenantId);
@@ -44,7 +44,8 @@ watch(open, (isOpen) => {
   incurredOn.value = e?.incurred_on ?? ymd(new Date());
   recurring.value = (e?.recurring as "none" | "monthly" | "yearly" | undefined) ?? "none";
   until.value = e?.recurring_until ?? "";
-  app.value = e?.app_id ?? "";
+  // A new expense starts on the app the page is about; "General accounting" (no app) is for what belongs to the organisation as a whole.
+  app.value = e ? (e.app_id ?? "") : (props.defaultApp ?? "");
   note.value = e?.note ?? "";
   formError.value = "";
   save.reset();
@@ -97,6 +98,13 @@ function submit() {
       </SheetHeader>
       <SheetBody>
       <form id="expense-form" class="grid gap-3" @submit.prevent="submit">
+        <div v-if="apps.length" data-testid="expense-app" class="grid gap-1.5">
+          <Label for="exp-app">{{ t("billing.accounting.form.app") }}</Label>
+          <NativeSelect id="exp-app" v-model="app">
+            <option value="">{{ t("billing.accounting.form.wholeTenant") }}</option>
+            <option v-for="a in apps" :key="a.id" :value="a.id">{{ a.name }}</option>
+          </NativeSelect>
+        </div>
         <div class="grid gap-1.5">
           <Label for="exp-vendor">{{ t("billing.accounting.form.vendor") }}</Label>
           <Input id="exp-vendor" v-model="vendor" maxlength="120" autocomplete="off" />
@@ -142,13 +150,6 @@ function submit() {
           </div>
         </div>
         <p v-if="recurring !== 'none'" class="text-muted-foreground text-xs">{{ t("billing.accounting.form.recurringHint") }}</p>
-        <div v-if="apps.length" class="grid gap-1.5">
-          <Label for="exp-app">{{ t("billing.accounting.form.app") }}</Label>
-          <NativeSelect id="exp-app" v-model="app">
-            <option value="">{{ t("billing.accounting.form.wholeTenant") }}</option>
-            <option v-for="a in apps" :key="a.id" :value="a.id">{{ a.name }}</option>
-          </NativeSelect>
-        </div>
         <div class="grid gap-1.5">
           <Label for="exp-note">{{ t("billing.accounting.form.note") }}</Label>
           <Textarea id="exp-note" v-model="note" rows="2" maxlength="500" />

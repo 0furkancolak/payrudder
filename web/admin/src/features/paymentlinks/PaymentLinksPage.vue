@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Ban, ArrowUpRight, Plus } from "@lucide/vue";
+import { ArrowUpRight, Ban, Plus } from "@lucide/vue";
+import AppField from "@/app/layout/AppField.vue";
 import { useParams, useSearch } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -220,6 +221,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
         </SheetHeader>
         <SheetBody>
           <form id="payment-link-form" class="grid gap-4" role="form" :aria-label="t('billing.paymentLinks.formLabel')" @submit.prevent="submit">
+            <AppField />
             <NativeSelect v-model="form.kind" :aria-label="t('billing.paymentLinks.kind')">
               <option value="adhoc">{{ t("billing.paymentLinks.kinds.adhoc") }}</option>
               <option value="invoice">{{ t("billing.paymentLinks.kinds.invoice") }}</option>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
+import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { CopyPlus, ArrowUpRight, Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
@@ -110,6 +111,7 @@ function submit() {
       </SheetHeader>
       <SheetBody>
         <form id="create-meter" class="grid gap-3" role="form" :aria-label="t('billing.meters.formLabel')" @submit.prevent="submit">
+          <AppField />
           <Input v-model="code" :disabled="versionOf !== ''" :aria-label="t('billing.meters.code')" :placeholder="t('billing.meters.codePlaceholder')" pattern="[a-z][a-z0-9_]{0,62}" required />
           <Input v-model="category" list="meter-categories" maxlength="64" :aria-label="t('billing.meters.category')" :placeholder="t('billing.meters.categoryPlaceholder')" />
           <datalist id="meter-categories">

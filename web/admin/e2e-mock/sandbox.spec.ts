@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { APP, appWithLive, liveGateway, productGateway, signInAsAda } from "./product";
+import { APP, appWithLive, liveGateway, openAllApps, productGateway, signInAsAda } from "./product";
 import { pickLanguage, pickPlace } from "./ui";
 
 // Phase 45 F: the console never lets live and sandbox be mixed up. The environment switch is always there, the sandbox is marked on every page, a live
@@ -10,16 +10,19 @@ test.describe("which environment is on screen", () => {
   test("the organisation home has the switch, and a sandbox page has the stripe and the banner; live has neither", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await signInAsAda(page);
+    await openAllApps(page);
     await expect(page.getByTestId("env-switch")).toBeVisible();
     // Live is active in the fixture: the home opens there, unmarked.
     await expect(page.getByTestId("sandbox-stripe")).toHaveCount(0);
     await expect(page.getByTestId("sandbox-banner")).toHaveCount(0);
-    await page.getByTestId("env-switch").getByRole("radio", { name: "Sandbox" }).check({ force: true });
+    await page.getByTestId("env-switch").click();
+    await page.getByTestId("env-switch-confirm").click();
     await expect(page).toHaveURL(/env=sandbox/);
     await expect(page.getByTestId("sandbox-stripe")).toBeAttached();
     await expect(page.getByTestId("sandbox-banner")).toContainText("Nothing here is real money");
     // The choice is written into the address, live included, so a reload keeps it.
-    await page.getByTestId("env-switch").getByRole("radio", { name: "Live" }).check({ force: true });
+    await page.getByTestId("env-switch").click();
+    await page.getByTestId("env-switch-confirm").click();
     await expect(page).toHaveURL(/env=live/);
     await expect(page.getByTestId("sandbox-banner")).toHaveCount(0);
   });
@@ -76,15 +79,17 @@ test.describe("a live environment that is not active", () => {
     liveGateway(gw, { done: { email_verified: true, plan_published: true } });
     await gw.install(page);
     await signInAsAda(page);
+    await openAllApps(page);
     // Nothing is live yet, so the home opens in the sandbox, with the banner.
     await expect(page.getByTestId("sandbox-banner")).toBeVisible();
-    await page.getByTestId("env-switch").getByRole("radio", { name: "Live" }).check({ force: true });
+    await page.getByTestId("env-switch").click();
+    await page.getByTestId("env-switch-confirm").click();
     const card = page.getByTestId("golive-card-web-shop");
     await expect(card).toContainText("2 of 5 done");
     await expect(page.getByTestId("org-dashboard")).toHaveCount(0);
     await expect(page.getByText("$12,840.50")).toHaveCount(0);
     await card.getByTestId("go-live-open").click();
-    await page.waitForURL(`**/app/apps/${APP}/go-live?env=live`);
+    await expect(page).toHaveURL(new RegExp(`/app/apps/${APP}/go-live\\?.*env=live`));
   });
 
   test("the app's live dashboard is the checklist too, and no dashboard is asked for", async ({ page }) => {
@@ -96,7 +101,7 @@ test.describe("a live environment that is not active", () => {
     await expect(page.getByTestId("live-checklist")).toBeVisible();
     await expect(page.getByTestId("go-live-state")).toContainText("1 of 5 done");
     // The organisation's home (where signing in lands) may have asked for the figures of the app on its way; the app's own page must not.
-    expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`).filter((c) => (c.headers["referer"] ?? "").includes("/apps/"))).toHaveLength(0);
+    expect(gw.called("GET", `/app/v1/apps/${APP}/dashboard`).filter((c) => c.query.get("environment") === "live")).toHaveLength(0);
     await page.getByTestId("to-sandbox").click();
     await expect(page.getByTestId("sandbox-banner")).toBeVisible();
   });

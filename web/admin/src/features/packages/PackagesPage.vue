@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
+import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { ArrowUpRight, Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
@@ -149,6 +150,7 @@ function submit() {
       </SheetHeader>
       <SheetBody>
         <form id="create-package" class="grid gap-3" role="form" :aria-label="t('billing.packages.formLabel')" @submit.prevent="submit">
+          <AppField />
           <Input v-model="code" :aria-label="t('billing.packages.code')" :placeholder="t('billing.packages.code')" pattern="[a-z][a-z0-9_\-]{0,62}" required />
           <Input v-model="name" :aria-label="t('billing.packages.name')" :placeholder="t('billing.packages.name')" required />
           <Input v-model="fee" inputmode="decimal" :disabled="freeTier" :aria-label="t('billing.packages.fee', { currency: tenantCurrency })" :placeholder="t('billing.packages.fee', { currency: tenantCurrency })" :required="!freeTier" />

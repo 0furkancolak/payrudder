@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { useNavigate } from "@tanstack/vue-router";
-import { Check, LogOut, Plus, Settings } from "@lucide/vue";
+import { Check, ChevronRight, Globe, LogOut, Monitor, Moon, Plus, Settings, Sun } from "@lucide/vue";
+import { DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCreateAccount, useMe, useSignOut, useSwitchAccount } from "@/features/product/api";
 import { ownMemberships } from "@/features/product/lib";
 import { activeAccount } from "@/shared/lib/session";
+import { applyTheme, theme, type ThemeChoice } from "@/shared/lib/theme";
+import { applyLocale, languages, locales } from "../i18n";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const navigate = useNavigate();
 const me = useMe();
 const signOut = useSignOut();
@@ -51,9 +54,16 @@ async function submitOrg() {
   await navigate({ to: "/app" });
 }
 
+const themes: { value: ThemeChoice; icon: typeof Sun }[] = [
+  { value: "system", icon: Monitor },
+  { value: "light", icon: Sun },
+  { value: "dark", icon: Moon },
+];
+const subContent = 'bg-popover text-popover-foreground shadow-pop z-50 min-w-40 rounded-2xl border p-1.5';
+
 async function leave() {
   await signOut.mutateAsync();
-  await navigate({ to: "/signin" });
+  await navigate({ to: "/signin", search: { app: undefined } as never });
 }
 </script>
 
@@ -83,6 +93,40 @@ async function leave() {
         </DropdownMenuItem>
       </template>
       <DropdownMenuItem class="rounded-xl" data-testid="new-org" @select="startCreating"><Plus class="size-4" />{{ t("product.menu.newOrg") }}</DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger class="focus:bg-accent data-[state=open]:bg-accent flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm outline-hidden select-none" data-testid="menu-language">
+          <Globe class="text-muted-foreground size-4" aria-hidden="true" />
+          <span class="flex-1">{{ t("app.language") }}</span>
+          <span class="text-muted-foreground text-xs">{{ languages[locale as keyof typeof languages]?.name }}</span>
+          <ChevronRight class="text-muted-foreground size-4 rtl:rotate-180" aria-hidden="true" />
+        </DropdownMenuSubTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuSubContent :class="subContent" :side-offset="6">
+            <DropdownMenuItem v-for="code in locales" :key="code" class="rounded-xl" :data-testid="`lang-${code}`" @select="applyLocale(code)">
+              <span class="flex-1">{{ languages[code].name }}</span>
+              <Check v-if="code === locale" class="size-4" aria-hidden="true" />
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuPortal>
+      </DropdownMenuSub>
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger class="focus:bg-accent data-[state=open]:bg-accent flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 text-sm outline-hidden select-none" data-testid="menu-theme">
+          <Sun class="text-muted-foreground size-4" aria-hidden="true" />
+          <span class="flex-1">{{ t("app.theme") }}</span>
+          <span class="text-muted-foreground text-xs">{{ t(`app.themeChoice.${theme}`) }}</span>
+          <ChevronRight class="text-muted-foreground size-4 rtl:rotate-180" aria-hidden="true" />
+        </DropdownMenuSubTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuSubContent :class="subContent" :side-offset="6">
+            <DropdownMenuItem v-for="th in themes" :key="th.value" class="rounded-xl" :data-testid="`theme-${th.value}`" @select="applyTheme(th.value)">
+              <component :is="th.icon" class="size-4" aria-hidden="true" />
+              <span class="flex-1">{{ t(`app.themeChoice.${th.value}`) }}</span>
+              <Check v-if="th.value === theme" class="size-4" aria-hidden="true" />
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuPortal>
+      </DropdownMenuSub>
       <DropdownMenuSeparator />
       <DropdownMenuItem class="rounded-xl" @select="navigate({ to: '/app/settings' })"><Settings class="size-4" />{{ t("product.nav.settings") }}</DropdownMenuItem>
       <DropdownMenuItem class="rounded-xl" @select="leave"><LogOut class="size-4" />{{ t("nav.signOut") }}</DropdownMenuItem>

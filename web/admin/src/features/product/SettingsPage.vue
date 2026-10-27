@@ -38,7 +38,7 @@ const themes = computed(() => [
 
 async function leave() {
   await signOut.mutateAsync();
-  await navigate({ to: "/signin" });
+  await navigate({ to: "/signin", search: { app: undefined } as never });
 }
 </script>
 

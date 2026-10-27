@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import AppField from "@/app/layout/AppField.vue";
 import { useI18n } from "vue-i18n";
 import CustomerSelect from "@/features/customers/CustomerSelect.vue";
 import { useAttemptKey } from "@/shared/lib/key";
@@ -59,6 +60,7 @@ function submit() {
       </SheetHeader>
       <SheetBody>
         <form id="purchase-link-form" class="grid gap-4" role="form" :aria-label="t('billing.credits.purchase.formLabel')" @submit.prevent="submit">
+          <AppField />
           <CustomerSelect v-model="customer" :tenant-id="tenantId" named required :label="t('billing.credits.purchase.customer')" :placeholder="t('billing.credits.purchase.pickCustomer')" />
           <Input v-model="quantity" inputmode="numeric" :aria-label="t('billing.credits.purchase.quantity')" :placeholder="t('billing.credits.purchase.quantity')" />
           <Input v-model="promotion" maxlength="40" :aria-label="t('billing.credits.purchase.promotionCode')" :placeholder="t('billing.credits.purchase.promotionCode')" :title="t('billing.paymentLinks.promotionHint')" />

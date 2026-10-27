@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MockGateway, type Call } from "./gateway";
-import { ACCOUNT, memberships, productGateway, signInAsAda, type ProductState } from "./product";
+import { ACCOUNT, HOME, memberships, productGateway, signInAsAda, type ProductState } from "./product";
 import { pickFilter, pickRange } from "./ui";
 
 // The affiliate partner portal against a mocked gateway: /app/partner (the person's affiliations and the claim), /app/partner?open={id} (an affiliation's sheet: figures, balances,
@@ -157,7 +157,7 @@ test.describe("partner portal", () => {
     // The seller's account came first, but the account routes name the person's own.
     await expect.poll(() => gw.called("GET", "/app/v1/apps").some((c) => c.query.get("account_id") === ACCOUNT)).toBe(true);
     await nav.getByRole("link", { name: "Partner portal" }).click();
-    await expect(page).toHaveURL(/\/app\/partner$/);
+    await expect(page).toHaveURL(/\/app\/partner(\?|$)/);
     await expect(page.getByRole("link", { name: "Partner portal" }).first()).toHaveAttribute("aria-current", "page");
   });
 
@@ -170,7 +170,7 @@ test.describe("partner portal", () => {
     await open(page, portal(), { memberships: [seller] }, "/app");
     await expect(page.getByTestId("no-account")).toBeVisible();
     await page.getByTestId("to-partner").click();
-    await expect(page).toHaveURL(/\/app\/partner$/);
+    await expect(page).toHaveURL(/\/app\/partner(\?|$)/);
   });
 
   test("the home claims once, lists every affiliation with its badges and link, and says a sandbox earns fake money", async ({ page }) => {
@@ -382,7 +382,7 @@ test.describe("applying", () => {
     await page.getByLabel("E-mail").fill("ada@example.com");
     await page.getByLabel("Password", { exact: true }).fill("right password!");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(HOME);
   });
 });
 

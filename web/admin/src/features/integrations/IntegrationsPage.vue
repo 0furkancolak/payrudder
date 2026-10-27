@@ -206,7 +206,7 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
           <h2 class="text-base font-semibold tracking-tight">{{ t("product.providers.appsTitle") }}</h2>
           <p class="text-muted-foreground text-sm">{{ t("product.integrations.appsIntro") }}</p>
         </div>
-        <div class="overflow-x-auto">
+        <div class="relative overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
               <tr class="text-muted-foreground border-b text-start text-xs">

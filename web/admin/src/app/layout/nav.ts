@@ -33,8 +33,9 @@ import type { Environment } from "@/shared/lib/environment";
 /**
  * The navigation of the signed-in console, as data. It depends on where the person is:
  *
- *  - "org":      the organisation level of a person: the apps, the members, the settings;
- *  - "app":      one environment of one app (the tenant behind it), for a person: dashboard, customers, packages, subscriptions, invoices, ...;
+ *  - "org" and "app": the same sidebar for a person, because an app is always selected: the selected app's pages in categories (overview, customers and
+ *    billing, usage and products, money, developers, app settings) and, at the bottom of that group, the organisation's own pages (members, payment
+ *    providers, settings). With the scope "all" the pages are the same ones over every app (the pages that belong to one app are not offered);
  *  - "platform": the operator's pages across tenants;
  *  - "tenant":   one tenant for the operator: the same pages as an app plus the operator-only ones (providers, e-invoice, seller address, mail).
  *
@@ -45,11 +46,13 @@ export type Level = "org" | "app" | "platform" | "tenant";
 
 export interface ShellContext {
   level: Level;
-  /** The tenant behind the page (app and tenant levels). */
+  /** The tenant behind the page: the selected app's tenant in the environment (app and tenant levels). */
   tenantId?: string;
-  /** The app of a person's tenant page, once known. */
+  /** The selected app, once known (never set while the scope is "all"). */
   appId?: string;
-  /** The environment of a person's app page. */
+  /** The scope: the selected app's id, or "all" for every app (see shared/lib/scope). */
+  scope?: string;
+  /** The environment the pages show. */
   env?: Environment;
   /** Whether the server says this person is a platform operator: the organisation level then has a door to the operator console. */
   operator?: boolean;
@@ -87,25 +90,25 @@ interface Page {
   key: string;
   icon: Component;
   path: string;
-  section: "customers" | "billing" | "growth" | "developers" | "settings";
+  section: "customersBilling" | "usageProducts" | "money" | "developers" | "settings";
   person: boolean;
 }
 
 const PAGES: Page[] = [
-  { key: "customers", icon: Users, path: "customers", section: "customers", person: true },
-  { key: "subscriptions", icon: Repeat, path: "subscriptions", section: "customers", person: true },
-  { key: "usage", icon: Gauge, path: "usage", section: "customers", person: true },
-  { key: "credits", icon: Gift, path: "credits", section: "customers", person: true },
-  { key: "meters", icon: Gauge, path: "meters", section: "billing", person: true },
-  { key: "packages", icon: Package, path: "packages", section: "billing", person: true },
-  { key: "pricing", icon: Percent, path: "pricing", section: "billing", person: true },
-  { key: "coupons", icon: Ticket, path: "coupons", section: "billing", person: true },
-  { key: "invoices", icon: FileText, path: "invoices", section: "billing", person: true },
-  { key: "payments", icon: Wallet, path: "payments", section: "billing", person: true },
-  { key: "paymentLinks", icon: Link2, path: "payment-links", section: "billing", person: true },
-  { key: "accounting", icon: Receipt, path: "accounting", section: "billing", person: true },
-  { key: "reports", icon: BarChart3, path: "reports", section: "billing", person: true },
-  { key: "affiliates", icon: Handshake, path: "affiliates", section: "growth", person: true },
+  { key: "customers", icon: Users, path: "customers", section: "customersBilling", person: true },
+  { key: "subscriptions", icon: Repeat, path: "subscriptions", section: "customersBilling", person: true },
+  { key: "invoices", icon: FileText, path: "invoices", section: "customersBilling", person: true },
+  { key: "payments", icon: Wallet, path: "payments", section: "customersBilling", person: true },
+  { key: "paymentLinks", icon: Link2, path: "payment-links", section: "customersBilling", person: true },
+  { key: "credits", icon: Gift, path: "credits", section: "customersBilling", person: true },
+  { key: "usage", icon: Gauge, path: "usage", section: "usageProducts", person: true },
+  { key: "meters", icon: Gauge, path: "meters", section: "usageProducts", person: true },
+  { key: "packages", icon: Package, path: "packages", section: "usageProducts", person: true },
+  { key: "pricing", icon: Percent, path: "pricing", section: "usageProducts", person: true },
+  { key: "coupons", icon: Ticket, path: "coupons", section: "usageProducts", person: true },
+  { key: "accounting", icon: Receipt, path: "accounting", section: "money", person: true },
+  { key: "reports", icon: BarChart3, path: "reports", section: "money", person: true },
+  { key: "affiliates", icon: Handshake, path: "affiliates", section: "money", person: true },
   { key: "webhooks", icon: Webhook, path: "webhooks", section: "developers", person: true },
   { key: "apps", icon: KeyRound, path: "apps", section: "developers", person: false },
   { key: "providers", icon: Plug, path: "providers", section: "developers", person: false },
@@ -114,30 +117,78 @@ const PAGES: Page[] = [
   { key: "einvoice", icon: FileText, path: "e-invoice", section: "settings", person: false },
 ];
 
-const SECTION_ORDER = ["customers", "billing", "growth", "developers", "settings"] as const;
+const SECTION_ORDER = ["customersBilling", "usageProducts", "money", "developers", "settings"] as const;
 
 function item(key: string, to: string, icon: Component, owns: (p: string) => boolean, search?: Record<string, string>): NavItem {
   return { key, label: key, to, icon, owns, ...(search ? { search } : {}) };
+}
+
+/** The tenant id the pages under /app/t/ carry for "every app" (the layout then lists the apps' own data side by side). */
+export const ALL_TENANTS = "all";
+
+/**
+ * The sidebar of a person: the selected app's pages in categories, then the organisation's own pages at the bottom of the same group, then (for an
+ * operator only) the way into the operator console. Every link carries the scope (and the environment) so the address says what the page is about.
+ */
+function personNav(ctx: ShellContext, has: ReadonlySet<string>): NavSection[] {
+  const all = ctx.scope === "all";
+  const env = ctx.env ?? "live";
+  const scope = ctx.scope ?? ctx.appId;
+  const withScope = (extra: Record<string, string> = {}): Record<string, string> => ({ ...(scope ? { app: scope } : {}), ...extra });
+  const base = all ? `/app/t/${ALL_TENANTS}` : ctx.tenantId ? `/app/t/${ctx.tenantId}` : "";
+  const tenantSearch = withScope(all ? { env } : {});
+  const sections: NavSection[] = [];
+
+  if (all) {
+    sections.push({ key: "overview", items: [item("dashboard", "/app", LayoutDashboard, exact("/app"), withScope({ env }))] });
+  } else if (ctx.appId) {
+    const dash = `/app/apps/${ctx.appId}`;
+    // Going live is about the live environment whichever one the page is showing; the link keeps the environment the person is in (a link never flips it).
+    sections.push({
+      key: "overview",
+      items: [item("dashboard", dash, LayoutDashboard, exact(dash), withScope({ env })), item("goLive", `${dash}/go-live`, Rocket, under(`${dash}/go-live`), withScope({ env }))],
+    });
+  }
+
+  for (const s of SECTION_ORDER) {
+    const items = base ? PAGES.filter((p) => p.person && p.section === s && has.has(p.key)).map((p) => item(p.key, `${base}/${p.path}`, p.icon, under(`${base}/${p.path}`), tenantSearch)) : [];
+    if (ctx.appId && !all) {
+      const app = `/app/apps/${ctx.appId}`;
+      const appSearch = withScope({ env });
+      if (s === "developers") {
+        items.unshift(item("apiKeys", `${app}/keys`, KeyRound, under(`${app}/keys`), appSearch));
+        // The sandbox's tools (reset, scenarios) act on the sandbox only; the page says so, and the link keeps the environment the person is in.
+        items.push(item("sandbox", `${app}/sandbox`, FlaskConical, under(`${app}/sandbox`), appSearch));
+      }
+      if (s === "settings") {
+        items.unshift(item("appSettings", `${app}/settings`, Building2, under(`${app}/settings`), appSearch), item("integrations", `${app}/integrations`, Plug, under(`${app}/integrations`), appSearch));
+      }
+    }
+    if (items.length > 0) sections.push({ key: s, items });
+  }
+
+  // The organisation's own pages close the app group.
+  const org = withScope(ctx.env ? { env: ctx.env } : {});
+  sections.push({
+    key: "account",
+    items: [
+      ...(has.has("members") ? [item("members", "/app/members", UsersRound, under("/app/members"), org)] : []),
+      ...(ctx.partner ? [item("partner", "/app/partner", Handshake, under("/app/partner"), org)] : []),
+      item("orgIntegrations", "/app/integrations", Plug, under("/app/integrations"), org),
+      item("settings", "/app/settings", Settings, under("/app/settings"), org),
+    ],
+  });
+  // The operator console is a part of the same app for the people the server lets into it; nobody else sees the door. It comes last.
+  if (ctx.operator) sections.push({ key: "platform", items: [item("operator", "/operator", ShieldCheck, exact("/operator"))] });
+  return sections;
 }
 
 /** The sections of the sidebar for a place in the console. `has` says which person pages exist (default: PERSON_PAGES). */
 export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<string>(PERSON_PAGES)): NavSection[] {
   switch (ctx.level) {
     case "org":
-      return [
-        {
-          key: "account",
-          items: [
-            item("overview", "/app", LayoutGrid, exact("/app")),
-            ...(has.has("members") ? [item("members", "/app/members", UsersRound, under("/app/members"))] : []),
-            ...(ctx.partner ? [item("partner", "/app/partner", Handshake, under("/app/partner"))] : []),
-            item("integrations", "/app/integrations", Plug, under("/app/integrations")),
-            item("settings", "/app/settings", Settings, under("/app/settings")),
-          ],
-        },
-        // The operator console is a part of the same app for the people the server lets into it; nobody else sees the door.
-        ...(ctx.operator ? [{ key: "platform", items: [item("operator", "/operator", ShieldCheck, exact("/operator"))] }] : []),
-      ];
+    case "app":
+      return personNav(ctx, has);
     case "platform":
       return [
         {
@@ -150,40 +201,6 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
         },
         { key: "account", items: [item("myApps", "/app", LayoutGrid, exact("/app"))] },
       ];
-    case "app": {
-      const tid = ctx.tenantId ?? "";
-      const base = `/app/t/${tid}`;
-      const dash = ctx.appId ? `/app/apps/${ctx.appId}` : "/app";
-      const env = ctx.env ?? "live";
-      const sections: NavSection[] = [
-        {
-          key: "overview",
-          items: [
-            item("dashboard", dash, LayoutDashboard, exact(dash), { env }),
-            // Going live is about the live environment whichever one the page is showing; the link keeps the environment the person is in (a link never flips it).
-            ...(ctx.appId ? [item("goLive", `${dash}/go-live`, Rocket, under(`${dash}/go-live`), { env })] : []),
-          ],
-        },
-      ];
-      for (const s of SECTION_ORDER) {
-        const items = PAGES.filter((p) => p.person && p.section === s && has.has(p.key)).map((p) => item(p.key, `${base}/${p.path}`, p.icon, under(`${base}/${p.path}`)));
-        if (s === "developers" && ctx.appId) {
-          const keys = `/app/apps/${ctx.appId}/keys`;
-          items.unshift(item("apiKeys", keys, KeyRound, under(keys), { env }));
-          // The sandbox's tools (reset, scenarios) act on the sandbox only; the page says so, and the link keeps the environment the person is in (a link never flips it).
-          const sandbox = `/app/apps/${ctx.appId}/sandbox`;
-          items.splice(1, 0, item("sandbox", sandbox, FlaskConical, under(sandbox), { env }));
-        }
-        if (s === "settings" && ctx.appId) {
-          const settings = `/app/apps/${ctx.appId}/settings`;
-          items.unshift(item("appSettings", settings, Building2, under(settings), { env }));
-          const integrations = `/app/apps/${ctx.appId}/integrations`;
-          items.splice(1, 0, item("integrations", integrations, Plug, under(integrations), { env }));
-        }
-        if (items.length > 0) sections.push({ key: s, items });
-      }
-      return sections;
-    }
     case "tenant": {
       const base = `/tenants/${ctx.tenantId ?? ""}`;
       const sections: NavSection[] = [

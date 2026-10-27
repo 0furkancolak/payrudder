@@ -151,10 +151,10 @@ test.describe.serial("operator console", () => {
     await page.getByLabel("E-mail").fill(email);
     await page.getByLabel("Password", { exact: true }).fill("correct horse battery");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
     await expect(page.getByRole("link", { name: "Operator console" })).toHaveCount(0);
     await page.goto("/tenants");
-    await page.waitForURL("**/app");
+    await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
   });
 
   test("redriving a dead letter takes it out of the dead-letter view", async ({ page }) => {
