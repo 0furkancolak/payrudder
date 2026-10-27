@@ -40,8 +40,9 @@ const sr = computed(() => {
 </script>
 
 <template>
-  <article class="surface flex min-h-36 flex-col justify-between gap-3 p-5" :data-testid="`kpi-${testid}`" :aria-label="label">
-    <div class="flex items-start justify-between gap-2">
+  <!-- The header has a fixed height and the figure follows it, so the values of cards with and without a badge or a spark line start at the same height. -->
+  <article class="surface flex min-h-36 flex-col gap-3 p-5" :data-testid="`kpi-${testid}`" :aria-label="label">
+    <div class="flex min-h-6 items-start justify-between gap-2">
       <p class="text-muted-foreground text-sm">{{ label }}</p>
       <span
         v-if="word"
@@ -60,12 +61,12 @@ const sr = computed(() => {
         <span class="sr-only">{{ sr }}</span>
       </span>
     </div>
-    <div class="flex flex-col gap-2">
+    <div class="flex flex-1 flex-col gap-2">
       <div class="min-w-0">
         <p class="text-2xl font-semibold tracking-tight tabular-nums [overflow-wrap:anywhere] md:text-[1.6rem]" :data-testid="`kpi-${testid}-value`"><slot name="value" /></p>
         <p class="text-muted-foreground mt-0.5 text-xs [overflow-wrap:anywhere]"><slot name="sub" /></p>
       </div>
-      <Sparkline v-if="spark && spark.length > 1" :values="spark" :width="150" :height="30" class="max-sm:hidden" />
+      <Sparkline v-if="spark && spark.length > 1" :values="spark" :width="150" :height="30" class="mt-auto max-sm:hidden" />
     </div>
   </article>
 </template>

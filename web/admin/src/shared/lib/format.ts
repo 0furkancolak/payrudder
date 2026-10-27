@@ -11,9 +11,9 @@ export type DateStyle =
   | "day"
   /** 21 Oct 2026, 09:05 */
   | "dateTime"
-  /** 21/10/2026, 09:05 (the compact form lists use) */
+  /** 21 Oct 2026, 09:05 (the form lists use; the same date as "day") */
   | "short"
-  /** 21/10/2026, 09:05:30 */
+  /** 21 Oct 2026, 09:05:30 */
   | "shortSeconds"
   /** 21 Oct (no year: a list of upcoming days) */
   | "monthDay";
@@ -21,8 +21,9 @@ export type DateStyle =
 const OPTIONS: Record<DateStyle, Intl.DateTimeFormatOptions> = {
   day: { dateStyle: "medium" },
   dateTime: { dateStyle: "medium", timeStyle: "short" },
-  short: { dateStyle: "short", timeStyle: "short" },
-  shortSeconds: { dateStyle: "short", timeStyle: "medium" },
+  // The compact styles write the day like every other date ("21 Oct 2026"); only the time part differs, so lists and tables never mix 21/10/2026 and 21 Oct 2026.
+  short: { dateStyle: "medium", timeStyle: "short" },
+  shortSeconds: { dateStyle: "medium", timeStyle: "medium" },
   monthDay: { day: "numeric", month: "short" },
 };
 

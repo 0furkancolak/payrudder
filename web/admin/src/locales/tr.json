@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Payrudder operatör konsolu",
+    "title": "Payrudder",
     "language": "Dil",
     "demo": "Demo modu: örnek veriler, sahte bir ödeme sağlayıcısı, e-postalar yerel posta yakalayıcıya gider. Buradaki hiçbir şey gerçek değildir.",
     "themeLight": "Açık temaya geç",
@@ -281,8 +281,8 @@
       "expire": "Süresi doldu olarak işaretle",
       "rejectTitle": "Banka havalesini reddet",
       "expireTitle": "Banka havalesini süresi doldu olarak işaretle",
-      "rejectHint": "Müşterinin havalesi geri çevrildiyse veya gelmeyecekse kullanın. Fatura ödenmiş sayılmaz ve kiracının tahsilat takvimi hemen işler: yeni bir ödeme süresi ya da deneme kalmadıysa tahsil edilemez. Daha önce kaydedilen alındılar korunur.",
-      "expireHint": "Ödeme süresi para gelmeden bittiyse kullanın. Fatura ödenmiş sayılmaz ve kiracının tahsilat takvimi hemen işler: yeni bir ödeme süresi ya da deneme kalmadıysa tahsil edilemez. Daha önce kaydedilen alındılar korunur.",
+      "rejectHint": "Müşterinin havalesi geri çevrildiyse veya gelmeyecekse kullanın. Fatura ödenmiş sayılmaz ve tahsilat takvimi hemen işler: yeni bir ödeme süresi ya da deneme kalmadıysa tahsil edilemez. Daha önce kaydedilen alındılar korunur.",
+      "expireHint": "Ödeme süresi para gelmeden bittiyse kullanın. Fatura ödenmiş sayılmaz ve tahsilat takvimi hemen işler: yeni bir ödeme süresi ya da deneme kalmadıysa tahsil edilemez. Daha önce kaydedilen alındılar korunur.",
       "reason": "Neden (isteğe bağlı)",
       "expiredNote": "Ödeme süresi tutarın tamamı gelmeden bitti. Tahsilat takvimi işler.",
       "rejectedNote": "Havale reddedildi. Tahsilat takvimi işler.",
@@ -430,7 +430,7 @@
       "email": "E-posta",
       "country": "Ülke",
       "currency": "Faturalama para birimi",
-      "tenantCurrency": "Kiracının para birimi",
+      "tenantCurrency": "Hesabın para birimi",
       "create": "Müşteri oluştur",
       "empty": "Henüz müşteri yok.",
       "address": {
@@ -740,7 +740,7 @@
     },
     "providers": {
       "accounts": "Sağlayıcı hesapları",
-      "accountsHint": "Kiracının ödeme sağlayıcılarındaki kendi hesapları. Kimlik bilgileri kaydedilirken mühürlenir ve bir daha gösterilmez.",
+      "accountsHint": "Ödeme sağlayıcılarındaki kendi hesaplarınız. Kimlik bilgileri kaydedilirken mühürlenir ve bir daha gösterilmez.",
       "provider": "Sağlayıcı",
       "environment": "Ortam",
       "default": "Varsayılan",
@@ -1010,7 +1010,7 @@
       "amount": "Tutar",
       "amountPlaceholder": "Tutar (boş: kalanın tamamı)",
       "reason": "Neden",
-      "create": "Alacak dekontu düzenle",
+      "create": "Alacak dekontu oluştur",
       "number": "Numara",
       "invoice": "Fatura",
       "customer": "Müşteri",
@@ -1024,13 +1024,13 @@
       "refundRequested": "İade istendi",
       "refundFailed": "İade başarısız",
       "retryRefund": "İadeyi yeniden dene",
-      "new": "Yeni iade faturası",
+      "new": "Yeni alacak dekontu",
       "hint": "Ödenmiş bir faturayı tamamen ya da kısmen alacaklandırır. Tutar müşterinin bakiyesine ya da karta geri gider.",
       "allWhere": "Tümü"
     },
     "webhooks": {
       "title": "Webhooklar",
-      "hint": "Hesapta bir şey olduğunda (fatura ödendi, kredi notu kesildi, abonelik değişti) Payrudder bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Payrudder-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
+      "hint": "Hesapta bir şey olduğunda (fatura ödendi, alacak dekontu oluşturuldu, abonelik değişti) Payrudder bu HTTPS uç noktalarına imzalı bir JSON POST gönderir. Payrudder-Signature başlığını uç noktanın secret'ı ile doğrulayın; başarısız teslimatlar yaklaşık bir buçuk gün boyunca yeniden denenir.",
       "formLabel": "yeni webhook uç noktası",
       "url": "Uç nokta URL'si",
       "description": "Açıklama",
@@ -1137,7 +1137,7 @@
     },
     "mail": {
       "title": "E-posta",
-      "hint": "Payrudder'ın bu kiracının müşterilerine hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
+      "hint": "Payrudder'ın müşterilerinize hangi tür e-postaları göndereceğini seçin. Kapatılan tür sıraya alınmaz, atlanır: yeniden açmak atlananları göndermez.",
       "categories": {
         "invoice_issued": "Fatura kesildi",
         "payment_receipts": "Ödeme makbuzları",
@@ -1265,7 +1265,7 @@
     },
     "accounting": {
       "title": "Gelir ve giderler",
-      "intro": "Kiracının ödenmiş faturalardan kazandığı ve harcadığı tutarlar, her para birimi ayrı ayrı.",
+      "intro": "Ödenmiş faturalardan kazandığınız ve harcadığınız tutarlar, her para birimi ayrı ayrı.",
       "export": "CSV indir",
       "addExpense": "Gider ekle",
       "currencyNote": "Her para birimi ayrı gösterilir. Farklı para birimlerindeki tutarlar asla toplanmaz veya çevrilmez.",
@@ -1338,7 +1338,7 @@
       "form": {
         "addTitle": "Gider ekle",
         "editTitle": "Gideri düzenle",
-        "hint": "Kiracının harcadığı tutar. Aylık veya yıllık bir gider ilk gününden itibaren kendiliğinden tekrarlanır.",
+        "hint": "Harcadığınız tutar. Aylık veya yıllık bir gider ilk gününden itibaren kendiliğinden tekrarlanır.",
         "vendor": "Tedarikçi",
         "category": "Kategori",
         "date": "Tarih",
@@ -1412,7 +1412,7 @@
         "nothing": "İncelenecek bir şey yok",
         "rotate": "Yeni adres",
         "confirmRotate": "Yeni bir gelen kutusu adresi oluşturulsun mu? Eski adrese gönderilen postalar atılır.",
-        "noDomain": "Bu kurulumda gelen posta alan adı ayarlanmamış (PAYRUDDER_INBOUND_DOMAIN); yalnızca belirteç gösterilir."
+        "noDomain": "Bu kurulumda e-postayla fatura iletme kapalı; faturaları elle ekleyebilirsiniz."
       },
       "rules": {
         "open": "Satıcı kuralları",
@@ -2295,7 +2295,7 @@
   },
   "address": {
     "title": "Satıcı adresi",
-    "hint": "Bu kiracının yasal ve fatura adresi; her faturada (PDF ve barındırılan sayfa) satıcı olarak basılır. Kaydettikten sonra kesilen faturalara uygulanır.",
+    "hint": "Yasal ve fatura adresiniz; her faturada (PDF ve barındırılan sayfa) satıcı olarak basılır. Kaydettikten sonra kesilen faturalara uygulanır.",
     "formLabel": "satıcı adresi",
     "noCountry": "Ülke yok",
     "labels": {
@@ -2439,7 +2439,7 @@
         "bad_rule": "Kural geçerli değil: satıcı metnini, yüzdeleri ve beklenen tutarı kontrol edin.",
         "inbox_item_not_found": "İncelemeyi bekleyen böyle bir fatura yok.",
         "rule_not_found": "Böyle bir kural yok.",
-        "too_many_rules": "Bir kiracının en fazla 200 kuralı olabilir."
+        "too_many_rules": "Bir hesabın en fazla 200 kuralı olabilir."
       },
       "einvoice": {
         "bad_id": "E-fatura veya hesap kimliği geçerli bir kimlik değil.",
@@ -2750,7 +2750,7 @@
     "einvoice": {
       "account": {
         "invalid": "E-fatura hesabı ayarları bu sağlayıcı için geçerli değil.",
-        "missing": "Bu kiracının bu ortam için e-fatura hesabı yok. Önce bir hesap ekleyin.",
+        "missing": "Bu ortam için e-fatura hesabı yok. Önce bir hesap ekleyin.",
         "sandbox_mock_only": "Sandbox ortamı yalnızca sahte (mock) e-fatura sağlayıcısını kullanabilir."
       },
       "buyer": {
@@ -4155,7 +4155,8 @@
     },
     "currency": {
       "label": "Para birimi",
-      "own": "kendi"
+      "own": "varsayılan",
+      "ownHint": "Hesabın varsayılan para birimi"
     },
     "kpi": {
       "net": "Net gelir",

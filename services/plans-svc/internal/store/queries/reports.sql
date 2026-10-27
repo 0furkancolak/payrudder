@@ -1,5 +1,6 @@
 -- name: SubscriptionReport :many
 -- Counts and recurring revenue of a month, split by currency and optionally by provider and country. A dimension that is not split reports ''.
+-- The fee is the plan's fixed fee times the subscription's quantity (seats), as it is invoiced. Usage is not part of it.
 -- month_start/month_end bound the month [start, end); month_last is its last instant.
 WITH subs AS (
   SELECT s.id, s.currency, lower(s.active) AS starts, upper(s.active) AS ends, s.changed_from_id,
@@ -8,8 +9,8 @@ WITH subs AS (
               WHEN s.state = 'past_due' THEN 'past_due'
               WHEN s.state = 'trialing' AND s.trial_ends_at > sqlc.arg('month_last')::timestamptz THEN 'trialing'
               ELSE 'active' END AS eff,
-         CASE WHEN s.interval = 'year' THEN ROUND(COALESCE(f.base_fee_minor, 0) / 12.0)::bigint
-              WHEN s.currency = sqlc.arg('tenant_currency')::text THEN pv.base_fee_minor ELSE COALESCE(f.base_fee_minor, 0) END AS fee,
+         (CASE WHEN s.interval = 'year' THEN ROUND(COALESCE(f.base_fee_minor, 0) / 12.0)::bigint
+               WHEN s.currency = sqlc.arg('tenant_currency')::text THEN pv.base_fee_minor ELSE COALESCE(f.base_fee_minor, 0) END) * s.quantity AS fee,
          EXISTS (SELECT 1 FROM subscriptions n WHERE n.tenant_id = s.tenant_id AND n.changed_from_id = s.id) AS has_successor
   FROM subscriptions s
   JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id

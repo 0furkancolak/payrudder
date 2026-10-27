@@ -50,7 +50,7 @@ const summaryOf = (c: Customer) => summaries.byCustomer.value.get(c.external_id 
 
 const range = ref<DateRange>({ from: "", to: "" });
 const table = useTableState(() => list.value.filter((c) => inRange(c.create_time, range.value)), {
-  sheet: { kind: "customer", id: (c) => c.external_id },
+  sheet: { kind: "customer", id: (c) => c.external_id, loaded: () => customers.isSuccess.value },
   searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id, c.country, c.billing_currency],
   url: true,
   filters: {

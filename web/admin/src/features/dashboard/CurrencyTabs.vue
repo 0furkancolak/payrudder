@@ -34,7 +34,7 @@ function key(e: KeyboardEvent, i: number) {
       :aria-selected="c === active"
       :tabindex="c === active ? 0 : -1"
       :data-testid="`currency-tab-${c}`"
-      :title="currencyInfo(c, locale).name"
+      :title="c === defaultCurrency ? `${currencyInfo(c, locale).name} · ${t('dash.currency.ownHint')}` : currencyInfo(c, locale).name"
       :class="[
         'inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors',
         c === active ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-card text-muted-foreground hover:text-foreground border-border/70',

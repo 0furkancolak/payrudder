@@ -182,7 +182,7 @@ test.describe("app dashboard", () => {
     await reveal.getByRole("button", { name: "Copy" }).click();
     await expect(reveal.getByRole("button", { name: "Copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("qk_live_newkey99_SECRETSECRETSECRETSECRET");
-    expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "live", role: "admin" });
+    expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "live", role: "read_only" });
     await reveal.getByRole("button", { name: "I have saved it" }).click();
     // The secret is gone for good: the list holds the prefix only.
     await expect(page.getByText("SECRETSECRET")).toHaveCount(0);

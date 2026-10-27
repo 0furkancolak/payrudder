@@ -7,6 +7,8 @@ export type DashCurrency = components["schemas"]["DashboardCurrency"];
 
 export const PERIODS = ["7d", "30d", "90d", "ytd", "custom"] as const;
 export type Period = (typeof PERIODS)[number];
+/** The period of a plain dashboard address. */
+export const DEFAULT_PERIOD: Period = "30d";
 
 /** What the page asks for: kept in the address, so a link shares the view and the back button works. */
 export interface DashQuery {
@@ -22,11 +24,11 @@ export interface DashQuery {
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Reads the address' search into a query; anything that is not understood falls back to the default: this month so far (a custom period from the
- * first of the month to today, like every other filter of the console), compared, first currency.
+ * Reads the address' search into a query; anything that is not understood falls back to the default: the last 30 days (a named preset, so the
+ * period control shows a choice rather than "custom"), compared, first currency.
  */
 export function parseQuery(search: Record<string, unknown>, now: Date = new Date()): DashQuery {
-  const named = PERIODS.includes(search.period as Period) ? (search.period as Period) : "custom";
+  const named = PERIODS.includes(search.period as Period) ? (search.period as Period) : DEFAULT_PERIOD;
   const q: DashQuery = { period: named, compare: !["off", "0", 0, false].includes(search.compare as never) };
   if (named === "custom" && typeof search.from === "string" && typeof search.to === "string" && DAY.test(search.from) && DAY.test(search.to)) {
     q.from = search.from;
@@ -40,11 +42,10 @@ export function parseQuery(search: Record<string, unknown>, now: Date = new Date
   return q;
 }
 
-/** The query as the search of an address, leaving out what is the default (this month so far) so a plain dashboard has a plain address. */
-export function toSearch(q: DashQuery, now: Date = new Date()): Record<string, string> {
+/** The query as the search of an address, leaving out what is the default (the last 30 days) so a plain dashboard has a plain address. */
+export function toSearch(q: DashQuery): Record<string, string> {
   const s: Record<string, string> = {};
-  const month = thisMonth(now);
-  const isDefault = q.period === "custom" && q.from === month.from && q.to === month.to;
+  const isDefault = q.period === DEFAULT_PERIOD;
   if (!isDefault) s.period = q.period;
   if (!isDefault && q.period === "custom" && q.from && q.to) {
     s.from = q.from;
@@ -68,11 +69,11 @@ export interface Delta {
 
 /**
  * The change from the earlier figure to the later one. An earlier figure of zero has no percentage: a figure that appears out of nothing is "new", and two
- * zeros are "flat". Works on whole numbers (minor units, counts), as a float only for the percentage that is shown.
+ * zeros have nothing to say (an empty account shows no "unchanged 0%" on every card). Works on whole numbers (minor units, counts), as a float only for the percentage that is shown.
  */
 export function delta(now: number | null | undefined, before: number | null | undefined): Delta {
   if (now === null || now === undefined || before === null || before === undefined) return { percent: null, direction: "none" };
-  if (before === 0) return now === 0 ? { percent: 0, direction: "flat" } : { percent: null, direction: "new" };
+  if (before === 0) return now === 0 ? { percent: null, direction: "none" } : { percent: null, direction: "new" };
   const percent = Math.round(((now - before) / Math.abs(before)) * 1000) / 10;
   return { percent, direction: percent > 0 ? "up" : percent < 0 ? "down" : "flat" };
 }
