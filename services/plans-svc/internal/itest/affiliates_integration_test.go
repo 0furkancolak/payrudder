@@ -182,11 +182,11 @@ func testAffiliates(t *testing.T) {
 		// One row for the day, and the table has no column that could hold a visitor.
 		var rows int
 		var cols []string
-		if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
+		if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
 			if err := tx.QueryRow(context.Background(), `SELECT count(*) FROM affiliate_clicks_daily c JOIN affiliates a USING (tenant_id) WHERE c.affiliate_id = a.id AND a.code = $1`, a).Scan(&rows); err != nil {
 				return err
 			}
-			r, err := tx.Query(context.Background(), `SELECT column_name FROM information_schema.columns WHERE table_name = 'affiliate_clicks_daily' ORDER BY ordinal_position`)
+			r, err := tx.Query(context.Background(), `SELECT column_name FROM information_schema.columns WHERE table_name = 'affiliate_clicks_daily' AND table_schema = current_schema() ORDER BY ordinal_position`)
 			if err != nil {
 				return err
 			}
@@ -253,11 +253,7 @@ func testAffiliates(t *testing.T) {
 			t.Fatalf("the second has referrals: %v", refs)
 		}
 		// Even the database refuses: not even the owner of the table moves or deletes an attribution (a trigger, below the grants).
-		owner, err := pgxx.NewPool(context.Background(), e.db.Migrator)
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer owner.Close()
+		owner := e.ownerDB(t)
 		for _, stmt := range []string{`UPDATE affiliate_attributions SET affiliate_id = $1`, `DELETE FROM affiliate_attributions WHERE affiliate_id <> $1`} {
 			err = pgxx.InTenantTx(context.Background(), owner, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
 				_, err := tx.Exec(context.Background(), stmt, uuid.MustParse(second.GetId()))
@@ -295,7 +291,7 @@ func testAffiliates(t *testing.T) {
 			t.Errorf("two people at gmail: %v %v", r, err)
 		}
 		var n int
-		if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
+		if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
 			return tx.QueryRow(context.Background(), `SELECT count(*) FROM affiliate_attribution_rejections WHERE affiliate_id = $1`, uuid.MustParse(aff.GetId())).Scan(&n)
 		}); err != nil || n != 3 {
 			t.Fatalf("rejections kept: %d (%v)", n, err)
@@ -372,7 +368,7 @@ func testAffiliates(t *testing.T) {
 			t.Fatalf("referrals: %v", refs)
 		}
 		var waiting int
-		if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
+		if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
 			return tx.QueryRow(context.Background(), `SELECT count(*) FROM customer_coupons cc JOIN customers c ON c.tenant_id = cc.tenant_id AND c.id = cc.customer_id
 				WHERE c.external_id = $1 AND cc.source = 'affiliate' AND cc.source_ref = $2 AND cc.consumed_at IS NULL`, ext, aff.GetId()).Scan(&waiting)
 		}); err != nil || waiting != 1 {

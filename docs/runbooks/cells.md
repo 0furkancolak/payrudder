@@ -22,7 +22,7 @@ PAYRUDDER_CELLS={"c1":{"app":"postgres://ingest_app:…@c1-db/ingest_db","system
 
 The cell database is prepared like a service database (`deploy/compose/postgres/01-databases.sh`: the three roles, `REVOKE CREATE ON SCHEMA public FROM PUBLIC`), and nothing is migrated into its `public` schema. With `PAYRUDDER_MIGRATE_ON_START=true` the service creates the `shared` schema and applies its tenant migrations to every tenant schema of every cell (a failing tenant is logged and the service starts; with `PAYRUDDER_MIGRATE_ONLY=true` a failing tenant fails the job). `payrudderctl cells migrate` does the same from outside. A service in cells mode needs `PAYRUDDER_PLANS_ADDR` (assets-svc did not have it before; ingest-svc already did): the directory is plans-svc's.
 
-Services converted so far: **ingest-svc**, **assets-svc**, **aggregator**, **billing-svc** (it needs `PAYRUDDER_PLANS_ADDR` as it always did; it is also where the directory is), **payments-worker** (it needs `PAYRUDDER_PLANS_ADDR` too, and it uses only the `system` DSN of each cell; the `app` one must still be given and is not used). Every other service has no tenant schema yet; do not set `PAYRUDDER_CELLS` for it.
+Services converted so far: **ingest-svc**, **assets-svc**, **aggregator**, **plans-svc** (it owns the directory, so it reads the placements from its own `tenants` table and needs no address), **billing-svc** (it needs `PAYRUDDER_PLANS_ADDR` as it always did; it is also where the directory is), **payments-worker** (it needs `PAYRUDDER_PLANS_ADDR` too, and it uses only the `system` DSN of each cell; the `app` one must still be given and is not used). Every other service has no tenant schema yet; do not set `PAYRUDDER_CELLS` for it.
 
 ## The operator tool
 
@@ -42,7 +42,9 @@ Services converted so far: **ingest-svc**, **assets-svc**, **aggregator**, **bil
     "payments": {"migrations": "services/payments-worker/migrations/tenant", "roles": ["payments_app", "payments_system"],
                  "pooled": "${PAYMENTS_MIGRATOR_DSN}", "cells": {"c1": "${PAYMENTS_C1_MIGRATOR_DSN}", "c2": "${PAYMENTS_C2_MIGRATOR_DSN}"}},
     "billing": {"migrations": "services/billing-svc/migrations/tenant", "roles": ["billing_app", "billing_system"],
-               "pooled": "${BILLING_MIGRATOR_DSN}", "cells": {"c1": "${BILLING_C1_MIGRATOR_DSN}", "c2": "${BILLING_C2_MIGRATOR_DSN}"}}
+               "pooled": "${BILLING_MIGRATOR_DSN}", "cells": {"c1": "${BILLING_C1_MIGRATOR_DSN}", "c2": "${BILLING_C2_MIGRATOR_DSN}"}},
+    "plans": {"migrations": "services/plans-svc/migrations/tenant", "roles": ["plans_app", "plans_system"],
+              "pooled": "${PLANS_MIGRATOR_DSN}", "cells": {"c1": "${PLANS_C1_MIGRATOR_DSN}", "c2": "${PLANS_C2_MIGRATOR_DSN}"}}
   }
 }
 ```
@@ -97,6 +99,7 @@ Moves are offline by design: a large tenant is down for the time of its copy. Th
 ## Operating notes
 
 - **Connections.** Each service replica holds an app pool and a system pool per cell, each of at most 4 connections by default (`pool_max_conns` in the DSN). A cell with many tenants needs a transaction-mode pooler in front of it for the app role; the router sets everything with `set_config(…, true)`, which is transaction-local. The prepared-statement mode of the driver must suit the pooler (`default_query_exec_mode` in the DSN). **Not tested.**
+- **plans-svc in a cell.** A tenant's request reads the tenant's own row (environment, status, tier, zone) once from the pooled database before it opens its transaction in the cell, because the tenant schema has no `tenants` table; a pooled database that cannot be read refuses the request. The webhook dispatcher, the affiliate commission approver, the trial reminder and the sandbox sweeps visit every serving tenant of every cell on each pass (see the cost note below); the affiliate public link and the partner portal ask each tenant in a cell too, for a code or for a person's records (a code found is remembered for ten minutes), so a deployment with many tenants in cells needs those two paths watched. Affiliate codes are unique across the platform: inside a schema the database enforces it, across schemas only a check at creation does (best effort). **Moving a live tenant of plans-svc out of the pooled database stops at its last step** when the tenant has partner journal rows or attributions (their pooled triggers refuse the delete of the old rows): the copy is complete and checked and the tenant is served from the cell, the command exits 1, the old rows stay in the pooled database, and finishing the job needs the trigger functions `affiliate_journal_append_only` and `affiliate_attributions_immutable` to also let a tenant that has a cell be deleted (a public migration). A sandbox moves without it.
 - **The relay's `LISTEN`.** It needs a session connection: point the system DSN of a cell straight at the database, or accept that the outbox sweep (every 2 s) carries the load.
 - **Cost of the jobs.** A job visits every serving tenant of every cell on each run (one transaction per tenant). That is the design (cells hold few, large tenants); a cell with thousands of tenants would need the jobs batched per cell.
 - **Region.** `region` is recorded for the operator and shown by the directory; nothing routes on it.

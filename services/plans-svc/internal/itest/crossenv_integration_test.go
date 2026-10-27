@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -259,7 +260,18 @@ func fingerprint(t *testing.T, e *env, tenantID string) map[string]string {
 		var sum *string
 		// The table name comes from the catalogue above, never from a caller.
 		q := fmt.Sprintf(`SELECT count(*), md5(string_agg(x::text, '|' ORDER BY x::text)) FROM %s x WHERE tenant_id = $1::uuid`, pgIdent(tb))
-		if err := e.system.QueryRow(ctx, q, tenantID).Scan(&n, &sum); err != nil {
+		// A tenant's rows are where the tenant is; the two tables with a tenant_id that are not (keys, the reset queue) stay in the pooled database.
+		err := e.tx(ctx, tenantID, func(tx pgx.Tx) error {
+			var reg *string
+			if err := tx.QueryRow(ctx, `SELECT to_regclass($1)::text`, pgIdent(tb)).Scan(&reg); err != nil {
+				return err
+			}
+			if reg == nil {
+				return e.system.QueryRow(ctx, q, tenantID).Scan(&n, &sum)
+			}
+			return tx.QueryRow(ctx, q, tenantID).Scan(&n, &sum)
+		})
+		if err != nil {
 			// A table the system role may not read (no grant) cannot be touched by it either way; it still has the tenant's RLS.
 			continue
 		}

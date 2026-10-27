@@ -340,5 +340,5 @@ func testSandboxRetention(t *testing.T) {
 
 // runnerWithRetention is the test runner with another retention period.
 func (e *env) runnerWithRetention(d time.Duration) *sandbox.Runner {
-	return sandbox.NewRunner(e.system, e.remotes.steps(), sandbox.Settings{Retention: d}, nil)
+	return sandbox.NewRunner(e.system, e.remotes.steps(), sandbox.Settings{Retention: d}, nil).WithPlaces(e.places)
 }

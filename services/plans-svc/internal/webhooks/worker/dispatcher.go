@@ -16,11 +16,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/brand"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/webhooksig"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
@@ -38,8 +41,12 @@ const (
 )
 
 // Dispatcher delivers the due webhook deliveries of every tenant. Several may run: a delivery is claimed with SKIP LOCKED and a lease.
+//
+// The deliveries of the tenants in the pooled database are claimed in one statement, as ever. With cells on (ADR 0018) each tenant placed in a cell is visited too, in a
+// transaction of its own in its schema: the claim, and later the target, the retry and the result of each of its deliveries, are statements of that tenant's schema.
 type Dispatcher struct {
 	Pool   *pgxpool.Pool // plans_system
+	Places *placement.Places
 	Box    *secretbox.Box
 	Client *http.Client
 	Log    *slog.Logger
@@ -81,6 +88,15 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 type claimed struct {
 	tenant, id, event, endpoint uuid.UUID
 	attempt                     int
+	cell                        *pgxx.PlacedTenant // where the tenant is when it is in a cell; nil: the pooled database
+}
+
+// queries runs fn on the statements of the place the delivery's tenant was claimed in.
+func (d *Dispatcher) queries(ctx context.Context, c claimed, fn func(q *sqlc.Queries) error) error {
+	if c.cell == nil {
+		return fn(sqlc.New(d.Pool))
+	}
+	return d.Places.CellTx(ctx, *c.cell, func(tx pgx.Tx) error { return fn(sqlc.New(tx)) })
 }
 
 // Once claims and delivers one batch of due deliveries and returns how many it claimed.
@@ -94,6 +110,14 @@ func (d *Dispatcher) Once(ctx context.Context) (int, error) {
 	batch := make([]claimed, len(rows))
 	for i, r := range rows {
 		batch[i] = claimed{tenant: r.TenantID, id: r.ID, event: r.EventID, endpoint: r.EndpointID, attempt: int(r.Attempts)}
+	}
+	err = d.Places.EachCell(ctx, func(ctx context.Context, t pgxx.PlacedTenant) error {
+		got, err := d.claimCell(ctx, t, now)
+		batch = append(batch, got...)
+		return err
+	})
+	if err != nil {
+		d.Log.WarnContext(ctx, "webhook dispatcher: a tenant in a cell could not be claimed", "error", err)
 	}
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, workers)
@@ -117,8 +141,36 @@ func (d *Dispatcher) Once(ctx context.Context) (int, error) {
 	return len(batch), nil
 }
 
+// claimCell claims up to a batch of the due deliveries of one tenant placed in a cell, in a transaction of its own in its schema. A delivery of another tenant in that
+// schema is a bug that must not be delivered under the wrong tenant: the transaction is rolled back, so nothing of it is leased.
+func (d *Dispatcher) claimCell(ctx context.Context, t pgxx.PlacedTenant, now time.Time) ([]claimed, error) {
+	var out []claimed
+	err := d.Places.CellTx(ctx, t, func(tx pgx.Tx) error {
+		rows, err := sqlc.New(tx).ClaimDueWebhookDeliveries(ctx, sqlc.ClaimDueWebhookDeliveriesParams{Now: now, Batch: int32(batchSize), LeaseSecs: lease.Seconds()}) //nolint:gosec // a small batch size
+		if err != nil {
+			return err
+		}
+		out = out[:0]
+		for _, r := range rows {
+			if r.TenantID != t.TenantID {
+				return fmt.Errorf("webhook delivery %s of tenant %s is in the schema of tenant %s", r.ID, r.TenantID, t.TenantID)
+			}
+			out = append(out, claimed{tenant: r.TenantID, id: r.ID, event: r.EventID, endpoint: r.EndpointID, attempt: int(r.Attempts), cell: &t})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("claim webhook deliveries: %w", err)
+	}
+	return out, nil
+}
+
 func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
-	t, err := sqlc.New(d.Pool).GetWebhookDeliveryTarget(ctx, sqlc.GetWebhookDeliveryTargetParams{TenantID: c.tenant, ID: c.id})
+	var t sqlc.GetWebhookDeliveryTargetRow
+	err := d.queries(ctx, c, func(q *sqlc.Queries) (err error) {
+		t, err = q.GetWebhookDeliveryTarget(ctx, sqlc.GetWebhookDeliveryTargetParams{TenantID: c.tenant, ID: c.id})
+		return err
+	})
 	if err != nil {
 		return err
 	}
@@ -141,8 +193,10 @@ func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
 		return d.finish(ctx, c, "failed", status, errText)
 	}
 	wait := model.Backoff[c.attempt-1]
-	return sqlc.New(d.Pool).RescheduleWebhookDelivery(ctx, sqlc.RescheduleWebhookDeliveryParams{
-		TenantID: c.tenant, ID: c.id, NextAttemptAt: d.Now().Add(wait), LastStatus: int32(status), LastError: errText, //nolint:gosec // an HTTP status
+	return d.queries(ctx, c, func(q *sqlc.Queries) error {
+		return q.RescheduleWebhookDelivery(ctx, sqlc.RescheduleWebhookDeliveryParams{
+			TenantID: c.tenant, ID: c.id, NextAttemptAt: d.Now().Add(wait), LastStatus: int32(status), LastError: errText, //nolint:gosec // an HTTP status
+		})
 	})
 }
 
@@ -190,13 +244,21 @@ func (d *Dispatcher) post(ctx context.Context, url string, c claimed, typ string
 }
 
 func (d *Dispatcher) finish(ctx context.Context, c claimed, state string, status int, errText string) error {
-	return sqlc.New(d.Pool).FinishWebhookDelivery(ctx, sqlc.FinishWebhookDeliveryParams{
-		TenantID: c.tenant, ID: c.id, State: state, LastStatus: int32(status), LastError: errText, DeliveredAt: d.Now(), //nolint:gosec // an HTTP status
+	return d.queries(ctx, c, func(q *sqlc.Queries) error {
+		return q.FinishWebhookDelivery(ctx, sqlc.FinishWebhookDeliveryParams{
+			TenantID: c.tenant, ID: c.id, State: state, LastStatus: int32(status), LastError: errText, DeliveredAt: d.Now(), //nolint:gosec // an HTTP status
+		})
 	})
 }
 
 func (d *Dispatcher) prune(ctx context.Context, now time.Time) error {
-	return sqlc.New(d.Pool).PruneWebhookEvents(ctx, now.Add(-retention))
+	before := now.Add(-retention)
+	if err := sqlc.New(d.Pool).PruneWebhookEvents(ctx, before); err != nil {
+		return err
+	}
+	return d.Places.EachCell(ctx, func(ctx context.Context, t pgxx.PlacedTenant) error {
+		return d.Places.CellTx(ctx, t, func(tx pgx.Tx) error { return sqlc.New(tx).PruneWebhookEvents(ctx, before) })
+	})
 }
 
 func truncate(s string, n int) string {

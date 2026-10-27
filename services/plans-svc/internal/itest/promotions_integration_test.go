@@ -344,7 +344,7 @@ func testPromotions(t *testing.T) {
 		}
 
 		codesOf("PCT10", nil, "SOON")
-		if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
+		if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
 			_, err := tx.Exec(context.Background(), `UPDATE promotion_codes SET expires_at = now() - interval '1 minute' WHERE code = 'SOON'`)
 			return err
 		}); err != nil {
@@ -492,6 +492,9 @@ func testPromotions(t *testing.T) {
 // testPromotionsMigration runs the migration back and forward on data a pre-ledger database would hold: coupons with a redemption count, some on subscriptions and
 // one taken off again (whose count is not given back). It must come back with a promotion code per coupon and a ledger that agrees with the counts.
 func testPromotionsMigration(t *testing.T) {
+	if cellsMode() {
+		t.Skip("it rolls migrations 47..50 and 30 of the public schema back over pooled rows; a tenant's schema has one migration, written after them, and no old rows to convert")
+	}
 	e := newEnv(t)
 	live := e.account(t, "PromoMigration")[plansv1.Environment_ENVIRONMENT_LIVE]
 	ctx := as(live.GetId())
@@ -527,7 +530,7 @@ func testPromotionsMigration(t *testing.T) {
 
 	query := func(sql string, args ...any) (out [][]any) {
 		t.Helper()
-		if err := pgxx.InTenantTx(context.Background(), e.app, tenantID, func(tx pgx.Tx) error {
+		if err := pgxx.InTenantTx(context.Background(), e.appDB, tenantID, func(tx pgx.Tx) error {
 			rows, err := tx.Query(context.Background(), sql, args...)
 			if err != nil {
 				return err

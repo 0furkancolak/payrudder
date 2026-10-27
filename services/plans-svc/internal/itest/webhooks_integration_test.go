@@ -66,12 +66,10 @@ func testWebhooks(t *testing.T) {
 	other := as(e.account(t, "Hooks other")[plansv1.Environment_ENVIRONMENT_LIVE].GetId())
 	code := func(err error) codes.Code { return status.Code(err) }
 	// The dispatcher works across tenants; other tests' deliveries (to addresses that mean nothing here) must not be in this one's way.
-	if _, err := e.system.Exec(ctx, `DELETE FROM webhook_deliveries`); err != nil {
-		t.Fatal(err)
-	}
+	e.clearDeliveries(t)
 	now := time.Now().Add(time.Minute) // the dispatcher's clock runs a little ahead of the rows the database stamps
 	clock := &now
-	disp := &webhooksworker.Dispatcher{Pool: e.system, Box: e.box, Client: safehttp.NewClient(2*time.Second, true), Now: func() time.Time { return *clock }}
+	disp := &webhooksworker.Dispatcher{Pool: e.system, Places: e.places, Box: e.box, Client: safehttp.NewClient(2*time.Second, true), Now: func() time.Time { return *clock }}
 	pump := func() int {
 		t.Helper()
 		n, err := disp.Once(ctx)
@@ -127,7 +125,7 @@ func testWebhooks(t *testing.T) {
 	// The secret is only in the create response; read it back from the database the way the dispatcher does.
 	{
 		var sealed []byte
-		if err := e.system.QueryRow(ctx, `SELECT secret_enc FROM webhook_endpoints WHERE id = $1`, endpoint.GetId()).Scan(&sealed); err != nil {
+		if err := e.scan(ctx, acct[plansv1.Environment_ENVIRONMENT_LIVE].GetId(), `SELECT secret_enc FROM webhook_endpoints WHERE id = $1`, []any{endpoint.GetId()}, &sealed); err != nil {
 			t.Fatal(err)
 		}
 		b, err := e.box.Open(sealed, webhooksmodel.SecretAAD(uuid.MustParse(endpoint.GetId())))

@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/model"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
@@ -29,12 +30,20 @@ import (
 
 // Commands changes the affiliate program.
 type Commands struct {
-	db  *store.DB
-	now func() time.Time
+	db       *store.DB
+	now      func() time.Time
+	resolver *Resolver // with cells on: where a code given by a seller is checked against the other tenants'
 }
 
 // New returns the affiliate commands.
 func New(db *store.DB, now func() time.Time) *Commands { return &Commands{db: db, now: now} }
+
+// WithResolver makes a code given by a seller be checked against the other tenants' too, in the pooled database and in the cells (ADR 0018): affiliate codes are unique
+// across the platform, and the database can only say so within one schema.
+func (c *Commands) WithResolver(r *Resolver) *Commands {
+	c.resolver = r
+	return c
+}
 
 var (
 	payoutMethods = []string{"manual", "bank_transfer"}
@@ -210,6 +219,17 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateAffiliateReque
 	if req.GetPending() {
 		status = model.AffiliatePending
 	}
+	if code != "" && c.resolver != nil && c.resolver.places.CellsOn() {
+		ti, err := tenant.Require(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if taken, err := c.resolver.Taken(ctx, code, ti.ID); err != nil {
+			return nil, convert.Err(err, "affiliate")
+		} else if taken {
+			return nil, codeTaken()
+		}
+	}
 	var out *plansv1.Affiliate
 	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
 		var err error
@@ -269,7 +289,11 @@ func insert(ctx context.Context, q *sqlc.Queries, in insertInput) (*plansv1.Affi
 		}
 		return query.Message(query.RowOf(row)), nil
 	}
-	return nil, errkey.New(codes.AlreadyExists, "affiliate.code_taken", "this code is taken: affiliate codes are unique across the platform")
+	return nil, codeTaken()
+}
+
+func codeTaken() error {
+	return errkey.New(codes.AlreadyExists, "affiliate.code_taken", "this code is taken: affiliate codes are unique across the platform")
 }
 
 // mapUnique turns the unique violation of an e-mail address into its own error.

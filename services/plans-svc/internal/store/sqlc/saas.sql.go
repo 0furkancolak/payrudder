@@ -12,6 +12,46 @@ import (
 	"github.com/google/uuid"
 )
 
+const saasAccountsPage = `-- name: SaasAccountsPage :many
+SELECT a.id, a.created_at FROM accounts a
+WHERE NOT a.platform AND (a.created_at, a.id) > ($1::timestamptz, $2::uuid)
+ORDER BY a.created_at, a.id
+LIMIT $3::int
+`
+
+type SaasAccountsPageParams struct {
+	AfterAt  time.Time
+	AfterID  uuid.UUID
+	PageSize int32
+}
+
+type SaasAccountsPageRow struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+}
+
+// The same question when the platform tenant's customers are in a cell (ADR 0018) and the accounts are not: the accounts a page at a time (a cursor on created_at and id,
+// as the sweep's order), then the platform tenant's own rows say which of them have a subscription in force.
+func (q *Queries) SaasAccountsPage(ctx context.Context, arg SaasAccountsPageParams) ([]SaasAccountsPageRow, error) {
+	rows, err := q.db.Query(ctx, saasAccountsPage, arg.AfterAt, arg.AfterID, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SaasAccountsPageRow{}
+	for rows.Next() {
+		var i SaasAccountsPageRow
+		if err := rows.Scan(&i.ID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saasAccountsToEnsure = `-- name: SaasAccountsToEnsure :many
 SELECT a.id FROM accounts a
 WHERE NOT a.platform AND NOT EXISTS (
@@ -150,6 +190,36 @@ func (q *Queries) SaasCurrentSubscription(ctx context.Context, arg SaasCurrentSu
 		&i.PlanName,
 	)
 	return i, err
+}
+
+const saasCustomersInForce = `-- name: SaasCustomersInForce :many
+SELECT c.external_id FROM customers c JOIN subscriptions s ON s.tenant_id = c.tenant_id AND s.customer_id = c.id
+WHERE c.tenant_id = $1 AND c.external_id = ANY($2::text[]) AND s.state <> 'cancelled' AND s.active @> now()
+`
+
+type SaasCustomersInForceParams struct {
+	TenantID    uuid.UUID
+	ExternalIds []string
+}
+
+func (q *Queries) SaasCustomersInForce(ctx context.Context, arg SaasCustomersInForceParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, saasCustomersInForce, arg.TenantID, arg.ExternalIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var external_id string
+		if err := rows.Scan(&external_id); err != nil {
+			return nil, err
+		}
+		items = append(items, external_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const saasEntitlements = `-- name: SaasEntitlements :many

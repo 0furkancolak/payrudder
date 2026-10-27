@@ -32,11 +32,13 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
@@ -51,6 +53,9 @@ var defaults []byte
 type Config struct {
 	config.Base
 	pgxx.Settings
+	// CellSettings turns on cells mode (ADR 0018). Off unless PAYRUDDER_CELLS names at least one cell. plans-svc owns the tenant directory, so it needs no address
+	// to ask for it.
+	pgxx.CellSettings
 	GRPCAddr string `env:"PAYRUDDER_GRPC_ADDR"`
 	RedisURL string `env:"PAYRUDDER_REDIS_URL"`
 	// KafkaBrokers enables the outbox relay to plans.entitlements.v1. Without it, rows wait in the outbox.
@@ -109,7 +114,7 @@ func (c *Config) saasConfig() saascmd.Config {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	errs = append(errs, c.CheckMigration())
+	errs = append(errs, c.CheckMigration(), c.CheckCells())
 	for _, e := range c.AllowedEnvs {
 		if e != tenant.EnvSandbox && e != tenant.EnvLive {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
@@ -165,6 +170,11 @@ func main() { app.Main("plans-svc", defaults, start) }
 // start wires plans-svc's dependencies and runs it until ctx is cancelled.
 func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	log, hh := rt.Log, rt.Health()
+	if cfg.Enabled() && cfg.MigrateOnStart {
+		if err := cfg.MigrateCells(ctx, tenantSchemas(), cfg.MigrateOnly, log); err != nil {
+			return err
+		}
+	}
 	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
@@ -174,6 +184,12 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer appPool.Close()
 	defer systemPool.Close()
+	// Cells mode (ADR 0018): a tenant's transactions go where the directory (plans-svc's own tenants table) says its rows are. Off, the pools are used directly, as ever.
+	appDB, places, closeCells, err := openPlaces(ctx, cfg, log, appPool, systemPool)
+	if err != nil {
+		return err
+	}
+	defer closeCells()
 
 	hh.AddCheck("postgres", appPool.Ping)
 	evictor, closeRedis, err := newEvictor(cfg, log)
@@ -181,18 +197,18 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	defer closeRedis()
-	relay, closeRelay, err := newRelay(cfg, log, systemPool, hh)
+	relay, closeRelay, err := newRelay(cfg, log, places, hh)
 	if err != nil {
 		return err
 	}
 	defer closeRelay()
 
-	sbx, sbxRunner, closeSbx, err := newSandbox(cfg, log, appPool, systemPool)
+	sbx, sbxRunner, closeSbx, err := newSandbox(cfg, log, places)
 	if err != nil {
 		return err
 	}
 	defer closeSbx()
-	srv, grpcHealth, box, saasCmd, err := newGRPCServer(cfg, log, appPool, systemPool, evictor, sbx)
+	srv, grpcHealth, box, saasCmd, err := newGRPCServer(cfg, log, appDB, places, evictor, sbx)
 	if err != nil {
 		return err
 	}
@@ -204,8 +220,27 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, app: appPool, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd}
+	w := &workers{cfg: cfg, log: log, pool: systemPool, app: appDB, places: places, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd}
 	return w.run(ctx)
+}
+
+// openPlaces builds how plans-svc reaches a tenant's rows: the app pool and the system pool themselves with cells off, and with them on the routers over the pools of
+// the cells, the app role's as the database every module opens its tenant transactions on and the system role's as Places. The returned func closes the cell pools.
+func openPlaces(ctx context.Context, cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool) (pgxx.Beginner, *placement.Places, func(), error) {
+	if !cfg.Enabled() {
+		return appPool, placement.NewPlaces(systemPool, nil), func() {}, nil
+	}
+	routers, err := cfg.OpenRouters(ctx, appPool, systemPool, placement.Source(systemPool, tenantdir.Options{}))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	log.Info("cells mode", "cells", routers.System.CellNames())
+	return placement.AppDB(appPool, routers.App, systemPool), placement.NewPlaces(systemPool, routers.System), routers.Close, nil
+}
+
+// tenantSchemas is what a tenant's schema in a cell is built from (ADR 0018).
+func tenantSchemas() pgxx.TenantSchemas {
+	return pgxx.TenantSchemas{Migrations: migrations.Tenant(), Roles: []string{"plans_app", "plans_system"}}
 }
 
 // newEvictor connects to Redis for gateway API-key cache eviction; without PAYRUDDER_REDIS_URL it returns a nil evictor.
@@ -225,7 +260,7 @@ func newEvictor(cfg *Config, log *slog.Logger) (apikeyscmd.Evictor, func(), erro
 
 // newRelay builds the outbox relay and registers its Kafka readiness check; without PAYRUDDER_KAFKA_BROKERS it returns a nil relay.
 // The returned func closes the Kafka producer.
-func newRelay(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, hh *health.Handler) (*outbox.Relay, func(), error) {
+func newRelay(cfg *Config, log *slog.Logger, places *placement.Places, hh *health.Handler) (*outbox.Relay, func(), error) {
 	if len(cfg.KafkaBrokers) == 0 {
 		log.Warn("PAYRUDDER_KAFKA_BROKERS unset: entitlement changes stay in the outbox and limits-svc will not see them")
 		return nil, func() {}, nil
@@ -235,13 +270,14 @@ func newRelay(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, hh *healt
 		return nil, nil, err
 	}
 	hh.AddCheck("kafka", producer.Ping)
-	relay, err := outbox.NewRelay(systemPool, outbox.KafkaSink{Client: producer},
+	relay, err := outbox.NewRelay(places.Pool(), outbox.KafkaSink{Client: producer},
 		outbox.Config{Workers: cfg.RelayWorkers, BatchSize: cfg.RelayBatchSize}, log)
 	if err != nil {
 		producer.Close()
 		return nil, nil, err
 	}
-	return relay, producer.Close, nil
+	// The tenants in cells have their outbox in their schema: the relay visits them too (a no-op with cells off).
+	return relay.WithCells(places.Router()), producer.Close, nil
 }
 
 // newSecretBox opens the box that seals webhook signing secrets; without PAYRUDDER_SECRETS_KEY it returns nil.
@@ -256,7 +292,7 @@ func newSecretBox(cfg *Config, log *slog.Logger) (*secretbox.Box, error) {
 
 // newSandbox builds the sandbox reset module: the steps for the other services, the handler for the two calls, and the runner that executes the jobs. The returned func
 // closes the connections.
-func newSandbox(cfg *Config, log *slog.Logger, _, systemPool *pgxpool.Pool) (*sandboxapi.Handler, *sandbox.Runner, func(), error) {
+func newSandbox(cfg *Config, log *slog.Logger, places *placement.Places) (*sandboxapi.Handler, *sandbox.Runner, func(), error) {
 	var conns []*grpc.ClientConn
 	closeAll := func() {
 		for _, c := range conns {
@@ -296,19 +332,19 @@ func newSandbox(cfg *Config, log *slog.Logger, _, systemPool *pgxpool.Pool) (*sa
 		payments = u
 	}
 	steps = append(steps, sandbox.HTTP("payments", payments, cfg.PaymentsToken, nil))
-	h, runner := sandboxapi.Wire(systemPool, steps, cfg.SandboxResetCooldown, sandbox.Settings{Retention: cfg.SandboxRetention}, log)
+	h, runner := sandboxapi.Wire(places, steps, cfg.SandboxResetCooldown, sandbox.Settings{Retention: cfg.SandboxRetention}, log)
 	return h, runner, closeAll, nil
 }
 
 // newGRPCServer builds the gRPC server with every service of plans-svc registered.
-func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor apikeyscmd.Evictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, *saascmd.Commands, error) {
+func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *placement.Places, evictor apikeyscmd.Evictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, *saascmd.Commands, error) {
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	box, err := newSecretBox(cfg, log)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
-		AppPool: appPool, SystemPool: systemPool, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
+		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
 		Mail: usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), AppURL: cfg.AppURL, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})
@@ -320,7 +356,8 @@ type workers struct {
 	cfg        *Config
 	log        *slog.Logger
 	pool       *pgxpool.Pool // the system pool
-	app        *pgxpool.Pool
+	app        pgxx.Beginner // the app pool, or its router with cells on
+	places     *placement.Places
 	relay      *outbox.Relay  // nil without Kafka
 	box        *secretbox.Box // nil without a secrets key
 	health     *health.Handler
@@ -339,14 +376,16 @@ func (w *workers) run(ctx context.Context) error {
 		g.Go(func() error { return w.relay.Run(gctx) })
 	}
 	if w.box != nil {
-		disp := &webhooksworker.Dispatcher{Pool: w.pool, Box: w.box, Client: safehttp.NewClient(10*time.Second, w.cfg.WebhookAllowPrivate), Log: w.log}
+		disp := &webhooksworker.Dispatcher{Pool: w.pool, Places: w.places, Box: w.box, Client: safehttp.NewClient(10*time.Second, w.cfg.WebhookAllowPrivate), Log: w.log}
 		g.Go(func() error { return disp.Run(gctx) })
 	}
 	if w.sandbox != nil {
 		g.Go(func() error { return w.sandbox.Run(gctx) })
 	}
-	g.Go(func() error { return affiliatescmd.NewApprover(w.pool, w.cfg.AffiliateApproveEvery, w.log).Run(gctx) })
-	trials := trialcmd.New(w.pool, w.app, trialcmd.Config{Days: w.cfg.TrialReminderDays, Every: w.cfg.TrialReminderEvery}, w.log)
+	g.Go(func() error {
+		return affiliatescmd.NewApprover(w.pool, w.cfg.AffiliateApproveEvery, w.log).WithPlaces(w.places).Run(gctx)
+	})
+	trials := trialcmd.New(w.pool, w.app, trialcmd.Config{Days: w.cfg.TrialReminderDays, Every: w.cfg.TrialReminderEvery}, w.log).WithPlaces(w.places)
 	g.Go(func() error { return trials.Run(gctx) })
 	if w.saas.Enabled() {
 		g.Go(func() error { return w.saas.Run(gctx) })

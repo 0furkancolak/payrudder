@@ -243,7 +243,9 @@ func (c *Commands) Ensure(ctx context.Context, account uuid.UUID) error {
 	}
 	pctx := p.Context(ctx)
 	sq := sqlc.New(c.pool)
-	if _, err := sq.SaasGetCustomer(ctx, sqlc.SaasGetCustomerParams{TenantID: p.TenantID, AccountID: account.String()}); errors.Is(err, pgx.ErrNoRows) {
+	if _, found, err := c.qry.Customer(ctx, c.pool, p, account); err != nil {
+		return convert.Err(err, "customer")
+	} else if !found {
 		a, err := sq.SaasGetAccount(ctx, account)
 		if err != nil {
 			return convert.Err(err, "account")
@@ -257,8 +259,6 @@ func (c *Commands) Ensure(ctx context.Context, account uuid.UUID) error {
 		if _, err := c.plans.CreateCustomer(pctx, &plansv1.CreateCustomerRequest{ExternalId: account.String(), Name: a.Name, Email: email}); err != nil && status.Code(err) != codes.AlreadyExists {
 			return err
 		}
-	} else if err != nil {
-		return convert.Err(err, "customer")
 	}
 	st, err := c.qry.Standing(ctx, c.pool, p, account)
 	if err != nil {
@@ -399,16 +399,10 @@ func (c *Commands) endSubscription(pctx context.Context, st query.Standing) erro
 
 // requireFits refuses a move to a plan whose limits the account's usage does not fit.
 func (c *Commands) requireFits(ctx context.Context, p query.Platform, account uuid.UUID, target query.Plan) error {
-	sq := sqlc.New(c.pool)
-	rows, err := sq.SaasEntitlements(ctx, sqlc.SaasEntitlementsParams{TenantID: p.TenantID, PlanVersionID: target.VersionID})
+	limits, err := c.qry.PlanLimits(ctx, c.pool, p, target.VersionID)
 	if err != nil {
-		return convert.Err(err, "entitlement")
+		return err
 	}
-	es := make([]model.Entitlement, len(rows))
-	for i, r := range rows {
-		es[i] = model.Entitlement{Meter: r.MeterCode, Units: r.LimitUnits, Mode: r.Mode}
-	}
-	limits := model.FromEntitlements(es)
 	u, err := c.qry.Usage(ctx, c.pool, account)
 	if err != nil {
 		return err
@@ -494,7 +488,7 @@ func (c *Commands) SweepOnce(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	ids, err := sqlc.New(c.pool).SaasAccountsToEnsure(ctx, sqlc.SaasAccountsToEnsureParams{TenantID: p.TenantID, Batch: sweepBatch})
+	ids, err := c.qry.AccountsToEnsure(ctx, p, sweepBatch)
 	if err != nil {
 		return 0, convert.Err(err, "account")
 	}

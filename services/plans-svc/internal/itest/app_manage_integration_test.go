@@ -109,7 +109,7 @@ func testAppRenameAndDelete(t *testing.T) {
 		seed(t, e, live.GetId(), "shop")
 		count := func(table string) (n int) {
 			t.Helper()
-			if err := e.system.QueryRow(ctx, `SELECT count(*) FROM `+table+` WHERE tenant_id = $1::uuid`, live.GetId()).Scan(&n); err != nil {
+			if err := e.scan(ctx, live.GetId(), `SELECT count(*) FROM `+table+` WHERE tenant_id = $1::uuid`, []any{live.GetId()}, &n); err != nil {
 				t.Fatal(err)
 			}
 			return n

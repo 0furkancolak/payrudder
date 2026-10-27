@@ -8,14 +8,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -71,12 +74,20 @@ func (c *Commands) ReverseCommission(ctx context.Context, req *plansv1.ReverseAf
 }
 
 // Approver makes the commissions whose hold is over approved. It runs on the system pool across tenants, and doing it twice, or on two instances at once, does
-// no harm: the statement only moves pending to approved.
+// no harm: the statement only moves pending to approved. The tenants in the pooled database are one statement; each tenant placed in a cell (ADR 0018) is one
+// statement of its own, in its schema, naming the tenant.
 type Approver struct {
-	pool  *pgxpool.Pool
-	every time.Duration
-	now   func() time.Time
-	log   *slog.Logger
+	pool   *pgxpool.Pool
+	places *placement.Places
+	every  time.Duration
+	now    func() time.Time
+	log    *slog.Logger
+}
+
+// WithPlaces tells the job where the tenants' own rows are.
+func (a *Approver) WithPlaces(p *placement.Places) *Approver {
+	a.places = p
+	return a
 }
 
 // NewApprover returns the job; every is how often it looks (the holds are days long, so an hour is plenty).
@@ -92,7 +103,19 @@ func (a *Approver) WithClock(now func() time.Time) *Approver {
 
 // Once approves what is due now and says how many.
 func (a *Approver) Once(ctx context.Context) (int64, error) {
-	return sqlc.New(a.pool).SystemApproveDueCommissions(ctx, a.now())
+	now := a.now()
+	n, err := sqlc.New(a.pool).SystemApproveDueCommissions(ctx, now)
+	if err != nil {
+		return n, err
+	}
+	err = a.places.EachCell(ctx, func(ctx context.Context, t pgxx.PlacedTenant) error {
+		return a.places.CellTx(ctx, t, func(tx pgx.Tx) error {
+			c, err := sqlc.New(tx).SystemApproveDueCommissionsOfTenant(ctx, sqlc.SystemApproveDueCommissionsOfTenantParams{TenantID: t.TenantID, Now: now})
+			n += c
+			return err
+		})
+	})
+	return n, err
 }
 
 // Run looks now and then every interval until ctx ends.

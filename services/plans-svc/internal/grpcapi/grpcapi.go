@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	affiliatesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
@@ -41,6 +42,7 @@ import (
 	overridesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/overrides"
 	overridescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/overrides/command"
 	overridesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/overrides/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	plansapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans"
 	planscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/command"
 	plansqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/plans/query"
@@ -104,13 +106,15 @@ type Server struct {
 	*reportsHandler
 	*mailSettingsHandler
 
-	db  *store.DB
-	now func() time.Time
+	db       *store.DB
+	now      func() time.Time
+	resolver *affiliatescmd.Resolver
 }
 
-// newPlans returns a Server on the app pool.
-func newPlans(appPool *pgxpool.Pool) *Server {
-	db := store.New(appPool)
+// newPlans returns a Server on the app pool, or on its router when cells are on. resolver is where a code a seller gives an affiliate is checked against the
+// other tenants' (ADR 0018).
+func newPlans(appDB pgxx.Beginner, resolver *affiliatescmd.Resolver) *Server {
+	db := store.New(appDB)
 	now := time.Now
 
 	subscriptionsQ := subscriptionsqry.New(db, now)
@@ -130,6 +134,7 @@ func newPlans(appPool *pgxpool.Pool) *Server {
 		mailSettingsHandler:  mailsettingsapi.New(mailsettingscmd.New(db), mailsettingsqry.New(db)),
 		db:                   db,
 		now:                  now,
+		resolver:             resolver,
 	}
 }
 
@@ -147,16 +152,17 @@ func newMailIntegration(s *Server, box *secretbox.Box, allowPrivate bool) *maili
 
 // newAffiliates returns the affiliate program service on the same database as s.
 func newAffiliates(s *Server) *affiliatesapi.Handler {
-	return affiliatesapi.New(affiliatescmd.New(s.db, s.now), affiliatesqry.New(s.db))
+	return affiliatesapi.New(affiliatescmd.New(s.db, s.now).WithResolver(s.resolver), affiliatesqry.New(s.db))
 }
 
 // newAffiliatesPublic returns the public link service on the system pool: a visitor has no tenant.
-func newAffiliatesPublic(systemPool *pgxpool.Pool, log *slog.Logger) *affiliatesapi.PublicHandler {
-	return affiliatesapi.NewPublic(affiliatescmd.NewPublic(systemPool, time.Now, log))
+func newAffiliatesPublic(systemPool *pgxpool.Pool, resolver *affiliatescmd.Resolver, log *slog.Logger) *affiliatesapi.PublicHandler {
+	return affiliatesapi.NewPublic(affiliatescmd.NewPublic(systemPool, time.Now, log).WithResolver(resolver))
 }
 
 // newAffiliatePortal returns what a signed-in partner sees of their own affiliations: the person is found on the system pool, the figures are read through the tenant's
-// own queries on the same database as s.
-func newAffiliatePortal(s *Server, systemPool *pgxpool.Pool) *affiliatesportal.Handler {
-	return affiliatesportal.New(portalcmd.New(systemPool, s.now), portalqry.New(systemPool, affiliatesqry.New(s.db), s.now))
+// own queries on the same database as s, and a seller placed in a cell is asked where its rows are.
+func newAffiliatePortal(s *Server, places *placement.Places) *affiliatesportal.Handler {
+	systemPool := places.Pool()
+	return affiliatesportal.New(portalcmd.New(systemPool, s.now).WithPlaces(places), portalqry.New(systemPool, affiliatesqry.New(s.db), s.now).WithPlaces(places))
 }

@@ -62,6 +62,36 @@ func (q *Queries) PortalClaimAffiliates(ctx context.Context, arg PortalClaimAffi
 	return items, nil
 }
 
+const portalFindUnclaimed = `-- name: PortalFindUnclaimed :many
+SELECT id, tenant_id FROM affiliates WHERE user_id IS NULL AND lower(email) = lower($1::text)
+`
+
+type PortalFindUnclaimedRow struct {
+	ID       uuid.UUID
+	TenantID uuid.UUID
+}
+
+// The partner records a seller made for this address, not claimed by anyone yet (PortalClaimAffiliates takes them).
+func (q *Queries) PortalFindUnclaimed(ctx context.Context, email string) ([]PortalFindUnclaimedRow, error) {
+	rows, err := q.db.Query(ctx, portalFindUnclaimed, email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PortalFindUnclaimedRow{}
+	for rows.Next() {
+		var i PortalFindUnclaimedRow
+		if err := rows.Scan(&i.ID, &i.TenantID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const portalInsertAffiliate = `-- name: PortalInsertAffiliate :one
 INSERT INTO affiliates (tenant_id, code, email, name, user_id, status, payout_method, payout_details, source, approved_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'application', CASE WHEN $6::text = 'active' THEN now() END)
@@ -181,6 +211,82 @@ func (q *Queries) PortalListAffiliations(ctx context.Context, arg PortalListAffi
 	return items, nil
 }
 
+const portalListAffiliationsInTenant = `-- name: PortalListAffiliationsInTenant :many
+SELECT a.id, a.tenant_id, a.code, a.status, a.name, a.email, a.payout_method, a.payout_details, a.created_at,
+  COALESCE(p.status, '') AS program_status, COALESCE(p.commission_kind, '') AS commission_kind, COALESCE(p.commission_value, 0)::bigint AS commission_value,
+  COALESCE(p.currency, '')::text AS program_currency, COALESCE(p.commission_term, '') AS commission_term, COALESCE(p.commission_term_value, 0)::int AS commission_term_value,
+  COALESCE(p.attribution_window_days, 0)::int AS attribution_window_days, COALESCE(p.hold_days, 0)::int AS hold_days, COALESCE(p.min_payout_minor, 0)::bigint AS min_payout_minor
+FROM affiliates a
+LEFT JOIN affiliate_programs p ON p.tenant_id = a.tenant_id
+WHERE a.user_id = $1 AND ($2::uuid IS NULL OR a.id = $2)
+ORDER BY a.created_at DESC, a.id
+`
+
+type PortalListAffiliationsInTenantParams struct {
+	UserID      *uuid.UUID
+	AffiliateID *uuid.UUID
+}
+
+type PortalListAffiliationsInTenantRow struct {
+	ID                    uuid.UUID
+	TenantID              uuid.UUID
+	Code                  string
+	Status                string
+	Name                  string
+	Email                 string
+	PayoutMethod          string
+	PayoutDetails         string
+	CreatedAt             time.Time
+	ProgramStatus         string
+	CommissionKind        string
+	CommissionValue       int64
+	ProgramCurrency       string
+	CommissionTerm        string
+	CommissionTermValue   int32
+	AttributionWindowDays int32
+	HoldDays              int32
+	MinPayoutMinor        int64
+}
+
+func (q *Queries) PortalListAffiliationsInTenant(ctx context.Context, arg PortalListAffiliationsInTenantParams) ([]PortalListAffiliationsInTenantRow, error) {
+	rows, err := q.db.Query(ctx, portalListAffiliationsInTenant, arg.UserID, arg.AffiliateID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PortalListAffiliationsInTenantRow{}
+	for rows.Next() {
+		var i PortalListAffiliationsInTenantRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Code,
+			&i.Status,
+			&i.Name,
+			&i.Email,
+			&i.PayoutMethod,
+			&i.PayoutDetails,
+			&i.CreatedAt,
+			&i.ProgramStatus,
+			&i.CommissionKind,
+			&i.CommissionValue,
+			&i.ProgramCurrency,
+			&i.CommissionTerm,
+			&i.CommissionTermValue,
+			&i.AttributionWindowDays,
+			&i.HoldDays,
+			&i.MinPayoutMinor,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const portalProgram = `-- name: PortalProgram :one
 SELECT t.id AS tenant_id, t.environment, t.status AS tenant_status, COALESCE(ap.name, t.name) AS seller_name, p.status, p.commission_kind, p.commission_value, p.currency,
   p.commission_term, p.commission_term_value, p.attribution_window_days, p.hold_days, p.min_payout_minor, p.auto_approve,
@@ -236,6 +342,54 @@ func (q *Queries) PortalProgram(ctx context.Context, arg PortalProgramParams) (P
 	return i, err
 }
 
+const portalProgramInTenant = `-- name: PortalProgramInTenant :one
+SELECT p.tenant_id, p.status, p.commission_kind, p.commission_value, p.currency, p.commission_term, p.commission_term_value, p.attribution_window_days, p.hold_days,
+  p.min_payout_minor, p.auto_approve,
+  EXISTS (SELECT 1 FROM affiliates a WHERE a.tenant_id = p.tenant_id AND a.user_id = $1) AS applied
+FROM affiliate_programs p
+WHERE p.tenant_id = $2
+`
+
+type PortalProgramInTenantParams struct {
+	UserID   *uuid.UUID
+	TenantID uuid.UUID
+}
+
+type PortalProgramInTenantRow struct {
+	TenantID              uuid.UUID
+	Status                string
+	CommissionKind        string
+	CommissionValue       int64
+	Currency              *string
+	CommissionTerm        string
+	CommissionTermValue   *int32
+	AttributionWindowDays int32
+	HoldDays              int32
+	MinPayoutMinor        int64
+	AutoApprove           bool
+	Applied               bool
+}
+
+func (q *Queries) PortalProgramInTenant(ctx context.Context, arg PortalProgramInTenantParams) (PortalProgramInTenantRow, error) {
+	row := q.db.QueryRow(ctx, portalProgramInTenant, arg.UserID, arg.TenantID)
+	var i PortalProgramInTenantRow
+	err := row.Scan(
+		&i.TenantID,
+		&i.Status,
+		&i.CommissionKind,
+		&i.CommissionValue,
+		&i.Currency,
+		&i.CommissionTerm,
+		&i.CommissionTermValue,
+		&i.AttributionWindowDays,
+		&i.HoldDays,
+		&i.MinPayoutMinor,
+		&i.AutoApprove,
+		&i.Applied,
+	)
+	return i, err
+}
+
 const portalTenantAccount = `-- name: PortalTenantAccount :one
 SELECT account_id FROM tenants WHERE id = $1
 `
@@ -245,6 +399,34 @@ func (q *Queries) PortalTenantAccount(ctx context.Context, id uuid.UUID) (uuid.U
 	var account_id uuid.UUID
 	err := row.Scan(&account_id)
 	return account_id, err
+}
+
+const portalTenantInfo = `-- name: PortalTenantInfo :one
+
+SELECT t.id AS tenant_id, t.environment, t.status AS tenant_status, COALESCE(ap.name, t.name) AS seller_name
+FROM tenants t LEFT JOIN apps ap ON ap.id = t.app_id
+WHERE t.id = $1
+`
+
+type PortalTenantInfoRow struct {
+	TenantID     uuid.UUID
+	Environment  string
+	TenantStatus string
+	SellerName   string
+}
+
+// A tenant in a cell (ADR 0018) has its affiliates and program in its schema and nothing else the statements above join: the pooled side (the tenant's environment, status
+// and the seller's name) is PortalTenantInfo, the tenant's side the statements below, and the partner portal puts the two together.
+func (q *Queries) PortalTenantInfo(ctx context.Context, id uuid.UUID) (PortalTenantInfoRow, error) {
+	row := q.db.QueryRow(ctx, portalTenantInfo, id)
+	var i PortalTenantInfoRow
+	err := row.Scan(
+		&i.TenantID,
+		&i.Environment,
+		&i.TenantStatus,
+		&i.SellerName,
+	)
+	return i, err
 }
 
 const portalUpdateAffiliation = `-- name: PortalUpdateAffiliation :execrows

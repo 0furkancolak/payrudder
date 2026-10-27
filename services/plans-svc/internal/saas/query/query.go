@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/model"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
@@ -63,6 +64,8 @@ type Queries struct {
 	db        sqlc.DBTX
 	trialDays int
 	now       func() time.Time
+	// places says where the platform tenant's own rows (plans, customers, subscriptions, limits) are; nil, or with cells off, is the pool db.
+	places *placement.Places
 
 	mu       sync.RWMutex
 	platform *Platform
@@ -71,6 +74,21 @@ type Queries struct {
 // New returns the queries on the system pool (or a transaction of it, in a test). trialDays is the trial a first move to a paid plan gets.
 func New(db sqlc.DBTX, trialDays int, now func() time.Time) *Queries {
 	return &Queries{db: db, trialDays: trialDays, now: now}
+}
+
+// WithPlaces tells the queries where the platform tenant's rows are (ADR 0018): when the tenant is in a cell, what is about its plans and customers is read there, in
+// a transaction of its own, and the rest (accounts, members, keys) on db as before.
+func (q *Queries) WithPlaces(p *placement.Places) *Queries {
+	q.places = p
+	return q
+}
+
+// onPlatform runs fn on the connection that sees the platform tenant's rows: db itself when they are in the pooled database.
+func (q *Queries) onPlatform(ctx context.Context, db sqlc.DBTX, p Platform, fn func(db sqlc.DBTX) error) error {
+	if q.places == nil {
+		return fn(db)
+	}
+	return q.places.On(ctx, p.TenantID, db, fn)
 }
 
 // TrialDays is the trial of a first move to a paid plan.
@@ -138,6 +156,17 @@ func (s Standing) State(now time.Time) string {
 
 // versions are the latest versions of the platform tenant's plans by code.
 func (q *Queries) versions(ctx context.Context, db sqlc.DBTX, p Platform) (map[string]Plan, error) {
+	var out map[string]Plan
+	err := q.onPlatform(ctx, db, p, func(db sqlc.DBTX) error {
+		var err error
+		out, err = q.versionsOn(ctx, db, p)
+		return err
+	})
+	return out, err
+}
+
+// versionsOn is versions on the connection that sees the platform tenant's rows.
+func (q *Queries) versionsOn(ctx context.Context, db sqlc.DBTX, p Platform) (map[string]Plan, error) {
 	rows, err := sqlc.New(db).SaasLatestPlanVersions(ctx, p.TenantID)
 	if err != nil {
 		return nil, convert.Err(err, "plan")
@@ -155,10 +184,37 @@ func (q *Queries) Latest(ctx context.Context, db sqlc.DBTX, p Platform, code str
 	if err != nil {
 		return Plan{}, err
 	}
+	return latestOf(vs, code)
+}
+
+func latestOf(vs map[string]Plan, code string) (Plan, error) {
 	if pl, ok := vs[code]; ok {
 		return pl, nil
 	}
 	return Plan{}, errkey.Newf(codes.InvalidArgument, "plans.saas.unknown_plan", "there is no plan %q", code)
+}
+
+// PlanLimits are the limits of a version of a plan of the platform tenant.
+func (q *Queries) PlanLimits(ctx context.Context, db sqlc.DBTX, p Platform, versionID uuid.UUID) (limits model.Limits, err error) {
+	err = q.onPlatform(ctx, db, p, func(db sqlc.DBTX) error {
+		limits, err = q.planLimits(ctx, db, p, versionID)
+		return err
+	})
+	return limits, err
+}
+
+// Customer finds the organisation's customer record in the platform tenant; found is false when there is none yet.
+func (q *Queries) Customer(ctx context.Context, db sqlc.DBTX, p Platform, account uuid.UUID) (cust sqlc.SaasGetCustomerRow, found bool, err error) {
+	err = q.onPlatform(ctx, db, p, func(db sqlc.DBTX) error {
+		var err error
+		cust, err = sqlc.New(db).SaasGetCustomer(ctx, sqlc.SaasGetCustomerParams{TenantID: p.TenantID, AccountID: account.String()})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		found = err == nil
+		return err
+	})
+	return cust, found, err
 }
 
 func (q *Queries) planLimits(ctx context.Context, db sqlc.DBTX, p Platform, versionID uuid.UUID) (model.Limits, error) {
@@ -175,7 +231,17 @@ func (q *Queries) planLimits(ctx context.Context, db sqlc.DBTX, p Platform, vers
 
 // Standing reads where the organisation stands. db is the pool or a transaction (the guard reads inside the identity transaction that holds the account's
 // lock). An organisation with no subscription in force is on the latest Free.
-func (q *Queries) Standing(ctx context.Context, db sqlc.DBTX, p Platform, account uuid.UUID) (Standing, error) {
+func (q *Queries) Standing(ctx context.Context, db sqlc.DBTX, p Platform, account uuid.UUID) (st Standing, err error) {
+	err = q.onPlatform(ctx, db, p, func(db sqlc.DBTX) error {
+		var err error
+		st, err = q.standingOn(ctx, db, p, account)
+		return err
+	})
+	return st, err
+}
+
+// standingOn is Standing on the connection that sees the platform tenant's rows.
+func (q *Queries) standingOn(ctx context.Context, db sqlc.DBTX, p Platform, account uuid.UUID) (Standing, error) {
 	st := Standing{Platform: p, Account: account}
 	sq := sqlc.New(db)
 	row, err := sq.SaasCurrentSubscription(ctx, sqlc.SaasCurrentSubscriptionParams{TenantID: p.TenantID, AccountID: account.String()})
@@ -185,7 +251,11 @@ func (q *Queries) Standing(ctx context.Context, db sqlc.DBTX, p Platform, accoun
 		st.Sub = &Sub{ID: row.ID, CustomerID: row.CustomerID, State: string(state), TrialEnds: row.TrialEndsAt}
 		st.Plan = Plan{VersionID: row.PlanVersionID, Code: row.PlanCode, Name: row.PlanName, Version: row.PlanVersion, FeeMinor: row.BaseFeeMinor}
 	case errors.Is(err, pgx.ErrNoRows):
-		free, ferr := q.Latest(ctx, db, p, model.PlanFree)
+		vs, ferr := q.versionsOn(ctx, db, p)
+		if ferr != nil {
+			return st, ferr
+		}
+		free, ferr := latestOf(vs, model.PlanFree)
 		if ferr != nil {
 			// The operator deleted nothing (plans cannot be deleted) but the seed may not have run: no plan, no limits.
 			if errkey.Of(ferr) != "plans.saas.unknown_plan" {
@@ -269,6 +339,12 @@ func (q *Queries) Offers(ctx context.Context, db sqlc.DBTX, st Standing, hadTria
 	if err != nil {
 		return nil, err
 	}
+	limitsOf := make(map[uuid.UUID]model.Limits, len(vs))
+	for _, pl := range vs {
+		if limitsOf[pl.VersionID], err = q.PlanLimits(ctx, db, st.Platform, pl.VersionID); err != nil {
+			return nil, err
+		}
+	}
 	plans := make([]Plan, 0, len(vs))
 	for _, pl := range vs {
 		plans = append(plans, pl)
@@ -281,10 +357,7 @@ func (q *Queries) Offers(ctx context.Context, db sqlc.DBTX, st Standing, hadTria
 	})
 	out := make([]*plansv1.PlanOffer, 0, len(plans))
 	for _, pl := range plans {
-		limits, err := q.planLimits(ctx, db, st.Platform, pl.VersionID)
-		if err != nil {
-			return nil, err
-		}
+		limits := limitsOf[pl.VersionID]
 		trial := int32(0)
 		if pl.FeeMinor > 0 && !hadTrial {
 			trial = int32(q.trialDays) //nolint:gosec // a config value of a few days
@@ -295,10 +368,68 @@ func (q *Queries) Offers(ctx context.Context, db sqlc.DBTX, st Standing, hadTria
 }
 
 // HadTrial reports whether the organisation has had a trial already: a trial is given once.
-func (q *Queries) HadTrial(ctx context.Context, db sqlc.DBTX, p Platform, account uuid.UUID) (bool, error) {
-	had, err := sqlc.New(db).SaasHadTrial(ctx, sqlc.SaasHadTrialParams{TenantID: p.TenantID, AccountID: account.String()})
+func (q *Queries) HadTrial(ctx context.Context, db sqlc.DBTX, p Platform, account uuid.UUID) (had bool, err error) {
+	err = q.onPlatform(ctx, db, p, func(db sqlc.DBTX) error {
+		var err error
+		had, err = sqlc.New(db).SaasHadTrial(ctx, sqlc.SaasHadTrialParams{TenantID: p.TenantID, AccountID: account.String()})
+		return err
+	})
 	return had, convert.Err(err, "subscription")
 }
+
+// AccountsToEnsure lists up to batch accounts that are not customers of the platform tenant yet, or whose customer has no subscription in force, oldest first. With
+// the platform tenant in the pooled database it is one statement over both sides; with the tenant in a cell the accounts (pooled) and the customers (the tenant's
+// schema) are in two databases, so the accounts are read a page at a time and the tenant is asked which of them already have a subscription.
+func (q *Queries) AccountsToEnsure(ctx context.Context, p Platform, batch int32) ([]uuid.UUID, error) {
+	in, err := q.places.InCell(ctx, p.TenantID)
+	if err != nil {
+		return nil, err
+	}
+	sq := sqlc.New(q.db)
+	if !in {
+		return sq.SaasAccountsToEnsure(ctx, sqlc.SaasAccountsToEnsureParams{TenantID: p.TenantID, Batch: batch})
+	}
+	var out []uuid.UUID
+	afterAt, afterID := time.Unix(0, 0), uuid.Nil
+	for int32(len(out)) < batch { //nolint:gosec // a small batch
+		page, err := sq.SaasAccountsPage(ctx, sqlc.SaasAccountsPageParams{AfterAt: afterAt, AfterID: afterID, PageSize: accountsPage})
+		if err != nil {
+			return nil, err
+		}
+		if len(page) == 0 {
+			break
+		}
+		ids := make([]string, len(page))
+		for i, a := range page {
+			ids[i] = a.ID.String()
+		}
+		var have []string
+		if err := q.places.OnTenant(ctx, p.TenantID, q.db, func(tq *sqlc.Queries) (err error) {
+			have, err = tq.SaasCustomersInForce(ctx, sqlc.SaasCustomersInForceParams{TenantID: p.TenantID, ExternalIds: ids})
+			return err
+		}); err != nil {
+			return nil, err
+		}
+		set := make(map[string]bool, len(have))
+		for _, h := range have {
+			set[h] = true
+		}
+		for _, a := range page {
+			if !set[a.ID.String()] && int32(len(out)) < batch { //nolint:gosec // a small batch
+				out = append(out, a.ID)
+			}
+		}
+		last := page[len(page)-1]
+		afterAt, afterID = last.CreatedAt, last.ID
+		if len(page) < accountsPage {
+			break
+		}
+	}
+	return out, nil
+}
+
+// accountsPage is how many accounts AccountsToEnsure reads at a time when it has to ask the platform tenant about them.
+const accountsPage = 200
 
 // View is the plan page of an account: the plan, the quotas against the usage of the database-counted resources, the plans on offer. The events used and
 // the permission to change the plan are filled by the caller (limits-svc counts events; the handler knows the role).

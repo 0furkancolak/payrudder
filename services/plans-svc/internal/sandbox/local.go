@@ -5,9 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -20,11 +19,12 @@ var (
 		"affiliate_programs", "affiliates", "coupons", "promotion_codes", "webhook_endpoints", "tenant_mail_settings", "tenant_mail_integrations", "api_keys", "sandbox_resets"}
 )
 
-// Local is plans-svc's own part of a reset, on the system pool: each statement names the tenant.
-type Local struct{ pool *pgxpool.Pool }
+// Local is plans-svc's own part of a reset, on the system role: each statement names the tenant, and runs where the tenant's rows are (in its schema when it is in a
+// cell, ADR 0018).
+type Local struct{ places *placement.Places }
 
 // NewLocal returns plans-svc's step.
-func NewLocal(systemPool *pgxpool.Pool) *Local { return &Local{pool: systemPool} }
+func NewLocal(places *placement.Places) *Local { return &Local{places: places} }
 
 // Step is the step "plans". It goes first: with its customers and subscriptions gone nothing can bill the tenant while the other services are emptied.
 func (l *Local) Step() Step { return Step{Name: "plans", Run: l.Reset} }
@@ -32,7 +32,7 @@ func (l *Local) Step() Step { return Step{Name: "plans", Run: l.Reset} }
 // Reset deletes the tenant's customers, subscriptions and history in one transaction and zeroes the redemption counters of its coupons.
 func (l *Local) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]int64, error) {
 	out := map[string]int64{}
-	err := pgxx.InTx(ctx, l.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := l.places.Tx(ctx, tenantID, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		for _, s := range []struct {
 			table string

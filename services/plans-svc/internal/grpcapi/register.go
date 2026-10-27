@@ -8,7 +8,9 @@ import (
 	"google.golang.org/grpc"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/directory"
 	directorycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/directory/command"
@@ -21,6 +23,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/onboarding"
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/saas"
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
@@ -31,8 +34,10 @@ import (
 // Deps is what the gRPC services of plans-svc are built from. The service and its integration tests both call Register with it, so what a test
 // serves is what production serves.
 type Deps struct {
-	AppPool     *pgxpool.Pool // role plans_app: every statement of a tenant's request is scoped by RLS
-	SystemPool  *pgxpool.Pool // role plans_system: the operator, identity and partner modules
+	AppDB      pgxx.Beginner // role plans_app: every statement of a tenant's request is scoped by RLS. The app pool, or with cells on its router (placement.AppDB)
+	SystemPool *pgxpool.Pool // role plans_system: the operator, identity and partner modules
+	// Places says where a tenant's own rows are for the system role (ADR 0018). Nil is cells off: plans-svc then builds the pooled one over SystemPool.
+	Places      *placement.Places
 	Log         *slog.Logger
 	Evict       apikeyscmd.Evictor // drops a revoked key from the gateway cache; nil leaves it to the cache TTL
 	AllowedEnvs []string           // PAYRUDDER_ALLOWED_ENVIRONMENTS
@@ -53,25 +58,29 @@ type Deps struct {
 // Register serves every gRPC service of plans-svc on srv and returns the SaaS commands (the platform tenant's bootstrap and the sweep that makes every
 // account a customer of it), which the service runs when SaaS is on.
 func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
-	plansSrv := newPlans(d.AppPool)
+	if d.Places == nil {
+		d.Places = placement.NewPlaces(d.SystemPool, nil)
+	}
+	resolver := affiliatescmd.NewResolver(d.Places)
+	plansSrv := newPlans(d.AppDB, resolver)
 	plansv1.RegisterPlansServiceServer(srv, plansSrv)
 	plansv1.RegisterWebhookServiceServer(srv, newWebhooks(plansSrv, d.Box, d.WebhookAllowPrivate))
 	plansv1.RegisterMailIntegrationServiceServer(srv, newMailIntegration(plansSrv, d.Box, d.WebhookAllowPrivate))
 	plansv1.RegisterAffiliateServiceServer(srv, newAffiliates(plansSrv))
-	plansv1.RegisterAffiliatePublicServiceServer(srv, newAffiliatesPublic(d.SystemPool, d.Log))
-	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.SystemPool))
+	plansv1.RegisterAffiliatePublicServiceServer(srv, newAffiliatesPublic(d.SystemPool, resolver, d.Log))
+	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.Places))
 	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.Log)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
-	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now)
+	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now).WithPlaces(d.Places)
 	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log)
 	plansv1.RegisterSaasServiceServer(srv, saas.New(saasC, saasQ, d.SystemPool))
 	cmd := identitycmd.New(d.SystemPool, admin.accounts, admin.keys, d.Mail, d.AppURL, d.Log).WithPepper(d.OTPPepper)
 	if saasC.Enabled() {
 		cmd.WithGuard(saasC) // an interface holding a nil pointer is not nil: the guard is only set when the mode is on
 	}
-	goLive := golive.New(golivecmd.New(d.SystemPool, d.Log), goliveqry.New(d.SystemPool))
+	goLive := golive.New(golivecmd.New(d.Places, d.Log), goliveqry.New(d.Places))
 	plansv1.RegisterIdentityServiceServer(srv, identity.New(cmd, identityqry.New(d.SystemPool), goLive,
-		promote.Wire(d.AppPool, d.SystemPool, d.Box, d.WebhookAllowPrivate, d.Log), d.Sandbox, onboarding.New(d.SystemPool)))
+		promote.Wire(d.AppDB, d.SystemPool, d.Box, d.WebhookAllowPrivate, d.Log), d.Sandbox, onboarding.New(d.SystemPool)))
 	return saasC
 }

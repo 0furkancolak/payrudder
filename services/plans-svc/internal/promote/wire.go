@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	couponscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/command"
 	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
@@ -23,10 +24,10 @@ import (
 	hooksqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhookendpoints/query"
 )
 
-// Wire builds the handler on the app pool (the modules, each as the tenant it is asked about) and the system pool (membership, the audit row). box and
+// Wire builds the handler on the app pool or its router (the modules, each as the tenant it is asked about) and the system pool (membership, the audit row). box and
 // allowPrivate are the webhook module's: without a box, webhook endpoints cannot be made and the promotion reports that on their changes.
-func Wire(appPool, systemPool *pgxpool.Pool, box *secretbox.Box, allowPrivate bool, log *slog.Logger) *Handler {
-	db := store.New(appPool)
+func Wire(appDB pgxx.Beginner, systemPool *pgxpool.Pool, box *secretbox.Box, allowPrivate bool, log *slog.Logger) *Handler {
+	db := store.New(appDB)
 	m := command.Modules{
 		MetersQ: metersqry.New(db), MetersC: meterscmd.New(db),
 		PlansQ: plansqry.New(db), PlansC: planscmd.New(db),

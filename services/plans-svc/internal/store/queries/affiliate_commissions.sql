@@ -53,6 +53,11 @@ FROM affiliate_commissions p WHERE p.tenant_id = app_tenant_id() AND p.id = @par
 UPDATE affiliate_commissions SET status = 'approved', approved_at = @now::timestamptz
 WHERE status = 'pending' AND kind = 'commission' AND approve_after <= @now::timestamptz;
 
+-- name: SystemApproveDueCommissionsOfTenant :execrows
+-- system. The same for one tenant, in its own schema when it is placed in a cell (ADR 0018): the schema is where the tenant is, the predicate says so as well.
+UPDATE affiliate_commissions SET status = 'approved', approved_at = @now::timestamptz
+WHERE tenant_id = @tenant_id AND status = 'pending' AND kind = 'commission' AND approve_after <= @now::timestamptz;
+
 -- name: ListAffiliateCommissions :many
 SELECT c.id, c.affiliate_id, a.code AS affiliate_code, cu.external_id AS customer_external_id, cu.email AS customer_email, c.kind, c.invoice_id, c.invoice_number, c.currency, c.invoice_total_minor,
   c.net_minor, c.amount_minor, c.reversed_minor, c.status, c.parent_id, c.earned_at, c.approve_after, c.approved_at, c.paid_at, c.payout_id, count(*) OVER()::bigint AS _count

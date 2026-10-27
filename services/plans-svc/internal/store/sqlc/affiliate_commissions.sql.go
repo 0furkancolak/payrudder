@@ -468,6 +468,25 @@ func (q *Queries) SystemApproveDueCommissions(ctx context.Context, now time.Time
 	return result.RowsAffected(), nil
 }
 
+const systemApproveDueCommissionsOfTenant = `-- name: SystemApproveDueCommissionsOfTenant :execrows
+UPDATE affiliate_commissions SET status = 'approved', approved_at = $1::timestamptz
+WHERE tenant_id = $2 AND status = 'pending' AND kind = 'commission' AND approve_after <= $1::timestamptz
+`
+
+type SystemApproveDueCommissionsOfTenantParams struct {
+	Now      time.Time
+	TenantID uuid.UUID
+}
+
+// system. The same for one tenant, in its own schema when it is placed in a cell (ADR 0018): the schema is where the tenant is, the predicate says so as well.
+func (q *Queries) SystemApproveDueCommissionsOfTenant(ctx context.Context, arg SystemApproveDueCommissionsOfTenantParams) (int64, error) {
+	result, err := q.db.Exec(ctx, systemApproveDueCommissionsOfTenant, arg.Now, arg.TenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const takeBackFromUnpaidCommission = `-- name: TakeBackFromUnpaidCommission :exec
 UPDATE affiliate_commissions SET reversed_minor = reversed_minor + $1::bigint,
   status = CASE WHEN reversed_minor + $1::bigint >= amount_minor THEN 'reversed' ELSE status END

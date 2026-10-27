@@ -59,7 +59,8 @@ func testTrialReminders(t *testing.T) {
 	count := func(query string, args ...any) int {
 		t.Helper()
 		var n int
-		if err := e.system.QueryRow(ctx, query, args...).Scan(&n); err != nil {
+		// The first argument of every query here is the tenant: its rows are where the tenant is.
+		if err := e.scan(ctx, args[0].(uuid.UUID).String(), query, args, &n); err != nil {
 			t.Fatal(err)
 		}
 		return n
@@ -75,7 +76,7 @@ func testTrialReminders(t *testing.T) {
 	}
 	var clock atomic.Int64
 	at := func(d time.Duration) { clock.Store(time.Now().Add(d).UnixNano()) }
-	job := trialcmd.New(e.system, e.app, trialcmd.Config{Days: 3}, slog.New(slog.NewTextHandler(io.Discard, nil))).
+	job := trialcmd.New(e.system, e.appDB, trialcmd.Config{Days: 3}, slog.New(slog.NewTextHandler(io.Discard, nil))).WithPlaces(e.places).
 		WithClock(func() time.Time { return time.Unix(0, clock.Load()) })
 	// The job reads across tenants, so it also reminds the trials of the other tests that share this database: what a test asserts is its own tenants' rows.
 	once := func() {
@@ -110,7 +111,7 @@ func testTrialReminders(t *testing.T) {
 			t.Fatalf("other tenant: events %d (no endpoint), facts %d, notices %d", events(oid), facts(oid), notices(oid))
 		}
 		var payload []byte
-		if err := e.system.QueryRow(ctx, `SELECT payload FROM outbox WHERE tenant_id = $1 AND topic = $2`, tid, trialmodel.Topic).Scan(&payload); err != nil {
+		if err := e.scan(ctx, tid.String(), `SELECT payload FROM outbox WHERE tenant_id = $1 AND topic = $2`, []any{tid, trialmodel.Topic}, &payload); err != nil {
 			t.Fatal(err)
 		}
 		var fact eventsv1.TrialWillEnd
@@ -122,7 +123,7 @@ func testTrialReminders(t *testing.T) {
 			t.Fatalf("fact = %v", &fact)
 		}
 		var data string
-		if err := e.system.QueryRow(ctx, `SELECT data::text FROM webhook_events WHERE tenant_id = $1 AND type = $2`, tid, webhooksmodel.SubscriptionTrialWillEnd).Scan(&data); err != nil {
+		if err := e.scan(ctx, tid.String(), `SELECT data::text FROM webhook_events WHERE tenant_id = $1 AND type = $2`, []any{tid, webhooksmodel.SubscriptionTrialWillEnd}, &data); err != nil {
 			t.Fatal(err)
 		}
 		if !strings.Contains(data, sub.GetId()) || !strings.Contains(data, `"SUBSCRIPTION_STATE_TRIALING"`) {
@@ -158,7 +159,7 @@ func testTrialReminders(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				other := trialcmd.New(e.system, e.app, trialcmd.Config{Days: 3}, slog.New(slog.NewTextHandler(io.Discard, nil))).WithClock(func() time.Time { return time.Unix(0, clock.Load()) })
+				other := trialcmd.New(e.system, e.appDB, trialcmd.Config{Days: 3}, slog.New(slog.NewTextHandler(io.Discard, nil))).WithPlaces(e.places).WithClock(func() time.Time { return time.Unix(0, clock.Load()) })
 				if _, _, err := other.Once(ctx); err != nil {
 					t.Error(err)
 				}
@@ -174,7 +175,7 @@ func testTrialReminders(t *testing.T) {
 	t.Run("an extended trial is reminded again, a plan change that keeps the end is not", func(t *testing.T) {
 		before := events(tid)
 		extra := 5 * day
-		if err := pgxx.InTenantTx(ctx, e.app, tid, func(tx pgx.Tx) error {
+		if err := pgxx.InTenantTx(ctx, e.appDB, tid, func(tx pgx.Tx) error {
 			_, err := tx.Exec(ctx, `UPDATE subscriptions SET trial_ends_at = trial_ends_at + $2::interval WHERE id = $1`, sub.GetId(), extra.String())
 			return err
 		}); err != nil {
@@ -195,7 +196,7 @@ func testTrialReminders(t *testing.T) {
 			t.Fatalf("a repeat pass reminded again: %d events", events(tid))
 		}
 		// Another subscription row of the same customer with the same trial end (what a plan change makes) shares the notice.
-		if err := pgxx.InTenantTx(ctx, e.app, tid, func(tx pgx.Tx) error {
+		if err := pgxx.InTenantTx(ctx, e.appDB, tid, func(tx pgx.Tx) error {
 			_, err := tx.Exec(ctx, `UPDATE subscriptions SET active = tstzrange(lower(active), now() + interval '1 second', '[)'), state = 'cancelled' WHERE id = $1`, sub.GetId())
 			if err != nil {
 				return err
@@ -217,7 +218,7 @@ func testTrialReminders(t *testing.T) {
 		mk := func(name string, set string) {
 			t.Helper()
 			s := subscribe(tctx, name, 10)
-			if err := pgxx.InTenantTx(ctx, e.app, tid, func(tx pgx.Tx) error {
+			if err := pgxx.InTenantTx(ctx, e.appDB, tid, func(tx pgx.Tx) error {
 				_, err := tx.Exec(ctx, `UPDATE subscriptions SET `+set+` WHERE id = $1`, s.GetId())
 				return err
 			}); err != nil {
@@ -237,7 +238,7 @@ func testTrialReminders(t *testing.T) {
 	})
 
 	t.Run("the notice is tenant data: another tenant cannot see it", func(t *testing.T) {
-		err := pgxx.InTenantTx(ctx, e.app, oid, func(tx pgx.Tx) error {
+		err := pgxx.InTenantTx(ctx, e.appDB, oid, func(tx pgx.Tx) error {
 			var n int
 			if err := tx.QueryRow(ctx, `SELECT count(*) FROM subscription_trial_notices WHERE tenant_id = $1`, tid).Scan(&n); err != nil {
 				return err

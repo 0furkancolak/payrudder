@@ -20,6 +20,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
@@ -40,6 +41,9 @@ func Err(err error, what string) error {
 		return status.Error(codes.Canceled, "request cancelled")
 	case errors.Is(err, context.DeadlineExceeded):
 		return status.Error(codes.DeadlineExceeded, "deadline exceeded")
+	case errors.Is(err, tenantdir.ErrNotServing):
+		// A move of the tenant's data is in progress (ADR 0018): brief, and nothing was done, so retrying is safe.
+		return status.Error(codes.Unavailable, "the tenant is being moved; nothing was changed, retry is safe")
 	}
 	switch pgxx.ErrCode(err) {
 	case pgxx.CodeUniqueViolation:

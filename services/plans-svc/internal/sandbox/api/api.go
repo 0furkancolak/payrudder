@@ -7,9 +7,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/query"
@@ -23,9 +22,10 @@ type Handler struct {
 
 // Wire builds the handler and the runner. remotes are the steps after plans-svc's own, in the order they run; cooldown is the least time between two manual resets of a
 // sandbox; set holds the runner's timings and the retention.
-func Wire(systemPool *pgxpool.Pool, remotes []sandbox.Step, cooldown time.Duration, set sandbox.Settings, log *slog.Logger) (*Handler, *sandbox.Runner) {
-	steps := append([]sandbox.Step{sandbox.NewLocal(systemPool).Step()}, remotes...)
-	return &Handler{cmd: command.New(systemPool, sandbox.Names(steps), cooldown, log), qry: query.New(systemPool)}, sandbox.NewRunner(systemPool, steps, set, log)
+func Wire(places *placement.Places, remotes []sandbox.Step, cooldown time.Duration, set sandbox.Settings, log *slog.Logger) (*Handler, *sandbox.Runner) {
+	systemPool := places.Pool()
+	steps := append([]sandbox.Step{sandbox.NewLocal(places).Step()}, remotes...)
+	return &Handler{cmd: command.New(systemPool, sandbox.Names(steps), cooldown, log), qry: query.New(systemPool)}, sandbox.NewRunner(systemPool, steps, set, log).WithPlaces(places)
 }
 
 func (h *Handler) ResetMySandbox(ctx context.Context, req *plansv1.ResetMySandboxRequest) (*plansv1.ResetMySandboxResponse, error) {

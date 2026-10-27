@@ -2062,9 +2062,10 @@ func (q *Queries) MoveSubscriptionCoupon(ctx context.Context, arg MoveSubscripti
 }
 
 const notifyOutbox = `-- name: NotifyOutbox :exec
-SELECT pg_notify('outbox_new', '')
+SELECT pg_notify('outbox_new', COALESCE(app_tenant_id()::text, ''))
 `
 
+// The payload is the tenant: a relay that serves cells (ADR 0018) visits the schema it names; the pooled relay only wakes.
 func (q *Queries) NotifyOutbox(ctx context.Context) error {
 	_, err := q.db.Exec(ctx, notifyOutbox)
 	return err

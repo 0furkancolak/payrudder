@@ -128,9 +128,12 @@ func (h *Handler) ResolveIngestPolicy(ctx context.Context, req *plansv1.ResolveI
 	if err != nil {
 		return nil, err
 	}
-	cust, err := sqlc.New(h.pool).SaasGetCustomer(ctx, sqlc.SaasGetCustomerParams{TenantID: p.TenantID, AccountID: row.AccountID.String()})
+	cust, found, err := h.qry.Customer(ctx, h.pool, p, row.AccountID)
 	if err != nil {
 		return nil, convert.Err(err, "customer")
+	}
+	if !found {
+		return nil, convert.Err(pgx.ErrNoRows, "customer")
 	}
 	return &plansv1.ResolveIngestPolicyResponse{Metered: true, AccountId: row.AccountID.String(), Platform: p.Proto(), CustomerId: cust.ID.String(),
 		CustomerExternalId: cust.ExternalID, MeterCode: MeterCode}, nil
