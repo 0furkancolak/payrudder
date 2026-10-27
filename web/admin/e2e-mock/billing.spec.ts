@@ -450,6 +450,8 @@ test.describe("subscriptions", () => {
     await panel.getByRole("button", { name: "Apply change" }).click();
     await expect.poll(() => gw.called("POST", "/v1/subscriptions/s1/change").length).toBe(1);
     expect(gw.called("POST", "/v1/subscriptions/s1/change")[0]?.body).toEqual({ quantity: 8 });
+    // The panel clears itself once the change has gone through (the quote disappears): only then is it ready for the next one.
+    await expect(result).toHaveCount(0);
     // The seats can be changed along with the package; both are sent.
     await panel.getByTestId("change-seats").fill("9");
     await panel.getByLabel("New package").selectOption("pro");
