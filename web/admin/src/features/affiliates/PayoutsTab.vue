@@ -21,6 +21,7 @@ import { payoutTone, type Payout } from "./logic";
 import MarkPaidDialog from "./MarkPaidDialog.vue";
 import { DataPagination } from "@/shared/ui/data-table";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { usePager } from "./paging";
 
 const props = defineProps<{ tenantId: string; focus?: string }>();
@@ -50,9 +51,11 @@ function pay(p: Payout) {
 // The payout whose commissions are shown in the sheet (the payout another tab sent the reader to, or the one they opened).
 const items = computed(() => list.data.value?.items ?? []);
 /** The sheet steps through the loaded page and, at its ends, loads the page beyond. */
-const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") });
+const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") }, { kind: "payout", id: (p) => p.id ?? "", ready: () => list.isSuccess.value, rewind: pager.reset });
 const index = detail.index;
 const current = detail.row;
+// Marking a payout paid is in the address too, found among the payouts on screen.
+useSheetTarget("pay-payout", payOpen, paying, { id: (p) => p.id ?? "", find: (id) => items.value.find((p) => p.id === id) });
 let focused = false;
 watch(
   items,

@@ -32,9 +32,8 @@ These need an account or an environment the repository does not have. Each is a 
 ## Known gaps in the console
 
 - Quota windows: hour, day, ISO week and billing month only; yearly and lifetime windows and unique/last aggregations are not built. Short windows are not checked against the aggregator.
-- Edit/void and other context-bound sheets stack but do not come back from the address; only invoices open "peeked" over other sheets.
-- Token-paged lists (`useEdgeDetail`) do not restore their sheet from the address.
-- The credits page is a stack of titled cards, and the sandbox provider connection has no backend.
+- The sandbox provider connection has no backend.
+- A dialog opened from a row of a token-paged list (reverse a commission, mark a payout paid, a partner's forms) comes back from the address only when its row is on the first page after a reload; the sheet of the row itself is looked for on later pages. A sheet that holds typed values or a one-time secret (the new key's plaintext, a scanned receipt) comes back empty.
 - Credit for quantity changes and tax calculation are not built.
 - The first-run wizard's progress and the tours that were seen are kept per person in the browser, not on the server, so a second browser starts them again (the wizard only for somebody who still has no app).
 

@@ -22,6 +22,7 @@ import LinkDialog from "./LinkDialog.vue";
 import { affiliateTone, balancesByAffiliate, type Affiliate } from "./logic";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { usePager } from "./paging";
 import ReferralsDialog from "./ReferralsDialog.vue";
 
@@ -65,9 +66,12 @@ const statusOptions = computed(() => [
 ]);
 const items = computed(() => list.data.value?.items ?? []);
 /** The sheet steps through the loaded page and, at its ends, loads the page beyond. */
-const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") });
+const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") }, { kind: "partner", id: (a) => a.id ?? "", ready: () => list.isSuccess.value, rewind: pager.reset });
 const index = detail.index;
 const current = detail.row;
+// The dialogs of a partner are in the address too, found among the partners on screen.
+const partnerOf = (id: string) => items.value.find((a) => a.id === id);
+for (const [kind, isOpen] of [["edit-affiliate", editOpen], ["affiliate-link", linkOpen], ["affiliate-referrals", referralsOpen]] as const) useSheetTarget(kind, isOpen, selected, { id: (a) => a.id ?? "", find: partnerOf });
 /** The status change that fits the partner's status: approve a waiting one, suspend an active one, reinstate a suspended one. */
 const statusStep = (a: Affiliate) => (a.status === "pending" ? { key: "approve", to: "active" as const } : a.status === "active" ? { key: "suspend", to: "suspended" as const } : { key: "reinstate", to: "active" as const });
 const actionsOf = (a: Affiliate, i: number) => [

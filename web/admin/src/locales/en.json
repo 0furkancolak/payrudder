@@ -1116,7 +1116,8 @@
         "title": "A customer's credits",
         "pick": "Choose a customer",
         "balance": "credits available",
-        "nextExpiry": "Some expire {when}"
+        "nextExpiry": "Some expire {when}",
+        "empty": "Choose a customer to see their balance, the credits they hold and what happened to them."
       },
       "lots": {
         "source": "Source",
@@ -1188,6 +1189,13 @@
         "threshold": "Alert below (credits)",
         "save": "Save",
         "saved": "Saved."
+      },
+      "tabs": {
+        "lots": "Grants"
+      },
+      "sell": {
+        "title": "Sell credits",
+        "hint": "Credit packs your customers buy with a payment link, and the alert for a low balance."
       }
     },
     "accounting": {

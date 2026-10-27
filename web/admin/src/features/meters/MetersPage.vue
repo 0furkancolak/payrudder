@@ -6,6 +6,7 @@ import { CopyPlus, ArrowUpRight, Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { useCanWrite } from "@/shared/lib/access";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -74,6 +75,12 @@ function start(m?: Meter) {
   open.value = true;
 }
 watch(open, (v) => !v && (versionOf.value = ""));
+// The form of a new version is in the address with the code of its meter (a new meter has the name `new-meter`); a reload fills it again from the meter.
+const versioning = computed<Meter | null>({
+  get: () => list.value.find((m) => m.code === versionOf.value) ?? null,
+  set: (m) => (versionOf.value = m?.code ?? ""),
+});
+useSheetTarget("meter-version", open, versioning, { id: (m) => m.code ?? "", find: (code) => list.value.find((m) => m.code === code), restore: start });
 
 function submit() {
   formError.value = "";
@@ -103,7 +110,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-if="canWrite" v-model:open="open">
+  <Sheet v-if="canWrite" v-model:open="open" :name="versionOf ? undefined : 'new-meter'">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ versionOf ? t("billing.meters.newVersionOf", { code: versionOf }) : t("billing.meters.new") }}</SheetTitle>

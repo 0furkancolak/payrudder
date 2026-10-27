@@ -11,6 +11,7 @@ import { useFormat } from "@/shared/lib/format";
 import { formatMinor, maskEmail } from "@/shared/lib/money";
 import { tenantBase } from "@/shared/lib/session";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -137,6 +138,19 @@ const quotasOpen = computed({
     if (!v) quotasOf.value = "";
   },
 });
+// The forms of a customer are in the address too: a reload or a shared link opens the one it names once the customers are loaded.
+const customerOf = (id: string) => list.value.find((c) => c.external_id === id);
+const openOf = (target: typeof editingAddress) =>
+  computed({
+    get: () => target.value !== null,
+    set: (v) => {
+      if (!v) target.value = null;
+    },
+  });
+useSheetTarget("customer-address", openOf(editingAddress), editingAddress, { id: (c) => c.external_id ?? "", find: customerOf });
+useSheetTarget("customer-tax", openOf(editingTax), editingTax, { id: (c) => c.external_id ?? "", find: customerOf });
+const quotaTarget = computed({ get: () => (quotasOf.value === "" ? null : quotasOf.value), set: (v) => (quotasOf.value = v ?? "") });
+useSheetTarget("customer-quotas", quotasOpen, quotaTarget, { id: (c) => c, find: (id) => (customerOf(id) ? id : undefined) });
 function actionsOf(c: Customer, i: number): RowAction[] {
   return [
     { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => open(i) },
