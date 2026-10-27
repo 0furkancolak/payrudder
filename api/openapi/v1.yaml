@@ -152,7 +152,7 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: kind, in: path, required: true, schema: { type: string, enum: [xml, pdf] } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EInvoiceFileLink" } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SignedUrl" } } } }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
 
@@ -375,7 +375,8 @@ paths:
       summary: End a subscription (now, or at end_time)
       description: >
         With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in
-        advance that Payrudder runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
+        advance that Payrudder runs, ended now, without a coupon). The response is always {subscription, credited_minor}; credited_minor is "0" when
+        nothing was credited.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: end_time, in: query, schema: { type: string, format: date-time } }
@@ -1761,7 +1762,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/GetInvoicePdfResponse" }
+              schema: { $ref: "#/components/schemas/SignedUrl" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /v1/payments:
@@ -1951,7 +1952,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/DownloadAssetResponse" }
+              schema: { $ref: "#/components/schemas/SignedUrl" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /v1/analytics/usage:
@@ -3400,7 +3401,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AdminGetInvoicePdfResponse" }
+              schema: { $ref: "#/components/schemas/SignedUrl" }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/saga:
     get:
@@ -3498,7 +3499,7 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: kind, in: path, required: true, schema: { type: string, enum: [xml, pdf] } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EInvoiceFileLink" } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SignedUrl" } } } }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/e-invoices/{id}/retry:
@@ -5267,12 +5268,11 @@ components:
         quantity: { type: integer, minimum: 1, maximum: 100000, description: "Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance" }
         fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS], description: "Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee." }
     CancelSubscriptionResponse:
-      oneOf:
-        - $ref: "#/components/schemas/Subscription"
-        - type: object
-          properties:
-            subscription: { $ref: "#/components/schemas/Subscription" }
-            credited_minor: { type: string, description: "Minor units of the subscription's currency" }
+      type: object
+      required: [subscription, credited_minor]
+      properties:
+        subscription: { $ref: "#/components/schemas/Subscription" }
+        credited_minor: { type: string, format: int64, description: "Minor units of the subscription's currency credited to the customer; \"0\" unless credit_unused credited something" }
     ChangePlanRequest:
       type: object
       required: [plan_code]
@@ -5645,12 +5645,6 @@ components:
       properties:
         invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
         payments: { type: array, items: { $ref: "#/components/schemas/CustomerPayment" } }
-    GetInvoicePdfResponse:
-      type: object
-      required: [url, expires_at]
-      properties:
-        url: { type: string, format: uri }
-        expires_at: { type: string, format: date-time }
     ListPaymentsResponse:
       type: object
       required: [payments, truncated]
@@ -5729,12 +5723,6 @@ components:
       required: [invoice_logo_asset_id]
       properties:
         invoice_logo_asset_id: { type: string }
-    DownloadAssetResponse:
-      type: object
-      required: [url, expires_at]
-      properties:
-        url: { type: string, format: uri }
-        expires_at: { type: string, format: date-time }
     GetAnalyticsUsageResponse:
       type: object
       required: [precision, quantity_scale, points]
@@ -6249,12 +6237,6 @@ components:
       properties:
         invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
         next_page_token: { type: string }
-    AdminGetInvoicePdfResponse:
-      type: object
-      required: [url, expires_at]
-      properties:
-        url: { type: string }
-        expires_at: { type: string, format: date-time }
     AdminGetInvoiceSagaResponse:
       type: object
       required: [saga, events]
@@ -6591,6 +6573,13 @@ components:
       required: [tenant_id]
       properties:
         tenant_id: { type: string, format: uuid }
+    SignedUrl:
+      type: object
+      description: "A time-limited link to a stored file (invoice PDF, uploaded asset, e-invoice document). GET it without credentials until expires_at."
+      required: [url, expires_at]
+      properties:
+        url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time, description: "RFC 3339, UTC" }
     Error:
       type: object
       required: [error]
@@ -7172,12 +7161,6 @@ components:
         documents: { type: array, items: { $ref: "#/components/schemas/EInvoiceDocument" } }
         next_page_token: { type: string }
         total: { type: string, format: int64 }
-    EInvoiceFileLink:
-      type: object
-      required: [url, expires_at]
-      properties:
-        url: { type: string }
-        expires_at: { type: string, format: date-time }
     EInvoiceAccount:
       type: object
       required: [environment, provider, mode, has_credentials, updated_at]
