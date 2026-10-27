@@ -18,6 +18,9 @@ import (
 var sqlAssembled = map[string]string{
 	"services/analytics-svc/internal/usage/query/builder.go": "ClickHouse: sqlc does not support it",
 	"pkg/testkit/servicedb.go":                               "DDL for throw-away test databases",
+	"pkg/pgxx/move.go":                                       "a tenant move copies whichever tables the tenant schema has: schema, table and column names are identifiers, which cannot be parameters",
+	"pkg/pgxx/move_sql.go":                                   "a tenant move copies whichever tables the tenant schema has: schema, table and column names are identifiers, which cannot be parameters",
+	"pkg/pgxx/tenantschema.go":                               "the migration bookkeeping of a tenant schema: the schema name is an identifier, which cannot be a parameter",
 }
 
 var sqlShape = regexp.MustCompile(`(?is)\b(select\b.+\bfrom\b|insert\s+into\b|update\s+\w+\s+set\b|delete\s+from\b)`)
