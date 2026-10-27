@@ -71,6 +71,15 @@ async function signUp(): Promise<{ email: string; token: string }> {
 }
 
 async function signInUi(page: Page, email: string, pw = password): Promise<void> {
+  // A fresh person gets the first-run wizard and the tour of the home by themselves (phase 52); these tests want the pages. The switch is the one the
+  // console documents for this (payrudder.noWelcome in src/shared/ui/tour/tour.ts).
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("payrudder.noWelcome", "1");
+    } catch {
+      /* storage blocked: nothing to switch off */
+    }
+  });
   await page.goto("/signin");
   await page.getByLabel("E-mail").fill(email);
   await page.getByLabel("Password", { exact: true }).fill(pw);
@@ -140,7 +149,8 @@ test.describe("product app, real stack", () => {
     const problems = watch(page);
     await signInUi(page, email);
     await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
-    await expect(page.getByRole("main").getByRole("link", { name: /Seed Shop/ })).toBeVisible();
+    // An app is always selected (phase 51): signing in lands inside the person's only app, not on a list of apps.
+    await expect(page.getByRole("heading", { name: "Seed Shop" })).toBeVisible();
     await shoot(page, "r1-home");
 
     await page.goto(`/app/apps/${appId}?env=sandbox`);

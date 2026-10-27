@@ -133,6 +133,8 @@ it did; the report (`chaos-report.json`) lists the counts next to A1-A9. Knobs: 
 nightly uses 50), `PAYRUDDER_CHAOS_RATE` (events/s cap, to make a small run last long enough for faults),
 `PAYRUDDER_CHAOS_MIN_KILLS` / `PAYRUDDER_CHAOS_MIN_FAULTS` (fail a run that injected less chaos than required; when the workload ends before the schedule reached them, the monkey keeps going at a faster pace for up to `PAYRUDDER_CHAOS_TOPUP_MINUTES`, default 8, while the backlog drains, so the requirement does not depend on the runner's speed), `PAYRUDDER_CHAOS_DRAIN_MINUTES` (how long to wait for the aggregator to apply every accepted event, default 40).
 
+The nightly workflow runs both of its jobs with `PAYRUDDER_SAAS=off`: the compose stack sells Payrudder's own plans by default, and the Free plan refuses an account's events after 10,000 a month, which a load test or a 1M-event run exceeds by design.
+
 A5/A6 are asserted by `TestMonthCloseSurvivesBrokerRestart`, which closes a sandbox period for 60 customers, restarts RabbitMQ
 while their sagas are in flight, and then checks every invoice total, `COMPLETED` saga and exactly one successful charge.
 A7 needs Prometheus (`PAYRUDDER_PROMETHEUS_URL`) and is reported as skipped without it; the report never hides a skip.

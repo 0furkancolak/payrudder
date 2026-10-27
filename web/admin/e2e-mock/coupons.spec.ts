@@ -141,6 +141,8 @@ test.describe("coupons", () => {
     await form.getByRole("button", { name: "Create coupon" }).click();
     await expect.poll(() => gw.called("POST", "/v1/coupons").length).toBe(1);
     expect(gw.called("POST", "/v1/coupons")[0]?.body).toEqual({ code: "BONUS25", name: "", bonus_percent_bps: 2500 });
+    // The sheet closes when the answer arrives; opening it again before that opens nothing, and the fields typed next go to the closing sheet.
+    await expect(form).toBeHidden();
 
     await page.getByTestId("coupons-new").click();
     await form.getByLabel("Code", { exact: true }).fill("BAD");
