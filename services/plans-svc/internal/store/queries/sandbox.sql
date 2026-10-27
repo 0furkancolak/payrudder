@@ -77,10 +77,12 @@ UPDATE sandbox_resets SET steps = @steps, lease_until = now() + @lease::interval
 UPDATE sandbox_resets SET state = @state, error = @error, steps = @steps, finished_at = now(), lease_until = NULL WHERE id = @id;
 
 -- The sandboxes nobody has touched for @idle: no key use, no customer or subscription made, no reset, since then; none with a reset open. The retention sweep resets them.
+-- This is the pooled ones (a tenant in a cell has its customers and subscriptions in its schema, so IdleSandboxCellCandidates and SandboxTenantActivity say the same
+-- in two steps); a tenant that is moving is nobody's to reset.
 -- name: IdleSandboxTenants :many
 SELECT t.id AS tenant_id, t.app_id
 FROM tenants t
-WHERE t.environment = 'sandbox'
+WHERE t.environment = 'sandbox' AND t.cell = '' AND t.placement_status = 'ready'
   -- The platform's own tenant (phase 55) holds the plans and the customers of the SaaS: it is never idle.
   AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id = t.account_id AND a.platform)
   AND GREATEST(
@@ -93,3 +95,32 @@ WHERE t.environment = 'sandbox'
   AND NOT EXISTS (SELECT 1 FROM sandbox_resets r WHERE r.tenant_id = t.id AND r.state IN ('queued', 'running'))
 ORDER BY t.created_at
 LIMIT @batch::int;
+
+-- The sandboxes in a cell whose pooled signs of life (the tenant's creation, a key use, a reset) are older than @idle, in creation order after a cursor; the sweep asks
+-- each one's own rows for the last customer or subscription made (SandboxTenantActivity) before it decides.
+-- name: IdleSandboxCellCandidates :many
+SELECT t.id AS tenant_id, t.app_id, t.created_at,
+       GREATEST(
+         t.created_at,
+         COALESCE((SELECT max(k.last_used_at) FROM api_keys k WHERE k.tenant_id = t.id), t.created_at),
+         COALESCE((SELECT max(r.finished_at) FROM sandbox_resets r WHERE r.tenant_id = t.id), t.created_at)
+       )::timestamptz AS touched_at
+FROM tenants t
+WHERE t.environment = 'sandbox' AND t.cell <> '' AND t.placement_status = 'ready'
+  AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id = t.account_id AND a.platform)
+  AND GREATEST(
+        t.created_at,
+        COALESCE((SELECT max(k.last_used_at) FROM api_keys k WHERE k.tenant_id = t.id), t.created_at),
+        COALESCE((SELECT max(r.finished_at) FROM sandbox_resets r WHERE r.tenant_id = t.id), t.created_at)
+      ) < now() - @idle::interval
+  AND NOT EXISTS (SELECT 1 FROM sandbox_resets r WHERE r.tenant_id = t.id AND r.state IN ('queued', 'running'))
+  AND (t.created_at, t.id) > (@after_at::timestamptz, @after_id::uuid)
+ORDER BY t.created_at, t.id
+LIMIT @page_size::int;
+
+-- The last customer or subscription made in a tenant (the epoch when there is none): the part of "touched" that lives in the tenant's own rows.
+-- name: SandboxTenantActivity :one
+SELECT GREATEST(
+         COALESCE((SELECT max(c.created_at) FROM customers c WHERE c.tenant_id = @tenant_id), 'epoch'::timestamptz),
+         COALESCE((SELECT max(s.created_at) FROM subscriptions s WHERE s.tenant_id = @tenant_id), 'epoch'::timestamptz)
+       )::timestamptz AS touched_at;

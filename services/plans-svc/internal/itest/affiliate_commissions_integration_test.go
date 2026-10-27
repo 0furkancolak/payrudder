@@ -147,7 +147,7 @@ func (w *affiliateWorld) setStatus(t *testing.T, inv invoice, status string) {
 	if status == "approved" {
 		q = `UPDATE affiliate_commissions SET status = $2, approved_at = now() WHERE tenant_id = $3::uuid AND invoice_id = $1 AND kind = 'commission'`
 	}
-	if _, err := w.e.system.Exec(context.Background(), q, inv.id, status, w.tenantID); err != nil {
+	if err := w.e.exec(context.Background(), w.tenantID, q, inv.id, status, w.tenantID); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -212,7 +212,7 @@ func testAffiliateCommissions(t *testing.T) {
 		w.paid(t, inv, at, "")
 		job := func(now time.Time) int64 {
 			t.Helper()
-			n, err := affiliatescmd.NewApprover(e.system, time.Hour, slog.Default()).WithClock(func() time.Time { return now }).Once(context.Background())
+			n, err := affiliatescmd.NewApprover(e.system, time.Hour, slog.Default()).WithPlaces(e.places).WithClock(func() time.Time { return now }).Once(context.Background())
 			if err != nil {
 				t.Fatal(err)
 			}

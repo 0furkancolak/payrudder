@@ -20,18 +20,20 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
 	idquery "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Commands changes the life of a live tenant.
 type Commands struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	pool   *pgxpool.Pool
+	places *placement.Places
+	log    *slog.Logger
 }
 
-// New returns the go-live commands on the system pool.
-func New(systemPool *pgxpool.Pool, log *slog.Logger) *Commands {
-	return &Commands{pool: systemPool, log: log}
+// New returns the go-live commands on the system pool; places says where the live tenant's own rows (its plans) are.
+func New(places *placement.Places, log *slog.Logger) *Commands {
+	return &Commands{pool: places.Pool(), places: places, log: log}
 }
 
 // The actions of the go-live audit trail (go_live_audit.action).
@@ -179,7 +181,7 @@ func (c *Commands) Activate(ctx context.Context, req *plansv1.ActivateMyAppReque
 		}
 		switch row.Status {
 		case domain.StatusActive:
-			out, err = query.Checklist(ctx, q, convert.Tenant(row), req.GetProviderReady())
+			out, err = query.Checklist(ctx, tx, c.places, convert.Tenant(row), req.GetProviderReady())
 			return err
 		case domain.StatusSuspended:
 			return errkey.New(codes.FailedPrecondition, "identity.go_live.suspended", "this environment is suspended: contact support")
@@ -194,7 +196,7 @@ func (c *Commands) Activate(ctx context.Context, req *plansv1.ActivateMyAppReque
 				return err
 			}
 		}
-		list, err := query.Checklist(ctx, q, convert.Tenant(row), req.GetProviderReady())
+		list, err := query.Checklist(ctx, tx, c.places, convert.Tenant(row), req.GetProviderReady())
 		if err != nil {
 			return err
 		}

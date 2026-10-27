@@ -141,7 +141,7 @@ func testSaas(t *testing.T) {
 		}
 		wg.Wait()
 		var subs int
-		if err := e.system.QueryRow(ctx, `SELECT count(*) FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE c.external_id = $1`, ada.account).Scan(&subs); err != nil || subs != 1 {
+		if err := e.scan(ctx, e.platformOf(t).GetId(), `SELECT count(*) FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE c.external_id = $1`, []any{ada.account}, &subs); err != nil || subs != 1 {
 			t.Errorf("subscriptions of the account = %d, %v; want 1", subs, err)
 		}
 		// A stranger finds no such account.
@@ -271,7 +271,7 @@ func testSaas(t *testing.T) {
 		}
 		// Exactly one subscription is in force, and the Free one ended.
 		var open int
-		if err := e.system.QueryRow(ctx, `SELECT count(*) FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE c.external_id = $1 AND s.state <> 'cancelled' AND upper_inf(s.active)`, ada.account).Scan(&open); err != nil || open != 1 {
+		if err := e.scan(ctx, e.platformOf(t).GetId(), `SELECT count(*) FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE c.external_id = $1 AND s.state <> 'cancelled' AND upper_inf(s.active)`, []any{ada.account}, &open); err != nil || open != 1 {
 			t.Errorf("open subscriptions = %d, %v; want 1", open, err)
 		}
 		// Two apps do not fit Free again.
@@ -421,14 +421,14 @@ func testSaas(t *testing.T) {
 			t.Errorf("the sweep did not make the account a customer: %v", err)
 		}
 		var subs int
-		if err := e.system.QueryRow(ctx, `SELECT count(*) FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE c.external_id = $1 AND s.state <> 'cancelled'`, id).Scan(&subs); err != nil || subs != 1 {
+		if err := e.scan(ctx, pt.GetId(), `SELECT count(*) FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE c.external_id = $1 AND s.state <> 'cancelled'`, []any{id}, &subs); err != nil || subs != 1 {
 			t.Errorf("subscriptions after the sweep = %d, %v", subs, err)
 		}
 		// Sweeping again is harmless: the account keeps its one subscription.
 		if _, err := e.saas.SweepOnce(ctx); err != nil {
 			t.Fatal(err)
 		}
-		if err := e.system.QueryRow(ctx, `SELECT count(*) FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE c.external_id = $1 AND s.state <> 'cancelled'`, id).Scan(&subs); err != nil || subs != 1 {
+		if err := e.scan(ctx, pt.GetId(), `SELECT count(*) FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id WHERE c.external_id = $1 AND s.state <> 'cancelled'`, []any{id}, &subs); err != nil || subs != 1 {
 			t.Errorf("subscriptions after a second sweep = %d, %v", subs, err)
 		}
 	})

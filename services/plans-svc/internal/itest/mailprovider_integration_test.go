@@ -82,7 +82,7 @@ func testMailProvider(t *testing.T) {
 	}
 	var stored []byte
 	liveID, _ := uuid.Parse(live.GetId())
-	err = pgxx.InTenantTx(context.Background(), e.app, liveID, func(tx pgx.Tx) error {
+	err = pgxx.InTenantTx(context.Background(), e.appDB, liveID, func(tx pgx.Tx) error {
 		return tx.QueryRow(context.Background(), `SELECT api_key_enc FROM tenant_mail_integrations`).Scan(&stored)
 	})
 	if err != nil || strings.Contains(string(stored), "nk_good_key") || len(stored) == 0 {

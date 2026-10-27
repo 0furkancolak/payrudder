@@ -8,6 +8,7 @@ package sqlc
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -81,10 +82,77 @@ func (q *Queries) FinishSandboxReset(ctx context.Context, arg FinishSandboxReset
 	return err
 }
 
+const idleSandboxCellCandidates = `-- name: IdleSandboxCellCandidates :many
+SELECT t.id AS tenant_id, t.app_id, t.created_at,
+       GREATEST(
+         t.created_at,
+         COALESCE((SELECT max(k.last_used_at) FROM api_keys k WHERE k.tenant_id = t.id), t.created_at),
+         COALESCE((SELECT max(r.finished_at) FROM sandbox_resets r WHERE r.tenant_id = t.id), t.created_at)
+       )::timestamptz AS touched_at
+FROM tenants t
+WHERE t.environment = 'sandbox' AND t.cell <> '' AND t.placement_status = 'ready'
+  AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id = t.account_id AND a.platform)
+  AND GREATEST(
+        t.created_at,
+        COALESCE((SELECT max(k.last_used_at) FROM api_keys k WHERE k.tenant_id = t.id), t.created_at),
+        COALESCE((SELECT max(r.finished_at) FROM sandbox_resets r WHERE r.tenant_id = t.id), t.created_at)
+      ) < now() - $1::interval
+  AND NOT EXISTS (SELECT 1 FROM sandbox_resets r WHERE r.tenant_id = t.id AND r.state IN ('queued', 'running'))
+  AND (t.created_at, t.id) > ($2::timestamptz, $3::uuid)
+ORDER BY t.created_at, t.id
+LIMIT $4::int
+`
+
+type IdleSandboxCellCandidatesParams struct {
+	Idle     pgtype.Interval
+	AfterAt  time.Time
+	AfterID  uuid.UUID
+	PageSize int32
+}
+
+type IdleSandboxCellCandidatesRow struct {
+	TenantID  uuid.UUID
+	AppID     uuid.UUID
+	CreatedAt time.Time
+	TouchedAt time.Time
+}
+
+// The sandboxes in a cell whose pooled signs of life (the tenant's creation, a key use, a reset) are older than @idle, in creation order after a cursor; the sweep asks
+// each one's own rows for the last customer or subscription made (SandboxTenantActivity) before it decides.
+func (q *Queries) IdleSandboxCellCandidates(ctx context.Context, arg IdleSandboxCellCandidatesParams) ([]IdleSandboxCellCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, idleSandboxCellCandidates,
+		arg.Idle,
+		arg.AfterAt,
+		arg.AfterID,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []IdleSandboxCellCandidatesRow{}
+	for rows.Next() {
+		var i IdleSandboxCellCandidatesRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.AppID,
+			&i.CreatedAt,
+			&i.TouchedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const idleSandboxTenants = `-- name: IdleSandboxTenants :many
 SELECT t.id AS tenant_id, t.app_id
 FROM tenants t
-WHERE t.environment = 'sandbox'
+WHERE t.environment = 'sandbox' AND t.cell = '' AND t.placement_status = 'ready'
   -- The platform's own tenant (phase 55) holds the plans and the customers of the SaaS: it is never idle.
   AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id = t.account_id AND a.platform)
   AND GREATEST(
@@ -110,6 +178,8 @@ type IdleSandboxTenantsRow struct {
 }
 
 // The sandboxes nobody has touched for @idle: no key use, no customer or subscription made, no reset, since then; none with a reset open. The retention sweep resets them.
+// This is the pooled ones (a tenant in a cell has its customers and subscriptions in its schema, so IdleSandboxCellCandidates and SandboxTenantActivity say the same
+// in two steps); a tenant that is moving is nobody's to reset.
 func (q *Queries) IdleSandboxTenants(ctx context.Context, arg IdleSandboxTenantsParams) ([]IdleSandboxTenantsRow, error) {
 	rows, err := q.db.Query(ctx, idleSandboxTenants, arg.Idle, arg.Batch)
 	if err != nil {
@@ -458,6 +528,21 @@ func (q *Queries) ResetWebhookEvents(ctx context.Context, tenantID uuid.UUID) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const sandboxTenantActivity = `-- name: SandboxTenantActivity :one
+SELECT GREATEST(
+         COALESCE((SELECT max(c.created_at) FROM customers c WHERE c.tenant_id = $1), 'epoch'::timestamptz),
+         COALESCE((SELECT max(s.created_at) FROM subscriptions s WHERE s.tenant_id = $1), 'epoch'::timestamptz)
+       )::timestamptz AS touched_at
+`
+
+// The last customer or subscription made in a tenant (the epoch when there is none): the part of "touched" that lives in the tenant's own rows.
+func (q *Queries) SandboxTenantActivity(ctx context.Context, tenantID uuid.UUID) (time.Time, error) {
+	row := q.db.QueryRow(ctx, sandboxTenantActivity, tenantID)
+	var touched_at time.Time
+	err := row.Scan(&touched_at)
+	return touched_at, err
 }
 
 const saveSandboxResetSteps = `-- name: SaveSandboxResetSteps :exec

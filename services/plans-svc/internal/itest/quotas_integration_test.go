@@ -3,7 +3,6 @@
 package itest
 
 import (
-	"context"
 	"testing"
 
 	"google.golang.org/grpc/codes"
@@ -11,7 +10,6 @@ import (
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
-	"github.com/0furkancolak/payrudder/pkg/outbox"
 )
 
 // Meters carry a category of the tenant's own, plan versions publish quota windows, modes and included quantities, and a customer's override
@@ -65,19 +63,7 @@ func testQuotasAndOverrides(t *testing.T) {
 	relay := func() map[string]*eventsv1.EntitlementState {
 		t.Helper()
 		sink := &captureSink{}
-		r, err := outbox.NewRelay(e.system, sink, outbox.Config{}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for {
-			n, err := r.RelayOnce(context.Background())
-			if err != nil {
-				t.Fatal(err)
-			}
-			if n == 0 {
-				break
-			}
-		}
+		e.relayAll(t, sink)
 		// The last row of each key is what the compacted topic keeps.
 		out := map[string]*eventsv1.EntitlementState{}
 		for _, row := range sink.rows {

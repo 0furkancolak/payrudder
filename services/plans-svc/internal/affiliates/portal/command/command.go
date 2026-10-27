@@ -22,13 +22,24 @@ import (
 	affq "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
-// Commands changes a partner's own records.
+// Commands changes a partner's own records. A seller placed in a cell (ADR 0018) has its partner records in its own schema: what is about the person (their
+// verified address, their membership of the seller's account) stays in the pooled database, what is about the seller's program and its records is done in the
+// seller's schema, one transaction for each of the two. The order is the one that is safe to stop between: the membership first (it can be repeated and sees nothing
+// of the account), then the record.
 type Commands struct {
-	pool *pgxpool.Pool
-	now  func() time.Time
+	pool   *pgxpool.Pool
+	now    func() time.Time
+	places *placement.Places // where the tenants' own rows are; nil: the pooled database
+}
+
+// WithPlaces tells the commands where the tenants' own rows are.
+func (c *Commands) WithPlaces(p *placement.Places) *Commands {
+	c.places = p
+	return c
 }
 
 // New returns the portal commands on the system pool.
@@ -73,10 +84,11 @@ func (c *Commands) Claim(ctx context.Context, userID string) (int32, error) {
 		return 0, notVerified()
 	}
 	var claimed int32
+	var email string
 	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
-		email, err := verified(ctx, q, uid)
-		if err != nil {
+		var err error
+		if email, err = verified(ctx, q, uid); err != nil {
 			return err
 		}
 		rows, err := q.PortalClaimAffiliates(ctx, sqlc.PortalClaimAffiliatesParams{UserID: &uid, Email: email})
@@ -94,7 +106,35 @@ func (c *Commands) Claim(ctx context.Context, userID string) (int32, error) {
 	if err != nil {
 		return 0, convert.Err(err, "affiliation")
 	}
-	return claimed, nil
+	n, err := c.claimInCells(ctx, uid, email)
+	if err != nil {
+		return claimed + n, convert.Err(err, "affiliation")
+	}
+	return claimed + n, nil
+}
+
+// claimInCells is Claim for the sellers placed in cells: each one is asked for the records made for the address, the person becomes a member of the seller's account,
+// and only then are the records linked to them (a stop in between leaves a membership, and the next Claim finds the records still unclaimed).
+func (c *Commands) claimInCells(ctx context.Context, uid uuid.UUID, email string) (int32, error) {
+	var claimed int32
+	err := c.places.EachCell(ctx, func(ctx context.Context, t pgxx.PlacedTenant) error {
+		var found []sqlc.PortalFindUnclaimedRow
+		if err := c.places.CellTx(ctx, t, func(tx pgx.Tx) (err error) {
+			found, err = sqlc.New(tx).PortalFindUnclaimed(ctx, email)
+			return err
+		}); err != nil || len(found) == 0 {
+			return err
+		}
+		if err := join(ctx, sqlc.New(c.pool), t.TenantID, uid); err != nil {
+			return err
+		}
+		return c.places.CellTx(ctx, t, func(tx pgx.Tx) error {
+			rows, err := sqlc.New(tx).PortalClaimAffiliates(ctx, sqlc.PortalClaimAffiliatesParams{UserID: &uid, Email: email})
+			claimed += int32(len(rows)) //nolint:gosec // a handful of records
+			return err
+		})
+	})
+	return claimed, err
 }
 
 func alreadyApplied() error {
@@ -128,6 +168,11 @@ func (c *Commands) Apply(ctx context.Context, req *plansv1.ApplyAsAffiliateReque
 	}
 	if err := v.Err(); err != nil {
 		return nil, err
+	}
+	if in, err := c.places.InCell(ctx, tid); err != nil {
+		return nil, convert.Err(err, "affiliation")
+	} else if in {
+		return c.applyInCell(ctx, uid, tid, name, method, details)
 	}
 	var out *plansv1.MyAffiliation
 	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
@@ -210,6 +255,7 @@ func (c *Commands) Update(ctx context.Context, req *plansv1.UpdateMyAffiliationR
 		return nil, err
 	}
 	var out *plansv1.MyAffiliation
+	missed := false
 	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		n, err := q.PortalUpdateAffiliation(ctx, sqlc.PortalUpdateAffiliationParams{ID: aid, UserID: &uid, Name: name, PayoutMethod: req.GetPayoutMethod(), PayoutDetails: req.GetPayoutDetails()})
@@ -217,6 +263,7 @@ func (c *Commands) Update(ctx context.Context, req *plansv1.UpdateMyAffiliationR
 			return err
 		}
 		if n == 0 {
+			missed = true
 			return affq.NotFound()
 		}
 		rows, err := q.PortalListAffiliations(ctx, sqlc.PortalListAffiliationsParams{UserID: &uid, AffiliateID: &aid})
@@ -226,8 +273,97 @@ func (c *Commands) Update(ctx context.Context, req *plansv1.UpdateMyAffiliationR
 		out = portalq.Affiliation(rows[0])
 		return nil
 	})
+	if missed && c.places.CellsOn() {
+		// Not a seller in the pooled database: one in a cell may have it.
+		out, err = c.updateInCells(ctx, uid, aid, req)
+	}
 	if err != nil {
 		return nil, convert.Err(err, "affiliation")
 	}
 	return out, nil
+}
+
+// updateInCells changes the person's partner record in whichever seller's schema has it.
+func (c *Commands) updateInCells(ctx context.Context, uid, aid uuid.UUID, req *plansv1.UpdateMyAffiliationRequest) (*plansv1.MyAffiliation, error) {
+	found := uuid.Nil
+	err := c.places.EachCell(ctx, func(ctx context.Context, t pgxx.PlacedTenant) error {
+		if found != uuid.Nil {
+			return nil
+		}
+		return c.places.CellTx(ctx, t, func(tx pgx.Tx) error {
+			n, err := sqlc.New(tx).PortalUpdateAffiliation(ctx, sqlc.PortalUpdateAffiliationParams{ID: aid, UserID: &uid, Name: strings.TrimSpace(req.GetName()),
+				PayoutMethod: req.GetPayoutMethod(), PayoutDetails: req.GetPayoutDetails()})
+			if err == nil && n > 0 {
+				found = t.TenantID
+			}
+			return err
+		})
+	})
+	if err != nil {
+		return nil, err
+	}
+	if found == uuid.Nil {
+		return nil, affq.NotFound()
+	}
+	rows, err := portalq.InTenant(ctx, c.places, c.pool, uid, found, &aid)
+	if err != nil || len(rows) != 1 {
+		return nil, errors.Join(err, affq.NotFound())
+	}
+	return portalq.Affiliation(rows[0]), nil
+}
+
+// applyInCell is Apply for a seller placed in a cell.
+func (c *Commands) applyInCell(ctx context.Context, uid, tid uuid.UUID, name, method, details string) (*plansv1.MyAffiliation, error) {
+	sys := sqlc.New(c.pool)
+	email, err := verified(ctx, sys, uid)
+	if err != nil {
+		return nil, err
+	}
+	prog, err := portalq.ProgramOfTenant(ctx, c.places, c.pool, uid, tid)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !portalq.Open(prog)) {
+		return nil, portalq.Unavailable()
+	}
+	if err != nil {
+		return nil, convert.Err(err, "affiliation")
+	}
+	if prog.Applied {
+		return nil, alreadyApplied()
+	}
+	status := model.AffiliatePending
+	if prog.AutoApprove {
+		status = model.AffiliateActive
+	}
+	if err := join(ctx, sys, tid, uid); err != nil {
+		return nil, convert.Err(err, "affiliation")
+	}
+	var id uuid.UUID
+	err = c.places.Read(ctx, tid, func(q *sqlc.Queries) error {
+		for range 8 {
+			code, err := command.RandomCode()
+			if err != nil {
+				return err
+			}
+			id, err = q.PortalInsertAffiliate(ctx, sqlc.PortalInsertAffiliateParams{TenantID: tid, Code: code, Email: email, Name: name, UserID: &uid, Status: status,
+				PayoutMethod: method, PayoutDetails: details})
+			if errors.Is(err, pgx.ErrNoRows) {
+				continue // the code is taken: another
+			}
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation && strings.Contains(pgxx.ConstraintName(err), "affiliates_email") {
+			return nil, alreadyApplied()
+		}
+		return nil, convert.Err(err, "affiliation")
+	}
+	if id == uuid.Nil {
+		return nil, errkey.New(codes.Unavailable, "affiliate.portal.try_again", "no code could be made just now: try again")
+	}
+	rows, err := portalq.InTenant(ctx, c.places, c.pool, uid, tid, &id)
+	if err != nil || len(rows) != 1 {
+		return nil, convert.Err(errors.Join(err, affq.NotFound()), "affiliation")
+	}
+	return portalq.Affiliation(rows[0]), nil
 }

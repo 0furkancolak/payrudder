@@ -86,6 +86,18 @@ WHERE NOT a.platform AND NOT EXISTS (
 ORDER BY a.created_at, a.id
 LIMIT @batch::int;
 
+-- The same question when the platform tenant's customers are in a cell (ADR 0018) and the accounts are not: the accounts a page at a time (a cursor on created_at and id,
+-- as the sweep's order), then the platform tenant's own rows say which of them have a subscription in force.
+-- name: SaasAccountsPage :many
+SELECT a.id, a.created_at FROM accounts a
+WHERE NOT a.platform AND (a.created_at, a.id) > (@after_at::timestamptz, @after_id::uuid)
+ORDER BY a.created_at, a.id
+LIMIT @page_size::int;
+
+-- name: SaasCustomersInForce :many
+SELECT c.external_id FROM customers c JOIN subscriptions s ON s.tenant_id = c.tenant_id AND s.customer_id = c.id
+WHERE c.tenant_id = @tenant_id AND c.external_id = ANY(@external_ids::text[]) AND s.state <> 'cancelled' AND s.active @> now();
+
 -- The operator's list: every organisation but the platform's own, with its owner and its usage.
 -- name: SaasListOrganizations :many
 SELECT a.id, a.name, a.created_at,

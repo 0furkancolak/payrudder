@@ -379,7 +379,7 @@ func testAffiliatePayouts(t *testing.T) {
 		balanced(t, j)
 
 		// Resetting the sandbox empties the payouts and their postings with the commissions they describe; the partners and the program stay.
-		if _, err := sandbox.NewLocal(e.system).Reset(context.Background(), uuid.MustParse(w.tenantID)); err != nil {
+		if _, err := sandbox.NewLocal(e.places).Reset(context.Background(), uuid.MustParse(w.tenantID)); err != nil {
 			t.Fatal(err)
 		}
 		if got := w.payouts(t, ""); len(got) != 0 {
@@ -399,7 +399,7 @@ func testAffiliatePayouts(t *testing.T) {
 		w.pay(t, w.createPayouts(t).GetPayouts()[0].GetId(), "")
 		for _, stmt := range []string{`DELETE FROM affiliate_journal WHERE tenant_id = $1`, `UPDATE affiliate_journal SET memo = 'x' WHERE tenant_id = $1`} {
 			// A DELETE is refused by the trigger, an UPDATE by the missing grant: either way nothing changes.
-			if _, err := e.system.Exec(context.Background(), stmt, uuid.MustParse(w.tenantID)); err == nil || !(strings.Contains(err.Error(), "append-only") || pgxx.ErrCode(err) == pgxx.CodeInsufficientPriv) {
+			if err := e.exec(context.Background(), w.tenantID, stmt, uuid.MustParse(w.tenantID)); err == nil || !(strings.Contains(err.Error(), "append-only") || pgxx.ErrCode(err) == pgxx.CodeInsufficientPriv) {
 				t.Errorf("%s: %v", stmt, err)
 			}
 		}
@@ -437,7 +437,7 @@ func testAffiliatePayouts(t *testing.T) {
 		p := w.pay(t, w.createPayouts(t).GetPayouts()[0].GetId(), "")
 		tid := uuid.MustParse(w.tenantID)
 		insert := func(lines ...[2]int64) error {
-			return pgxx.InTenantTx(context.Background(), e.app, tid, func(tx pgx.Tx) error {
+			return pgxx.InTenantTx(context.Background(), e.appDB, tid, func(tx pgx.Tx) error {
 				for _, l := range lines {
 					if _, err := tx.Exec(context.Background(), `INSERT INTO affiliate_journal (tenant_id, payout_id, affiliate_id, posted_at, currency, account, debit_minor, credit_minor, sandbox)
 						VALUES (app_tenant_id(), $1, $2, now(), 'TRY', 'cash', $3, $4, false)`, uuid.MustParse(p.GetId()), uuid.MustParse(w.aff.GetId()), l[0], l[1]); err != nil {
@@ -460,14 +460,14 @@ func testAffiliatePayouts(t *testing.T) {
 			t.Fatal("a line of nothing was accepted")
 		}
 		// Append-only for the application role.
-		err := pgxx.InTenantTx(context.Background(), e.app, tid, func(tx pgx.Tx) error {
+		err := pgxx.InTenantTx(context.Background(), e.appDB, tid, func(tx pgx.Tx) error {
 			_, err := tx.Exec(context.Background(), `UPDATE affiliate_journal SET debit_minor = debit_minor`)
 			return err
 		})
 		if pgxx.ErrCode(err) != pgxx.CodeInsufficientPriv {
 			t.Fatalf("an UPDATE of the journal: %v", err)
 		}
-		err = pgxx.InTenantTx(context.Background(), e.app, tid, func(tx pgx.Tx) error {
+		err = pgxx.InTenantTx(context.Background(), e.appDB, tid, func(tx pgx.Tx) error {
 			_, err := tx.Exec(context.Background(), `DELETE FROM affiliate_journal`)
 			return err
 		})

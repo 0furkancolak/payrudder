@@ -19,6 +19,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	idquery "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -33,11 +34,12 @@ const (
 
 // Queries reads on the system pool.
 type Queries struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
+	places *placement.Places
 }
 
-// New returns the go-live queries.
-func New(systemPool *pgxpool.Pool) *Queries { return &Queries{pool: systemPool} }
+// New returns the go-live queries. places says where the live tenant's plans are (in a cell, they are not in the pool).
+func New(places *placement.Places) *Queries { return &Queries{pool: places.Pool(), places: places} }
 
 // NoLive is the answer for an app whose deployment serves no live environment (PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox).
 func NoLive() error {
@@ -65,11 +67,13 @@ func (q *Queries) GoLive(ctx context.Context, userID, appID string, providerRead
 	if err != nil {
 		return nil, err
 	}
-	return Checklist(ctx, db, live, providerReady)
+	return Checklist(ctx, q.pool, q.places, live, providerReady)
 }
 
-// Checklist computes the items for a live tenant on the given queries (a transaction, for the command that decides on them).
-func Checklist(ctx context.Context, db *sqlc.Queries, live *plansv1.Tenant, providerReady bool) (*plansv1.GoLive, error) {
+// Checklist computes the items for a live tenant on db (the system pool, or a transaction of it for the command that decides on them). What is about the tenant's own
+// rows (a published plan) is read where they are: on db when the tenant is pooled, in the tenant's schema in a cell.
+func Checklist(ctx context.Context, dbtx sqlc.DBTX, places *placement.Places, live *plansv1.Tenant, providerReady bool) (*plansv1.GoLive, error) {
+	db := sqlc.New(dbtx)
 	accountID, err := uuid.Parse(live.GetAccountId())
 	if err != nil {
 		return nil, idquery.NotFound("account")
@@ -82,7 +86,7 @@ func Checklist(ctx context.Context, db *sqlc.Queries, live *plansv1.Tenant, prov
 	if err != nil {
 		return nil, convert.Err(err, "account")
 	}
-	published, err := db.TenantHasPublishedPlan(ctx, tenantID)
+	published, err := hasPublishedPlan(ctx, dbtx, places, tenantID)
 	if err != nil {
 		return nil, convert.Err(err, "plan")
 	}
@@ -98,6 +102,15 @@ func Checklist(ctx context.Context, db *sqlc.Queries, live *plansv1.Tenant, prov
 		out.Ready = out.Ready && it.GetDone()
 	}
 	return out, nil
+}
+
+// hasPublishedPlan asks the tenant's own rows whether it has published a plan version.
+func hasPublishedPlan(ctx context.Context, db sqlc.DBTX, places *placement.Places, tenantID uuid.UUID) (published bool, err error) {
+	err = places.OnTenant(ctx, tenantID, db, func(q *sqlc.Queries) (err error) {
+		published, err = q.TenantHasPublishedPlan(ctx, tenantID)
+		return err
+	})
+	return published, err
 }
 
 // Missing lists the keys of the items that are not done, for a refusal's message.

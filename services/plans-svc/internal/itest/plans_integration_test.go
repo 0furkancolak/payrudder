@@ -122,7 +122,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 	must(e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_" + suffix, PlanCode: "pro", CouponCode: "SEED"}))
 	must(e.plans.GrantCustomerCoupon(ctx, &plansv1.GrantCustomerCouponRequest{CustomerExternalId: "cus_" + suffix, CouponCode: "SEED", Source: "operator", SourceRef: "seed"}))
 	// The connection to a tenant's own mail provider is written by PutMailIntegration, which asks the provider first; a sealed row stands in.
-	if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
+	if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
 		_, err := tx.Exec(context.Background(), `INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address)
 			VALUES (app_tenant_id(), 'nafru', 'https://mail.example.com', '\x00', 'abcd', 'billing@example.com')`)
 		return err
@@ -130,7 +130,7 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		t.Fatal(err)
 	}
 	// provider_migrations is written by StartProviderMigration, which would move the fixture's subscription; an aborted row stands in.
-	if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
+	if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
 		_, err := tx.Exec(context.Background(), `INSERT INTO provider_migrations (tenant_id, id, subscription_id, to_provider, state)
 			SELECT app_tenant_id(), gen_random_uuid(), id, 'iyzico', 'aborted' FROM subscriptions LIMIT 1`)
 		if err != nil {
@@ -186,12 +186,12 @@ func testRLSIsolationEveryTable(t *testing.T) {
 			ident := pgx.Identifier{table}.Sanitize()
 			// The fixture must cover every table, so a new table without seed data fails here.
 			var bRow []byte
-			err := e.system.QueryRow(ctx, fmt.Sprintf(`SELECT row_to_json(t)::text FROM %s t WHERE tenant_id = $1 LIMIT 1`, ident), bID).Scan(&bRow)
+			err := e.scan(ctx, b.GetId(), fmt.Sprintf(`SELECT row_to_json(t)::text FROM %s t WHERE tenant_id = $1 LIMIT 1`, ident), []any{bID}, &bRow)
 			if err != nil {
 				t.Fatalf("no seed row for tenant B (extend seed()): %v", err)
 			}
 
-			err = pgxx.InTenantTx(ctx, e.app, aID, func(tx pgx.Tx) error {
+			err = pgxx.InTenantTx(ctx, e.appDB, aID, func(tx pgx.Tx) error {
 				var n int
 				if err := tx.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s WHERE tenant_id = $1`, ident), bID).Scan(&n); err != nil {
 					return err
@@ -213,7 +213,7 @@ func testRLSIsolationEveryTable(t *testing.T) {
 			}
 
 			// UPDATE of B's rows either touches nothing (RLS) or isn't granted at all.
-			err = pgxx.InTenantTx(ctx, e.app, aID, func(tx pgx.Tx) error {
+			err = pgxx.InTenantTx(ctx, e.appDB, aID, func(tx pgx.Tx) error {
 				tag, err := tx.Exec(ctx, fmt.Sprintf(`UPDATE %s SET tenant_id = tenant_id WHERE tenant_id = $1`, ident), bID)
 				if err != nil {
 					return err
@@ -228,7 +228,7 @@ func testRLSIsolationEveryTable(t *testing.T) {
 			}
 
 			// INSERT of a row belonging to B must be rejected (WITH CHECK, or no INSERT grant).
-			err = pgxx.InTenantTx(ctx, e.app, aID, func(tx pgx.Tx) error {
+			err = pgxx.InTenantTx(ctx, e.appDB, aID, func(tx pgx.Tx) error {
 				_, err := tx.Exec(ctx, fmt.Sprintf(`INSERT INTO %[1]s SELECT * FROM json_populate_record(NULL::%[1]s, $1::json)`, ident), string(bRow))
 				return err
 			})
@@ -237,8 +237,7 @@ func testRLSIsolationEveryTable(t *testing.T) {
 			}
 
 			// No tenant context at all: zero rows, no error.
-			var n int
-			if err := e.app.QueryRow(ctx, fmt.Sprintf(`SELECT count(*) FROM %s`, ident)).Scan(&n); err != nil || n != 0 {
+			if n, err := e.countWithoutTenant(ctx, a.GetId(), ident); err != nil || n != 0 {
 				t.Fatalf("without tenant context: %d rows, err %v", n, err)
 			}
 		})
@@ -436,7 +435,7 @@ func testPlanVersionsAndValidation(t *testing.T) {
 	}
 
 	// Append-only: the app role cannot change a published version.
-	err = pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
+	err = pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(live.GetId()), func(tx pgx.Tx) error {
 		_, err := tx.Exec(context.Background(), `UPDATE plan_versions SET base_fee_minor = 0`)
 		return err
 	})
@@ -474,26 +473,15 @@ func testEntitlementOutbox(t *testing.T) {
 
 	relayAll := func() []outbox.Row {
 		sink := &captureSink{}
-		relay, err := outbox.NewRelay(e.system, sink, outbox.Config{}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for {
-			n, err := relay.RelayOnce(context.Background())
-			if err != nil {
-				t.Fatalf("relay: %v", err)
-			}
-			if n == 0 {
-				// The database is shared with the other subtests: keep this tenant's rows.
-				var mine []outbox.Row
-				for _, r := range sink.rows {
-					if r.TenantID == tenantID {
-						mine = append(mine, r)
-					}
-				}
-				return mine
+		e.relayAll(t, sink)
+		// The database is shared with the other subtests: keep this tenant's rows.
+		var mine []outbox.Row
+		for _, r := range sink.rows {
+			if r.TenantID == tenantID {
+				mine = append(mine, r)
 			}
 		}
+		return mine
 	}
 	rows := relayAll()
 	if len(rows) != 1 || rows[0].Topic != "plans.entitlements.v1" || rows[0].TenantID != tenantID {

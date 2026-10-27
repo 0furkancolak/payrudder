@@ -213,7 +213,8 @@ INSERT INTO outbox (tenant_id, topic, partition_key, payload)
 VALUES (app_tenant_id(), @topic, @partition_key, @payload);
 
 -- name: NotifyOutbox :exec
-SELECT pg_notify('outbox_new', '');
+-- The payload is the tenant: a relay that serves cells (ADR 0018) visits the schema it names; the pooled relay only wakes.
+SELECT pg_notify('outbox_new', COALESCE(app_tenant_id()::text, ''));
 
 -- name: ListRoutingRules :many
 SELECT country, currency, provider FROM routing_rules WHERE tenant_id = app_tenant_id() ORDER BY position;

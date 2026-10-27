@@ -6,9 +6,11 @@ package command
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
@@ -16,6 +18,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	subsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/subscriptions/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/trialnotices/model"
@@ -36,24 +39,42 @@ type Config struct {
 // Job reminds trials that are about to end. Finding them reads across tenants on the system pool; recording and emitting happens on the app pool, in the tenant's
 // own transaction, so a webhook event and a notice are in the same tenant's rows or in none. It is safe to run twice, and on several instances at once: the
 // notice's primary key lets one of them in, and the other finds the notice and does nothing.
+//
+// With cells on (ADR 0018) the tenants in the pooled database are listed in one statement as ever, and each tenant placed in a cell is listed in its own schema, in a
+// transaction of its own: one list, one tenant. Each of them gets a batch of its own, so a tenant whose trials keep failing cannot keep the others waiting.
 type Job struct {
-	system, app *pgxpool.Pool
-	window      time.Duration
-	every       time.Duration
-	batch       int
-	now         func() time.Time
-	log         *slog.Logger
+	system  *pgxpool.Pool
+	app     pgxx.Beginner
+	places  *placement.Places
+	window  time.Duration
+	every   time.Duration
+	batch   int
+	now     func() time.Time
+	log     *slog.Logger
+	visited func(uuid.UUID) // tests: sees every tenant in a cell the job visits
 }
 
-// New returns the job.
-func New(systemPool, appPool *pgxpool.Pool, cfg Config, log *slog.Logger) *Job {
+// New returns the job. appDB is the app pool, or the app-role router (placement.AppDB) when cells are on.
+func New(systemPool *pgxpool.Pool, appDB pgxx.Beginner, cfg Config, log *slog.Logger) *Job {
 	if cfg.Every <= 0 {
 		cfg.Every = 10 * time.Minute
 	}
 	if cfg.Batch <= 0 {
 		cfg.Batch = 200
 	}
-	return &Job{system: systemPool, app: appPool, window: model.Window(cfg.Days), every: cfg.Every, batch: cfg.Batch, now: time.Now, log: log}
+	return &Job{system: systemPool, app: appDB, window: model.Window(cfg.Days), every: cfg.Every, batch: cfg.Batch, now: time.Now, log: log}
+}
+
+// WithPlaces tells the job where the tenants' own rows are.
+func (j *Job) WithPlaces(p *placement.Places) *Job {
+	j.places = p
+	return j
+}
+
+// WithVisits makes the job report each tenant in a cell it visits to fn (tests).
+func (j *Job) WithVisits(fn func(uuid.UUID)) *Job {
+	j.visited = fn
+	return j
 }
 
 // WithClock sets the clock the job reads (tests).
@@ -72,6 +93,35 @@ func (j *Job) Once(ctx context.Context) (reminded, looked int, err error) {
 	if err != nil {
 		return 0, 0, err
 	}
+	reminded, looked = j.remindAll(ctx, now, due)
+	err = j.places.EachCell(ctx, func(ctx context.Context, t pgxx.PlacedTenant) error {
+		if j.visited != nil {
+			j.visited(t.TenantID)
+		}
+		var due []sqlc.SystemListTrialsEndingSoonRow
+		err := j.places.CellTx(ctx, t, func(tx pgx.Tx) (err error) {
+			due, err = sqlc.New(tx).SystemListTrialsEndingSoon(ctx, sqlc.SystemListTrialsEndingSoonParams{
+				Owner: domain.OwnerPayrudder, FromTime: now, Until: now.Add(j.window), Batch: int32(j.batch), //nolint:gosec // a small config value
+			})
+			return err
+		})
+		if err != nil {
+			return err
+		}
+		for _, d := range due {
+			if d.TenantID != t.TenantID {
+				return fmt.Errorf("trial reminder: subscription %s of tenant %s is in the schema of tenant %s", d.ID, d.TenantID, t.TenantID)
+			}
+		}
+		r, l := j.remindAll(ctx, now, due)
+		reminded, looked = reminded+r, looked+l
+		return nil
+	})
+	return reminded, looked, err
+}
+
+// remindAll reminds the trials of a list and says how many it reminded and how many it looked at.
+func (j *Job) remindAll(ctx context.Context, now time.Time, due []sqlc.SystemListTrialsEndingSoonRow) (reminded, looked int) {
 	for _, d := range due {
 		ok, err := j.remind(ctx, now, d)
 		if err != nil {
@@ -82,7 +132,7 @@ func (j *Job) Once(ctx context.Context) (reminded, looked int, err error) {
 			reminded++
 		}
 	}
-	return reminded, len(due), nil
+	return reminded, len(due)
 }
 
 // remind records the notice of one trial and emits its event and fact, or does nothing when the trial is not due any more or was reminded already. It says

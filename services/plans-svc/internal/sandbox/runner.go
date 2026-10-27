@@ -13,7 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -59,15 +61,24 @@ func (s Settings) withDefaults() Settings {
 // Runner executes reset jobs. Any number of replicas can run: a job is claimed with FOR UPDATE SKIP LOCKED, so one replica works on it at a time, and a job whose runner
 // died is taken over when its lease runs out. Every step is idempotent, so a takeover starts the steps again.
 type Runner struct {
-	pool  *pgxpool.Pool
-	steps []Step
-	set   Settings
-	log   *slog.Logger
+	pool   *pgxpool.Pool
+	places *placement.Places // where the tenants' own rows are; nil (or cells off) is the pooled database
+	steps  []Step
+	set    Settings
+	log    *slog.Logger
+	now    func() time.Time
 }
 
 // NewRunner returns a runner on the system pool. steps are run in order: plans-svc's own first.
 func NewRunner(systemPool *pgxpool.Pool, steps []Step, set Settings, log *slog.Logger) *Runner {
-	return &Runner{pool: systemPool, steps: steps, set: set.withDefaults(), log: log}
+	return &Runner{pool: systemPool, steps: steps, set: set.withDefaults(), log: log, now: time.Now}
+}
+
+// WithPlaces tells the runner where the tenants' own rows are, so that the retention sweep looks for the last customer or subscription of a sandbox in a cell in its
+// schema (ADR 0018).
+func (r *Runner) WithPlaces(p *placement.Places) *Runner {
+	r.places = p
+	return r
 }
 
 // Run works until ctx ends: jobs, and now and then the retention sweep.
@@ -167,16 +178,73 @@ func (r *Runner) Sweep(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	queued := 0
-	for _, t := range idle {
-		_, err := db.InsertSandboxReset(ctx, sqlc.InsertSandboxResetParams{ID: uuid.New(), AppID: t.AppID, TenantID: t.TenantID, Kind: "retention", Steps: Initial(Names(r.steps))})
+	queue := func(appID, tenantID uuid.UUID) error {
+		_, err := db.InsertSandboxReset(ctx, sqlc.InsertSandboxResetParams{ID: uuid.New(), AppID: appID, TenantID: tenantID, Kind: "retention", Steps: Initial(Names(r.steps))})
 		switch {
 		case pgxx.ErrCode(err) == pgxx.CodeUniqueViolation:
 			// Another replica was first.
 		case err != nil:
-			return queued, err
+			return err
 		default:
 			queued++
+		}
+		return nil
+	}
+	for _, t := range idle {
+		if err := queue(t.AppID, t.TenantID); err != nil {
+			return queued, err
+		}
+	}
+	if r.places.CellsOn() && queued < r.set.SweepBatch {
+		if err := r.sweepCells(ctx, db, queue, r.set.SweepBatch-queued); err != nil {
+			return queued, err
 		}
 	}
 	return queued, nil
 }
+
+// sweepCells queues the idle sandboxes that are in cells, at most room of them. Their pooled signs of life are read a page at a time (creation order, after a
+// cursor), and each candidate is asked in its own schema for the last customer or subscription made, so that a sandbox with recent customers is not reset because
+// the pooled tables know nothing of them. The candidates that turn out to be busy are skipped, not counted: the sweep goes on to the next page.
+func (r *Runner) sweepCells(ctx context.Context, db *sqlc.Queries, queue func(appID, tenantID uuid.UUID) error, room int) error {
+	idle := r.now().Add(-r.set.Retention)
+	afterAt, afterID := time.Unix(0, 0), uuid.Nil
+	for room > 0 {
+		page, err := db.IdleSandboxCellCandidates(ctx, sqlc.IdleSandboxCellCandidatesParams{
+			Idle: interval(r.set.Retention), AfterAt: afterAt, AfterID: afterID, PageSize: int32(sweepPage)}) //nolint:gosec // a constant
+		if err != nil {
+			return err
+		}
+		for _, c := range page {
+			var busy time.Time
+			err := r.places.Read(ctx, c.TenantID, func(q *sqlc.Queries) (err error) {
+				busy, err = q.SandboxTenantActivity(ctx, c.TenantID)
+				return err
+			})
+			switch {
+			case errors.Is(err, tenantdir.ErrNotServing):
+				continue // moving: nobody's to reset now
+			case err != nil:
+				return err
+			}
+			if busy.After(idle) {
+				continue
+			}
+			if err := queue(c.AppID, c.TenantID); err != nil {
+				return err
+			}
+			if room--; room == 0 {
+				return nil
+			}
+		}
+		if len(page) < sweepPage {
+			return nil
+		}
+		last := page[len(page)-1]
+		afterAt, afterID = last.CreatedAt, last.TenantID
+	}
+	return nil
+}
+
+// sweepPage is how many candidates in cells the sweep reads at a time.
+const sweepPage = 100

@@ -19,19 +19,22 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/model"
 	affq "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
 // Queries reads a partner's own affiliations.
 type Queries struct {
-	sys *sqlc.Queries
-	qry *affq.Queries
-	now func() time.Time
+	sys    *sqlc.Queries
+	pool   sqlc.DBTX
+	qry    *affq.Queries
+	now    func() time.Time
+	places *placement.Places // where the tenants' own rows are; nil: the pooled database
 }
 
 // New returns the portal queries: pool is the system pool (a person has no tenant), qry reads a tenant's figures.
 func New(systemPool *pgxpool.Pool, qry *affq.Queries, now func() time.Time) *Queries {
-	return &Queries{sys: sqlc.New(systemPool), qry: qry, now: now}
+	return &Queries{sys: sqlc.New(systemPool), pool: systemPool, qry: qry, now: now}
 }
 
 // Affiliation maps a row to the message a partner sees. The link is filled in by the gateway.
@@ -50,7 +53,7 @@ func (p *Queries) Affiliations(ctx context.Context, userID string) ([]*plansv1.M
 	if err != nil {
 		return nil, nil
 	}
-	rows, err := p.sys.PortalListAffiliations(ctx, sqlc.PortalListAffiliationsParams{UserID: &uid})
+	rows, err := p.listAffiliations(ctx, uid, nil)
 	if err != nil {
 		return nil, convert.Err(err, "affiliation")
 	}
@@ -68,7 +71,7 @@ func (p *Queries) own(ctx context.Context, userID, affiliateID string) (sqlc.Por
 	if err1 != nil || err2 != nil {
 		return sqlc.PortalListAffiliationsRow{}, nil, affq.NotFound()
 	}
-	rows, err := p.sys.PortalListAffiliations(ctx, sqlc.PortalListAffiliationsParams{UserID: &uid, AffiliateID: &aid})
+	rows, err := p.listAffiliations(ctx, uid, &aid)
 	if err != nil {
 		return sqlc.PortalListAffiliationsRow{}, nil, convert.Err(err, "affiliation")
 	}
@@ -165,7 +168,7 @@ func (p *Queries) Program(ctx context.Context, userID, tenantID string) (*plansv
 	if err1 != nil || err2 != nil {
 		return nil, Unavailable()
 	}
-	r, err := p.sys.PortalProgram(ctx, sqlc.PortalProgramParams{UserID: &uid, TenantID: tid})
+	r, err := ProgramOfTenant(ctx, p.places, p.pool, uid, tid)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !Open(r)) {
 		return nil, Unavailable()
 	}

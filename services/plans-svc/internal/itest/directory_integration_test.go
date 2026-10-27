@@ -197,21 +197,31 @@ func testDirectory(t *testing.T) {
 			_, _ = e.system.Exec(ctx, `UPDATE tenants SET cell = '', region = '', placement_status = 'ready' WHERE id = ANY($1)`, []string{live, sandbox, other})
 		})
 
-		all, err := client.ListPlacements(operator(), &plansv1.ListPlacementsRequest{})
+		// In cells mode (ITEST_CELLS=1) every tenant of the suite is placed, so the listing holds more than these three: what the test is about is these.
+		mine := func(id string) bool { return id == live || id == sandbox || id == other }
+		all, err := client.ListPlacements(operator(), &plansv1.ListPlacementsRequest{PageSize: 1000})
 		if err != nil {
 			t.Fatal(err)
 		}
 		got := map[string]*plansv1.Placement{}
 		for _, p := range all.GetPlacements() {
-			got[p.GetTenantId()] = p
+			if mine(p.GetTenantId()) {
+				got[p.GetTenantId()] = p
+			}
 		}
 		if len(got) != 3 || got[live].GetCell() != "c1" || got[sandbox].GetStatus() != plansv1.PlacementStatus_PLACEMENT_STATUS_MOVING ||
 			got[other].GetRegion() != "us" || got[other].GetStatus() != plansv1.PlacementStatus_PLACEMENT_STATUS_MOVING {
 			t.Fatalf("all placements = %v", all.GetPlacements())
 		}
-		c1, err := client.ListPlacements(operator(), &plansv1.ListPlacementsRequest{Cell: "c1"})
-		if err != nil || len(c1.GetPlacements()) != 2 {
-			t.Fatalf("c1 = %v %v, want 2", c1, err)
+		c1, err := client.ListPlacements(operator(), &plansv1.ListPlacementsRequest{Cell: "c1", PageSize: 1000})
+		inC1 := 0
+		for _, p := range c1.GetPlacements() {
+			if mine(p.GetTenantId()) {
+				inC1++
+			}
+		}
+		if err != nil || inC1 != 2 {
+			t.Fatalf("c1 = %v %v, want 2 of the 3", c1, err)
 		}
 
 		var seen []string
@@ -222,7 +232,9 @@ func testDirectory(t *testing.T) {
 				t.Fatal(err)
 			}
 			for _, p := range resp.GetPlacements() {
-				seen = append(seen, p.GetTenantId())
+				if mine(p.GetTenantId()) {
+					seen = append(seen, p.GetTenantId())
+				}
 			}
 			if token = resp.GetNextPageToken(); token == "" {
 				break
@@ -245,8 +257,14 @@ func testDirectory(t *testing.T) {
 			t.Fatal("an unknown tenant has a placement")
 		}
 		placed, err := dir.Placed(ctx, "c1")
-		if err != nil || len(placed) != 2 {
-			t.Fatalf("Placed(c1) = %+v %v", placed, err)
+		inC1 = 0
+		for _, p := range placed {
+			if mine(p.TenantID.String()) {
+				inC1++
+			}
+		}
+		if err != nil || inC1 != 2 {
+			t.Fatalf("Placed(c1) = %+v %v, want 2 of the 3", placed, err)
 		}
 	})
 }
