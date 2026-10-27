@@ -19,7 +19,7 @@ const fmt = useFormat();
 const state = computed(() => props.transfer.state ?? "none");
 const tone = computed<NonNullable<BadgeVariants["variant"]>>(() => (state.value === "paid" ? "success" : state.value === "pending" ? "outline" : "destructive"));
 const money = (v: number | undefined) => fmt.amount(v, props.transfer.currency);
-const when = (v?: string) => fmt.date(v, "dateTime", "—");
+const when = (v?: string | null) => fmt.date(v, "dateTime", "—");
 const bank = computed(() => props.transfer.instructions);
 </script>
 

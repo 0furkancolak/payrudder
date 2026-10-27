@@ -45,7 +45,7 @@ final class GetCustomerUsageUsage implements Model
         return Cast::compact([
             'meter_code' => $this->meterCode,
             'quantity' => $this->quantity,
-            'event_count' => $this->eventCount,
+            'event_count' => Cast::int64($this->eventCount),
         ]);
     }
 }

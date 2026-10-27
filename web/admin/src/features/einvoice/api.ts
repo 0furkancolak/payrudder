@@ -8,7 +8,7 @@ import type { Environment } from "@/shared/lib/environment";
 
 export type EInvoiceDocument = components["schemas"]["EInvoiceDocument"];
 export type EInvoiceAccount = components["schemas"]["EInvoiceAccount"];
-export type LegalInfo = components["schemas"]["LegalInfo"];
+export type LegalInfo = components["schemas"]["LegalInfoInput"];
 export type EInvoiceOn = "off" | "finalized" | "paid";
 
 export const einvoiceKeys = {

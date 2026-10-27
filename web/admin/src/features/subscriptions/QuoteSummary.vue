@@ -6,7 +6,7 @@ import { changeOutcome } from "./lib";
 
 /** The price of a change of plan, before it is made: the credit, the charge, what that comes to now, and the next renewal (and, for Payrudder's own, when it takes effect). */
 const props = defineProps<{
-  quote: { credit_minor?: string; charge_minor?: string; net_minor?: string; next_renewal_minor?: string; next_renewal_time?: string; effective_time?: string; timing?: string };
+  quote: { credit_minor?: string; charge_minor?: string; net_minor?: string; next_renewal_minor?: string; next_renewal_time?: string | null; effective_time?: string | null; timing?: string };
   currency: string | undefined;
   /** Payrudder's own subscriptions say when the change takes effect and the date of the next renewal; a provider's quote has neither. */
   detailed?: boolean;

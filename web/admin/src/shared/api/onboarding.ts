@@ -9,10 +9,12 @@ import type { components } from "./schema";
  */
 export type OnboardingRecord = components["schemas"]["Onboarding"];
 export type WizardDoc = components["schemas"]["OnboardingWizard"];
+/** The wizard fields of a change: every one optional, none null. */
+export type WizardPatch = components["schemas"]["OnboardingWizardInput"];
 
 /** A change: the wizard fields it names, tours to add to the seen ones and tours to take out of them (a person asking to see a tour again). */
 export interface OnboardingPatch {
-  wizard?: WizardDoc;
+  wizard?: WizardPatch;
   seen_tours?: string[];
   forget_tours?: string[];
 }

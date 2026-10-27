@@ -73,7 +73,7 @@ function actionsOf(e: Endpoint, i: number): RowAction[] {
 const deliveryStates = computed(() => [...new Set(log.value.map((d) => d.state as string | undefined).filter((s): s is string => !!s))].sort());
 /** A secret is shown right after it is made and never again. */
 const secret = computed(() => ((act.create.data.value ?? act.rotate.data.value) as { secret?: string } | undefined)?.secret ?? "");
-const when = (v?: string) => fmt.date(v, "shortSeconds", "—");
+const when = (v?: string | null) => fmt.date(v, "shortSeconds", "—");
 const stateVariant = (s?: string) => (s === "WEBHOOK_DELIVERY_STATE_DELIVERED" ? "success" : s === "WEBHOOK_DELIVERY_STATE_FAILED" ? "destructive" : "secondary");
 const stateWord = (s?: string) => t(`billing.webhooks.state.${(s ?? "").replace("WEBHOOK_DELIVERY_STATE_", "").toLowerCase()}`);
 const failure = computed(() => firstError(...Object.values(act)));

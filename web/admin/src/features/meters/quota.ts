@@ -5,7 +5,7 @@ export type Aggregation = NonNullable<Meter["aggregation"]>;
 export type QuotaWindow = components["schemas"]["QuotaWindow"];
 export type QuotaMode = components["schemas"]["QuotaMode"];
 export type EntitlementOverride = components["schemas"]["EntitlementOverride"];
-export type Entitlement = components["schemas"]["Entitlement"];
+export type Entitlement = components["schemas"]["EntitlementInput"];
 
 /** The terms of one quota as a person types them: the limit, the window it counts over, what reaching it does, and the alert thresholds. */
 export interface QuotaDraft {

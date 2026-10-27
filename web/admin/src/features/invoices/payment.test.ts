@@ -1,5 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { canRecordPayment, isTransferCharge, offlineSettlement, outstandingAfter, receivedAtToIso, toLocalInput, transferSettlement, wantsTransferState } from "./payment";
+import {
+  canRecordPayment,
+  isTransferCharge,
+  offlineSettlement,
+  outstandingAfter,
+  receivedAtToIso,
+  toLocalInput,
+  transferSettlement,
+  wantsTransferState,
+  type InvoiceTransfer,
+  type RecordInvoicePaymentResult,
+  type TransferReceiptResult,
+} from "./payment";
+
+type TransferReceipt = TransferReceiptResult["receipt"];
+
+const receipt = (o: Partial<TransferReceipt> = {}): TransferReceipt => ({
+  id: 1,
+  amount_minor: 0,
+  currency: "TRY",
+  received_at: "2026-10-20T09:15:00Z",
+  bank_reference: "REF-1",
+  recorded_by: "console",
+  recorded_at: "2026-10-20T09:16:00Z",
+  ...o,
+});
+const transfer = (o: Partial<InvoiceTransfer> = {}): InvoiceTransfer => ({ invoice_id: "inv_1", state: "pending", received_minor: 0, receipts: [], ...o });
+const transferResult = (o: Partial<TransferReceiptResult> = {}): TransferReceiptResult => ({ receipt: receipt(), duplicate: false, paid: false, saga_notified: false, transfer: transfer(), ...o });
+const offlineResult = (o: Partial<RecordInvoicePaymentResult> = {}): RecordInvoicePaymentResult => ({ payment: null, duplicate: false, paid_minor: "0", outstanding_minor: "0", settled: false, ...o });
 
 describe("which invoices", () => {
   it("can be paid by hand while open or uncollectible", () => {
@@ -13,15 +41,15 @@ describe("which invoices", () => {
     expect(wantsTransferState("paid", "COMPLETED")).toBe(false);
   });
   it("were charged by transfer unless the state is none, paid or unknown", () => {
-    expect(isTransferCharge({ state: "pending" })).toBe(true);
-    expect(isTransferCharge({ state: "expired" })).toBe(true);
-    expect(isTransferCharge({ state: "rejected" })).toBe(true);
-    expect(isTransferCharge({ state: "none" })).toBe(false);
-    expect(isTransferCharge({ state: "paid" })).toBe(false);
+    expect(isTransferCharge(transfer({ state: "pending" }))).toBe(true);
+    expect(isTransferCharge(transfer({ state: "expired" }))).toBe(true);
+    expect(isTransferCharge(transfer({ state: "rejected" }))).toBe(true);
+    expect(isTransferCharge(transfer({ state: "none" }))).toBe(false);
+    expect(isTransferCharge(transfer({ state: "paid" }))).toBe(false);
     expect(isTransferCharge(undefined)).toBe(false);
     // Once the invoice is uncollectible a late transfer is recorded on the invoice, which settles it.
-    expect(isTransferCharge({ state: "expired" }, "uncollectible")).toBe(false);
-    expect(isTransferCharge({ state: "pending" }, "open")).toBe(true);
+    expect(isTransferCharge(transfer({ state: "expired" }), "uncollectible")).toBe(false);
+    expect(isTransferCharge(transfer({ state: "pending" }), "open")).toBe(true);
     expect(isTransferCharge(null)).toBe(false);
   });
 });
@@ -56,16 +84,16 @@ describe("receivedAtToIso", () => {
 
 describe("settlements", () => {
   it("reads a confirmed transfer", () => {
-    expect(transferSettlement({ paid: false, receipt: { amount_minor: 4000 }, transfer: { received_minor: 4000, outstanding_minor: 6000 } })).toEqual({
+    expect(transferSettlement(transferResult({ receipt: receipt({ amount_minor: 4000 }), transfer: transfer({ received_minor: 4000, outstanding_minor: 6000 }) }))).toEqual({
       paid: false,
       duplicate: false,
       received: "4000",
       outstanding: "6000",
     });
-    expect(transferSettlement({ paid: true, duplicate: true, transfer: { received_minor: 10000, outstanding_minor: 0 } }).paid).toBe(true);
+    expect(transferSettlement(transferResult({ paid: true, duplicate: true, transfer: transfer({ received_minor: 10000, outstanding_minor: 0 }) })).paid).toBe(true);
   });
   it("reads an offline payment", () => {
-    expect(offlineSettlement({ settled: false, paid_minor: "1000", outstanding_minor: "9000" })).toEqual({ paid: false, duplicate: false, received: "1000", outstanding: "9000" });
-    expect(offlineSettlement({ settled: true, paid_minor: "10000", outstanding_minor: "0" }).paid).toBe(true);
+    expect(offlineSettlement(offlineResult({ paid_minor: "1000", outstanding_minor: "9000" }))).toEqual({ paid: false, duplicate: false, received: "1000", outstanding: "9000" });
+    expect(offlineSettlement(offlineResult({ settled: true, paid_minor: "10000", outstanding_minor: "0" })).paid).toBe(true);
   });
 });

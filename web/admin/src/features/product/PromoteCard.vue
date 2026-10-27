@@ -20,7 +20,7 @@ const { t } = useI18n();
 const app = useApp(() => props.appId);
 const promote = usePromote(() => props.appId);
 const canPromote = computed(() => app.data.value?.role === "owner" || app.data.value?.role === "admin");
-const hasLive = computed(() => tenantOf(app.data.value?.app, "live") !== "");
+const hasLive = computed(() => tenantOf(app.data.value?.app ?? undefined, "live") !== "");
 const result = computed(() => promote.data.value);
 const summary = computed(() => promoteSummary(result.value));
 const secrets = computed(() => (result.value?.changes ?? []).filter((c) => c.secret));

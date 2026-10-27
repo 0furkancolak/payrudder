@@ -32,7 +32,7 @@ const mail = useMailIntegration(() => props.appId, () => open.value);
 const actions = useMailActions(() => props.appId);
 
 // --- the built-in sender's switches (the tenant API, as the person)
-const liveTenant = computed(() => (open.value && props.kind === "payrudderMail" ? tenantOf(app.data.value?.app, "live") : ""));
+const liveTenant = computed(() => (open.value && props.kind === "payrudderMail" ? tenantOf(app.data.value?.app ?? undefined, "live") : ""));
 const settings = useMailSettings(liveTenant);
 const setCategory = useSetMailCategory(liveTenant);
 const enabled = computed(() => {

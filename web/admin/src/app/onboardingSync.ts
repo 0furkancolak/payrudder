@@ -1,4 +1,4 @@
-import { setProgressStore } from "@/features/onboarding";
+import { setProgressStore, type Progress } from "@/features/onboarding";
 import { loadOnboarding, pushOnboarding } from "@/shared/api/onboarding";
 import { setTourStore } from "@/shared/ui/tour";
 
@@ -15,7 +15,8 @@ export function startOnboardingSync(): void {
   setProgressStore({
     load: async () => {
       const record = await loadOnboarding();
-      return record ? { wizard: record.wizard ?? null } : null;
+      // The server sends null for a field that is not set; the wizard state knows such a field as absent.
+      return record ? { wizard: record.wizard ? (Object.fromEntries(Object.entries(record.wizard).filter(([, v]) => v !== null)) as Partial<Progress>) : null } : null;
     },
     patch: (change) => pushOnboarding({ wizard: change }),
   });

@@ -42,7 +42,7 @@ const table = useTableState(list, {
   sheet: { kind: "app", id: (a) => a.id }, searchFields: (a) => [a.name, a.slug, ...(a.tenants ?? []).map((e) => e.id)],
   url: "f_", filters: { env: (a, v) => (a.tenants ?? []).some((e) => environmentWord(e) === v) },
 });
-const when = (v?: string) => fmt.date(v, "day", "—");
+const when = (v?: string | null) => fmt.date(v, "day", "—");
 
 // --- a new app
 const name = ref("");

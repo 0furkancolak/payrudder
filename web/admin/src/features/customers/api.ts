@@ -51,7 +51,7 @@ export interface Address {
 }
 
 /** The address as one line for a table: "Atatürk Cd. 1, 34000 İstanbul, TR". */
-export function addressLine(a?: Address): string {
+export function addressLine(a?: Address | null): string {
   if (!a) return "";
   return [a.line1, a.line2, [a.postal_code, a.city].filter(Boolean).join(" "), a.region, a.country].filter(Boolean).join(", ");
 }

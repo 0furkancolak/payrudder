@@ -62,7 +62,7 @@ describe("words", () => {
 });
 
 describe("meters", () => {
-  const meter = (code: string, extra: Partial<Meter> = {}): Meter => ({ code, aggregation: "AGGREGATION_SUM", unit_label: "u", ...extra });
+  const meter = (code: string, extra: Partial<Meter> = {}): Meter => ({ code, aggregation: "AGGREGATION_SUM", value_property: "", filter: {}, quantity_scale: 0, unit_label: "u", category: "", version: 1, create_time: null, ...extra });
   const meters = [meter("a", { category: "AI", quantity_scale: 3 }), meter("b", { category: " ai " }), meter("c", { category: "Compute" }), meter("d", { category: "AI" }), meter("e")];
   it("lists the categories in use once each", () => {
     expect(categories(meters)).toEqual(["ai", "AI", "Compute"].sort((x, y) => x.localeCompare(y)));

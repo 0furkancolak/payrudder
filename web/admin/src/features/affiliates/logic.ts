@@ -4,6 +4,7 @@ import { minorToMajor, parseMajor } from "@/shared/lib/money";
 import type { Tone } from "@/shared/ui/status-pill";
 
 export type Program = components["schemas"]["AffiliateProgram"];
+export type ProgramInput = components["schemas"]["AffiliateProgramInput"];
 /** A partner. `link` (the public referral URL) is optional until every gateway sends it. */
 export type Affiliate = components["schemas"]["Affiliate"] & { link?: string };
 export type Commission = components["schemas"]["AffiliateCommission"];
@@ -54,7 +55,7 @@ export function defaultProgramForm(currency: string): ProgramForm {
 }
 
 /** The form of a stored program; `currency` is the fallback for a percentage program, which stores none. */
-export function programToForm(p: Program | null | undefined, currency: string): ProgramForm {
+export function programToForm(p: Partial<Program> | null | undefined, currency: string): ProgramForm {
   if (!p) return defaultProgramForm(currency);
   const cur = p.currency || currency;
   const fixed = p.commission_kind === "fixed";
@@ -85,7 +86,7 @@ const wholeIn = (text: string, min: number, max: number): number | null => {
 };
 
 /** The request body of the form, or the problem with it. Amounts are minor-unit strings, a percentage is basis points. */
-export function formToProgram(f: ProgramForm): { body: Program } | { problem: FormProblem } {
+export function formToProgram(f: ProgramForm): { body: ProgramInput } | { problem: FormProblem } {
   let value: string;
   if (f.kind === "percent_bps") {
     const bps = percentToBps(f.value);

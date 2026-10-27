@@ -1243,7 +1243,7 @@ type GetCustomerUsageResponse struct {
 type GetCustomerUsageUsage struct {
 	MeterCode  string `json:"meter_code"`
 	Quantity   string `json:"quantity"`
-	EventCount Int64  `json:"event_count"`
+	EventCount string `json:"event_count"`
 }
 
 // GetDunningReportInvoice is an object of the API; see components.schemas.GetDunningReportInvoice in

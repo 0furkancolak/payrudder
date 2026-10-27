@@ -62,7 +62,7 @@ const envs = computed(() =>
     info: currencyInfo(x.currency ?? FALLBACK_CURRENCY, locale.value),
     timezone: x.timezone ?? "",
     offset: formatOffset(zoneMinutes(x.timezone ?? "UTC")),
-    grace: formatDuration(x.grace_period, locale.value),
+    grace: formatDuration(x.grace_period ?? undefined, locale.value),
     tier: (x.tier ?? "").replace("TENANT_TIER_", "").toLowerCase(),
   })),
 );

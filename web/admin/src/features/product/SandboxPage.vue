@@ -30,9 +30,9 @@ const running = computed(() => job.value?.state === "queued" || job.value?.state
 /** The step being worked on: the first one not finished (steps run in order). */
 const next = computed(() => job.value?.steps?.find((s) => s.state === "pending")?.name);
 const canReset = computed(() => app.data.value?.role === "owner" || app.data.value?.role === "admin");
-const hasSandbox = computed(() => tenantOf(app.data.value?.app, "sandbox") !== "");
-const rows = (deleted: Record<string, number> | undefined) => Object.entries(deleted ?? {}).sort(([a], [b]) => a.localeCompare(b));
-const total = (deleted: Record<string, number> | undefined) => Object.values(deleted ?? {}).reduce((n, v) => n + v, 0);
+const hasSandbox = computed(() => tenantOf(app.data.value?.app ?? undefined, "sandbox") !== "");
+const rows = (deleted: Record<string, string | number> | undefined) => Object.entries(deleted ?? {}).sort(([a], [b]) => a.localeCompare(b));
+const total = (deleted: Record<string, string | number> | undefined) => Object.values(deleted ?? {}).reduce((n: number, v) => n + Number(v), 0);
 
 function go() {
   reset.mutate(undefined, { onSuccess: () => (confirming.value = false), onError: () => (confirming.value = false) });

@@ -10,7 +10,7 @@ import { homeTour } from "./tour";
  * What a new person meets on the home of an app: the "Getting started" card (until it is done or hidden) and, the first time and once the page is quiet,
  * the tour of the home. The first-run wizard itself is the organisation page's (`OrgHome`); this is what carries on after it, in the app it made.
  */
-const props = defineProps<{ app: App | undefined }>();
+const props = defineProps<{ app: App | null | undefined }>();
 const me = useMe();
 const account = useAccount();
 const apps = useApps();
@@ -33,6 +33,6 @@ watch(
 </script>
 
 <template>
-  <GettingStarted v-if="showChecklist" :app="app" @create-app="creating = true" />
+  <GettingStarted v-if="showChecklist" :app="app ?? undefined" @create-app="creating = true" />
   <CreateAppDialog v-model:open="creating" />
 </template>

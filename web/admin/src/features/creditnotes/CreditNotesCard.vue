@@ -31,7 +31,7 @@ const notes = useCreditNotes(
 );
 const retry = useRetryCreditNoteRefund(() => props.tenantId);
 const issueOpen = ref(false);
-const date = (v?: string) => fmt.date(v, "day", "—");
+const date = (v?: string | null) => fmt.date(v, "day", "—");
 const list = computed(() => notes.data.value?.credit_notes ?? []);
 type Where = "toCredit" | "refunded" | "refundFailed" | "refundRequested";
 const WHERE: Where[] = ["toCredit", "refunded", "refundFailed", "refundRequested"];

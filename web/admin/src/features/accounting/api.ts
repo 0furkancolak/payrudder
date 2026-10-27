@@ -89,6 +89,7 @@ export async function downloadCsv(tenantId: string, from: string, to: string, ap
 }
 
 export type ExpenseRule = components["schemas"]["ExpenseRule"];
+export type ExpenseRuleInput = components["schemas"]["ExpenseRuleInput"];
 export type InboxItem = components["schemas"]["InboxItem"];
 
 const inboxKeys = {
@@ -150,7 +151,7 @@ export function useExpenseRules(tenantId: MaybeRefOrGetter<string>) {
 export function useSaveRule(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { id?: string; body: ExpenseRule }) => {
+    mutationFn: (v: { id?: string; body: ExpenseRuleInput }) => {
       const api = tenantApi(toValue(tenantId));
       return v.id ? unwrap(api.PUT("/v1/expense-rules/{id}", { params: { path: { id: v.id } }, body: v.body })) : unwrap(api.POST("/v1/expense-rules", { body: v.body }));
     },

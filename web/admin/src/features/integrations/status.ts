@@ -21,7 +21,7 @@ export function eInvoiceState(account: EInvoiceAccount | null | undefined, provi
 
 interface MailConnection {
   connected?: boolean;
-  integration?: { check_problem?: string; checked_time?: string };
+  integration?: { check_problem?: string; checked_time?: string | null } | null;
 }
 
 /** The tenant's own e-mail provider: not connected, working, or one the provider refused or could not be reached with at the last check. */

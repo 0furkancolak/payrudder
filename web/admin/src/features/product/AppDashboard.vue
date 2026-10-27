@@ -33,11 +33,11 @@ const env = computed<Environment | null>(() => {
   return app.data.value?.app ? defaultEnv(app.data.value.app) : null;
 });
 const live = computed(() => env.value === "live");
-const notActive = computed(() => live.value && liveState(app.data.value?.app) !== "active");
+const notActive = computed(() => live.value && liveState(app.data.value?.app ?? undefined) !== "active");
 const query = computed(() => parseQuery(search.value as Record<string, unknown>));
 const source = computed(() => (appId.value && env.value && !notActive.value ? { kind: "app" as const, appId: appId.value, env: env.value } : null));
 const dash = useDashboard(source, query);
-const tenantId = computed(() => (env.value ? tenantOf(app.data.value?.app, env.value) : "") || (dash.data.value?.tenant_id ?? ""));
+const tenantId = computed(() => (env.value ? tenantOf(app.data.value?.app ?? undefined, env.value) : "") || (dash.data.value?.tenant_id ?? ""));
 
 function setQuery(q: DashQuery) {
   if (!env.value) return;

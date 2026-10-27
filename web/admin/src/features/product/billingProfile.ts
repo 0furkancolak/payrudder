@@ -1,8 +1,6 @@
 import { cleanAddress, validateAddress, type Address, type AddressProblem } from "@/shared/lib/address";
 import type { components } from "@/shared/api/schema";
 
-type Tenant = components["schemas"]["Tenant"];
-
 /**
  * The countries whose invoices need the seller's tax id: Turkey and the EU member states. The same list as `taxIDCountries` in
  * services/plans-svc/internal/domain/golive.go (a test reads that file and compares), because the server decides and the form only saves a round trip.
@@ -39,7 +37,7 @@ export type ProfileProblems = Partial<Record<ProfileField, ProfileProblem>>;
 const text = (s: string) => s.trim();
 
 /** The form filled from the stored live tenant (an empty form for a tenant with nothing saved). */
-export function fromTenant(t: Tenant | undefined): ProfileForm {
+export function fromTenant(t: { legal?: components["schemas"]["LegalInfoInput"] | null; address?: components["schemas"]["AddressInput"] | null } | undefined): ProfileForm {
   return {
     legalName: t?.legal?.legal_name ?? "",
     taxId: t?.legal?.tax_id ?? "",
@@ -84,8 +82,8 @@ export function validateProfile(f: ProfileForm): ProfileProblems {
 }
 
 /** The request body for `PUT /app/v1/apps/{id}/billing-profile`. */
-export function profileBody(f: ProfileForm): { legal: components["schemas"]["LegalInfo"]; address: Address } {
-  const legal: components["schemas"]["LegalInfo"] = { legal_name: text(f.legalName) };
+export function profileBody(f: ProfileForm): { legal: components["schemas"]["LegalInfoInput"]; address: components["schemas"]["AddressInput"] } {
+  const legal: components["schemas"]["LegalInfoInput"] = { legal_name: text(f.legalName) };
   if (normalizeTaxId(f.taxId) !== "") legal.tax_id = normalizeTaxId(f.taxId);
   if (text(f.taxOffice) !== "") legal.tax_office = text(f.taxOffice);
   return { legal, address: addressOf(f) };

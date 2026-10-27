@@ -31,7 +31,7 @@ watch(() => account.data.value?.name, (n) => (accountName.value = n ?? ""), { im
 const isOwner = computed(() => account.data.value?.role === "owner");
 const nameChanged = computed(() => accountName.value.trim() !== "" && accountName.value.trim() !== account.data.value?.name);
 
-const when = (v?: string) => fmt.date(v, "dateTime");
+const when = (v?: string | null) => fmt.date(v, "dateTime");
 const themes = computed(() => [
   { value: "system", label: t("product.settings.themeSystem") },
   { value: "light", label: t("product.settings.themeLight") },

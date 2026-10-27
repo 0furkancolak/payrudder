@@ -48,8 +48,8 @@ const remove = useRemoveMember();
 /** An administrator may not touch owners; an owner may touch anybody. */
 const mayHandle = (role: string | undefined) => canManage.value && (role !== "owner" || isOwner.value);
 const nameOf = (m: { display_name?: string; email?: string }) => m.display_name || m.email || "";
-const when = (v?: string) => fmt.date(v, "day");
-const expired = (v?: string) => (v ? new Date(v).getTime() < Date.now() : false);
+const when = (v?: string | null) => fmt.date(v, "day");
+const expired = (v?: string | null) => (v ? new Date(v).getTime() < Date.now() : false);
 
 const table = useTableState(members, {
   sheet: { kind: "member", id: (m) => m.user_id }, searchFields: (m) => [m.display_name, m.email],
