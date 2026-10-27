@@ -112,7 +112,7 @@ Status: **Fixed** (the PR), **Earlier** (already true on main when checked), **N
 
 | # | Finding | Status |
 |---|---|---|
-| 1 | reference and note errors carry `billing.payment.bad_amount` | **Open (real bug)**. The fix is two new keys (`billing.payment.bad_reference`, `billing.payment.bad_note`) with `docs/error-keys.md` entries and a translation in each of the six console locales; `web/admin/src/shared/lib/errors.test.ts` fails the build for an untranslated key and web was out of scope here |
+| 1 | reference and note errors carry `billing.payment.bad_amount` | **Fixed** (phase 49): `billing.payment.bad_reference` and `billing.payment.bad_note`, listed and translated in the six console locales; the unit test pins the keys |
 | 2 | internal errors never logged | Fixed #165 |
 | 3 | `notFoundOrVoided` swallows a database error | Fixed #165 |
 | 4 | `Void` errors dropped | Fixed #162 (logs all but "saga busy" / "no saga yet") |
