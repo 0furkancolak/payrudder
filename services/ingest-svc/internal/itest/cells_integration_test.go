@@ -257,7 +257,6 @@ func (d *dual) testWatermarkAndBackPressure(t *testing.T) {
 	// Earlier scenarios may have left rows; take what is there as the baseline of the depth and make the oldest ours.
 	a, b := d.tenant(t), d.tenant(t)
 	at := time.Now().Add(-time.Hour)
-	before := time.Now().Add(-time.Second)
 	var batch []*ingestv1.IncomingEvent
 	for i := range 10 {
 		batch = append(batch, event(fmt.Sprintf("w-a-%d", i), "1", at))
@@ -266,13 +265,14 @@ func (d *dual) testWatermarkAndBackPressure(t *testing.T) {
 		t.Fatal(err)
 	}
 	ingestOne(t, svc, b, event("w-b", "1", at))
+	after := time.Now().Add(time.Second)
 
 	w, err := svc.GetOutboxWatermark(ctx, &ingestv1.GetOutboxWatermarkRequest{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if w.OldestUnpublishedIngestedAt == nil || w.OldestUnpublishedIngestedAt.AsTime().Before(before) {
-		t.Fatalf("watermark = %v, want within the ingests just made (or older leftovers of this test run)", w.OldestUnpublishedIngestedAt)
+	if w.OldestUnpublishedIngestedAt == nil || w.OldestUnpublishedIngestedAt.AsTime().After(after) {
+		t.Fatalf("watermark = %v, want set and no later than the ingests just made (older leftovers of this test run are fine)", w.OldestUnpublishedIngestedAt)
 	}
 	// The depth is the sum over the tenants; back-pressure answers above the limit, whichever tenant asks.
 	testkit.Eventually(t, 5*time.Second, "depth above the limit", func() bool { return svc.OutboxDepth() > 5 })
