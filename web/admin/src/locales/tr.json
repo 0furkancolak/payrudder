@@ -1116,7 +1116,8 @@
         "title": "Bir müşterinin kredileri",
         "pick": "Müşteri seçin",
         "balance": "kullanılabilir kredi",
-        "nextExpiry": "Bir kısmı {when} tarihinde sona erer"
+        "nextExpiry": "Bir kısmı {when} tarihinde sona erer",
+        "empty": "Bakiyesini, elindeki kredileri ve bunlara olanları görmek için bir müşteri seçin."
       },
       "lots": {
         "source": "Kaynak",
@@ -1188,6 +1189,13 @@
         "threshold": "Şunun altında uyar (kredi)",
         "save": "Kaydet",
         "saved": "Kaydedildi."
+      },
+      "tabs": {
+        "lots": "Verilenler"
+      },
+      "sell": {
+        "title": "Kredi satışı",
+        "hint": "Müşterilerin ödeme bağlantısıyla satın aldığı kredi paketleri ve düşük bakiye uyarısı."
       }
     },
     "accounting": {

@@ -220,7 +220,7 @@ const digits = (r: Row) => minorDigits(r.currency);
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" :name="inbox ? 'review-inbox' : 'scan-receipt'">
     <SheetContent class="sm:max-w-5xl">
       <SheetHeader>
         <SheetTitle>{{ t("billing.accounting.scan.title") }}</SheetTitle>

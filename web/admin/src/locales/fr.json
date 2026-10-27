@@ -1116,7 +1116,8 @@
         "title": "Crédits d'un client",
         "pick": "Choisir un client",
         "balance": "crédits disponibles",
-        "nextExpiry": "Une partie expire le {when}"
+        "nextExpiry": "Une partie expire le {when}",
+        "empty": "Choisissez un client pour voir son solde, ses crédits et leur historique."
       },
       "lots": {
         "source": "Source",
@@ -1188,6 +1189,13 @@
         "threshold": "Alerter sous (crédits)",
         "save": "Enregistrer",
         "saved": "Enregistré."
+      },
+      "tabs": {
+        "lots": "Attributions"
+      },
+      "sell": {
+        "title": "Vendre des crédits",
+        "hint": "Les packs de crédits que vos clients achètent avec un lien de paiement et l'alerte de solde bas."
       }
     },
     "accounting": {

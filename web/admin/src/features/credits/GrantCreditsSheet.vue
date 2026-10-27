@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAttemptKey } from "@/shared/lib/key";
+import { sheetName } from "@/shared/lib/sheets";
 import { CREDITS_RE } from "@/shared/lib/rules";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -60,7 +61,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" :name="customer ? sheetName('grant-credits', customer) : undefined">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.credits.grant.free") }}</SheetTitle>
