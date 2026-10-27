@@ -40,37 +40,42 @@ func (s *switchMeters) Get(ctx context.Context, tn uuid.UUID, code string) (usag
 
 func newReplayManager(r *run) *replay.Manager {
 	return replay.New(replay.Config{
-		Pool: shared.system, Brokers: []string{shared.kafka.Brokers}, Topic: r.topic, LiveGroup: r.group,
+		Pool: shared.system, Cells: shared.router, Brokers: []string{shared.kafka.Brokers}, Topic: r.topic, LiveGroup: r.group,
 		Meters: r.handler.Meters, Settings: r.src, Scan: 100 * time.Millisecond, BatchSize: 500,
 	})
 }
 
-// gen is a tenant's active generation and the row counts per generation.
+// activeGeneration is a tenant's active generation.
 func activeGeneration(t *testing.T, tn uuid.UUID) int32 {
 	t.Helper()
 	var g int32
-	if err := shared.system.QueryRow(context.Background(), `SELECT COALESCE((SELECT generation FROM aggregate_generations WHERE tenant_id = $1 AND status = 'active'), 1)`, tn).Scan(&g); err != nil {
-		t.Fatal(err)
-	}
+	atTenant(t, tn, func(ctx context.Context, q querier) error {
+		return q.QueryRow(ctx, `SELECT COALESCE((SELECT generation FROM aggregate_generations WHERE tenant_id = $1 AND status = 'active'), 1)`, tn).Scan(&g)
+	})
 	return g
 }
 
 func rowsOfGeneration(t *testing.T, gen int32, tenants ...uuid.UUID) map[rowKey]totals {
 	t.Helper()
-	rows, err := shared.system.Query(context.Background(),
-		`SELECT tenant_id, customer_id, meter_code, period_id, quantity::text, event_count, quantity_scale FROM usage_aggregates WHERE tenant_id = ANY($1) AND generation = $2`, tenants, gen)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer rows.Close()
 	out := map[rowKey]totals{}
-	for rows.Next() {
-		var k rowKey
-		var tt totals
-		if err := rows.Scan(&k.tenant, &k.customer, &k.meter, &k.period, &tt.qty, &tt.count, &tt.scale); err != nil {
-			t.Fatal(err)
-		}
-		out[k] = tt
+	for _, tn := range tenants {
+		atTenant(t, tn, func(ctx context.Context, q querier) error {
+			rows, err := q.Query(ctx,
+				`SELECT tenant_id, customer_id, meter_code, period_id, quantity::text, event_count, quantity_scale FROM usage_aggregates WHERE tenant_id = $1 AND generation = $2`, tn, gen)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var k rowKey
+				var tt totals
+				if err := rows.Scan(&k.tenant, &k.customer, &k.meter, &k.period, &tt.qty, &tt.count, &tt.scale); err != nil {
+					return err
+				}
+				out[k] = tt
+			}
+			return rows.Err()
+		})
 	}
 	return out
 }
@@ -225,8 +230,11 @@ func testReplayFixesAFilterAndPromotesUnderLoad(t *testing.T) {
 		t.Fatalf("the bystander's generation = %d, want 1", g)
 	}
 	var bRows int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM aggregate_generations WHERE tenant_id = $1`, b).Scan(&bRows); err != nil || bRows != 0 {
-		t.Fatalf("the bystander has %d generation rows (%v), want none", bRows, err)
+	atTenant(t, b, func(ctx context.Context, q querier) error {
+		return q.QueryRow(ctx, `SELECT count(*) FROM aggregate_generations WHERE tenant_id = $1`, b).Scan(&bRows)
+	})
+	if bRows != 0 {
+		t.Fatalf("the bystander has %d generation rows, want none", bRows)
 	}
 	// Exactness: generation 2 of A, and generation 1 of B, equal the ledger of every event.
 	wantA, wantB := newLedger(), newLedger()
@@ -242,19 +250,21 @@ func testReplayFixesAFilterAndPromotesUnderLoad(t *testing.T) {
 			return
 		}
 		// Diagnose: which events are in generation 1 but not in generation 2, and where are they in the log?
-		rows, err := shared.system.Query(context.Background(), `SELECT p1.event_id FROM processed_events p1 WHERE p1.tenant_id = $1 AND p1.generation = 1
-			AND NOT EXISTS (SELECT 1 FROM processed_events p2 WHERE p2.tenant_id = p1.tenant_id AND p2.event_id = p1.event_id AND p2.generation = 2)`, a)
-		if err != nil {
-			t.Log(err)
-			return
-		}
 		missing := map[string]bool{}
-		for rows.Next() {
-			var id string
-			_ = rows.Scan(&id)
-			missing[id] = true
-		}
-		rows.Close()
+		atTenant(t, a, func(ctx context.Context, q querier) error {
+			rows, err := q.Query(ctx, `SELECT p1.event_id FROM processed_events p1 WHERE p1.tenant_id = $1 AND p1.generation = 1
+				AND NOT EXISTS (SELECT 1 FROM processed_events p2 WHERE p2.tenant_id = p1.tenant_id AND p2.event_id = p1.event_id AND p2.generation = 2)`, a)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var id string
+				_ = rows.Scan(&id)
+				missing[id] = true
+			}
+			return nil
+		})
 		t.Logf("%d events of A are in generation 1 and not in generation 2; job offsets: start %v end %v dual %v", len(missing), ready.StartOffsets, ready.EndOffsets, ready.DualWriteFrom)
 		shown := 0
 		for _, rec := range consumeTopic(t, r.topic, 3*time.Second) {
@@ -279,16 +289,19 @@ func testReplayFixesAFilterAndPromotesUnderLoad(t *testing.T) {
 		t.Fatal("new events must land in the promoted generation")
 	}
 	var statuses []string
-	rows, err := shared.system.Query(context.Background(), `SELECT status FROM aggregate_generations WHERE tenant_id = $1 ORDER BY generation`, a)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for rows.Next() {
-		var s string
-		_ = rows.Scan(&s)
-		statuses = append(statuses, s)
-	}
-	rows.Close()
+	atTenant(t, a, func(ctx context.Context, q querier) error {
+		rows, err := q.Query(ctx, `SELECT status FROM aggregate_generations WHERE tenant_id = $1 ORDER BY generation`, a)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var s string
+			_ = rows.Scan(&s)
+			statuses = append(statuses, s)
+		}
+		return rows.Err()
+	})
 	if fmt.Sprint(statuses) != "[retired active]" {
 		t.Fatalf("generation statuses = %v, want [retired active]", statuses)
 	}

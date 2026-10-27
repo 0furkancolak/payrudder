@@ -19,6 +19,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
@@ -37,6 +38,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/usage"
@@ -56,9 +58,77 @@ var (
 		system *pgxpool.Pool
 		app    *pgxpool.Pool
 		reader *sdkmetric.ManualReader
+		// Cells mode (ITEST_CELLS=1, ADR 0018): every tenant of the suite lives in a schema of a second database, placed on first use. appDB is the app pool's
+		// router then, router the system pool's.
+		appDB   pgxx.Beginner
+		router  *pgxx.Router
+		cellSys *pgxpool.Pool
+		cellApp *pgxpool.Pool
+		dir     *lazyCells
 	}
 	seq atomic.Int64
 )
+
+// cellsMode runs the whole suite with every tenant in a cell instead of the pooled database: ITEST_CELLS=1 go test -tags integration ./internal/itest.
+func cellsMode() bool { return os.Getenv("ITEST_CELLS") != "" }
+
+// lazyCells is the directory of the cells-mode suite: a tenant is placed in cell c1 (and its schema provisioned) the first time anything asks where it is, so the
+// scenarios, which make up their tenants as they go, need no change.
+type lazyCells struct {
+	mu       sync.Mutex
+	migrator string
+	placed   map[uuid.UUID]bool
+}
+
+func (l *lazyCells) Placement(ctx context.Context, id uuid.UUID) (tenantdir.Placement, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if !l.placed[id] {
+		ts := pgxx.TenantSchemas{Migrations: migrations.Tenant(), Roles: []string{"aggregator_app", "aggregator_system"}}
+		if _, err := pgxx.ProvisionTenant(ctx, l.migrator, ts, id, nil); err != nil {
+			return tenantdir.Placement{}, err
+		}
+		l.placed[id] = true
+	}
+	return tenantdir.Placement{TenantID: id, Cell: "c1", Status: tenantdir.StatusReady}, nil
+}
+
+func (l *lazyCells) Invalidate(uuid.UUID) {}
+
+func (l *lazyCells) Placed(context.Context, string) ([]tenantdir.Placement, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var out []tenantdir.Placement
+	for id := range l.placed {
+		out = append(out, tenantdir.Placement{TenantID: id, Cell: "c1", Status: tenantdir.StatusReady})
+	}
+	return out, nil
+}
+
+// querier is what a pool and a transaction share.
+type querier interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+}
+
+// atTenant runs fn as the system role where the tenant's data is: the pooled database, or the tenant's schema in the cell.
+func atTenant(t *testing.T, tenantID uuid.UUID, fn func(ctx context.Context, q querier) error) {
+	t.Helper()
+	ctx := context.Background()
+	if shared.router == nil {
+		if err := fn(ctx, shared.system); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	if _, err := shared.dir.Placement(ctx, tenantID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pgxx.InTenantSchemaTx(ctx, shared.cellSys, tenantID, func(tx pgx.Tx) error { return fn(ctx, tx) }); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // fakeMeters stands in for plans-svc.
 type fakeMeters map[string]usage.Meter
@@ -92,6 +162,25 @@ func infra(t *testing.T) {
 		}
 		if shared.app, err = pgxx.NewPool(context.Background(), shared.db.App); err != nil {
 			t.Fatal(err)
+		}
+		shared.appDB = shared.app
+		if cellsMode() {
+			cell := testkit.CreateCellDB(top, shared.pg, "aggregator", "c1")
+			if shared.cellApp, err = pgxx.NewPool(context.Background(), cell.App); err != nil {
+				t.Fatal(err)
+			}
+			if shared.cellSys, err = pgxx.NewPool(context.Background(), cell.System); err != nil {
+				t.Fatal(err)
+			}
+			shared.dir = &lazyCells{migrator: cell.Migrator, placed: map[uuid.UUID]bool{}}
+			appRouter, err := pgxx.NewRouter(shared.app, map[string]*pgxpool.Pool{"c1": shared.cellApp}, shared.dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if shared.router, err = pgxx.NewRouter(shared.system, map[string]*pgxpool.Pool{"c1": shared.cellSys}, shared.dir); err != nil {
+				t.Fatal(err)
+			}
+			shared.appDB = appRouter
 		}
 	})
 }
@@ -182,7 +271,7 @@ func newRun(t *testing.T, o runOpts) *run {
 		log = slog.New(slog.NewTextHandler(os.Stderr, nil))
 	}
 	r.handler = &apply.Handler{
-		Pool: shared.system, Meters: o.meters, Settings: r.src, Log: log, ConsumerGroup: r.group, Topic: r.topic,
+		Pool: shared.system, Cells: shared.router, Meters: o.meters, Settings: r.src, Log: log, ConsumerGroup: r.group, Topic: r.topic,
 		DLQ:              kafkax.DLQ{Client: r.prod, Topic: r.dlqTopic, Consumer: r.group},
 		MeterRetryDelays: []time.Duration{time.Millisecond},
 		AfterCommit:      o.afterCommit,
@@ -285,42 +374,32 @@ type rowKey struct {
 // onTimeRows reads usage_aggregates (generation 1) for the given tenants.
 func onTimeRows(t *testing.T, tenants ...uuid.UUID) map[rowKey]totals {
 	t.Helper()
-	rows, err := shared.system.Query(context.Background(),
-		`SELECT tenant_id, customer_id, meter_code, period_id, quantity::text, event_count, quantity_scale FROM usage_aggregates WHERE tenant_id = ANY($1) AND generation = 1`, tenants)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer rows.Close()
-	out := map[rowKey]totals{}
-	for rows.Next() {
-		var k rowKey
-		var tt totals
-		if err := rows.Scan(&k.tenant, &k.customer, &k.meter, &k.period, &tt.qty, &tt.count, &tt.scale); err != nil {
-			t.Fatal(err)
-		}
-		out[k] = tt
-	}
-	return out
+	return rowsOfGeneration(t, 1, tenants...)
 }
 
 func lateRows(t *testing.T, tenants ...uuid.UUID) map[rowKey]totals {
 	t.Helper()
-	rows, err := shared.system.Query(context.Background(),
-		`SELECT tenant_id, customer_id, meter_code, billed_period_id, origin_period_id, quantity::text, event_count, quantity_scale FROM late_usage WHERE tenant_id = ANY($1) AND generation = 1`, tenants)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer rows.Close()
 	out := map[rowKey]totals{}
-	for rows.Next() {
-		var k rowKey
-		var billed string
-		var tt totals
-		if err := rows.Scan(&k.tenant, &k.customer, &k.meter, &billed, &tt.lateOf, &tt.qty, &tt.count, &tt.scale); err != nil {
-			t.Fatal(err)
-		}
-		k.period = billed + "|" + tt.lateOf
-		out[k] = tt
+	for _, tn := range tenants {
+		atTenant(t, tn, func(ctx context.Context, q querier) error {
+			rows, err := q.Query(ctx,
+				`SELECT tenant_id, customer_id, meter_code, billed_period_id, origin_period_id, quantity::text, event_count, quantity_scale FROM late_usage WHERE tenant_id = $1 AND generation = 1`, tn)
+			if err != nil {
+				return err
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var k rowKey
+				var billed string
+				var tt totals
+				if err := rows.Scan(&k.tenant, &k.customer, &k.meter, &billed, &tt.lateOf, &tt.qty, &tt.count, &tt.scale); err != nil {
+					return err
+				}
+				k.period = billed + "|" + tt.lateOf
+				out[k] = tt
+			}
+			return rows.Err()
+		})
 	}
 	return out
 }
@@ -395,7 +474,7 @@ func ev(id string, tenantID, customer uuid.UUID, meter string, units int64, scal
 // queryClient serves grpcapi.Server over bufconn, with the tenant metadata the gateway would send.
 func queryClient(t *testing.T, r *run) aggregatorv1.UsageQueryServiceClient {
 	t.Helper()
-	svc := grpcapi.New(shared.app, r.src, r.group, r.topic)
+	svc := grpcapi.New(shared.appDB, r.src, r.group, r.topic)
 	srv, _ := grpcx.NewServer(grpcx.ServerOptions{Extra: []grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(tenant.UnaryServerInterceptor()),
 		grpc.ChainStreamInterceptor(tenant.StreamServerInterceptor()),

@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -25,15 +24,15 @@ import (
 // MaxBatchKeys is the size limit of the batch read.
 const MaxBatchKeys = 1000
 
-// Queries reads usage on the app pool (RLS enforced).
+// Queries reads usage on the app pool (RLS enforced), or through its router when cells are on: a tenant's transaction goes where the directory says its data is.
 type Queries struct {
-	app *pgxpool.Pool
+	app pgxx.Beginner
 	// group and topic key the consumer_offsets rows of the live consumer.
 	group, topic string
 }
 
 // New returns the usage queries.
-func New(app *pgxpool.Pool, group, topic string) *Queries {
+func New(app pgxx.Beginner, group, topic string) *Queries {
 	return &Queries{app: app, group: group, topic: topic}
 }
 
@@ -72,6 +71,39 @@ func (s *Queries) readGeneration(ctx context.Context, pinned int32, read func(q 
 		return store.MapErr(ctx, err)
 	}
 	return nil
+}
+
+// inCell reports whether the tenant's data is in a cell. Without cells (a plain pool) it never is; a tenant that is moving is an error, never a guess.
+func (s *Queries) inCell(ctx context.Context, tenantID uuid.UUID) (bool, error) {
+	r, ok := s.app.(*pgxx.Router)
+	if !ok {
+		return false, nil
+	}
+	t, err := r.Locate(ctx, tenantID)
+	return t.Schema != "", err
+}
+
+// inSnapshot runs fn in a repeatable-read, read-only transaction scoped to the tenant, in the place its data is.
+func (s *Queries) inSnapshot(ctx context.Context, tenantID uuid.UUID, fn func(tx pgx.Tx) error) error {
+	opts := pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}
+	tb, ok := s.app.(pgxx.TenantBeginner)
+	if !ok {
+		return pgxx.InTx(ctx, s.app, opts, func(tx pgx.Tx) error {
+			if err := sqlc.New(tx).SetAppTenant(ctx, tenantID.String()); err != nil {
+				return err
+			}
+			return fn(tx)
+		})
+	}
+	tx, err := tb.BeginTenantTx(ctx, tenantID, opts)
+	if err != nil {
+		return fmt.Errorf("pgxx: begin: %w", err)
+	}
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func usageRow(customer uuid.UUID, meter, period, qty string, scale int32, events int64) *aggregatorv1.UsageAggregate {
@@ -191,11 +223,22 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 		}
 	}
 	out := &Batch{ConsumerOffsets: map[int32]int64{}}
-	err = pgxx.InTx(ctx, s.app, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
-		q := sqlc.New(tx)
-		if err := q.SetAppTenant(ctx, ti.ID.String()); err != nil {
-			return err
+	// The offsets are global, in the pooled database. For a tenant in the pooled database they are read in the same snapshot as its usage; for a tenant in a cell the
+	// usage is in another database, so they are read first: the consumer moves an offset only after every split of the batch is durable, so a snapshot taken after
+	// the offsets holds at least everything below them ("usage as of these offsets" stays true, with possibly more).
+	inCell, err := s.inCell(ctx, ti.ID)
+	if err != nil {
+		return nil, store.MapErr(ctx, err)
+	}
+	if inCell {
+		offs, err := sqlc.New(store.Pooled(s.app)).ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: s.group, Topic: s.topic})
+		if err != nil {
+			return nil, store.MapErr(ctx, err)
 		}
+		out.ConsumerOffsets = offsetMap(offs)
+	}
+	err = s.inSnapshot(ctx, ti.ID, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
 		gen, err := generation(ctx, q, pinned)
 		if err != nil {
 			return err
@@ -260,11 +303,13 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 			}
 			fill(hourSets, res)
 		}
-		offs, err := q.ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: s.group, Topic: s.topic})
-		if err != nil {
-			return err
+		if !inCell {
+			offs, err := q.ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: s.group, Topic: s.topic})
+			if err != nil {
+				return err
+			}
+			out.ConsumerOffsets = offsetMap(offs)
 		}
-		out.ConsumerOffsets = offsetMap(offs)
 		return nil
 	})
 	if err != nil {
@@ -325,7 +370,7 @@ func (s *Queries) LateUsage(ctx context.Context, billedPeriodID string, pinned i
 
 // Watermark is the offsets the live consumer has committed, and whether they reach every required offset.
 func (s *Queries) Watermark(ctx context.Context, required map[int32]int64) (committed map[int32]int64, caughtUp bool, err error) {
-	offs, err := sqlc.New(s.app).ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: s.group, Topic: s.topic})
+	offs, err := sqlc.New(store.Pooled(s.app)).ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: s.group, Topic: s.topic})
 	if err != nil {
 		return nil, false, store.MapErr(ctx, err)
 	}

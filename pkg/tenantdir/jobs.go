@@ -54,11 +54,11 @@ var Jobs = []Job{
 	{"billing-svc", "e-invoice sweep", false, "internal/einvoices/command"},
 	{"billing-svc", "worker reply consumer", false, "internal/replies"},
 
-	{"aggregator", "tenant schema", false, "migrations"},
-	{"aggregator", "usage consumer", false, "internal/apply"},
-	{"aggregator", "maintenance", false, "internal/maintenance"},
-	{"aggregator", "replay manager", false, "internal/replay"},
-	{"aggregator", "sandbox purge", false, "internal/sandboxreset"},
+	{"aggregator", "tenant schema", true, "migrations"},
+	{"aggregator", "usage consumer", true, "internal/apply"},
+	{"aggregator", "maintenance", true, "internal/maintenance"},
+	{"aggregator", "replay manager", true, "internal/replay"},
+	{"aggregator", "sandbox purge", true, "internal/sandboxreset"},
 
 	{"assets-svc", "tenant schema", true, "migrations"},
 	{"assets-svc", "upload session sweeper", true, "internal/background"},

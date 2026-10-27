@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -23,12 +22,12 @@ import (
 
 // Commands changes periods on the app pool (RLS enforced).
 type Commands struct {
-	app      *pgxpool.Pool
+	app      pgxx.Beginner // the app pool, or its router when cells are on
 	settings *settings.Source
 }
 
 // New returns the period commands.
-func New(app *pgxpool.Pool, src *settings.Source) *Commands {
+func New(app pgxx.Beginner, src *settings.Source) *Commands {
 	return &Commands{app: app, settings: src}
 }
 

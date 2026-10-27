@@ -3,9 +3,8 @@
 package grpcapi
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/periods"
 	periodscmd "github.com/0furkancolak/payrudder/services/aggregator/internal/periods/command"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
@@ -30,8 +29,8 @@ type Server struct {
 	*periodsHandler
 }
 
-// New returns the server. group and topic key the consumer_offsets rows of the live consumer.
-func New(app *pgxpool.Pool, src *settings.Source, group, topic string) *Server {
+// New returns the server. app is the app-role pool, or its router when cells are on. group and topic key the consumer_offsets rows of the live consumer.
+func New(app pgxx.Beginner, src *settings.Source, group, topic string) *Server {
 	return &Server{
 		usageHandler:   usage.New(usageqry.New(app, group, topic)),
 		periodsHandler: periods.New(periodscmd.New(app, src)),
