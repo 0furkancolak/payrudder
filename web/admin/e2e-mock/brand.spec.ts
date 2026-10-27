@@ -15,7 +15,7 @@ test.describe("brand", () => {
   test("the page says Payrudder and links the favicon, the touch icon, the manifest and a theme colour", async ({ page }) => {
     await productGateway(new MockGateway()).gw.install(page);
     await page.goto("/signin");
-    await expect(page).toHaveTitle(/^Payrudder/);
+    await expect(page).toHaveTitle(/Payrudder$/);
     await expect(page.locator('link[rel="icon"][href="/brand/favicon.ico"]')).toHaveCount(1);
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", "/brand/payrudder-icon-180.png");
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", "/manifest.webmanifest");

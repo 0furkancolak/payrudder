@@ -42,7 +42,7 @@ integrations, new-* forms restore from the URL after a reload.
 
 ## Findings
 
-### UI-1 (blocker) Opening the Integrations page signs the user out
+### UI-1 (blocker) Opening the Integrations page signs the user out — fixed in #230
 - Page: `/app/apps/{appId}/integrations` and `/app/integrations` (also `?env=live`).
 - Steps: sign in, click "Entegrasyonlar" in the sidebar (or load the URL).
 - Expected: the cards load. Actual: `GET /gw/v1/mail-settings` is sent without `X-Payrudder-Tenant`; the gateway answers 401
@@ -52,7 +52,7 @@ integrations, new-* forms restore from the URL after a reload.
   `useMailSettings` in `web/admin/src/features/mail/api.ts` has no `enabled: tenantId !== ""`, so the query runs on page mount. Also affects
   any app whose live tenant is not resolved yet.
 
-### UI-2 (major) Any 401 on a signed-in call is treated as a lost session
+### UI-2 (major) Any 401 on a signed-in call is treated as a lost session — fixed in #230
 - Page: all. Cause of the severity of UI-1.
 - Actual: `endSessionOn401` in `web/admin/src/shared/api/client.ts` only exempts `/gw/admin/` calls. A 401 with key
   `identity.session.act_as_required` (a client bug) or a tenant-scoped call that the gateway refuses is not a dead session.
@@ -65,7 +65,7 @@ integrations, new-* forms restore from the URL after a reload.
   the revenue report agrees (4.594,00). Invoices and the Accounting page do count the seats (1.399,97 etc.), so the numbers disagree.
 - Source (backend): `services/plans-svc/internal/store/queries/reports.sql` lines ~11-12, `fee` is the plan's base fee without `* s.seats`.
 
-### UI-4 (major) The logo link drops the live environment and lands on sandbox
+### UI-4 (major) The logo link drops the live environment and lands on sandbox — fixed in #230
 - Page: sidebar logo (`href="/app?app={id}"`) while `env=live`.
 - Steps: switch to live (stored `payrudder.env.{app}` = live), click the Payrudder logo.
 - Expected: the live dashboard. Actual: redirected to `/app/apps/{id}?app={id}&env=sandbox`, silently back to sandbox. In a billing console
@@ -81,7 +81,7 @@ integrations, new-* forms restore from the URL after a reload.
 - Expected: status badge, body truncated to one line with a tooltip, all columns visible in the sheet width.
 - Source: webhook delivery table in `web/admin/src/features/webhooks/`.
 
-### UI-6 (minor) Unknown ids show an endless "…" or a raw API message
+### UI-6 (minor) Unknown ids show an endless "…" or a raw API message — fixed in #230
 - `/app/apps/not-a-uuid` and `/app/apps/{valid-looking-unknown-id}`: API returns 404 but the page shows only "…" forever (no error, no not-found).
 - `/app/t/does-not-exist/customers`: the error card says "İşlem yapılacak hesap geçerli bir hesap kimliği olmalı." (API wording) above the page
   skeleton.
@@ -141,7 +141,7 @@ integrations, new-* forms restore from the URL after a reload.
 - Credits: the selected customer is not in the URL (only the grant sheet is). Search boxes are not kept either (filters are).
 - Opening a subscription from a customer sheet navigates to `/subscriptions?...&sheet=` and drops `env=sandbox` from the query.
 
-### UI-16 (minor) Document title is the same everywhere and says "operator console"
+### UI-16 (minor) Document title is the same everywhere and says "operator console" — fixed in #230
 - Every page (also customer-facing `/app/**` and sign-in) has `<title>Payrudder operatör konsolu</title>` (tr) / "Payrudder-Operator-Konsole" (de). Browser
   history, tabs and screen readers cannot tell pages apart, and a customer sees "operator".
 
@@ -170,7 +170,7 @@ integrations, new-* forms restore from the URL after a reload.
 - "Bu kurulumda gelen posta alan adı ayarlanmamış (PAYRUDDER_INBOUND_DOMAIN); yalnızca belirteç gösterilir." with a truncated address `invoices+...@…` that
   cannot be used. Env var names should not be in the UI (dev-only hint at most).
 
-### UI-23 (polish) Remaining English `aria-label`
+### UI-23 (polish) Remaining English `aria-label` — fixed in #230
 - The close button of the key-secret dialog and every styled confirm dialog is `Close` while sheets use `Kapat`.
 
 ### UI-24 (polish) Webhook URL scheme
