@@ -34,16 +34,18 @@ type Successor struct {
 	ProviderRef *string
 	// Provider is the successor's payment provider; nil keeps the old subscription's.
 	Provider *string
+	// Quantity is the successor's seats; 0 keeps the old subscription's.
+	Quantity int32
 	// LeaveOldOpen ends the old subscription at At without marking it cancelled yet: a cutover dated in the future, where the
 	// old one is still live until then.
 	LeaveOldOpen bool
 }
 
-// carriesCoupon is the one rule for the coupon of a subscription that is replaced: it follows the subscription, with the
+// CarriesCoupon is the one rule for the coupon of a subscription that is replaced: it follows the subscription, with the
 // periods it has used, as long as the successor can hold one. A coupon takes something off a fee Payrudder invoices in
 // advance (coupons.Redeem refuses any other subscription), so a successor that a provider runs, or that is billed in
 // arrears, leaves it on the ended subscription.
-func carriesCoupon(next Successor) bool {
+func CarriesCoupon(next Successor) bool {
 	return (next.Owner == "" || next.Owner == domain.OwnerPayrudder) && next.FeeTiming == subscription.FeeInAdvance
 }
 
@@ -72,15 +74,19 @@ func SwitchTo(ctx context.Context, q *sqlc.Queries, now time.Time, tenantID uuid
 	if next.Provider != nil {
 		provider = next.Provider
 	}
+	quantity := next.Quantity
+	if quantity == 0 {
+		quantity = old.Quantity
+	}
 	nr, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 		ID: idgen.NewUUIDv7(), CustomerID: old.CustomerID, PlanVersionID: next.PlanVersionID, StartTime: at,
 		State: string(next.State), Interval: string(next.Interval), Currency: old.Currency, TrialEndsAt: next.TrialEnds,
-		BillingAnchor: next.Anchor, ChangedFromID: &oldID, Provider: provider, ProviderRef: next.ProviderRef, Owner: owner, FeeTiming: next.FeeTiming, FeeDueAt: next.FeeDue,
+		BillingAnchor: next.Anchor, ChangedFromID: &oldID, Provider: provider, ProviderRef: next.ProviderRef, Owner: owner, FeeTiming: next.FeeTiming, FeeDueAt: next.FeeDue, Quantity: quantity,
 	})
 	if err != nil {
 		return nr, err
 	}
-	if carriesCoupon(next) {
+	if CarriesCoupon(next) {
 		if err := couponscmd.Move(ctx, q, old.ID, nr.ID); err != nil {
 			return nr, err
 		}

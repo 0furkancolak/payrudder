@@ -2637,7 +2637,9 @@ type Subscription struct {
 	// A change of plan or interval that is waiting for the end of the period the customer has paid for.
 	ScheduledChange *ScheduledChange `protobuf:"bytes,21,opt,name=scheduled_change,json=scheduledChange,proto3" json:"scheduled_change,omitempty"`
 	// The coupon taking something off the fixed fee, if any.
-	CouponCode    string `protobuf:"bytes,22,opt,name=coupon_code,json=couponCode,proto3" json:"coupon_code,omitempty"`
+	CouponCode string `protobuf:"bytes,22,opt,name=coupon_code,json=couponCode,proto3" json:"coupon_code,omitempty"`
+	// Seats (licences): a plain multiplier of the plan's fixed fee, 1 unless set. Usage prices are not multiplied.
+	Quantity      int32 `protobuf:"varint,23,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2826,12 +2828,21 @@ func (x *Subscription) GetCouponCode() string {
 	return ""
 }
 
+func (x *Subscription) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
+}
+
 type ScheduledChange struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	PlanCode      string                 `protobuf:"bytes,1,opt,name=plan_code,json=planCode,proto3" json:"plan_code,omitempty"`
 	PlanVersion   int32                  `protobuf:"varint,2,opt,name=plan_version,json=planVersion,proto3" json:"plan_version,omitempty"`
 	Interval      SubscriptionInterval   `protobuf:"varint,3,opt,name=interval,proto3,enum=payrudder.plans.v1.SubscriptionInterval" json:"interval,omitempty"`
 	EffectiveTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=effective_time,json=effectiveTime,proto3" json:"effective_time,omitempty"`
+	// The quantity the subscription has from then.
+	Quantity      int32 `protobuf:"varint,5,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2892,6 +2903,13 @@ func (x *ScheduledChange) GetEffectiveTime() *timestamppb.Timestamp {
 		return x.EffectiveTime
 	}
 	return nil
+}
+
+func (x *ScheduledChange) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
 }
 
 // Coupon is the definition of a discount: a percentage or an amount off, or bonus credits on a credit purchase. It takes something off the fixed fee of a
@@ -3593,7 +3611,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\vCurrencyFee\x12\x1a\n" +
 	"\bcurrency\x18\x01 \x01(\tR\bcurrency\x12$\n" +
 	"\x0ebase_fee_minor\x18\x02 \x01(\x03R\fbaseFeeMinor\x12D\n" +
-	"\binterval\x18\x03 \x01(\x0e2(.payrudder.plans.v1.SubscriptionIntervalR\binterval\"\x81\b\n" +
+	"\binterval\x18\x03 \x01(\x0e2(.payrudder.plans.v1.SubscriptionIntervalR\binterval\"\x9d\b\n" +
 	"\fSubscription\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
@@ -3623,12 +3641,14 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"fee_timing\x18\x14 \x01(\x0e2\x1d.payrudder.plans.v1.FeeTimingR\tfeeTiming\x12N\n" +
 	"\x10scheduled_change\x18\x15 \x01(\v2#.payrudder.plans.v1.ScheduledChangeR\x0fscheduledChange\x12\x1f\n" +
 	"\vcoupon_code\x18\x16 \x01(\tR\n" +
-	"couponCode\"\xda\x01\n" +
+	"couponCode\x12\x1a\n" +
+	"\bquantity\x18\x17 \x01(\x05R\bquantity\"\xf6\x01\n" +
 	"\x0fScheduledChange\x12\x1b\n" +
 	"\tplan_code\x18\x01 \x01(\tR\bplanCode\x12!\n" +
 	"\fplan_version\x18\x02 \x01(\x05R\vplanVersion\x12D\n" +
 	"\binterval\x18\x03 \x01(\x0e2(.payrudder.plans.v1.SubscriptionIntervalR\binterval\x12A\n" +
-	"\x0eeffective_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveTime\"\xb3\x05\n" +
+	"\x0eeffective_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\reffectiveTime\x12\x1a\n" +
+	"\bquantity\x18\x05 \x01(\x05R\bquantity\"\xb3\x05\n" +
 	"\x06Coupon\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1f\n" +

@@ -211,6 +211,8 @@ CREATE TABLE subscriptions (
   -- state text ('trialing','active','past_due','paused','cancelled'), interval text ('month'; 'year' is refused for now),
   -- currency char(3) NOT NULL (fixed for the subscription), trial_ends_at, cancel_at_period_end, paused_at,
   -- billing_anchor timestamptz NOT NULL (start of the calendar month it began in), changed_from_id (the subscription a plan change replaced)
+  -- migration 00060: quantity integer NOT NULL DEFAULT 1 CHECK (quantity BETWEEN 1 AND 100000) -- seats, a plain multiplier of the fixed fee;
+  --   subscription_changes gets the same column, NULL = keep the subscription's own
 );
 
 -- Phase 13: customers gain country char(2) and billing_currency char(3), both optional.
@@ -465,6 +467,8 @@ CREATE TABLE credit_balances (
   amount_minor bigint NOT NULL CHECK (amount_minor > 0), source_rerating_job_id uuid NOT NULL,
   applied_invoice_id uuid,                              -- NULL = unapplied
   PRIMARY KEY (tenant_id, id)
+  -- later: currency; exactly one source of source_rerating_job_id, source_adjustment_id, source_credit_note_id and (migration 00055)
+  -- source_invoice_id, the invoice voided with money recorded by hand against it (unique per invoice)
 );
 
 CREATE TABLE rerating_jobs (

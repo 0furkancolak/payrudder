@@ -177,12 +177,12 @@ Status: **Fixed** (the PR), **Earlier** (already true on main when checked), **N
 | 1 | dunning charges the whole invoice after a part payment | Earlier (phase 44a): the charge is the total less `invoice_payments`; test `DunningChargesWhatIsOutstandingAfterAPartPayment` |
 | 2 | void refunds the whole invoice despite credit notes | Earlier (44a): `Ctx.CreditedMinor`; test `VoidRefundsWhatCreditNotesLeft` |
 | 3 | credit note during a void | Earlier (44a): `create` locks the saga first and refuses `REFUND_*` / `VOIDED` |
-| 4 | void with a part payment orphans the money | **Open**: needs a decision (refuse, or turn it into a credit balance); a refusal is a new key |
-| 5 | `ErrNoRefund` only without a saga | **Open**: needs to know how the invoice was paid |
+| 4 | void with a part payment orphans the money | **Fixed** (decision: a credit balance, not a refusal; migration `00055`, `credit_balances.source_invoice_id`; test `VoidingAPartPaidInvoiceCreditsWhatWasReceived`). A voided invoice that was paid in full by hand still asks its provider for a refund: open |
+| 5 | `ErrNoRefund` only without a saga | **Fixed** for a refund credit note: an invoice with money recorded by hand (`invoice_payments`) has no card to refund and the note is refused with `billing.credit_note.nothing_to_refund`, before it has a number; test `RefundCreditNoteNeedsACardPayment` |
 | 6 | credits applied to a voided invoice not reopened | Earlier (44a): `reopenCredits`; test `VoidingAnInvoiceReopensTheCreditsItConsumed` |
 | 7 | re-rating credit without a currency | **Fixed #170** (code, migration `00047`, test) |
 | 8 | plan change "unused time" is a CREDIT line | Earlier (44a): a DISCOUNT line; test `PlanChangeTaxIsOnWhatIsLeftAfterTheUnusedTime` |
-| 9 | CORRECTION invoices carry no tax | **Open**: needs the rule for the tax of a correction |
+| 9 | CORRECTION invoices carry no tax | **Fixed**: a correction is taxed at the customer's rate like the invoice it corrects (a TAX line), and a re-rating credit includes the tax on it; none for a provider-owned subscription; tests `RerateCorrectionsCarryTheTax`, `RerateCreditsGiveTheTaxBack` |
 | 10 | re-rating ignores trial, advance fee, provider fee | Earlier (44a): `feeWaived`; test `RerateKeepsTheWaivedFixedFeesWaived` |
 | 11 | a job skips subscriptions already on its version | **Fixed #171** (code, test) |
 | 12 | comment says usage is never re-counted | Fixed #160 (the comment; reading the active generation is deliberate) |
@@ -193,3 +193,9 @@ Status: **Fixed** (the PR), **Earlier** (already true on main when checked), **N
 | 17 | trial ending inside the period charges the whole fee | **Open** (low) |
 | 18 | `PriorLateUsage` sums quantities of different scales | **Open** (low) |
 | 19 | numbers use the UTC year | **Open** (low; changes the numbering) |
+
+## logic-plans-svc.md, the coupon on a provider migration
+
+| Finding | Status |
+|---|---|
+| a provider migration drops the coupon (`ErrCouponOnCredit` swallowed, no `MoveSubscriptionCoupon`) | **Fixed**. The move to a Payrudder-run, in-advance successor already carried the coupon (`SwitchTo`, since phase 44a). A successor that cannot hold one (run by a provider, or billed in arrears) is now refused with `plans.migration.coupon_blocks_move` until the coupon is removed: at `StartProviderMigration` for a provider-run target, where waiting for the customer to subscribe would be too late, and in the cutover itself. Test `ProviderMigrationDoesNotDropTheCoupon` |

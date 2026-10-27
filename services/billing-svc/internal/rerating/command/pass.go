@@ -24,6 +24,7 @@ type reratePass struct {
 	tctx       context.Context
 	currency   string
 	meters     map[string]inputs.MeterInfo
+	taxes      inputs.TaxTable
 	subs       map[string]inputs.Subscription
 	target     rating.PlanVersion
 	planCode   string
@@ -70,6 +71,9 @@ func (c *Commands) loadRerating(ctx context.Context, job *model.Job) (*reratePas
 	}
 	rp.start, rp.end = start, end
 	if rp.meters, err = c.cfg.Inputs.Meters(rp.tctx); err != nil {
+		return nil, err
+	}
+	if rp.taxes, err = c.cfg.Inputs.TaxRates(ctx, tid); err != nil {
 		return nil, err
 	}
 	if rp.subs, err = c.cfg.Inputs.Subscriptions(ctx, tid, start, end); err != nil {
@@ -174,5 +178,29 @@ func (c *Commands) rerateCustomer(ctx context.Context, rp *reratePass, cid strin
 	if err != nil {
 		return true, inputs.Permanent(err)
 	}
-	return true, c.record(ctx, job, cuid, snap, rp.currency, deltas, total, rp.meters)
+	name, bps, err := c.taxRate(ctx, rp, sub, snap)
+	if err != nil {
+		return true, err
+	}
+	return true, c.record(ctx, job, cuid, snap, rp.currency, deltas, total, rp.meters, taxRate{name, bps})
+}
+
+// taxRate is the rate the customer's invoices carry: the tenant's rate for the country of the customer the regular invoice is out to. A correction is taxed like
+// the invoice it corrects, so what a provider charges for (and taxes itself) has none.
+func (c *Commands) taxRate(ctx context.Context, rp *reratePass, sub inputs.Subscription, snap json.RawMessage) (string, int32, error) {
+	if sub.ProviderOwned() {
+		return "", 0, nil
+	}
+	var s struct {
+		External string `json:"customer_external_id"`
+	}
+	if err := json.Unmarshal(snap, &s); err != nil {
+		return "", 0, inputs.Permanent(fmt.Errorf("invoice snapshot: %w", err))
+	}
+	cu, err := c.cfg.Inputs.Plans.GetCustomer(rp.tctx, &plansv1.GetCustomerRequest{ExternalId: s.External})
+	if err != nil {
+		return "", 0, fmt.Errorf("get customer %s: %w", s.External, err)
+	}
+	name, bps, _ := rp.taxes.RateFor(cu.GetCustomer().GetCountry())
+	return name, bps, nil
 }

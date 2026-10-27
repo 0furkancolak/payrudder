@@ -469,6 +469,7 @@ type Subscription struct {
 	ProviderSyncedAt  *time.Time
 	FeeTiming         string
 	FeeDueAt          *time.Time
+	Quantity          int32
 }
 
 type SubscriptionAdjustment struct {
@@ -495,6 +496,7 @@ type SubscriptionChange struct {
 	CreatedAt         time.Time
 	AppliedAt         *time.Time
 	NewSubscriptionID *uuid.UUID
+	Quantity          *int32
 }
 
 type SubscriptionCoupon struct {

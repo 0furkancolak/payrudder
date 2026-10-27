@@ -42,6 +42,14 @@ func (c *Commands) create(ctx context.Context, tenantID, invoiceID uuid.UUID, am
 		if inv.Status != invmodel.StatusPaid {
 			return model.ErrNotPaid
 		}
+		// A refund goes back through the provider that took the payment. Money recorded by hand (a bank transfer, cash) never passed through one.
+		if refund {
+			if received, err := q.SumInvoicePayments(ctx, sqlc.SumInvoicePaymentsParams{TenantID: tenantID, InvoiceID: invoiceID}); err != nil {
+				return err
+			} else if received > 0 {
+				return model.ErrNoRefund
+			}
+		}
 		if amount, err = creditableAmount(ctx, q, tenantID, invoiceID, inv.TotalMinor, amount); err != nil {
 			return err
 		}

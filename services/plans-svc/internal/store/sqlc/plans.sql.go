@@ -350,7 +350,7 @@ func (q *Queries) GetMailIntegration(ctx context.Context) (TenantMailIntegration
 }
 
 const getPendingChange = `-- name: GetPendingChange :one
-SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
+SELECT id, subscription_id, plan_version_id, interval, effective_at, state, quantity FROM subscription_changes
 WHERE tenant_id = app_tenant_id() AND subscription_id = $1 AND state = 'pending'
 `
 
@@ -361,6 +361,7 @@ type GetPendingChangeRow struct {
 	Interval       string
 	EffectiveAt    time.Time
 	State          string
+	Quantity       *int32
 }
 
 func (q *Queries) GetPendingChange(ctx context.Context, subscriptionID uuid.UUID) (GetPendingChangeRow, error) {
@@ -373,6 +374,7 @@ func (q *Queries) GetPendingChange(ctx context.Context, subscriptionID uuid.UUID
 		&i.Interval,
 		&i.EffectiveAt,
 		&i.State,
+		&i.Quantity,
 	)
 	return i, err
 }
@@ -523,7 +525,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, s.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -551,6 +553,7 @@ type GetSubscriptionRow struct {
 	ProviderRef        *string
 	Owner              string
 	FeeTiming          string
+	Quantity           int32
 	PlanCode           string
 	PlanVersion        int32
 }
@@ -579,6 +582,7 @@ func (q *Queries) GetSubscription(ctx context.Context, id uuid.UUID) (GetSubscri
 		&i.ProviderRef,
 		&i.Owner,
 		&i.FeeTiming,
+		&i.Quantity,
 		&i.PlanCode,
 		&i.PlanVersion,
 	)
@@ -632,7 +636,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, s.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -661,6 +665,7 @@ type GetSubscriptionForUpdateRow struct {
 	ProviderRef        *string
 	Owner              string
 	FeeTiming          string
+	Quantity           int32
 	PlanCode           string
 	PlanVersion        int32
 }
@@ -689,6 +694,7 @@ func (q *Queries) GetSubscriptionForUpdate(ctx context.Context, id uuid.UUID) (G
 		&i.ProviderRef,
 		&i.Owner,
 		&i.FeeTiming,
+		&i.Quantity,
 		&i.PlanCode,
 		&i.PlanVersion,
 	)
@@ -988,14 +994,14 @@ func (q *Queries) InsertRoutingRule(ctx context.Context, arg InsertRoutingRulePa
 }
 
 const insertSubscription = `-- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing, fee_due_at)
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing, fee_due_at, quantity)
 VALUES (app_tenant_id(), $1, $2, $3, tstzrange($4::timestamptz, NULL, '[)'),
-        $5, $6, $7, $8, $9::timestamptz, $10, $11, $12, $13, $14, $15::timestamptz)
+        $5, $6, $7, $8, $9::timestamptz, $10, $11, $12, $13, $14, $15::timestamptz, $16)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
           COALESCE(upper(active), lower(active))::timestamptz AS end_time,
-          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing
+          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing, quantity
 `
 
 type InsertSubscriptionParams struct {
@@ -1014,6 +1020,7 @@ type InsertSubscriptionParams struct {
 	Owner         string
 	FeeTiming     string
 	FeeDueAt      *time.Time
+	Quantity      int32
 }
 
 type InsertSubscriptionRow struct {
@@ -1036,6 +1043,7 @@ type InsertSubscriptionRow struct {
 	ProviderRef       *string
 	Owner             string
 	FeeTiming         string
+	Quantity          int32
 }
 
 func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscriptionParams) (InsertSubscriptionRow, error) {
@@ -1055,6 +1063,7 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		arg.Owner,
 		arg.FeeTiming,
 		arg.FeeDueAt,
+		arg.Quantity,
 	)
 	var i InsertSubscriptionRow
 	err := row.Scan(
@@ -1077,6 +1086,7 @@ func (q *Queries) InsertSubscription(ctx context.Context, arg InsertSubscription
 		&i.ProviderRef,
 		&i.Owner,
 		&i.FeeTiming,
+		&i.Quantity,
 	)
 	return i, err
 }
@@ -1110,9 +1120,9 @@ func (q *Queries) InsertSubscriptionAdjustment(ctx context.Context, arg InsertSu
 }
 
 const insertSubscriptionChange = `-- name: InsertSubscriptionChange :one
-INSERT INTO subscription_changes (tenant_id, id, subscription_id, plan_version_id, interval, effective_at)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5)
-RETURNING id, subscription_id, plan_version_id, interval, effective_at, state
+INSERT INTO subscription_changes (tenant_id, id, subscription_id, plan_version_id, interval, effective_at, quantity)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6)
+RETURNING id, subscription_id, plan_version_id, interval, effective_at, state, quantity
 `
 
 type InsertSubscriptionChangeParams struct {
@@ -1121,6 +1131,7 @@ type InsertSubscriptionChangeParams struct {
 	PlanVersionID  uuid.UUID
 	Interval       string
 	EffectiveAt    time.Time
+	Quantity       *int32
 }
 
 type InsertSubscriptionChangeRow struct {
@@ -1130,6 +1141,7 @@ type InsertSubscriptionChangeRow struct {
 	Interval       string
 	EffectiveAt    time.Time
 	State          string
+	Quantity       *int32
 }
 
 func (q *Queries) InsertSubscriptionChange(ctx context.Context, arg InsertSubscriptionChangeParams) (InsertSubscriptionChangeRow, error) {
@@ -1139,6 +1151,7 @@ func (q *Queries) InsertSubscriptionChange(ctx context.Context, arg InsertSubscr
 		arg.PlanVersionID,
 		arg.Interval,
 		arg.EffectiveAt,
+		arg.Quantity,
 	)
 	var i InsertSubscriptionChangeRow
 	err := row.Scan(
@@ -1148,6 +1161,7 @@ func (q *Queries) InsertSubscriptionChange(ctx context.Context, arg InsertSubscr
 		&i.Interval,
 		&i.EffectiveAt,
 		&i.State,
+		&i.Quantity,
 	)
 	return i, err
 }
@@ -1293,7 +1307,7 @@ func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([
 }
 
 const listDueChanges = `-- name: ListDueChanges :many
-SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
+SELECT id, subscription_id, plan_version_id, interval, effective_at, state, quantity FROM subscription_changes
 WHERE tenant_id = app_tenant_id() AND state = 'pending' AND effective_at <= $1::timestamptz
 ORDER BY effective_at, id
 LIMIT 100
@@ -1307,6 +1321,7 @@ type ListDueChangesRow struct {
 	Interval       string
 	EffectiveAt    time.Time
 	State          string
+	Quantity       *int32
 }
 
 func (q *Queries) ListDueChanges(ctx context.Context, now time.Time) ([]ListDueChangesRow, error) {
@@ -1325,6 +1340,7 @@ func (q *Queries) ListDueChanges(ctx context.Context, now time.Time) ([]ListDueC
 			&i.Interval,
 			&i.EffectiveAt,
 			&i.State,
+			&i.Quantity,
 		); err != nil {
 			return nil, err
 		}
@@ -1406,7 +1422,7 @@ func (q *Queries) ListLatestMeters(ctx context.Context) ([]Meter, error) {
 }
 
 const listPendingChangesFor = `-- name: ListPendingChangesFor :many
-SELECT c.id, c.subscription_id, c.plan_version_id, c.interval, c.effective_at, pl.code AS plan_code, pv.version AS plan_version
+SELECT c.id, c.subscription_id, c.plan_version_id, c.interval, c.effective_at, c.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscription_changes c
 JOIN plan_versions pv ON pv.tenant_id = c.tenant_id AND pv.id = c.plan_version_id
 JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -1419,6 +1435,7 @@ type ListPendingChangesForRow struct {
 	PlanVersionID  uuid.UUID
 	Interval       string
 	EffectiveAt    time.Time
+	Quantity       *int32
 	PlanCode       string
 	PlanVersion    int32
 }
@@ -1438,6 +1455,7 @@ func (q *Queries) ListPendingChangesFor(ctx context.Context, ids []uuid.UUID) ([
 			&i.PlanVersionID,
 			&i.Interval,
 			&i.EffectiveAt,
+			&i.Quantity,
 			&i.PlanCode,
 			&i.PlanVersion,
 		); err != nil {
@@ -1704,7 +1722,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, s.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -1742,6 +1760,7 @@ type ListSubscriptionsOverlappingRow struct {
 	ProviderRef        *string
 	Owner              string
 	FeeTiming          string
+	Quantity           int32
 	PlanCode           string
 	PlanVersion        int32
 }
@@ -1776,6 +1795,7 @@ func (q *Queries) ListSubscriptionsOverlapping(ctx context.Context, arg ListSubs
 			&i.ProviderRef,
 			&i.Owner,
 			&i.FeeTiming,
+			&i.Quantity,
 			&i.PlanCode,
 			&i.PlanVersion,
 		); err != nil {
@@ -1794,7 +1814,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, s.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -1830,6 +1850,7 @@ type ListSubscriptionsPageRow struct {
 	ProviderRef        *string
 	Owner              string
 	FeeTiming          string
+	Quantity           int32
 	PlanCode           string
 	PlanVersion        int32
 }
@@ -1865,6 +1886,7 @@ func (q *Queries) ListSubscriptionsPage(ctx context.Context, arg ListSubscriptio
 			&i.ProviderRef,
 			&i.Owner,
 			&i.FeeTiming,
+			&i.Quantity,
 			&i.PlanCode,
 			&i.PlanVersion,
 		); err != nil {

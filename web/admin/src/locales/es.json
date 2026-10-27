@@ -2441,7 +2441,8 @@
         "ending_or_ended": "La suscripción ya ha terminado o ya está programada para terminar.",
         "no_scheduled_cancel": "No hay ninguna cancelación programada que retirar.",
         "run_by_provider": "Esta suscripción la gestiona un proveedor de pago. Cámbiala allí.",
-        "transition_not_allowed": "Esto no se puede hacer en el estado actual de la suscripción."
+        "transition_not_allowed": "Esto no se puede hacer en el estado actual de la suscripción.",
+        "quantity_needs_advance": "Una cantidad superior a 1 requiere una suscripción que Payrudder gestiona y factura por adelantado."
       },
       "webhook": {
         "not_configured": "Los webhooks no están configurados en este despliegue (falta la clave de secretos).",
@@ -2504,7 +2505,8 @@
         "already_completed": "La migración ya se completó.",
         "cannot_abort": "La migración se completó y no se puede cancelar.",
         "state_not_movable": "Una suscripción en su estado actual no se puede mover a otro proveedor.",
-        "subscription_ended": "La suscripción ha terminado o está por terminar, así que no se puede mover."
+        "subscription_ended": "La suscripción ha terminado o está por terminar, así que no se puede mover.",
+        "coupon_blocks_move": "Esta suscripción tiene un cupón que una suscripción gestionada por el proveedor o facturada a mes vencido no puede conservar. Quite primero el cupón."
       },
       "plan": {
         "no_fixed_fee": "Esta versión del plan no tiene tarifa fija para ese intervalo en esta moneda.",

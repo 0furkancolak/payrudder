@@ -510,7 +510,7 @@ export interface paths {
         /**
          * Move a subscription to another plan version and/or interval, now or at the end of the paid period
          * @description An upgrade or monthly-to-yearly change is immediate and prorated; a downgrade or yearly-to-monthly change waits for the end of the period the customer has paid for
-         *     (a scheduled change, shown on the subscription). Whatever moves money is invoiced, or becomes a credit balance when the new plan costs less than the unused old time was worth.
+         *     (a scheduled change, shown on the subscription). A change of `quantity` alone is immediate and prorated, more seats or fewer. Whatever moves money is invoiced, or becomes a credit balance when the new plan costs less than the unused old time was worth.
          *     Answers 409 `ABORTED` if the fee of the current period has not been invoiced yet; try again in a moment.
          */
         post: operations["changeSubscription"];
@@ -6215,6 +6215,8 @@ export interface components {
             fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
             scheduled_change?: components["schemas"]["ScheduledChange"];
             coupon_code?: string;
+            /** @description Seats: a plain multiplier of the plan's fixed fee, 1 unless set */
+            quantity?: number;
         };
         CreditNote: {
             /** Format: uuid */
@@ -6942,6 +6944,8 @@ export interface components {
              * @description Default now; not in the future
              */
             change_time?: string;
+            /** @description The new number of seats; 0 or absent keeps it. A change of seats alone is immediate and prorated in either direction unless timing says otherwise: the unused time of the old seats is credited and the new seats are charged for the rest of the period */
+            quantity?: number;
         };
         ChangeQuote: {
             /** @enum {string} */
@@ -6968,6 +6972,8 @@ export interface components {
             plan_version?: number;
             /** @enum {string} */
             interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            /** @description The seats after the change */
+            quantity?: number;
         };
         ScheduledChange: {
             plan_code?: string;
@@ -6976,6 +6982,8 @@ export interface components {
             interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
             /** Format: date-time */
             effective_time?: string;
+            /** @description The seats the subscription has from then */
+            quantity?: number;
         };
         CurrencyFee: {
             currency?: string;
@@ -7874,6 +7882,8 @@ export interface operations {
                     provider?: string;
                     /** @description A coupon to redeem on the new subscription */
                     coupon_code?: string;
+                    /** @description Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance */
+                    quantity?: number;
                     /**
                      * @description Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee.
                      * @enum {string}

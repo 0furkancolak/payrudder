@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments/providers"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
-	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	provmigqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/providermigrations/query"
@@ -64,18 +64,24 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 			timing, anchor, feeDue = subscription.FeeInAdvance, when, &when
 		}
 	}
+	next := subscriptionscmd.Successor{
+		PlanVersionID: old.PlanVersionID, Interval: subscription.Interval(old.Interval), State: eff, TrialEnds: old.TrialEndsAt, At: when,
+		Anchor: anchor, FeeTiming: timing, FeeDue: feeDue, Owner: owner, ProviderRef: providerRef, Provider: &toProvider, LeaveOldOpen: when.After(now),
+	}
+	// A coupon follows only a successor Payrudder invoices in advance. Anything else would drop it without a word, and with it the discount the fee was paid at.
+	if !subscriptionscmd.CarriesCoupon(next) {
+		if err := requireNoCoupon(ctx, q, old.ID); err != nil {
+			return sqlc.InsertSubscriptionRow{}, err
+		}
+	}
 	// A fee paid in advance for the rest of the period the old provider-side subscription will not serve goes to the customer's credit balance.
-	// A coupon makes that sum differ from the list fee: such a subscription is left to a credit note.
 	if creditUnused {
-		if _, err := subscriptionscmd.CreditUnusedFee(ctx, q, now, old, when); err != nil && !errors.Is(err, changesqry.ErrCouponOnCredit) {
+		if _, err := subscriptionscmd.CreditUnusedFee(ctx, q, now, old, when); err != nil {
 			return sqlc.InsertSubscriptionRow{}, err
 		}
 	}
 	// The old subscription is cancelled at once only when the cutover is not in the future.
-	nr, err := subscriptionscmd.SwitchTo(ctx, q, now, tenantID, old, subscriptionscmd.Successor{
-		PlanVersionID: old.PlanVersionID, Interval: subscription.Interval(old.Interval), State: eff, TrialEnds: old.TrialEndsAt, At: when,
-		Anchor: anchor, FeeTiming: timing, FeeDue: feeDue, Owner: owner, ProviderRef: providerRef, Provider: &toProvider, LeaveOldOpen: when.After(now),
-	})
+	nr, err := subscriptionscmd.SwitchTo(ctx, q, now, tenantID, old, next)
 	if err != nil {
 		return nr, err
 	}
@@ -84,6 +90,18 @@ func (c *Commands) cutover(ctx context.Context, q *sqlc.Queries, tenantID uuid.U
 		return nr, err
 	}
 	return nr, webhookscmd.EmitSubscription(ctx, q, now, webhooksmodel.SubscriptionMovedToProvider, convert.SubscriptionOf(moved, now), map[string]any{"previous_subscription_id": old.ID.String(), "to_provider": toProvider})
+}
+
+// requireNoCoupon refuses a move that cannot carry the coupon of the subscription: the operator takes it off first, knowing the discount ends.
+func requireNoCoupon(ctx context.Context, q *sqlc.Queries, id uuid.UUID) error {
+	_, err := q.GetSubscriptionCoupon(ctx, id)
+	switch {
+	case err == nil:
+		return errkey.New(codes.FailedPrecondition, "plans.migration.coupon_blocks_move", "this subscription has a coupon, which a provider-run or arrears-billed subscription cannot carry; remove the coupon first")
+	case errors.Is(err, pgx.ErrNoRows):
+		return nil
+	}
+	return err
 }
 
 // Start begins moving a subscription to another provider: at once when Payrudder runs it there, else when the customer has subscribed there.
@@ -133,6 +151,10 @@ func (c *Commands) Start(ctx context.Context, req *plansv1.StartProviderMigratio
 			return err
 		}
 		if target.Owner() == payments.OwnerProvider {
+			// The coupon would be dropped when the customer has subscribed there, which is too late to refuse: say so now.
+			if err := requireNoCoupon(ctx, q, id); err != nil {
+				return err
+			}
 			// The target provider runs it: wait for the customer to subscribe there. Nothing about the old subscription changes yet.
 			out = provmigqry.Message(mig)
 			return nil

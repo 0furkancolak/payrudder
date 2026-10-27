@@ -126,21 +126,21 @@ WHERE tenant_id = app_tenant_id() AND customer_id = $1 AND (upper_inf(active) OR
 ORDER BY lower(active), id;
 
 -- name: InsertSubscription :one
-INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing, fee_due_at)
+INSERT INTO subscriptions (tenant_id, id, customer_id, plan_version_id, active, state, interval, currency, trial_ends_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing, fee_due_at, quantity)
 VALUES (app_tenant_id(), @id, @customer_id, @plan_version_id, tstzrange(@start_time::timestamptz, NULL, '[)'),
-        @state, @interval, @currency, @trial_ends_at, @billing_anchor::timestamptz, @changed_from_id, @provider, @provider_ref, @owner, @fee_timing, sqlc.narg('fee_due_at')::timestamptz)
+        @state, @interval, @currency, @trial_ends_at, @billing_anchor::timestamptz, @changed_from_id, @provider, @provider_ref, @owner, @fee_timing, sqlc.narg('fee_due_at')::timestamptz, @quantity)
 RETURNING id, customer_id, plan_version_id,
           lower(active)::timestamptz AS start_time,
           upper_inf(active)::bool AS open_ended,
           COALESCE(upper(active), lower(active))::timestamptz AS end_time,
-          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing;
+          created_at, state, interval, currency, trial_ends_at, cancel_at_period_end, paused_at, billing_anchor, changed_from_id, provider, provider_ref, owner, fee_timing, quantity;
 
 -- name: GetSubscription :one
 SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_version_id,
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, s.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -151,7 +151,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, s.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -176,7 +176,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, s.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -246,7 +246,7 @@ SELECT s.id, s.customer_id, c.external_id AS customer_external_id, s.plan_versio
        lower(s.active)::timestamptz AS start_time,
        upper_inf(s.active)::bool AS open_ended,
        COALESCE(upper(s.active), lower(s.active))::timestamptz AS end_time,
-       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, pl.code AS plan_code, pv.version AS plan_version
+       s.created_at, s.state, s.interval, s.currency, s.trial_ends_at, s.cancel_at_period_end, s.paused_at, s.billing_anchor, s.changed_from_id, s.provider, s.provider_ref, s.owner, s.fee_timing, s.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
      JOIN plan_versions pv ON pv.tenant_id = s.tenant_id AND pv.id = s.plan_version_id
      JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
@@ -268,23 +268,23 @@ UPDATE subscriptions SET fee_due_at = @next_due::timestamptz
 WHERE tenant_id = app_tenant_id() AND id = @id AND fee_due_at = @period_start::timestamptz;
 
 -- name: InsertSubscriptionChange :one
-INSERT INTO subscription_changes (tenant_id, id, subscription_id, plan_version_id, interval, effective_at)
-VALUES (app_tenant_id(), @id, @subscription_id, @plan_version_id, @interval, @effective_at)
-RETURNING id, subscription_id, plan_version_id, interval, effective_at, state;
+INSERT INTO subscription_changes (tenant_id, id, subscription_id, plan_version_id, interval, effective_at, quantity)
+VALUES (app_tenant_id(), @id, @subscription_id, @plan_version_id, @interval, @effective_at, sqlc.narg('quantity'))
+RETURNING id, subscription_id, plan_version_id, interval, effective_at, state, quantity;
 
 -- name: GetPendingChange :one
-SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
+SELECT id, subscription_id, plan_version_id, interval, effective_at, state, quantity FROM subscription_changes
 WHERE tenant_id = app_tenant_id() AND subscription_id = $1 AND state = 'pending';
 
 -- name: ListPendingChangesFor :many
-SELECT c.id, c.subscription_id, c.plan_version_id, c.interval, c.effective_at, pl.code AS plan_code, pv.version AS plan_version
+SELECT c.id, c.subscription_id, c.plan_version_id, c.interval, c.effective_at, c.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscription_changes c
 JOIN plan_versions pv ON pv.tenant_id = c.tenant_id AND pv.id = c.plan_version_id
 JOIN plans pl ON pl.tenant_id = pv.tenant_id AND pl.id = pv.plan_id
 WHERE c.tenant_id = app_tenant_id() AND c.state = 'pending' AND c.subscription_id = ANY(@ids::uuid[]);
 
 -- name: ListDueChanges :many
-SELECT id, subscription_id, plan_version_id, interval, effective_at, state FROM subscription_changes
+SELECT id, subscription_id, plan_version_id, interval, effective_at, state, quantity FROM subscription_changes
 WHERE tenant_id = app_tenant_id() AND state = 'pending' AND effective_at <= @now::timestamptz
 ORDER BY effective_at, id
 LIMIT 100

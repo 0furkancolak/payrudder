@@ -2441,7 +2441,8 @@
         "ending_or_ended": "Das Abonnement ist bereits beendet oder zum Ende vorgemerkt.",
         "no_scheduled_cancel": "Es gibt keine geplante Kündigung, die zurückgenommen werden könnte.",
         "run_by_provider": "Dieses Abonnement wird von einem Zahlungsanbieter geführt. Ändern Sie es dort.",
-        "transition_not_allowed": "Das ist im aktuellen Zustand des Abonnements nicht möglich."
+        "transition_not_allowed": "Das ist im aktuellen Zustand des Abonnements nicht möglich.",
+        "quantity_needs_advance": "Eine Menge über 1 setzt ein Abonnement voraus, das Payrudder führt und im Voraus abrechnet."
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
@@ -2504,7 +2505,8 @@
         "already_completed": "Die Migration ist bereits abgeschlossen.",
         "cannot_abort": "Die Migration ist abgeschlossen und kann nicht abgebrochen werden.",
         "state_not_movable": "Ein Abonnement in diesem Zustand kann nicht zu einem anderen Anbieter verschoben werden.",
-        "subscription_ended": "Das Abonnement ist beendet oder endet gerade und kann nicht verschoben werden."
+        "subscription_ended": "Das Abonnement ist beendet oder endet gerade und kann nicht verschoben werden.",
+        "coupon_blocks_move": "Dieses Abonnement hat einen Gutschein, den ein vom Anbieter geführtes oder nachträglich abgerechnetes Abonnement nicht übernehmen kann. Entfernen Sie zuerst den Gutschein."
       },
       "plan": {
         "no_fixed_fee": "Diese Planversion hat für dieses Intervall in dieser Währung keine feste Gebühr.",
