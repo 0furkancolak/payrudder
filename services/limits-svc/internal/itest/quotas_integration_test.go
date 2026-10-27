@@ -35,7 +35,9 @@ func TestQuotas(t *testing.T) {
 	for name, fn := range map[string]func(*testing.T){
 		"DailyWindowCountsAndFiresInItsDay": testDailyWindow,
 		"ModesDecideAllowed":                testModes,
-		"WindowCountersAreNotReconciled":    testWindowNotReconciled,
+		"ShortWindowsAreReconciled":         testShortWindowReconciled,
+		"YearAndLifetimeWindows":            testYearAndLifetime,
+		"WindowsOfAMaxMeter":                testMaxMeterWindows,
 	} {
 		t.Run(name, fn)
 	}
@@ -195,14 +197,30 @@ func testModes(t *testing.T) {
 	}
 }
 
-// Reconciliation only reads the billing-period counters: a window counter is never sent to the aggregator, nor corrected.
-func testWindowNotReconciled(t *testing.T) {
+// reconcile runs one reconciliation cycle of partition 0 against an aggregator that holds totals.
+func (q *quotaPod) reconcile(totals map[string]int64) engine.Result {
+	q.t.Helper()
+	agg := &fakeAggregator{totals: totals, scale: map[string]int{}, offsets: map[int32]int64{0: q.usedOff}}
+	rec := engine.NewReconciler(engine.ReconcilerConfig{Applier: q.applier, Redis: q.rdb, Aggregator: agg, Meters: defaultMeters,
+		Owned: func() []int32 { return []int32{0} }, CheckpointTimeout: 5 * time.Second, Log: testkit.Logger()})
+	res, err := rec.RunOnce(context.Background())
+	if err != nil {
+		q.t.Fatal(err)
+	}
+	return res
+}
+
+// A short-window counter is compared with the aggregator like the monthly one: an outbox duplicate that was counted twice in the hour is taken out again, and a
+// counter that restarted from the first event after the entitlement appeared is brought to what the hour really held. A window that ended long ago is left alone.
+func testShortWindowReconciled(t *testing.T) {
 	q := newQuotaPod(t)
 	tn, cust := uuid.New(), uuid.New()
 	q.setQuota(tn, cust, "api", 100, "hour", "hard", false, 100)
 	q.apply(q.ev.event(tn, cust, "api", 40, 0, nil))
-	hourID, _, _ := period.WindowOf(period.Hour, time.Now(), istanbul)
+	now := time.Now()
+	hourID, _, _ := period.WindowOf(period.Hour, now, istanbul)
 	hourKey := engine.WindowKey(tn, cust, "api", hourID)
+	monthKey := engine.CounterKey(tn, cust, "api", period.PeriodOf(now, istanbul))
 	if q.get(hourKey) != 40 {
 		t.Fatalf("hour counter = %d", q.get(hourKey))
 	}
@@ -212,15 +230,121 @@ func testWindowNotReconciled(t *testing.T) {
 	if q.rdb.ZScore(context.Background(), engine.WindowActiveKey(0), hourKey).Err() != nil {
 		t.Fatal("the hour counter is not in lim:wactive")
 	}
-	monthKey := engine.CounterKey(tn, cust, "api", period.PeriodOf(time.Now(), istanbul))
-	agg := &fakeAggregator{totals: map[string]int64{monthKey: 40}, scale: map[string]int{}, offsets: map[int32]int64{0: q.usedOff}}
-	rec := engine.NewReconciler(engine.ReconcilerConfig{Applier: q.applier, Redis: q.rdb, Aggregator: agg, Meters: defaultMeters,
-		Owned: func() []int32 { return []int32{0} }, CheckpointTimeout: 5 * time.Second, Log: testkit.Logger()})
-	res, err := rec.RunOnce(context.Background())
-	if err != nil {
+	// An old hour counter is in lim:wactive too (an event of days ago was applied); its window is final, so it is not compared.
+	oldEv := q.ev.event(tn, cust, "api", 5, 0, nil)
+	oldEv.EventTime = timestamppb.New(now.Add(-72 * time.Hour))
+	q.apply(oldEv)
+	oldID, _, _ := period.WindowOf(period.Hour, oldEv.GetEventTime().AsTime(), istanbul)
+	oldKey := engine.WindowKey(tn, cust, "api", oldID)
+
+	// The hour counter drifts by a duplicate; the aggregator knows the true totals.
+	if err := q.rdb.IncrBy(context.Background(), hourKey, 25).Err(); err != nil {
 		t.Fatal(err)
 	}
-	if res.Corrections != 0 || res.Checked != 1 || q.get(hourKey) != 40 {
-		t.Fatalf("reconcile = %+v, hour counter %d; want the month counter checked and nothing corrected", res, q.get(hourKey))
+	res := q.reconcile(map[string]int64{monthKey: 45, hourKey: 40, oldKey: 999})
+	if res.Corrections != 1 || res.Checked != 2 || q.get(hourKey) != 40 || q.get(oldKey) != 5 {
+		t.Fatalf("reconcile = %+v, hour counter %d, old hour %d; want the month and hour counters checked, the hour corrected to 40 and the old hour left", res, q.get(hourKey), q.get(oldKey))
+	}
+	// A counter that started late: the aggregator has the hour's earlier usage too.
+	q.reconcile(map[string]int64{monthKey: 45, hourKey: 90})
+	if q.get(hourKey) != 90 {
+		t.Fatalf("hour counter = %d, want 90 after the aggregator's total", q.get(hourKey))
+	}
+	if st := q.status(tn, cust, "api"); st.GetUsedUnits() != 90 || st.GetWindow() != "hour" {
+		t.Fatalf("status = %v", st)
+	}
+}
+
+// A yearly counter is the calendar year of the tenant, a lifetime one never starts over and never expires; both are reconciled with the aggregator's sum of the
+// months, keep their thresholds' markers as long as they live, and the lifetime status has no reset time.
+func testYearAndLifetime(t *testing.T) {
+	q := newQuotaPod(t)
+	tn, yearly, lifetime := uuid.New(), uuid.New(), uuid.New()
+	q.setQuota(tn, yearly, "api", 100, "year", "hard", false, 50, 100)
+	q.setQuota(tn, lifetime, "api", 1000, "lifetime", "notify", false, 100)
+	now := time.Now()
+	yearID, _, yearEnd := period.WindowOf(period.Year, now, istanbul)
+	monthID := period.PeriodOf(now, istanbul)
+	yearKey := engine.WindowKey(tn, yearly, "api", yearID)
+	lifeKey := engine.WindowKey(tn, lifetime, "api", period.LifetimeID)
+	if yearKey != fmt.Sprintf("lim:y:%s:%s:api:%s", tn, yearly, yearID) || lifeKey != fmt.Sprintf("lim:y:%s:%s:api:all", tn, lifetime) {
+		t.Fatalf("keys %s %s", yearKey, lifeKey)
+	}
+	q.apply(q.ev.event(tn, yearly, "api", 30, 0, nil), q.ev.event(tn, lifetime, "api", 30, 0, nil))
+	if q.get(yearKey) != 30 || q.get(lifeKey) != 30 || q.get(engine.CounterKey(tn, yearly, "api", monthID)) != 30 {
+		t.Fatalf("year %d, lifetime %d", q.get(yearKey), q.get(lifeKey))
+	}
+	ctx := context.Background()
+	if ttl := q.rdb.TTL(ctx, lifeKey).Val(); ttl != -1 {
+		t.Fatalf("the lifetime counter expires (TTL %s)", ttl)
+	}
+	if ttl := q.rdb.TTL(ctx, yearKey).Val(); ttl <= 0 || ttl > time.Until(yearEnd)+3*24*time.Hour {
+		t.Fatalf("year counter TTL %s", ttl)
+	}
+	// They live in lim:active (reconciled while they exist), not in lim:wactive.
+	if n := q.rdb.ZCard(ctx, engine.ActiveKey(0)).Val(); n != 4 {
+		t.Fatalf("lim:active holds %d keys, want 2 month + year + lifetime", n)
+	}
+	if n := q.rdb.ZCard(ctx, engine.WindowActiveKey(0)).Val(); n != 0 {
+		t.Fatalf("lim:wactive holds %d keys, want none", n)
+	}
+
+	// The aggregator's year holds the earlier months too; the lifetime even a previous year's.
+	res := q.reconcile(map[string]int64{
+		engine.CounterKey(tn, yearly, "api", monthID): 30, engine.CounterKey(tn, lifetime, "api", monthID): 30,
+		yearKey: 120, lifeKey: 5000,
+	})
+	if res.Corrections != 2 || q.get(yearKey) != 120 || q.get(lifeKey) != 5000 {
+		t.Fatalf("reconcile = %+v, year %d, lifetime %d", res, q.get(yearKey), q.get(lifeKey))
+	}
+	if ttl := q.rdb.TTL(ctx, lifeKey).Val(); ttl != -1 {
+		t.Fatalf("reconciliation gave the lifetime counter a TTL (%s)", ttl)
+	}
+	// Both are over their limits now: the thresholds fired once, for the year and for the lifetime, and their markers outlive an ordinary period's.
+	for _, c := range []struct {
+		cust uuid.UUID
+		id   string
+		pct  int32
+	}{{yearly, yearID, 50}, {yearly, yearID, 100}, {lifetime, period.LifetimeID, 100}} {
+		fk := engine.FiredKey(tn, c.cust, "api", c.id, c.pct)
+		ttl := q.rdb.TTL(ctx, fk).Val()
+		if c.id == period.LifetimeID && ttl != -1 || c.id != period.LifetimeID && ttl < 80*24*time.Hour {
+			t.Fatalf("marker %s TTL %s", fk, ttl)
+		}
+	}
+	st := q.status(tn, yearly, "api")
+	if st.GetWindow() != "year" || st.GetWindowId() != yearID || !st.GetResetsAt().AsTime().Equal(yearEnd) || st.GetUsedUnits() != 120 || st.GetAllowed() || !st.GetOverLimit() {
+		t.Fatalf("yearly status = %v, want year %s resetting at %s, over its hard limit", st, yearID, yearEnd)
+	}
+	st = q.status(tn, lifetime, "api")
+	if st.GetWindow() != "lifetime" || st.GetWindowId() != "all" || st.GetResetsAt() != nil || st.GetUsedUnits() != 5000 || !st.GetAllowed() || !st.GetOverLimit() {
+		t.Fatalf("lifetime status = %v, want no reset time, over a notify limit and still allowed", st)
+	}
+
+	// An event of last year counts in last year's counter, not in this year's.
+	old := q.ev.event(tn, yearly, "api", 7, 0, nil)
+	old.EventTime = timestamppb.New(yearEnd.AddDate(-1, 0, -10))
+	q.apply(old)
+	if q.get(yearKey) != 120 || q.get(engine.WindowKey(tn, yearly, "api", fmt.Sprint(yearEnd.Year()-2))) != 7 {
+		t.Fatalf("this year %d", q.get(yearKey))
+	}
+}
+
+// A max meter's window counter keeps the largest value; reconciliation sets it to the aggregator's maximum rather than adding a difference.
+func testMaxMeterWindows(t *testing.T) {
+	q := newQuotaPod(t)
+	tn, cust := uuid.New(), uuid.New()
+	q.setQuota(tn, cust, "peak", 100, "day", "hard", false, 100)
+	q.apply(q.ev.event(tn, cust, "peak", 30, 0, nil), q.ev.event(tn, cust, "peak", 20, 0, nil))
+	now := time.Now()
+	dayID, _, _ := period.WindowOf(period.Day, now, istanbul)
+	dayKey := engine.WindowKey(tn, cust, "peak", dayID)
+	if q.get(dayKey) != 30 {
+		t.Fatalf("day counter = %d, want the maximum 30", q.get(dayKey))
+	}
+	monthKey := engine.CounterKey(tn, cust, "peak", period.PeriodOf(now, istanbul))
+	res := q.reconcile(map[string]int64{monthKey: 30, dayKey: 10})
+	if res.Corrections != 1 || q.get(dayKey) != 10 {
+		t.Fatalf("reconcile = %+v, day counter %d, want it set to the aggregator's 10", res, q.get(dayKey))
 	}
 }

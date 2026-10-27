@@ -1623,7 +1623,9 @@
         "hour": "Par heure",
         "day": "Par jour",
         "week": "Par semaine",
-        "month": "Par mois de facturation"
+        "month": "Par mois de facturation",
+        "year": "Par année civile",
+        "lifetime": "Sur toute la durée de vie du client"
       },
       "modes": {
         "hard": "Stricte : ne plus autoriser",
@@ -1639,7 +1641,9 @@
         "hour": "Compte chaque heure pleine dans le fuseau horaire de l'application.",
         "day": "Compte chaque jour dans le fuseau horaire de l'application.",
         "week": "Compte chaque semaine à partir du lundi dans le fuseau horaire de l'application.",
-        "month": "Compte le mois de facturation, comme la facture."
+        "month": "Compte le mois de facturation, comme la facture.",
+        "year": "Compte chaque année civile dans le fuseau horaire de l'application.",
+        "lifetime": "Compte tout ce que le client a utilisé et n'est jamais remis à zéro."
       },
       "windowColumn": "Fenêtre",
       "modeColumn": "Une fois atteinte",

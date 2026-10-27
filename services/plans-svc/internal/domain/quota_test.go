@@ -55,6 +55,26 @@ func TestValidatePlanVersionQuotaTerms(t *testing.T) {
 	}
 }
 
+// A yearly or lifetime window is stored under its own name and read back as the same enum value.
+func TestYearAndLifetimeWindowsRoundTrip(t *testing.T) {
+	in, err := ValidatePlanVersion(&plansv1.PublishPlanVersionRequest{
+		BaseFeeMinor: 100,
+		Entitlements: []*plansv1.Entitlement{
+			{MeterCode: "api_calls", Limit: "5000", Window: plansv1.QuotaWindow_QUOTA_WINDOW_YEAR},
+			{MeterCode: "gb_hours", Limit: "10", Window: plansv1.QuotaWindow_QUOTA_WINDOW_LIFETIME, Mode: plansv1.QuotaMode_QUOTA_MODE_NOTIFY},
+		},
+	}, map[string]int{"api_calls": 0, "gb_hours": 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if in.Entitlements[0].Window != "year" || in.Entitlements[1].Window != "lifetime" {
+		t.Fatalf("stored windows = %q, %q", in.Entitlements[0].Window, in.Entitlements[1].Window)
+	}
+	if WindowFromDB("year") != plansv1.QuotaWindow_QUOTA_WINDOW_YEAR || WindowFromDB("lifetime") != plansv1.QuotaWindow_QUOTA_WINDOW_LIFETIME {
+		t.Fatal("stored names do not map back")
+	}
+}
+
 func TestValidatePlanVersionQuotaRefusals(t *testing.T) {
 	scales := map[string]int{"api_calls": 0, "gb_hours": 3}
 	cases := map[string]*plansv1.PublishPlanVersionRequest{

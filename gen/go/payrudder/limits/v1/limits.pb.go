@@ -100,11 +100,11 @@ type LimitStatus struct {
 	Allowed bool `protobuf:"varint,10,opt,name=allowed,proto3" json:"allowed,omitempty"`
 	// Ingest time of the newest event of the tenant that is reflected in used. Unset before the first event.
 	AsOf *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=as_of,json=asOf,proto3" json:"as_of,omitempty"`
-	// "month", "hour", "day" or "week". A window shorter than a month is always the current one: period_id only picks the month of monthly quotas.
+	// "month", "hour", "day", "week", "year" or "lifetime". Every window but the month is always the current one: period_id only picks the month of monthly quotas.
 	Window string `protobuf:"bytes,12,opt,name=window,proto3" json:"window,omitempty"`
-	// The window used counts in: period_id for a month, "2026-11-05T13", "2026-11-05" or "2026-W45".
+	// The window used counts in: period_id for a month, "2026-11-05T13", "2026-11-05", "2026-W45", "2026" or "all".
 	WindowId string `protobuf:"bytes,13,opt,name=window_id,json=windowId,proto3" json:"window_id,omitempty"`
-	// When the window ends and used starts again from zero.
+	// When the window ends and used starts again from zero. Unset for the lifetime window.
 	ResetsAt *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=resets_at,json=resetsAt,proto3" json:"resets_at,omitempty"`
 	// "hard", "soft" or "notify".
 	Mode string `protobuf:"bytes,15,opt,name=mode,proto3" json:"mode,omitempty"`

@@ -118,6 +118,43 @@ test.describe("package usage prices and quotas", () => {
     });
   });
 
+  test("a yearly and a lifetime quota are offered, explained and sent", async ({ page }) => {
+    const gw = baseTenant(new MockGateway())
+      .on(tenantList)
+      .on(metersMock)
+      .on(empty)
+      .on((c) => {
+        if (c.method === "POST" && c.path === "/v1/plans") return { status: 201, body: { code: "ai", name: "AI" } };
+        if (c.method === "POST" && c.path === "/v1/plans/ai/versions") return { status: 201, body: { version: 1 } };
+        return undefined;
+      });
+    await gw.install(page);
+    await openTenantPage(page, "/packages");
+    await page.getByTestId("packages-new").click();
+    const form = page.getByRole("form", { name: "new package" });
+    await form.getByLabel("Code").fill("ai");
+    await form.getByLabel("Name", { exact: true }).fill("AI");
+    await form.getByRole("button", { name: "Add a quota" }).click();
+    await form.getByLabel("Meter of quota 1").selectOption("tokens");
+    await form.getByLabel("Limit of quota 1").fill("100000");
+    await form.getByLabel("Window of quota 1").selectOption({ label: "Per calendar year" });
+    await expect(form).toContainText("Counts each calendar year in the app's time zone.");
+    await form.getByRole("button", { name: "Add a quota" }).click();
+    await form.getByLabel("Meter of quota 2").selectOption("gb_hours");
+    await form.getByLabel("Limit of quota 2").fill("2000");
+    await form.getByLabel("Window of quota 2").selectOption("QUOTA_WINDOW_LIFETIME");
+    await form.getByLabel("When quota 2 is reached").selectOption("QUOTA_MODE_NOTIFY");
+    await expect(form).toContainText("Counts everything the customer has used and never resets.");
+    await page.getByRole("dialog").getByRole("button", { name: "Publish version" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/plans/ai/versions").length).toBe(1);
+    expect(gw.called("POST", "/v1/plans/ai/versions")[0]?.body).toMatchObject({
+      entitlements: [
+        { meter_code: "tokens", limit: "100000", window: "QUOTA_WINDOW_YEAR", mode: "QUOTA_MODE_HARD" },
+        { meter_code: "gb_hours", limit: "2000", window: "QUOTA_WINDOW_LIFETIME", mode: "QUOTA_MODE_NOTIFY" },
+      ],
+    });
+  });
+
   test("a soft quota on a meter without a price is refused before anything is sent", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on(tenantList).on(metersMock).on(empty);
     await gw.install(page);

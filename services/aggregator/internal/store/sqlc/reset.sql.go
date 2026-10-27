@@ -62,3 +62,15 @@ func (q *Queries) ResetUsageAggregates(ctx context.Context, tenantID uuid.UUID) 
 	}
 	return result.RowsAffected(), nil
 }
+
+const resetUsageWindowAggregates = `-- name: ResetUsageWindowAggregates :execrows
+DELETE FROM usage_window_aggregates WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetUsageWindowAggregates(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetUsageWindowAggregates, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}

@@ -15,7 +15,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/aggregator/migrations"
 )
 
-// A reset takes a tenant's usage, late usage, processed events and period settings, keeps its generation, leaves another tenant alone and finds nothing the second
+// A reset takes a tenant's usage, hour totals, late usage, processed events and period settings, keeps its generation, leaves another tenant alone and finds nothing the second
 // time; every table with tenant rows is covered or kept on purpose.
 func TestResetDeletesTheTenantsUsageAndKeepsItsGeneration(t *testing.T) {
 	pg := testkit.StartPostgres(t)
@@ -36,6 +36,7 @@ func TestResetDeletesTheTenantsUsageAndKeepsItsGeneration(t *testing.T) {
 	for _, tid := range []uuid.UUID{sbx, other} {
 		for _, q := range []string{
 			`INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at) VALUES ($1,'2026-10',gen_random_uuid(),'m',1,5,0,1,now())`,
+			`INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at) VALUES ($1,gen_random_uuid(),'m',1,'2026-10-05T13',5,0,1,now())`,
 			`INSERT INTO late_usage (tenant_id, billed_period_id, customer_id, meter_code, origin_period_id, generation, quantity, quantity_scale, event_count, updated_at) VALUES ($1,'2026-10',gen_random_uuid(),'m','2026-09',1,5,0,1,now())`,
 			`INSERT INTO processed_events (tenant_id, event_id, generation, period_id) VALUES ($1,'e1',1,'2026-10'), ($1,'e2',1,'2026-10')`,
 			`INSERT INTO period_settings (tenant_id, period_id, timezone, period_start, period_end, grace_period, cutoff_at) VALUES ($1,'2026-10','UTC',now(),now(),'0',now())`,
@@ -49,7 +50,7 @@ func TestResetDeletesTheTenantsUsageAndKeepsItsGeneration(t *testing.T) {
 	count := func(table string, tid uuid.UUID) int {
 		t.Helper()
 		q := map[string]string{
-			"usage_aggregates": `SELECT count(*) FROM usage_aggregates WHERE tenant_id = $1`, "late_usage": `SELECT count(*) FROM late_usage WHERE tenant_id = $1`,
+			"usage_aggregates": `SELECT count(*) FROM usage_aggregates WHERE tenant_id = $1`, "usage_window_aggregates": `SELECT count(*) FROM usage_window_aggregates WHERE tenant_id = $1`, "late_usage": `SELECT count(*) FROM late_usage WHERE tenant_id = $1`,
 			"processed_events": `SELECT count(*) FROM processed_events WHERE tenant_id = $1`, "period_settings": `SELECT count(*) FROM period_settings WHERE tenant_id = $1`,
 			"aggregate_generations": `SELECT count(*) FROM aggregate_generations WHERE tenant_id = $1`,
 		}[table]
@@ -64,7 +65,7 @@ func TestResetDeletesTheTenantsUsageAndKeepsItsGeneration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if deleted["usage_aggregates"] != 1 || deleted["late_usage"] != 1 || deleted["processed_events"] != 2 || deleted["period_settings"] != 1 {
+	if deleted["usage_aggregates"] != 1 || deleted["usage_window_aggregates"] != 1 || deleted["late_usage"] != 1 || deleted["processed_events"] != 2 || deleted["period_settings"] != 1 {
 		t.Errorf("deleted = %v", deleted)
 	}
 	for _, tb := range aggregatorreset.Tables {

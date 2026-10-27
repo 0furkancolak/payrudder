@@ -96,9 +96,13 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 		return fmt.Errorf("tenant lookup: %w", err)
 	}
 	scale := int(le.GetQuantityScale())
-	// A limit over an hour, a day or a week names its window ("2026-11-05"); a monthly one its billing period, as before windows existed.
+	// A limit over an hour, a day, a week or a year names its window ("2026-11-05", "2026"); a monthly one its billing period, as before windows
+	// existed, and a lifetime one says so (its window id, "all", is not for people).
 	window := le.GetWindowId()
-	if window == "" {
+	switch {
+	case le.GetWindow() == "lifetime":
+		window = "lifetime"
+	case window == "":
 		window = le.GetPeriodId()
 	}
 	data := map[string]string{

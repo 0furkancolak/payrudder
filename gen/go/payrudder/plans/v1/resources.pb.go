@@ -243,6 +243,10 @@ const (
 	QuotaWindow_QUOTA_WINDOW_DAY         QuotaWindow = 3
 	// ISO week: Monday 00:00 to the next Monday 00:00.
 	QuotaWindow_QUOTA_WINDOW_WEEK QuotaWindow = 4
+	// Calendar year: 1 January 00:00 to the next 1 January 00:00, twelve billing periods.
+	QuotaWindow_QUOTA_WINDOW_YEAR QuotaWindow = 5
+	// Everything since the customer's first usage: the window never starts again.
+	QuotaWindow_QUOTA_WINDOW_LIFETIME QuotaWindow = 6
 )
 
 // Enum value maps for QuotaWindow.
@@ -253,6 +257,8 @@ var (
 		2: "QUOTA_WINDOW_HOUR",
 		3: "QUOTA_WINDOW_DAY",
 		4: "QUOTA_WINDOW_WEEK",
+		5: "QUOTA_WINDOW_YEAR",
+		6: "QUOTA_WINDOW_LIFETIME",
 	}
 	QuotaWindow_value = map[string]int32{
 		"QUOTA_WINDOW_UNSPECIFIED": 0,
@@ -260,6 +266,8 @@ var (
 		"QUOTA_WINDOW_HOUR":        2,
 		"QUOTA_WINDOW_DAY":         3,
 		"QUOTA_WINDOW_WEEK":        4,
+		"QUOTA_WINDOW_YEAR":        5,
+		"QUOTA_WINDOW_LIFETIME":    6,
 	}
 )
 
@@ -3700,13 +3708,15 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\x17AGGREGATION_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fAGGREGATION_SUM\x10\x01\x12\x15\n" +
 	"\x11AGGREGATION_COUNT\x10\x02\x12\x13\n" +
-	"\x0fAGGREGATION_MAX\x10\x03*\x87\x01\n" +
+	"\x0fAGGREGATION_MAX\x10\x03*\xb9\x01\n" +
 	"\vQuotaWindow\x12\x1c\n" +
 	"\x18QUOTA_WINDOW_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12QUOTA_WINDOW_MONTH\x10\x01\x12\x15\n" +
 	"\x11QUOTA_WINDOW_HOUR\x10\x02\x12\x14\n" +
 	"\x10QUOTA_WINDOW_DAY\x10\x03\x12\x15\n" +
-	"\x11QUOTA_WINDOW_WEEK\x10\x04*h\n" +
+	"\x11QUOTA_WINDOW_WEEK\x10\x04\x12\x15\n" +
+	"\x11QUOTA_WINDOW_YEAR\x10\x05\x12\x19\n" +
+	"\x15QUOTA_WINDOW_LIFETIME\x10\x06*h\n" +
 	"\tQuotaMode\x12\x1a\n" +
 	"\x16QUOTA_MODE_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fQUOTA_MODE_HARD\x10\x01\x12\x13\n" +

@@ -7,25 +7,31 @@ import (
 )
 
 // Window is what a quota counts over before it starts again. Windows are wall-clock spans in the tenant's time zone, like billing
-// periods: a month window is exactly a billing period.
+// periods: a month window is exactly a billing period, and a year is twelve of them (January to December). A lifetime window never
+// starts again.
 type Window string
 
 const (
-	Hour  Window = "hour"
-	Day   Window = "day"
-	Week  Window = "week"
-	Month Window = "month"
+	Hour     Window = "hour"
+	Day      Window = "day"
+	Week     Window = "week"
+	Month    Window = "month"
+	Year     Window = "year"
+	Lifetime Window = "lifetime"
 )
 
 // Windows lists every window, shortest first.
-var Windows = []Window{Hour, Day, Week, Month}
+var Windows = []Window{Hour, Day, Week, Month, Year, Lifetime}
+
+// LifetimeID is the id of the one lifetime window.
+const LifetimeID = "all"
 
 // ParseWindow reads a stored or wire window; "" is Month (the billing period, as before windows existed).
 func ParseWindow(s string) (Window, bool) {
 	switch Window(s) {
 	case "", Month:
 		return Month, true
-	case Hour, Day, Week:
+	case Hour, Day, Week, Year, Lifetime:
 		return Window(s), true
 	default:
 		return "", false
@@ -33,7 +39,8 @@ func ParseWindow(s string) (Window, bool) {
 }
 
 // WindowOf returns the id and [start, end) of the window of kind w that holds t in loc. The ids never contain ':' and differ in
-// shape per kind, so one id names its kind too: "2026-11-05T13" (hour), "2026-11-05" (day), "2026-W45" (ISO week), "2026-11" (month).
+// shape per kind, so one id names its kind too: "2026-11-05T13" (hour), "2026-11-05" (day), "2026-W45" (ISO week), "2026-11" (month),
+// "2026" (year) and "all" (lifetime). The lifetime window has no bounds: start and end are the zero time.
 func WindowOf(w Window, t time.Time, loc *time.Location) (id string, start, end time.Time) {
 	lt := t.In(loc)
 	y, m, d := lt.Date()
@@ -53,13 +60,18 @@ func WindowOf(w Window, t time.Time, loc *time.Location) (id string, start, end 
 		start = time.Date(y, m, d-back, 0, 0, 0, 0, loc)
 		iy, iw := start.ISOWeek()
 		return fmt.Sprintf("%04d-W%02d", iy, iw), start, start.AddDate(0, 0, 7)
+	case Year:
+		start = time.Date(y, 1, 1, 0, 0, 0, 0, loc)
+		return fmt.Sprintf("%04d", y), start, start.AddDate(1, 0, 0)
+	case Lifetime:
+		return LifetimeID, time.Time{}, time.Time{}
 	default:
 		start = time.Date(y, m, 1, 0, 0, 0, 0, loc)
 		return PeriodOf(t, loc), start, start.AddDate(0, 1, 0)
 	}
 }
 
-// WindowBounds returns the kind and [start, end) of a window id made by WindowOf.
+// WindowBounds returns the kind and [start, end) of a window id made by WindowOf; the lifetime window's bounds are the zero time.
 func WindowBounds(id string, loc *time.Location) (w Window, start, end time.Time, err error) {
 	bad := func() (Window, time.Time, time.Time, error) {
 		return "", time.Time{}, time.Time{}, fmt.Errorf("period: malformed window id %q", id)
@@ -69,6 +81,15 @@ func WindowBounds(id string, loc *time.Location) (w Window, start, end time.Time
 		return n, err == nil && len(s) > 0 && s[0] != '-' && s[0] != '+'
 	}
 	switch {
+	case id == LifetimeID:
+		return Lifetime, time.Time{}, time.Time{}, nil
+	case len(id) == 4:
+		y, ok := num(id)
+		if !ok || y < 1 {
+			return bad()
+		}
+		start = time.Date(y, 1, 1, 0, 0, 0, 0, loc)
+		return Year, start, start.AddDate(1, 0, 0), nil
 	case Valid(id):
 		start, end, err = Bounds(id, loc)
 		return Month, start, end, err
@@ -110,3 +131,34 @@ func WindowBounds(id string, loc *time.Location) (w Window, start, end time.Time
 }
 
 func daysIn(y, m int) int { return time.Date(y, time.Month(m)+1, 0, 0, 0, 0, 0, time.UTC).Day() }
+
+// Granule is the grain a window's usage is stored in: the aggregator keeps a total per month and, for short windows, per hour.
+type Granule int
+
+const (
+	Months Granule = iota
+	Hours
+)
+
+// Span returns the stored rows that add up to the window id: the ids from..to, both inclusive, of the rows of that granule ("2026-11"
+// for a month, "2026-11-05T13" for an hour). Hour ids are wall-clock strings of the tenant, so they sort as time does and need no zone.
+// A year is its twelve months and the lifetime window every month there is.
+func Span(id string) (g Granule, from, to string, err error) {
+	w, start, end, err := WindowBounds(id, time.UTC)
+	if err != nil {
+		return 0, "", "", err
+	}
+	const hourLayout = "2006-01-02T15"
+	switch w {
+	case Month:
+		return Months, id, id, nil
+	case Year:
+		return Months, fmt.Sprintf("%04d-01", start.Year()), fmt.Sprintf("%04d-12", start.Year()), nil
+	case Lifetime:
+		return Months, "0000-01", "9999-12", nil
+	case Hour:
+		return Hours, id, id, nil
+	default: // day, week
+		return Hours, start.Format(hourLayout), end.Add(-time.Hour).Format(hourLayout), nil
+	}
+}

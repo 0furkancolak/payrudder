@@ -164,7 +164,7 @@ CREATE TABLE plan_entitlements (
   limit_units          bigint NOT NULL CHECK (limit_units >= 0),      -- scaled units of the meter; 0 = unlimited
   -- plan_prices.config stores quantities as scaled units too: {"tiers":[{"up_to_units":10500,"unit_price":"0","flat_fee_minor":0},…]}
   alert_thresholds_pct int[]  NOT NULL DEFAULT '{80,100}',
-  quota_window         text NOT NULL DEFAULT 'month' CHECK (quota_window IN ('hour','day','week','month')),   -- 00052
+  quota_window         text NOT NULL DEFAULT 'month' CHECK (quota_window IN ('hour','day','week','month','year','lifetime')),   -- 00052, widened by 00058
   mode                 text NOT NULL DEFAULT 'hard'  CHECK (mode IN ('hard','soft','notify')),             -- 00052
   PRIMARY KEY (tenant_id, plan_version_id, meter_code)
 );
@@ -285,6 +285,22 @@ CREATE TABLE usage_aggregates (
   PRIMARY KEY (tenant_id, period_id, customer_id, meter_code, generation)
 );
 
+-- Hour totals (migration 00004): what limits-svc reconciles its hour, day and ISO-week quota counters against. Written in the batch
+-- transaction of the month row, for on-time events only, never read by billing; a rolling window, see aggregator.md "Window totals".
+CREATE TABLE usage_window_aggregates (
+  tenant_id    uuid NOT NULL,
+  customer_id  uuid NOT NULL,
+  meter_code   text NOT NULL,
+  generation   int  NOT NULL,
+  hour_id      text NOT NULL,                        -- wall-clock hour of the tenant by event_time: '2026-11-05T13'
+  period_id    text GENERATED ALWAYS AS (left(hour_id, 7)) STORED,   -- the month the hour belongs to, for replay's carry-over
+  quantity     numeric(38,0) NOT NULL,               -- scaled units; the sum, or the maximum for a MAX meter
+  quantity_scale smallint NOT NULL,
+  event_count  bigint NOT NULL,
+  updated_at   timestamptz NOT NULL,
+  PRIMARY KEY (tenant_id, customer_id, meter_code, generation, hour_id)
+);                                                     -- + index (hour_id) for the retention delete
+
 CREATE TABLE late_usage (
   tenant_id         uuid NOT NULL,
   customer_id       uuid NOT NULL,
@@ -348,7 +364,7 @@ CREATE TABLE replay_jobs (
 `period_id` is the leading PK column of `processed_events` because of `LIST` partitioning. Lookups always know the period
 (it's derived from `event_time`), so the index is still selective.
 
-RLS: `usage_aggregates`, `late_usage`, `period_settings` and `aggregate_generations` are RLS'd for `aggregator_app` (read APIs, `FreezePeriod`,
+RLS: `usage_aggregates`, `usage_window_aggregates`, `late_usage`, `period_settings` and `aggregate_generations` are RLS'd for `aggregator_app` (read APIs, `FreezePeriod`,
 `ClosePeriodEarly`; its only UPDATE is on `period_settings(cutoff_at, early_closed_at, frozen_at)`). `processed_events` and `replay_jobs` carry
 `tenant_id` but are consumer-only and not RLS'd (allowlisted in the CI check). Consumers use `aggregator_system`; `FOR SHARE` needs an UPDATE
 privilege, hence its UPDATE grant on `period_settings` and `aggregate_generations`. Inbox partitions are named `processed_events_YYYY_MM`, created
@@ -576,7 +592,8 @@ Workers are internal and single-purpose, and are not RLS'd: every row is keyed b
 | Ingest dedup | PK `idempotency_keys (tenant_id, idempotency_key, created_at)` |
 | Outbox relay | PK `outbox (id)` + `SKIP LOCKED`. Watermark via `outbox_ingested_at` |
 | Aggregator dedup | PK `processed_events (period_id, tenant_id, event_id, generation)` |
-| Aggregator upsert | PK `usage_aggregates` |
+| Aggregator upsert | PK `usage_aggregates`, PK `usage_window_aggregates` |
+| Limits reconciliation of a window | PK prefix `(tenant_id, customer_id, meter_code, generation)` + a range of `hour_id`; months by the PK of `usage_aggregates` |
 | Billing stream period usage | PK prefix `(tenant_id, period_id)` |
 | Saga timeout sweeper | partial `saga_deadlines` |
 | Dunning scheduler | partial `saga_dunning` |

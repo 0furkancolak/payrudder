@@ -694,6 +694,12 @@ func carryOverOutsideRange(ctx context.Context, q *sqlc.Queries, j *Job) error {
 	if err := q.CopyGenerationUsageOutside(ctx, sqlc.CopyGenerationUsageOutsideParams{TenantID: j.TenantID, Source: j.SourceGeneration, Target: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
 		return err
 	}
+	if err := q.ClearGenerationWindowUsageOutside(ctx, sqlc.ClearGenerationWindowUsageOutsideParams{TenantID: j.TenantID, Generation: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
+	if err := q.CopyGenerationWindowUsageOutside(ctx, sqlc.CopyGenerationWindowUsageOutsideParams{TenantID: j.TenantID, Source: j.SourceGeneration, Target: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
+		return err
+	}
 	if err := q.ClearGenerationLateUsageOutside(ctx, sqlc.ClearGenerationLateUsageOutsideParams{TenantID: j.TenantID, Generation: j.TargetGeneration, FromPeriod: j.From, ToPeriod: j.To}); err != nil {
 		return err
 	}
@@ -743,6 +749,9 @@ func (m *Manager) Discard(ctx context.Context, tenantID, jobID uuid.UUID) (*Job,
 func (m *Manager) deleteGeneration(ctx context.Context, tenantID uuid.UUID, generation int32) error {
 	q := sqlc.New(m.cfg.Pool)
 	if err := q.DeleteGenerationUsage(ctx, sqlc.DeleteGenerationUsageParams{TenantID: tenantID, Generation: generation}); err != nil {
+		return err
+	}
+	if err := q.DeleteGenerationWindowUsage(ctx, sqlc.DeleteGenerationWindowUsageParams{TenantID: tenantID, Generation: generation}); err != nil {
 		return err
 	}
 	if err := q.DeleteGenerationLateUsage(ctx, sqlc.DeleteGenerationLateUsageParams{TenantID: tenantID, Generation: generation}); err != nil {

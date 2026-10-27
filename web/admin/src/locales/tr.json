@@ -1623,7 +1623,9 @@
         "hour": "Saatlik",
         "day": "Günlük",
         "week": "Haftalık",
-        "month": "Fatura ayı başına"
+        "month": "Fatura ayı başına",
+        "year": "Takvim yılı başına",
+        "lifetime": "Müşterinin tüm ömrü boyunca"
       },
       "modes": {
         "hard": "Kesin: izin vermeyi durdur",
@@ -1639,7 +1641,9 @@
         "hour": "Uygulamanın saat diliminde her saati ayrı sayar.",
         "day": "Uygulamanın saat diliminde her günü ayrı sayar.",
         "week": "Uygulamanın saat diliminde pazartesiden başlayan her haftayı sayar.",
-        "month": "Fatura gibi fatura ayını sayar."
+        "month": "Fatura gibi fatura ayını sayar.",
+        "year": "Uygulamanın saat diliminde her takvim yılını sayar.",
+        "lifetime": "Müşterinin şimdiye kadar kullandığı her şeyi sayar, hiç sıfırlanmaz."
       },
       "windowColumn": "Zaman aralığı",
       "modeColumn": "Ulaşıldığında",

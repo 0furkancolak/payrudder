@@ -98,7 +98,7 @@ package payrudder.aggregator.v1;
 
 service UsageQueryService {
   rpc GetCustomerUsage(GetCustomerUsageRequest) returns (GetCustomerUsageResponse);   // customer, period → per-meter qty
-  rpc GetUsageBatch(GetUsageBatchRequest) returns (GetUsageBatchResponse);            // limits reconciliation, ≤ 1000 keys
+  rpc GetUsageBatch(GetUsageBatchRequest) returns (GetUsageBatchResponse);            // limits reconciliation, ≤ 1000 keys; a key names a period or a quota window
   rpc StreamPeriodUsage(StreamPeriodUsageRequest) returns (stream StreamPeriodUsageResponse);    // billing: all customers of tenant+period
   rpc StreamLateUsage(StreamLateUsageRequest) returns (stream StreamLateUsageResponse);             // billing: late usage billed in period
   rpc GetIngestWatermark(GetIngestWatermarkRequest) returns (GetIngestWatermarkResponse);
@@ -169,3 +169,28 @@ Monthly partitions are dropped 45 days after period end. **Target:** 20k events/
 ## As built: sandbox reset (Phase 45 E)
 
 `SandboxResetService.ResetTenant` (operator only, environment must be SANDBOX) deletes a sandbox tenant's data in aggregator_db: usage, late usage, processed events and period settings (generations and replay jobs stay). plans-svc calls it from the reset job; `internal/sandboxreset` lists what goes and `Kept` what stays on purpose, and a test fails for a table that is neither. See [ADR 0023](../adr/0023-live-and-sandbox-guards.md).
+
+## As built: window totals (quota windows)
+
+limits-svc counts a quota over a window (an hour, a day, an ISO week, the billing month, a calendar year or the customer's lifetime, all in the tenant's
+time zone) and reconciles the counter of **every** window against this service, so that enforcement, the console and the invoice are made from the same events.
+`GetUsageBatch` takes a window id in `UsageKey.period_id` (`2026-11`, `2026-11-05T13`, `2026-11-05`, `2026-W45`, `2026`, `all`; `pkg/period.Span` maps an id to
+the stored rows) and answers with the sum of those rows, or their maximum when the key says `max` (a MAX meter: the maximum of the parts is the maximum of the
+whole). The same snapshot returns the consumer offsets, so the checkpoint protocol of limits-svc is unchanged.
+
+- **Month, year, lifetime** read `usage_aggregates`: a year is the twelve month rows of the tenant's calendar year, the lifetime window every month row there
+  is. These rows are kept for good and are what billing rates, so these windows agree with the invoice by construction.
+- **Hour, day, ISO week** read `usage_window_aggregates` (migration 00004), a total per customer, meter and wall-clock hour (`2026-11-05T13`), written by the
+  batch transaction next to the month row: the same dedup, meter filter and on-time rule (a late or frozen-period event is in neither), the hour taken from
+  `event_time` in the time zone of the period snapshot. A day is the hours of that date and a week the hours from Monday 00 to Sunday 23, as a range of the
+  sortable hour id, so no time zone is needed to read it. The wall-clock id is what makes daylight saving harmless: the repeated hour of a fall-back day is one id
+  (counted once, as limits-svc counts it) and the skipped hour of a spring-forward day has none.
+- **A rolling window, not a ledger.** Hour rows older than 14 days (`domain.WindowRetention`) are not written and are deleted by the hourly maintenance;
+  billing never reads them and replay verification does not compare them. A replay rebuilds those of the range it replays and carries the others over to the new
+  generation like the month rows. A sandbox reset and a discarded generation delete them. An hour, day or week older than the retention reads as zero, which is
+  why limits-svc only reconciles windows that are current or ended less than two hours ago.
+- **Cost:** one more upserted row per (customer, meter, hour) of a batch, in the same transaction and in a fixed key order after the month rows. It is
+  written for every meter, because this service does not know which meters have a short quota.
+- **Why hour totals.** Day and week windows cannot be derived from the month row. A table per entitlement window would need this service to follow
+  `plans.entitlements.v1` and to backfill when an entitlement appears. Rebuilding from the Kafka log is bounded by its retention and slow. One finest grain
+  that every short window is a range of needs neither.

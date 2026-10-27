@@ -194,7 +194,8 @@ and in-memory counters per pod are wrong as soon as there are two pods.
   redelivered batch (`first_offset < stored offset`) is skipped.
 - **Threshold events:** fired once using `SET NX` on a `fired` key, with a deterministic `event_id` for consumer-side dedup.
 - **Reconciliation:** every 5 min, compare Redis with aggregator at the **same offset prefix** of each partition (snapshot
-  checkpoint protocol in [limits-svc.md](03-services/limits-svc.md#reconciliation)) and correct drift.
+  checkpoint protocol in [limits-svc.md](03-services/limits-svc.md#reconciliation)) and correct drift. Every quota window is reconciled, not only the
+  billing month: hour, day and week counters against hour totals, year and lifetime counters against the month rows.
 
 **Consistency stated explicitly** ([ADR 0006](adr/0006-eventual-consistency-for-limits.md)):
 - `CheckEntitlement` is **eventually consistent**. Staleness = consumer lag (target p99 < 2 s) and is returned as `as_of`.

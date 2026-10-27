@@ -40,7 +40,8 @@ const KeyTTL = 40 * 24 * time.Hour
 // firedTTL outlives any counter key, so a threshold is never fired twice for the same period.
 const firedTTL = 80 * 24 * time.Hour
 
-// windowTTL is how long a window counter outlives the end of its window: it is read only while the window is current.
+// windowTTL is how long a window counter outlives the end of its window: it is read only while the window is current. The lifetime window has
+// no end and its counter never expires.
 const windowTTL = 2 * 24 * time.Hour
 
 // ErrMeterNotFound is the answer for a meter plans-svc does not know.
@@ -292,11 +293,14 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 	_, end, _ := period.Bounds(ev.Period, tn.Location)
 	isMax, v := m.Aggregation == usage.Max, m.Value(ev)
 	b.add(Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: ev.Period}, isMax, v, end.Add(KeyTTL))
-	// A quota over a shorter window has its own counter, kept only while the entitlement asks for one: the aggregator has no such totals.
+	// A quota over another window than the billing period has its own counter, kept only while the entitlement asks for one. Reconciliation
+	// brings it to the aggregator's total of the window, which includes what was used before the entitlement existed.
 	if ent, ok := a.cfg.Ents.Get(ev.TenantID, ev.CustomerID, ev.Meter, a.cfg.Now()); ok && ent.Window != period.Month {
 		id, _, wend := period.WindowOf(ent.Window, ev.EventTime, tn.Location)
-		// An old event of a window that has ended still counts in it, and its key outlives the event by a little.
-		wend = maxTime(wend, a.cfg.Now()).Add(windowTTL)
+		if !wend.IsZero() {
+			// An old event of a window that has ended still counts in it, and its key outlives the event by a little.
+			wend = maxTime(wend, a.cfg.Now()).Add(windowTTL)
+		}
 		b.add(Ref{Tenant: ev.TenantID, Customer: ev.CustomerID, Meter: ev.Meter, Period: id, Windowed: true}, isMax, v, wend)
 	}
 	if ev.IngestedAt.After(b.stamps[ev.TenantID]) {
@@ -306,12 +310,15 @@ func (a *Applier) accumulate(ctx context.Context, b *batch, rec *kgo.Record) err
 	return nil
 }
 
-// add folds a value into the cell of ref.
+// add folds a value into the cell of ref. A zero expire is a key that never expires.
 func (b *batch) add(ref Ref, isMax bool, v int64, expire time.Time) {
 	k := ref.Key()
 	c := b.cells[k]
 	if c == nil {
-		c = &cell{ref: ref, isMax: isMax, expireAt: expire.Unix()}
+		c = &cell{ref: ref, isMax: isMax}
+		if !expire.IsZero() {
+			c.expireAt = expire.Unix()
+		}
 		b.cells[k] = c
 	}
 	switch {
@@ -429,41 +436,49 @@ func (a *Applier) fireWhere(ctx context.Context, ref Ref, used int64, hit func(e
 	if !ok || ent.Limit <= 0 {
 		return
 	}
-	billingPeriod, ok := a.overlaps(ctx, ent, ref)
+	billingPeriod, markerTTL, ok := a.overlaps(ctx, ent, ref, now)
 	if !ok {
 		return
 	}
 	for _, pct := range ent.Thresholds {
 		if hit(ent, pct) {
-			a.fire(ctx, ent, ref, billingPeriod, pct, used, now)
+			a.fire(ctx, ent, ref, billingPeriod, markerTTL, pct, used, now)
 		}
 	}
 }
 
-// overlaps reports whether the entitlement counts over the counter's kind of window and existed during that window, and returns the billing
-// period the window starts in.
-func (a *Applier) overlaps(ctx context.Context, ent entitlements.State, ref Ref) (string, bool) {
+// overlaps reports whether the entitlement counts over the counter's kind of window and existed during that window. It returns the billing
+// period the window starts in (the current one for the lifetime window, which does not start) and how long a threshold marker of the window
+// must live: firedTTL, a year's marker until firedTTL after the year ends, and forever (0) for the lifetime window.
+func (a *Applier) overlaps(ctx context.Context, ent entitlements.State, ref Ref, now time.Time) (billingPeriod string, markerTTL time.Duration, ok bool) {
 	tn, err := a.cfg.Tenants.Tenant(ctx, ent.Tenant)
 	if err != nil {
 		a.log.WarnContext(ctx, "tenant lookup failed, threshold not evaluated", "tenant", ent.Tenant, "error", err)
-		return "", false
+		return "", 0, false
 	}
 	w, start, end, err := period.WindowBounds(ref.Period, tn.Location)
 	if err != nil {
 		a.log.WarnContext(ctx, "window bounds failed, threshold not evaluated", "tenant", ent.Tenant, "window", ref.Period, "error", err)
-		return "", false
+		return "", 0, false
 	}
 	if w != ent.Window || ref.Windowed != (w != period.Month) {
-		return "", false
+		return "", 0, false
 	}
-	return period.PeriodOf(start, tn.Location), ent.From.Before(end) && (ent.Until.IsZero() || ent.Until.After(start))
+	if w == period.Lifetime {
+		return period.PeriodOf(now, tn.Location), 0, true
+	}
+	markerTTL = firedTTL
+	if w == period.Year {
+		markerTTL = max(firedTTL, end.Sub(now)+firedTTL)
+	}
+	return period.PeriodOf(start, tn.Location), markerTTL, ent.From.Before(end) && (ent.Until.IsZero() || ent.Until.After(start))
 }
 
 // fire produces one LimitExceeded event unless this threshold of this period already fired. A lost marker (Redis
 // failover) re-fires, and consumers dedup on the deterministic event id.
-func (a *Applier) fire(ctx context.Context, ent entitlements.State, ref Ref, billingPeriod string, pct int32, used int64, now time.Time) {
+func (a *Applier) fire(ctx context.Context, ent entitlements.State, ref Ref, billingPeriod string, markerTTL time.Duration, pct int32, used int64, now time.Time) {
 	fk := FiredKey(ref.Tenant, ref.Customer, ref.Meter, ref.Period, pct)
-	won, err := a.cfg.Redis.SetNX(ctx, fk, "1", firedTTL).Result()
+	won, err := a.cfg.Redis.SetNX(ctx, fk, "1", markerTTL).Result()
 	if err != nil {
 		a.fireErrors.Add(ctx, 1)
 		a.log.WarnContext(ctx, "threshold marker failed, the next reconciliation retries", "key", fk, "error", err)

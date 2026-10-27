@@ -52,7 +52,13 @@ message LateUsage {
 message UsageKey {
   string customer_id = 1;
   string meter_code = 2;
+  // A billing period ("2026-11") or any other quota window id: an hour ("2026-11-05T13"), a day ("2026-11-05"), an ISO week ("2026-W45"),
+  // a year ("2026") or the lifetime ("all"), in the tenant's time zone. The usage of a window is the sum of the stored rows it spans
+  // (months for a month, a year and the lifetime; hours for an hour, a day and a week), or their maximum when `max` is set. The hour totals
+  // are kept for a limited time (about two weeks), so an hour, day or week window is only readable while it is recent.
   string period_id = 3;
+  // The meter's aggregation is MAX: combine the rows of a window with GREATEST instead of a sum.
+  bool max = 4;
 }
 
 message GetCustomerUsageRequest {

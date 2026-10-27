@@ -219,10 +219,16 @@ func (x *LateUsage) GetGeneration() int32 {
 }
 
 type UsageKey struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	CustomerId    string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
-	MeterCode     string                 `protobuf:"bytes,2,opt,name=meter_code,json=meterCode,proto3" json:"meter_code,omitempty"`
-	PeriodId      string                 `protobuf:"bytes,3,opt,name=period_id,json=periodId,proto3" json:"period_id,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	CustomerId string                 `protobuf:"bytes,1,opt,name=customer_id,json=customerId,proto3" json:"customer_id,omitempty"`
+	MeterCode  string                 `protobuf:"bytes,2,opt,name=meter_code,json=meterCode,proto3" json:"meter_code,omitempty"`
+	// A billing period ("2026-11") or any other quota window id: an hour ("2026-11-05T13"), a day ("2026-11-05"), an ISO week ("2026-W45"),
+	// a year ("2026") or the lifetime ("all"), in the tenant's time zone. The usage of a window is the sum of the stored rows it spans
+	// (months for a month, a year and the lifetime; hours for an hour, a day and a week), or their maximum when `max` is set. The hour totals
+	// are kept for a limited time (about two weeks), so an hour, day or week window is only readable while it is recent.
+	PeriodId string `protobuf:"bytes,3,opt,name=period_id,json=periodId,proto3" json:"period_id,omitempty"`
+	// The meter's aggregation is MAX: combine the rows of a window with GREATEST instead of a sum.
+	Max           bool `protobuf:"varint,4,opt,name=max,proto3" json:"max,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -276,6 +282,13 @@ func (x *UsageKey) GetPeriodId() string {
 		return x.PeriodId
 	}
 	return ""
+}
+
+func (x *UsageKey) GetMax() bool {
+	if x != nil {
+		return x.Max
+	}
+	return false
 }
 
 type GetCustomerUsageRequest struct {
@@ -988,13 +1001,14 @@ const file_payrudder_aggregator_v1_aggregator_proto_rawDesc = "" +
 	"eventCount\x12\x1e\n" +
 	"\n" +
 	"generation\x18\b \x01(\x05R\n" +
-	"generation\"g\n" +
+	"generation\"y\n" +
 	"\bUsageKey\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1d\n" +
 	"\n" +
 	"meter_code\x18\x02 \x01(\tR\tmeterCode\x12\x1b\n" +
-	"\tperiod_id\x18\x03 \x01(\tR\bperiodId\"w\n" +
+	"\tperiod_id\x18\x03 \x01(\tR\bperiodId\x12\x10\n" +
+	"\x03max\x18\x04 \x01(\bR\x03max\"w\n" +
 	"\x17GetCustomerUsageRequest\x12\x1f\n" +
 	"\vcustomer_id\x18\x01 \x01(\tR\n" +
 	"customerId\x12\x1b\n" +

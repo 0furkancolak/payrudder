@@ -1623,7 +1623,9 @@
         "hour": "Per hour",
         "day": "Per day",
         "week": "Per week",
-        "month": "Per billing month"
+        "month": "Per billing month",
+        "year": "Per calendar year",
+        "lifetime": "Over the customer's lifetime"
       },
       "modes": {
         "hard": "Hard: stop allowing",
@@ -1639,7 +1641,9 @@
         "hour": "Counts each clock hour in the app's time zone.",
         "day": "Counts each day in the app's time zone.",
         "week": "Counts each week from Monday in the app's time zone.",
-        "month": "Counts the billing month, like the invoice."
+        "month": "Counts the billing month, like the invoice.",
+        "year": "Counts each calendar year in the app's time zone.",
+        "lifetime": "Counts everything the customer has used and never resets."
       },
       "windowColumn": "Window",
       "modeColumn": "When reached",
