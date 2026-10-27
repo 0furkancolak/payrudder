@@ -56,6 +56,10 @@ func TestMonthCloseSurvivesBrokerRestart(t *testing.T) {
 			"event_time": time.Now().Add(-time.Minute).UTC().Format(time.RFC3339Nano), "idempotency_key": "bill-" + ext})
 	}
 	a.must("POST", "/v1/events", k, map[string]any{"events": events}, nil, 202)
+	// Close the period only once the aggregator holds every seat. ClosePeriodEarly waits for the rows its consumer batches hold, and the gateway gives the
+	// call 5 s (grpcx.DefaultClientTimeout): on a slow runner right after the stack came up (the aggregator crashes after a commit by design here) the call
+	// answered 504 with the events still in flight (ci run 40516273222). A usage still in flight at the cutoff would also be late and miss its invoice.
+	waitForUsage(t, a, k, customers)
 	a.must("POST", "/v1/sandbox/close-period", k, nil, nil, 202)
 
 	// Restart RabbitMQ as soon as the first invoice exists, i.e. while the sagas are in flight.
@@ -133,4 +137,29 @@ func TestMonthCloseSurvivesBrokerRestart(t *testing.T) {
 	if len(bad) > 0 {
 		t.Fatalf("%d problems after the RabbitMQ restart:\n%s", len(bad), strings.Join(bad, "\n"))
 	}
+}
+
+// waitForUsage waits until the aggregator has counted the one seats event of each of the first n customers (cus_0 ... cus_n-1).
+func waitForUsage(t *testing.T, a api, key string, n int) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Minute)
+	missing := n
+	for time.Now().Before(deadline) {
+		missing = 0
+		for i := 0; i < n; i++ {
+			var u struct {
+				Usage []struct {
+					EventCount string `json:"event_count"`
+				} `json:"usage"`
+			}
+			if a.call("GET", fmt.Sprintf("/v1/customers/cus_%d/usage", i), key, nil, &u) != 200 || len(u.Usage) != 1 || u.Usage[0].EventCount != "1" {
+				missing++
+			}
+		}
+		if missing == 0 {
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	t.Fatalf("the aggregator counted the seats event of %d of %d customers within 2 minutes", n-missing, n)
 }
