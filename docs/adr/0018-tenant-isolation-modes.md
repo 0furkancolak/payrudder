@@ -25,7 +25,7 @@ Today every table carries `tenant_id` and Postgres row-level security, forced, s
 
 ### The directory (stage 1)
 
-`tenants.cell`, `region` and `placement_status` (migration `00062` of plans-svc; the column is not called `status` because that is the tenant's life cycle: inactive, active, suspended). `placement_status` is `ready` or `moving`, and only `ready` serves traffic. `DirectoryService` (operator only, no gateway route) answers `GetPlacement` and `ListPlacements`, and changes a placement only through the three steps of a move. `pkg/tenantdir` is the client side: a process cache with a TTL (30 s) and **stale-if-error** (a placement changes only when an operator moves a tenant, so the last answer is served up to 15 minutes when plans-svc cannot be asked, and an unknown tenant is never served stale).
+`tenants.cell`, `region` and `placement_status` (migration `00064` of plans-svc; the column is not called `status` because that is the tenant's life cycle: inactive, active, suspended). `placement_status` is `ready` or `moving`, and only `ready` serves traffic. `DirectoryService` (operator only, no gateway route) answers `GetPlacement` and `ListPlacements`, and changes a placement only through the three steps of a move. `pkg/tenantdir` is the client side: a process cache with a TTL (30 s) and **stale-if-error** (a placement changes only when an operator moves a tenant, so the last answer is served up to 15 minutes when plans-svc cannot be asked, and an unknown tenant is never served stale).
 
 ### The switch (stage 2)
 

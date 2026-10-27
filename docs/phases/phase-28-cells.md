@@ -4,7 +4,7 @@ See [ADR 0018](../adr/0018-tenant-isolation-modes.md) (what is built and how) an
 
 | Stage | State |
 |---|---|
-| 1. **Directory.** `tenants.cell`, `region`, `placement_status`; `pkg/tenantdir` (process cache, stale-if-error) | **done** (plans-svc migration `00062`, `DirectoryService`) |
+| 1. **Directory.** `tenants.cell`, `region`, `placement_status`; `pkg/tenantdir` (process cache, stale-if-error) | **done** (plans-svc migration `00064`, `DirectoryService`) |
 | 2. **Isolation switch.** `pkg/pgxx` picks the RLS setting or `SET LOCAL search_path` by placement; a tenant-schema provisioner and a migration runner over all schemas (resumable, idempotent) | **done** (`pgxx.Router`, `ProvisionTenant`, `MigrateTenants`, `SchemaShape`) |
 | 3. **Cross-tenant jobs** converted one at a time, each tested in both modes; the directory refuses a cell placement until all are converted | **not finished**: 11 of 41 inventory entries are converted. The refusal is in place (`BeginMove` and `FinishMove`), so no tenant can be placed in a cell |
 | 4. **Moves.** Fenced, offline move of a tenant; `doctor` for placements | **done** for the services that have a tenant schema (`pkg/cells`, `payrudderctl cells`) |
