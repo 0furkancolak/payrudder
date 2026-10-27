@@ -13,7 +13,6 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/period"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
@@ -45,7 +44,7 @@ type draft struct {
 // draftInvoice creates the draft FEE invoice for spec, or returns the one a previous pass created. The lines must add up to more than zero.
 func (c *Commands) draftInvoice(ctx context.Context, tenantID uuid.UUID, t *plansv1.Tenant, loc *time.Location, spec invoiceSpec) (uuid.UUID, error) {
 	byKey := sqlc.GetInvoiceIDByFeeKeyParams{TenantID: tenantID, FeeKey: spec.Key}
-	existing, err := c.q.GetInvoiceIDByFeeKey(ctx, byKey)
+	existing, err := c.cfg.DB.Q(tenantID).GetInvoiceIDByFeeKey(ctx, byKey)
 	if err == nil {
 		return existing, nil
 	}
@@ -59,7 +58,7 @@ func (c *Commands) draftInvoice(ctx context.Context, tenantID uuid.UUID, t *plan
 	if err := c.insertDraft(ctx, tenantID, d); err != nil {
 		return uuid.Nil, err
 	}
-	if existing, err = c.q.GetInvoiceIDByFeeKey(ctx, byKey); err != nil {
+	if existing, err = c.cfg.DB.Q(tenantID).GetInvoiceIDByFeeKey(ctx, byKey); err != nil {
 		return uuid.Nil, err
 	}
 	c.cfg.Invoices.Drafted(ctx, 1)
@@ -131,7 +130,7 @@ func (c *Commands) withTax(ctx context.Context, tenantID uuid.UUID, sub *plansv1
 }
 
 func (c *Commands) insertDraft(ctx context.Context, tenantID uuid.UUID, d *draft) error {
-	return pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	return c.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := c.q.WithTx(tx)
 		_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
 			TenantID: tenantID, ID: d.id, CustomerID: d.customerID, PeriodID: d.periodID, Kind: invmodel.KindFee, PlanVersionID: d.planVersionID, Currency: d.currency,

@@ -27,7 +27,7 @@ func seedOne(t *testing.T, tid, customer uuid.UUID, ext, status, currency, numbe
 	seededInvoices++
 	period := fmt.Sprintf("2025-%02d", seededInvoices%12+1) // one regular invoice per customer and period
 	id := uuid.New()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, number, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, number, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
 		VALUES ($1,$2,$3,$10,'REGULAR',$4,$5,$6,$7,$7,$8,$9::jsonb,'')`,
 		tid, id, customer, number, uuid.New(), currency, total, status, `{"customer_external_id":"`+ext+`","environment":"`+env+`"}`, period); err != nil {
 		t.Fatal(err)
@@ -85,7 +85,7 @@ func testCreditNotes(t *testing.T) {
 	var n int
 	var sum int64
 	var cur string
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*), sum(amount_minor), max(currency) FROM credit_balances WHERE tenant_id = $1 AND customer_id = $2`, e.tid, customer).Scan(&n, &sum, &cur); err != nil {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*), sum(amount_minor), max(currency) FROM credit_balances WHERE tenant_id = $1 AND customer_id = $2`, e.tid, customer).Scan(&n, &sum, &cur); err != nil {
 		t.Fatal(err)
 	}
 	if n != 2 || sum != 1000 || cur != "USD" {
@@ -143,7 +143,7 @@ func testCreditNotes(t *testing.T) {
 // seedSaga gives a seeded paid invoice the (completed) saga a refund command is sent on behalf of.
 func seedSaga(t *testing.T, tid, invoice uuid.UUID) {
 	t.Helper()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'COMPLETED',1)`, tid, uuid.New(), invoice); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'COMPLETED',1)`, tid, uuid.New(), invoice); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -191,7 +191,7 @@ func testCreditNoteRefundToCard(t *testing.T) {
 	}
 	testkit.Eventually(t, 30*time.Second, "the refund to be confirmed", func() bool { return state(cn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
 	var balances int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND source_credit_note_id = $2`, e.tid, cn.GetId()).Scan(&balances); err != nil || balances != 0 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND source_credit_note_id = $2`, e.tid, cn.GetId()).Scan(&balances); err != nil || balances != 0 {
 		t.Fatalf("a refunded note left %d credit balances, %v", balances, err)
 	}
 	if n := stub.Count("refund"); n != 1 {

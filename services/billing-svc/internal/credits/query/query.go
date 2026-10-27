@@ -10,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -22,7 +21,7 @@ import (
 )
 
 // Packs lists the tenant's packs; activeOnly leaves out the ones withdrawn from sale.
-func Packs(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, activeOnly bool) ([]model.Pack, error) {
+func Packs(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, activeOnly bool) ([]model.Pack, error) {
 	var out []model.Pack
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		rows, err := sqlc.New(tx).ListCreditPacks(ctx, sqlc.ListCreditPacksParams{TenantID: tenantID, ActiveOnly: activeOnly})
@@ -42,7 +41,7 @@ func packOf(r sqlc.GetCreditPackRow) model.Pack {
 }
 
 // PackByID returns one pack, or billing.credits.pack_not_found.
-func PackByID(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (*model.Pack, error) {
+func PackByID(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID) (*model.Pack, error) {
 	var out *model.Pack
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		r, err := sqlc.New(tx).GetCreditPack(ctx, sqlc.GetCreditPackParams{TenantID: tenantID, ID: id})
@@ -79,7 +78,7 @@ type Balance struct {
 }
 
 // BalanceOf returns a customer's spendable credits, when some of them run out, and the lots they come from.
-func BalanceOf(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UUID) (*Balance, error) {
+func BalanceOf(ctx context.Context, app pgxx.Beginner, tenantID, customerID uuid.UUID) (*Balance, error) {
 	out := &Balance{}
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
@@ -116,7 +115,7 @@ type Entry struct {
 }
 
 // Ledger returns a page of a customer's ledger, newest first, and the token of the next page ("" at the end).
-func Ledger(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UUID, pageSize int32, token string) ([]Entry, string, error) {
+func Ledger(ctx context.Context, app pgxx.Beginner, tenantID, customerID uuid.UUID, pageSize int32, token string) ([]Entry, string, error) {
 	pageSize, ok := page.Size(pageSize, 50, 200)
 	if !ok {
 		return nil, "", errkey.New(codes.InvalidArgument, "billing.credits.bad_page_size", "page_size must be 1..200")
@@ -166,7 +165,7 @@ func parseToken(token string) (time.Time, uuid.UUID, bool) {
 }
 
 // LowThreshold is the balance below which a consume announces credits.low; 0 means the tenant turned it off (or never set it).
-func LowThreshold(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID) (int64, error) {
+func LowThreshold(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID) (int64, error) {
 	var out int64
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		v, err := sqlc.New(tx).GetCreditSettings(ctx, tenantID)

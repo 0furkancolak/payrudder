@@ -189,7 +189,7 @@ func testExpiredCreditsAreWrittenOff(t *testing.T) {
 	ctx, tid, cid := context.Background(), uuid.New(), uuid.New()
 	lot := uuid.New()
 	// A lot that ran out an hour ago (a grant refuses a past expiry, so it is written as the system would have found it).
-	if _, err := shared.system.Exec(ctx, `INSERT INTO credit_lots (tenant_id, id, customer_id, granted, remaining, source, expires_at) VALUES ($1, $2, $3, 40, 40, 'promo', now() - interval '1 hour')`, tid, lot, cid); err != nil {
+	if _, err := shared.sql.Exec(ctx, `INSERT INTO credit_lots (tenant_id, id, customer_id, granted, remaining, source, expires_at) VALUES ($1, $2, $3, 40, 40, 'promo', now() - interval '1 hour')`, tid, lot, cid); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := command.Grant(ctx, shared.app, tid, cid, 10, "manual", nil, "", "keep"); err != nil {
@@ -207,7 +207,7 @@ func testExpiredCreditsAreWrittenOff(t *testing.T) {
 		t.Fatalf("ExpireDue = %d, %v; want at least this lot", n, err)
 	}
 	var amount int64
-	if err := shared.system.QueryRow(ctx, `SELECT amount FROM credit_ledger WHERE tenant_id = $1 AND lot_id = $2 AND kind = 'expire'`, tid, lot).Scan(&amount); err != nil || amount != -40 {
+	if err := shared.sql.QueryRow(ctx, `SELECT amount FROM credit_ledger WHERE tenant_id = $1 AND lot_id = $2 AND kind = 'expire'`, tid, lot).Scan(&amount); err != nil || amount != -40 {
 		t.Fatalf("expire entry = %d, %v; want -40", amount, err)
 	}
 	if again, _ := command.ExpireDue(ctx, shared.system, 100); again != 0 {

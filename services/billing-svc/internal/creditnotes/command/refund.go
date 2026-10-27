@@ -12,11 +12,11 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/workercmd"
 )
@@ -104,16 +104,24 @@ type pendingRefund struct {
 	attempt, runFrom, generation int
 }
 
-// SweepRefunds resends the refunds nobody answered for a while, and fails a note whose refund went unanswered refundMaxAttempts times.
+// SweepRefunds resends the refunds nobody answered for a while, and fails a note whose refund went unanswered refundMaxAttempts times. It looks in every place a
+// tenant's rows can be (the pooled database, each tenant placed in a cell, ADR 0018), and acts on a note only in the place it was found.
 func (c *Commands) SweepRefunds(ctx context.Context) error {
-	rows, err := c.q.ListRefundsAwaitingReply(ctx, c.cfg.Now().Add(-refundReplyWait))
+	return c.cfg.DB.Each(ctx, c.sweepRefunds)
+}
+
+func (c *Commands) sweepRefunds(ctx context.Context, s tenantdb.Scope) error {
+	rows, err := s.Scan().ListRefundsAwaitingReply(ctx, c.cfg.Now().Add(-refundReplyWait))
 	if err != nil {
 		return err
 	}
 	for _, r := range rows {
 		p := pendingRefund{tenant: r.TenantID, cn: model.CreditNote{ID: r.ID, InvoiceID: r.InvoiceID, Currency: r.Currency, TotalMinor: r.TotalMinor}, env: r.Environment,
 			attempt: int(r.RefundAttempt), runFrom: int(r.RefundRunFrom), generation: int(r.RefundGeneration)}
-		err := pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error { return c.resendRefund(ctx, tx, &p) })
+		err := s.InTx(ctx, p.tenant, pgx.TxOptions{}, func(tx pgx.Tx) error { return c.resendRefund(ctx, tx, &p) })
+		if tenantdb.Skippable(err) {
+			continue // the tenant is moving: the next pass finds the note again
+		}
 		if err != nil {
 			c.cfg.Log.WarnContext(ctx, "credit note refund not resent", "credit_note", p.cn.ID, "error", err)
 		}
@@ -153,7 +161,7 @@ func (c *Commands) failUnanswered(ctx context.Context, tx pgx.Tx, p *pendingRefu
 // retryRefund asks again for a refund that failed: a new run of attempts.
 func (c *Commands) retryRefund(ctx context.Context, tenantID, creditNoteID uuid.UUID) (*model.CreditNote, error) {
 	var out *model.CreditNote
-	err := pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := c.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		row, err := c.q.WithTx(tx).LockRefundForRetry(ctx, sqlc.LockRefundForRetryParams{TenantID: tenantID, ID: creditNoteID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.ErrNoteNotFound

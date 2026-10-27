@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"google.golang.org/grpc"
 	grpchealth "google.golang.org/grpc/health"
@@ -32,6 +31,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
@@ -41,6 +41,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
@@ -53,6 +54,8 @@ var defaults []byte
 type Config struct {
 	config.Base
 	pgxx.Settings
+	// CellSettings turns on cells mode (ADR 0018). Off unless PAYRUDDER_CELLS names at least one cell.
+	pgxx.CellSettings
 	GRPCAddr          string        `env:"PAYRUDDER_GRPC_ADDR"`
 	PlansAddr         string        `env:"PAYRUDDER_PLANS_ADDR"`
 	IngestAddr        string        `env:"PAYRUDDER_INGEST_ADDR"`
@@ -82,7 +85,7 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	errs = append(errs, c.CheckMigration())
+	errs = append(errs, c.CheckMigration(), c.CheckCells())
 	if len(c.DunningLive) != sagacommand.DefaultDunningAttempts || len(c.DunningSandbox) != sagacommand.DefaultDunningAttempts {
 		errs = append(errs, fmt.Errorf("PAYRUDDER_DUNNING_LIVE and PAYRUDDER_DUNNING_SANDBOX need exactly %d delays", sagacommand.DefaultDunningAttempts))
 	}
@@ -115,6 +118,11 @@ func main() { app.Main("billing-svc", defaults, start) }
 // start wires billing-svc's dependencies and runs it until ctx is cancelled.
 func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	log, hh := rt.Log, rt.Health()
+	if cfg.Enabled() && cfg.MigrateOnStart {
+		if err := cfg.MigrateCells(ctx, tenantSchemas(), cfg.MigrateOnly, log); err != nil {
+			return err
+		}
+	}
 	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
@@ -130,6 +138,20 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	defer be.close()
+
+	// Cells mode (ADR 0018): a tenant's transactions go where the directory says its data is. Off, the pools are used directly, as ever.
+	var appDB pgxx.Beginner = appPool
+	var cells *pgxx.Router // the system-role router; nil when cells are off
+	if cfg.Enabled() {
+		routers, err := cfg.OpenRouters(ctx, appPool, systemPool, tenantdir.NewGRPC(plansv1.NewDirectoryServiceClient(be.plans), tenantdir.Options{}))
+		if err != nil {
+			return err
+		}
+		defer routers.Close()
+		appDB, cells = routers.App, routers.System
+		log.Info("cells mode", "cells", cells.CellNames())
+	}
+	db := tenantdb.New(systemPool, cells)
 
 	producer, err := kafkax.NewProducer(cfg.KafkaBrokers)
 	if err != nil {
@@ -155,15 +177,15 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	mods, err := newModules(cfg, log, systemPool, eng, be)
+	mods, err := newModules(cfg, log, db, eng, be)
 	if err != nil {
 		return err
 	}
-	mgr, err := newRunManager(cfg, log, systemPool, eng, be, mods, usageEndOffsets(kadm.NewClient(producer)))
+	mgr, err := newRunManager(cfg, log, db, eng, be, mods, usageEndOffsets(kadm.NewClient(producer)))
 	if err != nil {
 		return err
 	}
-	rc, err := replies.New(systemPool, eng, cfg.RabbitMQURL, log)
+	rc, err := replies.New(db, eng, cfg.RabbitMQURL, log)
 	if err != nil {
 		return err
 	}
@@ -172,12 +194,13 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
+	relay.WithCells(cells)
 
 	hh.AddCheck("postgres", appPool.Ping)
 	hh.AddCheck("kafka", producer.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return pub.Ping() })
 
-	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appPool, System: systemPool, Runs: mgr, Engine: eng, CreditNotes: mods.creditNotes, Rerating: mods.rerating, Inputs: mods.inputs, Hosted: mods.hosted})
+	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appDB, System: db, Runs: mgr, Engine: eng, CreditNotes: mods.creditNotes, Rerating: mods.rerating, Inputs: mods.inputs, Hosted: mods.hosted})
 	if err != nil {
 		return err
 	}
@@ -185,7 +208,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, eng: eng, mgr: mgr, events: mods.tenantEvents, relay: relay, replies: rc,
+	w := &workers{cfg: cfg, log: log, db: db, eng: eng, mgr: mgr, events: mods.tenantEvents, relay: relay, replies: rc,
 		health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis}
 	return w.run(ctx)
 }
@@ -234,9 +257,9 @@ func (b *backends) close() {
 }
 
 // newRunManager builds the billing-run manager from the backend clients and the usage topic's end offsets.
-func newRunManager(cfg *Config, log *slog.Logger, systemPool *pgxpool.Pool, eng *sagacommand.Engine, be *backends, mods *modules, endOffsets func(context.Context) (map[int32]int64, error)) (*runcmd.Manager, error) {
+func newRunManager(cfg *Config, log *slog.Logger, db *tenantdb.DB, eng *sagacommand.Engine, be *backends, mods *modules, endOffsets func(context.Context) (map[int32]int64, error)) (*runcmd.Manager, error) {
 	return runcmd.NewManager(runcmd.Config{
-		Pool: systemPool, Engine: eng,
+		DB: db, Engine: eng,
 		Inputs: mods.inputs, Invoices: mods.invoices,
 		Ingest:         ingestv1.NewIngestServiceClient(be.ingest),
 		EndOffsets:     endOffsets,
@@ -291,7 +314,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, deps api.Deps) (*grpc.Server, 
 type workers struct {
 	cfg        *Config
 	log        *slog.Logger
-	pool       *pgxpool.Pool
+	db         *tenantdb.DB
 	eng        *sagacommand.Engine
 	mgr        *runcmd.Manager
 	events     *tenantevents.Relay
@@ -324,14 +347,14 @@ func (w *workers) startLoops(ctx context.Context, g *app.Group) {
 
 // sweep re-issues stuck saga steps, advances dunning and writes off credits whose time has come.
 func (w *workers) sweep(ctx context.Context) error {
-	res, err := w.eng.Sweep(ctx, w.pool, 200)
+	res, err := w.eng.Sweep(ctx, w.db, 200)
 	if err == nil && (res.Reissued+res.Exhausted+res.Dunned+res.Polled) > 0 {
 		w.log.InfoContext(ctx, "saga sweep", "reissued", res.Reissued, "exhausted", res.Exhausted, "dunning", res.Dunned, "polled", res.Polled)
 	}
 	if err != nil {
 		return err
 	}
-	expired, err := creditcmd.ExpireDue(ctx, w.pool, 200)
+	expired, err := creditcmd.ExpireDue(ctx, w.db, 200)
 	if err == nil && expired > 0 {
 		w.log.InfoContext(ctx, "credits expired", "lots", expired)
 	}
@@ -339,11 +362,16 @@ func (w *workers) sweep(ctx context.Context) error {
 		return err
 	}
 	// E-documents whose retry is due or whose command went unanswered.
-	n, err := (&einvoicecmd.Commands{Pool: w.pool}).Sweep(ctx, 100)
+	n, err := (&einvoicecmd.Commands{DB: w.db}).Sweep(ctx, 100)
 	if err == nil && n > 0 {
 		w.log.InfoContext(ctx, "e-invoice sweep", "documents", n)
 	}
 	return err
+}
+
+// tenantSchemas is what a tenant's schema in a cell is built from (ADR 0018).
+func tenantSchemas() pgxx.TenantSchemas {
+	return pgxx.TenantSchemas{Migrations: migrations.Tenant(), Roles: []string{"billing_app", "billing_system"}}
 }
 
 // loop calls fn every interval until ctx is done; errors are logged, never fatal.

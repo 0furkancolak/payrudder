@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/0furkancolak/payrudder/pkg/env"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
@@ -18,7 +17,7 @@ import (
 // Finalize assigns the next gap-free number of the tenant and year, opens the invoice and starts its saga, in one
 // transaction: a rollback leaves neither a number consumed nor a saga behind. Finalizing a finalized invoice is a no-op.
 func (c *Commands) Finalize(ctx context.Context, tenantID, invoiceID uuid.UUID) error {
-	return pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	return c.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := c.q.WithTx(tx)
 		inv, err := q.LockInvoiceForFinalize(ctx, sqlc.LockInvoiceForFinalizeParams{TenantID: tenantID, ID: invoiceID})
 		if err != nil {

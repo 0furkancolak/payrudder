@@ -2685,6 +2685,9 @@
         "period_end_unknown": "El fin del período pagado en el proveedor aún no se conoce: ninguna notificación nos lo ha indicado.",
         "wrong_provider": "Este proveedor no gestiona esta suscripción."
       },
+      "tenant": {
+        "unavailable": "Los datos de la cuenta se están trasladando. No se cambió nada; vuelva a intentarlo en un momento."
+      },
       "webhook": {
         "malformed": "No se pudo leer la notificación.",
         "not_found": "No existe esa dirección de notificaciones.",

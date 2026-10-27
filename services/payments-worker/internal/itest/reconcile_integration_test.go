@@ -18,14 +18,12 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/payments"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	reconcile "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 type fakeBilling struct{ invoices map[string]*billingv1.Invoice }
@@ -49,12 +47,8 @@ func (f fakeBilling) GetInvoice(_ context.Context, _ uuid.UUID, id string) (*bil
 
 func TestReconciliation(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	tenant := uuid.New()
 	ledger := store.Ledger{DB: pool}

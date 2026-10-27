@@ -26,5 +26,5 @@ func EnqueueOutbox(ctx context.Context, tx pgx.Tx, tenantID, messageID uuid.UUID
 	if err := q.InsertOutbox(ctx, sqlc.InsertOutboxParams{TenantID: tenantID, Topic: topic, PartitionKey: key, Payload: payload, Headers: hdr, MessageID: messageID}); err != nil {
 		return err
 	}
-	return q.NotifyOutbox(ctx, outbox.NotifyChannel)
+	return q.NotifyOutbox(ctx, sqlc.NotifyOutboxParams{Channel: outbox.NotifyChannel, Tenant: tenantID.String()})
 }

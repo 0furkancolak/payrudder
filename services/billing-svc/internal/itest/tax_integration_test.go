@@ -20,7 +20,7 @@ func (e *env) setTax(rates ...*plansv1.TaxRate) {
 
 func (e *env) invoiceAmounts(period, customer string) (subtotal, total int64) {
 	e.t.Helper()
-	if err := shared.system.QueryRow(context.Background(), `SELECT subtotal_minor, total_minor FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND snapshot->>'customer_external_id' = $3`,
+	if err := shared.sql.QueryRow(context.Background(), `SELECT subtotal_minor, total_minor FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND snapshot->>'customer_external_id' = $3`,
 		e.tid, period, customer).Scan(&subtotal, &total); err != nil {
 		e.t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit(t *testing.T) {
 	e.customer("cus_a").Country = "DE"
 	e.setTax(&plansv1.TaxRate{Country: "DE", Name: "VAT", RateBps: 2000})
 	// A credit of 1000 waits for the customer.
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_adjustment_id, currency) VALUES ($1,$2,$3,1000,$4,'USD')`,
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_adjustment_id, currency) VALUES ($1,$2,$3,1000,$4,'USD')`,
 		e.tid, e.customer("cus_a").Id, uuid.New(), uuid.New()); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit(t *testing.T) {
 		t.Fatalf("lines = %+v", l)
 	}
 	var sub, total int64
-	if err := shared.system.QueryRow(context.Background(), `SELECT subtotal_minor, total_minor FROM invoices WHERE tenant_id = $1 AND kind = 'FEE'`, e.tid).Scan(&sub, &total); err != nil {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT subtotal_minor, total_minor FROM invoices WHERE tenant_id = $1 AND kind = 'FEE'`, e.tid).Scan(&sub, &total); err != nil {
 		t.Fatal(err)
 	}
 	if sub != 6500 || total != 8000 {
@@ -104,7 +104,7 @@ func testFeeInvoiceTaxIsOnTheDiscountedFeeNotOnCredit(t *testing.T) {
 	}
 	// The DISCOUNT line names its coupon, which is what the accounting report groups by.
 	var coupon *string
-	if err := shared.system.QueryRow(context.Background(), `SELECT coupon_code FROM invoice_lines WHERE tenant_id = $1 AND kind = 'DISCOUNT'`, e.tid).Scan(&coupon); err != nil || coupon == nil || *coupon != "WELCOME" {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT coupon_code FROM invoice_lines WHERE tenant_id = $1 AND kind = 'DISCOUNT'`, e.tid).Scan(&coupon); err != nil || coupon == nil || *coupon != "WELCOME" {
 		t.Errorf("coupon of the discount line = %v, %v", coupon, err)
 	}
 }

@@ -5,11 +5,11 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/query"
@@ -19,13 +19,13 @@ import (
 
 // Handler implements the e-document methods of billingv1.BillingServiceServer and billingv1.BillingAdminServiceServer.
 type Handler struct {
-	app   *pgxpool.Pool
+	app   pgxx.Beginner
 	cmd   *command.Commands
 	files invoicequery.PDFSigner
 }
 
 // New returns the handler over the billing_app pool; the commands work on billing_system.
-func New(app *pgxpool.Pool, cmd *command.Commands) *Handler {
+func New(app pgxx.Beginner, cmd *command.Commands) *Handler {
 	return &Handler{app: app, cmd: cmd}
 }
 

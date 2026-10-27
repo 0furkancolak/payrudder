@@ -161,7 +161,7 @@ func testHappyPath(t *testing.T) {
 	if got := e.invoiceTotal("2026-10", "cus_b"); got != 1000 {
 		t.Fatalf("cus_b (base fee only) total = %d, want 1000", got)
 	}
-	rows, err := shared.system.Query(context.Background(), `SELECT number FROM invoices WHERE tenant_id = $1 ORDER BY number`, e.tid)
+	rows, err := shared.sql.Query(context.Background(), `SELECT number FROM invoices WHERE tenant_id = $1 ORDER BY number`, e.tid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +187,7 @@ func testHappyPath(t *testing.T) {
 		t.Errorf("frozen periods = %v, want [2026-10]", frozen)
 	}
 	var lines int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoice_lines WHERE tenant_id = $1`, e.tid).Scan(&lines); err != nil || lines != 4 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoice_lines WHERE tenant_id = $1`, e.tid).Scan(&lines); err != nil || lines != 4 {
 		t.Errorf("lines = %d, %v; want 4 (cus_a: base, calls, gb_hours; cus_b: base)", lines, err)
 	}
 	// The render command carries the whole snapshot.
@@ -223,7 +223,7 @@ func testWatermark(t *testing.T) {
 		t.Fatalf("status = %s, want WAITING_WATERMARK while the ingest outbox holds an on-time event", run.Status)
 	}
 	var n int
-	_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1`, e.tid).Scan(&n)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1`, e.tid).Scan(&n)
 	if n != 0 {
 		t.Fatalf("%d invoices exist while waiting", n)
 	}
@@ -276,7 +276,7 @@ func testLateUsage(t *testing.T) {
 	}
 	var amount int64
 	var qty, origin string
-	err := shared.system.QueryRow(context.Background(), `SELECT l.amount_minor, l.quantity::text, l.origin_period_id FROM invoice_lines l JOIN invoices i USING (tenant_id) 
+	err := shared.sql.QueryRow(context.Background(), `SELECT l.amount_minor, l.quantity::text, l.origin_period_id FROM invoice_lines l JOIN invoices i USING (tenant_id) 
 		WHERE l.invoice_id = i.id AND i.tenant_id = $1 AND i.period_id = '2026-11' AND l.kind = 'LATE_USAGE'`, e.tid).Scan(&amount, &qty, &origin)
 	if err != nil || amount != 60 || qty != "30" || origin != "2026-10" {
 		t.Fatalf("late line = %d %s %s, %v", amount, qty, origin, err)
@@ -298,7 +298,7 @@ func testLateUsage(t *testing.T) {
 func countLines(t *testing.T, e *env, period, customer string) int {
 	t.Helper()
 	var n int
-	err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
+	err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
 		WHERE i.tenant_id = $1 AND i.period_id = $2 AND i.snapshot->>'customer_external_id' = $3`, e.tid, period, customer).Scan(&n)
 	if err != nil {
 		t.Fatal(err)
@@ -322,7 +322,7 @@ func testKillAfterCommit(t *testing.T) {
 		t.Fatalf("run = %s", run.Status)
 	}
 	var pending int
-	_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM outbox WHERE tenant_id = $1 AND headers->>'x-destination' = 'rabbitmq'`, e.tid).Scan(&pending)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM outbox WHERE tenant_id = $1 AND headers->>'x-destination' = 'rabbitmq'`, e.tid).Scan(&pending)
 	if pending != 2 {
 		t.Fatalf("%d render commands wait in the outbox, want 2", pending)
 	}
@@ -366,7 +366,7 @@ func testDuplicateReplies(t *testing.T) {
 	})
 	completeOctober(e)
 	var transitions int
-	err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM saga_events WHERE tenant_id = $1 AND to_state = 'PAID'`, e.tid).Scan(&transitions)
+	err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM saga_events WHERE tenant_id = $1 AND to_state = 'PAID'`, e.tid).Scan(&transitions)
 	if err != nil || transitions != 2 {
 		t.Fatalf("PAID transitions = %d, %v; want one per invoice", transitions, err)
 	}
@@ -381,7 +381,7 @@ func testDuplicateReplies(t *testing.T) {
 		}
 	}
 	var before int
-	_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM saga_events WHERE tenant_id = $1 AND saga_id = $2`, e.tid, sagaID).Scan(&before)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM saga_events WHERE tenant_id = $1 AND saga_id = $2`, e.tid, sagaID).Scan(&before)
 	body, _ := proto.Marshal(&commandsv1.ReplyEnvelope{CommandId: cmd, SagaId: sagaID.String(), TenantId: e.tid.String(), ReplyId: uuid.NewString(),
 		Reply: &commandsv1.ReplyEnvelope_PaymentSucceeded{PaymentSucceeded: &commandsv1.PaymentSucceeded{PspChargeId: "dup"}}})
 	pub := rabbitx.NewPublisher(shared.amqp)
@@ -392,7 +392,7 @@ func testDuplicateReplies(t *testing.T) {
 	}
 	time.Sleep(time.Second)
 	var after int
-	_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM saga_events WHERE tenant_id = $1 AND saga_id = $2`, e.tid, sagaID).Scan(&after)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM saga_events WHERE tenant_id = $1 AND saga_id = $2`, e.tid, sagaID).Scan(&after)
 	if after != before || before < 6 {
 		t.Fatalf("saga events before = %d, after the stale duplicate = %d; want unchanged", before, after)
 	}
@@ -457,7 +457,7 @@ func testSilentWorker(t *testing.T) {
 	svc := e.api()
 	for _, name := range []string{"cus_a", "cus_b"} {
 		var invID uuid.UUID
-		if err := shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = $2`, e.tid, name).Scan(&invID); err != nil {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = $2`, e.tid, name).Scan(&invID); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := svc.RetryInvoiceSaga(opCtx(), &billingv1.RetryInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: invID.String()}); err != nil {
@@ -470,7 +470,7 @@ func testSilentWorker(t *testing.T) {
 	})
 	// Retrying something that is not failed is refused.
 	var invID uuid.UUID
-	_ = shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 LIMIT 1`, e.tid).Scan(&invID)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 LIMIT 1`, e.tid).Scan(&invID)
 	_, err = svc.RetryInvoiceSaga(opCtx(), &billingv1.RetryInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: invID.String()})
 	if status.Code(err) != codes.FailedPrecondition {
 		t.Fatalf("retry of a completed saga: %v, want FAILED_PRECONDITION", err)
@@ -557,7 +557,7 @@ func testDunning(t *testing.T) {
 		return s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
 	var status string
-	if err := shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&status); err != nil || status != "uncollectible" {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&status); err != nil || status != "uncollectible" {
 		t.Fatalf("invoice status = %q, %v", status, err)
 	}
 	perKey := map[string]int{}
@@ -594,8 +594,8 @@ func testClosePeriodTwice(t *testing.T) {
 		}
 	}
 	var runsN, invoices int
-	_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM billing_runs WHERE tenant_id = $1`, e.tid).Scan(&runsN)
-	_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1`, e.tid).Scan(&invoices)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM billing_runs WHERE tenant_id = $1`, e.tid).Scan(&runsN)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1`, e.tid).Scan(&invoices)
 	if runsN != 1 || invoices != 2 {
 		t.Fatalf("runs = %d, invoices = %d; want 1 and 2", runsN, invoices)
 	}
@@ -615,7 +615,7 @@ func testGapFree(t *testing.T) {
 	for i := range ids {
 		ids[i] = uuid.New()
 		snap := `{"environment":"live","currency_exponent":2,"customer_external_id":"c","customer_email":"c@example.com"}`
-		_, err := shared.system.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot)
+		_, err := shared.sql.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot)
 			VALUES ($1,$2,$3,'2026-10','REGULAR',$4,'USD',0,0,'draft',$5)`, e.tid, ids[i], uuid.New(), uuid.New(), snap)
 		if err != nil {
 			t.Fatal(err)
@@ -637,7 +637,7 @@ func testGapFree(t *testing.T) {
 			t.Fatalf("finalize: %v", err)
 		}
 	}
-	rows, err := shared.system.Query(context.Background(), `SELECT number FROM invoices WHERE tenant_id = $1 ORDER BY number`, e.tid)
+	rows, err := shared.sql.Query(context.Background(), `SELECT number FROM invoices WHERE tenant_id = $1 ORDER BY number`, e.tid)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -682,7 +682,7 @@ func testSandbox(t *testing.T) {
 		return s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
 	})
 	var number string
-	_ = shared.system.QueryRow(context.Background(), `SELECT number FROM invoices WHERE tenant_id = $1 ORDER BY number LIMIT 1`, e.tid).Scan(&number)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT number FROM invoices WHERE tenant_id = $1 ORDER BY number LIMIT 1`, e.tid).Scan(&number)
 	if number != "SBX-2026-000001" {
 		t.Fatalf("sandbox invoice number = %q, want SBX-2026-000001", number)
 	}
@@ -707,7 +707,7 @@ func testVoidRefund(t *testing.T) {
 	completeOctober(e)
 	svc := e.api()
 	var invID uuid.UUID
-	if err := shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&invID); err != nil {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&invID); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := svc.VoidInvoice(opCtx(), &billingv1.VoidInvoiceRequest{TenantId: e.tid.String(), InvoiceId: invID.String(), Reason: "test"}); err != nil {
@@ -718,7 +718,7 @@ func testVoidRefund(t *testing.T) {
 		t.Fatalf("refund commands = %d, want 1", stub.Count("refund"))
 	}
 	var st string
-	_ = shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE id = $1 AND tenant_id = $2`, invID, e.tid).Scan(&st)
+	_ = shared.sql.QueryRow(context.Background(), `SELECT status FROM invoices WHERE id = $1 AND tenant_id = $2`, invID, e.tid).Scan(&st)
 	if st != "void" {
 		t.Fatalf("invoice status = %s", st)
 	}
@@ -738,7 +738,7 @@ func testRandomRepliesNeverDoubleCharge(t *testing.T) {
 	for round := 0; round < 60; round++ {
 		invID := uuid.New()
 		snap := `{"environment":"live","currency_exponent":2,"customer_external_id":"c","customer_email":"c@example.com","payment_method":"pm"}`
-		if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot)
+		if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot)
 			VALUES ($1,$2,$3,'2026-10','REGULAR',$4,'USD',500,500,'draft',$5)`, e.tid, invID, uuid.New(), uuid.New(), snap); err != nil {
 			t.Fatal(err)
 		}
@@ -749,7 +749,7 @@ func testRandomRepliesNeverDoubleCharge(t *testing.T) {
 		for i := 0; i < 14; i++ {
 			ev := events[rng.IntN(len(events))]
 			for rep := 0; rep < 1+rng.IntN(2); rep++ { // sometimes twice in a row
-				err := pgxxTx(func(tx pgxTx) error {
+				err := pgxxTx(e.tid, func(tx pgxTx) error {
 					_, err := e.eng.Handle(context.Background(), tx, e.tid, sagaID, ev, "random", nil)
 					return err
 				})
@@ -758,7 +758,7 @@ func testRandomRepliesNeverDoubleCharge(t *testing.T) {
 				}
 			}
 		}
-		rows, err := shared.system.Query(context.Background(), `SELECT payload FROM outbox WHERE tenant_id = $1 AND headers->>'x-destination' = 'rabbitmq' AND topic = 'billing.commands' AND partition_key = 'payment.charge'
+		rows, err := shared.sql.Query(context.Background(), `SELECT payload FROM outbox WHERE tenant_id = $1 AND headers->>'x-destination' = 'rabbitmq' AND topic = 'billing.commands' AND partition_key = 'payment.charge'
 			AND payload IS NOT NULL`, e.tid)
 		if err != nil {
 			t.Fatal(err)

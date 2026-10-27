@@ -11,7 +11,7 @@ import (
 // all its invoices' sagas reached COMPLETED or VOIDED.
 func (m *Manager) invoice(ctx context.Context, run *model.Run) (bool, error) {
 	for {
-		ids, err := m.q.ListDraftInvoiceIDsOfRun(ctx, sqlc.ListDraftInvoiceIDsOfRunParams{TenantID: run.TenantID, PeriodID: run.PeriodID, PageSize: int32(m.cfg.PageSize)}) //nolint:gosec // small
+		ids, err := m.on(run.TenantID).ListDraftInvoiceIDsOfRun(ctx, sqlc.ListDraftInvoiceIDsOfRunParams{TenantID: run.TenantID, PeriodID: run.PeriodID, PageSize: int32(m.cfg.PageSize)}) //nolint:gosec // small
 		if err != nil {
 			return false, err
 		}
@@ -24,7 +24,7 @@ func (m *Manager) invoice(ctx context.Context, run *model.Run) (bool, error) {
 			}
 		}
 	}
-	open, err := m.q.CountUnsettledInvoicesOfRun(ctx, sqlc.CountUnsettledInvoicesOfRunParams{TenantID: run.TenantID, PeriodID: run.PeriodID})
+	open, err := m.on(run.TenantID).CountUnsettledInvoicesOfRun(ctx, sqlc.CountUnsettledInvoicesOfRunParams{TenantID: run.TenantID, PeriodID: run.PeriodID})
 	if err != nil {
 		return false, err
 	}

@@ -14,7 +14,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -26,6 +25,7 @@ import (
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // ErrNoLink is what a visitor gets for a token that is unknown, expired or revoked, and for an invoice that is not in its scope: they all look the same.
@@ -58,17 +58,26 @@ type Link struct {
 	Row sqlc.FindActiveInvoiceLinkRow
 }
 
-// ResolveLink resolves a token to its link, or a not-found error.
-func ResolveLink(ctx context.Context, system *pgxpool.Pool, token string) (*Link, error) {
+// ResolveLink resolves a token to its link, or a not-found error. A token names no tenant, so the lookup visits the pooled database and every tenant placed in a cell
+// (ADR 0018); a tenant that is moving while the token is found nowhere else makes the answer Unavailable, not "no such link".
+func ResolveLink(ctx context.Context, system *tenantdb.DB, token string) (*Link, error) {
 	if !validToken(token) {
 		return nil, ErrNoLink
 	}
-	row, err := sqlc.New(system).FindActiveInvoiceLink(ctx, TokenHash(token))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNoLink
-	}
+	var row sqlc.FindActiveInvoiceLinkRow
+	found, err := system.Find(ctx, func(ctx context.Context, q *sqlc.Queries) (bool, error) {
+		r, err := q.FindActiveInvoiceLink(ctx, TokenHash(token))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		row = r
+		return err == nil, err
+	})
 	if err != nil {
 		return nil, apierr.Internal(ctx, err)
+	}
+	if !found {
+		return nil, ErrNoLink
 	}
 	return &Link{Row: row}, nil
 }
@@ -92,7 +101,7 @@ type Portal struct {
 }
 
 // Resolve turns the credentials of a request into a scope: a link token, or a portal token with the invoice the visitor asks for (which must be the customer's).
-func Resolve(ctx context.Context, system *pgxpool.Pool, token, portalToken, invoiceID string) (*Scope, error) {
+func Resolve(ctx context.Context, system *tenantdb.DB, token, portalToken, invoiceID string) (*Scope, error) {
 	switch {
 	case token != "" && portalToken != "":
 		return nil, ErrNoLink
@@ -112,16 +121,24 @@ func Resolve(ctx context.Context, system *pgxpool.Pool, token, portalToken, invo
 	return nil, ErrNoLink
 }
 
-func resolvePortal(ctx context.Context, system *pgxpool.Pool, token, invoiceID string) (*Scope, error) {
+func resolvePortal(ctx context.Context, system *tenantdb.DB, token, invoiceID string) (*Scope, error) {
 	if !validToken(token) {
 		return nil, ErrNoLink
 	}
-	row, err := sqlc.New(system).FindActivePortalLink(ctx, TokenHash(token))
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNoLink
-	}
+	var row sqlc.FindActivePortalLinkRow
+	found, err := system.Find(ctx, func(ctx context.Context, q *sqlc.Queries) (bool, error) {
+		r, err := q.FindActivePortalLink(ctx, TokenHash(token))
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		row = r
+		return err == nil, err
+	})
 	if err != nil {
 		return nil, apierr.Internal(ctx, err)
+	}
+	if !found {
+		return nil, ErrNoLink
 	}
 	s := &Scope{TenantID: row.TenantID, Portal: &Portal{CustomerID: row.CustomerID, ExternalID: store.Deref(row.CustomerExternalID)}, ExpiresAt: row.ExpiresAt}
 	if invoiceID == "" {
@@ -132,7 +149,7 @@ func resolvePortal(ctx context.Context, system *pgxpool.Pool, token, invoiceID s
 		return nil, ErrNoLink
 	}
 	// The invoice must be this customer's, in this tenant: the predicate names both, besides the RLS of the transaction.
-	err = pgxx.InTx(ctx, system, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
+	err = system.InTx(ctx, row.TenantID, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
 		_, err := sqlc.New(tx).GetInvoiceOfCustomer(ctx, sqlc.GetInvoiceOfCustomerParams{TenantID: row.TenantID, CustomerID: row.CustomerID, ID: id})
 		return err
 	})
@@ -180,8 +197,8 @@ type SellerLookup func(ctx context.Context, tenantID uuid.UUID) (Seller, error)
 
 // Deps are what the reads need besides the database.
 type Deps struct {
-	App    *pgxpool.Pool
-	System *pgxpool.Pool
+	App    pgxx.Beginner
+	System *tenantdb.DB
 	PDFs   invoices.PDFSigner
 	Seller SellerLookup
 }

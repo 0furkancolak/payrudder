@@ -53,6 +53,46 @@ func (q *Queries) ExpiredLots(ctx context.Context, rowLimit int32) ([]ExpiredLot
 	return items, nil
 }
 
+const expiredLotsOfTenant = `-- name: ExpiredLotsOfTenant :many
+SELECT id, customer_id, remaining FROM credit_lots
+WHERE tenant_id = $1 AND remaining > 0 AND expires_at <= now()
+ORDER BY expires_at, id
+LIMIT $2
+FOR UPDATE SKIP LOCKED
+`
+
+type ExpiredLotsOfTenantParams struct {
+	TenantID uuid.UUID
+	RowLimit int32
+}
+
+type ExpiredLotsOfTenantRow struct {
+	ID         uuid.UUID
+	CustomerID uuid.UUID
+	Remaining  int64
+}
+
+// The same lots of one tenant, locked, for the transaction that writes them off: a pass never writes two tenants' lots in one transaction.
+func (q *Queries) ExpiredLotsOfTenant(ctx context.Context, arg ExpiredLotsOfTenantParams) ([]ExpiredLotsOfTenantRow, error) {
+	rows, err := q.db.Query(ctx, expiredLotsOfTenant, arg.TenantID, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExpiredLotsOfTenantRow{}
+	for rows.Next() {
+		var i ExpiredLotsOfTenantRow
+		if err := rows.Scan(&i.ID, &i.CustomerID, &i.Remaining); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getCreditBalance = `-- name: GetCreditBalance :one
 SELECT COALESCE(sum(remaining) FILTER (WHERE expires_at IS NULL OR expires_at > now()), 0)::bigint AS balance
 FROM credit_lots

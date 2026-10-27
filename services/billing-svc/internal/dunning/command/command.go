@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -22,7 +21,7 @@ const (
 )
 
 // Set replaces the tenant's retry delays (hours) and returns them with the time of the change.
-func Set(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, hours []int32) ([]int32, time.Time, error) {
+func Set(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, hours []int32) ([]int32, time.Time, error) {
 	if len(hours) > maxDunningRetries {
 		return nil, time.Time{}, errkey.New(codes.InvalidArgument, "billing.dunning.too_many_retries", "retry_hours has at most 6 entries")
 	}

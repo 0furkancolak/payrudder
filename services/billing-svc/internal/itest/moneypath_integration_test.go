@@ -22,7 +22,7 @@ import (
 func (e *env) invoiceIDOf(customer string) uuid.UUID {
 	e.t.Helper()
 	var id uuid.UUID
-	if err := shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = $2 ORDER BY created_at LIMIT 1`,
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = $2 ORDER BY created_at LIMIT 1`,
 		e.tid, customer).Scan(&id); err != nil {
 		e.t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func testVoidRefundsWhatCreditNotesLeft(t *testing.T) {
 	}
 	void(full)
 	var state string
-	if err := shared.system.QueryRow(context.Background(), `SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, full).Scan(&state); err != nil || state != "VOIDED" {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, full).Scan(&state); err != nil || state != "VOIDED" {
 		t.Fatalf("fully credited invoice saga = %q, %v; want VOIDED", state, err)
 	}
 	if got := refunds(full); len(got) != 0 {
@@ -142,7 +142,7 @@ func testVoidingAnInvoiceReopensTheCreditsItConsumed(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	e.startWorkers(nil)
 	lot := uuid.New()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_adjustment_id, currency) VALUES ($1,$2,$3,300,$4,'USD')`,
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_adjustment_id, currency) VALUES ($1,$2,$3,300,$4,'USD')`,
 		e.tid, e.customer("cus_a").Id, lot, uuid.New()); err != nil {
 		t.Fatal(err)
 	}
@@ -150,10 +150,10 @@ func testVoidingAnInvoiceReopensTheCreditsItConsumed(t *testing.T) {
 	remaining := func() (applied bool, apps int, left int64) {
 		t.Helper()
 		var inv *uuid.UUID
-		if err := shared.system.QueryRow(context.Background(), `SELECT applied_invoice_id FROM credit_balances WHERE tenant_id = $1 AND id = $2`, e.tid, lot).Scan(&inv); err != nil {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT applied_invoice_id FROM credit_balances WHERE tenant_id = $1 AND id = $2`, e.tid, lot).Scan(&inv); err != nil {
 			t.Fatal(err)
 		}
-		if err := shared.system.QueryRow(context.Background(), `SELECT count(*), 300 - COALESCE(sum(amount_minor), 0) FROM credit_applications WHERE tenant_id = $1 AND credit_id = $2`, e.tid, lot).Scan(&apps, &left); err != nil {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT count(*), 300 - COALESCE(sum(amount_minor), 0) FROM credit_applications WHERE tenant_id = $1 AND credit_id = $2`, e.tid, lot).Scan(&apps, &left); err != nil {
 			t.Fatal(err)
 		}
 		return inv != nil, apps, left

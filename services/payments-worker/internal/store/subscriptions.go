@@ -5,13 +5,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
 // Subscriptions is the table of subscriptions a provider runs.
-type Subscriptions struct{ DB *pgxpool.Pool }
+type Subscriptions struct{ DB DB }
 
 // ProviderSubscription is a subscription at a provider.
 type ProviderSubscription struct {
@@ -27,15 +26,19 @@ type ProviderSubscription struct {
 // Upsert records what the provider says about a subscription. Events can arrive out of order, so an older event never overwrites a
 // newer one: occurred is the provider's timestamp of the event, and the row keeps the latest.
 func (s Subscriptions) Upsert(ctx context.Context, tenant uuid.UUID, provider, env, ref string, payrudderID *uuid.UUID, status string, next *time.Time, occurred time.Time) error {
-	return sqlc.New(s.DB).UpsertProviderSubscription(ctx, sqlc.UpsertProviderSubscriptionParams{
-		TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref, PayrudderSubscriptionID: payrudderID,
-		Status: status, NextBilledAt: next, UpdatedAt: occurred,
+	return at(ctx, s.DB, tenant, func(q *sqlc.Queries) error {
+		return q.UpsertProviderSubscription(ctx, sqlc.UpsertProviderSubscriptionParams{
+			TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref, PayrudderSubscriptionID: payrudderID,
+			Status: status, NextBilledAt: next, UpdatedAt: occurred,
+		})
 	})
 }
 
 // List returns a tenant's provider subscriptions, most recently changed first.
 func (s Subscriptions) List(ctx context.Context, tenant uuid.UUID) ([]ProviderSubscription, error) {
-	rows, err := sqlc.New(s.DB).ListProviderSubscriptions(ctx, tenant)
+	rows, err := get(ctx, s.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListProviderSubscriptionsRow, error) {
+		return q.ListProviderSubscriptions(ctx, tenant)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -55,9 +58,9 @@ func (s Subscriptions) List(ctx context.Context, tenant uuid.UUID) ([]ProviderSu
 
 // PayrudderID returns our subscription id remembered for a provider subscription.
 func (s Subscriptions) PayrudderID(ctx context.Context, tenant uuid.UUID, provider, env, ref string) (uuid.UUID, bool, error) {
-	id, ok, err := found(sqlc.New(s.DB).GetProviderSubscriptionPayrudderID(ctx, sqlc.GetProviderSubscriptionPayrudderIDParams{
-		TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref,
-	}))
+	id, ok, err := lookup(ctx, s.DB, tenant, func(q *sqlc.Queries) (*uuid.UUID, error) {
+		return q.GetProviderSubscriptionPayrudderID(ctx, sqlc.GetProviderSubscriptionPayrudderIDParams{TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref})
+	})
 	if !ok || id == nil {
 		return uuid.Nil, false, err
 	}
@@ -66,9 +69,9 @@ func (s Subscriptions) PayrudderID(ctx context.Context, tenant uuid.UUID, provid
 
 // NextBilledAt returns when the provider will next bill a subscription: the end of the period it has been paid for.
 func (s Subscriptions) NextBilledAt(ctx context.Context, tenant uuid.UUID, provider, env, ref string) (time.Time, bool, error) {
-	t, ok, err := found(sqlc.New(s.DB).GetProviderSubscriptionNextBilledAt(ctx, sqlc.GetProviderSubscriptionNextBilledAtParams{
-		TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref,
-	}))
+	t, ok, err := lookup(ctx, s.DB, tenant, func(q *sqlc.Queries) (*time.Time, error) {
+		return q.GetProviderSubscriptionNextBilledAt(ctx, sqlc.GetProviderSubscriptionNextBilledAtParams{TenantID: tenant, Provider: provider, Environment: env, ProviderRef: ref})
+	})
 	if !ok || t == nil {
 		return time.Time{}, false, err
 	}

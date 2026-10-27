@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
@@ -46,7 +45,7 @@ var agingOrder = []string{"0-7", "8-30", "31-60", "61+"}
 
 // Dashboard returns, per currency, the top customers of the period and the age of the open invoices. The period is the same one the summary takes (UTC days,
 // at most five years); top is how many customers per currency, 1 to 10 (default 5).
-func Dashboard(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, fromDate, toDate string, top int32) ([]DashboardCurrency, []RecentInvoice, error) {
+func Dashboard(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, fromDate, toDate string, top int32) ([]DashboardCurrency, []RecentInvoice, error) {
 	from, to, _, err := period(SummaryParams{FromDate: fromDate, ToDate: toDate, Granularity: GranMonth})
 	if err != nil {
 		return nil, nil, err

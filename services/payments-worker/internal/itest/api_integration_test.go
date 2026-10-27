@@ -23,13 +23,11 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
 	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 func (r *recPlans) GetPlanVersion(_ context.Context, _ uuid.UUID, req *plansv1.GetPlanVersionRequest) (*plansv1.PlanVersion, error) {
@@ -111,12 +109,8 @@ func (f *apiPaddle) body(key string, i int) map[string]any {
 
 func TestProviderAPIThroughTheWorker(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
-	pool, err := pgxx.NewPool(context.Background(), db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	ctx := context.Background()
 	fake := newAPIPaddle(t)
 

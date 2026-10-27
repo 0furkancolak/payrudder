@@ -6,26 +6,24 @@ import (
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/query"
-	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Handler implements the re-rating methods of billingv1.BillingAdminServiceServer.
 type Handler struct {
-	cmd *command.Commands
-	q   *sqlc.Queries
+	cmd    *command.Commands
+	system *tenantdb.DB
 }
 
 // New returns the handler.
-func New(cmd *command.Commands, system *pgxpool.Pool) *Handler {
-	return &Handler{cmd: cmd, q: sqlc.New(system)}
+func New(cmd *command.Commands, system *tenantdb.DB) *Handler {
+	return &Handler{cmd: cmd, system: system}
 }
 
 // StartRerating implements billingv1.BillingAdminServiceServer.
@@ -61,7 +59,7 @@ func (h *Handler) GetReratingJob(ctx context.Context, req *billingv1.GetRerating
 	if err != nil {
 		return nil, err
 	}
-	job, err := query.Get(ctx, h.q, tid, id)
+	job, err := query.Get(ctx, h.system.Q(tid), tid, id)
 	if err != nil {
 		return nil, err
 	}

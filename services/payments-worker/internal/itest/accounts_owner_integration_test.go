@@ -18,26 +18,20 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
-	"github.com/0furkancolak/payrudder/services/payments-worker/migrations"
 )
 
 // A person connects their own live provider account (the gateway sets ?verify=true and the actor): only the provider's own hosts are allowed, the provider has
 // to accept the credentials, every change is in the audit trail without a secret, and the go-live answer says which account works and why one does not.
 func TestOwnerProviderConnection(t *testing.T) {
 	pg := testkit.StartPostgres(t)
-	db := testkit.MigratedDB(t, pg, "payments", migrations.FS)
 	ctx := context.Background()
-	pool, err := pgxx.NewPool(ctx, db.System)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer pool.Close()
+	cdb := openDB(t, pg)
+	pool := cdb.DB
 	fake := newFakeIyzico(t)
 	box, _ := secretbox.New(bytes.Repeat([]byte{7}, 32))
 	registry := payments.NewRegistry()
@@ -67,7 +61,7 @@ func TestOwnerProviderConnection(t *testing.T) {
 	}
 	events := func(tenant uuid.UUID) []string {
 		t.Helper()
-		rows, err := pool.Query(ctx, `SELECT provider || '/' || environment || '/' || action || '/' || actor || '/' || verified_remote::text FROM provider_account_events WHERE tenant_id = $1 ORDER BY id`, tenant)
+		rows, err := cdb.At(tenant).Query(ctx, `SELECT provider || '/' || environment || '/' || action || '/' || actor || '/' || verified_remote::text FROM provider_account_events WHERE tenant_id = $1 ORDER BY id`, tenant)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -143,8 +137,8 @@ func TestOwnerProviderConnection(t *testing.T) {
 		if got := events(tenant); strings.Join(got, "|") != strings.Join(want, "|") {
 			t.Errorf("audit = %v, want %v", got, want)
 		}
-		var secretsInAudit int
-		if err := pool.QueryRow(ctx, `SELECT count(*) FROM provider_account_events WHERE actor LIKE '%Ada%' OR provider LIKE '%DE89%'`).Scan(&secretsInAudit); err != nil || secretsInAudit != 0 {
+		secretsInAudit, err := cdb.CountAll(ctx, `SELECT count(*) FROM provider_account_events WHERE actor LIKE '%Ada%' OR provider LIKE '%DE89%'`)
+		if err != nil || secretsInAudit != 0 {
 			t.Errorf("settings leaked into the audit trail: %d %v", secretsInAudit, err)
 		}
 	})

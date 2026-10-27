@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
@@ -14,7 +13,7 @@ import (
 
 // EInvoiceAccounts is the table of a tenant's e-invoice integrator accounts. Settings are sealed; the box is bound to tenant and environment.
 type EInvoiceAccounts struct {
-	DB  *pgxpool.Pool
+	DB  DB
 	Box *secretbox.Box
 }
 
@@ -37,18 +36,24 @@ func (a EInvoiceAccounts) Put(ctx context.Context, tenant uuid.UUID, env, provid
 	if err != nil {
 		return err
 	}
-	return sqlc.New(a.DB).UpsertEInvoiceAccount(ctx, sqlc.UpsertEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: provider, Mode: mode, SettingsEnc: sealed})
+	return at(ctx, a.DB, tenant, func(q *sqlc.Queries) error {
+		return q.UpsertEInvoiceAccount(ctx, sqlc.UpsertEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: provider, Mode: mode, SettingsEnc: sealed})
+	})
 }
 
 // Delete removes an account. It reports whether there was one.
 func (a EInvoiceAccounts) Delete(ctx context.Context, tenant uuid.UUID, env string) (bool, error) {
-	n, err := sqlc.New(a.DB).DeleteEInvoiceAccount(ctx, sqlc.DeleteEInvoiceAccountParams{TenantID: tenant, Environment: env})
+	n, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) (int64, error) {
+		return q.DeleteEInvoiceAccount(ctx, sqlc.DeleteEInvoiceAccountParams{TenantID: tenant, Environment: env})
+	})
 	return n == 1, err
 }
 
 // List returns a tenant's accounts without secrets.
 func (a EInvoiceAccounts) List(ctx context.Context, tenant uuid.UUID) ([]EInvoiceAccountInfo, error) {
-	rows, err := sqlc.New(a.DB).ListEInvoiceAccounts(ctx, tenant)
+	rows, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListEInvoiceAccountsRow, error) {
+		return q.ListEInvoiceAccounts(ctx, tenant)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +66,9 @@ func (a EInvoiceAccounts) List(ctx context.Context, tenant uuid.UUID) ([]EInvoic
 
 // Settings opens the account of an environment; ErrNoAccount when there is none.
 func (a EInvoiceAccounts) Settings(ctx context.Context, tenant uuid.UUID, env string) (provider string, settings []byte, err error) {
-	row, ok, err := found(sqlc.New(a.DB).GetEInvoiceAccount(ctx, sqlc.GetEInvoiceAccountParams{TenantID: tenant, Environment: env}))
+	row, ok, err := lookup(ctx, a.DB, tenant, func(q *sqlc.Queries) (sqlc.GetEInvoiceAccountRow, error) {
+		return q.GetEInvoiceAccount(ctx, sqlc.GetEInvoiceAccountParams{TenantID: tenant, Environment: env})
+	})
 	if err != nil {
 		return "", nil, err
 	}
@@ -73,7 +80,7 @@ func (a EInvoiceAccounts) Settings(ctx context.Context, tenant uuid.UUID, env st
 }
 
 // EInvoiceIssuances is the idempotency record of issued documents.
-type EInvoiceIssuances struct{ DB *pgxpool.Pool }
+type EInvoiceIssuances struct{ DB DB }
 
 // Issuance is the record of one document.
 type Issuance struct {
@@ -85,13 +92,17 @@ type Issuance struct {
 
 // Begin records that the integrator is about to be called for the document. It reports whether the row was new.
 func (i EInvoiceIssuances) Begin(ctx context.Context, doc, tenant uuid.UUID, env, provider, kind, docType string) (bool, error) {
-	n, err := sqlc.New(i.DB).BeginEInvoiceIssuance(ctx, sqlc.BeginEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant, Environment: env, Provider: provider, Kind: kind, DocumentType: docType})
+	n, err := get(ctx, i.DB, tenant, func(q *sqlc.Queries) (int64, error) {
+		return q.BeginEInvoiceIssuance(ctx, sqlc.BeginEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant, Environment: env, Provider: provider, Kind: kind, DocumentType: docType})
+	})
 	return n == 1, err
 }
 
 // Get returns the record of a document, if any.
 func (i EInvoiceIssuances) Get(ctx context.Context, doc, tenant uuid.UUID) (Issuance, bool, error) {
-	r, ok, err := found(sqlc.New(i.DB).GetEInvoiceIssuance(ctx, sqlc.GetEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant}))
+	r, ok, err := lookup(ctx, i.DB, tenant, func(q *sqlc.Queries) (sqlc.GetEInvoiceIssuanceRow, error) {
+		return q.GetEInvoiceIssuance(ctx, sqlc.GetEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant})
+	})
 	if !ok {
 		return Issuance{}, false, err
 	}
@@ -101,13 +112,17 @@ func (i EInvoiceIssuances) Get(ctx context.Context, doc, tenant uuid.UUID) (Issu
 
 // Complete records the integrator's answer: from now on the document is issued under that legal number, for good.
 func (i EInvoiceIssuances) Complete(ctx context.Context, doc, tenant uuid.UUID, legal, external, xmlKey, pdfKey string) error {
-	return sqlc.New(i.DB).CompleteEInvoiceIssuance(ctx, sqlc.CompleteEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant, LegalNumber: &legal, ExternalID: external,
-		XmlKey: nilIfEmpty(xmlKey), PdfKey: nilIfEmpty(pdfKey)})
+	return at(ctx, i.DB, tenant, func(q *sqlc.Queries) error {
+		return q.CompleteEInvoiceIssuance(ctx, sqlc.CompleteEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant, LegalNumber: &legal, ExternalID: external,
+			XmlKey: nilIfEmpty(xmlKey), PdfKey: nilIfEmpty(pdfKey)})
+	})
 }
 
 // Cancel marks an issued document cancelled.
 func (i EInvoiceIssuances) Cancel(ctx context.Context, doc, tenant uuid.UUID) error {
-	return sqlc.New(i.DB).CancelEInvoiceIssuance(ctx, sqlc.CancelEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant})
+	return at(ctx, i.DB, tenant, func(q *sqlc.Queries) error {
+		return q.CancelEInvoiceIssuance(ctx, sqlc.CancelEInvoiceIssuanceParams{DocumentID: doc, TenantID: tenant})
+	})
 }
 
 func nilIfEmpty(s string) *string {

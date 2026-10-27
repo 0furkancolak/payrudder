@@ -179,7 +179,7 @@ func (l *linkEnv) invoiceOf(token string) invoiceRow {
 	var r invoiceRow
 	id := page.GetInvoice().GetId()
 	var coupon, code, target *string
-	if err := shared.system.QueryRow(context.Background(), `SELECT subtotal_minor, total_minor, bonus_credits, coupon_code, promotion_code, promotion_target FROM invoices WHERE tenant_id = $1 AND id = $2`,
+	if err := shared.sql.QueryRow(context.Background(), `SELECT subtotal_minor, total_minor, bonus_credits, coupon_code, promotion_code, promotion_target FROM invoices WHERE tenant_id = $1 AND id = $2`,
 		l.tid, id).Scan(&r.subtotal, &r.total, &r.bonus, &coupon, &code, &target); err != nil {
 		l.t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func testPromotionCodesOnPaymentLinks(t *testing.T) {
 			}
 			testkit.Eventually(t, 30*time.Second, "the reversal of "+code+" to be queued", func() bool {
 				var n int
-				if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM promotion_reversals WHERE tenant_id = $1 AND done_at IS NULL AND target_kind = 'payment'`, l.tid).Scan(&n); err != nil {
+				if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM promotion_reversals WHERE tenant_id = $1 AND done_at IS NULL AND target_kind = 'payment'`, l.tid).Scan(&n); err != nil {
 					t.Fatal(err)
 				}
 				return n > 0
@@ -368,7 +368,7 @@ func testPromotionCodesOnPaymentLinks(t *testing.T) {
 			}
 		}
 		var pending int
-		if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM promotion_reversals WHERE tenant_id = $1 AND done_at IS NULL`, l.tid).Scan(&pending); err != nil || pending != 0 {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM promotion_reversals WHERE tenant_id = $1 AND done_at IS NULL`, l.tid).Scan(&pending); err != nil || pending != 0 {
 			t.Errorf("reversals still pending: %d, %v", pending, err)
 		}
 		// A second pass has nothing to do.

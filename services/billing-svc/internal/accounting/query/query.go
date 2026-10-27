@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -40,7 +39,7 @@ type ListParams struct {
 }
 
 // List returns a page of expenses, newest first, and the token of the next page ("" at the end).
-func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) ([]model.Expense, string, error) {
+func List(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, p ListParams) ([]model.Expense, string, error) {
 	size, ok := page.Size(p.PageSize, 50, 200)
 	if !ok {
 		return nil, "", errkey.New(codes.InvalidArgument, "billing.accounting.bad_page_size", "page_size must be 1..200")
@@ -110,7 +109,7 @@ type Result struct {
 }
 
 // Summary returns the income and expenses of the period, per currency.
-func Summary(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p SummaryParams) (*Result, error) {
+func Summary(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, p SummaryParams) (*Result, error) {
 	from, to, gran, err := period(p)
 	if err != nil {
 		return nil, err

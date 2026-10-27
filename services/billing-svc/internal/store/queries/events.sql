@@ -5,8 +5,9 @@ INSERT INTO outbox (tenant_id, topic, partition_key, payload, headers, message_i
 VALUES (@tenant_id, @topic, @partition_key, @payload, @headers, @message_id)
 ON CONFLICT (message_id) DO NOTHING;
 
+-- The payload is the tenant: the relay of a cell visits that tenant's schema (the pooled relay ignores it).
 -- name: NotifyOutbox :exec
-SELECT pg_notify(@channel::text, '');
+SELECT pg_notify(@channel::text, @tenant::text);
 
 -- name: InsertTenantEvent :exec
 INSERT INTO tenant_event_outbox (tenant_id, event_id, type, data, occurred_at) VALUES (@tenant_id, @event_id, @type, @data, @occurred_at)

@@ -29,7 +29,7 @@ func testSandboxResetKeepsConfigurationAndOtherTenants(t *testing.T) {
 		paid := seedPaidInvoice(t, tid, "USD", 1000, 0, when, time.Time{})
 		seedPaidInvoice(t, tid, "USD", 700, 0, when, time.Time{})
 		seedCreditNote(t, tid, paid, "USD", 100, when)
-		if _, err := shared.system.Exec(ctx, `INSERT INTO invoice_number_seq (tenant_id, year, next_value) VALUES ($1, 2026, 3)`, tid); err != nil {
+		if _, err := shared.sql.Exec(ctx, `INSERT INTO invoice_number_seq (tenant_id, year, next_value) VALUES ($1, 2026, 3)`, tid); err != nil {
 			t.Fatal(err)
 		}
 		// Configuration is written the way the product writes it: as the tenant, on the app pool.
@@ -47,7 +47,7 @@ func testSandboxResetKeepsConfigurationAndOtherTenants(t *testing.T) {
 		t.Helper()
 		var n int
 		// The table name is one of the constants below, never input.
-		if err := shared.system.QueryRow(ctx, `SELECT count(*) FROM `+table+` WHERE tenant_id = $1`, tid).Scan(&n); err != nil {
+		if err := shared.sql.QueryRow(ctx, `SELECT count(*) FROM `+table+` WHERE tenant_id = $1`, tid).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
@@ -90,7 +90,7 @@ func testSandboxResetKeepsConfigurationAndOtherTenants(t *testing.T) {
 		t.Errorf("a second reset = %v, %v; want nothing to delete", again, err)
 	}
 
-	missing, err := sandboxreset.MissingTables(ctx, shared.system, billingreset.Tables(), billingreset.Kept)
+	missing, err := sandboxreset.MissingTables(ctx, shared.systemPool, billingreset.Tables(), billingreset.Kept)
 	if err != nil {
 		t.Fatal(err)
 	}

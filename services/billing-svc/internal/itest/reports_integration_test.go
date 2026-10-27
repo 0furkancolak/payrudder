@@ -31,7 +31,7 @@ func seedInvoices(t *testing.T, tid uuid.UUID, rows []seedInvoice) {
 		if r.country != "" {
 			country = r.country
 		}
-		if _, err := shared.system.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, country)
+		if _, err := shared.sql.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, country)
 			VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$7,$8,$9::jsonb,$10,$11)`,
 			tid, id, uuid.New(), r.period, uuid.New(), r.currency, r.total, r.status,
 			`{"customer_external_id":"cus_`+string(rune('a'+i))+`","environment":"live"}`, r.provider, country); err != nil {
@@ -41,13 +41,13 @@ func seedInvoices(t *testing.T, tid uuid.UUID, rows []seedInvoice) {
 			continue
 		}
 		saga := uuid.New()
-		if _, err := shared.system.Exec(ctx, `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version, dunning_attempt, next_attempt_at, last_error)
+		if _, err := shared.sql.Exec(ctx, `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version, dunning_attempt, next_attempt_at, last_error)
 			VALUES ($1,$2,$3,$4,1,$5, CASE WHEN $4 = 'PAYMENT_DECLINED' THEN now() + interval '1 hour' END, CASE WHEN $4 = 'UNCOLLECTIBLE' THEN 'card_declined' END)`,
 			tid, saga, id, r.saga, r.dunning); err != nil {
 			t.Fatal(err)
 		}
 		if r.refunded {
-			if _, err := shared.system.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause) VALUES ($1,$2,1,'REFUND_REQUESTED','REFUNDED','reply:PaymentRefunded')`, tid, saga); err != nil {
+			if _, err := shared.sql.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause) VALUES ($1,$2,1,'REFUND_REQUESTED','REFUNDED','reply:PaymentRefunded')`, tid, saga); err != nil {
 				t.Fatal(err)
 			}
 		}

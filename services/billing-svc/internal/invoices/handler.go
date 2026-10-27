@@ -5,11 +5,11 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
@@ -20,12 +20,12 @@ import (
 
 // Handler implements the invoice methods of billingv1.BillingServiceServer.
 type Handler struct {
-	app  *pgxpool.Pool
+	app  pgxx.Beginner
 	pdfs query.PDFSigner
 }
 
 // New returns the handler over the billing_app pool.
-func New(app *pgxpool.Pool) *Handler { return &Handler{app: app} }
+func New(app pgxx.Beginner) *Handler { return &Handler{app: app} }
 
 // WithPDFs enables GetInvoicePdfUrl.
 func (h *Handler) WithPDFs(p query.PDFSigner) *Handler {

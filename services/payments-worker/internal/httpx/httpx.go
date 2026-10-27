@@ -16,6 +16,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 )
 
@@ -109,6 +110,14 @@ func Guard(token string) func(http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// IsMoving reports whether err is a refusal because the tenant's data is being moved between places (ADR 0018): nothing was done, and a retry is safe.
+func IsMoving(err error) bool { return errors.Is(err, tenantdir.ErrNotServing) }
+
+// Moving answers for a tenant that is being moved: expected, brief, and the same answer as any unavailable service.
+func Moving(w http.ResponseWriter) {
+	Fail(w, http.StatusServiceUnavailable, "payments.tenant.unavailable", "the tenant is being moved; nothing was changed, retry is safe")
+}
+
 // Unsupported answers for a provider whose adapter lacks the interface an endpoint needs.
 func Unsupported(w http.ResponseWriter, provider, what string) {
 	Fail(w, http.StatusNotImplemented, "payments.provider.not_supported", provider+" does not support "+what)
@@ -124,6 +133,8 @@ func Reply(log *slog.Logger, w http.ResponseWriter, r *http.Request, err error) 
 		prov    *refuse.Provider
 	)
 	switch {
+	case IsMoving(err):
+		Moving(w)
 	case errors.As(err, &refusal):
 		Fail(w, refusal.Status, refusal.Key, refusal.Message)
 	case errors.As(err, &plans):

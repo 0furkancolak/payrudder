@@ -7,14 +7,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
 // Transfers is the bank transfer side of the ledger: the pending row a charge leaves, the receipts an operator confirms, and the row that closes a transfer.
-type Transfers struct{ DB *pgxpool.Pool }
+type Transfers struct{ DB DB }
 
 // ChargeAttempt is the latest charge attempt of an invoice: what was asked of the provider.
 type ChargeAttempt struct {
@@ -29,7 +27,9 @@ type ChargeAttempt struct {
 
 // LatestCharge returns the invoice's most recent charge attempt.
 func (t Transfers) LatestCharge(ctx context.Context, tenant, invoice uuid.UUID) (ChargeAttempt, bool, error) {
-	r, ok, err := found(sqlc.New(t.DB).GetLatestChargeAttempt(ctx, sqlc.GetLatestChargeAttemptParams{TenantID: tenant, InvoiceID: invoice}))
+	r, ok, err := lookup(ctx, t.DB, tenant, func(q *sqlc.Queries) (sqlc.GetLatestChargeAttemptRow, error) {
+		return q.GetLatestChargeAttempt(ctx, sqlc.GetLatestChargeAttemptParams{TenantID: tenant, InvoiceID: invoice})
+	})
 	if !ok {
 		return ChargeAttempt{}, false, err
 	}
@@ -44,8 +44,10 @@ type Pending struct {
 }
 
 // Pending returns the pending row a charge left, if it left one.
-func (t Transfers) Pending(ctx context.Context, provider, key string) (Pending, bool, error) {
-	r, ok, err := found(sqlc.New(t.DB).GetPendingTransfer(ctx, sqlc.GetPendingTransferParams{Provider: provider, IdempotencyKey: &key}))
+func (t Transfers) Pending(ctx context.Context, tenant uuid.UUID, provider, key string) (Pending, bool, error) {
+	r, ok, err := lookup(ctx, t.DB, tenant, func(q *sqlc.Queries) (sqlc.GetPendingTransferRow, error) {
+		return q.GetPendingTransfer(ctx, sqlc.GetPendingTransferParams{Provider: provider, IdempotencyKey: &key})
+	})
 	if !ok {
 		return Pending{}, false, err
 	}
@@ -59,8 +61,10 @@ type Closure struct {
 }
 
 // Closure returns the declined row of a charge, if there is one.
-func (t Transfers) Closure(ctx context.Context, provider, key string) (Closure, bool, error) {
-	r, ok, err := found(sqlc.New(t.DB).GetTransferClosure(ctx, sqlc.GetTransferClosureParams{Provider: provider, IdempotencyKey: &key}))
+func (t Transfers) Closure(ctx context.Context, tenant uuid.UUID, provider, key string) (Closure, bool, error) {
+	r, ok, err := lookup(ctx, t.DB, tenant, func(q *sqlc.Queries) (sqlc.GetTransferClosureRow, error) {
+		return q.GetTransferClosure(ctx, sqlc.GetTransferClosureParams{Provider: provider, IdempotencyKey: &key})
+	})
 	if !ok {
 		return Closure{}, false, err
 	}
@@ -70,8 +74,10 @@ func (t Transfers) Closure(ctx context.Context, provider, key string) (Closure, 
 // Close writes the declined row of a charge. It reports false when the charge had been closed before (nothing is written twice).
 func (t Transfers) Close(ctx context.Context, e ClosureEntry) (bool, error) {
 	key := e.IdempotencyKey
-	n, err := sqlc.New(t.DB).CloseTransfer(ctx, sqlc.CloseTransferParams{TenantID: e.TenantID, InvoiceID: &e.InvoiceID, Provider: e.Provider, Environment: e.Environment,
-		AmountMinor: e.AmountMinor, Currency: e.Currency, ProviderRef: &key, IdempotencyKey: &key, Source: e.Source, Detail: &e.Detail})
+	n, err := get(ctx, t.DB, e.TenantID, func(q *sqlc.Queries) (int64, error) {
+		return q.CloseTransfer(ctx, sqlc.CloseTransferParams{TenantID: e.TenantID, InvoiceID: &e.InvoiceID, Provider: e.Provider, Environment: e.Environment,
+			AmountMinor: e.AmountMinor, Currency: e.Currency, ProviderRef: &key, IdempotencyKey: &key, Source: e.Source, Detail: &e.Detail})
+	})
 	return n == 1, err
 }
 
@@ -96,7 +102,9 @@ type Received struct {
 
 // Received sums the manual receipts of an invoice.
 func (t Transfers) Received(ctx context.Context, tenant, invoice uuid.UUID, provider string) (Received, error) {
-	r, err := sqlc.New(t.DB).SumManualReceipts(ctx, sqlc.SumManualReceiptsParams{TenantID: tenant, InvoiceID: &invoice, Provider: provider})
+	r, err := get(ctx, t.DB, tenant, func(q *sqlc.Queries) (sqlc.SumManualReceiptsRow, error) {
+		return q.SumManualReceipts(ctx, sqlc.SumManualReceiptsParams{TenantID: tenant, InvoiceID: &invoice, Provider: provider})
+	})
 	return Received{Minor: r.Received, LastRef: r.LastRef}, err
 }
 
@@ -120,7 +128,9 @@ func receiptFromRow(r sqlc.ListManualReceiptsRow) Receipt {
 
 // Receipts lists the confirmed transfers of an invoice, oldest first.
 func (t Transfers) Receipts(ctx context.Context, tenant, invoice uuid.UUID) ([]Receipt, error) {
-	rows, err := sqlc.New(t.DB).ListManualReceipts(ctx, sqlc.ListManualReceiptsParams{TenantID: tenant, InvoiceID: invoice})
+	rows, err := get(ctx, t.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListManualReceiptsRow, error) {
+		return q.ListManualReceipts(ctx, sqlc.ListManualReceiptsParams{TenantID: tenant, InvoiceID: invoice})
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -178,8 +188,7 @@ type RecordResult struct {
 // another amount it is ErrReceiptAmount; an amount past the total is ErrOverpayment.
 func (t Transfers) Record(ctx context.Context, n NewReceipt, total int64) (RecordResult, error) {
 	var res RecordResult
-	err := pgxx.InTx(ctx, t.DB, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		q := sqlc.New(tx)
+	err := tx(ctx, t.DB, n.TenantID, func(_ pgx.Tx, q *sqlc.Queries) error {
 		if err := q.LockInvoiceReceipts(ctx, n.InvoiceID.String()); err != nil {
 			return err
 		}

@@ -34,7 +34,7 @@ func (e *env) feeDue(customer string, pv *plansv1.PlanVersion, interval plansv1.
 
 func (e *env) feeInvoices(customer string) (n int, total int64, desc string) {
 	e.t.Helper()
-	rows, err := shared.system.Query(context.Background(), `SELECT i.total_minor, COALESCE(l.description, '') FROM invoices i
+	rows, err := shared.sql.Query(context.Background(), `SELECT i.total_minor, COALESCE(l.description, '') FROM invoices i
 		LEFT JOIN invoice_lines l ON l.tenant_id = i.tenant_id AND l.invoice_id = i.id AND l.line_no = 1
 		WHERE i.tenant_id = $1 AND i.kind = 'FEE' AND i.snapshot->>'customer_external_id' = $2`, e.tid, customer)
 	if err != nil {
@@ -90,7 +90,7 @@ func testAdvanceFeesAreInvoicedOncePerPeriod(t *testing.T) {
 	// The invoices are charged: their sagas complete.
 	testkit.Eventually(t, 20*time.Second, "fee invoices to be paid", func() bool {
 		var open int
-		_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
+		_ = shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 			WHERE i.tenant_id = $1 AND i.kind = 'FEE' AND (s.state IS NULL OR s.state <> 'COMPLETED')`, e.tid).Scan(&open)
 		return open == 0
 	})
@@ -106,7 +106,7 @@ func testAdvanceFeesAreInvoicedOncePerPeriod(t *testing.T) {
 		t.Errorf("a repeated pass made %d invoices for the same period", n)
 	}
 	var numbers int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(DISTINCT number) FROM invoices WHERE tenant_id = $1 AND kind = 'FEE'`, e.tid).Scan(&numbers); err != nil || numbers != 2 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(DISTINCT number) FROM invoices WHERE tenant_id = $1 AND kind = 'FEE'`, e.tid).Scan(&numbers); err != nil || numbers != 2 {
 		t.Errorf("fee invoices have %d distinct numbers (err %v); want 2", numbers, err)
 	}
 }
@@ -152,7 +152,7 @@ func (e *env) adjustment(customer string, pv *plansv1.PlanVersion, credit, charg
 
 func (e *env) feeInvoiceLines(customer string) []lineRow {
 	e.t.Helper()
-	rows, err := shared.system.Query(context.Background(), `SELECT l.kind, l.description, l.amount_minor FROM invoice_lines l
+	rows, err := shared.sql.Query(context.Background(), `SELECT l.kind, l.description, l.amount_minor FROM invoice_lines l
 		JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
 		WHERE i.tenant_id = $1 AND i.kind = 'FEE' AND i.snapshot->>'customer_external_id' = $2 ORDER BY i.created_at, l.line_no`, e.tid, customer)
 	if err != nil {
@@ -172,7 +172,7 @@ func (e *env) feeInvoiceLines(customer string) []lineRow {
 
 func (e *env) creditsOf(customer string) (n int, total int64, currency string) {
 	e.t.Helper()
-	err := shared.system.QueryRow(context.Background(), `SELECT count(*), COALESCE(sum(amount_minor), 0), COALESCE(max(currency), '') FROM credit_balances c
+	err := shared.sql.QueryRow(context.Background(), `SELECT count(*), COALESCE(sum(amount_minor), 0), COALESCE(max(currency), '') FROM credit_balances c
 		WHERE c.tenant_id = $1 AND c.customer_id = $2::uuid`, e.tid, e.customer(customer).Id).Scan(&n, &total, &currency)
 	if err != nil {
 		e.t.Fatal(err)
@@ -264,7 +264,7 @@ func testFeeInvoiceCarriesTheCouponAndServicePeriod(t *testing.T) {
 		t.Errorf("%d invoice(s) totalling %d; want one of 7500", n, total)
 	}
 	var withPeriod int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
 		WHERE i.tenant_id = $1 AND i.kind = 'FEE' AND l.service_from = $2 AND l.service_to = $3`, e.tid, start, end).Scan(&withPeriod); err != nil || withPeriod != 2 {
 		t.Errorf("%d line(s) carry the service period (err %v); want 2", withPeriod, err)
 	}

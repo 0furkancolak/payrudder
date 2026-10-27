@@ -22,7 +22,7 @@ import (
 // seedSagaIn seeds the saga of an invoice in state.
 func seedSagaIn(t *testing.T, tid, invoice uuid.UUID, state string) {
 	t.Helper()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,$4,1)`, tid, uuid.New(), invoice, state); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,$4,1)`, tid, uuid.New(), invoice, state); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -30,7 +30,7 @@ func seedSagaIn(t *testing.T, tid, invoice uuid.UUID, state string) {
 // seedHandPayment records money received outside a provider against an invoice without going through the saga.
 func seedHandPayment(t *testing.T, tid, invoice uuid.UUID, amount int64) {
 	t.Helper()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoice_payments (tenant_id, id, invoice_id, method, amount_minor, currency, received_at, reference, note, recorded_by, recorded_at)
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoice_payments (tenant_id, id, invoice_id, method, amount_minor, currency, received_at, reference, note, recorded_by, recorded_at)
 		SELECT tenant_id, $3, id, 'bank_transfer', $4, currency, now(), '', '', 'op', now() FROM invoices WHERE tenant_id = $1 AND id = $2`, tid, invoice, uuid.New(), amount); err != nil {
 		t.Fatal(err)
 	}
@@ -54,13 +54,13 @@ func testVoidingAPartPaidInvoiceCreditsWhatWasReceived(t *testing.T) {
 	}
 	testkit.Eventually(t, 30*time.Second, "the invoice to be voided", func() bool {
 		var state string
-		_ = shared.system.QueryRow(context.Background(), `SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, inv).Scan(&state)
+		_ = shared.sql.QueryRow(context.Background(), `SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, inv).Scan(&state)
 		return state == "VOIDED"
 	})
 	var n int
 	var amount int64
 	var currency string
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*), COALESCE(sum(amount_minor), 0)::bigint, COALESCE(max(currency), '') FROM credit_balances WHERE tenant_id = $1 AND customer_id = $2`,
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*), COALESCE(sum(amount_minor), 0)::bigint, COALESCE(max(currency), '') FROM credit_balances WHERE tenant_id = $1 AND customer_id = $2`,
 		e.tid, customer).Scan(&n, &amount, &currency); err != nil || n != 1 || amount != 600 || currency != "USD" {
 		t.Fatalf("credit balances of the customer: %d summing to %d %s (%v); want one of 600 USD", n, amount, currency, err)
 	}
@@ -111,14 +111,14 @@ func testVoidingAnInvoicePaidByHandCreditsItAndRefundsOnlyTheCard(t *testing.T) 
 		}
 		testkit.Eventually(t, 30*time.Second, tc.name+" to be voided", func() bool {
 			var state string
-			_ = shared.system.QueryRow(context.Background(), `SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, inv).Scan(&state)
+			_ = shared.sql.QueryRow(context.Background(), `SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, inv).Scan(&state)
 			return state == "VOIDED"
 		})
 		if got := refunds(inv); !slices.Equal(got, tc.wantRefund) {
 			t.Fatalf("%s: refund commands = %v; want %v", tc.name, got, tc.wantRefund)
 		}
 		var viaVoid int64
-		if err := shared.system.QueryRow(context.Background(), `SELECT COALESCE(sum(amount_minor), 0)::bigint FROM credit_balances WHERE tenant_id = $1 AND source_invoice_id = $2`, e.tid, inv).Scan(&viaVoid); err != nil || viaVoid != tc.wantBalanceSum {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT COALESCE(sum(amount_minor), 0)::bigint FROM credit_balances WHERE tenant_id = $1 AND source_invoice_id = $2`, e.tid, inv).Scan(&viaVoid); err != nil || viaVoid != tc.wantBalanceSum {
 			t.Fatalf("%s: credit balance from the void = %d (%v); want %d", tc.name, viaVoid, err, tc.wantBalanceSum)
 		}
 	}
@@ -135,7 +135,7 @@ func testVoidingAnUnpaidInvoiceCreditsNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	var n int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND customer_id = $2`, e.tid, customer).Scan(&n); err != nil || n != 0 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND customer_id = $2`, e.tid, customer).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("%d credit balances for a void with nothing received (%v)", n, err)
 	}
 }
@@ -155,7 +155,7 @@ func testRefundCreditNoteNeedsACardPayment(t *testing.T) {
 		t.Fatalf("refund note on a bank-paid invoice: %v; want FAILED_PRECONDITION", err)
 	}
 	var notes int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM credit_notes WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, inv).Scan(&notes); err != nil || notes != 0 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM credit_notes WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, inv).Scan(&notes); err != nil || notes != 0 {
 		t.Fatalf("%d credit notes were numbered for the refused refund (%v)", notes, err)
 	}
 	if got := e.count(stub, "refund"); got != 0 {

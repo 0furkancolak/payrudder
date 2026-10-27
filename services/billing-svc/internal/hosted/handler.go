@@ -6,12 +6,12 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
@@ -19,6 +19,7 @@ import (
 	invoicequery "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/query"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Handler implements the link methods of billingv1.BillingServiceServer and billingv1.HostedInvoiceServiceServer.
@@ -29,7 +30,7 @@ type Handler struct {
 
 // New returns the handler over the billing_app and billing_system pools. backend makes the invoices of ad-hoc links and looks up customers and sellers; eng drives
 // their sagas.
-func New(app, system *pgxpool.Pool, backend *command.Backend, eng *sagacommand.Engine) *Handler {
+func New(app pgxx.Beginner, system *tenantdb.DB, backend *command.Backend, eng *sagacommand.Engine) *Handler {
 	return &Handler{
 		d: command.Deps{App: app, System: system, Engine: eng, Dir: backend},
 		q: query.Deps{App: app, System: system, Seller: func(ctx context.Context, tenantID uuid.UUID) (query.Seller, error) {

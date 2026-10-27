@@ -17,7 +17,7 @@ import (
 // seedVoidCredit is the credit balance a void makes of the money received by hand (source_invoice_id), made at at.
 func seedVoidCredit(t *testing.T, tid, invoice uuid.UUID, currency string, amount int64, at time.Time) {
 	t.Helper()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_invoice_id, currency, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_invoice_id, currency, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7)`,
 		tid, uuid.New(), uuid.New(), amount, invoice, currency, at); err != nil {
 		t.Fatal(err)
 	}
@@ -43,7 +43,7 @@ func testAccountingCountsWhatAVoidGaveBackOnce(t *testing.T) {
 	seedVoidCredit(t, tid, mixed, "EUR", 400, voided)
 	// Part paid by hand and voided before it was paid: never income, so the balance is no refund.
 	part := uuid.New()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
 		VALUES ($1,$2,$3,'2026-09','REGULAR',$4,'EUR',1000,1000,'void','{"customer_external_id":"cus_part","environment":"live"}'::jsonb,'')`, tid, part, uuid.New(), uuid.New()); err != nil {
 		t.Fatal(err)
 	}

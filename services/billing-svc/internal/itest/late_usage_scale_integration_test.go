@@ -22,15 +22,15 @@ func testPriorLateUsageAddsQuantitiesOfDifferentScales(t *testing.T) {
 		scale            int
 	}{{"2026-10", "5", 0}, {"2026-11", "2000", 3}} {
 		inv := seedOne(t, e.tid, customer, "cus_scale", "open", "USD", "INV-2026-00092"+string(rune('1'+i)), 100, "live")
-		if _, err := shared.system.Exec(context.Background(), `UPDATE invoices SET period_id = $3 WHERE tenant_id = $1 AND id = $2`, e.tid, inv, l.period); err != nil {
+		if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET period_id = $3 WHERE tenant_id = $1 AND id = $2`, e.tid, inv, l.period); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, origin_period_id, quantity, quantity_scale, amount_minor, description)
+		if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, meter_code, origin_period_id, quantity, quantity_scale, amount_minor, description)
 			VALUES ($1,$2,1,'LATE_USAGE','calls','2026-09',$3::numeric,$4,50,'late')`, e.tid, inv, l.quantity, l.scale); err != nil {
 			t.Fatal(err)
 		}
 	}
-	rows, err := sqlc.New(shared.system).PriorLateUsage(context.Background(), sqlc.PriorLateUsageParams{TenantID: e.tid, Origins: []string{"2026-09"}, PeriodID: "2026-12"})
+	rows, err := sqlc.New(shared.sql).PriorLateUsage(context.Background(), sqlc.PriorLateUsageParams{TenantID: e.tid, Origins: []string{"2026-09"}, PeriodID: "2026-12"})
 	if err != nil || len(rows) != 1 {
 		t.Fatalf("PriorLateUsage: %v, %v", rows, err)
 	}

@@ -32,7 +32,7 @@ func (m *Manager) streamUsage(ctx context.Context, rr *rateRun) (int32, error) {
 		gen = 1 // no usage rows: the tenant has only ever had generation 1
 	}
 	if run.Generation == nil {
-		if err := m.q.SetRunGeneration(ctx, sqlc.SetRunGenerationParams{Generation: gen, TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
+		if err := m.on(run.TenantID).SetRunGeneration(ctx, sqlc.SetRunGenerationParams{Generation: gen, TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
 			return 0, err
 		}
 		run.Generation = &gen

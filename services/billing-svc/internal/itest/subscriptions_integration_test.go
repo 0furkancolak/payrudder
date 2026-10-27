@@ -26,7 +26,7 @@ type lineRow struct {
 
 func (e *env) lines(period, customer string) []lineRow {
 	e.t.Helper()
-	rows, err := shared.system.Query(context.Background(), `SELECT l.kind, l.description, l.amount_minor FROM invoice_lines l
+	rows, err := shared.sql.Query(context.Background(), `SELECT l.kind, l.description, l.amount_minor FROM invoice_lines l
 		JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
 		WHERE i.tenant_id = $1 AND i.period_id = $2 AND i.snapshot->>'customer_external_id' = $3 ORDER BY l.line_no`, e.tid, period, customer)
 	if err != nil {
@@ -47,7 +47,7 @@ func (e *env) lines(period, customer string) []lineRow {
 func (e *env) invoiceCount(period, customer string) int {
 	e.t.Helper()
 	var n int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND snapshot->>'customer_external_id' = $3`,
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND snapshot->>'customer_external_id' = $3`,
 		e.tid, period, customer).Scan(&n); err != nil {
 		e.t.Fatal(err)
 	}
@@ -156,14 +156,14 @@ func testSubscriptionInAnotherCurrencyIsInvoicedInIt(t *testing.T) {
 	}
 	var currency string
 	var exponent int
-	if err := shared.system.QueryRow(context.Background(), `SELECT currency, (snapshot->>'currency_exponent')::int FROM invoices
+	if err := shared.sql.QueryRow(context.Background(), `SELECT currency, (snapshot->>'currency_exponent')::int FROM invoices
 		WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&currency, &exponent); err != nil {
 		t.Fatal(err)
 	}
 	if currency != "EUR" || exponent != 2 {
 		t.Errorf("invoice currency %q exponent %d; want EUR 2", currency, exponent)
 	}
-	if err := shared.system.QueryRow(context.Background(), `SELECT currency FROM invoices WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = 'cus_b'`, e.tid).Scan(&currency); err != nil || currency != "USD" {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT currency FROM invoices WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = 'cus_b'`, e.tid).Scan(&currency); err != nil || currency != "USD" {
 		t.Errorf("tenant-currency customer invoice currency %q, %v; want USD", currency, err)
 	}
 }

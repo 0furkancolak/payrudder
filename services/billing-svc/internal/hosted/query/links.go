@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -18,7 +17,7 @@ import (
 )
 
 // GetLink reads one payment link of a tenant.
-func GetLink(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.GetPaymentLinkRowRow, error) {
+func GetLink(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID) (sqlc.GetPaymentLinkRowRow, error) {
 	var row sqlc.GetPaymentLinkRowRow
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		var err error
@@ -51,7 +50,7 @@ type LinkPage struct {
 }
 
 // ListLinks returns a page of the tenant's payment links, newest first.
-func ListLinks(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*LinkPage, error) {
+func ListLinks(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, p ListParams) (*LinkPage, error) {
 	size32, ok := page.Size(int32(p.PageSize), 50, 200) //nolint:gosec // a request's page size
 	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "billing.payment_link.bad_page", "page_size must be 1..200")

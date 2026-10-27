@@ -3,8 +3,6 @@ package main
 import (
 	"log/slog"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
@@ -14,6 +12,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	reratecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
@@ -28,20 +27,20 @@ type modules struct {
 	tenantEvents *tenantevents.Relay
 }
 
-func newModules(cfg *Config, log *slog.Logger, system *pgxpool.Pool, eng *sagacommand.Engine, be *backends) (*modules, error) {
+func newModules(cfg *Config, log *slog.Logger, system *tenantdb.DB, eng *sagacommand.Engine, be *backends) (*modules, error) {
 	in := &inputs.Inputs{
 		Plans: plansv1.NewPlansServiceClient(be.plans), Admin: plansv1.NewAdminServiceClient(be.plans), Aggregator: aggregatorv1.NewUsageQueryServiceClient(be.aggregator),
 	}
-	invoices, err := invoicecmd.New(invoicecmd.Config{Pool: system, Engine: eng})
+	invoices, err := invoicecmd.New(invoicecmd.Config{DB: system, Engine: eng})
 	if err != nil {
 		return nil, err
 	}
 	return &modules{
 		inputs: in, invoices: invoices,
-		creditNotes:  creditnotecmd.New(creditnotecmd.Config{Pool: system, Engine: eng, Log: log}),
-		fees:         feecmd.New(feecmd.Config{Pool: system, Inputs: in, Invoices: invoices, Log: log}),
-		rerating:     reratecmd.New(reratecmd.Config{Pool: system, Inputs: in, Invoices: invoices, Log: log}),
-		hosted:       hostedcmd.NewBackend(hostedcmd.BackendConfig{Pool: system, Inputs: in, Invoices: invoices, Engine: eng, Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Log: log}),
+		creditNotes:  creditnotecmd.New(creditnotecmd.Config{DB: system, Engine: eng, Log: log}),
+		fees:         feecmd.New(feecmd.Config{DB: system, Inputs: in, Invoices: invoices, Log: log}),
+		rerating:     reratecmd.New(reratecmd.Config{DB: system, Inputs: in, Invoices: invoices, Log: log}),
+		hosted:       hostedcmd.NewBackend(hostedcmd.BackendConfig{DB: system, Inputs: in, Invoices: invoices, Engine: eng, Affiliates: plansv1.NewAffiliateServiceClient(be.plans), Log: log}),
 		tenantEvents: tenantevents.NewRelay(system, plansv1.NewWebhookServiceClient(be.plans), log),
 	}, nil
 }

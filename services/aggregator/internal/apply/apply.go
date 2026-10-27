@@ -1,8 +1,13 @@
 // Package apply implements the aggregator's batch transaction: dedup, classify, pre-sum, upsert and advance the
 // offset, all in one Postgres transaction (docs/03-services/aggregator.md, docs/07-correctness.md §2).
+//
+// In cells mode (ADR 0018) one batch is split by placement: the tenants in the pooled database are written, with the offset, in the one transaction above, and each
+// tenant placed in a cell is written in a transaction of its own in its schema, before it. The offset moves only after every split is durable; a batch that fails
+// half way is delivered again and the inbox (processed_events, in each tenant's own place) makes the splits that were durable no-ops.
 package apply
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -23,6 +28,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/period"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/usage"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/settings"
@@ -70,7 +76,10 @@ func (r *Replay) wants(ev usage.Event) bool {
 
 // Handler applies batches. It implements kafkax.PartitionHandler.
 type Handler struct {
-	Pool     *pgxpool.Pool // aggregator_system
+	// Pool is aggregator_system on the pooled database: the pooled tenants' rows and, always, the consumer's offsets.
+	Pool *pgxpool.Pool
+	// Cells, when set, is the system-role router of cells mode (ADR 0018): a tenant placed in a cell is written in its own schema, in a transaction of its own.
+	Cells    *pgxx.Router
 	Meters   MeterSource
 	Settings Settings
 	DLQ      DeadLetter
@@ -89,9 +98,12 @@ type Handler struct {
 	// AfterCommit runs after the batch transaction committed and before Kafka is told. A non-nil error simulates a
 	// crash at that point (fault hook AGG_CRASH_AFTER_COMMIT).
 	AfterCommit func() error
+	// AfterSplits runs, in cells mode, after the transactions of the tenants placed in cells are durable and before the transaction that moves the offset. A non-nil
+	// error simulates a crash at that point (tests).
+	AfterSplits func() error
 
 	once    sync.Once
-	ensured sync.Map // periods whose inbox partition exists
+	ensured sync.Map // place|period of the inbox partitions known to exist
 	m       metrics
 }
 
@@ -165,19 +177,8 @@ func (h *Handler) Apply(ctx context.Context, partition int32, recs []*kgo.Record
 		return err
 	}
 
-	// Period snapshots and inbox partitions are prepared outside the batch transaction: they are idempotent and
-	// must exist before it takes its locks.
-	if err := h.prepare(ctx, items); err != nil {
-		return err
-	}
-
 	next := recs[len(recs)-1].Offset + 1
-	var fenced bool
-	err = pgx.BeginFunc(ctx, h.Pool, func(tx pgx.Tx) error {
-		var err error
-		fenced, err = h.applyTx(ctx, tx, partition, items, next)
-		return err
-	})
+	fenced, err := h.applyBatch(ctx, partition, items, next)
 	if err != nil {
 		return err
 	}
@@ -272,7 +273,117 @@ func (h *Handler) meter(ctx context.Context, cache map[string]meterResult, ev us
 	}
 }
 
-func (h *Handler) prepare(ctx context.Context, items []item) error {
+// cellBatch is the part of a batch that belongs to one tenant placed in a cell.
+type cellBatch struct {
+	tenant uuid.UUID
+	target pgxx.Target
+	items  []item
+}
+
+// place splits the items of a batch by where their tenants live: those in the pooled database, in item order, and one cellBatch per tenant placed in a cell, ordered
+// by tenant. Every tenant is located before anything is written, so a tenant that is moving, or whose place cannot be had, stops the batch untouched: the partition
+// waits for the move (a retry is safe), no tenant is skipped. Without cells everything is pooled.
+func (h *Handler) place(ctx context.Context, items []item) (pooled []item, cells []cellBatch, err error) {
+	if h.Cells == nil {
+		return items, nil, nil
+	}
+	at := map[uuid.UUID]int{} // index into cells; -1 for a pooled tenant
+	for _, it := range items {
+		id := it.ev.TenantID
+		i, known := at[id]
+		if !known {
+			t, err := h.Cells.Locate(ctx, id)
+			if err != nil {
+				return nil, nil, fmt.Errorf("tenant %s: %w", id, err)
+			}
+			i = -1
+			if t.Schema != "" {
+				i = len(cells)
+				cells = append(cells, cellBatch{tenant: id, target: t})
+			}
+			at[id] = i
+		}
+		if i < 0 {
+			pooled = append(pooled, it)
+		} else {
+			cells[i].items = append(cells[i].items, it)
+		}
+	}
+	sort.Slice(cells, func(i, j int) bool { return bytes.Compare(cells[i].tenant[:], cells[j].tenant[:]) < 0 })
+	return pooled, cells, nil
+}
+
+// applyBatch writes a batch and moves the offset. The tenants placed in cells come first, each in its own transaction in its own schema (their failures are joined:
+// one tenant's does not keep the others from becoming durable, which a retry finds already applied); the offset moves in the pooled transaction, after all of them,
+// and not at all if any failed. It returns fenced=true when the offset write was a no-op because another consumer is already further along.
+func (h *Handler) applyBatch(ctx context.Context, partition int32, items []item, next int64) (bool, error) {
+	pooled, cells, err := h.place(ctx, items)
+	if err != nil {
+		return false, err
+	}
+	var errs []error
+	for _, c := range cells {
+		if err := ctx.Err(); err != nil {
+			return false, err
+		}
+		if err := h.applyCell(ctx, c); err != nil {
+			errs = append(errs, fmt.Errorf("tenant %s: %w", c.tenant, err))
+		}
+	}
+	if err := errors.Join(errs...); err != nil {
+		return false, err
+	}
+	if len(cells) > 0 && h.AfterSplits != nil {
+		if err := h.AfterSplits(); err != nil {
+			return false, err
+		}
+	}
+
+	// Period snapshots and inbox partitions are prepared outside the batch transaction: they are idempotent and
+	// must exist before it takes its locks.
+	made, err := h.prepare(ctx, sqlc.New(h.Pool), "", pooled)
+	if err != nil {
+		return false, err
+	}
+	h.remember("", made)
+	var fenced bool
+	err = pgx.BeginFunc(ctx, h.Pool, func(tx pgx.Tx) error {
+		var err error
+		fenced, err = h.applyTx(ctx, tx, partition, pooled, next)
+		return err
+	})
+	return fenced, err
+}
+
+// applyCell writes the events of one tenant placed in a cell: the snapshots and partitions in one transaction of its schema, then the batch itself in another, the
+// same two steps as the pooled path. The inbox rows commit with the aggregates, so a redelivered event finds itself applied.
+func (h *Handler) applyCell(ctx context.Context, c cellBatch) error {
+	place := c.target.Cell + "/" + c.target.Schema
+	var made []string
+	err := h.inCell(ctx, c, func(tx pgx.Tx) (err error) {
+		made, err = h.prepare(ctx, sqlc.New(tx), place, c.items)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	h.remember(place, made) // only now: the transaction that made the partitions could have failed and taken them with it
+	return h.inCell(ctx, c, func(tx pgx.Tx) error { return h.applyItems(ctx, sqlc.New(tx), c.items) })
+}
+
+// inCell runs fn in a transaction of the tenant's schema on its cell's system pool. A schema that is not where the router looked (a move, an answer older than it)
+// makes the router ask the directory again next time.
+func (h *Handler) inCell(ctx context.Context, c cellBatch, fn func(pgx.Tx) error) error {
+	err := pgxx.InTenantSchemaTx(ctx, c.target.Pool, c.tenant, fn)
+	if code := pgxx.ErrCode(err); code == "42P01" || code == "3F000" {
+		h.Cells.Invalidate(c.tenant)
+	}
+	return err
+}
+
+// prepare snapshots the period settings of the batch's tenants and makes the inbox partitions of its periods exist, through q (the pool for the pooled tenants, a
+// transaction of the tenant's schema in a cell). place names the schema the partitions are in. It returns the periods whose partition it had to ensure, for remember.
+func (h *Handler) prepare(ctx context.Context, q *sqlc.Queries, place string, items []item) (made []string, err error) {
 	seen := map[settings.Key]bool{}
 	var keys []settings.Key
 	periods := map[string]bool{}
@@ -284,20 +395,26 @@ func (h *Handler) prepare(ctx context.Context, items []item) error {
 		}
 		periods[it.ev.Period] = true
 	}
-	q := sqlc.New(h.Pool)
 	for p := range periods {
-		if _, ok := h.ensured.Load(p); ok {
+		if _, ok := h.ensured.Load(place + "|" + p); ok {
 			continue
 		}
 		if err := q.EnsureProcessedPartition(ctx, p); err != nil {
-			return fmt.Errorf("ensure inbox partition %s: %w", p, err)
+			return nil, fmt.Errorf("ensure inbox partition %s: %w", p, err)
 		}
-		h.ensured.Store(p, true)
+		made = append(made, p)
 	}
 	if err := h.Settings.Ensure(ctx, q, keys); err != nil {
-		return fmt.Errorf("period settings: %w", err)
+		return nil, fmt.Errorf("period settings: %w", err)
 	}
-	return nil
+	return made, nil
+}
+
+// remember records that the inbox partitions of periods exist in place.
+func (h *Handler) remember(place string, periods []string) {
+	for _, p := range periods {
+		h.ensured.Store(place+"|"+p, true)
+	}
 }
 
 // applyTx is the batch transaction. It returns fenced=true when the offset write was a no-op because another

@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -17,10 +16,11 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Get reads one credit note of a tenant.
-func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.GetCreditNoteRow, error) {
+func Get(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID) (sqlc.GetCreditNoteRow, error) {
 	var out sqlc.GetCreditNoteRow
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		var err error
@@ -51,7 +51,7 @@ type Page struct {
 }
 
 // List returns a page of the tenant's credit notes.
-func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*Page, error) {
+func List(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, p ListParams) (*Page, error) {
 	size, ok := page.Size(p.PageSize, 50, 200)
 	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "billing.credit_note.bad_page_size", "page_size must be 1..200")
@@ -91,8 +91,8 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 }
 
 // CustomerExternalID is best effort (empty when the lookup fails): a credit note that was just written is returned even if the lookup fails.
-func CustomerExternalID(ctx context.Context, system *pgxpool.Pool, tenantID, invoiceID uuid.UUID) string {
-	external, err := sqlc.New(system).GetInvoiceCustomerExternalID(ctx, sqlc.GetInvoiceCustomerExternalIDParams{TenantID: tenantID, ID: invoiceID})
+func CustomerExternalID(ctx context.Context, system *tenantdb.DB, tenantID, invoiceID uuid.UUID) string {
+	external, err := system.Q(tenantID).GetInvoiceCustomerExternalID(ctx, sqlc.GetInvoiceCustomerExternalIDParams{TenantID: tenantID, ID: invoiceID})
 	if err != nil {
 		slog.WarnContext(ctx, "credit note: customer of the invoice not read", "tenant", tenantID, "invoice", invoiceID, "error", err)
 	}

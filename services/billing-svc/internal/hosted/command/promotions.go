@@ -13,6 +13,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // The two things a promotion code can be used on besides a subscription's fee, as the invoice remembers them.
@@ -56,7 +57,7 @@ func (b *Backend) redeem(ctx context.Context, tenantID uuid.UUID, spec LinkInvoi
 	prior := false
 	if customerID != uuid.Nil {
 		var err error
-		if prior, err = b.q.CustomerHasPaidInvoice(ctx, sqlc.CustomerHasPaidInvoiceParams{TenantID: tenantID, CustomerID: customerID}); err != nil {
+		if prior, err = b.cfg.DB.Q(tenantID).CustomerHasPaidInvoice(ctx, sqlc.CustomerHasPaidInvoiceParams{TenantID: tenantID, CustomerID: customerID}); err != nil {
 			return nil, err
 		}
 	}
@@ -132,12 +133,24 @@ const reversalBatch = 100
 
 // ReversePromotions tells plans-svc about the invoices that were voided after they used a coupon (queued in the transaction of the void). Whether the place goes
 // back to the count is the code's setting. A reversal plans-svc has nothing for is done as well; an unreachable plans-svc is tried again next pass.
+//
+// It looks in every place a tenant's rows can be (the pooled database, each tenant placed in a cell, ADR 0018), and marks a reversal only in the place it was found.
 func (b *Backend) ReversePromotions(ctx context.Context) error {
-	due, err := b.q.ListPendingPromotionReversals(ctx, reversalBatch)
+	return b.cfg.DB.Each(ctx, b.reversePromotions)
+}
+
+func (b *Backend) reversePromotions(ctx context.Context, s tenantdb.Scope) error {
+	due, err := s.Scan().ListPendingPromotionReversals(ctx, reversalBatch)
 	if err != nil {
 		return err
 	}
 	for _, d := range due {
+		if err := s.Check(ctx, d.TenantID); err != nil {
+			if !tenantdb.Skippable(err) {
+				b.cfg.Log.WarnContext(ctx, "promotion reversal skipped", "tenant", d.TenantID, "invoice", d.InvoiceID, "error", err)
+			}
+			continue // the tenant is moving: plans-svc is not told yet, and the next pass finds the reversal again
+		}
 		target := plansv1.CouponTarget_COUPON_TARGET_PAYMENT
 		if d.TargetKind == PromotionCreditPurchase {
 			target = plansv1.CouponTarget_COUPON_TARGET_CREDIT_PURCHASE
@@ -145,12 +158,12 @@ func (b *Backend) ReversePromotions(ctx context.Context) error {
 		_, err := b.in.Plans.ReversePromotion(inputs.TenantCtx(ctx, d.TenantID), &plansv1.ReversePromotionRequest{Target: target, TargetId: d.InvoiceID.String()})
 		if err != nil && status.Code(err) != codes.NotFound {
 			b.cfg.Log.WarnContext(ctx, "promotion reversal not delivered", "tenant", d.TenantID, "invoice", d.InvoiceID, "error", err)
-			if berr := b.q.BumpPromotionReversalAttempts(ctx, sqlc.BumpPromotionReversalAttemptsParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); berr != nil && !errors.Is(berr, pgx.ErrNoRows) {
+			if berr := s.Q(d.TenantID).BumpPromotionReversalAttempts(ctx, sqlc.BumpPromotionReversalAttemptsParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); berr != nil && !errors.Is(berr, pgx.ErrNoRows) {
 				return berr
 			}
 			continue
 		}
-		if err := b.q.MarkPromotionReversalDone(ctx, sqlc.MarkPromotionReversalDoneParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); err != nil {
+		if err := s.Q(d.TenantID).MarkPromotionReversalDone(ctx, sqlc.MarkPromotionReversalDoneParams{TenantID: d.TenantID, InvoiceID: d.InvoiceID}); err != nil {
 			return err
 		}
 	}

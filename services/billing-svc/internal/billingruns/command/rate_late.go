@@ -155,7 +155,7 @@ func (m *Manager) priorLate(ctx context.Context, run *model.Run, origins map[str
 	for o := range origins {
 		list = append(list, o)
 	}
-	rows, err := m.q.PriorLateUsage(ctx, sqlc.PriorLateUsageParams{TenantID: run.TenantID, Origins: list, PeriodID: run.PeriodID})
+	rows, err := m.on(run.TenantID).PriorLateUsage(ctx, sqlc.PriorLateUsageParams{TenantID: run.TenantID, Origins: list, PeriodID: run.PeriodID})
 	if err != nil {
 		return nil, err
 	}

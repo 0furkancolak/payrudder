@@ -27,7 +27,7 @@ func testRerateCreditsAreInTheCurrencyOfTheInvoices(t *testing.T) {
 	ctx := context.Background()
 	count := func(where string) int {
 		var n int
-		if err := shared.system.QueryRow(ctx, `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND source_rerating_job_id = $2 AND `+where, e.tid, job.ID).Scan(&n); err != nil {
+		if err := shared.sql.QueryRow(ctx, `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND source_rerating_job_id = $2 AND `+where, e.tid, job.ID).Scan(&n); err != nil {
 			t.Fatal(err)
 		}
 		return n
@@ -36,7 +36,7 @@ func testRerateCreditsAreInTheCurrencyOfTheInvoices(t *testing.T) {
 		t.Fatalf("%d of the 2 credits are in USD", n)
 	}
 	// Only an invoice in the credit's currency can use it.
-	q := sqlc.New(shared.system)
+	q := sqlc.New(shared.sql)
 	for currency, want := range map[string]int{"USD": 1, "EUR": 0, "TRY": 0} {
 		got, err := q.ListUnappliedCredits(ctx, sqlc.ListUnappliedCreditsParams{TenantID: e.tid, CustomerID: uuid.MustParse(e.customer("cus_a").Id), Currency: currency})
 		if err != nil || len(got) != want {
@@ -44,13 +44,16 @@ func testRerateCreditsAreInTheCurrencyOfTheInvoices(t *testing.T) {
 		}
 	}
 
+	if cellsMode() {
+		return // the rest runs a one-off data migration of the public schema; a tenant schema is born with the fixed code
+	}
 	// Credits written before the fix have no currency; the migration gives them the one of the customer's invoice of the period.
 	migrator, err := pgx.Connect(ctx, shared.db.Migrator)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer migrator.Close(ctx)
-	if _, err := shared.system.Exec(ctx, `UPDATE credit_balances SET currency = NULL WHERE tenant_id = $1 AND source_rerating_job_id = $2`, e.tid, job.ID); err != nil {
+	if _, err := shared.sql.Exec(ctx, `UPDATE credit_balances SET currency = NULL WHERE tenant_id = $1 AND source_rerating_job_id = $2`, e.tid, job.ID); err != nil {
 		t.Fatal(err)
 	}
 	if n := count("currency IS NULL"); n != 2 {

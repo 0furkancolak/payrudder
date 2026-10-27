@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -17,11 +16,12 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Config is what the commands run on.
 type Config struct {
-	Pool     *pgxpool.Pool // billing_system
+	DB       *tenantdb.DB // billing_system
 	Inputs   *inputs.Inputs
 	Invoices *invoicecmd.Commands
 	Now      func() time.Time
@@ -31,7 +31,7 @@ type Config struct {
 // Commands are the re-rating commands.
 type Commands struct {
 	cfg Config
-	q   *sqlc.Queries
+	q   *sqlc.Queries // only for WithTx: the statements run in the transactions DB opens
 }
 
 // New returns the commands; a missing clock is the wall clock and a missing logger the default one.
@@ -42,7 +42,7 @@ func New(cfg Config) *Commands {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	return &Commands{cfg: cfg, q: sqlc.New(cfg.Pool)}
+	return &Commands{cfg: cfg, q: sqlc.New(cfg.DB.Pool())}
 }
 
 // Start starts, or finds, the re-rating job of a period under a plan version. created says whether it is new.
