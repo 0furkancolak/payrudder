@@ -7,6 +7,7 @@ import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { label } from "@/shared/lib/labels";
+import { names, sheetName } from "@/shared/lib/sheets";
 import { formatMinor } from "@/shared/lib/money";
 import { validLinkDays } from "@/shared/lib/rules";
 import { absoluteUrl } from "@/shared/lib/url";
@@ -64,7 +65,8 @@ const canRecord = computed(() => canRecordPayment(inv.value?.status));
 const outstanding = computed(() => (transferCharge.value ? String(transfer.value?.outstanding_minor ?? 0) : outstandingAfter(inv.value?.total_minor, inv.value?.payments)));
 const recordOpen = ref(false);
 const rejectOpen = ref(false);
-const rejectOutcome = ref<"rejected" | "expired">("rejected");
+// The dialog's name in the address says which of the two it is (see RejectTransferDialog), so a reload opens the one that was open.
+const rejectOutcome = ref<"rejected" | "expired">(names.value.includes(sheetName("expire-transfer", props.invoiceId)) ? "expired" : "rejected");
 function askReject(outcome: "rejected" | "expired") {
   rejectOutcome.value = outcome;
   rejectOpen.value = true;

@@ -90,7 +90,7 @@ function submit() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" :name="expense ? undefined : 'new-expense'">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ expense ? t("billing.accounting.form.editTitle") : t("billing.accounting.form.addTitle") }}</SheetTitle>

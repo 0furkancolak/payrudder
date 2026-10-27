@@ -21,6 +21,8 @@ import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { sheetName } from "@/shared/lib/sheets";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { useApiKeys, useApp, useCreateApiKey, useMe, useRevokeApiKey, useRotateApiKey, type ApiKey, type Environment } from "./api";
 import { ALL_PERMISSIONS, KEY_RESOURCES, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission, type KeyRole } from "./apiKeys";
@@ -129,6 +131,11 @@ function doRotate() {
   rotate.mutate({ keyId: k.id, overlapHours: overlap.value }, { onSuccess: (r) => { secret.value = { plaintext: r.plaintext ?? "", env: keyEnv(k) }; rotating.value = null; } });
 }
 
+// Viewing and rotating a key are in the address with its id, found among the keys of the environment.
+const keyOf = (id: string) => list.value.find((k) => k.id === id);
+useSheetTarget("view-key", viewOpen, viewing, { id: (k) => k.id ?? "", find: keyOf });
+useSheetTarget("rotate-key", rotateOpen, rotating, { id: (k) => k.id ?? "", find: (id) => (props.canManage ? keyOf(id) : undefined) });
+
 function actionsOf(k: ApiKey): RowAction[] {
   const view: RowAction = { key: `view-${k.id}`, label: t("product.keys.viewPermissions"), icon: Eye, onSelect: () => (viewing.value = k) };
   if (!props.canManage || isRevoked(k)) return [view];
@@ -207,7 +214,7 @@ function doRevoke() {
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <Sheet v-model:open="making">
+  <Sheet v-model:open="making" :name="sheetName('new-key', env)">
     <SheetContent class="sm:max-w-xl" data-testid="new-key-sheet">
       <SheetHeader>
         <SheetTitle>{{ t(live ? "product.keys.createTitleLive" : "product.keys.createTitleSandbox") }}</SheetTitle>

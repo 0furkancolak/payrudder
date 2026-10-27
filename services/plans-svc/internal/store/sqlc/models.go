@@ -185,10 +185,21 @@ type ApiKey struct {
 }
 
 type App struct {
+	ID         uuid.UUID
+	AccountID  uuid.UUID
+	Name       string
+	Slug       string
+	CreatedAt  time.Time
+	ArchivedAt *time.Time
+	ArchivedBy *uuid.UUID
+}
+
+type AppAudit struct {
 	ID        uuid.UUID
-	AccountID uuid.UUID
-	Name      string
-	Slug      string
+	AppID     uuid.UUID
+	UserID    uuid.UUID
+	Action    string
+	Detail    json.RawMessage
 	CreatedAt time.Time
 }
 

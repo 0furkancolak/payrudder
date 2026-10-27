@@ -1116,7 +1116,8 @@
         "title": "Créditos de un cliente",
         "pick": "Elegir un cliente",
         "balance": "créditos disponibles",
-        "nextExpiry": "Una parte caduca el {when}"
+        "nextExpiry": "Una parte caduca el {when}",
+        "empty": "Elija un cliente para ver su saldo, sus créditos y su historial."
       },
       "lots": {
         "source": "Origen",
@@ -1188,6 +1189,13 @@
         "threshold": "Avisar por debajo de (créditos)",
         "save": "Guardar",
         "saved": "Guardado."
+      },
+      "tabs": {
+        "lots": "Concesiones"
+      },
+      "sell": {
+        "title": "Vender créditos",
+        "hint": "Los paquetes de créditos que sus clientes compran con un enlace de pago y la alerta de saldo bajo."
       }
     },
     "accounting": {
@@ -2462,7 +2470,8 @@
       },
       "api_key": {
         "tenant_not_active": "Este entorno no está activo y por eso no puede tener claves de API. Completa primero la lista de salida a producción.",
-        "bad_role": "El rol debe ser administrador, facturación, solo lectura, solo enviar uso o personalizado, con permisos conocidos."
+        "bad_role": "El rol debe ser administrador, facturación, solo lectura, solo enviar uso o personalizado, con permisos conocidos.",
+        "app_archived": "Esta aplicación se eliminó y por eso no puede tener claves de API."
       },
       "change": {
         "bad_proration": "El cargo de este cambio de plan no se puede calcular para este período.",
@@ -3448,7 +3457,14 @@
       "timezone": "Zona horaria",
       "grace": "Periodo de gracia",
       "tenant": "ID del entorno",
-      "moreCurrencies": "Una aplicación puede vender en varias monedas: añada un precio en otra moneda a un paquete, en"
+      "moreCurrencies": "Una aplicación puede vender en varias monedas: añada un precio en otra moneda a un paquete, en",
+      "rename": "Guardar nombre",
+      "dangerTitle": "Zona de peligro",
+      "deleteBody": "Eliminar una aplicación la quita de su cuenta: desaparece de todas las listas, sus claves de API dejan de funcionar al instante y no se pueden crear claves nuevas. No se borra nada. Sus clientes, facturas y pagos se conservan para la contabilidad y la retención legal, y la facturación sigue funcionando para lo que ya existe, así que cancele primero sus suscripciones si debe dejar de facturar.",
+      "delete": "Eliminar aplicación",
+      "confirmTitle": "¿Eliminar {name}?",
+      "confirmBody": "La aplicación se archiva: sus claves de API se revocan y desaparece de su cuenta. Sus registros de facturación se conservan. Esto no se puede deshacer desde la consola.",
+      "typeName": "Escriba {name} para confirmar"
     },
     "goLive": {
       "title": "Pasar a producción",

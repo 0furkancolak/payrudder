@@ -69,6 +69,11 @@ service IdentityService {
   rpc CreateMyApp(CreateMyAppRequest) returns (CreateMyAppResponse);
   rpc ListMyApps(ListMyAppsRequest) returns (ListMyAppsResponse);
   rpc GetMyApp(GetMyAppRequest) returns (GetMyAppResponse);
+  // RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
+  rpc RenameMyApp(RenameMyAppRequest) returns (RenameMyAppResponse);
+  // DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
+  // keys, no ingest) and its billing records stay for accounting and retention.
+  rpc DeleteMyApp(DeleteMyAppRequest) returns (DeleteMyAppResponse);
   // ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
   rpc ResolveMyTenant(ResolveMyTenantRequest) returns (ResolveMyTenantResponse);
   rpc CreateMyApiKey(CreateMyApiKeyRequest) returns (CreateMyApiKeyResponse);
@@ -261,6 +266,25 @@ message GetMyAppRequest {
 message GetMyAppResponse {
   App app = 1;
   string role = 2;
+}
+
+message RenameMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+  string name = 3;
+}
+
+message RenameMyAppResponse {
+  App app = 1;
+}
+
+message DeleteMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message DeleteMyAppResponse {
+  google.protobuf.Timestamp archive_time = 1;
 }
 
 message ResolveMyTenantRequest {

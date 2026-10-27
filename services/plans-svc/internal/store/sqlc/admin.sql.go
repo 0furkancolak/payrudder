@@ -7,11 +7,41 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const archiveApp = `-- name: ArchiveApp :one
+UPDATE apps
+SET archived_at = now(), archived_by = $1,
+    slug = rtrim(left(slug, 36), '-') || '-archived-' || right(replace(id::text, '-', ''), 12)
+WHERE id = $2 AND archived_at IS NULL
+RETURNING id, account_id, name, slug, created_at, archived_at, archived_by
+`
+
+type ArchiveAppParams struct {
+	UserID *uuid.UUID
+	ID     uuid.UUID
+}
+
+// Archiving frees the slug (a new app may take it): the old one is kept recognisable, and unique through the app's own id.
+func (q *Queries) ArchiveApp(ctx context.Context, arg ArchiveAppParams) (App, error) {
+	row := q.db.QueryRow(ctx, archiveApp, arg.UserID, arg.ID)
+	var i App
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.ArchivedAt,
+		&i.ArchivedBy,
+	)
+	return i, err
+}
 
 const expireApiKey = `-- name: ExpireApiKey :one
 UPDATE api_keys SET expires_at = LEAST(COALESCE(expires_at, $1::timestamptz), $1::timestamptz)
@@ -81,6 +111,25 @@ func (q *Queries) GetApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
 		&i.ExpiresAt,
 		&i.Role,
 		&i.Permissions,
+	)
+	return i, err
+}
+
+const getApp = `-- name: GetApp :one
+SELECT id, account_id, name, slug, created_at, archived_at, archived_by FROM apps WHERE id = $1
+`
+
+func (q *Queries) GetApp(ctx context.Context, id uuid.UUID) (App, error) {
+	row := q.db.QueryRow(ctx, getApp, id)
+	var i App
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.ArchivedAt,
+		&i.ArchivedBy,
 	)
 	return i, err
 }
@@ -184,7 +233,7 @@ func (q *Queries) InsertApiKey(ctx context.Context, arg InsertApiKeyParams) (Api
 }
 
 const insertApp = `-- name: InsertApp :one
-INSERT INTO apps (id, account_id, name, slug) VALUES ($1, $2, $3, $4) RETURNING id, account_id, name, slug, created_at
+INSERT INTO apps (id, account_id, name, slug) VALUES ($1, $2, $3, $4) RETURNING id, account_id, name, slug, created_at, archived_at, archived_by
 `
 
 type InsertAppParams struct {
@@ -208,8 +257,33 @@ func (q *Queries) InsertApp(ctx context.Context, arg InsertAppParams) (App, erro
 		&i.Name,
 		&i.Slug,
 		&i.CreatedAt,
+		&i.ArchivedAt,
+		&i.ArchivedBy,
 	)
 	return i, err
+}
+
+const insertAppAudit = `-- name: InsertAppAudit :exec
+INSERT INTO app_audit (id, app_id, user_id, action, detail) VALUES ($1, $2, $3, $4, $5::jsonb)
+`
+
+type InsertAppAuditParams struct {
+	ID     uuid.UUID
+	AppID  uuid.UUID
+	UserID uuid.UUID
+	Action string
+	Detail json.RawMessage
+}
+
+func (q *Queries) InsertAppAudit(ctx context.Context, arg InsertAppAuditParams) error {
+	_, err := q.db.Exec(ctx, insertAppAudit,
+		arg.ID,
+		arg.AppID,
+		arg.UserID,
+		arg.Action,
+		arg.Detail,
+	)
+	return err
 }
 
 const insertTenant = `-- name: InsertTenant :one
@@ -270,9 +344,10 @@ func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Ten
 }
 
 const listAccountApps = `-- name: ListAccountApps :many
-SELECT id, account_id, name, slug, created_at FROM apps WHERE account_id = $1 ORDER BY created_at, id
+SELECT id, account_id, name, slug, created_at, archived_at, archived_by FROM apps WHERE account_id = $1 AND archived_at IS NULL ORDER BY created_at, id
 `
 
+// The apps an account shows: an archived (deleted) app is not one of them.
 func (q *Queries) ListAccountApps(ctx context.Context, accountID uuid.UUID) ([]App, error) {
 	rows, err := q.db.Query(ctx, listAccountApps, accountID)
 	if err != nil {
@@ -288,6 +363,41 @@ func (q *Queries) ListAccountApps(ctx context.Context, accountID uuid.UUID) ([]A
 			&i.Name,
 			&i.Slug,
 			&i.CreatedAt,
+			&i.ArchivedAt,
+			&i.ArchivedBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAccountAppsWithArchived = `-- name: ListAccountAppsWithArchived :many
+SELECT id, account_id, name, slug, created_at, archived_at, archived_by FROM apps WHERE account_id = $1 ORDER BY created_at, id
+`
+
+// The operator also sees the archived apps (they keep their billing records).
+func (q *Queries) ListAccountAppsWithArchived(ctx context.Context, accountID uuid.UUID) ([]App, error) {
+	rows, err := q.db.Query(ctx, listAccountAppsWithArchived, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []App{}
+	for rows.Next() {
+		var i App
+		if err := rows.Scan(
+			&i.ID,
+			&i.AccountID,
+			&i.Name,
+			&i.Slug,
+			&i.CreatedAt,
+			&i.ArchivedAt,
+			&i.ArchivedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -416,6 +526,66 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 	return items, nil
 }
 
+const lockApp = `-- name: LockApp :one
+SELECT id, account_id, name, slug, created_at, archived_at, archived_by FROM apps WHERE id = $1 FOR UPDATE
+`
+
+// Locks the app for the rest of the transaction, so a rename and a delete (or two deletes) of one app are taken one after the other.
+func (q *Queries) LockApp(ctx context.Context, id uuid.UUID) (App, error) {
+	row := q.db.QueryRow(ctx, lockApp, id)
+	var i App
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.ArchivedAt,
+		&i.ArchivedBy,
+	)
+	return i, err
+}
+
+const renameApp = `-- name: RenameApp :one
+UPDATE apps SET name = $1 WHERE id = $2 AND archived_at IS NULL RETURNING id, account_id, name, slug, created_at, archived_at, archived_by
+`
+
+type RenameAppParams struct {
+	Name string
+	ID   uuid.UUID
+}
+
+func (q *Queries) RenameApp(ctx context.Context, arg RenameAppParams) (App, error) {
+	row := q.db.QueryRow(ctx, renameApp, arg.Name, arg.ID)
+	var i App
+	err := row.Scan(
+		&i.ID,
+		&i.AccountID,
+		&i.Name,
+		&i.Slug,
+		&i.CreatedAt,
+		&i.ArchivedAt,
+		&i.ArchivedBy,
+	)
+	return i, err
+}
+
+const renameAppTenants = `-- name: RenameAppTenants :exec
+UPDATE tenants SET name = CASE WHEN environment = 'sandbox' THEN $1::text || ' (sandbox)' ELSE $1::text END
+WHERE app_id = $2
+`
+
+type RenameAppTenantsParams struct {
+	Name  string
+	AppID uuid.UUID
+}
+
+// The tenants carry the app's name (the sandbox with its suffix): it is what the seller line of a new invoice says. Issued invoices keep their snapshot.
+func (q *Queries) RenameAppTenants(ctx context.Context, arg RenameAppTenantsParams) error {
+	_, err := q.db.Exec(ctx, renameAppTenants, arg.Name, arg.AppID)
+	return err
+}
+
 const resolveApiKey = `-- name: ResolveApiKey :one
 SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.role, k.permissions, k.expires_at, t.environment, t.status AS tenant_status, t.tier, t.timezone
 FROM api_keys k JOIN tenants t ON t.id = k.tenant_id
@@ -481,6 +651,46 @@ func (q *Queries) RevokeApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error
 		&i.Permissions,
 	)
 	return i, err
+}
+
+const revokeAppApiKeys = `-- name: RevokeAppApiKeys :many
+UPDATE api_keys k SET status = 'revoked', revoked_at = COALESCE(k.revoked_at, now())
+FROM tenants t
+WHERE t.id = k.tenant_id AND t.app_id = $1 AND k.status = 'active'
+RETURNING k.id, k.tenant_id, k.prefix, k.key_hash, k.env, k.status, k.created_at, k.revoked_at, k.last_used_at, k.expires_at, k.role, k.permissions
+`
+
+func (q *Queries) RevokeAppApiKeys(ctx context.Context, appID uuid.UUID) ([]ApiKey, error) {
+	rows, err := q.db.Query(ctx, revokeAppApiKeys, appID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ApiKey{}
+	for rows.Next() {
+		var i ApiKey
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Prefix,
+			&i.KeyHash,
+			&i.Env,
+			&i.Status,
+			&i.CreatedAt,
+			&i.RevokedAt,
+			&i.LastUsedAt,
+			&i.ExpiresAt,
+			&i.Role,
+			&i.Permissions,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setTenantStatus = `-- name: SetTenantStatus :one

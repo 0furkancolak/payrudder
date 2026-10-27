@@ -5,6 +5,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { appRows } from "@/features/providers/connections";
 import ProviderSheet from "@/features/providers/ProviderSheet.vue";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -39,6 +40,9 @@ function openSheet(p: LiveProviderName) {
   sheetProvider.value = p;
   sheetOpen.value = true;
 }
+// The provider being connected is in the address (`connect-provider:stripe`), so a reload brings the sheet back once the apps have loaded.
+const providerTarget = computed<LiveProviderName | null>({ get: () => sheetProvider.value || null, set: (v) => (sheetProvider.value = v ?? "") });
+useSheetTarget("connect-provider", sheetOpen, providerTarget, { id: (p) => p, find: (id) => (rows.value.length > 0 && isLiveProvider(id) ? id : undefined) });
 function onDone(s: { provider: LiveProviderName; ok: number; failed: number }) {
   notice.value = s.failed === 0 ? t("product.goLive.provider.connectedNow", { provider: providerName(s.provider) }) : "";
 }

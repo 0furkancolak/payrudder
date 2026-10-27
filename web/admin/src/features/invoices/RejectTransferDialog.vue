@@ -2,6 +2,7 @@
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
+import { sheetName } from "@/shared/lib/sheets";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -38,7 +39,7 @@ function confirm() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" :name="sheetName(outcome === 'expired' ? 'expire-transfer' : 'reject-transfer', invoiceId)">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ outcome === "expired" ? t("invoice.transfer.expireTitle") : t("invoice.transfer.rejectTitle") }}</SheetTitle>

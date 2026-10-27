@@ -22,6 +22,8 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { names } from "@/shared/lib/sheets";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CATEGORIES, downloadCsv, receiptUrl, useAccountingSummary, useExpenseRules, useExpenses, useInboxItems, type Expense, type InboxItem } from "./api";
@@ -143,6 +145,18 @@ function voidOne(e: Expense) {
   voiding.value = e;
   voidOpen.value = true;
 }
+// Editing and voiding an expense are in the address with its id (a new expense, the scan and the rules have names of their own): a reload or a shared link opens the form once the expenses have loaded.
+const expenseOf = (id: string) => expenses.data.value?.expenses?.find((e) => e.id === id);
+useSheetTarget("edit-expense", dialogOpen, editing, { id: (e) => e.id ?? "", find: expenseOf });
+useSheetTarget("void-expense", voidOpen, voiding, { id: (e) => e.id ?? "", find: expenseOf });
+// The inbox review is the scan sheet with the inbox's items; the address holds only that it is open, so the items are read again.
+watch(
+  [() => names.value.includes("review-inbox"), () => inboxItems.data.value],
+  ([named, data]) => {
+    if (named && data && !scanInbox.value) scanInbox.value = data.items ?? [];
+  },
+  { immediate: true },
+);
 
 const exporting = ref(false);
 async function exportCsv(report: "export" | "coupons" = "export") {

@@ -56,6 +56,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Apps", testApps)
 	t.Run("Identity", testIdentity)
 	t.Run("Onboarding", testOnboarding)
+	t.Run("AppRenameAndDelete", testAppRenameAndDelete)
 	t.Run("GoLive", testGoLive)
 	t.Run("OwnerGoLiveSteps", testOwnerGoLiveSteps)
 	t.Run("Promote", testPromote)
