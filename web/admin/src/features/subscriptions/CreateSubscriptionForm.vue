@@ -12,7 +12,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import type { SubscriptionActions } from "./api";
-import { INTERVALS, type Interval, intervalKey } from "./lib";
+import { INTERVALS, type Interval, intervalKey, MAX_SEATS, parseSeats } from "./lib";
 
 /**
  * Starts a subscription: customer, package, currency, interval, trial days, a provider (or the routing rules), and a coupon code. `forCustomer` picks
@@ -31,6 +31,9 @@ const packageTrial = computed(() => props.packages.find((p) => p.plan.code === p
 const provider = ref("");
 const coupon = ref("");
 const interval = ref<Interval>("SUBSCRIPTION_INTERVAL_MONTH");
+// Empty is one seat.
+const seats = ref<string | number>("");
+const parsedSeats = computed(() => parseSeats(seats.value));
 
 // A sheet that was closed opens clean.
 watch(open, (v) => {
@@ -38,12 +41,14 @@ watch(open, (v) => {
     plan.value = currency.value = provider.value = coupon.value = "";
     customer.value = props.forCustomer ?? "";
     trialDays.value = "";
+    seats.value = "";
     interval.value = "SUBSCRIPTION_INTERVAL_MONTH";
     props.act.create.reset();
   }
 });
 
 function create() {
+  if (parsedSeats.value === "bad") return;
   props.act.create.mutate(
     {
       customer_external_id: customer.value,
@@ -53,6 +58,7 @@ function create() {
       provider: provider.value || undefined,
       interval: interval.value,
       coupon_code: coupon.value.trim() || undefined,
+      quantity: parsedSeats.value ?? undefined,
     },
     { onSuccess: () => ((trialDays.value = ""), (coupon.value = ""), (open.value = false)) },
   );
@@ -85,6 +91,11 @@ function create() {
               :placeholder="packageTrial > 0 ? t('billing.subscriptions.trialDefault', { days: packageTrial }) : t('billing.subscriptions.trialDays')"
             />
             <p class="text-muted-foreground text-xs" data-testid="trial-hint">{{ t("billing.subscriptions.trialHint") }}</p>
+          </div>
+          <div class="grid gap-1.5">
+            <Input v-model="seats" type="number" min="1" :max="MAX_SEATS" inputmode="numeric" :aria-label="t('billing.subscriptions.seats')" :placeholder="t('billing.subscriptions.seatsDefault')" data-testid="new-seats" />
+            <p v-if="parsedSeats === 'bad'" class="text-destructive text-xs" role="alert">{{ t("billing.subscriptions.seatsBad", { max: MAX_SEATS }) }}</p>
+            <p v-else class="text-muted-foreground text-xs" data-testid="seats-hint">{{ t("billing.subscriptions.seatsHint") }}</p>
           </div>
           <NativeSelect v-model="provider" :aria-label="t('billing.subscriptions.provider')">
             <option value="">{{ t("billing.subscriptions.byRules") }}</option>

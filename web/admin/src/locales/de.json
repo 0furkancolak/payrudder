@@ -594,7 +594,7 @@
       "monthly": "Monatlich",
       "yearly": "Jährlich",
       "change": {
-        "title": "Paket oder Zeitraum ändern",
+        "title": "Paket, Zeitraum oder Plätze ändern",
         "plan": "Neues Paket",
         "keepPlan": "Paket beibehalten",
         "interval": "Neuer Zeitraum",
@@ -619,7 +619,12 @@
         "due": "{amount} werden jetzt in Rechnung gestellt",
         "creditAdded": "{amount} werden dem Guthaben gutgeschrieben",
         "scheduled": "Geplant: {plan} ({interval}) ab {date}",
-        "withdraw": "Zurückziehen"
+        "withdraw": "Zurückziehen",
+        "seats": "Neue Anzahl Plätze",
+        "keepSeats": "Plätze: {n} beibehalten",
+        "seatsHint": "Eine reine Änderung der Plätze gilt sofort und wird anteilig berechnet: zusätzliche Plätze werden für den Rest des Zeitraums berechnet, weniger Plätze werden zum Guthaben. Die Vorschau zeigt den Betrag.",
+        "seatsAfter": "Plätze nach der Änderung",
+        "scheduledSeats": "Geplant: {plan} ({interval}), {seats} Plätze ab {date}"
       },
       "providerRun": {
         "title": "Betrieben von {provider}",
@@ -647,7 +652,12 @@
       "trialEnds": "Test endet am {date}",
       "trialsEnding": "{n} Testphase endet innerhalb von {days} Tagen | {n} Testphasen enden innerhalb von {days} Tagen",
       "showTrials": "Testphasen anzeigen",
-      "trialBanner": "Die Testphase endet am {date}, in {n} Tag. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet. | Die Testphase endet am {date}, in {n} Tagen. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet."
+      "trialBanner": "Die Testphase endet am {date}, in {n} Tag. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet. | Die Testphase endet am {date}, in {n} Tagen. Bis dahin ist keine Karte nötig; die erste Gebühr wird nach dem Ende berechnet.",
+      "seats": "Plätze",
+      "seatsDefault": "Plätze (Standard 1)",
+      "seatsHint": "Die Grundgebühr wird mit den Plätzen multipliziert, Nutzungspreise nicht. Nur für ein Abonnement, das Payrudder führt und im Voraus abrechnet.",
+      "seatsBad": "Die Plätze müssen eine ganze Zahl von 1 bis {max} sein.",
+      "seatsCount": "{n} Platz | {n} Plätze"
     },
     "payments": {
       "reconcile": "Mit dem Hauptbuch abgleichen",

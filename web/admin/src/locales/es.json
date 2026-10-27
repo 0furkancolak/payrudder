@@ -594,7 +594,7 @@
       "monthly": "Mensual",
       "yearly": "Anual",
       "change": {
-        "title": "Cambiar paquete o periodo",
+        "title": "Cambiar paquete, periodo o asientos",
         "plan": "Nuevo paquete",
         "keepPlan": "Mantener paquete",
         "interval": "Nuevo periodo",
@@ -619,7 +619,12 @@
         "due": "Se factura {amount} ahora",
         "creditAdded": "Se añade {amount} al saldo a favor",
         "scheduled": "Programado: {plan} ({interval}) desde {date}",
-        "withdraw": "Retirar"
+        "withdraw": "Retirar",
+        "seats": "Nuevo número de asientos",
+        "keepSeats": "Asientos: mantener {n}",
+        "seatsHint": "Un cambio solo de asientos es inmediato y prorrateado: los asientos añadidos se cobran por el resto del periodo y los quitados pasan a saldo a favor. La vista previa muestra el importe.",
+        "seatsAfter": "Asientos tras el cambio",
+        "scheduledSeats": "Programado: {plan} ({interval}), {seats} asientos desde {date}"
       },
       "providerRun": {
         "title": "Gestionado por {provider}",
@@ -647,7 +652,12 @@
       "trialEnds": "la prueba termina el {date}",
       "trialsEnding": "{n} prueba termina en {days} días | {n} pruebas terminan en {days} días",
       "showTrials": "Mostrar pruebas",
-      "trialBanner": "La prueba termina el {date}, en {n} día. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar. | La prueba termina el {date}, en {n} días. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar."
+      "trialBanner": "La prueba termina el {date}, en {n} día. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar. | La prueba termina el {date}, en {n} días. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar.",
+      "seats": "Asientos",
+      "seatsDefault": "Asientos (1 por defecto)",
+      "seatsHint": "La tarifa fija se multiplica por los asientos; los precios por uso no. Solo para una suscripción que Payrudder gestiona y factura por adelantado.",
+      "seatsBad": "Los asientos deben ser un número entero de 1 a {max}.",
+      "seatsCount": "{n} asiento | {n} asientos"
     },
     "payments": {
       "reconcile": "Conciliar con el libro",

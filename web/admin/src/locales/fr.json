@@ -594,7 +594,7 @@
       "monthly": "Mensuel",
       "yearly": "Annuel",
       "change": {
-        "title": "Changer de forfait ou de période",
+        "title": "Changer de forfait, de période ou de nombre de sièges",
         "plan": "Nouveau forfait",
         "keepPlan": "Garder le forfait",
         "interval": "Nouvelle période",
@@ -619,7 +619,12 @@
         "due": "{amount} sont facturés maintenant",
         "creditAdded": "{amount} sont ajoutés au solde créditeur",
         "scheduled": "Programmé : {plan} ({interval}) à partir du {date}",
-        "withdraw": "Retirer"
+        "withdraw": "Retirer",
+        "seats": "Nouveau nombre de sièges",
+        "keepSeats": "Sièges : garder {n}",
+        "seatsHint": "Un changement de sièges seul est immédiat et calculé au prorata : les sièges ajoutés sont facturés pour le reste de la période, les sièges retirés deviennent un avoir. L'aperçu montre le montant.",
+        "seatsAfter": "Sièges après le changement",
+        "scheduledSeats": "Programmé : {plan} ({interval}), {seats} sièges à partir du {date}"
       },
       "providerRun": {
         "title": "Géré par {provider}",
@@ -647,7 +652,12 @@
       "trialEnds": "essai jusqu'au {date}",
       "trialsEnding": "{n} essai se termine dans les {days} jours | {n} essais se terminent dans les {days} jours",
       "showTrials": "Afficher les essais",
-      "trialBanner": "L'essai se termine le {date}, dans {n} jour. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin. | L'essai se termine le {date}, dans {n} jours. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin."
+      "trialBanner": "L'essai se termine le {date}, dans {n} jour. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin. | L'essai se termine le {date}, dans {n} jours. Aucune carte n'est requise d'ici là ; le premier tarif est facturé à sa fin.",
+      "seats": "Sièges",
+      "seatsDefault": "Sièges (1 par défaut)",
+      "seatsHint": "Le tarif fixe est multiplié par le nombre de sièges, pas les prix à l'usage. Uniquement pour un abonnement que Payrudder gère et facture à l'avance.",
+      "seatsBad": "Le nombre de sièges doit être un entier de 1 à {max}.",
+      "seatsCount": "{n} siège | {n} sièges"
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",

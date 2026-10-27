@@ -594,7 +594,7 @@
       "monthly": "Aylık",
       "yearly": "Yıllık",
       "change": {
-        "title": "Paketi veya dönemi değiştir",
+        "title": "Paketi, dönemi veya koltukları değiştir",
         "plan": "Yeni paket",
         "keepPlan": "Paket aynı kalsın",
         "interval": "Yeni dönem",
@@ -619,7 +619,12 @@
         "due": "{amount} şimdi faturalanır",
         "creditAdded": "{amount} kredi bakiyesine eklenir",
         "scheduled": "Planlandı: {plan} ({interval}), {date} tarihinden itibaren",
-        "withdraw": "Geri çek"
+        "withdraw": "Geri çek",
+        "seats": "Yeni koltuk sayısı",
+        "keepSeats": "Koltuk: {n} kalsın",
+        "seatsHint": "Yalnızca koltuk değişikliği hemen yapılır ve orantılanır: fazla koltuklar dönemin kalanı için ücretlendirilir, eksilen koltuklar alacağa dönüşür. Önizleme tutarı gösterir.",
+        "seatsAfter": "Değişiklikten sonraki koltuk",
+        "scheduledSeats": "Planlandı: {plan} ({interval}), {seats} koltuk, {date} tarihinden itibaren"
       },
       "providerRun": {
         "title": "{provider} yönetiyor",
@@ -647,7 +652,12 @@
       "trialEnds": "deneme {date} tarihinde biter",
       "trialsEnding": "{n} deneme {days} gün içinde bitiyor | {n} deneme {days} gün içinde bitiyor",
       "showTrials": "Denemeleri göster",
-      "trialBanner": "Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır. | Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır."
+      "trialBanner": "Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır. | Deneme {date} tarihinde, {n} gün sonra bitiyor. O zamana kadar kart gerekmez; ilk ücret deneme bitince faturalanır.",
+      "seats": "Koltuk",
+      "seatsDefault": "Koltuk sayısı (varsayılan 1)",
+      "seatsHint": "Sabit ücret koltuk sayısıyla çarpılır; kullanım fiyatları çarpılmaz. Yalnızca Payrudder'ın yürüttüğü ve peşin faturaladığı abonelik için.",
+      "seatsBad": "Koltuk sayısı 1 ile {max} arasında bir tam sayı olmalıdır.",
+      "seatsCount": "{n} koltuk | {n} koltuk"
     },
     "payments": {
       "reconcile": "Defterle mutabakat",

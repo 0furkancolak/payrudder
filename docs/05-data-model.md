@@ -97,7 +97,7 @@ CREATE TABLE go_live_audit (                          -- phase 45 follow-up: wha
   action text NOT NULL CHECK (action IN ('billing_profile_saved','terms_accepted')),
   detail jsonb NOT NULL DEFAULT '{}',                    -- the country and whether a tax id was given, never the profile
   created_at timestamptz NOT NULL DEFAULT now()
-);   -- the provider connection is audited in payments_db (provider_account_events)
+);   -- the provider connection is audited in payments_db (provider_account_events); a sandbox tenant's test-mode account is a provider_accounts row there with environment = 'sandbox' (phase 54, no new table)
 
 CREATE TABLE api_keys (
   id          uuid PRIMARY KEY,
