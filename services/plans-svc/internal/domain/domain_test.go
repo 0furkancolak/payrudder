@@ -86,23 +86,23 @@ func TestValidateMeter(t *testing.T) {
 	ok := &plansv1.CreateMeterRequest{Code: "gb_hours", Aggregation: plansv1.Aggregation_AGGREGATION_SUM,
 		ValueProperty: "gb_h", QuantityScale: 3, UnitLabel: "GB-h",
 		Filter: map[string]*plansv1.FilterValues{"region": {Values: []string{"eu", "us", "eu"}}}}
-	in, err := ValidateMeter(ok, -1)
+	in, err := ValidateMeter(ok, -1, "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if string(in.Filter) != `{"region":["eu","us"]}` || *in.ValueProperty != "gb_h" {
 		t.Fatalf("meter input = %+v filter=%s", in, in.Filter)
 	}
-	if _, err := ValidateMeter(ok, 2); !contains(fields(t, err), "quantity_scale") {
+	if _, err := ValidateMeter(ok, 2, ""); !contains(fields(t, err), "quantity_scale") {
 		t.Fatal("scale change across versions accepted")
 	}
 	count := &plansv1.CreateMeterRequest{Code: "api_calls", Aggregation: plansv1.Aggregation_AGGREGATION_COUNT,
 		ValueProperty: "x", UnitLabel: "calls"}
-	if !contains(fields(t, func() error { _, e := ValidateMeter(count, -1); return e }()), "value_property") {
+	if !contains(fields(t, func() error { _, e := ValidateMeter(count, -1, ""); return e }()), "value_property") {
 		t.Fatal("COUNT with value_property accepted")
 	}
 	bad := &plansv1.CreateMeterRequest{Code: "Bad-Code", QuantityScale: 7}
-	got := fields(t, func() error { _, e := ValidateMeter(bad, -1); return e }())
+	got := fields(t, func() error { _, e := ValidateMeter(bad, -1, ""); return e }())
 	for _, f := range []string{"code", "aggregation", "quantity_scale", "unit_label"} {
 		if !contains(got, f) {
 			t.Errorf("missing violation for %s: %v", f, got)

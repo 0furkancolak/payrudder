@@ -19,8 +19,20 @@ export interface QuotaDraft {
 /** A fresh quota: the billing month, hard, the default alerts. */
 export const newQuota = (): QuotaDraft => ({ limit: "", window: "QUOTA_WINDOW_MONTH", mode: "QUOTA_MODE_HARD", thresholds: "" });
 
-/** The aggregations the engine computes: every one is summed, counted or maximised exactly by the aggregator, limits-svc and rating. */
-export const AGGREGATIONS: readonly Aggregation[] = ["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"];
+/**
+ * The aggregations the engine computes, each exactly by the aggregator, limits-svc and rating: summed, counted, maximised, the number of distinct values of
+ * a property (UNIQUE) or the quantity of the latest event of the period (LAST).
+ */
+export const AGGREGATIONS: readonly Aggregation[] = ["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX", "AGGREGATION_UNIQUE", "AGGREGATION_LAST"];
+
+/** UNIQUE keeps a set of values and LAST the winning event beside the totals, so a code cannot change into or out of them in a later version. */
+export const isRowShaped = (a: Aggregation | undefined): boolean => a === "AGGREGATION_UNIQUE" || a === "AGGREGATION_LAST";
+
+/** The aggregations the next version of a meter may take: any for a new meter, its own for a UNIQUE or LAST one, and SUM, COUNT or MAX for the others. */
+export function aggregationsFor(base?: Aggregation): readonly Aggregation[] {
+  if (!base) return AGGREGATIONS;
+  return isRowShaped(base) ? [base] : AGGREGATIONS.filter((a) => !isRowShaped(a));
+}
 
 /** The windows a quota can count over, shortest first. The month is the billing period (the default); a lifetime quota never starts again. */
 export const WINDOWS: readonly QuotaWindow[] = [

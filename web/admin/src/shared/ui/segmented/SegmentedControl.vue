@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { cn } from "@/shared/lib/utils";
 
-/** Two to four options as one pill: a radio group underneath, so the arrow keys and screen readers work as they should. */
+/** Two to five options as one pill (it wraps on a narrow screen): a radio group underneath, so the arrow keys and screen readers work as they should. */
 defineProps<{ options: { value: string; label: string }[]; label: string }>();
 const model = defineModel<string>({ required: true });
 </script>
 
 <template>
-  <div role="radiogroup" :aria-label="label" class="bg-muted inline-flex rounded-xl p-1">
+  <div role="radiogroup" :aria-label="label" class="bg-muted inline-flex max-w-full flex-wrap rounded-xl p-1">
     <label
       v-for="o in options"
       :key="o.value"

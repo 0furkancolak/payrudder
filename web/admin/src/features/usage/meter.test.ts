@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregationKey, emptyMeterForm, formOfMeter, toMeterBody } from "./meter";
+import { AGGREGATIONS, aggregationKey, aggregationsFor, emptyMeterForm, formOfMeter, isRowShaped, toMeterBody } from "./meter";
 
 const form = (over: Partial<ReturnType<typeof emptyMeterForm>> = {}) => ({ ...emptyMeterForm(), code: "api_calls", unit: "calls", property: "count", ...over });
 
@@ -26,6 +26,21 @@ describe("toMeterBody", () => {
     expect(toMeterBody(form({ filters: [{ property: "a", values: "1" }, { property: "a", values: "2" }] }))).toEqual({ error: "filter" });
   });
 
+  it("makes a UNIQUE meter count the property it names, in whole numbers", () => {
+    expect(toMeterBody(form({ aggregation: "AGGREGATION_UNIQUE", property: "user_id" }))).toEqual({
+      body: { code: "api_calls", aggregation: "AGGREGATION_UNIQUE", unit_label: "calls", quantity_scale: 0, value_property: "user_id" },
+    });
+    expect(toMeterBody(form({ aggregation: "AGGREGATION_UNIQUE", property: "" }))).toEqual({ error: "propertyUnique" });
+    expect(toMeterBody(form({ aggregation: "AGGREGATION_UNIQUE", property: "user_id", scale: "2" }))).toEqual({ error: "uniqueScale" });
+  });
+
+  it("makes a LAST meter like a sum meter: a quantity property and its own decimal places", () => {
+    expect(toMeterBody(form({ aggregation: "AGGREGATION_LAST", property: "seats", scale: "2" }))).toEqual({
+      body: { code: "api_calls", aggregation: "AGGREGATION_LAST", unit_label: "calls", quantity_scale: 2, value_property: "seats" },
+    });
+    expect(toMeterBody(form({ aggregation: "AGGREGATION_LAST", property: "" }))).toEqual({ error: "property" });
+  });
+
   it("ignores a filter row nobody filled in", () => {
     expect(toMeterBody(form({ filters: [{ property: "", values: "" }] }))).toMatchObject({ body: { code: "api_calls" } });
   });
@@ -38,5 +53,23 @@ describe("formOfMeter", () => {
   });
   it("names an aggregation by its short word", () => {
     expect(aggregationKey("AGGREGATION_COUNT")).toBe("count");
+    expect(aggregationKey("AGGREGATION_UNIQUE")).toBe("unique");
+    expect(aggregationKey("AGGREGATION_LAST")).toBe("last");
+  });
+});
+
+describe("the aggregations of the next version", () => {
+  it("offers every aggregation for a new meter", () => {
+    expect(aggregationsFor(undefined)).toEqual(AGGREGATIONS);
+    expect(AGGREGATIONS).toHaveLength(5);
+  });
+  it("keeps UNIQUE and LAST fixed per code, as the API does", () => {
+    expect(aggregationsFor("AGGREGATION_UNIQUE")).toEqual(["AGGREGATION_UNIQUE"]);
+    expect(aggregationsFor("AGGREGATION_LAST")).toEqual(["AGGREGATION_LAST"]);
+    expect(aggregationsFor("AGGREGATION_SUM")).toEqual(["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"]);
+    expect(aggregationsFor("AGGREGATION_MAX")).not.toContain("AGGREGATION_UNIQUE");
+    expect(isRowShaped("AGGREGATION_LAST")).toBe(true);
+    expect(isRowShaped("AGGREGATION_MAX")).toBe(false);
+    expect(isRowShaped(undefined)).toBe(false);
   });
 });

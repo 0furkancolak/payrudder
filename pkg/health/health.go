@@ -112,7 +112,11 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 // Serve runs the handler on addr until ctx is cancelled, then shuts down gracefully.
 func Serve(ctx context.Context, addr string, h http.Handler) error {
-	srv := &http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: 5 * time.Second}
+	return ServeServer(ctx, &http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: 5 * time.Second})
+}
+
+// ServeServer is Serve for a server that has its own timeouts.
+func ServeServer(ctx context.Context, srv *http.Server) error {
 	errc := make(chan error, 1)
 	go func() { errc <- srv.ListenAndServe() }()
 	select {

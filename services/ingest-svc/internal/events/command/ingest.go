@@ -147,6 +147,9 @@ func (c *Commands) prepare(ctx context.Context, b batch, idx int, ev *ingestv1.I
 	if !ok {
 		return nil, &domain.Reject{Code: domain.CodeUnknownCustomer, Message: fmt.Sprintf("customer %q does not exist", ev.GetCustomerExternalId())}, nil
 	}
+	if rej := domain.CheckDistinctProperty(ev.GetProperties(), meter.DistinctProperty); rej != nil {
+		return nil, rej, nil
+	}
 	units, rej := domain.ParseQuantity(ev.GetQuantity(), meter.Scale)
 	if rej != nil {
 		return nil, rej, nil

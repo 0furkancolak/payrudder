@@ -267,9 +267,9 @@ func newSandbox(cfg *Config, log *slog.Logger, _, systemPool *pgxpool.Pool) (*sa
 		if addr == "" {
 			return sandbox.Step{Name: name}, nil
 		}
-		conn, err := grpcx.NewClient(addr, grpc.WithChainUnaryInterceptor(tenant.UnaryClientInterceptor()))
+		conn, err := grpcx.NewTenantClient(name, addr)
 		if err != nil {
-			return sandbox.Step{}, fmt.Errorf("%s client: %w", name, err)
+			return sandbox.Step{}, err
 		}
 		conns = append(conns, conn)
 		return sandbox.GRPC(name, adminv1.NewSandboxResetServiceClient(conn)), nil

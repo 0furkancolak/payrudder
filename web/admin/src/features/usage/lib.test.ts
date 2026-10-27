@@ -73,6 +73,12 @@ describe("decimals", () => {
     expect(totalOf("AGGREGATION_COUNT", ["4", "1"])).toBe("5");
   });
 
+  it("gives no total for a meter that counts distinct values or takes the latest value: raw event buckets cannot make one", () => {
+    expect(totalOf("AGGREGATION_UNIQUE", ["4", "1"])).toBe("");
+    expect(totalOf("AGGREGATION_LAST", ["4", "1"])).toBe("");
+    expect(formatQuantity(totalOf("AGGREGATION_UNIQUE", ["4"]), "en")).toBe("—");
+  });
+
   it("compares like a comparator", () => {
     expect(compareDecimals("10.5", "10.50")).toBe(0);
     expect(compareDecimals("2", "10")).toBe(-1);

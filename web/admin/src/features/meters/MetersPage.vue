@@ -21,7 +21,7 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreateMeter, useMeters, type NewMeter } from "./api";
-import { AGGREGATIONS, categories, UNIT_SUGGESTIONS, type Aggregation, type Meter } from "./quota";
+import { AGGREGATIONS, aggregationsFor, categories, isRowShaped, UNIT_SUGGESTIONS, type Aggregation, type Meter } from "./quota";
 
 /**
  * The meters of a tenant: what is measured, how events add up, in which unit, and under which category of the tenant's own. A meter is versioned: a new
@@ -60,6 +60,14 @@ const unit = ref("");
 const scale = ref("0");
 const filters = ref<{ property: string; values: string }[]>([]);
 const formError = ref("");
+const distinct = computed(() => aggregation.value === "AGGREGATION_UNIQUE");
+// The aggregations a new version may take (UNIQUE and LAST are fixed per code), and a count of distinct values has no decimal places.
+const baseAggregation = computed(() => list.value.find((m) => m.code === versionOf.value)?.aggregation);
+const choices = computed(() => aggregationsFor(baseAggregation.value));
+const locked = computed(() => isRowShaped(baseAggregation.value));
+watch(distinct, (d) => {
+  if (d) scale.value = "0";
+});
 
 function start(m?: Meter) {
   versionOf.value = m?.code ?? "";
@@ -127,14 +135,15 @@ function submit() {
           <label class="grid gap-1 text-sm">
             <span class="text-muted-foreground">{{ t("billing.meters.aggregation") }}</span>
             <NativeSelect v-model="aggregation" :aria-label="t('billing.meters.aggregation')">
-              <option v-for="a in AGGREGATIONS" :key="a" :value="a">{{ t(`billing.meters.aggregations.${aggWord(a)}`) }}</option>
+              <option v-for="a in choices" :key="a" :value="a">{{ t(`billing.meters.aggregations.${aggWord(a)}`) }}</option>
             </NativeSelect>
             <span class="text-muted-foreground text-xs">{{ t(`billing.meters.aggregationHelp.${aggWord(aggregation)}`) }}</span>
+            <span v-if="versionOf" class="text-muted-foreground text-xs" data-testid="aggregation-locked">{{ locked ? t("billing.meters.aggregationLocked") : t("billing.meters.aggregationOpen") }}</span>
           </label>
-          <Input v-if="aggregation !== 'AGGREGATION_COUNT'" v-model="valueProperty" :aria-label="t('billing.meters.valueProperty')" :placeholder="t('billing.meters.valuePropertyPlaceholder')" required />
+          <Input v-if="aggregation !== 'AGGREGATION_COUNT'" v-model="valueProperty" :aria-label="distinct ? t('billing.meters.valuePropertyUnique') : t('billing.meters.valueProperty')" :placeholder="distinct ? t('billing.meters.valuePropertyUniquePlaceholder') : t('billing.meters.valuePropertyPlaceholder')" required />
           <div class="grid grid-cols-[1fr_8rem] gap-2">
             <Input v-model="unit" list="meter-units" maxlength="32" :aria-label="t('billing.meters.unit')" :placeholder="t('billing.meters.unitPlaceholder')" required />
-            <NativeSelect v-model="scale" :disabled="versionOf !== ''" :aria-label="t('billing.meters.scale')">
+            <NativeSelect v-model="scale" :disabled="versionOf !== '' || distinct" :aria-label="t('billing.meters.scale')">
               <option v-for="n in 7" :key="n" :value="String(n - 1)">{{ t("billing.meters.decimals", { n: n - 1 }) }}</option>
             </NativeSelect>
           </div>

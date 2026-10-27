@@ -1,7 +1,16 @@
 import type { NewMeter } from "./api";
 
 export type Aggregation = NewMeter["aggregation"];
-export const AGGREGATIONS: Aggregation[] = ["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"];
+export const AGGREGATIONS: Aggregation[] = ["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX", "AGGREGATION_UNIQUE", "AGGREGATION_LAST"];
+
+/** UNIQUE keeps a set of values and LAST the winning event beside the totals, so a code cannot change into or out of them in a later version. */
+export const isRowShaped = (a: Aggregation | undefined): boolean => a === "AGGREGATION_UNIQUE" || a === "AGGREGATION_LAST";
+
+/** The aggregations the next version of a meter may take: any for a new meter, its own for a UNIQUE or LAST one, and SUM, COUNT or MAX for the others. */
+export function aggregationsFor(base?: Aggregation): Aggregation[] {
+  if (!base) return AGGREGATIONS;
+  return isRowShaped(base) ? [base] : AGGREGATIONS.filter((a) => !isRowShaped(a));
+}
 
 /** Lowercase letters, digits and _, starting with a letter, at most 63 characters (the server's rule for a meter code). */
 export const CODE_PATTERN = /^[a-z][a-z0-9_]{0,62}$/;
@@ -31,7 +40,7 @@ export function formOfMeter(m: { code: string; unit_label: string; aggregation: 
   };
 }
 
-export type MeterError = "code" | "unit" | "property" | "scale" | "filter";
+export type MeterError = "code" | "unit" | "property" | "propertyUnique" | "scale" | "uniqueScale" | "filter";
 
 /** The request of a form, or the field that is wrong (a key under billing.usage.meters.errors). The server checks the same rules; this saves the round trip. */
 export function toMeterBody(f: MeterForm): { body: NewMeter } | { error: MeterError } {
@@ -40,8 +49,9 @@ export function toMeterBody(f: MeterForm): { body: NewMeter } | { error: MeterEr
   const unit = f.unit.trim();
   if (unit === "" || unit.length > 32) return { error: "unit" };
   const property = f.property.trim();
-  if (f.aggregation !== "AGGREGATION_COUNT" && !PROPERTY.test(property)) return { error: "property" };
+  if (f.aggregation !== "AGGREGATION_COUNT" && !PROPERTY.test(property)) return { error: f.aggregation === "AGGREGATION_UNIQUE" ? "propertyUnique" : "property" };
   if (!/^\d$/.test(f.scale.trim()) || Number(f.scale) > MAX_SCALE) return { error: "scale" };
+  if (f.aggregation === "AGGREGATION_UNIQUE" && Number(f.scale) !== 0) return { error: "uniqueScale" };
   const filter: Record<string, { values: string[] }> = {};
   const rows = f.filters.filter((r) => r.property.trim() !== "" || r.values.trim() !== "");
   if (rows.length > 10) return { error: "filter" };

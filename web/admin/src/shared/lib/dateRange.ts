@@ -1,6 +1,7 @@
+import { ymd } from "./dates";
+
 export type RangePreset = "today" | "7d" | "30d" | "month" | "lastMonth" | "year";
 
-const ymd = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const addDays = (d: Date, n: number): Date => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 /** The dates (YYYY-MM-DD, in the browser's own calendar) a preset stands for, counted from `now`; both ends are days that are inside the range. */

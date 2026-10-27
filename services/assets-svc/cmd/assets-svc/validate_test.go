@@ -26,3 +26,19 @@ func TestMigrateOnStartNeedsTheMigratorDSN(t *testing.T) {
 		t.Fatalf("the embedded settings did not load: %+v", cfg.Settings)
 	}
 }
+
+// A job interval of zero (or less) would make the ticker panic once the service is running; it is refused when the configuration loads.
+func TestJobIntervalsMustBePositive(t *testing.T) {
+	env := map[string]string{"PAYRUDDER_PG_APP_DSN": "postgres://app", "PAYRUDDER_PG_SYSTEM_DSN": "postgres://system", "PAYRUDDER_SERVICE_NAME": "assets-svc", "S3_ACCESS_KEY": "k", "S3_SECRET_KEY": "s"}
+	if _, err := config.LoadFrom[Config](env, defaults); err != nil {
+		t.Fatalf("the defaults are valid: %v", err)
+	}
+	for _, name := range []string{"ASSETS_SWEEP_INTERVAL", "ASSETS_VERIFY_INTERVAL", "ASSETS_ORPHANS_INTERVAL"} {
+		env[name] = "0s"
+		_, err := config.LoadFrom[Config](env, defaults)
+		if err == nil || !strings.Contains(err.Error(), name) {
+			t.Errorf("%s=0s: err = %v, want it refused", name, err)
+		}
+		delete(env, name)
+	}
+}

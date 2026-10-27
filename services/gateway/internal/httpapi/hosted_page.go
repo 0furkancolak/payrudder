@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"io"
 	"net/http"
@@ -369,10 +370,10 @@ func (s *Server) adhocPage(w http.ResponseWriter, r *http.Request, sc scope, lan
 
 func (s *Server) adhocPageWith(w http.ResponseWriter, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse, in promoInput) {
 	a := resp.GetAdhoc()
-	v := &adhocView{pageBase: newBase(lang), Seller: orDefault(a.GetSellerName(), resp.GetSellerName()), Description: a.GetDescription(),
+	v := &adhocView{pageBase: newBase(lang), Seller: cmp.Or(a.GetSellerName(), resp.GetSellerName()), Description: a.GetDescription(),
 		Amount: money.FormatMinorGrouped(a.GetAmountMinor(), int(a.GetCurrencyExponent())), Currency: a.GetCurrency(), Consumed: a.GetConsumed(), Start: sc.page() + "/start" + langSuffix(r),
 		PromoAction: sc.page() + "/promo" + langSuffix(r), Code: in.Code}
-	v.Test = orDefault(a.GetEnvironment(), resp.GetEnvironment()) == env.Sandbox.String()
+	v.Test = cmp.Or(a.GetEnvironment(), resp.GetEnvironment()) == env.Sandbox.String()
 	if k := a.GetPack(); k != nil {
 		v.Pack = &packView{Name: k.GetName(), Credits: money.FormatMinorGrouped(k.GetCredits(), 0), Valid: validText(v.L, k.GetValidityDays()), Quantity: k.GetQuantity()}
 	}
@@ -390,13 +391,6 @@ func (s *Server) adhocPageWith(w http.ResponseWriter, r *http.Request, sc scope,
 		v.Logo = sc.logo()
 	}
 	s.render(w, r, orStatus(in.Status), "adhoc", v)
-}
-
-func orDefault(a, b string) string {
-	if a != "" {
-		return a
-	}
-	return b
 }
 
 // hostedLinkStart is POST /i/{token}/start: the first use of an ad-hoc link. Billing makes the invoice and an invoice link; the payer continues on that.

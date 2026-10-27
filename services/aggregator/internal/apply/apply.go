@@ -97,6 +97,7 @@ type Handler struct {
 
 type metrics struct {
 	applied, duplicates, late, filtered, frozen, dlq, fenced metric.Int64Counter
+	missingValue, lateLast                                   metric.Int64Counter
 	batchSecs                                                metric.Float64Histogram
 }
 
@@ -126,6 +127,8 @@ func (h *Handler) init() {
 		h.m.frozen = b.Counter(prefix+"frozen_period_violations", "On-time events that arrived for a frozen period")
 		h.m.dlq = b.Counter(prefix+"dlq_records", "Records sent to the dead-letter topic")
 		h.m.fenced = b.Counter(prefix+"fenced_batches", "Batches whose offset write was fenced (a zombie behind the leader)")
+		h.m.missingValue = b.Counter(prefix+"missing_value_events", "Events of a UNIQUE meter that don't carry its value property, which count nothing")
+		h.m.lateLast = b.Counter(prefix+"late_last_events", "Late events of a LAST meter, which never change the closed period and are not stored")
 		h.m.batchSecs = b.Histogram(prefix+"batch_seconds", "", metric.WithUnit("s"))
 		if err := b.Err(); err != nil {
 			panic(err) // only on duplicate instrument names with different kinds: a programming error
@@ -340,6 +343,9 @@ func (h *Handler) applyItems(ctx context.Context, q *sqlc.Queries, items []item)
 	if err != nil {
 		return err
 	}
+	if err := applyDistinct(ctx, q, delta); err != nil {
+		return err
+	}
 	if err := upsertOnTime(ctx, q, delta); err != nil {
 		return err
 	}
@@ -420,7 +426,9 @@ func (h *Handler) countInboxDuplicates(ctx context.Context, p sqlc.InsertProcess
 	}
 }
 
-// classify routes every new pair to on-time or late usage and pre-sums them into a delta.
+// classify routes every new pair to on-time or late usage and pre-sums them into a delta. The events of a UNIQUE meter add their value to the
+// delta's sets instead (the counts are settled against the stored sets by applyDistinct), and a late event of a LAST meter is dropped: the last value of
+// a closed period never changes.
 func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, cfg map[settings.Key]sqlc.LockPeriodSettingsRow) (*domain.Delta, error) {
 	delta := domain.NewDelta()
 	locs := map[string]*time.Location{}
@@ -430,6 +438,15 @@ func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, 
 			h.m.filtered.Add(ctx, 1, tenantAttr(it.ev.TenantID))
 			continue
 		}
+		var digest domain.Digest
+		if it.meter.Aggregation == usage.Unique {
+			v, ok := it.meter.DistinctValue(it.ev)
+			if !ok {
+				h.m.missingValue.Add(ctx, 1, tenantAttr(it.ev.TenantID))
+				continue
+			}
+			digest = usage.Digest(v)
+		}
 		c, ok := cfg[settings.Key{Tenant: it.ev.TenantID, Period: it.ev.Period}]
 		if !ok {
 			return nil, fmt.Errorf("no period settings for %s %s", it.ev.TenantID, it.ev.Period)
@@ -437,22 +454,37 @@ func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, 
 		if h.classOf(ctx, it.ev, c) == period.OnTime {
 			delta.AddOnTime(domain.OnTimeKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
 				Period: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
-			if err := addHour(delta, locs, c.Timezone, it, f.gen); err != nil {
+			if it.meter.Aggregation == usage.Unique {
+				delta.AddSeen(seenKey(it, f.gen, digest), "")
+			}
+			if err := addHour(delta, locs, c.Timezone, it, f.gen, digest); err != nil {
 				return nil, err
 			}
 			h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("on_time"))
+			continue
+		}
+		if it.meter.Aggregation == usage.Last {
+			h.m.lateLast.Add(ctx, 1, tenantAttr(it.ev.TenantID))
 			continue
 		}
 		loc, err := tzLocation(locs, c.Timezone, it.ev.TenantID)
 		if err != nil {
 			return nil, err
 		}
+		billed := period.PeriodOf(it.ev.IngestedAt, loc)
 		delta.AddLate(domain.LateKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
-			Billed: period.PeriodOf(it.ev.IngestedAt, loc), Origin: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
+			Billed: billed, Origin: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
+		if it.meter.Aggregation == usage.Unique {
+			delta.AddSeen(seenKey(it, f.gen, digest), billed)
+		}
 		h.m.late.Add(ctx, 1, tenantAttr(it.ev.TenantID))
 		h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("late"))
 	}
 	return delta, nil
+}
+
+func seenKey(it item, gen int32, digest domain.Digest) domain.SeenKey {
+	return domain.SeenKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter, Period: it.ev.Period, Generation: gen, Value: digest}
 }
 
 // tzLocation loads the tenant's time zone from its period settings, once per batch.
@@ -468,15 +500,19 @@ func tzLocation(cache map[string]*time.Location, name string, tenant uuid.UUID) 
 	return loc, nil
 }
 
-// addHour adds an on-time event to the hour total it falls in, unless that hour is older than the totals are kept for (maintenance would delete the
-// row at once).
-func addHour(d *domain.Delta, locs map[string]*time.Location, tz string, it item, gen int32) error {
+// addHour adds an on-time event to the hour total it falls in (to the hour's value set for a UNIQUE meter), unless that hour is older than the totals are
+// kept for (maintenance would delete the row at once).
+func addHour(d *domain.Delta, locs map[string]*time.Location, tz string, it item, gen int32, digest domain.Digest) error {
 	loc, err := tzLocation(locs, tz, it.ev.TenantID)
 	if err != nil {
 		return err
 	}
 	id, _, end := period.WindowOf(period.Hour, it.ev.EventTime, loc)
 	if end.Before(time.Now().Add(-domain.WindowRetention)) {
+		return nil
+	}
+	if it.meter.Aggregation == usage.Unique {
+		d.AddHourSeen(domain.HourSeenKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter, Hour: id, Generation: gen, Value: digest})
 		return nil
 	}
 	d.AddHour(domain.HourKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter, Hour: id, Generation: gen}, it.meter, it.ev)
@@ -547,17 +583,30 @@ func (h *Handler) generations(ctx context.Context, q *sqlc.Queries, tenants []uu
 	return out, nil
 }
 
-// upsertOnTime writes the delta's on-time cells in sorted key order: the sum meters first, then the max meters.
+// modes are the merges of an upsert, in the order a batch writes them.
+var modes = []string{"sum", "max", "last"}
+
+// lastArgs renders the order key of a cell for the upsert: "" for every aggregation but LAST. The time is in microseconds, which is what timestamptz keeps.
+func lastArgs(c *domain.Cell) (at, id string) {
+	if c.Aggregation != usage.Last {
+		return "", ""
+	}
+	return time.UnixMicro(c.Order.Micros).UTC().Format("2006-01-02T15:04:05.000000Z07:00"), c.Order.ID
+}
+
+// upsertOnTime writes the delta's on-time cells in sorted key order, one statement per merge mode: the adding meters first, then the max ones, then the last ones.
 func upsertOnTime(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
-	for _, isMax := range []bool{false, true} {
-		p := sqlc.UpsertUsageAggregatesParams{IsMax: isMax}
+	for _, mode := range modes {
+		p := sqlc.UpsertUsageAggregatesParams{Mode: mode}
 		for _, k := range d.SortedOnTime() {
 			cell := d.OnTime[k]
-			if (cell.Aggregation == usage.Max) != isMax {
+			if domain.Mode(cell.Aggregation) != mode {
 				continue
 			}
 			p.Tenants, p.Periods, p.Customers, p.MeterCodes, p.Generations = append(p.Tenants, k.Tenant), append(p.Periods, k.Period), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.Generations, k.Generation)
 			p.Quantities, p.Scales, p.EventCounts = append(p.Quantities, cell.Value.String()), append(p.Scales, int16(cell.Scale)), append(p.EventCounts, cell.Events) //nolint:gosec // 0..6
+			at, id := lastArgs(cell)
+			p.LastAts, p.LastIds = append(p.LastAts, at), append(p.LastIds, id)
 		}
 		if len(p.Tenants) == 0 {
 			continue
@@ -571,15 +620,17 @@ func upsertOnTime(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
 
 // upsertHours is upsertOnTime for the hour totals.
 func upsertHours(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
-	for _, isMax := range []bool{false, true} {
-		p := sqlc.UpsertUsageWindowAggregatesParams{IsMax: isMax}
+	for _, mode := range modes {
+		p := sqlc.UpsertUsageWindowAggregatesParams{Mode: mode}
 		for _, k := range d.SortedHours() {
 			cell := d.Hours[k]
-			if (cell.Aggregation == usage.Max) != isMax {
+			if domain.Mode(cell.Aggregation) != mode {
 				continue
 			}
 			p.Tenants, p.Customers, p.MeterCodes, p.Generations, p.HourIds = append(p.Tenants, k.Tenant), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.Generations, k.Generation), append(p.HourIds, k.Hour)
 			p.Quantities, p.Scales, p.EventCounts = append(p.Quantities, cell.Value.String()), append(p.Scales, int16(cell.Scale)), append(p.EventCounts, cell.Events) //nolint:gosec // 0..6
+			at, id := lastArgs(cell)
+			p.LastAts, p.LastIds = append(p.LastAts, at), append(p.LastIds, id)
 		}
 		if len(p.Tenants) == 0 {
 			continue
@@ -591,7 +642,7 @@ func upsertHours(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
 	return nil
 }
 
-// upsertLate is upsertOnTime for late usage.
+// upsertLate is upsertOnTime for late usage. LAST has no late usage (a closed period's last value is final), so the modes are sum and max.
 func upsertLate(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
 	for _, isMax := range []bool{false, true} {
 		p := sqlc.UpsertLateUsageParams{IsMax: isMax}
@@ -611,6 +662,59 @@ func upsertLate(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
 		}
 	}
 	return nil
+}
+
+// applyDistinct settles the batch's UNIQUE values against the stored sets and moves the counts of the delta accordingly. A value that is new in its period adds
+// one to the row of its state (usage_aggregates when an on-time event carried it, late_usage billed in the period of its first late event otherwise); a value that
+// exists moves to the minimum of its stored and its new state (domain.MergeSeen) and takes its unit of count along. So the stored count of every row equals the number
+// of values in that state, whatever order the events of a value arrive in. Hour sets are written for on-time events only and counted when read.
+func applyDistinct(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
+	if len(d.Seen) > 0 {
+		var p sqlc.InsertDistinctValuesParams
+		for _, k := range domain.SortedSeen(d.Seen) {
+			h := k.Value
+			p.Tenants, p.Customers, p.MeterCodes, p.Generations = append(p.Tenants, k.Tenant), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.Generations, k.Generation)
+			p.Periods, p.Hashes, p.Billed = append(p.Periods, k.Period), append(p.Hashes, h[:]), append(p.Billed, d.Seen[k])
+		}
+		inserted, err := q.InsertDistinctValues(ctx, p)
+		if err != nil {
+			return fmt.Errorf("insert usage_distinct_values: %w", err)
+		}
+		for _, r := range inserted {
+			contribute(d, r.TenantID, r.CustomerID, r.MeterCode, r.Generation, r.PeriodID, r.BilledPeriodID, 1)
+		}
+		if len(inserted) < len(p.Tenants) {
+			moved, err := q.MergeDistinctValues(ctx, sqlc.MergeDistinctValuesParams(p))
+			if err != nil {
+				return fmt.Errorf("merge usage_distinct_values: %w", err)
+			}
+			for _, r := range moved {
+				contribute(d, r.TenantID, r.CustomerID, r.MeterCode, r.Generation, r.PeriodID, r.OldBilled, -1)
+				contribute(d, r.TenantID, r.CustomerID, r.MeterCode, r.Generation, r.PeriodID, r.NewBilled, 1)
+			}
+		}
+	}
+	if len(d.HourSeen) > 0 {
+		var p sqlc.InsertDistinctHoursParams
+		for _, k := range domain.SortedHourSeen(d.HourSeen) {
+			h := k.Value
+			p.Tenants, p.Customers, p.MeterCodes, p.Generations = append(p.Tenants, k.Tenant), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.Generations, k.Generation)
+			p.HourIds, p.Hashes = append(p.HourIds, k.Hour), append(p.Hashes, h[:])
+		}
+		if err := q.InsertDistinctHours(ctx, p); err != nil {
+			return fmt.Errorf("insert usage_distinct_hours: %w", err)
+		}
+	}
+	return nil
+}
+
+// contribute adds n units of distinct count to the row a value in the state billed belongs to.
+func contribute(d *domain.Delta, tenant, customer uuid.UUID, meter string, gen int32, period, billed string, n int64) {
+	if billed == "" {
+		d.AddDistinctOnTime(domain.OnTimeKey{Tenant: tenant, Customer: customer, Meter: meter, Period: period, Generation: gen}, n)
+		return
+	}
+	d.AddDistinctLate(domain.LateKey{Tenant: tenant, Customer: customer, Meter: meter, Billed: billed, Origin: period, Generation: gen}, n)
 }
 
 var _ kafkax.PartitionHandler = (*Handler)(nil)

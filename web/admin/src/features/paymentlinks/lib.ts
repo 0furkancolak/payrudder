@@ -1,5 +1,9 @@
+import type { components } from "@/shared/api/schema";
 import { parseMajor } from "@/shared/lib/money";
 import { validLinkDays } from "@/shared/lib/rules";
+
+/** The body of POST /v1/payment-links. */
+export type CreateLinkBody = components["schemas"]["CreatePaymentLinkRequest"];
 
 type LinkKind = "invoice" | "adhoc";
 
@@ -18,7 +22,7 @@ export interface LinkForm {
 }
 
 /** The API request for a form, or the name of the field that is wrong (a locale key under billing.paymentLinks.errors). */
-export function toRequest(f: LinkForm): { body: Record<string, unknown> } | { error: "invoice" | "amount" | "description" | "days" } {
+export function toRequest(f: LinkForm): { body: CreateLinkBody } | { error: "invoice" | "amount" | "description" | "days" } {
   const days = Number(f.days);
   if (!validLinkDays(days)) return { error: "days" };
   const common = { kind: f.kind, single_use: f.singleUse, expires_in_days: days, idempotency_key: f.key };

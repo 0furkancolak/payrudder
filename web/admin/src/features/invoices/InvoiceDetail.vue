@@ -53,7 +53,7 @@ function makeLink() {
   }
   links.create.mutate(days);
 }
-const shareUrl = computed(() => absoluteUrl((links.create.data.value as { url?: string } | undefined)?.url, window.location.origin));
+const shareUrl = computed(() => absoluteUrl(links.create.data.value?.url, window.location.origin));
 const inv = computed(() => invoice.data.value);
 
 // --- money: a bank transfer that is awaited, and payments recorded by hand
@@ -120,7 +120,7 @@ const day = (v?: string | null) => fmt.date(v, "day");
       <TableBody>
         <TableRow v-for="line in inv?.lines ?? []" :key="line.line_no">
           <TableCell>{{ line.line_no }}</TableCell>
-          <TableCell>{{ line.kind }}</TableCell>
+          <TableCell>{{ label(t, te, "invoiceLineKind", line.kind) }}</TableCell>
           <TableCell>{{ line.description }}</TableCell>
           <TableCell class="text-muted-foreground text-xs whitespace-nowrap">{{ day(line.service_from) }}<template v-if="line.service_from"> – {{ day(line.service_to) }}</template></TableCell>
           <TableCell>{{ line.meter_code }}</TableCell>
@@ -175,7 +175,7 @@ const day = (v?: string | null) => fmt.date(v, "day");
           <TableCell class="mono text-xs">{{ e.from_state }}</TableCell>
           <TableCell><Badge :variant="sagaVariant(e.to_state)" class="mono">{{ label(t, te, "sagaState", e.to_state) }}</Badge></TableCell>
           <TableCell class="mono text-xs">{{ e.cause }}</TableCell>
-          <TableCell class="mono text-muted-foreground text-xs">{{ e.at }}</TableCell>
+          <TableCell class="text-muted-foreground text-xs whitespace-nowrap">{{ fmt.date(e.at, "dateTime") }}</TableCell>
         </TableRow>
       </TableBody>
     </Table>

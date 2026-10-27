@@ -6,7 +6,7 @@ import { changeOutcome } from "./lib";
 
 /** The price of a change of plan, before it is made: the credit, the charge, what that comes to now, and the next renewal (and, for Payrudder's own, when it takes effect). */
 const props = defineProps<{
-  quote: { credit_minor?: string; charge_minor?: string; net_minor?: string; next_renewal_minor?: string; next_renewal_time?: string | null; effective_time?: string | null; timing?: string };
+  quote: { quantity?: number; credit_minor?: string; charge_minor?: string; net_minor?: string; next_renewal_minor?: string; next_renewal_time?: string | null; effective_time?: string | null; timing?: string };
   currency: string | undefined;
   /** Payrudder's own subscriptions say when the change takes effect and the date of the next renewal; a provider's quote has neither. */
   detailed?: boolean;
@@ -28,6 +28,10 @@ const outcome = computed(() => {
     <template v-if="detailed">
       <dt class="text-muted-foreground">{{ t("billing.subscriptions.change.effective") }}</dt>
       <dd>{{ quote.timing === "CHANGE_TIMING_PERIOD_END" ? t("billing.subscriptions.change.atEnd") : t("billing.subscriptions.change.now") }} · {{ date(quote.effective_time) }}</dd>
+    </template>
+    <template v-if="detailed && quote.quantity">
+      <dt class="text-muted-foreground">{{ t("billing.subscriptions.change.seatsAfter") }}</dt>
+      <dd class="tabular-nums" data-testid="quote-seats">{{ quote.quantity }}</dd>
     </template>
     <dt class="text-muted-foreground">{{ t("billing.subscriptions.change.credit") }}</dt>
     <dd class="tabular-nums">{{ money(quote.credit_minor) }}</dd>

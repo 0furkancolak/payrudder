@@ -120,6 +120,15 @@ func (c *Client) Livemode() (live, known bool) {
 	return false, false
 }
 
+// KeyMode implements payments.KeyModer: the keys of an iyzico sandbox account start with "sandbox-". A key without it is not known to be live (the sandbox host
+// and iyzico itself refuse it), so only the sandbox format is told.
+func (c *Client) KeyMode() (live, known bool) {
+	if strings.HasPrefix(c.s.APIKey, "sandbox-") {
+		return false, true
+	}
+	return false, false
+}
+
 // Capabilities implements payments.Provider. iyzico charges and refunds; Payrudder schedules renewals, retries failed payments and
 // issues the invoice. The currency list is the intersection of iyzico's and Payrudder's.
 func (c *Client) Capabilities() payments.Capabilities { return Caps() }

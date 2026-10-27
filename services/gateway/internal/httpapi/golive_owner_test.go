@@ -38,7 +38,7 @@ func newFakePayments(t *testing.T) *fakePayments {
 			token: r.Header.Get("Authorization"), body: string(b)})
 		w.Header().Set("Content-Type", "application/json")
 		switch {
-		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/go-live"):
+		case r.Method == http.MethodGet && (strings.HasSuffix(r.URL.Path, "/go-live") || strings.HasSuffix(r.URL.Path, "/provider-health")):
 			_ = json.NewEncoder(w).Encode(map[string]any{"ready": len(f.accounts) > 0, "providers": []string{}, "accounts": f.accounts})
 		case f.status != 0:
 			w.WriteHeader(f.status)

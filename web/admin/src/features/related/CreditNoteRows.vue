@@ -21,7 +21,7 @@ const rows = computed(() => notes.data.value?.credit_notes ?? []);
         <span class="mono font-medium">{{ n.number }}</span>
         <span class="text-muted-foreground text-xs">{{ fmt.date(n.create_time, "day") }}</span>
       </span>
-      <span class="tabular font-medium">{{ formatMinor(n.total_minor, n.currency, locale) }}</span>
+      <span class="tabular-nums font-medium">{{ formatMinor(n.total_minor, n.currency, locale) }}</span>
     </li>
   </RelatedSection>
 </template>

@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 )
 
 //go:embed gcra.lua
@@ -82,16 +83,13 @@ func NewLimiter(rdb redis.Scripter, replicas int, log *slog.Logger) (*Limiter, e
 	if replicas < 1 {
 		replicas = 1
 	}
-	m := otel.Meter("github.com/0furkancolak/payrudder/services/gateway/ratelimit")
-	fb, err := m.Int64Counter("gateway_ratelimit_fallback", metric.WithDescription("Rate-limit decisions taken locally because Redis failed"))
-	if err != nil {
+	m := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/gateway/ratelimit")
+	fallback := m.Counter("gateway_ratelimit_fallback", "Rate-limit decisions taken locally because Redis failed")
+	rejected := m.Counter("gateway_ratelimited", "Requests rejected with 429")
+	if err := m.Err(); err != nil {
 		return nil, err
 	}
-	rj, err := m.Int64Counter("gateway_ratelimited", metric.WithDescription("Requests rejected with 429"))
-	if err != nil {
-		return nil, err
-	}
-	return &Limiter{rdb: rdb, replicas: replicas, log: log, local: map[string]time.Time{}, now: time.Now, fallback: fb, rejected: rj}, nil
+	return &Limiter{rdb: rdb, replicas: replicas, log: log, local: map[string]time.Time{}, now: time.Now, fallback: fallback, rejected: rejected}, nil
 }
 
 // Allow charges cost units (events for ingest, 1 otherwise) for the tenant and class.

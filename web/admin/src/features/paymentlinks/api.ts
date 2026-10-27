@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
+import type { CreateLinkBody } from "./lib";
 
 export const linkKeys = {
   list: (tenantId: string, kind: string, status: string) => ["tenants", tenantId, "payment-links", kind, status] as const,
@@ -31,7 +32,7 @@ export function usePaymentLinkActions(tenantId: MaybeRefOrGetter<string>) {
   const refresh = () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId), "payment-links"] });
   const client = () => tenantApi(toValue(tenantId));
   return {
-    create: useMutation({ mutationFn: (body: Record<string, unknown>) => unwrap(client().POST("/v1/payment-links", { body: body as never })), onSuccess: refresh }),
+    create: useMutation({ mutationFn: (body: CreateLinkBody) => unwrap(client().POST("/v1/payment-links", { body })), onSuccess: refresh }),
     revoke: useMutation({ mutationFn: (id: string) => unwrap(client().DELETE("/v1/payment-links/{id}", { params: { path: { id } } })), onSuccess: refresh }),
   };
 }

@@ -26,6 +26,8 @@ to counter). It is not the billing source of truth. See [ADR 0006](../adr/0006-e
 | `lim:w:{tenant}:{customer}:{meter}:{window}` | string int (counter of an hour, day or ISO week window) | window end + 2 days |
 | `lim:y:{tenant}:{customer}:{meter}:{window}` | string int (counter of a calendar year `2026` or the lifetime `all`) | year end + 2 days; the lifetime counter never expires |
 | `lim:wactive:{partition}` | sorted set of the short-window counters (`lim:w`; score = last update) | entries pruned after 1 h |
+| `lim:set:{counter}` | set of 128-bit value digests behind a `UNIQUE` counter (`{counter}` = the counter key without `lim:`) | the counter's |
+| `lim:ord:{counter}` | `micros:event_id` of the event a `LAST` counter is the value of | the counter's |
 
 All counter keys of a batch for partition `p` are updated in **one Lua script** together with
 `lim:off:{p}`. That works because the script runs atomically on a single Redis node. In Redis Cluster the keys
@@ -113,7 +115,7 @@ Tenants call `CheckEntitlement` before serving their customer and decide what to
 |---|---|
 | Redis restart without persistence | Counters reset → reconciliation restores them within one cycle. `CheckEntitlement` returns low numbers until then (documented risk). AOF `everysec` enabled to shrink this window |
 | limits-svc lag | `as_of` shows staleness. Alert at lag > 10 s |
-| Duplicate event (outbox republish) | Counter over-counts by that event until next reconciliation |
+| Duplicate event (outbox republish) | Counter over-counts by that event until next reconciliation. Not for `UNIQUE` (its set absorbs the duplicate), `LAST` or `MAX` (idempotent) |
 | Threshold crossed by two pods simultaneously | Impossible per key: a partition has one owner, and `SET NX` covers handover races |
 
 ## Scaling notes
@@ -125,7 +127,7 @@ our ingest **targets**. `CheckEntitlement` is a single `MGET` (counter + entitle
 
 - Code: `services/limits-svc` (`internal/engine` = Lua apply, thresholds, checkpoints, reconciler; `internal/entitlements` =
   in-memory map + Redis mirror; `internal/query` = gRPC). Configuration is environment-only (`PAYRUDDER_REDIS_URL`,
-  `PAYRUDDER_KAFKA_BROKERS`, `PAYRUDDER_PLANS_ADDR`, `PAYRUDDER_AGGREGATOR_ADDR`, `PAYRUDDER_RECONCILE_INTERVAL`, `PAYRUDDER_POD_NAME`).
+  `PAYRUDDER_KAFKA_BROKERS`, `PAYRUDDER_PLANS_ADDR`, `PAYRUDDER_AGGREGATOR_ADDR`, `PAYRUDDER_RECONCILE_INTERVAL`, `PAYRUDDER_UNIQUE_SET_CAP`, `PAYRUDDER_POD_NAME`).
 - The script takes `(key, op, delta, expireat)` per counter (`op` `I` increments, `M` keeps the maximum for `MAX` meters),
   writes `lim:off:{p}`, `lim:active:{p}` and `lim:ts:{tenant}` (the `as_of` of `CheckEntitlement`) in the same call, and
   refuses to pass 2^53 (`limits_counter_overflow`).
@@ -163,8 +165,17 @@ our ingest **targets**. `CheckEntitlement` is a single `MGET` (counter + entitle
   of the month row that invoicing rates, with the same on-time rule; year and lifetime are sums of the very month rows. They can still differ in two bounded
   ways: by the reconciliation interval, and for an event that limits-svc counts as on time by the tenant's current grace while the aggregator classified it by the
   period snapshot (an early-closed or frozen period).
-- **Not offered, on purpose:** the `UNIQUE` (distinct count) and `LAST` (value of the latest event) aggregations. The counters, the aggregator's upsert, the
-  late-usage table and rating all combine parts by adding or keeping a maximum, and a window of several parts is the sum or maximum of its parts. A distinct count
-  is not additive (a customer seen in two months is one customer, so a year or a day cannot be read from the parts and the aggregator would have to keep a set per
-  customer, meter and every window kind), and "last" needs an order across partitions and across late arrivals, plus a rule for what a late event of an old period
-  adds to a later invoice. Both need their own storage and billing semantics, not a variant of the counter; they are a separate design.
+- **UNIQUE and LAST** are counted too ([aggregator.md](aggregator.md#as-built-unique-and-last), [ADR 0025](../adr/0025-unique-and-last-aggregations.md)). The apply script has two more ops next to
+  `I` and `M`:
+  - `L` (LAST) sets the counter to the event's quantity only if the event is later than the one the counter holds, kept in `lim:ord:{counter}` as `micros:id`. The order is the
+    aggregator's (microseconds, then the id bytewise; the script compares ids byte by byte because the `<` of Redis strings follows the server's locale). A redelivery, an event that
+    arrives out of order and a replay of the log after Redis lost its offsets all leave the same value.
+  - `U` (UNIQUE) adds to the counter the members that are new to `lim:set:{counter}` (the first 16 bytes of the SHA-256 of the value). The counter stays an ordinary number, so
+    `CheckEntitlement`, thresholds and the reconciliation correction are unchanged, and an outbox duplicate cannot count twice (the set is idempotent, unlike `INCRBY`). Every counter of the
+    entitlement's window has its own set. **The set is bounded** (`PAYRUDDER_UNIQUE_SET_CAP`, default 100 000 members per counter, `limits_unique_set_full`): a full set stops recognising new
+    values, so the counter lags until the next reconciliation sets it to the aggregator's exact count. This is the enforcement side only; the exact sets live in the aggregator, and
+    nothing here is read by billing. After a Redis loss the counters come back from the aggregator, the sets do not: a value that was forgotten is counted again by its next event (over by
+    one) until the following reconciliation takes it out.
+  - Reconciliation asks the aggregator for the key with `aggregation` set. A UNIQUE counter is corrected like a sum (`INCRBY -drift`); a LAST counter is set to the aggregator's value **and**
+    to the event it names, so an event ordered between the two cannot take the value back afterwards. Both companion keys expire with their counter.
+  - Thresholds work on the counter as usual. A LAST value can fall; a threshold marker is per window and percentage, so it fires once per window however the value moves.

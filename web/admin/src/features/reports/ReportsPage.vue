@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { thisMonth } from "@/shared/lib/dateRange";
-import { Check, ArrowUpRight } from "@lucide/vue";
+import { ArrowUpRight } from "@lucide/vue";
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { ym } from "@/shared/lib/dates";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { recordLink } from "@/features/related/link";
@@ -17,9 +18,10 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { cn } from "@/shared/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDunningReport, useRevenueReport, useSubscriptionReport } from "./api";
+import GroupChips from "./GroupChips.vue";
 
 const { t, te } = useI18n();
 const fmt = useFormat();
@@ -35,7 +37,6 @@ const from = computed(() => range.value.from.slice(0, 7));
 const to = computed(() => range.value.to.slice(0, 7));
 const split = ref<string[]>(["period"]);
 const revenue = useRevenueReport(tenantId, from, to, split);
-const toggle = (g: string) => (split.value = split.value.includes(g) ? split.value.filter((x) => x !== g) : [...split.value, g]);
 type RevenueRow = NonNullable<NonNullable<typeof revenue.data.value>["rows"]>[number];
 const revenueTable = useTableState<RevenueRow>(() => revenue.data.value?.rows ?? [], {
   searchFields: (r) => [r.period, r.provider, r.country, r.currency],
@@ -59,11 +60,10 @@ const months = computed(() => {
   const now = new Date();
   return [{ value: "", label: t("billing.reports.currentMonth") }, ...Array.from({ length: 12 }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const v = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const v = ym(d);
     return { value: v, label: v };
   })];
 });
-const chip = (on: boolean) => cn("inline-flex h-10 items-center gap-1.5 rounded-xl border px-3.5 text-sm font-medium transition-colors", on ? "bg-brand-soft text-brand-strong border-transparent" : "bg-card text-foreground border-border/70 hover:bg-muted");
 const subSplit = ref<string[]>([]);
 const subs = useSubscriptionReport(tenantId, month, subSplit);
 type SubRow = NonNullable<NonNullable<typeof subs.data.value>["rows"]>[number];
@@ -78,7 +78,6 @@ function clearSubs() {
   subTable.clear();
   month.value = "";
 }
-const toggleSub = (g: string) => (subSplit.value = subSplit.value.includes(g) ? subSplit.value.filter((x) => x !== g) : [...subSplit.value, g]);
 
 // Dunning
 const dunning = useDunningReport(tenantId);
@@ -112,29 +111,17 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
 </script>
 
 <template>
-  <div class="mb-4 flex flex-wrap gap-2" role="tablist" :aria-label="t('billing.reports.kinds')">
-    <button
-      v-for="k in tabs"
-      :key="k"
-      type="button"
-      role="tab"
-      :aria-selected="tab === k"
-      :class="['inline-flex h-10 items-center rounded-xl border px-4 text-sm font-semibold transition-colors', tab === k ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-card text-muted-foreground hover:text-foreground border-border/70']"
-      @click="tab = k"
-    >
-      {{ t(`billing.reports.${k}`) }}
-    </button>
-  </div>
+  <Tabs v-model="tab" class="mb-4">
+    <TabsList :aria-label="t('billing.reports.kinds')">
+      <TabsTrigger v-for="k in tabs" :key="k" :value="k">{{ t(`billing.reports.${k}`) }}</TabsTrigger>
+    </TabsList>
+  </Tabs>
 
   <Card v-if="tab === 'revenue'" class="p-3">
     <DataToolbar v-model:search="revenueTable.search.value" :active="revenueActive" @clear="clearRevenue">
       <FilterSelect v-model="revenueCurrency" multiple :label="t('billing.reports.currency')" :options="revenueCurrencies" />
       <DateRangePicker v-model="range" />
-      <div class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.reports.splitBy')">
-        <button v-for="g in ['period', 'provider', 'country']" :key="g" type="button" role="checkbox" :aria-checked="split.includes(g)" :aria-label="t(`billing.reports.by.${g}`)" :class="chip(split.includes(g))" @click="toggle(g)">
-          <Check v-if="split.includes(g)" class="size-4" aria-hidden="true" />{{ t(`billing.reports.by.${g}`) }}
-        </button>
-      </div>
+      <GroupChips v-model="split" :groups="['period', 'provider', 'country']" :label="t('billing.reports.splitBy')" />
     </DataToolbar>
     <ErrorText :error="revenue.error.value" class="px-3" />
     <Table>
@@ -179,11 +166,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
     <DataToolbar v-model:search="subTable.search.value" :active="subActive" @clear="clearSubs">
       <FilterSelect v-model="month" :label="t('billing.reports.month')" :options="months" />
       <FilterSelect v-model="subCurrency" multiple :label="t('billing.reports.currency')" :options="subCurrencies" />
-      <div class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.reports.splitBy')">
-        <button v-for="g in ['provider', 'country']" :key="g" type="button" role="checkbox" :aria-checked="subSplit.includes(g)" :aria-label="t(`billing.reports.by.${g}`)" :class="chip(subSplit.includes(g))" @click="toggleSub(g)">
-          <Check v-if="subSplit.includes(g)" class="size-4" aria-hidden="true" />{{ t(`billing.reports.by.${g}`) }}
-        </button>
-      </div>
+      <GroupChips v-model="subSplit" :groups="['provider', 'country']" :label="t('billing.reports.splitBy')" />
     </DataToolbar>
     <ErrorText :error="subs.error.value" class="px-3" />
     <Table>

@@ -9,6 +9,24 @@ export function intervalKey(interval: string | undefined): "yearly" | "monthly" 
   return interval === "SUBSCRIPTION_INTERVAL_YEAR" ? "yearly" : "monthly";
 }
 
+/** The most seats a subscription can have (plans-svc refuses more). */
+export const MAX_SEATS = 100_000;
+
+/** The seats of a subscription: the API leaves the field out for a subscription made before seats existed, which has one. */
+export const seatsOf = (s: Pick<Subscription, "quantity">): number => (s.quantity && s.quantity > 0 ? s.quantity : 1);
+
+/**
+ * Reads a seats field: `null` when it is empty (nothing chosen, the server keeps or defaults it), a whole number from 1 to MAX_SEATS, or `"bad"` for anything
+ * else (a decimal, zero, a negative number, too many).
+ */
+export function parseSeats(text: string | number | null | undefined): number | null | "bad" {
+  const v = String(text ?? "").trim();
+  if (v === "") return null;
+  if (!/^\d{1,6}$/.test(v)) return "bad";
+  const n = Number(v);
+  return n >= 1 && n <= MAX_SEATS ? n : "bad";
+}
+
 /** What a priced change does with money now: nothing, a charge, or a credit. `net` is the quote's net in minor units as text; a leading minus is a credit. */
 export function changeOutcome(net: string | undefined): { kind: "nothing" } | { kind: "credit" | "due"; minor: string } {
   if (net === undefined || net === "0") return { kind: "nothing" };

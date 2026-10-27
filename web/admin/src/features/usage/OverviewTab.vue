@@ -43,7 +43,7 @@ const cards = computed(() =>
     const aggregation = meters.data.value?.find((m) => m.code === code)?.aggregation;
     const total = s ? totalOf(aggregation, s.current.map((b) => b.quantity)) : undefined;
     const prev = s?.previous ? totalOf(aggregation, s.previous.map((b) => b.quantity)) : undefined;
-    return { code, unit: unitOf(code), total, prev, delta: total !== undefined && prev !== undefined ? delta(Number(total), Number(prev)) : null, spark: s ? values(s.current) : [] };
+    return { code, unit: unitOf(code), total, prev, delta: total !== undefined && total !== "" && prev !== undefined && prev !== "" ? delta(Number(total), Number(prev)) : null, spark: s ? values(s.current) : [] };
   }),
 );
 const chosen = computed(() => cards.value.find((c) => c.code === selected.value));

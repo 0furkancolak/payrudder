@@ -2,6 +2,7 @@
 import { useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { PageHeader } from "@/shared/ui/page-header";
 import { StatusPill } from "@/shared/ui/status-pill";
 import BillingProfileCard from "./BillingProfileCard.vue";
 import GoLiveChecklist from "./GoLiveChecklist.vue";
@@ -16,13 +17,9 @@ const appId = computed(() => String(params.value.appId ?? ""));
 
 <template>
   <section class="flex flex-col gap-6">
-    <header class="px-1">
-      <div class="flex flex-wrap items-center gap-3">
-        <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("shell.items.goLive") }}</h1>
-        <StatusPill tone="info">{{ t("product.env.live") }}</StatusPill>
-      </div>
-      <p class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ t("product.goLive.pageIntro") }}</p>
-    </header>
+    <PageHeader flush :title="t('shell.items.goLive')" :description="t('product.goLive.pageIntro')">
+      <template #badge><StatusPill tone="info">{{ t("product.env.live") }}</StatusPill></template>
+    </PageHeader>
     <GoLiveChecklist :app-id="appId" />
     <BillingProfileCard :app-id="appId" />
     <LiveProviderCard :app-id="appId" />

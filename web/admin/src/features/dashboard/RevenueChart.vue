@@ -14,6 +14,8 @@ import { delta, geometry, nearestIndex, type ChartPoint } from "./lib";
 const props = defineProps<{ points: readonly ChartPoint[]; currency: string; granularity: "day" | "month"; compare: boolean }>();
 const { t, locale } = useI18n();
 
+/** A tooltip past this share of the width opens to the left of the pointer instead of to its right. */
+const TIP_FLIPS_PAST_PERCENT = 62;
 const W = 640;
 const H = 220;
 const g = computed(() => geometry(props.points, W, H));
@@ -58,7 +60,7 @@ const tip = computed(() => {
   if (i === null || !p) return null;
   const d = props.compare && p.prev !== undefined ? delta(p.value, p.prev) : null;
   const left = (g.value.x(i) / W) * 100;
-  return { p, left, top: (g.value.y(p.value) / H) * 100, topPrev: p.prev === undefined ? null : (g.value.y(p.prev) / H) * 100, d, flip: left > 62 };
+  return { p, left, top: (g.value.y(p.value) / H) * 100, topPrev: p.prev === undefined ? null : (g.value.y(p.prev) / H) * 100, d, flip: left > TIP_FLIPS_PAST_PERCENT };
 });
 </script>
 

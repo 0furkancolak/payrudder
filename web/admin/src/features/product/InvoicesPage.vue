@@ -110,7 +110,7 @@ const day = (v?: string | null) => fmt.date(v, "day");
             <TableCell class="text-muted-foreground whitespace-nowrap max-md:hidden">{{ inv.period_id }}</TableCell>
             <TableCell class="text-muted-foreground whitespace-nowrap max-md:hidden">{{ day(inv.create_time) }}</TableCell>
             <TableCell><StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill></TableCell>
-            <TableCell class="text-end font-medium whitespace-nowrap tabular">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
+            <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
             <TableCell><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => (shown = i) }]" :label="`${t('common.moreActions')} ${inv.number ?? ''}`" /></TableCell>
           </TableRow>
         </TableBody>

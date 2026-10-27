@@ -19,6 +19,9 @@ export function countOf(payments: Payments | null | undefined, status: string): 
   return payments?.by_status?.find((s) => s.status === status)?.count ?? 0;
 }
 
+/** The fewest characters a password may have; the sign-up, reset and invitation pages show it as a hint and the server refuses less. */
+export const PASSWORD_MIN = 10;
+
 /** The reasons /signin?oauth_error= can carry (the gateway's Google callback sends one of them); anything else in the address is ignored. */
 export const OAUTH_ERRORS = ["state", "denied", "token", "email_unverified", "unavailable", "failed"];
 

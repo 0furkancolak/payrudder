@@ -90,7 +90,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
             <TableCell>{{ t(`product.billing.payments.kinds.${p.kind}`) }}</TableCell>
             <TableCell><StatusPill :tone="toneOf(p.status)">{{ t(`product.status.${p.status}`) }}</StatusPill></TableCell>
             <TableCell class="text-muted-foreground capitalize max-md:hidden">{{ p.provider }}</TableCell>
-            <TableCell class="text-end font-medium whitespace-nowrap tabular">{{ signed(p) }}</TableCell>
+            <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">{{ signed(p) }}</TableCell>
             <TableCell>
               <RowActions
                 :actions="[
@@ -116,7 +116,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
       <dt class="text-muted-foreground">{{ t("product.payments.provider") }}</dt>
       <dd class="capitalize">{{ current.provider }}</dd>
       <dt class="text-muted-foreground">{{ t("product.payments.amount") }}</dt>
-      <dd class="tabular font-medium">{{ signed(current) }}</dd>
+      <dd class="tabular-nums font-medium">{{ signed(current) }}</dd>
     </dl>
     <PaymentContext v-if="current?.invoice_id" :key="current.id" :tenant-id="tenantId" :invoice-id="current.invoice_id" class="mt-6" />
   </DetailSheet>

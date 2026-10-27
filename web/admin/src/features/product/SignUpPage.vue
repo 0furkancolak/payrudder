@@ -2,14 +2,14 @@
 import { Link, useNavigate } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { FormField } from "@/shared/ui/form-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { useAuthMethods, useSignUp } from "./api";
+import { PASSWORD_MIN } from "./lib";
 import AuthShell from "./AuthShell.vue";
-import GoogleButton from "./GoogleButton.vue";
+import AuthMethodPicker from "./AuthMethodPicker.vue";
 import OtpFlow from "./OtpFlow.vue";
 import PasswordField from "./PasswordField.vue";
 
@@ -27,8 +27,7 @@ const method = ref("password");
 const checkInbox = ref("");
 
 /** The same rule the server applies: at least ten characters. */
-const MIN = 10;
-const longEnough = computed(() => password.value.length >= MIN);
+const longEnough = computed(() => password.value.length >= PASSWORD_MIN);
 const ready = computed(() => account.value.trim() !== "" && email.value.trim() !== "" && longEnough.value);
 
 function submit() {
@@ -48,18 +47,7 @@ function submit() {
 <template>
   <AuthShell :title="t('product.signUp.title')" :intro="t('product.signUp.intro')">
     <div v-if="!checkInbox" class="flex flex-col gap-4">
-      <template v-if="methods.data.value?.google">
-        <GoogleButton />
-        <div class="text-muted-foreground flex items-center gap-3 text-xs" aria-hidden="true">
-          <span class="bg-border h-px flex-1" />{{ t("product.signIn.or") }}<span class="bg-border h-px flex-1" />
-        </div>
-      </template>
-      <Tabs v-model="method">
-        <TabsList class="w-full [&>*]:flex-1" :aria-label="t('product.signIn.methods')">
-          <TabsTrigger value="password">{{ t("product.signIn.tabPassword") }}</TabsTrigger>
-          <TabsTrigger value="code">{{ t("product.signIn.tabCode") }}</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <AuthMethodPicker v-model="method" :google="methods.data.value?.google" />
     </div>
     <div v-if="checkInbox" class="bg-success-soft text-success flex flex-col gap-1 rounded-2xl px-4 py-3 text-sm" role="status">
       <p class="font-medium">{{ t("product.signUp.checkTitle") }}</p>
@@ -68,25 +56,21 @@ function submit() {
     <OtpFlow v-else-if="method === 'code'" mode="signup" />
     <form v-else class="flex flex-col gap-4" :aria-label="t('product.signUp.title')" @submit.prevent="submit">
       <div class="grid gap-4 sm:grid-cols-2">
-        <div class="flex flex-col gap-1.5">
-          <Label for="su-name">{{ t("product.auth.name") }}</Label>
+        <FormField for="su-name" :label="t('product.auth.name')">
           <Input id="su-name" v-model="name" autocomplete="name" />
-        </div>
-        <div class="flex flex-col gap-1.5">
-          <Label for="su-account">{{ t("product.auth.organisation") }}</Label>
+        </FormField>
+        <FormField for="su-account" :label="t('product.auth.organisation')">
           <Input id="su-account" v-model="account" autocomplete="organization" required />
-        </div>
+        </FormField>
       </div>
-      <div class="flex flex-col gap-1.5">
-        <Label for="su-email">{{ t("product.auth.email") }}</Label>
+      <FormField for="su-email" :label="t('product.auth.email')">
         <Input id="su-email" v-model="email" type="email" autocomplete="username" inputmode="email" required />
-      </div>
-      <div class="flex flex-col gap-1.5">
-        <Label for="su-password">{{ t("product.auth.password") }}</Label>
+      </FormField>
+      <FormField for="su-password" :label="t('product.auth.password')">
         <PasswordField id="su-password" v-model="password" autocomplete="new-password" describedby="su-password-hint" />
-        <p id="su-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: MIN }) }}</p>
-      </div>
-      <ErrorText :error="signup.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+        <p id="su-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: PASSWORD_MIN }) }}</p>
+      </FormField>
+      <ErrorText :error="signup.error.value" box />
       <Button type="submit" size="lg" :disabled="signup.isPending.value || !ready">{{ t("product.signUp.submit") }}</Button>
     </form>
     <template #footer>

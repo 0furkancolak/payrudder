@@ -8,9 +8,9 @@ Everything built is described in the design documents of `docs/` and in the ADRs
 |---|---|---|
 | [28 Cells](phase-28-cells.md) | Tenant directory, schema-per-tenant mode, converted cross-tenant jobs, fenced moves ([ADR 0018](../adr/0018-tenant-isolation-modes.md)) | Suites pass in pooled and cells mode; a tenant in a cell cannot read another's schema; a move loses no row |
 | [43 Repair CI](phase-43-ci-repair.md) | `main` and the nightly runs green. The 1M-event correctness and k6 nightlies must pass twice in a row | `ci` green on `main`, nightly green twice |
-| [49 Code-quality remediation](phase-49-code-quality-remediation.md) | Error contract, shared packages, ADR 0020 module moves (plans-svc and gateway are done; the other services are not) | Behaviour unchanged, tests green |
+| [49 Code-quality remediation](phase-49-code-quality-remediation.md) | Error contract, shared packages, module moves, cleanup and the web are done; what is left is refactors inside files other work streams are changing, and items that need a decision | Behaviour unchanged, tests green |
 
-43 and 49 were written before later work landed on `main`: check each against the code and cut what is already done before starting.
+43 was written before later work landed on `main`: check it against the code and cut what is already done before starting.
 
 ## Built, never run against the real thing
 
@@ -31,11 +31,10 @@ These need an account or an environment the repository does not have. Each is a 
 
 ## Known gaps in the console
 
-- Quotas cannot count distinct values (`UNIQUE`) or the latest value (`LAST`): the counters, the aggregator's upserts, late usage and rating only add or keep a maximum, so these two aggregations need their own storage and billing rules ([limits-svc.md](../03-services/limits-svc.md#as-built-quota-windows-and-modes)).
-- The sandbox provider connection has no backend.
+- The usage page totals raw event quantities from analytics-svc, which cannot give the aggregate of a `UNIQUE` (distinct values) or `LAST` (latest value) meter, so it shows a dash for those two; their exact values are in the aggregator, on the invoice and in the quota counters ([aggregator.md](../03-services/aggregator.md#as-built-unique-and-last)).
 - Money-logic findings of [billing-svc-status.md](../code-quality/billing-svc-status.md) that wait for a rule from the owner: the accounting summary does not reverse the tax of credit notes, refunded invoices or credit balances (and `Net` subtracts a gross `Refunds` after removing the tax once), a negative invoice total is clamped to zero instead of becoming a credit, a trial that ends inside a period is charged the whole fee, and invoice numbers take the UTC year.
 - A dialog opened from a row of a token-paged list (reverse a commission, mark a payout paid, a partner's forms) comes back from the address only when its row is on the first page after a reload; the sheet of the row itself is looked for on later pages. A sheet that holds typed values or a one-time secret (the new key's plaintext, a scanned receipt) comes back empty.
-- Seats (a quantity on the subscription) exist in the API only: the console neither shows nor sets them. Tax is the tenant's configured rate per customer country; a real tax engine (place of supply, registrations, reverse charge, rates by date) is not built and not planned.
+- Tax is the tenant's configured rate per customer country; a real tax engine (place of supply, registrations, reverse charge, rates by date) is not built and not planned.
 
 ## Definition of done (every phase)
 

@@ -210,7 +210,6 @@
   html { background: var(--background); }
   body { @apply bg-background text-foreground font-sans antialiased; margin: 0; letter-spacing: -0.006em; }
   h1, h2, h3 { letter-spacing: -0.02em; }
-  :dir(rtl) .rtl-flip { transform: scaleX(-1); }
   code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; unicode-bidi: plaintext; direction: ltr; }
   :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
@@ -258,7 +257,6 @@
 
 /* A big rounded white card: the unit of the product's pages. */
 .surface { @apply bg-card text-card-foreground rounded-3xl shadow-card min-w-0; }
-.tabular { font-variant-numeric: tabular-nums; }
 
 /* The Payrudder logo files come in a light-background and a dark-background version; show the one that matches the theme (DESIGN.md section 2). */
 .logo-on-dark { display: none; }

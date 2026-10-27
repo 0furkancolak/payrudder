@@ -20,11 +20,17 @@ func Once(ctx context.Context, pool *pgxpool.Pool, now time.Time) ([]string, err
 	})
 }
 
-// PruneWindows deletes the hour totals that ended before now − domain.WindowRetention, of every tenant and generation, and returns how many. Hour ids are the
+// PruneWindows deletes the hour totals and hour value sets that ended before now − domain.WindowRetention, of every tenant and generation, and returns how many. Hour ids are the
 // wall-clock hours of each tenant, so the cut is taken a day further back than the UTC hour of the retention: no zone's hour is deleted early.
 func PruneWindows(ctx context.Context, pool *pgxpool.Pool, now time.Time) (int64, error) {
 	oldest := now.UTC().Add(-domain.WindowRetention - 24*time.Hour).Format("2006-01-02T15")
-	return sqlc.New(pool).PruneUsageWindowAggregates(ctx, oldest)
+	q := sqlc.New(pool)
+	n, err := q.PruneUsageWindowAggregates(ctx, oldest)
+	if err != nil {
+		return n, err
+	}
+	sets, err := q.PruneUsageDistinctHours(ctx, oldest)
+	return n + sets, err
 }
 
 // Run calls Once and PruneWindows every interval until ctx is done.
