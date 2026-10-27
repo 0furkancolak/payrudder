@@ -159,6 +159,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.payment.bad_amount`
 - `billing.payment.bad_date`
 - `billing.payment.bad_method`
+- `billing.payment.bad_note`
+- `billing.payment.bad_reference`
 - `billing.payment.invoice_not_payable`
 - `billing.payment.method_unavailable`
 - `billing.payment.not_payable`

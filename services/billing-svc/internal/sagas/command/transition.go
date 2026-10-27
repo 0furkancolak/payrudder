@@ -126,7 +126,6 @@ func (e *Engine) mirrorInvoiceStatus(ctx context.Context, tx pgx.Tx, s *saga, fr
 	if status == "" {
 		return nil
 	}
-	wasPaid := s.InvoiceStatus == invmodel.StatusPaid
 	if err := sqlc.New(tx).SetInvoiceStatus(ctx, sqlc.SetInvoiceStatusParams{Status: status, TenantID: s.TenantID, ID: s.InvoiceID}); err != nil {
 		return err
 	}
@@ -135,10 +134,8 @@ func (e *Engine) mirrorInvoiceStatus(ctx context.Context, tx pgx.Tx, s *saga, fr
 		if err := reopenCredits(ctx, tx, s); err != nil {
 			return err
 		}
-		if !wasPaid {
-			if err := creditPartPayments(ctx, tx, s); err != nil {
-				return err
-			}
+		if err := creditHandPayments(ctx, tx, s); err != nil {
+			return err
 		}
 		// An invoice that used a coupon gives its redemption back; plans-svc is told by the scheduler (the reversal is queued in this transaction).
 		return sqlc.New(tx).QueuePromotionReversal(ctx, sqlc.QueuePromotionReversalParams{TenantID: s.TenantID, ID: s.InvoiceID})
@@ -155,16 +152,25 @@ func reopenCredits(ctx context.Context, tx pgx.Tx, s *saga) error {
 	return q.ClearCreditsAppliedToInvoice(ctx, sqlc.ClearCreditsAppliedToInvoiceParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
 }
 
-// creditPartPayments gives a customer the money an operator recorded by hand against an invoice that is voided before it was paid in full. No provider took it, so
-// there is no card to refund it to: it becomes a credit balance in the invoice's currency, once per invoice.
-func creditPartPayments(ctx context.Context, tx pgx.Tx, s *saga) error {
+// creditHandPayments gives a customer the money an operator recorded by hand against an invoice that is voided, whether it was paid in part or in full. No provider
+// took it, so there is no card to refund it to: it becomes a credit balance in the invoice's currency, once per invoice. Credit notes that already gave money back
+// come off the card part first (VoidSplit); the card part is refunded by the saga.
+func creditHandPayments(ctx context.Context, tx pgx.Tx, s *saga) error {
 	q := sqlc.New(tx)
 	received, err := q.SumInvoicePayments(ctx, sqlc.SumInvoicePaymentsParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
 	if err != nil || received <= 0 {
 		return err
 	}
+	credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+	if err != nil {
+		return err
+	}
+	_, hand := model.VoidSplit(s.TotalMinor, credited, received)
+	if hand <= 0 {
+		return nil
+	}
 	return q.InsertCreditBalanceForVoidedInvoice(ctx, sqlc.InsertCreditBalanceForVoidedInvoiceParams{TenantID: s.TenantID, CustomerID: s.CustomerID, ID: uuid.New(),
-		AmountMinor: received, SourceInvoiceID: s.InvoiceID, Currency: s.Currency})
+		AmountMinor: hand, SourceInvoiceID: s.InvoiceID, Currency: s.Currency})
 }
 
 // dunningDelays are the delays before retry 1..n: the tenant's own when set (hours, or minutes in a sandbox tenant), else the defaults.

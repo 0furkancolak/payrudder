@@ -2285,6 +2285,8 @@
         "bad_method": "Die Zahlungsart muss Banküberweisung, Bar oder Sonstiges sein.",
         "bad_amount": "Der Betrag muss eine ganze Zahl kleinster Einheiten über null sein.",
         "bad_date": "Das Eingangsdatum ist ungültig oder liegt in der Zukunft.",
+        "bad_reference": "Die Referenz muss eine einzelne Zeile mit höchstens 128 Zeichen sein.",
+        "bad_note": "Die Notiz darf höchstens 500 Zeichen lang sein.",
         "overpayment": "Das ist mehr als offen ist. Erfassen Sie nur den offenen Betrag.",
         "already_paid": "Die Rechnung ist bereits bezahlt.",
         "not_payable": "Der Zahlungsstatus der Rechnung erlaubt gerade keine manuelle Zahlung.",
