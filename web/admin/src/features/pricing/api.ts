@@ -179,6 +179,17 @@ export function percentText(bps: number): string {
   return `${whole}.${String(frac).padStart(2, "0").replace(/0$/, "")}`;
 }
 
+/** A percentage text ("20.5") written with the reader's decimal separator ("20,5" in Turkish), so what is typed and what is shown back agree. `parsePercent` reads both. */
+export function localizePercent(text: string, locale: string): string {
+  let sep = ".";
+  try {
+    sep = new Intl.NumberFormat(locale).formatToParts(1.1).find((p) => p.type === "decimal")?.value ?? ".";
+  } catch {
+    // an unknown locale keeps the dot
+  }
+  return text.replace(".", sep);
+}
+
 /** Basis points of a typed percentage, or null if it is not 0–100 with at most two decimals. Done on the text, no float. */
 export function parsePercent(input: string): number | null {
   const m = /^(\d{1,3})(?:[.,](\d{1,2}))?$/.exec(input.trim());

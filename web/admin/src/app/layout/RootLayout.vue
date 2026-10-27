@@ -9,7 +9,9 @@ import { BrandLogo } from "@/shared/ui/brand-logo";
 import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
+import NotFound from "@/app/errors/NotFound.vue";
 import PageBoundary from "@/app/errors/PageBoundary.vue";
+import { ALL_TENANTS } from "./nav";
 import { envOf, isEnvironment, rememberEnv } from "@/shared/lib/environment";
 import { ALL_APPS, appInSearch, rememberApp } from "@/shared/lib/scope";
 import Breadcrumbs from "./Breadcrumbs.vue";
@@ -32,7 +34,7 @@ import { provideShell } from "./useShell";
  * switch, the sandbox / live switch and the person's menu (which also holds the language and the theme). What the sidebar lists follows the route (see
  * nav.ts) and the scope in the address (`?app=<id|all>`, see shared/lib/scope).
  */
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const navigate = useNavigate();
 const brand = brandName();
 // There is one kind of signed-in person; an operator is a person the server also lets into the operator console.
@@ -46,6 +48,36 @@ const drawer = ref(false);
 
 // A route change closes the drawer (the links also do; this covers the browser's back button).
 watch(shell.path, () => (drawer.value = false));
+
+/**
+ * An app or a tenant in the address that is none of the person's, known once the apps have arrived: the page answers "not found" instead of loading
+ * forever or showing the API's wording. `all` is the scope "every app", not an id.
+ */
+const unknownScope = computed(() => {
+  if (!isPerson.value || shell.inOperatorArea.value || !shell.apps.isSuccess.value || shell.apps.isPlaceholderData.value) return false;
+  const p = shell.path.value;
+  const list = shell.apps.data.value?.apps ?? [];
+  const app = /^\/app\/apps\/([^/]+)/.exec(p)?.[1];
+  if (app !== undefined) return !list.some((a) => a.id === decodeURIComponent(app));
+  const tenant = /^\/app\/t\/([^/]+)/.exec(p)?.[1];
+  return tenant !== undefined && decodeURIComponent(tenant) !== ALL_TENANTS && shell.located.value === null;
+});
+
+// The tab's title names the page ("Customers · Payrudder"), so history, tabs and screen readers tell pages apart; the brand alone where a page has no name.
+const SIGNED_OUT_TITLES: Record<string, string> = { "/signin": "product.signIn.title", "/signup": "product.signUp.title" };
+watch(
+  [() => shell.current.value, () => shell.path.value, locale, signedIn, unknownScope],
+  () => {
+    const key = signedIn.value
+      ? shell.current.value && !unknownScope.value
+        ? `shell.items.${shell.current.value.label}`
+        : ""
+      : (SIGNED_OUT_TITLES[shell.path.value] ?? "");
+    const page = key ? t(key) : "";
+    document.title = page ? `${page} · ${t("app.title")}` : t("app.title");
+  },
+  { immediate: true, flush: "post" },
+);
 
 /** The pages that are about one environment's data: the dashboards and the pages of an app. The organisation's own pages (members, settings) are about none. */
 const envPage = computed(() => {
@@ -162,7 +194,8 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         :class="['mx-auto min-w-0 outline-none md:px-8', signedIn ? 'max-w-[1320px] px-4 pt-2 pb-16 md:pt-4' : 'flex max-w-[1240px] flex-col items-center px-4 pt-8 pb-12 md:pt-14']"
       >
         <VerifyBanner v-if="isPerson" />
-        <PageBoundary><Outlet /></PageBoundary>
+        <NotFound v-if="unknownScope" />
+        <PageBoundary v-else><Outlet /></PageBoundary>
       </main>
       <PeekHost v-if="isPerson" />
       <TourHost v-if="isPerson" />

@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Console opérateur Payrudder",
+    "title": "Payrudder",
     "language": "Langue",
     "demo": "Mode démo : données d'exemple, un faux prestataire de paiement, les mails vont au récepteur local. Rien ici n'est réel.",
     "themeLight": "Passer au thème clair",
@@ -392,7 +392,7 @@
       "email": "E-mail",
       "country": "Pays",
       "currency": "Devise de facturation",
-      "tenantCurrency": "Devise du locataire",
+      "tenantCurrency": "Devise du compte",
       "create": "Créer le client",
       "empty": "Aucun client pour l'instant.",
       "address": {
@@ -1368,7 +1368,7 @@
         "nothing": "Rien à vérifier",
         "rotate": "Nouvelle adresse",
         "confirmRotate": "Créer une nouvelle adresse ? Les e-mails envoyés à l'ancienne sont supprimés.",
-        "noDomain": "Aucun domaine de réception n'est défini pour ce déploiement (PAYRUDDER_INBOUND_DOMAIN) ; seul le jeton est affiché."
+        "noDomain": "Le transfert de factures par e-mail n'est pas disponible sur ce déploiement ; vous pouvez toujours saisir les factures à la main."
       },
       "rules": {
         "open": "Règles fournisseurs",
@@ -4089,7 +4089,8 @@
     },
     "currency": {
       "label": "Devise",
-      "own": "propre"
+      "own": "par défaut",
+      "ownHint": "Devise par défaut du compte"
     },
     "kpi": {
       "net": "Revenu net",

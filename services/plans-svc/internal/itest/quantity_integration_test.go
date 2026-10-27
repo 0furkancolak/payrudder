@@ -84,6 +84,14 @@ func testSubscriptionQuantity(t *testing.T) {
 		if fees[one.GetId()] != 3000 || fees[five.GetId()] != 15000 {
 			t.Fatalf("fees due = %v; want 3000 for one seat and 15000 for five", fees)
 		}
+		// The subscription report prices the seats too: MRR is the fee times the quantity, as invoiced.
+		rep, err := e.plans.GetSubscriptionReport(ctx, &plansv1.GetSubscriptionReportRequest{GroupBy: []string{"plan"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rows := rep.GetRows(); len(rows) != 1 || rows[0].GetPlanCode() != "team" || rows[0].GetActive() != 2 || rows[0].GetMrrMinor() != 3000+5*3000 {
+			t.Fatalf("report = %v; want 2 subscriptions and an MRR of 18000 (1 + 5 seats of 3000)", rep.GetRows())
+		}
 	})
 
 	t.Run("more seats are charged for the rest of the period and the preview is what is made", func(t *testing.T) {

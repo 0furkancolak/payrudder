@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { currencyInfo } from "./intl";
-import { formatMinor, maskDigits, maskEmail, minorDigits, minorToMajor, parseMajor, parseUnitPrice, unitPriceToMajor } from "./money";
+import { formatCompact, formatMinor, maskDigits, maskEmail, minorDigits, minorToMajor, parseMajor, parseUnitPrice, unitPriceToMajor } from "./money";
 import { privacyMode } from "./prefs";
 
 describe("minorToMajor", () => {
@@ -61,6 +61,17 @@ describe("formatMinor", () => {
   it("handles negative amounts (credits)", () => {
     expect(formatMinor("-250", "USD", "en")).toContain("2.50");
     expect(formatMinor("-250", "USD", "en")).toContain("-");
+  });
+});
+
+describe("formatCompact", () => {
+  it("keeps the short suffixes where they are unambiguous", () => {
+    expect(formatCompact(130000, "USD", "en")).toBe("$1.3K");
+  });
+  it("does not abbreviate thousands in Turkish, where the short form 'B' (bin) reads as a billion", () => {
+    expect(formatCompact(130000, "TRY", "tr")).not.toMatch(/\bB\b/);
+    expect(formatCompact(130000, "TRY", "tr")).toContain("1.300");
+    expect(formatCompact(130000000, "TRY", "tr")).toContain("Mn");
   });
 });
 

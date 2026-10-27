@@ -10,9 +10,9 @@ import { RETRY_HOURS } from "@/shared/lib/rules";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
-import { parsePercent, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type Rate } from "./api";
+import { localizePercent, parsePercent, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type Rate } from "./api";
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const canWrite = useCanWrite();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
@@ -24,7 +24,7 @@ const rates = ref<Rate[]>([]);
 const taxError = ref("");
 watch(
   () => stored.data.value,
-  (v) => (rates.value = (v ?? []).map((r) => ({ ...r }))),
+  (v) => (rates.value = (v ?? []).map((r) => ({ ...r, percent: localizePercent(r.percent, locale.value) }))),
   { immediate: true },
 );
 function saveRates() {

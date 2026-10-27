@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Payrudder-Operator-Konsole",
+    "title": "Payrudder",
     "language": "Sprache",
     "demo": "Demo-Modus: Beispieldaten, ein simulierter Zahlungsanbieter, Mails gehen an den lokalen Mail-Catcher. Nichts davon ist echt.",
     "themeLight": "Zum hellen Design wechseln",
@@ -392,7 +392,7 @@
       "email": "E-Mail",
       "country": "Land",
       "currency": "Rechnungswährung",
-      "tenantCurrency": "Währung des Mandanten",
+      "tenantCurrency": "Währung des Kontos",
       "create": "Kunden anlegen",
       "empty": "Noch keine Kunden.",
       "address": {
@@ -1368,7 +1368,7 @@
         "nothing": "Nichts zu prüfen",
         "rotate": "Neue Adresse",
         "confirmRotate": "Neue Eingangsadresse erzeugen? E-Mails an die alte Adresse werden verworfen.",
-        "noDomain": "Für diese Installation ist keine Domain für eingehende Mails gesetzt (PAYRUDDER_INBOUND_DOMAIN); es wird nur das Token angezeigt."
+        "noDomain": "Das Weiterleiten von Rechnungen per E-Mail ist in dieser Installation nicht verfügbar; Rechnungen lassen sich weiterhin manuell erfassen."
       },
       "rules": {
         "open": "Lieferantenregeln",
@@ -4089,7 +4089,8 @@
     },
     "currency": {
       "label": "Währung",
-      "own": "eigene"
+      "own": "Standard",
+      "ownHint": "Standardwährung des Kontos"
     },
     "kpi": {
       "net": "Nettoumsatz",

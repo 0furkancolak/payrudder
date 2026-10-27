@@ -2,13 +2,12 @@ import { describe, expect, it } from "vitest";
 import { bpPercent, chosenCurrency, delta, geometry, hasActivity, nearestIndex, niceMax, parseQuery, share, toParams, toSearch, type DashCurrency } from "./lib";
 
 describe("the query in the address", () => {
-  it("defaults to this month so far, compared, first currency", () => {
-    const now = new Date(2026, 9, 26);
-    expect(parseQuery({}, now)).toEqual({ period: "custom", from: "2026-10-01", to: "2026-10-26", compare: true });
-    expect(toSearch(parseQuery({}, now), now)).toEqual({});
+  it("defaults to the last 30 days (a preset, not a custom range), compared, first currency", () => {
+    expect(parseQuery({})).toEqual({ period: "30d", compare: true });
+    expect(toSearch(parseQuery({}))).toEqual({});
   });
   it("keeps a chosen preset", () => {
-    expect(toSearch(parseQuery({ period: "30d" }))).toEqual({ period: "30d" });
+    expect(toSearch(parseQuery({ period: "90d" }))).toEqual({ period: "90d" });
   });
   it("round-trips a chosen view", () => {
     const q = parseQuery({ period: "custom", from: "2026-09-01", to: "2026-09-30", compare: "off", cur: "EUR" });
@@ -20,7 +19,7 @@ describe("the query in the address", () => {
   });
   it("ignores what it does not understand", () => {
     const now = new Date(2026, 9, 26);
-    expect(parseQuery({ period: "weekly", cur: "euro" }, now)).toEqual({ period: "custom", from: "2026-10-01", to: "2026-10-26", compare: true });
+    expect(parseQuery({ period: "weekly", cur: "euro" }, now)).toEqual({ period: "30d", compare: true });
     expect(parseQuery({ period: "custom", from: "yesterday", to: "today" }, now).from).toBe("2026-10-01");
     expect(toParams(parseQuery({ period: "ytd" }))).toEqual({ period: "ytd", compare: "1" });
   });
@@ -35,7 +34,7 @@ describe("delta", () => {
   });
   it("has no percentage from nothing: it is new", () => {
     expect(delta(500, 0)).toEqual({ percent: null, direction: "new" });
-    expect(delta(0, 0)).toEqual({ percent: 0, direction: "flat" });
+    expect(delta(0, 0)).toEqual({ percent: null, direction: "none" });
   });
   it("has nothing to say without an earlier figure", () => {
     expect(delta(5, undefined)).toEqual({ percent: null, direction: "none" });

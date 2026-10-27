@@ -5,6 +5,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { formatUtcDay } from "@/shared/lib/format";
 import { cn } from "@/shared/lib/utils";
 import { rangeOf, type RangePreset } from "@/shared/lib/dateRange";
 
@@ -19,14 +20,16 @@ export interface DateRange {
   to: string;
 }
 const model = defineModel<DateRange>({ default: () => ({ from: "", to: "" }) });
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const presets: RangePreset[] = ["today", "7d", "30d", "month", "lastMonth", "year"];
 const open = ref(false);
 const draft = ref<DateRange>({ ...model.value });
 watch(model, (v) => (draft.value = { ...v }), { deep: true });
 
 const active = computed(() => model.value.from !== "" || model.value.to !== "");
-const label = computed(() => (active.value ? `${model.value.from || "…"} – ${model.value.to || "…"}` : t("dateRange.any")));
+/** The days of the chip are written like every other date of the console ("27 Oct 2026"), not as the YYYY-MM-DD the model keeps. */
+const shown = (day: string) => formatUtcDay(day, locale.value) || "…";
+const label = computed(() => (active.value ? `${shown(model.value.from)} – ${shown(model.value.to)}` : t("dateRange.any")));
 const valid = computed(() => draft.value.from === "" || draft.value.to === "" || draft.value.from <= draft.value.to);
 
 function pick(p: RangePreset) {
