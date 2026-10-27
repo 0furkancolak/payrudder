@@ -6,6 +6,7 @@ import { useI18n } from "vue-i18n";
 import { CountrySelect } from "@/shared/ui/location-fields";
 import { ErrorText } from "@/shared/ui/error-text";
 import { useCanWrite } from "@/shared/lib/access";
+import { RETRY_HOURS } from "@/shared/lib/rules";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -53,7 +54,7 @@ watch(
 function saveDunning() {
   dunningError.value = "";
   const out = retryHours.value.map((h) => (/^\d{1,3}$/.test(h.trim()) ? Number(h) : NaN));
-  if (out.some((n) => !(n >= 1 && n <= 720))) {
+  if (out.some((n) => !(n >= RETRY_HOURS.min && n <= RETRY_HOURS.max))) {
     dunningError.value = t("billing.pricing.dunning.bad");
     return;
   }

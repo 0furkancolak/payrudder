@@ -254,9 +254,11 @@ export function nextTabIndex(key: string, index: number, count: number): number 
   }
 }
 
+const BASIS_POINTS = 10_000;
+
 /** A share in basis points (3 of 12 is 2500), or null when there is nothing to divide by: the failed-payment rate of added-up apps. */
 export function ratioBp(part: number, whole: number): number | null {
-  return whole > 0 ? Math.round((part * 10000) / whole) : null;
+  return whole > 0 ? Math.round((part * BASIS_POINTS) / whole) : null;
 }
 
 /** The currency tabs of several dashboards put together: every currency any of them has, the biggest net revenue first. */

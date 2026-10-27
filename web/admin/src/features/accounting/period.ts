@@ -35,8 +35,10 @@ export function validRange(r: Range): boolean {
   return new Date(`${r.to}T00:00:00Z`) <= limit;
 }
 
+const DAILY_BUCKETS_UP_TO_DAYS = 62;
+
 /** Day buckets up to two months read better by day; a longer period is by month (the API's default too). */
 export function granularityOf(r: Range): "day" | "month" {
   const days = (new Date(`${r.to}T00:00:00Z`).getTime() - new Date(`${r.from}T00:00:00Z`).getTime()) / 86_400_000 + 1;
-  return days <= 62 ? "day" : "month";
+  return days <= DAILY_BUCKETS_UP_TO_DAYS ? "day" : "month";
 }
