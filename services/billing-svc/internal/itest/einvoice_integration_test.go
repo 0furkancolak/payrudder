@@ -43,7 +43,7 @@ type docRow struct {
 
 func docs(t *testing.T, tid uuid.UUID) []docRow {
 	t.Helper()
-	rows, err := shared.system.Query(context.Background(), `SELECT id::text, kind, status, COALESCE(legal_number,''), number, last_error_key, attempts
+	rows, err := shared.sql.Query(context.Background(), `SELECT id::text, kind, status, COALESCE(legal_number,''), number, last_error_key, attempts
 		FROM einvoice_documents WHERE tenant_id = $1 ORDER BY created_at, number`, tid)
 	if err != nil {
 		t.Fatal(err)
@@ -167,7 +167,7 @@ func testEInvoiceFinalizedIssuesInvoicesAndCreditNotes(t *testing.T) {
 func invoiceID(t *testing.T, e *env, customer string) string {
 	t.Helper()
 	var id string
-	if err := shared.system.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = $2 AND status <> 'void' ORDER BY created_at LIMIT 1`,
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = $2 AND status <> 'void' ORDER BY created_at LIMIT 1`,
 		e.tid, customer).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func testEInvoiceRetriesWithBackoffAndTheOperatorRetriesFailures(t *testing.T) {
 		}
 		return a != "" && b != ""
 	})
-	sweeper := &einvoicecmd.Commands{Pool: shared.system, Now: e.clk.Now}
+	sweeper := &einvoicecmd.Commands{DB: shared.system, Now: e.clk.Now}
 	if n, err := sweeper.Sweep(context.Background(), 10); err != nil || n != 0 {
 		// The retry is due 1 minute after the reply (real time); the test clock is days ahead of it, so it is due: the sweep must find exactly cus_a's document.
 		if err != nil || n != 1 {
@@ -327,7 +327,7 @@ func testEInvoiceSilentWorkerIsAskedAgain(t *testing.T) {
 		}
 		return issued == 1
 	})
-	sweeper := &einvoicecmd.Commands{Pool: shared.system, Now: func() time.Time { return e.clk.Now().Add(einvoicecmd.ReplyWait + time.Minute) }}
+	sweeper := &einvoicecmd.Commands{DB: shared.system, Now: func() time.Time { return e.clk.Now().Add(einvoicecmd.ReplyWait + time.Minute) }}
 	if n, err := sweeper.Sweep(context.Background(), 10); err != nil || n != 1 {
 		t.Fatalf("sweep = %d, %v", n, err)
 	}

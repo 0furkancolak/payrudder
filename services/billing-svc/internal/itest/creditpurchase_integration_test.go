@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/query"
@@ -152,7 +151,7 @@ func testCreditPackIsBoughtThroughAPaymentLink(t *testing.T) {
 	if err != nil || again.GetSettled() {
 		t.Errorf("settling a paid invoice = %v, %v", again, err)
 	}
-	err = pgxx.InTx(context.Background(), shared.system, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = shared.system.InTx(context.Background(), l.tid, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		return command.PurchasePaid(context.Background(), tx, command.Purchase{TenantID: l.tid, CustomerID: cid, LinkID: uuid.New(), Quantity: 2, Credits: 2000, InvoiceID: uuid.MustParse(invoiceID),
 			InvoiceNo: "X", Currency: "EUR", AmountMinor: 1000, Now: time.Now()})
 	})
@@ -211,7 +210,7 @@ func testAVoidedCreditPurchaseGrantsNothing(t *testing.T) {
 	}
 	var invoiceStatus string
 	testkit.Eventually(t, 30*time.Second, "the invoice to be voided", func() bool {
-		if err := shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND kind = 'LINK'`, l.tid).Scan(&invoiceStatus); err != nil {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND kind = 'LINK'`, l.tid).Scan(&invoiceStatus); err != nil {
 			t.Fatal(err)
 		}
 		return invoiceStatus == "void"

@@ -4,27 +4,28 @@ package creditnotes
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Handler implements the credit-note methods of billingv1.BillingServiceServer and billingv1.BillingAdminServiceServer.
 type Handler struct {
-	app    *pgxpool.Pool
-	system *pgxpool.Pool
+	app    pgxx.Beginner
+	system *tenantdb.DB
 	notes  *command.Commands
 }
 
-// New returns the handler over the billing_app and billing_system pools.
-func New(app, system *pgxpool.Pool, notes *command.Commands) *Handler {
+// New returns the handler over the billing_app pool (or its router when cells are on) and the billing_system database.
+func New(app pgxx.Beginner, system *tenantdb.DB, notes *command.Commands) *Handler {
 	return &Handler{app: app, system: system, notes: notes}
 }
 

@@ -24,7 +24,7 @@ func seedInvoiceOf(t *testing.T, tid, customer uuid.UUID, ref, name, currency st
 	if status == "open" {
 		finalized = time.Now().AddDate(0, 0, -age)
 	}
-	if _, err := shared.system.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, finalized_at)
+	if _, err := shared.sql.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider, finalized_at)
 		VALUES ($1,$2,$3,$4,'REGULAR',$5,$6,$7,$7,$8,jsonb_build_object('customer_external_id', $9::text, 'customer_name', $10::text, 'environment', 'live'),'',$11)`,
 		tid, id, customer, uuid.NewString()[:7], uuid.New(), currency, total, status, ref, name, finalized); err != nil {
 		t.Fatal(err)
@@ -32,10 +32,10 @@ func seedInvoiceOf(t *testing.T, tid, customer uuid.UUID, ref, name, currency st
 	if status != "paid" {
 		return
 	}
-	if _, err := shared.system.Exec(ctx, `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'PAID',1)`, tid, saga, id); err != nil {
+	if _, err := shared.sql.Exec(ctx, `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'PAID',1)`, tid, saga, id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := shared.system.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, at) VALUES ($1,$2,1,'PAYMENT_PENDING','PAID','reply:PaymentSucceeded',$3)`, tid, saga, paidAt); err != nil {
+	if _, err := shared.sql.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, at) VALUES ($1,$2,1,'PAYMENT_PENDING','PAID','reply:PaymentSucceeded',$3)`, tid, saga, paidAt); err != nil {
 		t.Fatal(err)
 	}
 }

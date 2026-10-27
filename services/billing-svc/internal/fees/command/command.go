@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -18,11 +17,12 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Config is what the commands run on.
 type Config struct {
-	Pool     *pgxpool.Pool // billing_system
+	DB       *tenantdb.DB // billing_system
 	Inputs   *inputs.Inputs
 	Invoices *invoicecmd.Commands
 	Now      func() time.Time
@@ -34,7 +34,7 @@ type Config struct {
 // Commands are the fee-billing commands.
 type Commands struct {
 	cfg Config
-	q   *sqlc.Queries
+	q   *sqlc.Queries // only for WithTx: the statements run in the transactions DB opens
 }
 
 // New returns the commands; a missing clock is the wall clock, a missing page size 500 and a missing logger the default one.
@@ -48,17 +48,22 @@ func New(cfg Config) *Commands {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	return &Commands{cfg: cfg, q: sqlc.New(cfg.Pool)}
+	return &Commands{cfg: cfg, q: sqlc.New(cfg.DB.Pool())}
 }
 
 // Bill invoices the fixed fees that are due in advance, for every tenant: for each advance-billed subscription whose next period has
 // started, one invoice for that period's fee (kind FEE), finalized so its saga charges it, and then the subscription's next fee period is
 // advanced. Every step is idempotent (the invoice is found again by its fee_key, finalizing a finalized invoice and advancing an advanced
 // period do nothing), so a crash at any point is repaired by the next pass. A paused subscription's period is skipped without an invoice.
+//
+// The tenants come from plans-svc, one by one, and each one's rows are reached where the directory says they are (ADR 0018): the run is per tenant, in either mode. A
+// tenant that is being moved is left for the next pass.
 func (c *Commands) Bill(ctx context.Context) error {
 	var firstErr error
 	err := c.cfg.Inputs.EachBillableTenant(ctx, func(id uuid.UUID, _ *plansv1.Tenant) error {
-		if err := c.billTenant(ctx, id); err != nil {
+		if err := c.billTenant(ctx, id); tenantdb.Skippable(err) {
+			c.cfg.Log.InfoContext(ctx, "scheduler: fee billing waits for the tenant", "tenant", id, "error", err)
+		} else if err != nil {
 			c.cfg.Log.WarnContext(ctx, "scheduler: fee billing failed", "tenant", id, "error", err)
 			if firstErr == nil {
 				firstErr = err
@@ -73,6 +78,10 @@ func (c *Commands) Bill(ctx context.Context) error {
 }
 
 func (c *Commands) billTenant(ctx context.Context, tenantID uuid.UUID) error {
+	// Before plans-svc is asked to apply anything for the tenant: a tenant that is moving is not touched at all.
+	if err := c.cfg.DB.Check(ctx, tenantID); err != nil {
+		return err
+	}
 	t, err := c.cfg.Inputs.Tenant(ctx, tenantID)
 	if err != nil {
 		return err

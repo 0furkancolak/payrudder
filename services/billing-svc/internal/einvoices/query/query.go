@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -22,7 +21,7 @@ import (
 )
 
 // Get reads one e-document of a tenant.
-func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (sqlc.GetEInvoiceDocumentRow, error) {
+func Get(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID) (sqlc.GetEInvoiceDocumentRow, error) {
 	var out sqlc.GetEInvoiceDocumentRow
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		var err error
@@ -64,7 +63,7 @@ func parseOptionalUUID(field, v string) (*uuid.UUID, error) {
 }
 
 // List returns a page of the tenant's e-documents.
-func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*Page, error) {
+func List(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, p ListParams) (*Page, error) {
 	size, ok := page.Size(p.PageSize, 50, 200)
 	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_page_size", "page_size must be 1..200")
@@ -111,7 +110,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 }
 
 // FileURL presigns the download of a document's UBL XML (kind "xml") or PDF ("pdf").
-func FileURL(ctx context.Context, app *pgxpool.Pool, signer invoicequery.PDFSigner, tenantID, id uuid.UUID, kind string) (string, time.Time, error) {
+func FileURL(ctx context.Context, app pgxx.Beginner, signer invoicequery.PDFSigner, tenantID, id uuid.UUID, kind string) (string, time.Time, error) {
 	if kind != "xml" && kind != "pdf" {
 		return "", time.Time{}, errkey.New(codes.InvalidArgument, "billing.einvoice.bad_file_kind", "kind must be xml or pdf")
 	}

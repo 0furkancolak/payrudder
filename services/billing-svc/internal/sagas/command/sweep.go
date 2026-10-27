@@ -8,16 +8,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 func (e *Engine) snapshotLines(ctx context.Context, tx pgx.Tx, s *saga) ([]sqlc.ListInvoiceLinesForSnapshotRow, error) {
@@ -66,17 +65,20 @@ type SweepResult struct {
 }
 
 // Sweep handles one batch of sagas whose command went unanswered (re-issue up to MaxStepAttempts, then StepExhausted)
-// and the dunning retries that are due. It uses FOR UPDATE SKIP LOCKED, so any number of pods can sweep.
-func (e *Engine) Sweep(ctx context.Context, pool *pgxpool.Pool, limit int) (SweepResult, error) {
+// and the dunning retries that are due. It uses FOR UPDATE SKIP LOCKED, so any number of pods can sweep. The batch is per place (the pooled database, and each tenant
+// placed in a cell, ADR 0018): limit is the size of each, and the result adds them up.
+func (e *Engine) Sweep(ctx context.Context, db *tenantdb.DB, limit int) (SweepResult, error) {
 	var res SweepResult
 	now := e.cfg.Now()
-	if err := e.sweepDeadlines(ctx, pool, now, limit, &res); err != nil {
-		return res, err
-	}
-	if err := e.sweepDunning(ctx, pool, now, limit, &res); err != nil {
-		return res, err
-	}
-	err := e.sweepPolls(ctx, pool, now, limit, &res)
+	err := db.Each(ctx, func(ctx context.Context, s tenantdb.Scope) error {
+		if err := e.sweepDeadlines(ctx, s, now, limit, &res); err != nil {
+			return err
+		}
+		if err := e.sweepDunning(ctx, s, now, limit, &res); err != nil {
+			return err
+		}
+		return e.sweepPolls(ctx, s, now, limit, &res)
+	})
 	return res, err
 }
 
@@ -85,15 +87,18 @@ type dueSaga struct{ tenantID, id uuid.UUID }
 
 // sweepEach handles every due saga in a transaction of its own: lock locks the saga under FOR UPDATE SKIP LOCKED and re-checks the condition of the sweep (it is
 // nil when another pod got there first), handle acts on it.
-func (e *Engine) sweepEach(ctx context.Context, pool *pgxpool.Pool, due []dueSaga, lock func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error), handle func(tx pgx.Tx, s *saga) error) error {
+func (e *Engine) sweepEach(ctx context.Context, s tenantdb.Scope, due []dueSaga, lock func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error), handle func(tx pgx.Tx, s *saga) error) error {
 	for _, d := range due {
-		err := pgxx.InTx(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-			s, err := e.lockDue(ctx, tx, d.tenantID, func(q *sqlc.Queries) (uuid.UUID, error) { return lock(q, d) })
-			if err != nil || s == nil {
+		err := s.InTx(ctx, d.tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
+			sg, err := e.lockDue(ctx, tx, d.tenantID, func(q *sqlc.Queries) (uuid.UUID, error) { return lock(q, d) })
+			if err != nil || sg == nil {
 				return err
 			}
-			return handle(tx, s)
+			return handle(tx, sg)
 		})
+		if tenantdb.Skippable(err) {
+			continue // the tenant is moving: the next pass finds the saga again
+		}
 		if err != nil {
 			return err
 		}
@@ -103,8 +108,8 @@ func (e *Engine) sweepEach(ctx context.Context, pool *pgxpool.Pool, due []dueSag
 
 // sweepPolls asks again for the status of the payments that are awaited (a bank transfer whose money has not been confirmed yet) when their poll is due.
 // The answer is in the ledger, so a poll costs one query; the payment window runs out in the answer, not here.
-func (e *Engine) sweepPolls(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
-	rows, err := sqlc.New(pool).ListSagasDueForPoll(ctx, sqlc.ListSagasDueForPollParams{Now: now, RowLimit: store.I32(limit)})
+func (e *Engine) sweepPolls(ctx context.Context, s tenantdb.Scope, now time.Time, limit int, res *SweepResult) error {
+	rows, err := s.Scan().ListSagasDueForPoll(ctx, sqlc.ListSagasDueForPollParams{Now: now, RowLimit: store.I32(limit)})
 	if err != nil {
 		return err
 	}
@@ -112,7 +117,7 @@ func (e *Engine) sweepPolls(ctx context.Context, pool *pgxpool.Pool, now time.Ti
 	for i, r := range rows {
 		due[i] = dueSaga{r.TenantID, r.ID}
 	}
-	return e.sweepEach(ctx, pool, due,
+	return e.sweepEach(ctx, s, due,
 		func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error) {
 			return q.LockSagaDueForPoll(ctx, sqlc.LockSagaDueForPollParams{TenantID: d.tenantID, ID: d.id, Now: now})
 		},
@@ -125,8 +130,8 @@ func (e *Engine) sweepPolls(ctx context.Context, pool *pgxpool.Pool, now time.Ti
 		})
 }
 
-func (e *Engine) sweepDeadlines(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
-	rows, err := sqlc.New(pool).ListSagasPastDeadline(ctx, sqlc.ListSagasPastDeadlineParams{Now: now, RowLimit: store.I32(limit)})
+func (e *Engine) sweepDeadlines(ctx context.Context, s tenantdb.Scope, now time.Time, limit int, res *SweepResult) error {
+	rows, err := s.Scan().ListSagasPastDeadline(ctx, sqlc.ListSagasPastDeadlineParams{Now: now, RowLimit: store.I32(limit)})
 	if err != nil {
 		return err
 	}
@@ -134,7 +139,7 @@ func (e *Engine) sweepDeadlines(ctx context.Context, pool *pgxpool.Pool, now tim
 	for i, r := range rows {
 		due[i] = dueSaga{r.TenantID, r.ID}
 	}
-	return e.sweepEach(ctx, pool, due,
+	return e.sweepEach(ctx, s, due,
 		func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error) {
 			return q.LockSagaPastDeadline(ctx, sqlc.LockSagaPastDeadlineParams{TenantID: d.tenantID, ID: d.id, Now: now})
 		},
@@ -154,8 +159,8 @@ func (e *Engine) sweepDeadlines(ctx context.Context, pool *pgxpool.Pool, now tim
 		})
 }
 
-func (e *Engine) sweepDunning(ctx context.Context, pool *pgxpool.Pool, now time.Time, limit int, res *SweepResult) error {
-	rows, err := sqlc.New(pool).ListSagasDueForDunning(ctx, sqlc.ListSagasDueForDunningParams{Now: now, RowLimit: store.I32(limit)})
+func (e *Engine) sweepDunning(ctx context.Context, s tenantdb.Scope, now time.Time, limit int, res *SweepResult) error {
+	rows, err := s.Scan().ListSagasDueForDunning(ctx, sqlc.ListSagasDueForDunningParams{Now: now, RowLimit: store.I32(limit)})
 	if err != nil {
 		return err
 	}
@@ -163,7 +168,7 @@ func (e *Engine) sweepDunning(ctx context.Context, pool *pgxpool.Pool, now time.
 	for i, r := range rows {
 		due[i] = dueSaga{r.TenantID, r.ID}
 	}
-	return e.sweepEach(ctx, pool, due,
+	return e.sweepEach(ctx, s, due,
 		func(q *sqlc.Queries, d dueSaga) (uuid.UUID, error) {
 			return q.LockSagaDueForDunning(ctx, sqlc.LockSagaDueForDunningParams{TenantID: d.tenantID, ID: d.id, Now: now})
 		},

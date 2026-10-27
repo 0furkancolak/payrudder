@@ -119,10 +119,16 @@ func (q *Queries) ListTenantEvents(ctx context.Context) ([]ListTenantEventsRow, 
 }
 
 const notifyOutbox = `-- name: NotifyOutbox :exec
-SELECT pg_notify($1::text, '')
+SELECT pg_notify($1::text, $2::text)
 `
 
-func (q *Queries) NotifyOutbox(ctx context.Context, channel string) error {
-	_, err := q.db.Exec(ctx, notifyOutbox, channel)
+type NotifyOutboxParams struct {
+	Channel string
+	Tenant  string
+}
+
+// The payload is the tenant: the relay of a cell visits that tenant's schema (the pooled relay ignores it).
+func (q *Queries) NotifyOutbox(ctx context.Context, arg NotifyOutboxParams) error {
+	_, err := q.db.Exec(ctx, notifyOutbox, arg.Channel, arg.Tenant)
 	return err
 }

@@ -85,7 +85,7 @@ func (l *linkEnv) events() []string {
 			l.t.Fatal(err)
 		}
 		var left int
-		if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM tenant_event_outbox WHERE tenant_id = $1`, l.tid).Scan(&left); err != nil {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM tenant_event_outbox WHERE tenant_id = $1`, l.tid).Scan(&left); err != nil {
 			l.t.Fatal(err)
 		}
 		if left == 0 {
@@ -122,7 +122,7 @@ func testAdhocPaymentLinkPaid(t *testing.T) {
 	}
 	var invoices int
 	linkInvoices := func() int {
-		if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND kind = 'LINK'`, l.tid).Scan(&invoices); err != nil {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND kind = 'LINK'`, l.tid).Scan(&invoices); err != nil {
 			t.Fatal(err)
 		}
 		return invoices
@@ -324,12 +324,12 @@ func testPaymentLinkCreation(t *testing.T) {
 		t.Errorf("another tenant's key is its own: %v, %v", other, err)
 	}
 	var made int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE tenant_id = $1 AND idempotency_key = 'key-1'`, l.tid).Scan(&made); err != nil || made != 1 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE tenant_id = $1 AND idempotency_key = 'key-1'`, l.tid).Scan(&made); err != nil || made != 1 {
 		t.Errorf("the key made %d links, %v", made, err)
 	}
 	// Only a hash is stored.
 	var clear int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE token_hash = $1`, []byte(first.GetToken())).Scan(&clear); err != nil || clear != 0 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE token_hash = $1`, []byte(first.GetToken())).Scan(&clear); err != nil || clear != 0 {
 		t.Errorf("the token is stored as it is: %d, %v", clear, err)
 	}
 
@@ -366,7 +366,7 @@ func testPaymentLinkRevokeAndExpiry(t *testing.T) {
 	stranger := tenant.NewContext(context.Background(), tenant.Info{ID: uuid.New()})
 	sagaStatus := func(invoiceID string) (string, string) {
 		var st, ss string
-		if err := shared.system.QueryRow(context.Background(), `SELECT i.status, COALESCE(s.state, '') FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id WHERE i.id = $1`, invoiceID).Scan(&st, &ss); err != nil {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT i.status, COALESCE(s.state, '') FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id WHERE i.tenant_id = $2 AND i.id = $1`, invoiceID, l.tid).Scan(&st, &ss); err != nil {
 			t.Fatal(err)
 		}
 		return st, ss
@@ -407,7 +407,7 @@ func testPaymentLinkRevokeAndExpiry(t *testing.T) {
 		t.Fatal(err)
 	}
 	l.waitState(paidChild, "paid")
-	if _, err := shared.system.Exec(context.Background(), `UPDATE payment_links SET expires_at = now() - interval '1 second' WHERE tenant_id = $1 AND (id = ANY($2) OR parent_id = ANY($2))`,
+	if _, err := shared.sql.Exec(context.Background(), `UPDATE payment_links SET expires_at = now() - interval '1 second' WHERE tenant_id = $1 AND (id = ANY($2) OR parent_id = ANY($2))`,
 		l.tid, []uuid.UUID{uuid.MustParse(e.GetLink().GetId()), uuid.MustParse(paidLink.GetLink().GetId())}); err != nil {
 		t.Fatal(err)
 	}
@@ -510,7 +510,7 @@ func testPortalIsolation(t *testing.T) {
 	}
 
 	// Expiry and revocation.
-	if _, err := shared.system.Exec(context.Background(), `UPDATE portal_links SET expires_at = now() - interval '1 second' WHERE tenant_id = $1 AND customer_id = $2`, one.tid, b); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `UPDATE portal_links SET expires_at = now() - interval '1 second' WHERE tenant_id = $1 AND customer_id = $2`, one.tid, b); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := one.svc.GetPortal(one.visitor, &billingv1.GetPortalRequest{PortalToken: pb.GetToken()}); status.Code(err) != codes.NotFound {

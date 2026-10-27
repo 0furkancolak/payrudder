@@ -20,7 +20,7 @@ func testNumberSeriesIsEnforcedByTheDatabase(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	ctx := context.Background()
 	insert := func(snapshot, number string) error {
-		_, err := shared.system.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, number, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
+		_, err := shared.sql.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, number, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
 			VALUES ($1,$2,$3,$4,'REGULAR',nullif($5,''),$6,'USD',1,1,'open',$7::jsonb,'')`,
 			e.tid, uuid.New(), uuid.New(), uuid.NewString()[:7], number, uuid.New(), snapshot)
 		return err
@@ -49,7 +49,7 @@ func testNumberSeriesIsEnforcedByTheDatabase(t *testing.T) {
 	sbxInv := seedOne(t, e.tid, uuid.New(), "cus_s", "paid", "USD", "SBX-2026-000010", 1000, "sandbox")
 	liveInv := seedOne(t, e.tid, uuid.New(), "cus_l", "paid", "USD", "INV-2026-000010", 1000, "live")
 	note := func(invoice uuid.UUID, number string) error {
-		_, err := shared.system.Exec(ctx, `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor) VALUES ($1,$2,$3,$4,$5,'USD',100)`,
+		_, err := shared.sql.Exec(ctx, `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor) VALUES ($1,$2,$3,$4,$5,'USD',100)`,
 			e.tid, uuid.New(), uuid.New(), invoice, number)
 		return err
 	}
@@ -89,7 +89,7 @@ func testEnvironmentIdsAreNotFoundInTheOtherEnvironment(t *testing.T) {
 		out          *uuid.UUID
 	}{{liveTenant, liveInv, "CN-2026-000001", &liveNote}, {sandboxTenant, sbxInv, "SBX-CN-2026-000001", &sbxNote}} {
 		*n.out = uuid.New()
-		if _, err := shared.system.Exec(context.Background(), `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor) VALUES ($1,$2,$3,$4,$5,'USD',100)`,
+		if _, err := shared.sql.Exec(context.Background(), `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor) VALUES ($1,$2,$3,$4,$5,'USD',100)`,
 			n.tid, *n.out, uuid.New(), n.invoice, n.number); err != nil {
 			t.Fatal(err)
 		}

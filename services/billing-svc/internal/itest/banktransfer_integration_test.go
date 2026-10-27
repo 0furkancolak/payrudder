@@ -103,7 +103,7 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 
 	// Nothing is outstanding while the money is awaited: no step deadline, so the sweeper leaves the sagas alone however long it takes.
 	var deadlines int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoice_sagas WHERE tenant_id = $1 AND state = 'PAYMENT_PENDING' AND step_deadline IS NOT NULL`, e.tid).Scan(&deadlines); err != nil || deadlines != 0 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoice_sagas WHERE tenant_id = $1 AND state = 'PAYMENT_PENDING' AND step_deadline IS NOT NULL`, e.tid).Scan(&deadlines); err != nil || deadlines != 0 {
 		t.Fatalf("pending sagas with a step deadline = %d, %v; want none", deadlines, err)
 	}
 	e.clk.Advance(2 * time.Hour)
@@ -138,7 +138,7 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 	admin := e.api()
 	inv := func(customer string) string {
 		var id string
-		if err := shared.system.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = $2`, e.tid, customer).Scan(&id); err != nil {
+		if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = $2`, e.tid, customer).Scan(&id); err != nil {
 			t.Fatal(err)
 		}
 		return id
@@ -173,7 +173,7 @@ func testBankTransferSagaWaitsForTheMoney(t *testing.T) {
 		t.Errorf("a paid invoice still shows where to pay: %v, %v", page.GetPaymentInstructions(), err)
 	}
 	var nstatus string
-	if err := shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND id = $2::uuid`, e.tid, inv("cus_a")).Scan(&nstatus); err != nil || nstatus != "paid" {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND id = $2::uuid`, e.tid, inv("cus_a")).Scan(&nstatus); err != nil || nstatus != "paid" {
 		t.Fatalf("cus_a invoice status = %q, %v", nstatus, err)
 	}
 	// A paid invoice is not nudged back to life.
@@ -216,7 +216,7 @@ func testExpiredTransferFollowsDunning(t *testing.T) {
 	}
 	testkit.Eventually(t, 30*time.Second, "uncollectible after the only retry", func() bool {
 		var n int
-		err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND status = 'uncollectible'`, e.tid).Scan(&n)
+		err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND status = 'uncollectible'`, e.tid).Scan(&n)
 		return err == nil && n == 2
 	})
 	if n := e.count(stub, "charge"); n != 4 { // 2 invoices × (the first charge and the retry)
@@ -256,7 +256,7 @@ func testOfflinePaymentsSettleAnInvoice(t *testing.T) {
 	})
 	svc := e.api()
 	var id string
-	if err := shared.system.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_b'`, e.tid).Scan(&id); err != nil {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_b'`, e.tid).Scan(&id); err != nil {
 		t.Fatal(err)
 	}
 	total := e.invoiceTotal("2026-10", "cus_b")
@@ -302,7 +302,7 @@ func testOfflinePaymentsSettleAnInvoice(t *testing.T) {
 	}
 	testkit.Eventually(t, 30*time.Second, "cus_b to complete", func() bool { return e.sagaStates("2026-10")["cus_b"] == "COMPLETED" })
 	var st string
-	if err := shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE id = $1::uuid`, id).Scan(&st); err != nil || st != "paid" {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $2 AND id = $1::uuid`, id, e.tid).Scan(&st); err != nil || st != "paid" {
 		t.Fatalf("invoice status = %q, %v", st, err)
 	}
 	receipts := 0

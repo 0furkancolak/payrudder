@@ -4,9 +4,8 @@
 package api
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns"
 	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
@@ -29,6 +28,7 @@ import (
 	reratingcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // PDFSigner presigns downloads of invoice PDFs (pkg/blob.Store).
@@ -78,9 +78,12 @@ type Server struct {
 	*paymentHandler
 }
 
-// Deps are the modules the API serves and the pools they read and write through.
+// Deps are the modules the API serves and the databases they read and write through.
 type Deps struct {
-	App, System *pgxpool.Pool // billing_app (RLS), billing_system
+	// App is the billing_app pool (RLS), or its router when cells are on: a tenant's transaction goes where the directory says its data is.
+	App pgxx.Beginner
+	// System is billing_system, over the pooled database and the cells.
+	System      *tenantdb.DB
 	Runs        *runcmd.Manager
 	Engine      *sagacommand.Engine
 	CreditNotes *creditnotecmd.Commands
@@ -92,7 +95,7 @@ type Deps struct {
 // New returns the API.
 func New(d Deps) *Server {
 	app, system, mgr, eng := d.App, d.System, d.Runs, d.Engine
-	einv := &einvoicecmd.Commands{Pool: system, Parties: d.Inputs}
+	einv := &einvoicecmd.Commands{DB: system, Parties: d.Inputs}
 	return &Server{
 		invoiceHandler:    invoices.New(app),
 		creditNoteHandler: creditnotes.New(app, system, d.CreditNotes),

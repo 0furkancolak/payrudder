@@ -151,13 +151,21 @@ func (h *Handler) ReceiveInboxMail(ctx context.Context, req *billingv1.ReceiveIn
 		out.Skipped = int32(len(req.GetAttachments()))
 		return out, nil
 	}
-	target, err := sqlc.New(h.system).ResolveInboxToken(ctx, token)
-	if errors.Is(err, pgx.ErrNoRows) {
-		out.Skipped = int32(len(req.GetAttachments()))
-		return out, nil
-	}
+	var target sqlc.ResolveInboxTokenRow
+	found, err := h.system.Find(ctx, func(ctx context.Context, q *sqlc.Queries) (bool, error) {
+		t, err := q.ResolveInboxToken(ctx, token)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		target = t
+		return err == nil, err
+	})
 	if err != nil {
 		return nil, apierr.Internal(ctx, err)
+	}
+	if !found {
+		out.Skipped = int32(len(req.GetAttachments()))
+		return out, nil
 	}
 	var appID *uuid.UUID
 	if target.Scope != "" {
@@ -165,7 +173,7 @@ func (h *Handler) ReceiveInboxMail(ctx context.Context, req *billingv1.ReceiveIn
 			appID = &id
 		}
 	}
-	err = pgxx.InTenantTx(ctx, h.system, target.TenantID, func(tx pgx.Tx) error {
+	err = h.system.InTx(ctx, target.TenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		pending, err := q.CountInboxToReview(ctx, target.TenantID)
 		if err != nil {

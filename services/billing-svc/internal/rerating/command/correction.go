@@ -11,7 +11,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
@@ -24,7 +23,7 @@ import (
 // billedComponents sums what a customer was already billed for the period's own usage: base fee, usage lines and the
 // lines of earlier corrections, per meter ("" is the base fee). Late-usage and credit lines are other things.
 func (c *Commands) billedComponents(ctx context.Context, tenantID uuid.UUID, periodID string) (map[string]map[string]int64, map[string]json.RawMessage, error) {
-	rows, err := c.q.BilledComponents(ctx, sqlc.BilledComponentsParams{TenantID: tenantID, PeriodID: periodID})
+	rows, err := c.cfg.DB.Q(tenantID).BilledComponents(ctx, sqlc.BilledComponentsParams{TenantID: tenantID, PeriodID: periodID})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -36,7 +35,7 @@ func (c *Commands) billedComponents(ctx context.Context, tenantID uuid.UUID, per
 		billed[r.CustomerID][r.MeterCode] = r.AmountMinor
 	}
 	// The snapshot of each customer's regular invoice (a correction repeats who it is addressed to).
-	srows, err := c.q.ListRegularInvoiceSnapshots(ctx, sqlc.ListRegularInvoiceSnapshotsParams{TenantID: tenantID, PeriodID: periodID})
+	srows, err := c.cfg.DB.Q(tenantID).ListRegularInvoiceSnapshots(ctx, sqlc.ListRegularInvoiceSnapshotsParams{TenantID: tenantID, PeriodID: periodID})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -111,7 +110,7 @@ func quantityOf(us []rating.Usage, meter string) *apd.Decimal {
 
 // finish finalizes the correction invoices (number, open, saga; finalizing twice is a no-op) and completes the job.
 func (c *Commands) finish(ctx context.Context, job *model.Job, rated int) error {
-	ids, err := c.q.ListDraftInvoiceIDsOfRerating(ctx, sqlc.ListDraftInvoiceIDsOfReratingParams{TenantID: job.TenantID, ReratingJobID: job.ID})
+	ids, err := c.cfg.DB.Q(job.TenantID).ListDraftInvoiceIDsOfRerating(ctx, sqlc.ListDraftInvoiceIDsOfReratingParams{TenantID: job.TenantID, ReratingJobID: job.ID})
 	if err != nil {
 		return err
 	}
@@ -120,7 +119,7 @@ func (c *Commands) finish(ctx context.Context, job *model.Job, rated int) error 
 			return err
 		}
 	}
-	return c.q.CompleteReratingJob(ctx, sqlc.CompleteReratingJobParams{CompletedAt: c.cfg.Now(), CustomersRated: store.I32(rated), TenantID: job.TenantID, ID: job.ID})
+	return c.cfg.DB.Q(job.TenantID).CompleteReratingJob(ctx, sqlc.CompleteReratingJobParams{CompletedAt: c.cfg.Now(), CustomersRated: store.I32(rated), TenantID: job.TenantID, ID: job.ID})
 }
 
 // taxRate is a tax name and its rate in basis points; the zero value is no tax.
@@ -134,7 +133,7 @@ type taxRate struct {
 // draft gets a TAX line on what it adds, and a credit includes the tax that was paid on what is no longer owed.
 func (c *Commands) record(ctx context.Context, job *model.Job, customer uuid.UUID, snapshot json.RawMessage, currency string,
 	deltas []rating.Line, total int64, meters map[string]inputs.MeterInfo, tax taxRate) error {
-	return pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	return c.cfg.DB.InTx(ctx, job.TenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := c.q.WithTx(tx)
 		if total < 0 {
 			return q.InsertCreditBalanceForRerating(ctx, sqlc.InsertCreditBalanceForReratingParams{TenantID: job.TenantID, CustomerID: customer, ID: uuid.New(),

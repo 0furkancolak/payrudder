@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -14,6 +13,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Affiliates is the part of plans-svc's AffiliateService billing uses (phase 47): telling the program which partner a paying customer came through.
@@ -23,7 +23,7 @@ type Affiliates interface {
 
 // BackendConfig is what the backend runs on.
 type BackendConfig struct {
-	Pool     *pgxpool.Pool // billing_system
+	DB       *tenantdb.DB // billing_system
 	Inputs   *inputs.Inputs
 	Invoices *invoicecmd.Commands
 	Engine   *sagacommand.Engine
@@ -37,7 +37,7 @@ type BackendConfig struct {
 // codes plans-svc redeems and the affiliate program. It also does the upkeep of links and promotions the scheduler asks for (ExpireLinks, ReversePromotions).
 type Backend struct {
 	cfg BackendConfig
-	q   *sqlc.Queries
+	q   *sqlc.Queries // only for WithTx: the statements run in the transactions DB opens
 	in  *inputs.Inputs
 }
 
@@ -49,7 +49,7 @@ func NewBackend(cfg BackendConfig) *Backend {
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
-	return &Backend{cfg: cfg, q: sqlc.New(cfg.Pool), in: cfg.Inputs}
+	return &Backend{cfg: cfg, q: sqlc.New(cfg.DB.Pool()), in: cfg.Inputs}
 }
 
 // Customer is a customer of a tenant as plans-svc knows it; ok is false when there is none.

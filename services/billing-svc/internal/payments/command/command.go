@@ -12,16 +12,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Methods an operator can record a payment with.
@@ -60,13 +59,13 @@ type Result struct {
 // Record writes a payment. The invoice must be open or uncollectible and its saga in a state that can be settled; the payment must not take the sum past the
 // invoice's total. When the payments add up to the total the saga is told (OfflineSettlement) in the same transaction, so the invoice is paid and the
 // customer is mailed the receipt exactly once.
-func Record(ctx context.Context, system *pgxpool.Pool, eng *sagacommand.Engine, in Payment) (Result, error) {
+func Record(ctx context.Context, db *tenantdb.DB, eng *sagacommand.Engine, in Payment) (Result, error) {
 	ref, note := strings.TrimSpace(in.Reference), strings.TrimSpace(in.Note)
 	if err := validate(in, ref, note, eng.Now()); err != nil {
 		return Result{}, err
 	}
 	var out Result
-	err := pgxx.InTx(ctx, system, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := db.InTx(ctx, in.Tenant, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		var err error
 		out, err = record(ctx, tx, eng, in, ref, note)
 		return err

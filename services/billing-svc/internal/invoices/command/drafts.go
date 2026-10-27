@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
@@ -35,7 +34,7 @@ type RegularDraft struct {
 // period (the partial unique index one_regular_invoice) keeps it, so a retried run converges.
 func (c *Commands) InsertRegular(ctx context.Context, tenantID uuid.UUID, periodID string, drafts []RegularDraft) (int, error) {
 	created := 0
-	err := pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := c.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		created = 0
 		q := c.q.WithTx(tx)
 		for _, d := range drafts {

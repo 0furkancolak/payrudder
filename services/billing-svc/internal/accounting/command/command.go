@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -128,7 +127,7 @@ func parseDay(s string, now time.Time) (time.Time, error) {
 }
 
 // Create records an expense.
-func Create(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, in *Input) (*model.Expense, error) {
+func Create(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, in *Input) (*model.Expense, error) {
 	c, err := in.check(time.Now())
 	if err != nil {
 		return nil, err
@@ -148,7 +147,7 @@ func Create(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, in *Inpu
 }
 
 // Update replaces the fields of an expense that has not been voided.
-func Update(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID, in *Input) (*model.Expense, error) {
+func Update(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID, in *Input) (*model.Expense, error) {
 	c, err := in.check(time.Now())
 	if err != nil {
 		return nil, err
@@ -168,7 +167,7 @@ func Update(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID, in *
 }
 
 // Void takes an expense out of every summary. The reason is required: a ledger that loses entries without a word is not one.
-func Void(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID, reason string) (*model.Expense, error) {
+func Void(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID, reason string) (*model.Expense, error) {
 	reason = strings.TrimSpace(reason)
 	if n := utf8.RuneCountInString(reason); n < 1 || n > maxReason {
 		return nil, errkey.New(codes.InvalidArgument, "billing.accounting.reason_required", "a reason of 1 to 200 characters is required to void an expense")
@@ -187,7 +186,7 @@ func Void(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID, reason
 }
 
 // notFoundOrVoided turns "the update matched no row" into the error the client should see: there is no such expense, or it was voided.
-func notFoundOrVoided(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID, err error) error {
+func notFoundOrVoided(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID, err error) error {
 	switch {
 	case err == nil:
 		return nil

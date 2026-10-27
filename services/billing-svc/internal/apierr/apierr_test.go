@@ -3,14 +3,17 @@ package apierr
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 )
 
 // logged runs fn with a default logger that writes to a buffer and returns what was logged.
@@ -32,6 +35,18 @@ func TestInternalLogsTheCauseAndHidesIt(t *testing.T) {
 	}
 	if !strings.Contains(out, "10.0.0.3") || !strings.Contains(out, "level=ERROR") {
 		t.Errorf("log = %q, want the cause as an error", out)
+	}
+}
+
+func TestInternalAnswersUnavailableForATenantThatIsBeingMoved(t *testing.T) {
+	var got error
+	cause := fmt.Errorf("pgxx: begin: %w", tenantdir.NotServing(tenantdir.Placement{TenantID: uuid.New(), Status: tenantdir.StatusMoving}))
+	out := logged(func() { got = Internal(context.Background(), cause) })
+	if status.Code(got) != codes.Unavailable || !strings.Contains(status.Convert(got).Message(), "retry is safe") {
+		t.Errorf("answer = %v, want Unavailable and a safe retry", got)
+	}
+	if strings.Contains(out, "level=ERROR") {
+		t.Errorf("log = %q: a move is expected, not an error", out)
 	}
 }
 

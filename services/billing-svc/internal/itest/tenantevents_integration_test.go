@@ -18,15 +18,13 @@ import (
 func testTenantEvents(t *testing.T) {
 	e := newEnv(t, envOpts{})
 	// The hand-over works across tenants: what earlier tests left behind must not count here.
-	if _, err := shared.system.Exec(context.Background(), `DELETE FROM tenant_event_outbox`); err != nil {
-		t.Fatal(err)
-	}
+	deleteAllTenantEvents(t)
 	e.startWorkers(nil)
 	completeOctober(e)
 
 	counts := func() map[string]int {
 		t.Helper()
-		rows, err := shared.system.Query(context.Background(), `SELECT type, count(*) FROM tenant_event_outbox WHERE tenant_id = $1 GROUP BY type`, e.tid)
+		rows, err := shared.sql.Query(context.Background(), `SELECT type, count(*) FROM tenant_event_outbox WHERE tenant_id = $1 GROUP BY type`, e.tid)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -50,7 +48,7 @@ func testTenantEvents(t *testing.T) {
 	// A credit note is announced like an invoice.
 	svc := e.api()
 	var inv string
-	if err := shared.system.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a' AND kind = 'REGULAR'`, e.tid).Scan(&inv); err != nil {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a' AND kind = 'REGULAR'`, e.tid).Scan(&inv); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := svc.CreateCreditNote(tenant.WithOperator(context.Background()), &billingv1.CreateCreditNoteRequest{TenantId: e.tid.String(), InvoiceId: inv, AmountMinor: 100, Reason: "goodwill"}); err != nil {

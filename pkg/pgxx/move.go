@@ -218,6 +218,15 @@ func (m Move) Copy(ctx context.Context) (CopyReport, error) {
 	if err != nil {
 		return rep, err
 	}
+	if m.From.Pooled() || m.To.Pooled() {
+		pooled := dst
+		if m.From.Pooled() {
+			pooled = src
+		}
+		if tables, err = m.movable(ctx, pooled, tables); err != nil {
+			return rep, err
+		}
+	}
 
 	// Consistent snapshots, and text forms that do not depend on the session, for the checksums.
 	srcTx, err := src.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
@@ -329,6 +338,26 @@ func (m Move) Copy(ctx context.Context) (CopyReport, error) {
 	return rep, nil
 }
 
+// movable drops from tables the ones whose rows cannot be picked out of the pooled database: a table the pooled database has without a tenant_id column (a record
+// keyed by an id that is unique on its own, like billing-svc's inbox_replies, which only stops a redelivered message from being applied twice) belongs to no one
+// tenant there. Such a table is left where it is by a move into or out of the pooled database; between two cells it is copied with the rest. A table the pooled
+// database does not have at all stays in the list, and the copy fails on it as it always did.
+func (m Move) movable(ctx context.Context, pooled Querier, tables []tableInfo) ([]tableInfo, error) {
+	out := make([]tableInfo, 0, len(tables))
+	for _, t := range tables {
+		cols, err := columnsOf(ctx, pooled, "public", t.name)
+		if err != nil {
+			return nil, err
+		}
+		if len(cols) > 0 && !slices.ContainsFunc(cols, func(c column) bool { return c.name == "tenant_id" }) {
+			m.log().Info("table has no tenant_id in the pooled database: its rows are not moved", "table", t.name)
+			continue
+		}
+		out = append(out, t)
+	}
+	return out, nil
+}
+
 // RetireSource is the last step, once the directory points at the destination. A cell source is set aside under a name that is no tenant schema
 // (m_<id>_<unix>) with its access still closed, so a wrong move can be undone by hand and DropRetired removes it later; the pooled source's rows of the tenant
 // are deleted. It returns the new name of the schema, or "" for the pooled source.
@@ -360,6 +389,9 @@ func (m Move) deletePooledRows(ctx context.Context, pooled *pgx.Conn, cell Endpo
 	tables, err := orderedTables(ctx, cellConn, m.schema())
 	_ = cellConn.Close(context.WithoutCancel(ctx))
 	if err != nil {
+		return err
+	}
+	if tables, err = m.movable(ctx, pooled, tables); err != nil {
 		return err
 	}
 	tx, err := pooled.Begin(ctx)

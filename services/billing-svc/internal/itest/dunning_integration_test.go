@@ -58,7 +58,7 @@ func testTenantDunningSettings(t *testing.T) {
 	}
 	testkit.Eventually(t, 30*time.Second, "uncollectible after the only retry", func() bool {
 		var status string
-		err := shared.system.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&status)
+		err := shared.sql.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&status)
 		return err == nil && status == "uncollectible"
 	})
 	if n := stub.Count("charge"); n != 4 { // 2 invoices × (first charge + one retry)

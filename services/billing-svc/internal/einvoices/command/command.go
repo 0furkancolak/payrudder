@@ -10,18 +10,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	einvoicemodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/model"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // ReplyWait is how long a command may stay unanswered before it is sent again.
@@ -43,9 +42,9 @@ type Parties interface {
 	Parties(ctx context.Context, tenantID uuid.UUID, customerExternalID string) (seller, buyer *sagamodel.Party, err error)
 }
 
-// Commands changes e-documents over the billing_system pool.
+// Commands changes e-documents over the billing_system database.
 type Commands struct {
-	Pool    *pgxpool.Pool
+	DB      *tenantdb.DB
 	Parties Parties
 	Now     func() time.Time
 }
@@ -116,16 +115,27 @@ func dispatch(ctx context.Context, tx pgx.Tx, now time.Time, tenantID, docID uui
 }
 
 // Sweep sends the commands that are due: a retry whose backoff has passed, a command nobody answered, a cancel nobody answered. A document that has used
-// up its automatic attempts is failed. It uses FOR UPDATE SKIP LOCKED, so any number of pods can sweep. It returns how many documents it handled.
+// up its automatic attempts is failed. It uses FOR UPDATE SKIP LOCKED, so any number of pods can sweep. It returns how many documents it handled. The batch is per
+// place (the pooled database, each tenant placed in a cell, ADR 0018): limit is the size of each.
 func (c *Commands) Sweep(ctx context.Context, limit int) (int, error) {
+	n := 0
+	err := c.DB.Each(ctx, func(ctx context.Context, s tenantdb.Scope) error {
+		handled, err := c.sweepScope(ctx, s, limit)
+		n += handled
+		return err
+	})
+	return n, err
+}
+
+func (c *Commands) sweepScope(ctx context.Context, s tenantdb.Scope, limit int) (int, error) {
 	now := c.now()
-	due, err := sqlc.New(c.Pool).ListDueEInvoices(ctx, sqlc.ListDueEInvoicesParams{Now: now, SilentBefore: now.Add(-ReplyWait), RowLimit: int32(limit)}) //nolint:gosec // small
+	due, err := s.Scan().ListDueEInvoices(ctx, sqlc.ListDueEInvoicesParams{Now: now, SilentBefore: now.Add(-ReplyWait), RowLimit: int32(limit)}) //nolint:gosec // small
 	if err != nil {
 		return 0, err
 	}
 	n := 0
 	for _, d := range due {
-		err := pgxx.InTx(ctx, c.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		err := s.InTx(ctx, d.TenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 			q := sqlc.New(tx)
 			if _, err := q.LockDueEInvoice(ctx, sqlc.LockDueEInvoiceParams{TenantID: d.TenantID, ID: d.ID, Now: now, SilentBefore: now.Add(-ReplyWait)}); err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
@@ -144,6 +154,9 @@ func (c *Commands) Sweep(ctx context.Context, limit int) (int, error) {
 			}
 			return dispatch(ctx, tx, now, d.TenantID, d.ID, doc, "")
 		})
+		if tenantdb.Skippable(err) {
+			continue // the tenant is moving: the next pass finds the document again
+		}
 		if err != nil {
 			return n, err
 		}
@@ -160,7 +173,7 @@ func (c *Commands) Retry(ctx context.Context, tenantID, docID uuid.UUID) error {
 func (c *Commands) retry(ctx context.Context, tenantID, docID uuid.UUID) error {
 	var refreshed [2]*sagamodel.Party
 	if c.Parties != nil {
-		ext, err := sqlc.New(c.Pool).GetEInvoiceExternalCustomer(ctx, sqlc.GetEInvoiceExternalCustomerParams{TenantID: tenantID, ID: docID})
+		ext, err := c.DB.Q(tenantID).GetEInvoiceExternalCustomer(ctx, sqlc.GetEInvoiceExternalCustomerParams{TenantID: tenantID, ID: docID})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return einvoicemodel.ErrNotFound
 		}
@@ -174,7 +187,7 @@ func (c *Commands) retry(ctx context.Context, tenantID, docID uuid.UUID) error {
 			}
 		}
 	}
-	return pgxx.InTx(ctx, c.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	return c.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		doc, err := q.LockEInvoiceDocument(ctx, sqlc.LockEInvoiceDocumentParams{TenantID: tenantID, ID: docID})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -212,7 +225,7 @@ func (c *Commands) Cancel(ctx context.Context, tenantID, docID uuid.UUID, reason
 }
 
 func (c *Commands) cancel(ctx context.Context, tenantID, docID uuid.UUID, reason string) error {
-	return pgxx.InTx(ctx, c.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	return c.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		doc, err := q.LockEInvoiceDocument(ctx, sqlc.LockEInvoiceDocumentParams{TenantID: tenantID, ID: docID})
 		if errors.Is(err, pgx.ErrNoRows) {

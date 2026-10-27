@@ -7,10 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Kept are the tables with tenant rows that a reset leaves alone: the tenant's configuration. The invoice inbox (its address, the vendor rules and the mail
@@ -65,16 +64,16 @@ func Tables() []string {
 	return out
 }
 
-// Resetter deletes on the system pool (billing_system), which sees every tenant: each statement names the tenant.
-type Resetter struct{ pool *pgxpool.Pool }
+// Resetter deletes with the system role (billing_system), which sees every tenant: each statement names the tenant, and runs where the tenant's rows are (ADR 0018).
+type Resetter struct{ db *tenantdb.DB }
 
 // New returns a Resetter.
-func New(systemPool *pgxpool.Pool) *Resetter { return &Resetter{pool: systemPool} }
+func New(system *tenantdb.DB) *Resetter { return &Resetter{db: system} }
 
 // Reset deletes the tenant's data and returns the rows deleted by table (tables with none are left out).
 func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]int64, error) {
 	out := map[string]int64{}
-	err := pgxx.InTx(ctx, r.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := r.db.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		for _, s := range steps(ctx) {
 			n, err := s.run(q, tenantID)

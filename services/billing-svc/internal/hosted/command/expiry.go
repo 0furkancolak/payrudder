@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
@@ -18,14 +18,20 @@ const expiryBatch = 200
 // ExpireLinks tells the tenants about the payment links that expired unpaid (payment_link.expired, once per link) and voids the invoices an expired ad-hoc link made
 // that nobody paid: nobody can pay them any more. A single-use link that was paid is not expired in this sense; it was used. Every step is idempotent, so a crash is
 // repaired by the next pass.
+//
+// It looks in every place a tenant's rows can be (the pooled database, each tenant placed in a cell, ADR 0018), and acts on a link only in the place it was found.
 func (b *Backend) ExpireLinks(ctx context.Context) error {
-	due, err := b.q.ListLinksToExpire(ctx, expiryBatch)
+	return b.cfg.DB.Each(ctx, b.expireLinks)
+}
+
+func (b *Backend) expireLinks(ctx context.Context, s tenantdb.Scope) error {
+	due, err := s.Scan().ListLinksToExpire(ctx, expiryBatch)
 	if err != nil {
 		return err
 	}
 	for _, d := range due {
 		var voids []uuid.UUID
-		err := pgxx.InTx(ctx, b.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		err := s.InTx(ctx, d.TenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 			q := b.q.WithTx(tx)
 			l, err := q.LockLinkToExpire(ctx, sqlc.LockLinkToExpireParams(d))
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -44,10 +50,13 @@ func (b *Backend) ExpireLinks(ctx context.Context) error {
 			}
 			return q.MarkLinkExpiredNotified(ctx, sqlc.MarkLinkExpiredNotifiedParams(d))
 		})
+		if tenantdb.Skippable(err) {
+			continue // the tenant is moving: the next pass finds the link again
+		}
 		if err != nil {
 			return err
 		}
-		voidUnpaid(ctx, b.cfg.Pool, b.cfg.Engine, d.TenantID, voids) // a payment in flight keeps the invoice
+		voidUnpaid(ctx, b.cfg.DB, b.cfg.Engine, d.TenantID, voids) // a payment in flight keeps the invoice
 	}
 	return nil
 }

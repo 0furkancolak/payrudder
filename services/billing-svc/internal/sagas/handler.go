@@ -5,7 +5,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -14,16 +13,17 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Handler implements the invoice-saga methods of billingv1.BillingAdminServiceServer.
 type Handler struct {
-	system *pgxpool.Pool
+	system *tenantdb.DB
 	eng    *command.Engine
 }
 
 // New returns the handler over the billing_system pool.
-func New(system *pgxpool.Pool, eng *command.Engine) *Handler {
+func New(system *tenantdb.DB, eng *command.Engine) *Handler {
 	return &Handler{system: system, eng: eng}
 }
 
