@@ -46,7 +46,7 @@ func (h *Handler) window(mc payments.ManualCollector) time.Duration {
 //   - otherwise PENDING, so the saga waits and asks again later;
 //   - a charge that never left a pending row is NOT_FOUND (the saga charges again, which only repeats the instructions).
 func (h *Handler) manualStatus(ctx context.Context, run commandRun, invoice uuid.UUID, key string, mc payments.ManualCollector) (*commandsv1.ReplyEnvelope, error) {
-	charge, ok, err := h.Attempts.ChargeByKey(ctx, key)
+	charge, ok, err := h.Attempts.ChargeOf(ctx, run.tenant, key)
 	if err != nil {
 		return nil, err
 	}
@@ -61,12 +61,12 @@ func (h *Handler) manualStatus(ctx context.Context, run commandRun, invoice uuid
 	if charge.AmountMinor > 0 && got.Minor >= charge.AmountMinor {
 		return statusFromLedger(store.Fact{Status: store.StatusSucceeded, ProviderRef: got.LastRef}), nil
 	}
-	if c, found, err := h.Transfers.Closure(ctx, name, key); err != nil {
+	if c, found, err := h.Transfers.Closure(ctx, run.tenant, name, key); err != nil {
 		return nil, err
 	} else if found {
 		return statusReply(commandsv1.PaymentStatus_STATE_DECLINED, DeclineCode(c.Detail)), nil
 	}
-	p, found, err := h.Transfers.Pending(ctx, name, key)
+	p, found, err := h.Transfers.Pending(ctx, run.tenant, name, key)
 	if err != nil {
 		return nil, err
 	}

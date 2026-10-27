@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
@@ -34,6 +33,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
@@ -52,6 +52,8 @@ var defaults []byte
 type Config struct {
 	config.Base
 	pgxx.SystemSettings
+	// CellSettings turns on cells mode (ADR 0018). Off unless PAYRUDDER_CELLS names at least one cell; it needs PAYRUDDER_PLANS_ADDR, where the directory is.
+	pgxx.CellSettings
 	RabbitMQURL string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
 	MockPSPURL  string        `env:"MOCKPSP_URL"`
 	PSPTimeout  time.Duration `env:"PAYMENTS_PSP_TIMEOUT"`
@@ -89,7 +91,10 @@ type Config struct {
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
-	errs = append(errs, c.CheckMigration())
+	errs = append(errs, c.CheckMigration(), c.CheckCells())
+	if c.Enabled() && c.PlansAddr == "" {
+		errs = append(errs, errors.New("PAYRUDDER_CELLS needs PAYRUDDER_PLANS_ADDR: the tenant directory is plans-svc's"))
+	}
 	if c.SecretsKey != "" {
 		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err))
@@ -122,6 +127,11 @@ func main() { app.Main("payments-worker", defaults, start) }
 // start wires payments-worker's dependencies and runs it until ctx is cancelled.
 func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	log, hh := rt.Log, rt.Health()
+	if cfg.Enabled() && cfg.MigrateOnStart {
+		if err := cfg.MigrateCells(ctx, tenantSchemas(), cfg.MigrateOnly, log); err != nil {
+			return err
+		}
+	}
 	if done, err := cfg.MigrateIfAsked(ctx, migrations.FS, cfg.MigrateOnly, log); err != nil || done {
 		return err
 	}
@@ -130,8 +140,25 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	defer pool.Close()
+	// Cells mode (ADR 0018): a tenant's statements go where the directory says its data is. Off, the pool is used directly, as ever. payments-worker has the
+	// system role only, so only the system-role router is used.
+	var db store.DB = pool
+	if cfg.Enabled() {
+		plansConn, err := grpcx.NewTenantClient("plans-svc", cfg.PlansAddr)
+		if err != nil {
+			return err
+		}
+		defer closeConn(plansConn)
+		routers, err := cfg.OpenRouters(ctx, pool, pool, tenantdir.NewGRPC(plansv1.NewDirectoryServiceClient(plansConn), tenantdir.Options{}))
+		if err != nil {
+			return err
+		}
+		defer routers.Close()
+		db = routers.System
+		log.Info("cells mode", "cells", routers.System.CellNames())
+	}
 
-	h := newHandler(cfg, pool, log)
+	h := newHandler(cfg, db, log)
 	dir, closeDir, err := tenantDirectory(cfg)
 	if err != nil {
 		return err
@@ -146,14 +173,14 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	if err := wireEInvoice(cfg, pool, box, h, einvoices, log); err != nil {
+	if err := wireEInvoice(cfg, db, box, h, einvoices, log); err != nil {
 		return err
 	}
 	banktransfer.Register(registry)
 	var httpHandler http.Handler
 	if box != nil {
 		var closeConns func()
-		if httpHandler, closeConns, err = webhookHandler(*cfg, pool, box, h, registry, einvoices, log); err != nil {
+		if httpHandler, closeConns, err = webhookHandler(*cfg, db, box, h, registry, einvoices, log); err != nil {
 			return err
 		}
 		defer closeConns()
@@ -209,10 +236,10 @@ func closeConn(c *grpc.ClientConn) {
 }
 
 // newHandler builds the command handler: sandbox tenants always use mock-psp, live tenants only when configured.
-func newHandler(cfg *Config, pool *pgxpool.Pool, log *slog.Logger) *handler.Handler {
+func newHandler(cfg *Config, db store.DB, log *slog.Logger) *handler.Handler {
 	mock := payments.NewMockPSP(cfg.MockPSPURL, cfg.PSPTimeout)
-	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: pool}, Ledger: store.Ledger{DB: pool}, Log: log, Demo: cfg.Demo, AllowMockLive: cfg.AllowMockLive,
-		Transfers: store.Transfers{DB: pool}, TransferWindow: time.Duration(cfg.TransferWindowDays) * 24 * time.Hour}
+	h := &handler.Handler{Sandbox: mock, Attempts: store.Attempts{DB: db}, Ledger: store.Ledger{DB: db}, Log: log, Demo: cfg.Demo, AllowMockLive: cfg.AllowMockLive,
+		Transfers: store.Transfers{DB: db}, TransferWindow: time.Duration(cfg.TransferWindowDays) * 24 * time.Hour}
 	if cfg.LiveProvider == "mockpsp" {
 		h.Live = mock
 	}
@@ -236,8 +263,8 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 }
 
 // webhookHandler builds the provider-account, webhook and operator server. The returned func closes its gRPC connections.
-func webhookHandler(cfg Config, pool *pgxpool.Pool, box *secretbox.Box, h *handler.Handler, registry *payments.Registry, einvoices *einvoice.Registry, log *slog.Logger) (http.Handler, func(), error) {
-	accounts := store.Accounts{DB: pool, Box: box}
+func webhookHandler(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handler, registry *payments.Registry, einvoices *einvoice.Registry, log *slog.Logger) (http.Handler, func(), error) {
+	accounts := store.Accounts{DB: db, Box: box}
 	h.Resolver = &handler.Resolver{Registry: registry, Accounts: accounts}
 	var conns []*grpc.ClientConn
 	closeConns := func() {
@@ -274,10 +301,10 @@ func webhookHandler(cfg Config, pool *pgxpool.Pool, box *secretbox.Box, h *handl
 	}
 	transferHandler := &transfers.Handler{Log: log, Deps: transfercommand.Deps{Billing: transferBilling, Deps: transferquery.Deps{
 		Transfers: h.Transfers, Accounts: h.Resolver, DefaultWindow: h.TransferWindow}}}
-	return (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: pool},
-		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: pool}, Objects: store.Objects{DB: pool}, Log: log, Token: cfg.InternalToken,
-		EInvoiceAccounts: store.EInvoiceAccounts{DB: pool, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
-		Reset:   sandboxreset.New(pool).Reset,
+	return (&webhook.Server{Plans: plansSync, Billing: billing, Registry: registry, Resolver: h.Resolver, Accounts: accounts, Events: store.Events{DB: db},
+		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: db}, Objects: store.Objects{DB: db}, Log: log, Token: cfg.InternalToken,
+		EInvoiceAccounts: store.EInvoiceAccounts{DB: db, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
+		Reset:   sandboxreset.New(db).Reset,
 		Modules: []webhook.RouteRegistrar{transferHandler}}).Handler(), closeConns, nil
 }
 
@@ -298,10 +325,10 @@ func newEInvoiceRegistry(cfg *Config) *einvoice.Registry {
 
 // wireEInvoice gives the command handler its e-invoice side. Sandbox documents need only the database (the mock); live ones also need the sealed accounts
 // (PAYRUDDER_SECRETS_KEY); files need object storage.
-func wireEInvoice(cfg *Config, pool *pgxpool.Pool, box *secretbox.Box, h *handler.Handler, registry *einvoice.Registry, log *slog.Logger) error {
-	ew := &einvoiceworker.Handler{Registry: registry, Issuances: store.EInvoiceIssuances{DB: pool}, Log: log, Demo: cfg.Demo}
+func wireEInvoice(cfg *Config, db store.DB, box *secretbox.Box, h *handler.Handler, registry *einvoice.Registry, log *slog.Logger) error {
+	ew := &einvoiceworker.Handler{Registry: registry, Issuances: store.EInvoiceIssuances{DB: db}, Log: log, Demo: cfg.Demo}
 	if box != nil {
-		ew.Accounts = store.EInvoiceAccounts{DB: pool, Box: box}
+		ew.Accounts = store.EInvoiceAccounts{DB: db, Box: box}
 	}
 	if cfg.S3AccessKey != "" {
 		bs, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, Region: cfg.S3Region, Bucket: cfg.S3Bucket, AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})
@@ -315,4 +342,9 @@ func wireEInvoice(cfg *Config, pool *pgxpool.Pool, box *secretbox.Box, h *handle
 	ew.Tenants = h.Tenants
 	h.EInvoice = ew
 	return nil
+}
+
+// tenantSchemas is what a tenant's schema in a cell is built from (ADR 0018).
+func tenantSchemas() pgxx.TenantSchemas {
+	return pgxx.TenantSchemas{Migrations: migrations.Tenant(), Roles: []string{"payments_app", "payments_system"}}
 }

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
@@ -29,7 +28,7 @@ type LedgerEntry struct {
 }
 
 // Ledger is the append-only payment_ledger.
-type Ledger struct{ DB *pgxpool.Pool }
+type Ledger struct{ DB DB }
 
 // Append writes a fact. The same fact (provider, kind, reference, status) reported again is not written twice; Append then returns false.
 func (l Ledger) Append(ctx context.Context, e LedgerEntry) (bool, error) {
@@ -52,7 +51,7 @@ func (l Ledger) Append(ctx context.Context, e LedgerEntry) (bool, error) {
 	if !e.OccurredAt.IsZero() {
 		p.OccurredAt = &e.OccurredAt
 	}
-	n, err := sqlc.New(l.DB).AppendLedger(ctx, p)
+	n, err := get(ctx, l.DB, e.TenantID, func(q *sqlc.Queries) (int64, error) { return q.AppendLedger(ctx, p) })
 	return n == 1, err
 }
 
@@ -74,7 +73,9 @@ type Row struct {
 
 // List returns a tenant's most recent rows, newest first.
 func (l Ledger) List(ctx context.Context, tenant uuid.UUID, limit int) ([]Row, error) {
-	rows, err := sqlc.New(l.DB).ListLedger(ctx, sqlc.ListLedgerParams{TenantID: tenant, RowLimit: int64(limit)})
+	rows, err := get(ctx, l.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListLedgerRow, error) {
+		return q.ListLedger(ctx, sqlc.ListLedgerParams{TenantID: tenant, RowLimit: int64(limit)})
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +96,9 @@ func (l Ledger) List(ctx context.Context, tenant uuid.UUID, limit int) ([]Row, e
 // Outcomes counts the distinct statuses one tenant has recorded for one provider reference. More than one means the command's answer and the
 // provider's confirmation disagree.
 func (l Ledger) Outcomes(ctx context.Context, tenant uuid.UUID, provider, kind, ref string) (int, error) {
-	n, err := sqlc.New(l.DB).CountLedgerOutcomes(ctx, sqlc.CountLedgerOutcomesParams{TenantID: tenant, Provider: provider, Kind: kind, ProviderRef: &ref})
+	n, err := get(ctx, l.DB, tenant, func(q *sqlc.Queries) (int64, error) {
+		return q.CountLedgerOutcomes(ctx, sqlc.CountLedgerOutcomesParams{TenantID: tenant, Provider: provider, Kind: kind, ProviderRef: &ref})
+	})
 	return int(n), err
 }
 
@@ -106,10 +109,10 @@ type Fact struct {
 	Detail      string
 }
 
-// ChargeFact returns the final outcome recorded for the charge made under an idempotency key, if any. A success wins over a decline when
+// ChargeFact returns the final outcome recorded for the charge the tenant made under an idempotency key, if any. A success wins over a decline when
 // both are recorded (a notification that later overruled the first).
-func (l Ledger) ChargeFact(ctx context.Context, key string) (Fact, bool, error) {
-	r, ok, err := found(sqlc.New(l.DB).GetChargeFact(ctx, &key))
+func (l Ledger) ChargeFact(ctx context.Context, tenant uuid.UUID, key string) (Fact, bool, error) {
+	r, ok, err := lookup(ctx, l.DB, tenant, func(q *sqlc.Queries) (sqlc.GetChargeFactRow, error) { return q.GetChargeFact(ctx, &key) })
 	if !ok {
 		return Fact{}, false, err
 	}
@@ -131,7 +134,9 @@ type Charge struct {
 
 // SuccessfulCharges returns the tenant's successful charges that belong to an invoice.
 func (l Ledger) SuccessfulCharges(ctx context.Context, tenant uuid.UUID) ([]Charge, error) {
-	rows, err := sqlc.New(l.DB).ListSuccessfulCharges(ctx, tenant)
+	rows, err := get(ctx, l.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListSuccessfulChargesRow, error) {
+		return q.ListSuccessfulCharges(ctx, tenant)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +149,9 @@ func (l Ledger) SuccessfulCharges(ctx context.Context, tenant uuid.UUID) ([]Char
 
 // ConflictingCharges returns the charges that have both a success and a failure recorded under one provider reference.
 func (l Ledger) ConflictingCharges(ctx context.Context, tenant uuid.UUID) ([]Charge, error) {
-	rows, err := sqlc.New(l.DB).ListConflictingCharges(ctx, tenant)
+	rows, err := get(ctx, l.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListConflictingChargesRow, error) {
+		return q.ListConflictingCharges(ctx, tenant)
+	})
 	if err != nil {
 		return nil, err
 	}

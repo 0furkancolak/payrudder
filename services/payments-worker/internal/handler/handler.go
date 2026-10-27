@@ -20,6 +20,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/payments"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
@@ -322,16 +323,20 @@ type commandRun struct {
 	env         string
 }
 
-// providerForCommand resolves the provider of a command; a non-nil reply is the answer when there is none.
-func (h *Handler) providerForCommand(ctx context.Context, run commandRun, invoice uuid.UUID, charge bool, named, method string) (payments.PaymentProvider, *commandsv1.ReplyEnvelope) {
+// providerForCommand resolves the provider of a command; a non-nil reply is the answer when there is none. A tenant whose data is being moved (ADR 0018) is
+// not an answer: the command is retried (the error), never told that no provider is configured.
+func (h *Handler) providerForCommand(ctx context.Context, run commandRun, invoice uuid.UUID, charge bool, named, method string) (payments.PaymentProvider, *commandsv1.ReplyEnvelope, error) {
 	prov, err := h.providerFor(ctx, run.tenant, run.environment, invoice, charge, named, method)
+	if errors.Is(err, tenantdir.ErrNotServing) {
+		return nil, nil, err
+	}
 	if err != nil {
-		return nil, unavailable(err)
+		return nil, unavailable(err), nil
 	}
 	if prov == nil {
-		return nil, errored(CodeNotConfigured, "no live payment provider is configured")
+		return nil, errored(CodeNotConfigured, "no live payment provider is configured"), nil
 	}
-	return prov, nil
+	return prov, nil, nil
 }
 
 func succeededReply(chargeID string) *commandsv1.ReplyEnvelope {
@@ -347,7 +352,10 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 	if err != nil || ch.GetIdempotencyKey() == "" {
 		return nil, fmt.Errorf("%w: charge needs invoice_id and idempotency_key", workerx.ErrPoison)
 	}
-	prov, reply := h.providerForCommand(ctx, run, invoiceID, true, ch.GetProvider(), ch.GetPaymentMethod())
+	prov, reply, err := h.providerForCommand(ctx, run, invoiceID, true, ch.GetProvider(), ch.GetPaymentMethod())
+	if err != nil {
+		return nil, err
+	}
 	if reply != nil {
 		return reply, nil
 	}
@@ -438,7 +446,10 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 	if err != nil || rf.GetIdempotencyKey() == "" {
 		return nil, fmt.Errorf("%w: refund needs invoice_id and idempotency_key", workerx.ErrPoison)
 	}
-	prov, reply := h.providerForCommand(ctx, run, invoiceID, false, "", "")
+	prov, reply, err := h.providerForCommand(ctx, run, invoiceID, false, "", "")
+	if err != nil {
+		return nil, err
+	}
 	if reply != nil {
 		return reply, nil
 	}
@@ -464,7 +475,10 @@ func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1
 	if err != nil || q.GetIdempotencyKey() == "" {
 		return nil, fmt.Errorf("%w: status needs invoice_id and idempotency_key", workerx.ErrPoison)
 	}
-	prov, reply := h.providerForCommand(ctx, run, invoiceID, false, "", "")
+	prov, reply, err := h.providerForCommand(ctx, run, invoiceID, false, "", "")
+	if err != nil {
+		return nil, err
+	}
 	if reply != nil {
 		return reply, nil
 	}
@@ -476,7 +490,7 @@ func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1
 	}
 	if !capabilities(prov).IdempotentCharges && h.Ledger.DB != nil {
 		// A provider that settles by notification: the ledger holds the outcome once its notification has been confirmed.
-		if f, ok, err := h.Ledger.ChargeFact(ctx, q.GetIdempotencyKey()); err != nil {
+		if f, ok, err := h.Ledger.ChargeFact(ctx, run.tenant, q.GetIdempotencyKey()); err != nil {
 			return nil, err
 		} else if ok {
 			return statusFromLedger(f), nil

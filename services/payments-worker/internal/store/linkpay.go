@@ -25,7 +25,9 @@ type LedgerLine struct {
 
 // LookupInvoices returns the tenant's ledger rows of the given invoices, newest first. Rows of other tenants are never returned, whatever ids are asked for.
 func (l Ledger) LookupInvoices(ctx context.Context, tenant uuid.UUID, invoices []uuid.UUID) ([]LedgerLine, error) {
-	rows, err := sqlc.New(l.DB).LookupLedgerByInvoices(ctx, sqlc.LookupLedgerByInvoicesParams{TenantID: tenant, InvoiceIds: invoices})
+	rows, err := get(ctx, l.DB, tenant, func(q *sqlc.Queries) ([]sqlc.LookupLedgerByInvoicesRow, error) {
+		return q.LookupLedgerByInvoices(ctx, sqlc.LookupLedgerByInvoicesParams{TenantID: tenant, InvoiceIds: invoices})
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +46,9 @@ type OpenCheckout struct {
 
 // OpenCheckoutOf returns the newest checkout opened at provider for the invoice since the given time that no notification has answered, if any.
 func (l Ledger) OpenCheckoutOf(ctx context.Context, tenant, invoice uuid.UUID, provider string, since time.Time) (OpenCheckout, bool, error) {
-	r, ok, err := found(sqlc.New(l.DB).FindOpenCheckout(ctx, sqlc.FindOpenCheckoutParams{TenantID: tenant, InvoiceID: &invoice, Provider: provider, Since: since}))
+	r, ok, err := lookup(ctx, l.DB, tenant, func(q *sqlc.Queries) (sqlc.FindOpenCheckoutRow, error) {
+		return q.FindOpenCheckout(ctx, sqlc.FindOpenCheckoutParams{TenantID: tenant, InvoiceID: &invoice, Provider: provider, Since: since})
+	})
 	if !ok {
 		return OpenCheckout{}, false, err
 	}
@@ -63,6 +67,8 @@ func (l Ledger) OpenCheckoutOf(ctx context.Context, tenant, invoice uuid.UUID, p
 
 // CountLinkAttempts is how many hosted-payment charges were started for the invoice, so the next key is link:{invoice}:{n+1}.
 func (a Attempts) CountLinkAttempts(ctx context.Context, tenant, invoice uuid.UUID) (int, error) {
-	n, err := sqlc.New(a.DB).CountLinkAttempts(ctx, sqlc.CountLinkAttemptsParams{TenantID: tenant, InvoiceID: invoice})
+	n, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) (int64, error) {
+		return q.CountLinkAttempts(ctx, sqlc.CountLinkAttemptsParams{TenantID: tenant, InvoiceID: invoice})
+	})
 	return int(n), err
 }

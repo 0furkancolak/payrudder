@@ -2685,6 +2685,9 @@
         "period_end_unknown": "Sağlayıcıdaki ödenmiş dönemin sonu henüz bilinmiyor: henüz bir bildirim gelmedi.",
         "wrong_provider": "Bu abonelik bu sağlayıcı tarafından yürütülmüyor."
       },
+      "tenant": {
+        "unavailable": "Hesabın verileri taşınıyor. Hiçbir şey değişmedi; birazdan tekrar deneyin."
+      },
       "webhook": {
         "malformed": "Bildirim okunamadı.",
         "not_found": "Böyle bir bildirim adresi yok.",
