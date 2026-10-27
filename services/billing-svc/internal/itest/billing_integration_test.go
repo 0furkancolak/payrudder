@@ -114,6 +114,8 @@ func TestBilling(t *testing.T) {
 		{"RerateCreditsGiveTheTaxBack", testRerateCreditsGiveTheTaxBack},
 		{"PlanChangeCreditGivesTheTaxBack", testPlanChangeCreditGivesTheTaxBack},
 		{"FeeInvoiceLineSaysTheSeats", testFeeInvoiceLineSaysTheSeats},
+		{"RerateRestartsAFailedJob", testRerateRestartsAFailedJob},
+		{"PriorLateUsageAddsQuantitiesOfDifferentScales", testPriorLateUsageAddsQuantitiesOfDifferentScales},
 		{"VoidingAPartPaidInvoiceCreditsWhatWasReceived", testVoidingAPartPaidInvoiceCreditsWhatWasReceived},
 		{"VoidingAnInvoicePaidByHandCreditsItAndRefundsOnlyTheCard", testVoidingAnInvoicePaidByHandCreditsItAndRefundsOnlyTheCard},
 		{"VoidingAnUnpaidInvoiceCreditsNothing", testVoidingAnUnpaidInvoiceCreditsNothing},
