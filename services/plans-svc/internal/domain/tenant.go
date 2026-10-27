@@ -211,3 +211,12 @@ func ValidateCustomer(environment string, req *plansv1.CreateCustomerRequest) er
 }
 
 var countryRe = regexp.MustCompile(`^[A-Z]{2}$`)
+
+// ValidateAppName trims the new name of an app and checks its length (the name of the app is the name of its tenants, the sandbox one with a suffix).
+func ValidateAppName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || len(name) > 200 {
+		return "", Invalid("name", "required, at most 200 characters")
+	}
+	return name, nil
+}

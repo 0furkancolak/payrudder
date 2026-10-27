@@ -35,7 +35,7 @@ These need an account or an environment the repository does not have. Each is a 
 - Edit/void and other context-bound sheets stack but do not come back from the address; only invoices open "peeked" over other sheets.
 - Token-paged lists (`useEdgeDetail`) do not restore their sheet from the address.
 - The credits page is a stack of titled cards, and the sandbox provider connection has no backend.
-- Apps cannot be renamed or deleted (no API); credit for quantity changes and tax calculation are not built.
+- Credit for quantity changes and tax calculation are not built.
 - The first-run wizard's progress and the tours that were seen are kept per person in the browser, not on the server, so a second browser starts them again (the wizard only for somebody who still has no app).
 
 ## Definition of done (every phase)

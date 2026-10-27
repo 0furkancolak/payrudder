@@ -2462,7 +2462,8 @@
       },
       "api_key": {
         "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın.",
-        "bad_role": "Rol yönetici, faturalama, salt okunur, yalnızca kullanım gönderir veya özel olmalı; izinler de bilinen izinler olmalıdır."
+        "bad_role": "Rol yönetici, faturalama, salt okunur, yalnızca kullanım gönderir veya özel olmalı; izinler de bilinen izinler olmalıdır.",
+        "app_archived": "Bu uygulama silindiği için API anahtarı alamaz."
       },
       "change": {
         "bad_proration": "Bu plan değişikliğinin ücreti bu dönem için hesaplanamıyor.",
@@ -3448,7 +3449,14 @@
       "timezone": "Saat dilimi",
       "grace": "Ek süre",
       "tenant": "Ortam kimliği",
-      "moreCurrencies": "Bir uygulama birçok para biriminde satış yapabilir: bir pakete başka para biriminde fiyat ekleyin, şurada:"
+      "moreCurrencies": "Bir uygulama birçok para biriminde satış yapabilir: bir pakete başka para biriminde fiyat ekleyin, şurada:",
+      "rename": "Adı kaydet",
+      "dangerTitle": "Tehlikeli bölge",
+      "deleteBody": "Bir uygulamayı silmek onu hesabınızdan kaldırır: tüm listelerden çıkar, API anahtarları hemen çalışmayı bırakır ve yeni anahtar oluşturulamaz. Hiçbir şey silinmez. Müşterileri, faturaları ve ödemeleri muhasebe ve yasal saklama için tutulur; faturalama mevcut kayıtlar için çalışmaya devam eder, bu yüzden faturalamayı durdurmak istiyorsanız önce abonelikleri iptal edin.",
+      "delete": "Uygulamayı sil",
+      "confirmTitle": "{name} silinsin mi?",
+      "confirmBody": "Uygulama arşivlenir: API anahtarları iptal edilir ve hesabınızdan kaybolur. Faturalama kayıtları saklanır. Bu işlem konsoldan geri alınamaz.",
+      "typeName": "Onaylamak için {name} yazın"
     },
     "goLive": {
       "title": "Canlıya geç",

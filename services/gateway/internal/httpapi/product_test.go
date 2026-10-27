@@ -65,6 +65,7 @@ type fakeIdentity struct {
 	signIns  int
 
 	mem            memberCalls
+	apps           appManageCalls
 	signUpReqs     []*plansv1.SignUpRequest
 	resetReqs      []*plansv1.RequestPasswordResetRequest
 	resetPasswords []*plansv1.ResetPasswordRequest

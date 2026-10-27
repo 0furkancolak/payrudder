@@ -2462,7 +2462,8 @@
       },
       "api_key": {
         "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab.",
-        "bad_role": "Die Rolle muss Admin, Abrechnung, Nur Lesen, Nur Nutzung senden oder Benutzerdefiniert sein, mit bekannten Berechtigungen."
+        "bad_role": "Die Rolle muss Admin, Abrechnung, Nur Lesen, Nur Nutzung senden oder Benutzerdefiniert sein, mit bekannten Berechtigungen.",
+        "app_archived": "Diese App wurde gelöscht und kann daher keine API-Schlüssel haben."
       },
       "change": {
         "bad_proration": "Die Gebühr für diesen Planwechsel lässt sich für diesen Zeitraum nicht berechnen.",
@@ -3448,7 +3449,14 @@
       "timezone": "Zeitzone",
       "grace": "Nachfrist",
       "tenant": "Umgebungs-ID",
-      "moreCurrencies": "Eine App kann in vielen Währungen verkaufen: Fügen Sie einem Paket einen Preis in einer anderen Währung hinzu, unter"
+      "moreCurrencies": "Eine App kann in vielen Währungen verkaufen: Fügen Sie einem Paket einen Preis in einer anderen Währung hinzu, unter",
+      "rename": "Namen speichern",
+      "dangerTitle": "Gefahrenbereich",
+      "deleteBody": "Wenn Sie eine App löschen, wird sie aus Ihrem Konto entfernt: Sie verschwindet aus allen Listen, ihre API-Schlüssel funktionieren sofort nicht mehr und es können keine neuen Schlüssel erstellt werden. Es wird nichts gelöscht. Kunden, Rechnungen und Zahlungen bleiben für Buchhaltung und gesetzliche Aufbewahrung erhalten, und die Abrechnung läuft für bereits Bestehendes weiter. Kündigen Sie daher zuerst die Abonnements, wenn nicht mehr abgerechnet werden soll.",
+      "delete": "App löschen",
+      "confirmTitle": "{name} löschen?",
+      "confirmBody": "Die App wird archiviert: Ihre API-Schlüssel werden widerrufen und sie verschwindet aus Ihrem Konto. Ihre Abrechnungsdaten bleiben erhalten. Das lässt sich in der Konsole nicht rückgängig machen.",
+      "typeName": "Geben Sie zur Bestätigung {name} ein"
     },
     "goLive": {
       "title": "Live schalten",

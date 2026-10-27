@@ -217,6 +217,30 @@ export function useCreateApp() {
   });
 }
 
+/** Renames the app (owners and admins); the app, the lists and the overview are read again. */
+export function useRenameApp(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => unwrap(api.PATCH("/app/v1/apps/{id}", { params: { path: { id: toValue(id) } }, body: { name } })),
+    onSuccess: () => Promise.all([queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) }), queries.invalidateQueries({ queryKey: productKeys.apps })]),
+  });
+}
+
+/**
+ * Deletes the app (the owner only). The server archives it: gone from every list, keys revoked, billing records kept. What was cached for the app is dropped
+ * without being read again (it would answer "not found" now) and the list of apps is read again.
+ */
+export function useDeleteApp(id: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: () => unwrap(api.DELETE("/app/v1/apps/{id}", { params: { path: { id: toValue(id) } } })),
+    onSuccess: () => {
+      queries.removeQueries({ queryKey: productKeys.app(toValue(id)) });
+      return queries.invalidateQueries({ queryKey: productKeys.apps });
+    },
+  });
+}
+
 /** Makes a key in one environment, with a role and, for a custom key, the permissions chosen (see apiKeys.ts). */
 export function useCreateApiKey(id: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();

@@ -51,6 +51,22 @@ CREATE TABLE accounts (                               -- the customer of Payrudd
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE apps (                                   -- phase 25: an account's application; its sandbox and live tenant (tenants.app_id) belong to it
+  id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES accounts(id),
+  name text NOT NULL CHECK (length(name) BETWEEN 1 AND 200),       -- renamable (owner, admin); the tenants carry the same name
+  slug text NOT NULL CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND length(slug) <= 60),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  archived_at timestamptz, archived_by uuid REFERENCES users(id),  -- migration 00058: "deleted" = archived, nothing is ever erased (03-services/plans-svc.md, "Renaming and deleting an app")
+  UNIQUE (account_id, slug)                           -- an archived app's slug is rewritten to <slug>-archived-<12 hex of its id>, which frees the old one
+);   -- not RLS'd: plans_system only, SELECT, INSERT and UPDATE (name, slug, archived_at, archived_by)
+
+CREATE TABLE app_audit (                              -- migration 00058: what a person did to an app; append-only, nothing updated or deleted
+  id uuid PRIMARY KEY, app_id uuid NOT NULL REFERENCES apps(id), user_id uuid NOT NULL REFERENCES users(id),
+  action text NOT NULL CHECK (action IN ('renamed','archived')),
+  detail jsonb NOT NULL DEFAULT '{}',                    -- renamed: from and to; archived: how many keys were revoked
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE tenants (                                -- the isolation unit everywhere (RLS, partition key)
   id            uuid PRIMARY KEY,
   account_id    uuid NOT NULL REFERENCES accounts(id),

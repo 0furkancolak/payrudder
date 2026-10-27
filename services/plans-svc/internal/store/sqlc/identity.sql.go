@@ -180,7 +180,7 @@ func (q *Queries) ExpireOpenInvites(ctx context.Context, arg ExpireOpenInvitesPa
 const getAppForUser = `-- name: GetAppForUser :one
 SELECT a.id, a.account_id, a.name, a.slug, a.created_at, m.role
 FROM apps a JOIN account_members m ON m.account_id = a.account_id AND m.user_id = $1 AND m.role <> 'affiliate'
-WHERE a.id = $2
+WHERE a.id = $2 AND a.archived_at IS NULL
 `
 
 type GetAppForUserParams struct {
@@ -198,6 +198,7 @@ type GetAppForUserRow struct {
 }
 
 // An app of an account the user is a member of, with the user's role. No membership, no row.
+// An archived app is gone for the account: it answers like one that never existed.
 func (q *Queries) GetAppForUser(ctx context.Context, arg GetAppForUserParams) (GetAppForUserRow, error) {
 	row := q.db.QueryRow(ctx, getAppForUser, arg.UserID, arg.AppID)
 	var i GetAppForUserRow
@@ -439,7 +440,7 @@ func (q *Queries) GetOpenInviteInAccount(ctx context.Context, arg GetOpenInviteI
 const getTenantForUser = `-- name: GetTenantForUser :one
 SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, t.status, t.activated_at, t.terms_accepted_at, t.terms_accepted_by, m.role
 FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = $1 AND m.role <> 'affiliate'
-WHERE t.id = $2
+WHERE t.id = $2 AND NOT EXISTS (SELECT 1 FROM apps a WHERE a.id = t.app_id AND a.archived_at IS NOT NULL)
 `
 
 type GetTenantForUserParams struct {

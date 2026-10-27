@@ -61,7 +61,7 @@ func (q *Queries) SaasCountActiveKeys(ctx context.Context, accountID uuid.UUID) 
 }
 
 const saasCountApps = `-- name: SaasCountApps :one
-SELECT count(*) FROM apps WHERE account_id = $1
+SELECT count(*) FROM apps WHERE account_id = $1 AND archived_at IS NULL
 `
 
 // Usage of an account: what the plan's limits are counted against.
@@ -358,7 +358,7 @@ func (q *Queries) SaasLatestPlanVersions(ctx context.Context, tenantID uuid.UUID
 const saasListOrganizations = `-- name: SaasListOrganizations :many
 SELECT a.id, a.name, a.created_at,
        COALESCE((SELECT u.email FROM account_members m JOIN users u ON u.id = m.user_id WHERE m.account_id = a.id AND m.role = 'owner' ORDER BY m.created_at, u.id LIMIT 1), '')::text AS owner_email,
-       (SELECT count(*) FROM apps ap WHERE ap.account_id = a.id)::bigint AS apps,
+       (SELECT count(*) FROM apps ap WHERE ap.account_id = a.id AND ap.archived_at IS NULL)::bigint AS apps,
        (SELECT count(*) FROM account_members m WHERE m.account_id = a.id AND m.role <> 'affiliate')::bigint AS members,
        (SELECT count(*) FROM api_keys k JOIN tenants t ON t.id = k.tenant_id WHERE t.account_id = a.id AND k.status = 'active' AND (k.expires_at IS NULL OR k.expires_at > now()))::bigint AS api_keys
 FROM accounts a
