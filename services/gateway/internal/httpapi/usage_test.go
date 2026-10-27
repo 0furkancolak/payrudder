@@ -41,7 +41,7 @@ func TestGetCustomerUsage(t *testing.T) {
 		t.Fatalf("usage: %d %v", resp.StatusCode, m)
 	}
 	row := m["usage"].([]any)[0].(map[string]any)
-	if row["meter_code"] != "gb_hours" || row["quantity"] != "1.500" || row["event_count"] != float64(3) {
+	if row["meter_code"] != "gb_hours" || row["quantity"] != "1.500" || row["event_count"] != "3" {
 		t.Fatalf("row = %v", row)
 	}
 
