@@ -45,6 +45,8 @@ const (
 	IdentityService_CreateMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/CreateMyApp"
 	IdentityService_ListMyApps_FullMethodName             = "/payrudder.plans.v1.IdentityService/ListMyApps"
 	IdentityService_GetMyApp_FullMethodName               = "/payrudder.plans.v1.IdentityService/GetMyApp"
+	IdentityService_RenameMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/RenameMyApp"
+	IdentityService_DeleteMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/DeleteMyApp"
 	IdentityService_ResolveMyTenant_FullMethodName        = "/payrudder.plans.v1.IdentityService/ResolveMyTenant"
 	IdentityService_CreateMyApiKey_FullMethodName         = "/payrudder.plans.v1.IdentityService/CreateMyApiKey"
 	IdentityService_ListMyApiKeys_FullMethodName          = "/payrudder.plans.v1.IdentityService/ListMyApiKeys"
@@ -122,6 +124,11 @@ type IdentityServiceClient interface {
 	CreateMyApp(ctx context.Context, in *CreateMyAppRequest, opts ...grpc.CallOption) (*CreateMyAppResponse, error)
 	ListMyApps(ctx context.Context, in *ListMyAppsRequest, opts ...grpc.CallOption) (*ListMyAppsResponse, error)
 	GetMyApp(ctx context.Context, in *GetMyAppRequest, opts ...grpc.CallOption) (*GetMyAppResponse, error)
+	// RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
+	RenameMyApp(ctx context.Context, in *RenameMyAppRequest, opts ...grpc.CallOption) (*RenameMyAppResponse, error)
+	// DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
+	// keys, no ingest) and its billing records stay for accounting and retention.
+	DeleteMyApp(ctx context.Context, in *DeleteMyAppRequest, opts ...grpc.CallOption) (*DeleteMyAppResponse, error)
 	// ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
 	ResolveMyTenant(ctx context.Context, in *ResolveMyTenantRequest, opts ...grpc.CallOption) (*ResolveMyTenantResponse, error)
 	CreateMyApiKey(ctx context.Context, in *CreateMyApiKeyRequest, opts ...grpc.CallOption) (*CreateMyApiKeyResponse, error)
@@ -417,6 +424,26 @@ func (c *identityServiceClient) GetMyApp(ctx context.Context, in *GetMyAppReques
 	return out, nil
 }
 
+func (c *identityServiceClient) RenameMyApp(ctx context.Context, in *RenameMyAppRequest, opts ...grpc.CallOption) (*RenameMyAppResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RenameMyAppResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RenameMyApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) DeleteMyApp(ctx context.Context, in *DeleteMyAppRequest, opts ...grpc.CallOption) (*DeleteMyAppResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteMyAppResponse)
+	err := c.cc.Invoke(ctx, IdentityService_DeleteMyApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) ResolveMyTenant(ctx context.Context, in *ResolveMyTenantRequest, opts ...grpc.CallOption) (*ResolveMyTenantResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResolveMyTenantResponse)
@@ -600,6 +627,11 @@ type IdentityServiceServer interface {
 	CreateMyApp(context.Context, *CreateMyAppRequest) (*CreateMyAppResponse, error)
 	ListMyApps(context.Context, *ListMyAppsRequest) (*ListMyAppsResponse, error)
 	GetMyApp(context.Context, *GetMyAppRequest) (*GetMyAppResponse, error)
+	// RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
+	RenameMyApp(context.Context, *RenameMyAppRequest) (*RenameMyAppResponse, error)
+	// DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
+	// keys, no ingest) and its billing records stay for accounting and retention.
+	DeleteMyApp(context.Context, *DeleteMyAppRequest) (*DeleteMyAppResponse, error)
 	// ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
 	ResolveMyTenant(context.Context, *ResolveMyTenantRequest) (*ResolveMyTenantResponse, error)
 	CreateMyApiKey(context.Context, *CreateMyApiKeyRequest) (*CreateMyApiKeyResponse, error)
@@ -712,6 +744,12 @@ func (UnimplementedIdentityServiceServer) ListMyApps(context.Context, *ListMyApp
 }
 func (UnimplementedIdentityServiceServer) GetMyApp(context.Context, *GetMyAppRequest) (*GetMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyApp not implemented")
+}
+func (UnimplementedIdentityServiceServer) RenameMyApp(context.Context, *RenameMyAppRequest) (*RenameMyAppResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenameMyApp not implemented")
+}
+func (UnimplementedIdentityServiceServer) DeleteMyApp(context.Context, *DeleteMyAppRequest) (*DeleteMyAppResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteMyApp not implemented")
 }
 func (UnimplementedIdentityServiceServer) ResolveMyTenant(context.Context, *ResolveMyTenantRequest) (*ResolveMyTenantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMyTenant not implemented")
@@ -1238,6 +1276,42 @@ func _IdentityService_GetMyApp_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_RenameMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameMyAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RenameMyApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RenameMyApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RenameMyApp(ctx, req.(*RenameMyAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_DeleteMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMyAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).DeleteMyApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_DeleteMyApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).DeleteMyApp(ctx, req.(*DeleteMyAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_ResolveMyTenant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ResolveMyTenantRequest)
 	if err := dec(in); err != nil {
@@ -1564,6 +1638,14 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMyApp",
 			Handler:    _IdentityService_GetMyApp_Handler,
+		},
+		{
+			MethodName: "RenameMyApp",
+			Handler:    _IdentityService_RenameMyApp_Handler,
+		},
+		{
+			MethodName: "DeleteMyApp",
+			Handler:    _IdentityService_DeleteMyApp_Handler,
 		},
 		{
 			MethodName: "ResolveMyTenant",

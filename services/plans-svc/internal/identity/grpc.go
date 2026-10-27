@@ -155,6 +155,18 @@ func (h *Handler) GetMyApp(ctx context.Context, req *plansv1.GetMyAppRequest) (*
 	return &plansv1.GetMyAppResponse{App: app, Role: role}, nil
 }
 
+func (h *Handler) RenameMyApp(ctx context.Context, req *plansv1.RenameMyAppRequest) (*plansv1.RenameMyAppResponse, error) {
+	app, err := h.cmd.RenameApp(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.RenameMyAppResponse{App: app}, nil
+}
+
+func (h *Handler) DeleteMyApp(ctx context.Context, req *plansv1.DeleteMyAppRequest) (*plansv1.DeleteMyAppResponse, error) {
+	return h.cmd.DeleteApp(ctx, req)
+}
+
 func (h *Handler) ResolveMyTenant(ctx context.Context, req *plansv1.ResolveMyTenantRequest) (*plansv1.ResolveMyTenantResponse, error) {
 	t, role, err := h.qry.Tenant(ctx, req.GetUserId(), req.GetTenantId())
 	if err != nil {

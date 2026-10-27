@@ -405,6 +405,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.webhook.not_recorded`
 - `payments.webhook.try_again`
 - `payments.webhook.unverified`
+- `plans.api_key.app_archived`
 - `plans.api_key.bad_role`
 - `plans.api_key.tenant_not_active`
 - `plans.app.bad_slug`

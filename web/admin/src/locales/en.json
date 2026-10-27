@@ -2470,7 +2470,8 @@
       },
       "api_key": {
         "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first.",
-        "bad_role": "The role must be admin, billing, read only, send usage only or custom, with known permissions."
+        "bad_role": "The role must be admin, billing, read only, send usage only or custom, with known permissions.",
+        "app_archived": "This app was deleted, so it cannot have API keys."
       },
       "change": {
         "bad_proration": "The charge for this plan change cannot be worked out for this period.",
@@ -3456,7 +3457,14 @@
       "timezone": "Time zone",
       "grace": "Grace period",
       "tenant": "Environment id",
-      "moreCurrencies": "An app can sell in many currencies: add a price in another currency to a package, under"
+      "moreCurrencies": "An app can sell in many currencies: add a price in another currency to a package, under",
+      "rename": "Save name",
+      "dangerTitle": "Danger zone",
+      "deleteBody": "Deleting an app removes it from your account: it leaves every list, its API keys stop working at once and no new keys can be made. Nothing is erased. Its customers, invoices and payments are kept for accounting and legal retention, and billing keeps working on what already exists, so cancel its subscriptions first if it should stop billing.",
+      "delete": "Delete app",
+      "confirmTitle": "Delete {name}?",
+      "confirmBody": "The app is archived: its API keys are revoked and it disappears from your account. Its billing records are kept. This cannot be undone from the console.",
+      "typeName": "Type {name} to confirm"
     },
     "goLive": {
       "title": "Go live",

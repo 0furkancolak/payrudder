@@ -92,7 +92,7 @@ var addressJSON = protojson.MarshalOptions{UseProtoNames: true}
 
 // App with its tenants (sandbox first).
 func App(a sqlc.App, tenants []sqlc.Tenant) *plansv1.App {
-	out := &plansv1.App{Id: a.ID.String(), AccountId: a.AccountID.String(), Name: a.Name, Slug: a.Slug, CreateTime: ts(a.CreatedAt)}
+	out := &plansv1.App{Id: a.ID.String(), AccountId: a.AccountID.String(), Name: a.Name, Slug: a.Slug, CreateTime: ts(a.CreatedAt), ArchiveTime: tsp(a.ArchivedAt)}
 	for _, t := range tenants {
 		out.Tenants = append(out.Tenants, Tenant(t))
 	}

@@ -2991,10 +2991,18 @@ export interface paths {
         get: operations["appGetApp"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete the app (owners only)
+         * @description Nothing is erased. The app is archived: it leaves the lists and every route of the account, its API keys are revoked at once (the gateway refuses them, so no event is ingested), no key can be made for it again, and its slug is freed. Its customers, subscriptions, invoices, payments and usage stay for accounting and retention, and billing keeps working on what already exists (a customer who owes is still invoiced and charged), so cancel the subscriptions first when the app should stop billing. An admin or a viewer is answered 403; deleting twice is answered 404. The action is logged (`app_audit`).
+         */
+        delete: operations["appDeleteApp"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Rename the app (owners and admins)
+         * @description Renames the app and with it its sandbox and live tenants; the slug stays. Invoices already issued keep the name they were issued under, new ones carry the new name. A viewer is answered 403; an app that was deleted is answered 404.
+         */
+        patch: operations["appRenameApp"];
         trace?: never;
     };
     "/app/v1/apps/{id}/overview": {
@@ -7048,6 +7056,11 @@ export interface components {
             tenants?: components["schemas"]["Tenant"][];
             /** Format: date-time */
             create_time?: string;
+            /**
+             * Format: date-time
+             * @description Set once the app was deleted (archived); only the operator API lists such an app.
+             */
+            archive_time?: string;
         };
         /**
          * @description admin: every permission. billing: customers, subscriptions, credits and invoices, with events, the catalogue and usage to read. read_only: every :read. ingest_only: events:write. custom: the permissions chosen.
@@ -12824,6 +12837,61 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appDeleteApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appRenameApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The app */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["App"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

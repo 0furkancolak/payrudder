@@ -64,14 +64,15 @@ DELETE FROM user_sessions WHERE user_id = $1 AND (expires_at < now() - interval 
 
 -- An app of an account the user is a member of, with the user's role. No membership, no row.
 -- name: GetAppForUser :one
+-- An archived app is gone for the account: it answers like one that never existed.
 SELECT a.id, a.account_id, a.name, a.slug, a.created_at, m.role
 FROM apps a JOIN account_members m ON m.account_id = a.account_id AND m.user_id = @user_id AND m.role <> 'affiliate'
-WHERE a.id = @app_id;
+WHERE a.id = @app_id AND a.archived_at IS NULL;
 
 -- name: GetTenantForUser :one
 SELECT t.*, m.role
 FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = @user_id AND m.role <> 'affiliate'
-WHERE t.id = @tenant_id;
+WHERE t.id = @tenant_id AND NOT EXISTS (SELECT 1 FROM apps a WHERE a.id = t.app_id AND a.archived_at IS NOT NULL);
 
 -- name: ListAppTenants :many
 SELECT * FROM tenants WHERE app_id = $1 ORDER BY environment DESC;
