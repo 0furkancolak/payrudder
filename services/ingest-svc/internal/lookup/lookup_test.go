@@ -30,7 +30,9 @@ func (f *fakePlans) GetMeter(_ context.Context, in *plansv1.GetMeterRequest, _ .
 	case f.failMeter.Load():
 		return nil, status.Error(codes.Unavailable, "down")
 	case in.GetCode() == "gb":
-		return &plansv1.GetMeterResponse{Meter: &plansv1.Meter{Code: "gb", Version: 3, QuantityScale: 2}}, nil
+		return &plansv1.GetMeterResponse{Meter: &plansv1.Meter{Code: "gb", Version: 3, QuantityScale: 2, Aggregation: plansv1.Aggregation_AGGREGATION_SUM, ValueProperty: "gb"}}, nil
+	case in.GetCode() == "users":
+		return &plansv1.GetMeterResponse{Meter: &plansv1.Meter{Code: "users", Version: 1, Aggregation: plansv1.Aggregation_AGGREGATION_UNIQUE, ValueProperty: "user_id"}}, nil
 	}
 	return nil, status.Error(codes.NotFound, "no meter")
 }
@@ -112,5 +114,18 @@ func TestConcurrentMissesShareOneCall(t *testing.T) {
 	wg.Wait()
 	if n := f.meterCalls.Load(); n != 1 {
 		t.Fatalf("plans-svc called %d times for 20 concurrent callers, want 1", n)
+	}
+}
+
+// Only a UNIQUE meter names a property events must carry; the value_property of the other aggregations is not an obligation of the sender here.
+func TestUniqueMeterNamesItsDistinctProperty(t *testing.T) {
+	p := NewPlans(&fakePlans{}, Options{})
+	u, ok, err := p.Meter(context.Background(), "t1", "users")
+	if err != nil || !ok || u.DistinctProperty != "user_id" {
+		t.Fatalf("UNIQUE meter = %+v %v %v", u, ok, err)
+	}
+	g, _, _ := p.Meter(context.Background(), "t1", "gb")
+	if g.DistinctProperty != "" {
+		t.Fatalf("a SUM meter has distinct property %q", g.DistinctProperty)
 	}
 }

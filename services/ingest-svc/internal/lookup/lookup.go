@@ -18,6 +18,8 @@ type Meter struct {
 	Code    string
 	Version int32
 	Scale   int
+	// DistinctProperty is the event property a UNIQUE meter counts the distinct values of; empty for every other aggregation.
+	DistinctProperty string
 }
 
 // Customer is what ingest needs of a customer.
@@ -77,7 +79,11 @@ func NewPlans(client plansv1.PlansServiceClient, o Options) *Plans {
 				return Meter{}, notFound(err)
 			}
 			m := resp.GetMeter()
-			return Meter{Code: m.GetCode(), Version: m.GetVersion(), Scale: int(m.GetQuantityScale())}, nil
+			out := Meter{Code: m.GetCode(), Version: m.GetVersion(), Scale: int(m.GetQuantityScale())}
+			if m.GetAggregation() == plansv1.Aggregation_AGGREGATION_UNIQUE {
+				out.DistinctProperty = m.GetValueProperty()
+			}
+			return out, nil
 		}),
 		customers: cachex.New(o.cachex(), func(ctx context.Context, _, externalID string) (Customer, error) {
 			resp, err := client.ResolveCustomer(ctx, &plansv1.ResolveCustomerRequest{ExternalId: externalID})

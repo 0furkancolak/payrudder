@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"regexp"
 	"sort"
 	"time"
@@ -88,6 +89,15 @@ func CheckPrelim(ev *ingestv1.IncomingEvent, now time.Time, environment string) 
 		return p, &Reject{CodeInvalidProperties, err.Error()}
 	}
 	return p, nil
+}
+
+// CheckDistinctProperty rejects an event of a UNIQUE meter that does not carry the property whose distinct values the meter counts: it would be accepted
+// and then count nothing, which the sender would only notice on an invoice. property is empty for every other meter.
+func CheckDistinctProperty(props map[string]string, property string) *Reject {
+	if property == "" || props[property] != "" {
+		return nil
+	}
+	return &Reject{CodeInvalidProperties, fmt.Sprintf("the meter counts distinct values of the property %q: send it with a non-empty value", property)}
 }
 
 func checkProperties(props map[string]string) error {
