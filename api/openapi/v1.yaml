@@ -5246,7 +5246,7 @@ components:
       properties:
         meter_code: { type: string }
         quantity: { type: string, examples: ["1500.250"] }
-        event_count: { type: integer, format: int64 }
+        event_count: { type: string, format: int64 }
     ListEntitlementsResponse:
       type: object
       required: [items]
@@ -6325,7 +6325,7 @@ components:
       type: object
       required: [amount_minor, currency, bank_reference]
       properties:
-        amount_minor: { type: string, format: int64, minimum: 1 }
+        amount_minor: { type: integer, format: int64, minimum: 1, description: "A JSON number like every amount of this operator route (a string of digits is accepted too)" }
         currency: { type: string, examples: [TRY] }
         received_at: { type: string, format: date-time, description: When the bank booked it. Default now; not in the future. }
         bank_reference: { type: string, maxLength: 128, description: "The bank's transaction or statement reference; it makes the call idempotent." }
