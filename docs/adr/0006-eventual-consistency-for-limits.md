@@ -17,6 +17,7 @@ Kafka and is processed by many pods. A strongly consistent check would need a sy
 - **Reconciliation** against aggregator's authoritative totals, at the same offset prefix per partition, corrects drift every 5 min. It covers every
   quota window, not only the billing month: the aggregator keeps month totals (read for a month, a year and the lifetime) and hour totals (read for an
   hour, a day and an ISO week), see [aggregator.md](../03-services/aggregator.md#as-built-window-totals-quota-windows).
+- The counters of `UNIQUE` (a bounded set of value digests) and `LAST` (the value with its event) meters are reconciled the same way, to the aggregator's exact count and event ([ADR 0025](0025-unique-and-last-aggregations.md)).
 - Payrudder **doesn't reject usage events** over the limit. Enforcement is the tenant's decision.
 - Billing never reads Redis.
 

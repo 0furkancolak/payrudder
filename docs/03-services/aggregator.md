@@ -25,7 +25,7 @@ RETURNING event_id;
 -- (one row per target generation: the tenant's active one, plus its catching_up one during a promotion)
 INSERT INTO usage_aggregates (tenant_id, customer_id, meter_code, period_id, generation, quantity, event_count, updated_at)
 VALUES ... ON CONFLICT (tenant_id, customer_id, meter_code, period_id, generation)
-DO UPDATE SET quantity = <SUM/MAX merge>, event_count = usage_aggregates.event_count + EXCLUDED.event_count;
+DO UPDATE SET quantity = <SUM/MAX/LAST merge>, event_count = usage_aggregates.event_count + EXCLUDED.event_count;
 -- late events go to late_usage instead (see below)
 -- 3. advance the offset in the same transaction
 INSERT INTO consumer_offsets (consumer_group, topic, partition, next_offset)
@@ -50,11 +50,11 @@ Read APIs run as `aggregator_app` with `SET LOCAL app.tenant_id`.
   poison records are sent to the DLQ (`x-dlq-*` and `x-original-*` headers), `period_settings` snapshots and inbox partitions are ensured.
   Deterministic decode and validation failures skip the in-process retries.
 - The transaction reads `period_settings` and the tenant's generation rows `FOR SHARE`, inserts the inbox rows (one per event and target
-  generation, `ON CONFLICT DO NOTHING RETURNING`), classifies and pre-sums only the returned events, upserts SUM/COUNT and MAX rows in two
-  statements with keys in a fixed order, and advances the offset with the fencing `WHERE`. A no-op offset write means a zombie and is counted
+  generation, `ON CONFLICT DO NOTHING RETURNING`), classifies and pre-sums only the returned events, upserts SUM/COUNT, MAX and LAST rows in one
+  statement per merge with keys in a fixed order (UNIQUE meters first settle their value sets, see below), and advances the offset with the fencing `WHERE`. A no-op offset write means a zombie and is counted
   (`aggregator_fenced_batches`).
 - A meter's `filter` is applied at aggregation: a non-matching event is marked processed and ignored (`aggregator_filtered_events`).
-  The quantity is the event's validated `quantity_units` (1 for COUNT); the meter's `value_property` isn't used.
+  The quantity is the event's validated `quantity_units` (1 for COUNT, none for UNIQUE, which counts the distinct values of the meter's `value_property`); for the other aggregations `value_property` isn't used.
 - A frozen period turns every later arrival into late usage; one that would have been on time counts in
   `aggregator_frozen_period_violations` and logs an error (the suite asserts it stays 0).
 - Fault hook: `AGG_CRASH_AFTER_COMMIT` (chaos build tag) exits the process after the commit. In-process tests set `Handler.AfterCommit`.
@@ -139,8 +139,8 @@ never touches other tenants' rows, and promotion flips only T. Live traffic is n
 
 ## Owned data (`aggregator_db`)
 
-`usage_aggregates`, `late_usage`, `processed_events` (partitioned by `period_id`), `consumer_offsets`,
-`period_settings`, `aggregate_generations`, `replay_jobs`. See [05-data-model.md](../05-data-model.md#aggregator_db).
+`usage_aggregates`, `usage_window_aggregates`, `usage_distinct_values`, `usage_distinct_hours`, `late_usage`, `processed_events` (partitioned by `period_id`),
+`consumer_offsets`, `period_settings`, `aggregate_generations`, `replay_jobs`. See [05-data-model.md](../05-data-model.md#aggregator_db).
 
 ## Consumed / produced messages
 
@@ -176,7 +176,7 @@ limits-svc counts a quota over a window (an hour, a day, an ISO week, the billin
 time zone) and reconciles the counter of **every** window against this service, so that enforcement, the console and the invoice are made from the same events.
 `GetUsageBatch` takes a window id in `UsageKey.period_id` (`2026-11`, `2026-11-05T13`, `2026-11-05`, `2026-W45`, `2026`, `all`; `pkg/period.Span` maps an id to
 the stored rows) and answers with the sum of those rows, or their maximum when the key says `max` (a MAX meter: the maximum of the parts is the maximum of the
-whole). The same snapshot returns the consumer offsets, so the checkpoint protocol of limits-svc is unchanged.
+whole), the value of the latest event (`aggregation = AGGREGATION_LAST`) or the number of distinct values (`AGGREGATION_UNIQUE`, see [UNIQUE and LAST](#as-built-unique-and-last)). The same snapshot returns the consumer offsets, so the checkpoint protocol of limits-svc is unchanged.
 
 - **Month, year, lifetime** read `usage_aggregates`: a year is the twelve month rows of the tenant's calendar year, the lifetime window every month row there
   is. These rows are kept for good and are what billing rates, so these windows agree with the invoice by construction.
@@ -194,3 +194,57 @@ whole). The same snapshot returns the consumer offsets, so the checkpoint protoc
 - **Why hour totals.** Day and week windows cannot be derived from the month row. A table per entitlement window would need this service to follow
   `plans.entitlements.v1` and to backfill when an entitlement appears. Rebuilding from the Kafka log is bounded by its retention and slow. One finest grain
   that every short window is a range of needs neither.
+
+## As built: UNIQUE and LAST
+
+Two aggregations whose parts do not add up ([ADR 0025](../adr/0025-unique-and-last-aggregations.md)). A meter's `aggregation` is `SUM`, `COUNT`, `MAX`, `UNIQUE` or `LAST`;
+the first three keep one number per row and merge by adding or keeping a maximum, these two keep a little more and merge by a law that does not depend on arrival order.
+
+### LAST: the quantity of the latest event, in a total order
+
+- **The order** (`pkg/usage.Order`): the event time truncated to the microsecond (what the wire and `timestamptz` keep), then the event id compared **bytewise**. Event ids are
+  ULIDs assigned once at ingest, so two different events never compare equal, and the latest event of a set does not depend on the order in which partitions, redeliveries or a
+  replay deliver it. Postgres compares with `COLLATE "C"`, Lua with its own byte loop (the `<` of Redis strings follows the server's locale), Go with `<` on strings; one test
+  feeds all three the same ties.
+- **Storage**: `usage_aggregates.quantity` is the quantity of the winning event, and `last_at` / `last_event_id` (migration 00005, NULL for every other aggregation) name it. The upsert
+  keeps the incoming `(quantity, last_at, last_event_id)` only if `(last_at, last_event_id COLLATE "C")` is greater than the stored one. The hour rows (`usage_window_aggregates`) carry the same
+  columns, so a day, a week, a year or the lifetime window is the winner among its rows (`array_agg(... ORDER BY last_at DESC, last_event_id COLLATE "C" DESC)`), and the answer names the event
+  (`UsageAggregate.last_event_time` / `last_event_id`) so that limits-svc repairs its counter to that event and not only to its value.
+- **The merge laws** (`domain.Merge`, property-tested): associative, commutative and idempotent. A delivery order, a batch split or a replay of the same events gives the same row.
+- **A late event never changes a closed period.** The last value of a period is the last among the events ingested before its cutoff. A later event is stored nowhere (the batch counts it in
+  `aggregator_late_last_events`) and is not billed: a "last value" cannot be added to an invoice that was already issued the way a sum can, and a correction would mean re-rating the
+  period with a different answer. The consequence is stated plainly: a LAST meter whose events arrive after the cutoff (buffered SDKs, backfills) is wrong by exactly those events,
+  and the tenant's grace period is the knob. A replay reproduces the rule, it does not undo it.
+
+### UNIQUE: the number of distinct values of a property
+
+- **Why a set.** A distinct count is not additive: a customer seen in two months is one customer, and a day or a year cannot be read from the counts of its hours or months.
+  The aggregator therefore keeps the values themselves (`usage_distinct_values`, one row per customer, meter, generation, period and **SHA-256 of the value**; `usage_distinct_hours` per
+  wall-clock hour for the short quota windows). A property can be 4 KiB and a primary key cannot, so the digest is the identity; two different values collide with a probability that is
+  not a consideration (2⁻¹²⁸ per pair at the birthday bound). Billing reads this table's counts, so billing is exact up to SHA-256 collision resistance and nothing approximate (no HyperLogLog).
+- **The state of a value in a period** is `billed_period_id`: `''` if an on-time event carried it, else the earliest billing period of a late event that carried it. `''` sorts before every
+  period id, so the state is the **minimum of what its events say** (`domain.MergeSeen`): associative, commutative, idempotent. An on-time event after a late one of the same value moves it
+  to `''`, an earlier billing period after a later one moves it earlier, and the order of arrival does not matter.
+- **The counts follow the states, in one transaction.** `usage_aggregates.quantity` is the number of values in state `''` and `late_usage(billed, origin).quantity` the number in state
+  `billed`. A batch (1) claims its `(period, value)` pairs with `INSERT ... ON CONFLICT DO NOTHING RETURNING` in key order, (2) lowers the state of the pairs that exist with
+  `UPDATE ... FROM (SELECT ... FOR UPDATE)` (only where the new state is smaller; the row lock serialises two consumers that carry the same value), (3) adds `+1` to the row of every new or
+  new-state value and `-1` to the row it left, then upserts the counts as plain sums next to the event counts. The dedup inbox, the generations (every target generation gets its own
+  sets) and the meter filter apply first, exactly as for the other aggregations. An event without the property counts nothing (`aggregator_missing_value_events`); ingest rejects such an
+  event for a UNIQUE meter, so this only guards against meters changed under in-flight events.
+- **Windows.** A single billing period is read from the stored count. A year or the lifetime window is `count(DISTINCT value_hash)` over the on-time rows of its months, an hour from the hour
+  set, a day or a week from the hour sets of its range, so a value that appears on two days counts once in the week. `UsageKey.aggregation = AGGREGATION_UNIQUE` selects this; for such a
+  key `event_count` in the answer is the number of values. The wall-clock hour id keeps daylight saving harmless, as for the sums.
+- **Late and closed periods.** A value first seen after the cutoff is late usage billed in the period of its first late event; a value an on-time event carried is not billed again. Rating
+  prices the late count incrementally on top of the on-time count and the late lines already invoiced (`rate(on-time + prior + late) − rate(on-time + prior)`), which is exact because the
+  counts are disjoint by construction. One case is not retroactive: if an on-time event of a value arrives **after** a late event of it was processed *and that late line was already
+  invoiced*, the unit moves back to the period and `late_usage` drops, but the invoice is not corrected (the same hole as an on-time event for a frozen period, and as visible: the
+  conversion happens only when the two events are processed out of ingest order across the cutoff, a window of seconds).
+- **Cost.** One set row per distinct value per customer, meter and period (about 100 bytes with its index entry), kept as long as the month rows (forever), and per hour for 14 days. A
+  UNIQUE meter on a very high-cardinality property (millions of values per customer) is the expensive case; a year or lifetime read scans the rows of the customer and meter. There is no cap
+  here, because a cap would make billing inexact; the plans-svc tier quotas bound the number of meters, not values.
+
+### Replay, retention, reset
+
+The new tables follow the rows they explain: a replay clears and carries over `usage_distinct_values` / `usage_distinct_hours` for the periods outside its range like the month and hour
+rows, a discarded generation and a sandbox reset delete them, and maintenance prunes the hour sets with the hour totals. Replay verification compares the counts and quantities of
+`usage_aggregates` and `late_usage` (a UNIQUE count or a LAST value), not the sets.
