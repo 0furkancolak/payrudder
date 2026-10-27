@@ -29,7 +29,7 @@ in the same change, and we want `buf breaking` and cross-service tests to run ag
 - Each service has explicit, minimal dependencies, and `go mod graph` per service reflects its real coupling.
 - Cross-module refactors are one PR. `go.work` makes local edits to `pkg` visible immediately.
 - Versioning: modules aren't tagged individually. The whole repo is released together (`v0.x`). If a module ever needs to be consumed
-  externally, per-module tags (`pkg/v0.3.0`) can be added later.
+  externally, per-module tags (`pkg/vX.Y.Z`) can be added later.
 - CI must run `go work sync` checks and build each module, using a changed-paths matrix to keep CI fast.
 - Risk: drifting dependency versions across modules. Mitigation: Renovate with grouped updates, and `make deps-check` lints for mismatched
   versions of shared deps (`franz-go`, `pgx`, `otel`).

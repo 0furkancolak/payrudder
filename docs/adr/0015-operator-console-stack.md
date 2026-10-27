@@ -1,6 +1,6 @@
 # ADR 0015: The operator console is a Vue single-page app
 
-Status: accepted (v0.2.0). Supersedes the Next.js choice made in Phase 12.
+Status: accepted. Supersedes the Next.js choice made in Phase 12.
 
 ## Context
 
