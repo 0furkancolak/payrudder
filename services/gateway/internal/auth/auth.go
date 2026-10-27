@@ -16,7 +16,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"google.golang.org/grpc/codes"
@@ -25,6 +24,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
@@ -110,12 +110,12 @@ type Authenticator struct {
 
 // New returns an Authenticator.
 func New(cache Cache, resolver Resolver, allowedEnvs []string, log *slog.Logger) (*Authenticator, error) {
-	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/gateway/auth").
-		Int64Counter("gateway_auth_failures", metric.WithDescription("Rejected API keys by reason"))
-	if err != nil {
+	m := otelx.NewInstruments("github.com/0furkancolak/payrudder/services/gateway/auth")
+	failures := m.Counter("gateway_auth_failures", "Rejected API keys by reason")
+	if err := m.Err(); err != nil {
 		return nil, err
 	}
-	return &Authenticator{cache: cache, resolver: resolver, allowedEnvs: allowedEnvs, log: log, failures: c, now: time.Now, touched: map[string]time.Time{}}, nil
+	return &Authenticator{cache: cache, resolver: resolver, allowedEnvs: allowedEnvs, log: log, failures: failures, now: time.Now, touched: map[string]time.Time{}}, nil
 }
 
 // WithToucher makes the authenticator record the use of keys, at most once per key and replica every few minutes, in the background.
