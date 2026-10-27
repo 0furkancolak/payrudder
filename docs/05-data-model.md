@@ -79,6 +79,12 @@ CREATE TABLE tenants (                                -- the isolation unit ever
   status        text NOT NULL CHECK (status IN ('inactive','active','suspended')),  -- phase 45: a live tenant starts inactive (no keys, no webhooks, not billed)
   activated_at  timestamptz,                          -- when the go-live checklist was completed (or an operator activated it)
   terms_accepted_at timestamptz, terms_accepted_by uuid REFERENCES users(id),
+  -- phase 28 (migration 00062), the tenant directory of ADR 0018: where the tenant's data lives. cell '' is the pooled database (RLS, the default and the only value
+  -- until an operator places a tenant); any other value names a cell (a schema t_<id> in that cluster). region is informational. placement_status is the fence of a
+  -- placement and of a move: only 'ready' serves traffic. Read through DirectoryService, cached in process by pkg/tenantdir.
+  cell text NOT NULL DEFAULT '' CHECK (cell = '' OR cell ~ '^[a-z0-9][a-z0-9-]{0,30}$'),
+  region text NOT NULL DEFAULT '' CHECK (region = '' OR region ~ '^[a-z0-9][a-z0-9-]{0,30}$'),
+  placement_status text NOT NULL DEFAULT 'ready' CHECK (placement_status IN ('ready','provisioning','moving')),
   created_at    timestamptz NOT NULL DEFAULT now(),
   UNIQUE (account_id, environment),
   CONSTRAINT sandbox_is_always_active CHECK (environment = 'live' OR status = 'active')

@@ -83,6 +83,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
 	t.Run("SaasOff", testSaasOff)
 	t.Run("Saas", testSaas)
+	t.Run("Directory", testDirectory)
 	t.Run("PromotionsMigration", testPromotionsMigration) // last: it rolls the newest migration back and forward
 }
 

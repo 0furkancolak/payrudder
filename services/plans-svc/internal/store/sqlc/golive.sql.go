@@ -72,7 +72,7 @@ func (q *Queries) InsertGoLiveAudit(ctx context.Context, arg InsertGoLiveAuditPa
 
 const lockTenantForGoLive = `-- name: LockTenantForGoLive :one
 
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE id = $1 FOR UPDATE
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status FROM tenants WHERE id = $1 FOR UPDATE
 `
 
 // The go-live gate (phase 45). Run as plans_system from internal/golive only; nothing here is tenant data a request could name.
@@ -100,6 +100,9 @@ func (q *Queries) LockTenantForGoLive(ctx context.Context, id uuid.UUID) (Tenant
 		&i.ActivatedAt,
 		&i.TermsAcceptedAt,
 		&i.TermsAcceptedBy,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
 	)
 	return i, err
 }
@@ -117,7 +120,7 @@ func (q *Queries) TenantHasPublishedPlan(ctx context.Context, tenantID uuid.UUID
 }
 
 const updateTenantBillingProfile = `-- name: UpdateTenantBillingProfile :one
-UPDATE tenants SET address = $1::jsonb, legal = $2::jsonb WHERE id = $3 RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by
+UPDATE tenants SET address = $1::jsonb, legal = $2::jsonb WHERE id = $3 RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status
 `
 
 type UpdateTenantBillingProfileParams struct {
@@ -150,6 +153,9 @@ func (q *Queries) UpdateTenantBillingProfile(ctx context.Context, arg UpdateTena
 		&i.ActivatedAt,
 		&i.TermsAcceptedAt,
 		&i.TermsAcceptedBy,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
 	)
 	return i, err
 }

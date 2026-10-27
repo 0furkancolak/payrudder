@@ -10,6 +10,8 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/directory"
+	directoryqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/directory/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/golive"
 	golivecmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/command"
 	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
@@ -56,6 +58,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.SystemPool))
 	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.Log)
 	plansv1.RegisterAdminServiceServer(srv, admin)
+	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool)))
 	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now)
 	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log)
 	plansv1.RegisterSaasServiceServer(srv, saas.New(saasC, saasQ, d.SystemPool))

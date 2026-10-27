@@ -543,6 +543,9 @@ type Tenant struct {
 	ActivatedAt        *time.Time
 	TermsAcceptedAt    *time.Time
 	TermsAcceptedBy    *uuid.UUID
+	Cell               string
+	Region             string
+	PlacementStatus    string
 }
 
 type TenantMailIntegration struct {

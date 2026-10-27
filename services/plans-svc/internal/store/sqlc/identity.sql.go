@@ -448,7 +448,7 @@ func (q *Queries) GetOpenInviteInAccount(ctx context.Context, arg GetOpenInviteI
 }
 
 const getTenantForUser = `-- name: GetTenantForUser :one
-SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, t.status, t.activated_at, t.terms_accepted_at, t.terms_accepted_by, m.role
+SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, t.status, t.activated_at, t.terms_accepted_at, t.terms_accepted_by, t.cell, t.region, t.placement_status, m.role
 FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = $1 AND m.role <> 'affiliate'
 WHERE t.id = $2 AND NOT EXISTS (SELECT 1 FROM apps a WHERE a.id = t.app_id AND a.archived_at IS NOT NULL)
 `
@@ -478,6 +478,9 @@ type GetTenantForUserRow struct {
 	ActivatedAt        *time.Time
 	TermsAcceptedAt    *time.Time
 	TermsAcceptedBy    *uuid.UUID
+	Cell               string
+	Region             string
+	PlacementStatus    string
 	Role               string
 }
 
@@ -504,6 +507,9 @@ func (q *Queries) GetTenantForUser(ctx context.Context, arg GetTenantForUserPara
 		&i.ActivatedAt,
 		&i.TermsAcceptedAt,
 		&i.TermsAcceptedBy,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
 		&i.Role,
 	)
 	return i, err
@@ -939,7 +945,7 @@ func (q *Queries) ListApiKeysOfTenants(ctx context.Context, tenantIds []uuid.UUI
 }
 
 const listAppTenants = `-- name: ListAppTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE app_id = $1 ORDER BY environment DESC
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status FROM tenants WHERE app_id = $1 ORDER BY environment DESC
 `
 
 func (q *Queries) ListAppTenants(ctx context.Context, appID uuid.UUID) ([]Tenant, error) {
@@ -971,6 +977,9 @@ func (q *Queries) ListAppTenants(ctx context.Context, appID uuid.UUID) ([]Tenant
 			&i.ActivatedAt,
 			&i.TermsAcceptedAt,
 			&i.TermsAcceptedBy,
+			&i.Cell,
+			&i.Region,
+			&i.PlacementStatus,
 		); err != nil {
 			return nil, err
 		}

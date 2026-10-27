@@ -243,7 +243,7 @@ func (q *Queries) SaasGetPlatformAccount(ctx context.Context) (Account, error) {
 }
 
 const saasGetPlatformTenant = `-- name: SaasGetPlatformTenant :one
-SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, t.status, t.activated_at, t.terms_accepted_at, t.terms_accepted_by FROM tenants t JOIN accounts a ON a.id = t.account_id WHERE a.platform ORDER BY t.environment LIMIT 1
+SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, t.status, t.activated_at, t.terms_accepted_at, t.terms_accepted_by, t.cell, t.region, t.placement_status FROM tenants t JOIN accounts a ON a.id = t.account_id WHERE a.platform ORDER BY t.environment LIMIT 1
 `
 
 func (q *Queries) SaasGetPlatformTenant(ctx context.Context) (Tenant, error) {
@@ -269,6 +269,9 @@ func (q *Queries) SaasGetPlatformTenant(ctx context.Context) (Tenant, error) {
 		&i.ActivatedAt,
 		&i.TermsAcceptedAt,
 		&i.TermsAcceptedBy,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
 	)
 	return i, err
 }

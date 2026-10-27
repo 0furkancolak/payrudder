@@ -135,7 +135,7 @@ func (q *Queries) GetApp(ctx context.Context, id uuid.UUID) (App, error) {
 }
 
 const getTenant = `-- name: GetTenant :one
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE id = $1
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status FROM tenants WHERE id = $1
 `
 
 func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
@@ -161,6 +161,9 @@ func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
 		&i.ActivatedAt,
 		&i.TermsAcceptedAt,
 		&i.TermsAcceptedBy,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
 	)
 	return i, err
 }
@@ -289,7 +292,7 @@ func (q *Queries) InsertAppAudit(ctx context.Context, arg InsertAppAuditParams) 
 const insertTenant = `-- name: InsertTenant :one
 INSERT INTO tenants (id, account_id, app_id, environment, name, tier, currency, timezone, grace_period, status, activated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CASE WHEN $10::text = 'active' THEN now() END)
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status
 `
 
 type InsertTenantParams struct {
@@ -339,6 +342,9 @@ func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Ten
 		&i.ActivatedAt,
 		&i.TermsAcceptedAt,
 		&i.TermsAcceptedBy,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
 	)
 	return i, err
 }
@@ -410,7 +416,7 @@ func (q *Queries) ListAccountAppsWithArchived(ctx context.Context, accountID uui
 }
 
 const listAccountTenants = `-- name: ListAccountTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE account_id = $1 ORDER BY environment DESC
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status FROM tenants WHERE account_id = $1 ORDER BY environment DESC
 `
 
 func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) ([]Tenant, error) {
@@ -442,6 +448,9 @@ func (q *Queries) ListAccountTenants(ctx context.Context, accountID uuid.UUID) (
 			&i.ActivatedAt,
 			&i.TermsAcceptedAt,
 			&i.TermsAcceptedBy,
+			&i.Cell,
+			&i.Region,
+			&i.PlacementStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -478,7 +487,7 @@ func (q *Queries) ListTenantApiKeyPrefixes(ctx context.Context, tenantID uuid.UU
 }
 
 const listTenants = `-- name: ListTenants :many
-SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
+SELECT id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status FROM tenants WHERE id > $1::uuid ORDER BY id LIMIT $2::int
 `
 
 type ListTenantsParams struct {
@@ -515,6 +524,9 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 			&i.ActivatedAt,
 			&i.TermsAcceptedAt,
 			&i.TermsAcceptedBy,
+			&i.Cell,
+			&i.Region,
+			&i.PlacementStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -696,7 +708,7 @@ func (q *Queries) RevokeAppApiKeys(ctx context.Context, appID uuid.UUID) ([]ApiK
 const setTenantStatus = `-- name: SetTenantStatus :one
 UPDATE tenants SET status = $1::text, activated_at = CASE WHEN $1::text = 'active' THEN COALESCE(activated_at, now()) ELSE activated_at END
 WHERE id = $2
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status
 `
 
 type SetTenantStatusParams struct {
@@ -727,6 +739,9 @@ func (q *Queries) SetTenantStatus(ctx context.Context, arg SetTenantStatusParams
 		&i.ActivatedAt,
 		&i.TermsAcceptedAt,
 		&i.TermsAcceptedBy,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
 	)
 	return i, err
 }
@@ -751,7 +766,7 @@ SET grace_period = COALESCE($1::interval, grace_period),
     bank_transfer = CASE WHEN $6::bool THEN '{}'::jsonb ELSE COALESCE($7::jsonb, bank_transfer) END,
     invoice_logo_asset_id = CASE WHEN $8::bool THEN NULL ELSE COALESCE($9::uuid, invoice_logo_asset_id) END
 WHERE id = $10
-RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by
+RETURNING id, account_id, environment, name, tier, currency, timezone, grace_period, created_at, invoice_logo_asset_id, app_id, address, bank_transfer, legal, e_invoice_on, status, activated_at, terms_accepted_at, terms_accepted_by, cell, region, placement_status
 `
 
 type UpdateTenantSettingsParams struct {
@@ -801,6 +816,9 @@ func (q *Queries) UpdateTenantSettings(ctx context.Context, arg UpdateTenantSett
 		&i.ActivatedAt,
 		&i.TermsAcceptedAt,
 		&i.TermsAcceptedBy,
+		&i.Cell,
+		&i.Region,
+		&i.PlacementStatus,
 	)
 	return i, err
 }
