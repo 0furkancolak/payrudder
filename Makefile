@@ -179,7 +179,7 @@ K8S_NS ?= payrudder
 REGISTRY ?=
 TAG ?= dev
 .PHONY: k8s-install
-k8s-install: $(BIN)/helm ## Install on the cluster kubectl points at: make k8s-install REGISTRY=ghcr.io/you/ TAG=v0.5.0 SECRETS=my-secrets.yaml (see deploy/helm/payrudder/values-secrets.example.yaml)
+k8s-install: $(BIN)/helm ## Install on the cluster kubectl points at: make k8s-install REGISTRY=ghcr.io/you/ TAG=dev SECRETS=my-secrets.yaml (see deploy/helm/payrudder/values-secrets.example.yaml)
 	@test -f "$(SECRETS)" || { echo "SECRETS=<file> is required: copy deploy/helm/payrudder/values-secrets.example.yaml and change every value"; exit 2; }
 	$(BIN)/helm upgrade --install payrudder-infra deploy/helm/payrudder-infra -n $(K8S_NS) --create-namespace --wait --timeout 10m -f $(SECRETS)
 	$(BIN)/helm upgrade --install payrudder deploy/helm/payrudder -n $(K8S_NS) --wait --timeout 10m -f deploy/helm/payrudder/values-small.yaml -f $(SECRETS) \
