@@ -122,19 +122,44 @@ func TestTenantSchemaMatchesPublic(t *testing.T) {
 // A tenant of plans-svc moves from the pooled database to a cell and back with every row of its 36 tables (the move is pkg/pgxx's; this is the tenant set under it: foreign
 // keys between the tables, the exclusion constraint of subscriptions, the triggers, the identity of the outbox).
 //
-// The tenant is a sandbox, on purpose: the last step of a move out of the pooled database deletes the tenant's rows there, and the pooled triggers of affiliate_journal and
-// affiliate_attributions (append-only, set once) refuse that for a live tenant. They allow it for a sandbox, which is what a reset does. Moving a live tenant that has
-// partner journal rows or attributions out of the pooled database is therefore refused at its last step until those two trigger functions also allow the delete of a
-// tenant that has a cell (a public migration; see the runbook).
+// It is done for a sandbox and for a live tenant. The last step of a move out of the pooled database deletes the tenant's rows there, and the pooled triggers of
+// affiliate_journal and affiliate_attributions (append-only, set once) refuse a delete in a live tenant, so the live case is the regression test of the rule that they let
+// it through once the directory says the tenant has a cell (tenants.cell is not empty), and not before.
 func TestPlansTenantMoves(t *testing.T) {
-	ctx := testkit.Ctx(t)
 	w := startWorld(t, true)
 	e := newEnvIn(t, w, saascmd.Config{})
-	sbx := e.account(t, "Mover")[plansv1.Environment_ENVIRONMENT_SANDBOX]
-	id := uuid.MustParse(sbx.GetId())
-	w.dir.keepPooled(id)
-	seed(t, e, sbx.GetId(), "mv")
-	want := fingerprint(t, e, sbx.GetId())
+	account := e.account(t, "Mover")
+	sandbox, live := account[plansv1.Environment_ENVIRONMENT_SANDBOX], account[plansv1.Environment_ENVIRONMENT_LIVE]
+	// Both are seeded before either moves: a seed that creates an affiliate asks the cells for the code, and that is not what this test is about.
+	for _, tn := range []struct {
+		t      *plansv1.Tenant
+		suffix string
+	}{{sandbox, "mv"}, {live, "mvl"}} {
+		w.dir.keepPooled(uuid.MustParse(tn.t.GetId()))
+		seed(t, e, tn.t.GetId(), tn.suffix)
+	}
+	t.Run("sandbox", func(t *testing.T) { movePlansTenant(t, w, e, sandbox, "mv") })
+	t.Run("live", func(t *testing.T) { movePlansTenant(t, w, e, live, "mvl") })
+}
+
+func movePlansTenant(t *testing.T, w *world, e *env, tn *plansv1.Tenant, suffix string) {
+	ctx := testkit.Ctx(t)
+	id := uuid.MustParse(tn.GetId())
+	want := fingerprint(t, e, tn.GetId())
+	if n := (&jobWorld{e: e, w: w}).pooledCount(t, tn.GetId(), "affiliate_journal"); n == 0 {
+		t.Fatal("the seed wrote no partner journal rows: the test would not look at the append-only triggers")
+	}
+	if n := (&jobWorld{e: e, w: w}).pooledCount(t, tn.GetId(), "affiliate_attributions"); n == 0 {
+		t.Fatal("the seed wrote no attributions: the test would not look at the set-once trigger")
+	}
+	if tn.GetEnvironment() == plansv1.Environment_ENVIRONMENT_LIVE {
+		// While the tenant is pooled, nothing deletes its journal or its attributions.
+		for _, table := range []string{"affiliate_journal", "affiliate_attributions"} {
+			if _, err := e.system.Exec(ctx, `DELETE FROM `+table+` WHERE tenant_id = $1`, id); err == nil {
+				t.Fatalf("a live pooled tenant's rows of %s were deleted", table)
+			}
+		}
+	}
 	pooled := pgxx.Endpoint{MigratorDSN: w.db.Migrator}
 	cell := pgxx.Endpoint{Cell: "c1", MigratorDSN: w.dir.migrator}
 
@@ -167,7 +192,7 @@ func TestPlansTenantMoves(t *testing.T) {
 	}
 	same := func(what string, ignore ...string) {
 		t.Helper()
-		got := fingerprint(t, e, sbx.GetId())
+		got := fingerprint(t, e, tn.GetId())
 		for table, w := range want {
 			if slices.Contains(ignore, table) {
 				continue
@@ -183,17 +208,19 @@ func TestPlansTenantMoves(t *testing.T) {
 		t.Fatalf("only %d rows were copied", rep.Rows())
 	}
 	same("in the cell")
-	if n := (&jobWorld{e: e, w: w}).pooledCount(t, sbx.GetId(), "customers"); n != 0 {
-		t.Fatalf("%d customers are left in the pooled database", n)
+	for _, table := range []string{"customers", "affiliate_journal", "affiliate_attributions"} {
+		if n := (&jobWorld{e: e, w: w}).pooledCount(t, tn.GetId(), table); n != 0 {
+			t.Fatalf("%d rows of %s are left in the pooled database", n, table)
+		}
 	}
 	// The tenant works in its new place.
-	if _, err := e.plans.GetCustomer(as(sbx.GetId()), &plansv1.GetCustomerRequest{ExternalId: "cus_mv"}); err != nil {
+	if _, err := e.plans.GetCustomer(as(tn.GetId()), &plansv1.GetCustomerRequest{ExternalId: "cus_" + suffix}); err != nil {
 		t.Fatalf("a request after the move: %v", err)
 	}
 	move(cell, pooled)
 	// Identity values are renumbered into the pooled database, so the outbox rows have other ids.
 	same("back in the pooled database", "outbox")
-	if _, err := e.plans.GetCustomer(as(sbx.GetId()), &plansv1.GetCustomerRequest{ExternalId: "cus_mv"}); err != nil {
+	if _, err := e.plans.GetCustomer(as(tn.GetId()), &plansv1.GetCustomerRequest{ExternalId: "cus_" + suffix}); err != nil {
 		t.Fatalf("a request after the move back: %v", err)
 	}
 }

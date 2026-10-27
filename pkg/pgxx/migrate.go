@@ -42,6 +42,24 @@ func Migrate(ctx context.Context, migratorDSN string, fsys fs.FS, log *slog.Logg
 	return nil
 }
 
+// MigrateDown rolls back every applied migration, newest first, until only goose's own table is left. It is for tests that check the Down of a service's migrations
+// (testkit.MigrationCycle); a service never calls it.
+func MigrateDown(ctx context.Context, migratorDSN string, fsys fs.FS) error {
+	db, err := sql.Open("pgx", migratorDSN)
+	if err != nil {
+		return fmt.Errorf("pgxx: open migrator: %w", err)
+	}
+	defer func() { _ = db.Close() }()
+	p, err := goose.NewProvider(goose.DialectPostgres, db, fsys, goose.WithAllowOutofOrder(true))
+	if err != nil {
+		return fmt.Errorf("pgxx: migration provider: %w", err)
+	}
+	if _, err := p.DownTo(ctx, 0); err != nil {
+		return fmt.Errorf("pgxx: migrate down: %w", err)
+	}
+	return nil
+}
+
 // MigrateVersion applies (up) or rolls back (down) the one migration of the given version, whatever the others are. It is for tests that check a migration and its Down
 // on data; a service never calls it.
 func MigrateVersion(ctx context.Context, migratorDSN string, fsys fs.FS, version int64, up bool) error {

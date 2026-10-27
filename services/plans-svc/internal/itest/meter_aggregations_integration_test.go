@@ -10,7 +10,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
-// UNIQUE and LAST meters are stored (migration 00062 widens the CHECK), read back with their aggregation and value property, and a code cannot change into or
+// UNIQUE and LAST meters are stored, read back with their aggregation and value property, and a code cannot change into or
 // out of them in a later version, while SUM, COUNT and MAX can still switch among themselves.
 func testMeterAggregations(t *testing.T) {
 	e := newEnv(t)
