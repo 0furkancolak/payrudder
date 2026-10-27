@@ -26,24 +26,24 @@ func seedPaidInvoice(t *testing.T, tid uuid.UUID, currency string, total, tax in
 	if !refundedAt.IsZero() {
 		status = "void"
 	}
-	if _, err := shared.system.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
+	if _, err := shared.sql.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
 		VALUES ($1,$2,$3,'2026-09','REGULAR',$4,$5,$6,$7,$8,'{"customer_external_id":"cus_acc","environment":"live"}'::jsonb,'')`, tid, id, uuid.New(), uuid.New(), currency, total-tax, total, status); err != nil {
 		t.Fatal(err)
 	}
 	if tax > 0 {
-		if _, err := shared.system.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,1,'BASE_FEE',$3,'fee'), ($1,$2,2,'TAX',$4,'VAT')`,
+		if _, err := shared.sql.Exec(ctx, `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,1,'BASE_FEE',$3,'fee'), ($1,$2,2,'TAX',$4,'VAT')`,
 			tid, id, total-tax, tax); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := shared.system.Exec(ctx, `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'PAID',1)`, tid, saga, id); err != nil {
+	if _, err := shared.sql.Exec(ctx, `INSERT INTO invoice_sagas (tenant_id, id, invoice_id, state, version) VALUES ($1,$2,$3,'PAID',1)`, tid, saga, id); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := shared.system.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, at) VALUES ($1,$2,1,'PAYMENT_PENDING','PAID','reply:PaymentSucceeded',$3)`, tid, saga, paidAt); err != nil {
+	if _, err := shared.sql.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, at) VALUES ($1,$2,1,'PAYMENT_PENDING','PAID','reply:PaymentSucceeded',$3)`, tid, saga, paidAt); err != nil {
 		t.Fatal(err)
 	}
 	if !refundedAt.IsZero() {
-		if _, err := shared.system.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, at) VALUES ($1,$2,2,'REFUND_REQUESTED','REFUNDED','reply:PaymentRefunded',$3)`, tid, saga, refundedAt); err != nil {
+		if _, err := shared.sql.Exec(ctx, `INSERT INTO saga_events (tenant_id, saga_id, seq, from_state, to_state, cause, at) VALUES ($1,$2,2,'REFUND_REQUESTED','REFUNDED','reply:PaymentRefunded',$3)`, tid, saga, refundedAt); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -52,7 +52,7 @@ func seedPaidInvoice(t *testing.T, tid uuid.UUID, currency string, total, tax in
 
 func seedCreditNote(t *testing.T, tid, invoice uuid.UUID, currency string, amount int64, at time.Time) {
 	t.Helper()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
 		tid, uuid.New(), uuid.New(), invoice, "CN-"+uuid.NewString()[:8], currency, amount, at); err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func testAccounting(t *testing.T) {
 	creditedPaid := seedPaidInvoice(t, tid, "TRY", 5000, 0, oct(1, 0), time.Time{})
 	seedCreditNote(t, tid, creditedPaid, "TRY", 300, oct(9, 12))
 	openInvoice := uuid.New()
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
 		VALUES ($1,$2,$3,'2026-10','REGULAR',$4,'TRY',700,700,'open','{"environment":"live"}'::jsonb,'')`, tid, openInvoice, uuid.New(), uuid.New()); err != nil {
 		t.Fatal(err)
 	}

@@ -13,7 +13,6 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
@@ -55,7 +54,7 @@ func StartPortalPurchase(ctx context.Context, d Deps, qd query.Deps, portalToken
 		return "", err
 	}
 	var open *sqlc.FindActiveInvoiceLinkRow
-	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
+	err = d.System.InTx(ctx, scope.TenantID, pgx.TxOptions{AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
 		row, err := sqlc.New(tx).FindOpenPortalPackLink(ctx, sqlc.FindOpenPortalPackLinkParams{TenantID: scope.TenantID, CustomerID: &scope.Portal.CustomerID, PackID: &pid, Quantity: &quantity})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil
@@ -128,7 +127,7 @@ func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow, pro
 	if err != nil {
 		return "", err
 	}
-	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = d.System.InTx(ctx, r.TenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		// One start at a time per link: a single-use link must not make two invoices when its button is pressed twice.
 		cur, err := q.LockPaymentLink(ctx, sqlc.LockPaymentLinkParams{TenantID: r.TenantID, ID: r.ID})
@@ -212,7 +211,7 @@ func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentReque
 		return nil, errkey.New(codes.FailedPrecondition, "billing.payment.method_unavailable", "the mock payment is only for sandbox tenants and demo stacks")
 	}
 	id := req.Scope.InvoiceID
-	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = d.System.InTx(ctx, req.Scope.TenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		if err := sqlc.New(tx).SetInvoicePaymentMethod(ctx, sqlc.SetInvoicePaymentMethodParams{PaymentMethod: MockToken, TenantID: req.Scope.TenantID, ID: id}); err != nil {
 			return err
 		}
@@ -249,7 +248,7 @@ type SettleInput struct {
 // this invoice.
 func SettleInvoicePayment(ctx context.Context, d Deps, tenantID uuid.UUID, in SettleInput) (bool, error) {
 	var applied bool
-	err := pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		inv, err := q.GetInvoiceTotals(ctx, sqlc.GetInvoiceTotalsParams{TenantID: tenantID, ID: in.InvoiceID})
 		if err != nil {

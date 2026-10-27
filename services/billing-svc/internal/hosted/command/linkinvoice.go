@@ -12,7 +12,6 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/period"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating"
@@ -98,7 +97,7 @@ func (b *Backend) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 			total = promo.GetTotalMinor()
 		}
 	}
-	err = pgxx.InTx(ctx, b.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = b.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := b.q.WithTx(tx)
 		// plan_version_id has no meaning for a payment link: the nil id says so.
 		if _, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{

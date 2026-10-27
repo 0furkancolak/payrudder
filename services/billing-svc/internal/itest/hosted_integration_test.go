@@ -34,10 +34,10 @@ func testHostedInvoiceLinks(t *testing.T) {
 	customer := uuid.New()
 	paid := seedOne(t, e.tid, customer, "cus_h", "paid", "USD", "INV-2026-000201", 1500, "live")
 	draft := seedOne(t, e.tid, customer, "cus_h", "draft", "USD", "", 700, "live")
-	if _, err := shared.system.Exec(context.Background(), `UPDATE invoices SET snapshot = snapshot || '{"tenant_name":"Acme Ltd","customer_name":"Ada Lovelace"}'::jsonb WHERE id = $1`, paid); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET snapshot = snapshot || '{"tenant_name":"Acme Ltd","customer_name":"Ada Lovelace"}'::jsonb WHERE tenant_id = $2 AND id = $1`, paid, e.tid); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,1,'BASE_FEE',1500,'Base fee')`, e.tid, paid); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,1,'BASE_FEE',1500,'Base fee')`, e.tid, paid); err != nil {
 		t.Fatal(err)
 	}
 
@@ -59,12 +59,12 @@ func testHostedInvoiceLinks(t *testing.T) {
 	}
 	// Only a hash is stored.
 	var clear int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE token_hash = $1`, []byte(link.GetToken())).Scan(&clear); err != nil || clear != 0 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE tenant_id = $2 AND token_hash = $1`, []byte(link.GetToken()), e.tid).Scan(&clear); err != nil || clear != 0 {
 		t.Fatalf("the token is stored as it is: %d, %v", clear, err)
 	}
 	h := sha256.Sum256([]byte(link.GetToken()))
 	var hashed int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE token_hash = $1`, h[:]).Scan(&hashed); err != nil || hashed != 1 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM payment_links WHERE tenant_id = $2 AND token_hash = $1`, h[:], e.tid).Scan(&hashed); err != nil || hashed != 1 {
 		t.Fatalf("hashed rows = %d, %v", hashed, err)
 	}
 
@@ -84,7 +84,7 @@ func testHostedInvoiceLinks(t *testing.T) {
 	if _, err := svc.GetHostedInvoicePdfUrl(v, &billingv1.GetHostedInvoicePdfUrlRequest{Token: link.GetToken()}); code(err) != codes.FailedPrecondition {
 		t.Errorf("pdf before it is rendered: %v", err)
 	}
-	if _, err := shared.system.Exec(context.Background(), `UPDATE invoices SET pdf_object_key = 'acme/inv.pdf' WHERE id = $1`, paid); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET pdf_object_key = 'acme/inv.pdf' WHERE tenant_id = $2 AND id = $1`, paid, e.tid); err != nil {
 		t.Fatal(err)
 	}
 	if got, _ = svc.GetHostedInvoice(v, &billingv1.GetHostedInvoiceRequest{Token: link.GetToken()}); !got.GetPdfAvailable() || got.GetInvoice().GetPdfObjectKey() != "" {

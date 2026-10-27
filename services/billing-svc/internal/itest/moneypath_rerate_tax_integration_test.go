@@ -21,7 +21,7 @@ func testRerateCorrectionsCarryTheTax(t *testing.T) {
 
 	// base 1200, gb_hours 15/unit (1.250 -> 19): cus_a owes 200 + 3, cus_b 200.
 	e.rerate("2026-10", e.newVersion(1200, "15", "2"))
-	rows, err := shared.system.Query(context.Background(), `SELECT i.snapshot->>'customer_external_id', i.total_minor, i.subtotal_minor, l.kind, l.amount_minor
+	rows, err := shared.sql.Query(context.Background(), `SELECT i.snapshot->>'customer_external_id', i.total_minor, i.subtotal_minor, l.kind, l.amount_minor
 		FROM invoices i JOIN invoice_lines l ON l.tenant_id = i.tenant_id AND l.invoice_id = i.id WHERE i.tenant_id = $1 AND i.kind = 'CORRECTION' ORDER BY 1, l.line_no`, e.tid)
 	if err != nil {
 		t.Fatal(err)

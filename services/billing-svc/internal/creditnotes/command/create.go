@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
@@ -22,7 +21,7 @@ import (
 // amount 0 means whatever is left of the invoice. The notes of an invoice never exceed it.
 func (c *Commands) create(ctx context.Context, tenantID, invoiceID uuid.UUID, amount int64, reason string, refund bool) (*model.CreditNote, error) {
 	var out *model.CreditNote
-	err := pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := c.cfg.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := c.q.WithTx(tx)
 		// The saga first (the order a void takes them in): a void that has begun refunds the whole invoice, so no note can start next to it.
 		switch state, err := q.LockSagaStateByInvoice(ctx, sqlc.LockSagaStateByInvoiceParams{TenantID: tenantID, InvoiceID: invoiceID}); {

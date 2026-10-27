@@ -8,6 +8,7 @@ package command
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -25,6 +25,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
@@ -46,7 +47,7 @@ const (
 // CreatePack adds a pack to the tenant's catalogue.
 //
 // validityDays is how many days the credits of a purchase last (1..3650); 0 means they never expire.
-func CreatePack(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, name string, credits, priceMinor int64, currency string, validityDays int32) (*model.Pack, error) {
+func CreatePack(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, name string, credits, priceMinor int64, currency string, validityDays int32) (*model.Pack, error) {
 	name = strings.TrimSpace(name)
 	if name == "" || utf8.RuneCountInString(name) > maxNameLen {
 		return nil, errkey.New(codes.InvalidArgument, "billing.credits.bad_pack", "a pack needs a name of 1 to 80 characters")
@@ -78,7 +79,7 @@ func CreatePack(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, name
 }
 
 // SetPackActive withdraws a pack from sale or puts it back.
-func SetPackActive(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID, active bool) error {
+func SetPackActive(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID, active bool) error {
 	var n int64
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		var err error
@@ -101,7 +102,7 @@ type Result struct {
 }
 
 // Grant adds credits as a promotion or by hand. expires is nil for credits that never expire. A key already used returns the first result and adds nothing.
-func Grant(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UUID, credits int64, source string, expires *time.Time, reason, key string) (*Result, error) {
+func Grant(ctx context.Context, app pgxx.Beginner, tenantID, customerID uuid.UUID, credits int64, source string, expires *time.Time, reason, key string) (*Result, error) {
 	if source != sourcePromo && source != SourceManual {
 		return nil, errkey.New(codes.InvalidArgument, "billing.credits.bad_source", "the source is promo or manual")
 	}
@@ -236,7 +237,7 @@ func grantLot(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UU
 //
 // When the tenant has set a low-balance threshold and this consume takes the balance from at or above it to below it, credits.low is announced in the same
 // transaction (once: a replay returns before reaching that point). externalID names the customer in that event the way the tenant knows them; it may be empty.
-func Consume(ctx context.Context, app *pgxpool.Pool, tenantID, customerID uuid.UUID, credits int64, reason, key, externalID string) (*Result, error) {
+func Consume(ctx context.Context, app pgxx.Beginner, tenantID, customerID uuid.UUID, credits int64, reason, key, externalID string) (*Result, error) {
 	if key == "" {
 		return nil, errkey.New(codes.InvalidArgument, "billing.credits.key_required", "an idempotency key is required to consume credits")
 	}
@@ -340,7 +341,7 @@ func announceLow(ctx context.Context, tx pgx.Tx, tenantID, customerID uuid.UUID,
 }
 
 // SetLowThreshold sets the balance below which a consume announces credits.low; 0 turns the event off.
-func SetLowThreshold(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, threshold int64) error {
+func SetLowThreshold(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, threshold int64) error {
 	if threshold < 0 || threshold > maxThreshold {
 		return errkey.New(codes.InvalidArgument, "billing.credits.bad_threshold", "the low-balance threshold must be 0 or a whole number of credits")
 	}
@@ -355,28 +356,67 @@ func SetLowThreshold(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID,
 
 var errInsufficient = errkey.New(codes.FailedPrecondition, "billing.credits.insufficient", "the customer has too few credits")
 
-// ExpireDue writes off the credits of lots whose time has come, across all tenants, up to limit lots per call, and returns how many it expired. It runs on the
-// system pool (billing_system), which sees every tenant.
-func ExpireDue(ctx context.Context, system *pgxpool.Pool, limit int32) (int, error) {
+// ExpireDue writes off the credits of lots whose time has come, across all tenants, up to limit lots per place (the pooled database, each tenant placed in a cell), and
+// returns how many it expired. It runs on the system role (billing_system), which sees every tenant of the place it is in. A tenant's lots are written off in a
+// transaction of their own: one tenant's failure does not undo another's expiry.
+func ExpireDue(ctx context.Context, db *tenantdb.DB, limit int32) (int, error) {
 	n := 0
-	err := pgxx.InTx(ctx, system, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := db.Each(ctx, func(ctx context.Context, s tenantdb.Scope) error {
+		due, err := s.Scan().ExpiredLots(ctx, limit)
+		if err != nil {
+			return err
+		}
+		var errs []error
+		for _, tenantID := range tenantsOf(due) {
+			expired, err := expireTenant(ctx, s, tenantID, limit)
+			n += expired
+			if err != nil && !tenantdb.Skippable(err) {
+				errs = append(errs, fmt.Errorf("tenant %s: %w", tenantID, err))
+			}
+		}
+		return errors.Join(errs...)
+	})
+	return n, err
+}
+
+// tenantsOf lists the tenants of the lots, each once, in the order they first appear.
+func tenantsOf(lots []sqlc.ExpiredLotsRow) []uuid.UUID {
+	var out []uuid.UUID
+	seen := map[uuid.UUID]bool{}
+	for _, l := range lots {
+		if !seen[l.TenantID] {
+			seen[l.TenantID] = true
+			out = append(out, l.TenantID)
+		}
+	}
+	return out
+}
+
+// expireTenant writes off one tenant's due lots in one transaction and returns how many.
+func expireTenant(ctx context.Context, s tenantdb.Scope, tenantID uuid.UUID, limit int32) (int, error) {
+	n := 0
+	err := s.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		n = 0
 		q := sqlc.New(tx)
-		lots, err := q.ExpiredLots(ctx, limit)
+		lots, err := q.ExpiredLotsOfTenant(ctx, sqlc.ExpiredLotsOfTenantParams{TenantID: tenantID, RowLimit: limit})
 		if err != nil {
 			return err
 		}
 		for _, l := range lots {
-			if err := q.InsertLedger(ctx, sqlc.InsertLedgerParams{TenantID: l.TenantID, ID: uuid.New(), CustomerID: l.CustomerID, LotID: l.ID, Kind: "expire", Amount: -l.Remaining, Reason: "expired"}); err != nil {
+			if err := q.InsertLedger(ctx, sqlc.InsertLedgerParams{TenantID: tenantID, ID: uuid.New(), CustomerID: l.CustomerID, LotID: l.ID, Kind: "expire", Amount: -l.Remaining, Reason: "expired"}); err != nil {
 				return err
 			}
-			if err := q.ZeroLot(ctx, sqlc.ZeroLotParams{TenantID: l.TenantID, ID: l.ID}); err != nil {
+			if err := q.ZeroLot(ctx, sqlc.ZeroLotParams{TenantID: tenantID, ID: l.ID}); err != nil {
 				return err
 			}
 			n++
 		}
 		return nil
 	})
-	return n, err
+	if err != nil {
+		return 0, err
+	}
+	return n, nil
 }
 
 func balanceInto(ctx context.Context, q *sqlc.Queries, tenantID, customerID uuid.UUID, out *Result) error {

@@ -44,6 +44,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	reratecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/command"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 	"github.com/0furkancolak/payrudder/services/billing-svc/migrations"
 )
@@ -52,11 +53,22 @@ var (
 	top        *testing.T
 	sharedOnce sync.Once
 	shared     struct {
-		pg     testkit.Postgres
-		db     testkit.ServiceDB
-		amqp   string
-		system *pgxpool.Pool
-		app    *pgxpool.Pool
+		pg   testkit.Postgres
+		db   testkit.ServiceDB
+		amqp string
+		// system is billing_system over the pooled database and, in cells mode, the cells; app is the billing_app pool, or its router in cells mode.
+		system *tenantdb.DB
+		app    pgxx.Beginner
+		// sql runs a statement of a test where the rows of the tenant it names are: the system pool itself in pooled mode, and in cells mode the schema of the
+		// tenant whose id is among the arguments.
+		sql sqlRunner
+		// systemPool and appPool are the pooled pools.
+		systemPool *pgxpool.Pool
+		appPool    *pgxpool.Pool
+		// Cells mode (ITEST_CELLS=1, ADR 0018): every tenant of the suite lives in a schema of a second database, placed on first use. router is the system pool's router.
+		router  *pgxx.Router
+		cellSys *pgxpool.Pool
+		dir     *lazyCells
 	}
 )
 
@@ -67,11 +79,16 @@ func infra(t *testing.T) {
 		shared.db = testkit.MigratedDB(top, shared.pg, "billing", migrations.FS)
 		shared.amqp = testkit.StartRabbitMQ(top)
 		var err error
-		if shared.system, err = pgxx.NewPool(context.Background(), shared.db.System); err != nil {
+		if shared.systemPool, err = pgxx.NewPool(context.Background(), shared.db.System); err != nil {
 			t.Fatal(err)
 		}
-		if shared.app, err = pgxx.NewPool(context.Background(), shared.db.App); err != nil {
+		if shared.appPool, err = pgxx.NewPool(context.Background(), shared.db.App); err != nil {
 			t.Fatal(err)
+		}
+		shared.app, shared.sql = shared.appPool, shared.systemPool
+		shared.system = tenantdb.New(shared.systemPool, nil)
+		if cellsMode() {
+			setupCells(top)
 		}
 	})
 }
@@ -419,17 +436,18 @@ func newEnv(t *testing.T, o envOpts) *env {
 	f := fakeAll{w: w}
 	in := &inputs.Inputs{Plans: f, Admin: f, Aggregator: f}
 	e.in = in
-	e.inv, err = invoicecmd.New(invoicecmd.Config{Pool: shared.system, Engine: e.eng, Now: clk.Now})
+	e.inv, err = invoicecmd.New(invoicecmd.Config{DB: shared.system, Engine: e.eng, Now: clk.Now})
 	if err != nil {
 		t.Fatal(err)
 	}
-	e.notes = creditnotecmd.New(creditnotecmd.Config{Pool: shared.system, Engine: e.eng, Now: clk.Now, Log: testkit.Logger()})
-	e.fees = feecmd.New(feecmd.Config{Pool: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, PageSize: 2, Log: testkit.Logger()})
-	e.rerating = reratecmd.New(reratecmd.Config{Pool: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, Log: testkit.Logger()})
-	e.hosted = hostedcmd.NewBackend(hostedcmd.BackendConfig{Pool: shared.system, Inputs: in, Invoices: e.inv, Engine: e.eng, Affiliates: f, Now: clk.Now, Log: testkit.Logger()})
+	e.notes = creditnotecmd.New(creditnotecmd.Config{DB: shared.system, Engine: e.eng, Now: clk.Now, Log: testkit.Logger()})
+	e.fees = feecmd.New(feecmd.Config{DB: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, PageSize: 2, Log: testkit.Logger()})
+	e.rerating = reratecmd.New(reratecmd.Config{DB: shared.system, Inputs: in, Invoices: e.inv, Now: clk.Now, Log: testkit.Logger()})
+	e.hosted = hostedcmd.NewBackend(hostedcmd.BackendConfig{DB: shared.system, Inputs: in, Invoices: e.inv, Engine: e.eng, Affiliates: f, Now: clk.Now, Log: testkit.Logger()})
 	e.relay = tenantevents.NewRelay(shared.system, e.events, testkit.Logger())
+	placeTenant(t, tid)
 	e.mgr, err = runcmd.NewManager(runcmd.Config{
-		Pool: shared.system, Engine: e.eng, Inputs: in, Invoices: e.inv, Ingest: f,
+		DB: shared.system, Engine: e.eng, Inputs: in, Invoices: e.inv, Ingest: f,
 		EndOffsets: func(context.Context) (map[int32]int64, error) { return map[int32]int64{0: 10, 1: 20}, nil },
 		Now:        clk.Now, WatermarkDelay: o.watermarkGap, PageSize: 2, Log: testkit.Logger(),
 		Chores: []runcmd.Chore{
@@ -501,11 +519,12 @@ func (e *env) startConsumers(ctx context.Context) {
 func (e *env) startRelay(ctx context.Context) {
 	pub := rabbitx.NewPublisher(shared.amqp)
 	e.t.Cleanup(pub.Close)
-	relay, err := outbox.NewRelay(shared.system, outbox.Router{Kafka: e.kafka, AMQP: outbox.AMQPSink{Publisher: pub}},
-		outbox.Config{Workers: 1, BatchSize: 50}, testkit.Logger())
+	relay, err := outbox.NewRelay(shared.systemPool, outbox.Router{Kafka: e.kafka, AMQP: outbox.AMQPSink{Publisher: pub}},
+		outbox.Config{Workers: 1, BatchSize: 50, CellSweep: cellSweep()}, testkit.Logger())
 	if err != nil {
 		e.t.Fatal(err)
 	}
+	relay.WithCells(shared.router)
 	go func() { _ = relay.Run(ctx) }()
 }
 
@@ -535,7 +554,7 @@ func periodBounds(period string) (time.Time, time.Time, error) {
 // sagaStates returns the saga state per customer external id for a period.
 func (e *env) sagaStates(period string) map[string]string {
 	e.t.Helper()
-	rows, err := shared.system.Query(context.Background(), `SELECT i.snapshot->>'customer_external_id', s.state FROM invoices i
+	rows, err := shared.sql.Query(context.Background(), `SELECT i.snapshot->>'customer_external_id', s.state FROM invoices i
 		JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id WHERE i.tenant_id = $1 AND i.period_id = $2`, e.tid, period)
 	if err != nil {
 		e.t.Fatal(err)
@@ -555,7 +574,7 @@ func (e *env) sagaStates(period string) map[string]string {
 func (e *env) invoiceTotal(period, customer string) int64 {
 	e.t.Helper()
 	var total int64
-	err := shared.system.QueryRow(context.Background(), `SELECT total_minor FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND snapshot->>'customer_external_id' = $3`,
+	err := shared.sql.QueryRow(context.Background(), `SELECT total_minor FROM invoices WHERE tenant_id = $1 AND period_id = $2 AND snapshot->>'customer_external_id' = $3`,
 		e.tid, period, customer).Scan(&total)
 	if err != nil {
 		e.t.Fatal(err)
@@ -573,8 +592,8 @@ func newTS(t time.Time) *timestamppbT { return timestamppb.New(t) }
 
 type pgxTx = pgx.Tx
 
-func pgxxTx(fn func(pgx.Tx) error) error {
-	return pgxx.InTx(context.Background(), shared.system, pgx.TxOptions{}, fn)
+func pgxxTx(tenantID uuid.UUID, fn func(pgx.Tx) error) error {
+	return shared.system.InTx(context.Background(), tenantID, pgx.TxOptions{}, fn)
 }
 
 // startConsumersWith starts the reply consumer and a relay on the given publisher with a crash hook.
@@ -584,11 +603,12 @@ func (e *env) startConsumersWith(ctx context.Context, pub *rabbitx.Publisher, af
 		e.t.Fatal(err)
 	}
 	go func() { _ = rc.Run(ctx) }()
-	relay, err := outbox.NewRelay(shared.system, outbox.Router{Kafka: e.kafka, AMQP: outbox.AMQPSink{Publisher: pub}},
-		outbox.Config{Workers: 1, BatchSize: 50, AfterPublish: after}, testkit.Logger())
+	relay, err := outbox.NewRelay(shared.systemPool, outbox.Router{Kafka: e.kafka, AMQP: outbox.AMQPSink{Publisher: pub}},
+		outbox.Config{Workers: 1, BatchSize: 50, AfterPublish: after, CellSweep: cellSweep()}, testkit.Logger())
 	if err != nil {
 		e.t.Fatal(err)
 	}
+	relay.WithCells(shared.router)
 	go func() { _ = relay.Run(ctx) }()
 }
 

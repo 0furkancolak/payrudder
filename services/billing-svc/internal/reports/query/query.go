@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -29,7 +28,7 @@ type RevenueParams struct {
 }
 
 // Revenue returns the revenue rows of a tenant.
-func Revenue(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p RevenueParams) ([]sqlc.RevenueReportRow, error) {
+func Revenue(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, p RevenueParams) ([]sqlc.RevenueReportRow, error) {
 	for _, id := range []string{p.FromPeriod, p.ToPeriod} {
 		if id != "" && !period.Valid(id) {
 			return nil, errkey.New(codes.InvalidArgument, "billing.report.bad_period", "from_period and to_period must look like 2026-10")
@@ -70,7 +69,7 @@ type DunningReport struct {
 }
 
 // Dunning returns the dunning report of a tenant; limit 0 means the default.
-func Dunning(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, limit int) (*DunningReport, error) {
+func Dunning(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, limit int) (*DunningReport, error) {
 	switch {
 	case limit == 0:
 		limit = 100

@@ -62,7 +62,7 @@ func (c *Commands) billAdjustment(ctx context.Context, tenantID uuid.UUID, t *pl
 		if err != nil {
 			return err
 		}
-		if err := c.q.InsertCreditBalanceForAdjustment(ctx, sqlc.InsertCreditBalanceForAdjustmentParams{TenantID: tenantID, CustomerID: cuid, ID: uuid.New(), AmountMinor: credit,
+		if err := c.cfg.DB.Q(tenantID).InsertCreditBalanceForAdjustment(ctx, sqlc.InsertCreditBalanceForAdjustmentParams{TenantID: tenantID, CustomerID: cuid, ID: uuid.New(), AmountMinor: credit,
 			SourceAdjustmentID: adjustment, Currency: inputs.OrDefault(sub.GetCurrency(), t.GetCurrency())}); err != nil {
 			return err
 		}

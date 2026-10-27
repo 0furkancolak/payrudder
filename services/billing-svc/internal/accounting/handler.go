@@ -5,25 +5,28 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/accounting/query"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Handler implements the accounting methods of billingv1.BillingServiceServer.
 type Handler struct {
-	app, system *pgxpool.Pool
+	app    pgxx.Beginner
+	system *tenantdb.DB
 }
 
-// New returns the handler over the billing_app pool and the billing_system pool (which receives the mail of the invoice inbox, before a tenant is known).
-func New(app, system *pgxpool.Pool) *Handler { return &Handler{app: app, system: system} }
+// New returns the handler over the billing_app pool (or its router when cells are on) and the billing_system database (which receives the mail of the invoice inbox,
+// before a tenant is known).
+func New(app pgxx.Beginner, system *tenantdb.DB) *Handler { return &Handler{app: app, system: system} }
 
 // CreateExpense implements billingv1.BillingServiceServer.
 func (h *Handler) CreateExpense(ctx context.Context, req *billingv1.CreateExpenseRequest) (*billingv1.CreateExpenseResponse, error) {

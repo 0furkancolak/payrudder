@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -17,18 +16,18 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
-	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	creditnotecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/command"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Consumer applies replies to sagas.
 type Consumer struct {
-	Pool   *pgxpool.Pool // billing_system
+	DB     *tenantdb.DB // billing_system
 	Engine *sagacommand.Engine
 	URL    string
 	Log    *slog.Logger
@@ -38,12 +37,12 @@ type Consumer struct {
 }
 
 // New registers metrics.
-func New(pool *pgxpool.Pool, eng *sagacommand.Engine, url string, log *slog.Logger) (*Consumer, error) {
+func New(db *tenantdb.DB, eng *sagacommand.Engine, url string, log *slog.Logger) (*Consumer, error) {
 	if log == nil {
 		log = slog.Default()
 	}
 	m := otel.Meter("github.com/0furkancolak/payrudder/services/billing-svc/replies")
-	c := &Consumer{Pool: pool, Engine: eng, URL: url, Log: log}
+	c := &Consumer{DB: db, Engine: eng, URL: url, Log: log}
 	var err error
 	if c.received, err = m.Int64Counter("billing_replies_received", metric.WithDescription("Worker replies handled, by kind and whether they changed a saga")); err != nil {
 		return nil, err
@@ -60,7 +59,9 @@ func (c *Consumer) Run(ctx context.Context) error {
 }
 
 // Handle processes one delivery: decode, dedup on the reply id, apply to the saga. A database error requeues the
-// reply (the quorum queue's delivery limit dead-letters a poison one); an undecodable one is dead-lettered.
+// reply (the quorum queue's delivery limit dead-letters a poison one); an undecodable one is dead-lettered. Every reply names its tenant, and is applied in a
+// transaction where that tenant's rows are (ADR 0018): the dedup row, the saga and the facts it writes are in one place and one transaction. A reply for a tenant
+// that is being moved is requeued like any other database failure, and reaches the dead-letter queue if the move outlasts the delivery limit.
 func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome {
 	var reply commandsv1.ReplyEnvelope
 	if err := proto.Unmarshal(d.Body, &reply); err != nil {
@@ -81,7 +82,7 @@ func (c *Consumer) Handle(ctx context.Context, d amqp.Delivery) rabbitx.Outcome 
 	}
 	kind := string(ev)
 	var applied bool
-	err := pgxx.InTx(ctx, c.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := c.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		fresh, err := q.InsertInboxReply(ctx, replyID)
 		if err != nil {
@@ -126,7 +127,7 @@ func (c *Consumer) handleEInvoice(ctx context.Context, reply *commandsv1.ReplyEn
 		c.Log.WarnContext(ctx, "malformed e-invoice reply", "document", reply.GetSagaId())
 		return rabbitx.Reject
 	}
-	err := pgxx.InTx(ctx, c.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := c.DB.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		fresh, err := sqlc.New(tx).InsertInboxReply(ctx, replyID)
 		if err != nil || fresh == 0 {
 			return err

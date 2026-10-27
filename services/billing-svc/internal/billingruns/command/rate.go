@@ -65,7 +65,7 @@ func (m *Manager) rate(ctx context.Context, run *model.Run) error {
 	if err := m.draftInvoices(ctx, rr, rr.customerIDs(late)); err != nil {
 		return err
 	}
-	if err := m.q.SetRunInvoiceCount(ctx, sqlc.SetRunInvoiceCountParams{TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
+	if err := m.on(run.TenantID).SetRunInvoiceCount(ctx, sqlc.SetRunInvoiceCountParams{TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
 		return err
 	}
 	// The aggregates of the period are final: later on-time-looking arrivals are routed to late usage.

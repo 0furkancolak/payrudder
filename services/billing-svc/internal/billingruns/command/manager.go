@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -22,6 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // Ingest is the part of ingest-svc the watermark needs.
@@ -41,7 +41,7 @@ const lookback = 3
 
 // Config configures a Manager.
 type Config struct {
-	Pool     *pgxpool.Pool // billing_system
+	DB       *tenantdb.DB // billing_system
 	Engine   *sagacommand.Engine
 	Inputs   *inputs.Inputs
 	Invoices *invoicecmd.Commands
@@ -62,7 +62,6 @@ type Config struct {
 // Manager drives billing runs.
 type Manager struct {
 	cfg Config
-	q   *sqlc.Queries
 	in  *inputs.Inputs
 	log *slog.Logger
 
@@ -88,7 +87,7 @@ func NewManager(cfg Config) (*Manager, error) {
 		cfg.Log = slog.Default()
 	}
 	m := otel.Meter("github.com/0furkancolak/payrudder/services/billing-svc/runs")
-	mg := &Manager{cfg: cfg, q: sqlc.New(cfg.Pool), in: cfg.Inputs, log: cfg.Log}
+	mg := &Manager{cfg: cfg, in: cfg.Inputs, log: cfg.Log}
 	var err error
 	if mg.runsDone, err = m.Int64Counter("billing_runs_completed", metric.WithDescription("Billing runs that reached COMPLETED")); err != nil {
 		return nil, err
@@ -115,19 +114,22 @@ func NewManager(cfg Config) (*Manager, error) {
 // Now is the manager's clock (a test clock in tests).
 func (m *Manager) Now() time.Time { return m.cfg.Now() }
 
+// on is sqlc over the rows of one tenant, wherever they are (ADR 0018).
+func (m *Manager) on(tenantID uuid.UUID) *sqlc.Queries { return m.cfg.DB.Q(tenantID) }
+
 // GetRun returns the run or pgx.ErrNoRows.
 func (m *Manager) GetRun(ctx context.Context, tenantID uuid.UUID, periodID string) (*model.Run, error) {
-	return runquery.Load(ctx, m.q, tenantID, periodID)
+	return runquery.Load(ctx, m.on(tenantID), tenantID, periodID)
 }
 
 // EnsureRun creates the run if it is missing. With lowerCutoff an existing, unfinished run's cutoff is lowered to
 // cutoff (the sandbox early close). It is idempotent per (tenant, period): calling it twice yields one run.
 func (m *Manager) EnsureRun(ctx context.Context, tenantID uuid.UUID, periodID string, cutoff time.Time, lowerCutoff bool) (*model.Run, error) {
-	if err := m.q.InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: tenantID, PeriodID: periodID, CutoffAt: cutoff}); err != nil {
+	if err := m.on(tenantID).InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: tenantID, PeriodID: periodID, CutoffAt: cutoff}); err != nil {
 		return nil, err
 	}
 	if lowerCutoff {
-		if err := m.q.LowerRunCutoff(ctx, sqlc.LowerRunCutoffParams{CutoffAt: cutoff, TenantID: tenantID, PeriodID: periodID}); err != nil {
+		if err := m.on(tenantID).LowerRunCutoff(ctx, sqlc.LowerRunCutoffParams{CutoffAt: cutoff, TenantID: tenantID, PeriodID: periodID}); err != nil {
 			return nil, err
 		}
 	}
@@ -135,13 +137,13 @@ func (m *Manager) EnsureRun(ctx context.Context, tenantID uuid.UUID, periodID st
 }
 
 func (m *Manager) setStatus(ctx context.Context, run *model.Run, status, lastErr string) error {
-	return m.q.SetRunStatus(ctx, sqlc.SetRunStatusParams{Status: status, LastError: lastErr, TenantID: run.TenantID, PeriodID: run.PeriodID})
+	return m.on(run.TenantID).SetRunStatus(ctx, sqlc.SetRunStatusParams{Status: status, LastError: lastErr, TenantID: run.TenantID, PeriodID: run.PeriodID})
 }
 
-// withLock runs fn while holding the run's advisory lock on a dedicated connection; it returns false when another pod
-// holds the lock. The lock is released when fn returns or the connection dies, so a crashed pod never blocks a run.
+// withLock runs fn while holding the run's advisory lock on a dedicated connection (of the database that holds the tenant's rows: a lock is per database); it returns
+// false when another pod holds the lock. The lock is released when fn returns or the connection dies, so a crashed pod never blocks a run.
 func (m *Manager) withLock(ctx context.Context, tenantID uuid.UUID, periodID string, fn func(ctx context.Context) error) (bool, error) {
-	conn, err := m.cfg.Pool.Acquire(ctx)
+	conn, err := m.cfg.DB.Acquire(ctx, tenantID)
 	if err != nil {
 		return false, err
 	}
@@ -238,7 +240,7 @@ func (m *Manager) step(ctx context.Context, run *model.Run) (bool, error) {
 
 // RetryRun puts a FAILED run back to RATING (operator retry). Drafts already created are kept.
 func (m *Manager) RetryRun(ctx context.Context, tenantID uuid.UUID, periodID string) error {
-	n, err := m.q.RetryFailedRun(ctx, sqlc.RetryFailedRunParams{TenantID: tenantID, PeriodID: periodID})
+	n, err := m.on(tenantID).RetryFailedRun(ctx, sqlc.RetryFailedRunParams{TenantID: tenantID, PeriodID: periodID})
 	if err != nil {
 		return err
 	}

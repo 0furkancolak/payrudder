@@ -21,7 +21,7 @@ func testRerateRestartsAFailedJob(t *testing.T) {
 	if first.Status != reratemodel.Completed || first.Corrections != 2 {
 		t.Fatalf("first job = %+v", first)
 	}
-	if _, err := shared.system.Exec(context.Background(), `UPDATE rerating_jobs SET status = 'FAILED', last_error = 'plan version was unavailable', completed_at = NULL WHERE tenant_id = $1 AND id = $2`, e.tid, first.ID); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `UPDATE rerating_jobs SET status = 'FAILED', last_error = 'plan version was unavailable', completed_at = NULL WHERE tenant_id = $1 AND id = $2`, e.tid, first.ID); err != nil {
 		t.Fatal(err)
 	}
 	again, created := e.rerate("2026-10", higher)

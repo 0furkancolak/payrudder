@@ -14,9 +14,11 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
-// Tick runs one scheduler pass: it creates the runs that became due, then drives every unfinished run it can lock.
+// Tick runs one scheduler pass: it creates the runs that became due, then drives every unfinished run it can lock. The unfinished runs are looked for in every place a
+// tenant's rows can be (the pooled database, each tenant placed in a cell, ADR 0018), and a run is driven only in the place it was found.
 func (m *Manager) Tick(ctx context.Context) error {
 	if err := m.discover(ctx); err != nil {
 		m.log.WarnContext(ctx, "scheduler: discovery failed", "error", err)
@@ -26,11 +28,22 @@ func (m *Manager) Tick(ctx context.Context) error {
 			m.log.WarnContext(ctx, "scheduler: "+ch.Name, "error", err)
 		}
 	}
-	open, err := m.q.ListDueRuns(ctx, sqlc.ListDueRunsParams{DelaySecs: m.cfg.WatermarkDelay.Seconds(), Now: m.cfg.Now()})
+	return m.cfg.DB.Each(ctx, m.driveDue)
+}
+
+// driveDue drives the unfinished runs of one place.
+func (m *Manager) driveDue(ctx context.Context, s tenantdb.Scope) error {
+	open, err := s.Scan().ListDueRuns(ctx, sqlc.ListDueRunsParams{DelaySecs: m.cfg.WatermarkDelay.Seconds(), Now: m.cfg.Now()})
 	if err != nil {
 		return err
 	}
 	for _, k := range open {
+		if err := s.Check(ctx, k.TenantID); err != nil {
+			if !tenantdb.Skippable(err) {
+				m.log.WarnContext(ctx, "scheduler: run not advanced", "tenant", k.TenantID, "period", k.PeriodID, "error", err)
+			}
+			continue // the tenant is moving: the next tick finds the run again
+		}
 		if _, err := m.Drive(ctx, k.TenantID, k.PeriodID); err != nil {
 			m.log.WarnContext(ctx, "scheduler: run failed to advance", "tenant", k.TenantID, "period", k.PeriodID, "error", err)
 		}
@@ -38,7 +51,7 @@ func (m *Manager) Tick(ctx context.Context) error {
 	return nil
 }
 
-// discover creates a run for every recently closed period of every tenant that has none yet.
+// discover creates a run for every recently closed period of every tenant that has none yet. A tenant that is being moved is left for the next tick.
 func (m *Manager) discover(ctx context.Context) error {
 	now := m.cfg.Now()
 	return m.in.EachBillableTenant(ctx, func(id uuid.UUID, t *plansv1.Tenant) error {
@@ -59,7 +72,9 @@ func (m *Manager) discover(ctx context.Context) error {
 			if now.Before(cutoff.Add(m.cfg.WatermarkDelay)) {
 				continue
 			}
-			if err := m.q.InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: id, PeriodID: pid, CutoffAt: cutoff}); err != nil {
+			if err := m.on(id).InsertBillingRun(ctx, sqlc.InsertBillingRunParams{TenantID: id, PeriodID: pid, CutoffAt: cutoff}); tenantdb.Skippable(err) {
+				return nil
+			} else if err != nil {
 				return err
 			}
 		}

@@ -18,7 +18,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -33,6 +32,7 @@ import (
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantevents"
 )
 
@@ -80,10 +80,11 @@ type Directory interface {
 	Attribute(ctx context.Context, tenantID, customerID uuid.UUID, code string, touched time.Time)
 }
 
-// Deps are the pools, the saga engine and the directory the commands work with. System is billing_system: every query it runs names the tenant.
+// Deps are the databases, the saga engine and the directory the commands work with. System is billing_system: every query it runs names the tenant, and runs where the
+// tenant's rows are.
 type Deps struct {
-	App    *pgxpool.Pool
-	System *pgxpool.Pool
+	App    pgxx.Beginner
+	System *tenantdb.DB
 	Engine *sagacommand.Engine
 	Dir    Directory
 	// Demo allows the mock payment for live tenants too (PAYRUDDER_DEMO).
@@ -277,7 +278,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 	expires := time.Now().Add(time.Duration(in.days()) * 24 * time.Hour)
 	id := uuid.New()
 	var out *Created
-	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if in.IdempotencyKey != "" {
 			if existing, ok, err := replay(ctx, q, tenantID, in); ok || err != nil {
@@ -328,7 +329,7 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 	})
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation && in.IdempotencyKey != "" && pgxx.ConstraintName(err) == "payment_links_idempotency" {
 		// Two requests with one key raced: the other one won, and this one is its repeat.
-		err = pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		err = d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 			existing, ok, err := replay(ctx, sqlc.New(tx), tenantID, in)
 			if err == nil && !ok {
 				err = errors.New("idempotency key vanished")
@@ -459,7 +460,7 @@ func CreateInvoiceLink(ctx context.Context, d Deps, tenantID, invoiceID uuid.UUI
 // RevokeLinks revokes every active link of an invoice and returns how many there were.
 func RevokeLinks(ctx context.Context, d Deps, tenantID, invoiceID uuid.UUID) (int64, error) {
 	var n int64
-	err := pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if _, err := q.GetInvoiceTotals(ctx, sqlc.GetInvoiceTotalsParams{TenantID: tenantID, ID: invoiceID}); err != nil {
 			return err
@@ -482,7 +483,7 @@ func RevokeLinks(ctx context.Context, d Deps, tenantID, invoiceID uuid.UUID) (in
 func RevokeLink(ctx context.Context, d Deps, tenantID, linkID uuid.UUID) (sqlc.GetPaymentLinkRowRow, error) {
 	var voids []uuid.UUID
 	var row sqlc.GetPaymentLinkRowRow
-	err := pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		cur, err := q.GetPaymentLinkRow(ctx, sqlc.GetPaymentLinkRowParams{TenantID: tenantID, ID: linkID})
 		if err != nil {
@@ -511,7 +512,7 @@ func RevokeLink(ctx context.Context, d Deps, tenantID, linkID uuid.UUID) (sqlc.G
 
 // voidUnpaid voids invoices through their sagas. An invoice whose saga cannot be voided right now (a payment is in flight) is left as it is: the customer who
 // is paying it finishes, and the tenant sees it open.
-func voidUnpaid(ctx context.Context, system *pgxpool.Pool, eng *sagacommand.Engine, tenantID uuid.UUID, ids []uuid.UUID) {
+func voidUnpaid(ctx context.Context, system *tenantdb.DB, eng *sagacommand.Engine, tenantID uuid.UUID, ids []uuid.UUID) {
 	for _, id := range ids {
 		_, err := sagacommand.Void(ctx, system, eng, tenantID, id)
 		// Best effort: FailedPrecondition means the saga is busy, NotFound that the invoice has no saga yet. Anything else is worth a line in the log.
@@ -543,7 +544,7 @@ func CreatePortalLink(ctx context.Context, d Deps, tenantID uuid.UUID, externalI
 		return "", time.Time{}, uuid.Nil, err
 	}
 	expires = time.Now().Add(time.Duration(days) * 24 * time.Hour)
-	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		return sqlc.New(tx).InsertPortalLink(ctx, sqlc.InsertPortalLinkParams{TenantID: tenantID, ID: uuid.New(), CustomerID: customerID, CustomerExternalID: &externalID, TokenHash: query.TokenHash(token), ExpiresAt: expires})
 	})
 	if err != nil {
@@ -563,7 +564,7 @@ func RevokePortalLinks(ctx context.Context, d Deps, tenantID uuid.UUID, external
 		return 0, apierr.Internal(ctx, err)
 	}
 	var n int64
-	err = pgxx.InTx(ctx, d.System, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err = d.System.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		var err error
 		n, err = sqlc.New(tx).RevokePortalLinks(ctx, sqlc.RevokePortalLinksParams{TenantID: tenantID, CustomerID: customerID})
 		return err

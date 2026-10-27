@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -29,7 +28,7 @@ type Defaults interface {
 }
 
 // Get returns the tenant's dunning settings, or the service-wide defaults when it has none.
-func Get(ctx context.Context, app *pgxpool.Pool, defaults Defaults, ti tenant.Info) (*Settings, error) {
+func Get(ctx context.Context, app pgxx.Beginner, defaults Defaults, ti tenant.Info) (*Settings, error) {
 	out := &Settings{}
 	sandbox := ti.Environment == env.Sandbox.String()
 	err := pgxx.InTenantTx(ctx, app, ti.ID, func(tx pgx.Tx) error {

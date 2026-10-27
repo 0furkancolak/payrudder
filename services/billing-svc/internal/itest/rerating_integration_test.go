@@ -43,7 +43,7 @@ func (e *env) rerate(period string, pv uuid.UUID) (*reratemodel.Job, bool) {
 
 func (e *env) credits() map[string]int64 {
 	e.t.Helper()
-	rows, err := shared.system.Query(context.Background(), `SELECT cu.snapshot->>'customer_external_id', sum(c.amount_minor)::bigint FROM credit_balances c
+	rows, err := shared.sql.Query(context.Background(), `SELECT cu.snapshot->>'customer_external_id', sum(c.amount_minor)::bigint FROM credit_balances c
 		JOIN LATERAL (SELECT snapshot FROM invoices WHERE tenant_id = c.tenant_id AND customer_id = c.customer_id LIMIT 1) cu ON true
 		WHERE c.tenant_id = $1 GROUP BY 1`, e.tid)
 	if err != nil {
@@ -65,7 +65,7 @@ func (e *env) credits() map[string]int64 {
 // invoicesOf returns kind -> number of invoices for the period.
 func (e *env) invoiceKinds(period string) map[string]int {
 	e.t.Helper()
-	rows, err := shared.system.Query(context.Background(), `SELECT kind, count(*) FROM invoices WHERE tenant_id = $1 AND period_id = $2 GROUP BY 1`, e.tid, period)
+	rows, err := shared.sql.Query(context.Background(), `SELECT kind, count(*) FROM invoices WHERE tenant_id = $1 AND period_id = $2 GROUP BY 1`, e.tid, period)
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -137,12 +137,12 @@ func testRerateCheaperMakesCreditsAppliedToTheNextInvoice(t *testing.T) {
 	}
 	var creditLines int
 	var sum int64
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*), COALESCE(sum(amount_minor), 0)::bigint FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*), COALESCE(sum(amount_minor), 0)::bigint FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
 		WHERE l.tenant_id = $1 AND l.kind = 'CREDIT' AND i.period_id = '2026-11'`, e.tid).Scan(&creditLines, &sum); err != nil || creditLines != 2 || sum != -424 {
 		t.Fatalf("CREDIT lines = %d summing to %d (%v), want 2 summing to -424", creditLines, sum, err)
 	}
 	var unapplied int
-	if err := shared.system.QueryRow(context.Background(), `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND applied_invoice_id IS NULL`, e.tid).Scan(&unapplied); err != nil || unapplied != 0 {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM credit_balances WHERE tenant_id = $1 AND applied_invoice_id IS NULL`, e.tid).Scan(&unapplied); err != nil || unapplied != 0 {
 		t.Fatalf("%d credit balances are still unapplied (%v)", unapplied, err)
 	}
 }
@@ -153,7 +153,7 @@ func testCreditLargerThanTheInvoiceIsAppliedInParts(t *testing.T) {
 	e.startWorkers(nil)
 	completeOctober(e)
 	cust := e.customer("cus_b").Id
-	if _, err := shared.system.Exec(context.Background(), `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_rerating_job_id)
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_rerating_job_id)
 		VALUES ($1,$2,$3,2500,$4)`, e.tid, cust, uuid.New(), uuid.New()); err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func testRerateHigherMakesCorrectionInvoices(t *testing.T) {
 	if k := e.invoiceKinds("2026-10"); k["CORRECTION"] != 2 || k["REGULAR"] != 2 {
 		t.Fatalf("invoices = %v, want 2 regular and 2 correction", k)
 	}
-	rows, err := shared.system.Query(context.Background(), `SELECT i.snapshot->>'customer_external_id', i.total_minor, i.number, l.kind, COALESCE(l.meter_code, ''), l.amount_minor
+	rows, err := shared.sql.Query(context.Background(), `SELECT i.snapshot->>'customer_external_id', i.total_minor, i.number, l.kind, COALESCE(l.meter_code, ''), l.amount_minor
 		FROM invoices i JOIN invoice_lines l ON l.tenant_id = i.tenant_id AND l.invoice_id = i.id WHERE i.tenant_id = $1 AND i.kind = 'CORRECTION' ORDER BY 1, l.line_no`, e.tid)
 	if err != nil {
 		t.Fatal(err)
@@ -223,7 +223,7 @@ func testRerateHigherMakesCorrectionInvoices(t *testing.T) {
 	}
 	testkit.Eventually(t, 30*time.Second, "both correction sagas to COMPLETE", func() bool {
 		var n int
-		_ = shared.system.QueryRow(context.Background(), `SELECT count(*) FROM invoices i JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
+		_ = shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices i JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 			WHERE i.tenant_id = $1 AND i.kind = 'CORRECTION' AND s.state = 'COMPLETED'`, e.tid).Scan(&n)
 		return n == 2
 	})
@@ -248,13 +248,13 @@ func testRerateRunTwiceIsIdempotent(t *testing.T) {
 	pv := e.newVersion(1200, "15", "2")
 	job, _ := e.rerate("2026-10", pv)
 	// Put the job back to RUNNING, as after a crash before the final update, and let the scheduler finish it.
-	if _, err := shared.system.Exec(context.Background(), `UPDATE rerating_jobs SET status = 'RUNNING', created_at = created_at - interval '5 minutes' WHERE tenant_id = $1 AND id = $2`, e.tid, job.ID); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `UPDATE rerating_jobs SET status = 'RUNNING', created_at = created_at - interval '5 minutes' WHERE tenant_id = $1 AND id = $2`, e.tid, job.ID); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.rerating.Resume(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	done, err := reratequery.Load(context.Background(), sqlc.New(shared.system), e.tid, job.ID)
+	done, err := reratequery.Load(context.Background(), sqlc.New(shared.sql), e.tid, job.ID)
 	if err != nil || done.Status != reratemodel.Completed || done.Corrections != 2 {
 		t.Fatalf("job after the resume = %+v, %v; want COMPLETED with 2 corrections", done, err)
 	}
@@ -269,7 +269,7 @@ func testInvoiceSagaTimeline(t *testing.T) {
 	e.startWorkers(nil)
 	completeOctober(e)
 	var invoiceID uuid.UUID
-	if err := shared.system.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&invoiceID); err != nil {
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&invoiceID); err != nil {
 		t.Fatal(err)
 	}
 	srv := e.api()

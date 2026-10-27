@@ -40,7 +40,7 @@ func (m *Manager) watermark(ctx context.Context, run *model.Run) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		if err := m.q.SetRunOffsets(ctx, sqlc.SetRunOffsetsParams{RequiredOffsets: b, TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
+		if err := m.on(run.TenantID).SetRunOffsets(ctx, sqlc.SetRunOffsetsParams{RequiredOffsets: b, TenantID: run.TenantID, PeriodID: run.PeriodID}); err != nil {
 			return false, err
 		}
 		run.Offsets = offsets

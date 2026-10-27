@@ -16,12 +16,13 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/model"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rerating/query"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
 
 // StartJob is Start without the mapping of its refusals to keyed errors: it creates the job for (tenant, period, plan version) and runs it. A repeated request returns the existing job (created=false) and finishes it if a crash
 // left it RUNNING: the result is the same either way, one correction or credit per customer at most.
 func (c *Commands) StartJob(ctx context.Context, tenantID uuid.UUID, periodID string, planVersionID uuid.UUID) (*model.Job, bool, error) {
-	run, err := runquery.Load(ctx, c.q, tenantID, periodID)
+	run, err := runquery.Load(ctx, c.cfg.DB.Q(tenantID), tenantID, periodID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, false, model.ErrNoRun
 	}
@@ -42,18 +43,18 @@ func (c *Commands) StartJob(ctx context.Context, tenantID uuid.UUID, periodID st
 	if run.Generation != nil {
 		gen = *run.Generation
 	}
-	inserted, err := c.q.InsertReratingJob(ctx, sqlc.InsertReratingJobParams{TenantID: tenantID, ID: uuid.New(), PeriodID: periodID, PlanVersionID: planVersionID, Generation: gen})
+	inserted, err := c.cfg.DB.Q(tenantID).InsertReratingJob(ctx, sqlc.InsertReratingJobParams{TenantID: tenantID, ID: uuid.New(), PeriodID: periodID, PlanVersionID: planVersionID, Generation: gen})
 	if err != nil {
 		return nil, false, err
 	}
-	row, err := c.q.GetReratingJobByPlanVersion(ctx, sqlc.GetReratingJobByPlanVersionParams{TenantID: tenantID, PeriodID: periodID, PlanVersionID: planVersionID})
+	row, err := c.cfg.DB.Q(tenantID).GetReratingJobByPlanVersion(ctx, sqlc.GetReratingJobByPlanVersionParams{TenantID: tenantID, PeriodID: periodID, PlanVersionID: planVersionID})
 	if err != nil {
 		return nil, false, err
 	}
 	job, created := model.Of(row), inserted == 1
 	if job.Status == model.Failed {
 		// The cause may be gone (a plan version that was broken for a while): asking again runs the job again.
-		if n, err := c.q.RestartReratingJob(ctx, sqlc.RestartReratingJobParams{TenantID: tenantID, ID: job.ID}); err != nil {
+		if n, err := c.cfg.DB.Q(tenantID).RestartReratingJob(ctx, sqlc.RestartReratingJobParams{TenantID: tenantID, ID: job.ID}); err != nil {
 			return nil, false, err
 		} else if n == 1 {
 			job.Status, job.LastError = model.Running, ""
@@ -67,14 +68,25 @@ func (c *Commands) StartJob(ctx context.Context, tenantID uuid.UUID, periodID st
 	return job, created, nil
 }
 
-// Resume finishes jobs a crash left RUNNING (called by the scheduler loop).
+// Resume finishes jobs a crash left RUNNING (called by the scheduler loop). It looks in every place a tenant's rows can be (the pooled database, each tenant placed in a
+// cell, ADR 0018), and finishes a job only in the place it was found.
 func (c *Commands) Resume(ctx context.Context) error {
-	rows, err := c.q.ListRunningReratingJobs(ctx, c.cfg.Now().Add(-time.Minute))
+	return c.cfg.DB.Each(ctx, c.resume)
+}
+
+func (c *Commands) resume(ctx context.Context, s tenantdb.Scope) error {
+	rows, err := s.Scan().ListRunningReratingJobs(ctx, c.cfg.Now().Add(-time.Minute))
 	if err != nil {
 		return err
 	}
 	for _, r := range rows {
 		j := model.Of(r)
+		if err := s.Check(ctx, j.TenantID); err != nil {
+			if !tenantdb.Skippable(err) {
+				c.cfg.Log.WarnContext(ctx, "re-rating: job not resumed", "tenant", j.TenantID, "job", j.ID, "error", err)
+			}
+			continue // the tenant is moving: the next pass finds the job again
+		}
 		if _, err := c.rerate(ctx, j); err != nil {
 			c.cfg.Log.WarnContext(ctx, "re-rating: job failed to finish", "tenant", j.TenantID, "job", j.ID, "error", err)
 		}
@@ -86,12 +98,12 @@ func (c *Commands) Resume(ctx context.Context) error {
 func (c *Commands) rerate(ctx context.Context, job *model.Job) (*model.Job, error) {
 	if err := c.rerateOnce(ctx, job); err != nil {
 		if inputs.IsPermanent(err) {
-			if ferr := c.q.FailReratingJob(ctx, sqlc.FailReratingJobParams{LastError: err.Error(), TenantID: job.TenantID, ID: job.ID}); ferr != nil {
+			if ferr := c.cfg.DB.Q(job.TenantID).FailReratingJob(ctx, sqlc.FailReratingJobParams{LastError: err.Error(), TenantID: job.TenantID, ID: job.ID}); ferr != nil {
 				// The job stays RUNNING and the next pass tries it again; say why it never reaches FAILED.
 				c.cfg.Log.ErrorContext(ctx, "re-rating: job not marked failed", "tenant", job.TenantID, "job", job.ID, "error", ferr)
 			}
 		}
 		return job, err
 	}
-	return query.Load(ctx, c.q, job.TenantID, job.ID)
+	return query.Load(ctx, c.cfg.DB.Q(job.TenantID), job.TenantID, job.ID)
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
@@ -55,7 +54,7 @@ func Load(ctx context.Context, tx pgx.Tx, id uuid.UUID) (*Invoice, error) {
 }
 
 // Get reads one invoice of a tenant.
-func Get(ctx context.Context, app *pgxpool.Pool, tenantID, id uuid.UUID) (*Invoice, error) {
+func Get(ctx context.Context, app pgxx.Beginner, tenantID, id uuid.UUID) (*Invoice, error) {
 	var inv *Invoice
 	err := pgxx.InTenantTx(ctx, app, tenantID, func(tx pgx.Tx) error {
 		var err error
@@ -87,7 +86,7 @@ type Page struct {
 }
 
 // List returns a page of the tenant's invoices.
-func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListParams) (*Page, error) {
+func List(ctx context.Context, app pgxx.Beginner, tenantID uuid.UUID, p ListParams) (*Page, error) {
 	size32, ok := page.Size(int32(p.PageSize), 100, 500) //nolint:gosec // a request's page size
 	if !ok {
 		return nil, errkey.New(codes.InvalidArgument, "billing.invoice.bad_page_size", "page_size must be 1..500")
@@ -129,7 +128,7 @@ func List(ctx context.Context, app *pgxpool.Pool, tenantID uuid.UUID, p ListPara
 }
 
 // PDFURL returns a presigned link to the PDF of a tenant's invoice.
-func PDFURL(ctx context.Context, app *pgxpool.Pool, pdfs PDFSigner, tenantID, id uuid.UUID) (url string, expires time.Time, err error) {
+func PDFURL(ctx context.Context, app pgxx.Beginner, pdfs PDFSigner, tenantID, id uuid.UUID) (url string, expires time.Time, err error) {
 	if pdfs == nil {
 		return "", time.Time{}, errkey.New(codes.Unimplemented, "billing.storage.not_configured", "object storage is not configured")
 	}

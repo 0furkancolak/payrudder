@@ -113,7 +113,7 @@ func (c *Commands) loadUsage(ctx context.Context, rp *reratePass) error {
 	}
 	rp.usage = usage
 	if gen != 0 && gen != job.Generation {
-		if err := c.q.SetReratingJobGeneration(ctx, sqlc.SetReratingJobGenerationParams{Generation: gen, TenantID: job.TenantID, ID: job.ID}); err != nil {
+		if err := c.cfg.DB.Q(job.TenantID).SetReratingJobGeneration(ctx, sqlc.SetReratingJobGenerationParams{Generation: gen, TenantID: job.TenantID, ID: job.ID}); err != nil {
 			return err
 		}
 		job.Generation = gen

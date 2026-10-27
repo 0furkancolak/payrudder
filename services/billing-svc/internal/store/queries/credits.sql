@@ -77,6 +77,14 @@ ORDER BY expires_at, id
 LIMIT @row_limit
 FOR UPDATE SKIP LOCKED;
 
+-- The same lots of one tenant, locked, for the transaction that writes them off: a pass never writes two tenants' lots in one transaction.
+-- name: ExpiredLotsOfTenant :many
+SELECT id, customer_id, remaining FROM credit_lots
+WHERE tenant_id = @tenant_id AND remaining > 0 AND expires_at <= now()
+ORDER BY expires_at, id
+LIMIT @row_limit
+FOR UPDATE SKIP LOCKED;
+
 -- name: ZeroLot :exec
 UPDATE credit_lots SET remaining = 0 WHERE tenant_id = @tenant_id AND id = @id;
 
