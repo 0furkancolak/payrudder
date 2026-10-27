@@ -81,6 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/reserve-ports
       - name: make up-infra (every container healthy)
         run: timeout 300 make up-infra
       - if: failure()
@@ -93,6 +94,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/reserve-ports
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.work
@@ -182,6 +184,7 @@ jobs:
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/reserve-ports
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.work
@@ -213,6 +216,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/reserve-ports
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.work

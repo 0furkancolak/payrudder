@@ -125,7 +125,7 @@ func TestEventsFlow(t *testing.T) {
 	}
 }
 
-// TestUsageEndToEnd follows events through ingest, Kafka and the aggregator to the usage endpoint.
+// TestUsageEndToEnd follows events through ingest, Kafka and the aggregator to the usage endpoint (event_count is an int64, so a JSON string).
 func TestUsageEndToEnd(t *testing.T) {
 	a := newAccount(t, "TENANT_TIER_STANDARD")
 	k := a.liveKey
@@ -152,7 +152,7 @@ func TestUsageEndToEnd(t *testing.T) {
 	var last result
 	for time.Now().Before(deadline) {
 		last = call(t, "GET", "/v1/customers/cus_e2e/usage", k, nil)
-		if rows, _ := last.body["usage"].([]any); last.status == 200 && len(rows) == 1 && rows[0].(map[string]any)["event_count"] == float64(3) {
+		if rows, _ := last.body["usage"].([]any); last.status == 200 && len(rows) == 1 && rows[0].(map[string]any)["event_count"] == "3" {
 			break
 		}
 		time.Sleep(250 * time.Millisecond)
@@ -162,8 +162,8 @@ func TestUsageEndToEnd(t *testing.T) {
 		t.Fatalf("usage after 30 s: %d %v", last.status, last.body)
 	}
 	row := rows[0].(map[string]any)
-	if row["meter_code"] != "gb_hours" || row["quantity"] != "3.501" || row["event_count"] != float64(3) {
-		t.Fatalf("usage row = %v, want 3.501 over 3 events", row)
+	if row["meter_code"] != "gb_hours" || row["quantity"] != "3.501" || row["event_count"] != "3" {
+		t.Fatalf("usage row = %#v, want 3.501 over 3 events", row)
 	}
 	if r := call(t, "GET", "/v1/customers/nobody/usage", k, nil); r.status != 404 {
 		t.Fatalf("unknown customer: %d", r.status)

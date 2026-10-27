@@ -28,6 +28,7 @@ jobs:
     timeout-minutes: 150
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/reserve-ports
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.work
@@ -72,6 +73,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
+      - uses: ./.github/actions/reserve-ports
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.work
