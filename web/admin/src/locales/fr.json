@@ -1775,7 +1775,7 @@
       "minPayoutHint": "Un partenaire en dessous de ce montant est ignoré à la création des versements. Laissez vide pour aucun minimum.",
       "coupon": "Coupon pour les clients recommandés",
       "noCoupon": "Aucun coupon",
-      "couponHint": "Un client recommandé le reçoit à son prochain paiement. Les coupons se créent dans Tarification.",
+      "couponHint": "Un client recommandé le reçoit à son prochain paiement. Les coupons se créent dans Coupons.",
       "clickCap": "Plafond de clics par jour et par partenaire",
       "clickCapHint": "Les clics au-dessus de ce nombre par jour ne sont pas comptés.",
       "landing": "Page d'atterrissage",
@@ -1839,7 +1839,7 @@
       "copy": "Copier le lien",
       "noLink": "Le lien de {code} est https://votre-passerelle/r/{code}.",
       "promotionCode": "Code promo",
-      "promotionHint": "Un code promo existant de Tarification. L'utiliser compte comme avoir suivi le lien.",
+      "promotionHint": "Un code promo existant de Coupons. L'utiliser compte comme avoir suivi le lien.",
       "submit": "Lier le code",
       "done": "Code {code} lié."
     },
@@ -3303,7 +3303,7 @@
       "invoices": "Factures",
       "payments": "Paiements",
       "packages": "Forfaits",
-      "pricing": "Tarification",
+      "pricing": "Taxes et relances",
       "reports": "Rapports",
       "readOnly": "Votre rôle est lecteur : vous pouvez tout lire ici, mais pas modifier."
     },
@@ -3939,7 +3939,7 @@
       "subscriptions": "Abonnements",
       "credits": "Crédits",
       "packages": "Forfaits",
-      "pricing": "Prix et taxes",
+      "pricing": "Taxes et relances",
       "invoices": "Factures",
       "payments": "Paiements",
       "paymentLinks": "Liens de paiement",
@@ -4289,7 +4289,7 @@
         "trials": "Donnez à un forfait un essai par défaut en jours : les abonnements démarrent en essai sans carte. Une offre gratuite est un forfait sans tarif, avec seulement des limites."
       },
       "pricing": {
-        "intro": "Taux de taxe et promotions : ce qui s'ajoute à ce que vous facturez ou s'en retranche.",
+        "intro": "Délais de nouvelle tentative de paiement et taux de taxe : ce qui se passe quand un prélèvement est refusé, et ce qui s'ajoute à ce que vous facturez.",
         "tabs": "Passez d'une section de cette page à l'autre."
       },
       "coupons": {

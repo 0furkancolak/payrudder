@@ -1775,7 +1775,7 @@
       "minPayoutHint": "Un socio por debajo de este importe se omite al crear los pagos. Déjelo vacío para no tener mínimo.",
       "coupon": "Cupón para clientes referidos",
       "noCoupon": "Sin cupón",
-      "couponHint": "Un cliente referido lo recibe en su siguiente compra. Los cupones se crean en Precios.",
+      "couponHint": "Un cliente referido lo recibe en su siguiente compra. Los cupones se crean en Cupones.",
       "clickCap": "Límite diario de clics por socio",
       "clickCapHint": "Los clics por encima de este número al día no se cuentan.",
       "landing": "Página de destino",
@@ -1839,7 +1839,7 @@
       "copy": "Copiar enlace",
       "noLink": "El enlace de {code} es https://su-pasarela/r/{code}.",
       "promotionCode": "Código promocional",
-      "promotionHint": "Un código promocional existente de Precios. Canjearlo cuenta como seguir el enlace.",
+      "promotionHint": "Un código promocional existente de Cupones. Canjearlo cuenta como seguir el enlace.",
       "submit": "Vincular código",
       "done": "Código {code} vinculado."
     },
@@ -3303,7 +3303,7 @@
       "invoices": "Facturas",
       "payments": "Pagos",
       "packages": "Paquetes",
-      "pricing": "Precios",
+      "pricing": "Impuestos y reintentos",
       "reports": "Informes",
       "readOnly": "Tu rol es lector: puedes leerlo todo aquí, pero no hacer cambios."
     },
@@ -3939,7 +3939,7 @@
       "subscriptions": "Suscripciones",
       "credits": "Créditos",
       "packages": "Paquetes",
-      "pricing": "Precios e impuestos",
+      "pricing": "Impuestos y reintentos",
       "invoices": "Facturas",
       "payments": "Pagos",
       "paymentLinks": "Enlaces de pago",
@@ -4289,7 +4289,7 @@
         "trials": "Dale a un paquete una prueba por defecto en días y sus suscripciones empiezan en prueba sin tarjeta. Un nivel gratis es un paquete sin cuota y solo con límites."
       },
       "pricing": {
-        "intro": "Tasas de impuesto y promociones: lo que se suma o se resta a lo que facturas.",
+        "intro": "Retrasos de reintento de pago y tasas de impuesto: qué ocurre cuando se rechaza un cobro y qué se suma a lo que facturas.",
         "tabs": "Cambia entre las secciones de esta página."
       },
       "coupons": {

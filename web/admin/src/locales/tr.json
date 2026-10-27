@@ -1775,7 +1775,7 @@
       "minPayoutHint": "Bu tutarın altındaki ortak, ödemeler oluşturulurken atlanır. Sınır istemiyorsanız boş bırakın.",
       "coupon": "Yönlendirilen müşteriler için kupon",
       "noCoupon": "Kupon yok",
-      "couponHint": "Yönlendirilen müşteri bir sonraki ödemesinde alır. Kuponlar Fiyatlandırma bölümünde oluşturulur.",
+      "couponHint": "Yönlendirilen müşteri bir sonraki ödemesinde alır. Kuponlar Kuponlar bölümünde oluşturulur.",
       "clickCap": "Ortak başına günlük tıklama sınırı",
       "clickCapHint": "Günlük bu sayıyı aşan tıklamalar sayılmaz.",
       "landing": "Açılış sayfası",
@@ -1839,7 +1839,7 @@
       "copy": "Bağlantıyı kopyala",
       "noLink": "{code} bağlantısı https://sizin-gateway/r/{code} biçimindedir.",
       "promotionCode": "Promosyon kodu",
-      "promotionHint": "Fiyatlandırma'da var olan bir promosyon kodu. Kullanılması, bağlantının izlenmesi sayılır.",
+      "promotionHint": "Kuponlar'da var olan bir promosyon kodu. Kullanılması, bağlantının izlenmesi sayılır.",
       "submit": "Kodu bağla",
       "done": "{code} kodu bağlandı."
     },
@@ -3303,7 +3303,7 @@
       "invoices": "Faturalar",
       "payments": "Ödemeler",
       "packages": "Paketler",
-      "pricing": "Fiyatlandırma",
+      "pricing": "Vergi ve yeniden denemeler",
       "reports": "Raporlar",
       "readOnly": "Rolünüz görüntüleyici: burada her şeyi okuyabilirsiniz, ancak değişiklik yapamazsınız."
     },
@@ -3939,7 +3939,7 @@
       "subscriptions": "Abonelikler",
       "credits": "Krediler",
       "packages": "Paketler",
-      "pricing": "Fiyat ve vergi",
+      "pricing": "Vergi ve yeniden denemeler",
       "invoices": "Faturalar",
       "payments": "Ödemeler",
       "paymentLinks": "Ödeme bağlantıları",
@@ -4289,7 +4289,7 @@
         "trials": "Bir pakete gün olarak varsayılan bir deneme verin; abonelikler kartsız denemeyle başlar. Ücretsiz katman, ücreti olmayan ve yalnızca limitli bir pakettir."
       },
       "pricing": {
-        "intro": "Vergi oranları ve promosyonlar: faturaladığınız tutara eklenen veya ondan düşülen şeyler.",
+        "intro": "Ödeme yeniden deneme gecikmeleri ve vergi oranları: bir tahsilat reddedilince ne olacağı ve faturaladığınız tutara neyin eklendiği.",
         "tabs": "Bu sayfanın bölümleri arasında geçiş yapın."
       },
       "coupons": {

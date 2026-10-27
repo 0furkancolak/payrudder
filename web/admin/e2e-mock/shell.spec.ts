@@ -49,7 +49,7 @@ test.describe("sidebar on a desktop", () => {
     // App level: the active item follows the route.
     await page.goto(`/app/apps/${APP}`);
     await expect(nav.getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
-    for (const name of ["Customers", "Subscriptions", "Credits", "Packages", "Pricing and tax", "Payment links", "Accounting", "Reports", "API keys", "Webhooks", "App settings"]) {
+    for (const name of ["Customers", "Subscriptions", "Credits", "Packages", "Tax and retries", "Payment links", "Accounting", "Reports", "API keys", "Webhooks", "App settings"]) {
       await expect(nav.getByRole("link", { name }), name).toBeVisible();
     }
     await nav.getByRole("link", { name: "Customers" }).click();

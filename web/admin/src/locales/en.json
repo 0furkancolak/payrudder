@@ -1775,7 +1775,7 @@
       "minPayoutHint": "A partner below this amount is skipped when you create payouts. Leave empty for none.",
       "coupon": "Coupon for referred customers",
       "noCoupon": "No coupon",
-      "couponHint": "A referred customer gets it on their next checkout. Coupons are made under Pricing.",
+      "couponHint": "A referred customer gets it on their next checkout. Coupons are made under Coupons.",
       "clickCap": "Daily click cap per partner",
       "clickCapHint": "Clicks above this per day are not counted.",
       "landing": "Landing page",
@@ -1839,7 +1839,7 @@
       "copy": "Copy link",
       "noLink": "The link of {code} is https://your-gateway/r/{code}.",
       "promotionCode": "Promotion code",
-      "promotionHint": "An existing promotion code from Pricing. Redeeming it counts as following the link.",
+      "promotionHint": "An existing promotion code from Coupons. Redeeming it counts as following the link.",
       "submit": "Link code",
       "done": "Code {code} linked."
     },
@@ -3303,7 +3303,7 @@
       "invoices": "Invoices",
       "payments": "Payments",
       "packages": "Packages",
-      "pricing": "Pricing",
+      "pricing": "Tax and retries",
       "reports": "Reports",
       "readOnly": "Your role is viewer: you can read everything here, but changes are not allowed."
     },
@@ -3939,7 +3939,7 @@
       "subscriptions": "Subscriptions",
       "credits": "Credits",
       "packages": "Packages",
-      "pricing": "Pricing and tax",
+      "pricing": "Tax and retries",
       "invoices": "Invoices",
       "payments": "Payments",
       "paymentLinks": "Payment links",
@@ -4289,7 +4289,7 @@
         "trials": "Give a package a default trial in days, and subscriptions to it start trialing with no card. A free tier is a package with no fee and limits only."
       },
       "pricing": {
-        "intro": "Tax rates and promotions: what is added to or taken off what you bill.",
+        "intro": "Payment-retry delays and tax rates: what happens when a charge is declined, and what is added to what you bill.",
         "tabs": "Switch between the sections of this page."
       },
       "coupons": {

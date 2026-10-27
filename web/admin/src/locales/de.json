@@ -1775,7 +1775,7 @@
       "minPayoutHint": "Ein Partner unterhalb dieses Betrags wird beim Erstellen von Auszahlungen übersprungen. Leer lassen für keine Grenze.",
       "coupon": "Gutschein für geworbene Kunden",
       "noCoupon": "Kein Gutschein",
-      "couponHint": "Ein geworbener Kunde erhält ihn bei der nächsten Zahlung. Gutscheine legen Sie unter Preise an.",
+      "couponHint": "Ein geworbener Kunde erhält ihn bei der nächsten Zahlung. Gutscheine legen Sie unter Gutscheine an.",
       "clickCap": "Tägliches Klicklimit je Partner",
       "clickCapHint": "Klicks über diesem Wert pro Tag werden nicht gezählt.",
       "landing": "Zielseite",
@@ -1839,7 +1839,7 @@
       "copy": "Link kopieren",
       "noLink": "Der Link von {code} lautet https://ihr-gateway/r/{code}.",
       "promotionCode": "Aktionscode",
-      "promotionHint": "Ein vorhandener Aktionscode aus Preise. Seine Einlösung zählt wie ein Klick auf den Link.",
+      "promotionHint": "Ein vorhandener Aktionscode aus Gutscheine. Seine Einlösung zählt wie ein Klick auf den Link.",
       "submit": "Code verknüpfen",
       "done": "Code {code} verknüpft."
     },
@@ -3303,7 +3303,7 @@
       "invoices": "Rechnungen",
       "payments": "Zahlungen",
       "packages": "Pakete",
-      "pricing": "Preise",
+      "pricing": "Steuer und Wiederholungen",
       "reports": "Berichte",
       "readOnly": "Ihre Rolle ist Betrachter: Sie können hier alles lesen, aber nichts ändern."
     },
@@ -3939,7 +3939,7 @@
       "subscriptions": "Abonnements",
       "credits": "Guthaben",
       "packages": "Pakete",
-      "pricing": "Preise und Steuer",
+      "pricing": "Steuer und Wiederholungen",
       "invoices": "Rechnungen",
       "payments": "Zahlungen",
       "paymentLinks": "Zahlungslinks",
@@ -4289,7 +4289,7 @@
         "trials": "Geben Sie einem Paket eine Standard-Testphase in Tagen, und Abos darauf starten ohne Karte als Test. Eine Gratisstufe ist ein Paket ohne Gebühr, nur mit Limits."
       },
       "pricing": {
-        "intro": "Steuersätze und Aktionen: was auf Ihre Rechnungen aufgeschlagen oder abgezogen wird.",
+        "intro": "Wartezeiten für Zahlungswiederholungen und Steuersätze: was nach einer abgelehnten Zahlung geschieht und was auf Ihre Rechnungsbeträge aufgeschlagen wird.",
         "tabs": "Wechseln Sie zwischen den Bereichen dieser Seite."
       },
       "coupons": {
