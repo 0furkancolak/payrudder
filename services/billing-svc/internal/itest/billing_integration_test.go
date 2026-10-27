@@ -45,6 +45,7 @@ func TestBilling(t *testing.T) {
 		{"TenantDunningSettingsReplaceTheDefaults", testTenantDunningSettings},
 		{"DunningDefaultsAreTheConfiguredOnes", testDunningDefaultsAreTheConfiguredOnes},
 		{"AccountingSumsIncomeAndExpensesPerCurrency", testAccounting},
+		{"AccountingCountsWhatAVoidGaveBackOnce", testAccountingCountsWhatAVoidGaveBackOnce},
 		{"InvoiceInboxKeepsAttachmentsAndRulesAreStored", testInbox},
 		{"DashboardStatsTopCustomersAndAging", testDashboardStats},
 		{"CreditPacks", testCreditPacks},
