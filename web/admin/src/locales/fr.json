@@ -3669,7 +3669,7 @@
       "connect": "Connecter",
       "manage": "Gérer",
       "simulator": "Simulateur intégré",
-      "sandboxNote": "Le sandbox n'atteint jamais un vrai prestataire : il tourne sur un simulateur intégré, il n'y a donc rien à y connecter.",
+      "sandboxNote": "Le sandbox fonctionne sur un simulateur intégré et ne débite jamais une vraie carte. Pour essayer le paiement propre à un prestataire, connectez iyzico ou Paddle en mode test ; les moyens de paiement nommés pm_sandbox_ restent sur le simulateur.",
       "state": {
         "none": "Non connecté",
         "working": "Connecté et fonctionnel",
@@ -3716,7 +3716,19 @@
         "replaceNote": "Une connexion existe. Saisissez de nouvelles clés seulement pour la remplacer ; les clés actuelles ne sont jamais affichées.",
         "openDashboard": "Ouvrir le tableau de bord {provider}",
         "partial": "Connecté sur {ok} app(s) avant l'échec.",
-        "disconnectOrg": "Déconnecter de {count} app(s)"
+        "disconnectOrg": "Déconnecter de {count} app(s)",
+        "sandboxConnectTitle": "Connecter le mode test de {provider}",
+        "sandboxManageTitle": "Mode test de {provider}",
+        "sandboxIntro": {
+          "iyzico": "Saisissez les clés de votre compte sandbox iyzico. Elles sont vérifiées auprès de l'hôte de test d'iyzico avant d'être enregistrées.",
+          "paddle": "Saisissez les clés de votre compte sandbox Paddle et son secret de webhook. Elles sont vérifiées auprès du sandbox de Paddle avant d'être enregistrées.",
+          "banktransfer": "Le virement bancaire n'a pas de mode test : le sandbox utilise le simulateur intégré."
+        },
+        "sandboxEnvNote": "Cela connecte l'environnement sandbox au mode test du prestataire. Un débit sandbox dont le moyen de paiement est le jeton propre du prestataire y est envoyé ; les scénarios pm_sandbox_ restent sur le simulateur. Les clés live sont refusées et le live n'est pas touché.",
+        "sandboxKeys": {
+          "iyzico": "Utilisez les clés du panneau sandbox d'iyzico (la clé d'API commence par sandbox-).",
+          "paddle": "Utilisez une clé de votre compte sandbox Paddle (elle commence par pdl_sdbx_)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3730,7 +3742,15 @@
           "webhook_secret": "Sous Developer tools, Notifications : créez une destination pour Payrudder et copiez sa clé secrète.",
           "usage_product_id": "L'identifiant du produit que Paddle utilise pour les frais d'usage. Dans le Catalog, ouvrez le produit et copiez son identifiant, qui commence par pro_."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Mode test",
+        "manage": "Gérer le mode test",
+        "working": "Mode test connecté",
+        "problem": "Mode test : problème",
+        "done": "Mode test de {provider} connecté pour le sandbox."
+      },
+      "confirmDisconnectSandbox": "Retirer le compte sandbox chez {provider} ? Le sandbox repasse sur le simulateur intégré."
     },
     "integrations": {
       "introApp": "Connectez les prestataires de paiement, l'intégrateur de facturation électronique et le fournisseur d'e-mail de {app}. Les clients sont servis par les connexions live ; la sandbox n'en a pas besoin.",

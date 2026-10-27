@@ -3669,7 +3669,7 @@
       "connect": "Connect",
       "manage": "Manage",
       "simulator": "Built-in simulator",
-      "sandboxNote": "The sandbox never reaches a real provider: it runs against a built-in simulator, so there is nothing to connect there.",
+      "sandboxNote": "The sandbox runs on a built-in simulator and never charges a real card. To try a provider's own checkout, connect iyzico or Paddle in test mode; payment methods named pm_sandbox_ stay on the simulator.",
       "state": {
         "none": "Not connected",
         "working": "Connected and working",
@@ -3716,7 +3716,19 @@
         "replaceNote": "A connection exists. Type new keys only if you want to replace it; the current ones are never shown.",
         "openDashboard": "Open the {provider} dashboard",
         "partial": "Connected on {ok} app(s) before the failure.",
-        "disconnectOrg": "Disconnect from {count} app(s)"
+        "disconnectOrg": "Disconnect from {count} app(s)",
+        "sandboxConnectTitle": "Connect {provider} test mode",
+        "sandboxManageTitle": "{provider} test mode",
+        "sandboxIntro": {
+          "iyzico": "Enter the keys of your iyzico sandbox account. They are checked with iyzico's test host before they are stored.",
+          "paddle": "Enter the keys of your Paddle sandbox account and its webhook secret. They are checked with Paddle's sandbox before they are stored.",
+          "banktransfer": "A bank transfer has no test mode: the sandbox uses the built-in simulator."
+        },
+        "sandboxEnvNote": "This connects the sandbox environment to the provider's test mode. A sandbox charge whose payment method is the provider's own token goes to it; the pm_sandbox_ scenarios stay on the simulator. Live keys are refused, and live is not touched.",
+        "sandboxKeys": {
+          "iyzico": "Use the keys of the iyzico sandbox panel (the API key starts with sandbox-).",
+          "paddle": "Use a key of your Paddle sandbox account (it starts with pdl_sdbx_)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3730,7 +3742,15 @@
           "webhook_secret": "Under Developer tools, Notifications: create a destination for Payrudder and copy its secret key.",
           "usage_product_id": "The id of the product Paddle uses for usage charges. In the Catalog, open the product and copy its id, which starts with pro_."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Test mode",
+        "manage": "Manage test mode",
+        "working": "Test mode connected",
+        "problem": "Test mode: problem",
+        "done": "{provider} test mode connected for the sandbox."
+      },
+      "confirmDisconnectSandbox": "Remove the sandbox account at {provider}? The sandbox goes back to the built-in simulator."
     },
     "integrations": {
       "introApp": "Connect the payment providers, the e-invoice integrator and the e-mail provider of {app}. Customers are served through the live connections; the sandbox needs none.",

@@ -3669,7 +3669,7 @@
       "connect": "Verbinden",
       "manage": "Verwalten",
       "simulator": "Eingebauter Simulator",
-      "sandboxNote": "Die Sandbox erreicht nie einen echten Anbieter: Sie läuft gegen einen eingebauten Simulator, es gibt dort also nichts zu verbinden.",
+      "sandboxNote": "Die Sandbox läuft auf einem eingebauten Simulator und belastet nie eine echte Karte. Um den eigenen Checkout eines Anbieters auszuprobieren, verbinden Sie iyzico oder Paddle im Testmodus; Zahlungsmethoden namens pm_sandbox_ bleiben beim Simulator.",
       "state": {
         "none": "Nicht verbunden",
         "working": "Verbunden und funktionsfähig",
@@ -3716,7 +3716,19 @@
         "replaceNote": "Es besteht eine Verbindung. Geben Sie neue Schlüssel nur ein, wenn Sie sie ersetzen wollen; die aktuellen werden nie angezeigt.",
         "openDashboard": "Dashboard von {provider} öffnen",
         "partial": "Vor dem Fehler bei {ok} App(s) verbunden.",
-        "disconnectOrg": "Von {count} App(s) trennen"
+        "disconnectOrg": "Von {count} App(s) trennen",
+        "sandboxConnectTitle": "{provider}-Testmodus verbinden",
+        "sandboxManageTitle": "{provider}-Testmodus",
+        "sandboxIntro": {
+          "iyzico": "Geben Sie die Schlüssel Ihres iyzico-Sandbox-Kontos ein. Sie werden vor dem Speichern beim Test-Host von iyzico geprüft.",
+          "paddle": "Geben Sie die Schlüssel Ihres Paddle-Sandbox-Kontos und das Webhook-Geheimnis ein. Sie werden vor dem Speichern in der Paddle-Sandbox geprüft.",
+          "banktransfer": "Eine Banküberweisung hat keinen Testmodus: Die Sandbox nutzt den eingebauten Simulator."
+        },
+        "sandboxEnvNote": "Das verbindet die Sandbox-Umgebung mit dem Testmodus des Anbieters. Eine Sandbox-Zahlung, deren Zahlungsmethode das eigene Token des Anbieters ist, geht dorthin; die pm_sandbox_-Szenarien bleiben beim Simulator. Live-Schlüssel werden abgelehnt, und Live bleibt unberührt.",
+        "sandboxKeys": {
+          "iyzico": "Verwenden Sie die Schlüssel des iyzico-Sandbox-Panels (der API-Schlüssel beginnt mit sandbox-).",
+          "paddle": "Verwenden Sie einen Schlüssel Ihres Paddle-Sandbox-Kontos (er beginnt mit pdl_sdbx_)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3730,7 +3742,15 @@
           "webhook_secret": "Unter Developer tools, Notifications ein Ziel für Payrudder anlegen und dessen geheimen Schlüssel kopieren.",
           "usage_product_id": "Die ID des Produkts, das Paddle für Nutzungsgebühren verwendet. Im Catalog das Produkt öffnen und seine ID kopieren, sie beginnt mit pro_."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Testmodus",
+        "manage": "Testmodus verwalten",
+        "working": "Testmodus verbunden",
+        "problem": "Testmodus: Problem",
+        "done": "{provider}-Testmodus für die Sandbox verbunden."
+      },
+      "confirmDisconnectSandbox": "Das Sandbox-Konto bei {provider} entfernen? Die Sandbox läuft dann wieder auf dem eingebauten Simulator."
     },
     "integrations": {
       "introApp": "Verbinden Sie die Zahlungsanbieter, den E-Rechnungs-Integrator und den E-Mail-Anbieter von {app}. Kunden werden über die Live-Verbindungen bedient; die Sandbox braucht keine.",

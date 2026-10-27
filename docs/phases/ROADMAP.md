@@ -32,7 +32,6 @@ These need an account or an environment the repository does not have. Each is a 
 ## Known gaps in the console
 
 - Quotas cannot count distinct values (`UNIQUE`) or the latest value (`LAST`): the counters, the aggregator's upserts, late usage and rating only add or keep a maximum, so these two aggregations need their own storage and billing rules ([limits-svc.md](../03-services/limits-svc.md#as-built-quota-windows-and-modes)).
-- The sandbox provider connection has no backend.
 - A dialog opened from a row of a token-paged list (reverse a commission, mark a payout paid, a partner's forms) comes back from the address only when its row is on the first page after a reload; the sheet of the row itself is looked for on later pages. A sheet that holds typed values or a one-time secret (the new key's plaintext, a scanned receipt) comes back empty.
 - Seats (a quantity on the subscription) exist in the API only: the console neither shows nor sets them. Tax is the tenant's configured rate per customer country; a real tax engine (place of supply, registrations, reverse charge, rates by date) is not built and not planned.
 

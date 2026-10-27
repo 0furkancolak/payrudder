@@ -3669,7 +3669,7 @@
       "connect": "Bağla",
       "manage": "Yönet",
       "simulator": "Yerleşik simülatör",
-      "sandboxNote": "Sandbox hiçbir zaman gerçek bir sağlayıcıya ulaşmaz: yerleşik bir simülatörle çalışır, bu yüzden orada bağlanacak bir şey yoktur.",
+      "sandboxNote": "Sandbox yerleşik bir simülatörde çalışır ve gerçek bir karttan asla çekim yapmaz. Bir sağlayıcının kendi ödeme akışını denemek için iyzico veya Paddle'ı test modunda bağlayın; pm_sandbox_ adlı ödeme yöntemleri simülatörde kalır.",
       "state": {
         "none": "Bağlı değil",
         "working": "Bağlı ve çalışıyor",
@@ -3716,7 +3716,19 @@
         "replaceNote": "Bir bağlantı var. Yalnızca değiştirmek istiyorsanız yeni anahtarlar yazın; mevcut anahtarlar hiçbir zaman gösterilmez.",
         "openDashboard": "{provider} panelini aç",
         "partial": "Hata öncesinde {ok} uygulamada bağlandı.",
-        "disconnectOrg": "{count} uygulamadan ayır"
+        "disconnectOrg": "{count} uygulamadan ayır",
+        "sandboxConnectTitle": "{provider} test modunu bağla",
+        "sandboxManageTitle": "{provider} test modu",
+        "sandboxIntro": {
+          "iyzico": "iyzico sandbox hesabınızın anahtarlarını girin. Saklanmadan önce iyzico'nun test sunucusunda doğrulanır.",
+          "paddle": "Paddle sandbox hesabınızın anahtarlarını ve webhook gizli anahtarını girin. Saklanmadan önce Paddle sandbox'ında doğrulanır.",
+          "banktransfer": "Banka havalesinin test modu yoktur: sandbox yerleşik simülatörü kullanır."
+        },
+        "sandboxEnvNote": "Bu, sandbox ortamını sağlayıcının test moduna bağlar. Ödeme yöntemi sağlayıcının kendi jetonu olan bir sandbox çekimi buraya gider; pm_sandbox_ senaryoları simülatörde kalır. Canlı anahtarlar reddedilir ve canlı ortama dokunulmaz.",
+        "sandboxKeys": {
+          "iyzico": "iyzico sandbox panelinin anahtarlarını kullanın (API anahtarı sandbox- ile başlar).",
+          "paddle": "Paddle sandbox hesabınızın bir anahtarını kullanın (pdl_sdbx_ ile başlar)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3730,7 +3742,15 @@
           "webhook_secret": "Developer tools, Notifications altında Payrudder için bir hedef oluşturun ve gizli anahtarını kopyalayın.",
           "usage_product_id": "Paddle'ın kullanım ücretleri için kullandığı ürünün kimliği. Catalog'da ürünü açıp pro_ ile başlayan kimliğini kopyalayın."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Test modu",
+        "manage": "Test modunu yönet",
+        "working": "Test modu bağlı",
+        "problem": "Test modu: sorun var",
+        "done": "{provider} test modu sandbox için bağlandı."
+      },
+      "confirmDisconnectSandbox": "{provider} sandbox hesabı kaldırılsın mı? Sandbox yeniden yerleşik simülatöre döner."
     },
     "integrations": {
       "introApp": "{app} için ödeme sağlayıcılarını, e-fatura entegratörünü ve e-posta sağlayıcısını bağlayın. Müşteriler canlı bağlantılarla hizmet alır; sandbox'ta bağlantı gerekmez.",
