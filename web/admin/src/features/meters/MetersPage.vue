@@ -39,11 +39,12 @@ const list = computed(() => meters.data.value ?? []);
 const inUse = computed(() => categories(list.value));
 const aggWord = (a: string | undefined) => (a ?? "").replace("AGGREGATION_", "").toLowerCase();
 const table = useTableState(list, {
-  searchFields: (m) => [m.code, m.category, m.unit_label, m.value_property],
+  sheet: { kind: "meter", id: (m) => m.code }, searchFields: (m) => [m.code, m.category, m.unit_label, m.value_property],
   url: true, filters: { category: (m, v) => (m.category ?? "").trim() === v, aggregation: (m, v) => m.aggregation === v },
 });
-const index = ref<number | null>(null);
-const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
+// The detail sheet is in the address (`?sheet=meter:<code>`), so a reload or a shared link brings it back.
+const index = table.detail;
+const current = table.row;
 const filterText = (m: Meter) =>
   Object.entries(m.filter ?? {})
     .map(([k, v]) => `${k} = ${(v.values ?? []).join(" | ")}`)
@@ -196,7 +197,7 @@ function submit() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="(m, i) in table.items.value" :key="m.code" class="cursor-pointer" :data-state="index === i ? 'selected' : undefined" @click="index = i">
+        <TableRow v-for="(m, i) in table.items.value" :key="m.code" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
           <TableCell class="mono font-medium">{{ m.code }}</TableCell>
           <TableCell><Badge v-if="m.category" variant="secondary">{{ m.category }}</Badge><span v-else class="text-muted-foreground">—</span></TableCell>
           <TableCell>{{ t(`billing.meters.aggregations.${aggWord(m.aggregation)}`) }}<span v-if="m.value_property" class="text-muted-foreground mono"> · {{ m.value_property }}</span></TableCell>
@@ -205,7 +206,7 @@ function submit() {
           <TableCell class="text-end" @click.stop>
             <RowActions
               :actions="[
-                { key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => (index = i) },
+                { key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) },
                 ...(canWrite ? [{ key: 'version', label: t('billing.meters.newVersion'), icon: CopyPlus, onSelect: () => start(m) }] : []),
               ]"
             />
@@ -218,7 +219,7 @@ function submit() {
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="index" :total="table.items.value.length" :title="current?.code ?? ''" :description="current?.category || undefined">
+  <DetailSheet v-model:index="index" :total="table.total.value" :title="current?.code ?? ''" :description="current?.category || undefined">
     <dl v-if="current" class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm" data-testid="meter-detail">
       <dt class="text-muted-foreground">{{ t("billing.meters.aggregation") }}</dt>
       <dd class="text-end">{{ t(`billing.meters.aggregations.${aggWord(current.aggregation)}`) }}</dd>

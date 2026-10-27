@@ -7,7 +7,7 @@ import { useCustomers } from "./api";
  * The tenant's customers to choose one from, searchable by id, name and e-mail; the value is the customer's external id. `named` shows "Name (external id)",
  * otherwise the id alone. `placeholder` is what the empty field says; unless `lockPlaceholder` an empty choice (the placeholder itself) clears it again.
  */
-const props = defineProps<{ tenantId: string; placeholder: string; label: string; named?: boolean; required?: boolean; lockPlaceholder?: boolean }>();
+const props = defineProps<{ id?: string; invalid?: boolean; tenantId: string; placeholder: string; label: string; named?: boolean; required?: boolean; lockPlaceholder?: boolean }>();
 const model = defineModel<string>({ required: true });
 const customers = useCustomers(() => props.tenantId);
 const options = computed(() => {
@@ -19,5 +19,5 @@ const options = computed(() => {
 </script>
 
 <template>
-  <Combobox v-model="model" :options="options" :aria-label="label" :placeholder="placeholder" :required="required" />
+  <Combobox :id="id" v-model="model" :invalid="invalid" :options="options" :aria-label="label" :placeholder="placeholder" :required="required" />
 </template>

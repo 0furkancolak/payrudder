@@ -9,6 +9,8 @@ import { useFormat } from "@/shared/lib/format";
 import { parseMajor } from "@/shared/lib/money";
 import { CREDITS_RE, CREDIT_VALIDITY_MAX_DAYS } from "@/shared/lib/rules";
 import { useSeededRef } from "@/shared/lib/seeded";
+import { useFormErrors } from "@/shared/lib/formErrors";
+import { FormField } from "@/shared/ui/form-field";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -57,16 +59,27 @@ const rowActions = (p: Pack) => [
 ];
 const stateFilter = computed({ get: () => table.filters.value.state ?? [], set: (v: string[]) => (table.filters.value.state = v) });
 
+const check = useFormErrors(() => ({
+  name: packName.value.trim() === "" ? t("common.validation.required") : undefined,
+  credits: creditsValid.value ? undefined : t("billing.credits.packs.errors.credits"),
+  price: priceMinor.value && priceMinor.value !== "0" ? undefined : t("billing.credits.packs.errors.price"),
+  validity: validityValid.value ? undefined : t("billing.credits.packs.errors.validity", { max: CREDIT_VALIDITY_MAX_DAYS }),
+}));
+const errs = check.errors;
+watch([packName, packCredits, packPrice, packCurrency, packValidity], () => createPack.isError.value && createPack.reset());
+
 // A sheet that was closed opens clean: the last values and error are not shown again.
 watch(open, (v) => {
   if (!v) return;
   packName.value = packCredits.value = packPrice.value = packValidity.value = "";
   createPack.reset();
+  check.reset();
 });
 
 function submitPack() {
+  if (!check.attempt()) return;
   const days = validity.value;
-  if (!priceMinor.value || !creditsValid.value || days === undefined) return;
+  if (!priceMinor.value || days === undefined) return;
   createPack.mutate(
     { name: packName.value.trim(), credits: packCredits.value.trim(), price_minor: priceMinor.value, currency: packCurrency.value, ...(days !== null ? { validity_days: days } : {}) },
     {
@@ -123,19 +136,29 @@ function submitPack() {
           <SheetDescription>{{ t("billing.credits.packs.hint") }}</SheetDescription>
         </SheetHeader>
         <SheetBody>
-          <form id="credit-pack-form" class="grid gap-4" role="form" :aria-label="t('billing.credits.packs.formLabel')" @submit.prevent="submitPack">
+          <form id="credit-pack-form" class="grid gap-4" role="form" novalidate :aria-label="t('billing.credits.packs.formLabel')" @submit.prevent="submitPack">
             <AppField />
-            <Input v-model="packName" :aria-label="t('billing.credits.packs.name')" :placeholder="t('billing.credits.packs.name')" maxlength="80" required />
-            <Input v-model="packCredits" inputmode="numeric" :aria-label="t('billing.credits.packs.credits')" :placeholder="t('billing.credits.packs.credits')" required />
-            <Input v-model="packPrice" inputmode="decimal" :aria-label="t('billing.credits.packs.price')" :placeholder="t('billing.credits.packs.price')" required />
-            <CurrencySelect v-model="packCurrency" :aria-label="t('billing.credits.packs.currency')" />
-            <Input v-model="packValidity" inputmode="numeric" :aria-label="t('billing.credits.packs.validity')" :placeholder="t('billing.credits.packs.validity')" />
+            <FormField :label="t('billing.credits.packs.name')" for="pack-name" :error="errs.name">
+              <Input id="pack-name" v-model="packName" maxlength="80" :aria-invalid="errs.name ? true : undefined" aria-describedby="pack-name-error" />
+            </FormField>
+            <FormField :label="t('billing.credits.packs.credits')" for="pack-credits" :error="errs.credits">
+              <Input id="pack-credits" v-model="packCredits" inputmode="numeric" :aria-invalid="errs.credits ? true : undefined" aria-describedby="pack-credits-error" />
+            </FormField>
+            <FormField :label="t('billing.credits.packs.price')" for="pack-price" :error="errs.price">
+              <Input id="pack-price" v-model="packPrice" inputmode="decimal" :aria-invalid="errs.price ? true : undefined" aria-describedby="pack-price-error" />
+            </FormField>
+            <FormField :label="t('billing.credits.packs.currency')" for="pack-currency">
+              <CurrencySelect id="pack-currency" v-model="packCurrency" :aria-label="t('billing.credits.packs.currency')" />
+            </FormField>
+            <FormField :label="t('billing.credits.packs.validity')" for="pack-validity" :error="errs.validity">
+              <Input id="pack-validity" v-model="packValidity" inputmode="numeric" :aria-invalid="errs.validity ? true : undefined" aria-describedby="pack-validity-error" />
+            </FormField>
             <ErrorText :error="createPack.error.value" />
           </form>
         </SheetBody>
         <SheetFooter>
           <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
-          <Button type="submit" form="credit-pack-form" :disabled="createPack.isPending.value || !priceMinor || !creditsValid || !validityValid">{{ t("billing.credits.packs.create") }}</Button>
+          <Button type="submit" form="credit-pack-form" :disabled="createPack.isPending.value">{{ t("billing.credits.packs.create") }}</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

@@ -35,7 +35,15 @@
     "moreActions": "Más acciones",
     "view": "Ver",
     "openFullPage": "Abrir página completa",
-    "all": "Todos"
+    "all": "Todos",
+    "confirm": {
+      "title": "¿Está seguro?",
+      "accept": "Confirmar"
+    },
+    "validation": {
+      "required": "Este campo es obligatorio.",
+      "email": "Introduzca un correo electrónico válido."
+    }
   },
   "enums": {
     "environment": {
@@ -1019,7 +1027,14 @@
         "delivered": "Entregado",
         "failed": "Fallido"
       },
-      "allStatuses": "Todos los estados"
+      "allStatuses": "Todos los estados",
+      "deleteTitle": "¿Eliminar este endpoint?",
+      "rotateTitle": "¿Renovar el secreto de firma?",
+      "confirmRotate": "El secreto anterior deja de funcionar al instante: su receptor necesita el nuevo o rechazará todas las entregas.",
+      "insecure": {
+        "sandbox": "Esta URL usa http, que se acepta en el sandbox para pruebas. Los endpoints en producción deben usar https.",
+        "live": "Esta URL usa http: los eventos con datos de clientes y facturas viajarían sin cifrar. Use una URL https."
+      }
     },
     "paymentLinks": {
       "title": "Enlaces de pago",
@@ -1089,7 +1104,11 @@
       "for": "Para",
       "promotionCode": "Código promocional (opcional)",
       "promotionHint": "Quien paga obtiene el descuento de este código sin escribirlo y puede escribir otro. Se comprueba ahora con este importe.",
-      "id": "Enlace"
+      "id": "Enlace",
+      "createdTitle": "Enlace de pago creado",
+      "createdHint": "Copie el enlace ahora y envíelo al pagador.",
+      "another": "Crear otro enlace",
+      "customerNone": "Sin cliente"
     },
     "mail": {
       "title": "Correo electrónico",
@@ -1131,7 +1150,12 @@
         "validityCol": "Validez",
         "noExpiry": "No caduca",
         "days": "{n} días",
-        "purchaseLink": "Crear enlace de compra"
+        "purchaseLink": "Crear enlace de compra",
+        "errors": {
+          "credits": "Créditos: un número entero de 1 o más.",
+          "price": "Precio: un importe mayor que cero.",
+          "validity": "Validez: un número entero de días de 1 a {max}, o vacío."
+        }
       },
       "customer": {
         "title": "Créditos de un cliente",
@@ -1172,6 +1196,9 @@
           "goodwill": "Gesto comercial",
           "promotion": "Promoción",
           "other": "Otro"
+        },
+        "errors": {
+          "credits": "Créditos: un número entero de 1 o más."
         }
       },
       "ledger": {
@@ -3187,7 +3214,10 @@
       "currency": "Moneda",
       "timezone": "Zona horaria",
       "immutable": "La moneda y la zona horaria no se pueden cambiar después: los periodos de facturación se cortan en esa zona horaria.",
-      "submit": "Crear aplicación"
+      "submit": "Crear aplicación",
+      "badCurrency": "Elija una moneda de la lista.",
+      "badTimezone": "Elija una zona horaria de la lista.",
+      "limitReached": "Su plan permite {limit} app(s) y usted tiene {used}. Mejore su plan para crear otra."
     },
     "env": {
       "label": "Entorno",

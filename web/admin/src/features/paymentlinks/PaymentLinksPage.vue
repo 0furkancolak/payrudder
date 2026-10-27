@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { ArrowUpRight, Ban, Plus } from "@lucide/vue";
 import { useParams, useSearch } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
@@ -76,8 +77,8 @@ useOpenParam("link", () => links.isSuccess.value, (id) => {
 });
 const canRevoke = (l: { status?: string } | undefined) => l?.status === "active" || l?.status === "paid";
 
-function revoke(id: string | undefined) {
-  if (id && window.confirm(t("billing.paymentLinks.confirmRevoke"))) act.revoke.mutate(id);
+async function revoke(id: string | undefined) {
+  if (id && (await askConfirm({ body: t("billing.paymentLinks.confirmRevoke") }))) act.revoke.mutate(id);
 }
 function next() {
   const token = links.data.value?.next_page_token;

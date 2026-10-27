@@ -35,7 +35,15 @@
     "moreActions": "Plus d'actions",
     "view": "Afficher",
     "openFullPage": "Ouvrir en pleine page",
-    "all": "Tous"
+    "all": "Tous",
+    "confirm": {
+      "title": "Êtes-vous sûr ?",
+      "accept": "Confirmer"
+    },
+    "validation": {
+      "required": "Ce champ est obligatoire.",
+      "email": "Saisissez une adresse e-mail valide."
+    }
   },
   "enums": {
     "environment": {
@@ -1019,7 +1027,14 @@
         "delivered": "Livré",
         "failed": "Échoué"
       },
-      "allStatuses": "Tous les statuts"
+      "allStatuses": "Tous les statuts",
+      "deleteTitle": "Supprimer ce point de terminaison ?",
+      "rotateTitle": "Renouveler le secret de signature ?",
+      "confirmRotate": "L'ancien secret cesse de fonctionner immédiatement : votre récepteur doit recevoir le nouveau, sinon il rejettera toutes les livraisons.",
+      "insecure": {
+        "sandbox": "Cette URL utilise http, accepté dans le bac à sable pour les tests. Les points de terminaison en production doivent utiliser https.",
+        "live": "Cette URL utilise http : les événements contenant des données clients et factures circuleraient en clair. Utilisez une URL https."
+      }
     },
     "paymentLinks": {
       "title": "Liens de paiement",
@@ -1089,7 +1104,11 @@
       "for": "Pour",
       "promotionCode": "Code promotionnel (facultatif)",
       "promotionHint": "Le payeur obtient la remise de ce code sans le saisir et peut en saisir un autre. Il est vérifié dès maintenant pour ce montant.",
-      "id": "Lien"
+      "id": "Lien",
+      "createdTitle": "Lien de paiement créé",
+      "createdHint": "Copiez le lien maintenant et envoyez-le au payeur.",
+      "another": "Créer un autre lien",
+      "customerNone": "Aucun client"
     },
     "mail": {
       "title": "E-mail",
@@ -1131,7 +1150,12 @@
         "validityCol": "Validité",
         "noExpiry": "N'expire jamais",
         "days": "{n} jours",
-        "purchaseLink": "Créer un lien d'achat"
+        "purchaseLink": "Créer un lien d'achat",
+        "errors": {
+          "credits": "Crédits : un nombre entier d'au moins 1.",
+          "price": "Prix : un montant supérieur à zéro.",
+          "validity": "Validité : un nombre entier de jours de 1 à {max}, ou vide."
+        }
       },
       "customer": {
         "title": "Crédits d'un client",
@@ -1172,6 +1196,9 @@
           "goodwill": "Geste commercial",
           "promotion": "Promotion",
           "other": "Autre"
+        },
+        "errors": {
+          "credits": "Crédits : un nombre entier d'au moins 1."
         }
       },
       "ledger": {
@@ -3187,7 +3214,10 @@
       "currency": "Devise",
       "timezone": "Fuseau horaire",
       "immutable": "La devise et le fuseau horaire ne peuvent pas être modifiés ensuite : les périodes de facturation sont découpées dans ce fuseau.",
-      "submit": "Créer l'application"
+      "submit": "Créer l'application",
+      "badCurrency": "Choisissez une devise dans la liste.",
+      "badTimezone": "Choisissez un fuseau horaire dans la liste.",
+      "limitReached": "Votre forfait autorise {limit} application(s) et vous en avez {used}. Changez de forfait pour en créer une autre."
     },
     "env": {
       "label": "Environnement",

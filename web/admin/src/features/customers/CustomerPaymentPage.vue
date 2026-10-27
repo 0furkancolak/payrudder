@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { Copy, ExternalLink, Receipt, RefreshCw, Trash2 } from "@lucide/vue";
 import { ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -64,7 +65,7 @@ async function regenerate() {
   });
 }
 async function revoke() {
-  if (!window.confirm(t("billing.paymentLinks.portal.confirmRevoke"))) return;
+  if (!(await askConfirm({ body: t("billing.paymentLinks.portal.confirmRevoke") }))) return;
   await guard(async () => {
     await act.revoke.mutateAsync(props.customer);
     link.value = "";

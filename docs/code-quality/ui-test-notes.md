@@ -73,7 +73,7 @@ integrations, new-* forms restore from the URL after a reload.
 - Source: the `/app` redirect (`web/admin/src/features/product/routes.ts` / `OrgHome.vue`) does not read the stored env; the sidebar logo link
   in `app/layout/Sidebar.vue` carries no `env`.
 
-### UI-5 (minor) Webhook delivery table is clipped and shows a raw HTML body
+### UI-5 (minor) Webhook delivery table is clipped and shows a raw HTML body — fixed in #231
 - Page: `/app/t/{id}/webhooks`, endpoint sheet > "Teslimatlar".
 - Steps: add endpoint `http://example.com/hook`, "Test gönder", open the endpoint.
 - Actual: the "Son yanıt" cell is `405HTTP 405: <!doctype html><html lang="en">...` (status concatenated with the body, markup not truncated or
@@ -88,18 +88,18 @@ integrations, new-* forms restore from the URL after a reload.
 - `?sheet=customer:nope`: nothing opens and the dead `sheet` param stays in the URL.
 - Expected: the not-found component (as `/no-such-page` has) or a clear message.
 
-### UI-7 (minor) Not every detail sheet is URL-addressable
+### UI-7 (minor) Not every detail sheet is URL-addressable — fixed in #231
 - Meter detail ("Görüntüle") and coupon detail leave the URL unchanged, so a reload or a shared link loses the sheet (customer, subscription,
   invoice, payment, package, webhook, integration sheets all restore). The payments sheet id is `payment:1`, an index-like value, so it can
   point to another payment later. Source: `features/meters/MetersPage.vue` (DetailSheet without `useSheetTarget`), coupons page.
 
-### UI-8 (minor) Form fields have placeholder-only labels
+### UI-8 (minor) Form fields have placeholder-only labels — fixed in #231
 - Page: Yeni müşteri sheet (also credit pack, new meter and others use `aria-label` + placeholder).
 - Actual: only "Uygulama" and "Fatura adresi" are visible labels; Müşteri kimliği, Ad, E-posta, Şehir... disappear once typed. `aria-label` keeps
   screen readers working but sighted users lose context; compare the coupon sheet, which has real labels (`#coupon-code`).
 - Source: `web/admin/src/features/customers/` form.
 
-### UI-9 (minor) Inconsistent validation feedback, stale errors
+### UI-9 (minor) Inconsistent validation feedback, stale errors — fixed in #231
 - Silent no-op: "Bağlantı oluştur" (payment link) with an empty form does nothing, no message and no focus move; expense "Kaydet" the same.
 - Disabled submit without a reason: credit pack "Paketi ekle" (credit -5), sign-in and sign-up (short password: only a grey hint), grant credits.
 - Native browser bubbles (`required`) on customer, package, coupon-period fields; custom red text elsewhere; both styles on one page.
@@ -113,16 +113,16 @@ integrations, new-* forms restore from the URL after a reload.
 - Operator invoice sheet: raw enums `COMPLETED`, saga states `FINALIZED`/`PDF_REQUESTED`, lowercase `ödendi` while the app side says `Ödendi`.
 - Payments table provider "Mockpsp"; subscription provider "iyzico"/"paddle" lowercase in the select next to "Yönlendirme kurallarına göre".
 
-### UI-11 (minor) Destructive actions use different patterns
+### UI-11 (minor) Destructive actions use different patterns — fixed in #231
 - Webhook "Sil" uses the browser's native `confirm()`; API key revoke, sandbox reset, app delete, leave use the styled dialog.
 - "Secret'ı yenile" rotates the signing secret immediately with no confirmation (the old secret stops working).
 - The webhook sheet has no delete, only the row menu has it. Meters and packages cannot be deleted (presumably by design, undocumented in the UI).
 
-### UI-12 (minor) Customer entry is free text in some forms, a picker in others; customer edit is partial
+### UI-12 (minor) Customer entry is free text in some forms, a picker in others; customer edit is partial — fixed in #231
 - New subscription and new payment link take the customer as a typed id (`ui_test_1`); Credits has a searchable picker ("UI Test Müşteri (ui_test_1)").
 - Lists show `dev_cus_07`/`ui_test_1` instead of the name (subscriptions, invoices, usage "Müşteri" column), while the Usage > Müşteriler tab and
   the customer sheet show names.
-- Customer sheet "Düzenle" is a menu with only "Adresi düzenle" and "Vergi bilgisi"; no way to change name or e-mail (confirm if intended).
+- Customer sheet "Düzenle" is a menu with only "Adresi düzenle" and "Vergi bilgisi"; no way to change name or e-mail (confirm if intended). Update: the API has no endpoint to change name or e-mail (only address and tax), so that stays as is until the backend offers one.
 
 ### UI-13 (minor) Subscription change panel
 - The four selects (package, period, when, proration) share one row in the 670 px sheet and are truncated: "Dönem aynı ka", "Ne zaman: değ",
@@ -145,11 +145,11 @@ integrations, new-* forms restore from the URL after a reload.
 - Every page (also customer-facing `/app/**` and sign-in) has `<title>Payrudder operatör konsolu</title>` (tr) / "Payrudder-Operator-Konsole" (de). Browser
   history, tabs and screen readers cannot tell pages apart, and a customer sees "operator".
 
-### UI-17 (minor) Payment link sheet after creation
+### UI-17 (minor) Payment link sheet after creation — fixed in #231
 - After "Bağlantı oluştur" the sheet shows the copy-once link but keeps the whole form and the primary "Bağlantı oluştur" button, so one more click
   creates a second link. Title is "Ödeme bağlantıları" (plural) for a single new link.
 
-### UI-18 (minor) Creating an app at the plan limit
+### UI-18 (minor) Creating an app at the plan limit — fixed in #231
 - A new Free-plan organisation with 1 app: "Uygulama oluştur" stays offered; the full form is filled and only the submit answers "Planınızın uygulama
   limitine ulaşıldı". Currency/time zone are free combobox text (`ZZZ`, `Mars/Phobos` are accepted by the field; not reached the server because of the limit).
 
@@ -173,7 +173,7 @@ integrations, new-* forms restore from the URL after a reload.
 ### UI-23 (polish) Remaining English `aria-label` — fixed in #230
 - The close button of the key-secret dialog and every styled confirm dialog is `Close` while sheets use `Kapat`.
 
-### UI-24 (polish) Webhook URL scheme
+### UI-24 (polish) Webhook URL scheme — fixed in #231
 - The page and sheet say "HTTPS uç noktaları" but `http://example.com/hook` was accepted without a warning (sandbox may allow it; say so).
 
 ### UI-25 (polish) Format consistency — fixed in #229
@@ -199,5 +199,5 @@ integrations, new-* forms restore from the URL after a reload.
   default currency USD while the time zone is Europe/Istanbul. "1 calls" in the test event line.
 - `/signin?expired=1` (typed by hand) shows no notice, only the encoded `?expired=%221%22` does; `/invite` keeps "Davet denetleniyor…" under the error.
 
-### UI-30 (polish) Focus
+### UI-30 (polish) Focus — fixed in #231
 - Opening any sheet puts the focus on the app select (single app) rather than the first field (Kod / Müşteri kimliği).

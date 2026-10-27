@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { APP, app, appWithLive, liveGateway, productGateway, sandboxProvidersGateway, signInAsAda, tenant } from "./product";
+import { confirmDialog } from "./ui";
 
 // The integrations screen (it replaced "Payment providers"): three groups, payments, e-invoice and e-mail, with a card per integration, a side sheet that connects it (for one app or for every app of the organisation), a test and a
 // disconnect. The gateway is mocked; the real keys are never typed anywhere but the sheet and never shown again.
@@ -60,8 +61,8 @@ test.describe("payment integrations", () => {
     await page.getByTestId("integration-open-paddle").click();
     await sheet.getByTestId("provider-test").click();
     await expect(sheet.getByTestId("provider-test-result")).toContainText("accepts these keys");
-    page.once("dialog", (d) => void d.accept());
     await sheet.getByTestId("provider-disconnect").click();
+    await confirmDialog(page, "yes");
     await expect(page.getByTestId("integration-card-paddle")).toHaveAttribute("data-state", "none");
     expect(gw.called("DELETE", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(1);
   });
@@ -91,8 +92,8 @@ test.describe("payment integrations", () => {
     await page.getByTestId(`integrations-cell-${APP2}-paddle`).click();
     await expect(sheet.getByTestId("provider-scope")).toBeVisible();
     await expect(sheet.getByTestId("provider-scope-note")).toContainText("Only this app");
-    page.once("dialog", (d) => void d.accept());
     await sheet.getByTestId("provider-disconnect").click();
+    await confirmDialog(page, "yes");
     expect(gw.called("DELETE", `/app/v1/apps/${APP2}/go-live/providers/paddle`)).toHaveLength(1);
     expect(gw.called("DELETE", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(0);
     await expect(page.getByTestId("integration-card-paddle")).toContainText("Connected on 1 of 2 apps");
@@ -165,8 +166,8 @@ test.describe("payment integrations", () => {
     await expect(sheet).toContainText("Paddle test mode");
     await sheet.getByTestId("provider-test").click();
     await expect(sheet.getByTestId("provider-test-result")).toContainText("accepts these keys");
-    page.once("dialog", (d) => void d.accept());
     await sheet.getByTestId("provider-disconnect").click();
+    await confirmDialog(page, "yes");
     await expect(page.getByTestId("integration-sandbox-paddle")).toHaveText("Built-in simulator");
     expect(gw.called("DELETE", `/app/v1/apps/${APP}/sandbox/providers/paddle`)).toHaveLength(1);
     expect(gw.called("DELETE", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(0);
@@ -301,8 +302,8 @@ test.describe("integrations: groups, marks and the other integrations", () => {
     await page.getByTestId("einvoice-sheet").getByRole("button", { name: "Cancel" }).click();
 
     await page.getByTestId("integration-open-nilvera").click();
-    page.once("dialog", (d) => void d.accept());
     await sheet.getByTestId("integration-disconnect").click();
+    await confirmDialog(page, "yes");
     await expect(page.getByTestId("integration-state-nilvera")).toHaveText("Not connected");
     expect(gw.called("DELETE", `/app/v1/apps/${APP}/integrations/e-invoice`)).toHaveLength(1);
     expect(state.account).toBeNull();
@@ -341,8 +342,8 @@ test.describe("integrations: groups, marks and the other integrations", () => {
     await sheet.getByTestId("integration-test").click();
     await expect(sheet.getByTestId("integration-test-result")).toContainText("owner@example.com");
     expect(gw.called("POST", `/app/v1/apps/${APP}/integrations/mail/test`)[0]?.body).toEqual({ to: "owner@example.com" });
-    page.once("dialog", (d) => void d.accept());
     await sheet.getByTestId("integration-disconnect").click();
+    await confirmDialog(page, "yes");
     await expect(page.getByTestId("integration-state-nafru")).toHaveText("Not connected");
     await expect(page.getByTestId("integration-state-payrudderMail")).toHaveText("Always on");
 

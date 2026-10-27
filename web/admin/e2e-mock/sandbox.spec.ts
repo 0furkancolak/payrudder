@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { APP, appWithLive, liveGateway, openAllApps, productGateway, signInAsAda } from "./product";
-import { pickLanguage, pickPlace } from "./ui";
+import { pickLanguage, pickPlace, confirmDialog } from "./ui";
 
 // Phase 45 F: the console never lets live and sandbox be mixed up. The environment switch is always there, the sandbox is marked on every page, a live
 // environment that is not active shows its go-live checklist instead of zeros, and the app opens where the person last was. The gateway is mocked.
@@ -226,11 +226,11 @@ test.describe("the owner's own steps", () => {
     expect(await page.content()).not.toContain("SECRETKEY");
     expect(await page.evaluate(() => [...document.querySelectorAll("input")].map((i) => i.value).join("|"))).not.toMatch(/SECRET/);
     // Removing asks first.
-    page.once("dialog", (d) => void d.dismiss());
     await page.getByTestId("live-account-remove-paddle").click();
+    await confirmDialog(page, "no");
     expect(gw.called("DELETE", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(0);
-    page.once("dialog", (d) => void d.accept());
     await page.getByTestId("live-account-remove-paddle").click();
+    await confirmDialog(page, "yes");
     await expect(page.getByTestId("live-accounts-none")).toBeVisible();
     await expect(page.getByTestId("go-live-payment_provider")).toHaveAttribute("data-done", "false");
   });
