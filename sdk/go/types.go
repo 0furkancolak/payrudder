@@ -68,34 +68,3 @@ func (d Decimal) String() string { return string(d) }
 
 // Ptr returns a pointer to v, for the optional fields of request structs.
 func Ptr[T any](v T) *T { return &v }
-
-// CancelSubscriptionResult is the answer of Subscriptions.CancelSubscription. Without credit_unused the API returns
-// the subscription itself; with it, {subscription, credited_minor}. Both read into this type.
-type CancelSubscriptionResult struct {
-	Subscription
-	// CreditedMinor is the unused fee credited to the customer, in minor units. Zero when nothing was credited.
-	CreditedMinor Int64 `json:"credited_minor,omitempty"`
-	// Credited is true when the answer carried credited_minor.
-	Credited bool `json:"-"`
-}
-
-// UnmarshalJSON reads either of the two shapes.
-func (r *CancelSubscriptionResult) UnmarshalJSON(b []byte) error {
-	var probe struct {
-		Subscription  *Subscription `json:"subscription"`
-		CreditedMinor *Int64        `json:"credited_minor"`
-	}
-	if err := json.Unmarshal(b, &probe); err != nil {
-		return err
-	}
-	*r = CancelSubscriptionResult{}
-	if probe.Subscription != nil {
-		r.Subscription = *probe.Subscription
-		if probe.CreditedMinor != nil {
-			r.CreditedMinor = *probe.CreditedMinor
-			r.Credited = true
-		}
-		return nil
-	}
-	return json.Unmarshal(b, &r.Subscription)
-}

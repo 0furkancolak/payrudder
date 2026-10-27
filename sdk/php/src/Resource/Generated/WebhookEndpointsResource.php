@@ -9,6 +9,7 @@ namespace Payrudder\Resource\Generated;
 use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
+use Payrudder\Model\CreateWebhookEndpointRequest;
 use Payrudder\Model\ListWebhookEndpointsResponse;
 use Payrudder\Model\WebhookDelivery;
 use Payrudder\Model\WebhookEndpoint;
@@ -35,12 +36,12 @@ final class WebhookEndpointsResource extends AbstractResource
     /**
      * Register an HTTPS endpoint that receives Payrudder's events (POST /v1/webhook-endpoints).
      *
-     * @param WebhookEndpointInput|array<string,mixed> $body
+     * @param CreateWebhookEndpointRequest|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function createWebhookEndpoint(WebhookEndpointInput|array $body, ?RequestOptions $options = null): WebhookEndpoint
+    public function createWebhookEndpoint(CreateWebhookEndpointRequest|array $body, ?RequestOptions $options = null): WebhookEndpoint
     {
         return WebhookEndpoint::fromArray($this->call('POST', '/v1/webhook-endpoints', [], Cast::body($body), $options));
     }

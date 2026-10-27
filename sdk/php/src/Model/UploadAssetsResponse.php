@@ -15,7 +15,7 @@ use Payrudder\Internal\Cast;
 final class UploadAssetsResponse implements Model
 {
     /**
-     * @param list<UploadAssetsResponseResultsItem>|null $results
+     * @param list<UploadAssetsResult>|null $results
      */
     public function __construct(
         public readonly ?array $results = null,
@@ -27,7 +27,7 @@ final class UploadAssetsResponse implements Model
     public static function fromArray(array $data): static
     {
         return new static(
-            results: Cast::models(UploadAssetsResponseResultsItem::class, $data['results'] ?? null),
+            results: Cast::models(UploadAssetsResult::class, $data['results'] ?? null),
         );
     }
 

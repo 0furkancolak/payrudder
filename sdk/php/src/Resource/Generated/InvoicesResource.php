@@ -12,10 +12,10 @@ use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\CreateInvoiceLinkRequest;
 use Payrudder\Model\CreateInvoiceLinkResponse;
-use Payrudder\Model\GetInvoicePdfResponse;
 use Payrudder\Model\Invoice;
 use Payrudder\Model\ListInvoicesResponse;
 use Payrudder\Model\RevokeInvoiceLinksResponse;
+use Payrudder\Model\SignedUrl;
 use Payrudder\RequestOptions;
 
 /**
@@ -130,8 +130,8 @@ final class InvoicesResource extends AbstractResource
      *
      * @throws PayrudderException
      */
-    public function getInvoicePdf(string $id, ?RequestOptions $options = null): GetInvoicePdfResponse
+    public function getInvoicePdf(string $id, ?RequestOptions $options = null): SignedUrl
     {
-        return GetInvoicePdfResponse::fromArray($this->call('GET', '/v1/invoices/' . rawurlencode($id) . '/pdf', [], null, $options));
+        return SignedUrl::fromArray($this->call('GET', '/v1/invoices/' . rawurlencode($id) . '/pdf', [], null, $options));
     }
 }

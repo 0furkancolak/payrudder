@@ -42,7 +42,7 @@ def test_raw_single_page_call_still_returns_the_token(client: Payrudder, gateway
 def test_iterator_with_a_path_parameter_and_filters(client: Payrudder, gateway: FakeGateway) -> None:
     gateway.handler = lambda rec: Reply(200, {"entries": [{"id": "e1"}], "next_page_token": ""})
     entries = list(client.customers.iter_credit_ledger("cus_1"))
-    assert entries == [{"id": "e1"}]
+    assert [e["id"] for e in entries] == ["e1"]
     assert gateway.requests[0].path == "/v1/customers/cus_1/credits/ledger"
 
 

@@ -16,14 +16,14 @@ final class AccountingCoupon implements Model
 {
     /**
      * @param string|null $couponCode
-     * @param string|null $invoices
+     * @param int|null $invoices
      * @param int|null $grossMinor
      * @param int|null $discountMinor
      * @param int|null $netMinor
      */
     public function __construct(
         public readonly ?string $couponCode = null,
-        public readonly ?string $invoices = null,
+        public readonly ?int $invoices = null,
         public readonly ?int $grossMinor = null,
         public readonly ?int $discountMinor = null,
         public readonly ?int $netMinor = null,
@@ -36,7 +36,7 @@ final class AccountingCoupon implements Model
     {
         return new static(
             couponCode: Cast::string($data['coupon_code'] ?? null),
-            invoices: Cast::string($data['invoices'] ?? null),
+            invoices: Cast::int($data['invoices'] ?? null),
             grossMinor: Cast::int($data['gross_minor'] ?? null),
             discountMinor: Cast::int($data['discount_minor'] ?? null),
             netMinor: Cast::int($data['net_minor'] ?? null),
@@ -50,7 +50,7 @@ final class AccountingCoupon implements Model
     {
         return Cast::compact([
             'coupon_code' => $this->couponCode,
-            'invoices' => $this->invoices,
+            'invoices' => Cast::int64($this->invoices),
             'gross_minor' => Cast::int64($this->grossMinor),
             'discount_minor' => Cast::int64($this->discountMinor),
             'net_minor' => Cast::int64($this->netMinor),

@@ -9,6 +9,7 @@ from typing import Any
 
 MODELS: dict[str, dict[str, Any]] = {
     'AccountingCoupon': {
+        'invoices': ('int',),
         'gross_minor': ('int',),
         'discount_minor': ('int',),
         'net_minor': ('int',),
@@ -21,6 +22,7 @@ MODELS: dict[str, dict[str, Any]] = {
         'expenses_minor': ('int',),
         'provider_fees_minor': ('int',),
         'profit_minor': ('int',),
+        'paid_invoices': ('int',),
         'expense_by_category': ('list', ('model', 'AccountingCurrencyExpenseByCategoryItem')),
         'series': ('list', ('model', 'AccountingPoint')),
         'discounts_minor': ('int',),
@@ -42,6 +44,10 @@ MODELS: dict[str, dict[str, Any]] = {
     'AccountingSummary': {
         'currencies': ('list', ('model', 'AccountingCurrency')),
     },
+    'Affiliate': {
+        'clicks': ('int',),
+        'referrals': ('int',),
+    },
     'AffiliateBalance': {
         'pending_minor': ('int',),
         'approved_minor': ('int',),
@@ -55,6 +61,9 @@ MODELS: dict[str, dict[str, Any]] = {
         'reversed_minor': ('int',),
     },
     'AffiliateFunnel': {
+        'clicks': ('int',),
+        'referrals': ('int',),
+        'paying_customers': ('int',),
         'commissions': ('list', ('model', 'AffiliateFunnelCommissionsItem')),
     },
     'AffiliateFunnelCommissionsItem': {
@@ -69,14 +78,21 @@ MODELS: dict[str, dict[str, Any]] = {
         'total_minor': ('int',),
     },
     'AffiliateProgram': {
+        'commission_value': ('int',),
         'min_payout_minor': ('int',),
     },
-    'CancelSubscriptionResponse1': {
+    'AffiliateProgramInput': {
+        'min_payout_minor': ('int',),
+    },
+    'Asset': {
+        'size_bytes': ('int',),
+    },
+    'CancelSubscriptionResponse': {
         'credited_minor': ('int',),
     },
     'ChangePlanResponse': {
-        'credit_minor': ('int',),
-        'charge_minor': ('int',),
+        'old_plan_fee_minor': ('int',),
+        'new_plan_fee_minor': ('int',),
     },
     'ChangeQuote': {
         'credit_minor': ('int',),
@@ -90,51 +106,87 @@ MODELS: dict[str, dict[str, Any]] = {
     'Coupon': {
         'amount_minor': ('int',),
     },
+    'CouponInput': {
+        'amount_minor': ('int',),
+    },
     'CouponRedemption': {
         'discount_minor': ('int',),
+        'bonus_credits': ('int',),
     },
     'CreateAffiliatePayoutsResponse': {
         'payouts': ('list', ('model', 'AffiliatePayout')),
-        'skipped': ('list', ('model', 'CreateAffiliatePayoutsResponseSkippedItem')),
+        'skipped': ('list', ('model', 'CreateAffiliatePayoutsSkipped')),
     },
-    'CreateAffiliatePayoutsResponseSkippedItem': {
+    'CreateAffiliatePayoutsSkipped': {
         'total_minor': ('int',),
     },
     'CreatePaymentLinkRequest': {
         'amount_minor': ('int',),
     },
     'CreatePromotionCodes': {
-        'template': ('model', 'PromotionCode'),
+        'template': ('model', 'PromotionCodeInput'),
     },
     'CreatePromotionCodesResponse': {
         'codes': ('list', ('model', 'PromotionCode')),
     },
-    'CreateUploadSessionRequest': {
-        'files': ('list', ('model', 'CreateUploadSessionRequestFilesItem')),
-    },
-    'CreateUploadSessionRequestFilesItem': {
-        'size': ('int',),
-    },
     'CreatedPaymentLink': {
+        'credits': ('int',),
         'amount_minor': ('int',),
+    },
+    'CreditBalance': {
+        'balance': ('int',),
+        'lots': ('list', ('model', 'CreditLot')),
+    },
+    'CreditConsumeInput': {
+        'credits': ('int',),
+    },
+    'CreditGrantInput': {
+        'credits': ('int',),
+    },
+    'CreditLedgerEntry': {
+        'amount': ('int',),
+    },
+    'CreditLedgerPage': {
+        'entries': ('list', ('model', 'CreditLedgerEntry')),
+    },
+    'CreditLot': {
+        'granted': ('int',),
+        'remaining': ('int',),
     },
     'CreditNote': {
         'total_minor': ('int',),
     },
     'CreditPack': {
+        'credits': ('int',),
         'price_minor': ('int',),
     },
     'CreditPackInput': {
+        'credits': ('int',),
         'price_minor': ('int',),
     },
     'CreditPackList': {
         'packs': ('list', ('model', 'CreditPack')),
     },
+    'CreditResult': {
+        'balance': ('int',),
+    },
+    'CreditSettings': {
+        'low_threshold': ('int',),
+    },
+    'CreditSettingsInput': {
+        'low_threshold': ('int',),
+    },
     'CurrencyFee': {
+        'base_fee_minor': ('int',),
+    },
+    'CurrencyFeeInput': {
         'base_fee_minor': ('int',),
     },
     'CustomerPayment': {
         'amount_minor': ('int',),
+    },
+    'EInvoiceList': {
+        'total': ('int',),
     },
     'Expense': {
         'amount_minor': ('int',),
@@ -150,29 +202,40 @@ MODELS: dict[str, dict[str, Any]] = {
     'ExpenseRule': {
         'expected_amount_minor': ('int',),
     },
+    'ExpenseRuleInput': {
+        'expected_amount_minor': ('int',),
+    },
     'GetAffiliateBalancesResponse': {
         'balances': ('list', ('model', 'AffiliateBalance')),
     },
-    'GetCustomerUsageResponse': {
-        'usage': ('list', ('model', 'GetCustomerUsageResponseUsageItem')),
-    },
-    'GetCustomerUsageResponseUsageItem': {
+    'GetAnalyticsUsagePoint': {
         'event_count': ('int',),
     },
-    'GetDunningReportResponse': {
-        'invoices': ('list', ('model', 'GetDunningReportResponseInvoicesItem')),
-        'summary': ('list', ('model', 'GetDunningReportResponseSummaryItem')),
+    'GetAnalyticsUsageResponse': {
+        'points': ('list', ('model', 'GetAnalyticsUsagePoint')),
     },
-    'GetDunningReportResponseInvoicesItem': {
+    'GetCustomerUsageResponse': {
+        'usage': ('list', ('model', 'GetCustomerUsageUsage')),
+    },
+    'GetCustomerUsageUsage': {
+        'event_count': ('int',),
+    },
+    'GetDunningReportInvoice': {
         'total_minor': ('int',),
     },
-    'GetDunningReportResponseSummaryItem': {
+    'GetDunningReportResponse': {
+        'invoices': ('list', ('model', 'GetDunningReportInvoice')),
+        'summary': ('list', ('model', 'GetDunningReportSummary')),
+    },
+    'GetDunningReportSummary': {
+        'invoices': ('int',),
         'total_minor': ('int',),
     },
     'GetRevenueReportResponse': {
-        'rows': ('list', ('model', 'GetRevenueReportResponseRowsItem')),
+        'rows': ('list', ('model', 'GetRevenueReportRow')),
     },
-    'GetRevenueReportResponseRowsItem': {
+    'GetRevenueReportRow': {
+        'invoices': ('int',),
         'billed_minor': ('int',),
         'collected_minor': ('int',),
         'refunded_minor': ('int',),
@@ -182,12 +245,30 @@ MODELS: dict[str, dict[str, Any]] = {
         'credited_minor': ('int',),
     },
     'GetSubscriptionReportResponse': {
-        'rows': ('list', ('model', 'GetSubscriptionReportResponseRowsItem')),
+        'rows': ('list', ('model', 'GetSubscriptionReportRow')),
     },
-    'GetSubscriptionReportResponseRowsItem': {
+    'GetSubscriptionReportRow': {
+        'active': ('int',),
+        'trialing': ('int',),
+        'paused': ('int',),
+        'past_due': ('int',),
         'mrr_minor': ('int',),
+        'new_subscriptions': ('int',),
         'new_mrr_minor': ('int',),
+        'churned': ('int',),
         'churned_mrr_minor': ('int',),
+    },
+    'GetTopCustomersCustomer': {
+        'event_count': ('int',),
+    },
+    'GetTopCustomersResponse': {
+        'customers': ('list', ('model', 'GetTopCustomersCustomer')),
+    },
+    'InboxItem': {
+        'size_bytes': ('int',),
+    },
+    'InboxItemPage': {
+        'items': ('list', ('model', 'InboxItem')),
     },
     'Invoice': {
         'subtotal_minor': ('int',),
@@ -206,14 +287,20 @@ MODELS: dict[str, dict[str, Any]] = {
     },
     'ListAffiliateJournalResponse': {
         'entries': ('list', ('model', 'AffiliateJournalEntry')),
-        'totals': ('list', ('model', 'ListAffiliateJournalResponseTotalsItem')),
+        'totals': ('list', ('model', 'ListAffiliateJournalTotal')),
     },
-    'ListAffiliateJournalResponseTotalsItem': {
+    'ListAffiliateJournalTotal': {
         'debit_minor': ('int',),
         'credit_minor': ('int',),
     },
     'ListAffiliatePayoutsResponse': {
         'payouts': ('list', ('model', 'AffiliatePayout')),
+    },
+    'ListAffiliatesResponse': {
+        'affiliates': ('list', ('model', 'Affiliate')),
+    },
+    'ListAssetsResponse': {
+        'assets': ('list', ('model', 'Asset')),
     },
     'ListCouponRedemptionsResponse': {
         'redemptions': ('list', ('model', 'CouponRedemption')),
@@ -247,6 +334,7 @@ MODELS: dict[str, dict[str, Any]] = {
         'amount_minor': ('int',),
     },
     'PaymentLink': {
+        'credits': ('int',),
         'amount_minor': ('int',),
     },
     'PlanVersion': {
@@ -257,6 +345,19 @@ MODELS: dict[str, dict[str, Any]] = {
     'Price': {
         'tiered': ('model', 'PriceTiered'),
         'package': ('model', 'PricePackage'),
+    },
+    'PriceInput': {
+        'tiered': ('model', 'PriceInputTiered'),
+        'package': ('model', 'PriceInputPackage'),
+    },
+    'PriceInputPackage': {
+        'package_price_minor': ('int',),
+    },
+    'PriceInputTiered': {
+        'tiers': ('list', ('model', 'PriceInputTieredTiersItem')),
+    },
+    'PriceInputTieredTiersItem': {
+        'flat_fee_minor': ('int',),
     },
     'PricePackage': {
         'package_price_minor': ('int',),
@@ -270,8 +371,12 @@ MODELS: dict[str, dict[str, Any]] = {
     'PromotionCode': {
         'min_amount_minor': ('int',),
     },
+    'PromotionCodeInput': {
+        'min_amount_minor': ('int',),
+    },
     'PromotionQuote': {
         'discount_minor': ('int',),
+        'bonus_credits': ('int',),
         'total_minor': ('int',),
     },
     'PromotionQuoteRequest': {
@@ -279,8 +384,8 @@ MODELS: dict[str, dict[str, Any]] = {
     },
     'PublishPlanVersionRequest': {
         'base_fee_minor': ('int',),
-        'fees': ('list', ('model', 'CurrencyFee')),
-        'prices': ('list', ('model', 'Price')),
+        'fees': ('list', ('model', 'CurrencyFeeInput')),
+        'prices': ('list', ('model', 'PriceInput')),
     },
     'ReverseAffiliateCommissionRequest': {
         'amount_minor': ('int',),
@@ -288,5 +393,22 @@ MODELS: dict[str, dict[str, Any]] = {
     'ReverseAffiliateCommissionResponse': {
         'reversed_minor': ('int',),
         'commission': ('model', 'AffiliateCommission'),
+    },
+    'UploadAssetsResponse': {
+        'results': ('list', ('model', 'UploadAssetsResult')),
+    },
+    'UploadAssetsResult': {
+        'asset': ('model', 'Asset'),
+    },
+    'UploadFile': {
+        'size': ('int',),
+        'part_size': ('int',),
+        'uploaded_parts': ('list', ('model', 'UploadFileUploadedPartsItem')),
+    },
+    'UploadFileUploadedPartsItem': {
+        'size': ('int',),
+    },
+    'UploadSession': {
+        'files': ('list', ('model', 'UploadFile')),
     },
 }

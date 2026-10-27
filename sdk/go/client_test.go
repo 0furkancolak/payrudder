@@ -337,7 +337,7 @@ func TestStatus500RetryDependsOnIdempotency(t *testing.T) {
 	}{
 		{"GET", func(c *Client) error { _, err := c.Customers.GetCustomer(context.Background(), "x"); return err }, 3},
 		{"PUT", func(c *Client) error {
-			_, err := c.Customers.SetCustomerAddress(context.Background(), "x", &Address{})
+			_, err := c.Customers.SetCustomerAddress(context.Background(), "x", &AddressInput{})
 			return err
 		}, 3},
 		{"DELETE", func(c *Client) error { return c.WebhookEndpoints.DeleteWebhookEndpoint(context.Background(), "id") }, 3},
@@ -511,10 +511,10 @@ func TestRawBodyDownload(t *testing.T) {
 	}
 }
 
-func TestCancelSubscriptionReadsBothShapes(t *testing.T) {
+func TestCancelSubscriptionAlwaysAnswersSubscriptionAndCredit(t *testing.T) {
 	bodies := []string{
-		`{"id":"s1","status":"canceled"}`,
-		`{"subscription":{"id":"s1","status":"canceled"},"credited_minor":"1250"}`,
+		`{"subscription":{"id":"s1","state":"SUBSCRIPTION_STATE_CANCELLED"},"credited_minor":"0"}`,
+		`{"subscription":{"id":"s1","state":"SUBSCRIPTION_STATE_CANCELLED"},"credited_minor":"1250"}`,
 	}
 	var i int
 	c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -522,11 +522,11 @@ func TestCancelSubscriptionReadsBothShapes(t *testing.T) {
 		i++
 	}))
 	plain, err := c.Subscriptions.CancelSubscription(context.Background(), "s1", nil)
-	if err != nil || plain.ID != "s1" || plain.Credited {
+	if err != nil || plain.Subscription.ID != "s1" || plain.CreditedMinor != 0 {
 		t.Fatalf("%+v %v", plain, err)
 	}
 	credited, err := c.Subscriptions.CancelSubscription(context.Background(), "s1", &CancelSubscriptionParams{CreditUnused: Ptr(true)})
-	if err != nil || credited.ID != "s1" || !credited.Credited || credited.CreditedMinor != 1250 {
+	if err != nil || credited.Subscription.ID != "s1" || credited.CreditedMinor != 1250 {
 		t.Fatalf("%+v %v", credited, err)
 	}
 }

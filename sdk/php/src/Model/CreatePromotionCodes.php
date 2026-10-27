@@ -15,13 +15,13 @@ use Payrudder\Internal\Cast;
 final class CreatePromotionCodes implements RequestBody
 {
     /**
-     * @param PromotionCode|null $template
+     * @param PromotionCodeInput|null $template
      * @param list<string>|null $codes
      * @param int|null $count
      * @param string|null $prefix
      */
     public function __construct(
-        public readonly ?PromotionCode $template = null,
+        public readonly ?PromotionCodeInput $template = null,
         public readonly ?array $codes = null,
         public readonly ?int $count = null,
         public readonly ?string $prefix = null,

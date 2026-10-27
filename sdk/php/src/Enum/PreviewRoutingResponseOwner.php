@@ -8,6 +8,6 @@ namespace Payrudder\Enum;
 
 enum PreviewRoutingResponseOwner: string
 {
-    case Quotify = 'quotify';
+    case Payrudder = 'payrudder';
     case Provider = 'provider';
 }

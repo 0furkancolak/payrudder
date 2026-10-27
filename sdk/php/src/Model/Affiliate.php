@@ -27,8 +27,8 @@ final class Affiliate implements Model
      * @param string|null $payoutDetails
      * @param AffiliateSource|string|null $source
      * @param bool|null $signedIn
-     * @param string|null $clicks
-     * @param string|null $referrals
+     * @param int|null $clicks
+     * @param int|null $referrals
      * @param string|null $approveTime
      * @param string|null $createTime
      * @param string|null $link
@@ -43,8 +43,8 @@ final class Affiliate implements Model
         public readonly ?string $payoutDetails = null,
         public readonly AffiliateSource|string|null $source = null,
         public readonly ?bool $signedIn = null,
-        public readonly ?string $clicks = null,
-        public readonly ?string $referrals = null,
+        public readonly ?int $clicks = null,
+        public readonly ?int $referrals = null,
         public readonly ?string $approveTime = null,
         public readonly ?string $createTime = null,
         public readonly ?string $link = null,
@@ -65,8 +65,8 @@ final class Affiliate implements Model
             payoutDetails: Cast::string($data['payout_details'] ?? null),
             source: Cast::enum(AffiliateSource::class, $data['source'] ?? null),
             signedIn: Cast::bool($data['signed_in'] ?? null),
-            clicks: Cast::string($data['clicks'] ?? null),
-            referrals: Cast::string($data['referrals'] ?? null),
+            clicks: Cast::int($data['clicks'] ?? null),
+            referrals: Cast::int($data['referrals'] ?? null),
             approveTime: Cast::string($data['approve_time'] ?? null),
             createTime: Cast::string($data['create_time'] ?? null),
             link: Cast::string($data['link'] ?? null),
@@ -88,8 +88,8 @@ final class Affiliate implements Model
             'payout_details' => $this->payoutDetails,
             'source' => Cast::wire($this->source),
             'signed_in' => $this->signedIn,
-            'clicks' => $this->clicks,
-            'referrals' => $this->referrals,
+            'clicks' => Cast::int64($this->clicks),
+            'referrals' => Cast::int64($this->referrals),
             'approve_time' => $this->approveTime,
             'create_time' => $this->createTime,
             'link' => $this->link,

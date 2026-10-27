@@ -10,6 +10,7 @@ use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\TaxRates;
+use Payrudder\Model\TaxRatesInput;
 use Payrudder\RequestOptions;
 
 /**
@@ -32,12 +33,12 @@ final class TaxRatesResource extends AbstractResource
     /**
      * Replace the tax rates (PUT /v1/tax-rates).
      *
-     * @param TaxRates|array<string,mixed> $body
+     * @param TaxRatesInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function setTaxRates(TaxRates|array $body, ?RequestOptions $options = null): TaxRates
+    public function setTaxRates(TaxRatesInput|array $body, ?RequestOptions $options = null): TaxRates
     {
         return TaxRates::fromArray($this->call('PUT', '/v1/tax-rates', [], Cast::body($body), $options));
     }

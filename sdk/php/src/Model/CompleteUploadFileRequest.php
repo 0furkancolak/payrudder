@@ -15,7 +15,7 @@ use Payrudder\Internal\Cast;
 final class CompleteUploadFileRequest implements RequestBody
 {
     /**
-     * @param list<CompleteUploadFileRequestPartsItem> $parts
+     * @param list<CompleteUploadFilePart> $parts
      */
     public function __construct(
         public readonly array $parts,

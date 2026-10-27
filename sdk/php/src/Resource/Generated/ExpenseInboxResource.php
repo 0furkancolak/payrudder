@@ -68,9 +68,9 @@ final class ExpenseInboxResource extends AbstractResource
      *
      * @throws PayrudderException
      */
-    public function getInboxItemFile(string $id, ?RequestOptions $options = null): void
+    public function getInboxItemFile(string $id, ?RequestOptions $options = null): string
     {
-        $this->callVoid('GET', '/v1/expense-inbox/items/' . rawurlencode($id) . '/file', [], null, $options);
+        return $this->callRaw('GET', '/v1/expense-inbox/items/' . rawurlencode($id) . '/file', [], null, $options);
     }
 
     /**

@@ -16,7 +16,7 @@ final class ListAffiliateJournalResponse implements Model
 {
     /**
      * @param list<AffiliateJournalEntry>|null $entries
-     * @param list<ListAffiliateJournalResponseTotalsItem>|null $totals
+     * @param list<ListAffiliateJournalTotal>|null $totals
      * @param string|null $nextPageToken
      * @param int|null $total
      */
@@ -34,7 +34,7 @@ final class ListAffiliateJournalResponse implements Model
     {
         return new static(
             entries: Cast::models(AffiliateJournalEntry::class, $data['entries'] ?? null),
-            totals: Cast::models(ListAffiliateJournalResponseTotalsItem::class, $data['totals'] ?? null),
+            totals: Cast::models(ListAffiliateJournalTotal::class, $data['totals'] ?? null),
             nextPageToken: Cast::string($data['next_page_token'] ?? null),
             total: Cast::int($data['total'] ?? null),
         );

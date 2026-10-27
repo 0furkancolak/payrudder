@@ -73,6 +73,8 @@ Redirects are never followed by the curl transport, so the API key cannot be sen
 `*_minor` values (int64) travel as JSON strings. The models expose them as PHP `int` (64-bit PHP is required; the client refuses to start on 32-bit) and a value that does not fit is an `UnexpectedResponseException`, never a float. Requests send them as strings.
 Decimal quantities and prices are strings and stay strings: pass `'1.250'`, not `1.25`.
 
+Response models follow the spec's `required` lists: a field the API always sends is a plain property, a timestamp or nested object that is not set is `null`. A request object that is also a response has a twin without the server-filled fields (`AddressInput`, `CouponInput`, `PriceInput`, ...); `cancelSubscription` always returns a `CancelSubscriptionResponse` with `subscription` and `creditedMinor`.
+
 ```php
 $invoice = $client->invoices->getInvoice($id);
 $invoice->totalMinor;           // int, e.g. 1116

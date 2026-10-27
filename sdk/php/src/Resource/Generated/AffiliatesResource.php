@@ -16,6 +16,7 @@ use Payrudder\Model\AffiliateFunnel;
 use Payrudder\Model\AffiliateJournalEntry;
 use Payrudder\Model\AffiliatePayout;
 use Payrudder\Model\AffiliateProgram;
+use Payrudder\Model\AffiliateProgramInput;
 use Payrudder\Model\AffiliateReferral;
 use Payrudder\Model\CreateAffiliatePayoutsRequest;
 use Payrudder\Model\CreateAffiliatePayoutsResponse;
@@ -53,12 +54,12 @@ final class AffiliatesResource extends AbstractResource
     /**
      * Set the rules of the partner program (PUT /v1/affiliates/program).
      *
-     * @param AffiliateProgram|array<string,mixed> $body
+     * @param AffiliateProgramInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function setAffiliateProgram(AffiliateProgram|array $body, ?RequestOptions $options = null): AffiliateProgram
+    public function setAffiliateProgram(AffiliateProgramInput|array $body, ?RequestOptions $options = null): AffiliateProgram
     {
         return AffiliateProgram::fromArray($this->call('PUT', '/v1/affiliates/program', [], Cast::body($body), $options));
     }

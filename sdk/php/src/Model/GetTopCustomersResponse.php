@@ -17,7 +17,7 @@ final class GetTopCustomersResponse implements Model
     /**
      * @param string|null $precision
      * @param int|null $quantityScale
-     * @param list<GetTopCustomersResponseCustomersItem>|null $customers
+     * @param list<GetTopCustomersCustomer>|null $customers
      */
     public function __construct(
         public readonly ?string $precision = null,
@@ -33,7 +33,7 @@ final class GetTopCustomersResponse implements Model
         return new static(
             precision: Cast::string($data['precision'] ?? null),
             quantityScale: Cast::int($data['quantity_scale'] ?? null),
-            customers: Cast::models(GetTopCustomersResponseCustomersItem::class, $data['customers'] ?? null),
+            customers: Cast::models(GetTopCustomersCustomer::class, $data['customers'] ?? null),
         );
     }
 

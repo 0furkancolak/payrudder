@@ -16,9 +16,9 @@ final class PublishPlanVersionRequest implements RequestBody
 {
     /**
      * @param int|null $baseFeeMinor
-     * @param list<CurrencyFee>|null $fees
-     * @param list<Price>|null $prices
-     * @param list<Entitlement>|null $entitlements
+     * @param list<CurrencyFeeInput>|null $fees
+     * @param list<PriceInput>|null $prices
+     * @param list<EntitlementInput>|null $entitlements
      * @param int|null $trialDays
      */
     public function __construct(

@@ -16,21 +16,21 @@ use Payrudder\Internal\Cast;
 final class PromotionQuoteRequest implements RequestBody
 {
     /**
-     * @param string $code
      * @param PromotionQuoteRequestTarget|string $target
-     * @param int $amountMinor
      * @param string $currency
+     * @param string|null $code
      * @param string|null $customerExternalId
+     * @param int|null $amountMinor
      * @param string|null $item
      * @param string|null $credits
      * @param bool|null $priorPurchases
      */
     public function __construct(
-        public readonly string $code,
         public readonly PromotionQuoteRequestTarget|string $target,
-        public readonly int $amountMinor,
         public readonly string $currency,
+        public readonly ?string $code = null,
         public readonly ?string $customerExternalId = null,
+        public readonly ?int $amountMinor = null,
         public readonly ?string $item = null,
         public readonly ?string $credits = null,
         public readonly ?bool $priorPurchases = null,
@@ -42,11 +42,11 @@ final class PromotionQuoteRequest implements RequestBody
     public function toArray(): array
     {
         return Cast::compact([
-            'code' => $this->code,
             'target' => Cast::wire($this->target),
-            'amount_minor' => Cast::int64($this->amountMinor),
             'currency' => $this->currency,
+            'code' => $this->code,
             'customer_external_id' => $this->customerExternalId,
+            'amount_minor' => Cast::int64($this->amountMinor),
             'item' => $this->item,
             'credits' => $this->credits,
             'prior_purchases' => $this->priorPurchases,

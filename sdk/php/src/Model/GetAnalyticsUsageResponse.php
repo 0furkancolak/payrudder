@@ -18,7 +18,7 @@ final class GetAnalyticsUsageResponse implements Model
     /**
      * @param GetAnalyticsUsageResponsePrecision|string|null $precision
      * @param int|null $quantityScale
-     * @param list<GetAnalyticsUsageResponsePointsItem>|null $points
+     * @param list<GetAnalyticsUsagePoint>|null $points
      */
     public function __construct(
         public readonly GetAnalyticsUsageResponsePrecision|string|null $precision = null,
@@ -34,7 +34,7 @@ final class GetAnalyticsUsageResponse implements Model
         return new static(
             precision: Cast::enum(GetAnalyticsUsageResponsePrecision::class, $data['precision'] ?? null),
             quantityScale: Cast::int($data['quantity_scale'] ?? null),
-            points: Cast::models(GetAnalyticsUsageResponsePointsItem::class, $data['points'] ?? null),
+            points: Cast::models(GetAnalyticsUsagePoint::class, $data['points'] ?? null),
         );
     }
 

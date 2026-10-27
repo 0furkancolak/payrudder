@@ -45,7 +45,7 @@ payrudder.customers.setCustomerAddress("cus_42", { country: "TR", city: "Istanbu
 payrudder.invoices.listInvoices({ customer: "cus_42", status: "paid" });
 ```
 
-Request and response models are exported as types (`Customer`, `Invoice`, `CreateCustomerRequest`, ...). Field names stay snake_case, as on the wire. The spec marks most response fields as optional, so response properties are optional in the types.
+Request and response models are exported as types (`Customer`, `Invoice`, `CreateCustomerRequest`, ...). Field names stay snake_case, as on the wire. A response property is required whenever the API always sends it (every field of a protobuf-backed object, zero values included); a timestamp or nested object that is not set is `null` and typed `T | null`. A request object that is also a response has a twin without the server-filled fields: pass an `AddressInput`, a `CouponInput` or a `PriceInput` where you create or replace one, and read an `Address`, a `Coupon` or a `Price` back. `cancelSubscription` always answers `{ subscription, credited_minor }`.
 
 ### Client options
 

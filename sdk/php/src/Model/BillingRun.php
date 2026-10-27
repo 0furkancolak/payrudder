@@ -22,6 +22,9 @@ final class BillingRun implements Model
      * @param string|null $cutoffTime
      * @param int|null $invoiceCount
      * @param string|null $lastError
+     * @param int|null $generation
+     * @param string|null $startTime
+     * @param string|null $completeTime
      */
     public function __construct(
         public readonly ?string $tenantId = null,
@@ -30,6 +33,9 @@ final class BillingRun implements Model
         public readonly ?string $cutoffTime = null,
         public readonly ?int $invoiceCount = null,
         public readonly ?string $lastError = null,
+        public readonly ?int $generation = null,
+        public readonly ?string $startTime = null,
+        public readonly ?string $completeTime = null,
     ) {}
 
     /**
@@ -44,6 +50,9 @@ final class BillingRun implements Model
             cutoffTime: Cast::string($data['cutoff_time'] ?? null),
             invoiceCount: Cast::int($data['invoice_count'] ?? null),
             lastError: Cast::string($data['last_error'] ?? null),
+            generation: Cast::int($data['generation'] ?? null),
+            startTime: Cast::string($data['start_time'] ?? null),
+            completeTime: Cast::string($data['complete_time'] ?? null),
         );
     }
 
@@ -59,6 +68,9 @@ final class BillingRun implements Model
             'cutoff_time' => $this->cutoffTime,
             'invoice_count' => $this->invoiceCount,
             'last_error' => $this->lastError,
+            'generation' => $this->generation,
+            'start_time' => $this->startTime,
+            'complete_time' => $this->completeTime,
         ]);
     }
 }

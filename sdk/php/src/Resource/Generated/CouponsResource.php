@@ -10,6 +10,7 @@ use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\Coupon;
+use Payrudder\Model\CouponInput;
 use Payrudder\Model\CreatePromotionCodes;
 use Payrudder\Model\CreatePromotionCodesResponse;
 use Payrudder\Model\ListCouponsResponse;
@@ -35,12 +36,12 @@ final class CouponsResource extends AbstractResource
     /**
      * Make a coupon (POST /v1/coupons).
      *
-     * @param Coupon|array<string,mixed> $body
+     * @param CouponInput|array<string,mixed> $body
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function createCoupon(Coupon|array $body, ?RequestOptions $options = null): Coupon
+    public function createCoupon(CouponInput|array $body, ?RequestOptions $options = null): Coupon
     {
         return Coupon::fromArray($this->call('POST', '/v1/coupons', [], Cast::body($body), $options));
     }

@@ -24,7 +24,7 @@ final class CouponRedemption implements Model
      * @param string|null $targetId
      * @param string|null $invoiceId
      * @param int|null $discountMinor
-     * @param string|null $bonusCredits
+     * @param int|null $bonusCredits
      * @param string|null $currency
      * @param string|null $createTime
      * @param string|null $reverseTime
@@ -38,7 +38,7 @@ final class CouponRedemption implements Model
         public readonly ?string $targetId = null,
         public readonly ?string $invoiceId = null,
         public readonly ?int $discountMinor = null,
-        public readonly ?string $bonusCredits = null,
+        public readonly ?int $bonusCredits = null,
         public readonly ?string $currency = null,
         public readonly ?string $createTime = null,
         public readonly ?string $reverseTime = null,
@@ -58,7 +58,7 @@ final class CouponRedemption implements Model
             targetId: Cast::string($data['target_id'] ?? null),
             invoiceId: Cast::string($data['invoice_id'] ?? null),
             discountMinor: Cast::int($data['discount_minor'] ?? null),
-            bonusCredits: Cast::string($data['bonus_credits'] ?? null),
+            bonusCredits: Cast::int($data['bonus_credits'] ?? null),
             currency: Cast::string($data['currency'] ?? null),
             createTime: Cast::string($data['create_time'] ?? null),
             reverseTime: Cast::string($data['reverse_time'] ?? null),
@@ -79,7 +79,7 @@ final class CouponRedemption implements Model
             'target_id' => $this->targetId,
             'invoice_id' => $this->invoiceId,
             'discount_minor' => Cast::int64($this->discountMinor),
-            'bonus_credits' => $this->bonusCredits,
+            'bonus_credits' => Cast::int64($this->bonusCredits),
             'currency' => $this->currency,
             'create_time' => $this->createTime,
             'reverse_time' => $this->reverseTime,

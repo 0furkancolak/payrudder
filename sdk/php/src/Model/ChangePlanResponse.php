@@ -16,13 +16,13 @@ final class ChangePlanResponse implements Model
 {
     /**
      * @param Subscription|null $subscription
-     * @param int|null $creditMinor
-     * @param int|null $chargeMinor
+     * @param int|null $oldPlanFeeMinor
+     * @param int|null $newPlanFeeMinor
      */
     public function __construct(
         public readonly ?Subscription $subscription = null,
-        public readonly ?int $creditMinor = null,
-        public readonly ?int $chargeMinor = null,
+        public readonly ?int $oldPlanFeeMinor = null,
+        public readonly ?int $newPlanFeeMinor = null,
     ) {}
 
     /**
@@ -32,8 +32,8 @@ final class ChangePlanResponse implements Model
     {
         return new static(
             subscription: Cast::model(Subscription::class, $data['subscription'] ?? null),
-            creditMinor: Cast::int($data['credit_minor'] ?? null),
-            chargeMinor: Cast::int($data['charge_minor'] ?? null),
+            oldPlanFeeMinor: Cast::int($data['old_plan_fee_minor'] ?? null),
+            newPlanFeeMinor: Cast::int($data['new_plan_fee_minor'] ?? null),
         );
     }
 
@@ -44,8 +44,8 @@ final class ChangePlanResponse implements Model
     {
         return Cast::compact([
             'subscription' => Cast::wire($this->subscription),
-            'credit_minor' => Cast::int64($this->creditMinor),
-            'charge_minor' => Cast::int64($this->chargeMinor),
+            'old_plan_fee_minor' => Cast::int64($this->oldPlanFeeMinor),
+            'new_plan_fee_minor' => Cast::int64($this->newPlanFeeMinor),
         ]);
     }
 }

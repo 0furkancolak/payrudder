@@ -16,7 +16,7 @@ final class GetSubscriptionReportResponse implements Model
 {
     /**
      * @param string|null $month
-     * @param list<GetSubscriptionReportResponseRowsItem>|null $rows
+     * @param list<GetSubscriptionReportRow>|null $rows
      */
     public function __construct(
         public readonly ?string $month = null,
@@ -30,7 +30,7 @@ final class GetSubscriptionReportResponse implements Model
     {
         return new static(
             month: Cast::string($data['month'] ?? null),
-            rows: Cast::models(GetSubscriptionReportResponseRowsItem::class, $data['rows'] ?? null),
+            rows: Cast::models(GetSubscriptionReportRow::class, $data['rows'] ?? null),
         );
     }
 

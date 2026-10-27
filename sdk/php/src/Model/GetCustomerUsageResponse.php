@@ -17,7 +17,7 @@ final class GetCustomerUsageResponse implements Model
     /**
      * @param string|null $customerExternalId
      * @param string|null $periodId
-     * @param list<GetCustomerUsageResponseUsageItem>|null $usage
+     * @param list<GetCustomerUsageUsage>|null $usage
      */
     public function __construct(
         public readonly ?string $customerExternalId = null,
@@ -33,7 +33,7 @@ final class GetCustomerUsageResponse implements Model
         return new static(
             customerExternalId: Cast::string($data['customer_external_id'] ?? null),
             periodId: Cast::string($data['period_id'] ?? null),
-            usage: Cast::models(GetCustomerUsageResponseUsageItem::class, $data['usage'] ?? null),
+            usage: Cast::models(GetCustomerUsageUsage::class, $data['usage'] ?? null),
         );
     }
 

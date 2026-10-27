@@ -8,7 +8,9 @@ Python client for the [Payrudder](../../README.md) tenant API (`/v1/*`) and for 
 - Python 3.10+, fully typed (`py.typed`, checked with `mypy --strict`).
 - A sync client (`Payrudder`) and an async client (`AsyncPayrudder`) with the same methods.
 - One runtime dependency: [`httpx`](https://www.python-httpx.org/).
-- Models are `TypedDict`s with the wire's snake_case names; money (`*_minor`) is a Python `int`.
+- Models are `TypedDict`s with the wire's snake_case names; money (`*_minor`) is a Python `int`. A key the API always sends is required in a response model,
+  a timestamp or nested object that is not set is `None`; a request object that is also a response has a twin without the server-filled fields
+  (`AddressInput`, `CouponInput`, `PriceInput`, ...).
 
 Scope: the tenant API authenticated with an API key (`qk_test_...` for the sandbox, `qk_live_...` for live). The operator
 (`/admin/v1`) and console (`/app/v1`, `/auth`) routes are not part of this SDK.

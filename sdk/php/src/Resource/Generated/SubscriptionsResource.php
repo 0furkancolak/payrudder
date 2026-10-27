@@ -11,6 +11,7 @@ use Payrudder\Exception\PayrudderException;
 use Payrudder\Internal\AbstractResource;
 use Payrudder\Internal\Cast;
 use Payrudder\Model\ApplyCouponRequest;
+use Payrudder\Model\CancelSubscriptionResponse;
 use Payrudder\Model\ChangePlanRequest;
 use Payrudder\Model\ChangePlanResponse;
 use Payrudder\Model\ChangeQuote;
@@ -113,13 +114,11 @@ final class SubscriptionsResource extends AbstractResource
      * @param bool|null $creditUnused
      * @param RequestOptions|null $options
      *
-     * @return array<string,mixed>
-     *
      * @throws PayrudderException
      */
-    public function cancelSubscription(string $id, ?string $endTime = null, ?bool $creditUnused = null, ?RequestOptions $options = null): array
+    public function cancelSubscription(string $id, ?string $endTime = null, ?bool $creditUnused = null, ?RequestOptions $options = null): CancelSubscriptionResponse
     {
-        return $this->call('DELETE', '/v1/subscriptions/' . rawurlencode($id), ['end_time' => $endTime, 'credit_unused' => $creditUnused], null, $options);
+        return CancelSubscriptionResponse::fromArray($this->call('DELETE', '/v1/subscriptions/' . rawurlencode($id), ['end_time' => $endTime, 'credit_unused' => $creditUnused], null, $options));
     }
 
     /**

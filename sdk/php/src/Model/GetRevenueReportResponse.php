@@ -15,7 +15,7 @@ use Payrudder\Internal\Cast;
 final class GetRevenueReportResponse implements Model
 {
     /**
-     * @param list<GetRevenueReportResponseRowsItem>|null $rows
+     * @param list<GetRevenueReportRow>|null $rows
      */
     public function __construct(
         public readonly ?array $rows = null,
@@ -27,7 +27,7 @@ final class GetRevenueReportResponse implements Model
     public static function fromArray(array $data): static
     {
         return new static(
-            rows: Cast::models(GetRevenueReportResponseRowsItem::class, $data['rows'] ?? null),
+            rows: Cast::models(GetRevenueReportRow::class, $data['rows'] ?? null),
         );
     }
 
