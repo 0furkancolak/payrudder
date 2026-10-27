@@ -85,6 +85,7 @@ Rules:
 | Topic | When | Key |
 |---|---|---|
 | `plans.entitlements.v1` (compacted) | Subscription created/cancelled, or plan version with entitlements published | `{tenant_id}/{customer_id}/{meter_code}` |
+| `subscription.trial-will-end.v1` | The trial-ending reminder records a notice (below) | `{tenant_id}/{customer_id}` |
 
 Produced through plans-svc's own **outbox** in the same transaction as the subscription change.
 Tombstone (null value) when a subscription ends.
@@ -234,3 +235,14 @@ limits-svc).
 - The limit of an organisation is its override on the meter, else the entitlement of the plan version of its subscription in force, else the latest Free's; absent means unlimited.
 - Plan changes: `ChangePlan` ends the subscription in force now (crediting an unused fee paid in advance) and starts the next, with the trial once; a failed start puts the old plan back; `same_plan` and `downgrade_blocked` guard a person's move, the operator's skips them.
 - The sandbox retention sweep skips the platform account's tenant.
+
+## As built: the trial-ending reminder
+
+A trialing subscription is reminded **once per trial end**, `PAYRUDDER_TRIAL_REMINDER_DAYS` days before the trial ends (default 3, 1 to 30; one value for the whole service: the trial itself is the plan version's `trial_days` or the request's own, and a per-subscription reminder date would need a column on every subscription): the `subscription.trial_will_end` webhook event (`data.subscription` as the API returns it, with `trial_end_time`) and an e-mail to the customer. A trial shorter than the window is reminded at the first pass after it starts.
+
+- Module `internal/trialnotices` (`model` the pure rules: the window, which trials are due, the event id and the fact; `command` the job). `command.Job` runs in every plans-svc replica every `PAYRUDDER_TRIAL_REMINDER_EVERY` (default 10 minutes). It lists, on the **system pool**, across tenants, the trialing subscriptions that Payrudder runs (`owner` is not `provider`: a provider reminds its own customers), are open-ended and not set to cancel at the period end, whose `trial_ends_at` is after now and within the window and for which no notice exists (`SystemListTrialsEndingSoon`, oldest end first, 200 at a time; a full batch runs again at once).
+- Each candidate is then handled in its **own tenant's transaction on the app pool** (`pgxx.InTenantTx`): the subscription row is locked and re-checked (`Trial.Remindable`), then `subscription_trial_notices` gets its row, the event is queued through `webhooks/command.EmitSubscription` (only if an endpoint wants the type) and the `TrialWillEnd` fact is written to the `outbox` (topic `subscription.trial-will-end.v1`, relayed like `plans.entitlements.v1`, so the mail waits in the outbox while `PAYRUDDER_KAFKA_BROKERS` is unset). The notice, the event and the fact are in the same transaction: all three or none.
+- **Idempotency.** Migration `00057`: `subscription_trial_notices (tenant_id, customer_id, trial_ends_at, subscription_id, notified_at)`, primary key `(tenant_id, customer_id, trial_ends_at)`, forced RLS, `plans_app` SELECT and INSERT, `plans_system` SELECT (the list) and DELETE (the sandbox reset). The insert is `ON CONFLICT DO NOTHING` and comes after the row lock, so a second pass, or a second replica, finds the notice and does nothing; a replica that loses the race waits on the lock and then also finds it. The key is the customer and the **end** of the trial, not the subscription: a plan change during a trial makes a new subscription with the same trial end and is not reminded again; a trial that is extended or started afresh has another end and is reminded again.
+- A trial that is already over when the job comes (it was down) is not reminded; a paused, cancelled, scheduled-to-end or provider-run trial is not either.
+- `subscription_trial_notices` is customer-side history (it has a foreign key to `customers`), so a **sandbox reset deletes it** with the subscriptions (`internal/sandbox`, `Tables`, `ResetTrialNotices`), unlike configuration such as `tenant_mail_integrations`, which is kept.
+- The `TrialWillEnd` fact (`proto/payrudder/events/v1/trial_will_end.proto`): `event_id` is `uuidv5(tenant|customer|trial_end)`, so the notifier's dedup absorbs a repeated publish. notifier turns it into the mail (`trial_will_end.v1`, [workers](workers.md#notifier)).

@@ -100,6 +100,10 @@ CREATE TABLE api_keys (
 CREATE INDEX ON api_keys (tenant_id);
 -- phase 53: a live tenant's own e-mail provider (Nafru Email), one row per tenant, forced RLS. The API key is sealed (secretbox, AAD "mail-integration:<tenant>").
 CREATE TABLE tenant_mail_integrations (tenant_id uuid PRIMARY KEY, provider text, base_url text, api_key_enc bytea, key_hint text, from_address text, checked_at timestamptz, check_problem text);
+-- the trial-ending reminder's "already reminded" marker, forced RLS. Keyed by the customer and the end of the trial, so a plan change that keeps the end does not remind again
+-- and an extended trial does. Customer-side history: a sandbox reset deletes it.
+CREATE TABLE subscription_trial_notices (tenant_id uuid NOT NULL, customer_id uuid NOT NULL, trial_ends_at timestamptz NOT NULL, subscription_id uuid NOT NULL, notified_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, customer_id, trial_ends_at), FOREIGN KEY (tenant_id, customer_id) REFERENCES customers (tenant_id, id));
 
 CREATE TABLE customers (
   tenant_id    uuid NOT NULL,

@@ -21,6 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/trials"
 	"github.com/0furkancolak/payrudder/services/notifier/migrations"
 )
 
@@ -39,10 +40,12 @@ type Config struct {
 	SendingStale  time.Duration `env:"NOTIFIER_SENDING_STALE"`
 	MailSwitchTTL time.Duration `env:"NOTIFIER_MAIL_SWITCH_TTL"`
 	// MailAllowPrivate lets a tenant's own e-mail provider be http:// and on a private address. For development and tests; never in production.
-	MailAllowPrivate bool          `env:"NOTIFIER_MAIL_ALLOW_PRIVATE"`
-	Group            string        `env:"PAYRUDDER_CONSUMER_GROUP"`
-	DLQTopic         string        `env:"PAYRUDDER_DLQ_TOPIC"`
-	SessionTimeout   time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
+	MailAllowPrivate bool   `env:"NOTIFIER_MAIL_ALLOW_PRIVATE"`
+	Group            string `env:"PAYRUDDER_CONSUMER_GROUP"`
+	DLQTopic         string `env:"PAYRUDDER_DLQ_TOPIC"`
+	// TrialDLQTopic receives the trial-ending facts that can never be mailed; the Kafka group of that consumer is the group with "-trials" appended.
+	TrialDLQTopic  string        `env:"PAYRUDDER_TRIAL_DLQ_TOPIC"`
+	SessionTimeout time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -97,6 +100,17 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer consumer.Close()
 
+	trialGroup := cfg.Group + "-trials"
+	trialOffsets := store.Offsets{DB: pool, Group: trialGroup, Topic: trials.Topic}
+	tc := &trials.Consumer{Mailer: mailer, Plans: plansv1.NewPlansServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
+		Offsets: trialOffsets, DLQ: kafkax.DLQ{Client: producer, Topic: cfg.TrialDLQTopic, Consumer: trialGroup}, Log: log}
+	trialConsumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: cfg.KafkaBrokers, GroupID: trialGroup, Topic: trials.Topic,
+		LoadOffsets: trialOffsets.Load, Handler: tc, MaxPollRecords: 100, Backoff: 2 * time.Second, SessionTimeout: cfg.SessionTimeout, Log: log})
+	if err != nil {
+		return err
+	}
+	defer trialConsumer.Close()
+
 	hh := rt.Health()
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
@@ -108,5 +122,6 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return w.Run(gctx)
 	})
 	g.Go(func() error { return consumer.Run(gctx) })
+	g.Go(func() error { return trialConsumer.Run(gctx) })
 	return g.Wait()
 }

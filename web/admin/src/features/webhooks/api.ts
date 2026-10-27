@@ -28,6 +28,7 @@ export const EVENT_TYPES = [
   "subscription.paused",
   "subscription.resumed",
   "subscription.moved_to_provider",
+  "subscription.trial_will_end",
   "payment_link.created",
   "payment_link.paid",
   "payment_link.expired",

@@ -495,6 +495,14 @@ type SubscriptionCoupon struct {
 	RedemptionID   *uuid.UUID
 }
 
+type SubscriptionTrialNotice struct {
+	TenantID       uuid.UUID
+	CustomerID     uuid.UUID
+	TrialEndsAt    time.Time
+	SubscriptionID uuid.UUID
+	NotifiedAt     time.Time
+}
+
 type TaxRate struct {
 	TenantID uuid.UUID
 	Country  string
