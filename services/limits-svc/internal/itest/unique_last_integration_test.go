@@ -29,6 +29,7 @@ var uniqueAndLastTests = map[string]func(*testing.T){
 	"LastIsRepairedToTheAggregatorsEvent":    testLastReconcile,
 	"LastComparesIdsBytewiseInRedis":         testLastBytewise,
 	"UniqueAndLastAgreeAfterAReplayOfTheLog": testReplayOfTheLog,
+	"LostOffsetsAreFoundWithoutTraffic":      testLostOffsetsWithoutTraffic,
 }
 
 // at builds an event of a UNIQUE or LAST meter at an offset in seconds before now (so it stays in the current month and day), with an explicit id.
@@ -271,6 +272,25 @@ func testLastReconcile(t *testing.T) {
 	q.reconcileWith(map[string]int64{month: 3}, map[string]usage.Order{month: {Micros: t2.UnixMicro(), ID: "e9"}})
 	if ttl := q.rdb.TTL(context.Background(), engine.OrderKey(month)).Val(); ttl <= 0 {
 		t.Fatalf("order key TTL %s", ttl)
+	}
+}
+
+// Redis flushed while nothing arrives: the reconciler's check finds the partitions that lost their offset key, once.
+func testLostOffsetsWithoutTraffic(t *testing.T) {
+	q := newQuotaPod(t)
+	ctx := context.Background()
+	q.apply(q.at(uuid.New(), uuid.New(), "users", "u0", 100, 1, "v0"))
+	if got := q.applier.LostOffsets(ctx, []int32{0}); len(got) != 0 {
+		t.Fatalf("lost before any flush = %v", got)
+	}
+	if err := q.rdb.FlushAll(ctx).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if got := q.applier.LostOffsets(ctx, []int32{0}); len(got) != 1 || got[0] != 0 {
+		t.Fatalf("lost after the flush = %v, want [0]", got)
+	}
+	if got := q.applier.LostOffsets(ctx, []int32{0}); len(got) != 0 {
+		t.Fatalf("reported twice: %v", got)
 	}
 }
 

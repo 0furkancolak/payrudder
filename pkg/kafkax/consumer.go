@@ -224,15 +224,25 @@ func (c *Consumer) logBatchFailure(ctx context.Context, p kgo.FetchTopicPartitio
 
 // rewind seeks the partition back to its database offset and pauses it for Backoff.
 func (c *Consumer) rewind(ctx context.Context, p kgo.FetchTopicPartition) {
-	next := p.Records[0].Offset
-	if saved, err := c.cfg.LoadOffsets(ctx, p.Topic, []int32{p.Partition}); err == nil {
-		if n, ok := saved[p.Partition]; ok {
+	c.seekToSaved(ctx, p.Topic, p.Partition, p.Records[0].Offset)
+}
+
+// Rewind seeks a partition of the consumer's topic back to the offset LoadOffsets holds now, for a store that was lost while nothing was being fetched
+// for it (no batch arrives to fail and trigger the rewind).
+func (c *Consumer) Rewind(ctx context.Context, partition int32) {
+	c.seekToSaved(ctx, c.cfg.Topic, partition, 0)
+}
+
+func (c *Consumer) seekToSaved(ctx context.Context, topic string, partition int32, fallback int64) {
+	next := fallback
+	if saved, err := c.cfg.LoadOffsets(ctx, topic, []int32{partition}); err == nil {
+		if n, ok := saved[partition]; ok {
 			next = n
 		}
 	}
-	c.cl.SetOffsets(map[string]map[int32]kgo.EpochOffset{p.Topic: {p.Partition: {Epoch: -1, Offset: next}}})
-	c.cl.PauseFetchPartitions(map[string][]int32{p.Topic: {p.Partition}})
+	c.cl.SetOffsets(map[string]map[int32]kgo.EpochOffset{topic: {partition: {Epoch: -1, Offset: next}}})
+	c.cl.PauseFetchPartitions(map[string][]int32{topic: {partition}})
 	time.AfterFunc(c.cfg.Backoff, func() {
-		c.cl.ResumeFetchPartitions(map[string][]int32{p.Topic: {p.Partition}})
+		c.cl.ResumeFetchPartitions(map[string][]int32{topic: {partition}})
 	})
 }

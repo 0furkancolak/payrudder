@@ -166,6 +166,24 @@ func (a *Applier) LoadOffsets(ctx context.Context, _ string, partitions []int32)
 	return out, nil
 }
 
+// LostOffsets returns the partitions among owned whose offset key is gone from Redis although this pod applied records to them: Redis lost its data
+// while no batch was arriving to notice it. They are forgotten here, so the caller replays them from the log.
+func (a *Applier) LostOffsets(ctx context.Context, owned []int32) []int32 {
+	var lost []int32
+	for _, p := range owned {
+		ps := a.part(p)
+		ps.mu.Lock()
+		if ps.expect > 0 {
+			if n, err := a.cfg.Redis.Exists(ctx, OffsetKey(p)).Result(); err == nil && n == 0 {
+				ps.expect = 0
+				lost = append(lost, p)
+			}
+		}
+		ps.mu.Unlock()
+	}
+	return lost
+}
+
 // Apply applies the records of one partition, in order, serving any reconciliation checkpoint that falls inside them.
 func (a *Applier) Apply(ctx context.Context, p int32, recs []*kgo.Record) error {
 	if len(recs) == 0 {
