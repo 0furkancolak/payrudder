@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/0furkancolak/payrudder/pkg/apikey"
 )
 
 // TestOpenAPIMatchesRouteTable is the contract test: every route the gateway serves is documented in
@@ -43,5 +45,29 @@ func TestOpenAPIMatchesRouteTable(t *testing.T) {
 		if !slices.Contains(served, r) {
 			t.Errorf("operation %s is documented but not served", r)
 		}
+	}
+}
+
+// The roles and permissions the API documents are the ones the code enforces, in the same order.
+func TestOpenAPIKeyVocabularyMatchesTheCode(t *testing.T) {
+	raw, err := os.ReadFile("../../../../api/openapi/v1.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var spec struct {
+		Components struct {
+			Schemas map[string]struct {
+				Enum []string `yaml:"enum"`
+			} `yaml:"schemas"`
+		} `yaml:"components"`
+	}
+	if err := yaml.Unmarshal(raw, &spec); err != nil {
+		t.Fatal(err)
+	}
+	if got := spec.Components.Schemas["ApiKeyPermission"].Enum; !slices.Equal(got, apikey.Permissions) {
+		t.Errorf("ApiKeyPermission documents %v, the code enforces %v", got, apikey.Permissions)
+	}
+	if got := spec.Components.Schemas["ApiKeyRole"].Enum; !slices.Equal(got, apikey.Roles) {
+		t.Errorf("ApiKeyRole documents %v, the code has %v", got, apikey.Roles)
 	}
 }

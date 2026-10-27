@@ -42,6 +42,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) {
 	plansSrv := newPlans(d.AppPool)
 	plansv1.RegisterPlansServiceServer(srv, plansSrv)
 	plansv1.RegisterWebhookServiceServer(srv, newWebhooks(plansSrv, d.Box, d.WebhookAllowPrivate))
+	plansv1.RegisterMailIntegrationServiceServer(srv, newMailIntegration(plansSrv, d.Box, d.WebhookAllowPrivate))
 	plansv1.RegisterAffiliateServiceServer(srv, newAffiliates(plansSrv))
 	plansv1.RegisterAffiliatePublicServiceServer(srv, newAffiliatesPublic(d.SystemPool, d.Log))
 	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.SystemPool))

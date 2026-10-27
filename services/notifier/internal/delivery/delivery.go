@@ -29,6 +29,9 @@ type Mailer struct {
 	Notes   store.Notifications
 	// Switch, when set, is asked before a send whether the tenant has the mail's category on (see Permitted).
 	Switch Switch
+	// Providers, when set, is asked before a live send whether the tenant connected its own e-mail provider; its mail then goes through it, from its own
+	// address. Sandbox mail never does (ADR 0011).
+	Providers Providers
 }
 
 // Delivery is one email to send.
@@ -40,6 +43,8 @@ type Delivery struct {
 	// Kind is what asked for it ("command" or "limit").
 	Kind     string
 	Template string
+	// TenantID is the tenant the mail is sent for; uuid.Nil when there is none (no provider lookup then).
+	TenantID uuid.UUID
 	To       string
 	Data     map[string]string
 	// Sandbox sends through the sandbox sink, with a marked subject.
@@ -63,12 +68,29 @@ func (m *Mailer) Deliver(ctx context.Context, d Delivery) (string, error) {
 	case store.InFlight:
 		return "", ErrInFlight
 	}
-	sender := m.Default
+	sender, from := m.Default, m.From
 	if d.Sandbox && m.Sandbox != nil {
 		sender = m.Sandbox
 	}
-	mid, err := sender.Send(ctx, mailx.Message{From: m.From, To: d.To, Subject: msg.Subject, HTML: msg.HTML, Text: msg.Text, ID: d.Key})
+	if !d.Sandbox && m.Providers != nil && d.TenantID != uuid.Nil {
+		p, perr := m.Providers.For(ctx, d.TenantID)
+		if perr != nil {
+			// Not knowing the tenant's choice is not a reason to send through the other sender: the claim is released and the mail retried.
+			m.release(ctx, d.Key)
+			return "", perr
+		}
+		if p != nil {
+			sender, from = p.Sender, p.From
+		}
+	}
+	mid, err := sender.Send(ctx, mailx.Message{From: from, To: d.To, Subject: msg.Subject, HTML: msg.HTML, Text: msg.Text, ID: d.Key})
 	if err != nil {
+		var perm *mailx.PermanentError
+		if errors.As(err, &perm) {
+			// The tenant's provider refused it for good (a wrong key, an unverified sender): retrying cannot change that, so it ends here with the reason.
+			m.release(ctx, d.Key)
+			return "", fmt.Errorf("%w: %w", workerx.ErrPoison, err)
+		}
 		var ns *mailx.NotSentError
 		if errors.As(err, &ns) {
 			if rerr := m.Notes.Release(ctx, d.Key); rerr != nil {
@@ -81,4 +103,10 @@ func (m *Mailer) Deliver(ctx context.Context, d Delivery) (string, error) {
 		return "", err
 	}
 	return mid, nil
+}
+
+func (m *Mailer) release(ctx context.Context, key string) {
+	if err := m.Notes.Release(ctx, key); err != nil {
+		slog.WarnContext(ctx, "claim of an unsent email not released, it stays SENDING until it goes stale", "key", key, "error", err)
+	}
 }

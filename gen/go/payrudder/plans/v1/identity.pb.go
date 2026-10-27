@@ -1674,8 +1674,11 @@ type CreateMyApiKeyRequest struct {
 	UserId      string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	AppId       string                 `protobuf:"bytes,2,opt,name=app_id,json=appId,proto3" json:"app_id,omitempty"`
 	Environment Environment            `protobuf:"varint,3,opt,name=environment,proto3,enum=payrudder.plans.v1.Environment" json:"environment,omitempty"`
-	// Unset is FULL.
-	Scope         ApiKey_Scope `protobuf:"varint,4,opt,name=scope,proto3,enum=payrudder.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
+	// The older way to choose a role; use role and permissions.
+	Scope ApiKey_Scope `protobuf:"varint,4,opt,name=scope,proto3,enum=payrudder.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
+	// admin (default), billing, read_only, ingest_only or custom.
+	Role          string   `protobuf:"bytes,5,opt,name=role,proto3" json:"role,omitempty"`
+	Permissions   []string `protobuf:"bytes,6,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1736,6 +1739,20 @@ func (x *CreateMyApiKeyRequest) GetScope() ApiKey_Scope {
 		return x.Scope
 	}
 	return ApiKey_SCOPE_UNSPECIFIED
+}
+
+func (x *CreateMyApiKeyRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *CreateMyApiKeyRequest) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
 }
 
 type CreateMyApiKeyResponse struct {
@@ -5050,12 +5067,14 @@ const file_payrudder_plans_v1_identity_proto_rawDesc = "" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\"a\n" +
 	"\x17ResolveMyTenantResponse\x122\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\x12\x12\n" +
-	"\x04role\x18\x02 \x01(\tR\x04role\"\xc2\x01\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\"\xf8\x01\n" +
 	"\x15CreateMyApiKeyRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x15\n" +
 	"\x06app_id\x18\x02 \x01(\tR\x05appId\x12A\n" +
 	"\venvironment\x18\x03 \x01(\x0e2\x1f.payrudder.plans.v1.EnvironmentR\venvironment\x126\n" +
-	"\x05scope\x18\x04 \x01(\x0e2 .payrudder.plans.v1.ApiKey.ScopeR\x05scope\"k\n" +
+	"\x05scope\x18\x04 \x01(\x0e2 .payrudder.plans.v1.ApiKey.ScopeR\x05scope\x12\x12\n" +
+	"\x04role\x18\x05 \x01(\tR\x04role\x12 \n" +
+	"\vpermissions\x18\x06 \x03(\tR\vpermissions\"k\n" +
 	"\x16CreateMyApiKeyResponse\x123\n" +
 	"\aapi_key\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.ApiKeyR\x06apiKey\x12\x1c\n" +
 	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"F\n" +

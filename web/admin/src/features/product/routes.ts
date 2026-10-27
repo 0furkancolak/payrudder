@@ -75,10 +75,20 @@ export function personRoutes(parent: AnyRoute) {
   // Going live and the sandbox's own tools (phase 45): the checklist and promote, and reset and scenarios.
   const goLive = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/go-live", component: lazyPage(() => import("./GoLivePage.vue")), validateSearch: envSearch });
   const sandbox = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/sandbox", component: lazyPage(() => import("./SandboxPage.vue")), validateSearch: envSearch });
-  // Payment providers (connect, test, disconnect): one screen per app and one for the organisation, which can connect a provider on all of its apps.
-  const providerScreen = lazyPage(() => import("@/features/providers/ConnectionsPage.vue"));
-  const appProviders = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/providers", component: providerScreen, validateSearch: envSearch });
-  const orgProviders = createRoute({ getParentRoute: () => signedIn, path: "/app/providers", component: providerScreen });
+  // Integrations (phase 53): the payment providers, the e-invoice integrator and the e-mail provider (connect, test, disconnect), one screen per app and one
+  // for the organisation, which can connect a payment provider on all of its apps. They replaced the "Payment providers" screen: its old addresses lead here.
+  const integrationScreen = lazyPage(() => import("@/features/integrations/IntegrationsPage.vue"));
+  const appIntegrations = createRoute({ getParentRoute: () => signedIn, path: "/app/apps/$appId/integrations", component: integrationScreen, validateSearch: envSearch });
+  const orgIntegrations = createRoute({ getParentRoute: () => signedIn, path: "/app/integrations", component: integrationScreen });
+  const appProviders = createRoute({
+    getParentRoute: () => signedIn,
+    path: "/app/apps/$appId/providers",
+    validateSearch: envSearch,
+    beforeLoad: ({ params, search }) => {
+      throw redirect({ to: "/app/apps/$appId/integrations", params: { appId: (params as { appId: string }).appId }, search: search as never, replace: true });
+    },
+  });
+  const orgProviders = createRoute({ getParentRoute: () => signedIn, path: "/app/providers", beforeLoad: () => { throw redirect({ to: "/app/integrations", replace: true }); } });
   const members = createRoute({ getParentRoute: () => signedIn, path: "/app/members", component: lazyPage(() => import("./MembersPage.vue")) });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazyPage(() => import("./SettingsPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazyPage(() => import("./ProductTenantLayout.vue")) });
@@ -92,6 +102,8 @@ export function personRoutes(parent: AnyRoute) {
     appSettings,
     goLive,
     sandbox,
+    appIntegrations,
+    orgIntegrations,
     appProviders,
     orgProviders,
     members,

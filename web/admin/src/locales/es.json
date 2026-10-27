@@ -2440,8 +2440,8 @@
         "invalid": "{field} no es válido: {detail}"
       },
       "api_key": {
-        "bad_scope": "El alcance debe ser full, ingest o read.",
-        "tenant_not_active": "Este entorno no está activo y por eso no puede tener claves de API. Completa primero la lista de salida a producción."
+        "tenant_not_active": "Este entorno no está activo y por eso no puede tener claves de API. Completa primero la lista de salida a producción.",
+        "bad_role": "El rol debe ser administrador, facturación, solo lectura, solo enviar uso o personalizado, con permisos conocidos."
       },
       "change": {
         "bad_proration": "El cargo de este cambio de plan no se puede calcular para este período.",
@@ -2483,6 +2483,14 @@
       "override": {
         "customer_required": "Indique para qué cliente es el límite.",
         "not_found": "Este cliente no tiene ninguna excepción en ese medidor."
+      },
+      "mail_integration": {
+        "live_only": "El sandbox envía su correo a la bandeja del sandbox. Conecta un proveedor de correo en el entorno live.",
+        "refused": "El proveedor de correo no aceptó esta clave.",
+        "unreachable": "No se pudo contactar al proveedor de correo. Revisa la dirección e inténtalo de nuevo.",
+        "not_configured": "Los proveedores de correo no están configurados en este despliegue.",
+        "not_connected": "No hay ningún proveedor de correo conectado.",
+        "seal_failed": "No se pudo guardar la clave. Inténtalo de nuevo."
       }
     },
     "common": {
@@ -2643,12 +2651,12 @@
         "quota": "Un entorno puede tener como máximo 10 claves de API activas. Revoque una primero.",
         "already_rotating": "Esta clave ya se rotó y terminará pronto. Revócala o espera a que termine.",
         "bad_overlap": "El solapamiento debe estar entre 0 horas y 7 días.",
-        "bad_scope": "El alcance debe ser full, ingest o read.",
         "not_active": "Esta clave de API está revocada.",
         "invalid": "La clave de API no es válida.",
         "missing": "Envía tu clave de API como token Bearer en el encabezado Authorization.",
         "sandbox_only": "Este endpoint es solo para claves sandbox (qk_test_).",
-        "prefix_unavailable": "No se pudo asignar un prefijo de clave único. Inténtalo de nuevo."
+        "prefix_unavailable": "No se pudo asignar un prefijo de clave único. Inténtalo de nuevo.",
+        "bad_role": "El rol debe ser administrador, facturación, solo lectura, solo enviar uso o personalizado, con permisos conocidos."
       },
       "app": {
         "not_found": "Esta aplicación no existe o no es suya.",
@@ -2739,8 +2747,8 @@
         "unreadable_body": "No se pudo leer el cuerpo de la solicitud."
       },
       "auth": {
-        "scope_denied": "El alcance de esta clave de API no permite esta solicitud. Usa una clave con un alcance mayor.",
-        "tenant_not_active": "Este entorno está suspendido o aún no está activo. Completa la lista de salida a producción o contacta con soporte."
+        "tenant_not_active": "Este entorno está suspendido o aún no está activo. Completa la lista de salida a producción o contacta con soporte.",
+        "permission_denied": "Esta clave de API no tiene un permiso que necesita esta solicitud. Usa una clave con el rol o el permiso indicado."
       },
       "assets": {
         "bad_invoice_logo": "El logotipo de factura debe ser una subida terminada del tipo logotipo de factura."
@@ -3139,14 +3147,13 @@
     "keys": {
       "title": "Claves de API",
       "intro": "Su servidor usa una clave para hablar con Payrudder. Las claves de sandbox solo tocan datos de prueba.",
-      "newSandbox": "Clave de sandbox",
-      "newLive": "Clave de producción",
+      "newSandbox": "Nueva clave de sandbox",
+      "newLive": "Nueva clave live",
       "created": "Creada el {date}",
       "active": "Activa",
       "revoked": "Revocada",
       "revoke": "Revocar",
       "revokeNamed": "Revocar la clave {key}",
-      "empty": "Aún no hay claves. Cree una para empezar a enviar uso.",
       "revealTitle": "Copie su nueva clave ahora",
       "revealBody": "Esta es la única vez que se muestra la clave completa. Guárdela en un lugar seguro; si se pierde, revóquela y cree otra.",
       "copy": "Copiar",
@@ -3156,17 +3163,6 @@
       "revokeTitle": "¿Revocar esta clave?",
       "revokeBody": "Todo lo que aún la use dejará de funcionar de inmediato. No se puede deshacer.",
       "needsVerified": "Confirma tu dirección de correo para crear claves de producción.",
-      "scope": "Alcance de una clave nueva",
-      "scopes": {
-        "full": "Acceso total",
-        "ingest": "Solo enviar uso",
-        "read": "Solo lectura"
-      },
-      "scopeHelp": {
-        "full": "Toda la API.",
-        "ingest": "Solo puede enviar eventos de uso. Segura en un servicio que informa del uso.",
-        "read": "Solo puede leer. Segura para paneles e informes."
-      },
       "liveInactive": "Las claves live se pueden crear cuando el entorno live esté activo.",
       "rotate": "Rotar",
       "rotateNamed": "Rotar la clave {key}",
@@ -3179,10 +3175,68 @@
       "neverUsed": "nunca usada",
       "ends": "Deja de funcionar el {date}",
       "filterEnv": "Entorno",
-      "allEnvs": "Todos los entornos",
       "filterStatus": "Estado",
       "allStatuses": "Todos los estados",
-      "scopeHead": "Alcance"
+      "envNote": {
+        "sandbox": "Las claves de sandbox solo tocan datos de prueba. Se crean aquí, en la vista sandbox; las claves live se crean en la vista live.",
+        "live": "Las claves live trabajan con datos reales y mueven dinero real. Solo se crean aquí, en la vista live, cuando el entorno live está activo."
+      },
+      "toSandbox": "Las claves de sandbox están en la vista sandbox",
+      "toLive": "Las claves live están en la vista live",
+      "role": "Rol",
+      "allRoles": "Todos los roles",
+      "roles": {
+        "admin": "Administrador",
+        "billing": "Facturación",
+        "read_only": "Solo lectura",
+        "ingest_only": "Solo enviar uso",
+        "custom": "Personalizado"
+      },
+      "roleHelp": {
+        "admin": "Todos los permisos: toda la API. Guárdala solo en tu propio servidor.",
+        "billing": "Clientes, suscripciones, créditos y facturas, más lectura del catálogo y del uso. Para un servicio que factura.",
+        "read_only": "Solo puede leer. Seguro para paneles e informes.",
+        "ingest_only": "Solo puede enviar eventos de uso. Seguro en un servicio que informa el uso.",
+        "custom": "Elige exactamente lo que puede hacer la clave."
+      },
+      "permissions": "Permisos",
+      "permissionsFixed": "Este rol tiene los permisos marcados abajo. Elige Personalizado para elegirlos uno por uno.",
+      "permissionsCustom": "Marca lo que puede hacer esta clave. Una solicitud que necesite otra cosa se rechaza con 403.",
+      "read": "Lectura",
+      "write": "Escritura",
+      "resources": {
+        "events": "Eventos de uso",
+        "customers": "Clientes",
+        "subscriptions": "Suscripciones",
+        "catalog": "Catálogo (planes, medidores, cupones)",
+        "usage": "Uso y derechos",
+        "credits": "Créditos",
+        "invoices": "Facturas y pagos",
+        "reports": "Informes",
+        "accounting": "Contabilidad",
+        "webhooks": "Webhooks",
+        "affiliates": "Afiliados",
+        "settings": "Ajustes (impuestos, enrutamiento, correo)",
+        "assets": "Archivos",
+        "sandbox": "Herramientas de sandbox"
+      },
+      "permissionCount": "{n} de {total} permisos",
+      "customNeedsOne": "Elige al menos un permiso.",
+      "create": "Crear clave",
+      "createTitleSandbox": "Nueva clave de sandbox",
+      "createTitleLive": "Nueva clave live",
+      "createBody": {
+        "sandbox": "La clave funcionará solo en el sandbox, con datos de prueba. Su secreto se muestra una vez.",
+        "live": "La clave trabajará con datos reales en el entorno live. Su secreto se muestra una vez."
+      },
+      "viewPermissions": "Ver permisos",
+      "permissionsTitle": "Qué puede hacer esta clave",
+      "allowed": "Permitido",
+      "notAllowed": "No permitido",
+      "empty": {
+        "sandbox": "Aún no hay claves de sandbox. Crea una para probar la API con datos de prueba.",
+        "live": "Aún no hay claves live. Crea una para empezar a enviar uso real."
+      }
     },
     "links": {
       "title": "Profundice",
@@ -3343,7 +3397,7 @@
       "intro": "Quién pertenece a esta organización, con qué roles, y las invitaciones que siguen abiertas."
     },
     "apiKeysPage": {
-      "intro": "Las claves que su servidor usa para llamar a Payrudder en esta aplicación. Una clave pertenece a un entorno; su secreto se muestra una sola vez."
+      "intro": "Las claves que tu servidor usa para llamar a Payrudder en esta app. Cada clave pertenece a un entorno, indicado en la clave: las claves de sandbox se crean en la vista sandbox y las claves live en la vista live."
     },
     "appSettings": {
       "intro": "Con qué se creó esta aplicación. La moneda y la zona horaria deciden cómo se calcula cada factura, por eso quedan fijas una vez creada la aplicación.",
@@ -3550,8 +3604,6 @@
       "simulateNotRetried": "El escenario está establecido, pero el pago no pudo ejecutarse de nuevo ahora ({why})."
     },
     "providers": {
-      "introApp": "Conecta y gestiona los proveedores de pago de {app}. Los clientes pagan con la cuenta live; el sandbox no necesita conexión.",
-      "introOrg": "Conecta un proveedor de pago una vez para todas tus apps, o configura una app de forma distinta al resto.",
       "connect": "Conectar",
       "manage": "Gestionar",
       "simulator": "Simulador integrado",
@@ -3566,7 +3618,7 @@
       "notConnectedLine": "No conectado en modo live.",
       "noLiveApps": "Ninguna app tiene aún un entorno live.",
       "orgLine": "Conectado en {connected} de {total} apps",
-      "openScreen": "Proveedores de pago",
+      "openScreen": "Abrir todas las integraciones",
       "doneAll": "{provider} conectado en {count} app(s).",
       "donePartial": "{provider}: {ok} app(s) conectadas, {failed} con error.",
       "appsTitle": "Apps",
@@ -3616,6 +3668,131 @@
           "webhook_secret": "En Developer tools, Notifications: crea un destino para Payrudder y copia su clave secreta.",
           "usage_product_id": "El id del producto que Paddle usa para los cargos por uso. En el Catalog, abre el producto y copia su id, que empieza por pro_."
         }
+      }
+    },
+    "integrations": {
+      "introApp": "Conecta los proveedores de pago, el integrador de facturación electrónica y el proveedor de correo de {app}. Los clientes se atienden por las conexiones live; el sandbox no necesita ninguna.",
+      "introOrg": "Conecta un proveedor de pago una vez para todas tus apps, o configura una app de otra forma. La facturación electrónica y el correo se configuran por app.",
+      "groups": {
+        "payments": {
+          "title": "Pagos",
+          "intro": "Cómo pagan tus clientes. Conecta un proveedor con tus claves live."
+        },
+        "einvoice": {
+          "title": "Factura electrónica",
+          "intro": "El integrador que convierte tus facturas en documentos electrónicos legales."
+        },
+        "email": {
+          "title": "Correo",
+          "intro": "Lo que envía el correo que reciben tus clientes: facturas, recibos y alertas."
+        }
+      },
+      "names": {
+        "banktransfer": "Transferencia bancaria",
+        "simulator": "Simulador integrado",
+        "webhook": "Integrador propio",
+        "einvoiceSimulator": "Simulador integrado",
+        "payrudderMail": "Correo de Payrudder"
+      },
+      "about": {
+        "iyzico": "Tarjetas turcas y métodos locales",
+        "paddle": "Tarjetas de todo el mundo, con suscripciones gestionadas por el proveedor",
+        "banktransfer": "Pago por transferencia a tu propia cuenta bancaria",
+        "simulator": "Pagos simulados para el sandbox, con escenarios",
+        "nilvera": "Integrador de e-fatura y e-arşiv de Turquía",
+        "webhook": "Envía cada documento a la dirección de tu propio integrador",
+        "einvoiceSimulator": "Documentos electrónicos simulados para el sandbox",
+        "payrudderMail": "Correo enviado por Payrudder en tu nombre",
+        "nafru": "Envía con tu propia cuenta de Nafru Email"
+      },
+      "state": {
+        "none": "No conectado",
+        "working": "Conectado y funcionando",
+        "problem": "Problema",
+        "always": "Siempre activo",
+        "unused": "Sin uso"
+      },
+      "lines": {
+        "simulatorPayments": "Lo usa el sandbox. Nada que conectar.",
+        "simulatorEInvoice": "Lo usa el sandbox. Nada que conectar.",
+        "perApp": "Se configura en cada app.",
+        "mailBuiltIn": "Las facturas, recibos y alertas salen desde Payrudder.",
+        "mailUnused": "Tu propio proveedor envía el correo live.",
+        "mailOwn": "El correo live sale desde {from}."
+      },
+      "sandbox": {
+        "payments": "Simulador integrado",
+        "einvoice": "Simulador integrado",
+        "email": "Bandeja del sandbox"
+      },
+      "settings": "Ajustes",
+      "website": "Sitio web",
+      "open": "Abrir",
+      "perAppNote": "La facturación electrónica y el correo se configuran en cada app. Abre una app abajo.",
+      "appsIntro": "Haz clic en un estado de pago para conectar, reemplazar o quitar un proveedor solo en esa app, o abre la app para la facturación electrónica y el correo.",
+      "connectTitle": "Conectar {name}",
+      "manageTitle": "Conexión de {name}",
+      "ownerOnly": "Solo un propietario de la cuenta puede cambiar esta conexión.",
+      "saved": "{name} está conectado.",
+      "replaceNote": "Existe una conexión. Escribe credenciales nuevas solo si quieres reemplazarla; las actuales nunca se muestran.",
+      "secretsOnce": "Las credenciales se muestran una vez y no de nuevo tras guardar.",
+      "optional": "opcional",
+      "test": "Probar conexión",
+      "testing": "Probando...",
+      "checking": "Comprobando...",
+      "save": "Guardar conexión",
+      "disconnect": "Desconectar",
+      "testFailed": {
+        "refused": "La otra parte no acepta estas credenciales ahora.",
+        "unreachable": "No se pudo contactar a la otra parte. Inténtalo de nuevo en un momento."
+      },
+      "einvoice": {
+        "intro": {
+          "nilvera": "Introduce tu clave de API de Nilvera. Tus facturas se convierten en documentos e-fatura y e-arşiv enviados con tu cuenta de Nilvera.",
+          "webhook": "Cada documento electrónico se envía, firmado, a la dirección de tu propio integrador. Introduce su dirección y el secreto con el que comprueba la firma."
+        },
+        "envNote": "Esto conecta el entorno live. El sandbox sigue usando el simulador integrado.",
+        "replaces": "Un entorno tiene un solo integrador. Conectar este reemplaza el conectado ahora: {current}.",
+        "mode": "Modo",
+        "modes": {
+          "test": "Modo de prueba",
+          "production": "Producción"
+        },
+        "modeLine": "Conectado en modo: {mode}.",
+        "fields": {
+          "api_key": "Clave de API",
+          "base_url": "URL base",
+          "url": "Dirección del integrador",
+          "secret": "Secreto de firma"
+        },
+        "testOk": {
+          "credentials": "El integrador acepta estas credenciales.",
+          "configuration": "Los ajustes son válidos. Solo un documento real prueba lo demás."
+        },
+        "confirmRemove": "¿Desconectar {name}? Las facturas nuevas del entorno live ya no se envían como documentos electrónicos."
+      },
+      "mail": {
+        "builtInTitle": "Correo de Payrudder",
+        "builtInIntro": "Payrudder envía el correo de tus clientes. Elige qué tipos se envían.",
+        "unusedNote": "Tu propio proveedor está conectado, así que el correo live pasa por él. Estos interruptores siguen decidiendo qué tipos se envían.",
+        "nafruIntro": "Envía el correo de tus clientes con tu propia cuenta de Nafru Email, desde tu propia dirección. Introduce la dirección de la cuenta y su clave de API.",
+        "envNote": "Esto conecta el entorno live. El correo del sandbox siempre va a la bandeja del sandbox.",
+        "aboutNafru": "Acerca de Nafru Email",
+        "keyLine": "Clave que termina en {hint}, enviado desde {from}.",
+        "testOk": "Se envió un correo de prueba a {to} a través de tu proveedor.",
+        "testTo": "Enviar un correo de prueba a",
+        "sendTest": "Enviar correo de prueba",
+        "fields": {
+          "base_url": "Dirección de Nafru Email",
+          "api_key": "Clave de API",
+          "from": "Remitente"
+        },
+        "help": {
+          "base_url": "La dirección de la API de Nafru Email de tu cuenta, que empieza por https.",
+          "from": "Un nombre y una dirección en un dominio verificado en Nafru Email."
+        },
+        "checkAndConnect": "Comprobar y conectar",
+        "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder."
       }
     }
   },
@@ -3677,8 +3854,8 @@
       "partner": "Portal de socios",
       "usage": "Uso",
       "coupons": "Cupones",
-      "paymentProviders": "Proveedores de pago",
-      "meters": "Medidores"
+      "meters": "Medidores",
+      "integrations": "Integraciones"
     },
     "noApps": "Aún no hay aplicaciones"
   },

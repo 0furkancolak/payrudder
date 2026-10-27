@@ -169,17 +169,18 @@ type AffiliateReversal struct {
 }
 
 type ApiKey struct {
-	ID         uuid.UUID
-	TenantID   uuid.UUID
-	Prefix     string
-	KeyHash    []byte
-	Env        string
-	Status     string
-	CreatedAt  time.Time
-	RevokedAt  *time.Time
-	Scope      string
-	LastUsedAt *time.Time
-	ExpiresAt  *time.Time
+	ID          uuid.UUID
+	TenantID    uuid.UUID
+	Prefix      string
+	KeyHash     []byte
+	Env         string
+	Status      string
+	CreatedAt   time.Time
+	RevokedAt   *time.Time
+	LastUsedAt  *time.Time
+	ExpiresAt   *time.Time
+	Role        string
+	Permissions []string
 }
 
 type App struct {
@@ -520,6 +521,19 @@ type Tenant struct {
 	ActivatedAt        *time.Time
 	TermsAcceptedAt    *time.Time
 	TermsAcceptedBy    *uuid.UUID
+}
+
+type TenantMailIntegration struct {
+	TenantID     uuid.UUID
+	Provider     string
+	BaseUrl      string
+	ApiKeyEnc    []byte
+	KeyHint      string
+	FromAddress  string
+	CheckedAt    *time.Time
+	CheckProblem string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 type TenantMailSetting struct {

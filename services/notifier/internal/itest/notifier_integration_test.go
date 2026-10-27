@@ -6,11 +6,14 @@ package itest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -77,6 +80,16 @@ type offSwitch map[string]bool
 
 func (o offSwitch) Enabled(_ context.Context, _ uuid.UUID, category string) (bool, error) {
 	return !o[category], nil
+}
+
+// staticProviders gives the tenants in it their own e-mail provider.
+type staticProviders map[uuid.UUID]delivery.Provider
+
+func (s staticProviders) For(_ context.Context, id uuid.UUID) (*delivery.Provider, error) {
+	if p, ok := s[id]; ok {
+		return &p, nil
+	}
+	return nil, nil
 }
 
 type fakePlans struct{ email string }
@@ -198,6 +211,71 @@ func TestNotifier(t *testing.T) {
 		got := waitMail(t, mp.APIURL, to, 1)
 		if len(got) != 1 || got[0].Subject != "Payment failed for invoice INV-2026-000009" {
 			t.Fatalf("mailbox = %+v, want only the payment-failed mail", got)
+		}
+	})
+
+	t.Run("TenantsOwnProviderSendsLiveMailAndNeverSandboxMail", func(t *testing.T) {
+		var mu sync.Mutex
+		var got []map[string]any
+		var auth, idem []string
+		nafru := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			mu.Lock()
+			got, auth, idem = append(got, body), append(auth, r.Header.Get("Authorization")), append(idem, r.Header.Get("Idempotency-Key"))
+			mu.Unlock()
+			_, _ = w.Write([]byte(`{"id":"nafru-1"}`))
+		}))
+		defer nafru.Close()
+		tenantID := uuid.New()
+		m := &delivery.Mailer{Default: mailx.SMTP{Addr: mp.SMTPAddr}, Sandbox: mailx.SMTP{Addr: mp.SMTPAddr}, From: "Payrudder <billing@payrudder.local>", Notes: notes,
+			Providers: staticProviders{tenantID: {Sender: mailx.Resend{BaseURL: nafru.URL, APIKey: "nk_live_secret"}, From: "Acme <billing@acme.example>"}}}
+		to := "own-provider-" + uuid.NewString()[:8] + "@example.com"
+		data := map[string]string{"invoice_number": "INV-2026-000011"}
+		send := func(tenant uuid.UUID, sandbox bool) string {
+			mid, err := m.Deliver(context.Background(), delivery.Delivery{Key: uuid.NewString(), Kind: "command", Template: "payment_failed.v1", To: to, Data: data, TenantID: tenant, Sandbox: sandbox})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return mid
+		}
+		if mid := send(tenantID, false); mid != "nafru-1" {
+			t.Fatalf("message id %q: the live mail of a tenant with its own provider goes through the provider", mid)
+		}
+		mu.Lock()
+		if len(got) != 1 || got[0]["from"] != "Acme <billing@acme.example>" || got[0]["subject"] != "Payment failed for invoice INV-2026-000011" || auth[0] != "Bearer nk_live_secret" || idem[0] == "" {
+			t.Fatalf("provider saw %v %v %v", got, auth, idem)
+		}
+		mu.Unlock()
+		if other := mailbox(t, mp.APIURL, to); len(other) != 0 {
+			t.Fatalf("the mail also went through the built-in sender: %+v", other)
+		}
+		// Another tenant, and the same tenant's sandbox, keep the built-in senders.
+		send(uuid.New(), false)
+		send(tenantID, true)
+		time.Sleep(time.Second)
+		if len(waitMail(t, mp.APIURL, to, 2)) != 2 {
+			t.Fatalf("mailbox = %+v, want the other tenant's mail and the sandbox mail", mailbox(t, mp.APIURL, to))
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if len(got) != 1 {
+			t.Fatalf("the provider was used %d times, want 1", len(got))
+		}
+	})
+
+	t.Run("ProviderRefusalIsPoisonAndFreesTheClaim", func(t *testing.T) {
+		refuse := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"message":"domain not verified"}`))
+		}))
+		defer refuse.Close()
+		tenantID := uuid.New()
+		m := &delivery.Mailer{Default: mailx.SMTP{Addr: mp.SMTPAddr}, From: "q@payrudder.local", Notes: notes,
+			Providers: staticProviders{tenantID: {Sender: mailx.Resend{BaseURL: refuse.URL, APIKey: "k"}, From: "a@b.example"}}}
+		_, err := m.Deliver(context.Background(), delivery.Delivery{Key: uuid.NewString(), Kind: "command", Template: "payment_failed.v1", To: "x@example.com", Data: map[string]string{"invoice_number": "1"}, TenantID: tenantID})
+		if !errors.Is(err, workerx.ErrPoison) {
+			t.Fatalf("a refusal that retrying cannot change must not be retried: %v", err)
 		}
 	})
 

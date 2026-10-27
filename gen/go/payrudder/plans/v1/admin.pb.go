@@ -734,8 +734,12 @@ func (x *UpdateTenantSettingsResponse) GetTenant() *Tenant {
 type CreateApiKeyRequest struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	// Unset is FULL.
-	Scope         ApiKey_Scope `protobuf:"varint,2,opt,name=scope,proto3,enum=payrudder.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
+	// The older way to choose a role; use role and permissions. Unset, with no role either, is admin.
+	Scope ApiKey_Scope `protobuf:"varint,2,opt,name=scope,proto3,enum=payrudder.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
+	// admin (default), billing, read_only, ingest_only or custom.
+	Role string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
+	// For custom: the permissions. For a fixed role: optional, and a subset of the role's own.
+	Permissions   []string `protobuf:"bytes,4,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -782,6 +786,20 @@ func (x *CreateApiKeyRequest) GetScope() ApiKey_Scope {
 		return x.Scope
 	}
 	return ApiKey_SCOPE_UNSPECIFIED
+}
+
+func (x *CreateApiKeyRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *CreateApiKeyRequest) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
+	}
+	return nil
 }
 
 type CreateApiKeyResponse struct {
@@ -982,7 +1000,10 @@ type ResolveApiKeyResponse struct {
 	TenantStatus TenantStatus `protobuf:"varint,8,opt,name=tenant_status,json=tenantStatus,proto3,enum=payrudder.plans.v1.TenantStatus" json:"tenant_status,omitempty"`
 	Scope        ApiKey_Scope `protobuf:"varint,9,opt,name=scope,proto3,enum=payrudder.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
 	// Set for a key that ends although it is not revoked (the old key of a rotation).
-	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	ExpireTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	Role       string                 `protobuf:"bytes,11,opt,name=role,proto3" json:"role,omitempty"`
+	// The permissions the gateway enforces. The role admin always lists every permission that exists.
+	Permissions   []string `protobuf:"bytes,12,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1083,6 +1104,20 @@ func (x *ResolveApiKeyResponse) GetScope() ApiKey_Scope {
 func (x *ResolveApiKeyResponse) GetExpireTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ExpireTime
+	}
+	return nil
+}
+
+func (x *ResolveApiKeyResponse) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *ResolveApiKeyResponse) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
 	}
 	return nil
 }
@@ -1327,10 +1362,12 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	" \x01(\tR\n" +
 	"eInvoiceOn\"R\n" +
 	"\x1cUpdateTenantSettingsResponse\x122\n" +
-	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\"j\n" +
+	"\x06tenant\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.TenantR\x06tenant\"\xa0\x01\n" +
 	"\x13CreateApiKeyRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x126\n" +
-	"\x05scope\x18\x02 \x01(\x0e2 .payrudder.plans.v1.ApiKey.ScopeR\x05scope\"i\n" +
+	"\x05scope\x18\x02 \x01(\x0e2 .payrudder.plans.v1.ApiKey.ScopeR\x05scope\x12\x12\n" +
+	"\x04role\x18\x03 \x01(\tR\x04role\x12 \n" +
+	"\vpermissions\x18\x04 \x03(\tR\vpermissions\"i\n" +
 	"\x14CreateApiKeyResponse\x123\n" +
 	"\aapi_key\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.ApiKeyR\x06apiKey\x12\x1c\n" +
 	"\tplaintext\x18\x02 \x01(\tR\tplaintext\"3\n" +
@@ -1340,7 +1377,7 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"\x14RevokeApiKeyResponse\x123\n" +
 	"\aapi_key\x18\x01 \x01(\v2\x1a.payrudder.plans.v1.ApiKeyR\x06apiKey\".\n" +
 	"\x14ResolveApiKeyRequest\x12\x16\n" +
-	"\x06prefix\x18\x01 \x01(\tR\x06prefix\"\xf7\x03\n" +
+	"\x06prefix\x18\x01 \x01(\tR\x06prefix\"\xad\x04\n" +
 	"\x15ResolveApiKeyResponse\x12\x1c\n" +
 	"\n" +
 	"api_key_id\x18\x01 \x01(\tR\bapiKeyId\x12\x1b\n" +
@@ -1354,7 +1391,9 @@ const file_payrudder_plans_v1_admin_proto_rawDesc = "" +
 	"\x05scope\x18\t \x01(\x0e2 .payrudder.plans.v1.ApiKey.ScopeR\x05scope\x12;\n" +
 	"\vexpire_time\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"expireTime\"2\n" +
+	"expireTime\x12\x12\n" +
+	"\x04role\x18\v \x01(\tR\x04role\x12 \n" +
+	"\vpermissions\x18\f \x03(\tR\vpermissions\"2\n" +
 	"\x12TouchApiKeyRequest\x12\x1c\n" +
 	"\n" +
 	"api_key_id\x18\x01 \x01(\tR\bapiKeyId\"\x15\n" +

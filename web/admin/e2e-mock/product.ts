@@ -102,9 +102,9 @@ export function overview(env: "live" | "sandbox" = "live", extra: Record<string,
 }
 
 export const keys = [
-  { id: "k1", tenant_id: LIVE, prefix: "abcd1234", environment: "ENVIRONMENT_LIVE", status: "STATUS_ACTIVE", create_time: "2026-10-03T09:00:00Z" },
-  { id: "k2", tenant_id: SANDBOX, prefix: "wxyz5678", environment: "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", create_time: "2026-10-03T09:05:00Z" },
-  { id: "k3", tenant_id: LIVE, prefix: "oldkey00", environment: "ENVIRONMENT_LIVE", status: "STATUS_REVOKED", create_time: "2026-09-12T09:00:00Z" },
+  { id: "k1", tenant_id: LIVE, prefix: "abcd1234", environment: "ENVIRONMENT_LIVE", status: "STATUS_ACTIVE", role: "admin", create_time: "2026-10-03T09:00:00Z" },
+  { id: "k2", tenant_id: SANDBOX, prefix: "wxyz5678", environment: "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", role: "read_only", permissions: ["customers:read", "invoices:read"], create_time: "2026-10-03T09:05:00Z" },
+  { id: "k3", tenant_id: LIVE, prefix: "oldkey00", environment: "ENVIRONMENT_LIVE", status: "STATUS_REVOKED", role: "admin", create_time: "2026-09-12T09:00:00Z" },
 ];
 
 export interface ProductState {
@@ -254,7 +254,7 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
     if (c.path === `/app/v1/apps/${APP}/api-keys` && c.method === "POST") {
       const live = c.body?.environment === "live";
       if (live && !s.verified) return { status: 403, body: { error: { code: "PERMISSION_DENIED", key: "identity.email.not_verified", message: "confirm" } } };
-      const key = { id: "k9", tenant_id: live ? LIVE : SANDBOX, prefix: "newkey99", environment: live ? "ENVIRONMENT_LIVE" : "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", create_time: "2026-10-21T10:00:00Z" };
+      const key = { id: "k9", tenant_id: live ? LIVE : SANDBOX, prefix: "newkey99", environment: live ? "ENVIRONMENT_LIVE" : "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", role: String(c.body?.role ?? "admin"), permissions: (c.body?.permissions as string[] | undefined) ?? [], create_time: "2026-10-21T10:00:00Z" };
       s.keys = [key, ...s.keys];
       return { status: 201, body: { api_key: key, plaintext: `qk_${live ? "live" : "test"}_newkey99_SECRETSECRETSECRETSECRET` } };
     }

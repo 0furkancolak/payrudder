@@ -90,13 +90,16 @@ CREATE TABLE api_keys (
   key_hash    bytea NOT NULL,                       -- sha256(secret)
   env         text NOT NULL CHECK (env IN ('live','test')),  -- must match the tenant: test ↔ sandbox, live ↔ live
   status      text NOT NULL CHECK (status IN ('active','revoked')),
-  scope       text NOT NULL DEFAULT 'full' CHECK (scope IN ('full','ingest','read')),  -- phase 45: ingest = POST /v1/events only, read = GET only
+  role        text NOT NULL DEFAULT 'admin' CHECK (role IN ('admin','billing','read_only','ingest_only','custom')),  -- phase 53 (replaced scope)
+  permissions text[] NOT NULL DEFAULT '{}',          -- resource:action, the vocabulary of pkg/apikey; the gateway enforces them; the role admin holds all
   last_used_at timestamptz,                         -- written at most once a minute
   expires_at  timestamptz,                          -- the old key of a rotation: valid until then although not revoked
   created_at  timestamptz NOT NULL DEFAULT now(),
   revoked_at  timestamptz
 );  -- a trigger refuses a key whose env disagrees with its tenant's, and a live key of a tenant that is not active
 CREATE INDEX ON api_keys (tenant_id);
+-- phase 53: a live tenant's own e-mail provider (Nafru Email), one row per tenant, forced RLS. The API key is sealed (secretbox, AAD "mail-integration:<tenant>").
+CREATE TABLE tenant_mail_integrations (tenant_id uuid PRIMARY KEY, provider text, base_url text, api_key_enc bytea, key_hint text, from_address text, checked_at timestamptz, check_problem text);
 
 CREATE TABLE customers (
   tenant_id    uuid NOT NULL,

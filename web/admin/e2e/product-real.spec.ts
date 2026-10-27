@@ -172,7 +172,8 @@ test.describe("product app, real stack", () => {
     await page.waitForURL("**/app");
     await page.goto(`/app/apps/${appId}/keys?env=sandbox`);
     const keys = page.getByRole("region", { name: "API keys" });
-    await keys.getByRole("button", { name: "Sandbox key" }).click();
+    await keys.getByRole("button", { name: "New sandbox key" }).click();
+    await page.getByTestId("new-key-sheet").getByTestId("create-key").click();
     const reveal = page.getByRole("dialog");
     const secret = (await reveal.getByTestId("new-key").innerText()).trim();
     expect(secret).toMatch(/^qk_/);

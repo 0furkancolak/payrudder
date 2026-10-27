@@ -46,9 +46,9 @@ func New(systemPool *pgxpool.Pool, evict Evictor, log *slog.Logger) *Commands {
 
 func (c *Commands) q() *sqlc.Queries { return sqlc.New(c.pool) }
 
-// Issue makes a key of the given scope (domain.ScopeFull, ScopeIngest or ScopeRead) for the tenant and returns it with its plaintext, which is shown
+// Issue makes a key with the role and permissions (already checked by domain.KeyGrant) for the tenant and returns it with its plaintext, which is shown
 // once. A live tenant that is not active has no keys (the go-live gate), and neither has a suspended one.
-func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, scope string) (*plansv1.ApiKey, string, error) {
+func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, permissions []string) (*plansv1.ApiKey, string, error) {
 	t, err := c.q().GetTenant(ctx, tenantID)
 	if err != nil {
 		return nil, "", convert.Err(err, "tenant")
@@ -68,7 +68,7 @@ func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, scope string) 
 			return nil, "", status.Error(codes.Internal, "key generation failed")
 		}
 		row, err := c.q().InsertApiKey(ctx, sqlc.InsertApiKeyParams{
-			ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(keyEnv), Scope: scope,
+			ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(keyEnv), Role: role, Permissions: permissions,
 		})
 		if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
 			continue // prefix collision: draw again
@@ -76,7 +76,7 @@ func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, scope string) 
 		if err != nil {
 			return nil, "", convert.Err(err, "api key")
 		}
-		c.log.InfoContext(ctx, "api key created", "tenant_id", t.ID, "api_key_id", row.ID, "prefix", row.Prefix, "scope", scope)
+		c.log.InfoContext(ctx, "api key created", "tenant_id", t.ID, "api_key_id", row.ID, "prefix", row.Prefix, "role", role)
 		return convert.APIKey(row), key.String(), nil
 	}
 	return nil, "", errkey.New(codes.Aborted, "identity.api_key.prefix_unavailable", "could not allocate a unique key prefix; retry")

@@ -423,12 +423,12 @@ func (c *Commands) CreateAPIKey(ctx context.Context, req *plansv1.CreateMyApiKey
 	if active >= MaxActiveKeysPerTenant {
 		return nil, "", errkey.Newf(codes.ResourceExhausted, "identity.api_key.quota", "at most %d active keys per environment: revoke one first", MaxActiveKeysPerTenant)
 	}
-	scope, ok := domain.ScopeToDB(req.GetScope())
+	role, perms, ok := domain.KeyGrant(req.GetRole(), req.GetPermissions(), req.GetScope())
 	if !ok {
-		return nil, "", errkey.New(codes.InvalidArgument, "identity.api_key.bad_scope", "scope: full, ingest or read")
+		return nil, "", errkey.New(codes.InvalidArgument, "identity.api_key.bad_role", "role: admin, billing, read_only, ingest_only or custom, with known permissions")
 	}
 	tid, _ := uuid.Parse(target.GetId())
-	return c.keys.Issue(ctx, tid, scope)
+	return c.keys.Issue(ctx, tid, role, perms)
 }
 
 // Rotation overlap: the old key of a rotation keeps working for 24 hours unless the caller says otherwise, and for at most a week.
@@ -437,7 +437,7 @@ const (
 	MaxOverlap     = 7 * 24 * time.Hour
 )
 
-// RotateAPIKey issues a replacement with the same scope and lets the old key end after the overlap window, so a deployment can switch keys without a gap.
+// RotateAPIKey issues a replacement with the same role and permissions and lets the old key end after the overlap window, so a deployment can switch keys without a gap.
 // A key that is revoked, or already ending, cannot be rotated. The plaintext of the replacement is returned once.
 func (c *Commands) RotateAPIKey(ctx context.Context, req *plansv1.RotateMyApiKeyRequest) (fresh *plansv1.ApiKey, plaintext string, previous *plansv1.ApiKey, err error) {
 	overlap := DefaultOverlap
@@ -471,10 +471,9 @@ func (c *Commands) RotateAPIKey(ctx context.Context, req *plansv1.RotateMyApiKey
 	if old.GetExpireTime() != nil {
 		return nil, "", nil, errkey.New(codes.FailedPrecondition, "identity.api_key.already_rotating", "this key already ends: it was rotated")
 	}
-	scope, _ := domain.ScopeToDB(old.GetScope())
 	tid, _ := uuid.Parse(old.GetTenantId())
 	oldID, _ := uuid.Parse(old.GetId())
-	fresh, plaintext, err = c.keys.Issue(ctx, tid, scope)
+	fresh, plaintext, err = c.keys.Issue(ctx, tid, old.GetRole(), old.GetPermissions())
 	if err != nil {
 		return nil, "", nil, err
 	}

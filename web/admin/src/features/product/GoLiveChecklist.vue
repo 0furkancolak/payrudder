@@ -45,7 +45,7 @@ function target(key: GoLiveKey): { to: string } | { anchor: string } | null {
     case "legal_profile":
       return { anchor: "billing-profile" };
     case "payment_provider":
-      return { to: `/app/apps/${props.appId}/providers` };
+      return { to: `/app/apps/${props.appId}/integrations` };
     case "terms_accepted":
       return { anchor: "go-live-terms-box" };
     default:

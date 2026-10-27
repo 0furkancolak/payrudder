@@ -158,6 +158,18 @@ func (q *Queries) DeleteEntitlementOverride(ctx context.Context, arg DeleteEntit
 	return result.RowsAffected(), nil
 }
 
+const deleteMailIntegration = `-- name: DeleteMailIntegration :execrows
+DELETE FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id()
+`
+
+func (q *Queries) DeleteMailIntegration(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMailIntegration)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteRoutingRules = `-- name: DeleteRoutingRules :exec
 DELETE FROM routing_rules WHERE tenant_id = app_tenant_id()
 `
@@ -312,6 +324,29 @@ func (q *Queries) GetMailDisabled(ctx context.Context) ([]string, error) {
 	var disabled []string
 	err := row.Scan(&disabled)
 	return disabled, err
+}
+
+const getMailIntegration = `-- name: GetMailIntegration :one
+SELECT tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id()
+`
+
+// The tenant's own e-mail provider (phase 53). The key is sealed; plans-svc's own commands open it.
+func (q *Queries) GetMailIntegration(ctx context.Context) (TenantMailIntegration, error) {
+	row := q.db.QueryRow(ctx, getMailIntegration)
+	var i TenantMailIntegration
+	err := row.Scan(
+		&i.TenantID,
+		&i.Provider,
+		&i.BaseUrl,
+		&i.ApiKeyEnc,
+		&i.KeyHint,
+		&i.FromAddress,
+		&i.CheckedAt,
+		&i.CheckProblem,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const getPendingChange = `-- name: GetPendingChange :one
@@ -1976,6 +2011,16 @@ func (q *Queries) MarkAdjustmentBilled(ctx context.Context, id uuid.UUID) (int64
 	return result.RowsAffected(), nil
 }
 
+const markMailIntegrationChecked = `-- name: MarkMailIntegrationChecked :exec
+UPDATE tenant_mail_integrations SET checked_at = CASE WHEN $1::text = '' THEN now() ELSE checked_at END, check_problem = $1::text
+WHERE tenant_id = app_tenant_id()
+`
+
+func (q *Queries) MarkMailIntegrationChecked(ctx context.Context, problem string) error {
+	_, err := q.db.Exec(ctx, markMailIntegrationChecked, problem)
+	return err
+}
+
 const moveSubscriptionCoupon = `-- name: MoveSubscriptionCoupon :execrows
 UPDATE subscription_coupons SET subscription_id = $1 WHERE tenant_id = app_tenant_id() AND subscription_id = $2
 `
@@ -2233,4 +2278,44 @@ ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, updated_at =
 func (q *Queries) UpsertMailDisabled(ctx context.Context, disabled []string) error {
 	_, err := q.db.Exec(ctx, upsertMailDisabled, disabled)
 	return err
+}
+
+const upsertMailIntegration = `-- name: UpsertMailIntegration :one
+INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, now(), '')
+ON CONFLICT (tenant_id) DO UPDATE SET provider = EXCLUDED.provider, base_url = EXCLUDED.base_url, api_key_enc = EXCLUDED.api_key_enc,
+  key_hint = EXCLUDED.key_hint, from_address = EXCLUDED.from_address, checked_at = EXCLUDED.checked_at, check_problem = '', updated_at = now()
+RETURNING tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem, created_at, updated_at
+`
+
+type UpsertMailIntegrationParams struct {
+	Provider    string
+	BaseUrl     string
+	ApiKeyEnc   []byte
+	KeyHint     string
+	FromAddress string
+}
+
+func (q *Queries) UpsertMailIntegration(ctx context.Context, arg UpsertMailIntegrationParams) (TenantMailIntegration, error) {
+	row := q.db.QueryRow(ctx, upsertMailIntegration,
+		arg.Provider,
+		arg.BaseUrl,
+		arg.ApiKeyEnc,
+		arg.KeyHint,
+		arg.FromAddress,
+	)
+	var i TenantMailIntegration
+	err := row.Scan(
+		&i.TenantID,
+		&i.Provider,
+		&i.BaseUrl,
+		&i.ApiKeyEnc,
+		&i.KeyHint,
+		&i.FromAddress,
+		&i.CheckedAt,
+		&i.CheckProblem,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

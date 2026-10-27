@@ -86,19 +86,20 @@ const testAppURL = "http://app.test"
 const testPepper = "test-pepper-not-a-secret"
 
 type env struct {
-	mail    *recordingMail
-	db      testkit.ServiceDB
-	app     *pgxpool.Pool
-	system  *pgxpool.Pool
-	plans   plansv1.PlansServiceClient
-	admin   plansv1.AdminServiceClient
-	ident   plansv1.IdentityServiceClient
-	hooks   plansv1.WebhookServiceClient
-	aff     plansv1.AffiliateServiceClient
-	pub     plansv1.AffiliatePublicServiceClient
-	portal  plansv1.AffiliatePortalServiceClient
-	box     *secretbox.Box
-	evicted *recordingEvictor
+	mail     *recordingMail
+	db       testkit.ServiceDB
+	app      *pgxpool.Pool
+	system   *pgxpool.Pool
+	plans    plansv1.PlansServiceClient
+	admin    plansv1.AdminServiceClient
+	ident    plansv1.IdentityServiceClient
+	hooks    plansv1.WebhookServiceClient
+	mailprov plansv1.MailIntegrationServiceClient
+	aff      plansv1.AffiliateServiceClient
+	pub      plansv1.AffiliatePublicServiceClient
+	portal   plansv1.AffiliatePortalServiceClient
+	box      *secretbox.Box
+	evicted  *recordingEvictor
 	// runner runs the sandbox resets (a test calls RunOnce itself, so nothing happens behind its back); remotes records what the other services were asked.
 	runner  *sandbox.Runner
 	remotes *recordingRemotes
@@ -166,7 +167,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{runner: runner, remotes: remotes, db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 
 func operator() context.Context {

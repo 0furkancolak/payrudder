@@ -9,8 +9,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 // withPayments points the gateway at a fake payments-worker whose go-live answer is ready(); it counts how often it was asked.
@@ -88,22 +86,34 @@ func TestGoLiveIsTheMembersAndOwnersOnly(t *testing.T) {
 	}
 }
 
-func TestKeyScopeAndRotationRoutes(t *testing.T) {
+func TestKeyRoleAndRotationRoutes(t *testing.T) {
 	p := newProduct(t, nil, nil)
-	for body, want := range map[string]plansv1.ApiKey_Scope{
-		`{"environment":"sandbox"}`:                  plansv1.ApiKey_SCOPE_FULL,
-		`{"environment":"sandbox","scope":"ingest"}`: plansv1.ApiKey_SCOPE_INGEST,
-		`{"environment":"sandbox","scope":"read"}`:   plansv1.ApiKey_SCOPE_READ,
+	for body, want := range map[string]string{
+		`{"environment":"sandbox"}`:                                                     "admin",
+		`{"environment":"sandbox","role":"billing"}`:                                    "billing",
+		`{"environment":"sandbox","scope":"ingest"}`:                                    "ingest_only",
+		`{"environment":"sandbox","scope":"read"}`:                                      "read_only",
+		`{"environment":"sandbox","permissions":["customers:read","invoices:read"]}`:    "custom",
+		`{"environment":"sandbox","role":"custom","permissions":["customers:read"]}`:    "custom",
+		`{"environment":"sandbox","role":"read_only","permissions":["customers:read"]}`: "read_only",
 	} {
 		if resp, _ := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/api-keys", tokAda, "", body); resp.StatusCode != 201 {
 			t.Fatalf("%s: %d", body, resp.StatusCode)
 		}
-		if p.ident.lastScope != want {
-			t.Errorf("%s: scope %v, want %v", body, p.ident.lastScope, want)
+		if p.ident.lastRole != want && (want != "custom" || len(p.ident.lastPerms) == 0) {
+			t.Errorf("%s: role %q, want %q", body, p.ident.lastRole, want)
 		}
 	}
-	if resp, _ := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/api-keys", tokAda, "", `{"environment":"sandbox","scope":"root"}`); resp.StatusCode != 400 {
-		t.Errorf("an unknown scope: %d", resp.StatusCode)
+	for _, bad := range []string{
+		`{"environment":"sandbox","scope":"root"}`,
+		`{"environment":"sandbox","role":"root"}`,
+		`{"environment":"sandbox","role":"custom"}`,
+		`{"environment":"sandbox","role":"custom","permissions":["nope:read"]}`,
+		`{"environment":"sandbox","role":"read_only","permissions":["customers:write"]}`,
+	} {
+		if resp, _ := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/api-keys", tokAda, "", bad); resp.StatusCode != 400 {
+			t.Errorf("%s: %d, want 400", bad, resp.StatusCode)
+		}
 	}
 
 	resp, m := p.call(t, "POST", "/app/v1/apps/"+adaApp+"/api-keys/key-ada/rotate", tokAda, "", `{"overlap_hours":2}`)

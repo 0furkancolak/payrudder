@@ -85,7 +85,7 @@ function removeAccount(p: string) {
       <div v-else class="flex flex-wrap items-center gap-2 border-t pt-4">
         <span class="text-sm font-medium">{{ t("product.goLive.provider.connectTitle") }}</span>
         <Button v-for="p in LIVE_PROVIDERS" :key="p" variant="outline" size="sm" :data-testid="`provider-open-${p}`" @click="openSheet(p)">{{ providerName(p) }}</Button>
-        <Link :to="`/app/apps/${appId}/providers`" :search="{ env: 'live' } as never" class="text-primary ms-auto text-sm font-medium hover:underline" data-testid="provider-screen-link">{{ t("product.providers.openScreen") }}</Link>
+        <Link :to="`/app/apps/${appId}/integrations`" :search="{ env: 'live' } as never" class="text-primary ms-auto text-sm font-medium hover:underline" data-testid="provider-screen-link">{{ t("product.providers.openScreen") }}</Link>
       </div>
       <ProviderSheet v-model:open="sheetOpen" :provider="sheetProvider" :app-id="appId" :apps="rows" scope="app" :can-org="false" :is-owner="isOwner" @done="onDone" />
     </template>

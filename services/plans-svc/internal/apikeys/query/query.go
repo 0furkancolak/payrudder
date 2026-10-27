@@ -40,7 +40,7 @@ func (q *Queries) Resolve(ctx context.Context, prefix string) (*plansv1.ResolveA
 	return &plansv1.ResolveApiKeyResponse{
 		ApiKeyId: r.ID.String(), TenantId: r.TenantID.String(), Status: convert.APIKeyStatus(r.Status), KeyHash: r.KeyHash,
 		Environment: domain.EnvironmentFromDB(r.Environment), Tier: domain.TierFromDB(r.Tier), Timezone: r.Timezone,
-		TenantStatus: domain.StatusFromDB(r.TenantStatus), Scope: domain.ScopeFromDB(r.Scope), ExpireTime: expireTime(r.ExpiresAt),
+		TenantStatus: domain.StatusFromDB(r.TenantStatus), Scope: domain.KeyScope(r.Role), Role: r.Role, Permissions: domain.KeyPermissions(r.Role, r.Permissions), ExpireTime: expireTime(r.ExpiresAt),
 	}, nil
 }
 

@@ -68,26 +68,42 @@ func TestRotatedKeyEndsAtItsExpiry(t *testing.T) {
 	}
 }
 
-func TestScopeTravelsWithThePrincipal(t *testing.T) {
+func TestGrantTravelsWithThePrincipal(t *testing.T) {
+	custom := []string{apikey.PermCustomersRead, apikey.PermInvoicesRead}
 	for _, tc := range []struct {
-		stored plansv1.ApiKey_Scope
-		want   string
+		name      string
+		role      plansRole
+		scope     string
+		perms     []string
+		wantRole  string
+		wantCount int
 	}{
-		{plansv1.ApiKey_SCOPE_UNSPECIFIED, ScopeFull}, // a key from before scopes
-		{plansv1.ApiKey_SCOPE_FULL, ScopeFull},
-		{plansv1.ApiKey_SCOPE_INGEST, ScopeIngest},
-		{plansv1.ApiKey_SCOPE_READ, ScopeRead},
+		{"a key resolved with a role", plansRole{"custom", custom}, "", nil, "custom", 2},
+		{"an admin holds everything that exists", plansRole{"admin", nil}, "", nil, "admin", len(apikey.Permissions)},
+		{"a cached entry from before roles: full", plansRole{}, "full", nil, "admin", len(apikey.Permissions)},
+		{"a cached entry from before roles: ingest", plansRole{}, "ingest", nil, "ingest_only", 1},
+		{"a cached entry with a scope nobody knows holds nothing", plansRole{}, "mystery", nil, "custom", 0},
 	} {
-		k, _, res, a := setup(t, apikey.EnvTest, plansv1.Environment_ENVIRONMENT_SANDBOX, plansv1.ApiKey_STATUS_ACTIVE)
-		res.keys[k.Prefix].Scope = tc.stored
+		k, cache, res, a := setup(t, apikey.EnvTest, plansv1.Environment_ENVIRONMENT_SANDBOX, plansv1.ApiKey_STATUS_ACTIVE)
+		if tc.role.role != "" {
+			res.keys[k.Prefix].Role, res.keys[k.Prefix].Permissions = tc.role.role, tc.role.perms
+		}
+		if tc.scope != "" {
+			cache.m[k.Prefix] = Entry{APIKeyID: "k", TenantID: "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e", Environment: "sandbox", Active: true, KeyHash: k.Hash(), Scope: tc.scope}
+		}
 		p, err := a.Authenticate(context.Background(), k.String())
 		if err != nil {
-			t.Fatal(err)
+			t.Fatalf("%s: %v", tc.name, err)
 		}
-		if p.Scope != tc.want {
-			t.Errorf("scope %v: principal scope = %q, want %q", tc.stored, p.Scope, tc.want)
+		if p.Role != tc.wantRole || len(p.Permissions) != tc.wantCount {
+			t.Errorf("%s: principal %q with %d permissions, want %q with %d", tc.name, p.Role, len(p.Permissions), tc.wantRole, tc.wantCount)
 		}
 	}
+}
+
+type plansRole struct {
+	role  string
+	perms []string
 }
 
 type recordingToucher struct {

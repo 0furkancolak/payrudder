@@ -2912,7 +2912,9 @@ paths:
               required: [environment]
               properties:
                 environment: { type: string, enum: [sandbox, live] }
-                scope: { type: string, enum: [full, ingest, read], default: full, description: "full: the whole tenant API. ingest: only POST /v1/events. read: only GET requests." }
+                role: { $ref: "#/components/schemas/ApiKeyRole" }
+                permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" }, description: "Required for the role custom; for a fixed role optional, and then a subset of the role's own." }
+                scope: { type: string, enum: [full, ingest, read], description: "Older way to choose a role when `role` and `permissions` are absent: full is admin, ingest is ingest_only, read is read_only." }
       responses:
         "201":
           description: Created
@@ -3344,6 +3346,192 @@ paths:
         - { name: provider, in: path, required: true, schema: { type: string, enum: [banktransfer, iyzico, paddle] } }
       responses:
         "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/e-invoice:
+    get:
+      operationId: appGetEInvoiceIntegration
+      tags: [Product]
+      summary: The e-invoice integrator of the app's live environment (any member; no credential is in the answer)
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  account:
+                    type: [object, "null"]
+                    properties:
+                      provider: { type: string, enum: [nilvera, webhook] }
+                      mode: { type: string, enum: [test, production] }
+                      updated_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: appPutEInvoiceIntegration
+      tags: [Product]
+      summary: Connect (or replace) the live environment's e-invoice integrator (the owner only)
+      description: The integrator is nilvera or webhook, never the mock. The credentials are sealed, shown once and never echoed back. The change is recorded for the person.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider]
+              properties:
+                provider: { type: string, enum: [nilvera, webhook] }
+                mode: { type: string, enum: [test, production] }
+                credentials: { type: object, additionalProperties: { type: string }, description: "nilvera: api_key[, base_url]; webhook: url, secret." }
+      responses:
+        "200": { description: Stored, content: { application/json: { schema: { $ref: "#/components/schemas/EInvoiceAccount" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: appRemoveEInvoiceIntegration
+      tags: [Product]
+      summary: Disconnect the live environment's e-invoice integrator (the owner only)
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/e-invoice/test:
+    post:
+      operationId: appTestEInvoiceIntegration
+      tags: [Product]
+      summary: Ask the integrator whether the stored credentials work now (the owner only)
+      description: "Nothing is issued. A provider problem is ok false with its kind, not an HTTP error."
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tax_id: { type: string, description: The seller's tax id, for an integrator that can look up a registered business }
+      responses:
+        "200":
+          description: The result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  checked: { type: string, enum: [credentials, configuration] }
+                  problem: { type: string, enum: [refused, unreachable] }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/mail:
+    get:
+      operationId: appGetMailIntegration
+      tags: [Product]
+      summary: The tenant's own e-mail provider (Nafru Email) for the app's live environment, if one is connected (any member; the key is never in the answer)
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  connected: { type: boolean }
+                  integration: { $ref: "#/components/schemas/MailIntegration" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: appPutMailIntegration
+      tags: [Product]
+      summary: Connect (or replace) the live environment's own e-mail provider (the owner only)
+      description: |
+        From then on the customer mail of the live environment (invoices, receipts, alerts) is sent through it, from the given address. The provider is asked
+        to accept the key before anything is stored (400 plans.mail_integration.refused, 503 plans.mail_integration.unreachable). The key is sealed, shown once
+        and never echoed back. The sandbox has none: its mail always goes to the sandbox inbox.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, base_url, api_key, from]
+              properties:
+                provider: { type: string, enum: [nafru] }
+                base_url: { type: string, examples: ["https://api.nafru.example"], description: The Resend-compatible API address (https) }
+                api_key: { type: string }
+                from: { type: string, examples: ["Acme Billing <billing@acme.example>"] }
+      responses:
+        "200":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  integration: { $ref: "#/components/schemas/MailIntegration" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: appRemoveMailIntegration
+      tags: [Product]
+      summary: Disconnect the own e-mail provider; the mail goes through Payrudder's built-in sender again (the owner only)
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/mail/test:
+    post:
+      operationId: appTestMailIntegration
+      tags: [Product]
+      summary: Check the stored key at the provider and send one test mail through it (the owner only)
+      description: "A provider problem is ok false with its kind, not an HTTP error."
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [to]
+              properties:
+                to: { type: string, format: email }
+      responses:
+        "200":
+          description: The result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  problem: { type: string, enum: [unreachable, refused] }
+                  message_id: { type: string }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -4391,7 +4579,9 @@ paths:
             schema:
               type: object
               properties:
-                scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], default: SCOPE_FULL }
+                role: { $ref: "#/components/schemas/ApiKeyRole" }
+                permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" } }
+                scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], description: "Older way to choose a role when role and permissions are absent." }
       responses:
         "201":
           description: Created
@@ -6397,6 +6587,25 @@ components:
         slug: { type: string }
         tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
         create_time: { type: string, format: date-time }
+    ApiKeyRole:
+      type: string
+      enum: [admin, billing, read_only, ingest_only, custom]
+      description: "admin: every permission. billing: customers, subscriptions, credits and invoices, with events, the catalogue and usage to read. read_only: every :read. ingest_only: events:write. custom: the permissions chosen."
+    ApiKeyPermission:
+      type: string
+      enum: [events:write, customers:read, customers:write, subscriptions:read, subscriptions:write, catalog:read, catalog:write, usage:read, credits:read, credits:write, invoices:read, invoices:write, reports:read, accounting:read, accounting:write, webhooks:read, webhooks:write, affiliates:read, affiliates:write, settings:read, settings:write, assets:read, assets:write, sandbox:write]
+      description: "resource:action. The route /v1/{resource}... with GET is :read, any other method :write; /v1/events needs events:write and /v1/sandbox/* sandbox:write."
+    MailIntegration:
+      type: object
+      description: The tenant's own e-mail provider. The key is never returned.
+      properties:
+        provider: { type: string, enum: [nafru] }
+        base_url: { type: string }
+        from: { type: string }
+        key_hint: { type: string, description: The last four characters of the stored key }
+        update_time: { type: string, format: date-time }
+        checked_time: { type: string, format: date-time, description: When the provider last accepted the key }
+        check_problem: { type: string, enum: ["", unreachable, refused] }
     ApiKey:
       type: object
       properties:
@@ -6407,6 +6616,8 @@ components:
         status: { type: string, enum: [STATUS_ACTIVE, STATUS_REVOKED] }
         create_time: { type: string, format: date-time }
         revoke_time: { type: string, format: date-time }
-        scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], description: "FULL: everything. INGEST: only POST /v1/events. READ: only GET requests. Others are 403 gateway.auth.scope_denied." }
+        scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], description: "Older summary of the role: INGEST for ingest_only, READ for read_only, FULL for the rest. Nothing enforces it; the permissions do." }
+        role: { $ref: "#/components/schemas/ApiKeyRole" }
+        permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" }, description: "What the key may do. A request that needs one the key lacks is 403 gateway.auth.permission_denied." }
         last_used_time: { type: string, format: date-time, description: Kept to within a few minutes. }
         expire_time: { type: string, format: date-time, description: The key stops working at this time although it is not revoked (the old key of a rotation). }

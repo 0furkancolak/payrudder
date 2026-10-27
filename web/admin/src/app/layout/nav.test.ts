@@ -10,7 +10,7 @@ const keys = (sections: ReturnType<typeof buildNav>) => sections.flatMap((s) => 
 describe("buildNav", () => {
   it("the organisation level has the apps, the members and the settings, nothing of an app", () => {
     const nav = buildNav({ level: "org" });
-    expect(keys(nav)).toEqual(["overview", "members", "paymentProviders", "settings"]);
+    expect(keys(nav)).toEqual(["overview", "members", "integrations", "settings"]);
   });
 
   it("an app level has the app's pages under the tenant, and the dashboard and keys under the app", () => {
@@ -41,7 +41,7 @@ describe("buildNav", () => {
 
   it("a page that has no route is not listed", () => {
     const nav = buildNav({ level: "app", appId: "A", tenantId: "T" }, new Set(["customers"]));
-    expect(keys(nav)).toEqual(["dashboard", "goLive", "customers", "apiKeys", "sandbox", "appSettings", "paymentProviders"]);
+    expect(keys(nav)).toEqual(["dashboard", "goLive", "customers", "apiKeys", "sandbox", "appSettings", "integrations"]);
   });
 
   it("the operator sees the platform, and a tenant with the operator-only pages too", () => {

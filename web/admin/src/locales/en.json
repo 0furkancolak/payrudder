@@ -2440,8 +2440,8 @@
         "invalid": "{field} is not valid: {detail}"
       },
       "api_key": {
-        "bad_scope": "The scope must be full, ingest or read.",
-        "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first."
+        "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first.",
+        "bad_role": "The role must be admin, billing, read only, send usage only or custom, with known permissions."
       },
       "change": {
         "bad_proration": "The charge for this plan change cannot be worked out for this period.",
@@ -2483,6 +2483,14 @@
       "override": {
         "customer_required": "Say which customer the limit is for.",
         "not_found": "This customer has no override on that meter."
+      },
+      "mail_integration": {
+        "live_only": "The sandbox sends its mail to the sandbox inbox. Connect an e-mail provider in the live environment.",
+        "refused": "The e-mail provider did not accept this key.",
+        "unreachable": "The e-mail provider could not be reached. Check the address and try again.",
+        "not_configured": "E-mail providers are not set up on this deployment.",
+        "not_connected": "No e-mail provider is connected.",
+        "seal_failed": "The key could not be stored. Try again."
       }
     },
     "common": {
@@ -2643,12 +2651,12 @@
         "quota": "An environment can have at most 10 active API keys. Revoke one first.",
         "already_rotating": "This key was already rotated and ends soon. Revoke it, or wait for it to end.",
         "bad_overlap": "The overlap must be between 0 hours and 7 days.",
-        "bad_scope": "The scope must be full, ingest or read.",
         "not_active": "This API key is revoked.",
         "invalid": "The API key is not valid.",
         "missing": "Send your API key as a Bearer token in the Authorization header.",
         "sandbox_only": "This endpoint is only for sandbox keys (qk_test_).",
-        "prefix_unavailable": "A unique key prefix could not be allocated. Try again."
+        "prefix_unavailable": "A unique key prefix could not be allocated. Try again.",
+        "bad_role": "The role must be admin, billing, read only, send usage only or custom, with known permissions."
       },
       "app": {
         "not_found": "This app does not exist, or it is not yours.",
@@ -2739,8 +2747,8 @@
         "unreadable_body": "The request body could not be read."
       },
       "auth": {
-        "scope_denied": "This API key's scope does not allow this request. Use a key with a wider scope.",
-        "tenant_not_active": "This environment is suspended or not active yet. Finish the go-live checklist, or contact support."
+        "tenant_not_active": "This environment is suspended or not active yet. Finish the go-live checklist, or contact support.",
+        "permission_denied": "This API key lacks a permission this request needs. Use a key with the role or permission it names."
       },
       "assets": {
         "bad_invoice_logo": "The invoice logo must be a finished upload of the invoice logo kind."
@@ -3139,14 +3147,13 @@
     "keys": {
       "title": "API keys",
       "intro": "Your server uses a key to talk to Payrudder. Sandbox keys only touch test data.",
-      "newSandbox": "Sandbox key",
-      "newLive": "Live key",
+      "newSandbox": "New sandbox key",
+      "newLive": "New live key",
       "created": "Created {date}",
       "active": "Active",
       "revoked": "Revoked",
       "revoke": "Revoke",
       "revokeNamed": "Revoke key {key}",
-      "empty": "No keys yet. Create one to start sending usage.",
       "revealTitle": "Copy your new key now",
       "revealBody": "This is the only time the full key is shown. Store it somewhere safe; if it is lost, revoke it and make a new one.",
       "copy": "Copy",
@@ -3156,17 +3163,6 @@
       "revokeTitle": "Revoke this key?",
       "revokeBody": "Anything still using it stops working at once. This cannot be undone.",
       "needsVerified": "Confirm your e-mail address to create live keys.",
-      "scope": "Scope of a new key",
-      "scopes": {
-        "full": "Full access",
-        "ingest": "Send usage only",
-        "read": "Read only"
-      },
-      "scopeHelp": {
-        "full": "The whole API.",
-        "ingest": "Can only send usage events. Safe to put in a service that reports usage.",
-        "read": "Can only read. Safe for dashboards and reports."
-      },
       "liveInactive": "Live keys can be made once the live environment is active.",
       "rotate": "Rotate",
       "rotateNamed": "Rotate key {key}",
@@ -3179,10 +3175,68 @@
       "neverUsed": "never used",
       "ends": "Stops working on {date}",
       "filterEnv": "Environment",
-      "allEnvs": "All environments",
       "filterStatus": "Status",
       "allStatuses": "All statuses",
-      "scopeHead": "Scope"
+      "envNote": {
+        "sandbox": "Sandbox keys only touch test data. They are made here, in the sandbox view; live keys are made in the live view.",
+        "live": "Live keys work on real data and move real money. They are made only here, in the live view, once the live environment is active."
+      },
+      "toSandbox": "Sandbox keys are in the sandbox view",
+      "toLive": "Live keys are in the live view",
+      "role": "Role",
+      "allRoles": "All roles",
+      "roles": {
+        "admin": "Admin",
+        "billing": "Billing",
+        "read_only": "Read only",
+        "ingest_only": "Send usage only",
+        "custom": "Custom"
+      },
+      "roleHelp": {
+        "admin": "Every permission: the whole API. Keep it on your own server.",
+        "billing": "Customers, subscriptions, credits and invoices, plus reading the catalogue and usage. For a service that bills.",
+        "read_only": "Can only read. Safe for dashboards and reports.",
+        "ingest_only": "Can only send usage events. Safe in a service that reports usage.",
+        "custom": "Choose exactly what the key may do."
+      },
+      "permissions": "Permissions",
+      "permissionsFixed": "This role holds the permissions ticked below. Choose Custom to pick them one by one.",
+      "permissionsCustom": "Tick what this key may do. A request that needs anything else is refused with 403.",
+      "read": "Read",
+      "write": "Write",
+      "resources": {
+        "events": "Usage events",
+        "customers": "Customers",
+        "subscriptions": "Subscriptions",
+        "catalog": "Catalogue (plans, meters, coupons)",
+        "usage": "Usage and entitlements",
+        "credits": "Credits",
+        "invoices": "Invoices and payments",
+        "reports": "Reports",
+        "accounting": "Accounting",
+        "webhooks": "Webhooks",
+        "affiliates": "Affiliates",
+        "settings": "Settings (tax, routing, mail)",
+        "assets": "Files",
+        "sandbox": "Sandbox tools"
+      },
+      "permissionCount": "{n} of {total} permissions",
+      "customNeedsOne": "Choose at least one permission.",
+      "create": "Create key",
+      "createTitleSandbox": "New sandbox key",
+      "createTitleLive": "New live key",
+      "createBody": {
+        "sandbox": "The key will work on the sandbox only, with test data. Its secret is shown once.",
+        "live": "The key will work on real data in the live environment. Its secret is shown once."
+      },
+      "viewPermissions": "View permissions",
+      "permissionsTitle": "What this key may do",
+      "allowed": "Allowed",
+      "notAllowed": "Not allowed",
+      "empty": {
+        "sandbox": "No sandbox keys yet. Create one to try the API with test data.",
+        "live": "No live keys yet. Create one to start sending real usage."
+      }
     },
     "links": {
       "title": "Go deeper",
@@ -3343,7 +3397,7 @@
       "intro": "Who belongs to this organisation, their roles, and the invitations that are still open."
     },
     "apiKeysPage": {
-      "intro": "Keys your server uses to call Payrudder for this app. A key belongs to one environment; its secret is shown once."
+      "intro": "Keys your server uses to call Payrudder for this app. Each key belongs to one environment, shown on the key: sandbox keys are made in the sandbox view, live keys in the live view."
     },
     "appSettings": {
       "intro": "What this app was created with. The currency and the time zone decide how every invoice is worked out, so they are fixed once the app exists.",
@@ -3550,8 +3604,6 @@
       "simulateNotRetried": "The scenario is set, but the payment could not run again now ({why})."
     },
     "providers": {
-      "introApp": "Connect and manage the payment providers of {app}. Customers pay through the live account; the sandbox needs no connection.",
-      "introOrg": "Connect a payment provider once for all your apps, or set an app up differently from the rest.",
       "connect": "Connect",
       "manage": "Manage",
       "simulator": "Built-in simulator",
@@ -3566,7 +3618,7 @@
       "notConnectedLine": "Not connected in live mode.",
       "noLiveApps": "No app has a live environment yet.",
       "orgLine": "Connected on {connected} of {total} apps",
-      "openScreen": "Payment providers",
+      "openScreen": "Open all integrations",
       "doneAll": "{provider} connected on {count} app(s).",
       "donePartial": "{provider}: {ok} app(s) connected, {failed} failed.",
       "appsTitle": "Apps",
@@ -3616,6 +3668,131 @@
           "webhook_secret": "Under Developer tools, Notifications: create a destination for Payrudder and copy its secret key.",
           "usage_product_id": "The id of the product Paddle uses for usage charges. In the Catalog, open the product and copy its id, which starts with pro_."
         }
+      }
+    },
+    "integrations": {
+      "introApp": "Connect the payment providers, the e-invoice integrator and the e-mail provider of {app}. Customers are served through the live connections; the sandbox needs none.",
+      "introOrg": "Connect a payment provider once for all your apps, or set an app up differently from the rest. E-invoice and e-mail are set up per app.",
+      "groups": {
+        "payments": {
+          "title": "Payments",
+          "intro": "How your customers pay. Connect a provider with your live keys."
+        },
+        "einvoice": {
+          "title": "E-invoice",
+          "intro": "The integrator that turns your invoices into legal e-documents."
+        },
+        "email": {
+          "title": "E-mail",
+          "intro": "What sends the mail your customers receive: invoices, receipts and alerts."
+        }
+      },
+      "names": {
+        "banktransfer": "Bank transfer",
+        "simulator": "Built-in simulator",
+        "webhook": "Custom integrator",
+        "einvoiceSimulator": "Built-in simulator",
+        "payrudderMail": "Payrudder mail"
+      },
+      "about": {
+        "iyzico": "Turkish cards and local methods",
+        "paddle": "Cards worldwide, with subscriptions run by the provider",
+        "banktransfer": "Pay by transfer to your own bank account",
+        "simulator": "Pretend payments for the sandbox, with scenarios",
+        "nilvera": "Turkish e-fatura and e-arşiv integrator",
+        "webhook": "Send each document to your own integrator's address",
+        "einvoiceSimulator": "Pretend e-documents for the sandbox",
+        "payrudderMail": "Mail sent by Payrudder for you",
+        "nafru": "Send through your own Nafru Email account"
+      },
+      "state": {
+        "none": "Not connected",
+        "working": "Connected and working",
+        "problem": "Problem",
+        "always": "Always on",
+        "unused": "Not in use"
+      },
+      "lines": {
+        "simulatorPayments": "Used by the sandbox. Nothing to connect.",
+        "simulatorEInvoice": "Used by the sandbox. Nothing to connect.",
+        "perApp": "Set up on each app.",
+        "mailBuiltIn": "Invoices, receipts and alerts go out from Payrudder.",
+        "mailUnused": "Your own provider sends the live mail.",
+        "mailOwn": "Live mail goes out from {from}."
+      },
+      "sandbox": {
+        "payments": "Built-in simulator",
+        "einvoice": "Built-in simulator",
+        "email": "Sandbox inbox"
+      },
+      "settings": "Settings",
+      "website": "Website",
+      "open": "Open",
+      "perAppNote": "E-invoice and e-mail are set up on each app. Open an app below.",
+      "appsIntro": "Click a payment status to connect, replace or remove a provider for that app alone, or open the app for e-invoice and e-mail.",
+      "connectTitle": "Connect {name}",
+      "manageTitle": "{name} connection",
+      "ownerOnly": "Only an owner of the account can change this connection.",
+      "saved": "{name} is connected.",
+      "replaceNote": "A connection exists. Type new credentials only if you want to replace it; the current ones are never shown.",
+      "secretsOnce": "Credentials are shown once and not again after you save.",
+      "optional": "optional",
+      "test": "Test connection",
+      "testing": "Testing...",
+      "checking": "Checking...",
+      "save": "Save connection",
+      "disconnect": "Disconnect",
+      "testFailed": {
+        "refused": "The other side does not accept these credentials now.",
+        "unreachable": "The other side could not be reached. Try again in a moment."
+      },
+      "einvoice": {
+        "intro": {
+          "nilvera": "Enter your Nilvera API key. Your invoices become e-fatura and e-arşiv documents sent through your Nilvera account.",
+          "webhook": "Each e-document is sent, signed, to the address of your own integrator. Enter its address and the secret it checks the signature with."
+        },
+        "envNote": "This connects the live environment. The sandbox keeps using the built-in simulator.",
+        "replaces": "An environment has one integrator. Connecting this one replaces the one connected now: {current}.",
+        "mode": "Mode",
+        "modes": {
+          "test": "Test mode",
+          "production": "Production"
+        },
+        "modeLine": "Connected in {mode}.",
+        "fields": {
+          "api_key": "API key",
+          "base_url": "Base URL",
+          "url": "Integrator address",
+          "secret": "Signing secret"
+        },
+        "testOk": {
+          "credentials": "The integrator accepts these credentials.",
+          "configuration": "The settings are valid. Only a real document proves the rest."
+        },
+        "confirmRemove": "Disconnect {name}? New invoices of the live environment are no longer sent as e-documents."
+      },
+      "mail": {
+        "builtInTitle": "Payrudder mail",
+        "builtInIntro": "Payrudder sends your customers' mail. Choose which kinds go out.",
+        "unusedNote": "Your own provider is connected, so the live mail goes through it. These switches still decide which kinds are sent.",
+        "nafruIntro": "Send your customers' mail through your own Nafru Email account, from your own address. Enter the account's address and API key.",
+        "envNote": "This connects the live environment. The sandbox's mail always goes to the sandbox inbox.",
+        "aboutNafru": "About Nafru Email",
+        "keyLine": "Key ending {hint}, sent from {from}.",
+        "testOk": "A test mail was sent to {to} through your provider.",
+        "testTo": "Send a test mail to",
+        "sendTest": "Send test mail",
+        "fields": {
+          "base_url": "Nafru Email address",
+          "api_key": "API key",
+          "from": "Send from"
+        },
+        "help": {
+          "base_url": "The address of the Nafru Email API of your account, starting with https.",
+          "from": "A name and address on a domain verified at Nafru Email."
+        },
+        "checkAndConnect": "Check and connect",
+        "confirmRemove": "Disconnect your own e-mail provider? The live mail goes out from Payrudder again."
       }
     }
   },
@@ -3677,8 +3854,8 @@
       "partner": "Partner portal",
       "usage": "Usage",
       "coupons": "Coupons",
-      "paymentProviders": "Payment providers",
-      "meters": "Meters"
+      "meters": "Meters",
+      "integrations": "Integrations"
     },
     "noApps": "No apps yet"
   },

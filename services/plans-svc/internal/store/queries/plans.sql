@@ -354,3 +354,21 @@ SELECT disabled FROM tenant_mail_settings WHERE tenant_id = app_tenant_id();
 -- name: UpsertMailDisabled :exec
 INSERT INTO tenant_mail_settings (tenant_id, disabled, updated_at) VALUES (app_tenant_id(), @disabled::text[], now())
 ON CONFLICT (tenant_id) DO UPDATE SET disabled = EXCLUDED.disabled, updated_at = EXCLUDED.updated_at;
+
+-- The tenant's own e-mail provider (phase 53). The key is sealed; plans-svc's own commands open it.
+-- name: GetMailIntegration :one
+SELECT * FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id();
+
+-- name: UpsertMailIntegration :one
+INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address, checked_at, check_problem)
+VALUES (app_tenant_id(), @provider, @base_url, @api_key_enc, @key_hint, @from_address, now(), '')
+ON CONFLICT (tenant_id) DO UPDATE SET provider = EXCLUDED.provider, base_url = EXCLUDED.base_url, api_key_enc = EXCLUDED.api_key_enc,
+  key_hint = EXCLUDED.key_hint, from_address = EXCLUDED.from_address, checked_at = EXCLUDED.checked_at, check_problem = '', updated_at = now()
+RETURNING *;
+
+-- name: DeleteMailIntegration :execrows
+DELETE FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id();
+
+-- name: MarkMailIntegrationChecked :exec
+UPDATE tenant_mail_integrations SET checked_at = CASE WHEN @problem::text = '' THEN now() ELSE checked_at END, check_problem = @problem::text
+WHERE tenant_id = app_tenant_id();

@@ -6,6 +6,8 @@ MAIL_FROM: "Payrudder <billing@payrudder.local>"
 NOTIFIER_SENDING_STALE: "5m"
 # How long a tenant's mail switch (plans-svc) is remembered; a change reaches the notifier within it.
 NOTIFIER_MAIL_SWITCH_TTL: "15s"
+# A tenant's own e-mail provider must be https:// and public. Development and tests only: allow http:// and private addresses.
+NOTIFIER_MAIL_ALLOW_PRIVATE: "false"
 PAYRUDDER_CONSUMER_GROUP: "notifier"
 PAYRUDDER_DLQ_TOPIC: "usage.limit-exceeded.dlq.v1"
 PAYRUDDER_CONSUMER_SESSION_TIMEOUT: "10s"
