@@ -148,7 +148,7 @@ func (h *Handler) ReceiveInboxMail(ctx context.Context, req *billingv1.ReceiveIn
 	out := &billingv1.ReceiveInboxMailResponse{}
 	token := strings.ToLower(strings.TrimSpace(req.GetToken()))
 	if len(token) < 16 || len(token) > 64 {
-		out.Skipped = int32(len(req.GetAttachments()))
+		out.Skipped = int32(len(req.GetAttachments())) //nolint:gosec // bounded by the size of the request the server accepts
 		return out, nil
 	}
 	var target sqlc.ResolveInboxTokenRow
@@ -164,7 +164,7 @@ func (h *Handler) ReceiveInboxMail(ctx context.Context, req *billingv1.ReceiveIn
 		return nil, apierr.Internal(ctx, err)
 	}
 	if !found {
-		out.Skipped = int32(len(req.GetAttachments()))
+		out.Skipped = int32(len(req.GetAttachments())) //nolint:gosec // bounded by the size of the request the server accepts
 		return out, nil
 	}
 	var appID *uuid.UUID
