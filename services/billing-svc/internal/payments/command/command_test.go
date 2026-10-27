@@ -30,9 +30,9 @@ func TestValidate(t *testing.T) {
 		"zero amount":     {Payment{Method: "cash"}, "", "", "billing.payment.bad_amount"},
 		"negative amount": {Payment{Method: "cash", AmountMinor: -1}, "", "", "billing.payment.bad_amount"},
 		"in the future":   {Payment{Method: "cash", AmountMinor: 1, ReceivedAt: now.Add(time.Hour)}, "", "", "billing.payment.bad_date"},
-		"long reference":  {Payment{Method: "cash", AmountMinor: 1}, strings.Repeat("x", 129), "", "billing.payment.bad_amount"},
-		"multiline ref":   {Payment{Method: "cash", AmountMinor: 1}, "a\nb", "", "billing.payment.bad_amount"},
-		"long note":       {Payment{Method: "cash", AmountMinor: 1}, "", strings.Repeat("x", 501), "billing.payment.bad_amount"},
+		"long reference":  {Payment{Method: "cash", AmountMinor: 1}, strings.Repeat("x", 129), "", "billing.payment.bad_reference"},
+		"multiline ref":   {Payment{Method: "cash", AmountMinor: 1}, "a\nb", "", "billing.payment.bad_reference"},
+		"long note":       {Payment{Method: "cash", AmountMinor: 1}, "", strings.Repeat("x", 501), "billing.payment.bad_note"},
 	} {
 		if got := errkey.Of(validate(c.p, c.ref, c.note, now)); got != c.key {
 			t.Errorf("%s: key %q, want %q", name, got, c.key)
