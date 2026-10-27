@@ -403,7 +403,7 @@ paths:
                 start_time: { type: string, format: date-time }
                 trial_days: { type: integer, minimum: 0, maximum: 365, description: "Left out: the package version's own default trial. 0: no trial whatever the default is" }
                 interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
-                currency: { type: string, description: Default is the customer's billing currency, then the tenant's }
+                currency: { type: string, description: "Default is the customer's billing currency, then the tenant's" }
                 provider: { type: string, description: The payment provider that sells it (for example paddle); default is the tenant's default account }
                 coupon_code: { type: string, description: A coupon to redeem on the new subscription }
                 quantity: { type: integer, minimum: 1, maximum: 100000, description: "Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance" }
@@ -789,7 +789,7 @@ paths:
       summary: The bytes of a received attachment
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: The file as it came (PDF, PNG or JPEG), content: { application/octet-stream: { schema: { type: string, format: binary } } } }
+        "200": { description: "The file as it came (PDF, PNG or JPEG)", content: { application/octet-stream: { schema: { type: string, format: binary } } } }
         "404": { $ref: "#/components/responses/Error" }
   /v1/expense-inbox/items/{id}/resolve:
     post:
@@ -1150,7 +1150,7 @@ paths:
       summary: Partners, newest first
       parameters:
         - { name: status, in: query, schema: { type: string, enum: [pending, active, suspended] } }
-        - { name: search, in: query, schema: { type: string }, description: Part of the code, e-mail address or name }
+        - { name: search, in: query, schema: { type: string }, description: "Part of the code, e-mail address or name" }
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
@@ -1353,8 +1353,8 @@ paths:
       operationId: getRevenueReport
       summary: Invoices summed by period, payment provider, customer country and currency (currencies are never added together)
       parameters:
-        - { name: from, in: query, description: First period, YYYY-MM, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
-        - { name: to, in: query, description: Last period, YYYY-MM, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: from, in: query, description: "First period, YYYY-MM", schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: to, in: query, description: "Last period, YYYY-MM", schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
         - { name: group_by, in: query, description: "Comma-separated: period, provider, country (default period). Currency is always split", schema: { type: string, examples: ["period,provider"] } }
       responses:
         "200":
@@ -1428,7 +1428,7 @@ paths:
       operationId: getSubscriptionReport
       summary: Subscriptions and monthly recurring revenue at the end of a month, with the new and the churned, by provider, country and currency
       parameters:
-        - { name: month, in: query, description: YYYY-MM in the tenant's time zone; default the current month, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
+        - { name: month, in: query, description: "YYYY-MM in the tenant's time zone; default the current month", schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } }
         - { name: group_by, in: query, description: "Comma-separated: provider, country. Currency is always split", schema: { type: string } }
       responses:
         "200":
@@ -3029,7 +3029,7 @@ paths:
         - { $ref: "#/components/parameters/ID" }
         - { name: environment, in: query, schema: { type: string, enum: [live, sandbox], default: live } }
         - { name: period, in: query, schema: { type: string, enum: [7d, 30d, 90d, ytd, custom], default: 30d } }
-        - { name: from, in: query, description: First day of a custom period (YYYY-MM-DD, the tenant's days), schema: { type: string, format: date } }
+        - { name: from, in: query, description: "First day of a custom period (YYYY-MM-DD, the tenant's days)", schema: { type: string, format: date } }
         - { name: to, in: query, description: Last day of a custom period; not after today, schema: { type: string, format: date } }
         - { name: compare, in: query, description: "0 leaves out the comparison with the period before", schema: { type: string, enum: ["0", "1"], default: "1" } }
       responses:
@@ -3574,7 +3574,7 @@ paths:
             schema:
               type: object
               properties:
-                tax_id: { type: string, description: The seller's tax id, for an integrator that can look up a registered business }
+                tax_id: { type: string, description: "The seller's tax id, for an integrator that can look up a registered business" }
       responses:
         "200":
           description: The result
@@ -3757,7 +3757,7 @@ paths:
               properties:
                 name: { type: string }
                 currency: { type: string, pattern: "^[A-Z]{3}$", description: "Required, no default. Immutable. An active ISO 4217 code (USD, EUR, TRY, JPY, KWD, ...); the minor-unit exponent comes from the currency (0 for JPY, 3 for KWD)." }
-                timezone: { type: string, examples: [Europe/Istanbul], description: Required IANA name, no default. Immutable. }
+                timezone: { type: string, examples: [Europe/Istanbul], description: "Required IANA name, no default. Immutable." }
                 grace_period: { type: string, examples: ["86400s"], description: "Required, protobuf Duration JSON, 0s..604800s" }
                 tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
       responses:
@@ -4227,7 +4227,7 @@ paths:
           application/json:
             schema: { type: object }
       responses:
-        "200": { description: Understood (processed, duplicate or ignored) }
+        "200": { description: "Understood (processed, duplicate or ignored)" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
@@ -4246,7 +4246,7 @@ paths:
           application/json:
             schema: { type: object }
       responses:
-        "200": { description: Understood (processed, duplicate or ignored) }
+        "200": { description: "Understood (processed, duplicate or ignored)" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -4332,7 +4332,7 @@ paths:
               properties:
                 subscription_id: { type: string, format: uuid }
                 to_provider: { type: string, enum: [iyzico, paddle, banktransfer] }
-                price_ref: { type: string, description: The target provider's catalogue price, for a provider that runs subscriptions itself }
+                price_ref: { type: string, description: "The target provider's catalogue price, for a provider that runs subscriptions itself" }
       responses:
         "201":
           description: Started (checkout_url, state started) or done (new_subscription, cutover, state completed)
@@ -4722,7 +4722,7 @@ paths:
       parameters:
         - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: period, in: query, schema: { type: string, enum: [7d, 30d, 90d, ytd, custom], default: 30d } }
-        - { name: from, in: query, description: First day of a custom period (YYYY-MM-DD, the tenant's days), schema: { type: string, format: date } }
+        - { name: from, in: query, description: "First day of a custom period (YYYY-MM-DD, the tenant's days)", schema: { type: string, format: date } }
         - { name: to, in: query, description: Last day of a custom period; not after today, schema: { type: string, format: date } }
         - { name: compare, in: query, description: "0 leaves out the comparison with the period before", schema: { type: string, enum: ["0", "1"], default: "1" } }
       responses:
@@ -4754,7 +4754,7 @@ paths:
                 tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
                 address: { $ref: "#/components/schemas/Address" }
                 legal: { $ref: "#/components/schemas/LegalInfo" }
-                e_invoice_on: { type: string, enum: [off, finalized, paid] }
+                e_invoice_on: { type: string, enum: ["off", finalized, paid] }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -5310,7 +5310,7 @@ components:
         resets_at: { type: [string, "null"], format: date-time, description: When the window ends and used starts again from zero; null for the lifetime window }
         mode: { type: string, enum: [hard, soft, notify] }
         over_limit: { type: boolean, description: "not unlimited and used >= limit, whatever the mode" }
-        overridden: { type: boolean, description: The limit is the customer's own override, not its package's }
+        overridden: { type: boolean, description: "The limit is the customer's own override, not its package's" }
     IngestEventsRequest:
       type: object
       required: [events]
@@ -5330,7 +5330,7 @@ components:
         quantity:
           description: Non-negative decimal with at most the meter's quantity_scale decimal places. A string or a JSON number.
           oneOf: [{ type: string, examples: ["1500", "1.250"] }, { type: number }]
-        event_time: { type: string, format: date-time, description: Not older than 35 days, not more than 5 minutes ahead. }
+        event_time: { type: string, format: date-time, description: "Not older than 35 days, not more than 5 minutes ahead." }
         properties: { type: object, additionalProperties: { type: string }, description: At most 32 entries and 4 KiB in total. }
     IngestEventsResponse:
       type: object
@@ -5422,7 +5422,7 @@ components:
         user: { $ref: "#/components/schemas/AuthUser" }
         memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
         token: { type: string, description: "qs_..., shown once; send as Authorization: Bearer" }
-        expire_time: { type: string, format: date-time, description: 14 days from now; slides on use, never beyond 90 days from sign-in }
+        expire_time: { type: string, format: date-time, description: "14 days from now; slides on use, never beyond 90 days from sign-in" }
         operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
     SessionInfo:
       type: object
@@ -5458,7 +5458,7 @@ components:
         unlimited: { type: boolean }
         mode: { type: string, enum: [hard, soft, notify] }
         over_limit: { type: boolean }
-        overridden: { type: boolean, description: The limit is the organisation's own, set by the operator }
+        overridden: { type: boolean, description: "The limit is the organisation's own, set by the operator" }
         resets_time: { type: string, format: date-time, description: Only the events quota resets }
     PlatformInfo:
       type: object
@@ -5652,8 +5652,8 @@ components:
         generated_at: { type: string, format: date-time }
         status: { type: string, enum: [ok, attention, degraded] }
         unavailable: { type: array, items: { type: string } }
-        payments_truncated: { type: boolean, description: The period reaches past the newest 1000 ledger rows the gateway reads, so payment counts may be low }
-        payments_prev_covered: { type: boolean, description: False when the ledger window does not reach back over the previous period, so it has no payment comparison }
+        payments_truncated: { type: boolean, description: "The period reaches past the newest 1000 ledger rows the gateway reads, so payment counts may be low" }
+        payments_prev_covered: { type: boolean, description: "False when the ledger window does not reach back over the previous period, so it has no payment comparison" }
         renewals_truncated: { type: boolean }
         currencies: { type: array, description: "The tenant's own currency first, then by net revenue", items: { $ref: "#/components/schemas/DashboardCurrency" } }
         customers:
@@ -6119,7 +6119,7 @@ components:
         aggregation: { type: string, enum: [AGGREGATION_SUM, AGGREGATION_COUNT, AGGREGATION_MAX] }
         value_property: { type: string, description: Required for SUM and MAX }
         filter: { type: object, additionalProperties: { type: object, properties: { values: { type: array, items: { type: string } } } } }
-        quantity_scale: { type: integer, minimum: 0, maximum: 6, description: Decimal places, fixed per code }
+        quantity_scale: { type: integer, minimum: 0, maximum: 6, description: "Decimal places, fixed per code" }
         unit_label: { type: string, maxLength: 32, description: "Any unit of your choice: tokens, GB-h, seats, minutes", examples: ["tokens"] }
         category: { type: string, maxLength: 64, description: "Any group of your choice to file the meter under (compute, storage, AI); changes nothing in metering or billing", examples: ["AI"] }
     Meter:
@@ -6228,7 +6228,7 @@ components:
         cancel_at_period_end: { type: boolean }
         pause_time: { type: [string, "null"], format: date-time }
         provider: { type: string }
-        provider_ref: { type: string, description: The provider's id of the subscription, once it is linked }
+        provider_ref: { type: string, description: "The provider's id of the subscription, once it is linked" }
         owner: { type: string, enum: [quotify, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
         plan_code: { type: string }
         plan_version: { type: integer }
@@ -6753,7 +6753,7 @@ components:
         promotion_code: { type: string }
         discount_minor: { type: string }
         bonus_credits: { type: string }
-        total_minor: { type: string, description: The price after the discount, never below zero }
+        total_minor: { type: string, description: "The price after the discount, never below zero" }
         currency: { type: string }
     ChangeRequest:
       type: object
@@ -6773,7 +6773,7 @@ components:
         effective_time: { type: string, format: date-time }
         period_start: { type: string, format: date-time }
         period_end: { type: string, format: date-time }
-        credit_minor: { type: string, description: The unused, prepaid part of the old fee }
+        credit_minor: { type: string, description: "The unused, prepaid part of the old fee" }
         charge_minor: { type: string, description: What the new plan costs from the change }
         net_minor: { type: string, description: "charge - credit: positive is invoiced, negative becomes a credit balance" }
         currency: { type: string }
@@ -6826,7 +6826,7 @@ components:
         app_id: { type: string, format: uuid }
         address: { $ref: "#/components/schemas/Address" }
         legal: { $ref: "#/components/schemas/LegalInfo" }
-        e_invoice_on: { type: string, enum: [off, finalized, paid], description: When an invoice becomes an e-document }
+        e_invoice_on: { type: string, enum: ["off", finalized, paid], description: When an invoice becomes an e-document }
         environment: { type: string, enum: [ENVIRONMENT_SANDBOX, ENVIRONMENT_LIVE] }
         name: { type: string }
         tier: { type: string }
@@ -6853,7 +6853,7 @@ components:
             properties:
               name: { type: string, enum: [plans, ingest, aggregator, analytics, billing, payments] }
               state: { type: string, enum: [pending, done, failed, skipped] }
-              deleted: { type: object, additionalProperties: { type: integer }, description: Rows deleted, by table. }
+              deleted: { type: object, additionalProperties: { type: integer }, description: "Rows deleted, by table." }
               error: { type: string }
     GoLive:
       type: object
