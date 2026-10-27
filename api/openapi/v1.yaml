@@ -10,8 +10,17 @@ info:
     - `/admin/v1` routes require `Authorization: Bearer <operator token>` (the machine credential `PAYRUDDER_OPERATOR_TOKEN`, for scripts, `payrudderctl` and tests;
       it is never typed into a page) **or** the session token of a platform operator: a person who signed in and verified an address listed in
       `PAYRUDDER_OPERATOR_EMAILS`. The server decides this on every request.
-    - Field names are snake_case. Enums are strings. Per the protobuf JSON mapping, int64 values (`*_minor`) are
-      rendered as JSON strings and accepted as strings or numbers. Decimal quantities and prices are strings.
+    - Field names are snake_case. Enums are strings. Per the protobuf JSON mapping, int64 values (`*_minor`, counts, sizes) are
+      rendered as JSON strings (`type: string, format: int64`) and accepted as strings or numbers. Decimal quantities and prices are strings.
+      The few objects the gateway builds by hand for the console and the operator (dashboards, overview, organization tables, the payment ledger,
+      bank-transfer receipts) send their int64 values as JSON numbers; their schemas say `type: integer, format: int64`.
+    - Objects that come from protobuf messages always carry every field (they are `required` in the schema): a number is `0`, a string `""`, a list `[]`,
+      and a timestamp or nested object that is not set is `null` (marked `nullable`). A field that can be left out of an object is not in `required`.
+    - Lists that take `page_size` and `page_token` answer `next_page_token` (an empty string on the last page). A list without `page_token` returns its
+      whole set (or, for `limit`, the newest rows up to that limit) and says so.
+    - Idempotency: `POST /v1/events` takes an `idempotency_key` per event; credits (`grantCredits`, `consumeCredits`), `createPaymentLink` and `createUploadSession`
+      also take it in the `Idempotency-Key` header. Every other write is not deduplicated by a key: a repeated create answers `409` where the object has a natural
+      unique key (customer, meter, plan, coupon, ...).
     - Errors always use the `Error` envelope. 429 responses carry `Retry-After` (seconds).
 
     This file is hand-maintained. A contract test fails if a route in the gateway's route table is missing here or vice versa.
@@ -131,7 +140,7 @@ paths:
         - { name: invoice_id, in: query, schema: { type: string, format: uuid } }
         - { name: credit_note_id, in: query, schema: { type: string, format: uuid } }
         - { name: status, in: query, schema: { type: string, enum: [pending, issued, failed, cancelled] } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EInvoiceList" } } } }
@@ -172,6 +181,7 @@ paths:
     get:
       operationId: listMeters
       summary: List meters (latest version of each code)
+      description: "Not paged: the response is the complete list."
       responses:
         "200":
           description: OK
@@ -211,7 +221,7 @@ paths:
     get:
       operationId: listEntitlements
       summary: Usage against the limits of every meter the customer has an entitlement on
-      description: See `getEntitlement` for the semantics of each item.
+      description: 'See `getEntitlement` for the semantics of each item. Not paged: the response is the complete list.'
       parameters:
         - { $ref: "#/components/parameters/ExternalID" }
         - { name: period, in: query, schema: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$", examples: ["2026-11"] } }
@@ -253,6 +263,7 @@ paths:
     get:
       operationId: listEntitlementOverrides
       summary: The customer's own limits, which replace its package's on their meters
+      description: "Not paged: the response is the complete list."
       parameters: [{ $ref: "#/components/parameters/ExternalID" }]
       responses:
         "200":
@@ -304,6 +315,7 @@ paths:
     get:
       operationId: listPlans
       summary: List plans
+      description: "Not paged: the response is the complete list."
       responses:
         "200":
           description: OK
@@ -540,6 +552,7 @@ paths:
     get:
       operationId: listCreditPacks
       summary: The credit packs the tenant sells
+      description: "Not paged: the response is the complete list."
       parameters: [{ name: active, in: query, schema: { type: boolean }, description: "true leaves out packs withdrawn from sale" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditPackList" } } } }
@@ -586,7 +599,9 @@ paths:
       description: >
         For a promotion, a goodwill gesture or a sale made outside Payrudder. With an `idempotency_key` (or the `Idempotency-Key` header) a repeat of the call adds nothing and
         returns `replayed: true`; the same key with other values is `billing.credits.key_reused`.
-      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/CreditGrantInput" } } }
@@ -602,7 +617,9 @@ paths:
       description: >
         Takes the credits that expire first. With too few credits nothing is taken and the answer is 409 `billing.credits.insufficient`. An `idempotency_key` (or the
         `Idempotency-Key` header) is required: a retried call returns the first result with `replayed: true` instead of charging twice.
-      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/CreditConsumeInput" } } }
@@ -617,7 +634,7 @@ paths:
       summary: Every change to a customer's credits, newest first
       parameters:
         - { $ref: "#/components/parameters/ExternalID" }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditLedgerPage" } } } }
@@ -635,7 +652,7 @@ paths:
         - { name: from, in: query, schema: { type: string, format: date }, description: "Only entries whose (first) day is on or after this day" }
         - { name: to, in: query, schema: { type: string, format: date }, description: "Only entries whose (first) day is on or before this day" }
         - { name: include_voided, in: query, schema: { type: boolean } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ExpensePage" } } } }
@@ -706,9 +723,10 @@ paths:
     get:
       operationId: listInboxItems
       summary: The attachments received by mail, newest first
+      description: "Not paged: the newest page_size items; there is no page_token, so older items come into view once the newer ones are resolved."
       parameters:
         - { name: status, in: query, schema: { type: string, enum: [to_review, accepted, dismissed], default: to_review } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InboxItemPage" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -739,6 +757,7 @@ paths:
     get:
       operationId: listExpenseRules
       summary: The recurring-vendor rules
+      description: "Not paged: the response is the complete list."
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListExpenseRulesResponse" } } } }
     post:
@@ -874,6 +893,7 @@ paths:
     get:
       operationId: listWebhookEndpoints
       summary: The tenant's webhook endpoints
+      description: "Not paged: the response is the complete list."
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListWebhookEndpointsResponse" } } } }
   /v1/webhook-endpoints/{id}:
@@ -918,7 +938,7 @@ paths:
       parameters:
         - { name: endpoint_id, in: query, schema: { type: string, format: uuid } }
         - { name: state, in: query, schema: { type: string, enum: [pending, delivered, failed] } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200":
@@ -949,6 +969,7 @@ paths:
     get:
       operationId: listCoupons
       summary: Coupons, newest first
+      description: "Not paged: the response is the complete list."
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCouponsResponse" } } } }
   /v1/coupons/{code}:
@@ -981,7 +1002,7 @@ paths:
         - { name: coupon, in: query, schema: { type: string }, description: Only the codes of this coupon }
         - { name: state, in: query, schema: { type: string, enum: [active, inactive] } }
         - { name: search, in: query, schema: { type: string }, description: Part of the code }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListPromotionCodesResponse" } } } }
@@ -1003,7 +1024,7 @@ paths:
         - { name: coupon, in: query, schema: { type: string } }
         - { name: promotion_code, in: query, schema: { type: string } }
         - { name: customer_external_id, in: query, schema: { type: string } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCouponRedemptionsResponse" } } } }
@@ -1071,7 +1092,7 @@ paths:
       parameters:
         - { name: status, in: query, schema: { type: string, enum: [pending, active, suspended] } }
         - { name: search, in: query, schema: { type: string }, description: "Part of the code, e-mail address or name" }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliatesResponse" } } } }
@@ -1083,7 +1104,7 @@ paths:
       description: The customer's e-mail address is masked (j***@example.com).
       parameters:
         - { name: affiliate_id, in: query, schema: { type: string, format: uuid }, description: Only this partner's }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliateReferralsResponse" } } } }
@@ -1101,7 +1122,7 @@ paths:
         - { name: payout_id, in: query, schema: { type: string, format: uuid } }
         - { name: from, in: query, schema: { type: string, format: date-time }, description: Earned at or after }
         - { name: to, in: query, schema: { type: string, format: date-time }, description: Earned before }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliateCommissionsResponse" } } } }
@@ -1146,7 +1167,7 @@ paths:
       parameters:
         - { name: affiliate_id, in: query, schema: { type: string, format: uuid } }
         - { name: status, in: query, schema: { type: string, enum: [open, paid, cancelled] } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliatePayoutsResponse" } } } }
@@ -1196,7 +1217,7 @@ paths:
         - { name: currency, in: query, schema: { type: string } }
         - { name: from, in: query, schema: { type: string, format: date-time } }
         - { name: to, in: query, schema: { type: string, format: date-time } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliateJournalResponse" } } } }
@@ -1390,7 +1411,7 @@ paths:
       parameters:
         - { name: invoice_id, in: query, schema: { type: string, format: uuid } }
         - { name: customer, in: query, description: Customer external id, schema: { type: string } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200":
@@ -1669,7 +1690,7 @@ paths:
         `kind: invoice` (needs `invoice_id`, a finalized unpaid invoice) or `kind: adhoc` (needs `amount_minor`, optionally `currency` — the tenant's by default — `description` and a
         `customer_external_id`; the invoice is made when the customer first presses Continue). The token is returned once. `Idempotency-Key` (or `idempotency_key`) makes a retry return the link made
         the first time, without the token (`replayed: true`); the same key with other parameters is refused. Single-use links stop after one paid invoice; a reusable ad-hoc link makes one invoice per use.
-      parameters: [{ name: Idempotency-Key, in: header, schema: { type: string } }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/CreatePaymentLinkRequest" } } }
@@ -1687,7 +1708,7 @@ paths:
         - { name: status, in: query, schema: { type: string, enum: [active, paid, expired, revoked] } }
         - { name: invoice_id, in: query, schema: { type: string, format: uuid } }
         - { name: customer, in: query, schema: { type: string }, description: "The customer's external id" }
-        - { name: page_size, in: query, schema: { type: integer } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200":
@@ -1743,7 +1764,7 @@ paths:
       description: The same rows the customer sees on their payment page, newest first (charges and refunds from the ledger; an invoice may have several attempts).
       parameters:
         - { name: external_id, in: path, required: true, schema: { type: string } }
-        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 }, description: "How many invoices to read; there is no page_token, so a customer with more invoices cannot be listed completely" }
       responses:
         "200":
           description: OK
@@ -1776,7 +1797,7 @@ paths:
         `/admin/v1/tenants/{tenant_id}/ledger` stays operator-only: it also carries provider references and decline details. `503` when the payment service
         does not answer.
       parameters:
-        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 }, description: "The answer folds the newest 1000 ledger rows and returns the first limit payments; there is no page_token (truncated says when the window was full)" }
       responses:
         "200":
           description: OK
@@ -1793,7 +1814,7 @@ paths:
         Returns, for each file, presigned S3 `UploadPart` URLs for its first (up to 100) parts. Upload the parts in parallel
         straight to S3 (PUT, each part `part_size` bytes except the last), keep the `ETag` of each answer, then call
         `complete`. The session lasts 24 hours. `Idempotency-Key` makes retries return the same session.
-      parameters: [{ name: Idempotency-Key, in: header, schema: { type: string } }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
       requestBody:
         required: true
         content:
@@ -2902,7 +2923,7 @@ paths:
       summary: Who the partner brought, newest first
       description: "The customer is a masked e-mail address (j***@example.com)."
       security: [{ sessionToken: [] }]
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }, { name: page_token, in: query, schema: { type: string } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyReferralsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
@@ -2914,7 +2935,7 @@ paths:
       summary: The partner's commissions, newest first
       description: "pending commissions wait out the seller's hold; a refund takes back in proportion; one already paid is netted by a negative row."
       security: [{ sessionToken: [] }]
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: status, in: query, schema: { type: string, enum: [pending, approved, paid, reversed] } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: status, in: query, schema: { type: string, enum: [pending, approved, paid, reversed] } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }, { name: page_token, in: query, schema: { type: string } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyCommissionsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
@@ -2926,7 +2947,7 @@ paths:
       summary: Payouts made to the partner, newest first
       description: "A payout of a sandbox environment is fake (fake true): nothing was paid."
       security: [{ sessionToken: [] }]
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }, { name: page_token, in: query, schema: { type: string } }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyPayoutsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
@@ -3473,7 +3494,7 @@ paths:
         - { name: invoice_id, in: query, schema: { type: string, format: uuid } }
         - { name: credit_note_id, in: query, schema: { type: string, format: uuid } }
         - { name: status, in: query, schema: { type: string, enum: [pending, issued, failed, cancelled] } }
-        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EInvoiceList" } } } }
@@ -4330,6 +4351,7 @@ components:
     ExternalID: { name: external_id, in: path, required: true, schema: { type: string } }
     PlanCode: { name: code, in: path, required: true, schema: { type: string } }
     ID: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    IdempotencyKey: { name: Idempotency-Key, in: header, required: false, description: "Makes a retry safe: a repeat with the same key and the same payload does not do the work twice (credits answer the current balance with replayed: true, a payment link answers the first link without its token, an upload session answers the first session); the same key with another payload is a 409. The body field idempotency_key, where the operation has one, wins over the header.", schema: { type: string, minLength: 1, maxLength: 200 } }
   responses:
     Error:
       description: Error envelope
