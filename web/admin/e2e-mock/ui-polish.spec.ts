@@ -59,13 +59,9 @@ test.describe("a change of plan (UI-13)", () => {
     const end = page.getByTestId("sub-end-now");
     await expect(end).toBeVisible();
     await expect(end).not.toHaveClass(/bg-destructive/);
-    let asked = "";
-    page.once("dialog", (d) => {
-      asked = d.message();
-      void d.dismiss();
-    });
     await end.click();
-    await expect.poll(() => asked).not.toBe("");
+    await expect(page.getByTestId("confirm-dialog")).toContainText("End this subscription now?");
+    await page.getByTestId("confirm-cancel").click();
     expect(gw.calls.some((c) => c.method === "POST" && c.path.startsWith("/v1/subscriptions"))).toBe(false);
   });
 });
