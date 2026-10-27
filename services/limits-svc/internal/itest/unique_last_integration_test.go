@@ -292,6 +292,24 @@ func testLostOffsetsWithoutTraffic(t *testing.T) {
 	if got := q.applier.LostOffsets(ctx, []int32{0}); len(got) != 0 {
 		t.Fatalf("reported twice: %v", got)
 	}
+	// A pod that has only loaded its offsets (restarted, nothing applied yet) knows what Redis must hold as well.
+	q.apply(q.at(uuid.New(), uuid.New(), "users", "u1", 100, 1, "v1"))
+	fresh, err := engine.NewApplier(engine.Config{Redis: q.rdb, Meters: defaultMeters, Tenants: fixedTenants(), Ents: q.ents, LimitTopic: "unused", Log: testkit.Logger()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fresh.Load(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fresh.LoadOffsets(ctx, "", []int32{0}); err != nil {
+		t.Fatal(err)
+	}
+	if err := q.rdb.FlushAll(ctx).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if got := fresh.LostOffsets(ctx, []int32{0}); len(got) != 1 {
+		t.Fatalf("lost after load and flush = %v, want [0]", got)
+	}
 }
 
 // Replaying the whole log into an empty Redis (what a lost offset key does) gives the same counters as the first pass, for both aggregations.

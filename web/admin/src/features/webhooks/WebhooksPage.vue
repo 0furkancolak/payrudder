@@ -227,14 +227,14 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
                 <Badge :variant="stateVariant(d.state)">{{ stateWord(d.state) }}</Badge>
                 <span v-if="d.state === 'WEBHOOK_DELIVERY_STATE_PENDING' && d.attempts" class="text-muted-foreground block text-xs">{{ t("billing.webhooks.nextTry", { when: when(d.next_attempt_time) }) }}</span>
               </TableCell>
-              <TableCell class="text-end tabular-nums">{{ d.attempts }}</TableCell>
-              <TableCell class="max-w-28 text-xs" data-testid="delivery-answer">
+              <TableCell class="px-2 text-end tabular-nums">{{ d.attempts }}</TableCell>
+              <TableCell class="max-w-24 text-xs" data-testid="delivery-answer">
                 <div class="flex items-center gap-1.5">
                   <Badge v-if="d.last_status" :variant="Number(d.last_status) < 300 ? 'success' : 'destructive'" class="shrink-0">{{ d.last_status }}</Badge>
                   <span class="min-w-0 truncate" :title="answer(d).full || undefined">{{ answer(d).text }}</span>
                 </div>
               </TableCell>
-              <TableCell class="text-xs whitespace-nowrap">{{ when(d.create_time) }}</TableCell>
+              <TableCell class="max-w-24 text-xs">{{ when(d.create_time) }}</TableCell>
               <TableCell><RowActions :actions="[{ key: 'redeliver', label: t('billing.webhooks.redeliver'), disabled: act.redeliver.isPending.value, onSelect: () => act.redeliver.mutate(d.id ?? '') }]" /></TableCell>
             </TableRow>
           </TableBody>

@@ -161,6 +161,11 @@ func (a *Applier) LoadOffsets(ctx context.Context, _ string, partitions []int32)
 				return nil, fmt.Errorf("%s holds %q: %w", OffsetKey(p), v, perr)
 			}
 			out[p] = n
+			// What Redis held when this pod started is what it must still hold: a loss before the first batch is found by LostOffsets too.
+			ps := a.part(p)
+			ps.mu.Lock()
+			ps.expect = max(ps.expect, n)
+			ps.mu.Unlock()
 		}
 	}
 	return out, nil
