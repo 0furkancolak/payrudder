@@ -121,6 +121,10 @@ Details that differ from the sketch above:
 
 Details and trade-offs: [07-correctness.md §3](../07-correctness.md#3-transactional-outbox-in-ingest-svc).
 
+## In a cell (phase 28)
+
+With `PAYRUDDER_CELLS` set ([runbook](../runbooks/cells.md)) a tenant that the directory places in a cell has `idempotency_keys` and `outbox` in its own schema `t_<id>` of the cell's `ingest_db`, built by `migrations/tenant` (the same objects as the public migrations; `enqueue_outbox` notifies with the tenant id as payload and the partition function maintains the schema it lives in). The write path opens its transaction through the router, so the same statements run in the tenant's schema; a tenant that is being moved is answered `Unavailable`, nothing written. The relay visits every serving tenant of a cell (on its notification, or on a 2 s sweep) and relays its outbox in the same claim, publish, delete transaction, and refuses a batch with a row of another tenant. The depth that drives back-pressure is the pooled depth plus the cell tenants'; `GetOutboxWatermark` is the oldest row over all of them and fails with `ingest.outbox.unavailable` while a tenant is moving. The partition maintenance and the sandbox reset visit the cells too. Off by default; no tenant is placed in a cell.
+
 ## Owned data (`ingest_db`)
 
 `idempotency_keys` (partitioned by `created_at`, monthly, retained 45 days), `outbox`.

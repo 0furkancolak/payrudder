@@ -61,6 +61,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [0015](adr/0015-operator-console-stack.md) | The operator console is a Vue single-page app |
 | [0016](adr/0016-provider-capabilities-and-routing.md) | Payment providers declare capabilities; routing is a stored rule set |
 | [0017](adr/0017-advance-fixed-fees-and-change-modes.md) | Fixed fees are billed in advance; plan changes are explicit, previewed and credited |
+| [0018](adr/0018-tenant-isolation-modes.md) | Two isolation modes: pooled (RLS) and cells (schema per tenant); built in stages, the job conversion is not finished ([runbook](runbooks/cells.md)) |
 
 ## Delivery plan
 

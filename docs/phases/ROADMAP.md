@@ -6,7 +6,7 @@ Everything built is described in the design documents of `docs/` and in the ADRs
 
 | Phase | Goal | Done when |
 |---|---|---|
-| [28 Cells](phase-28-cells.md) | Tenant directory, schema-per-tenant mode, converted cross-tenant jobs, fenced moves ([ADR 0018](../adr/0018-tenant-isolation-modes.md)) | Suites pass in pooled and cells mode; a tenant in a cell cannot read another's schema; a move loses no row |
+| [28 Cells](phase-28-cells.md) | **Stage 3 is left**: the directory, the isolation switch and moves are built and ingest-svc and assets-svc run in cells mode, but 30 of 41 cross-tenant jobs and tenant schemas (billing-svc, plans-svc, aggregator, payments-worker) are not converted, so the directory refuses every cell placement ([ADR 0018](../adr/0018-tenant-isolation-modes.md)) | Every entry of `pkg/tenantdir.Jobs` converted and tested in both modes |
 | [43 Repair CI](phase-43-ci-repair.md) | `main` and the nightly runs green. The 1M-event correctness and k6 nightlies must pass twice in a row | `ci` green on `main`, nightly green twice |
 | [49 Code-quality remediation](phase-49-code-quality-remediation.md) | Error contract, shared packages, ADR 0020 module moves (plans-svc and gateway are done; the other services are not) | Behaviour unchanged, tests green |
 

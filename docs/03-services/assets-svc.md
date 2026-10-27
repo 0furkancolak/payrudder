@@ -133,6 +133,10 @@ message UploadAssetChunk {
 `upload_sessions`, `assets`. DDL in [05-data-model.md](../05-data-model.md#assets_db).
 All tables are RLS'd for `assets_app`. The sweeper and verifier run as `assets_system`.
 
+### In a cell (phase 28)
+
+With `PAYRUDDER_CELLS` set ([runbook](../runbooks/cells.md)) a tenant that the directory places in a cell has its three tables in its own schema `t_<id>` of the cell's `assets_db` (`migrations/tenant`, the public migration run in a schema). Requests go through the router; the sweeper and the verifier work the pooled database and then each serving cell tenant's schema, and skip one that is moving. The orphan reconciler lists every object once and checks the asset ids against the schema of the tenant in the object key (the pooled database for the others): an object of a cell tenant is never taken for an orphan because the pooled tables do not know it, an object of a tenant that is moving is left alone, and if the directory cannot be asked nothing is deleted. `PAYRUDDER_PLANS_ADDR` is read only in this mode (the directory is plans-svc's).
+
 ## Consumed / produced messages
 
 None in v1. A ready asset is referenced by ID (e.g. `tenants.invoice_logo_asset_id` in plans-svc, copied into `RenderInvoicePdf`).
