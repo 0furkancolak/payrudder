@@ -4070,7 +4070,8 @@
       "over": "{n} limiti aştı",
       "near": "{n} limite yakın",
       "ok": "limitler içinde",
-      "empty": "Bakılan müşterilerin hiçbirinde limit yok."
+      "empty": "Bakılan müşterilerin hiçbirinde limit yok.",
+      "open": "Tüm kullanım"
     },
     "renewals": {
       "title": "Yaklaşan tahsilatlar",

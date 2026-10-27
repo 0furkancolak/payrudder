@@ -4070,7 +4070,8 @@
       "over": "{n} over the limit",
       "near": "{n} close to it",
       "ok": "within limits",
-      "empty": "None of the customers looked at has a limit."
+      "empty": "None of the customers looked at has a limit.",
+      "open": "All usage"
     },
     "renewals": {
       "title": "Upcoming charges",

@@ -4070,7 +4070,8 @@
       "over": "{n} por encima del límite",
       "near": "{n} cerca del límite",
       "ok": "dentro de los límites",
-      "empty": "Ninguno de los clientes revisados tiene un límite."
+      "empty": "Ninguno de los clientes revisados tiene un límite.",
+      "open": "Todo el uso"
     },
     "renewals": {
       "title": "Cobros próximos",

@@ -119,7 +119,7 @@ const empty = computed(() => !!data.value && (!block.value || !hasActivity(block
 
       <!-- usage, renewals, activity -->
       <div class="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-        <DashUsage :data="data" />
+        <DashUsage :data="data" :base="base" />
         <DashRenewals :data="data" :block="block" :cur="cur" />
         <DashActivity :data="data" />
       </div>
