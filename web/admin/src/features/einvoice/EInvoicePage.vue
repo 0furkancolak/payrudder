@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -59,8 +60,8 @@ const environmentOptions = computed(() => [
   { value: "sandbox", label: "sandbox" },
 ]);
 const environmentFilter = computed({ get: () => table.filters.value.environment ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, environment: v }) });
-function removeAccount(env: Environment, p: string) {
-  if (window.confirm(t("einvoice.settings.confirmRemove", { provider: p, environment: env }))) actions.remove.mutate(env);
+async function removeAccount(env: Environment, p: string) {
+  if ((await askConfirm({ body: t("einvoice.settings.confirmRemove", { provider: p, environment: env }) }))) actions.remove.mutate(env);
 }
 const when = (v?: string) => fmt.date(v, "day", "—");
 </script>

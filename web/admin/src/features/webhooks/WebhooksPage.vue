@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { useParams } from "@tanstack/vue-router";
 import AppField from "@/app/layout/AppField.vue";
 import { ListTree, Pause, Play, Plus, RefreshCw, Send, Trash2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
+import { useShell } from "@/app/layout/useShell";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { firstError } from "@/shared/lib/errors";
@@ -11,6 +13,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
@@ -20,6 +23,7 @@ import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { answerBody, isInsecureUrl, plainAnswer } from "./lib";
 import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoints, isEventType, type EventType } from "./api";
 
 const { t } = useI18n();
@@ -28,6 +32,10 @@ const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 const endpoints = useWebhookEndpoints(tenantId);
 const act = useWebhookActions(tenantId);
+const shell = useShell();
+/** A plain http endpoint is accepted, but what the person should know about it depends on the environment the endpoint is in. */
+const insecureNote = (u: string | undefined) => (isInsecureUrl(u) ? t(shell.env.value === "sandbox" ? "billing.webhooks.insecure.sandbox" : "billing.webhooks.insecure.live") : "");
+const answer = (d: { last_error?: string; last_status?: number | string }) => plainAnswer(answerBody(d.last_error, d.last_status));
 
 const creating = ref(false);
 const url = ref("");
@@ -66,7 +74,7 @@ function actionsOf(e: Endpoint, i: number): RowAction[] {
     { key: "deliveries", label: t("billing.webhooks.deliveries"), icon: ListTree, onSelect: () => endpointsTable.open(i) },
     { key: "test", label: t("billing.webhooks.test"), icon: Send, disabled: act.test.isPending.value, onSelect: () => act.test.mutate(e.id ?? "") },
     { key: "toggle", label: e.active ? t("billing.webhooks.pause") : t("billing.webhooks.resume"), icon: e.active ? Pause : Play, onSelect: () => toggle(e) },
-    { key: "rotate", label: t("billing.webhooks.rotate"), icon: RefreshCw, onSelect: () => act.rotate.mutate(e.id ?? "") },
+    { key: "rotate", label: t("billing.webhooks.rotate"), icon: RefreshCw, onSelect: () => rotate(e.id) },
     { key: "delete", label: t("billing.webhooks.delete"), icon: Trash2, destructive: true, separatorBefore: true, onSelect: () => remove(e.id) },
   ];
 }
@@ -90,8 +98,14 @@ watch(creating, (v) => {
 function create() {
   act.create.mutate({ url: url.value.trim(), description: description.value.trim(), event_types: [...types.value] }, { onSuccess: () => { url.value = description.value = ""; types.value = []; creating.value = false; } });
 }
-function remove(id: string | undefined) {
-  if (id && window.confirm(t("billing.webhooks.confirmDelete"))) act.remove.mutate(id);
+async function remove(id: string | undefined) {
+  if (id && (await askConfirm({ title: t("billing.webhooks.deleteTitle"), body: t("billing.webhooks.confirmDelete"), confirmLabel: t("billing.webhooks.delete") }))) {
+    act.remove.mutate(id, { onSuccess: () => { if (current.value?.id === id) endpointsTable.detail.value = null; } });
+  }
+}
+/** Rotating cuts the old secret off at once: every receiver that still verifies with it fails until it is given the new one. */
+async function rotate(id: string | undefined) {
+  if (id && (await askConfirm({ title: t("billing.webhooks.rotateTitle"), body: t("billing.webhooks.confirmRotate"), confirmLabel: t("billing.webhooks.rotate") }))) act.rotate.mutate(id);
 }
 function toggle(e: { id?: string; url?: string; description?: string; event_types?: string[]; active?: boolean }) {
   act.update.mutate({ id: e.id ?? "", url: e.url ?? "", description: e.description ?? "", event_types: (e.event_types ?? []).filter(isEventType), active: !e.active });
@@ -108,8 +122,15 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       <SheetBody>
         <form id="create-webhook" class="grid gap-3" role="form" :aria-label="t('billing.webhooks.formLabel')" @submit.prevent="create">
           <AppField />
-          <Input v-model="url" type="url" required :aria-label="t('billing.webhooks.url')" placeholder="https://example.com/payrudder-webhook" />
-          <Input v-model="description" maxlength="200" :aria-label="t('billing.webhooks.description')" :placeholder="t('billing.webhooks.description')" />
+          <div class="grid gap-1.5">
+            <Label for="webhook-url">{{ t("billing.webhooks.url") }}</Label>
+            <Input id="webhook-url" v-model="url" type="url" required placeholder="https://example.com/payrudder-webhook" :aria-describedby="insecureNote(url) ? 'webhook-url-note' : undefined" />
+            <p v-if="insecureNote(url)" id="webhook-url-note" class="text-warning text-xs" role="status" data-testid="webhook-insecure">{{ insecureNote(url) }}</p>
+          </div>
+          <div class="grid gap-1.5">
+            <Label for="webhook-description">{{ t("billing.webhooks.description") }}</Label>
+            <Input id="webhook-description" v-model="description" maxlength="200" />
+          </div>
           <fieldset class="grid gap-1">
             <legend class="text-muted-foreground mb-1 text-sm">{{ t("billing.webhooks.events") }}</legend>
             <label v-for="type in EVENT_TYPES" :key="type" class="mono flex items-center gap-2 text-xs">
@@ -155,6 +176,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
         <TableRow v-for="(e, i) in endpointsTable.items.value" :key="e.id" class="cursor-pointer" @click="endpointsTable.open(i)">
           <TableCell>
             <span class="mono text-sm break-all">{{ e.url }}</span>
+            <span v-if="insecureNote(e.url)" class="text-warning block text-xs" data-testid="webhook-insecure-row">{{ insecureNote(e.url) }}</span>
             <span v-if="e.description" class="text-muted-foreground block text-xs">{{ e.description }}</span>
           </TableCell>
           <TableCell class="max-w-72 text-xs whitespace-normal max-md:hidden">{{ e.event_types?.length ? e.event_types.join(", ") : t("billing.webhooks.allEvents") }}</TableCell>
@@ -170,6 +192,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
 
   <DetailSheet v-model:index="endpointsTable.detail.value" :total="endpointsTable.total.value" :title="current?.url ?? ''" :description="current?.description || undefined" wide>
     <div v-if="current" class="flex flex-col gap-5" role="region" :aria-label="t('billing.webhooks.deliveries')">
+      <p v-if="insecureNote(current.url)" class="text-warning text-xs" role="status">{{ insecureNote(current.url) }}</p>
       <div class="flex flex-wrap items-center gap-2 text-sm">
         <Badge :variant="current.active ? 'success' : 'secondary'">{{ current.active ? t("billing.webhooks.active") : t("billing.webhooks.paused") }}</Badge>
         <span class="text-muted-foreground text-xs">{{ current.event_types?.length ? current.event_types.join(", ") : t("billing.webhooks.allEvents") }}</span>
@@ -177,7 +200,8 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       <div class="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" :disabled="act.test.isPending.value" @click="act.test.mutate(current.id ?? '')"><Send class="size-4" aria-hidden="true" />{{ t("billing.webhooks.test") }}</Button>
         <Button size="sm" variant="outline" @click="toggle(current)"><component :is="current.active ? Pause : Play" class="size-4" aria-hidden="true" />{{ current.active ? t("billing.webhooks.pause") : t("billing.webhooks.resume") }}</Button>
-        <Button size="sm" variant="outline" @click="act.rotate.mutate(current.id ?? '')"><RefreshCw class="size-4" aria-hidden="true" />{{ t("billing.webhooks.rotate") }}</Button>
+        <Button size="sm" variant="outline" @click="rotate(current.id)"><RefreshCw class="size-4" aria-hidden="true" />{{ t("billing.webhooks.rotate") }}</Button>
+        <Button size="sm" variant="outline" class="text-destructive ms-auto" data-testid="webhook-sheet-delete" @click="remove(current.id)"><Trash2 class="size-4" aria-hidden="true" />{{ t("billing.webhooks.delete") }}</Button>
       </div>
       <h3 class="text-base font-semibold">{{ t("billing.webhooks.deliveries") }}</h3>
       <div class="-mx-3">
@@ -198,16 +222,19 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
           </TableHeader>
           <TableBody>
             <TableRow v-for="d in deliveriesTable.items.value" :key="d.id">
-              <TableCell class="mono text-xs">{{ d.event_type }}</TableCell>
+              <TableCell class="mono text-xs break-all">{{ d.event_type }}</TableCell>
               <TableCell>
                 <Badge :variant="stateVariant(d.state)">{{ stateWord(d.state) }}</Badge>
                 <span v-if="d.state === 'WEBHOOK_DELIVERY_STATE_PENDING' && d.attempts" class="text-muted-foreground block text-xs">{{ t("billing.webhooks.nextTry", { when: when(d.next_attempt_time) }) }}</span>
               </TableCell>
               <TableCell class="text-end tabular-nums">{{ d.attempts }}</TableCell>
-              <TableCell class="text-xs">
-                <template v-if="d.last_status">{{ d.last_status }} </template>{{ d.last_error }}
+              <TableCell class="max-w-28 text-xs" data-testid="delivery-answer">
+                <div class="flex items-center gap-1.5">
+                  <Badge v-if="d.last_status" :variant="Number(d.last_status) < 300 ? 'success' : 'destructive'" class="shrink-0">{{ d.last_status }}</Badge>
+                  <span class="min-w-0 truncate" :title="answer(d).full || undefined">{{ answer(d).text }}</span>
+                </div>
               </TableCell>
-              <TableCell class="text-xs">{{ when(d.create_time) }}</TableCell>
+              <TableCell class="text-xs whitespace-nowrap">{{ when(d.create_time) }}</TableCell>
               <TableCell><RowActions :actions="[{ key: 'redeliver', label: t('billing.webhooks.redeliver'), disabled: act.redeliver.isPending.value, onSelect: () => act.redeliver.mutate(d.id ?? '') }]" /></TableCell>
             </TableRow>
           </TableBody>

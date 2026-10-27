@@ -89,3 +89,11 @@ export async function pickRange(page: Page, preset: string, nth = 0): Promise<vo
   await page.getByTestId("date-range").nth(nth).click();
   await page.getByTestId(`range-${preset}`).click();
 }
+
+/** Answers the console's styled confirmation (the one every destructive action asks): "yes" confirms, "no" cancels. Call it right after the click that opens it. */
+export async function confirmDialog(page: Page, answer: "yes" | "no" = "yes"): Promise<void> {
+  const dialog = page.getByTestId("confirm-dialog");
+  await dialog.waitFor();
+  await dialog.getByTestId(answer === "yes" ? "confirm-accept" : "confirm-cancel").click();
+  await dialog.waitFor({ state: "detached" });
+}

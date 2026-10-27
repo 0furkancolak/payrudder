@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { operatorEmail, signInAsOperator } from "./operator";
+import { confirmDialog } from "../e2e-mock/ui";
 
 const gateway = process.env.PAYRUDDER_GATEWAY_URL ?? "http://localhost:42800";
 const operatorToken = process.env.PAYRUDDER_OPERATOR_TOKEN ?? "local-operator-token-change-me-0123456789";
@@ -176,8 +177,8 @@ test.describe.serial("operator console", () => {
     const row = page.getByTestId("dlq-notification.send");
     await expect(row.getByTestId("dlq-count")).not.toHaveText("0");
     await shot(page, "admin-dead-letters");
-    page.once("dialog", (d) => d.accept());
     await row.getByRole("button", { name: "Redrive" }).click();
+    await confirmDialog(page, "yes");
     await expect(page.getByText(/Redriven [1-9]\d* message/)).toBeVisible();
     await expect(row.getByTestId("dlq-count")).toHaveText("0");
   });

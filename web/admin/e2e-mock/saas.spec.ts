@@ -141,8 +141,21 @@ test.describe("the operator", () => {
 });
 
 test.describe("the upgrade prompt", () => {
-  test("a refused create offers the plan page", async ({ page }) => {
+  test("an app limit that is used up is said before the form is filled in, with the way to the plan page", async ({ page }) => {
     const { gw } = saasGateway(productGateway(new MockGateway()).gw);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app?app=all");
+    await page.getByRole("button", { name: "Create app" }).first().click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByTestId("app-limit")).toContainText("Your plan allows 1 app(s) and you have 1");
+    await expect(dialog.getByTestId("app-limit").getByRole("link", { name: "Upgrade your plan" })).toBeVisible();
+    await expect(dialog.getByLabel("App name")).toBeDisabled();
+    await expect(dialog.getByRole("button", { name: "Create app" })).toBeDisabled();
+  });
+
+  test("a refused create offers the plan page", async ({ page }) => {
+    const { gw } = saasGateway(productGateway(new MockGateway()).gw, { used: { events: 9100, apps: 0, members: 2, api_keys: 3 } });
     gw.on((c) => (c.method === "POST" && c.path === "/app/v1/apps" ? { status: 429, body: { error: { code: "RESOURCE_EXHAUSTED", key: "plans.saas.quota.apps", message: "limit" } } } : undefined));
     await gw.install(page);
     await signInAsAda(page);

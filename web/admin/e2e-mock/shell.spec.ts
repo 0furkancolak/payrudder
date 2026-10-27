@@ -222,9 +222,10 @@ test.describe("pointer cursors", () => {
     await page.getByRole("button", { name: "Create app" }).first().click();
     const dialog = page.getByRole("dialog");
     expect(await cursor(dialog.getByRole("button", { name: "Cancel" }))).toBe("pointer");
-    expect(await cursor(dialog.getByRole("button", { name: "Create app" }))).toBe("not-allowed");
-    await dialog.getByLabel("App name").fill("x");
+    // An empty form is not a disabled button: it is submitted and says what is missing, next to the field.
     expect(await cursor(dialog.getByRole("button", { name: "Create app" }))).toBe("pointer");
+    await dialog.getByRole("button", { name: "Create app" }).click();
+    await expect(dialog.getByText("This field is required.")).toBeVisible();
   });
 });
 

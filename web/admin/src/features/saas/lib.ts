@@ -75,3 +75,10 @@ export function parseLimit(text: string): number | null | undefined {
   if (!/^\d{1,15}$/.test(t)) return null;
   return Number(t);
 }
+
+/** The apps quota when it is a hard limit that is used up (a new app would be refused), else undefined: what a form says up front instead of after it is filled in. */
+export function appLimitReached(quotas: readonly Partial<PlanQuota>[] | undefined): { used: number; limit: number } | undefined {
+  const q = quotas?.find((x) => x.resource === "apps");
+  if (!q || q.unlimited || q.mode !== "hard" || !q.limit || q.limit <= 0) return undefined;
+  return (q.used ?? 0) >= q.limit ? { used: q.used ?? 0, limit: q.limit } : undefined;
+}

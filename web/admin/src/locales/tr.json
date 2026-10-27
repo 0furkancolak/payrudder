@@ -35,7 +35,15 @@
     "moreActions": "Diğer işlemler",
     "view": "Görüntüle",
     "openFullPage": "Tam sayfada aç",
-    "all": "Tümü"
+    "all": "Tümü",
+    "confirm": {
+      "title": "Emin misiniz?",
+      "accept": "Onayla"
+    },
+    "validation": {
+      "required": "Bu alan zorunludur.",
+      "email": "Geçerli bir e-posta adresi girin."
+    }
   },
   "enums": {
     "environment": {
@@ -1019,7 +1027,14 @@
         "delivered": "Teslim edildi",
         "failed": "Başarısız"
       },
-      "allStatuses": "Tüm durumlar"
+      "allStatuses": "Tüm durumlar",
+      "deleteTitle": "Bu uç nokta silinsin mi?",
+      "rotateTitle": "İmza gizli anahtarı yenilensin mi?",
+      "confirmRotate": "Eski gizli anahtar hemen geçersiz olur: alıcınıza yenisini vermezseniz tüm teslimatları reddeder.",
+      "insecure": {
+        "sandbox": "Bu adres http kullanıyor; test için sandbox'ta kabul edilir. Canlı uç noktalar https kullanmalıdır.",
+        "live": "Bu adres http kullanıyor: müşteri ve fatura verileri şifresiz iletilir. https adresi kullanın."
+      }
     },
     "paymentLinks": {
       "title": "Ödeme bağlantıları",
@@ -1089,7 +1104,11 @@
       "for": "Konu",
       "promotionCode": "Promosyon kodu (isteğe bağlı)",
       "promotionHint": "Ödeyen, bu kodun indirimini yazmadan alır ve başka bir kod yazabilir. Kod şimdi bu tutara göre denetlenir.",
-      "id": "Bağlantı"
+      "id": "Bağlantı",
+      "createdTitle": "Ödeme bağlantısı oluşturuldu",
+      "createdHint": "Bağlantıyı şimdi kopyalayıp ödeme yapacak kişiye gönderin.",
+      "another": "Başka bağlantı oluştur",
+      "customerNone": "Müşteri yok"
     },
     "mail": {
       "title": "E-posta",
@@ -1131,7 +1150,12 @@
         "validityCol": "Geçerlilik",
         "noExpiry": "Süresiz",
         "days": "{n} gün",
-        "purchaseLink": "Satın alma bağlantısı oluştur"
+        "purchaseLink": "Satın alma bağlantısı oluştur",
+        "errors": {
+          "credits": "Kredi: 1 veya daha büyük bir tam sayı.",
+          "price": "Fiyat: sıfırdan büyük bir tutar.",
+          "validity": "Geçerlilik: 1 ile {max} arasında tam sayı gün ya da boş."
+        }
       },
       "customer": {
         "title": "Bir müşterinin kredileri",
@@ -1172,6 +1196,9 @@
           "goodwill": "İyi niyet jesti",
           "promotion": "Promosyon",
           "other": "Diğer"
+        },
+        "errors": {
+          "credits": "Kredi: 1 veya daha büyük bir tam sayı."
         }
       },
       "ledger": {
@@ -3187,7 +3214,10 @@
       "currency": "Para birimi",
       "timezone": "Saat dilimi",
       "immutable": "Para birimi ve saat dilimi sonradan değiştirilemez: fatura dönemleri bu saat diliminde kesilir.",
-      "submit": "Uygulama oluştur"
+      "submit": "Uygulama oluştur",
+      "badCurrency": "Listeden bir para birimi seçin.",
+      "badTimezone": "Listeden bir saat dilimi seçin.",
+      "limitReached": "Planınız {limit} uygulamaya izin veriyor ve {used} uygulamanız var. Yenisini oluşturmak için planınızı yükseltin."
     },
     "env": {
       "label": "Ortam",

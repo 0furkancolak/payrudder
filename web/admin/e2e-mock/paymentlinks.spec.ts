@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { rowAction } from "./ui";
+import { rowAction, confirmDialog } from "./ui";
 
 const link = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -53,9 +53,9 @@ test.describe("payment links", () => {
     expect(body).toMatchObject({ kind: "adhoc", amount_minor: "4990", currency: "USD", description: "Workshop", single_use: true, promotion_code: "WELCOME" });
     expect(String(body?.idempotency_key).length).toBeGreaterThan(10);
     await page.keyboard.press("Escape");
-
-    page.once("dialog", (d) => void d.accept());
     await rowAction(page.getByRole("row", { name: /Workshop/ }), "Revoke");
+
+    await confirmDialog(page, "yes");
     await expect.poll(() => gw.called("DELETE", "/v1/payment-links/l2").length).toBe(1);
     await expect(page.getByRole("row", { name: /Workshop/ })).toContainText("Revoked");
   });
@@ -110,10 +110,10 @@ test.describe("payment links", () => {
     await expect.poll(() => gw.called("DELETE", "/v1/customers/cus_1/portal-links").length).toBe(1);
     await expect.poll(() => gw.called("POST", "/v1/customers/cus_1/portal-links").length).toBe(2);
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toMatch(/\/c\/t2$/);
-
-    page.once("dialog", (d) => void d.accept());
     await sheet.getByTestId("customer-payment-page").click();
+
     await page.getByTestId("payment-page-revoke").click();
+    await confirmDialog(page, "yes");
     await expect.poll(() => gw.called("DELETE", "/v1/customers/cus_1/portal-links").length).toBe(2);
   });
 });

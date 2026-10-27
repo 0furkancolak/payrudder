@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { Copy, Inbox, RefreshCw } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
@@ -28,8 +29,8 @@ async function copy() {
   if (await copyText(text)) toast.success(t("common.copied"));
   else toast.error(t("common.copyFailed"));
 }
-function renew() {
-  if (!window.confirm(t("billing.accounting.inbox.confirmRotate"))) return;
+async function renew() {
+  if (!(await askConfirm({ body: t("billing.accounting.inbox.confirmRotate") }))) return;
   rotate.mutate(undefined, { onError: (e) => toast.error(errorText(e)) });
 }
 </script>
