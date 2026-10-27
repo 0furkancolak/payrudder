@@ -1,6 +1,6 @@
 # ADR 0018: Two tenant isolation modes: pooled (RLS) and cells (schema per tenant)
 
-Status: accepted; pooled mode is built and is the only mode in use. Cells mode is built in four stages (phase 28): the directory, the isolation switch, the job conversion and moves are in the code, and **the job conversion is not finished**, so the directory refuses to place any tenant in a cell ([what is left](#where-it-stands)).
+Status: accepted; pooled mode is built and is the only mode in use. Cells mode is built in four stages (phase 28): the directory, the isolation switch, the job conversion and moves are in the code, and **the job conversion is not finished** (ingest-svc, assets-svc and billing-svc are converted), so the directory refuses to place any tenant in a cell ([what is left](#where-it-stands)).
 
 ## Context
 
@@ -39,7 +39,7 @@ A service becomes cell-capable by shipping a **tenant migration set** (`migratio
 
 `pkg/tenantdir.Jobs` is the inventory: 41 entries (every service's tenant schema and every job that scans across tenants), found by reading every `main.go` and worker package. `tenantdir.CellsReady()` names what is left, and plans-svc's `BeginMove` and `FinishMove` return `cells_not_ready` while it does. Converting a job means it runs per serving tenant placed in a cell, in the tenant's schema (`Router.EachReady`, `pgxx.InTenantSchemaTx`), and is tested in both modes.
 
-Converted: the **outbox relay** (`pkg/outbox`: a tenant is visited on its `NOTIFY`, whose payload is the tenant id, or on a sweep; same claim, publish and delete in one transaction; a row of another tenant stops the batch; a moving tenant is skipped; depth and watermark cover the cells, and the watermark is unknown while a tenant moves, because a watermark that skipped it could let a consumer close a period over unpublished events) and **all of ingest-svc** and **all of assets-svc** (their request paths, monitors, partition maintenance, sandbox reset, sweeper, verifier and orphan reconciler).
+Converted: the **outbox relay** (`pkg/outbox`: a tenant is visited on its `NOTIFY`, whose payload is the tenant id, or on a sweep; same claim, publish and delete in one transaction; a row of another tenant stops the batch; a moving tenant is skipped; depth and watermark cover the cells, and the watermark is unknown while a tenant moves, because a watermark that skipped it could let a consumer close a period over unpublished events) and **all of ingest-svc** and **all of assets-svc** (their request paths, monitors, partition maintenance, sandbox reset, sweeper, verifier and orphan reconciler), and **all of billing-svc**: a hand-written tenant set of its whole schema, every request path through the router, and its jobs per place. billing-svc's system role goes through `internal/tenantdb`: work for one tenant (`InTx`, `Q`) is placed by the directory, and a job that scans for what is due runs through `DB.Each`, once over the pooled database and once per serving cell tenant, with a `Scope` that reaches only that place's rows. So a tenant is visited once (it is in one place), a cell scope refuses another tenant's id (no transaction mixes two tenants), and a pooled row of a tenant that is moving, or that the directory puts in a cell, is left for the next pass. Credit expiry became one transaction per tenant for it; a link or mail token, which names no tenant, is looked up in every place and is never answered "not found" while a tenant could not be searched.
 
 ### Moves (stage 4)
 
@@ -49,6 +49,7 @@ A move is fenced and offline (`pkg/cells.MoveTenant`, `payrudderctl cells move`)
 
 ### Where it stands
 
-- Stages 1 and 2 are complete. Stage 4 is complete for the services that have a tenant schema (ingest-svc, assets-svc).
-- Stage 3 is **not** complete: 30 of 41 inventory entries are not converted, among them the billing tick and its sweeps, the webhook dispatcher and the fee run. Each of plans-svc, billing-svc, aggregator and payments-worker first needs a tenant migration set (billing-svc and payments-worker have only tenant tables; plans-svc and the aggregator also have global tables that stay in `shared`, which the tenant set must leave out). Until then no tenant can be placed in a cell, by the check above, and no real tenant is.
+- Stages 1 and 2 are complete. Stage 4 is complete for the services that have a tenant schema (ingest-svc, assets-svc, billing-svc).
+- Stage 3 is **not** complete: 16 of 41 inventory entries are not converted, among them the webhook dispatcher. Each of plans-svc, aggregator and payments-worker first needs a tenant migration set (payments-worker has only tenant tables; plans-svc and the aggregator also have global tables that stay in `shared`, which the tenant set must leave out). Until then no tenant can be placed in a cell, by the check above, and no real tenant is.
+- A table without a `tenant_id` (billing-svc's `inbox_replies`, keyed by a message id) is left where it is by a move into or out of the pooled database (`pgxx.Move`); between two cells it moves with the schema.
 - Not verified: behind a real transaction-mode pooler (pgbouncer) and across two real clusters; `LISTEN` does not work behind such a pooler, so the relay's sweep carries the load there.

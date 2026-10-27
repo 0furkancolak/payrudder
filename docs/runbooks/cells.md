@@ -22,7 +22,7 @@ PAYRUDDER_CELLS={"c1":{"app":"postgres://ingest_app:…@c1-db/ingest_db","system
 
 The cell database is prepared like a service database (`deploy/compose/postgres/01-databases.sh`: the three roles, `REVOKE CREATE ON SCHEMA public FROM PUBLIC`), and nothing is migrated into its `public` schema. With `PAYRUDDER_MIGRATE_ON_START=true` the service creates the `shared` schema and applies its tenant migrations to every tenant schema of every cell (a failing tenant is logged and the service starts; with `PAYRUDDER_MIGRATE_ONLY=true` a failing tenant fails the job). `payrudderctl cells migrate` does the same from outside. A service in cells mode needs `PAYRUDDER_PLANS_ADDR` (assets-svc did not have it before; ingest-svc already did): the directory is plans-svc's.
 
-Services converted so far: **ingest-svc**, **assets-svc**. Every other service has no tenant schema yet; do not set `PAYRUDDER_CELLS` for it.
+Services converted so far: **ingest-svc**, **assets-svc**, **billing-svc**. Every other service has no tenant schema yet; do not set `PAYRUDDER_CELLS` for it. billing-svc needs `PAYRUDDER_PLANS_ADDR` as it always did (it is also where the directory is).
 
 ## The operator tool
 
@@ -36,7 +36,9 @@ Services converted so far: **ingest-svc**, **assets-svc**. Every other service h
     "ingest": {"migrations": "services/ingest-svc/migrations/tenant", "roles": ["ingest_app", "ingest_system"],
                "pooled": "${INGEST_MIGRATOR_DSN}", "cells": {"c1": "${INGEST_C1_MIGRATOR_DSN}", "c2": "${INGEST_C2_MIGRATOR_DSN}"}},
     "assets": {"migrations": "services/assets-svc/migrations/tenant", "roles": ["assets_app", "assets_system"],
-               "pooled": "${ASSETS_MIGRATOR_DSN}", "cells": {"c1": "${ASSETS_C1_MIGRATOR_DSN}", "c2": "${ASSETS_C2_MIGRATOR_DSN}"}}
+               "pooled": "${ASSETS_MIGRATOR_DSN}", "cells": {"c1": "${ASSETS_C1_MIGRATOR_DSN}", "c2": "${ASSETS_C2_MIGRATOR_DSN}"}},
+    "billing": {"migrations": "services/billing-svc/migrations/tenant", "roles": ["billing_app", "billing_system"],
+               "pooled": "${BILLING_MIGRATOR_DSN}", "cells": {"c1": "${BILLING_C1_MIGRATOR_DSN}", "c2": "${BILLING_C2_MIGRATOR_DSN}"}}
   }
 }
 ```
@@ -94,5 +96,8 @@ Moves are offline by design: a large tenant is down for the time of its copy. Th
 - **The relay's `LISTEN`.** It needs a session connection: point the system DSN of a cell straight at the database, or accept that the outbox sweep (every 2 s) carries the load.
 - **Cost of the jobs.** A job visits every serving tenant of every cell on each run (one transaction per tenant). That is the design (cells hold few, large tenants); a cell with thousands of tenants would need the jobs batched per cell.
 - **Region.** `region` is recorded for the operator and shown by the directory; nothing routes on it.
+- **Public tokens.** A hosted payment page, a customer portal link and an inbound invoice mail carry a token and no tenant, so billing-svc looks the token up in the pooled database and then in every serving tenant of the cells (one cheap indexed read each). A token nobody has is "no such link" only if every tenant could be searched; while a tenant is moving the answer is `Unavailable`. A cell with very many tenants makes this the slow path of those three calls.
+- **Replies while a tenant moves.** A worker reply for a tenant that is moving is requeued like any database failure and reaches `billing-svc.replies.dlq` if the move outlasts the delivery limit (about 15 s); redrive it from the dead-letter admin after the move. The saga ignores a reply that is stale for its state, so redriving a reply that was applied is harmless.
+- **`inbox_replies`** (billing-svc's reply dedup, no `tenant_id`) stays where it is when a tenant moves into or out of the pooled database; the move logs it as a table that is not moved.
 - **Adding a table.** A new migration of a converted service is written twice: `migrations/NNNNN_….sql` and `migrations/tenant/NNNNN_….sql`. `TestTenantSchemaMatchesPublic` fails until the second exists and matches. Roll it out with the service (`PAYRUDDER_MIGRATE_ON_START`) or `cells migrate`.
 - **Deleting a tenant** in a cell is `DROP SCHEMA t_<id> CASCADE` in each service's cell database after its placement is gone; there is no tool for it.
