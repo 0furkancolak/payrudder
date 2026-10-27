@@ -39,19 +39,25 @@ func (e *Engine) Handle(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UU
 }
 
 func (e *Engine) guardCtx(s *saga) model.Ctx {
-	return model.Ctx{TotalMinor: s.TotalMinor, CreditedMinor: s.CreditedMinor, Paid: s.InvoiceStatus == invmodel.StatusPaid, DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)),
+	return model.Ctx{TotalMinor: s.TotalMinor, CreditedMinor: s.CreditedMinor, ByHandMinor: s.ByHandMinor, Paid: s.InvoiceStatus == invmodel.StatusPaid, DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)),
 		ProviderMails: s.Snap.ProviderMails || s.Snap.SkipMail, Link: s.Snap.Collection == model.CollectionLink}
 }
 
 func (e *Engine) handleLoaded(ctx context.Context, tx pgx.Tx, s *saga, ev model.Event, cause string, commandID *uuid.UUID) (Outcome, error) {
 	out := Outcome{From: s.State}
 	if ev == model.EvVoid {
-		// What a void refunds is what the credit notes left: an invoice credited in full has nothing to give back.
-		credited, err := sqlc.New(tx).SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+		// What a void refunds is what the credit notes left, less the money received by hand (it becomes a credit balance, not a refund): an invoice credited in
+		// full, or paid in full by hand, has no card payment to give back.
+		q := sqlc.New(tx)
+		credited, err := q.SumCreditNotes(ctx, sqlc.SumCreditNotesParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
 		if err != nil {
 			return out, err
 		}
-		s.CreditedMinor = credited
+		byHand, err := q.SumInvoicePayments(ctx, sqlc.SumInvoicePaymentsParams{TenantID: s.TenantID, InvoiceID: s.InvoiceID})
+		if err != nil {
+			return out, err
+		}
+		s.CreditedMinor, s.ByHandMinor = credited, byHand
 	}
 	for {
 		res, ok := model.Next(s.State, ev, e.guardCtx(s))

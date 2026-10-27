@@ -3,6 +3,8 @@ go 1.27.2
 use (
 	./gen/go
 	./pkg
+	./sdk/go
+	./sdk/go/internal/contract
 	./services/aggregator
 	./services/analytics-svc
 	./services/assets-svc

@@ -92,8 +92,9 @@ SELECT id FROM invoices WHERE tenant_id = @tenant_id AND rerating_job_id = @rera
 SELECT count(*) FROM invoices i LEFT JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id
 WHERE i.tenant_id = @tenant_id AND i.period_id = @period_id AND i.kind = 'REGULAR' AND (s.state IS NULL OR s.state NOT IN ('COMPLETED','VOIDED'));
 
+-- The quantity is in whole units: each line is stored in the meter's scale of its time, so they are brought to units before they are added.
 -- name: PriorLateUsage :many
-SELECT i.customer_id::text AS customer_id, l.meter_code, l.origin_period_id, sum(l.quantity)::text AS quantity, max(l.quantity_scale)::smallint AS quantity_scale
+SELECT i.customer_id::text AS customer_id, l.meter_code, l.origin_period_id, sum(l.quantity / power(10::numeric, COALESCE(l.quantity_scale, 0)))::text AS quantity
 FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
 WHERE l.tenant_id = @tenant_id AND l.kind = 'LATE_USAGE' AND l.origin_period_id = ANY(@origins::text[]) AND i.period_id <> @period_id AND i.status <> 'void'
 GROUP BY 1, 2, 3;
