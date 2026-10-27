@@ -8,10 +8,9 @@ Everything built is described in the design documents of `docs/` and in the ADRs
 |---|---|---|
 | [28 Cells](phase-28-cells.md) | Tenant directory, schema-per-tenant mode, converted cross-tenant jobs, fenced moves ([ADR 0018](../adr/0018-tenant-isolation-modes.md)) | Suites pass in pooled and cells mode; a tenant in a cell cannot read another's schema; a move loses no row |
 | [43 Repair CI](phase-43-ci-repair.md) | `main` and the nightly runs green. The 1M-event correctness and k6 nightlies must pass twice in a row | `ci` green on `main`, nightly green twice |
-| [44 Correctness fixes](phase-44-correctness-fixes.md) | The 21 money, data and concurrency defects of the [code-quality report](../code-quality/README.md), each with a failing test first | Every item has a test that failed before and passes after |
 | [49 Code-quality remediation](phase-49-code-quality-remediation.md) | Error contract, shared packages, ADR 0020 module moves (plans-svc and gateway are done; the other services are not) | Behaviour unchanged, tests green |
 
-43, 44 and 49 were written before later work landed on `main`: check each against the code and cut what is already done before starting.
+43 and 49 were written before later work landed on `main`: check each against the code and cut what is already done before starting.
 
 ## Built, never run against the real thing
 
