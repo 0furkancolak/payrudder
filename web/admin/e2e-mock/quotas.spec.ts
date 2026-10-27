@@ -53,6 +53,54 @@ test.describe("meters", () => {
     });
   });
 
+  test("a meter of distinct values has no decimal places and counts the property it names", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on(metersMock).on((c) => (c.method === "POST" && c.path === "/v1/meters" ? { status: 201, body: { code: "active_users", version: 1 } } : undefined));
+    await gw.install(page);
+    await openTenantPage(page, "/meters");
+    await page.getByTestId("meters-new").click();
+    const form = page.getByRole("form", { name: "new meter" });
+    await form.getByLabel("Code").fill("active_users");
+    await form.getByLabel("Unit").fill("users");
+    await form.getByLabel("Decimal places").selectOption("3");
+    await form.getByLabel("Aggregation").selectOption("AGGREGATION_UNIQUE");
+    await expect(form.getByLabel("Decimal places")).toBeDisabled();
+    await expect(form.getByLabel("Decimal places")).toHaveValue("0");
+    await expect(form.getByText("Counts how many different values of one event property appeared")).toBeVisible();
+    await form.getByLabel("Property to count").fill("user_id");
+    await page.getByRole("dialog").getByRole("button", { name: "Create meter" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/meters").length).toBe(1);
+    expect(gw.called("POST", "/v1/meters")[0]?.body).toEqual({ code: "active_users", aggregation: "AGGREGATION_UNIQUE", value_property: "user_id", unit_label: "users", quantity_scale: 0 });
+
+    await page.getByTestId("meters-new").click();
+    const last = page.getByRole("form", { name: "new meter" });
+    await last.getByLabel("Code").fill("seats_now");
+    await last.getByLabel("Unit").fill("seats");
+    await last.getByLabel("Aggregation").selectOption("AGGREGATION_LAST");
+    await expect(last.getByText("Keeps the quantity of the most recent event")).toBeVisible();
+    await last.getByLabel("Quantity property").fill("seats");
+    await page.getByRole("dialog").getByRole("button", { name: "Create meter" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/meters").length).toBe(2);
+    expect(gw.called("POST", "/v1/meters")[1]?.body).toEqual({ code: "seats_now", aggregation: "AGGREGATION_LAST", value_property: "seats", unit_label: "seats", quantity_scale: 0 });
+  });
+
+  test("a new version of a distinct-values meter keeps its aggregation, and a sum meter cannot become one", async ({ page }) => {
+    const rowShaped = { code: "active_users", aggregation: "AGGREGATION_UNIQUE", value_property: "user_id", unit_label: "users", quantity_scale: 0, version: 1 };
+    const gw = baseTenant(new MockGateway()).on((c) => (c.method === "GET" && c.path === "/v1/meters" ? { body: { meters: [...meters, rowShaped] } } : undefined));
+    await gw.install(page);
+    await openTenantPage(page, "/meters");
+    await page.getByRole("row", { name: /active_users/ }).getByTestId("row-actions").click();
+    await page.getByTestId("row-action-version").click();
+    const unique = page.getByRole("form", { name: "new meter" });
+    await expect(unique.getByLabel("Aggregation").locator("option")).toHaveText(["Distinct values"]);
+    await expect(unique.getByTestId("aggregation-locked")).toContainText("Fixed for this code");
+    await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
+
+    await page.getByRole("row", { name: /gb_hours/ }).getByTestId("row-actions").click();
+    await page.getByTestId("row-action-version").click();
+    const sum = page.getByRole("form", { name: "new meter" });
+    await expect(sum.getByLabel("Aggregation").locator("option")).toHaveText(["Sum", "Count", "Maximum"]);
+  });
+
   test("a new version keeps the code and the decimal places", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on(metersMock).on((c) => (c.method === "POST" && c.path === "/v1/meters" ? { status: 201, body: { code: "gb_hours", version: 3 } } : undefined));
     await gw.install(page);

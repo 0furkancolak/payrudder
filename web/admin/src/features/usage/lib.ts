@@ -109,8 +109,13 @@ export function maxDecimal(values: readonly (string | undefined)[]): string {
   return values.reduce<string>((m, v) => (v !== undefined && compareDecimals(v, m) > 0 ? v : m), "0");
 }
 
-/** What a period's buckets add up to: a meter that takes the highest value (MAX) is the highest bucket, any other is the sum. */
+/**
+ * What a period's buckets add up to: a meter that takes the highest value (MAX) is the highest bucket, any other is the sum. The buckets are sums of the raw
+ * event quantities, so they cannot give a UNIQUE meter's distinct values (a value seen on two days is one) or a LAST meter's latest value (a bucket holds many
+ * events): for those the total is "", shown as a dash, and the exact figure is the customer's usage in the aggregator.
+ */
 export function totalOf(aggregation: string | undefined, quantities: readonly (string | undefined)[]): string {
+  if (aggregation === "AGGREGATION_UNIQUE" || aggregation === "AGGREGATION_LAST") return "";
   return aggregation === "AGGREGATION_MAX" ? maxDecimal(quantities) : sumDecimals(quantities);
 }
 

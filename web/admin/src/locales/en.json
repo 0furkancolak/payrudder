@@ -1388,12 +1388,16 @@
       "aggregation": {
         "sum": "Sum",
         "count": "Count of events",
-        "max": "Highest value"
+        "max": "Highest value",
+        "unique": "Distinct values",
+        "last": "Latest value"
       },
       "aggregationHint": {
         "sum": "Adds up the value of the event property.",
         "count": "Counts the events; no property is needed.",
-        "max": "Takes the highest value of the event property in the period."
+        "max": "Takes the highest value of the event property in the period.",
+        "unique": "Counts the different values of an event property in the period, such as active users. An event without the property is rejected.",
+        "last": "Takes the quantity of the most recent event of the period, such as seats at the end of the month. An event that arrives after the period has closed does not change it."
       },
       "state": {
         "over": "Over the limit",
@@ -1465,9 +1469,16 @@
           "unit": "Give the unit a name of at most 32 characters.",
           "property": "Name the event property that holds the quantity.",
           "scale": "Decimal places are a whole number from 0 to 6.",
-          "filter": "Each filter needs a property and at least one value (no property twice, at most 10)."
+          "filter": "Each filter needs a property and at least one value (no property twice, at most 10).",
+          "propertyUnique": "Name the event property whose distinct values are counted.",
+          "uniqueScale": "A count of distinct values has no decimal places: use 0."
         },
-        "filterShort": "Filter"
+        "filterShort": "Filter",
+        "propertyUnique": "Property to count",
+        "propertyHintUnique": "The event property whose distinct values are counted, such as user_id. A value seen twice, or in two months, counts once.",
+        "scaleUnique": "Always 0: a count of distinct values is a whole number.",
+        "aggregationLocked": "Fixed for this code: a distinct-values or latest-value meter keeps that aggregation in every version. Use a new code to change it.",
+        "aggregationOpen": "A new version can switch between sum, count and maximum, but not to distinct values or latest value. Use a new code for those."
       },
       "customers": {
         "search": "Search customers",
@@ -1577,12 +1588,16 @@
       "aggregations": {
         "sum": "Sum",
         "count": "Count",
-        "max": "Maximum"
+        "max": "Maximum",
+        "unique": "Distinct values",
+        "last": "Latest value"
       },
       "aggregationHelp": {
         "sum": "Adds up the quantity of every event in the period.",
         "count": "Counts the events; their quantity is ignored.",
-        "max": "Keeps the highest quantity reported in the period (seats, storage)."
+        "max": "Keeps the highest quantity reported in the period (seats, storage).",
+        "unique": "Counts how many different values of one event property appeared (active users). A repeat counts once.",
+        "last": "Keeps the quantity of the most recent event of the period (seats at the end of the month)."
       },
       "valueProperty": "Quantity property",
       "valuePropertyPlaceholder": "Event property holding the quantity (tokens)",
@@ -1601,7 +1616,11 @@
       "noFilter": "every event",
       "create": "Create meter",
       "saveVersion": "Publish version",
-      "empty": "No meters yet. A meter is needed before a package can price or limit usage."
+      "empty": "No meters yet. A meter is needed before a package can price or limit usage.",
+      "valuePropertyUnique": "Property to count",
+      "valuePropertyUniquePlaceholder": "Event property whose distinct values are counted (user_id)",
+      "aggregationLocked": "Fixed for this code: a distinct-values or latest-value meter keeps that aggregation in every version. Use a new code to change it.",
+      "aggregationOpen": "A new version can switch between sum, count and maximum, but not to distinct values or latest value. Use a new code for those."
     },
     "quotas": {
       "action": "Quotas",

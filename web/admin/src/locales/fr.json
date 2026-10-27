@@ -1388,12 +1388,16 @@
       "aggregation": {
         "sum": "Somme",
         "count": "Nombre d'événements",
-        "max": "Valeur maximale"
+        "max": "Valeur maximale",
+        "unique": "Valeurs distinctes",
+        "last": "Dernière valeur"
       },
       "aggregationHint": {
         "sum": "Additionne la valeur de la propriété de l'événement.",
         "count": "Compte les événements ; aucune propriété n'est nécessaire.",
-        "max": "Prend la valeur la plus élevée de la propriété de l'événement dans la période."
+        "max": "Prend la valeur la plus élevée de la propriété de l'événement dans la période.",
+        "unique": "Compte les valeurs différentes d'une propriété d'événement sur la période, par exemple les utilisateurs actifs. Un événement sans la propriété est rejeté.",
+        "last": "Prend la quantité de l'événement le plus récent de la période, par exemple les sièges en fin de mois. Un événement qui arrive après la clôture de la période ne la modifie pas."
       },
       "state": {
         "over": "Limite dépassée",
@@ -1465,9 +1469,16 @@
           "unit": "Donnez à l'unité un nom de 32 caractères au plus.",
           "property": "Indiquez la propriété de l'événement qui contient la quantité.",
           "scale": "Les décimales sont un entier de 0 à 6.",
-          "filter": "Chaque filtre demande une propriété et au moins une valeur (pas de propriété en double, 10 au plus)."
+          "filter": "Chaque filtre demande une propriété et au moins une valeur (pas de propriété en double, 10 au plus).",
+          "propertyUnique": "Nommez la propriété d'événement dont les valeurs distinctes sont comptées.",
+          "uniqueScale": "Un nombre de valeurs distinctes n'a pas de décimales : utilisez 0."
         },
-        "filterShort": "Filtre"
+        "filterShort": "Filtre",
+        "propertyUnique": "Propriété à compter",
+        "propertyHintUnique": "La propriété d'événement dont les valeurs distinctes sont comptées, par exemple user_id. Une valeur vue deux fois, ou sur deux mois, compte une fois.",
+        "scaleUnique": "Toujours 0 : un nombre de valeurs distinctes est un entier.",
+        "aggregationLocked": "Fixé pour ce code : un compteur de valeurs distinctes ou de dernière valeur garde cette agrégation dans chaque version. Utilisez un nouveau code pour la changer.",
+        "aggregationOpen": "Une nouvelle version peut passer entre somme, nombre et maximum, mais pas aux valeurs distinctes ni à la dernière valeur. Utilisez un nouveau code pour cela."
       },
       "customers": {
         "search": "Rechercher des clients",
@@ -1577,12 +1588,16 @@
       "aggregations": {
         "sum": "Somme",
         "count": "Nombre",
-        "max": "Maximum"
+        "max": "Maximum",
+        "unique": "Distinctes",
+        "last": "Dernière valeur"
       },
       "aggregationHelp": {
         "sum": "Additionne la quantité de chaque événement de la période.",
         "count": "Compte les événements ; leur quantité est ignorée.",
-        "max": "Garde la quantité la plus élevée déclarée sur la période (sièges, stockage)."
+        "max": "Garde la quantité la plus élevée déclarée sur la période (sièges, stockage).",
+        "unique": "Compte combien de valeurs différentes d'une propriété d'événement sont apparues (utilisateurs actifs). Une répétition compte une fois.",
+        "last": "Garde la quantité de l'événement le plus récent de la période (sièges en fin de mois)."
       },
       "valueProperty": "Propriété de quantité",
       "valuePropertyPlaceholder": "Propriété de l'événement qui porte la quantité (tokens)",
@@ -1601,7 +1616,11 @@
       "noFilter": "chaque événement",
       "create": "Créer le compteur",
       "saveVersion": "Publier la version",
-      "empty": "Aucun compteur pour l'instant. Il en faut un pour qu'un forfait puisse tarifer ou limiter l'usage."
+      "empty": "Aucun compteur pour l'instant. Il en faut un pour qu'un forfait puisse tarifer ou limiter l'usage.",
+      "valuePropertyUnique": "Propriété à compter",
+      "valuePropertyUniquePlaceholder": "Propriété d'événement dont les valeurs distinctes sont comptées (user_id)",
+      "aggregationLocked": "Fixé pour ce code : un compteur de valeurs distinctes ou de dernière valeur garde cette agrégation dans chaque version. Utilisez un nouveau code pour la changer.",
+      "aggregationOpen": "Une nouvelle version peut passer entre somme, nombre et maximum, mais pas aux valeurs distinctes ni à la dernière valeur. Utilisez un nouveau code pour cela."
     },
     "quotas": {
       "action": "Quotas",

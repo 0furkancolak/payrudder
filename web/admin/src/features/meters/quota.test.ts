@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import en from "@/locales/en.json";
-import { categories, isQuantity, modeWord, newQuota, parseThresholds, quotaDraftOf, quotaTerms, scaleOf, WINDOWS, windowWord, type Meter } from "./quota";
+import { AGGREGATIONS, aggregationsFor, categories, isQuantity, isRowShaped, modeWord, newQuota, parseThresholds, quotaDraftOf, quotaTerms, scaleOf, WINDOWS, windowWord, type Meter } from "./quota";
 
 describe("quotaTerms", () => {
   it("builds the API's terms, leaving out default thresholds", () => {
@@ -58,6 +58,17 @@ describe("words", () => {
     expect(windowWord(undefined)).toBe("month");
     expect(modeWord("QUOTA_MODE_NOTIFY")).toBe("notify");
     expect(modeWord(undefined)).toBe("hard");
+  });
+});
+
+describe("the aggregations of a meter", () => {
+  it("know distinct values and the latest value, which stay with their code", () => {
+    expect(AGGREGATIONS).toEqual(["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX", "AGGREGATION_UNIQUE", "AGGREGATION_LAST"]);
+    expect(aggregationsFor(undefined)).toEqual(AGGREGATIONS);
+    expect(aggregationsFor("AGGREGATION_UNIQUE")).toEqual(["AGGREGATION_UNIQUE"]);
+    expect(aggregationsFor("AGGREGATION_COUNT")).toEqual(["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"]);
+    expect(isRowShaped("AGGREGATION_UNIQUE")).toBe(true);
+    expect(isRowShaped("AGGREGATION_SUM")).toBe(false);
   });
 });
 
