@@ -7,6 +7,7 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Label } from "@/shared/ui/label";
 import { useResetPassword } from "./api";
+import { PASSWORD_MIN } from "./lib";
 import AuthShell from "./AuthShell.vue";
 import PasswordField from "./PasswordField.vue";
 
@@ -17,8 +18,7 @@ const password = ref("");
 const done = ref(false);
 const reset = useResetPassword();
 
-const MIN = 10;
-const longEnough = computed(() => password.value.length >= MIN);
+const longEnough = computed(() => password.value.length >= PASSWORD_MIN);
 
 function submit() {
   if (!longEnough.value) return;
@@ -37,7 +37,7 @@ function submit() {
       <div class="flex flex-col gap-1.5">
         <Label for="rp-password">{{ t("product.reset.newPassword") }}</Label>
         <PasswordField id="rp-password" v-model="password" autocomplete="new-password" describedby="rp-password-hint" />
-        <p id="rp-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: MIN }) }}</p>
+        <p id="rp-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: PASSWORD_MIN }) }}</p>
       </div>
       <ErrorText :error="reset.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
       <Button type="submit" size="lg" :disabled="reset.isPending.value || !longEnough">{{ t("product.reset.submit") }}</Button>

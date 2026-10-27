@@ -8,6 +8,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { useAuthMethods, useSignUp } from "./api";
+import { PASSWORD_MIN } from "./lib";
 import AuthShell from "./AuthShell.vue";
 import GoogleButton from "./GoogleButton.vue";
 import OtpFlow from "./OtpFlow.vue";
@@ -27,8 +28,7 @@ const method = ref("password");
 const checkInbox = ref("");
 
 /** The same rule the server applies: at least ten characters. */
-const MIN = 10;
-const longEnough = computed(() => password.value.length >= MIN);
+const longEnough = computed(() => password.value.length >= PASSWORD_MIN);
 const ready = computed(() => account.value.trim() !== "" && email.value.trim() !== "" && longEnough.value);
 
 function submit() {
@@ -84,7 +84,7 @@ function submit() {
       <div class="flex flex-col gap-1.5">
         <Label for="su-password">{{ t("product.auth.password") }}</Label>
         <PasswordField id="su-password" v-model="password" autocomplete="new-password" describedby="su-password-hint" />
-        <p id="su-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: MIN }) }}</p>
+        <p id="su-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: PASSWORD_MIN }) }}</p>
       </div>
       <ErrorText :error="signup.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
       <Button type="submit" size="lg" :disabled="signup.isPending.value || !ready">{{ t("product.signUp.submit") }}</Button>

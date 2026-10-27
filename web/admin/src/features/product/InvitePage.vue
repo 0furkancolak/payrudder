@@ -9,6 +9,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { useAcceptInvitation, useAcceptInvitationAsMe, useLookupInvitation, useMe, useSignIn, useSignOut } from "./api";
+import { PASSWORD_MIN } from "./lib";
 import AuthShell from "./AuthShell.vue";
 import PasswordField from "./PasswordField.vue";
 
@@ -29,8 +30,7 @@ const me = useMe();
 const info = computed(() => lookup.data.value);
 const name = ref("");
 const password = ref("");
-const MIN = 10;
-const longEnough = computed(() => password.value.length >= MIN);
+const longEnough = computed(() => password.value.length >= PASSWORD_MIN);
 const missing = token === "";
 
 onMounted(() => {
@@ -99,7 +99,7 @@ const signInAndJoin = () => login.mutate({ email: info.value?.email ?? "", passw
         <div class="flex flex-col gap-1.5">
           <Label for="iv-new-password">{{ t("product.auth.password") }}</Label>
           <PasswordField id="iv-new-password" v-model="password" autocomplete="new-password" describedby="iv-password-hint" />
-          <p id="iv-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: MIN }) }}</p>
+          <p id="iv-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: PASSWORD_MIN }) }}</p>
         </div>
         <ErrorText :error="error" class="bg-destructive-soft rounded-2xl px-4 py-3" />
         <Button type="submit" size="lg" :disabled="acceptNew.isPending.value || !longEnough">{{ t("product.invite.createJoin") }}</Button>

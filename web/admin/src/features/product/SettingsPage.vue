@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, useNavigate } from "@tanstack/vue-router";
+import { Link } from "@tanstack/vue-router";
 import { LogOut } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -14,16 +14,16 @@ import { Label } from "@/shared/ui/label";
 import { SegmentedControl } from "@/shared/ui/segmented";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { useAccount, useMe, useRenameAccount, useSignOut } from "./api";
+import { useAccount, useMe, useRenameAccount } from "./api";
+import { useLeave } from "./useLeave";
 import AccountSwitcher from "./AccountSwitcher.vue";
 
 const { t } = useI18n();
 const fmt = useFormat();
-const navigate = useNavigate();
 const me = useMe();
 const saas = useSaasEnabled();
 const account = useAccount();
-const signOut = useSignOut();
+const { leave, pending: leaving } = useLeave();
 
 const rename = useRenameAccount();
 const accountName = ref("");
@@ -38,10 +38,6 @@ const themes = computed(() => [
   { value: "dark", label: t("product.settings.themeDark") },
 ]);
 
-async function leave() {
-  await signOut.mutateAsync();
-  await navigate({ to: "/signin", search: { app: undefined } as never });
-}
 </script>
 
 <template>
@@ -95,7 +91,7 @@ async function leave() {
             <span class="text-muted-foreground text-sm">{{ t("product.settings.appearance") }}</span>
             <SegmentedControl :model-value="theme" :options="themes" :label="t('product.settings.appearance')" @update:model-value="(v) => applyTheme(v as ThemeChoice)" />
           </div>
-          <Button variant="outline" :disabled="signOut.isPending.value" @click="leave"><LogOut />{{ t("nav.signOut") }}</Button>
+          <Button variant="outline" :disabled="leaving" @click="leave"><LogOut />{{ t("nav.signOut") }}</Button>
         </div>
       </section>
     </div>
