@@ -179,7 +179,7 @@ async function saveRow(r: Row) {
         vendor: r.vendor.trim(), category: r.category, amount_minor: minor, currency: r.currency, incurred_on: r.date, recurring: "none", app_id: r.appId || undefined,
         tax_minor: r.tax.trim() === "" ? undefined : (parseMajor(r.tax, r.currency) as string), attachment_asset_id: attachment,
       },
-    })) as { id?: string };
+    }));
     if (r.inboxId) await resolve.mutateAsync({ id: r.inboxId, status: "accepted", expenseId: created.id });
     r.state = "saved";
   } catch (e) {

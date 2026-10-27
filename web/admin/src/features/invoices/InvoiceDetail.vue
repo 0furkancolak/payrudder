@@ -53,7 +53,7 @@ function makeLink() {
   }
   links.create.mutate(days);
 }
-const shareUrl = computed(() => absoluteUrl((links.create.data.value as { url?: string } | undefined)?.url, window.location.origin));
+const shareUrl = computed(() => absoluteUrl(links.create.data.value?.url, window.location.origin));
 const inv = computed(() => invoice.data.value);
 
 // --- money: a bank transfer that is awaited, and payments recorded by hand

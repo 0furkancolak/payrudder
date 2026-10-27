@@ -1,20 +1,15 @@
 <script setup lang="ts">
 import { ArrowUpRight, Ban, Plus } from "@lucide/vue";
-import AppField from "@/app/layout/AppField.vue";
 import { useParams, useSearch } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
-import { useTenantCurrency } from "@/features/tenants/currency";
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { matchesSearch } from "@/shared/lib/paging";
 import { PaymentContext } from "@/features/related";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
-import { newKey } from "@/shared/lib/key";
-import { useSeededRef } from "@/shared/lib/seeded";
-import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -23,52 +18,22 @@ import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailList } from "@/shared/ui/detail-list";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
-import { Input } from "@/shared/ui/input";
 import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { NativeSelect } from "@/shared/ui/native-select";
-import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { usePaymentLinkActions, usePaymentLinks } from "./api";
-import { absoluteUrl, toRequest, type LinkForm } from "./lib";
-import { CurrencySelect } from "@/shared/ui/search-select";
-import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
+import PaymentLinkSheet from "./PaymentLinkSheet.vue";
 
 const { t, locale } = useI18n();
 const fmt = useFormat();
 const params = useParams({ strict: false });
 const tenantId = computed(() => String(params.value.id ?? ""));
 
-// A page can be opened from an invoice or a customer with the form prefilled (?invoice=…, ?customer=…), and follows the address when it changes in the page.
+// A page can be opened from an invoice or a customer with the form prefilled (?invoice=…, ?customer=…); the sheet follows the address when it changes in the page.
 const search = useSearch({ strict: false });
-const prefill = () => ({ invoice: String(search.value.invoice ?? ""), customer: String(search.value.customer ?? "") });
-const form = ref<LinkForm>({
-  kind: prefill().invoice ? "invoice" : "adhoc",
-  invoiceId: prefill().invoice,
-  amount: "",
-  currency: FALLBACK_CURRENCY,
-  description: "",
-  customer: prefill().customer,
-  promotion: "",
-  singleUse: true,
-  days: "30",
-  key: newKey(),
-});
-const formError = ref("");
-// An ad hoc link is in the tenant's own currency unless the person picks another one.
-const seededCurrency = useSeededRef<string>(useTenantCurrency(tenantId), FALLBACK_CURRENCY);
-watch(seededCurrency, (c) => (form.value.currency = c), { immediate: true });
-watch(prefill, (p) => {
-  form.value = { ...form.value, kind: p.invoice ? "invoice" : form.value.kind, invoiceId: p.invoice || form.value.invoiceId, customer: p.customer || form.value.customer };
-});
-
-// The form opens on its own when the page was reached from an invoice or a customer with the form prefilled.
-const open = ref(prefill().invoice !== "" || prefill().customer !== "");
-watch(open, (v) => {
-  if (!v) return;
-  formError.value = "";
-  act.create.reset();
-});
+const prefill = computed(() => ({ invoice: String(search.value.invoice ?? ""), customer: String(search.value.customer ?? "") }));
+// The form opens on its own when the page was reached from an invoice or a customer.
+const open = ref(prefill.value.invoice !== "" || prefill.value.customer !== "");
 
 const kind = ref("");
 const status = ref("");
@@ -111,19 +76,6 @@ useOpenParam("link", () => links.isSuccess.value, (id) => {
 });
 const canRevoke = (l: { status?: string } | undefined) => l?.status === "active" || l?.status === "paid";
 
-/** The URL is returned once, right after creation, and is not kept anywhere else. */
-const created = computed(() => act.create.data.value as { url?: string; replayed?: boolean } | undefined);
-const shownUrl = computed(() => absoluteUrl(created.value?.url, window.location.origin));
-
-function submit() {
-  formError.value = "";
-  const r = toRequest(form.value);
-  if ("error" in r) {
-    formError.value = t(`billing.paymentLinks.errors.${r.error}`);
-    return;
-  }
-  act.create.mutate(r.body, { onSuccess: () => (form.value = { ...form.value, key: newKey(), amount: "", description: "", promotion: "" }) });
-}
 function revoke(id: string | undefined) {
   if (id && window.confirm(t("billing.paymentLinks.confirmRevoke"))) act.revoke.mutate(id);
 }
@@ -229,48 +181,6 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
       </template>
     </DetailSheet>
 
-    <Sheet v-model:open="open" name="new-payment-link">
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>{{ t("billing.paymentLinks.title") }}</SheetTitle>
-          <SheetDescription>{{ t("billing.paymentLinks.hint") }}</SheetDescription>
-        </SheetHeader>
-        <SheetBody>
-          <form id="payment-link-form" class="grid gap-4" role="form" :aria-label="t('billing.paymentLinks.formLabel')" @submit.prevent="submit">
-            <AppField />
-            <NativeSelect v-model="form.kind" :aria-label="t('billing.paymentLinks.kind')">
-              <option value="adhoc">{{ t("billing.paymentLinks.kinds.adhoc") }}</option>
-              <option value="invoice">{{ t("billing.paymentLinks.kinds.invoice") }}</option>
-            </NativeSelect>
-            <template v-if="form.kind === 'invoice'">
-              <Input v-model="form.invoiceId" :aria-label="t('billing.paymentLinks.invoiceId')" :placeholder="t('billing.paymentLinks.invoiceId')" />
-            </template>
-            <template v-else>
-              <Input v-model="form.amount" inputmode="decimal" :aria-label="t('billing.paymentLinks.amount')" :placeholder="t('billing.paymentLinks.amount')" />
-              <CurrencySelect v-model="form.currency" :aria-label="t('billing.paymentLinks.currency')" />
-              <Input v-model="form.description" maxlength="200" :aria-label="t('billing.paymentLinks.description')" :placeholder="t('billing.paymentLinks.description')" />
-              <Input v-model="form.customer" :aria-label="t('billing.paymentLinks.customer')" :placeholder="t('billing.paymentLinks.customerOptional')" />
-              <Input v-model="form.promotion" maxlength="40" :aria-label="t('billing.paymentLinks.promotionCode')" :placeholder="t('billing.paymentLinks.promotionCode')" :title="t('billing.paymentLinks.promotionHint')" />
-            </template>
-            <Input v-model="form.days" inputmode="numeric" :aria-label="t('billing.paymentLinks.days')" :placeholder="t('billing.paymentLinks.days')" />
-            <label class="flex items-center gap-2 text-sm"><input v-model="form.singleUse" type="checkbox" class="size-4" />{{ t("billing.paymentLinks.singleUse") }}</label>
-            <p class="text-muted-foreground text-xs">{{ t(form.kind === "adhoc" ? "billing.paymentLinks.adhocHint" : "billing.paymentLinks.invoiceHint") }}</p>
-            <ErrorText :message="formError" />
-            <ErrorText :error="act.create.error.value" />
-          </form>
-          <div v-if="created && act.create.isSuccess.value" class="border-warning/50 bg-warning/10 grid gap-2 rounded-md border p-3" role="status">
-            <template v-if="shownUrl">
-              <p class="text-sm font-medium">{{ t("billing.paymentLinks.shownOnce") }}</p>
-              <CopyField :value="shownUrl" :label="t('billing.paymentLinks.url')" :copy-label="t('billing.paymentLinks.copy')" testid="payment-link-url" />
-            </template>
-            <p v-else class="text-sm">{{ t("billing.paymentLinks.replayed") }}</p>
-          </div>
-        </SheetBody>
-        <SheetFooter>
-          <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
-          <Button type="submit" form="payment-link-form" :disabled="act.create.isPending.value">{{ t("billing.paymentLinks.create") }}</Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+    <PaymentLinkSheet v-model:open="open" :tenant-id="tenantId" :invoice="prefill.invoice" :customer="prefill.customer" />
   </Card>
 </template>
