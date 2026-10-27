@@ -37,6 +37,7 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 	mux.HandleFunc("PUT "+base+"/provider-accounts/{provider}", guard(h.put))
 	mux.HandleFunc("DELETE "+base+"/provider-accounts/{provider}", guard(h.delete))
 	mux.HandleFunc("GET "+base+"/go-live", guard(h.goLive))
+	mux.HandleFunc("GET "+base+"/provider-health", guard(h.health))
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
@@ -102,6 +103,24 @@ func (h *Handler) goLive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	res, err := query.GetGoLive(r.Context(), h.Query, t)
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, res)
+}
+
+// health is go-live for the environment named by ?environment=: the accounts of the tenant in it and whether each works.
+func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
+	t, ok := httpx.Tenant(w, r)
+	if !ok {
+		return
+	}
+	mode, ok := httpx.Environment(w, r)
+	if !ok {
+		return
+	}
+	res, err := query.GetHealth(r.Context(), h.Query, t, mode)
 	if err != nil {
 		httpx.Reply(h.Log, w, r, err)
 		return

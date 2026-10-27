@@ -594,7 +594,7 @@
       "monthly": "Mensual",
       "yearly": "Anual",
       "change": {
-        "title": "Cambiar paquete o periodo",
+        "title": "Cambiar paquete, periodo o asientos",
         "plan": "Nuevo paquete",
         "keepPlan": "Mantener paquete",
         "interval": "Nuevo periodo",
@@ -619,7 +619,12 @@
         "due": "Se factura {amount} ahora",
         "creditAdded": "Se añade {amount} al saldo a favor",
         "scheduled": "Programado: {plan} ({interval}) desde {date}",
-        "withdraw": "Retirar"
+        "withdraw": "Retirar",
+        "seats": "Nuevo número de asientos",
+        "keepSeats": "Asientos: mantener {n}",
+        "seatsHint": "Un cambio solo de asientos es inmediato y prorrateado: los asientos añadidos se cobran por el resto del periodo y los quitados pasan a saldo a favor. La vista previa muestra el importe.",
+        "seatsAfter": "Asientos tras el cambio",
+        "scheduledSeats": "Programado: {plan} ({interval}), {seats} asientos desde {date}"
       },
       "providerRun": {
         "title": "Gestionado por {provider}",
@@ -647,7 +652,12 @@
       "trialEnds": "la prueba termina el {date}",
       "trialsEnding": "{n} prueba termina en {days} días | {n} pruebas terminan en {days} días",
       "showTrials": "Mostrar pruebas",
-      "trialBanner": "La prueba termina el {date}, en {n} día. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar. | La prueba termina el {date}, en {n} días. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar."
+      "trialBanner": "La prueba termina el {date}, en {n} día. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar. | La prueba termina el {date}, en {n} días. No hace falta tarjeta hasta entonces; la primera cuota se factura al terminar.",
+      "seats": "Asientos",
+      "seatsDefault": "Asientos (1 por defecto)",
+      "seatsHint": "La tarifa fija se multiplica por los asientos; los precios por uso no. Solo para una suscripción que Payrudder gestiona y factura por adelantado.",
+      "seatsBad": "Los asientos deben ser un número entero de 1 a {max}.",
+      "seatsCount": "{n} asiento | {n} asientos"
     },
     "payments": {
       "reconcile": "Conciliar con el libro",
@@ -1775,7 +1785,7 @@
       "minPayoutHint": "Un socio por debajo de este importe se omite al crear los pagos. Déjelo vacío para no tener mínimo.",
       "coupon": "Cupón para clientes referidos",
       "noCoupon": "Sin cupón",
-      "couponHint": "Un cliente referido lo recibe en su siguiente compra. Los cupones se crean en Precios.",
+      "couponHint": "Un cliente referido lo recibe en su siguiente compra. Los cupones se crean en Cupones.",
       "clickCap": "Límite diario de clics por socio",
       "clickCapHint": "Los clics por encima de este número al día no se cuentan.",
       "landing": "Página de destino",
@@ -1839,7 +1849,7 @@
       "copy": "Copiar enlace",
       "noLink": "El enlace de {code} es https://su-pasarela/r/{code}.",
       "promotionCode": "Código promocional",
-      "promotionHint": "Un código promocional existente de Precios. Canjearlo cuenta como seguir el enlace.",
+      "promotionHint": "Un código promocional existente de Cupones. Canjearlo cuenta como seguir el enlace.",
       "submit": "Vincular código",
       "done": "Código {code} vinculado."
     },
@@ -3305,7 +3315,7 @@
       "invoices": "Facturas",
       "payments": "Pagos",
       "packages": "Paquetes",
-      "pricing": "Precios",
+      "pricing": "Impuestos y reintentos",
       "reports": "Informes",
       "readOnly": "Tu rol es lector: puedes leerlo todo aquí, pero no hacer cambios."
     },
@@ -3671,7 +3681,7 @@
       "connect": "Conectar",
       "manage": "Gestionar",
       "simulator": "Simulador integrado",
-      "sandboxNote": "El sandbox nunca llega a un proveedor real: funciona con un simulador integrado, así que no hay nada que conectar allí.",
+      "sandboxNote": "El sandbox funciona sobre un simulador integrado y nunca cobra una tarjeta real. Para probar el checkout propio de un proveedor, conecte iyzico o Paddle en modo de prueba; los métodos de pago llamados pm_sandbox_ siguen en el simulador.",
       "state": {
         "none": "No conectado",
         "working": "Conectado y funcionando",
@@ -3718,7 +3728,19 @@
         "replaceNote": "Ya existe una conexión. Escribe claves nuevas solo si quieres sustituirla; las actuales nunca se muestran.",
         "openDashboard": "Abrir el panel de {provider}",
         "partial": "Conectado en {ok} app(s) antes del fallo.",
-        "disconnectOrg": "Desconectar de {count} app(s)"
+        "disconnectOrg": "Desconectar de {count} app(s)",
+        "sandboxConnectTitle": "Conectar el modo de prueba de {provider}",
+        "sandboxManageTitle": "Modo de prueba de {provider}",
+        "sandboxIntro": {
+          "iyzico": "Introduzca las claves de su cuenta sandbox de iyzico. Se comprueban con el host de pruebas de iyzico antes de guardarse.",
+          "paddle": "Introduzca las claves de su cuenta sandbox de Paddle y su secreto de webhook. Se comprueban con el sandbox de Paddle antes de guardarse.",
+          "banktransfer": "La transferencia bancaria no tiene modo de prueba: el sandbox usa el simulador integrado."
+        },
+        "sandboxEnvNote": "Esto conecta el entorno sandbox al modo de prueba del proveedor. Un cobro sandbox cuyo método de pago es el token propio del proveedor va allí; los escenarios pm_sandbox_ siguen en el simulador. Las claves live se rechazan y live no se toca.",
+        "sandboxKeys": {
+          "iyzico": "Use las claves del panel sandbox de iyzico (la clave de API empieza por sandbox-).",
+          "paddle": "Use una clave de su cuenta sandbox de Paddle (empieza por pdl_sdbx_)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3732,7 +3754,15 @@
           "webhook_secret": "En Developer tools, Notifications: crea un destino para Payrudder y copia su clave secreta.",
           "usage_product_id": "El id del producto que Paddle usa para los cargos por uso. En el Catalog, abre el producto y copia su id, que empieza por pro_."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Modo de prueba",
+        "manage": "Gestionar modo de prueba",
+        "working": "Modo de prueba conectado",
+        "problem": "Modo de prueba: problema",
+        "done": "Modo de prueba de {provider} conectado al sandbox."
+      },
+      "confirmDisconnectSandbox": "¿Quitar la cuenta sandbox en {provider}? El sandbox vuelve al simulador integrado."
     },
     "integrations": {
       "introApp": "Conecta los proveedores de pago, el integrador de facturación electrónica y el proveedor de correo de {app}. Los clientes se atienden por las conexiones live; el sandbox no necesita ninguna.",
@@ -3921,7 +3951,7 @@
       "subscriptions": "Suscripciones",
       "credits": "Créditos",
       "packages": "Paquetes",
-      "pricing": "Precios e impuestos",
+      "pricing": "Impuestos y reintentos",
       "invoices": "Facturas",
       "payments": "Pagos",
       "paymentLinks": "Enlaces de pago",
@@ -4271,7 +4301,7 @@
         "trials": "Dale a un paquete una prueba por defecto en días y sus suscripciones empiezan en prueba sin tarjeta. Un nivel gratis es un paquete sin cuota y solo con límites."
       },
       "pricing": {
-        "intro": "Tasas de impuesto y promociones: lo que se suma o se resta a lo que facturas.",
+        "intro": "Retrasos de reintento de pago y tasas de impuesto: qué ocurre cuando se rechaza un cobro y qué se suma a lo que facturas.",
         "tabs": "Cambia entre las secciones de esta página."
       },
       "coupons": {

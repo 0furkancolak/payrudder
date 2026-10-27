@@ -35,7 +35,7 @@ const stateText = (state?: string) => {
     <RelatedRow v-for="s in rows" v-else :id="s.id ?? ''" :key="s.id" :tenant-id="tenantId" kind="subscription">
       <span class="flex min-w-0 flex-col">
         <span class="mono truncate font-medium">{{ s.plan_code }} v{{ s.plan_version }}</span>
-        <span class="text-muted-foreground text-xs">{{ [s.currency, fmt.date(s.start_time, "day")].filter(Boolean).join(" · ") }}</span>
+        <span class="text-muted-foreground text-xs">{{ [s.currency, (s.quantity ?? 1) > 1 ? t("billing.subscriptions.seatsCount", { n: s.quantity }, s.quantity ?? 1) : "", fmt.date(s.start_time, "day")].filter(Boolean).join(" · ") }}</span>
       </span>
       <StatusPill :tone="TONES[word(s.state)] ?? 'neutral'">{{ stateText(s.state) }}</StatusPill>
     </RelatedRow>

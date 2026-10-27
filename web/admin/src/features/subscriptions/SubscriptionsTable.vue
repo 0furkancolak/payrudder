@@ -19,7 +19,7 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useSubscriptions } from "./api";
-import { intervalKey, TRIAL_WARNING_DAYS, trialDaysLeft, trialsEndingSoon } from "./lib";
+import { intervalKey, seatsOf, TRIAL_WARNING_DAYS, trialDaysLeft, trialsEndingSoon } from "./lib";
 
 /** The tenant's subscriptions. A row opens a sheet (the `detail` slot, which gets the subscription) that steps through the rows the list shows. */
 const props = defineProps<{ tenantId: string }>();
@@ -93,6 +93,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
         <TableRow class="hover:bg-transparent">
           <TableHead>{{ t("billing.subscriptions.customer") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.package") }}</TableHead>
+          <TableHead class="text-end">{{ t("billing.subscriptions.seats") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.state") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.interval") }}</TableHead>
           <TableHead>{{ t("billing.subscriptions.currency") }}</TableHead>
@@ -106,6 +107,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
         <TableRow v-for="(s, i) in table.items.value" :key="s.id" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
           <TableCell class="font-medium">{{ s.customer_external_id }}</TableCell>
           <TableCell class="mono">{{ s.plan_code }} v{{ s.plan_version }}</TableCell>
+          <TableCell class="text-end tabular-nums" data-testid="sub-seats-cell">{{ seatsOf(s) }}</TableCell>
           <TableCell>
             <Badge :variant="stateVariant(s)">{{ label(t, te, "subscriptionState", state(s)) }}</Badge>
             <span v-if="s.cancel_at_period_end" class="text-muted-foreground ms-2 text-xs">{{ t("billing.subscriptions.endsWithPeriod") }}</span>
@@ -130,7 +132,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
-  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="t('billing.subscriptions.managing', { customer: current?.customer_external_id ?? '' })" :description="current ? `${current.plan_code} v${current.plan_version}` : undefined" wide>
+  <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="t('billing.subscriptions.managing', { customer: current?.customer_external_id ?? '' })" :description="current ? `${current.plan_code} v${current.plan_version}${seatsOf(current) > 1 ? ' · ' + t('billing.subscriptions.seatsCount', { n: seatsOf(current) }, seatsOf(current)) : ''}` : undefined" wide>
     <slot v-if="current" name="detail" :subscription="current" />
   </DetailSheet>
 </template>

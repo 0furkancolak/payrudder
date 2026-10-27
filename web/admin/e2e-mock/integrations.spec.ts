@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { MockGateway } from "./gateway";
-import { APP, app, appWithLive, liveGateway, productGateway, signInAsAda, tenant } from "./product";
+import { APP, app, appWithLive, liveGateway, productGateway, sandboxProvidersGateway, signInAsAda, tenant } from "./product";
 
 // The integrations screen (it replaced "Payment providers"): three groups, payments, e-invoice and e-mail, with a card per integration, a side sheet that connects it (for one app or for every app of the organisation), a test and a
 // disconnect. The gateway is mocked; the real keys are never typed anywhere but the sheet and never shown again.
@@ -124,6 +124,68 @@ test.describe("payment integrations", () => {
     await expect(page.getByTestId("integrations-owner-only")).toBeVisible();
     await expect(page.getByTestId("integration-card-paddle")).toHaveAttribute("data-state", "working");
     await expect(page.getByTestId("integration-open-paddle")).toBeDisabled();
+    await expect(page.getByTestId("integration-open-sandbox-paddle")).toBeDisabled();
+  });
+
+  test("the sandbox runs on the simulator until the owner connects a provider's test mode, which can be tested, replaced and removed", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    const accounts = sandboxProvidersGateway(gw);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    await expect(page.getByTestId("integration-sandbox-paddle")).toHaveText("Built-in simulator");
+    // A bank transfer has no test mode.
+    await expect(page.getByTestId("integration-open-sandbox-banktransfer")).toHaveCount(0);
+    await page.getByTestId("integration-open-sandbox-paddle").click();
+    const sheet = page.getByTestId("provider-sheet");
+    await expect(sheet).toContainText("Connect Paddle test mode");
+    await expect(sheet.getByTestId("provider-env-note")).toContainText("sandbox environment");
+    await expect(sheet.getByTestId("provider-scope")).toHaveCount(0);
+    await expect(page).toHaveURL(/sheet=connect-provider%3Asandbox-paddle/);
+    // A key in the live format is refused by the server, the sheet says why, and what was typed stays for another try.
+    await sheet.getByTestId("lp-api_key").fill("pdl_live_SECRETKEY");
+    await sheet.getByTestId("lp-webhook_secret").fill("pdl_ntfset_SECRETHOOK");
+    await sheet.getByTestId("lp-usage_product_id").fill("pro_01abc");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(sheet.getByTestId("provider-failures")).toContainText("other mode");
+    await expect(sheet.getByTestId("lp-api_key")).toHaveValue("pdl_live_SECRETKEY");
+    expect(accounts).toHaveLength(0);
+    // A sandbox key connects it: through the sandbox route, never the live one, and the live card is untouched.
+    await sheet.getByTestId("lp-api_key").fill("pdl_sdbx_apikey_SECRETKEY");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(page.getByTestId("provider-connected")).toContainText("Paddle test mode connected for the sandbox");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/sandbox/providers/paddle`)).toHaveLength(2);
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(0);
+    await expect(page.getByTestId("integration-sandbox-paddle")).toHaveText("Test mode connected");
+    await expect(page.getByTestId("integration-card-paddle")).toHaveAttribute("data-state", "none");
+    expect(await page.content()).not.toContain("SECRETKEY");
+    // Manage: test it again, then remove it (asking first); the sandbox is the simulator again.
+    await page.getByTestId("integration-open-sandbox-paddle").click();
+    await expect(sheet).toContainText("Paddle test mode");
+    await sheet.getByTestId("provider-test").click();
+    await expect(sheet.getByTestId("provider-test-result")).toContainText("accepts these keys");
+    page.once("dialog", (d) => void d.accept());
+    await sheet.getByTestId("provider-disconnect").click();
+    await expect(page.getByTestId("integration-sandbox-paddle")).toHaveText("Built-in simulator");
+    expect(gw.called("DELETE", `/app/v1/apps/${APP}/sandbox/providers/paddle`)).toHaveLength(1);
+    expect(gw.called("DELETE", `/app/v1/apps/${APP}/go-live/providers/paddle`)).toHaveLength(0);
+  });
+
+  test("a sandbox connection that the provider stopped accepting is a problem, and the sheet comes back from the address", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    sandboxProvidersGateway(gw, [{ provider: "iyzico", working: false, problem: "refused" }]);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live&sheet=connect-provider:sandbox-iyzico`);
+    await expect(page.getByTestId("provider-sheet")).toContainText("iyzico test mode");
+    await expect(page.getByTestId("provider-sheet-status")).toContainText("does not accept");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("integration-sandbox-iyzico")).toHaveText("Test mode: problem");
+    // On the organisation's screen there is no test mode: the sandbox is connected for one app.
+    await page.goto("/app/integrations");
+    await expect(page.getByTestId("integration-open-sandbox-iyzico")).toHaveCount(0);
   });
 });
 
