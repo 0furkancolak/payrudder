@@ -32,6 +32,7 @@ These need an account or an environment the repository does not have. Each is a 
 ## Known gaps in the console
 
 - Quotas cannot count distinct values (`UNIQUE`) or the latest value (`LAST`): the counters, the aggregator's upserts, late usage and rating only add or keep a maximum, so these two aggregations need their own storage and billing rules ([limits-svc.md](../03-services/limits-svc.md#as-built-quota-windows-and-modes)).
+- Money-logic findings of [billing-svc-status.md](../code-quality/billing-svc-status.md) that wait for a rule from the owner: the accounting summary does not reverse the tax of credit notes, refunded invoices or credit balances (and `Net` subtracts a gross `Refunds` after removing the tax once), a negative invoice total is clamped to zero instead of becoming a credit, a trial that ends inside a period is charged the whole fee, and invoice numbers take the UTC year.
 - A dialog opened from a row of a token-paged list (reverse a commission, mark a payout paid, a partner's forms) comes back from the address only when its row is on the first page after a reload; the sheet of the row itself is looked for on later pages. A sheet that holds typed values or a one-time secret (the new key's plaintext, a scanned receipt) comes back empty.
 - Tax is the tenant's configured rate per customer country; a real tax engine (place of supply, registrations, reverse charge, rates by date) is not built and not planned.
 

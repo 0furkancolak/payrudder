@@ -1,0 +1,74 @@
+name: sdk-go
+
+# The Go SDK is its own module (sdk/go) and builds without the rest of the repository. The contract test in
+# sdk/go/internal/contract fails when api/openapi/v1.yaml and the SDK disagree, hence the second path filter.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "sdk/go/**"
+      - "api/openapi/v1.yaml"
+      - ".github/workflows/sdk-go.yml"
+  pull_request:
+    paths:
+      - "sdk/go/**"
+      - "api/openapi/v1.yaml"
+      - ".github/workflows/sdk-go.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdk-go-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The SDK must not depend on the workspace, so every command runs outside of it.
+  GOWORK: "off"
+
+jobs:
+  sdk:
+    name: lint, test, contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: sdk/go/go.mod
+          cache-dependency-path: |
+            sdk/go/go.mod
+            sdk/go/internal/contract/go.sum
+      - name: Build lint tool (the version pinned in tools/go.mod)
+        run: cd tools && go build -o ../bin/golangci-lint github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+      - name: gofmt
+        working-directory: sdk/go
+        run: test -z "$(gofmt -l .)"
+      - name: build
+        working-directory: sdk/go
+        run: go build ./...
+      - name: vet
+        working-directory: sdk/go
+        run: go vet ./...
+      - name: golangci-lint (SDK)
+        working-directory: sdk/go
+        run: ../../bin/golangci-lint run ./...
+      - name: golangci-lint (contract module)
+        working-directory: sdk/go/internal/contract
+        run: ../../../../bin/golangci-lint run ./...
+      - name: no dependencies besides the standard library
+        working-directory: sdk/go
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod
+          test ! -e go.sum
+      - name: test (race)
+        working-directory: sdk/go
+        run: go test -race -count=1 ./...
+      - name: contract test (spec vs client methods, generated code up to date)
+        working-directory: sdk/go/internal/contract
+        run: go test -race -count=1 ./...
+      - name: generated code is committed
+        working-directory: sdk/go
+        run: |
+          go generate ./...
+          git diff --exit-code

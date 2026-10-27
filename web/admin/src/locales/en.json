@@ -2295,6 +2295,8 @@
         "bad_method": "The method must be bank transfer, cash or other.",
         "bad_amount": "The amount must be a whole number of minor units above zero.",
         "bad_date": "The received date is not valid or lies in the future.",
+        "bad_reference": "The reference must be one line of at most 128 characters.",
+        "bad_note": "The note must be at most 500 characters.",
         "overpayment": "That is more than is outstanding. Record only the outstanding amount.",
         "already_paid": "The invoice is already paid.",
         "not_payable": "The invoice's payment state does not allow a manual payment right now.",
