@@ -21,6 +21,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+
+	"github.com/0furkancolak/payrudder/pkg/backoff"
 )
 
 // The relay's statements. The table is fixed: every service names its outbox "outbox".
@@ -151,10 +153,10 @@ func (r *Relay) Run(ctx context.Context) error {
 
 // listen turns NOTIFY into a non-blocking wakeup. Losing the connection is harmless: workers still poll.
 func (r *Relay) listen(ctx context.Context, wake chan<- struct{}) {
+	retry := backoff.Retry{Base: r.cfg.ErrorBackoff}
 	for ctx.Err() == nil {
 		if err := r.listenOnce(ctx, wake); err != nil && ctx.Err() == nil {
-			r.log.WarnContext(ctx, "outbox: listener lost, polling only until it reconnects", "error", err)
-			sleep(ctx, r.cfg.ErrorBackoff)
+			retry.Fail(ctx, r.log, "outbox: listener lost, polling only until it reconnects", err)
 		}
 	}
 }
@@ -185,13 +187,16 @@ func (r *Relay) work(ctx context.Context, id int, wake chan struct{}) {
 	log := r.log.With("relay_worker", id)
 	timer := time.NewTimer(0)
 	defer timer.Stop()
+	retry := backoff.Retry{Base: r.cfg.ErrorBackoff}
 	for ctx.Err() == nil {
 		n, err := r.RelayOnce(ctx)
+		if err == nil {
+			retry.OK(ctx, log, "outbox: relay is working again")
+		}
 		switch {
 		case err != nil && ctx.Err() == nil:
 			r.failures.Add(ctx, 1)
-			log.WarnContext(ctx, "outbox: batch failed, will retry", "error", err)
-			sleep(ctx, r.cfg.ErrorBackoff)
+			retry.Fail(ctx, log, "outbox: batch failed, will retry", err)
 		case n >= r.cfg.BatchSize:
 			// More is probably waiting: go again immediately.
 		default:
@@ -308,15 +313,6 @@ func Depth(ctx context.Context, db interface {
 	var d int64
 	err := db.QueryRow(ctx, queueDepth).Scan(&d)
 	return d, err
-}
-
-func sleep(ctx context.Context, d time.Duration) {
-	t := time.NewTimer(d)
-	defer t.Stop()
-	select {
-	case <-ctx.Done():
-	case <-t.C:
-	}
 }
 
 func resetTimer(t *time.Timer, d time.Duration) {
