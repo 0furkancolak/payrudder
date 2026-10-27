@@ -14,6 +14,13 @@
 //
 // Everything is idempotent: processed_events is keyed by generation, offsets are in the database, and a job that is
 // interrupted is picked up by any aggregator replica (an advisory lock lets only one run it).
+//
+// In cells mode (ADR 0018) a tenant's jobs, generations and rows are in its schema, and every step runs there: the scan visits the pooled database and then each
+// serving tenant of the cells, and the job itself works through the router. The one thing that differs is step 2: the live consumer's offsets are in the pooled
+// database, not next to the tenant's generation rows, and its offset moves after the tenant's rows are written, so the position of the live consumer cannot be read
+// atomically with the flip. The catching-up step therefore takes the end of the log, read while the flip holds the tenant's active row: every batch that wrote only
+// the old generation committed before that, so its events are below it, and the replay reads up to there (events the live consumer dual-writes as well are skipped
+// by the inbox).
 package replay
 
 import (
@@ -35,6 +42,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
+	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/apply"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
@@ -59,7 +67,8 @@ var (
 
 // Config wires a Manager.
 type Config struct {
-	Pool      *pgxpool.Pool // aggregator_system
+	Pool      *pgxpool.Pool // aggregator_system, pooled database
+	Cells     *pgxx.Router  // the system-role router of cells mode (ADR 0018); nil when cells are off
 	Brokers   []string
 	Topic     string // usage.events.v1
 	LiveGroup string // the live consumer's group in consumer_offsets
@@ -100,6 +109,8 @@ const (
 	wantedEvery = 20
 	// idlePolls is how many empty polls in a row make the reader look at the end of the log.
 	idlePolls = 2
+	// logEndTimeout bounds the read of the end of the log made while the flip of a tenant in a cell holds its active generation.
+	logEndTimeout = 10 * time.Second
 )
 
 // New returns a Manager.
@@ -119,6 +130,22 @@ func New(cfg Config) *Manager {
 	m := &Manager{cfg: cfg, running: map[uuid.UUID]bool{}, failures: map[uuid.UUID]int{}}
 	m.run = m.runJob
 	return m
+}
+
+// at runs fn with queries in the place the tenant's data is: the pooled pool, as ever, or with cells on a transaction in the tenant's place (its schema in a cell).
+func (m *Manager) at(ctx context.Context, tenantID uuid.UUID, fn func(q *sqlc.Queries) error) error {
+	if m.cfg.Cells == nil {
+		return fn(sqlc.New(m.cfg.Pool))
+	}
+	return pgxx.InTenantTx(ctx, m.cfg.Cells, tenantID, func(tx pgx.Tx) error { return fn(sqlc.New(tx)) })
+}
+
+// tx runs fn in one transaction in the place the tenant's data is.
+func (m *Manager) tx(ctx context.Context, tenantID uuid.UUID, fn func(tx pgx.Tx) error) error {
+	if m.cfg.Cells == nil {
+		return pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, fn)
+	}
+	return pgxx.InTenantTx(ctx, m.cfg.Cells, tenantID, fn)
 }
 
 // Job is a replay_jobs row.
@@ -198,7 +225,11 @@ func offsetsJSON(m map[int32]int64) ([]byte, error) {
 
 // Get loads a job.
 func (m *Manager) Get(ctx context.Context, tenantID, jobID uuid.UUID) (*Job, error) {
-	r, err := sqlc.New(m.cfg.Pool).GetReplayJob(ctx, sqlc.GetReplayJobParams{TenantID: tenantID, ID: jobID})
+	var r sqlc.ReplayJob
+	err := m.at(ctx, tenantID, func(q *sqlc.Queries) (err error) {
+		r, err = q.GetReplayJob(ctx, sqlc.GetReplayJobParams{TenantID: tenantID, ID: jobID})
+		return err
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -224,7 +255,7 @@ func (m *Manager) Start(ctx context.Context, tenantID uuid.UUID, from, to, reaso
 		return nil, err
 	}
 	nj := newJob{id: uuid.New(), tenantID: tenantID, from: from, to: to, reason: reason, start: startOffsets, end: endOffsets}
-	err = pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error { return insertJob(ctx, sqlc.New(tx), nj) })
+	err = m.tx(ctx, tenantID, func(tx pgx.Tx) error { return insertJob(ctx, sqlc.New(tx), nj) })
 	if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation && pgxx.ConstraintName(err) == "one_open_replay" {
 		return nil, ErrOpen
 	}
@@ -329,11 +360,48 @@ func (m *Manager) Run(ctx context.Context) error {
 	}
 }
 
-func (m *Manager) scan(ctx context.Context) {
+// openJobs lists the jobs that need work: the pooled database's, and with cells on those of every serving tenant placed in a cell, each from its own schema. A
+// tenant is in exactly one place, so no job is listed twice: a pooled row of a tenant the directory has elsewhere (a leftover of a move) or that is moving is not
+// listed. The errors of the places that could not be read come back with the jobs of the ones that could.
+func (m *Manager) openJobs(ctx context.Context) ([]sqlc.ReplayJob, error) {
 	rows, err := sqlc.New(m.cfg.Pool).ListOpenReplayJobs(ctx)
+	if err != nil || m.cfg.Cells == nil {
+		return rows, err
+	}
+	var errs []error
+	kept := rows[:0]
+	for _, r := range rows {
+		t, err := m.cfg.Cells.Locate(ctx, r.TenantID)
+		switch {
+		case errors.Is(err, tenantdir.ErrNotServing):
+			continue
+		case err != nil:
+			errs = append(errs, fmt.Errorf("tenant %s: %w", r.TenantID, err))
+		case t.Schema == "":
+			kept = append(kept, r)
+		}
+	}
+	err = m.cfg.Cells.EachReady(ctx, func(ctx context.Context, t pgxx.PlacedTenant) error {
+		var cellRows []sqlc.ReplayJob
+		err := pgxx.InTenantSchemaTx(ctx, t.Pool, t.TenantID, func(tx pgx.Tx) (err error) {
+			cellRows, err = sqlc.New(tx).ListOpenReplayJobs(ctx)
+			return err
+		})
+		if err == nil {
+			kept = append(kept, cellRows...)
+		}
+		return err
+	})
+	return kept, errors.Join(append(errs, err)...)
+}
+
+func (m *Manager) scan(ctx context.Context) {
+	rows, err := m.openJobs(ctx)
 	if err != nil {
 		m.cfg.Log.WarnContext(ctx, "replay: scan failed", "error", err)
-		return
+		if len(rows) == 0 {
+			return
+		}
 	}
 	jobs := make([]*Job, len(rows))
 	for i, r := range rows {
@@ -374,17 +442,25 @@ func (m *Manager) afterRun(ctx context.Context, j *Job, err error) {
 		m.mu.Unlock()
 		return
 	}
+	if errors.Is(err, tenantdir.ErrNotServing) { // a move is not a failure of the job: it waits
+		return
+	}
 	m.mu.Lock()
 	m.failures[j.ID]++
 	n := m.failures[j.ID]
 	m.mu.Unlock()
 	m.cfg.Log.WarnContext(ctx, "replay: job interrupted; it will be retried", "job", j.ID, "tenant", j.TenantID, "attempt", n, "error", err)
 	if n >= maxFailures {
-		q := sqlc.New(m.cfg.Pool)
-		if ferr := q.FailReplayJob(ctx, sqlc.FailReplayJobParams{TenantID: j.TenantID, ID: j.ID, LastError: err.Error()}); ferr != nil {
+		ferr := m.at(ctx, j.TenantID, func(q *sqlc.Queries) error {
+			return q.FailReplayJob(ctx, sqlc.FailReplayJobParams{TenantID: j.TenantID, ID: j.ID, LastError: err.Error()})
+		})
+		if ferr != nil {
 			m.cfg.Log.WarnContext(ctx, "replay: could not mark the job failed; it will be retried", "job", j.ID, "tenant", j.TenantID, "error", ferr)
 		}
-		if derr := q.DiscardOpenGeneration(ctx, sqlc.DiscardOpenGenerationParams{TenantID: j.TenantID, Generation: j.TargetGeneration}); derr != nil {
+		derr := m.at(ctx, j.TenantID, func(q *sqlc.Queries) error {
+			return q.DiscardOpenGeneration(ctx, sqlc.DiscardOpenGenerationParams{TenantID: j.TenantID, Generation: j.TargetGeneration})
+		})
+		if derr != nil {
 			m.cfg.Log.WarnContext(ctx, "replay: could not discard the generation of a failed job", "job", j.ID, "tenant", j.TenantID, "error", derr)
 		}
 	}
@@ -457,7 +533,10 @@ func (m *Manager) catchUpAndVerify(ctx context.Context, job *Job) error {
 	if err != nil {
 		return err
 	}
-	if err := sqlc.New(m.cfg.Pool).MarkReplayReady(ctx, sqlc.MarkReplayReadyParams{TenantID: job.TenantID, ID: job.ID, Verification: b}); err != nil {
+	err = m.at(ctx, job.TenantID, func(q *sqlc.Queries) error {
+		return q.MarkReplayReady(ctx, sqlc.MarkReplayReadyParams{TenantID: job.TenantID, ID: job.ID, Verification: b})
+	})
+	if err != nil {
 		return err
 	}
 	m.cfg.Log.InfoContext(ctx, "replay: ready to promote", "job", job.ID, "tenant", job.TenantID, "changed", ver.RowsChanged, "only_old", ver.RowsOnlyInOld, "only_new", ver.RowsOnlyInNew)
@@ -469,7 +548,7 @@ var errGone = errors.New("replay: the job was discarded or finished elsewhere")
 // handler builds the replay handler of a job.
 func (m *Manager) handler(job *Job) *apply.Handler {
 	return &apply.Handler{
-		Pool: m.cfg.Pool, Meters: m.cfg.Meters, Settings: m.cfg.Settings, Log: m.cfg.Log,
+		Pool: m.cfg.Pool, Cells: m.cfg.Cells, Meters: m.cfg.Meters, Settings: m.cfg.Settings, Log: m.cfg.Log,
 		ConsumerGroup: m.group(job), Topic: m.cfg.Topic, MeterRetryDelays: []time.Duration{},
 		Replay: &apply.Replay{Tenant: job.TenantID, Generation: job.TargetGeneration, FromPeriod: job.From, ToPeriod: job.To},
 	}
@@ -579,7 +658,11 @@ func (m *Manager) logEndedBefore(ctx context.Context, adm *kadm.Client, p int32,
 }
 
 func (m *Manager) stillWanted(ctx context.Context, job *Job) error {
-	status, err := sqlc.New(m.cfg.Pool).ReplayJobStatus(ctx, sqlc.ReplayJobStatusParams{TenantID: job.TenantID, ID: job.ID})
+	var status string
+	err := m.at(ctx, job.TenantID, func(q *sqlc.Queries) (err error) {
+		status, err = q.ReplayJobStatus(ctx, sqlc.ReplayJobStatusParams{TenantID: job.TenantID, ID: job.ID})
+		return err
+	})
 	if err != nil {
 		return err
 	}
@@ -593,6 +676,15 @@ func (m *Manager) stillWanted(ctx context.Context, job *Job) error {
 // live consumer holds it FOR SHARE through every batch that touches the tenant, so the flip waits for those batches, and
 // the batches after it see catching_up and dual-write. The live consumer's position at that moment is dual_write_from.
 func (m *Manager) beginCatchUp(ctx context.Context, job *Job) error {
+	if m.cfg.Cells != nil {
+		t, err := m.cfg.Cells.Locate(ctx, job.TenantID)
+		if err != nil {
+			return err
+		}
+		if t.Schema != "" {
+			return m.beginCatchUpInCell(ctx, job)
+		}
+	}
 	return pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if _, err := q.LockActiveGeneration(ctx, job.TenantID); err != nil {
@@ -627,6 +719,43 @@ func (m *Manager) beginCatchUp(ctx context.Context, job *Job) error {
 	})
 }
 
+// beginCatchUpInCell is beginCatchUp for a tenant in a cell, whose generation rows are in another database than the live consumer's offsets (see the package
+// comment): the flip locks the tenant's active row, reads the end of the log while it holds it, and records that as dual_write_from.
+func (m *Manager) beginCatchUpInCell(ctx context.Context, job *Job) error {
+	cl, err := kgo.NewClient(kgo.SeedBrokers(m.cfg.Brokers...))
+	if err != nil {
+		return err
+	}
+	defer cl.Close()
+	adm := kadm.NewClient(cl)
+	return pgxx.InTenantTx(ctx, m.cfg.Cells, job.TenantID, func(tx pgx.Tx) error {
+		q := sqlc.New(tx)
+		if _, err := q.LockActiveGeneration(ctx, job.TenantID); err != nil {
+			return err
+		}
+		lctx, cancel := context.WithTimeout(ctx, logEndTimeout)
+		defer cancel()
+		ends, err := adm.ListEndOffsets(lctx, m.cfg.Topic)
+		if err != nil {
+			return fmt.Errorf("end offsets: %w", err)
+		}
+		dual := map[int32]int64{}
+		ends.Each(func(o kadm.ListedOffset) { dual[o.Partition] = o.Offset })
+		n, err := q.MarkGenerationCatchingUp(ctx, sqlc.MarkGenerationCatchingUpParams{TenantID: job.TenantID, Generation: job.TargetGeneration})
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return errGone
+		}
+		dualJSON, err := offsetsJSON(dual)
+		if err != nil {
+			return err
+		}
+		return q.MarkReplayCatchingUp(ctx, sqlc.MarkReplayCatchingUpParams{TenantID: job.TenantID, ID: job.ID, DualWriteFrom: dualJSON})
+	})
+}
+
 // lockJob loads the job row FOR UPDATE.
 func lockJob(ctx context.Context, q *sqlc.Queries, tenantID, jobID uuid.UUID) (*Job, error) {
 	r, err := q.GetReplayJobForUpdate(ctx, sqlc.GetReplayJobForUpdateParams{TenantID: tenantID, ID: jobID})
@@ -641,7 +770,7 @@ func lockJob(ctx context.Context, q *sqlc.Queries, tenantID, jobID uuid.UUID) (*
 
 // Promote makes the job's generation the tenant's active one.
 func (m *Manager) Promote(ctx context.Context, tenantID, jobID uuid.UUID) (*Job, error) {
-	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := m.tx(ctx, tenantID, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		j, err := lockJob(ctx, q, tenantID, jobID)
 		if err != nil {
@@ -727,7 +856,7 @@ func carryOverOutsideRange(ctx context.Context, q *sqlc.Queries, j *Job) error {
 // Discard abandons a generation that was not promoted and deletes its rows.
 func (m *Manager) Discard(ctx context.Context, tenantID, jobID uuid.UUID) (*Job, error) {
 	var job *Job
-	err := pgxx.InTx(ctx, m.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	err := m.tx(ctx, tenantID, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		j, err := lockJob(ctx, q, tenantID, jobID)
 		if err != nil {
@@ -759,7 +888,10 @@ func (m *Manager) Discard(ctx context.Context, tenantID, jobID uuid.UUID) (*Job,
 
 // deleteGeneration removes the rows of an abandoned generation: nothing reads or writes them any more.
 func (m *Manager) deleteGeneration(ctx context.Context, tenantID uuid.UUID, generation int32) error {
-	q := sqlc.New(m.cfg.Pool)
+	return m.at(ctx, tenantID, func(q *sqlc.Queries) error { return deleteGenerationRows(ctx, q, tenantID, generation) })
+}
+
+func deleteGenerationRows(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, generation int32) error {
 	if err := q.DeleteGenerationUsage(ctx, sqlc.DeleteGenerationUsageParams{TenantID: tenantID, Generation: generation}); err != nil {
 		return err
 	}

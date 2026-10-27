@@ -20,15 +20,25 @@ var (
 )
 
 // Resetter deletes on the system pool, which sees every tenant: each statement names the tenant.
-type Resetter struct{ pool *pgxpool.Pool }
+type Resetter struct {
+	pool  *pgxpool.Pool
+	cells *pgxx.Router
+}
 
 // New returns a Resetter.
 func New(systemPool *pgxpool.Pool) *Resetter { return &Resetter{pool: systemPool} }
 
+// WithCells makes the Resetter reset a tenant placed in a cell in its schema (cells is the system-role router of ADR 0018). Tenants in the pooled database are
+// reset as before.
+func (r *Resetter) WithCells(cells *pgxx.Router) *Resetter {
+	r.cells = cells
+	return r
+}
+
 // Reset deletes the tenant's rows and returns how many, by table (tables with none are left out).
 func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]int64, error) {
 	out := map[string]int64{}
-	err := pgxx.InTx(ctx, r.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+	reset := func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		for _, s := range []struct {
 			table string
@@ -45,7 +55,13 @@ func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]in
 			}
 		}
 		return nil
-	})
+	}
+	var err error
+	if r.cells != nil {
+		err = pgxx.InTenantTx(ctx, r.cells, tenantID, reset)
+	} else {
+		err = pgxx.InTx(ctx, r.pool, pgx.TxOptions{}, reset)
+	}
 	if err != nil {
 		return nil, err
 	}
