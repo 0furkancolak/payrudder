@@ -1,7 +1,8 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { ApiError, tenantApi, unwrap } from "@/shared/api/client";
+import { tenantApi, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
+import { usePresignedOpen } from "@/shared/api/presigned";
 import type { components } from "@/shared/api/schema";
 
 // The billing pages of the product app speak the tenant API (/v1/*) as the person's tenant: the session token plus X-Payrudder-Tenant. Nothing here uses an
@@ -55,18 +56,9 @@ export function useSimulateInvoice(tenantId: MaybeRefOrGetter<string>, invoiceId
   });
 }
 
-/** Asks for a presigned link (valid for five minutes) and opens the PDF in a new tab. */
+/** Opens the invoice's PDF in a new tab. */
 export function useOpenInvoicePdf(tenantId: MaybeRefOrGetter<string>, invoiceId: MaybeRefOrGetter<string>) {
-  return useMutation({
-    mutationFn: async () => {
-      const r = await unwrap(tenantApi(toValue(tenantId)).GET("/v1/invoices/{id}/pdf", { params: { path: { id: toValue(invoiceId) } } }));
-      if (!r.url) throw new ApiError("no link", "NO_LINK");
-      return r.url;
-    },
-    onSuccess: (url) => {
-      window.open(url, "_blank", "noopener");
-    },
-  });
+  return usePresignedOpen(() => unwrap(tenantApi(toValue(tenantId)).GET("/v1/invoices/{id}/pdf", { params: { path: { id: toValue(invoiceId) } } })));
 }
 
 /** The tenant's payments, newest first (charges and refunds, each folded to its settled outcome). */
