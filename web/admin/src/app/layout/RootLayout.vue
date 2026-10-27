@@ -24,7 +24,7 @@ import UserMenu from "./UserMenu.vue";
 import { updateSearch, useSheetUrlSync } from "@/shared/lib/sheets";
 import { TourButton, TourHost } from "@/shared/ui/tour";
 import { tourFor, useTourScope } from "../tours";
-import { useShell } from "./useShell";
+import { provideShell } from "./useShell";
 
 /**
  * The frame of every page. Signed out: a plain header with the brand, the language and the theme. Signed in: the sidebar (open by default on a wide
@@ -37,7 +37,7 @@ const navigate = useNavigate();
 const brand = brandName();
 // There is one kind of signed-in person; an operator is a person the server also lets into the operator console.
 const signedIn = computed(() => isPerson.value);
-const shell = useShell();
+const shell = provideShell();
 useSheetUrlSync();
 useTourScope();
 // The tour icon of the page's header, when the page has a tour (app/tours.ts).
