@@ -264,6 +264,9 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `gateway.request.too_large`
 - `gateway.request.unreadable_body`
 - `gateway.route.not_found`
+- `gateway.saas.events_quota`
+- `gateway.saas.invoice_not_payable`
+- `gateway.saas.unavailable`
 - `identity.account.forbidden`
 - `identity.account.not_found`
 - `identity.account.quota`
@@ -447,6 +450,16 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.plan.no_fixed_fee`
 - `plans.plan.no_metered_price`
 - `plans.request.invalid`
+- `plans.saas.bad_resource`
+- `plans.saas.disabled`
+- `plans.saas.downgrade_blocked`
+- `plans.saas.not_ready`
+- `plans.saas.platform_account`
+- `plans.saas.quota.api_keys`
+- `plans.saas.quota.apps`
+- `plans.saas.quota.members`
+- `plans.saas.same_plan`
+- `plans.saas.unknown_plan`
 - `plans.subscription.already_linked`
 - `plans.subscription.bad_period`
 - `plans.subscription.billed_in_arrears`

@@ -21,6 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/credential"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	saasmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/model"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -219,6 +220,10 @@ func (c *Commands) InviteMember(ctx context.Context, req *plansv1.InviteMemberRe
 			inv, err = q.RefreshInvite(ctx, sqlc.RefreshInviteParams{ID: open.ID, Role: req.GetRole(), InvitedBy: uid, TokenHash: hash, ExpiresAt: expires})
 			return err
 		case !errors.Is(err, pgx.ErrNoRows):
+			return err
+		}
+		// A new invitation holds a seat of the plan; refreshing one (above) does not take another.
+		if err := c.room(ctx, tx, aid, saasmodel.Members); err != nil {
 			return err
 		}
 		open2, err := q.CountOpenInvites(ctx, aid)

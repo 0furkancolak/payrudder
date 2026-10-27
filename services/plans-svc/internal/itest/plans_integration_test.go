@@ -76,6 +76,8 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("QuotasAndOverrides", testQuotasAndOverrides)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
+	t.Run("SaasOff", testSaasOff)
+	t.Run("Saas", testSaas)
 	t.Run("PromotionsMigration", testPromotionsMigration) // last: it rolls the newest migration back and forward
 }
 
@@ -111,6 +113,14 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 	must(e.hooks.CreateWebhookEndpoint(ctx, &plansv1.CreateWebhookEndpointRequest{Url: "https://example.com/hook"}))
 	must(e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_" + suffix, PlanCode: "pro", CouponCode: "SEED"}))
 	must(e.plans.GrantCustomerCoupon(ctx, &plansv1.GrantCustomerCouponRequest{CustomerExternalId: "cus_" + suffix, CouponCode: "SEED", Source: "operator", SourceRef: "seed"}))
+	// The connection to a tenant's own mail provider is written by PutMailIntegration, which asks the provider first; a sealed row stands in.
+	if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
+		_, err := tx.Exec(context.Background(), `INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address)
+			VALUES (app_tenant_id(), 'nafru', 'https://mail.example.com', '\x00', 'abcd', 'billing@example.com')`)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
 	// provider_migrations is written by StartProviderMigration, which would move the fixture's subscription; an aborted row stands in.
 	if err := pgxx.InTenantTx(context.Background(), e.app, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
 		_, err := tx.Exec(context.Background(), `INSERT INTO provider_migrations (tenant_id, id, subscription_id, to_provider, state)

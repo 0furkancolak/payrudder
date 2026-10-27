@@ -1,0 +1,168 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// SaasService is Payrudder selling itself (phase 55, ADR 0024): the platform tenant owns the plans Free, Pro and Scale, every organisation (account) is a
+// customer of it with a subscription, and the plan's entitlements are the organisation's limits. Only the gateway calls it. With PAYRUDDER_SAAS=off every
+// call answers `enabled = false` (or FailedPrecondition `plans.saas.disabled` for the writes) and nothing is limited.
+service SaasService {
+  // GetPlatform tells whether the SaaS mode is on and which tenant is the platform's. Any caller on the internal network may ask; the gateway caches it.
+  rpc GetPlatform(GetPlatformRequest) returns (GetPlatformResponse);
+  // GetMyPlan is the plan, the quotas and the plans on offer of an account the caller is a member of (any role). The events quota is counted by limits-svc;
+  // the gateway fills its `used`.
+  rpc GetMyPlan(GetMyPlanRequest) returns (GetMyPlanResponse);
+  // ChangeMyPlan moves the account to another plan (owner or administrator). A paid plan starts with its trial when the account never had one; a move
+  // to a plan the account's usage does not fit is refused (`plans.saas.downgrade_blocked`). Repeating the call for the plan the account is on is
+  // `plans.saas.same_plan`, not a second subscription.
+  rpc ChangeMyPlan(ChangeMyPlanRequest) returns (ChangeMyPlanResponse);
+  // ResolveIngestPolicy answers, for a tenant of an organisation, whether its events are metered and limited and where they are counted. The gateway asks
+  // at most every half minute per tenant. It makes the organisation a customer of the platform tenant if it is not one yet.
+  rpc ResolveIngestPolicy(ResolveIngestPolicyRequest) returns (ResolveIngestPolicyResponse);
+
+  // ListOrganizations is the operator's view: every organisation (the platform's own excluded) with its plan and usage, ordered by id.
+  rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse);
+  // SetOrganizationPlan is the operator's manual override: it puts the organisation on a plan without a checkout (no trial, whatever the usage) and/or
+  // sets limits of its own that replace its plan's. Operator only.
+  rpc SetOrganizationPlan(SetOrganizationPlanRequest) returns (SetOrganizationPlanResponse);
+  // ClearOrganizationOverrides drops the limits of the organisation's own, so its plan's apply again. Operator only.
+  rpc ClearOrganizationOverrides(ClearOrganizationOverridesRequest) returns (ClearOrganizationOverridesResponse);
+}
+
+message PlatformTenant {
+  string id = 1;
+  string environment = 2;
+  string timezone = 3;
+  string currency = 4;
+}
+
+message GetPlatformRequest {}
+message GetPlatformResponse {
+  bool enabled = 1;
+  // Unset while disabled.
+  PlatformTenant tenant = 2;
+}
+
+// PlanLimit is one resource a plan limits: "events" (a month), "apps", "members" and "api_keys". 0 is unlimited.
+message PlanLimit {
+  string resource = 1;
+  int64 limit = 2;
+  // "hard", "soft" or "notify".
+  string mode = 3;
+}
+
+// PlanOffer is a plan an organisation can be on.
+message PlanOffer {
+  string code = 1;
+  string name = 2;
+  int32 version = 3;
+  int64 base_fee_minor = 4;
+  string currency = 5;
+  // Always "month" for now.
+  string interval = 6;
+  // The days of free trial a first-time move to this plan gets; 0 for a plan with no fee or when trials are off.
+  int32 trial_days = 7;
+  repeated PlanLimit limits = 8;
+  bool current = 9;
+}
+
+// PlanQuota is one resource against its limit.
+message PlanQuota {
+  string resource = 1;
+  int64 used = 2;
+  int64 limit = 3;
+  bool unlimited = 4;
+  string mode = 5;
+  bool over_limit = 6;
+  // The limit is the organisation's own, set by the operator, not its plan's.
+  bool overridden = 7;
+  // Only the events quota resets.
+  google.protobuf.Timestamp resets_time = 8;
+}
+
+message OrganizationPlan {
+  bool enabled = 1;
+  string account_id = 2;
+  // The plan the account is on now. A cancelled or missing subscription is Free.
+  PlanOffer plan = 3;
+  // "active", "trialing", "past_due" or "paused" (the subscription's); "none" when the account is on Free without a subscription.
+  string state = 4;
+  google.protobuf.Timestamp trial_end_time = 5;
+  // Some limit is the organisation's own.
+  bool overridden = 6;
+  repeated PlanQuota quotas = 7;
+  repeated PlanOffer offers = 8;
+  // The caller may change the plan (owner or administrator).
+  bool can_manage = 9;
+  // The platform tenant and the account's customer in it: the gateway reads the events usage, the invoices and the payment links with them.
+  PlatformTenant platform = 10;
+  string customer_id = 11;
+  string subscription_id = 12;
+}
+
+message GetMyPlanRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+message GetMyPlanResponse { OrganizationPlan plan = 1; }
+
+message ChangeMyPlanRequest {
+  string user_id = 1;
+  string account_id = 2;
+  string plan_code = 3;
+}
+message ChangeMyPlanResponse { OrganizationPlan plan = 1; }
+
+message ResolveIngestPolicyRequest { string tenant_id = 1; }
+message ResolveIngestPolicyResponse {
+  // False for the platform's own tenant, for a sandbox tenant, and while SaaS is off: those are neither metered nor limited.
+  bool metered = 1;
+  string account_id = 2;
+  PlatformTenant platform = 3;
+  // The organisation as a customer of the platform tenant.
+  string customer_id = 4;
+  string customer_external_id = 5;
+  string meter_code = 6;
+}
+
+message OrganizationRow {
+  string account_id = 1;
+  string name = 2;
+  string owner_email = 3;
+  string plan_code = 4;
+  string plan_name = 5;
+  string state = 6;
+  bool overridden = 7;
+  int64 apps = 8;
+  int64 members = 9;
+  int64 api_keys = 10;
+  // The events limit of the plan or override; 0 is unlimited. The events used are counted by limits-svc and filled by the gateway.
+  int64 events_limit = 11;
+  int64 events_used = 12;
+  string customer_id = 13;
+  google.protobuf.Timestamp create_time = 14;
+}
+
+message ListOrganizationsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  // Matches the name or the owner's address, case-insensitively.
+  string query = 3;
+}
+message ListOrganizationsResponse {
+  repeated OrganizationRow organizations = 1;
+  string next_page_token = 2;
+  PlatformTenant platform = 3;
+}
+
+// SetOrganizationPlanRequest: plan_code and/or limits. A limit is "0" for unlimited; a resource that is not named keeps what it has.
+message SetOrganizationPlanRequest {
+  string account_id = 1;
+  string plan_code = 2;
+  map<string, int64> limits = 3;
+}
+message SetOrganizationPlanResponse { OrganizationPlan plan = 1; }
+
+message ClearOrganizationOverridesRequest { string account_id = 1; }
+message ClearOrganizationOverridesResponse {}

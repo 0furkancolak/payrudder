@@ -16,6 +16,7 @@ type Account struct {
 	ID        uuid.UUID
 	Name      string
 	CreatedAt time.Time
+	Platform  bool
 }
 
 type AccountInvite struct {

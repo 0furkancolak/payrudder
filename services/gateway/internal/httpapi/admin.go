@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"net/http"
+	"slices"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -30,6 +31,9 @@ func (s *Server) adminListTenants(w http.ResponseWriter, r *http.Request) {
 	}
 	req.PageSize = n
 	resp, err := s.d.Admin.ListTenants(r.Context(), req)
+	if hide := s.hiddenPlatformTenant(r.Context()); err == nil && hide != "" {
+		resp.Tenants = slices.DeleteFunc(resp.Tenants, func(t *plansv1.Tenant) bool { return t.GetId() == hide })
+	}
 	respond(w, r, http.StatusOK, resp, err)
 }
 

@@ -23,3 +23,7 @@ PAYRUDDER_TRUSTED_PROXIES: ""
 # The domain of the invoice inbox addresses (invoices+<token>@<domain>) the mail provider receives for. Empty: the console shows the token only. The webhook that posts the mail to
 # /inbound/invoices is protected by PAYRUDDER_INBOUND_SECRET (environment only); without it the endpoint answers 404.
 PAYRUDDER_INBOUND_DOMAIN: ""
+
+# Payrudder as a SaaS (phase 55, ADR 0024): "on" shows organisations their plan and refuses their events over the plan's hard events quota, metering the rest into the
+# platform tenant. "off" (the default, and what a self-hoster wants): none of it. Set it the same as plans-svc. make setup and make dev switch it on.
+PAYRUDDER_SAAS: "off"

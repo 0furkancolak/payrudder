@@ -2512,6 +2512,20 @@
         "not_configured": "Les fournisseurs d'e-mail ne sont pas configurés sur ce déploiement.",
         "not_connected": "Aucun fournisseur d'e-mail n'est connecté.",
         "seal_failed": "La clé n'a pas pu être enregistrée. Réessayez."
+      },
+      "saas": {
+        "disabled": "Les offres ne sont pas activées sur cette installation.",
+        "quota": {
+          "apps": "La limite d'applications de votre offre est atteinte. Passez à une offre supérieure pour en ajouter.",
+          "members": "La limite de membres de votre offre est atteinte. Passez à une offre supérieure pour inviter d'autres personnes.",
+          "api_keys": "La limite de clés d'API de votre offre est atteinte. Passez à une offre supérieure pour en créer d'autres."
+        },
+        "downgrade_blocked": "Votre utilisation ne tient pas dans cette offre. Supprimez d'abord des applications, des membres ou des clés, puis réessayez.",
+        "same_plan": "L'organisation est déjà sur cette offre.",
+        "unknown_plan": "Cette offre n'existe pas.",
+        "bad_resource": "Ce n'est pas une ressource qu'une offre limite.",
+        "platform_account": "L'organisation propre de la plateforme n'a pas d'offre.",
+        "not_ready": "Les offres ne sont pas encore prêtes. Réessayez dans un instant."
       }
     },
     "common": {
@@ -2788,6 +2802,11 @@
       "geo": {
         "country_not_found": "Ce pays ne figure pas dans la liste.",
         "region_not_found": "Cette région ne figure pas dans la liste."
+      },
+      "saas": {
+        "events_quota": "La limite d'événements de votre offre pour ce mois est atteinte. Passez à une offre supérieure pour en envoyer davantage.",
+        "unavailable": "Les offres sont temporairement indisponibles. Réessayez dans un instant.",
+        "invoice_not_payable": "Cette facture ne peut plus être payée."
       }
     },
     "env": {
@@ -3902,7 +3921,10 @@
       "coupons": "Coupons",
       "meters": "Compteurs",
       "integrations": "Intégrations",
-      "orgIntegrations": "Intégrations"
+      "orgIntegrations": "Intégrations",
+      "plan": "Offre et facturation",
+      "organisations": "Organisations",
+      "platformPlans": "Offres de la plateforme"
     },
     "noApps": "Aucune application",
     "newApp": "Nouvelle application"
@@ -4425,5 +4447,82 @@
     "failed": "{app} n'a pas répondu.",
     "amount": "Montant",
     "date": "Date"
+  },
+  "saas": {
+    "title": "Offre et facturation",
+    "intro": "L'offre de cette organisation, ce qu'elle en utilise et les factures que Payrudder a émises pour elle.",
+    "linkHint": "Offre, utilisation et factures",
+    "disabled": "Les offres ne sont pas activées sur cette installation : rien n'est limité.",
+    "current": "Offre actuelle",
+    "currentBadge": "Actuelle",
+    "free": "Gratuit",
+    "perMonth": "{price} par mois",
+    "perMonthShort": "par mois",
+    "unlimited": "Illimité",
+    "usage": "Utilisation",
+    "plans": "Offres",
+    "invoices": "Factures",
+    "noInvoices": "Aucune facture pour l'instant.",
+    "portal": "Moyen de paiement et portail",
+    "state": {
+      "none": "Aucun abonnement",
+      "active": "Actif",
+      "trialing": "Essai",
+      "past_due": "En retard",
+      "paused": "En pause"
+    },
+    "overridden": "Limites personnalisées",
+    "trialEnds": "l'essai se termine le {date}",
+    "trialDays": "{n} jours gratuits au départ",
+    "resource": {
+      "events": "Événements",
+      "apps": "Applications",
+      "members": "Membres",
+      "api_keys": "Clés d'API"
+    },
+    "modeHint": {
+      "hard": "S'arrête à la limite",
+      "soft": "Peut dépasser la limite",
+      "notify": "Prévient à la limite"
+    },
+    "ownLimit": "Limite fixée pour cette organisation",
+    "overLimit": "Limite dépassée",
+    "resets": "remise à zéro le {date}",
+    "upgradeTo": "Passer à {plan}",
+    "downgradeTo": "Passer à {plan}",
+    "readOnly": "Seul un propriétaire ou un administrateur peut changer d'offre.",
+    "changed": "Votre offre est maintenant {plan}.",
+    "confirm": {
+      "title": "Passer à {plan} ?",
+      "upgrade": "L'offre coûte {price}. Le changement s'applique immédiatement.",
+      "downgrade": "Le changement s'applique immédiatement. Il est refusé si votre utilisation ne tient pas dans les limites plus petites ; rien n'est supprimé.",
+      "submit": "Confirmer"
+    },
+    "invoice": {
+      "number": "Numéro",
+      "date": "Date",
+      "total": "Total",
+      "status": "Statut",
+      "pay": "Payer"
+    },
+    "upgrade": "Améliorer votre offre",
+    "admin": {
+      "title": "Organisations",
+      "intro": "Chaque organisation avec son offre et son utilisation. Une dérogation place une organisation sur une offre sans passage en caisse ou lui donne des limites propres.",
+      "search": "Rechercher par nom ou adresse du propriétaire",
+      "find": "Rechercher",
+      "organisation": "Organisation",
+      "plan": "Offre",
+      "empty": "Aucune organisation trouvée.",
+      "manage": "Gérer",
+      "sheetIntro": "Changer l'offre sans passage en caisse, ou fixer des limites propres à cette organisation.",
+      "limitsHint": "Limites : un nombre entier, 0 pour illimité. Laissez un champ vide pour le conserver tel quel.",
+      "keep": "Conserver",
+      "badLimit": "Une limite est un nombre entier à partir de 0.",
+      "clear": "Retirer les limites propres",
+      "save": "Enregistrer",
+      "saved": "Enregistré.",
+      "cleared": "Limites propres retirées."
+    }
   }
 }

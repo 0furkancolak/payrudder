@@ -46,13 +46,18 @@ func (q *Queries) ExpireApiKey(ctx context.Context, arg ExpireApiKeyParams) (Api
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT id, name, created_at FROM accounts WHERE id = $1
+SELECT id, name, created_at, platform FROM accounts WHERE id = $1
 `
 
 func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
 	row := q.db.QueryRow(ctx, getAccount, id)
 	var i Account
-	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Platform,
+	)
 	return i, err
 }
 
@@ -113,7 +118,7 @@ func (q *Queries) GetTenant(ctx context.Context, id uuid.UUID) (Tenant, error) {
 
 const insertAccount = `-- name: InsertAccount :one
 
-INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING id, name, created_at
+INSERT INTO accounts (id, name) VALUES ($1, $2) RETURNING id, name, created_at, platform
 `
 
 type InsertAccountParams struct {
@@ -125,7 +130,12 @@ type InsertAccountParams struct {
 func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (Account, error) {
 	row := q.db.QueryRow(ctx, insertAccount, arg.ID, arg.Name)
 	var i Account
-	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.Platform,
+	)
 	return i, err
 }
 

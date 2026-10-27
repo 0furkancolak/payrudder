@@ -28,3 +28,20 @@ An application integrates Payrudder to take **payments through a provider** (iyz
 
 - **Quantity (seat) changes and tax-inclusive prices** were gaps listed after phase 22. They add a data-model change each; with the above as the priority and "no needless code" as the rule, they wait until an application needs them.
 - **Running every service on an edge runtime** (workers without a TCP stack): the services need Postgres, Kafka and RabbitMQ. Edge here means the cacheable read paths and the stateless gateway.
+
+## Payrudder as a SaaS that bills itself (phase 55)
+
+The owner may sell Payrudder as a service ([ADR 0019](adr/0019-license.md)), so the product sells itself with its own engine ([ADR 0024](adr/0024-payrudder-as-a-saas.md)) and not with a side system.
+
+- **A platform tenant** (an account marked `platform`, created at start when `PAYRUDDER_SAAS=on`, hidden from the operator's tenant list) owns the plans **Free, Pro and Scale**: a monthly fee in the platform currency (`PAYRUDDER_SAAS_CURRENCY`) and entitlements on four meters: `events` (a calendar month), `apps`, `members`, `api_keys`. Seeded once; after that the operator edits them as the packages of that tenant (a new version applies to organisations that move to the plan afterwards).
+
+  | | Free | Pro | Scale |
+  |---|---|---|---|
+  | Fee | 0 | 29 | 99 |
+  | Events a month | 10,000 (hard) | 1,000,000 (hard) | 10,000,000 (notify) |
+  | Apps / members / API keys | 1 / 2 / 4 | 5 / 10 / 20 | 25 / 50 / 100 |
+
+- **Every organisation is a customer** of it with a subscription: Free by default, a trial (`PAYRUDDER_SAAS_TRIAL_DAYS`, 14) for the first move to a paid plan. Its invoices, payment links, customer portal and dunning are the ordinary ones.
+- **Limits** are enforced where the resource is created (apps, invitations, API keys: `429 plans.saas.quota.*`, under the account's lock) and on ingest volume (live tenants only: `429 gateway.saas.events_quota` over a hard events quota; the accepted events are metered into the platform tenant). Soft and notify limits are the quota engine's alerts and billing, never a refusal. The console turns these keys into an upgrade prompt.
+- **Organisation settings, Plan and billing** (`/app/settings/plan`): the plan, usage against quotas, the plans on offer with upgrade and downgrade, the invoices (with a payment link for an open one) and the customer portal (payment method). **Platform, Organisations** (`/organisations`): every organisation with plan, state and usage, a manual override (plan without a checkout, limits of its own), and a door to the platform tenant's packages.
+- **`PAYRUDDER_SAAS=off`** (the default; self-hosters): none of it: no platform tenant, no limits, no plan page. `make setup` and `make dev` switch it on, with the platform tenant in the sandbox environment so the mock provider takes the payments; the dev seed puts its accounts on Scale.

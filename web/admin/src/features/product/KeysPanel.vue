@@ -8,6 +8,7 @@ import { useFormat } from "@/shared/lib/format";
 import { copyText } from "@/shared/lib/clipboard";
 import { firstError } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
+import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -160,6 +161,7 @@ function doRevoke() {
       <Link :to="`/app/apps/${appId}/go-live`" :search="{ env: 'live' } as never" class="text-primary font-medium underline-offset-4 hover:underline">{{ t("product.goLive.continue") }}</Link>
     </p>
     <ErrorText :error="firstError(create, revoke, keys)" class="bg-destructive-soft mx-3 rounded-2xl px-4 py-3" />
+    <UpgradeHint :error="create.error.value" class="mx-3" />
 
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="table.filters.value.role" multiple :label="t('product.keys.role')" :options="[{ value: '', label: t('product.keys.allRoles') }, ...KEY_ROLES.map((r) => ({ value: r, label: roleName(r) }))]" />

@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { firstError } from "@/shared/lib/errors";
 import { ErrorText } from "@/shared/ui/error-text";
+import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Button } from "@/shared/ui/button";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -208,6 +209,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
               <NativeSelect id="inv-role" v-model="role"><option v-for="r in roleChoices" :key="r" :value="r">{{ t(`product.role.${r}`) }}</option></NativeSelect>
             </div>
             <ErrorText :error="invite.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+            <UpgradeHint :error="invite.error.value" />
           </form>
         </SheetBody>
         <SheetFooter>

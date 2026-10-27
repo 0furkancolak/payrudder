@@ -91,6 +91,7 @@ export function personRoutes(parent: AnyRoute) {
   const orgProviders = createRoute({ getParentRoute: () => signedIn, path: "/app/providers", beforeLoad: () => { throw redirect({ to: "/app/integrations", replace: true }); } });
   const members = createRoute({ getParentRoute: () => signedIn, path: "/app/members", component: lazyPage(() => import("./MembersPage.vue")) });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazyPage(() => import("./SettingsPage.vue")) });
+  const plan = createRoute({ getParentRoute: () => signedIn, path: "/app/settings/plan", component: lazyPage(() => import("@/features/saas/PlanPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazyPage(() => import("./ProductTenantLayout.vue")) });
   // Invoices and payments are pages of the product: the console's versions speak operator-only routes (saga, transfers, the raw ledger).
   const invoices = createRoute({ getParentRoute: () => tenant, path: "invoices", component: lazyPage(() => import("./InvoicesPage.vue")) });
@@ -108,6 +109,7 @@ export function personRoutes(parent: AnyRoute) {
     orgProviders,
     members,
     settings,
+    plan,
     ...partnerRoutes(signedIn),
     // One line per page, and the same page in PERSON_PAGES (app/layout/nav.ts), which is what puts it in the sidebar.
     tenant.addChildren([

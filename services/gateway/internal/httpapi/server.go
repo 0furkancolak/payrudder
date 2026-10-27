@@ -70,16 +70,18 @@ type Deps struct {
 	Usage           aggregatorv1.UsageQueryServiceClient
 	Replay          aggregatorv1.ReplayServiceClient
 	Limits          limitsv1.LimitsServiceClient
-	Analytics       analyticsv1.AnalyticsServiceClient
-	Assets          assetsv1.AssetsServiceClient
-	Billing         billingv1.BillingServiceClient
-	Sandbox         billingv1.SandboxServiceClient
-	BillingAdmin    billingv1.BillingAdminServiceClient
-	Hosted          billingv1.HostedInvoiceServiceClient
-	Auth            Authenticator
-	Limiter         Limiter
-	OperatorToken   string
-	Log             *slog.Logger
+	// Saas is Payrudder as a SaaS (phase 55); nil with PAYRUDDER_SAAS=off: no plans, no limits.
+	Saas          plansv1.SaasServiceClient
+	Analytics     analyticsv1.AnalyticsServiceClient
+	Assets        assetsv1.AssetsServiceClient
+	Billing       billingv1.BillingServiceClient
+	Sandbox       billingv1.SandboxServiceClient
+	BillingAdmin  billingv1.BillingAdminServiceClient
+	Hosted        billingv1.HostedInvoiceServiceClient
+	Auth          Authenticator
+	Limiter       Limiter
+	OperatorToken string
+	Log           *slog.Logger
 	// PaymentsURL is payments-worker's HTTP address (provider webhooks, provider accounts, the ledger); nil answers 503 on those routes.
 	PaymentsURL   *url.URL
 	PaymentsToken string
@@ -118,11 +120,13 @@ type Server struct {
 	dash dashCache
 	// now is the clock; a request reads it once.
 	now func() time.Time
+	// saasEdge remembers the SaaS answers the ingest edge needs.
+	saasEdge *saasEdge
 }
 
 // New builds the router.
 func New(d Deps) *Server {
-	s := &Server{d: d, now: time.Now}
+	s := &Server{d: d, now: time.Now, saasEdge: newSaasEdge()}
 	mux := http.NewServeMux()
 	for _, rt := range s.routes() {
 		// otelhttp per route: the span is named after the route pattern ("POST /v1/customers"), which a global

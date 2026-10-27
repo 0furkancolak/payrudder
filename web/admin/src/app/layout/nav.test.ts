@@ -18,6 +18,20 @@ describe("buildNav", () => {
     expect(org.at(-1)?.items.map((i) => i.key)).toEqual(["members", "orgIntegrations", "settings"]);
   });
 
+  it("Plan and billing is in the organisation group only where SaaS runs, and Settings does not own its page", () => {
+    expect(keys(buildNav(app({ saas: false })))).not.toContain("plan");
+    const nav = buildNav(app({ saas: true }));
+    expect(nav.at(-1)?.items.map((i) => i.key)).toEqual(["members", "orgIntegrations", "settings", "plan"]);
+    expect(activeItem(nav, "/app/settings/plan")?.key).toBe("plan");
+    expect(activeItem(nav, "/app/settings")?.key).toBe("settings");
+  });
+
+  it("the platform has the organisations, and the platform plans once SaaS runs", () => {
+    const flat = buildNav({ level: "platform", platformTenant: "P" }).flatMap((s) => s.items);
+    expect(flat.find((i) => i.key === "platformPlans")?.to).toBe("/tenants/P/packages");
+    expect(flat.find((i) => i.key === "organisations")?.to).toBe("/organisations");
+  });
+
   it("groups the pages of the selected app in categories, in order", () => {
     const nav = buildNav(app());
     expect(nav.map((s) => s.key)).toEqual(["overview", "customersBilling", "usageProducts", "money", "developers", "settings", "account"]);
@@ -79,7 +93,7 @@ describe("buildNav", () => {
   });
 
   it("the operator sees the platform, and a tenant with the operator-only pages too", () => {
-    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "playground", "deadLetters", "myApps"]);
+    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "organisations", "playground", "deadLetters", "myApps"]);
     const tenant = keys(buildNav({ level: "tenant", tenantId: "T" }));
     for (const k of ["dashboard", "customers", "invoices", "payments", "providers", "einvoice", "address", "mail", "apps", "myApps"]) expect(tenant).toContain(k);
   });

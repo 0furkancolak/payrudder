@@ -17,7 +17,7 @@ var (
 	Tables = []string{"affiliate_reversals", "affiliate_commissions", "affiliate_journal", "affiliate_payouts", "affiliate_attributions", "affiliate_attribution_rejections", "affiliate_clicks_daily", "customer_coupons", "customer_entitlement_overrides", "coupon_redemptions", "subscription_adjustments", "subscription_changes", "subscription_coupons", "provider_migrations",
 		"subscriptions", "customers", "webhook_deliveries", "webhook_events", "outbox"}
 	Kept = []string{"meters", "plans", "plan_versions", "plan_prices", "plan_entitlements", "plan_version_fees", "plan_currency_prices", "routing_rules", "tax_rates",
-		"affiliate_programs", "affiliates", "coupons", "promotion_codes", "webhook_endpoints", "tenant_mail_settings", "api_keys", "sandbox_resets"}
+		"affiliate_programs", "affiliates", "coupons", "promotion_codes", "webhook_endpoints", "tenant_mail_settings", "tenant_mail_integrations", "api_keys", "sandbox_resets"}
 )
 
 // Local is plans-svc's own part of a reset, on the system pool: each statement names the tenant.

@@ -19,6 +19,7 @@ ALTER TABLE tenant_mail_integrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tenant_mail_integrations FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON tenant_mail_integrations USING (tenant_id = app_tenant_id()) WITH CHECK (tenant_id = app_tenant_id());
 GRANT SELECT, INSERT, UPDATE, DELETE ON tenant_mail_integrations TO plans_app;
+GRANT SELECT ON tenant_mail_integrations TO plans_system;
 
 -- +goose Down
 DROP TABLE tenant_mail_integrations;

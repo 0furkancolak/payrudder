@@ -69,7 +69,7 @@ export function sessionLost(): void {
 }
 
 /** The paths of the operator console. A person the server calls an operator reaches them; nobody else does (the server decides on every request). */
-export const OPERATOR_PATHS = /^\/(operator|tenants|playground|dead-letters)(\/|$)/;
+export const OPERATOR_PATHS = /^\/(operator|tenants|playground|dead-letters|organisations)(\/|$)/;
 
 /**
  * Whether the page being looked at belongs to the operator console and the signed-in person may use it. An operator is also a person with an organisation of

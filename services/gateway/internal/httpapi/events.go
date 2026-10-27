@@ -111,6 +111,12 @@ func (s *Server) ingestEvents(w http.ResponseWriter, r *http.Request) {
 	if !s.charge(w, r, principalFrom(r.Context()), ratelimit.ClassIngest, len(req.Events)) {
 		return
 	}
+	// Payrudder as a SaaS (phase 55): a live tenant of an organisation over its hard events quota is refused here; what it is accepted is metered below.
+	pol := s.saasPolicy(r.Context(), principalFrom(r.Context()).Tenant.ID.String())
+	if pol != nil && !s.saasMayIngest(r.Context(), pol) {
+		writeError(w, r, errEventsQuota())
+		return
+	}
 	resp, err := s.d.Ingest.IngestEvents(r.Context(), req)
 	if err != nil {
 		switch status.Code(err) {
@@ -121,6 +127,9 @@ func (s *Server) ingestEvents(w http.ResponseWriter, r *http.Request) {
 		}
 		writeError(w, r, err)
 		return
+	}
+	if pol != nil {
+		s.saasMeter(r.Context(), pol, principalFrom(r.Context()).Tenant.ID.String(), resp.GetResults())
 	}
 	out := struct {
 		Results []eventResultJSON `json:"results"`

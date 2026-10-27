@@ -201,7 +201,7 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 		return rw("invoices")
 	case "reports", "analytics":
 		return PermReportsRead, true
-	case "accounting", "expenses":
+	case "accounting", "expenses", "expense-inbox", "expense-rules":
 		return rw("accounting")
 	case "webhook-endpoints", "webhook-deliveries":
 		return rw("webhooks")

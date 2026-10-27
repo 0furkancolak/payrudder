@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useApps, useAccount, useMe, type App } from "@/features/product/api";
 import { hasPartnerRole } from "@/features/product/lib";
+import { useSaasEnabled, useSaasInfo } from "@/features/saas/api";
 import { useTenant } from "@/features/tenants/api";
 import { defaultEnv, defaultOrgEnv, findTenant, isEnvironment, tenantOf, type Environment } from "@/shared/lib/environment";
 import { ALL_APPS, appInSearch, lastApp, resolveScope } from "@/shared/lib/scope";
@@ -31,6 +32,9 @@ export function useShell() {
   const apps = useApps();
   const account = useAccount();
   const me = useMe();
+  const saas = useSaasEnabled();
+  const saasInfo = useSaasInfo(() => isOperator.value);
+  const platformTenant = computed(() => (isOperator.value && saasInfo.data.value?.enabled ? (saasInfo.data.value.tenant_id ?? "") : ""));
   const partner = computed(() => hasPartnerRole(me.data.value?.memberships));
 
   const path = computed(() => location.value.pathname.replace(/\/+$/, "") || "/");
@@ -73,7 +77,7 @@ export function useShell() {
 
   const context = computed<ShellContext>(() => {
     if (inOperatorArea.value) {
-      return operatorTenant.value ? { level: "tenant", tenantId: operatorTenant.value } : { level: "platform" };
+      return operatorTenant.value ? { level: "tenant", tenantId: operatorTenant.value } : { level: "platform", ...(platformTenant.value ? { platformTenant: platformTenant.value } : {}) };
     }
     const sc = scope.value;
     const appId = sc && sc !== ALL_APPS ? sc : undefined;
@@ -84,6 +88,7 @@ export function useShell() {
       level: onApp ? "app" : "org",
       operator: isOperator.value,
       partner: partner.value,
+      saas: saas.value,
       ...(sc ? { scope: sc } : {}),
       ...(appId ? { appId } : {}),
       ...(env.value ? { env: env.value } : {}),

@@ -354,6 +354,10 @@ services:
       PAYRUDDER_REDIS_URL: redis://redis:6379/0
       PAYRUDDER_KAFKA_BROKERS: redpanda:9092
       PAYRUDDER_ALLOWED_ENVIRONMENTS: ${PAYRUDDER_ALLOWED_ENVIRONMENTS:-sandbox,live}
+      # Payrudder as a SaaS (phase 55, ADR 0024): the stack of make setup / make dev sells its own plans. The platform tenant is a sandbox one here, so the
+      # mock provider can take the payments; a deployment of its own uses live. Set PAYRUDDER_SAAS=off for the plain product.
+      PAYRUDDER_SAAS: ${PAYRUDDER_SAAS:-on}
+      PAYRUDDER_SAAS_ENVIRONMENT: ${PAYRUDDER_SAAS_ENVIRONMENT:-sandbox}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
       # Seals the signing secrets of tenants' webhook endpoints (the same key as payments-worker's; local default only).
       PAYRUDDER_SECRETS_KEY: ${PAYRUDDER_SECRETS_KEY:-bG9jYWwtZGV2LWtleS1jaGFuZ2UtbWUtMDEyMzQ1Njc=}
@@ -779,6 +783,7 @@ services:
       PAYRUDDER_REDIS_URL: redis://redis:6379/0
       PAYRUDDER_OPERATOR_TOKEN: ${PAYRUDDER_OPERATOR_TOKEN:-local-operator-token-change-me-0123456789}
       PAYRUDDER_ALLOWED_ENVIRONMENTS: ${PAYRUDDER_ALLOWED_ENVIRONMENTS:-sandbox,live}
+      PAYRUDDER_SAAS: ${PAYRUDDER_SAAS:-on}
       PAYRUDDER_PAYMENTS_URL: http://payments-worker:8095
       PAYRUDDER_PAYMENTS_INTERNAL_TOKEN: ${PAYRUDDER_PAYMENTS_INTERNAL_TOKEN:-local-internal-token-change-me-0123456789}
       # A proxy in front of the gateway (the console's Worker in production, `vite preview` here) passes the visitor's address; the sign-in limits count by it.

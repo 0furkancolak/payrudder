@@ -2512,6 +2512,20 @@
         "not_configured": "Los proveedores de correo no están configurados en este despliegue.",
         "not_connected": "No hay ningún proveedor de correo conectado.",
         "seal_failed": "No se pudo guardar la clave. Inténtalo de nuevo."
+      },
+      "saas": {
+        "disabled": "Los planes no están activados en esta instalación.",
+        "quota": {
+          "apps": "Se alcanzó el límite de aplicaciones de tu plan. Mejora el plan para añadir más.",
+          "members": "Se alcanzó el límite de miembros de tu plan. Mejora el plan para invitar a más personas.",
+          "api_keys": "Se alcanzó el límite de claves de API de tu plan. Mejora el plan para crear más."
+        },
+        "downgrade_blocked": "Tu uso no cabe en ese plan. Quita primero aplicaciones, miembros o claves y vuelve a intentarlo.",
+        "same_plan": "La organización ya está en este plan.",
+        "unknown_plan": "No existe ese plan.",
+        "bad_resource": "Ese no es un recurso que limite un plan.",
+        "platform_account": "La organización propia de la plataforma no tiene plan.",
+        "not_ready": "Los planes todavía no están listos. Inténtalo de nuevo en un momento."
       }
     },
     "common": {
@@ -2788,6 +2802,11 @@
       "geo": {
         "country_not_found": "Ese país no está en la lista.",
         "region_not_found": "Esa región no está en la lista."
+      },
+      "saas": {
+        "events_quota": "Se alcanzó el límite de eventos de tu plan para este mes. Mejora el plan para enviar más.",
+        "unavailable": "Los planes no están disponibles temporalmente. Inténtalo de nuevo en un momento.",
+        "invoice_not_payable": "Esta factura ya no se puede pagar."
       }
     },
     "env": {
@@ -3902,7 +3921,10 @@
       "coupons": "Cupones",
       "meters": "Medidores",
       "integrations": "Integraciones",
-      "orgIntegrations": "Integraciones"
+      "orgIntegrations": "Integraciones",
+      "plan": "Plan y facturación",
+      "organisations": "Organizaciones",
+      "platformPlans": "Planes de la plataforma"
     },
     "noApps": "Aún no hay aplicaciones",
     "newApp": "Nueva aplicación"
@@ -4425,5 +4447,82 @@
     "failed": "{app} no respondió.",
     "amount": "Importe",
     "date": "Fecha"
+  },
+  "saas": {
+    "title": "Plan y facturación",
+    "intro": "El plan de esta organización, cuánto usa de él y las facturas que Payrudder emitió por él.",
+    "linkHint": "Plan, uso y facturas",
+    "disabled": "Los planes no están activados en esta instalación: nada está limitado.",
+    "current": "Plan actual",
+    "currentBadge": "Actual",
+    "free": "Gratis",
+    "perMonth": "{price} al mes",
+    "perMonthShort": "al mes",
+    "unlimited": "Ilimitado",
+    "usage": "Uso",
+    "plans": "Planes",
+    "invoices": "Facturas",
+    "noInvoices": "Todavía no hay facturas.",
+    "portal": "Método de pago y portal",
+    "state": {
+      "none": "Sin suscripción",
+      "active": "Activo",
+      "trialing": "Prueba",
+      "past_due": "Vencido",
+      "paused": "En pausa"
+    },
+    "overridden": "Límites propios",
+    "trialEnds": "la prueba termina el {date}",
+    "trialDays": "{n} días gratis al empezar",
+    "resource": {
+      "events": "Eventos",
+      "apps": "Aplicaciones",
+      "members": "Miembros",
+      "api_keys": "Claves de API"
+    },
+    "modeHint": {
+      "hard": "Se detiene en el límite",
+      "soft": "Puede superar el límite",
+      "notify": "Avisa en el límite"
+    },
+    "ownLimit": "Límite fijado para esta organización",
+    "overLimit": "Límite superado",
+    "resets": "se reinicia el {date}",
+    "upgradeTo": "Pasar a {plan}",
+    "downgradeTo": "Cambiar a {plan}",
+    "readOnly": "Solo un propietario o un administrador puede cambiar el plan.",
+    "changed": "Tu plan ahora es {plan}.",
+    "confirm": {
+      "title": "¿Pasar a {plan}?",
+      "upgrade": "El plan cuesta {price}. El cambio se aplica de inmediato.",
+      "downgrade": "El cambio se aplica de inmediato. Se rechaza si tu uso no cabe en los límites menores; no se borra nada.",
+      "submit": "Confirmar"
+    },
+    "invoice": {
+      "number": "Número",
+      "date": "Fecha",
+      "total": "Total",
+      "status": "Estado",
+      "pay": "Pagar"
+    },
+    "upgrade": "Mejorar tu plan",
+    "admin": {
+      "title": "Organizaciones",
+      "intro": "Cada organización con su plan y su uso. Una excepción pone a una en un plan sin pasar por caja o le da límites propios.",
+      "search": "Buscar por nombre o dirección del propietario",
+      "find": "Buscar",
+      "organisation": "Organización",
+      "plan": "Plan",
+      "empty": "No se encontraron organizaciones.",
+      "manage": "Gestionar",
+      "sheetIntro": "Cambia el plan sin pasar por caja, o fija límites propios de esta organización.",
+      "limitsHint": "Límites: un número entero, 0 para ilimitado. Deja un campo vacío para dejarlo como está.",
+      "keep": "Mantener",
+      "badLimit": "Un límite es un número entero desde 0.",
+      "clear": "Quitar los límites propios",
+      "save": "Guardar",
+      "saved": "Guardado.",
+      "cleared": "Límites propios quitados."
+    }
   }
 }

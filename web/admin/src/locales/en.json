@@ -2512,6 +2512,20 @@
         "not_configured": "E-mail providers are not set up on this deployment.",
         "not_connected": "No e-mail provider is connected.",
         "seal_failed": "The key could not be stored. Try again."
+      },
+      "saas": {
+        "disabled": "Plans are not enabled on this installation.",
+        "quota": {
+          "apps": "Your plan's limit of apps is reached. Upgrade to add more.",
+          "members": "Your plan's limit of members is reached. Upgrade to invite more people.",
+          "api_keys": "Your plan's limit of API keys is reached. Upgrade to create more."
+        },
+        "downgrade_blocked": "Your usage does not fit that plan. Remove apps, members or keys first, then try again.",
+        "same_plan": "The organisation is on this plan already.",
+        "unknown_plan": "There is no such plan.",
+        "bad_resource": "That is not a resource a plan limits.",
+        "platform_account": "The platform's own organisation has no plan.",
+        "not_ready": "Plans are not ready yet. Try again in a moment."
       }
     },
     "common": {
@@ -2788,6 +2802,11 @@
       "geo": {
         "country_not_found": "There is no such country in the list.",
         "region_not_found": "There is no such region in the list."
+      },
+      "saas": {
+        "events_quota": "Your plan's limit of events for this month is reached. Upgrade to send more.",
+        "unavailable": "Plans are temporarily unavailable. Try again in a moment.",
+        "invoice_not_payable": "This invoice cannot be paid any more."
       }
     },
     "env": {
@@ -3902,7 +3921,10 @@
       "coupons": "Coupons",
       "meters": "Meters",
       "integrations": "Integrations",
-      "orgIntegrations": "Integrations"
+      "orgIntegrations": "Integrations",
+      "plan": "Plan and billing",
+      "organisations": "Organisations",
+      "platformPlans": "Platform plans"
     },
     "noApps": "No apps yet",
     "newApp": "New app"
@@ -4425,5 +4447,82 @@
     "failed": "{app} did not answer.",
     "amount": "Amount",
     "date": "Date"
+  },
+  "saas": {
+    "title": "Plan and billing",
+    "intro": "The plan of this organisation, what it uses of it, and the invoices Payrudder issued for it.",
+    "linkHint": "Plan, usage and invoices",
+    "disabled": "Plans are not enabled on this installation: nothing is limited.",
+    "current": "Current plan",
+    "currentBadge": "Current",
+    "free": "Free",
+    "perMonth": "{price} per month",
+    "perMonthShort": "per month",
+    "unlimited": "Unlimited",
+    "usage": "Usage",
+    "plans": "Plans",
+    "invoices": "Invoices",
+    "noInvoices": "No invoices yet.",
+    "portal": "Payment method and portal",
+    "state": {
+      "none": "No subscription",
+      "active": "Active",
+      "trialing": "Trial",
+      "past_due": "Past due",
+      "paused": "Paused"
+    },
+    "overridden": "Custom limits",
+    "trialEnds": "trial ends {date}",
+    "trialDays": "{n} days free to start",
+    "resource": {
+      "events": "Events",
+      "apps": "Apps",
+      "members": "Members",
+      "api_keys": "API keys"
+    },
+    "modeHint": {
+      "hard": "Stops at the limit",
+      "soft": "May go over the limit",
+      "notify": "Notifies at the limit"
+    },
+    "ownLimit": "Limit set for this organisation",
+    "overLimit": "Over the limit",
+    "resets": "resets {date}",
+    "upgradeTo": "Upgrade to {plan}",
+    "downgradeTo": "Switch to {plan}",
+    "readOnly": "Only an owner or an administrator can change the plan.",
+    "changed": "Your plan is now {plan}.",
+    "confirm": {
+      "title": "Move to {plan}?",
+      "upgrade": "The plan costs {price}. The change applies at once.",
+      "downgrade": "The change applies at once. It is refused when your usage does not fit the smaller limits; nothing is deleted.",
+      "submit": "Confirm"
+    },
+    "invoice": {
+      "number": "Number",
+      "date": "Date",
+      "total": "Total",
+      "status": "Status",
+      "pay": "Pay"
+    },
+    "upgrade": "Upgrade your plan",
+    "admin": {
+      "title": "Organisations",
+      "intro": "Every organisation with its plan and usage. An override puts one on a plan without a checkout or gives it limits of its own.",
+      "search": "Search by name or owner address",
+      "find": "Search",
+      "organisation": "Organisation",
+      "plan": "Plan",
+      "empty": "No organisations found.",
+      "manage": "Manage",
+      "sheetIntro": "Change the plan without a checkout, or set limits of this organisation's own.",
+      "limitsHint": "Limits: a whole number, 0 for unlimited. Leave a field empty to keep it as it is.",
+      "keep": "Keep",
+      "badLimit": "A limit is a whole number from 0 up.",
+      "clear": "Clear own limits",
+      "save": "Save",
+      "saved": "Saved.",
+      "cleared": "Own limits cleared."
+    }
   }
 }

@@ -576,3 +576,7 @@ Workers are internal and single-purpose, and are not RLS'd: every row is keyed b
 | Billing stream period usage | PK prefix `(tenant_id, period_id)` |
 | Saga timeout sweeper | partial `saga_deadlines` |
 | Dunning scheduler | partial `saga_dunning` |
+
+## Payrudder's own plans (phase 55)
+
+`accounts.platform boolean` marks the one account (unique partial index) whose tenant owns Payrudder's plans; the plans, customers (external id = account id), subscriptions and entitlement overrides of the organisations are ordinary rows of that tenant. No other table changed.

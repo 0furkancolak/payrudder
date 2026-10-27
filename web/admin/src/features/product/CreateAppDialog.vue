@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import type { Currency } from "@/shared/lib/currencies";
 import { ownZone } from "@/shared/lib/intl";
 import { ErrorText } from "@/shared/ui/error-text";
+import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -70,6 +71,7 @@ function submit() {
           </div>
           <p class="text-muted-foreground text-xs">{{ t("product.createApp.immutable") }}</p>
           <ErrorText :error="create.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+          <UpgradeHint :error="create.error.value" />
         </form>
       </SheetBody>
       <SheetFooter>

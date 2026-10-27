@@ -32,6 +32,7 @@ func (s *Server) routes() []Route {
 		s.geoRoutes(),
 		s.operatorProviderRoutes(),
 		s.operatorAdminRoutes(),
+		s.saasRoutes(),
 	)
 }
 

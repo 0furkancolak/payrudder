@@ -21,10 +21,12 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/app"
 	"github.com/0furkancolak/payrudder/pkg/config"
+	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
 	"github.com/0furkancolak/payrudder/pkg/kafkax"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
@@ -35,6 +37,7 @@ import (
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
 	webhooksworker "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/worker"
@@ -80,6 +83,23 @@ type Config struct {
 	OTPPepper string `env:"PAYRUDDER_OTP_PEPPER"`
 	// AffiliateApproveEvery is how often the job that ends the hold of affiliate commissions looks (phase 47). The holds are days long; an hour is plenty.
 	AffiliateApproveEvery time.Duration `env:"PAYRUDDER_AFFILIATE_APPROVE_EVERY"`
+	// Saas switches Payrudder's own plans on ("on") or off ("off", the default): a platform tenant that owns Free, Pro and Scale, every account a customer of it,
+	// and the plan's limits enforced where apps, members and keys are created and on ingest volume (phase 55, ADR 0024). Off: no limits, no plan page.
+	Saas string `env:"PAYRUDDER_SAAS"`
+	// SaasEnvironment is the environment of the platform tenant when it is created: "live" (real providers) or "sandbox" (mock-psp, for development).
+	SaasEnvironment string `env:"PAYRUDDER_SAAS_ENVIRONMENT"`
+	// SaasCurrency is the currency of the platform's plans when the platform tenant is created.
+	SaasCurrency string `env:"PAYRUDDER_SAAS_CURRENCY"`
+	// SaasTrialDays is the free trial of a first move to a paid plan; 0 gives none.
+	SaasTrialDays int `env:"PAYRUDDER_SAAS_TRIAL_DAYS"`
+	// SaasSweepEvery is how often the sweep makes accounts that are not customers of the platform tenant yet customers (on Free).
+	SaasSweepEvery time.Duration `env:"PAYRUDDER_SAAS_SWEEP_EVERY"`
+}
+
+// saasConfig reads the SaaS settings; Validate has checked them.
+func (c *Config) saasConfig() saascmd.Config {
+	on, _ := config.ParseSwitch("PAYRUDDER_SAAS", c.Saas)
+	return saascmd.Config{Enabled: on, Environment: env.Env(c.SaasEnvironment), Currency: c.SaasCurrency, TrialDays: c.SaasTrialDays, SweepEvery: c.SaasSweepEvery}
 }
 
 func (c *Config) Validate() error {
@@ -100,6 +120,24 @@ func (c *Config) Validate() error {
 	}
 	if !slices.Contains(c.AllowedEnvs, tenant.EnvSandbox) {
 		errs = append(errs, errors.New("PAYRUDDER_ALLOWED_ENVIRONMENTS must include sandbox"))
+	}
+	if on, err := config.ParseSwitch("PAYRUDDER_SAAS", c.Saas); err != nil {
+		errs = append(errs, err)
+	} else if on {
+		if _, err := env.Parse(c.SaasEnvironment); err != nil {
+			errs = append(errs, fmt.Errorf("PAYRUDDER_SAAS_ENVIRONMENT: %w", err))
+		} else if !slices.Contains(c.AllowedEnvs, c.SaasEnvironment) {
+			errs = append(errs, fmt.Errorf("PAYRUDDER_SAAS_ENVIRONMENT=%s is not in PAYRUDDER_ALLOWED_ENVIRONMENTS", c.SaasEnvironment))
+		}
+		if _, ok := money.LookupCurrency(c.SaasCurrency); !ok {
+			errs = append(errs, fmt.Errorf("PAYRUDDER_SAAS_CURRENCY: %q is not an active ISO 4217 code", c.SaasCurrency))
+		}
+		if c.SaasTrialDays < 0 || c.SaasTrialDays > 365 {
+			errs = append(errs, errors.New("PAYRUDDER_SAAS_TRIAL_DAYS must be between 0 and 365"))
+		}
+		if c.SaasSweepEvery < 10*time.Second {
+			errs = append(errs, errors.New("PAYRUDDER_SAAS_SWEEP_EVERY must be at least 10 seconds"))
+		}
 	}
 	return errors.Join(errs...)
 }
@@ -143,15 +181,19 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	defer closeSbx()
-	srv, grpcHealth, box, err := newGRPCServer(cfg, log, appPool, systemPool, evictor, sbx)
+	srv, grpcHealth, box, saasCmd, err := newGRPCServer(cfg, log, appPool, systemPool, evictor, sbx)
 	if err != nil {
+		return err
+	}
+	// With SaaS on, the platform tenant and its plans exist before the first request is served (a no-op when it is off or already there).
+	if err := saasCmd.Bootstrap(ctx); err != nil {
 		return err
 	}
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner}
+	w := &workers{cfg: cfg, log: log, pool: systemPool, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd}
 	return w.run(ctx)
 }
 
@@ -248,17 +290,18 @@ func newSandbox(cfg *Config, log *slog.Logger, _, systemPool *pgxpool.Pool) (*sa
 }
 
 // newGRPCServer builds the gRPC server with every service of plans-svc registered.
-func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor apikeyscmd.Evictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, error) {
+func newGRPCServer(cfg *Config, log *slog.Logger, appPool, systemPool *pgxpool.Pool, evictor apikeyscmd.Evictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, *saascmd.Commands, error) {
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	box, err := newSecretBox(cfg, log)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	grpcapi.Register(srv, grpcapi.Deps{
+	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
 		AppPool: appPool, SystemPool: systemPool, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
 		Mail: usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), AppURL: cfg.AppURL, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
+		Saas: cfg.saasConfig(),
 	})
-	return srv, grpcHealth, box, nil
+	return srv, grpcHealth, box, saasCmd, nil
 }
 
 // workers are the long-running parts of plans-svc: the outbox relay, the webhook dispatcher and the gRPC server.
@@ -272,7 +315,8 @@ type workers struct {
 	srv        *grpc.Server
 	grpcHealth *grpchealth.Server
 	lis        net.Listener
-	sandbox    *sandbox.Runner // runs the sandbox resets and the retention sweep
+	sandbox    *sandbox.Runner   // runs the sandbox resets and the retention sweep
+	saas       *saascmd.Commands // makes every account a customer of the platform tenant (does nothing with SaaS off)
 }
 
 // run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
@@ -290,6 +334,9 @@ func (w *workers) run(ctx context.Context) error {
 		g.Go(func() error { return w.sandbox.Run(gctx) })
 	}
 	g.Go(func() error { return affiliatescmd.NewApprover(w.pool, w.cfg.AffiliateApproveEvery, w.log).Run(gctx) })
+	if w.saas.Enabled() {
+		g.Go(func() error { return w.saas.Run(gctx) })
+	}
 	w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "environments", w.cfg.AllowedEnvs)
 	g.ServeGRPC(w.srv, w.grpcHealth, w.lis)
 	return g.Wait()

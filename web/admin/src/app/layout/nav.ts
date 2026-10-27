@@ -1,6 +1,7 @@
 import {
   BarChart3,
   Building2,
+  CreditCard,
   FileText,
   FlaskConical,
   Gauge,
@@ -56,6 +57,10 @@ export interface ShellContext {
   env?: Environment;
   /** Whether the server says this person is a platform operator: the organisation level then has a door to the operator console. */
   operator?: boolean;
+  /** Whether this deployment runs Payrudder as a SaaS: the organisation level then has Plan and billing. */
+  saas?: boolean;
+  /** The platform tenant that owns the SaaS plans (operator, SaaS on): its packages are the plans. */
+  platformTenant?: string;
   /** Whether the person is a partner of a seller (a membership with the role affiliate): the organisation level then has the partner portal. */
   partner?: boolean;
 }
@@ -175,7 +180,8 @@ function personNav(ctx: ShellContext, has: ReadonlySet<string>): NavSection[] {
       ...(has.has("members") ? [item("members", "/app/members", UsersRound, under("/app/members"), org)] : []),
       ...(ctx.partner ? [item("partner", "/app/partner", Handshake, under("/app/partner"), org)] : []),
       item("orgIntegrations", "/app/integrations", Plug, under("/app/integrations"), org),
-      item("settings", "/app/settings", Settings, under("/app/settings"), org),
+      item("settings", "/app/settings", Settings, ctx.saas ? exact("/app/settings") : under("/app/settings"), org),
+      ...(ctx.saas ? [item("plan", "/app/settings/plan", CreditCard, under("/app/settings/plan"), org)] : []),
     ],
   });
   // The operator console is a part of the same app for the people the server lets into it; nobody else sees the door. It comes last.
@@ -195,6 +201,8 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
           key: "platform",
           items: [
             item("tenants", "/tenants", Users, (p) => p === "/tenants"),
+            item("organisations", "/organisations", Building2, under("/organisations")),
+            ...(ctx.platformTenant ? [item("platformPlans", `/tenants/${ctx.platformTenant}/packages`, Package, exact(`/tenants/${ctx.platformTenant}/packages`))] : []),
             item("playground", "/playground", FlaskConical, under("/playground")),
             item("deadLetters", "/dead-letters", Inbox, under("/dead-letters")),
           ],
