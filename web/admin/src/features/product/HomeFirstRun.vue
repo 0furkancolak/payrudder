@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
-import { GettingStarted, loadProgress, progress, wizardOpen } from "@/features/onboarding";
-import { startTourOnce, welcomeOff } from "@/shared/ui/tour";
+import { GettingStarted, loadProgress, progress, progressReady, wizardOpen } from "@/features/onboarding";
+import { startTourOnce, tourReady, welcomeOff } from "@/shared/ui/tour";
 import { useAccount, useApps, useMe, type App } from "./api";
 import CreateAppDialog from "./CreateAppDialog.vue";
 import { homeTour } from "./tour";
@@ -17,11 +17,12 @@ const apps = useApps();
 const creating = ref(false);
 
 watch(() => me.data.value?.user?.id ?? "", loadProgress, { immediate: true });
-const known = computed(() => !!me.data.value?.user?.id && !!apps.data.value && !!account.data.value);
+// progressReady: not while the server is still saying how far the person got (in another browser they may be done).
+const known = computed(() => !!me.data.value?.user?.id && !!apps.data.value && !!account.data.value && progressReady.value);
 const wizard = computed(() => !welcomeOff() && wizardOpen(progress.value, { appCount: known.value ? (apps.data.value?.apps ?? []).length : undefined, canCreate: account.data.value?.role !== "viewer" }));
 const showChecklist = computed(() => !!progress.value && !progress.value.hidden && !wizard.value && known.value && !!props.app);
 watch(
-  () => known.value && !wizard.value && !!props.app,
+  () => known.value && !wizard.value && !!props.app && tourReady.value,
   async (quiet) => {
     if (!quiet) return;
     await nextTick();

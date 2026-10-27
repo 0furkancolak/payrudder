@@ -405,6 +405,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.webhook.not_recorded`
 - `payments.webhook.try_again`
 - `payments.webhook.unverified`
+- `plans.api_key.app_archived`
 - `plans.api_key.bad_role`
 - `plans.api_key.tenant_not_active`
 - `plans.app.bad_slug`
@@ -443,6 +444,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.migration.aborted`
 - `plans.migration.already_completed`
 - `plans.migration.cannot_abort`
+- `plans.migration.coupon_blocks_move`
 - `plans.migration.state_not_movable`
 - `plans.migration.subscription_ended`
 - `plans.override.customer_required`
@@ -470,6 +472,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.subscription.no_scheduled_cancel`
 - `plans.subscription.period_overlap`
 - `plans.subscription.provider_currency`
+- `plans.subscription.quantity_needs_advance`
 - `plans.subscription.run_by_provider`
 - `plans.subscription.transition_not_allowed`
 - `plans.tenant.bad_status`

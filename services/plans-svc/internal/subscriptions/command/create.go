@@ -33,6 +33,7 @@ type createArgs struct {
 	start    time.Time
 	interval subscription.Interval
 	provider *string
+	quantity int32
 }
 
 func (c *Commands) parseCreate(req *plansv1.CreateSubscriptionRequest) (createArgs, error) {
@@ -48,6 +49,9 @@ func (c *Commands) parseCreate(req *plansv1.CreateSubscriptionRequest) (createAr
 	}
 	var err error
 	if a.interval, err = domain.IntervalOf(req.GetInterval(), subscription.Monthly); err != nil {
+		return a, err
+	}
+	if a.quantity, err = domain.QuantityOf(req.GetQuantity(), 1); err != nil {
 		return a, err
 	}
 	if p := req.GetProvider(); p != "" {
@@ -118,11 +122,15 @@ func (c *Commands) create(ctx context.Context, q *sqlc.Queries, tenantID uuid.UU
 	if err != nil {
 		return nil, err
 	}
+	// Seats multiply the fixed fee, which only a subscription Payrudder invoices in advance prices (and changes) by quantity.
+	if a.quantity > 1 && timing != subscription.FeeInAdvance {
+		return nil, errkey.New(codes.FailedPrecondition, "plans.subscription.quantity_needs_advance", "a quantity above 1 needs a subscription that Payrudder runs and bills in advance")
+	}
 	anchor, feeDue := billingAnchor(timing, a.start, trialEnds, loc)
 	r, err := q.InsertSubscription(ctx, sqlc.InsertSubscriptionParams{
 		ID: idgen.NewUUIDv7(), CustomerID: cust.ID, PlanVersionID: pv.ID, StartTime: a.start,
 		State: string(state), Interval: string(a.interval), Currency: currency, TrialEndsAt: trialEnds,
-		BillingAnchor: anchor, Provider: provider, Owner: domain.OwnerPayrudder, FeeTiming: timing, FeeDueAt: feeDue,
+		BillingAnchor: anchor, Provider: provider, Owner: domain.OwnerPayrudder, FeeTiming: timing, FeeDueAt: feeDue, Quantity: a.quantity,
 	})
 	if err != nil {
 		return nil, err

@@ -1116,7 +1116,8 @@
         "title": "Bir müşterinin kredileri",
         "pick": "Müşteri seçin",
         "balance": "kullanılabilir kredi",
-        "nextExpiry": "Bir kısmı {when} tarihinde sona erer"
+        "nextExpiry": "Bir kısmı {when} tarihinde sona erer",
+        "empty": "Bakiyesini, elindeki kredileri ve bunlara olanları görmek için bir müşteri seçin."
       },
       "lots": {
         "source": "Kaynak",
@@ -1188,6 +1189,13 @@
         "threshold": "Şunun altında uyar (kredi)",
         "save": "Kaydet",
         "saved": "Kaydedildi."
+      },
+      "tabs": {
+        "lots": "Verilenler"
+      },
+      "sell": {
+        "title": "Kredi satışı",
+        "hint": "Müşterilerin ödeme bağlantısıyla satın aldığı kredi paketleri ve düşük bakiye uyarısı."
       }
     },
     "accounting": {
@@ -2437,7 +2445,8 @@
         "ending_or_ended": "Abonelik zaten sona erdi ya da sona ermesi planlandı.",
         "no_scheduled_cancel": "Geri çekilecek planlanmış bir iptal yok.",
         "run_by_provider": "Bu abonelik bir ödeme sağlayıcısı tarafından yürütülüyor. Değişikliği orada yapın.",
-        "transition_not_allowed": "Bu işlem aboneliğin mevcut durumunda yapılamaz."
+        "transition_not_allowed": "Bu işlem aboneliğin mevcut durumunda yapılamaz.",
+        "quantity_needs_advance": "1'den büyük bir adet, Payrudder'ın yürüttüğü ve peşin faturaladığı bir abonelik gerektirir."
       },
       "webhook": {
         "not_configured": "Webhooklar bu kurulumda yapılandırılmamış (secrets anahtarı eksik).",
@@ -2466,7 +2475,8 @@
       },
       "api_key": {
         "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın.",
-        "bad_role": "Rol yönetici, faturalama, salt okunur, yalnızca kullanım gönderir veya özel olmalı; izinler de bilinen izinler olmalıdır."
+        "bad_role": "Rol yönetici, faturalama, salt okunur, yalnızca kullanım gönderir veya özel olmalı; izinler de bilinen izinler olmalıdır.",
+        "app_archived": "Bu uygulama silindiği için API anahtarı alamaz."
       },
       "change": {
         "bad_proration": "Bu plan değişikliğinin ücreti bu dönem için hesaplanamıyor.",
@@ -2499,7 +2509,8 @@
         "already_completed": "Geçiş zaten tamamlandı.",
         "cannot_abort": "Geçiş tamamlandı ve iptal edilemez.",
         "state_not_movable": "Mevcut durumdaki bir abonelik başka bir sağlayıcıya taşınamaz.",
-        "subscription_ended": "Abonelik sona erdi ya da sona eriyor, bu yüzden taşınamaz."
+        "subscription_ended": "Abonelik sona erdi ya da sona eriyor, bu yüzden taşınamaz.",
+        "coupon_blocks_move": "Bu abonelikte kupon var; sağlayıcının yürüttüğü ya da dönem sonunda faturalanan bir abonelik kuponu taşıyamaz. Önce kuponu kaldırın."
       },
       "plan": {
         "no_fixed_fee": "Bu plan sürümünün bu para biriminde bu aralık için sabit ücreti yok.",
@@ -3452,7 +3463,14 @@
       "timezone": "Saat dilimi",
       "grace": "Ek süre",
       "tenant": "Ortam kimliği",
-      "moreCurrencies": "Bir uygulama birçok para biriminde satış yapabilir: bir pakete başka para biriminde fiyat ekleyin, şurada:"
+      "moreCurrencies": "Bir uygulama birçok para biriminde satış yapabilir: bir pakete başka para biriminde fiyat ekleyin, şurada:",
+      "rename": "Adı kaydet",
+      "dangerTitle": "Tehlikeli bölge",
+      "deleteBody": "Bir uygulamayı silmek onu hesabınızdan kaldırır: tüm listelerden çıkar, API anahtarları hemen çalışmayı bırakır ve yeni anahtar oluşturulamaz. Hiçbir şey silinmez. Müşterileri, faturaları ve ödemeleri muhasebe ve yasal saklama için tutulur; faturalama mevcut kayıtlar için çalışmaya devam eder, bu yüzden faturalamayı durdurmak istiyorsanız önce abonelikleri iptal edin.",
+      "delete": "Uygulamayı sil",
+      "confirmTitle": "{name} silinsin mi?",
+      "confirmBody": "Uygulama arşivlenir: API anahtarları iptal edilir ve hesabınızdan kaybolur. Faturalama kayıtları saklanır. Bu işlem konsoldan geri alınamaz.",
+      "typeName": "Onaylamak için {name} yazın"
     },
     "goLive": {
       "title": "Canlıya geç",

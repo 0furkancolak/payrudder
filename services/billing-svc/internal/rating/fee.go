@@ -42,6 +42,11 @@ func FixedFeeLines(segs []FeeSegment, periodStart, periodEnd time.Time) ([]Line,
 	return lines, nil
 }
 
+// TaxOn is the tax at rateBps (2000 is 20 %) on an amount that does not include it, rounded half-even to a minor unit.
+func TaxOn(amountMinor int64, rateBps int32) int64 {
+	return subscription.ScaleHalfEven(amountMinor, int64(rateBps), 10000)
+}
+
 // TaxLine returns the TAX line for lines at rateBps (2000 is 20 %), rounded half-even to a minor unit, exclusive of the price. The base is everything
 // except a credit balance applied and tax itself: a discount lowers the base, a credit does not (it pays the invoice, it does not change what was sold).
 // ok is false when there is nothing to tax.
@@ -55,7 +60,7 @@ func TaxLine(lines []Line, name string, rateBps int32) (Line, bool) {
 	if base <= 0 || rateBps <= 0 {
 		return Line{}, false
 	}
-	amount := subscription.ScaleHalfEven(base, int64(rateBps), 10000)
+	amount := TaxOn(base, rateBps)
 	if amount == 0 {
 		return Line{}, false
 	}

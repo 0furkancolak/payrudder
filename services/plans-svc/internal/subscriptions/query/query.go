@@ -32,6 +32,14 @@ func Lock(ctx context.Context, q *sqlc.Queries, id uuid.UUID) (sqlc.GetSubscript
 	return sqlc.GetSubscriptionRow(cur), err
 }
 
+// scheduledQuantity is the quantity a waiting change moves to: its own, or the subscription's when it names none (a change made before quantities existed).
+func scheduledQuantity(scheduled *int32, current int32) int32 {
+	if scheduled == nil {
+		return current
+	}
+	return *scheduled
+}
+
 // AttachExtras sets scheduled_change and coupon_code on the subscriptions that have a change waiting or a coupon on.
 func AttachExtras(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subscription) error {
 	var ids []uuid.UUID
@@ -51,7 +59,7 @@ func AttachExtras(ctx context.Context, q *sqlc.Queries, subs ...*plansv1.Subscri
 	}
 	for _, c := range rows {
 		if sb := byID[c.SubscriptionID.String()]; sb != nil {
-			sb.ScheduledChange = &plansv1.ScheduledChange{PlanCode: c.PlanCode, PlanVersion: c.PlanVersion, Interval: subscription.Interval(c.Interval).Proto(), EffectiveTime: timestamppb.New(c.EffectiveAt)}
+			sb.ScheduledChange = &plansv1.ScheduledChange{PlanCode: c.PlanCode, PlanVersion: c.PlanVersion, Interval: subscription.Interval(c.Interval).Proto(), EffectiveTime: timestamppb.New(c.EffectiveAt), Quantity: scheduledQuantity(c.Quantity, sb.GetQuantity())}
 		}
 	}
 	coupons, err := q.ListCouponCodesFor(ctx, ids)

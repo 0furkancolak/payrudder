@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -51,6 +52,8 @@ type Priced struct {
 	Row         sqlc.GetSubscriptionRow
 	NewPV       sqlc.GetPlanVersionByCodeRow
 	NewInterval subscription.Interval
+	// NewQuantity is the seats after the change (the subscription's own when the request names none).
+	NewQuantity int32
 	Quote       subscription.Quote
 	At          time.Time
 	Trial       bool
@@ -64,7 +67,7 @@ func (c Priced) Message() *plansv1.ChangeQuote {
 		PeriodStart: timestamppb.New(q.PeriodStart), PeriodEnd: timestamppb.New(q.PeriodEnd),
 		CreditMinor: q.CreditMinor, ChargeMinor: q.ChargeMinor, NetMinor: q.NetMinor, Currency: c.Row.Currency,
 		NextRenewalTime: timestamppb.New(q.NextRenewal), NextRenewalMinor: q.NextRenewalMinor,
-		PlanCode: c.NewPV.PlanCode, PlanVersion: c.NewPV.Version, Interval: c.NewInterval.Proto(),
+		PlanCode: c.NewPV.PlanCode, PlanVersion: c.NewPV.Version, Interval: c.NewInterval.Proto(), Quantity: c.NewQuantity,
 	}
 }
 
@@ -87,6 +90,10 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 	if err != nil {
 		return nil, err
 	}
+	newQuantity, err := domain.QuantityOf(req.GetQuantity(), row.Quantity)
+	if err != nil {
+		return nil, err
+	}
 	oldPV, err := q.GetPlanVersionByID(ctx, row.PlanVersionID)
 	if err != nil {
 		return nil, err
@@ -97,14 +104,16 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 			return nil, convert.Err(err, "plan version")
 		}
 	}
-	if newPV.ID == row.PlanVersionID && newInterval == oldInterval {
-		return nil, domain.Invalid("plan_code", "the subscription is already on this plan version and interval")
+	samePlan := newPV.ID == row.PlanVersionID && newInterval == oldInterval
+	if samePlan && newQuantity == row.Quantity {
+		return nil, domain.Invalid("plan_code", "the subscription is already on this plan version, interval and quantity")
 	}
-	oldFee, err := plansqry.FeeIn(ctx, q, oldPV.ID, oldPV.BaseFeeMinor, t.Currency, row.Currency, oldInterval)
+	// The fixed fee is the plan's fee for the interval times the seats; the quote below is the same arithmetic as for a change of plan, on those sums.
+	oldFee, err := feeFor(ctx, q, oldPV.ID, oldPV.BaseFeeMinor, t.Currency, row.Currency, oldInterval, row.Quantity)
 	if err != nil {
 		return nil, err
 	}
-	newFee, err := plansqry.FeeIn(ctx, q, newPV.ID, newPV.BaseFeeMinor, t.Currency, row.Currency, newInterval)
+	newFee, err := feeFor(ctx, q, newPV.ID, newPV.BaseFeeMinor, t.Currency, row.Currency, newInterval, newQuantity)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +121,7 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 		return nil, err
 	}
 
-	pc := &Priced{Row: row, NewPV: newPV, NewInterval: newInterval, At: at}
+	pc := &Priced{Row: row, NewPV: newPV, NewInterval: newInterval, NewQuantity: newQuantity, At: at}
 	if eff == subscription.Trialing {
 		if err := pc.quoteTrial(req.GetTiming(), newFee); err != nil {
 			return nil, err
@@ -130,6 +139,10 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 	cr := subscription.ChangeRequest{
 		Old: subscription.Plan{FeeMinor: oldFee, Interval: oldInterval}, New: subscription.Plan{FeeMinor: newFee, Interval: newInterval},
 		Anchor: row.BillingAnchor, At: at, Loc: loc, Timing: timingFromProto(req.GetTiming()), Proration: prorationFromProto(req.GetProration()),
+	}
+	if samePlan && cr.Timing == "" {
+		// Seats added or removed take effect at once and are prorated, in either direction; only a change of plan waits when it costs less.
+		cr.Timing = subscription.Immediately
 	}
 	pc.Quote, err = subscription.QuoteChange(cr)
 	if errors.Is(err, subscription.ErrBadChange) {
@@ -161,6 +174,15 @@ func Price(ctx context.Context, q *sqlc.Queries, now time.Time, row sqlc.GetSubs
 	}
 	pc.Quote.NextRenewalMinor = renewal
 	return pc, nil
+}
+
+// feeFor is the fixed fee of a plan version for an interval and currency, times quantity seats.
+func feeFor(ctx context.Context, q *sqlc.Queries, planVersionID uuid.UUID, baseFee int64, tenantCurrency, currency string, interval subscription.Interval, seats int32) (int64, error) {
+	unit, err := plansqry.FeeIn(ctx, q, planVersionID, baseFee, tenantCurrency, currency, interval)
+	if err != nil {
+		return 0, err
+	}
+	return plansqry.TimesQuantity(unit, seats)
 }
 
 // requireChangeable refuses a subscription that cannot change and returns its effective state.

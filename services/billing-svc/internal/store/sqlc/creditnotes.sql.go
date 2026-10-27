@@ -238,6 +238,33 @@ func (q *Queries) InsertCreditBalanceForRerating(ctx context.Context, arg Insert
 	return err
 }
 
+const insertCreditBalanceForVoidedInvoice = `-- name: InsertCreditBalanceForVoidedInvoice :exec
+INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_invoice_id, currency)
+VALUES ($1, $2, $3, $4, $5::uuid, $6::text)
+ON CONFLICT (tenant_id, source_invoice_id) WHERE source_invoice_id IS NOT NULL DO NOTHING
+`
+
+type InsertCreditBalanceForVoidedInvoiceParams struct {
+	TenantID        uuid.UUID
+	CustomerID      uuid.UUID
+	ID              uuid.UUID
+	AmountMinor     int64
+	SourceInvoiceID uuid.UUID
+	Currency        string
+}
+
+func (q *Queries) InsertCreditBalanceForVoidedInvoice(ctx context.Context, arg InsertCreditBalanceForVoidedInvoiceParams) error {
+	_, err := q.db.Exec(ctx, insertCreditBalanceForVoidedInvoice,
+		arg.TenantID,
+		arg.CustomerID,
+		arg.ID,
+		arg.AmountMinor,
+		arg.SourceInvoiceID,
+		arg.Currency,
+	)
+	return err
+}
+
 const insertCreditNote = `-- name: InsertCreditNote :exec
 INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor, reason, created_at, disposition)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)

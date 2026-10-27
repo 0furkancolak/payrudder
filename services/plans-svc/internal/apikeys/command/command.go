@@ -47,7 +47,7 @@ func New(systemPool *pgxpool.Pool, evict Evictor, log *slog.Logger) *Commands {
 func (c *Commands) q() *sqlc.Queries { return sqlc.New(c.pool) }
 
 // Issue makes a key with the role and permissions (already checked by domain.KeyGrant) for the tenant and returns it with its plaintext, which is shown
-// once. A live tenant that is not active has no keys (the go-live gate), and neither has a suspended one.
+// once. A live tenant that is not active has no keys (the go-live gate), and neither has a suspended one or an app that was deleted.
 func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, permissions []string) (*plansv1.ApiKey, string, error) {
 	t, err := c.q().GetTenant(ctx, tenantID)
 	if err != nil {
@@ -55,6 +55,11 @@ func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, p
 	}
 	if t.Status != domain.StatusActive {
 		return nil, "", errkey.New(codes.FailedPrecondition, "plans.api_key.tenant_not_active", "this environment is not active: finish the go-live checklist first")
+	}
+	if app, err := c.q().GetApp(ctx, t.AppID); err != nil {
+		return nil, "", convert.Err(err, "app")
+	} else if app.ArchivedAt != nil {
+		return nil, "", errkey.New(codes.FailedPrecondition, "plans.api_key.app_archived", "this app was deleted: it has no keys")
 	}
 	// The key environment always follows the tenant: test <-> sandbox, live <-> live (ADR 0011).
 	tenantEnv, err := env.Parse(t.Environment)

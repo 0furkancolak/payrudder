@@ -510,7 +510,7 @@ export interface paths {
         /**
          * Move a subscription to another plan version and/or interval, now or at the end of the paid period
          * @description An upgrade or monthly-to-yearly change is immediate and prorated; a downgrade or yearly-to-monthly change waits for the end of the period the customer has paid for
-         *     (a scheduled change, shown on the subscription). Whatever moves money is invoiced, or becomes a credit balance when the new plan costs less than the unused old time was worth.
+         *     (a scheduled change, shown on the subscription). A change of `quantity` alone is immediate and prorated, more seats or fewer. Whatever moves money is invoiced, or becomes a credit balance when the new plan costs less than the unused old time was worth.
          *     Answers 409 `ABORTED` if the fee of the current period has not been invoiced yet; try again in a moment.
          */
         post: operations["changeSubscription"];
@@ -2741,6 +2741,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/me/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the console remembers for the person - the first-run wizard's progress and the tours they have seen
+         * @description Kept per person, not per account or browser, so a second browser does not start the wizard or a tour again. A person who has stored nothing gets no `wizard` and no tours.
+         */
+        get: operations["getMyOnboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Merge a change into it
+         * @description A merge, never a replacement, so two browsers writing lose nothing. The `wizard` fields given overwrite the stored ones and the others stay; a flag that is set (customer, event, hidden) stays set. `seen_tours` are added to the stored set. `forget_tours` removes tours (a person asking to see one again) and is applied after the additions. The answer is the merged record.
+         */
+        patch: operations["updateMyOnboarding"];
+        trace?: never;
+    };
     "/app/v1/accounts": {
         parameters: {
             query?: never;
@@ -2991,10 +3015,18 @@ export interface paths {
         get: operations["appGetApp"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete the app (owners only)
+         * @description Nothing is erased. The app is archived: it leaves the lists and every route of the account, its API keys are revoked at once (the gateway refuses them, so no event is ingested), no key can be made for it again, and its slug is freed. Its customers, subscriptions, invoices, payments and usage stay for accounting and retention, and billing keeps working on what already exists (a customer who owes is still invoiced and charged), so cancel the subscriptions first when the app should stop billing. An admin or a viewer is answered 403; deleting twice is answered 404. The action is logged (`app_audit`).
+         */
+        delete: operations["appDeleteApp"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Rename the app (owners and admins)
+         * @description Renames the app and with it its sandbox and live tenants; the slug stays. Invoices already issued keep the name they were issued under, new ones carry the new name. A viewer is answered 403; an app that was deleted is answered 404.
+         */
+        patch: operations["appRenameApp"];
         trace?: never;
     };
     "/app/v1/apps/{id}/overview": {
@@ -5132,6 +5164,36 @@ export interface components {
             /** @enum {string} */
             role?: "owner" | "admin" | "viewer";
         };
+        /** @description The first-run wizard's progress. As a request body every field is optional and only those present are written. */
+        OnboardingWizard: {
+            /** @enum {string} */
+            status?: "active" | "skipped" | "done";
+            /** @enum {string} */
+            step?: "welcome" | "organisation" | "app" | "meter" | "package" | "event" | "done";
+            /**
+             * @description Chosen in the organisation step
+             * @example TRY
+             */
+            currency?: string;
+            /** @example Europe/Istanbul */
+            timezone?: string;
+            /** @description Id of the app the wizard made */
+            app?: string;
+            /** @description Code of the meter it made */
+            meter?: string;
+            /** @description Code of the package it made */
+            plan?: string;
+            /** @description The test customer exists */
+            customer?: boolean;
+            /** @description The test event was sent */
+            event?: boolean;
+            /** @description The person closed the Getting started card */
+            hidden?: boolean;
+        };
+        Onboarding: {
+            wizard?: components["schemas"]["OnboardingWizard"];
+            seen_tours?: string[];
+        };
         SessionOpened: {
             user?: components["schemas"]["AuthUser"];
             memberships?: components["schemas"]["Membership"][];
@@ -6153,6 +6215,8 @@ export interface components {
             fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
             scheduled_change?: components["schemas"]["ScheduledChange"];
             coupon_code?: string;
+            /** @description Seats: a plain multiplier of the plan's fixed fee, 1 unless set */
+            quantity?: number;
         };
         CreditNote: {
             /** Format: uuid */
@@ -6880,6 +6944,8 @@ export interface components {
              * @description Default now; not in the future
              */
             change_time?: string;
+            /** @description The new number of seats; 0 or absent keeps it. A change of seats alone is immediate and prorated in either direction unless timing says otherwise: the unused time of the old seats is credited and the new seats are charged for the rest of the period */
+            quantity?: number;
         };
         ChangeQuote: {
             /** @enum {string} */
@@ -6906,6 +6972,8 @@ export interface components {
             plan_version?: number;
             /** @enum {string} */
             interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            /** @description The seats after the change */
+            quantity?: number;
         };
         ScheduledChange: {
             plan_code?: string;
@@ -6914,6 +6982,8 @@ export interface components {
             interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
             /** Format: date-time */
             effective_time?: string;
+            /** @description The seats the subscription has from then */
+            quantity?: number;
         };
         CurrencyFee: {
             currency?: string;
@@ -7048,6 +7118,11 @@ export interface components {
             tenants?: components["schemas"]["Tenant"][];
             /** Format: date-time */
             create_time?: string;
+            /**
+             * Format: date-time
+             * @description Set once the app was deleted (archived); only the operator API lists such an app.
+             */
+            archive_time?: string;
         };
         /**
          * @description admin: every permission. billing: customers, subscriptions, credits and invoices, with events, the catalogue and usage to read. read_only: every :read. ingest_only: events:write. custom: the permissions chosen.
@@ -7807,6 +7882,8 @@ export interface operations {
                     provider?: string;
                     /** @description A coupon to redeem on the new subscription */
                     coupon_code?: string;
+                    /** @description Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance */
+                    quantity?: number;
                     /**
                      * @description Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee.
                      * @enum {string}
@@ -12284,6 +12361,57 @@ export interface operations {
             401: components["responses"]["Error"];
         };
     };
+    getMyOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Onboarding"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    updateMyOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    wizard?: components["schemas"]["OnboardingWizard"];
+                    seen_tours?: string[];
+                    forget_tours?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Onboarding"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+        };
+    };
     appCreateAccount: {
         parameters: {
             query?: never;
@@ -12824,6 +12952,61 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appDeleteApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appRenameApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The app */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["App"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

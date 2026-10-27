@@ -15,6 +15,7 @@ import (
 	goliveqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/golive/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity"
 	identitycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/onboarding"
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
@@ -64,6 +65,6 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	}
 	goLive := golive.New(golivecmd.New(d.SystemPool, d.Log), goliveqry.New(d.SystemPool))
 	plansv1.RegisterIdentityServiceServer(srv, identity.New(cmd, identityqry.New(d.SystemPool), goLive,
-		promote.Wire(d.AppPool, d.SystemPool, d.Box, d.WebhookAllowPrivate, d.Log), d.Sandbox))
+		promote.Wire(d.AppPool, d.SystemPool, d.Box, d.WebhookAllowPrivate, d.Log), d.Sandbox, onboarding.New(d.SystemPool)))
 	return saasC
 }

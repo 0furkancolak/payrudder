@@ -35,6 +35,8 @@ func (s *Server) appRoutes() []Route {
 		{"GET", "/app/v1/apps", AccessSession, ratelimit.ClassRead, s.withAccount(s.appList)},
 		{"POST", "/app/v1/apps", AccessSession, ratelimit.ClassWrite, s.withAccount(s.appCreate)},
 		{"GET", "/app/v1/apps/{id}", AccessSession, ratelimit.ClassRead, s.appGet},
+		{"PATCH", "/app/v1/apps/{id}", AccessSession, ratelimit.ClassWrite, s.appRename},
+		{"DELETE", "/app/v1/apps/{id}", AccessSession, ratelimit.ClassWrite, s.appDelete},
 		{"GET", "/app/v1/apps/{id}/overview", AccessSession, ratelimit.ClassRead, s.appOverview},
 		{"GET", "/app/v1/apps/{id}/dashboard", AccessSession, ratelimit.ClassRead, s.appDashboard},
 		{"GET", "/app/v1/apps/{id}/api-keys", AccessSession, ratelimit.ClassRead, s.appKeys},
@@ -157,6 +159,30 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 	noStore(w)
 	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: keyEnv.Proto(), Role: role, Permissions: body.Permissions})
 	respond(w, r, http.StatusCreated, resp, err)
+}
+
+// appRename is PATCH /app/v1/apps/{id} {name} (owners and admins). The answer is the app.
+func (s *Server) appRename(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	var body struct {
+		Name string `json:"name"`
+	}
+	if err := decodeJSON(r, &body); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Identity.RenameMyApp(r.Context(), &plansv1.RenameMyAppRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Name: body.Name})
+	respond(w, r, http.StatusOK, resp.GetApp(), err)
+}
+
+// appDelete is DELETE /app/v1/apps/{id} (owners only). The app is archived, never erased: its billing records stay. 204.
+func (s *Server) appDelete(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	if _, err := s.d.Identity.DeleteMyApp(r.Context(), &plansv1.DeleteMyAppRequest{UserId: sess.UserID, AppId: r.PathValue("id")}); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) appKeyRevoke(w http.ResponseWriter, r *http.Request) {

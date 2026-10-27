@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ExternalLink } from "@lucide/vue";
 import { Link, useParams } from "@tanstack/vue-router";
-import { computed, ref } from "vue";
+import { computed, ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { fromTenant } from "@/features/product/billingProfile";
 import { useAccount, useApp, useApps } from "@/features/product/api";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { LIVE_PROVIDERS, type LiveProviderName } from "@/features/product/liveProvider";
 import { useAppsProviders } from "@/features/providers/connectApi";
 import { appRows, connectionOf, orgSummary, type Scope } from "@/features/providers/connections";
@@ -140,6 +141,12 @@ function open(id: IntegrationId) {
     mailOpen.value = true;
   }
 }
+
+// What a sheet is open for is in the address (`connect-provider:stripe`), so a reload brings it back once the apps have loaded.
+const named = <T extends string>(of: Ref<T | "">) => computed<T | null>({ get: () => of.value || null, set: (v) => (of.value = v ?? "") });
+useSheetTarget("connect-provider", sheetOpen, named(sheetProvider), { id: (p) => p, find: (id) => (!loading.value && (LIVE_PROVIDERS as readonly string[]).includes(id) ? (id as LiveProviderName) : undefined), restore: fromPaymentCard });
+useSheetTarget("integration-einvoice", eInvoiceOpen, named(eInvoiceProvider), { id: (p) => p, find: (id) => (!loading.value && (id === "nilvera" || id === "webhook") ? id : undefined), restore: open });
+useSheetTarget("integration-mail", mailOpen, named(mailKind), { id: (k) => k, find: (id) => (!loading.value && (id === "payrudderMail" || id === "nafru") ? id : undefined), restore: open });
 
 const buttonLabel = (id: IntegrationId) => {
   if (id === "payrudderMail") return t("product.integrations.settings");

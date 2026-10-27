@@ -27,3 +27,18 @@ export function safeSet(which: StorageArea, key: string, value: string | null): 
     return false;
   }
 }
+
+/** The keys that start with `prefix`; none when storage cannot be read. */
+export function safeKeys(which: StorageArea, prefix: string): string[] {
+  try {
+    const s = area(which);
+    const out: string[] = [];
+    for (let i = 0; i < s.length; i++) {
+      const k = s.key(i);
+      if (k?.startsWith(prefix)) out.push(k);
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}

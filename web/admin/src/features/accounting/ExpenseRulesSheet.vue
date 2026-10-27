@@ -95,7 +95,7 @@ function remove(r: ExpenseRule) {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" name="expense-rules">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.accounting.rules.title") }}</SheetTitle>

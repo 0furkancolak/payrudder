@@ -45,6 +45,8 @@ const (
 	IdentityService_CreateMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/CreateMyApp"
 	IdentityService_ListMyApps_FullMethodName             = "/payrudder.plans.v1.IdentityService/ListMyApps"
 	IdentityService_GetMyApp_FullMethodName               = "/payrudder.plans.v1.IdentityService/GetMyApp"
+	IdentityService_RenameMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/RenameMyApp"
+	IdentityService_DeleteMyApp_FullMethodName            = "/payrudder.plans.v1.IdentityService/DeleteMyApp"
 	IdentityService_ResolveMyTenant_FullMethodName        = "/payrudder.plans.v1.IdentityService/ResolveMyTenant"
 	IdentityService_CreateMyApiKey_FullMethodName         = "/payrudder.plans.v1.IdentityService/CreateMyApiKey"
 	IdentityService_ListMyApiKeys_FullMethodName          = "/payrudder.plans.v1.IdentityService/ListMyApiKeys"
@@ -57,6 +59,8 @@ const (
 	IdentityService_PromoteMyApp_FullMethodName           = "/payrudder.plans.v1.IdentityService/PromoteMyApp"
 	IdentityService_ResetMySandbox_FullMethodName         = "/payrudder.plans.v1.IdentityService/ResetMySandbox"
 	IdentityService_GetMySandboxReset_FullMethodName      = "/payrudder.plans.v1.IdentityService/GetMySandboxReset"
+	IdentityService_GetMyOnboarding_FullMethodName        = "/payrudder.plans.v1.IdentityService/GetMyOnboarding"
+	IdentityService_UpdateMyOnboarding_FullMethodName     = "/payrudder.plans.v1.IdentityService/UpdateMyOnboarding"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -122,6 +126,11 @@ type IdentityServiceClient interface {
 	CreateMyApp(ctx context.Context, in *CreateMyAppRequest, opts ...grpc.CallOption) (*CreateMyAppResponse, error)
 	ListMyApps(ctx context.Context, in *ListMyAppsRequest, opts ...grpc.CallOption) (*ListMyAppsResponse, error)
 	GetMyApp(ctx context.Context, in *GetMyAppRequest, opts ...grpc.CallOption) (*GetMyAppResponse, error)
+	// RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
+	RenameMyApp(ctx context.Context, in *RenameMyAppRequest, opts ...grpc.CallOption) (*RenameMyAppResponse, error)
+	// DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
+	// keys, no ingest) and its billing records stay for accounting and retention.
+	DeleteMyApp(ctx context.Context, in *DeleteMyAppRequest, opts ...grpc.CallOption) (*DeleteMyAppResponse, error)
 	// ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
 	ResolveMyTenant(ctx context.Context, in *ResolveMyTenantRequest, opts ...grpc.CallOption) (*ResolveMyTenantResponse, error)
 	CreateMyApiKey(ctx context.Context, in *CreateMyApiKeyRequest, opts ...grpc.CallOption) (*CreateMyApiKeyResponse, error)
@@ -147,6 +156,12 @@ type IdentityServiceClient interface {
 	ResetMySandbox(ctx context.Context, in *ResetMySandboxRequest, opts ...grpc.CallOption) (*ResetMySandboxResponse, error)
 	// GetMySandboxReset returns the latest reset of an app's sandbox, running or finished; unset when there has been none.
 	GetMySandboxReset(ctx context.Context, in *GetMySandboxResetRequest, opts ...grpc.CallOption) (*GetMySandboxResetResponse, error)
+	// GetMyOnboarding returns what the console keeps for the person, not for an account: how far they are in the first-run wizard and which page tours they have
+	// seen. Both follow them to another browser. Nothing stored yet reads as no wizard and no tours.
+	GetMyOnboarding(ctx context.Context, in *GetMyOnboardingRequest, opts ...grpc.CallOption) (*GetMyOnboardingResponse, error)
+	// UpdateMyOnboarding merges a change into it and returns the result. The wizard fields given overwrite (a flag that is set stays set); seen_tours are added to
+	// the set and never replace it, so two browsers writing lose nothing; forget_tours removes tours (a person asking to see a tour again).
+	UpdateMyOnboarding(ctx context.Context, in *UpdateMyOnboardingRequest, opts ...grpc.CallOption) (*UpdateMyOnboardingResponse, error)
 }
 
 type identityServiceClient struct {
@@ -417,6 +432,26 @@ func (c *identityServiceClient) GetMyApp(ctx context.Context, in *GetMyAppReques
 	return out, nil
 }
 
+func (c *identityServiceClient) RenameMyApp(ctx context.Context, in *RenameMyAppRequest, opts ...grpc.CallOption) (*RenameMyAppResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RenameMyAppResponse)
+	err := c.cc.Invoke(ctx, IdentityService_RenameMyApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) DeleteMyApp(ctx context.Context, in *DeleteMyAppRequest, opts ...grpc.CallOption) (*DeleteMyAppResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteMyAppResponse)
+	err := c.cc.Invoke(ctx, IdentityService_DeleteMyApp_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *identityServiceClient) ResolveMyTenant(ctx context.Context, in *ResolveMyTenantRequest, opts ...grpc.CallOption) (*ResolveMyTenantResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ResolveMyTenantResponse)
@@ -537,6 +572,26 @@ func (c *identityServiceClient) GetMySandboxReset(ctx context.Context, in *GetMy
 	return out, nil
 }
 
+func (c *identityServiceClient) GetMyOnboarding(ctx context.Context, in *GetMyOnboardingRequest, opts ...grpc.CallOption) (*GetMyOnboardingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMyOnboardingResponse)
+	err := c.cc.Invoke(ctx, IdentityService_GetMyOnboarding_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) UpdateMyOnboarding(ctx context.Context, in *UpdateMyOnboardingRequest, opts ...grpc.CallOption) (*UpdateMyOnboardingResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateMyOnboardingResponse)
+	err := c.cc.Invoke(ctx, IdentityService_UpdateMyOnboarding_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IdentityServiceServer is the server API for IdentityService service.
 // All implementations must embed UnimplementedIdentityServiceServer
 // for forward compatibility.
@@ -600,6 +655,11 @@ type IdentityServiceServer interface {
 	CreateMyApp(context.Context, *CreateMyAppRequest) (*CreateMyAppResponse, error)
 	ListMyApps(context.Context, *ListMyAppsRequest) (*ListMyAppsResponse, error)
 	GetMyApp(context.Context, *GetMyAppRequest) (*GetMyAppResponse, error)
+	// RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
+	RenameMyApp(context.Context, *RenameMyAppRequest) (*RenameMyAppResponse, error)
+	// DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
+	// keys, no ingest) and its billing records stay for accounting and retention.
+	DeleteMyApp(context.Context, *DeleteMyAppRequest) (*DeleteMyAppResponse, error)
 	// ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
 	ResolveMyTenant(context.Context, *ResolveMyTenantRequest) (*ResolveMyTenantResponse, error)
 	CreateMyApiKey(context.Context, *CreateMyApiKeyRequest) (*CreateMyApiKeyResponse, error)
@@ -625,6 +685,12 @@ type IdentityServiceServer interface {
 	ResetMySandbox(context.Context, *ResetMySandboxRequest) (*ResetMySandboxResponse, error)
 	// GetMySandboxReset returns the latest reset of an app's sandbox, running or finished; unset when there has been none.
 	GetMySandboxReset(context.Context, *GetMySandboxResetRequest) (*GetMySandboxResetResponse, error)
+	// GetMyOnboarding returns what the console keeps for the person, not for an account: how far they are in the first-run wizard and which page tours they have
+	// seen. Both follow them to another browser. Nothing stored yet reads as no wizard and no tours.
+	GetMyOnboarding(context.Context, *GetMyOnboardingRequest) (*GetMyOnboardingResponse, error)
+	// UpdateMyOnboarding merges a change into it and returns the result. The wizard fields given overwrite (a flag that is set stays set); seen_tours are added to
+	// the set and never replace it, so two browsers writing lose nothing; forget_tours removes tours (a person asking to see a tour again).
+	UpdateMyOnboarding(context.Context, *UpdateMyOnboardingRequest) (*UpdateMyOnboardingResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -713,6 +779,12 @@ func (UnimplementedIdentityServiceServer) ListMyApps(context.Context, *ListMyApp
 func (UnimplementedIdentityServiceServer) GetMyApp(context.Context, *GetMyAppRequest) (*GetMyAppResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMyApp not implemented")
 }
+func (UnimplementedIdentityServiceServer) RenameMyApp(context.Context, *RenameMyAppRequest) (*RenameMyAppResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenameMyApp not implemented")
+}
+func (UnimplementedIdentityServiceServer) DeleteMyApp(context.Context, *DeleteMyAppRequest) (*DeleteMyAppResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteMyApp not implemented")
+}
 func (UnimplementedIdentityServiceServer) ResolveMyTenant(context.Context, *ResolveMyTenantRequest) (*ResolveMyTenantResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMyTenant not implemented")
 }
@@ -748,6 +820,12 @@ func (UnimplementedIdentityServiceServer) ResetMySandbox(context.Context, *Reset
 }
 func (UnimplementedIdentityServiceServer) GetMySandboxReset(context.Context, *GetMySandboxResetRequest) (*GetMySandboxResetResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMySandboxReset not implemented")
+}
+func (UnimplementedIdentityServiceServer) GetMyOnboarding(context.Context, *GetMyOnboardingRequest) (*GetMyOnboardingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMyOnboarding not implemented")
+}
+func (UnimplementedIdentityServiceServer) UpdateMyOnboarding(context.Context, *UpdateMyOnboardingRequest) (*UpdateMyOnboardingResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateMyOnboarding not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -1238,6 +1316,42 @@ func _IdentityService_GetMyApp_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_RenameMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameMyAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).RenameMyApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_RenameMyApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).RenameMyApp(ctx, req.(*RenameMyAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_DeleteMyApp_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMyAppRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).DeleteMyApp(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_DeleteMyApp_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).DeleteMyApp(ctx, req.(*DeleteMyAppRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _IdentityService_ResolveMyTenant_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ResolveMyTenantRequest)
 	if err := dec(in); err != nil {
@@ -1454,6 +1568,42 @@ func _IdentityService_GetMySandboxReset_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_GetMyOnboarding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMyOnboardingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).GetMyOnboarding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_GetMyOnboarding_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).GetMyOnboarding(ctx, req.(*GetMyOnboardingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_UpdateMyOnboarding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateMyOnboardingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).UpdateMyOnboarding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_UpdateMyOnboarding_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).UpdateMyOnboarding(ctx, req.(*UpdateMyOnboardingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1566,6 +1716,14 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _IdentityService_GetMyApp_Handler,
 		},
 		{
+			MethodName: "RenameMyApp",
+			Handler:    _IdentityService_RenameMyApp_Handler,
+		},
+		{
+			MethodName: "DeleteMyApp",
+			Handler:    _IdentityService_DeleteMyApp_Handler,
+		},
+		{
 			MethodName: "ResolveMyTenant",
 			Handler:    _IdentityService_ResolveMyTenant_Handler,
 		},
@@ -1612,6 +1770,14 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMySandboxReset",
 			Handler:    _IdentityService_GetMySandboxReset_Handler,
+		},
+		{
+			MethodName: "GetMyOnboarding",
+			Handler:    _IdentityService_GetMyOnboarding_Handler,
+		},
+		{
+			MethodName: "UpdateMyOnboarding",
+			Handler:    _IdentityService_UpdateMyOnboarding_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

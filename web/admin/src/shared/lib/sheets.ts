@@ -73,6 +73,11 @@ export function closeName(name: string) {
   if (names.value.includes(name)) names.value = names.value.filter((n) => n !== name);
 }
 
+/** The id of a record as a sheet's name holds it: commas (they separate the names in the address) and colons (they separate the parts of a name) are escaped. */
+export const sheetKey = (id: string) => encodeURIComponent(id);
+/** The name of a sheet that works on one record (`void-expense:<id>`); a sheet shown for several records at once names each by its own. */
+export const sheetName = (kind: string, id: string) => `${kind}:${sheetKey(id)}`;
+
 /** The id the open sheet of a kind shows (`invoice:<id>` is the sheet of the kind `invoice` with that id), or undefined when none is open. */
 export function idOf(kind: string): string | undefined {
   const prefix = `${kind}:`;

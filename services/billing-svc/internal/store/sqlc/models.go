@@ -44,6 +44,7 @@ type CreditBalance struct {
 	SourceAdjustmentID  *uuid.UUID
 	Currency            *string
 	SourceCreditNoteID  *uuid.UUID
+	SourceInvoiceID     *uuid.UUID
 }
 
 type CreditLedger struct {

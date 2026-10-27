@@ -1982,7 +1982,9 @@ type CreateSubscriptionRequest struct {
 	// Unspecified = in advance (the fee is invoiced at the start of each period), except for a provider that runs renewals itself.
 	FeeTiming FeeTiming `protobuf:"varint,9,opt,name=fee_timing,json=feeTiming,proto3,enum=payrudder.plans.v1.FeeTiming" json:"fee_timing,omitempty"`
 	// A coupon to redeem on the new subscription.
-	CouponCode    string `protobuf:"bytes,10,opt,name=coupon_code,json=couponCode,proto3" json:"coupon_code,omitempty"`
+	CouponCode string `protobuf:"bytes,10,opt,name=coupon_code,json=couponCode,proto3" json:"coupon_code,omitempty"`
+	// Seats (licences): the plan's fixed fee is multiplied by it. 0 = 1. Only for a subscription Payrudder runs and bills in advance.
+	Quantity      int32 `protobuf:"varint,11,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2085,6 +2087,13 @@ func (x *CreateSubscriptionRequest) GetCouponCode() string {
 		return x.CouponCode
 	}
 	return ""
+}
+
+func (x *CreateSubscriptionRequest) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
 }
 
 type CreateSubscriptionResponse struct {
@@ -4870,7 +4879,9 @@ type ChangeSubscriptionRequest struct {
 	// Unspecified: prorate.
 	Proration ChangeProration `protobuf:"varint,6,opt,name=proration,proto3,enum=payrudder.plans.v1.ChangeProration" json:"proration,omitempty"`
 	// Unset = now. Only for immediate changes.
-	ChangeTime    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=change_time,json=changeTime,proto3" json:"change_time,omitempty"`
+	ChangeTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=change_time,json=changeTime,proto3" json:"change_time,omitempty"`
+	// The new quantity. 0 keeps it. A change of quantity alone is immediate and prorated unless timing says otherwise.
+	Quantity      int32 `protobuf:"varint,8,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4954,6 +4965,13 @@ func (x *ChangeSubscriptionRequest) GetChangeTime() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ChangeSubscriptionRequest) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
+}
+
 type ChangeQuote struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Timing        ChangeTiming           `protobuf:"varint,1,opt,name=timing,proto3,enum=payrudder.plans.v1.ChangeTiming" json:"timing,omitempty"`
@@ -4973,8 +4991,10 @@ type ChangeQuote struct {
 	PlanCode         string                 `protobuf:"bytes,12,opt,name=plan_code,json=planCode,proto3" json:"plan_code,omitempty"`
 	PlanVersion      int32                  `protobuf:"varint,13,opt,name=plan_version,json=planVersion,proto3" json:"plan_version,omitempty"`
 	Interval         SubscriptionInterval   `protobuf:"varint,14,opt,name=interval,proto3,enum=payrudder.plans.v1.SubscriptionInterval" json:"interval,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The quantity after the change.
+	Quantity      int32 `protobuf:"varint,15,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ChangeQuote) Reset() {
@@ -5103,6 +5123,13 @@ func (x *ChangeQuote) GetInterval() SubscriptionInterval {
 		return x.Interval
 	}
 	return SubscriptionInterval_SUBSCRIPTION_INTERVAL_UNSPECIFIED
+}
+
+func (x *ChangeQuote) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
 }
 
 type PreviewSubscriptionChangeRequest struct {
@@ -7422,7 +7449,7 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\tplan_code\x18\x02 \x01(\tR\bplanCode\x12\x18\n" +
 	"\aversion\x18\x03 \x01(\x05R\aversion\"\\\n" +
 	"\x16GetPlanVersionResponse\x12B\n" +
-	"\fplan_version\x18\x01 \x01(\v2\x1f.payrudder.plans.v1.PlanVersionR\vplanVersion\"\xd8\x03\n" +
+	"\fplan_version\x18\x01 \x01(\v2\x1f.payrudder.plans.v1.PlanVersionR\vplanVersion\"\xf4\x03\n" +
 	"\x19CreateSubscriptionRequest\x120\n" +
 	"\x14customer_external_id\x18\x01 \x01(\tR\x12customerExternalId\x12\x1b\n" +
 	"\tplan_code\x18\x02 \x01(\tR\bplanCode\x12!\n" +
@@ -7438,7 +7465,8 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"fee_timing\x18\t \x01(\x0e2\x1d.payrudder.plans.v1.FeeTimingR\tfeeTiming\x12\x1f\n" +
 	"\vcoupon_code\x18\n" +
 	" \x01(\tR\n" +
-	"couponCodeB\r\n" +
+	"couponCode\x12\x1a\n" +
+	"\bquantity\x18\v \x01(\x05R\bquantityB\r\n" +
 	"\v_trial_days\"b\n" +
 	"\x1aCreateSubscriptionResponse\x12D\n" +
 	"\fsubscription\x18\x01 \x01(\v2 .payrudder.plans.v1.SubscriptionR\fsubscription\"\xa0\x01\n" +
@@ -7629,7 +7657,7 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x1dAdvanceSubscriptionFeeRequest\x12'\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\tR\x0esubscriptionId\x12=\n" +
 	"\fperiod_start\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\vperiodStart\" \n" +
-	"\x1eAdvanceSubscriptionFeeResponse\"\x84\x03\n" +
+	"\x1eAdvanceSubscriptionFeeResponse\"\xa0\x03\n" +
 	"\x19ChangeSubscriptionRequest\x12'\n" +
 	"\x0fsubscription_id\x18\x01 \x01(\tR\x0esubscriptionId\x12\x1b\n" +
 	"\tplan_code\x18\x02 \x01(\tR\bplanCode\x12!\n" +
@@ -7638,7 +7666,8 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x06timing\x18\x05 \x01(\x0e2 .payrudder.plans.v1.ChangeTimingR\x06timing\x12A\n" +
 	"\tproration\x18\x06 \x01(\x0e2#.payrudder.plans.v1.ChangeProrationR\tproration\x12;\n" +
 	"\vchange_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"changeTime\"\xc2\x05\n" +
+	"changeTime\x12\x1a\n" +
+	"\bquantity\x18\b \x01(\x05R\bquantity\"\xde\x05\n" +
 	"\vChangeQuote\x128\n" +
 	"\x06timing\x18\x01 \x01(\x0e2 .payrudder.plans.v1.ChangeTimingR\x06timing\x12A\n" +
 	"\tproration\x18\x02 \x01(\x0e2#.payrudder.plans.v1.ChangeProrationR\tproration\x12A\n" +
@@ -7655,7 +7684,8 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x12next_renewal_minor\x18\v \x01(\x03R\x10nextRenewalMinor\x12\x1b\n" +
 	"\tplan_code\x18\f \x01(\tR\bplanCode\x12!\n" +
 	"\fplan_version\x18\r \x01(\x05R\vplanVersion\x12D\n" +
-	"\binterval\x18\x0e \x01(\x0e2(.payrudder.plans.v1.SubscriptionIntervalR\binterval\"i\n" +
+	"\binterval\x18\x0e \x01(\x0e2(.payrudder.plans.v1.SubscriptionIntervalR\binterval\x12\x1a\n" +
+	"\bquantity\x18\x0f \x01(\x05R\bquantity\"i\n" +
 	" PreviewSubscriptionChangeRequest\x12E\n" +
 	"\x06change\x18\x01 \x01(\v2-.payrudder.plans.v1.ChangeSubscriptionRequestR\x06change\"Z\n" +
 	"!PreviewSubscriptionChangeResponse\x125\n" +

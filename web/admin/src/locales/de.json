@@ -1116,7 +1116,8 @@
         "title": "Guthaben eines Kunden",
         "pick": "Kunden wählen",
         "balance": "Guthaben verfügbar",
-        "nextExpiry": "Ein Teil verfällt am {when}"
+        "nextExpiry": "Ein Teil verfällt am {when}",
+        "empty": "Wählen Sie einen Kunden, um Guthaben, Gewährungen und Verlauf zu sehen."
       },
       "lots": {
         "source": "Quelle",
@@ -1188,6 +1189,13 @@
         "threshold": "Warnen unter (Credits)",
         "save": "Speichern",
         "saved": "Gespeichert."
+      },
+      "tabs": {
+        "lots": "Gewährungen"
+      },
+      "sell": {
+        "title": "Guthaben verkaufen",
+        "hint": "Guthabenpakete, die Kunden über einen Zahlungslink kaufen, und die Warnung bei niedrigem Guthaben."
       }
     },
     "accounting": {
@@ -2437,7 +2445,8 @@
         "ending_or_ended": "Das Abonnement ist bereits beendet oder zum Ende vorgemerkt.",
         "no_scheduled_cancel": "Es gibt keine geplante Kündigung, die zurückgenommen werden könnte.",
         "run_by_provider": "Dieses Abonnement wird von einem Zahlungsanbieter geführt. Ändern Sie es dort.",
-        "transition_not_allowed": "Das ist im aktuellen Zustand des Abonnements nicht möglich."
+        "transition_not_allowed": "Das ist im aktuellen Zustand des Abonnements nicht möglich.",
+        "quantity_needs_advance": "Eine Menge über 1 setzt ein Abonnement voraus, das Payrudder führt und im Voraus abrechnet."
       },
       "webhook": {
         "not_configured": "Webhooks sind in dieser Installation nicht eingerichtet (der Secrets-Schlüssel fehlt).",
@@ -2466,7 +2475,8 @@
       },
       "api_key": {
         "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab.",
-        "bad_role": "Die Rolle muss Admin, Abrechnung, Nur Lesen, Nur Nutzung senden oder Benutzerdefiniert sein, mit bekannten Berechtigungen."
+        "bad_role": "Die Rolle muss Admin, Abrechnung, Nur Lesen, Nur Nutzung senden oder Benutzerdefiniert sein, mit bekannten Berechtigungen.",
+        "app_archived": "Diese App wurde gelöscht und kann daher keine API-Schlüssel haben."
       },
       "change": {
         "bad_proration": "Die Gebühr für diesen Planwechsel lässt sich für diesen Zeitraum nicht berechnen.",
@@ -2499,7 +2509,8 @@
         "already_completed": "Die Migration ist bereits abgeschlossen.",
         "cannot_abort": "Die Migration ist abgeschlossen und kann nicht abgebrochen werden.",
         "state_not_movable": "Ein Abonnement in diesem Zustand kann nicht zu einem anderen Anbieter verschoben werden.",
-        "subscription_ended": "Das Abonnement ist beendet oder endet gerade und kann nicht verschoben werden."
+        "subscription_ended": "Das Abonnement ist beendet oder endet gerade und kann nicht verschoben werden.",
+        "coupon_blocks_move": "Dieses Abonnement hat einen Gutschein, den ein vom Anbieter geführtes oder nachträglich abgerechnetes Abonnement nicht übernehmen kann. Entfernen Sie zuerst den Gutschein."
       },
       "plan": {
         "no_fixed_fee": "Diese Planversion hat für dieses Intervall in dieser Währung keine feste Gebühr.",
@@ -3452,7 +3463,14 @@
       "timezone": "Zeitzone",
       "grace": "Nachfrist",
       "tenant": "Umgebungs-ID",
-      "moreCurrencies": "Eine App kann in vielen Währungen verkaufen: Fügen Sie einem Paket einen Preis in einer anderen Währung hinzu, unter"
+      "moreCurrencies": "Eine App kann in vielen Währungen verkaufen: Fügen Sie einem Paket einen Preis in einer anderen Währung hinzu, unter",
+      "rename": "Namen speichern",
+      "dangerTitle": "Gefahrenbereich",
+      "deleteBody": "Wenn Sie eine App löschen, wird sie aus Ihrem Konto entfernt: Sie verschwindet aus allen Listen, ihre API-Schlüssel funktionieren sofort nicht mehr und es können keine neuen Schlüssel erstellt werden. Es wird nichts gelöscht. Kunden, Rechnungen und Zahlungen bleiben für Buchhaltung und gesetzliche Aufbewahrung erhalten, und die Abrechnung läuft für bereits Bestehendes weiter. Kündigen Sie daher zuerst die Abonnements, wenn nicht mehr abgerechnet werden soll.",
+      "delete": "App löschen",
+      "confirmTitle": "{name} löschen?",
+      "confirmBody": "Die App wird archiviert: Ihre API-Schlüssel werden widerrufen und sie verschwindet aus Ihrem Konto. Ihre Abrechnungsdaten bleiben erhalten. Das lässt sich in der Konsole nicht rückgängig machen.",
+      "typeName": "Geben Sie zur Bestätigung {name} ein"
     },
     "goLive": {
       "title": "Live schalten",

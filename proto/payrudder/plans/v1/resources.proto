@@ -85,6 +85,8 @@ message App {
   string slug = 4;
   repeated Tenant tenants = 5;
   google.protobuf.Timestamp create_time = 6;
+  // When the app was deleted (archived); empty for a live app. Only the operator API lists archived apps.
+  google.protobuf.Timestamp archive_time = 7;
 }
 
 // Tenant is one environment of an account and the unit of isolation.
@@ -369,6 +371,8 @@ message Subscription {
   ScheduledChange scheduled_change = 21;
   // The coupon taking something off the fixed fee, if any.
   string coupon_code = 22;
+  // Seats (licences): a plain multiplier of the plan's fixed fee, 1 unless set. Usage prices are not multiplied.
+  int32 quantity = 23;
 }
 
 message ScheduledChange {
@@ -376,6 +380,8 @@ message ScheduledChange {
   int32 plan_version = 2;
   SubscriptionInterval interval = 3;
   google.protobuf.Timestamp effective_time = 4;
+  // The quantity the subscription has from then.
+  int32 quantity = 5;
 }
 
 enum FeeTiming {

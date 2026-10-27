@@ -14,8 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useCreditLedger } from "./api";
 import { formatCredits } from "./lib";
 
-/** Everything that happened to one customer's credits, newest first. */
-const props = defineProps<{ tenantId: string; customer: string }>();
+/** Everything that happened to one customer's credits, newest first. `bare` leaves out the card and its title, for a place that has its own (a tab). */
+const props = defineProps<{ tenantId: string; customer: string; bare?: boolean }>();
 const { t, locale } = useI18n();
 const fmt = useFormat();
 const ledger = useCreditLedger(
@@ -39,8 +39,8 @@ const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v
 </script>
 
 <template>
-  <Card class="p-3">
-    <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.credits.ledger.title") }}</h2>
+  <Card :class="bare ? 'gap-2 border-0 bg-transparent p-0 shadow-none' : 'p-3'" data-testid="credits-ledger">
+    <h2 v-if="!bare" class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.credits.ledger.title") }}</h2>
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
       <FilterSelect v-model="kindFilter" multiple :label="t('billing.credits.ledger.kind')" :options="kinds" />
       <DateRangePicker v-model="range" />

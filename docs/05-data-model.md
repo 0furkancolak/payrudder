@@ -51,6 +51,22 @@ CREATE TABLE accounts (                               -- the customer of Payrudd
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE apps (                                   -- phase 25: an account's application; its sandbox and live tenant (tenants.app_id) belong to it
+  id uuid PRIMARY KEY, account_id uuid NOT NULL REFERENCES accounts(id),
+  name text NOT NULL CHECK (length(name) BETWEEN 1 AND 200),       -- renamable (owner, admin); the tenants carry the same name
+  slug text NOT NULL CHECK (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$' AND length(slug) <= 60),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  archived_at timestamptz, archived_by uuid REFERENCES users(id),  -- migration 00058: "deleted" = archived, nothing is ever erased (03-services/plans-svc.md, "Renaming and deleting an app")
+  UNIQUE (account_id, slug)                           -- an archived app's slug is rewritten to <slug>-archived-<12 hex of its id>, which frees the old one
+);   -- not RLS'd: plans_system only, SELECT, INSERT and UPDATE (name, slug, archived_at, archived_by)
+
+CREATE TABLE app_audit (                              -- migration 00058: what a person did to an app; append-only, nothing updated or deleted
+  id uuid PRIMARY KEY, app_id uuid NOT NULL REFERENCES apps(id), user_id uuid NOT NULL REFERENCES users(id),
+  action text NOT NULL CHECK (action IN ('renamed','archived')),
+  detail jsonb NOT NULL DEFAULT '{}',                    -- renamed: from and to; archived: how many keys were revoked
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE tenants (                                -- the isolation unit everywhere (RLS, partition key)
   id            uuid PRIMARY KEY,
   account_id    uuid NOT NULL REFERENCES accounts(id),
@@ -104,6 +120,9 @@ CREATE TABLE tenant_mail_integrations (tenant_id uuid PRIMARY KEY, provider text
 -- and an extended trial does. Customer-side history: a sandbox reset deletes it.
 CREATE TABLE subscription_trial_notices (tenant_id uuid NOT NULL, customer_id uuid NOT NULL, trial_ends_at timestamptz NOT NULL, subscription_id uuid NOT NULL, notified_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, customer_id, trial_ends_at), FOREIGN KEY (tenant_id, customer_id) REFERENCES customers (tenant_id, id));
+-- what the console remembers for a person, not an account (migration 00059): the first-run wizard's progress (a JSON object: status, step, what was chosen and made) and the
+-- page tours already seen. A person-level record like users and user_sessions: no tenant_id, no RLS, no plans_app grant, the system role only. Writes are merges (see plans-svc).
+CREATE TABLE user_onboarding (user_id uuid PRIMARY KEY REFERENCES users (id), wizard jsonb CHECK (jsonb_typeof(wizard) = 'object'), seen_tours text[] NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now());
 
 CREATE TABLE customers (
   tenant_id    uuid NOT NULL,
@@ -164,7 +183,7 @@ CREATE TABLE plan_entitlements (
   limit_units          bigint NOT NULL CHECK (limit_units >= 0),      -- scaled units of the meter; 0 = unlimited
   -- plan_prices.config stores quantities as scaled units too: {"tiers":[{"up_to_units":10500,"unit_price":"0","flat_fee_minor":0},…]}
   alert_thresholds_pct int[]  NOT NULL DEFAULT '{80,100}',
-  quota_window         text NOT NULL DEFAULT 'month' CHECK (quota_window IN ('hour','day','week','month','year','lifetime')),   -- 00052, widened by 00058
+  quota_window         text NOT NULL DEFAULT 'month' CHECK (quota_window IN ('hour','day','week','month','year','lifetime')),   -- 00052, widened by 00061
   mode                 text NOT NULL DEFAULT 'hard'  CHECK (mode IN ('hard','soft','notify')),             -- 00052
   PRIMARY KEY (tenant_id, plan_version_id, meter_code)
 );
@@ -192,6 +211,8 @@ CREATE TABLE subscriptions (
   -- state text ('trialing','active','past_due','paused','cancelled'), interval text ('month'; 'year' is refused for now),
   -- currency char(3) NOT NULL (fixed for the subscription), trial_ends_at, cancel_at_period_end, paused_at,
   -- billing_anchor timestamptz NOT NULL (start of the calendar month it began in), changed_from_id (the subscription a plan change replaced)
+  -- migration 00060: quantity integer NOT NULL DEFAULT 1 CHECK (quantity BETWEEN 1 AND 100000) -- seats, a plain multiplier of the fixed fee;
+  --   subscription_changes gets the same column, NULL = keep the subscription's own
 );
 
 -- Phase 13: customers gain country char(2) and billing_currency char(3), both optional.
@@ -212,7 +233,7 @@ CREATE TABLE outbox (                                  -- shared outbox shape, s
 );
 ```
 
-RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey), `sandbox_resets` (system role only, phase 45 E) and `outbox`.
+RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey), `sandbox_resets` (system role only, phase 45 E), the person tables (`users`, `account_members`, `user_sessions`, `user_onboarding`: no `tenant_id`, system role only) and `outbox`.
 
 ---
 
@@ -462,6 +483,8 @@ CREATE TABLE credit_balances (
   amount_minor bigint NOT NULL CHECK (amount_minor > 0), source_rerating_job_id uuid NOT NULL,
   applied_invoice_id uuid,                              -- NULL = unapplied
   PRIMARY KEY (tenant_id, id)
+  -- later: currency; exactly one source of source_rerating_job_id, source_adjustment_id, source_credit_note_id and (migration 00055)
+  -- source_invoice_id, the invoice voided with money recorded by hand against it (unique per invoice)
 );
 
 CREATE TABLE rerating_jobs (

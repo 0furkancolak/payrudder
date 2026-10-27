@@ -105,19 +105,27 @@ func (c *Commands) buildDraft(ctx context.Context, tenantID uuid.UUID, t *plansv
 		provider: sub.GetProvider(), country: store.NilIfEmpty(cu.GetCustomer().GetCountry()), total: total, subtotal: rating.Subtotal(lines), snapshot: snap, lines: lines}, nil
 }
 
-// withTax adds the tax line at the tenant's rate for the customer's country (not for what a provider charges for: the provider taxes that).
-func (c *Commands) withTax(ctx context.Context, tenantID uuid.UUID, sub *plansv1.Subscription, cu *plansv1.Customer, lines []rating.Line) ([]rating.Line, error) {
+// taxRate is the tenant's rate for the customer's country; ok is false when there is none, and for what a provider charges for (the provider taxes that).
+func (c *Commands) taxRate(ctx context.Context, tenantID uuid.UUID, sub *plansv1.Subscription, cu *plansv1.Customer) (name string, bps int32, ok bool, err error) {
 	if inputs.OwnedByProvider(sub.GetOwner()) {
-		return lines, nil
+		return "", 0, false, nil
 	}
 	taxes, err := c.cfg.Inputs.TaxRates(ctx, tenantID)
 	if err != nil {
-		return nil, err
+		return "", 0, false, err
 	}
-	if name, bps, ok := taxes.RateFor(cu.GetCountry()); ok {
-		if tl, ok := rating.TaxLine(lines, name, bps); ok {
-			return append(append([]rating.Line(nil), lines...), tl), nil
-		}
+	name, bps, ok = taxes.RateFor(cu.GetCountry())
+	return name, bps, ok, nil
+}
+
+// withTax adds the tax line at the tenant's rate for the customer's country.
+func (c *Commands) withTax(ctx context.Context, tenantID uuid.UUID, sub *plansv1.Subscription, cu *plansv1.Customer, lines []rating.Line) ([]rating.Line, error) {
+	name, bps, ok, err := c.taxRate(ctx, tenantID, sub, cu)
+	if err != nil || !ok {
+		return lines, err
+	}
+	if tl, ok := rating.TaxLine(lines, name, bps); ok {
+		return append(append([]rating.Line(nil), lines...), tl), nil
 	}
 	return lines, nil
 }

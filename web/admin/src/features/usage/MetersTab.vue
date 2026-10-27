@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import BarList from "@/features/dashboard/BarList.vue";
 import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -90,6 +91,7 @@ function openForm(m: Meter | null) {
   base.value = m;
   sheet.value = true;
 }
+useSheetTarget("meter-version", sheet, base, { id: (m) => m.code ?? "", find: (code) => list.value.find((m) => m.code === code), restore: openForm });
 const actionsOf = (m: Meter, i: number) => [
   { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => table.open(i) },
   { key: "version", label: t("billing.usage.meters.newVersion"), icon: GitBranchPlus, disabled: !canWrite.value, onSelect: () => openForm(m) },

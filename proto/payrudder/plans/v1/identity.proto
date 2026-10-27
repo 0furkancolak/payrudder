@@ -69,6 +69,11 @@ service IdentityService {
   rpc CreateMyApp(CreateMyAppRequest) returns (CreateMyAppResponse);
   rpc ListMyApps(ListMyAppsRequest) returns (ListMyAppsResponse);
   rpc GetMyApp(GetMyAppRequest) returns (GetMyAppResponse);
+  // RenameMyApp renames an app (and its sandbox and live tenants) for an owner or admin. Issued invoices keep the name they were issued under.
+  rpc RenameMyApp(RenameMyAppRequest) returns (RenameMyAppResponse);
+  // DeleteMyApp removes an app from the account for an owner. Nothing is ever erased: the app is archived (hidden from lists, its API keys revoked, no new
+  // keys, no ingest) and its billing records stay for accounting and retention.
+  rpc DeleteMyApp(DeleteMyAppRequest) returns (DeleteMyAppResponse);
   // ResolveMyTenant answers whether a tenant belongs to an app of an account the user is a member of. The gateway asks it before it lets a session act on a tenant.
   rpc ResolveMyTenant(ResolveMyTenantRequest) returns (ResolveMyTenantResponse);
   rpc CreateMyApiKey(CreateMyApiKeyRequest) returns (CreateMyApiKeyResponse);
@@ -94,6 +99,12 @@ service IdentityService {
   rpc ResetMySandbox(ResetMySandboxRequest) returns (ResetMySandboxResponse);
   // GetMySandboxReset returns the latest reset of an app's sandbox, running or finished; unset when there has been none.
   rpc GetMySandboxReset(GetMySandboxResetRequest) returns (GetMySandboxResetResponse);
+  // GetMyOnboarding returns what the console keeps for the person, not for an account: how far they are in the first-run wizard and which page tours they have
+  // seen. Both follow them to another browser. Nothing stored yet reads as no wizard and no tours.
+  rpc GetMyOnboarding(GetMyOnboardingRequest) returns (GetMyOnboardingResponse);
+  // UpdateMyOnboarding merges a change into it and returns the result. The wizard fields given overwrite (a flag that is set stays set); seen_tours are added to
+  // the set and never replace it, so two browsers writing lose nothing; forget_tours removes tours (a person asking to see a tour again).
+  rpc UpdateMyOnboarding(UpdateMyOnboardingRequest) returns (UpdateMyOnboardingResponse);
 }
 
 message User {
@@ -255,6 +266,25 @@ message GetMyAppRequest {
 message GetMyAppResponse {
   App app = 1;
   string role = 2;
+}
+
+message RenameMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+  string name = 3;
+}
+
+message RenameMyAppResponse {
+  App app = 1;
+}
+
+message DeleteMyAppRequest {
+  string user_id = 1;
+  string app_id = 2;
+}
+
+message DeleteMyAppResponse {
+  google.protobuf.Timestamp archive_time = 1;
 }
 
 message ResolveMyTenantRequest {
@@ -622,4 +652,48 @@ message GetMySandboxResetRequest {
 
 message GetMySandboxResetResponse {
   SandboxReset sandbox_reset = 1;
+}
+
+// OnboardingWizard is the first-run wizard's progress. As a request every field is a change: only the fields present are written.
+message OnboardingWizard {
+  // active (started, not finished: the wizard opens by itself), skipped or done.
+  optional string status = 1;
+  // welcome, organisation, app, meter, package, event or done.
+  optional string step = 2;
+  // What the person chose in the organisation step.
+  optional string currency = 3;
+  optional string timezone = 4;
+  // What the wizard made (an app id, a meter code, a package code), so a step that already ran is not run again.
+  optional string app = 5;
+  optional string meter = 6;
+  optional string plan = 7;
+  optional bool customer = 8;
+  optional bool event = 9;
+  // The person closed the "Getting started" card.
+  optional bool hidden = 10;
+}
+
+message Onboarding {
+  // Unset when the person has not started the wizard.
+  OnboardingWizard wizard = 1;
+  repeated string seen_tours = 2;
+}
+
+message GetMyOnboardingRequest {
+  string user_id = 1;
+}
+
+message GetMyOnboardingResponse {
+  Onboarding onboarding = 1;
+}
+
+message UpdateMyOnboardingRequest {
+  string user_id = 1;
+  OnboardingWizard wizard = 2;
+  repeated string seen_tours = 3;
+  repeated string forget_tours = 4;
+}
+
+message UpdateMyOnboardingResponse {
+  Onboarding onboarding = 1;
 }

@@ -58,11 +58,30 @@ func (c *Commands) billAdjustment(ctx context.Context, tenantID uuid.UUID, t *pl
 		if err != nil {
 			return err
 		}
-		if err := c.q.InsertCreditBalanceForAdjustment(ctx, sqlc.InsertCreditBalanceForAdjustmentParams{TenantID: tenantID, CustomerID: cuid, ID: uuid.New(), AmountMinor: -net,
+		credit, err := c.creditWithTax(ctx, tenantID, sub, -net)
+		if err != nil {
+			return err
+		}
+		if err := c.q.InsertCreditBalanceForAdjustment(ctx, sqlc.InsertCreditBalanceForAdjustmentParams{TenantID: tenantID, CustomerID: cuid, ID: uuid.New(), AmountMinor: credit,
 			SourceAdjustmentID: adjustment, Currency: inputs.OrDefault(sub.GetCurrency(), t.GetCurrency())}); err != nil {
 			return err
 		}
 	}
 	_, err := c.cfg.Inputs.Plans.MarkSubscriptionAdjustmentBilled(inputs.TenantCtx(ctx, tenantID), &plansv1.MarkSubscriptionAdjustmentBilledRequest{AdjustmentId: a.GetId()})
 	return err
+}
+
+// creditWithTax is what a change that left the customer net credit is owed: the amount and the tax on it. The unused time was paid for with tax at the customer's
+// rate, and an upgrade adds that tax to what it charges; a balance of the net alone would keep it. No tax document is produced for a balance, so the tenant
+// reverses the tax in its own books.
+func (c *Commands) creditWithTax(ctx context.Context, tenantID uuid.UUID, sub *plansv1.Subscription, net int64) (int64, error) {
+	cu, err := c.cfg.Inputs.Plans.GetCustomer(inputs.TenantCtx(ctx, tenantID), &plansv1.GetCustomerRequest{ExternalId: sub.GetCustomerExternalId()})
+	if err != nil {
+		return 0, fmt.Errorf("get customer: %w", err)
+	}
+	_, bps, ok, err := c.taxRate(ctx, tenantID, sub, cu.GetCustomer())
+	if err != nil || !ok {
+		return net, err
+	}
+	return net + rating.TaxOn(net, bps), nil
 }

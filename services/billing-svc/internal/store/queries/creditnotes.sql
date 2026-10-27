@@ -86,6 +86,11 @@ INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_ad
 VALUES (@tenant_id, @customer_id, @id, @amount_minor, @source_adjustment_id::uuid, @currency::text)
 ON CONFLICT (tenant_id, source_adjustment_id) WHERE source_adjustment_id IS NOT NULL DO NOTHING;
 
+-- name: InsertCreditBalanceForVoidedInvoice :exec
+INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_invoice_id, currency)
+VALUES (@tenant_id, @customer_id, @id, @amount_minor, @source_invoice_id::uuid, @currency::text)
+ON CONFLICT (tenant_id, source_invoice_id) WHERE source_invoice_id IS NOT NULL DO NOTHING;
+
 -- name: InsertCreditBalanceForRerating :exec
 INSERT INTO credit_balances (tenant_id, customer_id, id, amount_minor, source_rerating_job_id, currency)
 VALUES (@tenant_id, @customer_id, @id, @amount_minor, @source_rerating_job_id::uuid, @currency::text)

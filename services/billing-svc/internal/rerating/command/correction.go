@@ -123,20 +123,32 @@ func (c *Commands) finish(ctx context.Context, job *model.Job, rated int) error 
 	return c.q.CompleteReratingJob(ctx, sqlc.CompleteReratingJobParams{CompletedAt: c.cfg.Now(), CustomersRated: store.I32(rated), TenantID: job.TenantID, ID: job.ID})
 }
 
+// taxRate is a tax name and its rate in basis points; the zero value is no tax.
+type taxRate struct {
+	name string
+	bps  int32
+}
+
 // record writes one customer's outcome: a CORRECTION draft when the new price is higher, a credit balance when
-// it is lower. Both are guarded by unique indexes on the job, so a rerun does nothing.
+// it is lower. Both are guarded by unique indexes on the job, so a rerun does nothing. The invoices of the period carried tax, so a correction does too: the
+// draft gets a TAX line on what it adds, and a credit includes the tax that was paid on what is no longer owed.
 func (c *Commands) record(ctx context.Context, job *model.Job, customer uuid.UUID, snapshot json.RawMessage, currency string,
-	deltas []rating.Line, total int64, meters map[string]inputs.MeterInfo) error {
+	deltas []rating.Line, total int64, meters map[string]inputs.MeterInfo, tax taxRate) error {
 	return pgxx.InTx(ctx, c.cfg.Pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := c.q.WithTx(tx)
 		if total < 0 {
 			return q.InsertCreditBalanceForRerating(ctx, sqlc.InsertCreditBalanceForReratingParams{TenantID: job.TenantID, CustomerID: customer, ID: uuid.New(),
-				AmountMinor: -total, SourceReratingJobID: job.ID, Currency: currency})
+				AmountMinor: -total + rating.TaxOn(-total, tax.bps), SourceReratingJobID: job.ID, Currency: currency})
 		}
 		id := uuid.New()
+		taxLine, taxed := rating.TaxLine(deltas, tax.name, tax.bps)
+		invoiceTotal := total
+		if taxed {
+			invoiceTotal += taxLine.AmountMinor
+		}
 		_, err := q.InsertDraftInvoice(ctx, sqlc.InsertDraftInvoiceParams{
 			TenantID: job.TenantID, ID: id, CustomerID: customer, PeriodID: job.PeriodID, Kind: invmodel.KindCorrection, PlanVersionID: job.PlanVersionID, Currency: currency,
-			SubtotalMinor: total, TotalMinor: total, Snapshot: snapshot, ReratingJobID: &job.ID,
+			SubtotalMinor: total, TotalMinor: invoiceTotal, Snapshot: snapshot, ReratingJobID: &job.ID,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil // this job already corrected this customer
@@ -148,6 +160,9 @@ func (c *Commands) record(ctx context.Context, job *model.Job, customer uuid.UUI
 		for i, l := range deltas {
 			l.Description += " (" + job.PeriodID + ")"
 			lines[i], scales[i] = l, meters[l.MeterCode].Scale
+		}
+		if taxed {
+			lines, scales = append(lines, taxLine), append(scales, 0)
 		}
 		return invoicecmd.InsertLines(ctx, q, job.TenantID, id, lines, scales)
 	})

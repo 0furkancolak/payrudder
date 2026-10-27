@@ -217,3 +217,17 @@ func TestValidatePlanVersionTrialAndFreeTier(t *testing.T) {
 		t.Fatal("an empty version must be refused")
 	}
 }
+
+func TestValidateAppName(t *testing.T) {
+	if got, err := ValidateAppName("  Web shop \n"); err != nil || got != "Web shop" {
+		t.Errorf("a padded name = %q, %v", got, err)
+	}
+	if _, err := ValidateAppName(strings.Repeat("a", 200)); err != nil {
+		t.Errorf("200 characters: %v", err)
+	}
+	for name, in := range map[string]string{"empty": "", "blank": " \t ", "too long": strings.Repeat("a", 201)} {
+		if _, err := ValidateAppName(in); !contains(fields(t, err), "name") {
+			t.Errorf("%s: want a violation of name, got %v", name, err)
+		}
+	}
+}

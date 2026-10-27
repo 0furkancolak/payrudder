@@ -1116,7 +1116,8 @@
         "title": "A customer's credits",
         "pick": "Choose a customer",
         "balance": "credits available",
-        "nextExpiry": "Some expire {when}"
+        "nextExpiry": "Some expire {when}",
+        "empty": "Choose a customer to see their balance, the credits they hold and what happened to them."
       },
       "lots": {
         "source": "Source",
@@ -1188,6 +1189,13 @@
         "threshold": "Alert below (credits)",
         "save": "Save",
         "saved": "Saved."
+      },
+      "tabs": {
+        "lots": "Grants"
+      },
+      "sell": {
+        "title": "Sell credits",
+        "hint": "Credit packs your customers buy with a payment link, and the alert for a low balance."
       }
     },
     "accounting": {
@@ -2437,7 +2445,8 @@
         "ending_or_ended": "The subscription has already ended or is already scheduled to end.",
         "no_scheduled_cancel": "There is no scheduled cancellation to withdraw.",
         "run_by_provider": "This subscription is run by a payment provider. Change it there.",
-        "transition_not_allowed": "This cannot be done in the subscription's current state."
+        "transition_not_allowed": "This cannot be done in the subscription's current state.",
+        "quantity_needs_advance": "A quantity above 1 needs a subscription that Payrudder runs and bills in advance."
       },
       "webhook": {
         "not_configured": "Webhooks are not set up on this deployment (the secrets key is missing).",
@@ -2466,7 +2475,8 @@
       },
       "api_key": {
         "tenant_not_active": "This environment is not active, so it cannot have API keys. Finish the go-live checklist first.",
-        "bad_role": "The role must be admin, billing, read only, send usage only or custom, with known permissions."
+        "bad_role": "The role must be admin, billing, read only, send usage only or custom, with known permissions.",
+        "app_archived": "This app was deleted, so it cannot have API keys."
       },
       "change": {
         "bad_proration": "The charge for this plan change cannot be worked out for this period.",
@@ -2499,7 +2509,8 @@
         "already_completed": "The migration already completed.",
         "cannot_abort": "The migration has completed and cannot be aborted.",
         "state_not_movable": "A subscription in its current state cannot be moved to another provider.",
-        "subscription_ended": "The subscription has ended or is ending, so it cannot be moved."
+        "subscription_ended": "The subscription has ended or is ending, so it cannot be moved.",
+        "coupon_blocks_move": "This subscription has a coupon, which a provider-run or arrears-billed subscription cannot carry. Remove the coupon first."
       },
       "plan": {
         "no_fixed_fee": "This plan version has no fixed fee for that interval in this currency.",
@@ -3452,7 +3463,14 @@
       "timezone": "Time zone",
       "grace": "Grace period",
       "tenant": "Environment id",
-      "moreCurrencies": "An app can sell in many currencies: add a price in another currency to a package, under"
+      "moreCurrencies": "An app can sell in many currencies: add a price in another currency to a package, under",
+      "rename": "Save name",
+      "dangerTitle": "Danger zone",
+      "deleteBody": "Deleting an app removes it from your account: it leaves every list, its API keys stop working at once and no new keys can be made. Nothing is erased. Its customers, invoices and payments are kept for accounting and legal retention, and billing keeps working on what already exists, so cancel its subscriptions first if it should stop billing.",
+      "delete": "Delete app",
+      "confirmTitle": "Delete {name}?",
+      "confirmBody": "The app is archived: its API keys are revoked and it disappears from your account. Its billing records are kept. This cannot be undone from the console.",
+      "typeName": "Type {name} to confirm"
     },
     "goLive": {
       "title": "Go live",

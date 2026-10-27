@@ -16,8 +16,45 @@ RETURNING *;
 -- name: InsertApp :one
 INSERT INTO apps (id, account_id, name, slug) VALUES ($1, $2, $3, $4) RETURNING *;
 
+-- The apps an account shows: an archived (deleted) app is not one of them.
 -- name: ListAccountApps :many
+SELECT * FROM apps WHERE account_id = $1 AND archived_at IS NULL ORDER BY created_at, id;
+
+-- The operator also sees the archived apps (they keep their billing records).
+-- name: ListAccountAppsWithArchived :many
 SELECT * FROM apps WHERE account_id = $1 ORDER BY created_at, id;
+
+-- name: GetApp :one
+SELECT * FROM apps WHERE id = $1;
+
+-- Locks the app for the rest of the transaction, so a rename and a delete (or two deletes) of one app are taken one after the other.
+-- name: LockApp :one
+SELECT * FROM apps WHERE id = $1 FOR UPDATE;
+
+-- name: RenameApp :one
+UPDATE apps SET name = @name WHERE id = @id AND archived_at IS NULL RETURNING *;
+
+-- The tenants carry the app's name (the sandbox with its suffix): it is what the seller line of a new invoice says. Issued invoices keep their snapshot.
+-- name: RenameAppTenants :exec
+UPDATE tenants SET name = CASE WHEN environment = 'sandbox' THEN @name::text || ' (sandbox)' ELSE @name::text END
+WHERE app_id = @app_id;
+
+-- Archiving frees the slug (a new app may take it): the old one is kept recognisable, and unique through the app's own id.
+-- name: ArchiveApp :one
+UPDATE apps
+SET archived_at = now(), archived_by = @user_id,
+    slug = rtrim(left(slug, 36), '-') || '-archived-' || right(replace(id::text, '-', ''), 12)
+WHERE id = @id AND archived_at IS NULL
+RETURNING *;
+
+-- name: RevokeAppApiKeys :many
+UPDATE api_keys k SET status = 'revoked', revoked_at = COALESCE(k.revoked_at, now())
+FROM tenants t
+WHERE t.id = k.tenant_id AND t.app_id = @app_id AND k.status = 'active'
+RETURNING k.*;
+
+-- name: InsertAppAudit :exec
+INSERT INTO app_audit (id, app_id, user_id, action, detail) VALUES (@id, @app_id, @user_id, @action, @detail::jsonb);
 
 -- name: GetAccount :one
 SELECT * FROM accounts WHERE id = $1;
