@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { pickPlace } from "./ui";
 import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
 
 // Free credits and trials for the tenant's customers (phase 52): credits granted from a customer's sheet with a reason and an expiry, trial subscriptions
@@ -100,7 +101,7 @@ test.describe("free credits", () => {
     const gw = creditsGateway().on((c) => (c.path === "/v1/credit-packs" ? { body: { packs: [] } } : undefined));
     await gw.install(page);
     await openTenantPage(page, "/credits");
-    await page.getByLabel("Choose a customer").selectOption("cus_1");
+    await pickPlace(page.getByLabel("Choose a customer"), "cus_1");
     await page.getByTestId("credits-grant").click();
     const form = page.getByRole("form", { name: "Add credits" });
     await expect(page.getByRole("dialog").getByText("Free credits go into the balance of cus_1")).toBeVisible();
@@ -138,7 +139,7 @@ test.describe("trials", () => {
     const create = async (fill?: string) => {
       await page.getByTestId("subscriptions-new").click();
       const form = page.getByRole("form", { name: "new subscription" });
-      await form.getByLabel("Customer").selectOption("cus_1");
+      await pickPlace(form.getByLabel("Customer"), "cus_1");
       await form.getByLabel("Package").selectOption("pro");
       await expect(form.getByLabel("Trial days")).toHaveAttribute("placeholder", "Package default: 14 days");
       await expect(form.getByTestId("trial-hint")).toContainText("No card is needed during a trial");

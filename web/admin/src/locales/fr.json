@@ -327,6 +327,21 @@
       "outcome": "Résultat du paiement : {scenario}",
       "usage": "Consommation envoyée : {n} appels",
       "closed": "Période clôturée (sandbox) : la facturation s'exécute maintenant"
+    },
+    "components": {
+      "title": "Composants",
+      "intro": "Les contrôles communs de la console côte à côte : listes avec recherche, filtres à plusieurs valeurs et plage de dates.",
+      "single": "Un seul choix",
+      "multiple": "Plusieurs choix",
+      "creatable": "Plusieurs, ou un nouveau",
+      "remote": "Depuis une API",
+      "remoteMany": "Depuis une API, plusieurs ou nouveau",
+      "failing": "Depuis une API qui échoue une fois",
+      "pick": "Choisir un fruit",
+      "pickOrType": "Choisir ou saisir",
+      "requests": "requêtes : {n}",
+      "filter": "Statut",
+      "any": "Tout statut"
     }
   },
   "billing": {
@@ -3874,8 +3889,34 @@
     "countryPlaceholder": "Rechercher un pays",
     "placePlaceholder": "Rechercher ou saisir",
     "useTyped": "Utiliser « {value} »",
-    "useCode": "Utiliser le code {code}",
-    "geoAttribution": "Noms de lieux : GeoNames (CC BY 4.0)"
+    "useCode": "Utiliser le code {code}"
+  },
+  "combobox": {
+    "create": "Créer « {value} »",
+    "loading": "Chargement…",
+    "results": "{n} résultats",
+    "remove": "Retirer {label}",
+    "retry": "Réessayer",
+    "more": "{n} de plus, continuez à saisir pour affiner la liste"
+  },
+  "errorState": {
+    "title": {
+      "generic": "Une erreur s’est produite",
+      "notFound": "Nous n’avons pas trouvé cela",
+      "forbidden": "Vous n’y avez pas accès",
+      "unauthenticated": "Veuillez vous reconnecter",
+      "network": "Impossible de joindre le serveur"
+    },
+    "retry": "Réessayer",
+    "retrying": "Nouvel essai…",
+    "requestId": "Identifiant de requête",
+    "copyRequestId": "Copier l’identifiant de requête",
+    "home": "Retour à la console",
+    "notFoundTitle": "Page introuvable",
+    "notFoundBody": "La page que vous cherchez n’existe pas ou a été déplacée.",
+    "pageTitle": "Cette page n’a pas pu s’afficher",
+    "pageBody": "Un problème est survenu pendant l’affichage de cette page. Vos données sont en sécurité. Réessayez ou retournez à la console.",
+    "fallback": "Une erreur inattendue s’est produite. Si elle persiste, communiquez l’identifiant de requête au support."
   },
   "dash": {
     "retry": "Réessayer",

@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { PageHeader } from "@/shared/ui/page-header";
@@ -36,7 +37,7 @@ async function run(name: string, count: number) {
 
 <template>
   <PageHeader :title="t('deadLetters.title')" :description="t('deadLetters.intro', { pattern: '{queue}.dlq' })" />
-  <ErrorText :error="list.error.value" class="mb-3" />
+  <ErrorState :error="list.error.value" :retrying="list.isFetching.value" class="mb-4" @retry="list.refetch()" />
   <ErrorText :error="redrive.error.value" class="mb-3" />
   <p v-if="note" class="text-success bg-success/10 mb-3 rounded-2xl px-4 py-3 text-sm">{{ t("deadLetters.redriven", note) }}</p>
 

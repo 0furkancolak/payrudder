@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, Eye, Plus, Ticket } from "@lucide/vue";
+import { Ban, ArrowUpRight, Plus, Ticket } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
@@ -37,7 +37,7 @@ const table = useTableState<Coupon>(list, {
     target: (c, v) => (c.applies_to ?? []).length === 0 || (c.applies_to ?? []).includes(v as never),
   },
 });
-const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v) => (table.filters.value = { ...table.filters.value, [key]: String(v) }) });
+const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const stateFilter = filter("state");
 const targetFilter = filter("target");
 const stateOptions = computed(() => [
@@ -49,7 +49,7 @@ const targetOptions = computed(() => [{ value: "", label: t("billing.coupons.any
 
 const current = table.row;
 const actionsOf = (c: Coupon, i: number) => [
-  { key: "view", label: t("common.view"), icon: Eye, onSelect: () => table.open(i) },
+  { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => table.open(i) },
   ...(c.active ? [{ key: "code", label: t("billing.pricing.promotions.codes.create"), icon: Ticket, disabled: !canWrite.value, onSelect: () => emit("newCode", c.code ?? "") }] : []),
   ...(c.active ? [{ key: "deactivate", label: t("billing.pricing.coupons.deactivate"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value, onSelect: () => actions.deactivate.mutate(c.code ?? "") }] : []),
 ];
@@ -60,8 +60,8 @@ const actionsOf = (c: Coupon, i: number) => [
     <ErrorText :error="coupons.error.value" class="px-3 pb-2" />
     <ErrorText :error="actions.deactivate.error.value" class="px-3 pb-2" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.coupons.searchCoupons')" @clear="table.clear()">
-      <FilterSelect v-model="stateFilter" :label="t('billing.subscriptions.state')" :options="stateOptions" />
-      <FilterSelect v-model="targetFilter" :label="t('billing.pricing.promotions.appliesTo')" :options="targetOptions" />
+      <FilterSelect v-model="stateFilter" multiple :label="t('billing.subscriptions.state')" :options="stateOptions" />
+      <FilterSelect v-model="targetFilter" multiple :label="t('billing.pricing.promotions.appliesTo')" :options="targetOptions" />
       <template #actions>
         <Button type="button" data-testid="coupons-new" :disabled="!canWrite" @click="creating = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.coupons.new") }}</Button>
       </template>

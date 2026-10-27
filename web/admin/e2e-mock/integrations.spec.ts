@@ -177,14 +177,13 @@ test.describe("integrations: groups, marks and the other integrations", () => {
     await expect(page.getByTestId("integration-group-payments")).toContainText("Payments");
     await expect(page.getByTestId("integration-group-einvoice")).toContainText("E-invoice");
     await expect(page.getByTestId("integration-group-email")).toContainText("E-mail");
-    // Paddle and Nafru Email have a licensed mark (light and dark files); iyzico and Nilvera are shown by name, with no tile in a logo's place.
+    // Every provider with a name has an official or licensed mark (light and dark files).
     await expect(page.getByTestId("integration-card-paddle").locator('img[src="/brand/providers/paddle-light.svg"]')).toHaveCount(1);
     await expect(page.getByTestId("integration-card-paddle").locator('img[src="/brand/providers/paddle-dark.svg"]')).toHaveCount(1);
     await expect(page.getByTestId("integration-card-nafru").locator("img")).toHaveCount(1);
     for (const id of ["iyzico", "nilvera"]) {
-      await expect(page.getByTestId(`integration-card-${id}`).locator("img")).toHaveCount(0);
-      await expect(page.getByTestId(`integration-card-${id}`).locator("[data-icon], [data-logo]")).toHaveCount(0);
-      await expect(page.getByTestId(`integration-name-${id}`)).toHaveText(id === "iyzico" ? "iyzico" : "Nilvera");
+      await expect(page.getByTestId(`integration-card-${id}`).locator(`img[src="/brand/providers/${id}-light.svg"]`)).toHaveCount(1);
+      await expect(page.getByTestId(`integration-card-${id}`).locator(`img[src="/brand/providers/${id}-dark.svg"]`)).toHaveCount(1);
     }
     // Payrudder's own mail is on; the sandbox of every group names what it runs on.
     await expect(page.getByTestId("integration-state-payrudderMail")).toHaveText("Always on");

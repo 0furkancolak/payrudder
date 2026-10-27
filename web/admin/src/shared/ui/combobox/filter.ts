@@ -1,15 +1,20 @@
 import { fold } from "@/shared/lib/intl";
 
-/** What SearchSelect needs of an option (see SearchSelect.vue). */
-export interface FilterOption {
+/** One row of a combobox. */
+export interface ComboboxOption {
   value: string;
+  /** The main text, e.g. "USD · US Dollar". */
   label: string;
+  /** What the closed field (or a chip) shows instead of the label (e.g. just "USD"), to keep it short in a narrow form. */
   short?: string;
+  /** Shown at the end of the row, e.g. "$" or "UTC+03:00". */
   hint?: string;
+  /** More words the search matches, e.g. the English name of a currency shown in another language. */
   keywords?: string;
 }
+export type FilterOption = ComboboxOption;
 
-/** Makes an option out of what was typed, or null when the text is not acceptable (SearchSelect's `custom`). */
+/** Makes an option out of what was typed, or null when the text is not acceptable (the combobox's `custom`). */
 export type CustomOption = (query: string) => FilterOption | null;
 
 const text = (o: FilterOption) => fold(`${o.label} ${o.hint ?? ""} ${o.value} ${o.keywords ?? ""}`);

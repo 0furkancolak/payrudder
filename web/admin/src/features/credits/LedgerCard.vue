@@ -35,14 +35,14 @@ function clear() {
   range.value = { from: "", to: "" };
 }
 const kindTone = (k?: string) => (k === "grant" ? "success" : k === "consume" ? "info" : "neutral");
-const kindFilter = computed({ get: () => table.filters.value.kind ?? "", set: (v) => (table.filters.value.kind = String(v)) });
+const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v: string[]) => (table.filters.value.kind = v) });
 </script>
 
 <template>
   <Card class="p-3">
     <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.credits.ledger.title") }}</h2>
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
-      <FilterSelect v-model="kindFilter" :label="t('billing.credits.ledger.kind')" :options="kinds" />
+      <FilterSelect v-model="kindFilter" multiple :label="t('billing.credits.ledger.kind')" :options="kinds" />
       <DateRangePicker v-model="range" />
     </DataToolbar>
     <ErrorText :error="ledger.error.value" class="px-3" />

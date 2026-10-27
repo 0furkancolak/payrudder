@@ -327,6 +327,21 @@
       "outcome": "Resultado del pago: {scenario}",
       "usage": "Consumo enviado: {n} llamadas",
       "closed": "Periodo cerrado (sandbox): la facturación se ejecuta ahora"
+    },
+    "components": {
+      "title": "Componentes",
+      "intro": "Los controles comunes de la consola, uno junto a otro: listas con buscador, filtros de varios valores y el rango de fechas.",
+      "single": "Una opción",
+      "multiple": "Varias opciones",
+      "creatable": "Varias, o una nueva",
+      "remote": "Desde una API",
+      "remoteMany": "Desde una API, varias o nueva",
+      "failing": "Desde una API que falla una vez",
+      "pick": "Elija una fruta",
+      "pickOrType": "Elija o escriba",
+      "requests": "solicitudes: {n}",
+      "filter": "Estado",
+      "any": "Cualquier estado"
     }
   },
   "billing": {
@@ -3874,8 +3889,34 @@
     "countryPlaceholder": "Buscar un país",
     "placePlaceholder": "Buscar o escribir",
     "useTyped": "Usar «{value}»",
-    "useCode": "Usar el código {code}",
-    "geoAttribution": "Nombres de lugares: GeoNames (CC BY 4.0)"
+    "useCode": "Usar el código {code}"
+  },
+  "combobox": {
+    "create": "Crear «{value}»",
+    "loading": "Cargando…",
+    "results": "{n} resultados",
+    "remove": "Quitar {label}",
+    "retry": "Reintentar",
+    "more": "{n} más, siga escribiendo para acotar la lista"
+  },
+  "errorState": {
+    "title": {
+      "generic": "Algo salió mal",
+      "notFound": "No hemos encontrado eso",
+      "forbidden": "No tiene acceso a esto",
+      "unauthenticated": "Vuelva a iniciar sesión",
+      "network": "No se pudo conectar con el servidor"
+    },
+    "retry": "Reintentar",
+    "retrying": "Reintentando…",
+    "requestId": "ID de solicitud",
+    "copyRequestId": "Copiar el ID de solicitud",
+    "home": "Volver a la consola",
+    "notFoundTitle": "Página no encontrada",
+    "notFoundBody": "La página que busca no existe o se ha movido.",
+    "pageTitle": "No se pudo mostrar esta página",
+    "pageBody": "Algo falló al dibujar esta página. Sus datos están a salvo. Reintente o vuelva a la consola.",
+    "fallback": "Ocurrió un error inesperado. Si continúa, indique el ID de solicitud al soporte."
   },
   "dash": {
     "retry": "Reintentar",

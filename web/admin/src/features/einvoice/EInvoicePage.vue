@@ -6,6 +6,7 @@ import { Plus } from "@lucide/vue";
 import { useFormat } from "@/shared/lib/format";
 import { useTenant } from "@/features/tenants/api";
 import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -50,14 +51,14 @@ const accountOpen = ref(false);
 const list = computed(() => accounts.data.value ?? []);
 const table = useTableState(list, {
   sheet: { kind: "einvoice", id: (a) => a.environment }, searchFields: (a) => [a.provider, a.environment],
-  filters: { environment: (a, v) => a.environment === v },
+  url: true, filters: { environment: (a, v) => a.environment === v },
 });
 const environmentOptions = computed(() => [
   { value: "", label: t("einvoice.account.allEnvironments") },
   { value: "live", label: "live" },
   { value: "sandbox", label: "sandbox" },
 ]);
-const environmentFilter = computed({ get: () => table.filters.value.environment ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, environment: v }) });
+const environmentFilter = computed({ get: () => table.filters.value.environment ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, environment: v }) });
 function removeAccount(env: Environment, p: string) {
   if (window.confirm(t("einvoice.settings.confirmRemove", { provider: p, environment: env }))) actions.remove.mutate(env);
 }
@@ -70,9 +71,9 @@ const when = (v?: string) => fmt.date(v, "day", "—");
       <h2 class="text-lg font-semibold">{{ t("einvoice.account.title") }}</h2>
       <p class="text-muted-foreground text-sm">{{ t("einvoice.account.hint") }}</p>
     </div>
-    <ErrorText :error="accounts.error.value" class="px-3" />
+    <ErrorState :error="accounts.error.value" :retrying="accounts.isFetching.value" compact @retry="accounts.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="pt-3" @clear="table.clear()">
-      <FilterSelect v-model="environmentFilter" :label="t('einvoice.account.environment')" :options="environmentOptions" />
+      <FilterSelect v-model="environmentFilter" multiple :label="t('einvoice.account.environment')" :options="environmentOptions" />
       <template #actions>
         <Button type="button" @click="accountOpen = true"><Plus class="size-4" aria-hidden="true" />{{ t("einvoice.account.add") }}</Button>
       </template>

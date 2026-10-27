@@ -110,7 +110,8 @@ test.describe("seller address", () => {
     await pickPlace(form.getByLabel("City"), "kadikoy");
     await expect(form.getByLabel("City")).toHaveValue("Kadıköy");
     await expect(preview.getByTestId("preview-line")).toHaveText(["Atatürk Cd. 1", "34000 Kadıköy", "Istanbul", "TR"]);
-    await expect(form.getByTestId("geo-attribution")).toContainText("GeoNames (CC BY 4.0)");
+    // The licence is in NOTICE and docs/geo-data.md; the form shows no credit line.
+    await expect(form.getByText(/GeoNames/)).toHaveCount(0);
 
     // The United States asks for a state and a ZIP code; another country empties the region and the city of the old one.
     await pickPlace(form.getByLabel("Country", { exact: true }), "united states");

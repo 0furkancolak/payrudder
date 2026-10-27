@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
-import { Eye, Plus, X } from "@lucide/vue";
+import { ArrowUpRight, Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { inRange } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
@@ -272,8 +272,8 @@ function submit() {
             </div>
           </TableCell>
           <TableCell class="text-end tabular-nums">{{ (p.version?.prices ?? []).length }}</TableCell>
-          <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => table.open(i) }]" /></TableCell>
-</TableRow>
+          <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) }]" /></TableCell>
+        </TableRow>
       </TableBody>
     </Table>
     <p v-if="!packages.isPending.value && (packages.data.value ?? []).length === 0 && !packages.error.value" class="text-muted-foreground p-4 text-center text-sm">

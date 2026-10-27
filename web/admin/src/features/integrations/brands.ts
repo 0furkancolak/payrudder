@@ -25,11 +25,11 @@ export interface Brand {
 export const NAFRU_EMAIL_URL = "https://nafru.com";
 
 export const BRANDS: Record<IntegrationId, Brand> = {
-  iyzico: { group: "payments", name: "iyzico", url: "https://www.iyzico.com" },
+  iyzico: { group: "payments", name: "iyzico", logo: { light: "/brand/providers/iyzico-light.svg", dark: "/brand/providers/iyzico-dark.svg" }, url: "https://www.iyzico.com" },
   paddle: { group: "payments", name: "Paddle", logo: { light: "/brand/providers/paddle-light.svg", dark: "/brand/providers/paddle-dark.svg" }, url: "https://www.paddle.com" },
   banktransfer: { group: "payments", icon: Banknote },
   simulator: { group: "payments", icon: FlaskConical },
-  nilvera: { group: "einvoice", name: "Nilvera", url: "https://nilvera.com" },
+  nilvera: { group: "einvoice", name: "Nilvera", logo: { light: "/brand/providers/nilvera-light.svg", dark: "/brand/providers/nilvera-dark.svg" }, url: "https://nilvera.com" },
   webhook: { group: "einvoice", icon: Webhook },
   einvoiceSimulator: { group: "einvoice", icon: FlaskConical },
   payrudderMail: { group: "email", icon: Mail },

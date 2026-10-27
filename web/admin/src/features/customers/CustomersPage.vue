@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useParams, useRouter } from "@tanstack/vue-router";
-import { CreditCard, Eye, Gauge, Link2, MapPin, Plus, Receipt, Repeat, Users } from "@lucide/vue";
+import { CreditCard, ArrowUpRight, Gauge, Link2, MapPin, Plus, Receipt, Repeat, Users } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
@@ -18,6 +18,7 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -50,6 +51,7 @@ const range = ref<DateRange>({ from: "", to: "" });
 const table = useTableState(() => list.value.filter((c) => inRange(c.create_time, range.value)), {
   sheet: { kind: "customer", id: (c) => c.external_id },
   searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id, c.country, c.billing_currency],
+  url: true,
   filters: {
     country: (c, v) => (c.country ?? "") === v,
     currency: (c, v) => (c.billing_currency ?? "") === v,
@@ -63,7 +65,7 @@ function clear() {
   table.clear();
   range.value = { from: "", to: "" };
 }
-const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, [key]: v }) });
+const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const countryFilter = filter("country");
 const currencyFilter = filter("currency");
 const subscriptionFilter = filter("subscription");
@@ -137,7 +139,7 @@ const quotasOpen = computed({
 });
 function actionsOf(c: Customer, i: number): RowAction[] {
   return [
-    { key: "view", label: t("common.view"), icon: Eye, onSelect: () => open(i) },
+    { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => open(i) },
     { key: "subscription", label: t("billing.customers.sheet.newSubscription"), icon: Repeat, onSelect: () => newSubscription(c) },
     { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: Receipt, onSelect: () => open(i) },
     { key: "link", label: t("billing.paymentLinks.paymentLink"), icon: Link2, onSelect: () => paymentLink(c.external_id) },
@@ -173,13 +175,13 @@ function actionsOf(c: Customer, i: number): RowAction[] {
 
   <Card class="gap-0 p-3">
     <h2 class="sr-only">{{ t("shell.items.customers") }}</h2>
-    <ErrorText :error="customers.error.value" class="px-3 pb-2" />
+    <ErrorState :error="customers.error.value" :retrying="customers.isFetching.value" compact @retry="customers.refetch()" />
     <ErrorText :error="act.create.error.value" class="px-3 pb-2" />
     <DataToolbar v-if="customers.isPending.value || list.length > 0 || customers.error.value" v-model:search="table.search.value" :placeholder="t('billing.customers.searchPlaceholder')" :active="active" class="pt-2" @clear="clear">
-      <FilterSelect v-model="subscriptionFilter" :label="t('billing.customers.filters.subscription')" :options="subscriptionOptions" />
-      <FilterSelect v-model="billingFilter" :label="t('billing.customers.filters.billing')" :options="billingOptions" />
-      <FilterSelect v-model="countryFilter" :label="t('billing.customers.country')" :options="countryOptions" />
-      <FilterSelect v-model="currencyFilter" :label="t('billing.customers.currency')" :options="currencyOptions" />
+      <FilterSelect v-model="subscriptionFilter" multiple :label="t('billing.customers.filters.subscription')" :options="subscriptionOptions" />
+      <FilterSelect v-model="billingFilter" multiple :label="t('billing.customers.filters.billing')" :options="billingOptions" />
+      <FilterSelect v-model="countryFilter" multiple :label="t('billing.customers.country')" :options="countryOptions" />
+      <FilterSelect v-model="currencyFilter" multiple :label="t('billing.customers.currency')" :options="currencyOptions" />
       <DateRangePicker v-model="range" />
       <template #actions>
         <Button data-testid="customers-new" @click="creating = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.customers.new") }}</Button>

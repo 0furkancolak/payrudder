@@ -16,7 +16,7 @@ const shown = computed({ get: () => model.value ?? "", set: (v) => (model.value 
       v-model="shown"
       v-bind="$attrs"
       data-slot="native-select"
-      :class="cn('border-input bg-card h-10 w-full appearance-none rounded-xl border ps-4 pe-9 text-sm outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50', props.class)"
+      :class="cn('field h-10 w-full appearance-none rounded-xl ps-4 pe-9 text-sm disabled:cursor-not-allowed disabled:opacity-50', props.class)"
     >
       <slot />
     </select>

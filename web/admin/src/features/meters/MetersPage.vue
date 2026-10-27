@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
-import { CopyPlus, Eye, Plus, X } from "@lucide/vue";
+import { CopyPlus, ArrowUpRight, Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { useCanWrite } from "@/shared/lib/access";
@@ -38,7 +38,7 @@ const inUse = computed(() => categories(list.value));
 const aggWord = (a: string | undefined) => (a ?? "").replace("AGGREGATION_", "").toLowerCase();
 const table = useTableState(list, {
   searchFields: (m) => [m.code, m.category, m.unit_label, m.value_property],
-  filters: { category: (m, v) => (m.category ?? "").trim() === v, aggregation: (m, v) => m.aggregation === v },
+  url: true, filters: { category: (m, v) => (m.category ?? "").trim() === v, aggregation: (m, v) => m.aggregation === v },
 });
 const index = ref<number | null>(null);
 const current = computed(() => (index.value === null ? undefined : table.items.value[index.value]));
@@ -156,9 +156,9 @@ function submit() {
   <Card class="p-3">
     <ErrorText :error="meters.error.value" class="px-3" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <FilterSelect v-model="table.filters.value.category" :label="t('billing.meters.category')" :options="[{ value: '', label: t('billing.meters.allCategories') }, ...inUse.map((c) => ({ value: c }))]" />
-      <FilterSelect
-        v-model="table.filters.value.aggregation"
+      <FilterSelect v-model="table.filters.value.category" multiple :label="t('billing.meters.category')" :options="[{ value: '', label: t('billing.meters.allCategories') }, ...inUse.map((c) => ({ value: c }))]" />
+      <FilterSelect v-model="table.filters.value.aggregation"
+        multiple
         :label="t('billing.meters.aggregation')"
         :options="[{ value: '', label: t('billing.meters.allAggregations') }, ...AGGREGATIONS.map((a) => ({ value: a, label: t(`billing.meters.aggregations.${aggWord(a)}`) }))]"
       />
@@ -187,7 +187,7 @@ function submit() {
           <TableCell class="text-end" @click.stop>
             <RowActions
               :actions="[
-                { key: 'view', label: t('common.view'), icon: Eye, onSelect: () => (index = i) },
+                { key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => (index = i) },
                 ...(canWrite ? [{ key: 'version', label: t('billing.meters.newVersion'), icon: CopyPlus, onSelect: () => start(m) }] : []),
               ]"
             />

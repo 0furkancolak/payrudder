@@ -139,8 +139,5 @@ function setRegion(v: string) {
         <p v-if="problems?.city" class="text-destructive text-xs" role="alert">{{ problems.city }}</p>
       </div>
     </div>
-    <p v-if="regions.length > 0" class="text-muted-foreground text-xs" data-testid="geo-attribution">
-      <a href="https://www.geonames.org" target="_blank" rel="noopener noreferrer" class="hover:underline">{{ t("picker.geoAttribution") }}</a>
-    </p>
   </div>
 </template>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterOptions, resolveTyped } from "@/shared/ui/search-select/filter";
+import { filterOptions, resolveTyped } from "@/shared/ui/combobox/filter";
 import { countryName, countryOptions, districtOptions, findRegion, regionOptions, typedCountry, typedPlace, type GeoCountry, type GeoRegion } from "./geo";
 
 const countries: GeoCountry[] = [

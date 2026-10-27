@@ -60,7 +60,7 @@ function clear() {
   table.clear();
   range.value = { from: "", to: "" };
 }
-const whereFilter = computed({ get: () => table.filters.value.where ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, where: v }) });
+const whereFilter = computed({ get: () => table.filters.value.where ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, where: v }) });
 const whereOptions = computed(() => [{ value: "", label: t("billing.creditNotes.allWhere") }, ...WHERE.map((w) => ({ value: w, label: t(`billing.creditNotes.${w}`) }))]);
 
 type Note = (typeof list.value)[number];
@@ -75,7 +75,7 @@ const current = table.row;
     <ErrorText :error="retry.error.value" class="px-3" />
     <ErrorText :error="notes.error.value" class="px-3" />
     <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" class="pt-3" @clear="clear">
-      <FilterSelect v-model="whereFilter" :label="t('billing.creditNotes.where')" :options="whereOptions" />
+      <FilterSelect v-model="whereFilter" multiple :label="t('billing.creditNotes.where')" :options="whereOptions" />
       <DateRangePicker v-model="range" />
       <template v-if="issuable" #actions>
         <Button type="button" @click="issueOpen = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.creditNotes.new") }}</Button>

@@ -52,8 +52,8 @@ describe("the catalogue of integrations", () => {
       }
     }
   });
-  it("the providers without a licensed mark are the ones to ask the owner for", () => {
-    expect([...WITHOUT_LOGO].sort()).toEqual(["iyzico", "nilvera"]);
+  it("every provider with a name has a licensed mark", () => {
+    expect([...WITHOUT_LOGO].sort()).toEqual([]);
   });
   it("only the real services can be connected", () => {
     for (const id of CONNECTABLE) expect(["simulator", "einvoiceSimulator", "payrudderMail"]).not.toContain(id);

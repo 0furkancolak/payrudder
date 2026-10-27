@@ -1,7 +1,8 @@
 // Command geoimport makes the gateway's embedded list of countries, regions and districts (internal/geo/data/geonames.json.gz) from the GeoNames dumps.
 //
 //	go run ./cmd/geoimport                       # download the dumps and write the file (run in services/gateway)
-//	go run ./cmd/geoimport -src /path/to/dumps   # use files already downloaded (countryInfo.txt, admin1CodesASCII.txt, admin2Codes.txt, cities15000.zip)
+//	go run ./cmd/geoimport -src /path/to/dumps   # use files already downloaded (countryInfo.txt, admin1CodesASCII.txt, admin2Codes.txt, cities15000.zip,
+//	                                             # alternateNamesV2.zip)
 //
 // The same dumps and -version give the same file byte for byte. GeoNames data is CC BY 4.0: see docs/geo-data.md.
 package main
@@ -27,14 +28,15 @@ func main() {
 	out := flag.String("out", "internal/geo/data/geonames.json.gz", "file to write")
 	version := flag.String("version", "geonames-"+time.Now().UTC().Format("2006-01-02"), "name of the export, stored in the file")
 	noCities := flag.Bool("no-cities", false, "leave out the towns of cities15000 (districts are then the second-level divisions only)")
+	noAlt := flag.Bool("no-alternates", false, "do not download alternateNamesV2 (205 MB): places keep the name GeoNames gives them instead of their local or English name")
 	flag.Parse()
-	if err := run(*src, *out, *version, !*noCities); err != nil {
+	if err := run(*src, *out, *version, !*noCities, !*noAlt); err != nil {
 		fmt.Fprintln(os.Stderr, "geoimport:", err)
 		os.Exit(1)
 	}
 }
 
-func run(src, out, version string, withCities bool) error {
+func run(src, out, version string, withCities, withAlternates bool) error {
 	get := func(name string) ([]byte, error) { return fetch(src, name) }
 	countries, err := get("countryInfo.txt")
 	if err != nil {
@@ -59,6 +61,18 @@ func run(src, out, version string, withCities bool) error {
 			return err
 		}
 		s.Cities = bytes.NewReader(cities)
+	}
+	if withAlternates {
+		z, err := get("alternateNamesV2.zip")
+		if err != nil {
+			return err
+		}
+		alt, closeAlt, err := openZipped(z, "alternateNamesV2.txt")
+		if err != nil {
+			return err
+		}
+		defer closeAlt()
+		s.Alternates = alt
 	}
 	d, err := geo.Build(version, s)
 	if err != nil {
@@ -99,13 +113,23 @@ func fetch(dir, name string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("download %s: %s", name, resp.Status)
 	}
-	return io.ReadAll(io.LimitReader(resp.Body, 256<<20))
+	return io.ReadAll(io.LimitReader(resp.Body, 512<<20))
 }
 
 func unzipOne(b []byte, name string) ([]byte, error) {
-	zr, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
+	rc, closeFn, err := openZipped(b, name)
 	if err != nil {
 		return nil, err
+	}
+	defer closeFn()
+	return io.ReadAll(io.LimitReader(rc, 256<<20))
+}
+
+// openZipped streams one file of a zip archive (alternateNamesV2.txt is too big to hold unzipped).
+func openZipped(b []byte, name string) (io.Reader, func(), error) {
+	zr, err := zip.NewReader(bytes.NewReader(b), int64(len(b)))
+	if err != nil {
+		return nil, nil, err
 	}
 	for _, f := range zr.File {
 		if f.Name != name {
@@ -113,10 +137,9 @@ func unzipOne(b []byte, name string) ([]byte, error) {
 		}
 		rc, err := f.Open()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		defer func() { _ = rc.Close() }()
-		return io.ReadAll(io.LimitReader(rc, 256<<20))
+		return rc, func() { _ = rc.Close() }, nil
 	}
-	return nil, fmt.Errorf("%s not in the archive", name)
+	return nil, nil, fmt.Errorf("%s not in the archive", name)
 }

@@ -7,7 +7,7 @@ import OrgDashboard from "@/features/dashboard/OrgDashboard.vue";
 import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
 import { GettingStarted, loadProgress, OnboardingWizard, progress, wizardOpen } from "@/features/onboarding";
 import { startTourOnce, welcomeOff } from "@/shared/ui/tour";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useAccount, useApps, useMe } from "./api";
@@ -86,7 +86,7 @@ const first = computed(() => (me.data.value?.user?.display_name || me.data.value
       <Button v-if="canCreate" size="lg" @click="creating = true"><Plus />{{ t("product.home.create") }}</Button>
     </header>
 
-    <ErrorText :error="apps.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorState :error="apps.error.value" :retrying="apps.isFetching.value" class="mb-4" @retry="apps.refetch()" />
 
     <GettingStarted v-if="showChecklist" :app="list[0]" @create-app="creating = true" />
 

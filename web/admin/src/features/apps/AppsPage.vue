@@ -40,7 +40,7 @@ const revokeKey = useRevokeApiKey();
 const list = computed(() => apps.data.value?.apps ?? []);
 const table = useTableState(list, {
   sheet: { kind: "app", id: (a) => a.id }, searchFields: (a) => [a.name, a.slug, ...(a.tenants ?? []).map((e) => e.id)],
-  filters: { env: (a, v) => (a.tenants ?? []).some((e) => environmentWord(e) === v) },
+  url: "f_", filters: { env: (a, v) => (a.tenants ?? []).some((e) => environmentWord(e) === v) },
 });
 const when = (v?: string) => fmt.date(v, "day", "—");
 
@@ -109,7 +109,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
   <Card class="mb-6 p-3">
     <ErrorText :error="apps.error.value" class="px-3 pb-2" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <FilterSelect v-model="table.filters.value.env" :label="t('apps.environments')" :options="[{ value: '', label: t('apps.allEnvironments') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
+      <FilterSelect v-model="table.filters.value.env" multiple :label="t('apps.environments')" :options="[{ value: '', label: t('apps.allEnvironments') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
       <template #actions>
         <Button data-testid="apps-new" @click="creating = true"><Plus class="size-4" />{{ t("apps.new") }}</Button>
       </template>

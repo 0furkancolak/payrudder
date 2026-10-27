@@ -54,7 +54,7 @@ const rowActions = (p: Pack) => [
   ...(p.active ? [{ key: "purchase-link", label: t("billing.credits.packs.purchaseLink"), icon: Link2, onSelect: () => emit("purchaseLink", { id: p.id ?? "", name: p.name ?? "" }) }] : []),
   { key: p.active ? "withdraw" : "restore", label: p.active ? t("billing.credits.packs.withdraw") : t("billing.credits.packs.restore"), icon: p.active ? Ban : Undo2, separatorBefore: !!p.active, disabled: setActive.isPending.value, onSelect: () => setActive.mutate({ id: p.id ?? "", active: !p.active }) },
 ];
-const stateFilter = computed({ get: () => table.filters.value.state ?? "", set: (v) => (table.filters.value.state = String(v)) });
+const stateFilter = computed({ get: () => table.filters.value.state ?? [], set: (v: string[]) => (table.filters.value.state = v) });
 
 // A sheet that was closed opens clean: the last values and error are not shown again.
 watch(open, (v) => {
@@ -82,7 +82,7 @@ function submitPack() {
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.credits.packs.title") }}</h2>
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <FilterSelect v-model="stateFilter" :label="t('billing.credits.packs.state')" :options="states" />
+      <FilterSelect v-model="stateFilter" multiple :label="t('billing.credits.packs.state')" :options="states" />
       <template #actions>
         <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.credits.packs.create") }}</Button>
       </template>

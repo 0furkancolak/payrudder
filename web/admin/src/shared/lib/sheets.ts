@@ -104,6 +104,9 @@ const parse = (v: unknown): string[] =>
       : [];
 const same = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
+/** The address's search parameters as the frame last read them: what the pages keep there besides the sheets (the filters of a list) is read from here. */
+export const searchParams = ref<Record<string, unknown>>({});
+
 let routerRef: { navigate: (o: never) => Promise<unknown> } | undefined;
 let queue: Promise<unknown> = Promise.resolve();
 /**
@@ -129,6 +132,7 @@ export function useSheetUrlSync() {
     },
     { immediate: true },
   );
+  watch(search, (v) => (searchParams.value = { ...(v as Record<string, unknown>) }), { immediate: true });
   watch(names, (v) => {
     if (!same(v, fromUrl.value)) updateSearch((prev) => ({ ...prev, sheet: v.length ? v.join(",") : undefined }));
   });

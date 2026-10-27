@@ -5,7 +5,7 @@ import { toast } from "vue-sonner";
 import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
-import { Ban, Banknote, Eye, Plus } from "@lucide/vue";
+import { Ban, Banknote, ArrowUpRight, Plus } from "@lucide/vue";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -66,7 +66,7 @@ watch(
 );
 const statusOptions = computed(() => [{ value: "", label: t("affiliates.payouts.allStatuses") }, ...["open", "paid", "cancelled"].map((s) => ({ value: s, label: t(`affiliates.status.payout.${s}`) }))]);
 const actionsOf = (p: Payout, i: number) => [
-  { key: "commissions", label: t("affiliates.payouts.commissions"), icon: Eye, onSelect: () => (index.value = i) },
+  { key: "commissions", label: t("affiliates.payouts.commissions"), icon: ArrowUpRight, onSelect: () => (index.value = i) },
   ...(p.status === "open"
     ? [
         { key: "markPaid", label: t("affiliates.payouts.markPaid"), icon: Banknote, disabled: !canWrite.value, onSelect: () => pay(p) },

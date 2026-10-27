@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Eye } from "@lucide/vue";
+import { ArrowUpRight } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
@@ -13,7 +13,7 @@ import { Badge } from "@/shared/ui/badge";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -32,7 +32,7 @@ const KINDS = ["REGULAR", "CORRECTION", "CREDIT_NOTE"] as const;
 const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((inv) => inRange(inv.create_time, range.value)), {
   sheet: { kind: "invoice", id: (inv) => inv.id }, searchFields: (inv) => [inv.number, inv.period_id, inv.customer_external_id, inv.total_minor],
-  filters: { status: (inv, v) => inv.status === v, kind: (inv, v) => inv.kind === v },
+  url: true, filters: { status: (inv, v) => inv.status === v, kind: (inv, v) => inv.kind === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
 const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
@@ -40,7 +40,7 @@ function clear() {
   table.clear();
   range.value = { from: "", to: "" };
 }
-const setFilter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, [key]: v }) });
+const setFilter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const statusFilter = setFilter("status");
 const kindFilter = setFilter("kind");
 const statusOptions = computed(() => [{ value: "", label: t("tenant.allStatuses") }, ...STATUSES.map((s) => ({ value: s, label: label(t, te, "invoiceStatus", s) }))]);
@@ -58,10 +58,10 @@ useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
 </script>
 
 <template>
-  <ErrorText :error="invoices.error.value" class="px-3" />
+  <ErrorState :error="invoices.error.value" :retrying="invoices.isFetching.value" compact @retry="invoices.refetch()" />
   <DataToolbar v-if="list.length" v-model:search="table.search.value" :active="active" class="pt-2" @clear="clear">
-    <FilterSelect v-model="statusFilter" :label="t('tenant.columns.status')" :options="statusOptions" />
-    <FilterSelect v-model="kindFilter" :label="t('tenant.columns.kind')" :options="kindOptions" />
+    <FilterSelect v-model="statusFilter" multiple :label="t('tenant.columns.status')" :options="statusOptions" />
+    <FilterSelect v-model="kindFilter" multiple :label="t('tenant.columns.kind')" :options="kindOptions" />
     <DateRangePicker v-model="range" />
   </DataToolbar>
   <p v-if="list.length && !table.total.value" class="text-muted-foreground px-3 py-4 text-sm">{{ t("common.noMatches") }}</p>
@@ -89,7 +89,7 @@ useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
         <TableCell class="text-end font-medium tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
         <TableCell><Badge :variant="statusVariant(inv.status)">{{ label(t, te, "invoiceStatus", inv.status) }}</Badge></TableCell>
         <TableCell><Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ label(t, te, "sagaState", inv.saga_state) }}</Badge></TableCell>
-        <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => table.open(i) }]" /></TableCell>
+        <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) }]" /></TableCell>
       </TableRow>
     </TableBody>
   </Table>

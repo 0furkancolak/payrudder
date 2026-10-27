@@ -49,7 +49,7 @@ const z = computed(() => Math.min(31 + depth.value * 3, 48));
       :style="{ zIndex: z + 1, '--sheet-behind': behind }"
       :class="
         cn(
-          'sheet-stacked bg-card shadow-pop data-[state=open]:animate-in data-[state=closed]:animate-out fixed inset-y-0 flex w-full flex-col gap-0 transition ease-in-out data-[state=closed]:duration-200 data-[state=open]:duration-300 sm:inset-y-3 sm:max-w-md sm:rounded-3xl sm:border',
+          'sheet-stacked bg-card shadow-pop data-[state=open]:animate-in data-[state=closed]:animate-out fixed inset-y-0 flex w-full flex-col gap-0 transition ease-in-out data-[state=closed]:duration-200 data-[state=open]:duration-300 sm:inset-y-3 sm:max-w-md sm:rounded-3xl sm:border overflow-hidden overscroll-contain',
           side === 'end'
             ? 'data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right end-0 sm:end-3 rtl:data-[state=closed]:slide-out-to-left rtl:data-[state=open]:slide-in-from-left'
             : 'data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left start-0 sm:start-3 rtl:data-[state=closed]:slide-out-to-right rtl:data-[state=open]:slide-in-from-right',

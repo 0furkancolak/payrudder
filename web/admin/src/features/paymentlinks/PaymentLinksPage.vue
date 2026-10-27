@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Ban, Eye, Plus } from "@lucide/vue";
+import { Ban, ArrowUpRight, Plus } from "@lucide/vue";
 import { useParams, useSearch } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -132,7 +132,7 @@ function clear() {
 const when = (v?: string | null) => fmt.date(v, "short", "—");
 const usesOf = (l: { use_count?: number; paid_count?: number }) => t("billing.paymentLinks.usesValue", { used: l.use_count ?? 0, paid: l.paid_count ?? 0 });
 const rowActions = (l: { id?: string; status?: string }, i: number) => [
-  { key: "view", label: t("common.view"), icon: Eye, onSelect: () => (detail.value = i) },
+  { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => (detail.value = i) },
   ...(canRevoke(l) ? [{ key: "revoke", label: t("billing.paymentLinks.revoke"), icon: Ban, destructive: true, separatorBefore: true, disabled: act.revoke.isPending.value, onSelect: () => revoke(l.id) }] : []),
 ];
 const detailRows = computed(() => {

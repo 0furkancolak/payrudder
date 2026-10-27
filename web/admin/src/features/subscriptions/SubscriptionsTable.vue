@@ -36,7 +36,7 @@ const stateVariant = (s: Subscription) => (state(s) === "active" ? "success" : B
 const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((s) => inRange(s.start_time, range.value)), {
   sheet: { kind: "subscription", id: (s) => s.id }, searchFields: (s) => [s.customer_external_id, s.plan_code, s.provider],
-  filters: { state: (s, v) => state(s) === v, currency: (s, v) => s.currency === v, interval: (s, v) => s.interval === v },
+  url: true, filters: { state: (s, v) => state(s) === v, currency: (s, v) => s.currency === v, interval: (s, v) => s.interval === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
 const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
@@ -44,7 +44,7 @@ function clear() {
   table.clear();
   range.value = { from: "", to: "" };
 }
-const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, [key]: v }) });
+const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const stateFilter = filter("state");
 const currencyFilter = filter("currency");
 const intervalFilter = filter("interval");
@@ -59,7 +59,7 @@ const date = (v?: string | null) => fmt.date(v, "day", "—");
 // Trials that are about to end: a subscription then starts to be billed, so the person is told ahead (and can open them with one click).
 const ending = computed(() => trialsEndingSoon(list.value));
 function showTrials() {
-  table.filters.value = { ...table.filters.value, state: "trialing" };
+  table.filters.value = { ...table.filters.value, state: ["trialing"] };
 }
 
 const current = table.row;
@@ -80,9 +80,9 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
       <Button type="button" size="sm" variant="outline" data-testid="trials-ending-show" @click="showTrials">{{ t("billing.subscriptions.showTrials") }}</Button>
     </div>
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
-      <FilterSelect v-model="stateFilter" :label="t('billing.subscriptions.state')" :options="stateOptions" />
-      <FilterSelect v-model="currencyFilter" :label="t('billing.subscriptions.currency')" :options="currencyOptions" />
-      <FilterSelect v-model="intervalFilter" :label="t('billing.subscriptions.interval')" :options="intervalOptions" />
+      <FilterSelect v-model="stateFilter" multiple :label="t('billing.subscriptions.state')" :options="stateOptions" />
+      <FilterSelect v-model="currencyFilter" multiple :label="t('billing.subscriptions.currency')" :options="currencyOptions" />
+      <FilterSelect v-model="intervalFilter" multiple :label="t('billing.subscriptions.interval')" :options="intervalOptions" />
       <DateRangePicker v-model="range" />
       <template #actions>
         <Button data-testid="subscriptions-new" @click="emit('create')"><Plus class="size-4" />{{ t("billing.subscriptions.new") }}</Button>

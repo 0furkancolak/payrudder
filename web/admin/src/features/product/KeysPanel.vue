@@ -57,7 +57,7 @@ const list = computed(() =>
 const table = useTableState(list, {
   sheet: { kind: "key", id: (k) => k.id },
   searchFields: (k) => [k.prefix, k.id, roleOfKey(k)],
-  filters: { role: (k, v) => roleOfKey(k) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
+  url: "f_", filters: { role: (k, v) => roleOfKey(k) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
 });
 const when = (v?: string) => fmt.date(v, "day");
 const keyEnv = (k: ApiKey): Environment => envOf(k.environment);
@@ -162,8 +162,8 @@ function doRevoke() {
     <ErrorText :error="firstError(create, revoke, keys)" class="bg-destructive-soft mx-3 rounded-2xl px-4 py-3" />
 
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <FilterSelect v-model="table.filters.value.role" :label="t('product.keys.role')" :options="[{ value: '', label: t('product.keys.allRoles') }, ...KEY_ROLES.map((r) => ({ value: r, label: roleName(r) }))]" />
-      <FilterSelect v-model="table.filters.value.status" :label="t('product.keys.filterStatus')" :options="[{ value: '', label: t('product.keys.allStatuses') }, { value: 'active', label: t('product.keys.active') }, { value: 'revoked', label: t('product.keys.revoked') }]" />
+      <FilterSelect v-model="table.filters.value.role" multiple :label="t('product.keys.role')" :options="[{ value: '', label: t('product.keys.allRoles') }, ...KEY_ROLES.map((r) => ({ value: r, label: roleName(r) }))]" />
+      <FilterSelect v-model="table.filters.value.status" multiple :label="t('product.keys.filterStatus')" :options="[{ value: '', label: t('product.keys.allStatuses') }, { value: 'active', label: t('product.keys.active') }, { value: 'revoked', label: t('product.keys.revoked') }]" />
       <template v-if="canManage" #actions>
         <Button :disabled="!!gate" :title="gate ? t(`product.keys.${gate}`) : undefined" :data-testid="live ? 'new-live-key' : 'new-sandbox-key'" @click="making = true"><Plus class="size-4" />{{ t(live ? "product.keys.newLive" : "product.keys.newSandbox") }}</Button>
       </template>
