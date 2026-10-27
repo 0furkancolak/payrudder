@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
@@ -315,6 +316,39 @@ func (s CellSettings) Parse() (map[string]CellDSNs, error) {
 func (s CellSettings) CheckCells() error {
 	_, err := s.Parse()
 	return err
+}
+
+// MigrateCells makes every configured cell ready for the service: the shared schema is there and every tenant schema has the tenant migrations ts applied. Each cell
+// needs its migrator DSN. A tenant schema that fails to migrate does not stop the others; it is logged, and returned as an error only when strict (a Kubernetes job
+// that migrates and exits must not report success over a broken tenant; a serving process must not refuse to start for one).
+func (s CellSettings) MigrateCells(ctx context.Context, ts TenantSchemas, strict bool, log *slog.Logger) error {
+	cells, err := s.Parse()
+	if err != nil {
+		return err
+	}
+	names := make([]string, 0, len(cells))
+	for n := range cells {
+		names = append(names, n)
+	}
+	slices.Sort(names)
+	var errs []error
+	for _, name := range names {
+		dsn := cells[name].Migrator
+		if dsn == "" {
+			errs = append(errs, fmt.Errorf("cell %s has no migrator DSN", name))
+			continue
+		}
+		if err := EnsureShared(ctx, dsn, ts.Roles); err != nil {
+			errs = append(errs, fmt.Errorf("cell %s: %w", name, err))
+			continue
+		}
+		rep, err := MigrateTenants(ctx, dsn, ts, log)
+		log.InfoContext(ctx, "tenant schemas migrated", "cell", name, "schemas", rep.Schemas, "behind", len(rep.Applied), "failed", len(rep.Failed))
+		if err != nil && strict {
+			errs = append(errs, fmt.Errorf("cell %s: %w", name, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // Routers are the app-role and system-role routers of a process, and what closes the cell pools.

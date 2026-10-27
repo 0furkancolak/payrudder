@@ -63,8 +63,6 @@ type Config struct {
 	// CellSweep is how often a relay that serves cells visits every tenant placed in one even when nobody was notified (default 2s). A tenant is visited at
 	// once when its writer notifies; the sweep is the fallback, like PollInterval.
 	CellSweep time.Duration
-	// PlacementRefresh is how often a relay that serves cells asks the directory for the placed tenants (default 10s).
-	PlacementRefresh time.Duration
 }
 
 func (c *Config) defaults() {
@@ -82,9 +80,6 @@ func (c *Config) defaults() {
 	}
 	if c.CellSweep <= 0 {
 		c.CellSweep = 2 * time.Second
-	}
-	if c.PlacementRefresh <= 0 {
-		c.PlacementRefresh = 10 * time.Second
 	}
 }
 

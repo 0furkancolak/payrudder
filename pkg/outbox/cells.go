@@ -141,7 +141,9 @@ func (c *cellRelay) due(ctx context.Context, log *slog.Logger) []pgxx.PlacedTena
 		return nil
 	}
 
-	placed := c.list(ctx, log, false)
+	// A sweep visits what the directory says now: a tenant placed a moment ago must not wait for an old list. A notification names its tenant, which the list of the
+	// last sweep usually knows.
+	placed := c.list(ctx, log, all)
 	if all {
 		return placed
 	}
@@ -162,10 +164,10 @@ func (c *cellRelay) due(ctx context.Context, log *slog.Logger) []pgxx.PlacedTena
 	return out
 }
 
-// list is the directory's list of placed tenants: the one fetched less than PlacementRefresh ago, or a new one when it is older or when force is set. A list that
+// list is the directory's list of placed tenants: a new one when force is set, otherwise the one the last sweep fetched (less than a sweep ago). A list that
 // cannot be had leaves the last one in use.
 func (c *cellRelay) list(ctx context.Context, log *slog.Logger, force bool) []pgxx.PlacedTenant {
-	maxAge := c.r.cfg.PlacementRefresh
+	maxAge := c.r.cfg.CellSweep
 	if force {
 		maxAge = 0
 	}
@@ -196,14 +198,14 @@ func (c *cellRelay) drain(ctx context.Context, log *slog.Logger, t pgxx.PlacedTe
 	}
 }
 
-// statsPlacementAge is how old the list of placed tenants may be for the depth and the watermark, which are read every second. A tenant fenced for a move since
-// then fails its read (the fence takes the roles' access to the schema away), and the read is an error, not a smaller number.
-const statsPlacementAge = 5 * time.Second
+// StatsPlacementAge is how old the list of placed tenants may be for the numbers that are only watched (the depth, the age gauge), which are read every second. A
+// tenant fenced for a move since then fails its read (the fence takes the roles' access to the schema away), and the read is an error, not a smaller number.
+const StatsPlacementAge = 5 * time.Second
 
 // CellsDepth is the sum of the outbox depth estimates (Depth) of every tenant placed in a cell.
 func CellsDepth(ctx context.Context, router *pgxx.Router) (int64, error) {
 	var total int64
-	placed, err := router.PlacedWithin(ctx, statsPlacementAge)
+	placed, err := router.PlacedWithin(ctx, StatsPlacementAge)
 	if err != nil {
 		return 0, err
 	}
@@ -223,8 +225,12 @@ func CellsDepth(ctx context.Context, router *pgxx.Router) (int64, error) {
 // CellsWatermark is the oldest unpublished ingested_at over the outboxes of the tenants placed in cells; ok is false when they are all empty. While a tenant is
 // moving its rows are in neither place, so the answer is unknown and an error that matches tenantdir.ErrNotServing: a watermark that skipped it could let a
 // consumer close a period over events that are still unpublished.
-func CellsWatermark(ctx context.Context, router *pgxx.Router) (oldest time.Time, ok bool, err error) {
-	placed, err := router.PlacedWithin(ctx, statsPlacementAge)
+//
+// maxAge is how old the list of placed tenants may be. A tenant placed after the list was made is not in it, and a consumer must never be told that everything
+// before the watermark is published while that tenant has rows older than it: an answer that decides something (the RPC) passes 0, and an answer that is only
+// watched (a gauge) may pass a few seconds.
+func CellsWatermark(ctx context.Context, router *pgxx.Router, maxAge time.Duration) (oldest time.Time, ok bool, err error) {
+	placed, err := router.PlacedWithin(ctx, maxAge)
 	if err != nil {
 		return time.Time{}, false, err
 	}

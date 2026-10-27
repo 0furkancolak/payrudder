@@ -160,7 +160,8 @@ func migrateSchema(ctx context.Context, migratorDSN string, ts TenantSchemas, te
 	if cfg.RuntimeParams == nil {
 		cfg.RuntimeParams = map[string]string{}
 	}
-	cfg.RuntimeParams["search_path"] = SearchPath(schema)
+	// Only the schema: what a migration creates lands in it, and what a function binds (SET search_path FROM CURRENT) is the schema alone.
+	cfg.RuntimeParams["search_path"] = quoteIdent(schema)
 	connStr := stdlib.RegisterConnConfig(cfg)
 	defer stdlib.UnregisterConnConfig(connStr)
 	db, err := sql.Open("pgx", connStr)
@@ -190,8 +191,6 @@ func migrateSchema(ctx context.Context, migratorDSN string, ts TenantSchemas, te
 	}
 	return len(results), nil
 }
-
-var tenantSchemaName = regexp.MustCompile(`^t_[0-9a-f]{32}$`)
 
 // TenantSchemaIDs lists the tenants that have a schema in the database q is connected to, in id order.
 func TenantSchemaIDs(ctx context.Context, q Querier) ([]uuid.UUID, error) {

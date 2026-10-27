@@ -62,32 +62,13 @@ func (s *sink) payloads(tenant uuid.UUID) []string {
 	return out
 }
 
-// dir is a directory a test can change while a relay reads it.
-type dir struct {
-	mu sync.Mutex
-	m  tenantdir.Fixed
-}
-
-func (d *dir) set(p tenantdir.Placement) { d.mu.Lock(); d.m[p.TenantID] = p; d.mu.Unlock() }
-func (d *dir) Placement(ctx context.Context, id uuid.UUID) (tenantdir.Placement, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.m.Placement(ctx, id)
-}
-func (d *dir) Invalidate(uuid.UUID) {}
-func (d *dir) Placed(ctx context.Context, cell string) ([]tenantdir.Placement, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.m.Placed(ctx, cell)
-}
-
 type env struct {
 	pooled, cell testkit.ServiceDB
 	pooledSys    *pgxpool.Pool
 	cellSys      *pgxpool.Pool
 	cellOwner    *pgxpool.Pool
 	pooledOwner  *pgxpool.Pool
-	dir          *dir
+	dir          *testkit.Directory
 	router       *pgxx.Router
 	ts           pgxx.TenantSchemas
 }
@@ -96,7 +77,7 @@ func newEnv(t *testing.T) *env {
 	t.Helper()
 	ctx := testkit.Ctx(t)
 	pg := testkit.StartPostgres(t)
-	e := &env{dir: &dir{m: tenantdir.Fixed{}}}
+	e := &env{dir: testkit.NewDirectory()}
 	e.pooled = testkit.CreateServiceDB(t, pg, "outt")
 	if err := pgxx.Migrate(ctx, e.pooled.Migrator, outboxSQL, nil); err != nil {
 		t.Fatal(err)
@@ -127,7 +108,7 @@ func (e *env) place(t *testing.T, status tenantdir.Status) uuid.UUID {
 	if _, err := pgxx.ProvisionTenant(testkit.Ctx(t), e.cell.Migrator, e.ts, id, nil); err != nil {
 		t.Fatal(err)
 	}
-	e.dir.set(tenantdir.Placement{TenantID: id, Cell: "c1", Status: status})
+	e.dir.Set(tenantdir.Placement{TenantID: id, Cell: "c1", Status: status})
 	return id
 }
 
@@ -215,7 +196,7 @@ func TestRelayInBothModes(t *testing.T) {
 
 	t.Run("cells mode relays each placed tenant's own outbox, in order, and the pooled table too", func(t *testing.T) {
 		s := &sink{}
-		r, err := outbox.NewRelay(e.pooledSys, s, outbox.Config{BatchSize: 2, CellSweep: time.Hour, PlacementRefresh: time.Hour}, log)
+		r, err := outbox.NewRelay(e.pooledSys, s, outbox.Config{BatchSize: 2, CellSweep: time.Hour}, log)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -267,7 +248,7 @@ func TestRelayInBothModes(t *testing.T) {
 
 	t.Run("a tenant that is moving is not relayed until it serves again", func(t *testing.T) {
 		s := &sink{}
-		r, err := outbox.NewRelay(e.pooledSys, s, outbox.Config{CellSweep: 50 * time.Millisecond, PlacementRefresh: 50 * time.Millisecond}, log)
+		r, err := outbox.NewRelay(e.pooledSys, s, outbox.Config{CellSweep: 50 * time.Millisecond}, log)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -279,7 +260,7 @@ func TestRelayInBothModes(t *testing.T) {
 		if got := s.payloads(id); len(got) != 0 || e.left(t, id, true) != 1 {
 			t.Fatalf("a moving tenant was relayed: %v", got)
 		}
-		e.dir.set(tenantdir.Placement{TenantID: id, Cell: "c1", Status: tenantdir.StatusReady})
+		e.dir.Set(tenantdir.Placement{TenantID: id, Cell: "c1", Status: tenantdir.StatusReady})
 		testkit.Eventually(t, 10*time.Second, "relayed after the move", func() bool { return len(s.payloads(id)) == 1 })
 	})
 
@@ -349,7 +330,7 @@ func TestDepthAndWatermarkAcrossCells(t *testing.T) {
 	ctx := testkit.Ctx(t)
 	a, b := e.place(t, tenantdir.StatusReady), e.place(t, tenantdir.StatusReady)
 
-	if _, ok, err := outbox.CellsWatermark(ctx, e.router); err != nil || ok {
+	if _, ok, err := outbox.CellsWatermark(ctx, e.router, 0); err != nil || ok {
 		t.Fatalf("empty cells: ok=%v err=%v", ok, err)
 	}
 	if d, err := outbox.CellsDepth(ctx, e.router); err != nil || d != 0 {
@@ -363,17 +344,28 @@ func TestDepthAndWatermarkAcrossCells(t *testing.T) {
 	if err != nil || d != 3 {
 		t.Fatalf("depth = %d %v, want 3", d, err)
 	}
-	oldest, ok, err := outbox.CellsWatermark(ctx, e.router)
+	oldest, ok, err := outbox.CellsWatermark(ctx, e.router, 0)
 	if err != nil || !ok || time.Since(oldest) < 20*time.Millisecond {
 		t.Fatalf("watermark = %v %v %v, want a's first row", oldest, ok, err)
 	}
 
+	// A tenant placed after the list was made: the watermark that decides something (maxAge 0) counts it, a watched number (a long maxAge) may not yet.
+	late := e.place(t, tenantdir.StatusReady)
+	e.enqueue(t, late, true, "late")
+	oldestWithLate, _, err := outbox.CellsWatermark(ctx, e.router, 0)
+	if err != nil || oldestWithLate.After(oldest) {
+		t.Fatalf("watermark with the late tenant = %v %v, want no later than %v", oldestWithLate, err, oldest)
+	}
+	if d, err := outbox.CellsDepth(ctx, e.router); err != nil || d < 3 {
+		t.Fatalf("depth = %d %v", d, err)
+	}
+
 	// A tenant that is moving makes the watermark unknown. The router's list is at most five seconds old, so the test asks for a fresh one.
-	e.dir.set(tenantdir.Placement{TenantID: b, Cell: "c1", Status: tenantdir.StatusMoving})
+	e.dir.Set(tenantdir.Placement{TenantID: b, Cell: "c1", Status: tenantdir.StatusMoving})
 	if _, err := e.router.PlacedWithin(ctx, 0); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := outbox.CellsWatermark(ctx, e.router); !errors.Is(err, tenantdir.ErrNotServing) {
+	if _, _, err := outbox.CellsWatermark(ctx, e.router, 0); !errors.Is(err, tenantdir.ErrNotServing) {
 		t.Fatalf("watermark with a moving tenant: %v", err)
 	}
 }
