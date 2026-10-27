@@ -77,6 +77,9 @@ type Config struct {
 	GoogleRedirectURL string `env:"PAYRUDDER_GOOGLE_REDIRECT_URL"`
 	// GoogleIssuer is the OpenID provider's address. Google's by default; development points it at the in-repo mock (pkg/oidctest/cmd/mockoidc).
 	GoogleIssuer string `env:"PAYRUDDER_GOOGLE_ISSUER"`
+	// Saas is Payrudder as a SaaS (phase 55, ADR 0024): on shows organisations their plan and limits their ingest volume, off (the default) does neither.
+	// Set it the same as plans-svc.
+	Saas string `env:"PAYRUDDER_SAAS"`
 }
 
 func (c *Config) Validate() error {
@@ -96,6 +99,9 @@ func (c *Config) Validate() error {
 				errs = append(errs, fmt.Errorf("%s must be an http(s) address when Google sign-in is set up", name))
 			}
 		}
+	}
+	if _, err := config.ParseSwitch("PAYRUDDER_SAAS", c.Saas); err != nil {
+		errs = append(errs, err)
 	}
 	if _, err := parseProxies(c.TrustedProxies); err != nil {
 		errs = append(errs, err)
@@ -232,7 +238,12 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		}
 		google = oidc.New(oidc.Config{Issuer: cfg.GoogleIssuer, ClientID: cfg.GoogleClientID, ClientSecret: cfg.GoogleClientSecret, RedirectURL: redirect})
 	}
+	var saas plansv1.SaasServiceClient
+	if on, _ := config.ParseSwitch("PAYRUDDER_SAAS", cfg.Saas); on {
+		saas = plansv1.NewSaasServiceClient(up.plans)
+	}
 	return httpapi.New(httpapi.Deps{
+		Saas:           saas,
 		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL,
 		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),

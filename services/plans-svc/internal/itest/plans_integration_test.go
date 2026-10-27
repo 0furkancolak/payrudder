@@ -75,6 +75,8 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("EntitlementOutbox", testEntitlementOutbox)
 	t.Run("QuotasAndOverrides", testQuotasAndOverrides)
 	t.Run("PlanVersionsAndValidation", testPlanVersionsAndValidation)
+	t.Run("SaasOff", testSaasOff)
+	t.Run("Saas", testSaas)
 	t.Run("PromotionsMigration", testPromotionsMigration) // last: it rolls the newest migration back and forward
 }
 

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { useNavigate } from "@tanstack/vue-router";
+import { Link, useNavigate } from "@tanstack/vue-router";
 import { LogOut } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { firstError } from "@/shared/lib/errors";
 import { applyTheme, theme, type ThemeChoice } from "@/shared/lib/theme";
+import { useSaasEnabled } from "@/features/saas/api";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -20,6 +21,7 @@ const { t } = useI18n();
 const fmt = useFormat();
 const navigate = useNavigate();
 const me = useMe();
+const saas = useSaasEnabled();
 const account = useAccount();
 const signOut = useSignOut();
 
@@ -49,6 +51,11 @@ async function leave() {
       <p class="text-muted-foreground mt-1 text-sm">{{ t("product.settings.intro") }}</p>
     </header>
     <ErrorText :error="firstError(account, me)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+
+    <Link v-if="saas" to="/app/settings/plan" class="surface hover:border-ring flex flex-wrap items-center justify-between gap-2 p-5" data-testid="plan-link">
+      <span class="font-semibold">{{ t("saas.title") }}</span>
+      <span class="text-muted-foreground text-sm">{{ t("saas.linkHint") }}</span>
+    </Link>
 
     <div class="grid gap-5 lg:grid-cols-2">
       <section class="surface flex flex-col gap-4 p-6" :aria-label="t('product.settings.account')">

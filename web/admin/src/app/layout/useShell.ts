@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useApps, useAccount, useMe, type App } from "@/features/product/api";
 import { hasPartnerRole } from "@/features/product/lib";
+import { useSaasEnabled, useSaasInfo } from "@/features/saas/api";
 import { useTenant } from "@/features/tenants/api";
 import { defaultEnv, defaultOrgEnv, envEnum, findTenant, isEnvironment, type Environment } from "@/shared/lib/environment";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
@@ -30,6 +31,9 @@ export function useShell() {
   const apps = useApps();
   const account = useAccount();
   const me = useMe();
+  const saas = useSaasEnabled();
+  const saasInfo = useSaasInfo(() => isOperator.value);
+  const platformTenant = computed(() => (isOperator.value && saasInfo.data.value?.enabled ? (saasInfo.data.value.tenant_id ?? "") : ""));
   const partner = computed(() => hasPartnerRole(me.data.value?.memberships));
 
   const path = computed(() => location.value.pathname.replace(/\/+$/, "") || "/");
@@ -50,7 +54,7 @@ export function useShell() {
 
   const context = computed<ShellContext>(() => {
     if (inOperatorArea.value) {
-      return operatorTenant.value ? { level: "tenant", tenantId: operatorTenant.value } : { level: "platform" };
+      return operatorTenant.value ? { level: "tenant", tenantId: operatorTenant.value } : { level: "platform", ...(platformTenant.value ? { platformTenant: platformTenant.value } : {}) };
     }
     if (appInPath.value) {
       const app = apps.data.value?.apps?.find((a) => a.id === appInPath.value);
@@ -66,9 +70,9 @@ export function useShell() {
     // The home shows one environment at a time; the other organisation pages (members, settings) have none.
     if (path.value === "/app") {
       const env: Environment | undefined = isEnvironment(search.value.env) ? search.value.env : apps.data.value ? defaultOrgEnv(apps.data.value.apps) : undefined;
-      return { level: "org", operator: isOperator.value, partner: partner.value, ...(env ? { env } : {}) };
+      return { level: "org", operator: isOperator.value, partner: partner.value, saas: saas.value, ...(env ? { env } : {}) };
     }
-    return { level: "org", operator: isOperator.value, partner: partner.value };
+    return { level: "org", operator: isOperator.value, partner: partner.value, saas: saas.value };
   });
 
   const sections = computed<NavSection[]>(() => buildNav(context.value));

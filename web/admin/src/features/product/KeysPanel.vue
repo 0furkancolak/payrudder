@@ -8,6 +8,7 @@ import { copyText } from "@/shared/lib/clipboard";
 import { firstError } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
+import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Label } from "@/shared/ui/label";
@@ -112,6 +113,7 @@ function doRevoke() {
       <Link :to="`/app/apps/${appId}/go-live`" :search="{ env: 'live' } as never" class="text-primary font-medium underline-offset-4 hover:underline">{{ t("product.goLive.continue") }}</Link>
     </p>
     <ErrorText :error="firstError(create, revoke, keys)" class="bg-destructive-soft mx-3 rounded-2xl px-4 py-3" />
+    <UpgradeHint :error="create.error.value" class="mx-3" />
 
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="table.filters.value.env" :label="t('product.keys.filterEnv')" :options="[{ value: '', label: t('product.keys.allEnvs') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: t(`product.env.${e}`) }))]" />

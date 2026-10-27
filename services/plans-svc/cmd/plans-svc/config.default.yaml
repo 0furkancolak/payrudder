@@ -19,3 +19,15 @@ PAYRUDDER_SANDBOX_RETENTION: "2160h"
 PAYRUDDER_SANDBOX_RESET_COOLDOWN: "5m"
 # How often the job that ends the hold of affiliate commissions (pending to approved) looks. The holds are days long; an hour is plenty.
 PAYRUDDER_AFFILIATE_APPROVE_EVERY: "1h"
+# Payrudder as a SaaS (phase 55, ADR 0024). "on": a platform tenant owns the plans Free, Pro and Scale, every account is a customer of it, and the plan's limits
+# are enforced where apps, members and keys are created and on ingest volume. "off" (the default, and what a self-hoster wants): no limits, no plan page.
+# Set it on the gateway too. make setup and make dev switch it on.
+PAYRUDDER_SAAS: "off"
+# The environment of the platform tenant, chosen when it is created: "live" bills with real providers; "sandbox" uses mock-psp (development).
+PAYRUDDER_SAAS_ENVIRONMENT: "live"
+# The currency of the platform's plans, chosen when the platform tenant is created (it cannot change afterwards).
+PAYRUDDER_SAAS_CURRENCY: "USD"
+# The free trial of an organisation's first move to a paid plan, in days. 0 gives none.
+PAYRUDDER_SAAS_TRIAL_DAYS: "14"
+# How often the sweep makes accounts that are not customers of the platform tenant yet customers, on Free.
+PAYRUDDER_SAAS_SWEEP_EVERY: "1m"

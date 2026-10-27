@@ -7,6 +7,7 @@ global:
   imagePullPolicy: IfNotPresent
   environment: kind        # PAYRUDDER_ENV: local | ci | kind
   allowedEnvironments: sandbox,live   # PAYRUDDER_ALLOWED_ENVIRONMENTS of plans-svc and the gateway
+  saas: "off"                         # PAYRUDDER_SAAS of plans-svc and the gateway: "on" sells Payrudder's own plans (ADR 0024); self-hosters leave it off
   publicURL: ""             # where customers reach the gateway (https://api.example.com); the hosted invoice links start with it. Empty: relative links
   kafkaBrokers: redpanda:9092
   redisURL: redis://redis:6379/0
@@ -109,6 +110,7 @@ services:
       PAYRUDDER_PUBLIC_URL: "{{ .Values.global.publicURL }}"
       PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"
       PAYRUDDER_ALLOWED_ENVIRONMENTS: "{{ .Values.global.allowedEnvironments }}"
+      PAYRUDDER_SAAS: "{{ .Values.global.saas }}"
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
       PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
@@ -136,6 +138,7 @@ services:
       PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       PAYRUDDER_ALLOWED_ENVIRONMENTS: "{{ .Values.global.allowedEnvironments }}"
+      PAYRUDDER_SAAS: "{{ .Values.global.saas }}"
       SMTP_ADDR: "{{ .Values.smtp.addr }}"
   ingest-svc:
     kind: grpc

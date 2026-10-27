@@ -29,6 +29,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/credential"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	saasmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/model"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
 
@@ -57,6 +58,8 @@ type Commands struct {
 	appURL string
 	// pepper keys the hash of one-time sign-in codes (WithPepper); empty in development.
 	pepper []byte
+	// guard refuses apps, invitations and keys beyond the account's plan (WithGuard); nil with SaaS off.
+	guard Guard
 }
 
 // WithPepper sets the server secret that keys the hash of one-time sign-in codes. It is read from the service's environment, never from the database, so a
@@ -351,6 +354,12 @@ func (c *Commands) CreateApp(ctx context.Context, req *plansv1.CreateMyAppReques
 		if _, _, _, err := query.RequireManager(ctx, q, req.GetUserId(), req.GetAccountId()); err != nil {
 			return err
 		}
+		if err := q.LockAccount(ctx, aid.String()); err != nil {
+			return err
+		}
+		if err := c.room(ctx, tx, aid, saasmodel.Apps); err != nil {
+			return err
+		}
 		existing, err := q.ListAccountApps(ctx, aid)
 		if err != nil {
 			return err
@@ -428,7 +437,7 @@ func (c *Commands) CreateAPIKey(ctx context.Context, req *plansv1.CreateMyApiKey
 		return nil, "", errkey.New(codes.InvalidArgument, "identity.api_key.bad_scope", "scope: full, ingest or read")
 	}
 	tid, _ := uuid.Parse(target.GetId())
-	return c.keys.Issue(ctx, tid, scope)
+	return c.issueWithinPlan(ctx, app.GetAccountId(), tid, scope)
 }
 
 // Rotation overlap: the old key of a rotation keeps working for 24 hours unless the caller says otherwise, and for at most a week.

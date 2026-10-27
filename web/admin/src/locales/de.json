@@ -2391,6 +2391,20 @@
       "override": {
         "customer_required": "Geben Sie an, für welchen Kunden das Limit gilt.",
         "not_found": "Dieser Kunde hat auf diesem Zähler keine Ausnahme."
+      },
+      "saas": {
+        "disabled": "Tarife sind in dieser Installation nicht aktiviert.",
+        "quota": {
+          "apps": "Das Limit Ihres Tarifs für Apps ist erreicht. Wechseln Sie auf einen höheren Tarif, um mehr hinzuzufügen.",
+          "members": "Das Limit Ihres Tarifs für Mitglieder ist erreicht. Wechseln Sie auf einen höheren Tarif, um mehr Personen einzuladen.",
+          "api_keys": "Das Limit Ihres Tarifs für API-Schlüssel ist erreicht. Wechseln Sie auf einen höheren Tarif, um mehr zu erstellen."
+        },
+        "downgrade_blocked": "Ihre Nutzung passt nicht zu diesem Tarif. Entfernen Sie zuerst Apps, Mitglieder oder Schlüssel und versuchen Sie es erneut.",
+        "same_plan": "Die Organisation hat diesen Tarif bereits.",
+        "unknown_plan": "Diesen Tarif gibt es nicht.",
+        "bad_resource": "Das ist keine Ressource, die ein Tarif begrenzt.",
+        "platform_account": "Die eigene Organisation der Plattform hat keinen Tarif.",
+        "not_ready": "Die Tarife sind noch nicht bereit. Versuchen Sie es gleich noch einmal."
       }
     },
     "common": {
@@ -2667,6 +2681,11 @@
       "geo": {
         "country_not_found": "Dieses Land steht nicht in der Liste.",
         "region_not_found": "Diese Region steht nicht in der Liste."
+      },
+      "saas": {
+        "events_quota": "Das Ereignislimit Ihres Tarifs für diesen Monat ist erreicht. Wechseln Sie auf einen höheren Tarif, um mehr zu senden.",
+        "unavailable": "Die Tarife sind vorübergehend nicht verfügbar. Versuchen Sie es gleich noch einmal.",
+        "invoice_not_payable": "Diese Rechnung kann nicht mehr bezahlt werden."
       }
     },
     "env": {
@@ -3586,7 +3605,10 @@
       "usage": "Nutzung",
       "coupons": "Gutscheine",
       "paymentProviders": "Zahlungsanbieter",
-      "meters": "Zähler"
+      "meters": "Zähler",
+      "plan": "Tarif und Abrechnung",
+      "organisations": "Organisationen",
+      "platformPlans": "Plattform-Tarife"
     },
     "noApps": "Noch keine Apps"
   },
@@ -3783,5 +3805,82 @@
   "sheets": {
     "back": "Zurück",
     "forward": "Vor"
+  },
+  "saas": {
+    "title": "Tarif und Abrechnung",
+    "intro": "Der Tarif dieser Organisation, was sie davon nutzt, und die Rechnungen, die Payrudder dafür ausgestellt hat.",
+    "linkHint": "Tarif, Nutzung und Rechnungen",
+    "disabled": "Tarife sind in dieser Installation nicht aktiviert: Nichts wird begrenzt.",
+    "current": "Aktueller Tarif",
+    "currentBadge": "Aktuell",
+    "free": "Kostenlos",
+    "perMonth": "{price} pro Monat",
+    "perMonthShort": "pro Monat",
+    "unlimited": "Unbegrenzt",
+    "usage": "Nutzung",
+    "plans": "Tarife",
+    "invoices": "Rechnungen",
+    "noInvoices": "Noch keine Rechnungen.",
+    "portal": "Zahlungsmethode und Portal",
+    "state": {
+      "none": "Kein Abonnement",
+      "active": "Aktiv",
+      "trialing": "Testphase",
+      "past_due": "Überfällig",
+      "paused": "Pausiert"
+    },
+    "overridden": "Eigene Limits",
+    "trialEnds": "Testphase endet am {date}",
+    "trialDays": "Zum Start {n} Tage kostenlos",
+    "resource": {
+      "events": "Ereignisse",
+      "apps": "Apps",
+      "members": "Mitglieder",
+      "api_keys": "API-Schlüssel"
+    },
+    "modeHint": {
+      "hard": "Stoppt am Limit",
+      "soft": "Darf das Limit überschreiten",
+      "notify": "Benachrichtigt am Limit"
+    },
+    "ownLimit": "Für diese Organisation festgelegtes Limit",
+    "overLimit": "Über dem Limit",
+    "resets": "wird am {date} zurückgesetzt",
+    "upgradeTo": "Auf {plan} wechseln",
+    "downgradeTo": "Zu {plan} wechseln",
+    "readOnly": "Nur ein Inhaber oder Administrator kann den Tarif ändern.",
+    "changed": "Ihr Tarif ist jetzt {plan}.",
+    "confirm": {
+      "title": "Zu {plan} wechseln?",
+      "upgrade": "Der Tarif kostet {price}. Die Änderung gilt sofort.",
+      "downgrade": "Die Änderung gilt sofort. Sie wird abgelehnt, wenn Ihre Nutzung nicht zu den kleineren Limits passt; es wird nichts gelöscht.",
+      "submit": "Bestätigen"
+    },
+    "invoice": {
+      "number": "Nummer",
+      "date": "Datum",
+      "total": "Summe",
+      "status": "Status",
+      "pay": "Bezahlen"
+    },
+    "upgrade": "Tarif upgraden",
+    "admin": {
+      "title": "Organisationen",
+      "intro": "Jede Organisation mit Tarif und Nutzung. Eine Überschreibung setzt eine Organisation ohne Checkout auf einen Tarif oder gibt ihr eigene Limits.",
+      "search": "Nach Name oder Adresse des Inhabers suchen",
+      "find": "Suchen",
+      "organisation": "Organisation",
+      "plan": "Tarif",
+      "empty": "Keine Organisationen gefunden.",
+      "manage": "Verwalten",
+      "sheetIntro": "Den Tarif ohne Checkout ändern oder eigene Limits dieser Organisation festlegen.",
+      "limitsHint": "Limits: eine ganze Zahl, 0 für unbegrenzt. Ein leeres Feld lässt den Wert unverändert.",
+      "keep": "Beibehalten",
+      "badLimit": "Ein Limit ist eine ganze Zahl ab 0.",
+      "clear": "Eigene Limits entfernen",
+      "save": "Speichern",
+      "saved": "Gespeichert.",
+      "cleared": "Eigene Limits entfernt."
+    }
   }
 }

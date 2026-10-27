@@ -2626,6 +2626,84 @@ export interface paths {
         patch: operations["appRenameAccount"];
         trace?: never;
     };
+    "/app/v1/account/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The plan of the account with its quotas and the plans on offer (Payrudder as a SaaS)
+         * @description With `PAYRUDDER_SAAS=off` the answer is `{"enabled": false}` and nothing is limited. The events quota counts the events accepted by the organisation's live tenants in the calendar month; the other quotas are counted where the resource is created.
+         */
+        get: operations["appGetPlan"];
+        /**
+         * Move the account to another plan (owners and administrators)
+         * @description A paid plan starts with its trial when the account never had one; the first invoice follows when the trial ends. A move to a plan the usage does not fit is refused with `plans.saas.downgrade_blocked`; asking for the plan the account is on is `plans.saas.same_plan`.
+         */
+        put: operations["appChangePlan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/plan/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The invoices Payrudder issued to the organisation for its plan */
+        get: operations["appListPlanInvoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/plan/invoices/{id}/pay-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A payment link for an unpaid invoice of the plan (owners and administrators)
+         * @description The link is the hosted payment page of the platform tenant's own payment-link machinery; asking again for the same invoice returns a new link.
+         */
+        post: operations["appPlanInvoicePayLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/account/plan/portal-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A link to the customer portal of the plan (payment method, invoices) (owners and administrators) */
+        post: operations["appPlanPortalLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/account/invitations": {
         parameters: {
             query?: never;
@@ -3321,6 +3399,80 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/saas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether Payrudder runs as a SaaS here, and the platform tenant that owns its plans
+         * @description The platform tenant is left out of GET /admin/v1/tenants; its packages are the plans of the SaaS and are edited through the tenant routes with `X-Payrudder-Tenant`.
+         */
+        get: operations["adminGetSaas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every organisation with its plan and usage */
+        get: operations["adminListOrganizations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/organizations/{account_id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put an organisation on a plan without a checkout, and/or give it limits of its own
+         * @description The manual override. `plan_code` moves the account to the plan at once (no trial, whatever its usage); `limits` maps a resource (events, apps, members, api_keys) to a limit that replaces the plan's, `0` meaning unlimited. Resources not named keep what they have.
+         */
+        put: operations["adminSetOrganizationPlan"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/organizations/{account_id}/overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Drop the limits of the organisation's own, so its plan's apply again */
+        delete: operations["adminClearOrganizationOverrides"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4761,6 +4913,114 @@ export interface components {
             expire_time?: string;
             /** @description The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
             operator?: boolean;
+        };
+        PlanLimit: {
+            /** @enum {string} */
+            resource?: "events" | "apps" | "members" | "api_keys";
+            /**
+             * Format: int64
+             * @description 0 is unlimited
+             */
+            limit?: number;
+            /** @enum {string} */
+            mode?: "hard" | "soft" | "notify";
+        };
+        PlanOffer: {
+            code?: string;
+            name?: string;
+            version?: number;
+            /** Format: int64 */
+            base_fee_minor?: number;
+            currency?: string;
+            /** @enum {string} */
+            interval?: "month";
+            trial_days?: number;
+            limits?: components["schemas"]["PlanLimit"][];
+            current?: boolean;
+        };
+        PlanQuota: {
+            /** @enum {string} */
+            resource?: "events" | "apps" | "members" | "api_keys";
+            /** Format: int64 */
+            used?: number;
+            /** Format: int64 */
+            limit?: number;
+            unlimited?: boolean;
+            /** @enum {string} */
+            mode?: "hard" | "soft" | "notify";
+            over_limit?: boolean;
+            /** @description The limit is the organisation's own */
+            overridden?: boolean;
+            /**
+             * Format: date-time
+             * @description Only the events quota resets
+             */
+            resets_time?: string;
+        };
+        PlatformInfo: {
+            enabled?: boolean;
+            /** Format: uuid */
+            tenant_id?: string;
+            /** @enum {string} */
+            environment?: "sandbox" | "live";
+            currency?: string;
+        };
+        OrganizationPlan: {
+            enabled?: boolean;
+            /** Format: uuid */
+            account_id?: string;
+            plan?: components["schemas"]["PlanOffer"];
+            /** @enum {string} */
+            state?: "none" | "active" | "trialing" | "past_due" | "paused";
+            /** Format: date-time */
+            trial_end_time?: string;
+            overridden?: boolean;
+            quotas?: components["schemas"]["PlanQuota"][];
+            offers?: components["schemas"]["PlanOffer"][];
+            can_manage?: boolean;
+            /** Format: uuid */
+            customer_id?: string;
+            /** Format: uuid */
+            subscription_id?: string;
+        };
+        PlanInvoice: {
+            /** Format: uuid */
+            id?: string;
+            number?: string;
+            /** @description open, paid, void ... */
+            status?: string;
+            currency?: string;
+            /** Format: int64 */
+            total_minor?: number;
+            /** Format: date-time */
+            create_time?: string;
+            /** Format: date-time */
+            finalize_time?: string;
+        };
+        OrganizationRow: {
+            /** Format: uuid */
+            account_id?: string;
+            name?: string;
+            owner_email?: string;
+            plan_code?: string;
+            plan_name?: string;
+            state?: string;
+            overridden?: boolean;
+            /** Format: int64 */
+            apps?: number;
+            /** Format: int64 */
+            members?: number;
+            /** Format: int64 */
+            api_keys?: number;
+            /** Format: int64 */
+            events_used?: number;
+            /**
+             * Format: int64
+             * @description 0 is unlimited
+             */
+            events_limit?: number;
+            /** Format: date-time */
+            create_time?: string;
         };
         MyAccount: {
             /** Format: uuid */
@@ -11526,6 +11786,148 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    appGetPlan: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationPlan"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appChangePlan: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    plan_code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationPlan"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appListPlanInvoices: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        invoices?: components["schemas"]["PlanInvoice"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appPlanInvoicePayLink: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url?: string;
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appPlanPortalLink: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        url?: string;
+                        /** Format: date-time */
+                        expires_at?: string;
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
     appListInvitations: {
         parameters: {
             query?: {
@@ -12917,6 +13319,112 @@ export interface operations {
                     };
                 };
             };
+        };
+    };
+    adminGetSaas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformInfo"];
+                };
+            };
+        };
+    };
+    adminListOrganizations: {
+        parameters: {
+            query?: {
+                page_size?: number;
+                page_token?: string;
+                /** @description Part of the name or the owner's address */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        organizations?: components["schemas"]["OrganizationRow"][];
+                        next_page_token?: string;
+                        platform?: components["schemas"]["PlatformInfo"];
+                    };
+                };
+            };
+            409: components["responses"]["Error"];
+        };
+    };
+    adminSetOrganizationPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    plan_code?: string;
+                    limits?: {
+                        [key: string]: number;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationPlan"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    adminClearOrganizationOverrides: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                account_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cleared */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     adminListInvoices: {

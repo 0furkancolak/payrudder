@@ -85,6 +85,8 @@ const idleSandboxTenants = `-- name: IdleSandboxTenants :many
 SELECT t.id AS tenant_id, t.app_id
 FROM tenants t
 WHERE t.environment = 'sandbox'
+  -- The platform's own tenant (phase 55) holds the plans and the customers of the SaaS: it is never idle.
+  AND NOT EXISTS (SELECT 1 FROM accounts a WHERE a.id = t.account_id AND a.platform)
   AND GREATEST(
         t.created_at,
         COALESCE((SELECT max(k.last_used_at) FROM api_keys k WHERE k.tenant_id = t.id), t.created_at),

@@ -20,3 +20,6 @@ PAYRUDDER_OPERATOR_EMAILS: ""
 # Networks (CIDRs, comma separated) of proxies whose X-Forwarded-For is believed even from a public address. Empty by default: only a private or loopback peer,
 # and only with PAYRUDDER_TRUST_FORWARDED_FOR. For Cloudflare use PAYRUDDER_TRUSTED_PROXY_SECRET (environment only) instead: Worker egress addresses are not stable.
 PAYRUDDER_TRUSTED_PROXIES: ""
+# Payrudder as a SaaS (phase 55, ADR 0024): "on" shows organisations their plan and refuses their events over the plan's hard events quota, metering the rest into the
+# platform tenant. "off" (the default, and what a self-hoster wants): none of it. Set it the same as plans-svc. make setup and make dev switch it on.
+PAYRUDDER_SAAS: "off"

@@ -370,6 +370,9 @@ func (s *devSeeder) seedPerson(p devPerson) error {
 		}
 	}
 	hdr := map[string]string{"Authorization": "Bearer " + so.Token}
+	if err := s.ensureDevPlan(acct.AccountID); err != nil {
+		return err
+	}
 	var apps struct {
 		Apps []appJSON `json:"apps"`
 	}
@@ -402,4 +405,21 @@ func (s *devSeeder) seedPerson(p devPerson) error {
 		}
 	}
 	return nil
+}
+
+// ensureDevPlan puts the account on the Scale plan when the stack runs Payrudder as a SaaS (PAYRUDDER_SAAS=on, what make dev does): the seed makes two apps for
+// the first person, which the Free plan would refuse. The operator's manual override is the same call the console makes; with SaaS off there is nothing to do.
+func (s *devSeeder) ensureDevPlan(account string) error {
+	var info struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := s.operator("GET", "/admin/v1/saas", nil, &info); err != nil || !info.Enabled {
+		return nil
+	}
+	var body struct {
+		PlanCode string `json:"plan_code"`
+	}
+	body.PlanCode = "scale"
+	s.logf("%s: on the Scale plan (SaaS is on)", account)
+	return s.operator("PUT", "/admin/v1/organizations/"+account+"/plan", body, nil)
 }

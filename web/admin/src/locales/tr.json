@@ -2391,6 +2391,20 @@
       "override": {
         "customer_required": "Sınırın hangi müşteri için olduğunu belirtin.",
         "not_found": "Bu müşterinin o sayaçta istisnası yok."
+      },
+      "saas": {
+        "disabled": "Bu kurulumda planlar etkin değil.",
+        "quota": {
+          "apps": "Planınızın uygulama limitine ulaşıldı. Daha fazlasını eklemek için planı yükseltin.",
+          "members": "Planınızın üye limitine ulaşıldı. Daha fazla kişi davet etmek için planı yükseltin.",
+          "api_keys": "Planınızın API anahtarı limitine ulaşıldı. Daha fazlasını oluşturmak için planı yükseltin."
+        },
+        "downgrade_blocked": "Kullanımınız bu plana sığmıyor. Önce uygulama, üye veya anahtarları kaldırın, sonra yeniden deneyin.",
+        "same_plan": "Organizasyon zaten bu planda.",
+        "unknown_plan": "Böyle bir plan yok.",
+        "bad_resource": "Bu, bir planın sınırladığı bir kaynak değil.",
+        "platform_account": "Platformun kendi organizasyonunun planı yoktur.",
+        "not_ready": "Planlar henüz hazır değil. Biraz sonra yeniden deneyin."
       }
     },
     "common": {
@@ -2667,6 +2681,11 @@
       "geo": {
         "country_not_found": "Listede böyle bir ülke yok.",
         "region_not_found": "Listede böyle bir bölge yok."
+      },
+      "saas": {
+        "events_quota": "Planınızın bu ayki olay limitine ulaşıldı. Daha fazla göndermek için planı yükseltin.",
+        "unavailable": "Planlar geçici olarak kullanılamıyor. Biraz sonra yeniden deneyin.",
+        "invoice_not_payable": "Bu fatura artık ödenemez."
       }
     },
     "env": {
@@ -3586,7 +3605,10 @@
       "usage": "Kullanım",
       "coupons": "Kuponlar",
       "paymentProviders": "Ödeme sağlayıcıları",
-      "meters": "Sayaçlar"
+      "meters": "Sayaçlar",
+      "plan": "Plan ve faturalama",
+      "organisations": "Organizasyonlar",
+      "platformPlans": "Platform planları"
     },
     "noApps": "Henüz uygulama yok"
   },
@@ -3783,5 +3805,82 @@
   "sheets": {
     "back": "Geri",
     "forward": "İleri"
+  },
+  "saas": {
+    "title": "Plan ve faturalama",
+    "intro": "Bu organizasyonun planı, ne kadarını kullandığı ve Payrudder'ın kestiği faturalar.",
+    "linkHint": "Plan, kullanım ve faturalar",
+    "disabled": "Bu kurulumda planlar etkin değil: hiçbir şey sınırlanmıyor.",
+    "current": "Mevcut plan",
+    "currentBadge": "Mevcut",
+    "free": "Ücretsiz",
+    "perMonth": "Aylık {price}",
+    "perMonthShort": "aylık",
+    "unlimited": "Sınırsız",
+    "usage": "Kullanım",
+    "plans": "Planlar",
+    "invoices": "Faturalar",
+    "noInvoices": "Henüz fatura yok.",
+    "portal": "Ödeme yöntemi ve portal",
+    "state": {
+      "none": "Abonelik yok",
+      "active": "Etkin",
+      "trialing": "Deneme",
+      "past_due": "Gecikmiş",
+      "paused": "Duraklatıldı"
+    },
+    "overridden": "Özel limitler",
+    "trialEnds": "deneme {date} tarihinde biter",
+    "trialDays": "Başlangıçta {n} gün ücretsiz",
+    "resource": {
+      "events": "Olaylar",
+      "apps": "Uygulamalar",
+      "members": "Üyeler",
+      "api_keys": "API anahtarları"
+    },
+    "modeHint": {
+      "hard": "Limitte durur",
+      "soft": "Limiti aşabilir",
+      "notify": "Limitte bildirir"
+    },
+    "ownLimit": "Bu organizasyon için belirlenen limit",
+    "overLimit": "Limit aşıldı",
+    "resets": "{date} tarihinde sıfırlanır",
+    "upgradeTo": "{plan} planına yükselt",
+    "downgradeTo": "{plan} planına geç",
+    "readOnly": "Planı yalnızca sahip veya yönetici değiştirebilir.",
+    "changed": "Planınız artık {plan}.",
+    "confirm": {
+      "title": "{plan} planına geçilsin mi?",
+      "upgrade": "Planın ücreti {price}. Değişiklik hemen uygulanır.",
+      "downgrade": "Değişiklik hemen uygulanır. Kullanımınız daha küçük limitlere sığmıyorsa reddedilir; hiçbir şey silinmez.",
+      "submit": "Onayla"
+    },
+    "invoice": {
+      "number": "Numara",
+      "date": "Tarih",
+      "total": "Toplam",
+      "status": "Durum",
+      "pay": "Öde"
+    },
+    "upgrade": "Planı yükselt",
+    "admin": {
+      "title": "Organizasyonlar",
+      "intro": "Her organizasyon planı ve kullanımıyla. Bir geçersiz kılma, birini ödeme adımı olmadan bir plana alır veya ona özel limitler verir.",
+      "search": "Ada veya sahibin adresine göre ara",
+      "find": "Ara",
+      "organisation": "Organizasyon",
+      "plan": "Plan",
+      "empty": "Organizasyon bulunamadı.",
+      "manage": "Yönet",
+      "sheetIntro": "Planı ödeme adımı olmadan değiştirin veya bu organizasyona özel limitler belirleyin.",
+      "limitsHint": "Limitler: tam sayı, sınırsız için 0. Olduğu gibi kalması için alanı boş bırakın.",
+      "keep": "Koru",
+      "badLimit": "Limit 0 ve üzeri bir tam sayıdır.",
+      "clear": "Özel limitleri kaldır",
+      "save": "Kaydet",
+      "saved": "Kaydedildi.",
+      "cleared": "Özel limitler kaldırıldı."
+    }
   }
 }

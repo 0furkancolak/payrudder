@@ -108,3 +108,7 @@ Fairness beyond rate limits (partition hot-spotting, lag isolation) is in [07-co
 4. A deployment running `values-sandbox.yaml` (`PAYRUDDER_ALLOWED_ENVIRONMENTS=sandbox`) creates only the sandbox tenant.
 5. Off-boarding (out of scope for v1): documented as revoke keys → final billing run → data export → delete by
    `tenant_id` per service. RLS makes "delete everything of tenant X" a straightforward `DELETE ... WHERE tenant_id = $1` as `_system`.
+
+## Payrudder's own plans (phase 55)
+
+With `PAYRUDDER_SAAS=on` one account is the **platform account** and its tenant owns Payrudder's own plans; every other account is a customer of that tenant ([ADR 0024](adr/0024-payrudder-as-a-saas.md)). The platform tenant is an ordinary tenant under forced RLS: no other tenant sees its plans, customers or subscriptions (tested), plans-svc reads it on the system pool naming the platform tenant in every statement and writes it only through the `PlansService` handlers acting as that tenant. Creating an app, an invitation or an API key takes the account's advisory lock and checks the plan's hard limit in the same transaction; ingest of a live tenant is limited and metered at the gateway. The platform tenant is never swept as an idle sandbox.

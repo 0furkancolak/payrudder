@@ -2543,6 +2543,84 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /app/v1/account/plan:
+    get:
+      operationId: appGetPlan
+      tags: [Product]
+      summary: The plan of the account with its quotas and the plans on offer (Payrudder as a SaaS)
+      description: >
+        With `PAYRUDDER_SAAS=off` the answer is `{"enabled": false}` and nothing is limited. The events quota counts the events accepted by the organisation's live tenants in
+        the calendar month; the other quotas are counted where the resource is created.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/OrganizationPlan" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: appChangePlan
+      tags: [Product]
+      summary: Move the account to another plan (owners and administrators)
+      description: >
+        A paid plan starts with its trial when the account never had one; the first invoice follows when the trial ends. A move to a plan the usage does not fit is refused
+        with `plans.saas.downgrade_blocked`; asking for the plan the account is on is `plans.saas.same_plan`.
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan_code]
+              properties:
+                plan_code: { type: string }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/OrganizationPlan" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /app/v1/account/plan/invoices:
+    get:
+      operationId: appListPlanInvoices
+      tags: [Product]
+      summary: The invoices Payrudder issued to the organisation for its plan
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { invoices: { type: array, items: { $ref: "#/components/schemas/PlanInvoice" } } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/account/plan/invoices/{id}/pay-link:
+    post:
+      operationId: appPlanInvoicePayLink
+      tags: [Product]
+      summary: A payment link for an unpaid invoice of the plan (owners and administrators)
+      description: The link is the hosted payment page of the platform tenant's own payment-link machinery; asking again for the same invoice returns a new link.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: account_id, in: query, schema: { type: string, format: uuid } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /app/v1/account/plan/portal-link:
+    post:
+      operationId: appPlanPortalLink
+      tags: [Product]
+      summary: A link to the customer portal of the plan (payment method, invoices) (owners and administrators)
+      security: [{ sessionToken: [] }]
+      parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { url: { type: string }, expires_at: { type: string, format: date-time } } } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /app/v1/account/invitations:
     get:
       operationId: appListInvitations
@@ -3363,6 +3441,68 @@ paths:
                 properties:
                   tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
                   next_page_token: { type: string }
+  /admin/v1/saas:
+    get:
+      operationId: adminGetSaas
+      summary: Whether Payrudder runs as a SaaS here, and the platform tenant that owns its plans
+      description: The platform tenant is left out of GET /admin/v1/tenants; its packages are the plans of the SaaS and are edited through the tenant routes with `X-Payrudder-Tenant`.
+      security: [{ operatorToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PlatformInfo" } } } }
+  /admin/v1/organizations:
+    get:
+      operationId: adminListOrganizations
+      summary: Every organisation with its plan and usage
+      security: [{ operatorToken: [] }]
+      parameters:
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+        - { name: q, in: query, schema: { type: string }, description: Part of the name or the owner's address }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  organizations: { type: array, items: { $ref: "#/components/schemas/OrganizationRow" } }
+                  next_page_token: { type: string }
+                  platform: { $ref: "#/components/schemas/PlatformInfo" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/organizations/{account_id}/plan:
+    put:
+      operationId: adminSetOrganizationPlan
+      summary: Put an organisation on a plan without a checkout, and/or give it limits of its own
+      description: >
+        The manual override. `plan_code` moves the account to the plan at once (no trial, whatever its usage); `limits` maps a resource (events, apps, members, api_keys) to a
+        limit that replaces the plan's, `0` meaning unlimited. Resources not named keep what they have.
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: account_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                plan_code: { type: string }
+                limits: { type: object, additionalProperties: { type: integer, format: int64, minimum: 0 } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/OrganizationPlan" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/organizations/{account_id}/overrides:
+    delete:
+      operationId: adminClearOrganizationOverrides
+      summary: Drop the limits of the organisation's own, so its plan's apply again
+      security: [{ operatorToken: [] }]
+      parameters: [{ name: account_id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "204": { description: Cleared }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/invoices:
     get:
       operationId: adminListInvoices
@@ -4893,6 +5033,82 @@ components:
         memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
         expire_time: { type: string, format: date-time }
         operator: { type: boolean, description: "The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again." }
+    PlanLimit:
+      type: object
+      properties:
+        resource: { type: string, enum: [events, apps, members, api_keys] }
+        limit: { type: integer, format: int64, description: 0 is unlimited }
+        mode: { type: string, enum: [hard, soft, notify] }
+    PlanOffer:
+      type: object
+      properties:
+        code: { type: string }
+        name: { type: string }
+        version: { type: integer }
+        base_fee_minor: { type: integer, format: int64 }
+        currency: { type: string }
+        interval: { type: string, enum: [month] }
+        trial_days: { type: integer }
+        limits: { type: array, items: { $ref: "#/components/schemas/PlanLimit" } }
+        current: { type: boolean }
+    PlanQuota:
+      type: object
+      properties:
+        resource: { type: string, enum: [events, apps, members, api_keys] }
+        used: { type: integer, format: int64 }
+        limit: { type: integer, format: int64 }
+        unlimited: { type: boolean }
+        mode: { type: string, enum: [hard, soft, notify] }
+        over_limit: { type: boolean }
+        overridden: { type: boolean, description: The limit is the organisation's own, set by the operator }
+        resets_time: { type: string, format: date-time, description: Only the events quota resets }
+    PlatformInfo:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        tenant_id: { type: string, format: uuid }
+        environment: { type: string, enum: [sandbox, live] }
+        currency: { type: string }
+    OrganizationPlan:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        account_id: { type: string, format: uuid }
+        plan: { $ref: "#/components/schemas/PlanOffer" }
+        state: { type: string, enum: [none, active, trialing, past_due, paused] }
+        trial_end_time: { type: string, format: date-time }
+        overridden: { type: boolean }
+        quotas: { type: array, items: { $ref: "#/components/schemas/PlanQuota" } }
+        offers: { type: array, items: { $ref: "#/components/schemas/PlanOffer" } }
+        can_manage: { type: boolean }
+        customer_id: { type: string, format: uuid }
+        subscription_id: { type: string, format: uuid }
+    PlanInvoice:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: string }
+        status: { type: string, description: "open, paid, void ..." }
+        currency: { type: string }
+        total_minor: { type: integer, format: int64 }
+        create_time: { type: string, format: date-time }
+        finalize_time: { type: string, format: date-time }
+    OrganizationRow:
+      type: object
+      properties:
+        account_id: { type: string, format: uuid }
+        name: { type: string }
+        owner_email: { type: string }
+        plan_code: { type: string }
+        plan_name: { type: string }
+        state: { type: string }
+        overridden: { type: boolean }
+        apps: { type: integer, format: int64 }
+        members: { type: integer, format: int64 }
+        api_keys: { type: integer, format: int64 }
+        events_used: { type: integer, format: int64 }
+        events_limit: { type: integer, format: int64, description: 0 is unlimited }
+        create_time: { type: string, format: date-time }
     MyAccount:
       type: object
       properties:

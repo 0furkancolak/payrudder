@@ -28,6 +28,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
+	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
@@ -102,6 +103,9 @@ type env struct {
 	// runner runs the sandbox resets (a test calls RunOnce itself, so nothing happens behind its back); remotes records what the other services were asked.
 	runner  *sandbox.Runner
 	remotes *recordingRemotes
+	// saas are the SaaS commands (Bootstrap, SweepOnce) and saasAPI the gRPC client of SaasService (phase 55).
+	saas    *saascmd.Commands
+	saasAPI plansv1.SaasServiceClient
 }
 
 var (
@@ -115,6 +119,12 @@ var (
 
 // newEnv starts (once per package) Postgres with a migrated plans_db and returns a server with the given environments.
 func newEnv(t *testing.T, allowedEnvs ...string) *env {
+	t.Helper()
+	return newEnvWith(t, saascmd.Config{}, allowedEnvs...)
+}
+
+// newEnvWith is newEnv with the SaaS mode (phase 55) set as given; the zero Config is off, as in every other test.
+func newEnvWith(t *testing.T, saasCfg saascmd.Config, allowedEnvs ...string) *env {
 	t.Helper()
 	if len(allowedEnvs) == 0 {
 		allowedEnvs = []string{"sandbox", "live"}
@@ -152,9 +162,9 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 	mail := &recordingMail{}
 	remotes := &recordingRemotes{}
 	sbx, runner := sandboxapi.Wire(system, remotes.steps(), time.Hour, sandbox.Settings{Retention: time.Hour}, log)
-	grpcapi.Register(srv, grpcapi.Deps{
+	saas := grpcapi.Register(srv, grpcapi.Deps{
 		AppPool: app, SystemPool: system, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, Box: box, WebhookAllowPrivate: true,
-		Mail: mail, AppURL: testAppURL, OTPPepper: testPepper, Sandbox: sbx,
+		Mail: mail, AppURL: testAppURL, OTPPepper: testPepper, Sandbox: sbx, Saas: saasCfg,
 	})
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()
@@ -165,7 +175,7 @@ func newEnv(t *testing.T, allowedEnvs ...string) *env {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = cc.Close() })
-	return &env{runner: runner, remotes: remotes, db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
+	return &env{saas: saas, saasAPI: plansv1.NewSaasServiceClient(cc), runner: runner, remotes: remotes, db: shared.db, app: app, system: system, plans: plansv1.NewPlansServiceClient(cc),
 		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 

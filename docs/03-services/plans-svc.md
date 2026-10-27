@@ -219,3 +219,12 @@ what it publishes for each subscription, and a change republishes every subscrip
 meter no plan limits becomes a tombstone). Meters have a free-form `category` (at most 64 characters) and a free-form `unit_label` (at most 32
 characters). Year and lifetime windows and the `UNIQUE`/`LAST` aggregations are not offered: the counters could not keep them truthfully (see
 limits-svc).
+
+## As built: Payrudder as a SaaS (Phase 55)
+
+- Module `internal/saas` (`model` the pure rules and the seeded plans, `query` the platform tenant, an organisation's standing and the views, `command` bootstrap, ensure, guard, plan change, overrides, sweep, and `grpc.go`): `SaasService` (`GetPlatform`, `GetMyPlan`, `ChangeMyPlan`, `ResolveIngestPolicy`, and for the operator `ListOrganizations`, `SetOrganizationPlan`, `ClearOrganizationOverrides`). Migration `00053_saas.sql` adds `accounts.platform` (a unique partial index allows one).
+- `PAYRUDDER_SAAS` (`on` or `off`, default off), `PAYRUDDER_SAAS_ENVIRONMENT` (`live` or `sandbox`, chosen when the platform tenant is made), `PAYRUDDER_SAAS_CURRENCY`, `PAYRUDDER_SAAS_TRIAL_DAYS`, `PAYRUDDER_SAAS_SWEEP_EVERY`. At start, with the mode on, `Bootstrap` makes the platform account, app and tenant (under a *tried* advisory lock, so replicas starting together neither duplicate nor each hold a pooled connection while waiting) and seeds the meters and the plans whose code does not exist; an edited plan is never overwritten. A sweep every minute makes accounts without a subscription in force customers on Free.
+- The identity module gets a `Guard` (`WithGuard`): `CreateApp`, `InviteMember` and `CreateAPIKey` call `RequireRoom` under `LockAccount`; the key check holds the lock in a transaction of its own around the issue. Rotation does not take a place. Accepting an invitation takes none (the invitation held it).
+- The limit of an organisation is its override on the meter, else the entitlement of the plan version of its subscription in force, else the latest Free's; absent means unlimited.
+- Plan changes: `ChangePlan` ends the subscription in force now (crediting an unused fee paid in advance) and starts the next, with the trial once; a failed start puts the old plan back; `same_plan` and `downgrade_blocked` guard a person's move, the operator's skips them.
+- The sandbox retention sweep skips the platform account's tenant.
