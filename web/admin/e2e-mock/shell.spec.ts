@@ -106,8 +106,9 @@ test.describe("sidebar on a desktop", () => {
       Object.defineProperty(window, "localStorage", { get: () => { throw new Error("blocked"); } });
     });
     await open(page);
-    // Nothing can be remembered, so the home's tour starts by itself; it is out of the way of what this test is about.
-    await page.getByTestId("tour-skip").click();
+    // Nothing can be remembered, so the home's tour starts by itself (once the server has answered, which can take a while on a loaded runner);
+    // it is out of the way of what this test is about, and the test does not depend on it starting.
+    await page.getByTestId("tour-skip").click({ timeout: 20_000 }).catch(() => undefined);
     await expect(page.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "false");
     await page.getByTestId("sidebar-toggle").click();
     await expect(page.getByTestId("sidebar")).toHaveAttribute("data-collapsed", "true");
