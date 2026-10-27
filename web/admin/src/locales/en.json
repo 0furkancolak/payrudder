@@ -605,7 +605,7 @@
       "monthly": "Monthly",
       "yearly": "Yearly",
       "change": {
-        "title": "Change plan or interval",
+        "title": "Change plan, interval or seats",
         "plan": "New package",
         "keepPlan": "Keep package",
         "interval": "New interval",
@@ -630,7 +630,12 @@
         "due": "{amount} is invoiced now",
         "creditAdded": "{amount} is added to the credit balance",
         "scheduled": "Scheduled: {plan} ({interval}) from {date}",
-        "withdraw": "Withdraw"
+        "withdraw": "Withdraw",
+        "seats": "New number of seats",
+        "keepSeats": "Seats: keep {n}",
+        "seatsHint": "A change of seats alone is immediate and prorated: more seats are charged for the rest of the period, fewer seats become a credit. Preview shows the amount.",
+        "seatsAfter": "Seats after the change",
+        "scheduledSeats": "Scheduled: {plan} ({interval}), {seats} seats from {date}"
       },
       "providerRun": {
         "title": "Run by {provider}",
@@ -658,7 +663,12 @@
       "trialEnds": "trial ends {date}",
       "trialsEnding": "{n} trial ends within {days} days | {n} trials end within {days} days",
       "showTrials": "Show trials",
-      "trialBanner": "The trial ends {date}, in {n} day. No card is needed until then; the first fee is invoiced when it ends. | The trial ends {date}, in {n} days. No card is needed until then; the first fee is invoiced when it ends."
+      "trialBanner": "The trial ends {date}, in {n} day. No card is needed until then; the first fee is invoiced when it ends. | The trial ends {date}, in {n} days. No card is needed until then; the first fee is invoiced when it ends.",
+      "seats": "Seats",
+      "seatsDefault": "Seats (default 1)",
+      "seatsHint": "The fixed fee is multiplied by the seats; usage prices are not. Only for a subscription Payrudder runs and bills in advance.",
+      "seatsBad": "Seats must be a whole number from 1 to {max}.",
+      "seatsCount": "{n} seat | {n} seats"
     },
     "payments": {
       "reconcile": "Reconcile with the ledger",
@@ -1786,7 +1796,7 @@
       "minPayoutHint": "A partner below this amount is skipped when you create payouts. Leave empty for none.",
       "coupon": "Coupon for referred customers",
       "noCoupon": "No coupon",
-      "couponHint": "A referred customer gets it on their next checkout. Coupons are made under Pricing.",
+      "couponHint": "A referred customer gets it on their next checkout. Coupons are made under Coupons.",
       "clickCap": "Daily click cap per partner",
       "clickCapHint": "Clicks above this per day are not counted.",
       "landing": "Landing page",
@@ -1850,7 +1860,7 @@
       "copy": "Copy link",
       "noLink": "The link of {code} is https://your-gateway/r/{code}.",
       "promotionCode": "Promotion code",
-      "promotionHint": "An existing promotion code from Pricing. Redeeming it counts as following the link.",
+      "promotionHint": "An existing promotion code from Coupons. Redeeming it counts as following the link.",
       "submit": "Link code",
       "done": "Code {code} linked."
     },
@@ -3316,7 +3326,7 @@
       "invoices": "Invoices",
       "payments": "Payments",
       "packages": "Packages",
-      "pricing": "Pricing",
+      "pricing": "Tax and retries",
       "reports": "Reports",
       "readOnly": "Your role is viewer: you can read everything here, but changes are not allowed."
     },
@@ -3682,7 +3692,7 @@
       "connect": "Connect",
       "manage": "Manage",
       "simulator": "Built-in simulator",
-      "sandboxNote": "The sandbox never reaches a real provider: it runs against a built-in simulator, so there is nothing to connect there.",
+      "sandboxNote": "The sandbox runs on a built-in simulator and never charges a real card. To try a provider's own checkout, connect iyzico or Paddle in test mode; payment methods named pm_sandbox_ stay on the simulator.",
       "state": {
         "none": "Not connected",
         "working": "Connected and working",
@@ -3729,7 +3739,19 @@
         "replaceNote": "A connection exists. Type new keys only if you want to replace it; the current ones are never shown.",
         "openDashboard": "Open the {provider} dashboard",
         "partial": "Connected on {ok} app(s) before the failure.",
-        "disconnectOrg": "Disconnect from {count} app(s)"
+        "disconnectOrg": "Disconnect from {count} app(s)",
+        "sandboxConnectTitle": "Connect {provider} test mode",
+        "sandboxManageTitle": "{provider} test mode",
+        "sandboxIntro": {
+          "iyzico": "Enter the keys of your iyzico sandbox account. They are checked with iyzico's test host before they are stored.",
+          "paddle": "Enter the keys of your Paddle sandbox account and its webhook secret. They are checked with Paddle's sandbox before they are stored.",
+          "banktransfer": "A bank transfer has no test mode: the sandbox uses the built-in simulator."
+        },
+        "sandboxEnvNote": "This connects the sandbox environment to the provider's test mode. A sandbox charge whose payment method is the provider's own token goes to it; the pm_sandbox_ scenarios stay on the simulator. Live keys are refused, and live is not touched.",
+        "sandboxKeys": {
+          "iyzico": "Use the keys of the iyzico sandbox panel (the API key starts with sandbox-).",
+          "paddle": "Use a key of your Paddle sandbox account (it starts with pdl_sdbx_)."
+        }
       },
       "help": {
         "iyzico": {
@@ -3743,7 +3765,15 @@
           "webhook_secret": "Under Developer tools, Notifications: create a destination for Payrudder and copy its secret key.",
           "usage_product_id": "The id of the product Paddle uses for usage charges. In the Catalog, open the product and copy its id, which starts with pro_."
         }
-      }
+      },
+      "sandbox": {
+        "connect": "Test mode",
+        "manage": "Manage test mode",
+        "working": "Test mode connected",
+        "problem": "Test mode: problem",
+        "done": "{provider} test mode connected for the sandbox."
+      },
+      "confirmDisconnectSandbox": "Remove the sandbox account at {provider}? The sandbox goes back to the built-in simulator."
     },
     "integrations": {
       "introApp": "Connect the payment providers, the e-invoice integrator and the e-mail provider of {app}. Customers are served through the live connections; the sandbox needs none.",
@@ -3932,7 +3962,7 @@
       "subscriptions": "Subscriptions",
       "credits": "Credits",
       "packages": "Packages",
-      "pricing": "Pricing and tax",
+      "pricing": "Tax and retries",
       "invoices": "Invoices",
       "payments": "Payments",
       "paymentLinks": "Payment links",
@@ -4282,7 +4312,7 @@
         "trials": "Give a package a default trial in days, and subscriptions to it start trialing with no card. A free tier is a package with no fee and limits only."
       },
       "pricing": {
-        "intro": "Tax rates and promotions: what is added to or taken off what you bill.",
+        "intro": "Payment-retry delays and tax rates: what happens when a charge is declined, and what is added to what you bill.",
         "tabs": "Switch between the sections of this page."
       },
       "coupons": {

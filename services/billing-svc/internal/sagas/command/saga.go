@@ -27,8 +27,8 @@ type saga struct {
 	Snap                                model.Snapshot
 	// RetryHours are the tenant's own dunning delays; nil means the service-wide defaults.
 	RetryHours []int32
-	// CreditedMinor is the sum of the invoice's credit notes, read when a void asks what is left to refund.
-	CreditedMinor int64
+	// CreditedMinor is the sum of the invoice's credit notes and ByHandMinor the money recorded by hand, both read when a void asks what is left to refund.
+	CreditedMinor, ByHandMinor int64
 }
 
 func (e *Engine) load(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UUID) (*saga, error) {

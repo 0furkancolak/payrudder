@@ -2,7 +2,7 @@
 
 Every finding of [billing-svc.md](billing-svc.md) (99), the billing-svc part of [cqrs-plans-billing.md](cqrs-plans-billing.md) and [logic-billing-svc.md](logic-billing-svc.md) was checked against the code. Numbers count the bullets of each section in the report's order. PRs are `#n` of this repository.
 
-Status: **Fixed** (the PR), **Earlier** (already true on main when checked), **Not real** (read the code, the claim does not hold), **Partly**, **Deferred** (real, left on purpose, with the reason), **Open** (a logic finding that stays a bug).
+Status: **Fixed** (the PR), **Earlier** (already true on main when checked), **Not real** (read the code, the claim does not hold), **Partly**, **Deferred** (real, left on purpose, with the reason), **Owner decision** (the fix is a product or accounting rule, left for the owner with the options), **Open** (a logic finding that stays a bug). No logic finding of the billing-svc report is plain Open any more.
 
 | PR | What |
 |---|---|
@@ -112,7 +112,7 @@ Status: **Fixed** (the PR), **Earlier** (already true on main when checked), **N
 
 | # | Finding | Status |
 |---|---|---|
-| 1 | reference and note errors carry `billing.payment.bad_amount` | **Fixed** (phase 49): `billing.payment.bad_reference` and `billing.payment.bad_note`, listed and translated in the six console locales; the unit test pins the keys |
+| 1 | reference and note errors carry `billing.payment.bad_amount` | **Fixed** (phase 49 follow-up): `billing.payment.bad_reference` and `billing.payment.bad_note`, in `docs/error-keys.md` and the six console locales; test `TestValidate` in `payments/command` pins the keys. `errors.test.ts` was not run here (no `node_modules` in the worktree) |
 | 2 | internal errors never logged | Fixed #165 |
 | 3 | `notFoundOrVoided` swallows a database error | Fixed #165 |
 | 4 | `Void` errors dropped | Fixed #162 (logs all but "saga busy" / "no saga yet") |
@@ -177,7 +177,7 @@ Status: **Fixed** (the PR), **Earlier** (already true on main when checked), **N
 | 1 | dunning charges the whole invoice after a part payment | Earlier (phase 44a): the charge is the total less `invoice_payments`; test `DunningChargesWhatIsOutstandingAfterAPartPayment` |
 | 2 | void refunds the whole invoice despite credit notes | Earlier (44a): `Ctx.CreditedMinor`; test `VoidRefundsWhatCreditNotesLeft` |
 | 3 | credit note during a void | Earlier (44a): `create` locks the saga first and refuses `REFUND_*` / `VOIDED` |
-| 4 | void with a part payment orphans the money | **Fixed** (decision: a credit balance, not a refusal; migration `00055`, `credit_balances.source_invoice_id`; test `VoidingAPartPaidInvoiceCreditsWhatWasReceived`). A voided invoice that was paid in full by hand still asks its provider for a refund: open |
+| 4 | void with a part payment orphans the money | **Fixed** (decision: a credit balance, not a refusal; migration `00055`, `credit_balances.source_invoice_id`; test `VoidingAPartPaidInvoiceCreditsWhatWasReceived`). The rest of the finding, a voided invoice paid by hand in full that still asked its provider for a refund and ended in `REFUND_FAILED`, is **Fixed** with the rule *hand money becomes a credit balance, the card part is refunded, credit notes come off the card part first* (`model.VoidSplit`, `creditHandPayments`; tests `VoidingAnInvoicePaidByHandCreditsItAndRefundsOnlyTheCard`, `TestVoidSplitSendsHandMoneyToTheBalanceAndTheRestToTheCard`). The accounting refunds follow it (`AccountingCountsWhatAVoidGaveBackOnce`): a refunded invoice counted its whole total next to its credit notes before. No migration |
 | 5 | `ErrNoRefund` only without a saga | **Fixed** for a refund credit note: an invoice with money recorded by hand (`invoice_payments`) has no card to refund and the note is refused with `billing.credit_note.nothing_to_refund`, before it has a number; test `RefundCreditNoteNeedsACardPayment` |
 | 6 | credits applied to a voided invoice not reopened | Earlier (44a): `reopenCredits`; test `VoidingAnInvoiceReopensTheCreditsItConsumed` |
 | 7 | re-rating credit without a currency | **Fixed #170** (code, migration `00047`, test) |
@@ -186,16 +186,29 @@ Status: **Fixed** (the PR), **Earlier** (already true on main when checked), **N
 | 10 | re-rating ignores trial, advance fee, provider fee | Earlier (44a): `feeWaived`; test `RerateKeepsTheWaivedFixedFeesWaived` |
 | 11 | a job skips subscriptions already on its version | **Fixed #171** (code, test) |
 | 12 | comment says usage is never re-counted | Fixed #160 (the comment; reading the active generation is deliberate) |
-| 13 | a FAILED job cannot be restarted | **Open** (low) |
+| 13 | a FAILED job cannot be restarted | **Fixed**: the same `StartRerating` request sets a `FAILED` job back to `RUNNING` and runs it (`RestartReratingJob`); test `RerateRestartsAFailedJob` |
 | 14 | fee segments priced in each member's currency | Not verified (the report says "muhtemel"; a chain in several currencies is skipped by re-rating) |
 | 15 | late usage overwritten instead of summed | Not real: the aggregator keeps one row per tenant, billed period, customer, meter, origin and generation |
-| 16 | a negative total clamped to zero | **Open** (low; the stale comment is fixed) |
-| 17 | trial ending inside the period charges the whole fee | **Open** (low) |
-| 18 | `PriorLateUsage` sums quantities of different scales | **Open** (low) |
-| 19 | numbers use the UTC year | **Open** (low; changes the numbering) |
+| 16 | a negative total clamped to zero | **Owner decision** (the stale comment is fixed). A late-usage line can lower what a customer owes; the report suggests the negative part becomes a credit balance. That needs a credit source (a new column or reuse of `source_invoice_id`, whose unique index means one per invoice), tax on it, and the answer to whether a usage correction is money owed back or is absorbed |
+| 17 | trial ending inside the period charges the whole fee | **Owner decision**: prorating from the end of the trial, or charging the whole period (today), is a pricing rule; the plans-svc segments and the documents say the latter |
+| 18 | `PriorLateUsage` sums quantities of different scales | **Fixed**: each line is divided by `10^scale` before the sum, the query returns whole units; test `PriorLateUsageAddsQuantitiesOfDifferentScales` |
+| 19 | numbers use the UTC year | **Owner decision**: the year of the tenant's time zone would move invoices of the first hours of January into the new series (a legal numbering rule per country), and the gap-free sequence is per year |
 
 ## logic-plans-svc.md, the coupon on a provider migration
 
 | Finding | Status |
 |---|---|
 | a provider migration drops the coupon (`ErrCouponOnCredit` swallowed, no `MoveSubscriptionCoupon`) | **Fixed**. The move to a Payrudder-run, in-advance successor already carried the coupon (`SwitchTo`, since phase 44a). A successor that cannot hold one (run by a provider, or billed in arrears) is now refused with `plans.migration.coupon_blocks_move` until the coupon is removed: at `StartProviderMigration` for a provider-run target, where waiting for the customer to subscribe would be too late, and in the cutover itself. Test `ProviderMigrationDoesNotDropTheCoupon` |
+
+## Credit balances and tax documents
+
+A credit that returns a taxed charge includes the tax (plan change, re-rating), and a void of a hand-paid invoice makes a balance of the amount received. **No tax document is produced for any of them, and the reports do not reverse tax for credit notes either**, so a balance is consistent with a credit note and no row is added for it. What the accounting summary does today: `Tax` is the sum of the `TAX` lines of the invoices paid in the window; `Refunds` is credit notes (their whole total, tax included) and refunded invoices; `Net = Gross - Tax - Refunds`. Two consequences are left for the owner, because the fix is an accounting rule and not a bug with one answer:
+
+- The tax of a refunded or credited charge stays in `Tax`, so the tenant's tax figure is the tax of what was invoiced, not of what is kept. A reversal needs a convention for a partial credit note (a credit note has no tax breakdown; pro rata of the invoice's tax is the usual one), the period it belongs to (the credit's or the invoice's) and what the CSV and the e-document of a credit note say.
+- `Refunds` is gross while `Net` already removed all the tax, so a full refund of a taxed invoice makes `Net` negative by the tax (120 paid with 20 tax and 120 refunded gives -20 instead of 0). The existing accounting test pins this arithmetic; changing it changes every tenant's figures.
+
+Decision wanted: reverse the tax pro rata in `AccountingRefunds` (a `tax_minor` column per refund row, `Tax` and `Net` using it) for credit notes, refunded invoices and the balances above, or keep telling tenants to reverse it in their own books.
+
+## logic-plans-svc.md and logic-gateway-payments.md
+
+Those two reports have no per-finding status of their own; what became of them is recorded in [the phase file](../phases/phase-49-code-quality-remediation.md) (the plans-svc and gateway paragraphs of step 3). Findings checked again for this list: the coupon on a plan-change quote (`ErrCouponOnCredit`) and the provider migration successor's fee timing are fixed in the code, the coupon on a provider migration is in the table above, and `ledger_fact_once` has had the tenant since payments-worker migration `00007`. Not fixed and not re-verified one by one, all outside billing-svc: the payments-worker findings (a duplicate bank-transfer confirmation answered after `checkOpen` instead of `duplicate:true`, the double-payment alert only on a fresh ledger row, reconcile counts, e-invoice `cancelled` answered as issued), the invoice-worker findings (long descriptions, the UTC issue date) and the gateway/plans-svc ones the phase file lists as deferred.

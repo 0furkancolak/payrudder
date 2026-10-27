@@ -3457,6 +3457,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/sandbox/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The payment providers connected to the sandbox environment (their test mode), and whether each works
+         * @description Any member reads it. Same shape as the live list; no setting or secret is in the answer. Without a connection the sandbox runs on the built-in simulator.
+         */
+        get: operations["appSandboxProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/sandbox/providers/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Connect the sandbox environment to a payment provider's test mode (the owner only)
+         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id), as for the live connection, with the provider's sandbox credentials. base_url is the provider's test host unless the body names one; the environment is sandbox whatever the request says. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed, 502 payments.account.health_check_unreachable), a host that is not the provider's own is refused (payments.account.endpoint_not_allowed), and so are the provider's live host and a key in the live format (payments.account.livemode_mismatch). The first sandbox account becomes the default. A sandbox charge that carries the provider's own token goes to it; the pm_sandbox_ scenario tokens keep going to the simulator. A bank transfer has no test mode (400 payments.provider.not_supported). The settings are sealed, shown once and never echoed back; the change is recorded for the person.
+         */
+        put: operations["appConnectSandboxProvider"];
+        post?: never;
+        /** Remove the sandbox environment's account at a payment provider (the owner only) */
+        delete: operations["appRemoveSandboxProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/integrations/e-invoice": {
         parameters: {
             query?: never;
@@ -13823,6 +13864,94 @@ export interface operations {
             path: {
                 id: components["parameters"]["ID"];
                 provider: "banktransfer" | "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSandboxProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveProviders"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    appConnectSandboxProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        provider?: string;
+                        /** @enum {string} */
+                        environment?: "sandbox";
+                        default?: boolean;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    appRemoveSandboxProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: "iyzico" | "paddle";
             };
             cookie?: never;
         };

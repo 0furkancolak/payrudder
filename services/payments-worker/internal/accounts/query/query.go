@@ -103,7 +103,7 @@ const (
 	ProblemUnreachable = "unreachable"
 )
 
-// AccountHealth is one live account and whether it works. No setting is in it.
+// AccountHealth is one account of an environment and whether it works. No setting is in it.
 type AccountHealth struct {
 	Provider  string    `json:"provider"`
 	Default   bool      `json:"default"`
@@ -124,13 +124,19 @@ type GoLive struct {
 // it whose stored settings still open and still build an adapter, and, for an adapter that can ask its provider, whose provider accepts the credentials now (a
 // revoked or rotated key shows up here, not at the first charge). The gateway asks this when it computes the checklist; plans-svc never sees provider data.
 func GetGoLive(ctx context.Context, d Deps, tenant uuid.UUID) (GoLive, error) {
+	return GetHealth(ctx, d, tenant, env.Live.String())
+}
+
+// GetHealth is GetGoLive for one environment: the accounts the tenant has in it and whether each works. The console reads the sandbox's through it (the app's
+// sandbox tenant and its test-mode accounts); Ready then only says that one works.
+func GetHealth(ctx context.Context, d Deps, tenant uuid.UUID, environment string) (GoLive, error) {
 	list, err := d.Accounts.List(ctx, tenant)
 	if err != nil {
-		return GoLive{}, fmt.Errorf("go-live: accounts not listed: %w", err)
+		return GoLive{}, fmt.Errorf("%s: accounts not listed: %w", environment, err)
 	}
 	out := GoLive{Providers: []string{}, Accounts: []AccountHealth{}}
 	for _, a := range list {
-		if a.Environment != env.Live.String() {
+		if a.Environment != environment {
 			continue
 		}
 		h := AccountHealth{Provider: a.Provider, Default: a.IsDefault, UpdatedAt: a.UpdatedAt}

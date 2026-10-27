@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { fromTenant } from "@/features/product/billingProfile";
-import { useApp, useLiveProviders, useMe } from "@/features/product/api";
+import { useApp, useLiveProviders, useMe, useSandboxProviders } from "@/features/product/api";
 import { PROVIDER_FIELDS, buildProviderSettings, prefilled, problemCode, type LiveProviderName, type ProviderErrors } from "@/features/product/liveProvider";
 import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
@@ -12,14 +12,15 @@ import { SegmentedControl } from "@/shared/ui/segmented";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { StatusPill } from "@/shared/ui/status-pill";
 import BankTransferForm from "./BankTransferForm.vue";
-import { useAppsProviders, useConnectProvider, useDisconnectProvider } from "./connectApi";
+import { useAppsProviders, useConnectProvider, useDisconnectProvider, type ConnectEnvironment } from "./connectApi";
 import { PROVIDER_LINKS, connectionOf, helpKey, summarize, targetsOf, type AppResult, type AppRow, type Scope } from "./connections";
 
 /**
  * The side sheet that connects one payment provider (or replaces its keys, tests it, or disconnects it). The keys are typed once, are password fields, are
  * checked by the provider before they are stored and are never shown again: after a save the form is empty. "This app only" acts on one app; "All apps of the
- * organisation" repeats the same connection on every app that has a live environment, through each app's own endpoint. The sandbox needs no connection:
- * it runs against the built-in simulator.
+ * organisation" repeats the same connection on every app that has a live environment, through each app's own endpoint. The sandbox needs no connection (it
+ * runs against the built-in simulator); with `environment="sandbox"` the same sheet connects the sandbox to the provider's test mode, for the one app only:
+ * the keys are the provider's sandbox keys and the server refuses live ones.
  */
 const props = defineProps<{
   provider: LiveProviderName | "";
@@ -30,6 +31,8 @@ const props = defineProps<{
   /** The organisation-wide choice is offered only to an owner of an organisation with more than one app that can take it. */
   canOrg: boolean;
   isOwner: boolean;
+  /** Which environment of the app the sheet connects; the sandbox's is the provider's test mode. */
+  environment?: ConnectEnvironment;
 }>();
 const open = defineModel<boolean>("open", { required: true });
 const emit = defineEmits<{ done: [summary: { provider: LiveProviderName; scope: Scope; ok: number; failed: number }] }>();
@@ -47,18 +50,24 @@ const testProblem = ref<string | null>(null);
 const connect = useConnectProvider();
 const disconnect = useDisconnectProvider();
 
+const sandbox = computed(() => props.environment === "sandbox");
 const names = computed(() => props.apps.filter((a) => a.hasLive));
-const targets = computed(() => targetsOf(scope.value, props.appId, props.apps));
+/** The sandbox exists on every app and is connected for one app only. */
+const targets = computed(() => (sandbox.value ? props.apps.filter((a) => a.id === props.appId) : targetsOf(scope.value, props.appId, props.apps)));
 const prefillApp = computed(() => (props.appId !== "" ? props.appId : (names.value[0]?.id ?? "")));
 const app = useApp(prefillApp);
 const me = useMe();
 const live = computed(() => app.data.value?.app?.tenants?.find((x) => x.environment === "ENVIRONMENT_LIVE"));
-const own = useLiveProviders(() => props.appId, () => props.appId !== "" && !!props.provider);
+const ownLive = useLiveProviders(() => props.appId, () => props.appId !== "" && !!props.provider && !sandbox.value);
+const ownSandbox = useSandboxProviders(() => props.appId, () => props.appId !== "" && !!props.provider && sandbox.value);
+const own = computed(() => (sandbox.value ? ownSandbox : ownLive));
 const all = useAppsProviders(() => props.apps);
 
 /** The accounts of the apps this sheet would act on, for "connected here" and the disconnect button. */
-const connectedTargets = computed(() => targets.value.filter((a) => connectionOf(all.value.find((r) => r.app.id === a.id)?.accounts, props.provider).state !== "none"));
-const here = computed(() => connectionOf(own.data.value?.accounts, props.provider));
+const connectedTargets = computed(() =>
+  targets.value.filter((a) => connectionOf(sandbox.value ? ownSandbox.data.value?.accounts : all.value.find((r) => r.app.id === a.id)?.accounts, props.provider).state !== "none"),
+);
+const here = computed(() => connectionOf(own.value.data.value?.accounts, props.provider));
 const providerName = computed(() => (props.provider ? t(`product.goLive.provider.names.${props.provider}`) : ""));
 const typed = computed(() => (props.provider === "iyzico" || props.provider === "paddle" ? PROVIDER_FIELDS[props.provider] : []));
 const fieldKey = (path: string) => path.replace(/\./g, "_");
@@ -103,7 +112,7 @@ watch(
       clear();
       return;
     }
-    scope.value = s;
+    scope.value = sandbox.value ? "app" : s;
     clear();
     if (p === "iyzico" || p === "paddle") Object.assign(values, prefilled(p, known.value));
   },
@@ -131,7 +140,7 @@ function submit() {
   const used = scope.value;
   failures.value = [];
   connect.mutate(
-    { apps: targets.value, provider: p, settings },
+    { apps: targets.value, provider: p, settings, environment: props.environment },
     {
       onSuccess: (results) => {
         const s = summarize(results);
@@ -150,7 +159,7 @@ function submit() {
 
 async function test() {
   tested.value = null;
-  const r = await own.refetch();
+  const r = await own.value.refetch();
   const c = connectionOf(r.data?.accounts, props.provider);
   tested.value = c.state === "working" ? "working" : "problem";
   testProblem.value = c.problem;
@@ -159,9 +168,10 @@ async function test() {
 function removeNow() {
   const p = props.provider;
   if (p === "" || connectedTargets.value.length === 0) return;
-  if (!window.confirm(t(scope.value === "org" ? "product.providers.confirmDisconnectOrg" : "product.goLive.provider.confirmRemove", { provider: providerName.value, count: connectedTargets.value.length }))) return;
+  const ask = sandbox.value ? "product.providers.confirmDisconnectSandbox" : scope.value === "org" ? "product.providers.confirmDisconnectOrg" : "product.goLive.provider.confirmRemove";
+  if (!window.confirm(t(ask, { provider: providerName.value, count: connectedTargets.value.length }))) return;
   disconnect.mutate(
-    { apps: connectedTargets.value, provider: p },
+    { apps: connectedTargets.value, provider: p, environment: props.environment },
     {
       onSuccess: (results) => {
         failures.value = results.filter((r) => !r.ok);
@@ -177,13 +187,13 @@ function removeNow() {
   <Sheet v-model:open="open">
     <SheetContent class="sm:max-w-xl" data-testid="provider-sheet">
       <SheetHeader>
-        <SheetTitle>{{ here.state !== "none" && scope === "app" ? t("product.providers.sheet.manageTitle", { provider: providerName }) : t("product.providers.sheet.connectTitle", { provider: providerName }) }}</SheetTitle>
-        <SheetDescription>{{ t(`product.providers.sheet.intro.${provider || 'iyzico'}`) }}</SheetDescription>
+        <SheetTitle>{{ sandbox ? t(here.state !== "none" ? "product.providers.sheet.sandboxManageTitle" : "product.providers.sheet.sandboxConnectTitle", { provider: providerName }) : here.state !== "none" && scope === "app" ? t("product.providers.sheet.manageTitle", { provider: providerName }) : t("product.providers.sheet.connectTitle", { provider: providerName }) }}</SheetTitle>
+        <SheetDescription>{{ sandbox ? t(`product.providers.sheet.sandboxIntro.${provider || 'iyzico'}`) : t(`product.providers.sheet.intro.${provider || 'iyzico'}`) }}</SheetDescription>
       </SheetHeader>
       <SheetBody>
         <p v-if="!isOwner" class="text-muted-foreground text-sm" data-testid="provider-owner-only">{{ t("product.goLive.provider.ownerOnly") }}</p>
 
-        <div v-if="canOrg" class="grid gap-1.5">
+        <div v-if="canOrg && !sandbox" class="grid gap-1.5">
           <span class="text-sm font-medium">{{ t("product.providers.scope.title") }}</span>
           <SegmentedControl v-model="scope" :options="scopeOptions" :label="t('product.providers.scope.title')" data-testid="provider-scope" />
           <p class="text-muted-foreground text-xs" data-testid="provider-scope-note">
@@ -191,7 +201,7 @@ function removeNow() {
           </p>
         </div>
 
-        <p class="bg-muted text-muted-foreground rounded-xl px-3 py-2 text-xs">{{ t("product.providers.sheet.envNote") }}</p>
+        <p class="bg-muted text-muted-foreground rounded-xl px-3 py-2 text-xs" data-testid="provider-env-note">{{ sandbox ? t("product.providers.sheet.sandboxEnvNote") : t("product.providers.sheet.envNote") }}</p>
 
         <div v-if="scope === 'app' && here.state !== 'none'" class="bg-muted flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3" data-testid="provider-sheet-status">
           <div class="min-w-0">
@@ -212,6 +222,7 @@ function removeNow() {
           <template v-else-if="provider !== ''">
             <p class="text-muted-foreground text-xs">
               {{ here.state !== "none" && scope === "app" ? t("product.providers.sheet.replaceNote") : t("product.goLive.provider.secretsOnce") }}
+              <span v-if="sandbox && (provider === 'iyzico' || provider === 'paddle')" data-testid="provider-sandbox-keys">{{ t(`product.providers.sheet.sandboxKeys.${provider}`) }} </span>
               <a v-if="link" :href="link" target="_blank" rel="noopener noreferrer" class="text-primary font-medium hover:underline">{{ t("product.providers.sheet.openDashboard", { provider: providerName }) }}</a>
             </p>
             <div class="grid gap-3 sm:grid-cols-2">

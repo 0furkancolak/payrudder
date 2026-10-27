@@ -638,7 +638,7 @@ func (q *Queries) OpenInvoice(ctx context.Context, arg OpenInvoiceParams) error 
 }
 
 const priorLateUsage = `-- name: PriorLateUsage :many
-SELECT i.customer_id::text AS customer_id, l.meter_code, l.origin_period_id, sum(l.quantity)::text AS quantity, max(l.quantity_scale)::smallint AS quantity_scale
+SELECT i.customer_id::text AS customer_id, l.meter_code, l.origin_period_id, sum(l.quantity / power(10::numeric, COALESCE(l.quantity_scale, 0)))::text AS quantity
 FROM invoice_lines l JOIN invoices i ON i.tenant_id = l.tenant_id AND i.id = l.invoice_id
 WHERE l.tenant_id = $1 AND l.kind = 'LATE_USAGE' AND l.origin_period_id = ANY($2::text[]) AND i.period_id <> $3 AND i.status <> 'void'
 GROUP BY 1, 2, 3
@@ -655,9 +655,9 @@ type PriorLateUsageRow struct {
 	MeterCode      *string
 	OriginPeriodID *string
 	Quantity       string
-	QuantityScale  int16
 }
 
+// The quantity is in whole units: each line is stored in the meter's scale of its time, so they are brought to units before they are added.
 func (q *Queries) PriorLateUsage(ctx context.Context, arg PriorLateUsageParams) ([]PriorLateUsageRow, error) {
 	rows, err := q.db.Query(ctx, priorLateUsage, arg.TenantID, arg.Origins, arg.PeriodID)
 	if err != nil {
@@ -672,7 +672,6 @@ func (q *Queries) PriorLateUsage(ctx context.Context, arg PriorLateUsageParams) 
 			&i.MeterCode,
 			&i.OriginPeriodID,
 			&i.Quantity,
-			&i.QuantityScale,
 		); err != nil {
 			return nil, err
 		}

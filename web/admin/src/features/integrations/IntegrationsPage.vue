@@ -4,11 +4,11 @@ import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref, type Ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { fromTenant } from "@/features/product/billingProfile";
-import { useAccount, useApp, useApps } from "@/features/product/api";
+import { useAccount, useApp, useApps, useSandboxProviders } from "@/features/product/api";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { LIVE_PROVIDERS, type LiveProviderName } from "@/features/product/liveProvider";
-import { useAppsProviders } from "@/features/providers/connectApi";
-import { appRows, connectionOf, orgSummary, type Scope } from "@/features/providers/connections";
+import { useAppsProviders, type ConnectEnvironment } from "@/features/providers/connectApi";
+import { appRows, connectionOf, orgSummary, type ConnectionState, type Scope } from "@/features/providers/connections";
 import ProviderSheet from "@/features/providers/ProviderSheet.vue";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -25,8 +25,9 @@ import { builtInMailState, eInvoiceState, ownMailState, stateTone, type CardStat
  * The integrations of an app, or of the whole organisation (no app in the address), in three groups: payments (iyzico, Paddle, bank transfer), e-invoice (the
  * integrators) and e-mail (Payrudder's own sender and the tenant's own provider). One card per integration: its mark, whether it is connected in live mode
  * and whether the other side accepts the credentials now. "Connect" opens a side sheet that asks for the credentials, checks them and can test the connection
- * or disconnect it. The sandbox needs no connection anywhere: it runs against built-in simulators and its mail goes to the sandbox inbox. On the organisation
- * screen a payment provider can be connected on every app at once; the e-invoice and e-mail integrations are set up per app.
+ * or disconnect it. The sandbox needs no connection anywhere: it runs against built-in simulators and its mail goes to the sandbox inbox; the owner of an app
+ * can still connect iyzico or Paddle in test mode, which a sandbox charge with the provider's own token then goes to. On the organisation screen a payment
+ * provider can be connected on every app at once; the e-invoice and e-mail integrations (and the test mode) are set up per app.
  */
 const { t } = useI18n();
 const params = useParams({ strict: false });
@@ -38,6 +39,7 @@ const account = useAccount();
 const app = useApp(appId);
 const rows = computed(() => appRows(apps.data.value?.apps));
 const overview = useAppsProviders(rows);
+const sandboxAccounts = useSandboxProviders(appId, () => inApp.value);
 const isOwner = computed(() => (inApp.value ? app.data.value?.role === "owner" : account.data.value?.role === "owner"));
 const loading = computed(() => apps.isPending.value || (inApp.value && app.isPending.value));
 const liveApps = computed(() => rows.value.filter((r) => r.hasLive));
@@ -86,6 +88,18 @@ function card(id: IntegrationId): { state: CardState; line: string } {
   }
 }
 
+/** The providers with a test mode a person can connect in the sandbox: a bank transfer has none. */
+const hasTestMode = (id: IntegrationId) => id === "iyzico" || id === "paddle";
+/** The sandbox row of a card: the simulator, unless the app connected the provider's test mode. */
+function sandboxRow(id: IntegrationId, g: string): { state: ConnectionState; label: string } {
+  if (inApp.value && hasTestMode(id)) {
+    const c = connectionOf(sandboxAccounts.data.value?.accounts, id);
+    if (c.state === "working") return { state: "working", label: t("product.providers.sandbox.working") };
+    if (c.state === "problem") return { state: "problem", label: t("product.providers.sandbox.problem") };
+  }
+  return { state: "none", label: t(`product.integrations.sandbox.${g}`) };
+}
+
 /** What a payment provider's card says about the live environment. */
 function paymentLine(p: LiveProviderName): { state: CardState; line: string } {
   if (inApp.value) {
@@ -106,12 +120,14 @@ const sheetOpen = ref(false);
 const sheetProvider = ref<LiveProviderName | "">("");
 const sheetApp = ref("");
 const sheetScope = ref<Scope>("app");
+const sheetEnv = ref<ConnectEnvironment>("live");
 const notice = ref("");
 
-function openPayments(p: LiveProviderName, forApp: string, scope: Scope) {
+function openPayments(p: LiveProviderName, forApp: string, scope: Scope, environment: ConnectEnvironment = "live") {
   sheetProvider.value = p;
   sheetApp.value = forApp;
   sheetScope.value = scope;
+  sheetEnv.value = environment;
   notice.value = "";
   sheetOpen.value = true;
 }
@@ -121,8 +137,11 @@ function fromPaymentCard(p: LiveProviderName) {
   const single = liveApps.value.length === 1 ? (liveApps.value[0]?.id ?? "") : "";
   openPayments(p, single, canOrg.value ? "org" : "app");
 }
+/** The test mode of a card, on an app's screen only: the sandbox is connected for one app. */
+const fromSandboxCard = (p: LiveProviderName) => openPayments(p, appId.value, "app", "sandbox");
 function onDone(s: { provider: LiveProviderName; scope: Scope; ok: number; failed: number }) {
-  notice.value = s.failed === 0 ? t("product.providers.doneAll", { provider: names(s.provider), count: s.ok }) : t("product.providers.donePartial", { provider: names(s.provider), ok: s.ok, failed: s.failed });
+  const key = sheetEnv.value === "sandbox" ? "product.providers.sandbox.done" : "product.providers.doneAll";
+  notice.value = s.failed === 0 ? t(key, { provider: names(s.provider), count: s.ok }) : t("product.providers.donePartial", { provider: names(s.provider), ok: s.ok, failed: s.failed });
 }
 
 // --- e-invoice and e-mail
@@ -144,7 +163,24 @@ function open(id: IntegrationId) {
 
 // What a sheet is open for is in the address (`connect-provider:stripe`), so a reload brings it back once the apps have loaded.
 const named = <T extends string>(of: Ref<T | "">) => computed<T | null>({ get: () => of.value || null, set: (v) => (of.value = v ?? "") });
-useSheetTarget("connect-provider", sheetOpen, named(sheetProvider), { id: (p) => p, find: (id) => (!loading.value && (LIVE_PROVIDERS as readonly string[]).includes(id) ? (id as LiveProviderName) : undefined), restore: fromPaymentCard });
+// A payment sheet is named `iyzico`, or `sandbox-iyzico` for the test mode of the sandbox.
+const SANDBOX_PREFIX = "sandbox-";
+const paymentSheet = computed<string | null>({
+  get: () => (sheetProvider.value ? (sheetEnv.value === "sandbox" ? SANDBOX_PREFIX + sheetProvider.value : sheetProvider.value) : null),
+  set: (v) => {
+    sheetProvider.value = (v?.startsWith(SANDBOX_PREFIX) ? v.slice(SANDBOX_PREFIX.length) : (v ?? "")) as LiveProviderName | "";
+    sheetEnv.value = v?.startsWith(SANDBOX_PREFIX) ? "sandbox" : "live";
+  },
+});
+useSheetTarget("connect-provider", sheetOpen, paymentSheet, {
+  id: (p) => p,
+  find: (id) => {
+    const sandbox = id.startsWith(SANDBOX_PREFIX);
+    const p = sandbox ? id.slice(SANDBOX_PREFIX.length) : id;
+    return !loading.value && (LIVE_PROVIDERS as readonly string[]).includes(p) && (!sandbox || (inApp.value && hasTestMode(p as LiveProviderName))) ? id : undefined;
+  },
+  restore: (id) => (id.startsWith(SANDBOX_PREFIX) ? fromSandboxCard(id.slice(SANDBOX_PREFIX.length) as LiveProviderName) : fromPaymentCard(id as LiveProviderName)),
+});
 useSheetTarget("integration-einvoice", eInvoiceOpen, named(eInvoiceProvider), { id: (p) => p, find: (id) => (!loading.value && (id === "nilvera" || id === "webhook") ? id : undefined), restore: open });
 useSheetTarget("integration-mail", mailOpen, named(mailKind), { id: (k) => k, find: (id) => (!loading.value && (id === "payrudderMail" || id === "nafru") ? id : undefined), restore: open });
 
@@ -192,12 +228,15 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
               <p class="text-muted-foreground -mt-1 text-xs" :class="card(id).state === 'problem' ? 'text-destructive' : ''">{{ card(id).line }}</p>
               <div class="flex items-center justify-between gap-3">
                 <span class="text-muted-foreground">{{ t("product.env.sandbox") }}</span>
-                <span><StatusPill tone="info">{{ t(`product.integrations.sandbox.${g}`) }}</StatusPill></span>
+                <span><StatusPill :tone="stateTone(sandboxRow(id, g).state === 'none' ? 'always' : sandboxRow(id, g).state)" :data-testid="`integration-sandbox-${id}`">{{ sandboxRow(id, g).label }}</StatusPill></span>
               </div>
             </div>
             <div class="mt-auto flex flex-wrap items-center gap-2">
               <Button v-if="hasButton(id)" :variant="card(id).state === 'none' ? 'default' : 'outline'" :disabled="disabled(id)" :data-testid="`integration-open-${id}`" @click="open(id)">{{ buttonLabel(id) }}</Button>
               <Button v-else-if="id === 'payrudderMail' && !inApp" variant="outline" disabled>{{ t("product.integrations.settings") }}</Button>
+              <Button v-if="inApp && hasTestMode(id)" variant="outline" :disabled="!isOwner" :data-testid="`integration-open-sandbox-${id}`" @click="fromSandboxCard(id as LiveProviderName)">
+                {{ sandboxRow(id, g).state === "none" ? t("product.providers.sandbox.connect") : t("product.providers.sandbox.manage") }}
+              </Button>
               <a v-if="BRANDS[id].url && CONNECTABLE.includes(id)" :href="BRANDS[id].url" target="_blank" rel="noopener noreferrer" class="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs hover:underline" :data-testid="`integration-link-${id}`">
                 {{ t("product.integrations.website") }}<ExternalLink class="size-3" aria-hidden="true" />
               </a>
@@ -241,7 +280,7 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
       </div>
     </template>
 
-    <ProviderSheet v-model:open="sheetOpen" :provider="sheetProvider" :app-id="sheetApp" :apps="rows" :scope="sheetScope" :can-org="canOrg" :is-owner="isOwner" @done="onDone" />
+    <ProviderSheet v-model:open="sheetOpen" :provider="sheetProvider" :app-id="sheetApp" :apps="rows" :scope="sheetScope" :can-org="canOrg" :is-owner="isOwner" :environment="sheetEnv" @done="onDone" />
     <EInvoiceSheet v-model:open="eInvoiceOpen" :provider="eInvoiceProvider" :app-id="appId" :account="eInvoice.data.value" :is-owner="isOwner" :tax-id="taxId" />
     <MailSheet v-model:open="mailOpen" :kind="mailKind" :app-id="appId" :is-owner="isOwner" />
   </section>
