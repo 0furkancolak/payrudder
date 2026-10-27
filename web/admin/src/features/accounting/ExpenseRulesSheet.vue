@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { Pencil, Trash2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -89,8 +90,8 @@ function submit() {
     { onSuccess: reset },
   );
 }
-function remove(r: ExpenseRule) {
-  if (r.id && window.confirm(t("billing.accounting.rules.confirmDelete", { vendor: r.vendor_match ?? "" }))) del.mutate(r.id);
+async function remove(r: ExpenseRule) {
+  if (r.id && (await askConfirm({ body: t("billing.accounting.rules.confirmDelete", { vendor: r.vendor_match ?? "" }) }))) del.mutate(r.id);
 }
 </script>
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import PackageSelect from "@/features/packages/PackageSelect.vue";
@@ -35,11 +36,11 @@ const state = computed(() => enumWord(props.subscription.state, "SUBSCRIPTION_ST
 const id = computed(() => props.subscription.id ?? "");
 const cancelLabel = computed(() => (props.subscription.cancel_at_period_end ? "withdrawCancel" : "cancelAtPeriodEnd"));
 
-function end() {
-  if (id.value && window.confirm(t("billing.subscriptions.confirmEnd"))) props.act.endNow.mutate(id.value);
+async function end() {
+  if (id.value && (await askConfirm({ body: t("billing.subscriptions.confirmEnd") }))) props.act.endNow.mutate(id.value);
 }
-function endAndCredit() {
-  if (id.value && window.confirm(t("billing.subscriptions.confirmEndCredit"))) props.act.endNowCredit.mutate(id.value);
+async function endAndCredit() {
+  if (id.value && (await askConfirm({ body: t("billing.subscriptions.confirmEndCredit") }))) props.act.endNowCredit.mutate(id.value);
 }
 const credited = computed(() => (props.act.endNowCredit.data.value as { credited_minor?: string } | undefined)?.credited_minor ?? "");
 

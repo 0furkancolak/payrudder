@@ -62,7 +62,7 @@ function saveTax() {
       <SheetBody>
         <form id="edit-address" class="grid gap-3" @submit.prevent="saveAddress">
           <LocationFields v-model:country="editAddress.country" v-model:region="editAddress.region" v-model:city="editAddress.city" id-prefix="edit-customer" compact :labels="placeLabels" />
-          <AddressLines v-model:line1="editAddress.line1" v-model:line2="editAddress.line2" v-model:postal-code="editAddress.postal_code" />
+          <AddressLines v-model:line1="editAddress.line1" v-model:line2="editAddress.line2" v-model:postal-code="editAddress.postal_code" id-prefix="edit-address" />
           <ErrorText :error="setAddress.error.value" />
         </form>
       </SheetBody>

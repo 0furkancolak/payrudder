@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomerLabel from "@/features/customers/CustomerLabel.vue";
 import { Plus, Settings2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -105,7 +106,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
       </TableHeader>
       <TableBody>
         <TableRow v-for="(s, i) in table.items.value" :key="s.id" class="cursor-pointer" :data-state="table.isOpen(i) ? 'selected' : undefined" @click="table.open(i)">
-          <TableCell class="font-medium">{{ s.customer_external_id }}</TableCell>
+          <TableCell class="font-medium"><CustomerLabel :id="s.customer_external_id" :tenant-id="tenantId" /></TableCell>
           <TableCell class="mono">{{ s.plan_code }} v{{ s.plan_version }}</TableCell>
           <TableCell class="text-end tabular-nums" data-testid="sub-seats-cell">{{ seatsOf(s) }}</TableCell>
           <TableCell>

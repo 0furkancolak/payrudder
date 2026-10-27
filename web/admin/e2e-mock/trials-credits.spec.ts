@@ -50,8 +50,10 @@ test.describe("free credits", () => {
     // A welcome gift that never expires is what it starts as.
     await expect(form.getByLabel("Reason type")).toHaveValue("welcome");
     await expect(form.getByLabel("Expires")).toHaveValue("never");
-    // Nothing to grant yet: the button waits for a number of credits.
-    await expect(page.getByTestId("grant-submit")).toBeDisabled();
+    // Nothing to grant yet: submitting says what is missing at the field and sends nothing.
+    await page.getByTestId("grant-submit").click();
+    await expect(form.locator("#grant-credits-error")).toContainText("whole number");
+    expect(gw.called("POST", "/v1/customers/cus_1/credits/grant")).toHaveLength(0);
 
     await form.getByLabel("Credits to add").fill("300");
     await form.getByLabel("Reason type").selectOption("goodwill");

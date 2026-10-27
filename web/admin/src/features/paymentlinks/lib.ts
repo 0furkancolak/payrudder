@@ -36,6 +36,20 @@ export function toRequest(f: LinkForm): { body: CreateLinkBody } | { error: "inv
   return { body: { ...common, amount_minor: minor, currency: f.currency, description: f.description.trim(), ...(f.customer.trim() ? { customer_external_id: f.customer.trim() } : {}), ...(f.promotion.trim() ? { promotion_code: f.promotion.trim() } : {}) } };
 }
 
+/** Every field of the form that is wrong at once (the keys of `billing.paymentLinks.errors`), so each can be marked where it is. */
+export function fieldErrors(f: LinkForm): Partial<Record<"invoice" | "amount" | "description" | "days", true>> {
+  const out: Partial<Record<"invoice" | "amount" | "description" | "days", true>> = {};
+  if (!validLinkDays(Number(f.days))) out.days = true;
+  if (f.kind === "invoice") {
+    if (!f.invoiceId.trim()) out.invoice = true;
+    return out;
+  }
+  const minor = parseMajor(f.amount, f.currency);
+  if (minor === null || minor === "0") out.amount = true;
+  if (!f.description.trim()) out.description = true;
+  return out;
+}
+
 export { absoluteUrl } from "@/shared/lib/url";
 
 export function statusVariant(status: string | undefined): "success" | "secondary" | "destructive" {

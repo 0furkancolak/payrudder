@@ -31,7 +31,7 @@ const creating = ref(false);
 
 const list = computed<Coupon[]>(() => coupons.data.value?.coupons ?? []);
 const table = useTableState<Coupon>(list, {
-  searchFields: (c) => [c.code, c.name],
+  sheet: { kind: "coupon", id: (c) => c.code }, searchFields: (c) => [c.code, c.name],
   filters: {
     state: (c, v) => (v === "active" ? !!c.active : !c.active),
     target: (c, v) => (c.applies_to ?? []).length === 0 || (c.applies_to ?? []).includes(v as never),

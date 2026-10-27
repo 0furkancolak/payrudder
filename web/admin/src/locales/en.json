@@ -35,7 +35,15 @@
     "moreActions": "More actions",
     "view": "View",
     "openFullPage": "Open full page",
-    "all": "All"
+    "all": "All",
+    "confirm": {
+      "title": "Are you sure?",
+      "accept": "Confirm"
+    },
+    "validation": {
+      "required": "This field is required.",
+      "email": "Enter a valid e-mail address."
+    }
   },
   "enums": {
     "environment": {
@@ -1063,7 +1071,14 @@
         "delivered": "Delivered",
         "failed": "Failed"
       },
-      "allStatuses": "All statuses"
+      "allStatuses": "All statuses",
+      "deleteTitle": "Delete this endpoint?",
+      "rotateTitle": "Rotate the signing secret?",
+      "confirmRotate": "The old secret stops working at once: your receiver must be given the new one, or it will reject every delivery.",
+      "insecure": {
+        "sandbox": "This URL uses http, which is accepted in the sandbox for testing. Live endpoints should use https.",
+        "live": "This URL uses http: events with customer and invoice data would travel unencrypted. Use an https URL."
+      }
     },
     "paymentLinks": {
       "title": "Payment links",
@@ -1133,7 +1148,11 @@
       "for": "For",
       "promotionCode": "Promotion code (optional)",
       "promotionHint": "The payer gets this code's discount without typing it and may type another. It is checked against this amount now.",
-      "id": "Link"
+      "id": "Link",
+      "createdTitle": "Payment link created",
+      "createdHint": "Copy the link now and send it to the payer.",
+      "another": "Make another link",
+      "customerNone": "No customer"
     },
     "mail": {
       "title": "E-mail",
@@ -1175,7 +1194,12 @@
         "validityCol": "Validity",
         "noExpiry": "Never expires",
         "days": "{n} days",
-        "purchaseLink": "Create purchase link"
+        "purchaseLink": "Create purchase link",
+        "errors": {
+          "credits": "Credits: a whole number of 1 or more.",
+          "price": "Price: an amount greater than zero.",
+          "validity": "Validity: a whole number of days from 1 to {max}, or empty."
+        }
       },
       "customer": {
         "title": "A customer's credits",
@@ -1216,6 +1240,9 @@
           "goodwill": "Goodwill",
           "promotion": "Promotion",
           "other": "Other"
+        },
+        "errors": {
+          "credits": "Credits: a whole number of 1 or more."
         }
       },
       "ledger": {
@@ -3252,7 +3279,10 @@
       "currency": "Currency",
       "timezone": "Time zone",
       "immutable": "Currency and time zone cannot be changed later: billing periods are cut in that time zone.",
-      "submit": "Create app"
+      "submit": "Create app",
+      "badCurrency": "Choose a currency from the list.",
+      "badTimezone": "Choose a time zone from the list.",
+      "limitReached": "Your plan allows {limit} app(s) and you have {used}. Upgrade your plan to create another."
     },
     "env": {
       "label": "Environment",

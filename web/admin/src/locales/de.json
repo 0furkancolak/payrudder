@@ -35,7 +35,15 @@
     "moreActions": "Weitere Aktionen",
     "view": "Ansehen",
     "openFullPage": "Als ganze Seite öffnen",
-    "all": "Alle"
+    "all": "Alle",
+    "confirm": {
+      "title": "Sind Sie sicher?",
+      "accept": "Bestätigen"
+    },
+    "validation": {
+      "required": "Dieses Feld ist erforderlich.",
+      "email": "Geben Sie eine gültige E-Mail-Adresse ein."
+    }
   },
   "enums": {
     "environment": {
@@ -1063,7 +1071,14 @@
         "delivered": "Zugestellt",
         "failed": "Fehlgeschlagen"
       },
-      "allStatuses": "Alle Status"
+      "allStatuses": "Alle Status",
+      "deleteTitle": "Diesen Endpunkt löschen?",
+      "rotateTitle": "Signaturgeheimnis erneuern?",
+      "confirmRotate": "Das alte Geheimnis wird sofort ungültig: Ihr Empfänger braucht das neue, sonst lehnt er jede Zustellung ab.",
+      "insecure": {
+        "sandbox": "Diese URL verwendet http, was in der Sandbox zum Testen akzeptiert wird. Live-Endpunkte sollten https verwenden.",
+        "live": "Diese URL verwendet http: Ereignisse mit Kunden- und Rechnungsdaten würden unverschlüsselt übertragen. Verwenden Sie eine https-URL."
+      }
     },
     "paymentLinks": {
       "title": "Zahlungslinks",
@@ -1133,7 +1148,11 @@
       "for": "Für",
       "promotionCode": "Aktionscode (optional)",
       "promotionHint": "Der Zahlende erhält den Rabatt dieses Codes, ohne ihn einzugeben, und kann einen anderen eingeben. Er wird jetzt gegen diesen Betrag geprüft.",
-      "id": "Link"
+      "id": "Link",
+      "createdTitle": "Zahlungslink erstellt",
+      "createdHint": "Kopieren Sie den Link jetzt und senden Sie ihn an den Zahler.",
+      "another": "Weiteren Link erstellen",
+      "customerNone": "Kein Kunde"
     },
     "mail": {
       "title": "E-Mail",
@@ -1175,7 +1194,12 @@
         "validityCol": "Gültigkeit",
         "noExpiry": "Läuft nie ab",
         "days": "{n} Tage",
-        "purchaseLink": "Kauflink erstellen"
+        "purchaseLink": "Kauflink erstellen",
+        "errors": {
+          "credits": "Guthaben: eine ganze Zahl ab 1.",
+          "price": "Preis: ein Betrag größer als null.",
+          "validity": "Gültigkeit: ganze Tage von 1 bis {max} oder leer."
+        }
       },
       "customer": {
         "title": "Guthaben eines Kunden",
@@ -1216,6 +1240,9 @@
           "goodwill": "Kulanz",
           "promotion": "Aktion",
           "other": "Sonstiges"
+        },
+        "errors": {
+          "credits": "Guthaben: eine ganze Zahl ab 1."
         }
       },
       "ledger": {
@@ -3252,7 +3279,10 @@
       "currency": "Währung",
       "timezone": "Zeitzone",
       "immutable": "Währung und Zeitzone lassen sich später nicht ändern: Abrechnungszeiträume werden in dieser Zeitzone geschnitten.",
-      "submit": "App erstellen"
+      "submit": "App erstellen",
+      "badCurrency": "Wählen Sie eine Währung aus der Liste.",
+      "badTimezone": "Wählen Sie eine Zeitzone aus der Liste.",
+      "limitReached": "Ihr Tarif erlaubt {limit} App(s) und Sie haben {used}. Wechseln Sie den Tarif, um eine weitere zu erstellen."
     },
     "env": {
       "label": "Umgebung",

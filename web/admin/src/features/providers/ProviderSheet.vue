@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { fromTenant } from "@/features/product/billingProfile";
@@ -165,11 +166,11 @@ async function test() {
   testProblem.value = c.problem;
 }
 
-function removeNow() {
+async function removeNow() {
   const p = props.provider;
   if (p === "" || connectedTargets.value.length === 0) return;
   const ask = sandbox.value ? "product.providers.confirmDisconnectSandbox" : scope.value === "org" ? "product.providers.confirmDisconnectOrg" : "product.goLive.provider.confirmRemove";
-  if (!window.confirm(t(ask, { provider: providerName.value, count: connectedTargets.value.length }))) return;
+  if (!(await askConfirm({ body: t(ask, { provider: providerName.value, count: connectedTargets.value.length }) }))) return;
   disconnect.mutate(
     { apps: connectedTargets.value, provider: p, environment: props.environment },
     {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
@@ -89,8 +90,8 @@ function submit() {
     },
   );
 }
-function removeNow() {
-  if (!window.confirm(t("product.integrations.mail.confirmRemove"))) return;
+async function removeNow() {
+  if (!(await askConfirm({ body: t("product.integrations.mail.confirmRemove") }))) return;
   actions.remove.mutate(undefined, { onSuccess: () => (open.value = false) });
 }
 const failure = computed(() => firstError(actions.save, actions.remove, actions.test, mail));

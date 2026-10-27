@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomerLabel from "@/features/customers/CustomerLabel.vue";
 import { ArrowUpRight } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -83,7 +84,7 @@ useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
         <TableCell class="font-medium">{{ inv.number || t("tenant.draft") }}</TableCell>
         <TableCell>{{ label(t, te, "invoiceKind", inv.kind) }}</TableCell>
         <TableCell>{{ inv.period_id }}</TableCell>
-        <TableCell>{{ inv.customer_external_id }}</TableCell>
+        <TableCell><CustomerLabel :id="inv.customer_external_id" :tenant-id="tenantId" /></TableCell>
         <TableCell class="whitespace-nowrap">{{ fmt.date(inv.create_time, "day", "—") }}</TableCell>
         <TableCell class="text-end font-medium tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
         <TableCell><Badge :variant="statusVariant(inv.status)">{{ label(t, te, "invoiceStatus", inv.status) }}</Badge></TableCell>

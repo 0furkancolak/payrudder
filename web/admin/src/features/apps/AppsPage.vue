@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { askConfirm } from "@/shared/lib/confirm";
 import { Link, useParams } from "@tanstack/vue-router";
 import { Plus } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
@@ -84,8 +85,8 @@ function makeKey(tenant: string, environment: string) {
     },
   });
 }
-function revoke(id: string) {
-  if (!id || !window.confirm(t("apps.keys.confirmRevoke"))) return;
+async function revoke(id: string) {
+  if (!id || !(await askConfirm({ body: t("apps.keys.confirmRevoke") }))) return;
   revokeKey.mutate(id, {
     onSuccess: () => {
       session.value = session.value.map((k) => (k.id === id ? { ...k, revoked: true } : k));
