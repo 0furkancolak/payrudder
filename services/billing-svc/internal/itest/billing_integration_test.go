@@ -114,6 +114,7 @@ func TestBilling(t *testing.T) {
 		{"PlanChangeCreditGivesTheTaxBack", testPlanChangeCreditGivesTheTaxBack},
 		{"FeeInvoiceLineSaysTheSeats", testFeeInvoiceLineSaysTheSeats},
 		{"VoidingAPartPaidInvoiceCreditsWhatWasReceived", testVoidingAPartPaidInvoiceCreditsWhatWasReceived},
+		{"VoidingAnInvoicePaidByHandCreditsItAndRefundsOnlyTheCard", testVoidingAnInvoicePaidByHandCreditsItAndRefundsOnlyTheCard},
 		{"VoidingAnUnpaidInvoiceCreditsNothing", testVoidingAnUnpaidInvoiceCreditsNothing},
 		{"RefundCreditNoteNeedsACardPayment", testRefundCreditNoteNeedsACardPayment},
 		{"NumberSeriesIsEnforcedByTheDatabase", testNumberSeriesIsEnforcedByTheDatabase},

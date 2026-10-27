@@ -4,6 +4,7 @@ package itest
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -65,6 +66,61 @@ func testVoidingAPartPaidInvoiceCreditsWhatWasReceived(t *testing.T) {
 	}
 	if got := e.count(stub, "refund"); got != 0 {
 		t.Fatalf("%d refund commands for money no provider took", got)
+	}
+}
+
+// A voided invoice that was paid by hand has no card to go back to, whole or in part. Paid in full by hand it gives a credit balance of what was received and asks no
+// provider for anything; paid half by hand and half by card it refunds the card part and credits the hand part; credit notes already gave back are taken off the
+// card part first, so the customer never gets more than the invoice total.
+func testVoidingAnInvoicePaidByHandCreditsItAndRefundsOnlyTheCard(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, _ int) stubworker.Action {
+		return stubworker.Action{Reply: stubworker.Succeed}
+	})
+	svc := e.api()
+	refunds := func(inv uuid.UUID) (amounts []int64) {
+		for _, c := range e.mine(stub) {
+			if r := c.GetRefundPayment(); r != nil && r.GetInvoiceId() == inv.String() && r.GetIdempotencyKey() == inv.String()+":refund" {
+				amounts = append(amounts, r.GetAmountMinor())
+			}
+		}
+		return amounts
+	}
+	for _, tc := range []struct {
+		name, number   string
+		hand, note     int64 // received by hand, credited to the balance by a credit note
+		wantRefund     []int64
+		wantBalanceSum int64 // the credit balance the void itself makes, on top of the note's
+	}{
+		{name: "hand_full", number: "INV-2026-000911", hand: 1000, wantRefund: nil, wantBalanceSum: 1000},
+		{name: "hand_part", number: "INV-2026-000912", hand: 400, wantRefund: []int64{600}, wantBalanceSum: 400},
+		{name: "hand_part_noted", number: "INV-2026-000913", hand: 400, note: 300, wantRefund: []int64{300}, wantBalanceSum: 400},
+		{name: "hand_full_noted", number: "INV-2026-000914", hand: 1000, note: 300, wantRefund: nil, wantBalanceSum: 700},
+	} {
+		customer := uuid.New()
+		inv := seedOne(t, e.tid, customer, "cus_"+tc.name, "paid", "USD", tc.number, 1000, "live")
+		seedSaga(t, e.tid, inv)
+		seedHandPayment(t, e.tid, inv, tc.hand)
+		if tc.note > 0 {
+			if _, err := svc.CreateCreditNote(opCtx(), &billingv1.CreateCreditNoteRequest{TenantId: e.tid.String(), InvoiceId: inv.String(), AmountMinor: tc.note}); err != nil {
+				t.Fatalf("%s: credit note: %v", tc.name, err)
+			}
+		}
+		if _, err := svc.VoidInvoice(opCtx(), &billingv1.VoidInvoiceRequest{TenantId: e.tid.String(), InvoiceId: inv.String(), Reason: "test"}); err != nil {
+			t.Fatalf("%s: VoidInvoice: %v", tc.name, err)
+		}
+		testkit.Eventually(t, 30*time.Second, tc.name+" to be voided", func() bool {
+			var state string
+			_ = shared.system.QueryRow(context.Background(), `SELECT state FROM invoice_sagas WHERE tenant_id = $1 AND invoice_id = $2`, e.tid, inv).Scan(&state)
+			return state == "VOIDED"
+		})
+		if got := refunds(inv); !slices.Equal(got, tc.wantRefund) {
+			t.Fatalf("%s: refund commands = %v; want %v", tc.name, got, tc.wantRefund)
+		}
+		var viaVoid int64
+		if err := shared.system.QueryRow(context.Background(), `SELECT COALESCE(sum(amount_minor), 0)::bigint FROM credit_balances WHERE tenant_id = $1 AND source_invoice_id = $2`, e.tid, inv).Scan(&viaVoid); err != nil || viaVoid != tc.wantBalanceSum {
+			t.Fatalf("%s: credit balance from the void = %d (%v); want %d", tc.name, viaVoid, err, tc.wantBalanceSum)
+		}
 	}
 }
 
