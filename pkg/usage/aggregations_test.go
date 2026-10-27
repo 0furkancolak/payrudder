@@ -57,7 +57,8 @@ func TestDistinctValue(t *testing.T) {
 	if _, ok := (Meter{Aggregation: Unique}).DistinctValue(Event{Props: map[string]string{"": "x"}}); ok {
 		t.Error("a meter with no value property has no distinct value")
 	}
-	if Digest("alice") != Digest("alice") || Digest("alice") == Digest("Alice") || Digest("") == Digest(" ") {
+	first, again := Digest("alice"), Digest("alice")
+	if first != again || first == Digest("Alice") || Digest("") == Digest(" ") {
 		t.Error("digest must separate values and be stable")
 	}
 }
