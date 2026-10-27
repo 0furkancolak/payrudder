@@ -21,6 +21,7 @@ These need an account or an environment the repository does not have. Each is a 
 - **Bank transfer** against a real bank (29); **e-invoicing** through the official UBL-TR / Peppol schematron and Nilvera's test portal (30); **credit-pack checkouts** at the providers (36); **Google sign-in** against Google (42).
 - **Receipt scanning** (54): Tesseract.js OCR of a photographed receipt in a real browser against the jsdelivr CDN, and the **inbound invoice webhook** (`POST /inbound/invoices`) against a real mail provider (Resend or Nafru): both are covered only by mocks and fixtures.
 - **Payrudder as a SaaS** (55): the path gateway → ingest → limits → billing for the platform tenant's own metering and plan changes is tested against fakes and plans-svc integration only, never end to end on a stack; **Nafru Email** (53): the connection check and live sending against a real Nafru deployment. The Paddle mark has no licence entry in Simple Icons: confirm Paddle's brand guidelines before a public release.
+- **Quota windows** (yearly, lifetime, and the hour totals that reconcile hour, day and week counters): the aggregator's window reads and hour totals are tested against Postgres, and limits-svc's window counters against Redis with a fake aggregator, but the two never ran together over Kafka (the `TestAggregator` and `TestLimits` Kafka suites, including a replay with hour totals and a Redis flush with a lifetime counter).
 - **Railway**: a real deploy of the config in `deploy/railway` (31).
 - **Kubernetes**: a fresh 3-node kind install reaching ready in under 10 minutes, and the 100k chaos run with random pod deletion on a multi-node cluster (10).
 
@@ -31,7 +32,7 @@ These need an account or an environment the repository does not have. Each is a 
 
 ## Known gaps in the console
 
-- Quota windows: hour, day, ISO week and billing month only; yearly and lifetime windows and unique/last aggregations are not built. Short windows are not checked against the aggregator.
+- Quotas cannot count distinct values (`UNIQUE`) or the latest value (`LAST`): the counters, the aggregator's upserts, late usage and rating only add or keep a maximum, so these two aggregations need their own storage and billing rules ([limits-svc.md](../03-services/limits-svc.md#as-built-quota-windows-and-modes)).
 - The sandbox provider connection has no backend.
 - A dialog opened from a row of a token-paged list (reverse a commission, mark a payout paid, a partner's forms) comes back from the address only when its row is on the first page after a reload; the sheet of the row itself is looked for on later pages. A sheet that holds typed values or a one-time secret (the new key's plaintext, a scanned receipt) comes back empty.
 - Seats (a quantity on the subscription) exist in the API only: the console neither shows nor sets them. Tax is the tenant's configured rate per customer country; a real tax engine (place of supply, registrations, reverse charge, rates by date) is not built and not planned.

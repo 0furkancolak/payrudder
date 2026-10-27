@@ -75,8 +75,8 @@ message LimitExceeded {
   int64 used_units = 8;
   google.protobuf.Timestamp detected_at = 9;
   uint32 quantity_scale = 10;
-  string window = 11;                          // "month" (also empty), "hour", "day", "week"
-  string window_id = 12;                       // "2026-11", "2026-11-05T13", "2026-11-05", "2026-W45"; event_id hashes this, not period_id
+  string window = 11;                          // "month" (also empty), "hour", "day", "week", "year", "lifetime"
+  string window_id = 12;                       // "2026-11", "2026-11-05T13", "2026-11-05", "2026-W45", "2026", "all"; event_id hashes this, not period_id
 }
 
 message EntitlementState {
@@ -87,7 +87,7 @@ message EntitlementState {
   google.protobuf.Timestamp valid_from = 7;
   google.protobuf.Timestamp valid_until = 8;   // unset = open-ended
   uint32 quantity_scale = 9;
-  string window = 10;                          // "month" (also empty), "hour", "day", "week"
+  string window = 10;                          // "month" (also empty), "hour", "day", "week", "year", "lifetime"
   string mode = 11;                            // "hard" (also empty), "soft", "notify"
   bool override = 12;                          // the customer's own limit, not its plan version's
 }

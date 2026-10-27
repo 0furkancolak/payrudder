@@ -1631,7 +1631,9 @@
         "hour": "Por hora",
         "day": "Por día",
         "week": "Por semana",
-        "month": "Por mes de facturación"
+        "month": "Por mes de facturación",
+        "year": "Por año natural",
+        "lifetime": "Durante toda la vida del cliente"
       },
       "modes": {
         "hard": "Estricto: dejar de permitir",
@@ -1647,7 +1649,9 @@
         "hour": "Cuenta cada hora en la zona horaria de la aplicación.",
         "day": "Cuenta cada día en la zona horaria de la aplicación.",
         "week": "Cuenta cada semana desde el lunes en la zona horaria de la aplicación.",
-        "month": "Cuenta el mes de facturación, como la factura."
+        "month": "Cuenta el mes de facturación, como la factura.",
+        "year": "Cuenta cada año natural en la zona horaria de la aplicación.",
+        "lifetime": "Cuenta todo lo que el cliente ha usado y nunca se reinicia."
       },
       "windowColumn": "Ventana",
       "modeColumn": "Al alcanzarlo",

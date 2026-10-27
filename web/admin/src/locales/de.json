@@ -1631,7 +1631,9 @@
         "hour": "Pro Stunde",
         "day": "Pro Tag",
         "week": "Pro Woche",
-        "month": "Pro Abrechnungsmonat"
+        "month": "Pro Abrechnungsmonat",
+        "year": "Pro Kalenderjahr",
+        "lifetime": "Über die gesamte Kundenlaufzeit"
       },
       "modes": {
         "hard": "Hart: nicht mehr erlauben",
@@ -1647,7 +1649,9 @@
         "hour": "Zählt jede volle Stunde in der Zeitzone der App.",
         "day": "Zählt jeden Tag in der Zeitzone der App.",
         "week": "Zählt jede Woche ab Montag in der Zeitzone der App.",
-        "month": "Zählt den Abrechnungsmonat, wie die Rechnung."
+        "month": "Zählt den Abrechnungsmonat, wie die Rechnung.",
+        "year": "Zählt jedes Kalenderjahr in der Zeitzone der App.",
+        "lifetime": "Zählt alles, was der Kunde je genutzt hat, und wird nie zurückgesetzt."
       },
       "windowColumn": "Zeitfenster",
       "modeColumn": "Bei Erreichen",

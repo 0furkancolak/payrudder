@@ -329,7 +329,7 @@ func (f *fakeAggregator) GetUsageBatch(_ context.Context, req *aggregatorv1.GetU
 // keyFor finds the table entry of an aggregator key regardless of tenant (tests use one tenant per fake).
 func (f *fakeAggregator) keyFor(k *aggregatorv1.UsageKey) string {
 	for key := range f.totals {
-		if ref, ok := engine.ParseCounterKey(key); ok && ref.Customer.String() == k.GetCustomerId() && ref.Meter == k.GetMeterCode() && ref.Period == k.GetPeriodId() {
+		if ref, ok := engine.ParseKey(key); ok && ref.Customer.String() == k.GetCustomerId() && ref.Meter == k.GetMeterCode() && ref.Period == k.GetPeriodId() {
 			return key
 		}
 	}

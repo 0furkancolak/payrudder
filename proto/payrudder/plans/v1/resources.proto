@@ -259,6 +259,10 @@ enum QuotaWindow {
   QUOTA_WINDOW_DAY = 3;
   // ISO week: Monday 00:00 to the next Monday 00:00.
   QUOTA_WINDOW_WEEK = 4;
+  // Calendar year: 1 January 00:00 to the next 1 January 00:00, twelve billing periods.
+  QUOTA_WINDOW_YEAR = 5;
+  // Everything since the customer's first usage: the window never starts again.
+  QUOTA_WINDOW_LIFETIME = 6;
 }
 
 // QuotaMode is what reaching the limit means for CheckEntitlement's `allowed`. Payrudder never refuses usage events whatever the mode.

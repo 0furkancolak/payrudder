@@ -80,6 +80,9 @@ UPDATE replay_jobs SET status = 'discarded', updated_at = now(), completed_at = 
 -- name: DeleteGenerationUsage :exec
 DELETE FROM usage_aggregates WHERE tenant_id = @tenant_id AND generation = @generation;
 
+-- name: DeleteGenerationWindowUsage :exec
+DELETE FROM usage_window_aggregates WHERE tenant_id = @tenant_id AND generation = @generation;
+
 -- name: DeleteGenerationLateUsage :exec
 DELETE FROM late_usage WHERE tenant_id = @tenant_id AND generation = @generation;
 
@@ -122,6 +125,14 @@ DELETE FROM usage_aggregates WHERE tenant_id = @tenant_id AND generation = @gene
 INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at)
 SELECT s.tenant_id, s.period_id, s.customer_id, s.meter_code, @target::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at
 FROM usage_aggregates s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.period_id < @from_period::text OR s.period_id > @to_period::text);
+
+-- name: ClearGenerationWindowUsageOutside :exec
+DELETE FROM usage_window_aggregates WHERE tenant_id = @tenant_id AND generation = @generation AND (period_id < @from_period::text OR period_id > @to_period::text);
+
+-- name: CopyGenerationWindowUsageOutside :exec
+INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at)
+SELECT s.tenant_id, s.customer_id, s.meter_code, @target::int, s.hour_id, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+FROM usage_window_aggregates s WHERE s.tenant_id = @tenant_id AND s.generation = @source AND (s.period_id < @from_period::text OR s.period_id > @to_period::text);
 
 -- name: ClearGenerationLateUsageOutside :exec
 DELETE FROM late_usage WHERE tenant_id = @tenant_id AND generation = @generation AND (origin_period_id < @from_period::text OR origin_period_id > @to_period::text);

@@ -103,8 +103,13 @@ func TestEntitlementOverrides(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || m["customer_external_id"] != "cus_1" || m["meter_code"] != "gb" || m["window"] != "QUOTA_WINDOW_WEEK" || m["mode"] != "QUOTA_MODE_SOFT" || m["limit"] != "20" {
 		t.Fatalf("set: %d %v", resp.StatusCode, m)
 	}
-	if resp, m := do(t, ts, "PUT", "/v1/customers/cus_1/entitlement-overrides/gb", "live-key", `{"window":"QUOTA_WINDOW_YEAR"}`); resp.StatusCode != 400 || errCode(m) != "INVALID_ARGUMENT" {
+	if resp, m := do(t, ts, "PUT", "/v1/customers/cus_1/entitlement-overrides/gb", "live-key", `{"window":"QUOTA_WINDOW_DECADE"}`); resp.StatusCode != 400 || errCode(m) != "INVALID_ARGUMENT" {
 		t.Fatalf("unknown window: %d %v", resp.StatusCode, m)
+	}
+	for _, w := range []string{"QUOTA_WINDOW_YEAR", "QUOTA_WINDOW_LIFETIME"} {
+		if resp, m := do(t, ts, "PUT", "/v1/customers/cus_1/entitlement-overrides/gb", "live-key", `{"limit":"20","window":"`+w+`"}`); resp.StatusCode != http.StatusOK || m["window"] != w {
+			t.Fatalf("%s: %d %v", w, resp.StatusCode, m)
+		}
 	}
 	resp, m = do(t, ts, "GET", "/v1/customers/cus_1/entitlement-overrides", "live-key", "")
 	if items, _ := m["overrides"].([]any); resp.StatusCode != http.StatusOK || len(items) != 1 {

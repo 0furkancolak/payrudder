@@ -14,7 +14,9 @@ Kafka and is processed by many pods. A strongly consistent check would need a sy
   script that also stores the partition offset (redelivery-safe).
 - `CheckEntitlement` is **eventually consistent** and returns `as_of` so callers see staleness. **Target** p99 staleness < 2 s.
 - Threshold crossings emit `usage.limit-exceeded.v1` once per (customer, meter, period, threshold), with a deterministic event ID.
-- **Reconciliation** against aggregator's authoritative totals, at the same offset prefix per partition, corrects drift every 5 min.
+- **Reconciliation** against aggregator's authoritative totals, at the same offset prefix per partition, corrects drift every 5 min. It covers every
+  quota window, not only the billing month: the aggregator keeps month totals (read for a month, a year and the lifetime) and hour totals (read for an
+  hour, a day and an ISO week), see [aggregator.md](../03-services/aggregator.md#as-built-window-totals-quota-windows).
 - Payrudder **doesn't reject usage events** over the limit. Enforcement is the tenant's decision.
 - Billing never reads Redis.
 

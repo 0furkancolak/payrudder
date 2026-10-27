@@ -91,6 +91,19 @@ func (q *Queries) InsertProcessedEvents(ctx context.Context, arg InsertProcessed
 	return items, nil
 }
 
+const pruneUsageWindowAggregates = `-- name: PruneUsageWindowAggregates :execrows
+DELETE FROM usage_window_aggregates WHERE hour_id < $1::text
+`
+
+// Deletes the hour totals before @oldest_hour_id (every generation, every tenant): the rows are a rolling window.
+func (q *Queries) PruneUsageWindowAggregates(ctx context.Context, oldestHourID string) (int64, error) {
+	result, err := q.db.Exec(ctx, pruneUsageWindowAggregates, oldestHourID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setAppTenant = `-- name: SetAppTenant :exec
 SELECT set_config('app.tenant_id', $1::text, true)
 `
@@ -202,46 +215,168 @@ func (q *Queries) UpsertUsageAggregates(ctx context.Context, arg UpsertUsageAggr
 	return err
 }
 
-const usageBatch = `-- name: UsageBatch :many
+const upsertUsageWindowAggregates = `-- name: UpsertUsageWindowAggregates :exec
+INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at)
+SELECT t.v, c.v, m.v, g.v, h.v, q.v::numeric, s.v, e.v, clock_timestamp()
+FROM unnest($1::uuid[]) WITH ORDINALITY AS t(v, n)
+JOIN unnest($2::uuid[]) WITH ORDINALITY AS c(v, n) USING (n)
+JOIN unnest($3::text[]) WITH ORDINALITY AS m(v, n) USING (n)
+JOIN unnest($4::int[]) WITH ORDINALITY AS g(v, n) USING (n)
+JOIN unnest($5::text[]) WITH ORDINALITY AS h(v, n) USING (n)
+JOIN unnest($6::text[]) WITH ORDINALITY AS q(v, n) USING (n)
+JOIN unnest($7::smallint[]) WITH ORDINALITY AS s(v, n) USING (n)
+JOIN unnest($8::bigint[]) WITH ORDINALITY AS e(v, n) USING (n)
+ORDER BY t.n
+ON CONFLICT (tenant_id, customer_id, meter_code, generation, hour_id) DO UPDATE
+SET quantity = CASE WHEN $9::boolean THEN GREATEST(usage_window_aggregates.quantity, EXCLUDED.quantity) ELSE usage_window_aggregates.quantity + EXCLUDED.quantity END,
+    event_count = usage_window_aggregates.event_count + EXCLUDED.event_count, updated_at = EXCLUDED.updated_at
+`
+
+type UpsertUsageWindowAggregatesParams struct {
+	Tenants     []uuid.UUID
+	Customers   []uuid.UUID
+	MeterCodes  []string
+	Generations []int32
+	HourIds     []string
+	Quantities  []string
+	Scales      []int16
+	EventCounts []int64
+	IsMax       bool
+}
+
+// The hour totals of the window quotas (migration 00004). @is_max picks the merge: GREATEST for a max meter, a sum otherwise.
+func (q *Queries) UpsertUsageWindowAggregates(ctx context.Context, arg UpsertUsageWindowAggregatesParams) error {
+	_, err := q.db.Exec(ctx, upsertUsageWindowAggregates,
+		arg.Tenants,
+		arg.Customers,
+		arg.MeterCodes,
+		arg.Generations,
+		arg.HourIds,
+		arg.Quantities,
+		arg.Scales,
+		arg.EventCounts,
+		arg.IsMax,
+	)
+	return err
+}
+
+const usageRangeHours = `-- name: UsageRangeHours :many
 SELECT COALESCE(a.quantity, '0')::text AS quantity, COALESCE(a.quantity_scale, 0)::int AS quantity_scale, COALESCE(a.event_count, 0)::bigint AS event_count,
        (a.event_count IS NOT NULL)::boolean AS found
 FROM unnest($1::uuid[]) WITH ORDINALITY AS c(v, n)
 JOIN unnest($2::text[]) WITH ORDINALITY AS m(v, n) USING (n)
-JOIN unnest($3::text[]) WITH ORDINALITY AS p(v, n) USING (n)
-LEFT JOIN (SELECT customer_id, meter_code, period_id, generation, quantity::text AS quantity, quantity_scale::int AS quantity_scale, event_count
-           FROM usage_aggregates) a ON a.customer_id = c.v AND a.meter_code = m.v AND a.period_id = p.v AND a.generation = $4::int
+JOIN unnest($3::text[]) WITH ORDINALITY AS f(v, n) USING (n)
+JOIN unnest($4::text[]) WITH ORDINALITY AS t(v, n) USING (n)
+JOIN unnest($5::boolean[]) WITH ORDINALITY AS x(v, n) USING (n)
+LEFT JOIN LATERAL (
+  SELECT (CASE WHEN x.v THEN max(u.quantity) ELSE sum(u.quantity) END)::numeric AS quantity, max(u.quantity_scale)::int AS quantity_scale, sum(u.event_count)::bigint AS event_count
+  FROM usage_window_aggregates u
+  WHERE u.customer_id = c.v AND u.meter_code = m.v AND u.generation = $6::int AND u.hour_id BETWEEN f.v AND t.v
+  HAVING count(*) > 0
+) a ON true
 ORDER BY c.n
 `
 
-type UsageBatchParams struct {
+type UsageRangeHoursParams struct {
 	Customers  []uuid.UUID
 	MeterCodes []string
-	Periods    []string
+	FromIds    []string
+	ToIds      []string
+	Maxes      []bool
 	Generation int32
 }
 
-type UsageBatchRow struct {
+type UsageRangeHoursRow struct {
 	Quantity      string
 	QuantityScale int32
 	EventCount    int64
 	Found         bool
 }
 
-// One row per requested key, in request order; found is false for a key without an aggregate row.
-func (q *Queries) UsageBatch(ctx context.Context, arg UsageBatchParams) ([]UsageBatchRow, error) {
-	rows, err := q.db.Query(ctx, usageBatch,
+// UsageRangeMonths over the hour totals: the hour rows from_id..to_id.
+func (q *Queries) UsageRangeHours(ctx context.Context, arg UsageRangeHoursParams) ([]UsageRangeHoursRow, error) {
+	rows, err := q.db.Query(ctx, usageRangeHours,
 		arg.Customers,
 		arg.MeterCodes,
-		arg.Periods,
+		arg.FromIds,
+		arg.ToIds,
+		arg.Maxes,
 		arg.Generation,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []UsageBatchRow{}
+	items := []UsageRangeHoursRow{}
 	for rows.Next() {
-		var i UsageBatchRow
+		var i UsageRangeHoursRow
+		if err := rows.Scan(
+			&i.Quantity,
+			&i.QuantityScale,
+			&i.EventCount,
+			&i.Found,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const usageRangeMonths = `-- name: UsageRangeMonths :many
+SELECT COALESCE(a.quantity, '0')::text AS quantity, COALESCE(a.quantity_scale, 0)::int AS quantity_scale, COALESCE(a.event_count, 0)::bigint AS event_count,
+       (a.event_count IS NOT NULL)::boolean AS found
+FROM unnest($1::uuid[]) WITH ORDINALITY AS c(v, n)
+JOIN unnest($2::text[]) WITH ORDINALITY AS m(v, n) USING (n)
+JOIN unnest($3::text[]) WITH ORDINALITY AS f(v, n) USING (n)
+JOIN unnest($4::text[]) WITH ORDINALITY AS t(v, n) USING (n)
+JOIN unnest($5::boolean[]) WITH ORDINALITY AS x(v, n) USING (n)
+LEFT JOIN LATERAL (
+  SELECT (CASE WHEN x.v THEN max(u.quantity) ELSE sum(u.quantity) END)::numeric AS quantity, max(u.quantity_scale)::int AS quantity_scale, sum(u.event_count)::bigint AS event_count
+  FROM usage_aggregates u
+  WHERE u.customer_id = c.v AND u.meter_code = m.v AND u.generation = $6::int AND u.period_id BETWEEN f.v AND t.v
+  HAVING count(*) > 0
+) a ON true
+ORDER BY c.n
+`
+
+type UsageRangeMonthsParams struct {
+	Customers  []uuid.UUID
+	MeterCodes []string
+	FromIds    []string
+	ToIds      []string
+	Maxes      []bool
+	Generation int32
+}
+
+type UsageRangeMonthsRow struct {
+	Quantity      string
+	QuantityScale int32
+	EventCount    int64
+	Found         bool
+}
+
+// One row per requested key, in request order: the sum (the maximum for @maxes) of the month rows from_id..to_id of the customer's meter; found is false when
+// there is none. A single month is from_id = to_id.
+func (q *Queries) UsageRangeMonths(ctx context.Context, arg UsageRangeMonthsParams) ([]UsageRangeMonthsRow, error) {
+	rows, err := q.db.Query(ctx, usageRangeMonths,
+		arg.Customers,
+		arg.MeterCodes,
+		arg.FromIds,
+		arg.ToIds,
+		arg.Maxes,
+		arg.Generation,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []UsageRangeMonthsRow{}
+	for rows.Next() {
+		var i UsageRangeMonthsRow
 		if err := rows.Scan(
 			&i.Quantity,
 			&i.QuantityScale,

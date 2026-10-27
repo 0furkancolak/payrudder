@@ -115,12 +115,12 @@ func testQuotasAndOverrides(t *testing.T) {
 	if err != nil || o.GetOverride().GetLimit() != "20000" || o.GetOverride().GetWindow() != plansv1.QuotaWindow_QUOTA_WINDOW_WEEK {
 		t.Fatalf("override = %v, %v", o, err)
 	}
-	must(e.plans.SetEntitlementOverride(ctx, &plansv1.SetEntitlementOverrideRequest{CustomerExternalId: "cus_q", MeterCode: "seats", Limit: "5", Mode: plansv1.QuotaMode_QUOTA_MODE_NOTIFY}))
+	must(e.plans.SetEntitlementOverride(ctx, &plansv1.SetEntitlementOverrideRequest{CustomerExternalId: "cus_q", MeterCode: "seats", Limit: "5", Window: plansv1.QuotaWindow_QUOTA_WINDOW_LIFETIME, Mode: plansv1.QuotaMode_QUOTA_MODE_NOTIFY}))
 	states = relay()
 	if st, _ := byMeter(states, "tokens"); st == nil || !st.GetOverride() || st.GetLimitUnits() != 20000 || st.GetWindow() != "week" || st.GetMode() != "hard" || len(st.GetAlertThresholdsPct()) != 1 {
 		t.Fatalf("overridden tokens = %v", st)
 	}
-	if st, _ := byMeter(states, "seats"); st == nil || st.GetLimitUnits() != 5 || st.GetMode() != "notify" || st.GetWindow() != "month" {
+	if st, _ := byMeter(states, "seats"); st == nil || st.GetLimitUnits() != 5 || st.GetMode() != "notify" || st.GetWindow() != "lifetime" {
 		t.Fatalf("override-only seats = %v", st)
 	}
 	ol, err := e.plans.ListEntitlementOverrides(ctx, &plansv1.ListEntitlementOverridesRequest{CustomerExternalId: "cus_q"})
@@ -151,6 +151,21 @@ func testQuotasAndOverrides(t *testing.T) {
 	}
 	if _, err := e.plans.DeleteEntitlementOverride(ctx, &plansv1.DeleteEntitlementOverrideRequest{CustomerExternalId: "cus_q", MeterCode: "seats"}); code(t, err) != codes.NotFound {
 		t.Fatalf("second delete: %v", err)
+	}
+	// A yearly and a lifetime window are stored, read back and published like the others.
+	yv, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "ai", BaseFeeMinor: 1000, Entitlements: []*plansv1.Entitlement{
+		{MeterCode: "tokens", Limit: "1000000", Window: plansv1.QuotaWindow_QUOTA_WINDOW_YEAR},
+		{MeterCode: "seats", Limit: "3", Window: plansv1.QuotaWindow_QUOTA_WINDOW_LIFETIME, Mode: plansv1.QuotaMode_QUOTA_MODE_NOTIFY},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	read, err := e.plans.GetPlanVersion(ctx, &plansv1.GetPlanVersionRequest{PlanCode: "ai", Version: yv.GetPlanVersion().GetVersion()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w := read.GetPlanVersion().GetEntitlements(); len(w) != 2 || w[0].GetWindow() != plansv1.QuotaWindow_QUOTA_WINDOW_LIFETIME || w[1].GetWindow() != plansv1.QuotaWindow_QUOTA_WINDOW_YEAR { // by meter code
+		t.Fatalf("year and lifetime entitlements read back as %v", w)
 	}
 	// Another tenant sees none of it.
 	other := e.account(t, "Quotas other")[plansv1.Environment_ENVIRONMENT_LIVE]

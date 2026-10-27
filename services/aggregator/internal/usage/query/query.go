@@ -106,13 +106,29 @@ func (s *Queries) CustomerUsage(ctx context.Context, customerID, periodID string
 	return out, err
 }
 
-// Batch is the usage for a list of (customer, meter, period) keys and the consumer offsets they are current as of.
+// Batch is the usage for a list of (customer, meter, window) keys and the consumer offsets they are current as of.
 type Batch struct {
 	Usage           []*aggregatorv1.UsageAggregate
 	ConsumerOffsets map[int32]int64
 }
 
+// rangeKeys are the keys of a batch that read one stored granule (months or hours), as the arrays the range queries take, and where each
+// came from in the request.
+type rangeKeys struct {
+	at             []int
+	customers      []uuid.UUID
+	meterCodes     []string
+	fromIDs, toIDs []string
+	maxes          []bool
+}
+
+func (r *rangeKeys) add(i int, customer uuid.UUID, meter, from, to string, isMax bool) {
+	r.at, r.customers, r.meterCodes = append(r.at, i), append(r.customers, customer), append(r.meterCodes, meter)
+	r.fromIDs, r.toIDs, r.maxes = append(r.fromIDs, from), append(r.toIDs, to), append(r.maxes, isMax)
+}
+
 // UsageBatch reads the usage of up to MaxBatchKeys keys, in the order given, in one snapshot with the offsets: "usage as of these offsets".
+// A key names a billing period or any other quota window (period.Span): the usage of a window is what its stored rows add up to.
 func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey, pinned int32) (*Batch, error) {
 	ti, err := tenant.Require(ctx)
 	if err != nil {
@@ -123,17 +139,22 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 		return nil, invalid("aggregator.usage.bad_batch_size", fmt.Sprintf("keys: need 1..%d, got %d", MaxBatchKeys, n))
 	}
 	customers := make([]uuid.UUID, n)
-	meterCodes := make([]string, n)
-	periods := make([]string, n)
+	var months, hours rangeKeys
 	for i, k := range keys {
 		c, err := errkey.ParseUUID("aggregator.customer.bad_id", fmt.Sprintf("keys[%d].customer_id", i), k.GetCustomerId())
 		if err != nil {
 			return nil, err
 		}
-		if err := validPeriod(k.GetPeriodId()); err != nil {
-			return nil, err
+		g, from, to, err := period.Span(k.GetPeriodId())
+		if err != nil {
+			return nil, invalid("aggregator.period.bad_id", "period_id must be a period (2026-11) or a window id (2026-11-05T13, 2026-11-05, 2026-W45, 2026, all)")
 		}
-		customers[i], meterCodes[i], periods[i] = c, k.GetMeterCode(), k.GetPeriodId()
+		customers[i] = c
+		if g == period.Months {
+			months.add(i, c, k.GetMeterCode(), from, to, k.GetMax())
+		} else {
+			hours.add(i, c, k.GetMeterCode(), from, to, k.GetMax())
+		}
 	}
 	out := &Batch{ConsumerOffsets: map[int32]int64{}}
 	err = pgxx.InTx(ctx, s.app, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
@@ -145,16 +166,36 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 		if err != nil {
 			return err
 		}
-		rows, err := q.UsageBatch(ctx, sqlc.UsageBatchParams{Customers: customers, MeterCodes: meterCodes, Periods: periods, Generation: gen})
-		if err != nil {
-			return err
-		}
-		for i, r := range rows {
-			agg := &aggregatorv1.UsageAggregate{CustomerId: customers[i].String(), MeterCode: meterCodes[i], PeriodId: periods[i], Quantity: "0"}
-			if r.Found {
-				agg = usageRow(customers[i], meterCodes[i], periods[i], r.Quantity, r.QuantityScale, r.EventCount)
+		out.Usage = make([]*aggregatorv1.UsageAggregate, n)
+		fill := func(r rangeKeys, found []bool, qty []string, scale []int32, events []int64) {
+			for j, i := range r.at {
+				k := keys[i]
+				agg := &aggregatorv1.UsageAggregate{CustomerId: customers[i].String(), MeterCode: k.GetMeterCode(), PeriodId: k.GetPeriodId(), Quantity: "0"}
+				if found[j] {
+					agg = usageRow(customers[i], k.GetMeterCode(), k.GetPeriodId(), qty[j], scale[j], events[j])
+				}
+				out.Usage[i] = agg
 			}
-			out.Usage = append(out.Usage, agg)
+		}
+		if len(months.at) > 0 {
+			rows, err := q.UsageRangeMonths(ctx, sqlc.UsageRangeMonthsParams{Customers: months.customers, MeterCodes: months.meterCodes, FromIds: months.fromIDs, ToIds: months.toIDs, Maxes: months.maxes, Generation: gen})
+			if err != nil {
+				return err
+			}
+			found, qty, scale, events := columns(len(rows), func(j int) (bool, string, int32, int64) {
+				return rows[j].Found, rows[j].Quantity, rows[j].QuantityScale, rows[j].EventCount
+			})
+			fill(months, found, qty, scale, events)
+		}
+		if len(hours.at) > 0 {
+			rows, err := q.UsageRangeHours(ctx, sqlc.UsageRangeHoursParams{Customers: hours.customers, MeterCodes: hours.meterCodes, FromIds: hours.fromIDs, ToIds: hours.toIDs, Maxes: hours.maxes, Generation: gen})
+			if err != nil {
+				return err
+			}
+			found, qty, scale, events := columns(len(rows), func(j int) (bool, string, int32, int64) {
+				return rows[j].Found, rows[j].Quantity, rows[j].QuantityScale, rows[j].EventCount
+			})
+			fill(hours, found, qty, scale, events)
 		}
 		offs, err := q.ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: s.group, Topic: s.topic})
 		if err != nil {
@@ -167,6 +208,15 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 		return nil, store.MapErr(ctx, err)
 	}
 	return out, nil
+}
+
+// columns splits n result rows, read through row, into the columns fill takes.
+func columns(n int, row func(j int) (bool, string, int32, int64)) (found []bool, qty []string, scale []int32, events []int64) {
+	found, qty, scale, events = make([]bool, n), make([]string, n), make([]int32, n), make([]int64, n)
+	for j := 0; j < n; j++ {
+		found[j], qty[j], scale[j], events[j] = row(j)
+	}
+	return found, qty, scale, events
 }
 
 // PeriodUsage is the usage of every customer and meter in a period.

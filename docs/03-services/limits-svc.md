@@ -24,7 +24,8 @@ to counter). It is not the billing source of truth. See [ADR 0006](../adr/0006-e
 | `lim:off:{partition}` | string int (next offset applied) | none |
 | `lim:fired:{tenant}:{customer}:{meter}:{period}:{pct}` | string `1` | period end + 40 days |
 | `lim:w:{tenant}:{customer}:{meter}:{window}` | string int (counter of an hour, day or ISO week window) | window end + 2 days |
-| `lim:wactive:{partition}` | sorted set of the window counters (score = last update) | entries pruned after 1 h |
+| `lim:y:{tenant}:{customer}:{meter}:{window}` | string int (counter of a calendar year `2026` or the lifetime `all`) | year end + 2 days; the lifetime counter never expires |
+| `lim:wactive:{partition}` | sorted set of the short-window counters (`lim:w`; score = last update) | entries pruned after 1 h |
 
 All counter keys of a batch for partition `p` are updated in **one Lua script** together with
 `lim:off:{p}`. That works because the script runs atomically on a single Redis node. In Redis Cluster the keys
@@ -65,8 +66,9 @@ For each threshold `t` in the entitlement's `alert_thresholds_pct` where `before
 
 Every 5 min (configurable) per pod, for its assigned partitions:
 
-1. Collect active counter keys from a sorted set `lim:active:{p}` (score = last update).
-2. Call aggregator `GetUsageBatch(keys, partition=p)`. Aggregator reads the totals **and** its
+1. Collect active counter keys from a sorted set `lim:active:{p}` (score = last update): the billing-period counters and the year and lifetime
+   counters, plus the short-window counters (`lim:wactive:{p}`) updated in the last hour whose window has not ended more than two hours ago.
+2. Call aggregator `GetUsageBatch(keys, partition=p)` (a key is a period or a window id, see [aggregator.md](aggregator.md#as-built-window-totals-quota-windows)). Aggregator reads the totals **and** its
    `consumer_offsets.next_offset` for `p` in one `REPEATABLE READ` transaction. The result is a consistent
    snapshot `(totals, O_a)`: "these totals contain exactly the events of `p` before offset `O_a`".
 3. Compare with limits' own applied offset `O_l = lim:off:{p}`:
@@ -134,20 +136,35 @@ our ingest **targets**. `CheckEntitlement` is a single `MGET` (counter + entitle
 
 ## As built: quota windows and modes
 
-- An entitlement counts over a **window**: the billing month (`lim:c`, as before) or an hour, a day or an ISO week in the tenant's time zone
-  (`pkg/period.WindowOf`; ids `2026-11-05T13`, `2026-11-05`, `2026-W45`). For an entitlement with a shorter window the apply loop adds the
-  event to `lim:w:…:{window of event_time}` as well, in the same script call; the month counter keeps counting everything.
-- Window counters are kept **only while an entitlement asks for them**: a window counter starts with the first event after limits-svc learns the
-  entitlement, so switching a meter from monthly to daily mid-day counts the rest of that day only.
-- Window counters are **not reconciled**: the aggregator keeps months only. A Redis data loss is repaired by replaying the partition (the 30-day
-  topic retention covers any window up to a week); an outbox duplicate counts twice until its window ends. They are kept out of
-  `lim:active:{p}` (the script sends `lim:w:` keys to `lim:wactive:{p}`), and the reconciler sweeps their thresholds every cycle.
-- A threshold of a monthly limit fires on the month counter only, of a daily limit on the day counters only. `LimitExceeded` carries `window` and
-  `window_id`; `period_id` stays the billing period the window starts in, and `event_id` is `uuidv5(tenant|customer|meter|window_id|pct)` (for a
-  month that is the period id, as before).
+- An entitlement counts over a **window** in the tenant's time zone (`pkg/period.WindowOf`): the billing month (`lim:c`, as before), an hour, a day or an
+  ISO week (`lim:w`; ids `2026-11-05T13`, `2026-11-05`, `2026-W45`), a calendar year or the customer's lifetime (`lim:y`; ids `2026` and `all`). A year is
+  January 1st 00:00 to the next, in the tenant's zone, so it rolls over at the tenant's midnight and not at UTC's; the lifetime window has no start and no end
+  (`WindowOf` returns the zero time for both). For an entitlement with a window other than the month the apply loop adds the event to the counter of
+  `event_time`'s window as well, in the same script call; the month counter keeps counting everything.
+- Window counters are kept **only while an entitlement asks for them**. A counter starts with the first event after limits-svc learns the entitlement and is
+  brought to the aggregator's total of the window by the next reconciliation (within one interval), so switching a meter from monthly to daily, yearly or
+  lifetime counts what the window held before the entitlement existed, too. Until then, and for a customer with no event since, the counter is short
+  (`CheckEntitlement` reports what the counter holds; there is no fallback read of the aggregator).
+- Window counters **are reconciled**, with the checkpoint protocol of the month counters: the aggregator sums the stored rows of the window at the offsets of
+  its snapshot (hour rows for an hour, day or week, month rows for a year or the lifetime; see aggregator.md). An outbox duplicate stops counting twice within
+  a cycle, and a counter lost with Redis comes back from the aggregator once an event touches it. Short windows are reconciled while they are current
+  (an hour, a day or a week that ended more than two hours ago is final and nobody reads it) and only if updated in the last hour; the year and lifetime
+  counters are listed in `lim:active:{p}` and reconciled for as long as they are being updated (45 days). A counter that reconciliation had to create is given
+  the expiry the apply script would have given it, none for the lifetime counter. Redis lost with its offsets is replayed from the log
+  (30-day retention) as before; what the log no longer holds comes from the aggregator.
+- A threshold of a monthly limit fires on the month counter only, of a daily limit on the day counters only, and so on. `LimitExceeded` carries `window` and
+  `window_id`; `period_id` stays the billing period the window starts in (the current one for the lifetime window), and `event_id` is
+  `uuidv5(tenant|customer|meter|window_id|pct)` (for a month that is the period id, as before). The fired marker lives 80 days, a year's until 80 days after the
+  year ends, and a lifetime limit's forever: it fires once in the customer's life.
 - **Mode** decides `allowed`: `hard` (and a state published before modes) is `used < limit`, `soft` and `notify` are always allowed.
-  `LimitStatus` adds `window`, `window_id`, `resets_at`, `mode`, `over_limit` and `overridden`. A shorter window always reports the current one;
-  `period_id` only picks the month of monthly limits.
-- **Not offered, on purpose:** a yearly or lifetime window (a year needs twelve month totals and months older than the 45-day reconciliation
-  window and the 30-day log retention could not be restored truthfully after a Redis loss), and the `UNIQUE` (distinct count) or `LAST`
-  aggregations (the counters, the aggregator's upsert and rating only add, keep a maximum or count).
+  `LimitStatus` adds `window`, `window_id`, `resets_at` (unset for the lifetime window), `mode`, `over_limit` and `overridden`. A window other than the month
+  always reports the current one; `period_id` only picks the month of monthly limits.
+- **Enforcement and invoicing agree** because they count the same events: a short window is reconciled against hour totals the aggregator writes in the transaction
+  of the month row that invoicing rates, with the same on-time rule; year and lifetime are sums of the very month rows. They can still differ in two bounded
+  ways: by the reconciliation interval, and for an event that limits-svc counts as on time by the tenant's current grace while the aggregator classified it by the
+  period snapshot (an early-closed or frozen period).
+- **Not offered, on purpose:** the `UNIQUE` (distinct count) and `LAST` (value of the latest event) aggregations. The counters, the aggregator's upsert, the
+  late-usage table and rating all combine parts by adding or keeping a maximum, and a window of several parts is the sum or maximum of its parts. A distinct count
+  is not additive (a customer seen in two months is one customer, so a year or a day cannot be read from the parts and the aggregator would have to keep a set per
+  customer, meter and every window kind), and "last" needs an order across partitions and across late arrivals, plus a rule for what a late event of an old period
+  adds to a later invoice. Both need their own storage and billing semantics, not a variant of the counter; they are a separate design.

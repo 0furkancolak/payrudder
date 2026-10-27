@@ -23,9 +23,9 @@ message LimitExceeded {
   int64 used_units = 8;
   google.protobuf.Timestamp detected_at = 9;
   uint32 quantity_scale = 10;
-  // The window of the quota: "month" (also when empty), "hour", "day" or "week".
+  // The window of the quota: "month" (also when empty), "hour", "day", "week", "year" or "lifetime".
   string window = 11;
-  // The window the usage was counted in: "2026-11" for a month (= period_id), "2026-11-05T13", "2026-11-05" or "2026-W45". period_id is the
-  // billing period the window starts in. event_id is uuidv5(tenant|customer|meter|window_id|threshold).
+  // The window the usage was counted in: "2026-11" for a month (= period_id), "2026-11-05T13", "2026-11-05", "2026-W45", "2026" (year) or "all" (lifetime). period_id is the
+  // billing period the window starts in (the current one for the lifetime window). event_id is uuidv5(tenant|customer|meter|window_id|threshold).
   string window_id = 12;
 }

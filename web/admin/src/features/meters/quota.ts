@@ -22,8 +22,15 @@ export const newQuota = (): QuotaDraft => ({ limit: "", window: "QUOTA_WINDOW_MO
 /** The aggregations the engine computes: every one is summed, counted or maximised exactly by the aggregator, limits-svc and rating. */
 export const AGGREGATIONS: readonly Aggregation[] = ["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"];
 
-/** The windows a quota can count over, shortest first. The month is the billing period (the default). */
-export const WINDOWS: readonly QuotaWindow[] = ["QUOTA_WINDOW_HOUR", "QUOTA_WINDOW_DAY", "QUOTA_WINDOW_WEEK", "QUOTA_WINDOW_MONTH"];
+/** The windows a quota can count over, shortest first. The month is the billing period (the default); a lifetime quota never starts again. */
+export const WINDOWS: readonly QuotaWindow[] = [
+  "QUOTA_WINDOW_HOUR",
+  "QUOTA_WINDOW_DAY",
+  "QUOTA_WINDOW_WEEK",
+  "QUOTA_WINDOW_MONTH",
+  "QUOTA_WINDOW_YEAR",
+  "QUOTA_WINDOW_LIFETIME",
+];
 
 /** What reaching the limit does to `allowed`: hard stops allowing, soft keeps allowing and bills the excess at the price, notify only alerts. */
 export const MODES: readonly QuotaMode[] = ["QUOTA_MODE_HARD", "QUOTA_MODE_SOFT", "QUOTA_MODE_NOTIFY"];

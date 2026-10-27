@@ -89,3 +89,16 @@ type UsageAggregate struct {
 	EventCount    int64
 	UpdatedAt     time.Time
 }
+
+type UsageWindowAggregate struct {
+	TenantID      uuid.UUID
+	CustomerID    uuid.UUID
+	MeterCode     string
+	Generation    int32
+	HourID        string
+	PeriodID      *string
+	Quantity      pgtype.Numeric
+	QuantityScale int16
+	EventCount    int64
+	UpdatedAt     time.Time
+}

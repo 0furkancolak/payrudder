@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { categories, isQuantity, modeWord, newQuota, parseThresholds, quotaDraftOf, quotaTerms, scaleOf, windowWord, type Meter } from "./quota";
+import en from "@/locales/en.json";
+import { categories, isQuantity, modeWord, newQuota, parseThresholds, quotaDraftOf, quotaTerms, scaleOf, WINDOWS, windowWord, type Meter } from "./quota";
 
 describe("quotaTerms", () => {
   it("builds the API's terms, leaving out default thresholds", () => {
@@ -38,9 +39,21 @@ describe("isQuantity", () => {
   });
 });
 
+describe("windows", () => {
+  it("offers every window shortest first, each with a label and a help text", () => {
+    expect(WINDOWS.map(windowWord)).toEqual(["hour", "day", "week", "month", "year", "lifetime"]);
+    for (const w of WINDOWS) {
+      expect(en.billing.quotas.windows[windowWord(w) as keyof typeof en.billing.quotas.windows]).toBeTruthy();
+      expect(en.billing.quotas.windowHelp[windowWord(w) as keyof typeof en.billing.quotas.windowHelp]).toBeTruthy();
+    }
+  });
+});
+
 describe("words", () => {
   it("maps enum values to the locale keys, unspecified to the default", () => {
     expect(windowWord("QUOTA_WINDOW_DAY")).toBe("day");
+    expect(windowWord("QUOTA_WINDOW_YEAR")).toBe("year");
+    expect(windowWord("QUOTA_WINDOW_LIFETIME")).toBe("lifetime");
     expect(windowWord("QUOTA_WINDOW_UNSPECIFIED")).toBe("month");
     expect(windowWord(undefined)).toBe("month");
     expect(modeWord("QUOTA_MODE_NOTIFY")).toBe("notify");

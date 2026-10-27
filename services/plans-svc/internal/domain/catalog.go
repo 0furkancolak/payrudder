@@ -179,7 +179,7 @@ type StoredEntitlement struct {
 	MeterCode  string
 	LimitUnits int64
 	Thresholds []int32
-	// Window is the stored name of the quota window: "hour", "day", "week" or "month".
+	// Window is the stored name of the quota window: "hour", "day", "week", "month", "year" or "lifetime".
 	Window string
 	// Mode is the stored name of the enforcement mode: "hard", "soft" or "notify".
 	Mode string
@@ -196,6 +196,10 @@ func WindowToDB(w plansv1.QuotaWindow) (string, bool) {
 		return "day", true
 	case plansv1.QuotaWindow_QUOTA_WINDOW_WEEK:
 		return "week", true
+	case plansv1.QuotaWindow_QUOTA_WINDOW_YEAR:
+		return "year", true
+	case plansv1.QuotaWindow_QUOTA_WINDOW_LIFETIME:
+		return "lifetime", true
 	default:
 		return "", false
 	}
@@ -210,6 +214,10 @@ func WindowFromDB(s string) plansv1.QuotaWindow {
 		return plansv1.QuotaWindow_QUOTA_WINDOW_DAY
 	case "week":
 		return plansv1.QuotaWindow_QUOTA_WINDOW_WEEK
+	case "year":
+		return plansv1.QuotaWindow_QUOTA_WINDOW_YEAR
+	case "lifetime":
+		return plansv1.QuotaWindow_QUOTA_WINDOW_LIFETIME
 	default:
 		return plansv1.QuotaWindow_QUOTA_WINDOW_MONTH
 	}
@@ -271,7 +279,7 @@ func ValidateEntitlement(t EntitlementTerms, scale int, field string, v *Violati
 	out.Thresholds = th
 	var known bool
 	if out.Window, known = WindowToDB(t.Window); !known {
-		v.Add(field+".window", "one of QUOTA_WINDOW_HOUR, QUOTA_WINDOW_DAY, QUOTA_WINDOW_WEEK, QUOTA_WINDOW_MONTH")
+		v.Add(field+".window", "one of QUOTA_WINDOW_HOUR, QUOTA_WINDOW_DAY, QUOTA_WINDOW_WEEK, QUOTA_WINDOW_MONTH, QUOTA_WINDOW_YEAR, QUOTA_WINDOW_LIFETIME")
 		ok = false
 	}
 	if out.Mode, known = ModeToDB(t.Mode); !known {

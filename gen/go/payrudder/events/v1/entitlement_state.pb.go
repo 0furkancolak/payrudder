@@ -39,7 +39,7 @@ type EntitlementState struct {
 	// Unset = open-ended.
 	ValidUntil    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=valid_until,json=validUntil,proto3" json:"valid_until,omitempty"`
 	QuantityScale uint32                 `protobuf:"varint,9,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
-	// What the limit counts over: "month" (also when empty: the billing period), "hour", "day" or "week", in the tenant's time zone.
+	// What the limit counts over: "month" (also when empty: the billing period), "hour", "day", "week", "year" or "lifetime", in the tenant's time zone.
 	Window string `protobuf:"bytes,10,opt,name=window,proto3" json:"window,omitempty"`
 	// "hard" (also when empty), "soft" or "notify": whether CheckEntitlement still allows usage at the limit.
 	Mode string `protobuf:"bytes,11,opt,name=mode,proto3" json:"mode,omitempty"`

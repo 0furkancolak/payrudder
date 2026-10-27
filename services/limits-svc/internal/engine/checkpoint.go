@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"go.opentelemetry.io/otel"
@@ -13,6 +14,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/period"
 )
 
 var (
@@ -181,9 +183,35 @@ func (a *Applier) resolve(ctx context.Context, cp *Checkpoint) {
 		a.log.WarnContext(ctx, "counter drift corrected", "key", k.Key, "redis", have, "aggregator", k.Want, "drift", drift)
 	}
 	for _, k := range fixed {
-		if err := a.cfg.Redis.ExpireNX(ctx, k, firedTTL).Err(); err != nil {
+		at, expires := a.correctedExpiry(ctx, k)
+		if !expires {
+			continue
+		}
+		if err := a.cfg.Redis.ExpireNX(ctx, k, at.Sub(a.cfg.Now())).Err(); err != nil {
 			a.log.WarnContext(ctx, "reconcile could not set the expiry of a corrected counter", "key", k, "error", err)
 		}
 	}
 	cp.finish(res)
+}
+
+// correctedExpiry is when a counter that reconciliation had to create (it had no expiry) should expire: like the apply script's, firedTTL
+// from now for a billing period, and the end of its window plus windowTTL for a window. The lifetime counter never expires.
+func (a *Applier) correctedExpiry(ctx context.Context, key string) (time.Time, bool) {
+	now := a.cfg.Now()
+	ref, ok := ParseKey(key)
+	if !ok || !ref.Windowed {
+		return now.Add(firedTTL), true
+	}
+	if ref.Period == period.LifetimeID {
+		return time.Time{}, false
+	}
+	tn, err := a.cfg.Tenants.Tenant(ctx, ref.Tenant)
+	if err != nil {
+		return now.Add(firedTTL), true
+	}
+	_, _, end, err := period.WindowBounds(ref.Period, tn.Location)
+	if err != nil {
+		return now.Add(firedTTL), true
+	}
+	return maxTime(end, now).Add(windowTTL), true
 }

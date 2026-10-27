@@ -93,6 +93,27 @@ func (q *Queries) ClearGenerationUsageOutside(ctx context.Context, arg ClearGene
 	return err
 }
 
+const clearGenerationWindowUsageOutside = `-- name: ClearGenerationWindowUsageOutside :exec
+DELETE FROM usage_window_aggregates WHERE tenant_id = $1 AND generation = $2 AND (period_id < $3::text OR period_id > $4::text)
+`
+
+type ClearGenerationWindowUsageOutsideParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) ClearGenerationWindowUsageOutside(ctx context.Context, arg ClearGenerationWindowUsageOutsideParams) error {
+	_, err := q.db.Exec(ctx, clearGenerationWindowUsageOutside,
+		arg.TenantID,
+		arg.Generation,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
 const compareLateUsage = `-- name: CompareLateUsage :many
 SELECT COALESCE(a.billed_period_id, b.billed_period_id)::text AS period_id, COALESCE(a.customer_id, b.customer_id)::text AS customer_id,
        COALESCE(a.meter_code, b.meter_code)::text AS meter_code, COALESCE(a.origin_period_id, b.origin_period_id)::text AS origin_period_id,
@@ -315,6 +336,31 @@ func (q *Queries) CopyGenerationUsageOutside(ctx context.Context, arg CopyGenera
 	return err
 }
 
+const copyGenerationWindowUsageOutside = `-- name: CopyGenerationWindowUsageOutside :exec
+INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at)
+SELECT s.tenant_id, s.customer_id, s.meter_code, $1::int, s.hour_id, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+FROM usage_window_aggregates s WHERE s.tenant_id = $2 AND s.generation = $3 AND (s.period_id < $4::text OR s.period_id > $5::text)
+`
+
+type CopyGenerationWindowUsageOutsideParams struct {
+	Target     int32
+	TenantID   uuid.UUID
+	Source     int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) CopyGenerationWindowUsageOutside(ctx context.Context, arg CopyGenerationWindowUsageOutsideParams) error {
+	_, err := q.db.Exec(ctx, copyGenerationWindowUsageOutside,
+		arg.Target,
+		arg.TenantID,
+		arg.Source,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
 const deleteGenerationLateUsage = `-- name: DeleteGenerationLateUsage :exec
 DELETE FROM late_usage WHERE tenant_id = $1 AND generation = $2
 `
@@ -354,6 +400,20 @@ type DeleteGenerationUsageParams struct {
 
 func (q *Queries) DeleteGenerationUsage(ctx context.Context, arg DeleteGenerationUsageParams) error {
 	_, err := q.db.Exec(ctx, deleteGenerationUsage, arg.TenantID, arg.Generation)
+	return err
+}
+
+const deleteGenerationWindowUsage = `-- name: DeleteGenerationWindowUsage :exec
+DELETE FROM usage_window_aggregates WHERE tenant_id = $1 AND generation = $2
+`
+
+type DeleteGenerationWindowUsageParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+}
+
+func (q *Queries) DeleteGenerationWindowUsage(ctx context.Context, arg DeleteGenerationWindowUsageParams) error {
+	_, err := q.db.Exec(ctx, deleteGenerationWindowUsage, arg.TenantID, arg.Generation)
 	return err
 }
 

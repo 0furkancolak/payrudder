@@ -343,6 +343,9 @@ func (h *Handler) applyItems(ctx context.Context, q *sqlc.Queries, items []item)
 	if err := upsertOnTime(ctx, q, delta); err != nil {
 		return err
 	}
+	if err := upsertHours(ctx, q, delta); err != nil {
+		return err
+	}
 	return upsertLate(ctx, q, delta)
 }
 
@@ -420,6 +423,7 @@ func (h *Handler) countInboxDuplicates(ctx context.Context, p sqlc.InsertProcess
 // classify routes every new pair to on-time or late usage and pre-sums them into a delta.
 func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, cfg map[settings.Key]sqlc.LockPeriodSettingsRow) (*domain.Delta, error) {
 	delta := domain.NewDelta()
+	locs := map[string]*time.Location{}
 	for _, f := range fresh {
 		it := items[f.idx]
 		if !it.meter.Matches(it.ev.Props) {
@@ -433,12 +437,15 @@ func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, 
 		if h.classOf(ctx, it.ev, c) == period.OnTime {
 			delta.AddOnTime(domain.OnTimeKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
 				Period: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
+			if err := addHour(delta, locs, c.Timezone, it, f.gen); err != nil {
+				return nil, err
+			}
 			h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("on_time"))
 			continue
 		}
-		loc, err := time.LoadLocation(c.Timezone)
+		loc, err := tzLocation(locs, c.Timezone, it.ev.TenantID)
 		if err != nil {
-			return nil, fmt.Errorf("period settings of %s have unusable time zone %q", it.ev.TenantID, c.Timezone)
+			return nil, err
 		}
 		delta.AddLate(domain.LateKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter,
 			Billed: period.PeriodOf(it.ev.IngestedAt, loc), Origin: it.ev.Period, Generation: f.gen}, it.meter, it.ev)
@@ -446,6 +453,34 @@ func (h *Handler) classify(ctx context.Context, items []item, fresh []freshRow, 
 		h.m.applied.Add(ctx, 1, tenantAttr(it.ev.TenantID), classAttr("late"))
 	}
 	return delta, nil
+}
+
+// tzLocation loads the tenant's time zone from its period settings, once per batch.
+func tzLocation(cache map[string]*time.Location, name string, tenant uuid.UUID) (*time.Location, error) {
+	if loc, ok := cache[name]; ok {
+		return loc, nil
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return nil, fmt.Errorf("period settings of %s have unusable time zone %q", tenant, name)
+	}
+	cache[name] = loc
+	return loc, nil
+}
+
+// addHour adds an on-time event to the hour total it falls in, unless that hour is older than the totals are kept for (maintenance would delete the
+// row at once).
+func addHour(d *domain.Delta, locs map[string]*time.Location, tz string, it item, gen int32) error {
+	loc, err := tzLocation(locs, tz, it.ev.TenantID)
+	if err != nil {
+		return err
+	}
+	id, _, end := period.WindowOf(period.Hour, it.ev.EventTime, loc)
+	if end.Before(time.Now().Add(-domain.WindowRetention)) {
+		return nil
+	}
+	d.AddHour(domain.HourKey{Tenant: it.ev.TenantID, Customer: it.ev.CustomerID, Meter: it.ev.Meter, Hour: id, Generation: gen}, it.meter, it.ev)
+	return nil
 }
 
 // classOf is the class of an event by its ingestion time. A frozen period takes everything as late usage; a replay
@@ -529,6 +564,28 @@ func upsertOnTime(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
 		}
 		if err := q.UpsertUsageAggregates(ctx, p); err != nil {
 			return fmt.Errorf("upsert usage_aggregates: %w", err)
+		}
+	}
+	return nil
+}
+
+// upsertHours is upsertOnTime for the hour totals.
+func upsertHours(ctx context.Context, q *sqlc.Queries, d *domain.Delta) error {
+	for _, isMax := range []bool{false, true} {
+		p := sqlc.UpsertUsageWindowAggregatesParams{IsMax: isMax}
+		for _, k := range d.SortedHours() {
+			cell := d.Hours[k]
+			if (cell.Aggregation == usage.Max) != isMax {
+				continue
+			}
+			p.Tenants, p.Customers, p.MeterCodes, p.Generations, p.HourIds = append(p.Tenants, k.Tenant), append(p.Customers, k.Customer), append(p.MeterCodes, k.Meter), append(p.Generations, k.Generation), append(p.HourIds, k.Hour)
+			p.Quantities, p.Scales, p.EventCounts = append(p.Quantities, cell.Value.String()), append(p.Scales, int16(cell.Scale)), append(p.EventCounts, cell.Events) //nolint:gosec // 0..6
+		}
+		if len(p.Tenants) == 0 {
+			continue
+		}
+		if err := q.UpsertUsageWindowAggregates(ctx, p); err != nil {
+			return fmt.Errorf("upsert usage_window_aggregates: %w", err)
 		}
 	}
 	return nil

@@ -17,6 +17,7 @@ import (
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	"github.com/0furkancolak/payrudder/pkg/meters"
+	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/quantity"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/usage"
@@ -30,9 +31,12 @@ const (
 	maxKeysPerCycle = 10000
 	// activeRetention is how long a counter key stays in lim:active:{p} after its last update.
 	activeRetention = 45 * 24 * time.Hour
-	// windowSweepRetention is how long a window counter stays in lim:wactive:{p} after its last update: the threshold sweep retries a
-	// LimitExceeded that could not be produced for that long.
+	// windowSweepRetention is how long a short-window counter stays in lim:wactive:{p} after its last update: the threshold sweep retries a
+	// LimitExceeded that could not be produced for that long, and reconciliation compares the counter with the aggregator.
 	windowSweepRetention = time.Hour
+	// windowReconcileGrace is how long after its end a short window is still reconciled: late-arriving events of the window settle in that time,
+	// and the aggregator keeps hour totals for far longer. A window that ended earlier is final and nobody reads its counter.
+	windowReconcileGrace = 2 * time.Hour
 )
 
 // ReconcilerConfig configures a Reconciler.
@@ -130,7 +134,7 @@ func (r *Reconciler) RunOnce(ctx context.Context) (Result, error) {
 			return total, ctx.Err()
 		}
 	}
-	// Window counters are not reconciled (the aggregator keeps months only), but their thresholds are swept the same way.
+	// The short-window counters were compared with the aggregator above; their thresholds are swept the same way as the others'.
 	for _, p := range r.cfg.Owned() {
 		keys, err := r.windowKeys(ctx, p)
 		if err != nil {
@@ -172,11 +176,18 @@ func (r *Reconciler) partition(ctx context.Context, p int32) ([]pending, int64, 
 	if err != nil {
 		return nil, 0, err
 	}
+	// The billing-period and long-window counters of lim:active, and the recently updated short windows that are still current.
+	recent, err := r.windowKeys(ctx, p)
+	if err != nil {
+		r.log.WarnContext(ctx, "window counters not reconciled", "partition", p, "error", err)
+	}
 	byTenant := map[uuid.UUID][]Ref{}
-	for _, m := range members {
-		if ref, ok := ParseCounterKey(m); ok {
-			byTenant[ref.Tenant] = append(byTenant[ref.Tenant], ref)
+	for _, m := range append(members, recent...) {
+		ref, ok := ParseKey(m)
+		if !ok || (ref.Windowed && !LongWindow(ref.Period) && !r.current(ctx, ref)) {
+			continue
 		}
+		byTenant[ref.Tenant] = append(byTenant[ref.Tenant], ref)
 	}
 	tenantIDs := make([]uuid.UUID, 0, len(byTenant))
 	for t := range byTenant {
@@ -210,10 +221,28 @@ func (r *Reconciler) partition(ctx context.Context, p int32) ([]pending, int64, 
 	return out, skipped, nil
 }
 
+// current reports whether the short window of ref has not ended more than windowReconcileGrace ago.
+func (r *Reconciler) current(ctx context.Context, ref Ref) bool {
+	tn, err := r.cfg.Applier.cfg.Tenants.Tenant(ctx, ref.Tenant)
+	if err != nil {
+		return false
+	}
+	_, _, end, err := period.WindowBounds(ref.Period, tn.Location)
+	return err == nil && time.Now().Before(end.Add(windowReconcileGrace))
+}
+
 func (r *Reconciler) checkpointFor(ctx context.Context, p int32, tid uuid.UUID, refs []Ref) (*Checkpoint, string, error) {
+	// A counter of a meter that no longer exists has nothing to compare with.
+	refs, ms, err := r.withMeters(ctx, tid, refs)
+	if err != nil {
+		return nil, "", err
+	}
+	if len(refs) == 0 {
+		return nil, "unknown_meter", nil
+	}
 	req := &aggregatorv1.GetUsageBatchRequest{}
-	for _, ref := range refs {
-		req.Keys = append(req.Keys, &aggregatorv1.UsageKey{CustomerId: ref.Customer.String(), MeterCode: ref.Meter, PeriodId: ref.Period})
+	for i, ref := range refs {
+		req.Keys = append(req.Keys, &aggregatorv1.UsageKey{CustomerId: ref.Customer.String(), MeterCode: ref.Meter, PeriodId: ref.Period, Max: ms[i].Aggregation == usage.Max})
 	}
 	actx := tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: tid}))
 	resp, err := r.cfg.Aggregator.GetUsageBatch(actx, req)
@@ -236,25 +265,29 @@ func (r *Reconciler) checkpointFor(ctx context.Context, p int32, tid uuid.UUID, 
 	}
 	keys := make([]CheckKey, len(refs))
 	for i, ref := range refs {
-		m, err := r.cfg.Meters.Get(ctx, tid, ref.Meter)
-		if errors.Is(err, ErrMeterNotFound) {
-			continue
-		}
-		if err != nil {
-			return nil, "", err
-		}
 		u := resp.GetUsage()[i]
 		want, err := quantity.ParseUnits(u.GetQuantity(), int(u.GetQuantityScale()))
 		if err != nil {
 			return nil, "", fmt.Errorf("aggregator quantity %q: %w", u.GetQuantity(), err)
 		}
-		keys[i] = CheckKey{Key: ref.Key(), Want: want, Max: m.Aggregation == usage.Max}
+		keys[i] = CheckKey{Key: ref.Key(), Want: want, Max: ms[i].Aggregation == usage.Max}
 	}
-	kept := keys[:0]
-	for _, k := range keys {
-		if k.Key != "" {
-			kept = append(kept, k)
+	return NewCheckpoint(at, keys), "", nil
+}
+
+// withMeters returns the refs whose meter still exists, with those meters.
+func (r *Reconciler) withMeters(ctx context.Context, tid uuid.UUID, refs []Ref) ([]Ref, []usage.Meter, error) {
+	kept := make([]Ref, 0, len(refs))
+	ms := make([]usage.Meter, 0, len(refs))
+	for _, ref := range refs {
+		m, err := r.cfg.Meters.Get(ctx, tid, ref.Meter)
+		if errors.Is(err, ErrMeterNotFound) {
+			continue
 		}
+		if err != nil {
+			return nil, nil, err
+		}
+		kept, ms = append(kept, ref), append(ms, m)
 	}
-	return NewCheckpoint(at, kept), "", nil
+	return kept, ms, nil
 }

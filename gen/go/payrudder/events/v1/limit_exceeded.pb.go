@@ -42,10 +42,10 @@ type LimitExceeded struct {
 	UsedUnits     int64                  `protobuf:"varint,8,opt,name=used_units,json=usedUnits,proto3" json:"used_units,omitempty"`
 	DetectedAt    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=detected_at,json=detectedAt,proto3" json:"detected_at,omitempty"`
 	QuantityScale uint32                 `protobuf:"varint,10,opt,name=quantity_scale,json=quantityScale,proto3" json:"quantity_scale,omitempty"`
-	// The window of the quota: "month" (also when empty), "hour", "day" or "week".
+	// The window of the quota: "month" (also when empty), "hour", "day", "week", "year" or "lifetime".
 	Window string `protobuf:"bytes,11,opt,name=window,proto3" json:"window,omitempty"`
-	// The window the usage was counted in: "2026-11" for a month (= period_id), "2026-11-05T13", "2026-11-05" or "2026-W45". period_id is the
-	// billing period the window starts in. event_id is uuidv5(tenant|customer|meter|window_id|threshold).
+	// The window the usage was counted in: "2026-11" for a month (= period_id), "2026-11-05T13", "2026-11-05", "2026-W45", "2026" (year) or "all" (lifetime). period_id is the
+	// billing period the window starts in (the current one for the lifetime window). event_id is uuidv5(tenant|customer|meter|window_id|threshold).
 	WindowId      string `protobuf:"bytes,12,opt,name=window_id,json=windowId,proto3" json:"window_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

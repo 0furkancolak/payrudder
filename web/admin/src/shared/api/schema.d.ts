@@ -262,12 +262,12 @@ export interface paths {
          *     this before serving your customer and decide what to do. A customer without an entitlement on the meter is
          *     `unlimited`. `period` defaults to the current period in the tenant's time zone.
          *
-         *     A limit counts over its `window`: the billing month, or an hour, a day or an ISO week in the tenant's time zone.
-         *     `period` picks the month of a monthly limit; an hourly, daily or weekly limit always reports its current window
-         *     (`window_id`, ending at `resets_at`). `allowed` follows the limit's `mode`: a `hard` limit stops allowing at the
-         *     limit, a `soft` or `notify` one keeps allowing and says `over_limit`. Hourly, daily and weekly counters are kept by
-         *     limits-svc only and not reconciled against the aggregator (an event delivered twice counts twice until its window
-         *     ends); monthly counters are reconciled every few minutes.
+         *     A limit counts over its `window`: the billing month, or an hour, a day, an ISO week, a calendar year or the customer's
+         *     whole lifetime, in the tenant's time zone. `period` picks the month of a monthly limit; every other window always
+         *     reports its current one (`window_id`, ending at `resets_at`, which a lifetime window does not have). `allowed` follows
+         *     the limit's `mode`: a `hard` limit stops allowing at the limit, a `soft` or `notify` one keeps allowing and says
+         *     `over_limit`. Every window's counter is reconciled against the aggregator every few minutes, so an event delivered
+         *     twice stops counting twice within one cycle.
          */
         get: operations["getEntitlement"];
         put?: never;
@@ -5048,15 +5048,15 @@ export interface components {
              * @description What the limit counts over; month for a meter without a limit
              * @enum {string}
              */
-            window?: "hour" | "day" | "week" | "month";
+            window?: "hour" | "day" | "week" | "month" | "year" | "lifetime";
             /**
-             * @description The window used counts in: period_id for a month, 2026-11-05T13, 2026-11-05 or 2026-W45
+             * @description The window used counts in: period_id for a month, 2026-11-05T13, 2026-11-05, 2026-W45, 2026 for a year or all for the lifetime
              * @example 2026-11-05
              */
             window_id?: string;
             /**
              * Format: date-time
-             * @description When the window ends and used starts again from zero
+             * @description When the window ends and used starts again from zero; null for the lifetime window
              */
             resets_at?: string | null;
             /** @enum {string} */
@@ -6123,10 +6123,10 @@ export interface components {
             included?: string;
         };
         /**
-         * @description What a limit counts over, in the tenant's time zone. Unspecified is the month (the billing period).
+         * @description What a limit counts over, in the tenant's time zone. Unspecified is the month (the billing period). A year is the calendar year (twelve billing periods); a lifetime limit never starts again.
          * @enum {string}
          */
-        QuotaWindow: "QUOTA_WINDOW_UNSPECIFIED" | "QUOTA_WINDOW_MONTH" | "QUOTA_WINDOW_HOUR" | "QUOTA_WINDOW_DAY" | "QUOTA_WINDOW_WEEK";
+        QuotaWindow: "QUOTA_WINDOW_UNSPECIFIED" | "QUOTA_WINDOW_MONTH" | "QUOTA_WINDOW_HOUR" | "QUOTA_WINDOW_DAY" | "QUOTA_WINDOW_WEEK" | "QUOTA_WINDOW_YEAR" | "QUOTA_WINDOW_LIFETIME";
         /**
          * @description What reaching the limit means for `allowed` (Payrudder never refuses usage events). HARD (also unspecified): allowed turns false at the
          *     limit. SOFT: allowed stays true and the usage over the limit is billed at the meter's price, which the package must have. NOTIFY: allowed

@@ -38,8 +38,8 @@ Required integration tests (also listed in the phase acceptance criteria):
 |---|---|
 | plans-svc | RLS isolation over every table (generated from `pg_policies`). Exclusion constraint on subscriptions |
 | ingest-svc | Concurrent duplicate keys → 1 outbox row. Key reuse with a different payload → rejected. Kafka down → outbox drains on recovery |
-| aggregator | Crash after commit → no double count. Relay duplicate → skipped. Poison record → DLQ, rest applied. Fencing with two consumers |
-| limits-svc | Redelivered batch skipped (offset guard). Thresholds fired once. Reconciliation corrects injected drift |
+| aggregator | Crash after commit → no double count. Relay duplicate → skipped. Poison record → DLQ, rest applied. Fencing with two consumers. Hour, day, ISO-week, month, year and lifetime reads of `GetUsageBatch` equal the on-time events of each window (three time zones, sum and max meters); hour totals pruned by retention and carried over by a replay |
+| limits-svc | Redelivered batch skipped (offset guard). Thresholds fired once. Reconciliation corrects injected drift, also of hour, day, year and lifetime counters (a lifetime counter never expires). Window boundaries and DST in `pkg/period` unit tests |
 | billing-svc | Watermark blocks while the outbox is non-empty. Late event → next invoice. Saga happy path with stub workers. `PAYMENT_UNKNOWN` path |
 | workers | Redelivered command → same reply, single side effect. TTL retry tiers. Delivery-limit → DLQ |
 | analytics-svc | Duplicates merged after `OPTIMIZE … FINAL`. Tenant predicate enforced |

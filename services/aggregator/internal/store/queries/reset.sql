@@ -2,6 +2,8 @@
 
 -- name: ResetUsageAggregates :execrows
 DELETE FROM usage_aggregates WHERE tenant_id = $1;
+-- name: ResetUsageWindowAggregates :execrows
+DELETE FROM usage_window_aggregates WHERE tenant_id = $1;
 -- name: ResetLateUsage :execrows
 DELETE FROM late_usage WHERE tenant_id = $1;
 -- What was processed: after a reset the same event is new again.

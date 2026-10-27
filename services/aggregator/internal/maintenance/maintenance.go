@@ -1,4 +1,4 @@
-// Package maintenance drops expired inbox partitions of processed_events (period end + 45 days).
+// Package maintenance drops expired inbox partitions of processed_events (period end + 45 days) and the hour totals older than domain.WindowRetention.
 package maintenance
 
 import (
@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/0furkancolak/payrudder/services/aggregator/internal/domain"
 	"github.com/0furkancolak/payrudder/services/aggregator/internal/store/sqlc"
 )
 
@@ -19,7 +20,14 @@ func Once(ctx context.Context, pool *pgxpool.Pool, now time.Time) ([]string, err
 	})
 }
 
-// Run calls Once every interval until ctx is done.
+// PruneWindows deletes the hour totals that ended before now − domain.WindowRetention, of every tenant and generation, and returns how many. Hour ids are the
+// wall-clock hours of each tenant, so the cut is taken a day further back than the UTC hour of the retention: no zone's hour is deleted early.
+func PruneWindows(ctx context.Context, pool *pgxpool.Pool, now time.Time) (int64, error) {
+	oldest := now.UTC().Add(-domain.WindowRetention - 24*time.Hour).Format("2006-01-02T15")
+	return sqlc.New(pool).PruneUsageWindowAggregates(ctx, oldest)
+}
+
+// Run calls Once and PruneWindows every interval until ctx is done.
 func Run(ctx context.Context, pool *pgxpool.Pool, interval time.Duration, log *slog.Logger) {
 	t := time.NewTicker(interval)
 	defer t.Stop()
@@ -30,6 +38,13 @@ func Run(ctx context.Context, pool *pgxpool.Pool, interval time.Duration, log *s
 			log.ErrorContext(ctx, "inbox partition maintenance failed", "error", err)
 		case len(dropped) > 0:
 			log.InfoContext(ctx, "inbox partition maintenance", "dropped", dropped)
+		}
+		pruned, err := PruneWindows(ctx, pool, time.Now())
+		switch {
+		case err != nil && ctx.Err() == nil:
+			log.ErrorContext(ctx, "hour totals maintenance failed", "error", err)
+		case pruned > 0:
+			log.InfoContext(ctx, "hour totals maintenance", "deleted", pruned)
 		}
 		select {
 		case <-ctx.Done():

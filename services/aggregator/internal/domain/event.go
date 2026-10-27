@@ -5,16 +5,28 @@ package domain
 import (
 	"math/big"
 	"sort"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/0furkancolak/payrudder/pkg/usage"
 )
 
+// WindowRetention is how long the hour totals (usage_window_aggregates) are kept: the longest short window is a week, and a quota window is
+// reconciled while it is current. Older hours are neither written nor kept.
+const WindowRetention = 14 * 24 * time.Hour
+
 // OnTimeKey identifies a usage_aggregates row.
 type OnTimeKey struct {
 	Tenant, Customer uuid.UUID
 	Meter, Period    string
+	Generation       int32
+}
+
+// HourKey identifies a usage_window_aggregates row; Hour is the wall-clock hour id of the tenant ("2026-11-05T13").
+type HourKey struct {
+	Tenant, Customer uuid.UUID
+	Meter, Hour      string
 	Generation       int32
 }
 
@@ -37,12 +49,14 @@ type Cell struct {
 // Delta collects the pre-summed contributions of one batch (one cell per distinct row, whatever the number of events).
 type Delta struct {
 	OnTime map[OnTimeKey]*Cell
-	Late   map[LateKey]*Cell
+	// Hours are the hour totals of the on-time events, which limits-svc reconciles its short quota windows against.
+	Hours map[HourKey]*Cell
+	Late  map[LateKey]*Cell
 }
 
 // NewDelta returns an empty Delta.
 func NewDelta() *Delta {
-	return &Delta{OnTime: map[OnTimeKey]*Cell{}, Late: map[LateKey]*Cell{}}
+	return &Delta{OnTime: map[OnTimeKey]*Cell{}, Hours: map[HourKey]*Cell{}, Late: map[LateKey]*Cell{}}
 }
 
 func (c *Cell) add(v int64, scale int, agg usage.Aggregation) {
@@ -67,6 +81,16 @@ func (d *Delta) AddOnTime(k OnTimeKey, m usage.Meter, e usage.Event) {
 	if c == nil {
 		c = &Cell{}
 		d.OnTime[k] = c
+	}
+	c.add(m.Value(e), e.Scale, m.Aggregation)
+}
+
+// AddHour merges an on-time event into the cell of its hour row.
+func (d *Delta) AddHour(k HourKey, m usage.Meter, e usage.Event) {
+	c := d.Hours[k]
+	if c == nil {
+		c = &Cell{}
+		d.Hours[k] = c
 	}
 	c.add(m.Value(e), e.Scale, m.Aggregation)
 }
@@ -98,6 +122,29 @@ func (d *Delta) SortedOnTime() []OnTimeKey {
 			return a.Customer.String() < b.Customer.String()
 		case a.Meter != b.Meter:
 			return a.Meter < b.Meter
+		}
+		return a.Generation < b.Generation
+	})
+	return keys
+}
+
+// SortedHours is SortedOnTime for hour rows.
+func (d *Delta) SortedHours() []HourKey {
+	keys := make([]HourKey, 0, len(d.Hours))
+	for k := range d.Hours {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		a, b := keys[i], keys[j]
+		switch {
+		case a.Tenant != b.Tenant:
+			return a.Tenant.String() < b.Tenant.String()
+		case a.Customer != b.Customer:
+			return a.Customer.String() < b.Customer.String()
+		case a.Meter != b.Meter:
+			return a.Meter < b.Meter
+		case a.Hour != b.Hour:
+			return a.Hour < b.Hour
 		}
 		return a.Generation < b.Generation
 	})

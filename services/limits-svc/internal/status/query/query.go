@@ -60,7 +60,7 @@ func location(ti tenant.Info) *time.Location {
 }
 
 // windowOf is the counter, window and reset time a status reads: the billing period pid for a monthly limit (or none), the current window for
-// a shorter one.
+// any other. The reset time of the lifetime window is the zero time.
 func (s *Queries) windowOf(ti tenant.Info, customer uuid.UUID, meter, pid string, ent *entitlements.State) (key string, w period.Window, id string, resets time.Time) {
 	loc := location(ti)
 	if ent != nil && ent.Window != period.Month {
@@ -162,8 +162,11 @@ func (s *Queries) statusOf(ctx context.Context, ti tenant.Info, customer uuid.UU
 		CustomerId: customer.String(), MeterCode: meter, PeriodId: pid,
 		Used: quantity.FormatUnits(used, scale), Limit: quantity.FormatUnits(limit, scale),
 		UsedUnits: used, LimitUnits: limit, QuantityScale: uint32(scale), //nolint:gosec // 0..6
-		Unlimited: limit == 0, Window: string(window), WindowId: windowID, ResetsAt: timestamppb.New(resets), Mode: mode,
+		Unlimited: limit == 0, Window: string(window), WindowId: windowID, Mode: mode,
 		OverLimit: limit > 0 && used >= limit, Overridden: ent != nil && ent.Override,
+	}
+	if !resets.IsZero() { // the lifetime window never ends
+		out.ResetsAt = timestamppb.New(resets)
 	}
 	out.Allowed = ent == nil || ent.Allows(used)
 	if v, ok := vals[1].(string); ok {
