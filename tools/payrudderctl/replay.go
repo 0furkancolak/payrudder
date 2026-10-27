@@ -48,7 +48,10 @@ func replay(args []string) error {
 		}
 		err = c.call("POST", base, *token, map[string]any{"from_period_id": *from, "to_period_id": *to, "reason": *reason}, &out)
 		if err == nil && *wait {
-			out, err = waitReplay(c, *token, base, out["id"].(string))
+			var id string
+			if id, err = jobID(out); err == nil {
+				out, err = waitReplay(c, *token, base, id)
+			}
 		}
 	case "status", "promote", "discard":
 		if *job == "" {
@@ -66,6 +69,15 @@ func replay(args []string) error {
 		return err
 	}
 	return printJSON(out)
+}
+
+// jobID is the id of the replay job a start call answered with.
+func jobID(out map[string]any) (string, error) {
+	id, ok := out["id"].(string)
+	if !ok || id == "" {
+		return "", fmt.Errorf("the gateway answered without a job id: %v", out)
+	}
+	return id, nil
 }
 
 func printJSON(v any) error {
