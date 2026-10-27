@@ -175,6 +175,7 @@ a **playground** that walks through the whole sandbox flow in the browser (accou
 | `tools/` | `payrudderctl` (seed, demo, replay, rerate, DLQ redrive), `mockpsp` |
 | `pkg/` | the shared kit: Kafka and RabbitMQ toolkits, outbox, tenancy, Postgres helpers, OpenTelemetry setup, test containers |
 | `proto/`, `gen/go/` | Protobuf contracts (`buf breaking` in CI); generated code is committed |
+| `sdk/` | client libraries for the tenant API: TypeScript, Go, Python and PHP ([SDKs](docs/18-sdks.md)) |
 | `web/admin/` | the operator console (Vue 3, TypeScript, feature-based; Playwright) |
 | `deploy/` | Compose, Helm charts (`payrudder`, `payrudder-infra`), kind, Prometheus rules, Grafana dashboards, OpenTelemetry collector |
 | `tests/` | e2e, the chaos and correctness suite, k6 scenarios, benchmarks, Helm render tests |
@@ -204,6 +205,7 @@ gaps, and and the roadmap what needs a real account.
 - [Vision](docs/00-vision.md): the problem, goals and non-goals
 - [Architecture](docs/02-architecture.md) and [Correctness](docs/07-correctness.md)
 - [Local development](docs/10-local-dev.md), [Kubernetes](docs/12-kubernetes.md), [Railway](deploy/railway/README.md), [Testing strategy](docs/09-testing-strategy.md)
+- [SDKs](docs/18-sdks.md) for other applications, [Webhooks](docs/16-webhooks.md)
 - [Decisions](docs/adr/): why each technology was chosen
 
 ## License

@@ -14,6 +14,7 @@ payrudder/
 │       ├── commands/v1/            # CommandEnvelope, ReplyEnvelope and payloads
 │       ├── plans/v1/  ingest/v1/  aggregator/v1/  limits/v1/  billing/v1/  analytics/v1/
 │       └── testdata/               # golden binary fixtures per release
+├── sdk/                            # client libraries of the tenant API: typescript/ go/ python/ php/ (docs/18-sdks.md)
 ├── gen/go/                         # module github.com/0furkancolak/payrudder/gen/go — generated, committed
 ├── pkg/                            # module github.com/0furkancolak/payrudder/pkg
 │   ├── config/                     # env parsing

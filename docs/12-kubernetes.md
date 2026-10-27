@@ -32,7 +32,7 @@ The kind node maps the host ports 42800 (gateway), 42890 (mock-psp), 42825 (Mail
 
 ```bash
 cp deploy/helm/payrudder/values-secrets.example.yaml my-secrets.yaml      # change EVERY value; keep the file out of git
-make k8s-install REGISTRY=ghcr.io/you/ TAG=v0.5.0 SECRETS=my-secrets.yaml
+make k8s-install REGISTRY=ghcr.io/you/ TAG=dev SECRETS=my-secrets.yaml
 kubectl -n payrudder port-forward svc/gateway 8000:8000                   # or put an Ingress in front of the gateway Service
 make k8s-uninstall                                                      # the volumes stay until you delete the namespace
 ```
