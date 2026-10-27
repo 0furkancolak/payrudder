@@ -13,8 +13,35 @@ type Exists = (key: string) => boolean;
 export function errorText(t: Translate, te: Exists, error: unknown): string {
   const e = toApiError(error);
   const path = `errors.${e.key}`;
-  if (e.key && te(path)) return t(path, { ...e.params });
+  if (e.key && te(path)) return t(path, localizedParams(t, te, e.params));
   return e.message;
+}
+
+/** A name as a locale key segment: lower case, every run of other characters one underscore, at most 60 long. */
+export function slug(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60);
+}
+
+/**
+ * The `{field}` and `{detail}` a validation error carries are the server's own words (a field name, an English sentence). A field with an entry in
+ * `errors.fields.<name>` (indices like `prices[0]` count as `prices`) and a detail with one in `errors.details.<slug of the sentence>` are shown in the
+ * reader's language; anything else stays as the server wrote it.
+ */
+function localizedParams(t: Translate, te: Exists, params: Record<string, unknown> | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...params };
+  if (typeof out.field === "string") {
+    const k = `errors.fields.${slug(out.field.replace(/\[\d+\]/g, ""))}`;
+    if (te(k)) out.field = t(k, {});
+  }
+  if (typeof out.detail === "string") {
+    const k = `errors.details.${slug(out.detail)}`;
+    if (te(k)) out.detail = t(k, {});
+  }
+  return out;
 }
 
 /** The first error among several queries or mutations (anything with an `error` ref), or null: one place for a card to say what went wrong. */

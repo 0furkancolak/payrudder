@@ -131,7 +131,7 @@ test.describe("the sidebar", () => {
     expect(await groups("Customers and billing")).toEqual(["Customers", "Subscriptions", "Invoices", "Payments", "Payment links", "Credits"]);
     expect(await groups("Usage and products")).toEqual(["Usage", "Meters", "Packages", "Tax and retries", "Coupons"]);
     expect(await groups("Money")).toEqual(["Accounting", "Reports", "Affiliates"]);
-    expect(await groups("Organisation")).toEqual(["Members", "Integrations", "Settings"]);
+    expect(await groups("Organisation")).toEqual(["Members", "Organisation integrations", "Organisation settings"]);
     // Nobody but an operator is offered the console.
     await expect(nav(page).getByRole("link", { name: "Operator console" })).toHaveCount(0);
   });

@@ -36,6 +36,8 @@ const myRole = computed(() => (props.account?.role ?? "viewer") as Role);
 const isOwner = computed(() => myRole.value === "owner");
 const canManage = computed(() => myRole.value === "owner" || myRole.value === "admin");
 const members = computed(() => props.account?.members ?? []);
+/** The only owner cannot leave (the server refuses with identity.member.last_owner): the way out is to make somebody else an owner first, and the page says so. */
+const soleOwner = computed(() => isOwner.value && members.value.filter((m) => m.role === "owner").length === 1);
 const roleChoices = computed<Role[]>(() => (isOwner.value ? ["owner", "admin", "viewer"] : ["admin", "viewer"]));
 
 const invitations = useInvitations(canManage);
@@ -137,7 +139,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
             </TableCell>
             <TableCell>
               <RowActions
-                v-if="m.user_id === myId"
+                v-if="m.user_id === myId && !soleOwner"
                 :actions="[{ key: 'leave', label: t('product.members.leave'), icon: UserMinus, onSelect: () => (removing = { id: m.user_id ?? '', name: nameOf(m), self: true }) }]"
               />
               <RowActions
@@ -148,6 +150,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
           </TableRow>
         </TableBody>
       </Table>
+      <p v-if="soleOwner" class="text-muted-foreground px-3 pt-3 text-xs" data-testid="sole-owner-note">{{ t("product.members.soleOwner") }}</p>
       <p v-if="members.length > 0 && table.total.value === 0" class="text-muted-foreground py-4 text-center text-sm">{{ t("common.noMatches") }}</p>
       <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
     </template>

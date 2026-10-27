@@ -53,7 +53,7 @@ const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filt
 const statusFilter = computed({ get: () => table.filters.value.status ?? [], set: (v: string[]) => (table.filters.value.status = v) });
 const providerFilter = computed({ get: () => table.filters.value.provider ?? [], set: (v: string[]) => (table.filters.value.provider = v) });
 const statuses = computed(() => [all.value, ...distinct((e) => e.status).map((s) => ({ value: s, label: label(t, te, "ledgerStatus", s) }))]);
-const providers = computed(() => [all.value, ...distinct((e) => e.provider).map((p) => ({ value: p, label: p }))]);
+const providers = computed(() => [all.value, ...distinct((e) => e.provider).map((p) => ({ value: p, label: label(t, te, "provider", p) }))]);
 const ledgerActive = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
 function clearLedger() {
   table.clear();
@@ -68,7 +68,7 @@ const detailRows = computed(() => {
     { key: "when", label: t("billing.payments.when"), value: when(e.occurred_at) },
     { key: "kind", label: t("billing.payments.kind"), value: label(t, te, "ledgerKind", e.kind) },
     { key: "status", label: t("billing.payments.status") },
-    { key: "provider", label: t("billing.payments.provider"), value: e.provider },
+    { key: "provider", label: t("billing.payments.provider"), value: label(t, te, "provider", e.provider) },
     { key: "amount", label: t("billing.payments.amount"), value: formatMinor(String(e.amount_minor ?? 0), e.currency, locale.value) },
     { key: "reference", label: t("billing.payments.reference"), value: e.provider_ref, mono: true },
     { key: "source", label: t("billing.payments.source"), value: label(t, te, "ledgerSource", e.source) },
@@ -122,7 +122,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
           <TableCell class="whitespace-nowrap">{{ when(e.occurred_at) }}</TableCell>
           <TableCell>{{ label(t, te, "ledgerKind", e.kind) }}</TableCell>
           <TableCell><StatusPill :tone="toneOf(e.status)">{{ label(t, te, "ledgerStatus", e.status) }}</StatusPill></TableCell>
-          <TableCell>{{ e.provider }}</TableCell>
+          <TableCell>{{ label(t, te, "provider", e.provider) }}</TableCell>
           <TableCell>{{ label(t, te, "ledgerSource", e.source) }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ formatMinor(String(e.amount_minor ?? 0), e.currency, locale) }}</TableCell>
           <TableCell><RowActions :actions="rowActions(i)" /></TableCell>
@@ -180,7 +180,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
                 <Link v-if="d.invoice_id" v-bind="recordLink('invoice', d.invoice_id, tenantId)" class="mono font-medium hover:underline">{{ d.number || d.invoice_id.slice(0, 8) }}</Link>
               </TableCell>
               <TableCell>{{ label(t, te, "discrepancy", d.kind) }}</TableCell>
-              <TableCell>{{ d.provider }} <span class="mono text-xs">{{ d.provider_ref }}</span></TableCell>
+              <TableCell>{{ label(t, te, "provider", d.provider) }} <span class="mono text-xs">{{ d.provider_ref }}</span></TableCell>
               <TableCell class="text-end tabular-nums">{{ d.billed_minor ? formatMinor(String(d.billed_minor), d.currency, locale) : "" }}</TableCell>
               <TableCell class="text-end tabular-nums">{{ d.ledger_minor ? formatMinor(String(d.ledger_minor), d.currency, locale) : "" }}</TableCell>
               <TableCell class="text-muted-foreground">{{ d.detail }}</TableCell>

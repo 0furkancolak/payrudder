@@ -2,6 +2,7 @@
 import { FileText } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { lineText } from "@/features/invoices/lineText";
 import { findTenant } from "@/shared/lib/environment";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { useFormat } from "@/shared/lib/format";
@@ -98,7 +99,7 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
           </TableHeader>
           <TableBody>
             <TableRow v-for="line in inv.lines ?? []" :key="line.line_no" class="hover:bg-transparent">
-              <TableCell>{{ line.description }}<span v-if="line.meter_code" class="text-muted-foreground mono block text-xs">{{ line.meter_code }}</span></TableCell>
+              <TableCell>{{ lineText(line.description, t, (v) => fmt.utcDay(v, "day", v)) }}<span v-if="line.meter_code" class="text-muted-foreground mono block text-xs">{{ line.meter_code }}</span></TableCell>
               <TableCell class="text-muted-foreground whitespace-nowrap">{{ day(line.service_from) }}<template v-if="line.service_from"> – {{ day(line.service_to) }}</template></TableCell>
               <TableCell class="text-end tabular-nums">{{ line.quantity }}</TableCell>
               <TableCell class="text-end font-medium whitespace-nowrap tabular-nums">{{ formatMinor(line.amount_minor, inv.currency, locale) }}</TableCell>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changeOutcome, intervalKey, MAX_SEATS, parseSeats, seatsOf, subscriptionAbilities, trialDaysLeft, trialsEndingSoon } from "./lib";
+import { changeOutcome, intervalKey, MAX_SEATS, parseSeats, seatsOf, subscriptionAbilities, successorOf, trialDaysLeft, trialsEndingSoon } from "./lib";
 
 describe("seats", () => {
   it("reads a seats field: empty is nothing chosen, a whole number in range is a number, anything else is bad", () => {
@@ -60,5 +60,17 @@ describe("trials", () => {
     const list: { state: "SUBSCRIPTION_STATE_TRIALING" | "SUBSCRIPTION_STATE_ACTIVE"; trial_end_time?: string }[] = [trial("2026-11-20T00:00:00Z"), trial("2026-10-30T00:00:00Z"), trial("2026-10-28T00:00:00Z"), { state: "SUBSCRIPTION_STATE_ACTIVE" as const }];
     expect(trialsEndingSoon(list, now).map((s) => s.trial_end_time)).toEqual(["2026-10-28T00:00:00Z", "2026-10-30T00:00:00Z"]);
     expect(trialsEndingSoon(list, now, 30)).toHaveLength(3);
+  });
+});
+
+describe("successorOf", () => {
+  const list = [{ id: "a" }, { id: "b", changed_from_id: "a" }, { id: "c", changed_from_id: "" }];
+  it("finds the subscription that took over from another", () => {
+    expect(successorOf(list, "a")?.id).toBe("b");
+  });
+  it("is nothing for a subscription nobody replaced, or no id", () => {
+    expect(successorOf(list, "b")).toBeUndefined();
+    expect(successorOf(list, "")).toBeUndefined();
+    expect(successorOf(list, undefined)).toBeUndefined();
   });
 });

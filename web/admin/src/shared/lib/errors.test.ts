@@ -94,8 +94,9 @@ describe("error keys", () => {
     });
 
     it("has no translation for a key the backend no longer has", () => {
+      // errors.fields.* and errors.details.* are not error keys: they translate the words a validation error carries.
       const stale = flatKeys((file as { errors: Tree }).errors).filter(
-        (k) => !keys.includes(k),
+        (k) => !keys.includes(k) && !k.startsWith("fields.") && !k.startsWith("details."),
       );
       expect(stale, "remove these from the locale files").toEqual([]);
     });
@@ -181,5 +182,26 @@ describe("errorText", () => {
     expect(errorText(withParam.global.t, withParam.global.te, e)).toBe(
       "Too long: address.line1 (too long)",
     );
+  });
+});
+
+describe("errorText with a validation error", () => {
+  const i18n = createI18n({ legacy: false, locale: "tr", fallbackLocale: "en", messages: { en, tr } });
+  const { t, te } = i18n.global;
+
+  it("puts the field and the sentence of the server into the reader's language when it knows them", () => {
+    const e = new ApiError("invalid request", "INVALID_ARGUMENT", "plans.request.invalid", {
+      field: "prices",
+      detail: "a plan version needs at least one price, a base fee or a quota",
+    });
+    const text = errorText(t, te, e);
+    expect(text).toContain("Fiyatlar");
+    expect(text).toContain("en az bir fiyatı");
+    expect(text).not.toContain("a plan version");
+  });
+
+  it("keeps the words it does not know as the server wrote them", () => {
+    const e = new ApiError("invalid request", "INVALID_ARGUMENT", "plans.request.invalid", { field: "prices[2].unit_amount_minor", detail: "something new" });
+    expect(errorText(t, te, e)).toContain("something new");
   });
 });

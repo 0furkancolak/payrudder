@@ -3,10 +3,11 @@ import { Link } from "@tanstack/vue-router";
 import { Banknote, FileText } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { lineText } from "./lineText";
 import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
-import { label } from "@/shared/lib/labels";
+import { capFirst, label } from "@/shared/lib/labels";
 import { names, sheetName } from "@/shared/lib/sheets";
 import { formatMinor } from "@/shared/lib/money";
 import { validLinkDays } from "@/shared/lib/rules";
@@ -72,6 +73,7 @@ function askReject(outcome: "rejected" | "expired") {
   rejectOpen.value = true;
 }
 const day = (v?: string | null) => fmt.date(v, "day");
+const utcDay = (v: string) => fmt.utcDay(v, "day", v);
 </script>
 
 <template>
@@ -87,8 +89,8 @@ const day = (v?: string | null) => fmt.date(v, "day");
       <span class="text-muted-foreground text-sm">{{ t("tenant.columns.total") }}</span>
       <span class="text-4xl font-semibold tracking-tight tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</span>
       <div class="mt-1 flex flex-wrap gap-2">
-        <Badge :variant="statusVariant(inv.status)">{{ label(t, te, "invoiceStatus", inv.status) }}</Badge>
-        <Badge :variant="sagaVariant(inv.saga_state)" class="mono">{{ label(t, te, "sagaState", inv.saga_state) }}</Badge>
+        <Badge :variant="statusVariant(inv.status)">{{ capFirst(label(t, te, "invoiceStatus", inv.status), locale) }}</Badge>
+        <Badge :variant="sagaVariant(inv.saga_state)">{{ capFirst(label(t, te, "sagaState", inv.saga_state), locale) }}</Badge>
       </div>
     </Card>
     <Card class="gap-1 text-sm">
@@ -121,7 +123,7 @@ const day = (v?: string | null) => fmt.date(v, "day");
         <TableRow v-for="line in inv?.lines ?? []" :key="line.line_no">
           <TableCell>{{ line.line_no }}</TableCell>
           <TableCell>{{ label(t, te, "invoiceLineKind", line.kind) }}</TableCell>
-          <TableCell>{{ line.description }}</TableCell>
+          <TableCell>{{ lineText(line.description, t, utcDay) }}</TableCell>
           <TableCell class="text-muted-foreground text-xs whitespace-nowrap">{{ day(line.service_from) }}<template v-if="line.service_from"> – {{ day(line.service_to) }}</template></TableCell>
           <TableCell>{{ line.meter_code }}</TableCell>
           <TableCell class="text-end tabular-nums">{{ line.quantity }}</TableCell>
@@ -172,8 +174,8 @@ const day = (v?: string | null) => fmt.date(v, "day");
       <TableBody>
         <TableRow v-for="e in saga.data.value?.events ?? []" :key="e.seq" data-testid="saga-event">
           <TableCell class="text-end tabular-nums">{{ e.seq }}</TableCell>
-          <TableCell class="mono text-xs">{{ e.from_state }}</TableCell>
-          <TableCell><Badge :variant="sagaVariant(e.to_state)" class="mono">{{ label(t, te, "sagaState", e.to_state) }}</Badge></TableCell>
+          <TableCell class="text-xs">{{ label(t, te, "sagaState", e.from_state) }}</TableCell>
+          <TableCell><Badge :variant="sagaVariant(e.to_state)">{{ capFirst(label(t, te, "sagaState", e.to_state), locale) }}</Badge></TableCell>
           <TableCell class="mono text-xs">{{ e.cause }}</TableCell>
           <TableCell class="text-muted-foreground text-xs whitespace-nowrap">{{ fmt.date(e.at, "dateTime") }}</TableCell>
         </TableRow>

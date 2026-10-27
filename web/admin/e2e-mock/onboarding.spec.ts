@@ -46,6 +46,9 @@ function sandboxApi(gw: MockGateway, opts: { rejectEvent?: boolean } = {}) {
 
 const wizard = (page: Page) => page.getByTestId("onboarding");
 
+// A new account starts on the currency of the browser's time zone; these tests pin one that has no mapping, so the fallback (USD) applies.
+test.use({ timezoneId: "UTC" });
+
 test.describe("the first-run wizard", () => {
   test("a new sign-up learns why Payrudder exists and sets up an app, a meter, a package and a test event", async ({ page }) => {
     const { gw, state } = productGateway(new MockGateway(), { apps: [], keys: [], accountName: "Ada Labs" });

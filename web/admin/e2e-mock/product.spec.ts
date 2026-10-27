@@ -218,13 +218,13 @@ test.describe("settings and chrome", () => {
     const { gw } = productGateway(new MockGateway());
     await gw.install(page);
     await signInAsAda(page);
-    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await page.getByRole("link", { name: "Organisation settings", exact: true }).click();
     await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
     await shoot(page, "09-settings");
     await page.getByRole("link", { name: "Members" }).click();
     await page.waitForURL("**/app/members*");
     await expect(page.getByRole("region", { name: "Members" })).toContainText(user.email);
-    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await page.getByRole("link", { name: "Organisation settings", exact: true }).click();
     await page.getByRole("button", { name: "Sign out" }).click();
     await page.waitForURL("**/signin");
     expect(gw.called("POST", "/auth/signout")).toHaveLength(1);
@@ -248,7 +248,7 @@ test.describe("settings and chrome", () => {
     await page.getByLabel("E-mail").fill("ada@example.com");
     await page.getByLabel("Password", { exact: true }).fill("right password!");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.getByRole("link", { name: "Settings", exact: true }).click();
+    await page.getByRole("link", { name: "Organisation settings", exact: true }).click();
     await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
     await page.waitForTimeout(900); // the held chunk arrives now
     await expect(page.getByTestId("account-name")).toHaveText("Ada Labs");
@@ -442,10 +442,9 @@ test.describe("members and invitations", () => {
     expect(gw.called("PATCH", /\/app\/v1\/account\/members\/55555555/)[0]?.body).toEqual({ role: "admin" });
     await expect(panel.getByLabel("Role of Linus Torvalds")).toHaveValue("admin");
 
-    // Ada is the only owner: she cannot leave.
-    await panel.getByRole("button", { name: "Leave", exact: true }).click();
-    await page.getByRole("dialog").getByRole("button", { name: "Leave", exact: true }).click();
-    await expect(page.getByRole("dialog").getByRole("alert")).toContainText("must keep at least one owner");
+    // Ada is the only owner: she is not offered "Leave" (the server would refuse it) and the page says what to do first.
+    await expect(panel.getByTestId("sole-owner-note")).toContainText("only owner");
+    await expect(panel.getByRole("button", { name: "Leave", exact: true })).toHaveCount(0);
   });
 
   test("an owner removes a member after confirming", async ({ page }) => {

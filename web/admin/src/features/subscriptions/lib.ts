@@ -72,3 +72,9 @@ export function trialsEndingSoon<S extends Partial<Pick<Subscription, "state" | 
     })
     .sort((a, b) => new Date(a.trial_end_time ?? 0).getTime() - new Date(b.trial_end_time ?? 0).getTime());
 }
+
+/** The subscription a change of plan started in place of the one with this id (it names the old one in `changed_from_id`), when the list holds it. */
+export function successorOf<S extends { id?: string; changed_from_id?: string }>(list: readonly S[], id: string | undefined): (S & { id: string }) | undefined {
+  if (!id) return undefined;
+  return list.find((s): s is S & { id: string } => !!s.id && s.changed_from_id === id);
+}

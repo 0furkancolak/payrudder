@@ -6,12 +6,13 @@ import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
+import { label } from "@/shared/lib/labels";
 import RelatedRow from "./RelatedRow.vue";
 import RelatedSection from "./RelatedSection.vue";
 
 /** The payment attempts (charges and refunds) of some invoices, newest first (the first `limit` when given); each opens the payment's sheet. */
 const props = defineProps<{ tenantId: string; invoiceIds: string[]; limit?: number; bare?: boolean; emptyText?: string }>();
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
 const fmt = useFormat();
 const payments = usePayments(() => props.tenantId);
 const all = computed(() => (payments.data.value?.payments ?? []).filter((p) => props.invoiceIds.includes(p.invoice_id ?? "")));
@@ -26,7 +27,7 @@ const rows = computed(() => (props.limit ? all.value.slice(0, props.limit) : all
     </template>
     <RelatedRow v-for="p in rows" v-else :id="p.id ?? ''" :key="p.id" :tenant-id="tenantId" kind="payment">
       <span class="flex min-w-0 flex-col">
-        <span class="truncate capitalize">{{ t(`product.billing.payments.kinds.${p.kind}`) }} · {{ p.provider }}</span>
+        <span class="truncate capitalize">{{ t(`product.billing.payments.kinds.${p.kind}`) }} · {{ label(t, te, "provider", p.provider) }}</span>
         <span class="text-muted-foreground text-xs">{{ fmt.date(p.occurred_at, "dateTime") }}</span>
       </span>
       <span class="flex shrink-0 items-center gap-2">

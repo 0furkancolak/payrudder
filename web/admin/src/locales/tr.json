@@ -108,7 +108,25 @@
       "UNCOLLECTIBLE": "vazgeçildi"
     },
     "sagaState": {
-      "PAYMENT_PENDING": "havale bekleniyor"
+      "PAYMENT_PENDING": "havale bekleniyor",
+      "DRAFT": "taslak",
+      "FINALIZED": "kesinleşti",
+      "PDF_REQUESTED": "PDF isteniyor",
+      "PDF_RENDERED": "PDF hazır",
+      "PDF_FAILED": "PDF başarısız",
+      "PAYMENT_REQUESTED": "tahsilat isteniyor",
+      "PAID": "ödendi",
+      "PAYMENT_DECLINED": "ödeme reddedildi",
+      "PAYMENT_UNKNOWN": "ödeme sonucu belirsiz",
+      "UNCOLLECTIBLE": "tahsil edilemez",
+      "NOTIFY_REQUESTED": "bildirim isteniyor",
+      "NOTIFY_FAILED": "bildirim başarısız",
+      "COMPLETED": "tamamlandı",
+      "REFUND_REQUESTED": "iade isteniyor",
+      "REFUND_FAILED": "iade başarısız",
+      "REFUNDED": "iade edildi",
+      "VOIDED": "iptal edildi",
+      "AWAITING_PAYMENT": "ödeme bekleniyor"
     },
     "paymentMethod": {
       "bank_transfer": "Banka havalesi",
@@ -121,6 +139,12 @@
       "paid": "ödendi",
       "expired": "süresi doldu",
       "rejected": "reddedildi"
+    },
+    "provider": {
+      "iyzico": "iyzico",
+      "paddle": "Paddle",
+      "mockpsp": "Mock PSP",
+      "banktransfer": "Banka havalesi"
     }
   },
   "tenants": {
@@ -266,6 +290,18 @@
         "rejected": "Havale reddedildi. Tahsilat takvimi işler.",
         "expired": "Havale süresi doldu olarak işaretlendi. Tahsilat takvimi işler."
       }
+    },
+    "lineText": {
+      "monthly": "aylık",
+      "yearly": "yıllık",
+      "baseFee": "Taban ücret ({interval}) — {plan} — {from} – {to}",
+      "baseFeeSeats": "Taban ücret ({interval}) × {seats} koltuk — {plan} — {from} – {to}",
+      "baseFeePlain": "Taban ücret",
+      "priceChange": "Taban ücret: fiyat değişikliği",
+      "unused": "{plan} üzerinde kullanılmayan süre — {from} – {to}",
+      "coupon": "Kupon {code}",
+      "usage": "Kullanım — {meter} — {rest}",
+      "late": "Geç gelen kullanım — {meter} — {origin} ({rest})"
     }
   },
   "deadLetters": {
@@ -320,7 +356,8 @@
       "title": "3. Kullanım",
       "calls": "Çağrı",
       "send": "Kullanım gönder",
-      "sent": "{n} çağrı gönderildi"
+      "sent": "{n} çağrı gönderildi",
+      "sentOne": "{n} çağrı gönderildi"
     },
     "close": {
       "title": "4. Dönemi kapat",
@@ -343,7 +380,8 @@
       "subscription": "starter planına abonelik",
       "outcome": "Ödeme sonucu: {scenario}",
       "usage": "Kullanım gönderildi: {n} çağrı",
-      "closed": "Dönem kapatıldı (sandbox): faturalama şimdi çalışıyor"
+      "closed": "Dönem kapatıldı (sandbox): faturalama şimdi çalışıyor",
+      "usageOne": "Kullanım gönderildi: {n} çağrı"
     },
     "components": {
       "title": "Bileşenler",
@@ -635,7 +673,8 @@
         "keepSeats": "Koltuk: {n} kalsın",
         "seatsHint": "Yalnızca koltuk değişikliği hemen yapılır ve orantılanır: fazla koltuklar dönemin kalanı için ücretlendirilir, eksilen koltuklar alacağa dönüşür. Önizleme tutarı gösterir.",
         "seatsAfter": "Değişiklikten sonraki koltuk",
-        "scheduledSeats": "Planlandı: {plan} ({interval}), {seats} koltuk, {date} tarihinden itibaren"
+        "scheduledSeats": "Planlandı: {plan} ({interval}), {seats} koltuk, {date} tarihinden itibaren",
+        "previewHint": "Değişikliği önizlemek için yeni bir paket, dönem veya koltuk sayısı seçin."
       },
       "providerRun": {
         "title": "{provider} yönetiyor",
@@ -668,7 +707,12 @@
       "seatsDefault": "Koltuk sayısı (varsayılan 1)",
       "seatsHint": "Sabit ücret koltuk sayısıyla çarpılır; kullanım fiyatları çarpılmaz. Yalnızca Payrudder'ın yürüttüğü ve peşin faturaladığı abonelik için.",
       "seatsBad": "Koltuk sayısı 1 ile {max} arasında bir tam sayı olmalıdır.",
-      "seatsCount": "{n} koltuk | {n} koltuk"
+      "seatsCount": "{n} koltuk | {n} koltuk",
+      "trail": {
+        "replacedBy": "Plan değişikliğiyle sona erdi: yerine {plan} geçti.",
+        "changedFrom": "{plan} aboneliğinden plan değişikliğiyle başladı.",
+        "open": "Aç"
+      }
     },
     "payments": {
       "reconcile": "Defterle mutabakat",
@@ -3054,6 +3098,27 @@
         "live_refused": "Yalnızca sandbox ortamı sıfırlanabilir. Canlı ortama asla dokunulmaz.",
         "bad_tenant": "Sıfırlanacak ortam geçerli değil."
       }
+    },
+    "details": {
+      "required": "zorunlu",
+      "at_most_200_characters": "en fazla 200 karakter",
+      "required_at_most_200_characters": "zorunlu, en fazla 200 karakter",
+      "must_not_be_negative": "negatif olamaz",
+      "must_be_a_plain_e_mail_address": "düz bir e-posta adresi olmalı",
+      "must_be_a_uuid": "bir UUID olmalı",
+      "invalid_timestamp": "geçersiz zaman damgası",
+      "must_be_between_0_and_365": "0 ile 365 arasında olmalı",
+      "must_be_a_time_in_the_future": "gelecekte bir zaman olmalı",
+      "a_plan_version_needs_at_least_one_price_a_base_fee_or_a_quot": "bir paketin en az bir fiyatı, bir taban ücreti veya bir kotası olmalı"
+    },
+    "fields": {
+      "prices": "Fiyatlar",
+      "base_fee_minor": "Taban ücret",
+      "trial_days": "Deneme günleri",
+      "name": "Ad",
+      "email": "E-posta",
+      "currency": "Para birimi",
+      "code": "Kod"
     }
   },
   "product": {
@@ -3430,7 +3495,8 @@
       "removeTitle": "Bu üye çıkarılsın mı?",
       "removeBody": "{name}, bu hesabın uygulamalarına ve verilerine erişimini hemen kaybeder.",
       "allRoles": "Tüm roller",
-      "expiresHead": "Geçerlilik"
+      "expiresHead": "Geçerlilik",
+      "soleOwner": "Tek sahip sizsiniz, bu yüzden henüz ayrılamazsınız. Önce başka birini sahip yapın."
     },
     "account": {
       "switch": "Hesap",
@@ -3975,7 +4041,7 @@
     "items": {
       "overview": "Uygulamalar",
       "members": "Üyeler",
-      "settings": "Ayarlar",
+      "settings": "Kuruluş ayarları",
       "tenants": "Kiracılar",
       "playground": "Deneme alanı",
       "deadLetters": "Ölü mektuplar",
@@ -3984,7 +4050,7 @@
       "subscriptions": "Abonelikler",
       "credits": "Krediler",
       "packages": "Paketler",
-      "pricing": "Vergi ve yeniden denemeler",
+      "pricing": "Vergi ve tekrarlar",
       "invoices": "Faturalar",
       "payments": "Ödemeler",
       "paymentLinks": "Ödeme bağlantıları",
@@ -4008,7 +4074,7 @@
       "coupons": "Kuponlar",
       "meters": "Sayaçlar",
       "integrations": "Entegrasyonlar",
-      "orgIntegrations": "Entegrasyonlar",
+      "orgIntegrations": "Kuruluş entegrasyonları",
       "plan": "Plan ve faturalama",
       "organisations": "Organizasyonlar",
       "platformPlans": "Platform planları"

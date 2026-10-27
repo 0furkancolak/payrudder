@@ -116,7 +116,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
           <TableCell>{{ t(`billing.subscriptions.${intervalKey(s.interval)}`) }}</TableCell>
           <TableCell>{{ s.currency }}</TableCell>
           <TableCell>
-            {{ s.provider || "—" }}
+            {{ label(t, te, "provider", s.provider) || "—" }}
             <Badge v-if="s.owner === 'provider'" variant="secondary" class="ms-1">{{ t("billing.subscriptions.runByProvider") }}</Badge>
           </TableCell>
           <TableCell>{{ date(s.start_time) }}</TableCell>
