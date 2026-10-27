@@ -22,11 +22,11 @@ const inbox = useExpenseInbox(() => props.tenantId);
 const rotate = useRotateInbox(() => props.tenantId);
 const items = useInboxItems(() => props.tenantId);
 const count = computed(() => items.data.value?.items?.length ?? 0);
-const address = computed(() => inbox.data.value?.address || (inbox.data.value?.token ? `invoices+${inbox.data.value.token}@…` : ""));
+/** Only a complete, usable address is shown; without an inbound mail domain the deployment cannot receive forwarded invoices and the card says so plainly. */
+const address = computed(() => inbox.data.value?.address || "");
 
 async function copy() {
-  const text = inbox.data.value?.address || inbox.data.value?.token || "";
-  if (await copyText(text)) toast.success(t("common.copied"));
+  if (await copyText(address.value)) toast.success(t("common.copied"));
   else toast.error(t("common.copyFailed"));
 }
 async function renew() {

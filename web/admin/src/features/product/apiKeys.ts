@@ -10,6 +10,9 @@ export type KeyRole = components["schemas"]["ApiKeyRole"];
 /** The roles, in the order they are offered. A fixed role is a named set; custom is any set. */
 export const KEY_ROLES: readonly KeyRole[] = ["admin", "billing", "read_only", "ingest_only", "custom"];
 
+/** The role a new key starts on: read-only, so a key made in a hurry cannot change anything; a wider role is a deliberate choice. */
+export const DEFAULT_KEY_ROLE: KeyRole = "read_only";
+
 /** One resource of the API and the permissions it has: most have a read and a write, a few only one. */
 export interface KeyResource {
   resource: string;

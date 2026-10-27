@@ -12,6 +12,8 @@ export function useMailSettings(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => mailKeys.settings(toValue(tenantId))),
     queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/mail-settings")),
+    // No tenant yet (the sheet is closed, or the app's tenant is not resolved): a call without X-Payrudder-Tenant would be refused with a 401.
+    enabled: computed(() => toValue(tenantId) !== ""),
   });
 }
 

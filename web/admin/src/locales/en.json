@@ -4,7 +4,7 @@
     "dir": "ltr"
   },
   "app": {
-    "title": "Payrudder operator console",
+    "title": "Payrudder",
     "language": "Language",
     "demo": "Demo mode: sample data, a mock payment provider, mail goes to the local mail catcher. Nothing here is real.",
     "themeLight": "Switch to light mode",
@@ -400,7 +400,7 @@
       "email": "E-mail",
       "country": "Country",
       "currency": "Billing currency",
-      "tenantCurrency": "Tenant's currency",
+      "tenantCurrency": "Account's currency",
       "create": "Create customer",
       "empty": "No customers yet.",
       "address": {
@@ -1395,7 +1395,7 @@
         "nothing": "Nothing to review",
         "rotate": "New address",
         "confirmRotate": "Make a new inbox address? Mail sent to the old one is dropped.",
-        "noDomain": "This deployment has no inbound mail domain set (PAYRUDDER_INBOUND_DOMAIN), so only the token is shown."
+        "noDomain": "Forwarding invoices by email is not available on this deployment; you can still add invoices by hand."
       },
       "rules": {
         "open": "Vendor rules",
@@ -4119,7 +4119,8 @@
     },
     "currency": {
       "label": "Currency",
-      "own": "own"
+      "own": "default",
+      "ownHint": "The account's default currency"
     },
     "kpi": {
       "net": "Net revenue",

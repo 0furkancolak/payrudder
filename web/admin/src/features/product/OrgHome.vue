@@ -19,7 +19,7 @@ import AppGoLiveCard from "./AppGoLiveCard.vue";
 import CreateAppDialog from "./CreateAppDialog.vue";
 import { hasPartnerRole, ownMemberships } from "./lib";
 import { homeTour } from "./tour";
-import { defaultOrgEnv, isEnvironment, liveState, tenantOf, type Environment } from "@/shared/lib/environment";
+import { defaultEnv, defaultOrgEnv, isEnvironment, liveState, tenantOf, type Environment } from "@/shared/lib/environment";
 import type { App } from "./api";
 
 const { t } = useI18n();
@@ -85,8 +85,10 @@ watch(
   [enteringApp, env],
   ([appId, e]) => {
     if (!appId || !e) return;
-    const { sheet } = search.value as { sheet?: string };
-    void navigate({ to: "/app/apps/$appId", params: { appId }, search: { app: appId, env: e, ...toSearch(query.value), ...(sheet ? { sheet } : {}) } as never, replace: true });
+    const { sheet, env: addressEnv } = search.value as { sheet?: string; env?: string };
+    // An address that names no environment opens the app in the one the person used last in it (the logo link carries none), never silently in the sandbox.
+    const target = isEnvironment(addressEnv) ? e : defaultEnv(list.value.find((a) => a.id === appId));
+    void navigate({ to: "/app/apps/$appId", params: { appId }, search: { app: appId, env: target, ...toSearch(query.value), ...(sheet ? { sheet } : {}) } as never, replace: true });
   },
   { immediate: true },
 );

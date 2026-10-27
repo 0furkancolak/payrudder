@@ -15,10 +15,27 @@ function withToken(request: Request): void {
   if (token) request.headers.set("Authorization", `Bearer ${token}`);
 }
 
-/** A 401 while a person is signed in means the session is over (expired, revoked): the app is told once and goes to the sign-in page. */
+/**
+ * Whether a 401 body says the session itself is dead. The gateway names the reason: `identity.session.invalid` is a dead session, while for example
+ * `identity.session.act_as_required` is a request the console built wrongly (no tenant to act as) and says nothing about the person's session. A 401 that
+ * names no key (a proxy, an old gateway) is treated as a dead session.
+ */
+export function isDeadSession(body: unknown): boolean {
+  const key = body && typeof body === "object" ? (body as { error?: { key?: unknown } }).error?.key : undefined;
+  return typeof key !== "string" || key === "" || key === "identity.session.invalid";
+}
+
+/** A 401 while a person is signed in and the gateway calls the session dead (expired, revoked): the app is told once and goes to the sign-in page. */
 const endSessionOn401: Pick<Middleware, "onResponse"> = {
-  onResponse({ response }) {
-    if (response.status === 401 && !isAdminCall(response)) sessionLost();
+  async onResponse({ response }) {
+    if (response.status !== 401 || isAdminCall(response)) return response;
+    let body: unknown;
+    try {
+      body = await response.clone().json();
+    } catch {
+      body = undefined;
+    }
+    if (isDeadSession(body)) sessionLost();
     return response;
   },
 };
