@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/twmb/franz-go/pkg/kgo"
+
+	"github.com/0furkancolak/payrudder/pkg/backoff"
 )
 
 // PartitionHandler applies the records of one partition, in order. Implementations persist the next offset in the same
@@ -132,16 +134,28 @@ func (c *Consumer) adjustOffsets(ctx context.Context, assigned map[string]map[in
 
 // Run consumes until ctx is done.
 func (c *Consumer) Run(ctx context.Context) error {
+	// A broker that is down answers every poll with an error at once: wait longer after each, and say it once, not on every poll.
+	retry := backoff.Retry{Base: 250 * time.Millisecond, Max: 15 * time.Second}
 	for ctx.Err() == nil {
 		fetches := c.cl.PollRecords(ctx, c.cfg.MaxPollRecords)
 		if fetches.IsClientClosed() {
 			return nil
 		}
+		var fetchErr error
 		fetches.EachError(func(topic string, p int32, err error) {
-			if ctx.Err() == nil && !errors.Is(err, context.Canceled) {
-				c.log.WarnContext(ctx, "kafka fetch error", "topic", topic, "partition", p, "error", err)
+			if ctx.Err() == nil && !errors.Is(err, context.Canceled) && fetchErr == nil {
+				fetchErr = fmt.Errorf("%s/%d: %w", topic, p, err)
 			}
 		})
+		switch {
+		case fetchErr != nil && fetches.NumRecords() == 0:
+			retry.Fail(ctx, c.log, "kafka fetch error", fetchErr)
+			continue
+		case fetchErr != nil:
+			c.log.WarnContext(ctx, "kafka fetch error", "error", fetchErr)
+		default:
+			retry.OK(ctx, c.log, "kafka fetch is working again")
+		}
 		var wg sync.WaitGroup
 		fetches.EachPartition(func(p kgo.FetchTopicPartition) {
 			if len(p.Records) == 0 {

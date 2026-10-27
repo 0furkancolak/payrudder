@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/0furkancolak/payrudder/pkg/backoff"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 )
@@ -61,10 +62,10 @@ func (c *cellRelay) start(ctx context.Context, wg *sync.WaitGroup) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			retry := backoff.Retry{Base: c.r.cfg.ErrorBackoff}
 			for ctx.Err() == nil {
 				if err := c.listenOnce(ctx, pool); err != nil && ctx.Err() == nil {
-					c.r.log.WarnContext(ctx, "outbox: cell listener lost, sweeping only until it reconnects", "cell", name, "error", err)
-					sleep(ctx, c.r.cfg.ErrorBackoff)
+					retry.Fail(ctx, c.r.log, "outbox: cell listener lost, sweeping only until it reconnects", err, "cell", name)
 				}
 			}
 		}()
