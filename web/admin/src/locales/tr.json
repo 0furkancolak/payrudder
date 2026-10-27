@@ -2285,6 +2285,8 @@
         "bad_method": "Yöntem banka havalesi, nakit veya diğer olmalı.",
         "bad_amount": "Tutar, sıfırdan büyük bir tam sayı (en küçük birim) olmalı.",
         "bad_date": "Alındığı tarih geçersiz veya gelecekte.",
+        "bad_reference": "Referans tek satır olmalı ve en fazla 128 karakter içermeli.",
+        "bad_note": "Not en fazla 500 karakter olmalı.",
         "overpayment": "Bu, kalan tutardan fazla. Yalnızca kalan tutarı kaydedin.",
         "already_paid": "Fatura zaten ödenmiş.",
         "not_payable": "Faturanın ödeme durumu şu an elle ödemeye izin vermiyor.",
