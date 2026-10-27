@@ -31,6 +31,7 @@ test.describe("location fields", () => {
     await expect(form.getByLabel("Country")).toHaveValue(/^(Türkiye|Turkey)$/);
     await expect.poll(() => gw.called("GET", "/app/v1/geo/countries/TR/regions").length).toBe(1);
     const region = form.getByLabel("State / region");
+    await expect(region).toHaveAttribute("role", "combobox"); // a plain text box until the regions have come
     await region.click();
     await expect(page.getByRole("option")).toHaveText(["Ankara", "Istanbul", "İzmir"]);
     await region.fill("izm");
@@ -41,6 +42,8 @@ test.describe("location fields", () => {
     await expect.poll(() => gw.called("GET", "/app/v1/geo/regions/TR.34/districts").length).toBe(1);
     // Typing without accents finds the district; a place the list lacks is taken as typed.
     const city = form.getByLabel("City");
+    // The city is a plain text box until the districts have come; only then is it the searchable list that the typing below goes to.
+    await expect(city).toHaveAttribute("role", "combobox");
     await city.fill("uskudar");
     await expect(page.getByRole("option")).toHaveText(["Üsküdar"]);
     await city.fill("Moda");
