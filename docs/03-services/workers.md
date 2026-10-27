@@ -137,6 +137,8 @@ deployment, are delivered only to Mailpit (`SANDBOX_SMTP_URL`), never to the cus
 | Owned data | `notifier_db.sent_notifications(dedup_key PK, command_id, sent_at, smtp_message_id)` |
 | Idempotency | `dedup_key = command_id` (billing) or `LimitExceeded.event_id` (limits). SMTP isn't idempotent, so the row is inserted **before** sending with status `SENDING`. On redelivery with status `SENDING` older than 5 min, re-send (at-least-once email, duplicates possible and documented) |
 
+**Tenant's own provider (Phase 53).** A live tenant can connect Nafru Email (`MailIntegrationService` of plans-svc). Before a live send the notifier asks `ResolveMailSender` for the tenant (`delivery.PlansProviders`, remembered for `NOTIFIER_MAIL_SWITCH_TTL`); when one is connected the mail goes through `mailx.Resend` (`POST {base_url}/emails`, `Authorization: Bearer <key>`, `Idempotency-Key` = the dedup key, JSON `from`, `to`, `subject`, `html`, `text`) from the tenant's From address instead of SMTP. Sandbox mail never does (ADR 0011), and a failed lookup is an error, so the mail is retried and never sent through the built-in sender against the tenant's choice. A refusal the provider will repeat (4xx other than 429: a wrong key, an unverified sender) is a poison message with the claim released; a connection refused before the request left is `NotSentError`; 429 and 5xx are retried. The provider's address must be https and public (`NOTIFIER_MAIL_ALLOW_PRIVATE` lifts that for development and tests).
+
 Limit alerts: notifier runs a Kafka consumer on `usage.limit-exceeded.v1` (group `notifier`) that sends directly.
 It doesn't round-trip through RabbitMQ because there is no saga to reply to. The same `sent_notifications` dedup applies.
 This is the one place a worker reads Kafka, and it's justified: the input is a *fact* ("threshold crossed")
@@ -178,6 +180,6 @@ payments-worker also consumes `einvoice.issue` (`IssueEInvoice`: issue or cancel
 database, the sealed per-tenant accounts and the HTTP port the gateway forwards to, and gains only the `S3_*` settings for the UBL and PDF files (`{tenant}/einvoice/{document}/document.xml|pdf`
 in the invoices bucket). A sandbox tenant's documents always go to the `mock` adapter; a live tenant's go to its sealed account (`nilvera`, `webhook`), and `PAYRUDDER_DEMO` forces the mock.
 `einvoice_issuances` is the idempotency record (one row per document UUID, written before the integrator is called, the legal number unique per tenant and environment).
-Operator endpoints: `GET /admin/tenants/{tenant}/e-invoice-accounts`, `PUT|DELETE …/e-invoice-accounts/{environment}`. Settings: `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`,
+Operator endpoints: `GET /admin/tenants/{tenant}/e-invoice-accounts`, `PUT|DELETE …/e-invoice-accounts/{environment}`, and (phase 53) `POST …/e-invoice-accounts/{environment}/check`, which builds the adapter from the stored settings and asks it whether the credentials work (`{ok, checked: credentials|configuration, problem: refused|unreachable}`; nothing is issued or stored). Settings: `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY`,
 `S3_SECRET_KEY`, `S3_FORCE_PATH_STYLE`, `EINVOICE_ALLOW_PRIVATE_URLS` (development only).
 

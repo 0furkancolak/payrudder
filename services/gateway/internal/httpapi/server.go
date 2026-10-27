@@ -34,6 +34,7 @@ import (
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -61,6 +62,7 @@ type Deps struct {
 	Admin           plansv1.AdminServiceClient
 	Identity        plansv1.IdentityServiceClient
 	Webhooks        plansv1.WebhookServiceClient
+	MailIntegration plansv1.MailIntegrationServiceClient
 	Affiliates      plansv1.AffiliateServiceClient
 	AffiliatePub    plansv1.AffiliatePublicServiceClient
 	AffiliatePortal plansv1.AffiliatePortalServiceClient
@@ -230,8 +232,8 @@ func (s *Server) authorizeTenant(w http.ResponseWriter, r *http.Request, rt Rout
 		writeError(w, r, err)
 		return nil, false
 	}
-	if !scopeAllows(p.Scope, rt.Method, rt.Path) {
-		writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.scope_denied", "this API key's scope does not allow this request"))
+	if need, ok := permitted(p, rt.Method, rt.Path); !ok {
+		writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.permission_denied", "this API key lacks the permission "+need+" this request needs"))
 		return nil, false
 	}
 	if rt.Access == AccessSandbox && p.Tenant.Environment != tenant.EnvSandbox {
@@ -316,16 +318,18 @@ func (s *Server) authenticate(r *http.Request) (auth.Principal, error) {
 	return p, nil
 }
 
-// scopeAllows reports whether an API key of the scope may call the route: an ingest key only sends events, a read key only reads. Callers that are not
-// API keys carry no scope and are not limited here.
-func scopeAllows(scope, method, path string) bool {
-	switch scope {
-	case auth.ScopeIngest:
-		return method == http.MethodPost && path == "/v1/events"
-	case auth.ScopeRead:
-		return method == http.MethodGet || method == http.MethodHead
+// permitted reports whether an API key may call the route: the route needs one permission (apikey.RequiredPermission) and the key must hold it. It returns the
+// permission that is missing. A route no permission covers is open to an admin key only, so a new route is closed to restricted keys until it is classified
+// (a test over the route table fails until it is). Callers that are not API keys carry no role and are not limited here.
+func permitted(p auth.Principal, method, path string) (need string, ok bool) {
+	if p.Role == "" {
+		return "", true
 	}
-	return true
+	need, known := apikey.RequiredPermission(method, path)
+	if !known {
+		return "an admin key", p.Role == apikey.RoleAdmin
+	}
+	return need, apikey.Allows(p.Permissions, need)
 }
 
 // actAs resolves the tenant an operator acts as.

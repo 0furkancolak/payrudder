@@ -166,14 +166,18 @@ test.describe("app dashboard", () => {
     await expect(keys).toContainText("qk_live_abcd1234_••••••••");
     await expect(keys).not.toContainText("SECRET");
 
-    await keys.getByRole("button", { name: "Live key" }).click();
+    // The page is the live view (the app is active): a live key is made here, in a sheet that names the environment and the role.
+    await keys.getByRole("button", { name: "New live key" }).click();
+    const sheet = page.getByTestId("new-key-sheet");
+    await expect(sheet.getByTestId("new-key-env")).toHaveText("Live");
+    await sheet.getByTestId("create-key").click();
     const reveal = page.getByRole("dialog");
     await expect(reveal.getByTestId("new-key")).toHaveText("qk_live_newkey99_SECRETSECRETSECRETSECRET");
     await shoot(page, "07-new-key");
     await reveal.getByRole("button", { name: "Copy" }).click();
     await expect(reveal.getByRole("button", { name: "Copied" })).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("qk_live_newkey99_SECRETSECRETSECRETSECRET");
-    expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "live", scope: "full" });
+    expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "live", role: "admin" });
     await reveal.getByRole("button", { name: "I have saved it" }).click();
     // The secret is gone for good: the list holds the prefix only.
     await expect(page.getByText("SECRETSECRET")).toHaveCount(0);
@@ -361,19 +365,22 @@ test.describe("e-mail verification and password reset", () => {
     await expect(banner).toContainText("Link sent");
     expect(gw.called("POST", "/auth/resend-verification")).toHaveLength(1);
 
-    await page.goto(`/app/apps/${APP}/keys`);
-    await expect(page.getByRole("button", { name: "Live key" })).toBeDisabled();
+    await page.goto(`/app/apps/${APP}/keys?env=live`);
+    await expect(page.getByRole("button", { name: "New live key" })).toBeDisabled();
     await expect(page.getByTestId("live-needs-verified")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Sandbox key" })).toBeEnabled();
+    // The sandbox view has its own button, and no live one.
+    await page.goto(`/app/apps/${APP}/keys?env=sandbox`);
+    await expect(page.getByRole("button", { name: "New sandbox key" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "New live key" })).toHaveCount(0);
 
     // The link of the mail, followed in this browser.
     await page.goto("/verify#token=qv_good");
     await expect(page.getByText("E-mail address confirmed")).toBeVisible();
     expect(page.url()).not.toContain("qv_good");
     expect(gw.called("POST", "/auth/verify")[0]?.body).toEqual({ token: "qv_good" });
-    await page.goto(`/app/apps/${APP}/keys`);
+    await page.goto(`/app/apps/${APP}/keys?env=live`);
     await expect(page.getByTestId("verify-banner")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Live key" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "New live key" })).toBeEnabled();
   });
 
   test("a verification link that was used is explained, signed out too", async ({ page }) => {

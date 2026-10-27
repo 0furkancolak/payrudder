@@ -1,11 +1,13 @@
 package domain
 
 import (
+	"slices"
 	"strings"
 
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 )
 
@@ -44,37 +46,42 @@ func StatusToDB(s plansv1.TenantStatus) (string, bool) {
 	}
 }
 
-// API key scopes as stored.
-const (
-	ScopeFull   = "full"
-	ScopeIngest = "ingest"
-	ScopeRead   = "read"
-)
-
-// ScopeToDB maps the API enum to the stored name; unset is full.
-func ScopeToDB(s plansv1.ApiKey_Scope) (string, bool) {
-	switch s {
-	case plansv1.ApiKey_SCOPE_UNSPECIFIED, plansv1.ApiKey_SCOPE_FULL:
-		return ScopeFull, true
-	case plansv1.ApiKey_SCOPE_INGEST:
-		return ScopeIngest, true
-	case plansv1.ApiKey_SCOPE_READ:
-		return ScopeRead, true
-	default:
-		return "", false
+// KeyGrant reads what a request says a new key may do: a role and permissions, or, from an older client, a scope. Neither given is the role admin. ok is
+// false for an unknown role or permission, a custom role without permissions, or a permission outside a fixed role.
+func KeyGrant(role string, permissions []string, legacy plansv1.ApiKey_Scope) (outRole string, perms []string, ok bool) {
+	if role == "" && len(permissions) == 0 {
+		switch legacy {
+		case plansv1.ApiKey_SCOPE_INGEST:
+			role = apikey.RoleIngestOnly
+		case plansv1.ApiKey_SCOPE_READ:
+			role = apikey.RoleReadOnly
+		case plansv1.ApiKey_SCOPE_UNSPECIFIED, plansv1.ApiKey_SCOPE_FULL:
+			role = apikey.RoleAdmin
+		default:
+			return "", nil, false
+		}
 	}
+	return apikey.Resolve(role, permissions)
 }
 
-// ScopeFromDB maps a stored scope to the API enum.
-func ScopeFromDB(s string) plansv1.ApiKey_Scope {
-	switch s {
-	case ScopeIngest:
+// KeyScope is the summary of a role for readers of the deprecated scope field: ingest for ingest_only, read for read_only, full for the rest.
+func KeyScope(role string) plansv1.ApiKey_Scope {
+	switch role {
+	case apikey.RoleIngestOnly:
 		return plansv1.ApiKey_SCOPE_INGEST
-	case ScopeRead:
+	case apikey.RoleReadOnly:
 		return plansv1.ApiKey_SCOPE_READ
-	default:
-		return plansv1.ApiKey_SCOPE_FULL
 	}
+	return plansv1.ApiKey_SCOPE_FULL
+}
+
+// KeyPermissions is the permission set of a stored key: the role admin always holds every permission that exists, so one added later reaches the admin keys
+// already issued.
+func KeyPermissions(role string, stored []string) []string {
+	if role == apikey.RoleAdmin {
+		return slices.Clone(apikey.Permissions)
+	}
+	return stored
 }
 
 // taxIDCountries are the countries whose invoices need the seller's tax id: Turkey and the EU member states.

@@ -1344,12 +1344,17 @@ type ApiKey struct {
 	Status      ApiKey_Status          `protobuf:"varint,5,opt,name=status,proto3,enum=payrudder.plans.v1.ApiKey_Status" json:"status,omitempty"`
 	CreateTime  *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
 	RevokeTime  *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=revoke_time,json=revokeTime,proto3" json:"revoke_time,omitempty"`
-	// What the key may do: FULL everything the tenant API offers, INGEST only POST /v1/events, READ only GET requests.
+	// An older summary of role and permissions, kept for older readers (FULL for admin, INGEST for ingest_only, READ for read_only, FULL otherwise). Nothing
+	// enforces it; the gateway enforces the permissions.
 	Scope ApiKey_Scope `protobuf:"varint,8,opt,name=scope,proto3,enum=payrudder.plans.v1.ApiKey_Scope" json:"scope,omitempty"`
 	// When the key last authenticated a request (kept to within a few minutes); empty when never used.
 	LastUsedTime *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_used_time,json=lastUsedTime,proto3" json:"last_used_time,omitempty"`
 	// When the key stops working although it is not revoked: the old key of a rotation, valid for its overlap window. Empty for a key without an end.
-	ExpireTime    *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	ExpireTime *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=expire_time,json=expireTime,proto3" json:"expire_time,omitempty"`
+	// The role the key was issued with: admin, billing, read_only, ingest_only or custom (pkg/apikey).
+	Role string `protobuf:"bytes,11,opt,name=role,proto3" json:"role,omitempty"`
+	// What the key may do, resource:action (pkg/apikey). The gateway answers 403 gateway.auth.permission_denied for a route that needs one the key lacks.
+	Permissions   []string `protobuf:"bytes,12,rep,name=permissions,proto3" json:"permissions,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1450,6 +1455,20 @@ func (x *ApiKey) GetLastUsedTime() *timestamppb.Timestamp {
 func (x *ApiKey) GetExpireTime() *timestamppb.Timestamp {
 	if x != nil {
 		return x.ExpireTime
+	}
+	return nil
+}
+
+func (x *ApiKey) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *ApiKey) GetPermissions() []string {
+	if x != nil {
+		return x.Permissions
 	}
 	return nil
 }
@@ -3425,7 +3444,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"eInvoiceOn\x128\n" +
 	"\x06status\x18\x10 \x01(\x0e2 .payrudder.plans.v1.TenantStatusR\x06status\x12?\n" +
 	"\ractivate_time\x18\x11 \x01(\v2\x1a.google.protobuf.TimestampR\factivateTime\x12F\n" +
-	"\x11terms_accept_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x0ftermsAcceptTime\"\x97\x05\n" +
+	"\x11terms_accept_time\x18\x12 \x01(\v2\x1a.google.protobuf.TimestampR\x0ftermsAcceptTime\"\xcd\x05\n" +
 	"\x06ApiKey\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12\x16\n" +
@@ -3440,7 +3459,9 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\x0elast_used_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\flastUsedTime\x12;\n" +
 	"\vexpire_time\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"expireTime\"G\n" +
+	"expireTime\x12\x12\n" +
+	"\x04role\x18\v \x01(\tR\x04role\x12 \n" +
+	"\vpermissions\x18\f \x03(\tR\vpermissions\"G\n" +
 	"\x06Status\x12\x16\n" +
 	"\x12STATUS_UNSPECIFIED\x10\x00\x12\x11\n" +
 	"\rSTATUS_ACTIVE\x10\x01\x12\x12\n" +

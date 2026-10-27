@@ -27,6 +27,7 @@ import (
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
@@ -39,6 +40,9 @@ var (
 	liveTenant    = uuid.MustParse("0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e")
 	sandboxTenant = uuid.MustParse("0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5f")
 )
+
+func readOnly() []string { p, _ := apikey.RolePermissions(apikey.RoleReadOnly); return p }
+func billing() []string  { p, _ := apikey.RolePermissions(apikey.RoleBilling); return p }
 
 type fakeAuth struct{}
 
@@ -53,9 +57,13 @@ func (fakeAuth) Authenticate(_ context.Context, key string) (auth.Principal, err
 	case "down-key":
 		return auth.Principal{}, auth.ErrUnavailable
 	case "ingest-key":
-		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Scope: auth.ScopeIngest}, nil
+		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleIngestOnly, Permissions: []string{apikey.PermEventsWrite}}, nil
 	case "read-key":
-		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Scope: auth.ScopeRead}, nil
+		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleReadOnly, Permissions: readOnly()}, nil
+	case "billing-key":
+		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleBilling, Permissions: billing()}, nil
+	case "custom-key":
+		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleCustom, Permissions: []string{apikey.PermCustomersRead, apikey.PermInvoicesRead}}, nil
 	case "suspended-key":
 		return auth.Principal{}, auth.ErrSuspended
 	default:

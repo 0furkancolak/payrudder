@@ -140,8 +140,8 @@ test.describe("going live", () => {
     await expect(page.getByTestId("live-provider")).toBeVisible();
     // The provider item opens the payment providers screen of the app.
     await page.getByTestId("go-live-go-payment_provider").click();
-    await expect(page).toHaveURL(new RegExp(`/app/apps/${APP}/providers`));
-    await expect(page.getByTestId("provider-card-paddle")).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/app/apps/${APP}/integrations`));
+    await expect(page.getByTestId("integration-card-paddle")).toBeVisible();
   });
 
   test("a member who is not the owner reads the steps but cannot change anything, and is told why", async ({ page }) => {
@@ -288,39 +288,49 @@ test.describe("the owner's own steps", () => {
     liveGateway(gw);
     await gw.install(page);
     await signInAsAda(page);
-    await page.goto(`/app/apps/${APP}/keys?env=sandbox`);
+    await page.goto(`/app/apps/${APP}/keys?env=live`);
     await expect(page.getByTestId("new-live-key")).toBeDisabled();
     await expect(page.getByTestId("live-inactive")).toContainText("once the live environment is active");
+    // Sandbox keys are made in the sandbox view, which has no live button at all.
+    await page.goto(`/app/apps/${APP}/keys?env=sandbox`);
     await expect(page.getByTestId("new-sandbox-key")).toBeEnabled();
+    await expect(page.getByTestId("new-live-key")).toHaveCount(0);
+    await expect(page.getByTestId("keys-to-live")).toBeVisible();
   });
 });
 
 test.describe("keys", () => {
-  test("a key is made with a scope, shows when it was last used, and rotating shows the new key once and the old one's end", async ({ page }) => {
+  test("a key is made with a role, shows when it was last used, and rotating shows the new key once and the old one's end", async ({ page }) => {
     const { gw } = productGateway(new MockGateway());
     liveGateway(gw);
     gw.on((c) => (c.path === `/app/v1/apps/${APP}/api-keys` && c.method === "GET"
       ? { body: { api_keys: [
-          { id: "k2", tenant_id: "x", prefix: "wxyz5678", environment: "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", scope: "SCOPE_INGEST", create_time: "2026-10-03T09:05:00Z", last_used_time: "2026-10-20T09:05:00Z" },
-          { id: "k5", tenant_id: "x", prefix: "ending00", environment: "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", scope: "SCOPE_FULL", create_time: "2026-10-03T09:05:00Z", expire_time: "2026-10-22T10:00:00Z" },
+          { id: "k2", tenant_id: "x", prefix: "wxyz5678", environment: "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", scope: "SCOPE_INGEST", role: "ingest_only", permissions: ["events:write"], create_time: "2026-10-03T09:05:00Z", last_used_time: "2026-10-20T09:05:00Z" },
+          { id: "k5", tenant_id: "x", prefix: "ending00", environment: "ENVIRONMENT_SANDBOX", status: "STATUS_ACTIVE", scope: "SCOPE_FULL", role: "admin", create_time: "2026-10-03T09:05:00Z", expire_time: "2026-10-22T10:00:00Z" },
         ] } }
       : undefined));
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}/keys?env=sandbox`);
-    await expect(page.getByTestId("scope-k2")).toContainText("Send usage only");
+    await expect(page.getByTestId("role-k2")).toContainText("Send usage only");
+    await expect(page.getByTestId("env-k2")).toContainText("Sandbox");
     await expect(page.getByTestId("last-used-k2")).toContainText("last used");
     await expect(page.getByTestId("last-used-k5")).toContainText("never used");
     await expect(page.getByTestId("key-ends")).toContainText("Stops working on");
     // A key that already ends cannot be rotated again.
     await expect(page.getByTestId("row-action-rotate-k5")).toHaveCount(0);
 
-    await page.getByTestId("key-scope").selectOption("read");
     await page.getByTestId("new-sandbox-key").click();
+    const sheet = page.getByTestId("new-key-sheet");
+    await expect(sheet.getByTestId("new-key-env")).toHaveText("Sandbox");
+    await sheet.getByTestId("key-role").selectOption("read_only");
+    await expect(sheet.getByTestId("perm-customers:read")).toBeChecked();
+    await expect(sheet.getByTestId("perm-customers:write")).not.toBeChecked();
+    await sheet.getByTestId("create-key").click();
     await page.getByRole("dialog").getByRole("button", { name: "I have saved it" }).click();
-    expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "sandbox", scope: "read" });
+    expect(gw.called("POST", `/app/v1/apps/${APP}/api-keys`)[0]?.body).toEqual({ environment: "sandbox", role: "read_only" });
 
-    await page.getByRole("row").filter({ has: page.getByTestId("scope-k2") }).getByTestId("row-actions").click();
+    await page.getByRole("row").filter({ has: page.getByTestId("role-k2") }).getByTestId("row-actions").click();
     await page.getByTestId("row-action-rotate-k2").click();
     await page.getByTestId("rotate-overlap").selectOption("72");
     await page.getByTestId("rotate-confirm").click();

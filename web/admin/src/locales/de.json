@@ -2348,8 +2348,8 @@
         "invalid": "{field} ist ungültig: {detail}"
       },
       "api_key": {
-        "bad_scope": "Der Bereich muss full, ingest oder read sein.",
-        "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab."
+        "tenant_not_active": "Diese Umgebung ist nicht aktiv und kann daher keine API-Schlüssel haben. Schließen Sie zuerst die Go-live-Checkliste ab.",
+        "bad_role": "Die Rolle muss Admin, Abrechnung, Nur Lesen, Nur Nutzung senden oder Benutzerdefiniert sein, mit bekannten Berechtigungen."
       },
       "change": {
         "bad_proration": "Die Gebühr für diesen Planwechsel lässt sich für diesen Zeitraum nicht berechnen.",
@@ -2391,6 +2391,14 @@
       "override": {
         "customer_required": "Geben Sie an, für welchen Kunden das Limit gilt.",
         "not_found": "Dieser Kunde hat auf diesem Zähler keine Ausnahme."
+      },
+      "mail_integration": {
+        "live_only": "Die Sandbox sendet ihre E-Mails an den Sandbox-Posteingang. Verbinden Sie einen E-Mail-Anbieter in der Live-Umgebung.",
+        "refused": "Der E-Mail-Anbieter hat diesen Schlüssel nicht akzeptiert.",
+        "unreachable": "Der E-Mail-Anbieter ist nicht erreichbar. Prüfen Sie die Adresse und versuchen Sie es erneut.",
+        "not_configured": "E-Mail-Anbieter sind in dieser Installation nicht eingerichtet.",
+        "not_connected": "Es ist kein E-Mail-Anbieter verbunden.",
+        "seal_failed": "Der Schlüssel konnte nicht gespeichert werden. Versuchen Sie es erneut."
       }
     },
     "common": {
@@ -2551,12 +2559,12 @@
         "quota": "Eine Umgebung kann höchstens 10 aktive API-Schlüssel haben. Widerrufen Sie zuerst einen.",
         "already_rotating": "Dieser Schlüssel wurde bereits ersetzt und läuft bald ab. Widerrufen Sie ihn oder warten Sie, bis er endet.",
         "bad_overlap": "Die Überlappung muss zwischen 0 Stunden und 7 Tagen liegen.",
-        "bad_scope": "Der Bereich muss full, ingest oder read sein.",
         "not_active": "Dieser API-Schlüssel wurde widerrufen.",
         "invalid": "Der API-Schlüssel ist ungültig.",
         "missing": "Senden Sie Ihren API-Schlüssel als Bearer-Token im Authorization-Header.",
         "sandbox_only": "Dieser Endpunkt ist nur für Sandbox-Schlüssel (qk_test_) gedacht.",
-        "prefix_unavailable": "Es konnte kein eindeutiges Schlüsselpräfix vergeben werden. Versuchen Sie es erneut."
+        "prefix_unavailable": "Es konnte kein eindeutiges Schlüsselpräfix vergeben werden. Versuchen Sie es erneut.",
+        "bad_role": "Die Rolle muss Admin, Abrechnung, Nur Lesen, Nur Nutzung senden oder Benutzerdefiniert sein, mit bekannten Berechtigungen."
       },
       "app": {
         "not_found": "Diese App existiert nicht oder gehört Ihnen nicht.",
@@ -2647,8 +2655,8 @@
         "unreadable_body": "Der Anfragetext konnte nicht gelesen werden."
       },
       "auth": {
-        "scope_denied": "Der Bereich dieses API-Schlüssels erlaubt diese Anfrage nicht. Verwenden Sie einen Schlüssel mit größerem Bereich.",
-        "tenant_not_active": "Diese Umgebung ist gesperrt oder noch nicht aktiv. Schließen Sie die Go-live-Checkliste ab oder wenden Sie sich an den Support."
+        "tenant_not_active": "Diese Umgebung ist gesperrt oder noch nicht aktiv. Schließen Sie die Go-live-Checkliste ab oder wenden Sie sich an den Support.",
+        "permission_denied": "Diesem API-Schlüssel fehlt eine Berechtigung, die diese Anfrage braucht. Verwenden Sie einen Schlüssel mit der genannten Rolle oder Berechtigung."
       },
       "assets": {
         "bad_invoice_logo": "Das Rechnungslogo muss ein abgeschlossener Upload der Art Rechnungslogo sein."
@@ -3047,14 +3055,13 @@
     "keys": {
       "title": "API-Schlüssel",
       "intro": "Ihr Server nutzt einen Schlüssel, um mit Payrudder zu sprechen. Sandbox-Schlüssel berühren nur Testdaten.",
-      "newSandbox": "Sandbox-Schlüssel",
-      "newLive": "Live-Schlüssel",
+      "newSandbox": "Neuer Sandbox-Schlüssel",
+      "newLive": "Neuer Live-Schlüssel",
       "created": "Erstellt am {date}",
       "active": "Aktiv",
       "revoked": "Widerrufen",
       "revoke": "Widerrufen",
       "revokeNamed": "Schlüssel {key} widerrufen",
-      "empty": "Noch keine Schlüssel. Erstellen Sie einen, um Nutzung zu senden.",
       "revealTitle": "Kopieren Sie Ihren neuen Schlüssel jetzt",
       "revealBody": "Der vollständige Schlüssel wird nur dieses eine Mal angezeigt. Bewahren Sie ihn sicher auf; geht er verloren, widerrufen Sie ihn und erstellen Sie einen neuen.",
       "copy": "Kopieren",
@@ -3064,17 +3071,6 @@
       "revokeTitle": "Diesen Schlüssel widerrufen?",
       "revokeBody": "Alles, was ihn noch verwendet, funktioniert sofort nicht mehr. Das lässt sich nicht rückgängig machen.",
       "needsVerified": "Bestätigen Sie Ihre E-Mail-Adresse, um Live-Schlüssel zu erstellen.",
-      "scope": "Umfang eines neuen Schlüssels",
-      "scopes": {
-        "full": "Voller Zugriff",
-        "ingest": "Nur Nutzung senden",
-        "read": "Nur lesen"
-      },
-      "scopeHelp": {
-        "full": "Die gesamte API.",
-        "ingest": "Kann nur Nutzungsereignisse senden. Sicher für einen Dienst, der Nutzung meldet.",
-        "read": "Kann nur lesen. Sicher für Dashboards und Berichte."
-      },
       "liveInactive": "Live-Schlüssel gibt es, sobald die Live-Umgebung aktiv ist.",
       "rotate": "Rotieren",
       "rotateNamed": "Schlüssel {key} rotieren",
@@ -3087,10 +3083,68 @@
       "neverUsed": "nie benutzt",
       "ends": "Funktioniert nicht mehr ab {date}",
       "filterEnv": "Umgebung",
-      "allEnvs": "Alle Umgebungen",
       "filterStatus": "Status",
       "allStatuses": "Alle Status",
-      "scopeHead": "Umfang"
+      "envNote": {
+        "sandbox": "Sandbox-Schlüssel berühren nur Testdaten. Sie werden hier in der Sandbox-Ansicht erstellt; Live-Schlüssel entstehen in der Live-Ansicht.",
+        "live": "Live-Schlüssel arbeiten mit echten Daten und bewegen echtes Geld. Sie entstehen nur hier, in der Live-Ansicht, sobald die Live-Umgebung aktiv ist."
+      },
+      "toSandbox": "Sandbox-Schlüssel finden Sie in der Sandbox-Ansicht",
+      "toLive": "Live-Schlüssel finden Sie in der Live-Ansicht",
+      "role": "Rolle",
+      "allRoles": "Alle Rollen",
+      "roles": {
+        "admin": "Admin",
+        "billing": "Abrechnung",
+        "read_only": "Nur Lesen",
+        "ingest_only": "Nur Nutzung senden",
+        "custom": "Benutzerdefiniert"
+      },
+      "roleHelp": {
+        "admin": "Alle Berechtigungen: die gesamte API. Nur auf Ihrem eigenen Server aufbewahren.",
+        "billing": "Kunden, Abonnements, Guthaben und Rechnungen sowie Lesen von Katalog und Nutzung. Für einen Dienst, der abrechnet.",
+        "read_only": "Kann nur lesen. Sicher für Dashboards und Berichte.",
+        "ingest_only": "Kann nur Nutzungsereignisse senden. Sicher in einem Dienst, der Nutzung meldet.",
+        "custom": "Wählen Sie genau, was der Schlüssel darf."
+      },
+      "permissions": "Berechtigungen",
+      "permissionsFixed": "Diese Rolle umfasst die unten angehakten Berechtigungen. Wählen Sie Benutzerdefiniert, um sie einzeln zu wählen.",
+      "permissionsCustom": "Haken Sie an, was dieser Schlüssel darf. Eine Anfrage, die etwas anderes braucht, wird mit 403 abgelehnt.",
+      "read": "Lesen",
+      "write": "Schreiben",
+      "resources": {
+        "events": "Nutzungsereignisse",
+        "customers": "Kunden",
+        "subscriptions": "Abonnements",
+        "catalog": "Katalog (Pläne, Zähler, Gutscheine)",
+        "usage": "Nutzung und Berechtigungen",
+        "credits": "Guthaben",
+        "invoices": "Rechnungen und Zahlungen",
+        "reports": "Berichte",
+        "accounting": "Buchhaltung",
+        "webhooks": "Webhooks",
+        "affiliates": "Partner",
+        "settings": "Einstellungen (Steuer, Routing, E-Mail)",
+        "assets": "Dateien",
+        "sandbox": "Sandbox-Werkzeuge"
+      },
+      "permissionCount": "{n} von {total} Berechtigungen",
+      "customNeedsOne": "Wählen Sie mindestens eine Berechtigung.",
+      "create": "Schlüssel erstellen",
+      "createTitleSandbox": "Neuer Sandbox-Schlüssel",
+      "createTitleLive": "Neuer Live-Schlüssel",
+      "createBody": {
+        "sandbox": "Der Schlüssel funktioniert nur in der Sandbox mit Testdaten. Das Geheimnis wird einmal angezeigt.",
+        "live": "Der Schlüssel arbeitet in der Live-Umgebung mit echten Daten. Das Geheimnis wird einmal angezeigt."
+      },
+      "viewPermissions": "Berechtigungen ansehen",
+      "permissionsTitle": "Was dieser Schlüssel darf",
+      "allowed": "Erlaubt",
+      "notAllowed": "Nicht erlaubt",
+      "empty": {
+        "sandbox": "Noch keine Sandbox-Schlüssel. Erstellen Sie einen, um die API mit Testdaten auszuprobieren.",
+        "live": "Noch keine Live-Schlüssel. Erstellen Sie einen, um echte Nutzung zu senden."
+      }
     },
     "links": {
       "title": "Tiefer einsteigen",
@@ -3251,7 +3305,7 @@
       "intro": "Wer zu dieser Organisation gehört, mit welchen Rollen, und welche Einladungen noch offen sind."
     },
     "apiKeysPage": {
-      "intro": "Schlüssel, mit denen Ihr Server Payrudder für diese App aufruft. Ein Schlüssel gehört zu einer Umgebung; sein Geheimnis wird einmal angezeigt."
+      "intro": "Schlüssel, mit denen Ihr Server Payrudder für diese App aufruft. Jeder Schlüssel gehört zu einer Umgebung, die am Schlüssel steht: Sandbox-Schlüssel entstehen in der Sandbox-Ansicht, Live-Schlüssel in der Live-Ansicht."
     },
     "appSettings": {
       "intro": "Womit diese App angelegt wurde. Währung und Zeitzone bestimmen, wie jede Rechnung berechnet wird, und sind deshalb nach dem Anlegen fest.",
@@ -3458,8 +3512,6 @@
       "simulateNotRetried": "Das Szenario ist gesetzt, die Zahlung konnte aber jetzt nicht erneut laufen ({why})."
     },
     "providers": {
-      "introApp": "Verbinden und verwalten Sie die Zahlungsanbieter von {app}. Kunden zahlen über das Live-Konto; die Sandbox braucht keine Verbindung.",
-      "introOrg": "Verbinden Sie einen Zahlungsanbieter einmal für alle Apps oder richten Sie eine App anders ein als die übrigen.",
       "connect": "Verbinden",
       "manage": "Verwalten",
       "simulator": "Eingebauter Simulator",
@@ -3474,7 +3526,7 @@
       "notConnectedLine": "Im Live-Modus nicht verbunden.",
       "noLiveApps": "Noch keine App hat eine Live-Umgebung.",
       "orgLine": "Bei {connected} von {total} Apps verbunden",
-      "openScreen": "Zahlungsanbieter",
+      "openScreen": "Alle Integrationen öffnen",
       "doneAll": "{provider} bei {count} App(s) verbunden.",
       "donePartial": "{provider}: {ok} App(s) verbunden, {failed} fehlgeschlagen.",
       "appsTitle": "Apps",
@@ -3524,6 +3576,131 @@
           "webhook_secret": "Unter Developer tools, Notifications ein Ziel für Payrudder anlegen und dessen geheimen Schlüssel kopieren.",
           "usage_product_id": "Die ID des Produkts, das Paddle für Nutzungsgebühren verwendet. Im Catalog das Produkt öffnen und seine ID kopieren, sie beginnt mit pro_."
         }
+      }
+    },
+    "integrations": {
+      "introApp": "Verbinden Sie die Zahlungsanbieter, den E-Rechnungs-Integrator und den E-Mail-Anbieter von {app}. Kunden werden über die Live-Verbindungen bedient; die Sandbox braucht keine.",
+      "introOrg": "Verbinden Sie einen Zahlungsanbieter einmal für alle Apps oder richten Sie eine App abweichend ein. E-Rechnung und E-Mail werden pro App eingerichtet.",
+      "groups": {
+        "payments": {
+          "title": "Zahlungen",
+          "intro": "Wie Ihre Kunden zahlen. Verbinden Sie einen Anbieter mit Ihren Live-Schlüsseln."
+        },
+        "einvoice": {
+          "title": "E-Rechnung",
+          "intro": "Der Integrator, der Ihre Rechnungen in rechtsgültige E-Dokumente verwandelt."
+        },
+        "email": {
+          "title": "E-Mail",
+          "intro": "Was die E-Mails versendet, die Ihre Kunden erhalten: Rechnungen, Belege und Hinweise."
+        }
+      },
+      "names": {
+        "banktransfer": "Banküberweisung",
+        "simulator": "Eingebauter Simulator",
+        "webhook": "Eigener Integrator",
+        "einvoiceSimulator": "Eingebauter Simulator",
+        "payrudderMail": "Payrudder-Mail"
+      },
+      "about": {
+        "iyzico": "Türkische Karten und lokale Methoden",
+        "paddle": "Karten weltweit, Abonnements werden vom Anbieter geführt",
+        "banktransfer": "Zahlung per Überweisung auf Ihr eigenes Bankkonto",
+        "simulator": "Simulierte Zahlungen für die Sandbox, mit Szenarien",
+        "nilvera": "Integrator für türkische e-Fatura und e-Arşiv",
+        "webhook": "Jedes Dokument an die Adresse Ihres eigenen Integrators senden",
+        "einvoiceSimulator": "Simulierte E-Dokumente für die Sandbox",
+        "payrudderMail": "Von Payrudder für Sie versendete E-Mails",
+        "nafru": "Über Ihr eigenes Nafru-Email-Konto senden"
+      },
+      "state": {
+        "none": "Nicht verbunden",
+        "working": "Verbunden und funktionsfähig",
+        "problem": "Problem",
+        "always": "Immer aktiv",
+        "unused": "Nicht in Gebrauch"
+      },
+      "lines": {
+        "simulatorPayments": "Wird von der Sandbox genutzt. Nichts zu verbinden.",
+        "simulatorEInvoice": "Wird von der Sandbox genutzt. Nichts zu verbinden.",
+        "perApp": "Wird für jede App eingerichtet.",
+        "mailBuiltIn": "Rechnungen, Belege und Hinweise gehen von Payrudder aus.",
+        "mailUnused": "Ihr eigener Anbieter versendet die Live-E-Mails.",
+        "mailOwn": "Live-E-Mails gehen von {from} aus."
+      },
+      "sandbox": {
+        "payments": "Eingebauter Simulator",
+        "einvoice": "Eingebauter Simulator",
+        "email": "Sandbox-Posteingang"
+      },
+      "settings": "Einstellungen",
+      "website": "Website",
+      "open": "Öffnen",
+      "perAppNote": "E-Rechnung und E-Mail werden pro App eingerichtet. Öffnen Sie unten eine App.",
+      "appsIntro": "Klicken Sie auf einen Zahlungsstatus, um einen Anbieter nur für diese App zu verbinden, zu ersetzen oder zu entfernen, oder öffnen Sie die App für E-Rechnung und E-Mail.",
+      "connectTitle": "{name} verbinden",
+      "manageTitle": "{name}-Verbindung",
+      "ownerOnly": "Nur ein Eigentümer des Kontos kann diese Verbindung ändern.",
+      "saved": "{name} ist verbunden.",
+      "replaceNote": "Eine Verbindung besteht. Geben Sie neue Zugangsdaten nur ein, wenn Sie sie ersetzen wollen; die aktuellen werden nie angezeigt.",
+      "secretsOnce": "Zugangsdaten werden einmal angezeigt und nach dem Speichern nicht mehr.",
+      "optional": "optional",
+      "test": "Verbindung testen",
+      "testing": "Wird getestet...",
+      "checking": "Wird geprüft...",
+      "save": "Verbindung speichern",
+      "disconnect": "Trennen",
+      "testFailed": {
+        "refused": "Die Gegenseite akzeptiert diese Zugangsdaten derzeit nicht.",
+        "unreachable": "Die Gegenseite war nicht erreichbar. Versuchen Sie es gleich noch einmal."
+      },
+      "einvoice": {
+        "intro": {
+          "nilvera": "Geben Sie Ihren Nilvera-API-Schlüssel ein. Ihre Rechnungen werden als e-Fatura- und e-Arşiv-Dokumente über Ihr Nilvera-Konto gesendet.",
+          "webhook": "Jedes E-Dokument wird signiert an die Adresse Ihres eigenen Integrators gesendet. Geben Sie die Adresse und das Geheimnis zur Signaturprüfung ein."
+        },
+        "envNote": "Dies verbindet die Live-Umgebung. Die Sandbox nutzt weiter den eingebauten Simulator.",
+        "replaces": "Eine Umgebung hat einen Integrator. Wenn Sie diesen verbinden, ersetzt er den aktuell verbundenen: {current}.",
+        "mode": "Modus",
+        "modes": {
+          "test": "Testmodus",
+          "production": "Produktion"
+        },
+        "modeLine": "Verbunden im Modus: {mode}.",
+        "fields": {
+          "api_key": "API-Schlüssel",
+          "base_url": "Basis-URL",
+          "url": "Adresse des Integrators",
+          "secret": "Signatur-Geheimnis"
+        },
+        "testOk": {
+          "credentials": "Der Integrator akzeptiert diese Zugangsdaten.",
+          "configuration": "Die Einstellungen sind gültig. Den Rest beweist nur ein echtes Dokument."
+        },
+        "confirmRemove": "{name} trennen? Neue Rechnungen der Live-Umgebung werden nicht mehr als E-Dokumente gesendet."
+      },
+      "mail": {
+        "builtInTitle": "Payrudder-Mail",
+        "builtInIntro": "Payrudder versendet die E-Mails an Ihre Kunden. Wählen Sie, welche Arten verschickt werden.",
+        "unusedNote": "Ihr eigener Anbieter ist verbunden, daher laufen die Live-E-Mails über ihn. Diese Schalter bestimmen weiterhin, welche Arten gesendet werden.",
+        "nafruIntro": "Versenden Sie die E-Mails an Ihre Kunden über Ihr eigenes Nafru-Email-Konto, von Ihrer eigenen Adresse. Geben Sie die Adresse und den API-Schlüssel des Kontos ein.",
+        "envNote": "Dies verbindet die Live-Umgebung. Die E-Mails der Sandbox gehen immer in den Sandbox-Posteingang.",
+        "aboutNafru": "Über Nafru Email",
+        "keyLine": "Schlüssel endet auf {hint}, gesendet von {from}.",
+        "testOk": "Eine Test-E-Mail wurde über Ihren Anbieter an {to} gesendet.",
+        "testTo": "Test-E-Mail senden an",
+        "sendTest": "Test-E-Mail senden",
+        "fields": {
+          "base_url": "Nafru-Email-Adresse",
+          "api_key": "API-Schlüssel",
+          "from": "Absender"
+        },
+        "help": {
+          "base_url": "Die Adresse der Nafru-Email-API Ihres Kontos, beginnend mit https.",
+          "from": "Ein Name und eine Adresse auf einer bei Nafru Email verifizierten Domain."
+        },
+        "checkAndConnect": "Prüfen und verbinden",
+        "confirmRemove": "Ihren eigenen E-Mail-Anbieter trennen? Die Live-E-Mails gehen wieder von Payrudder aus."
       }
     }
   },
@@ -3585,8 +3762,8 @@
       "partner": "Partnerportal",
       "usage": "Nutzung",
       "coupons": "Gutscheine",
-      "paymentProviders": "Zahlungsanbieter",
-      "meters": "Zähler"
+      "meters": "Zähler",
+      "integrations": "Integrationen"
     },
     "noApps": "Noch keine Apps"
   },

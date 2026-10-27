@@ -25,6 +25,7 @@ func (s *Server) routes() []Route {
 		s.billingReadAndSandboxRoutes(),
 		s.appRoutes(),
 		s.goLiveRoutes(),
+		s.integrationRoutes(),
 		s.sandboxRoutes(),
 		s.memberRoutes(),
 		s.geoRoutes(),

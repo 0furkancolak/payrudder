@@ -29,6 +29,9 @@ import (
 	feesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/fees"
 	feescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/fees/command"
 	feesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/fees/query"
+	mailintegrationapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/mailintegration"
+	mailintegrationcmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/mailintegration/command"
+	mailintegrationqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/mailintegration/query"
 	mailsettingsapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/mailsettings"
 	mailsettingscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/mailsettings/command"
 	mailsettingsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/mailsettings/query"
@@ -134,6 +137,12 @@ func newPlans(appPool *pgxpool.Pool) *Server {
 // allowPrivate lets endpoints be http:// and private addresses (development and tests only).
 func newWebhooks(s *Server, box *secretbox.Box, allowPrivate bool) *webhookendpointsapi.Handler {
 	return webhookendpointsapi.New(webhookendpointscmd.New(s.db, s.now, box, allowPrivate).WithEventHook(affiliatescmd.OnTenantEvent), webhookendpointsqry.New(s.db))
+}
+
+// newMailIntegration returns the service for a tenant's own e-mail provider on the same database as s. box seals the key (nil: none can be connected).
+func newMailIntegration(s *Server, box *secretbox.Box, allowPrivate bool) *mailintegrationapi.Handler {
+	qry := mailintegrationqry.New(s.db, box)
+	return mailintegrationapi.New(mailintegrationcmd.New(s.db, box, qry, allowPrivate), qry)
 }
 
 // newAffiliates returns the affiliate program service on the same database as s.

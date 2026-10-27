@@ -2348,8 +2348,8 @@
         "invalid": "{field} geçerli değil: {detail}"
       },
       "api_key": {
-        "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
-        "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın."
+        "tenant_not_active": "Bu ortam etkin olmadığı için API anahtarı alamaz. Önce canlıya geçiş listesini tamamlayın.",
+        "bad_role": "Rol yönetici, faturalama, salt okunur, yalnızca kullanım gönderir veya özel olmalı; izinler de bilinen izinler olmalıdır."
       },
       "change": {
         "bad_proration": "Bu plan değişikliğinin ücreti bu dönem için hesaplanamıyor.",
@@ -2391,6 +2391,14 @@
       "override": {
         "customer_required": "Sınırın hangi müşteri için olduğunu belirtin.",
         "not_found": "Bu müşterinin o sayaçta istisnası yok."
+      },
+      "mail_integration": {
+        "live_only": "Sandbox e-postalarını sandbox gelen kutusuna gönderir. E-posta sağlayıcısını canlı ortamda bağlayın.",
+        "refused": "E-posta sağlayıcısı bu anahtarı kabul etmedi.",
+        "unreachable": "E-posta sağlayıcısına ulaşılamadı. Adresi kontrol edip yeniden deneyin.",
+        "not_configured": "Bu kurulumda e-posta sağlayıcıları ayarlanmamış.",
+        "not_connected": "Bağlı bir e-posta sağlayıcısı yok.",
+        "seal_failed": "Anahtar saklanamadı. Yeniden deneyin."
       }
     },
     "common": {
@@ -2551,12 +2559,12 @@
         "quota": "Bir ortamda en fazla 10 etkin API anahtarı olabilir. Önce birini iptal edin.",
         "already_rotating": "Bu anahtar zaten yenilendi ve yakında sona erecek. İptal edin ya da bitmesini bekleyin.",
         "bad_overlap": "Geçiş süresi 0 saat ile 7 gün arasında olmalıdır.",
-        "bad_scope": "Kapsam full, ingest veya read olmalıdır.",
         "not_active": "Bu API anahtarı iptal edilmiş.",
         "invalid": "API anahtarı geçerli değil.",
         "missing": "API anahtarınızı Authorization başlığında Bearer belirteci olarak gönderin.",
         "sandbox_only": "Bu uç nokta yalnızca sandbox anahtarları (qk_test_) içindir.",
-        "prefix_unavailable": "Benzersiz bir anahtar öneki ayrılamadı. Yeniden deneyin."
+        "prefix_unavailable": "Benzersiz bir anahtar öneki ayrılamadı. Yeniden deneyin.",
+        "bad_role": "Rol yönetici, faturalama, salt okunur, yalnızca kullanım gönderir veya özel olmalı; izinler de bilinen izinler olmalıdır."
       },
       "app": {
         "not_found": "Bu uygulama yok ya da size ait değil.",
@@ -2647,8 +2655,8 @@
         "unreadable_body": "İstek gövdesi okunamadı."
       },
       "auth": {
-        "scope_denied": "Bu API anahtarının kapsamı bu isteğe izin vermiyor. Daha geniş kapsamlı bir anahtar kullanın.",
-        "tenant_not_active": "Bu ortam askıya alınmış ya da henüz etkin değil. Canlıya geçiş listesini tamamlayın veya destekle iletişime geçin."
+        "tenant_not_active": "Bu ortam askıya alınmış ya da henüz etkin değil. Canlıya geçiş listesini tamamlayın veya destekle iletişime geçin.",
+        "permission_denied": "Bu API anahtarında bu isteğin gerektirdiği izin yok. İsteğin belirttiği role veya izne sahip bir anahtar kullanın."
       },
       "assets": {
         "bad_invoice_logo": "Fatura logosu, fatura logosu türünde tamamlanmış bir yükleme olmalı."
@@ -3047,14 +3055,13 @@
     "keys": {
       "title": "API anahtarları",
       "intro": "Sunucunuz Payrudder ile bir anahtarla konuşur. Sandbox anahtarları yalnızca deneme verilerine dokunur.",
-      "newSandbox": "Sandbox anahtarı",
-      "newLive": "Canlı anahtar",
+      "newSandbox": "Yeni sandbox anahtarı",
+      "newLive": "Yeni canlı anahtar",
       "created": "Oluşturuldu: {date}",
       "active": "Etkin",
       "revoked": "İptal edildi",
       "revoke": "İptal et",
       "revokeNamed": "{key} anahtarını iptal et",
-      "empty": "Henüz anahtar yok. Kullanım göndermeye başlamak için bir tane oluşturun.",
       "revealTitle": "Yeni anahtarınızı şimdi kopyalayın",
       "revealBody": "Anahtarın tamamı yalnızca bir kez gösterilir. Güvenli bir yere kaydedin; kaybolursa iptal edin ve yenisini oluşturun.",
       "copy": "Kopyala",
@@ -3064,17 +3071,6 @@
       "revokeTitle": "Bu anahtar iptal edilsin mi?",
       "revokeBody": "Onu kullanan her şey hemen çalışmayı durdurur. Bu geri alınamaz.",
       "needsVerified": "Canlı anahtar oluşturmak için e-posta adresinizi doğrulayın.",
-      "scope": "Yeni anahtarın kapsamı",
-      "scopes": {
-        "full": "Tam erişim",
-        "ingest": "Yalnızca kullanım gönder",
-        "read": "Yalnızca okuma"
-      },
-      "scopeHelp": {
-        "full": "API'nin tamamı.",
-        "ingest": "Yalnızca kullanım olayı gönderebilir. Kullanım bildiren bir servise koymak güvenlidir.",
-        "read": "Yalnızca okuyabilir. Panolar ve raporlar için güvenlidir."
-      },
       "liveInactive": "Canlı anahtarlar, canlı ortam etkinleştikten sonra oluşturulabilir.",
       "rotate": "Döndür",
       "rotateNamed": "{key} anahtarını döndür",
@@ -3087,10 +3083,68 @@
       "neverUsed": "hiç kullanılmadı",
       "ends": "{date} tarihinde çalışmayı bırakır",
       "filterEnv": "Ortam",
-      "allEnvs": "Tüm ortamlar",
       "filterStatus": "Durum",
       "allStatuses": "Tüm durumlar",
-      "scopeHead": "Kapsam"
+      "envNote": {
+        "sandbox": "Sandbox anahtarları yalnızca test verilerine dokunur. Burada, sandbox görünümünde oluşturulur; canlı anahtarlar canlı görünümde oluşturulur.",
+        "live": "Canlı anahtarlar gerçek veriyle çalışır ve gerçek para hareketi yapar. Yalnızca burada, canlı görünümde ve canlı ortam etkinleştirildikten sonra oluşturulur."
+      },
+      "toSandbox": "Sandbox anahtarları sandbox görünümünde",
+      "toLive": "Canlı anahtarlar canlı görünümde",
+      "role": "Rol",
+      "allRoles": "Tüm roller",
+      "roles": {
+        "admin": "Yönetici",
+        "billing": "Faturalama",
+        "read_only": "Salt okunur",
+        "ingest_only": "Yalnızca kullanım gönderir",
+        "custom": "Özel"
+      },
+      "roleHelp": {
+        "admin": "Tüm izinler: API'nin tamamı. Yalnızca kendi sunucunuzda tutun.",
+        "billing": "Müşteriler, abonelikler, krediler ve faturalar; katalog ve kullanımı okuma. Faturalama yapan bir servis için.",
+        "read_only": "Yalnızca okuyabilir. Panolar ve raporlar için güvenlidir.",
+        "ingest_only": "Yalnızca kullanım olayı gönderebilir. Kullanım bildiren bir serviste güvenlidir.",
+        "custom": "Anahtarın tam olarak ne yapabileceğini siz seçin."
+      },
+      "permissions": "İzinler",
+      "permissionsFixed": "Bu rol aşağıda işaretli izinleri taşır. Tek tek seçmek için Özel'i seçin.",
+      "permissionsCustom": "Bu anahtarın yapabileceklerini işaretleyin. Başka bir şey gerektiren istek 403 ile reddedilir.",
+      "read": "Okuma",
+      "write": "Yazma",
+      "resources": {
+        "events": "Kullanım olayları",
+        "customers": "Müşteriler",
+        "subscriptions": "Abonelikler",
+        "catalog": "Katalog (planlar, sayaçlar, kuponlar)",
+        "usage": "Kullanım ve haklar",
+        "credits": "Krediler",
+        "invoices": "Faturalar ve ödemeler",
+        "reports": "Raporlar",
+        "accounting": "Muhasebe",
+        "webhooks": "Webhook'lar",
+        "affiliates": "İş ortakları",
+        "settings": "Ayarlar (vergi, yönlendirme, e-posta)",
+        "assets": "Dosyalar",
+        "sandbox": "Sandbox araçları"
+      },
+      "permissionCount": "{n} / {total} izin",
+      "customNeedsOne": "En az bir izin seçin.",
+      "create": "Anahtar oluştur",
+      "createTitleSandbox": "Yeni sandbox anahtarı",
+      "createTitleLive": "Yeni canlı anahtar",
+      "createBody": {
+        "sandbox": "Anahtar yalnızca sandbox'ta, test verileriyle çalışır. Sırrı bir kez gösterilir.",
+        "live": "Anahtar canlı ortamda gerçek verilerle çalışır. Sırrı bir kez gösterilir."
+      },
+      "viewPermissions": "İzinleri gör",
+      "permissionsTitle": "Bu anahtar neler yapabilir",
+      "allowed": "İzinli",
+      "notAllowed": "İzin yok",
+      "empty": {
+        "sandbox": "Henüz sandbox anahtarı yok. API'yi test verileriyle denemek için bir tane oluşturun.",
+        "live": "Henüz canlı anahtar yok. Gerçek kullanımı göndermeye başlamak için bir tane oluşturun."
+      }
     },
     "links": {
       "title": "Daha derine inin",
@@ -3251,7 +3305,7 @@
       "intro": "Bu kuruluşa kimlerin ait olduğu, rolleri ve henüz açık olan davetler."
     },
     "apiKeysPage": {
-      "intro": "Sunucunuzun bu uygulama için Payrudder'ı çağırırken kullandığı anahtarlar. Bir anahtar tek bir ortama aittir; gizli kısmı bir kez gösterilir."
+      "intro": "Sunucunuzun bu uygulama için Payrudder'ı çağırmakta kullandığı anahtarlar. Her anahtar tek bir ortama aittir ve üzerinde gösterilir: sandbox anahtarları sandbox görünümünde, canlı anahtarlar canlı görünümde oluşturulur."
     },
     "appSettings": {
       "intro": "Bu uygulamanın oluşturulurken seçilenleri. Para birimi ve saat dilimi her faturanın nasıl hesaplanacağını belirler; bu yüzden uygulama oluşturulduktan sonra değişmez.",
@@ -3458,8 +3512,6 @@
       "simulateNotRetried": "Senaryo ayarlandı ama ödeme şu an yeniden çalıştırılamadı ({why})."
     },
     "providers": {
-      "introApp": "{app} uygulamasının ödeme sağlayıcılarını bağlayın ve yönetin. Müşteriler canlı hesap üzerinden öder; sandbox için bağlantı gerekmez.",
-      "introOrg": "Bir ödeme sağlayıcısını tüm uygulamalarınız için bir kez bağlayın ya da bir uygulamayı diğerlerinden farklı ayarlayın.",
       "connect": "Bağla",
       "manage": "Yönet",
       "simulator": "Yerleşik simülatör",
@@ -3474,7 +3526,7 @@
       "notConnectedLine": "Canlı modda bağlı değil.",
       "noLiveApps": "Henüz canlı ortamı olan bir uygulama yok.",
       "orgLine": "{total} uygulamanın {connected} tanesinde bağlı",
-      "openScreen": "Ödeme sağlayıcıları",
+      "openScreen": "Tüm entegrasyonları aç",
       "doneAll": "{provider}, {count} uygulamada bağlandı.",
       "donePartial": "{provider}: {ok} uygulamada bağlandı, {failed} uygulamada başarısız oldu.",
       "appsTitle": "Uygulamalar",
@@ -3524,6 +3576,131 @@
           "webhook_secret": "Developer tools, Notifications altında Payrudder için bir hedef oluşturun ve gizli anahtarını kopyalayın.",
           "usage_product_id": "Paddle'ın kullanım ücretleri için kullandığı ürünün kimliği. Catalog'da ürünü açıp pro_ ile başlayan kimliğini kopyalayın."
         }
+      }
+    },
+    "integrations": {
+      "introApp": "{app} için ödeme sağlayıcılarını, e-fatura entegratörünü ve e-posta sağlayıcısını bağlayın. Müşteriler canlı bağlantılarla hizmet alır; sandbox'ta bağlantı gerekmez.",
+      "introOrg": "Bir ödeme sağlayıcısını tüm uygulamalarınız için bir kez bağlayın ya da bir uygulamayı diğerlerinden farklı ayarlayın. E-fatura ve e-posta uygulama başına ayarlanır.",
+      "groups": {
+        "payments": {
+          "title": "Ödemeler",
+          "intro": "Müşterilerinizin nasıl ödeme yaptığı. Canlı anahtarlarınızla bir sağlayıcı bağlayın."
+        },
+        "einvoice": {
+          "title": "E-fatura",
+          "intro": "Faturalarınızı yasal e-belgelere dönüştüren entegratör."
+        },
+        "email": {
+          "title": "E-posta",
+          "intro": "Müşterilerinizin aldığı e-postaları gönderen yapı: faturalar, makbuzlar ve uyarılar."
+        }
+      },
+      "names": {
+        "banktransfer": "Banka havalesi",
+        "simulator": "Yerleşik simülatör",
+        "webhook": "Özel entegratör",
+        "einvoiceSimulator": "Yerleşik simülatör",
+        "payrudderMail": "Payrudder e-postası"
+      },
+      "about": {
+        "iyzico": "Türk kartları ve yerel yöntemler",
+        "paddle": "Dünya çapında kartlar; abonelikleri sağlayıcı yürütür",
+        "banktransfer": "Kendi banka hesabınıza havale ile ödeme",
+        "simulator": "Sandbox için senaryolu sahte ödemeler",
+        "nilvera": "Türkiye e-fatura ve e-arşiv entegratörü",
+        "webhook": "Her belgeyi kendi entegratörünüzün adresine gönderin",
+        "einvoiceSimulator": "Sandbox için sahte e-belgeler",
+        "payrudderMail": "Sizin adınıza Payrudder'ın gönderdiği e-posta",
+        "nafru": "Kendi Nafru Email hesabınız üzerinden gönderin"
+      },
+      "state": {
+        "none": "Bağlı değil",
+        "working": "Bağlı ve çalışıyor",
+        "problem": "Sorun var",
+        "always": "Her zaman açık",
+        "unused": "Kullanılmıyor"
+      },
+      "lines": {
+        "simulatorPayments": "Sandbox tarafından kullanılır. Bağlanacak bir şey yok.",
+        "simulatorEInvoice": "Sandbox tarafından kullanılır. Bağlanacak bir şey yok.",
+        "perApp": "Her uygulamada ayrı ayarlanır.",
+        "mailBuiltIn": "Faturalar, makbuzlar ve uyarılar Payrudder'dan gider.",
+        "mailUnused": "Canlı e-postaları kendi sağlayıcınız gönderir.",
+        "mailOwn": "Canlı e-postalar {from} adresinden gider."
+      },
+      "sandbox": {
+        "payments": "Yerleşik simülatör",
+        "einvoice": "Yerleşik simülatör",
+        "email": "Sandbox gelen kutusu"
+      },
+      "settings": "Ayarlar",
+      "website": "Web sitesi",
+      "open": "Aç",
+      "perAppNote": "E-fatura ve e-posta her uygulamada ayrı ayarlanır. Aşağıdan bir uygulama açın.",
+      "appsIntro": "Bir uygulama için tek başına sağlayıcı bağlamak, değiştirmek veya kaldırmak için ödeme durumuna tıklayın; e-fatura ve e-posta için uygulamayı açın.",
+      "connectTitle": "{name} bağla",
+      "manageTitle": "{name} bağlantısı",
+      "ownerOnly": "Bu bağlantıyı yalnızca hesabın sahibi değiştirebilir.",
+      "saved": "{name} bağlandı.",
+      "replaceNote": "Bir bağlantı var. Yalnızca değiştirmek istiyorsanız yeni bilgileri yazın; mevcut olanlar asla gösterilmez.",
+      "secretsOnce": "Bilgiler bir kez gösterilir, kaydettikten sonra bir daha gösterilmez.",
+      "optional": "isteğe bağlı",
+      "test": "Bağlantıyı sına",
+      "testing": "Sınanıyor...",
+      "checking": "Denetleniyor...",
+      "save": "Bağlantıyı kaydet",
+      "disconnect": "Bağlantıyı kes",
+      "testFailed": {
+        "refused": "Karşı taraf bu bilgileri şu anda kabul etmiyor.",
+        "unreachable": "Karşı tarafa ulaşılamadı. Biraz sonra yeniden deneyin."
+      },
+      "einvoice": {
+        "intro": {
+          "nilvera": "Nilvera API anahtarınızı girin. Faturalarınız Nilvera hesabınız üzerinden gönderilen e-fatura ve e-arşiv belgelerine dönüşür.",
+          "webhook": "Her e-belge, kendi entegratörünüzün adresine imzalı olarak gönderilir. Adresini ve imzayı doğrulamak için kullandığı sırrı girin."
+        },
+        "envNote": "Bu, canlı ortamı bağlar. Sandbox yerleşik simülatörü kullanmaya devam eder.",
+        "replaces": "Bir ortamın tek entegratörü olur. Bunu bağlamak şu an bağlı olanı değiştirir: {current}.",
+        "mode": "Mod",
+        "modes": {
+          "test": "Test modu",
+          "production": "Canlı (üretim)"
+        },
+        "modeLine": "{mode} olarak bağlı.",
+        "fields": {
+          "api_key": "API anahtarı",
+          "base_url": "Temel adres",
+          "url": "Entegratör adresi",
+          "secret": "İmza sırrı"
+        },
+        "testOk": {
+          "credentials": "Entegratör bu bilgileri kabul ediyor.",
+          "configuration": "Ayarlar geçerli. Gerisini yalnızca gerçek bir belge kanıtlar."
+        },
+        "confirmRemove": "{name} bağlantısı kesilsin mi? Canlı ortamın yeni faturaları artık e-belge olarak gönderilmez."
+      },
+      "mail": {
+        "builtInTitle": "Payrudder e-postası",
+        "builtInIntro": "Müşterilerinizin e-postalarını Payrudder gönderir. Hangi türlerin gideceğini seçin.",
+        "unusedNote": "Kendi sağlayıcınız bağlı olduğundan canlı e-postalar onun üzerinden gider. Bu anahtarlar yine de hangi türlerin gönderileceğini belirler.",
+        "nafruIntro": "Müşterilerinizin e-postalarını kendi Nafru Email hesabınız üzerinden, kendi adresinizden gönderin. Hesabın adresini ve API anahtarını girin.",
+        "envNote": "Bu, canlı ortamı bağlar. Sandbox e-postaları her zaman sandbox gelen kutusuna gider.",
+        "aboutNafru": "Nafru Email hakkında",
+        "keyLine": "{hint} ile biten anahtar, {from} adresinden gönderilir.",
+        "testOk": "{to} adresine sağlayıcınız üzerinden bir deneme e-postası gönderildi.",
+        "testTo": "Deneme e-postası gönderilecek adres",
+        "sendTest": "Deneme e-postası gönder",
+        "fields": {
+          "base_url": "Nafru Email adresi",
+          "api_key": "API anahtarı",
+          "from": "Gönderen adres"
+        },
+        "help": {
+          "base_url": "Hesabınızın Nafru Email API adresi; https ile başlar.",
+          "from": "Nafru Email'de doğrulanmış bir alan adındaki ad ve adres."
+        },
+        "checkAndConnect": "Denetle ve bağla",
+        "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider."
       }
     }
   },
@@ -3585,8 +3762,8 @@
       "partner": "Ortak portalı",
       "usage": "Kullanım",
       "coupons": "Kuponlar",
-      "paymentProviders": "Ödeme sağlayıcıları",
-      "meters": "Sayaçlar"
+      "meters": "Sayaçlar",
+      "integrations": "Entegrasyonlar"
     },
     "noApps": "Henüz uygulama yok"
   },

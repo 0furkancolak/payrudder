@@ -587,6 +587,8 @@ services:
       PAYRUDDER_KAFKA_BROKERS: redpanda:9092
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       SMTP_ADDR: mailpit:1025
+      # The local stack may send a tenant's mail through an e-mail provider on http:// and a private address. Never set this in production.
+      NOTIFIER_MAIL_ALLOW_PRIVATE: ${NOTIFIER_MAIL_ALLOW_PRIVATE:-true}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317
     depends_on:
       postgres: { condition: service_healthy }

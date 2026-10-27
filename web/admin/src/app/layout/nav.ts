@@ -131,7 +131,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
             item("overview", "/app", LayoutGrid, exact("/app")),
             ...(has.has("members") ? [item("members", "/app/members", UsersRound, under("/app/members"))] : []),
             ...(ctx.partner ? [item("partner", "/app/partner", Handshake, under("/app/partner"))] : []),
-            item("paymentProviders", "/app/providers", Plug, under("/app/providers")),
+            item("integrations", "/app/integrations", Plug, under("/app/integrations")),
             item("settings", "/app/settings", Settings, under("/app/settings")),
           ],
         },
@@ -177,8 +177,8 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
         if (s === "settings" && ctx.appId) {
           const settings = `/app/apps/${ctx.appId}/settings`;
           items.unshift(item("appSettings", settings, Building2, under(settings), { env }));
-          const providers = `/app/apps/${ctx.appId}/providers`;
-          items.splice(1, 0, item("paymentProviders", providers, Plug, under(providers), { env }));
+          const integrations = `/app/apps/${ctx.appId}/integrations`;
+          items.splice(1, 0, item("integrations", integrations, Plug, under(integrations), { env }));
         }
         if (items.length > 0) sections.push({ key: s, items });
       }

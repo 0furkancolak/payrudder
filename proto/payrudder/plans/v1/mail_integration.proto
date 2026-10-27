@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// MailIntegrationService lets a live tenant send its customer mail (invoices, receipts, alerts) through its own e-mail provider instead of Payrudder's built-in
+// sender. The one provider so far is Nafru Email (provider "nafru"), which speaks the Resend API: a base URL and an API key. The tenant comes from gRPC metadata.
+// A sandbox tenant has none: its mail always goes to the sandbox sink.
+service MailIntegrationService {
+  // GetMailIntegration returns the connection without its key; connected is false when the tenant has none.
+  rpc GetMailIntegration(GetMailIntegrationRequest) returns (GetMailIntegrationResponse);
+  // PutMailIntegration stores (or replaces) the connection after the provider accepted the key. The key is sealed at rest and never returned.
+  rpc PutMailIntegration(PutMailIntegrationRequest) returns (PutMailIntegrationResponse);
+  rpc DeleteMailIntegration(DeleteMailIntegrationRequest) returns (DeleteMailIntegrationResponse);
+  // TestMailIntegration asks the provider whether the key works and sends one test mail to the given address through it.
+  rpc TestMailIntegration(TestMailIntegrationRequest) returns (TestMailIntegrationResponse);
+  // ResolveMailSender is for the notifier: the connection with its key in plaintext, to send one tenant's mail. Not reachable from the public API.
+  rpc ResolveMailSender(ResolveMailSenderRequest) returns (ResolveMailSenderResponse);
+}
+
+message MailIntegration {
+  // "nafru".
+  string provider = 1;
+  string base_url = 2;
+  // The sender of the tenant's mail, as "Name <address>" or an address.
+  string from = 3;
+  // The last four characters of the key, so the owner can tell which key is stored.
+  string key_hint = 4;
+  google.protobuf.Timestamp update_time = 5;
+  // When the provider last accepted the key (a save or a test); empty when it never did.
+  google.protobuf.Timestamp checked_time = 6;
+  // Why the last check failed: "unreachable", "refused" or empty. The provider's own words are not kept.
+  string check_problem = 7;
+}
+
+message GetMailIntegrationRequest {}
+
+message GetMailIntegrationResponse {
+  bool connected = 1;
+  MailIntegration integration = 2;
+}
+
+message PutMailIntegrationRequest {
+  string provider = 1;
+  string base_url = 2;
+  string api_key = 3;
+  string from = 4;
+}
+
+message PutMailIntegrationResponse {
+  MailIntegration integration = 1;
+}
+
+message DeleteMailIntegrationRequest {}
+
+message DeleteMailIntegrationResponse {}
+
+message TestMailIntegrationRequest {
+  // Where the test mail goes.
+  string to = 1;
+}
+
+message TestMailIntegrationResponse {
+  bool ok = 1;
+  // "unreachable" or "refused" when not ok.
+  string problem = 2;
+  string message_id = 3;
+}
+
+message ResolveMailSenderRequest {}
+
+message ResolveMailSenderResponse {
+  bool connected = 1;
+  string provider = 2;
+  string base_url = 3;
+  string api_key = 4;
+  string from = 5;
+}

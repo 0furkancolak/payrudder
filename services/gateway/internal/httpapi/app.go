@@ -6,6 +6,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -124,23 +125,27 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
 	var body struct {
 		Environment string `json:"environment"`
-		// Scope is "full" (the default), "ingest" (events only) or "read" (GET only).
-		Scope string `json:"scope"`
+		// Role is admin (the default), billing, read_only, ingest_only or custom; Permissions are the permissions of a custom key (resource:action). Scope is the
+		// older way to say the same ("full", "ingest" or "read") and is read when no role is given.
+		Role        string   `json:"role"`
+		Permissions []string `json:"permissions"`
+		Scope       string   `json:"scope"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, err)
 		return
 	}
-	var scope plansv1.ApiKey_Scope
-	switch body.Scope {
-	case "", "full":
-		scope = plansv1.ApiKey_SCOPE_FULL
-	case "ingest":
-		scope = plansv1.ApiKey_SCOPE_INGEST
-	case "read":
-		scope = plansv1.ApiKey_SCOPE_READ
-	default:
-		writeError(w, r, invalid("scope", "full, ingest or read"))
+	role := body.Role
+	if role == "" && len(body.Permissions) == 0 {
+		legacy, ok := apikey.LegacyScope(body.Scope)
+		if !ok {
+			writeError(w, r, invalid("scope", "full, ingest or read (or use role)"))
+			return
+		}
+		role = legacy
+	}
+	if _, _, ok := apikey.Resolve(role, body.Permissions); !ok {
+		writeError(w, r, invalid("role", "admin, billing, read_only, ingest_only or custom, with known permissions"))
 		return
 	}
 	// The environment of a key is always named: there is no default, so a key is never made for live by leaving a field out.
@@ -150,7 +155,7 @@ func (s *Server) appKeyCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	noStore(w)
-	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: keyEnv.Proto(), Scope: scope})
+	resp, err := s.d.Identity.CreateMyApiKey(r.Context(), &plansv1.CreateMyApiKeyRequest{UserId: sess.UserID, AppId: r.PathValue("id"), Environment: keyEnv.Proto(), Role: role, Permissions: body.Permissions})
 	respond(w, r, http.StatusCreated, resp, err)
 }
 

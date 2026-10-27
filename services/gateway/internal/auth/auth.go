@@ -42,20 +42,15 @@ var (
 	ErrSuspended = errors.New("auth: the tenant is not active")
 )
 
-// Key scopes (the plans-svc names).
-const (
-	ScopeFull   = "full"
-	ScopeIngest = "ingest"
-	ScopeRead   = "read"
-)
-
 // Principal is an authenticated caller.
 type Principal struct {
 	Tenant tenant.Info
 	Tier   string
-	// Scope is what the key may do: ScopeFull, ScopeIngest or ScopeRead. Empty means a caller that is not an API key (an operator, a signed-in person),
-	// whose limits are decided elsewhere.
-	Scope string
+	// Role is the role of the API key (pkg/apikey: admin, billing, read_only, ingest_only, custom). Empty means a caller that is not an API key (an operator,
+	// a signed-in person), whose limits are decided elsewhere.
+	Role string
+	// Permissions are what the key may do, resource:action (pkg/apikey). The gateway checks the permission a route needs against them.
+	Permissions []string
 }
 
 // Entry is the cached resolution of a key prefix.
@@ -69,7 +64,11 @@ type Entry struct {
 	KeyHash     []byte `json:"key_hash"`
 	// Status is the tenant's: "inactive", "active" or "suspended". Empty (an entry written by an older release) is active.
 	Status string `json:"status,omitempty"`
-	Scope  string `json:"scope,omitempty"`
+	// Role and Permissions are the key's grant. An entry written by an older release has only Scope ("full", "ingest" or "read"), which counts as the role
+	// of the same meaning.
+	Role        string   `json:"role,omitempty"`
+	Permissions []string `json:"permissions,omitempty"`
+	Scope       string   `json:"scope,omitempty"`
 	// ExpiresAt is the unix time the key stops working although it is not revoked (the old key of a rotation); 0 for a key without an end.
 	ExpiresAt int64 `json:"expires_at,omitempty"`
 }
@@ -196,16 +195,31 @@ func (a *Authenticator) Authenticate(ctx context.Context, plaintext string) (Pri
 	if err != nil {
 		return Principal{}, a.fail(ctx, "tenant")
 	}
-	scope := e.Scope
-	if scope == "" {
-		scope = ScopeFull
-	}
+	role, perms := grantOf(e)
 	a.touch(e.APIKeyID)
 	return Principal{
 		Tenant: tenant.Info{ID: id, Environment: e.Environment, Timezone: e.Timezone, APIKeyID: e.APIKeyID},
 		Tier:   e.Tier,
-		Scope:  scope,
+		Role:   role, Permissions: perms,
 	}, nil
+}
+
+// grantOf is the role and permissions of a cached key: its own, or, for an entry from before roles existed, what its scope meant.
+func grantOf(e Entry) (string, []string) {
+	if e.Role == apikey.RoleAdmin {
+		// An admin holds everything that exists, whatever the entry was written with.
+		return e.Role, apikey.Permissions
+	}
+	if e.Role != "" {
+		return e.Role, e.Permissions
+	}
+	role, ok := apikey.LegacyScope(e.Scope)
+	if !ok {
+		// A scope nobody knows holds nothing: fail closed.
+		return apikey.RoleCustom, nil
+	}
+	perms, _ := apikey.RolePermissions(role)
+	return role, perms
 }
 
 func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error) {
@@ -233,7 +247,7 @@ func (a *Authenticator) lookup(ctx context.Context, prefix string) (Entry, error
 		APIKeyID: res.GetApiKeyId(), TenantID: res.GetTenantId(), Timezone: res.GetTimezone(),
 		Environment: envName(res.GetEnvironment()), Tier: TierName(res.GetTier()),
 		Active: res.GetStatus() == plansv1.ApiKey_STATUS_ACTIVE, KeyHash: res.GetKeyHash(),
-		Status: statusName(res.GetTenantStatus()), Scope: scopeName(res.GetScope()),
+		Status: statusName(res.GetTenantStatus()), Role: res.GetRole(), Permissions: res.GetPermissions(),
 	}
 	if res.GetExpireTime() != nil {
 		e.ExpiresAt = res.GetExpireTime().AsTime().Unix()
@@ -269,17 +283,6 @@ func statusName(s plansv1.TenantStatus) string {
 	case plansv1.TenantStatus_TENANT_STATUS_UNSPECIFIED:
 	}
 	return ""
-}
-
-func scopeName(s plansv1.ApiKey_Scope) string {
-	switch s {
-	case plansv1.ApiKey_SCOPE_INGEST:
-		return ScopeIngest
-	case plansv1.ApiKey_SCOPE_READ:
-		return ScopeRead
-	case plansv1.ApiKey_SCOPE_FULL, plansv1.ApiKey_SCOPE_UNSPECIFIED:
-	}
-	return ScopeFull
 }
 
 // TierName is the rate-limit tier of a tenant tier; a tenant without one is on the free tier.

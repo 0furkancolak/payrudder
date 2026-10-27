@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
+	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
@@ -29,17 +30,19 @@ var defaults []byte
 type Config struct {
 	config.Base
 	pgxx.SystemSettings
-	RabbitMQURL    string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
-	KafkaBrokers   []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
-	PlansAddr      string        `env:"PAYRUDDER_PLANS_ADDR"`
-	SMTPAddr       string        `env:"SMTP_ADDR"`
-	SandboxSMTP    string        `env:"SANDBOX_SMTP_ADDR"`
-	MailFrom       string        `env:"MAIL_FROM"`
-	SendingStale   time.Duration `env:"NOTIFIER_SENDING_STALE"`
-	MailSwitchTTL  time.Duration `env:"NOTIFIER_MAIL_SWITCH_TTL"`
-	Group          string        `env:"PAYRUDDER_CONSUMER_GROUP"`
-	DLQTopic       string        `env:"PAYRUDDER_DLQ_TOPIC"`
-	SessionTimeout time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
+	RabbitMQURL   string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
+	KafkaBrokers  []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
+	PlansAddr     string        `env:"PAYRUDDER_PLANS_ADDR"`
+	SMTPAddr      string        `env:"SMTP_ADDR"`
+	SandboxSMTP   string        `env:"SANDBOX_SMTP_ADDR"`
+	MailFrom      string        `env:"MAIL_FROM"`
+	SendingStale  time.Duration `env:"NOTIFIER_SENDING_STALE"`
+	MailSwitchTTL time.Duration `env:"NOTIFIER_MAIL_SWITCH_TTL"`
+	// MailAllowPrivate lets a tenant's own e-mail provider be http:// and on a private address. For development and tests; never in production.
+	MailAllowPrivate bool          `env:"NOTIFIER_MAIL_ALLOW_PRIVATE"`
+	Group            string        `env:"PAYRUDDER_CONSUMER_GROUP"`
+	DLQTopic         string        `env:"PAYRUDDER_DLQ_TOPIC"`
+	SessionTimeout   time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -71,6 +74,8 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	mailer := &delivery.Mailer{Default: mailx.SMTP{Addr: cfg.SMTPAddr}, From: cfg.MailFrom, Notes: notes}
 	// A tenant's mail switch (plans-svc) is read before every send.
 	mailer.Switch = &delivery.PlansSwitch{Client: plansv1.NewPlansServiceClient(plansConn), TTL: cfg.MailSwitchTTL}
+	// A tenant that connected its own e-mail provider (Nafru Email) is sent through it, live mail only.
+	mailer.Providers = &delivery.PlansProviders{Client: plansv1.NewMailIntegrationServiceClient(plansConn), TTL: cfg.MailSwitchTTL, HTTP: safehttp.NewClient(15*time.Second, cfg.MailAllowPrivate)}
 	if cfg.SandboxSMTP != "" {
 		mailer.Sandbox = mailx.SMTP{Addr: cfg.SandboxSMTP}
 	}

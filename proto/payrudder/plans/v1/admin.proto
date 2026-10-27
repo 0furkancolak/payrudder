@@ -115,8 +115,12 @@ message UpdateTenantSettingsResponse {
 
 message CreateApiKeyRequest {
   string tenant_id = 1;
-  // Unset is FULL.
+  // The older way to choose a role; use role and permissions. Unset, with no role either, is admin.
   ApiKey.Scope scope = 2;
+  // admin (default), billing, read_only, ingest_only or custom.
+  string role = 3;
+  // For custom: the permissions. For a fixed role: optional, and a subset of the role's own.
+  repeated string permissions = 4;
 }
 
 message CreateApiKeyResponse {
@@ -150,6 +154,9 @@ message ResolveApiKeyResponse {
   ApiKey.Scope scope = 9;
   // Set for a key that ends although it is not revoked (the old key of a rotation).
   google.protobuf.Timestamp expire_time = 10;
+  string role = 11;
+  // The permissions the gateway enforces. The role admin always lists every permission that exists.
+  repeated string permissions = 12;
 }
 
 message TouchApiKeyRequest {

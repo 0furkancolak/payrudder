@@ -3194,6 +3194,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/integrations/e-invoice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The e-invoice integrator of the app's live environment (any member; no credential is in the answer) */
+        get: operations["appGetEInvoiceIntegration"];
+        /**
+         * Connect (or replace) the live environment's e-invoice integrator (the owner only)
+         * @description The integrator is nilvera or webhook, never the mock. The credentials are sealed, shown once and never echoed back. The change is recorded for the person.
+         */
+        put: operations["appPutEInvoiceIntegration"];
+        post?: never;
+        /** Disconnect the live environment's e-invoice integrator (the owner only) */
+        delete: operations["appRemoveEInvoiceIntegration"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/e-invoice/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask the integrator whether the stored credentials work now (the owner only)
+         * @description Nothing is issued. A provider problem is ok false with its kind, not an HTTP error.
+         */
+        post: operations["appTestEInvoiceIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/mail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The tenant's own e-mail provider (Nafru Email) for the app's live environment, if one is connected (any member; the key is never in the answer) */
+        get: operations["appGetMailIntegration"];
+        /**
+         * Connect (or replace) the live environment's own e-mail provider (the owner only)
+         * @description From then on the customer mail of the live environment (invoices, receipts, alerts) is sent through it, from the given address. The provider is asked
+         *     to accept the key before anything is stored (400 plans.mail_integration.refused, 503 plans.mail_integration.unreachable). The key is sealed, shown once
+         *     and never echoed back. The sandbox has none: its mail always goes to the sandbox inbox.
+         */
+        put: operations["appPutMailIntegration"];
+        post?: never;
+        /** Disconnect the own e-mail provider; the mail goes through Payrudder's built-in sender again (the owner only) */
+        delete: operations["appRemoveMailIntegration"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/mail/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check the stored key at the provider and send one test mail through it (the owner only)
+         * @description A provider problem is ok false with its kind, not an HTTP error.
+         */
+        post: operations["appTestMailIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/api-keys/{key_id}": {
         parameters: {
             query?: never;
@@ -6497,6 +6583,34 @@ export interface components {
             /** Format: date-time */
             create_time?: string;
         };
+        /**
+         * @description admin: every permission. billing: customers, subscriptions, credits and invoices, with events, the catalogue and usage to read. read_only: every :read. ingest_only: events:write. custom: the permissions chosen.
+         * @enum {string}
+         */
+        ApiKeyRole: "admin" | "billing" | "read_only" | "ingest_only" | "custom";
+        /**
+         * @description resource:action. The route /v1/{resource}... with GET is :read, any other method :write; /v1/events needs events:write and /v1/sandbox/* sandbox:write.
+         * @enum {string}
+         */
+        ApiKeyPermission: "events:write" | "customers:read" | "customers:write" | "subscriptions:read" | "subscriptions:write" | "catalog:read" | "catalog:write" | "usage:read" | "credits:read" | "credits:write" | "invoices:read" | "invoices:write" | "reports:read" | "accounting:read" | "accounting:write" | "webhooks:read" | "webhooks:write" | "affiliates:read" | "affiliates:write" | "settings:read" | "settings:write" | "assets:read" | "assets:write" | "sandbox:write";
+        /** @description The tenant's own e-mail provider. The key is never returned. */
+        MailIntegration: {
+            /** @enum {string} */
+            provider?: "nafru";
+            base_url?: string;
+            from?: string;
+            /** @description The last four characters of the stored key */
+            key_hint?: string;
+            /** Format: date-time */
+            update_time?: string;
+            /**
+             * Format: date-time
+             * @description When the provider last accepted the key
+             */
+            checked_time?: string;
+            /** @enum {string} */
+            check_problem?: "" | "unreachable" | "refused";
+        };
         ApiKey: {
             /** Format: uuid */
             id?: string;
@@ -6512,10 +6626,13 @@ export interface components {
             /** Format: date-time */
             revoke_time?: string;
             /**
-             * @description FULL: everything. INGEST: only POST /v1/events. READ: only GET requests. Others are 403 gateway.auth.scope_denied.
+             * @description Older summary of the role: INGEST for ingest_only, READ for read_only, FULL for the rest. Nothing enforces it; the permissions do.
              * @enum {string}
              */
             scope?: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";
+            role?: components["schemas"]["ApiKeyRole"];
+            /** @description What the key may do. A request that needs one the key lacks is 403 gateway.auth.permission_denied. */
+            permissions?: components["schemas"]["ApiKeyPermission"][];
             /**
              * Format: date-time
              * @description Kept to within a few minutes.
@@ -11941,9 +12058,11 @@ export interface operations {
                 "application/json": {
                     /** @enum {string} */
                     environment: "sandbox" | "live";
+                    role?: components["schemas"]["ApiKeyRole"];
+                    /** @description Required for the role custom; for a fixed role optional, and then a subset of the role's own. */
+                    permissions?: components["schemas"]["ApiKeyPermission"][];
                     /**
-                     * @description full: the whole tenant API. ingest: only POST /v1/events. read: only GET requests.
-                     * @default full
+                     * @description Older way to choose a role when `role` and `permissions` are absent: full is admin, ingest is ingest_only, read is read_only.
                      * @enum {string}
                      */
                     scope?: "full" | "ingest" | "read";
@@ -12663,6 +12782,272 @@ export interface operations {
                 };
                 content?: never;
             };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appGetEInvoiceIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        account?: {
+                            /** @enum {string} */
+                            provider?: "nilvera" | "webhook";
+                            /** @enum {string} */
+                            mode?: "test" | "production";
+                            /** Format: date-time */
+                            updated_at?: string;
+                        } | null;
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    appPutEInvoiceIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    provider: "nilvera" | "webhook";
+                    /** @enum {string} */
+                    mode?: "test" | "production";
+                    /** @description nilvera: api_key[, base_url]; webhook: url, secret. */
+                    credentials?: {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceAccount"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appRemoveEInvoiceIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appTestEInvoiceIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    /** @description The seller's tax id */
+                    tax_id?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ok?: boolean;
+                        /** @enum {string} */
+                        checked?: "credentials" | "configuration";
+                        /** @enum {string} */
+                        problem?: "refused" | "unreachable";
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appGetMailIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        connected?: boolean;
+                        integration?: components["schemas"]["MailIntegration"];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appPutMailIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    provider: "nafru";
+                    /**
+                     * @description The Resend-compatible API address (https)
+                     * @example https://api.nafru.example
+                     */
+                    base_url: string;
+                    api_key: string;
+                    /** @example Acme Billing <billing@acme.example> */
+                    from: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        integration?: components["schemas"]["MailIntegration"];
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    appRemoveMailIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appTestMailIntegration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    to: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ok?: boolean;
+                        /** @enum {string} */
+                        problem?: "unreachable" | "refused";
+                        message_id?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
@@ -14383,8 +14768,10 @@ export interface operations {
         requestBody?: {
             content: {
                 "application/json": {
+                    role?: components["schemas"]["ApiKeyRole"];
+                    permissions?: components["schemas"]["ApiKeyPermission"][];
                     /**
-                     * @default SCOPE_FULL
+                     * @description Older way to choose a role when role and permissions are absent.
                      * @enum {string}
                      */
                     scope?: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";

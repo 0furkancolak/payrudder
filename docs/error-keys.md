@@ -241,7 +241,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `env.request.mismatch`
 - `env.request.missing`
 - `gateway.assets.bad_invoice_logo`
-- `gateway.auth.scope_denied`
+- `gateway.auth.permission_denied`
 - `gateway.auth.tenant_not_active`
 - `gateway.dashboard.bad_period`
 - `gateway.dashboard.limits_unavailable`
@@ -265,7 +265,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `identity.api_key.already_rotating`
 - `identity.api_key.bad_environment`
 - `identity.api_key.bad_overlap`
-- `identity.api_key.bad_scope`
+- `identity.api_key.bad_role`
 - `identity.api_key.invalid`
 - `identity.api_key.missing`
 - `identity.api_key.not_active`
@@ -397,7 +397,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.webhook.not_recorded`
 - `payments.webhook.try_again`
 - `payments.webhook.unverified`
-- `plans.api_key.bad_scope`
+- `plans.api_key.bad_role`
 - `plans.api_key.tenant_not_active`
 - `plans.app.bad_slug`
 - `plans.app.slug_taken`
@@ -424,6 +424,12 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.fee.invalid_period`
 - `plans.fee.not_period_start`
 - `plans.mail.unknown_category`
+- `plans.mail_integration.live_only`
+- `plans.mail_integration.not_configured`
+- `plans.mail_integration.not_connected`
+- `plans.mail_integration.refused`
+- `plans.mail_integration.seal_failed`
+- `plans.mail_integration.unreachable`
 - `plans.meter.changed_concurrently`
 - `plans.meter.quota_reached`
 - `plans.migration.aborted`

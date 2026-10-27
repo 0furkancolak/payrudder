@@ -83,7 +83,8 @@ type fakeIdentity struct {
 	resets    []*plansv1.ResetMySandboxRequest
 	profiles  []*plansv1.UpdateMyBillingProfileRequest
 	terms     []*plansv1.AcceptMyTermsRequest
-	lastScope plansv1.ApiKey_Scope
+	lastRole  string
+	lastPerms []string
 }
 
 const (
@@ -301,7 +302,7 @@ func (f *fakeIdentity) CreateMyApiKey(_ context.Context, req *plansv1.CreateMyAp
 		return nil, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "read-only")
 	}
 	f.mu.Lock()
-	f.lastScope = req.GetScope()
+	f.lastRole, f.lastPerms = req.GetRole(), req.GetPermissions()
 	f.mu.Unlock()
 	return &plansv1.CreateMyApiKeyResponse{ApiKey: &plansv1.ApiKey{Id: "key-new", Prefix: "abcdefgh"}, Plaintext: "qk_live_abcdefgh_secret"}, nil
 }

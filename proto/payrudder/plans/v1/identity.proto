@@ -271,8 +271,11 @@ message CreateMyApiKeyRequest {
   string user_id = 1;
   string app_id = 2;
   Environment environment = 3;
-  // Unset is FULL.
+  // The older way to choose a role; use role and permissions.
   ApiKey.Scope scope = 4;
+  // admin (default), billing, read_only, ingest_only or custom.
+  string role = 5;
+  repeated string permissions = 6;
 }
 
 message CreateMyApiKeyResponse {

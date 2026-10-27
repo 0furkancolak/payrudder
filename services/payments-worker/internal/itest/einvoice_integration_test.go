@@ -240,6 +240,20 @@ func TestEInvoiceWorker(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	t.Run("a test of the stored account answers without issuing anything", func(t *testing.T) {
+		base := "/admin/tenants/" + tenant.String() + "/e-invoice-accounts"
+		code, body := do("POST", base+"/live/check", "")
+		if code != 200 || !strings.Contains(body, `"ok":true`) || !strings.Contains(body, `"checked":"configuration"`) {
+			t.Fatalf("check = %d %s: an integrator with nothing to ask is valid when its settings are", code, body)
+		}
+		if code, body := do("POST", "/admin/tenants/"+uuid.NewString()+"/e-invoice-accounts/live/check", ""); code != 404 || !strings.Contains(body, "einvoice.account.missing") {
+			t.Fatalf("check without an account = %d %s", code, body)
+		}
+		if code, _ := do("POST", base+"/nowhere/check", ""); code != 400 {
+			t.Fatalf("check of an unknown environment = %d", code)
+		}
+	})
+
 	var invoiceDoc uuid.UUID
 	var invoiceLegal string
 	t.Run("a live document goes through the tenant's integrator exactly once", func(t *testing.T) {

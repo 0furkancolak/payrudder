@@ -41,8 +41,8 @@ WHERE id = @id
 RETURNING *;
 
 -- name: InsertApiKey :one
-INSERT INTO api_keys (id, tenant_id, prefix, key_hash, env, status, scope)
-VALUES (@id, @tenant_id, @prefix, @key_hash, @env, 'active', @scope)
+INSERT INTO api_keys (id, tenant_id, prefix, key_hash, env, status, role, permissions)
+VALUES (@id, @tenant_id, @prefix, @key_hash, @env, 'active', @role, @permissions::text[])
 RETURNING *;
 
 -- The old key of a rotation keeps working until expires_at (never extended: a key that ends sooner stays at the sooner time).
@@ -67,7 +67,7 @@ WHERE id = $1
 RETURNING *;
 
 -- name: ResolveApiKey :one
-SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.scope, k.expires_at, t.environment, t.status AS tenant_status, t.tier, t.timezone
+SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.role, k.permissions, k.expires_at, t.environment, t.status AS tenant_status, t.tier, t.timezone
 FROM api_keys k JOIN tenants t ON t.id = k.tenant_id
 WHERE k.prefix = $1;
 

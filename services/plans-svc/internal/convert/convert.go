@@ -133,7 +133,7 @@ func APIKey(k sqlc.ApiKey) *plansv1.ApiKey {
 	out := &plansv1.ApiKey{
 		Id: k.ID.String(), TenantId: k.TenantID.String(), Prefix: k.Prefix,
 		Environment: APIKeyEnvironment(k.Env), Status: APIKeyStatus(k.Status), CreateTime: ts(k.CreatedAt),
-		Scope: domain.ScopeFromDB(k.Scope), LastUsedTime: tsp(k.LastUsedAt), ExpireTime: tsp(k.ExpiresAt),
+		Scope: domain.KeyScope(k.Role), Role: k.Role, Permissions: domain.KeyPermissions(k.Role, k.Permissions), LastUsedTime: tsp(k.LastUsedAt), ExpireTime: tsp(k.ExpiresAt),
 	}
 	if k.RevokedAt != nil {
 		out.RevokeTime = ts(*k.RevokedAt)

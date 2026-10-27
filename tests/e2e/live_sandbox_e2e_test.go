@@ -153,13 +153,30 @@ func TestLiveAndSandboxAcceptance(t *testing.T) {
 		}
 	})
 
-	k := call(t, "POST", base+"/api-keys", session, map[string]any{"environment": "sandbox", "scope": "full"})
+	k := call(t, "POST", base+"/api-keys", session, map[string]any{"environment": "sandbox", "role": "admin"})
 	if k.status != 201 {
 		t.Fatalf("sandbox key: %d %v", k.status, k.body)
 	}
 	sandboxKey, _ := k.body["plaintext"].(string)
 	if !strings.HasPrefix(sandboxKey, "qk_test_") {
 		t.Fatalf("sandbox key %q", sandboxKey)
+	}
+
+	// A key holds the permissions it was made with, and the gateway refuses what they do not cover: a custom key that may read customers reads them and cannot
+	// create one (403 with an error key that names the permission).
+	rk := call(t, "POST", base+"/api-keys", session, map[string]any{"environment": "sandbox", "role": "custom", "permissions": []string{"customers:read"}})
+	if rk.status != 201 {
+		t.Fatalf("custom sandbox key: %d %v", rk.status, rk.body)
+	}
+	readKey, _ := rk.body["plaintext"].(string)
+	if r := call(t, "GET", "/v1/customers", readKey, nil); r.status != 200 {
+		t.Errorf("a key with customers:read cannot list customers: %d %v", r.status, r.body)
+	}
+	if r := call(t, "POST", "/v1/customers", readKey, map[string]any{"external_id": "cus_denied", "name": "Denied", "email": "denied@example.com"}); r.status != 403 || r.errKey() != "gateway.auth.permission_denied" {
+		t.Errorf("a key without customers:write creates a customer: %d %v", r.status, r.body)
+	}
+	if r := call(t, "POST", base+"/api-keys", session, map[string]any{"environment": "sandbox", "role": "custom"}); r.status != 400 {
+		t.Errorf("a custom key without permissions: %d %v", r.status, r.body)
 	}
 
 	// Support switches live on: the last checklist item is a payment provider connected in live mode, which needs the provider's real host and real keys, and an

@@ -255,7 +255,37 @@ func testAPIKeyScopesAndRotation(t *testing.T) {
 		}
 	}
 	_, err = e.ident.CreateMyApiKey(ctx, &plansv1.CreateMyApiKeyRequest{UserId: p.id, AppId: app.GetId(), Environment: plansv1.Environment_ENVIRONMENT_SANDBOX, Scope: plansv1.ApiKey_Scope(99)})
-	wantCode(t, "unknown scope", err, codes.InvalidArgument, "identity.api_key.bad_scope")
+	wantCode(t, "unknown scope", err, codes.InvalidArgument, "identity.api_key.bad_role")
+
+	// Roles and permissions (phase 53): a fixed role has its own set, a custom key the chosen ones, and the resolution the gateway reads carries them.
+	mkRole := func(role string, perms ...string) (*plansv1.CreateMyApiKeyResponse, error) {
+		return e.ident.CreateMyApiKey(ctx, &plansv1.CreateMyApiKeyRequest{UserId: p.id, AppId: app.GetId(), Environment: plansv1.Environment_ENVIRONMENT_SANDBOX, Role: role, Permissions: perms})
+	}
+	custom, err := mkRole("custom", "customers:read", "invoices:read")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := e.admin.ResolveApiKey(ctx, &plansv1.ResolveApiKeyRequest{Prefix: custom.GetApiKey().GetPrefix()})
+	if err != nil || res.GetRole() != "custom" || len(res.GetPermissions()) != 2 || custom.GetApiKey().GetPermissions()[0] != "customers:read" {
+		t.Errorf("custom key resolves to %v %v (%v)", res.GetRole(), res.GetPermissions(), err)
+	}
+	if r, err := e.admin.ResolveApiKey(ctx, &plansv1.ResolveApiKeyRequest{Prefix: full.GetApiKey().GetPrefix()}); err != nil || r.GetRole() != "admin" || len(r.GetPermissions()) < 20 {
+		t.Errorf("admin key resolves to %v %d permissions (%v)", r.GetRole(), len(r.GetPermissions()), err)
+	}
+	if r, err := e.admin.ResolveApiKey(ctx, &plansv1.ResolveApiKeyRequest{Prefix: ingest.GetApiKey().GetPrefix()}); err != nil || r.GetRole() != "ingest_only" || len(r.GetPermissions()) != 1 || r.GetPermissions()[0] != "events:write" {
+		t.Errorf("ingest key resolves to %v %v (%v)", r.GetRole(), r.GetPermissions(), err)
+	}
+	if bill, err := mkRole("billing"); err != nil || bill.GetApiKey().GetRole() != "billing" || len(bill.GetApiKey().GetPermissions()) == 0 {
+		t.Errorf("billing key: %v (%v)", bill, err)
+	}
+	_, err = mkRole("custom")
+	wantCode(t, "custom without permissions", err, codes.InvalidArgument, "identity.api_key.bad_role")
+	_, err = mkRole("custom", "customers:read", "nope:write")
+	wantCode(t, "unknown permission", err, codes.InvalidArgument, "identity.api_key.bad_role")
+	_, err = mkRole("read_only", "customers:write")
+	wantCode(t, "permission outside a fixed role", err, codes.InvalidArgument, "identity.api_key.bad_role")
+	_, err = mkRole("root")
+	wantCode(t, "unknown role", err, codes.InvalidArgument, "identity.api_key.bad_role")
 
 	// last_used: written, and not moved by a second use within the minute.
 	if got := lastUsed(t, e, ingest.GetApiKey().GetId()); got != nil {
@@ -283,7 +313,7 @@ func testAPIKeyScopesAndRotation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rot.GetApiKey().GetScope() != plansv1.ApiKey_SCOPE_INGEST || !strings.HasPrefix(rot.GetPlaintext(), "qk_test_") || rot.GetApiKey().GetId() == ingest.GetApiKey().GetId() {
+	if rot.GetApiKey().GetRole() != "ingest_only" || rot.GetApiKey().GetScope() != plansv1.ApiKey_SCOPE_INGEST || !strings.HasPrefix(rot.GetPlaintext(), "qk_test_") || rot.GetApiKey().GetId() == ingest.GetApiKey().GetId() {
 		t.Fatalf("replacement = %v", rot)
 	}
 	exp := rot.GetPrevious().GetExpireTime().AsTime()
@@ -295,6 +325,9 @@ func testAPIKeyScopesAndRotation(t *testing.T) {
 	}
 	_, err = e.ident.RotateMyApiKey(ctx, &plansv1.RotateMyApiKeyRequest{UserId: p.id, AppId: app.GetId(), ApiKeyId: ingest.GetApiKey().GetId()})
 	wantCode(t, "rotate twice", err, codes.FailedPrecondition, "identity.api_key.already_rotating")
+	if rc, err := e.ident.RotateMyApiKey(ctx, &plansv1.RotateMyApiKeyRequest{UserId: p.id, AppId: app.GetId(), ApiKeyId: custom.GetApiKey().GetId()}); err != nil || rc.GetApiKey().GetRole() != "custom" || strings.Join(rc.GetApiKey().GetPermissions(), ",") != "customers:read,invoices:read" {
+		t.Errorf("a rotated custom key keeps its permissions: %v (%v)", rc.GetApiKey(), err)
+	}
 	_, err = e.ident.RotateMyApiKey(ctx, &plansv1.RotateMyApiKeyRequest{UserId: p.id, AppId: app.GetId(), ApiKeyId: full.GetApiKey().GetId(), Overlap: durationpb.New(8 * 24 * time.Hour)})
 	wantCode(t, "overlap too long", err, codes.InvalidArgument, "identity.api_key.bad_overlap")
 	if _, err := e.ident.RevokeMyApiKey(ctx, &plansv1.RevokeMyApiKeyRequest{UserId: p.id, AppId: app.GetId(), ApiKeyId: read.GetApiKey().GetId()}); err != nil {

@@ -16,7 +16,7 @@ import (
 const expireApiKey = `-- name: ExpireApiKey :one
 UPDATE api_keys SET expires_at = LEAST(COALESCE(expires_at, $1::timestamptz), $1::timestamptz)
 WHERE id = $2 AND status = 'active'
-RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at
+RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, last_used_at, expires_at, role, permissions
 `
 
 type ExpireApiKeyParams struct {
@@ -37,9 +37,10 @@ func (q *Queries) ExpireApiKey(ctx context.Context, arg ExpireApiKeyParams) (Api
 		&i.Status,
 		&i.CreatedAt,
 		&i.RevokedAt,
-		&i.Scope,
 		&i.LastUsedAt,
 		&i.ExpiresAt,
+		&i.Role,
+		&i.Permissions,
 	)
 	return i, err
 }
@@ -56,7 +57,7 @@ func (q *Queries) GetAccount(ctx context.Context, id uuid.UUID) (Account, error)
 }
 
 const getApiKey = `-- name: GetApiKey :one
-SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at FROM api_keys WHERE id = $1
+SELECT id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, last_used_at, expires_at, role, permissions FROM api_keys WHERE id = $1
 `
 
 func (q *Queries) GetApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
@@ -71,9 +72,10 @@ func (q *Queries) GetApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
 		&i.Status,
 		&i.CreatedAt,
 		&i.RevokedAt,
-		&i.Scope,
 		&i.LastUsedAt,
 		&i.ExpiresAt,
+		&i.Role,
+		&i.Permissions,
 	)
 	return i, err
 }
@@ -128,18 +130,19 @@ func (q *Queries) InsertAccount(ctx context.Context, arg InsertAccountParams) (A
 }
 
 const insertApiKey = `-- name: InsertApiKey :one
-INSERT INTO api_keys (id, tenant_id, prefix, key_hash, env, status, scope)
-VALUES ($1, $2, $3, $4, $5, 'active', $6)
-RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at
+INSERT INTO api_keys (id, tenant_id, prefix, key_hash, env, status, role, permissions)
+VALUES ($1, $2, $3, $4, $5, 'active', $6, $7::text[])
+RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, last_used_at, expires_at, role, permissions
 `
 
 type InsertApiKeyParams struct {
-	ID       uuid.UUID
-	TenantID uuid.UUID
-	Prefix   string
-	KeyHash  []byte
-	Env      string
-	Scope    string
+	ID          uuid.UUID
+	TenantID    uuid.UUID
+	Prefix      string
+	KeyHash     []byte
+	Env         string
+	Role        string
+	Permissions []string
 }
 
 func (q *Queries) InsertApiKey(ctx context.Context, arg InsertApiKeyParams) (ApiKey, error) {
@@ -149,7 +152,8 @@ func (q *Queries) InsertApiKey(ctx context.Context, arg InsertApiKeyParams) (Api
 		arg.Prefix,
 		arg.KeyHash,
 		arg.Env,
-		arg.Scope,
+		arg.Role,
+		arg.Permissions,
 	)
 	var i ApiKey
 	err := row.Scan(
@@ -161,9 +165,10 @@ func (q *Queries) InsertApiKey(ctx context.Context, arg InsertApiKeyParams) (Api
 		&i.Status,
 		&i.CreatedAt,
 		&i.RevokedAt,
-		&i.Scope,
 		&i.LastUsedAt,
 		&i.ExpiresAt,
+		&i.Role,
+		&i.Permissions,
 	)
 	return i, err
 }
@@ -402,7 +407,7 @@ func (q *Queries) ListTenants(ctx context.Context, arg ListTenantsParams) ([]Ten
 }
 
 const resolveApiKey = `-- name: ResolveApiKey :one
-SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.scope, k.expires_at, t.environment, t.status AS tenant_status, t.tier, t.timezone
+SELECT k.id, k.tenant_id, k.key_hash, k.status, k.env, k.role, k.permissions, k.expires_at, t.environment, t.status AS tenant_status, t.tier, t.timezone
 FROM api_keys k JOIN tenants t ON t.id = k.tenant_id
 WHERE k.prefix = $1
 `
@@ -413,7 +418,8 @@ type ResolveApiKeyRow struct {
 	KeyHash      []byte
 	Status       string
 	Env          string
-	Scope        string
+	Role         string
+	Permissions  []string
 	ExpiresAt    *time.Time
 	Environment  string
 	TenantStatus string
@@ -430,7 +436,8 @@ func (q *Queries) ResolveApiKey(ctx context.Context, prefix string) (ResolveApiK
 		&i.KeyHash,
 		&i.Status,
 		&i.Env,
-		&i.Scope,
+		&i.Role,
+		&i.Permissions,
 		&i.ExpiresAt,
 		&i.Environment,
 		&i.TenantStatus,
@@ -443,7 +450,7 @@ func (q *Queries) ResolveApiKey(ctx context.Context, prefix string) (ResolveApiK
 const revokeApiKey = `-- name: RevokeApiKey :one
 UPDATE api_keys SET status = 'revoked', revoked_at = COALESCE(revoked_at, now())
 WHERE id = $1
-RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, scope, last_used_at, expires_at
+RETURNING id, tenant_id, prefix, key_hash, env, status, created_at, revoked_at, last_used_at, expires_at, role, permissions
 `
 
 func (q *Queries) RevokeApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error) {
@@ -458,9 +465,10 @@ func (q *Queries) RevokeApiKey(ctx context.Context, id uuid.UUID) (ApiKey, error
 		&i.Status,
 		&i.CreatedAt,
 		&i.RevokedAt,
-		&i.Scope,
 		&i.LastUsedAt,
 		&i.ExpiresAt,
+		&i.Role,
+		&i.Permissions,
 	)
 	return i, err
 }

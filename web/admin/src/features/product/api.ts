@@ -8,6 +8,7 @@ import type { Currency } from "@/shared/lib/currencies";
 import type { Environment } from "@/shared/lib/environment";
 import { toApiLocale } from "@/shared/lib/locale";
 import { activeAccount, personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "@/shared/lib/session";
+import type { KeyPermission, KeyRole } from "./apiKeys";
 import { AFFILIATE_ROLE, ownMemberships } from "./lib";
 
 // The product API (/auth, /app/v1): what a signed-in person sees in their accounts. Types come from the OpenAPI file.
@@ -216,13 +217,12 @@ export function useCreateApp() {
   });
 }
 
-export type KeyScope = "full" | "ingest" | "read";
-
+/** Makes a key in one environment, with a role and, for a custom key, the permissions chosen (see apiKeys.ts). */
 export function useCreateApiKey(id: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { environment: Environment; scope: KeyScope }) =>
-      unwrap(api.POST("/app/v1/apps/{id}/api-keys", { params: { path: { id: toValue(id) } }, body: { environment: v.environment, scope: v.scope } })),
+    mutationFn: (v: { environment: Environment; role: KeyRole; permissions?: KeyPermission[] }) =>
+      unwrap(api.POST("/app/v1/apps/{id}/api-keys", { params: { path: { id: toValue(id) } }, body: { environment: v.environment, role: v.role, ...(v.permissions ? { permissions: v.permissions } : {}) } })),
     onSuccess: () => queries.invalidateQueries({ queryKey: productKeys.keys(toValue(id)) }),
   });
 }

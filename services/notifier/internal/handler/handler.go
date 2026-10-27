@@ -45,7 +45,7 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_NotificationSent{NotificationSent: &commandsv1.NotificationSent{Suppressed: true}}}, nil
 	}
 	mid, err := h.Mailer.Deliver(ctx, delivery.Delivery{
-		Key: cmd.GetCommandId(), CommandID: &id, Kind: "command", Template: n.GetTemplate(), To: n.GetTo(), Data: n.GetData(),
+		Key: cmd.GetCommandId(), CommandID: &id, Kind: "command", TenantID: tenantID, Template: n.GetTemplate(), To: n.GetTo(), Data: n.GetData(),
 		Sandbox: cmd.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX,
 	})
 	if err != nil {

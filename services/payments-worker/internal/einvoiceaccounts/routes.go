@@ -25,6 +25,7 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 	mux.HandleFunc("GET "+base, guard(h.list))
 	mux.HandleFunc("PUT "+base+"/{environment}", guard(h.put))
 	mux.HandleFunc("DELETE "+base+"/{environment}", guard(h.delete))
+	mux.HandleFunc("POST "+base+"/{environment}/check", guard(h.check))
 }
 
 // pathEnvironment reads the {environment} of the path, or answers 400 and reports false.
@@ -94,4 +95,28 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// check tests the stored account: the integrator is asked whether the credentials work. The body may name a tax id to ask about.
+func (h *Handler) check(w http.ResponseWriter, r *http.Request) {
+	t, ok := httpx.Tenant(w, r)
+	if !ok || !h.ready(w, r) {
+		return
+	}
+	env, ok := pathEnvironment(w, r)
+	if !ok {
+		return
+	}
+	var in struct {
+		TaxID string `json:"tax_id"`
+	}
+	if r.ContentLength != 0 && !httpx.DecodeBody(w, r, &in) {
+		return
+	}
+	res, err := command.CheckAccount(r.Context(), h.Deps, t, env, in.TaxID)
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, res)
 }

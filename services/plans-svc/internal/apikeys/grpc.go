@@ -31,11 +31,11 @@ func (h *Handler) CreateApiKey(ctx context.Context, req *plansv1.CreateApiKeyReq
 	if err != nil {
 		return nil, err
 	}
-	scope, ok := domain.ScopeToDB(req.GetScope())
+	role, perms, ok := domain.KeyGrant(req.GetRole(), req.GetPermissions(), req.GetScope())
 	if !ok {
-		return nil, errkey.New(codes.InvalidArgument, "plans.api_key.bad_scope", "scope: full, ingest or read")
+		return nil, errkey.New(codes.InvalidArgument, "plans.api_key.bad_role", "role: admin, billing, read_only, ingest_only or custom, with known permissions")
 	}
-	key, plaintext, err := h.cmd.Issue(ctx, id, scope)
+	key, plaintext, err := h.cmd.Issue(ctx, id, role, perms)
 	if err != nil {
 		return nil, err
 	}

@@ -107,7 +107,7 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 		"used": quantity.FormatUnits(le.GetUsedUnits(), scale), "limit": quantity.FormatUnits(le.GetLimitUnits(), scale),
 	}
 	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{
-		Key: le.GetEventId(), Kind: "limit", Template: limitTemplate, To: cust.GetCustomer().GetEmail(), Data: data,
+		Key: le.GetEventId(), Kind: "limit", TenantID: tid, Template: limitTemplate, To: cust.GetCustomer().GetEmail(), Data: data,
 		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX,
 	})
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
