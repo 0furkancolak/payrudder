@@ -15,7 +15,7 @@ import (
 
 // Tables are the tables a reset deletes from; Kept are the tables with tenant rows it leaves alone on purpose.
 var (
-	Tables = []string{"usage_aggregates", "usage_window_aggregates", "late_usage", "processed_events", "period_settings"}
+	Tables = []string{"usage_aggregates", "usage_window_aggregates", "usage_distinct_values", "usage_distinct_hours", "late_usage", "processed_events", "period_settings"}
 	Kept   = []string{"aggregate_generations", "replay_jobs"}
 )
 
@@ -34,7 +34,7 @@ func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]in
 			table string
 			run   func(context.Context, uuid.UUID) (int64, error)
 		}{
-			{"usage_aggregates", q.ResetUsageAggregates}, {"usage_window_aggregates", q.ResetUsageWindowAggregates}, {"late_usage", q.ResetLateUsage}, {"processed_events", q.ResetProcessedEvents}, {"period_settings", q.ResetPeriodSettings},
+			{"usage_aggregates", q.ResetUsageAggregates}, {"usage_window_aggregates", q.ResetUsageWindowAggregates}, {"usage_distinct_values", q.ResetUsageDistinctValues}, {"usage_distinct_hours", q.ResetUsageDistinctHours}, {"late_usage", q.ResetLateUsage}, {"processed_events", q.ResetProcessedEvents}, {"period_settings", q.ResetPeriodSettings},
 		} {
 			n, err := s.run(ctx, tenantID)
 			if err != nil {

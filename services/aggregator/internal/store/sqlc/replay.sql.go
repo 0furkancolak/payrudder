@@ -29,6 +29,48 @@ func (q *Queries) ActivateGeneration(ctx context.Context, arg ActivateGeneration
 	return result.RowsAffected(), nil
 }
 
+const clearGenerationDistinctHoursOutside = `-- name: ClearGenerationDistinctHoursOutside :exec
+DELETE FROM usage_distinct_hours WHERE tenant_id = $1 AND generation = $2 AND (period_id < $3::text OR period_id > $4::text)
+`
+
+type ClearGenerationDistinctHoursOutsideParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) ClearGenerationDistinctHoursOutside(ctx context.Context, arg ClearGenerationDistinctHoursOutsideParams) error {
+	_, err := q.db.Exec(ctx, clearGenerationDistinctHoursOutside,
+		arg.TenantID,
+		arg.Generation,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
+const clearGenerationDistinctValuesOutside = `-- name: ClearGenerationDistinctValuesOutside :exec
+DELETE FROM usage_distinct_values WHERE tenant_id = $1 AND generation = $2 AND (period_id < $3::text OR period_id > $4::text)
+`
+
+type ClearGenerationDistinctValuesOutsideParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) ClearGenerationDistinctValuesOutside(ctx context.Context, arg ClearGenerationDistinctValuesOutsideParams) error {
+	_, err := q.db.Exec(ctx, clearGenerationDistinctValuesOutside,
+		arg.TenantID,
+		arg.Generation,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
 const clearGenerationLateUsageOutside = `-- name: ClearGenerationLateUsageOutside :exec
 DELETE FROM late_usage WHERE tenant_id = $1 AND generation = $2 AND (origin_period_id < $3::text OR origin_period_id > $4::text)
 `
@@ -260,6 +302,56 @@ func (q *Queries) CompareUsage(ctx context.Context, arg CompareUsageParams) ([]C
 	return items, nil
 }
 
+const copyGenerationDistinctHoursOutside = `-- name: CopyGenerationDistinctHoursOutside :exec
+INSERT INTO usage_distinct_hours (tenant_id, customer_id, meter_code, generation, hour_id, value_hash)
+SELECT s.tenant_id, s.customer_id, s.meter_code, $1::int, s.hour_id, s.value_hash
+FROM usage_distinct_hours s WHERE s.tenant_id = $2 AND s.generation = $3 AND (s.period_id < $4::text OR s.period_id > $5::text)
+`
+
+type CopyGenerationDistinctHoursOutsideParams struct {
+	Target     int32
+	TenantID   uuid.UUID
+	Source     int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) CopyGenerationDistinctHoursOutside(ctx context.Context, arg CopyGenerationDistinctHoursOutsideParams) error {
+	_, err := q.db.Exec(ctx, copyGenerationDistinctHoursOutside,
+		arg.Target,
+		arg.TenantID,
+		arg.Source,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
+const copyGenerationDistinctValuesOutside = `-- name: CopyGenerationDistinctValuesOutside :exec
+INSERT INTO usage_distinct_values (tenant_id, customer_id, meter_code, generation, period_id, value_hash, billed_period_id)
+SELECT s.tenant_id, s.customer_id, s.meter_code, $1::int, s.period_id, s.value_hash, s.billed_period_id
+FROM usage_distinct_values s WHERE s.tenant_id = $2 AND s.generation = $3 AND (s.period_id < $4::text OR s.period_id > $5::text)
+`
+
+type CopyGenerationDistinctValuesOutsideParams struct {
+	Target     int32
+	TenantID   uuid.UUID
+	Source     int32
+	FromPeriod string
+	ToPeriod   string
+}
+
+func (q *Queries) CopyGenerationDistinctValuesOutside(ctx context.Context, arg CopyGenerationDistinctValuesOutsideParams) error {
+	_, err := q.db.Exec(ctx, copyGenerationDistinctValuesOutside,
+		arg.Target,
+		arg.TenantID,
+		arg.Source,
+		arg.FromPeriod,
+		arg.ToPeriod,
+	)
+	return err
+}
+
 const copyGenerationLateUsageOutside = `-- name: CopyGenerationLateUsageOutside :exec
 INSERT INTO late_usage (tenant_id, billed_period_id, customer_id, meter_code, origin_period_id, generation, quantity, quantity_scale, event_count, updated_at)
 SELECT s.tenant_id, s.billed_period_id, s.customer_id, s.meter_code, s.origin_period_id, $1::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at
@@ -312,8 +404,8 @@ func (q *Queries) CopyGenerationProcessedEventsOutside(ctx context.Context, arg 
 }
 
 const copyGenerationUsageOutside = `-- name: CopyGenerationUsageOutside :exec
-INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at)
-SELECT s.tenant_id, s.period_id, s.customer_id, s.meter_code, $1::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+INSERT INTO usage_aggregates (tenant_id, period_id, customer_id, meter_code, generation, quantity, quantity_scale, event_count, updated_at, last_at, last_event_id)
+SELECT s.tenant_id, s.period_id, s.customer_id, s.meter_code, $1::int, s.quantity, s.quantity_scale, s.event_count, s.updated_at, s.last_at, s.last_event_id
 FROM usage_aggregates s WHERE s.tenant_id = $2 AND s.generation = $3 AND (s.period_id < $4::text OR s.period_id > $5::text)
 `
 
@@ -337,8 +429,8 @@ func (q *Queries) CopyGenerationUsageOutside(ctx context.Context, arg CopyGenera
 }
 
 const copyGenerationWindowUsageOutside = `-- name: CopyGenerationWindowUsageOutside :exec
-INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at)
-SELECT s.tenant_id, s.customer_id, s.meter_code, $1::int, s.hour_id, s.quantity, s.quantity_scale, s.event_count, s.updated_at
+INSERT INTO usage_window_aggregates (tenant_id, customer_id, meter_code, generation, hour_id, quantity, quantity_scale, event_count, updated_at, last_at, last_event_id)
+SELECT s.tenant_id, s.customer_id, s.meter_code, $1::int, s.hour_id, s.quantity, s.quantity_scale, s.event_count, s.updated_at, s.last_at, s.last_event_id
 FROM usage_window_aggregates s WHERE s.tenant_id = $2 AND s.generation = $3 AND (s.period_id < $4::text OR s.period_id > $5::text)
 `
 
@@ -358,6 +450,34 @@ func (q *Queries) CopyGenerationWindowUsageOutside(ctx context.Context, arg Copy
 		arg.FromPeriod,
 		arg.ToPeriod,
 	)
+	return err
+}
+
+const deleteGenerationDistinctHours = `-- name: DeleteGenerationDistinctHours :exec
+DELETE FROM usage_distinct_hours WHERE tenant_id = $1 AND generation = $2
+`
+
+type DeleteGenerationDistinctHoursParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+}
+
+func (q *Queries) DeleteGenerationDistinctHours(ctx context.Context, arg DeleteGenerationDistinctHoursParams) error {
+	_, err := q.db.Exec(ctx, deleteGenerationDistinctHours, arg.TenantID, arg.Generation)
+	return err
+}
+
+const deleteGenerationDistinctValues = `-- name: DeleteGenerationDistinctValues :exec
+DELETE FROM usage_distinct_values WHERE tenant_id = $1 AND generation = $2
+`
+
+type DeleteGenerationDistinctValuesParams struct {
+	TenantID   uuid.UUID
+	Generation int32
+}
+
+func (q *Queries) DeleteGenerationDistinctValues(ctx context.Context, arg DeleteGenerationDistinctValuesParams) error {
+	_, err := q.db.Exec(ctx, deleteGenerationDistinctValues, arg.TenantID, arg.Generation)
 	return err
 }
 

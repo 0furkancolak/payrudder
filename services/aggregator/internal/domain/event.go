@@ -40,10 +40,26 @@ type LateKey struct {
 
 // Cell is a pre-summed contribution to one row.
 type Cell struct {
-	Value       *big.Int // SUM/COUNT: the total to add. MAX: the maximum seen
+	// Value is the total to add for SUM and COUNT; the maximum seen for MAX; the quantity of the latest event, which is Order, for LAST; and, for
+	// UNIQUE, 0 until the distinct step of the batch adds the number of values that were new.
+	Value       *big.Int
 	Scale       int
 	Events      int64
 	Aggregation usage.Aggregation
+	// Order is the position of the event Value is of (LAST only).
+	Order usage.Order
+}
+
+// Mode names how the upsert merges a cell into its stored row: "sum" adds (SUM, COUNT and the new-value counts of UNIQUE), "max" keeps the greater
+// and "last" keeps the value of the later event.
+func Mode(a usage.Aggregation) string {
+	switch a {
+	case usage.Max:
+		return "max"
+	case usage.Last:
+		return "last"
+	}
+	return "sum"
 }
 
 // Delta collects the pre-summed contributions of one batch (one cell per distinct row, whatever the number of events).
@@ -52,27 +68,69 @@ type Delta struct {
 	// Hours are the hour totals of the on-time events, which limits-svc reconciles its short quota windows against.
 	Hours map[HourKey]*Cell
 	Late  map[LateKey]*Cell
+	// Seen are the distinct values of the batch's UNIQUE events, per period: "" for a value some on-time event carried, else the earliest period the
+	// value was billed in as late usage (see MergeSeen).
+	Seen map[SeenKey]string
+	// HourSeen are the distinct values of the on-time UNIQUE events per hour.
+	HourSeen map[HourSeenKey]struct{}
 }
 
 // NewDelta returns an empty Delta.
 func NewDelta() *Delta {
-	return &Delta{OnTime: map[OnTimeKey]*Cell{}, Hours: map[HourKey]*Cell{}, Late: map[LateKey]*Cell{}}
+	return &Delta{OnTime: map[OnTimeKey]*Cell{}, Hours: map[HourKey]*Cell{}, Late: map[LateKey]*Cell{}, Seen: map[SeenKey]string{}, HourSeen: map[HourSeenKey]struct{}{}}
 }
 
-func (c *Cell) add(v int64, scale int, agg usage.Aggregation) {
+func (c *Cell) add(m usage.Meter, e usage.Event) {
+	v := m.Value(e)
 	if c.Value == nil {
-		c.Value, c.Scale, c.Aggregation = big.NewInt(v), scale, agg
-		c.Events = 1
-		return
-	}
-	c.Events++
-	if agg == usage.Max {
-		if n := big.NewInt(v); n.Cmp(c.Value) > 0 {
-			c.Value = n
+		c.Value, c.Scale, c.Aggregation, c.Events = big.NewInt(v), e.Scale, m.Aggregation, 1
+		if m.Aggregation == usage.Unique {
+			c.Scale = 0 // a count of values
+		}
+		if m.Aggregation == usage.Last {
+			c.Order = usage.OrderOf(e)
 		}
 		return
 	}
-	c.Value.Add(c.Value, big.NewInt(v))
+	c.Events++
+	switch m.Aggregation {
+	case usage.Max:
+		if n := big.NewInt(v); n.Cmp(c.Value) > 0 {
+			c.Value = n
+		}
+	case usage.Last:
+		if o := usage.OrderOf(e); o.After(c.Order) {
+			c.Value, c.Order = big.NewInt(v), o
+		}
+	default:
+		c.Value.Add(c.Value, big.NewInt(v))
+	}
+}
+
+// Merge combines two cells of the same row, the way the upsert combines a stored row with a cell. It is associative, commutative and, for MAX and
+// LAST, idempotent; the tests state those laws, and the SQL of the upsert is held to this function.
+func Merge(a, b *Cell) *Cell {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	out := &Cell{Value: new(big.Int).Set(a.Value), Scale: max(a.Scale, b.Scale), Events: a.Events + b.Events, Aggregation: a.Aggregation, Order: a.Order}
+	switch a.Aggregation {
+	case usage.Max:
+		if b.Value.Cmp(out.Value) > 0 {
+			out.Value.Set(b.Value)
+		}
+	case usage.Last:
+		if b.Order.After(a.Order) {
+			out.Value.Set(b.Value)
+			out.Order = b.Order
+		}
+	default:
+		out.Value.Add(out.Value, b.Value)
+	}
+	return out
 }
 
 // AddOnTime merges an on-time event into the cell of its row.
@@ -82,7 +140,7 @@ func (d *Delta) AddOnTime(k OnTimeKey, m usage.Meter, e usage.Event) {
 		c = &Cell{}
 		d.OnTime[k] = c
 	}
-	c.add(m.Value(e), e.Scale, m.Aggregation)
+	c.add(m, e)
 }
 
 // AddHour merges an on-time event into the cell of its hour row.
@@ -92,7 +150,7 @@ func (d *Delta) AddHour(k HourKey, m usage.Meter, e usage.Event) {
 		c = &Cell{}
 		d.Hours[k] = c
 	}
-	c.add(m.Value(e), e.Scale, m.Aggregation)
+	c.add(m, e)
 }
 
 // AddLate merges a late event into the cell of its row.
@@ -102,7 +160,28 @@ func (d *Delta) AddLate(k LateKey, m usage.Meter, e usage.Event) {
 		c = &Cell{}
 		d.Late[k] = c
 	}
-	c.add(m.Value(e), e.Scale, m.Aggregation)
+	c.add(m, e)
+}
+
+// AddDistinctOnTime moves the distinct count of an on-time row by n (negative when a value that was billed as late usage turns out to be on time).
+// The cell is created, with no event, for a row the batch has no event of.
+func (d *Delta) AddDistinctOnTime(k OnTimeKey, n int64) {
+	c := d.OnTime[k]
+	if c == nil {
+		c = &Cell{Value: new(big.Int), Aggregation: usage.Unique}
+		d.OnTime[k] = c
+	}
+	c.Value.Add(c.Value, big.NewInt(n))
+}
+
+// AddDistinctLate is AddDistinctOnTime for a late usage row.
+func (d *Delta) AddDistinctLate(k LateKey, n int64) {
+	c := d.Late[k]
+	if c == nil {
+		c = &Cell{Value: new(big.Int), Aggregation: usage.Unique}
+		d.Late[k] = c
+	}
+	c.Value.Add(c.Value, big.NewInt(n))
 }
 
 // SortedOnTime returns the keys in a fixed order, so that concurrent transactions lock rows in the same order.
