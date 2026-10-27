@@ -56,6 +56,8 @@ type Config struct {
 	Backoff           time.Duration `env:"PAYRUDDER_CONSUMER_BACKOFF"`
 	SessionTimeout    time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
 	ReconcileInterval time.Duration `env:"PAYRUDDER_RECONCILE_INTERVAL"`
+	// UniqueSetCap is how many distinct values a UNIQUE counter remembers before it leaves new ones to reconciliation.
+	UniqueSetCap int `env:"PAYRUDDER_UNIQUE_SET_CAP"`
 }
 
 func (c *Config) Validate() error {
@@ -65,6 +67,9 @@ func (c *Config) Validate() error {
 	}
 	if c.ReconcileInterval < time.Second {
 		errs = append(errs, errors.New("PAYRUDDER_RECONCILE_INTERVAL must be ≥ 1s"))
+	}
+	if c.UniqueSetCap < 1 {
+		errs = append(errs, errors.New("PAYRUDDER_UNIQUE_SET_CAP must be ≥ 1"))
 	}
 	return errors.Join(errs...)
 }
@@ -109,7 +114,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	tn := tenantinfo.New(plansv1.NewAdminServiceClient(plansConn), time.Minute)
 	ents := entitlements.New(rdb, log)
 	applier, err := engine.NewApplier(engine.Config{
-		Redis: rdb, Meters: ms, Tenants: tn, Ents: ents, Producer: producer, LimitTopic: cfg.LimitTopic, Log: log,
+		Redis: rdb, Meters: ms, Tenants: tn, Ents: ents, Producer: producer, LimitTopic: cfg.LimitTopic, Log: log, UniqueSetCap: cfg.UniqueSetCap,
 		AfterLua: chaos.Crash("LIMITS_CRASH_AFTER_LUA", "chaos build: limits-svc will crash after the script", "chaos: crashing after the script"),
 	})
 	if err != nil {

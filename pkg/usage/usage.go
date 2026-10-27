@@ -214,3 +214,18 @@ func (o Order) Compare(p Order) int {
 
 // After reports whether o is strictly later than p.
 func (o Order) After(p Order) bool { return o.Compare(p) > 0 }
+
+// Proto is the plans-svc enum value of the aggregation, which is also how a window read of the aggregator names it.
+func (a Aggregation) Proto() plansv1.Aggregation {
+	switch a {
+	case Count:
+		return plansv1.Aggregation_AGGREGATION_COUNT
+	case Max:
+		return plansv1.Aggregation_AGGREGATION_MAX
+	case Unique:
+		return plansv1.Aggregation_AGGREGATION_UNIQUE
+	case Last:
+		return plansv1.Aggregation_AGGREGATION_LAST
+	}
+	return plansv1.Aggregation_AGGREGATION_SUM
+}

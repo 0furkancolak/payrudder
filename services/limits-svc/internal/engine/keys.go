@@ -35,6 +35,11 @@ func WindowKey(tenant, customer uuid.UUID, meter, window string) string {
 // they live, not only while they are being updated.
 func LongWindow(id string) bool { return id == period.LifetimeID || len(id) == 4 }
 
+// SetKey is the set of the distinct values behind a UNIQUE counter, and OrderKey the "micros:id" of the event a LAST counter holds. Both are derived
+// from the counter key (so they have more than six parts and never parse as a counter) and share its expiry.
+func SetKey(counter string) string   { return "lim:set:" + strings.TrimPrefix(counter, "lim:") }
+func OrderKey(counter string) string { return "lim:ord:" + strings.TrimPrefix(counter, "lim:") }
+
 func OffsetKey(p int32) string { return fmt.Sprintf("lim:off:%d", p) }
 func ActiveKey(p int32) string { return fmt.Sprintf("lim:active:%d", p) }
 

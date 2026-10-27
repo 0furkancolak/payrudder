@@ -242,7 +242,7 @@ func (r *Reconciler) checkpointFor(ctx context.Context, p int32, tid uuid.UUID, 
 	}
 	req := &aggregatorv1.GetUsageBatchRequest{}
 	for i, ref := range refs {
-		req.Keys = append(req.Keys, &aggregatorv1.UsageKey{CustomerId: ref.Customer.String(), MeterCode: ref.Meter, PeriodId: ref.Period, Max: ms[i].Aggregation == usage.Max})
+		req.Keys = append(req.Keys, &aggregatorv1.UsageKey{CustomerId: ref.Customer.String(), MeterCode: ref.Meter, PeriodId: ref.Period, Aggregation: ms[i].Aggregation.Proto(), Max: ms[i].Aggregation == usage.Max})
 	}
 	actx := tenant.OutgoingContext(tenant.NewContext(ctx, tenant.Info{ID: tid}))
 	resp, err := r.cfg.Aggregator.GetUsageBatch(actx, req)
@@ -271,6 +271,13 @@ func (r *Reconciler) checkpointFor(ctx context.Context, p int32, tid uuid.UUID, 
 			return nil, "", fmt.Errorf("aggregator quantity %q: %w", u.GetQuantity(), err)
 		}
 		keys[i] = CheckKey{Key: ref.Key(), Want: want, Max: ms[i].Aggregation == usage.Max}
+		if ms[i].Aggregation == usage.Last {
+			// The aggregator names the event its value is of, so that the counter is repaired to that event and not only to its value.
+			keys[i].Last = true
+			if id := u.GetLastEventId(); id != "" {
+				keys[i].Order = &usage.Order{Micros: u.GetLastEventTime().AsTime().UnixMicro(), ID: id}
+			}
+		}
 	}
 	return NewCheckpoint(at, keys), "", nil
 }
