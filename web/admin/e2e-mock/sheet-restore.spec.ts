@@ -83,7 +83,7 @@ test.describe("customers", () => {
     await page.reload();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("cus_1");
-    await expect(dialog.getByPlaceholder("Address line 1")).toBeVisible();
+    await expect(dialog.getByLabel("Address line 1")).toBeVisible();
     // The sheet of a row and a form over it come back in the order they were opened.
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect.poll(() => sheetParam(page)).toBeNull();
