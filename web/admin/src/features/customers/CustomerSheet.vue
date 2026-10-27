@@ -8,6 +8,7 @@ import GrantCreditsSheet from "@/features/credits/GrantCreditsSheet.vue";
 import { formatCredits } from "@/features/credits/lib";
 import LedgerCard from "@/features/credits/LedgerCard.vue";
 import { CustomerRelated, InvoiceRows, PaymentRows, SubscriptionRows, useCustomerInvoices } from "@/features/related";
+import { useTenantCurrency } from "@/features/tenants/currency";
 import { copyText } from "@/shared/lib/clipboard";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor, maskEmail } from "@/shared/lib/money";
@@ -40,7 +41,9 @@ const invoiceIds = computed(() => (invoices.data.value?.invoices ?? []).map((i) 
 const TABS: CustomerTab[] = ["overview", "payments", "invoices", "subscriptions", "credits", "details"];
 const spend = computed(() => (props.summary ? headline(props.summary.spend, props.customer.billing_currency) : undefined));
 const open = computed(() => (props.summary ? headline(props.summary.open, props.customer.billing_currency) : undefined));
-const zero = computed(() => formatMinor(0, props.customer.billing_currency || spend.value?.currency || open.value?.currency, locale.value) || "0");
+const tenantCurrency = useTenantCurrency(() => props.tenantId);
+/** A zero still carries a currency: the customer's, else the one of an amount they have, else the tenant's. */
+const zero = computed(() => formatMinor(0, props.customer.billing_currency || spend.value?.currency || open.value?.currency || tenantCurrency.value, locale.value) || "0");
 const money = (h?: { minor: string; currency: string }) => (h ? formatMinor(h.minor, h.currency, locale.value) : zero.value);
 
 const granting = ref(false);

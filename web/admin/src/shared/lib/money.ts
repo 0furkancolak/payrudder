@@ -127,7 +127,13 @@ export function formatCompact(minor: number, currency: string | undefined, local
   let out: string;
   try {
     const digits = minorDigits(currency ?? "USD");
-    out = new Intl.NumberFormat(locale, { style: "currency", currency: currency ?? "USD", notation: "compact", maximumFractionDigits: 1 }).format(minor / 10 ** digits);
+    const major = minor / 10 ** digits;
+    // Turkish abbreviates a thousand as "B" (bin), which anyone who reads English takes for a billion: below a million the whole number is shown instead.
+    if (locale.toLowerCase().startsWith("tr") && Math.abs(major) < 1_000_000) {
+      out = new Intl.NumberFormat(locale, { style: "currency", currency: currency ?? "USD", maximumFractionDigits: 0 }).format(major);
+    } else {
+      out = new Intl.NumberFormat(locale, { style: "currency", currency: currency ?? "USD", notation: "compact", maximumFractionDigits: 1 }).format(major);
+    }
   } catch {
     out = String(minor);
   }

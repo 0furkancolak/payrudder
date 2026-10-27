@@ -25,7 +25,7 @@ import { sheetName } from "@/shared/lib/sheets";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { useApiKeys, useApp, useCreateApiKey, useMe, useRevokeApiKey, useRotateApiKey, type ApiKey, type Environment } from "./api";
-import { ALL_PERMISSIONS, KEY_RESOURCES, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission, type KeyRole } from "./apiKeys";
+import { ALL_PERMISSIONS, DEFAULT_KEY_ROLE, KEY_RESOURCES, KEY_ROLES, keyRequest, permissionCount, permissionsOfRole, roleOfKey, type KeyPermission, type KeyRole } from "./apiKeys";
 
 /**
  * The API keys of one environment of an app. Sandbox keys are made in the sandbox view and live keys in the live view, never from the same place: the key's
@@ -73,11 +73,11 @@ const total = ALL_PERMISSIONS.length;
 
 // --- a new key: the role and permissions are chosen in a sheet, the environment is the page's
 const making = ref(false);
-const role = ref<KeyRole>("admin");
+const role = ref<KeyRole>(DEFAULT_KEY_ROLE);
 const chosen = ref<Set<KeyPermission>>(new Set());
 watch(making, (open) => {
   if (!open) return;
-  role.value = "admin";
+  role.value = DEFAULT_KEY_ROLE;
   chosen.value = new Set();
   create.reset();
 });
