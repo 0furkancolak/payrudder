@@ -71,11 +71,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  customers: { type: array, items: { $ref: "#/components/schemas/Customer" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/ListCustomersResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}:
     get:
@@ -94,7 +90,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [payment_method], properties: { payment_method: { type: string } } }
+            schema: { $ref: "#/components/schemas/SetPaymentMethodRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -181,7 +177,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: { type: object, properties: { meters: { type: array, items: { $ref: "#/components/schemas/Meter" } } } }
+              schema: { $ref: "#/components/schemas/ListMetersResponse" }
   /v1/meters/{code}:
     get:
       operationId: getMeter
@@ -207,19 +203,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  customer_external_id: { type: string }
-                  period_id: { type: string }
-                  usage:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        meter_code: { type: string }
-                        quantity: { type: string, examples: ["1500.250"] }
-                        event_count: { type: integer, format: int64 }
+              schema: { $ref: "#/components/schemas/GetCustomerUsageResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -236,10 +220,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  items: { type: array, items: { $ref: "#/components/schemas/EntitlementStatus" } }
+              schema: { $ref: "#/components/schemas/ListEntitlementsResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -278,10 +259,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  overrides: { type: array, items: { $ref: "#/components/schemas/EntitlementOverride" } }
+              schema: { $ref: "#/components/schemas/ListEntitlementOverridesResponse" }
         "404": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/entitlement-overrides/{meter}:
     put:
@@ -318,7 +296,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [code, name], properties: { code: { type: string }, name: { type: string } } }
+            schema: { $ref: "#/components/schemas/CreatePlanRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Plan" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -331,7 +309,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: { type: object, properties: { plans: { type: array, items: { $ref: "#/components/schemas/Plan" } } } }
+              schema: { $ref: "#/components/schemas/ListPlansResponse" }
   /v1/plans/{code}/versions:
     post:
       operationId: publishPlanVersion
@@ -341,17 +319,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                base_fee_minor: { type: string, description: int64 minor units }
-                fees:
-                  type: array
-                  description: Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's
-                  items: { $ref: "#/components/schemas/CurrencyFee" }
-                prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
-                entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
-                trial_days: { type: integer, minimum: 0, maximum: 365, description: The trial a new subscription to this version gets unless its request says otherwise; 0 is none }
+            schema: { $ref: "#/components/schemas/PublishPlanVersionRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/PlanVersion" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -380,11 +348,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  subscriptions: { type: array, items: { $ref: "#/components/schemas/Subscription" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/ListSubscriptionsResponse" }
         "404": { $ref: "#/components/responses/Error" }
     post:
       operationId: createSubscription
@@ -393,21 +357,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [customer_external_id, plan_code]
-              properties:
-                customer_external_id: { type: string }
-                plan_code: { type: string }
-                plan_version: { type: integer, description: 0 = latest }
-                start_time: { type: string, format: date-time }
-                trial_days: { type: integer, minimum: 0, maximum: 365, description: "Left out: the package version's own default trial. 0: no trial whatever the default is" }
-                interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
-                currency: { type: string, description: "Default is the customer's billing currency, then the tenant's" }
-                provider: { type: string, description: The payment provider that sells it (for example paddle); default is the tenant's default account }
-                coupon_code: { type: string, description: A coupon to redeem on the new subscription }
-                quantity: { type: integer, minimum: 1, maximum: 100000, description: "Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance" }
-                fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS], description: "Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee." }
+            schema: { $ref: "#/components/schemas/CreateSubscriptionRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -435,13 +385,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                oneOf:
-                  - $ref: "#/components/schemas/Subscription"
-                  - type: object
-                    properties:
-                      subscription: { $ref: "#/components/schemas/Subscription" }
-                      credited_minor: { type: string, description: "Minor units of the subscription's currency" }
+              schema: { $ref: "#/components/schemas/CancelSubscriptionResponse" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}/pause:
@@ -488,24 +432,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [plan_code]
-              properties:
-                plan_code: { type: string }
-                plan_version: { type: integer, description: 0 = latest }
-                change_time: { type: string, format: date-time, description: Default now }
+            schema: { $ref: "#/components/schemas/ChangePlanRequest" }
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  subscription: { $ref: "#/components/schemas/Subscription" }
-                  credit_minor: { type: string, description: Unused part of the old fixed fee }
-                  charge_minor: { type: string, description: Remaining part of the new fixed fee }
+              schema: { $ref: "#/components/schemas/ChangePlanResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -540,12 +473,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  subscription: { $ref: "#/components/schemas/Subscription" }
-                  quote: { $ref: "#/components/schemas/ChangeQuote" }
-                  scheduled: { type: boolean, description: True when the change waits for the end of the period }
+              schema: { $ref: "#/components/schemas/ChangeSubscriptionResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -557,7 +485,7 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/ApplyCouponRequest" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Subscription" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -630,7 +558,7 @@ paths:
       summary: Put a credit pack back on sale
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EmptyObject" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /v1/credit-packs/{id}/deactivate:
     post:
@@ -639,7 +567,7 @@ paths:
       description: Credits already sold are not touched.
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EmptyObject" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/credits:
     get:
@@ -747,7 +675,7 @@ paths:
         - { name: reason, in: query, schema: { type: string, maxLength: 200 } }
       requestBody:
         required: false
-        content: { application/json: { schema: { type: object, properties: { reason: { type: string, maxLength: 200 } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/VoidExpenseRequest" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Expense" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -801,12 +729,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [status]
-              properties:
-                status: { type: string, enum: [accepted, dismissed] }
-                expense_id: { type: string, format: uuid }
+            schema: { $ref: "#/components/schemas/ResolveInboxItemRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InboxItem" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -816,7 +739,7 @@ paths:
       operationId: listExpenseRules
       summary: The recurring-vendor rules
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { rules: { type: array, items: { $ref: "#/components/schemas/ExpenseRule" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListExpenseRulesResponse" } } } }
     post:
       operationId: createExpenseRule
       summary: Add a recurring-vendor rule
@@ -861,9 +784,9 @@ paths:
       security: []
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/InboundInvoicesRequest" } } }
       responses:
-        "200": { description: Understood, content: { application/json: { schema: { type: object, properties: { stored: { type: integer } } } } } }
+        "200": { description: Understood, content: { application/json: { schema: { $ref: "#/components/schemas/InboundInvoicesResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { description: Wrong secret }
         "404": { $ref: "#/components/responses/Error" }
@@ -951,7 +874,7 @@ paths:
       operationId: listWebhookEndpoints
       summary: The tenant's webhook endpoints
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { endpoints: { type: array, items: { $ref: "#/components/schemas/WebhookEndpoint" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListWebhookEndpointsResponse" } } } }
   /v1/webhook-endpoints/{id}:
     put:
       operationId: updateWebhookEndpoint
@@ -1001,11 +924,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  deliveries: { type: array, items: { $ref: "#/components/schemas/WebhookDelivery" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/ListWebhookDeliveriesResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /v1/webhook-deliveries/{id}/redeliver:
     post:
@@ -1030,7 +949,7 @@ paths:
       operationId: listCoupons
       summary: Coupons, newest first
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { coupons: { type: array, items: { $ref: "#/components/schemas/Coupon" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCouponsResponse" } } } }
   /v1/coupons/{code}:
     delete:
       operationId: deactivateCoupon
@@ -1049,7 +968,7 @@ paths:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/CreatePromotionCodes" } } }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { codes: { type: array, items: { $ref: "#/components/schemas/PromotionCode" } } } } } } }
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreatePromotionCodesResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -1064,7 +983,7 @@ paths:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { codes: { type: array, items: { $ref: "#/components/schemas/PromotionCode" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListPromotionCodesResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /v1/promotion-codes/{code}:
     delete:
@@ -1086,7 +1005,7 @@ paths:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { redemptions: { type: array, items: { $ref: "#/components/schemas/CouponRedemption" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCouponRedemptionsResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /v1/promotions/quote:
     post:
@@ -1109,9 +1028,9 @@ paths:
       parameters: [{ name: external_id, in: path, required: true, schema: { type: string } }]
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [coupon_code, source, source_ref], properties: { coupon_code: { type: string }, source: { type: string, description: "Who gives it, e.g. operator or affiliate" }, source_ref: { type: string } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/GrantCustomerCouponRequest" } } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { granted: { type: boolean } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GrantCustomerCouponResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /v1/affiliates/program:
@@ -1140,7 +1059,7 @@ paths:
       description: "The code (3 to 32 letters, numbers, - or _) is unique across the whole platform because the public link /r/<code> carries no tenant; leave it out for a random one. A partner you add is active unless you ask for pending."
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [email], properties: { email: { type: string, format: email }, name: { type: string }, code: { type: string }, payout_method: { type: string, enum: [manual, bank_transfer] }, payout_details: { type: string, maxLength: 1000 }, pending: { type: boolean } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateAffiliateRequest" } } }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Affiliate" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -1154,7 +1073,7 @@ paths:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { affiliates: { type: array, items: { $ref: "#/components/schemas/Affiliate" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliatesResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /v1/affiliates/referrals:
     get:
@@ -1166,7 +1085,7 @@ paths:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { referrals: { type: array, items: { $ref: "#/components/schemas/AffiliateReferral" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliateReferralsResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /v1/affiliates/commissions:
     get:
@@ -1184,7 +1103,7 @@ paths:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { commissions: { type: array, items: { $ref: "#/components/schemas/AffiliateCommission" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliateCommissionsResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /v1/affiliates/commissions/reverse:
     post:
@@ -1193,9 +1112,9 @@ paths:
       description: "Refunds, voids and credit notes reverse on their own. The same (invoice, reason, reference) takes back once. A commission that was paid is netted from the partner's next payout."
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [invoice_id, reason], properties: { invoice_id: { type: string, format: uuid }, reason: { type: string, enum: [chargeback, manual] }, reference: { type: string, maxLength: 100, description: "Names this reversal; required for manual" }, amount_minor: { type: string, description: "How much to take back; 0 or absent is all that is left" }, note: { type: string, maxLength: 500 } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/ReverseAffiliateCommissionRequest" } } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { reversed_minor: { type: string, description: "How much this call took back; 0 on a repeat" }, commission: { $ref: "#/components/schemas/AffiliateCommission" } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ReverseAffiliateCommissionResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /v1/affiliates/balances:
@@ -1205,7 +1124,7 @@ paths:
       description: "pending (in the hold), approved (available for a payout, net of reversals), paid (paid out, net of what was netted) and reversed (taken back in all). Currencies are never added together."
       parameters: [{ name: affiliate_id, in: query, schema: { type: string, format: uuid } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { balances: { type: array, items: { $ref: "#/components/schemas/AffiliateBalance" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GetAffiliateBalancesResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /v1/affiliates/funnel:
     get:
@@ -1229,7 +1148,7 @@ paths:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { payouts: { type: array, items: { $ref: "#/components/schemas/AffiliatePayout" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliatePayoutsResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
     post:
       operationId: createAffiliatePayouts
@@ -1237,9 +1156,9 @@ paths:
       description: "For one partner or for every active partner, one payout per currency. A batch below the program's minimum payout, or not above zero, is skipped and reported; what is approved later joins a payout that is still open. A suspended partner is not paid; their balance is kept. A live environment that is not active pays nobody (affiliate.payout.tenant_not_active)."
       requestBody:
         required: false
-        content: { application/json: { schema: { type: object, properties: { affiliate_id: { type: string, format: uuid }, currency: { type: string } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateAffiliatePayoutsRequest" } } }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { payouts: { type: array, items: { $ref: "#/components/schemas/AffiliatePayout" } }, skipped: { type: array, items: { type: object, properties: { affiliate_id: { type: string, format: uuid }, currency: { type: string }, total_minor: { type: string }, reason: { type: string, enum: [below_minimum, not_positive] } } } } } } } } }
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreateAffiliatePayoutsResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -1251,7 +1170,7 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: false
-        content: { application/json: { schema: { type: object, properties: { reference: { type: string, maxLength: 200, description: "Your note, e.g. the bank transfer reference" } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/MarkAffiliatePayoutPaidRequest" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AffiliatePayout" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -1279,7 +1198,7 @@ paths:
         - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }
         - { name: page_token, in: query, schema: { type: string } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { entries: { type: array, items: { $ref: "#/components/schemas/AffiliateJournalEntry" } }, totals: { type: array, items: { type: object, properties: { currency: { type: string }, debit_minor: { type: string }, credit_minor: { type: string } } } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAffiliateJournalResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /v1/affiliates/journal.csv:
     get:
@@ -1308,7 +1227,7 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, properties: { name: { type: string }, payout_method: { type: string, enum: [manual, bank_transfer] }, payout_details: { type: string }, status: { type: string, enum: [active, suspended] } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateAffiliateRequest" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Affiliate" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -1321,7 +1240,7 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [promotion_code], properties: { promotion_code: { type: string } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/LinkAffiliatePromotionCodeRequest" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Affiliate" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -1333,9 +1252,9 @@ paths:
       parameters: [{ name: external_id, in: path, required: true, schema: { type: string } }]
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [code], properties: { code: { type: string }, source: { type: string, enum: [link, code, api] }, touch_time: { type: string, format: date-time, description: When the visitor followed the link; default now } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/AttributeCustomerRequest" } } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { attributed: { type: boolean }, reason: { type: string } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AttributeCustomerResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}/scheduled-change:
@@ -1361,26 +1280,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  rows:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        period: { type: string }
-                        provider: { type: string }
-                        country: { type: string }
-                        currency: { type: string }
-                        invoices: { type: string }
-                        billed_minor: { type: string, description: Finalized invoices that are not void }
-                        collected_minor: { type: string, description: Paid }
-                        refunded_minor: { type: string, description: Invoices that were refunded }
-                        outstanding_minor: { type: string, description: Open }
-                        uncollectible_minor: { type: string }
-                        void_minor: { type: string }
-                        credited_minor: { type: string, description: Credit notes issued against these invoices }
+              schema: { $ref: "#/components/schemas/GetRevenueReportResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /v1/reports/dunning:
     get:
@@ -1393,35 +1293,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  invoices:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        invoice_id: { type: string, format: uuid }
-                        number: { type: string }
-                        customer_external_id: { type: string }
-                        period: { type: string }
-                        provider: { type: string }
-                        currency: { type: string }
-                        total_minor: { type: string }
-                        state: { type: string, enum: [PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, UNCOLLECTIBLE] }
-                        dunning_attempt: { type: integer }
-                        next_attempt_time: { type: string, format: date-time }
-                        last_error: { type: string }
-                  summary:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        state: { type: string }
-                        provider: { type: string }
-                        currency: { type: string }
-                        invoices: { type: string }
-                        total_minor: { type: string }
+              schema: { $ref: "#/components/schemas/GetDunningReportResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /v1/reports/subscriptions:
     get:
@@ -1435,27 +1307,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  month: { type: string }
-                  rows:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        provider: { type: string }
-                        country: { type: string }
-                        currency: { type: string }
-                        active: { type: string }
-                        trialing: { type: string }
-                        paused: { type: string }
-                        past_due: { type: string }
-                        mrr_minor: { type: string, description: Fixed fees per month of active and past due subscriptions }
-                        new_subscriptions: { type: string }
-                        new_mrr_minor: { type: string }
-                        churned: { type: string, description: Ended with no successor; a plan change or provider migration is not churn }
-                        churned_mrr_minor: { type: string }
+              schema: { $ref: "#/components/schemas/GetSubscriptionReportResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /v1/routing-rules:
     get:
@@ -1503,23 +1355,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                country: { type: string, examples: [TR] }
-                currency: { type: string, examples: [TRY] }
+            schema: { $ref: "#/components/schemas/PreviewRoutingRequest" }
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  provider: { type: string, description: Empty when no rule matches (the tenant's default account) }
-                  rule_index: { type: integer, description: "-1 when no rule matches" }
-                  owner: { type: string, enum: [quotify, provider] }
-                  can_charge: { type: boolean }
+              schema: { $ref: "#/components/schemas/PreviewRoutingResponse" }
 
   /v1/invoices:
     get:
@@ -1536,11 +1378,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/ListInvoicesResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -1558,11 +1396,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  credit_notes: { type: array, items: { $ref: "#/components/schemas/CreditNote" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/ListCreditNotesResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /v1/credit-notes/{id}:
     get:
@@ -1592,18 +1426,13 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: false
-        content: { application/json: { schema: { type: object, properties: { expires_in_days: { type: integer, minimum: 1, maximum: 365, default: 90 } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateInvoiceLinkRequest" } } }
       responses:
         "201":
           description: Created
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  token: { type: string }
-                  url: { type: string }
-                  expires_at: { type: string, format: date-time }
+              schema: { $ref: "#/components/schemas/CreateInvoiceLinkResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -1612,7 +1441,7 @@ paths:
       summary: Make every link to the invoice stop working
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { revoked: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RevokeInvoiceLinksResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /r/{code}:
     get:
@@ -1864,11 +1693,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  links: { type: array, items: { $ref: "#/components/schemas/PaymentLink" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/ListPaymentLinksResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /v1/payment-links/{id}:
     get:
@@ -1894,19 +1719,13 @@ paths:
       parameters: [{ name: external_id, in: path, required: true, schema: { type: string } }]
       requestBody:
         required: false
-        content: { application/json: { schema: { type: object, properties: { expires_in_days: { type: integer, minimum: 1, maximum: 365, default: 30 } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreatePortalLinkRequest" } } }
       responses:
         "201":
           description: Created
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  token: { type: string }
-                  url: { type: string }
-                  expires_at: { type: string, format: date-time }
-                  customer_id: { type: string }
+              schema: { $ref: "#/components/schemas/CreatePortalLinkResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
     delete:
@@ -1914,7 +1733,7 @@ paths:
       summary: Make every portal link of the customer stop working
       parameters: [{ name: external_id, in: path, required: true, schema: { type: string } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { revoked: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RevokePortalLinksResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/payments:
     get:
@@ -1929,11 +1748,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
-                  payments: { type: array, items: { $ref: "#/components/schemas/CustomerPayment" } }
+              schema: { $ref: "#/components/schemas/ListCustomerPaymentsResponse" }
         "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
   /v1/invoices/{id}/pdf:
@@ -1946,11 +1761,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  url: { type: string, format: uri }
-                  expires_at: { type: string, format: date-time }
+              schema: { $ref: "#/components/schemas/GetInvoicePdfResponse" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /v1/payments:
@@ -1970,11 +1781,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  payments: { type: array, items: { $ref: "#/components/schemas/Payment" } }
-                  truncated: { type: boolean }
+              schema: { $ref: "#/components/schemas/ListPaymentsResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
   /v1/assets/uploads:
@@ -1990,22 +1797,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [files]
-              properties:
-                files:
-                  type: array
-                  maxItems: 50
-                  items:
-                    type: object
-                    required: [filename, content_type, size, purpose]
-                    properties:
-                      filename: { type: string }
-                      content_type: { type: string, examples: ["application/pdf"] }
-                      size: { type: integer, format: int64 }
-                      purpose: { type: string, enum: [invoice_logo, invoice_attachment, general] }
-                      sha256: { type: string, description: Optional hex sha256 of the whole file }
+            schema: { $ref: "#/components/schemas/CreateUploadSessionRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/UploadSession" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2051,10 +1843,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  parts: { type: array, items: { $ref: "#/components/schemas/PresignedPart" } }
+              schema: { $ref: "#/components/schemas/PresignPartsResponse" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /v1/assets/uploads/{session}/files/{asset}/complete:
@@ -2071,18 +1860,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [parts]
-              properties:
-                parts:
-                  type: array
-                  items:
-                    type: object
-                    required: [part_number, etag]
-                    properties:
-                      part_number: { type: integer }
-                      etag: { type: string }
+            schema: { $ref: "#/components/schemas/CompleteUploadFileRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Asset" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -2111,19 +1889,7 @@ paths:
           description: Per-file results
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  results:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        filename: { type: string }
-                        status: { type: string, enum: [created, rejected] }
-                        asset: { $ref: "#/components/schemas/Asset" }
-                        error_code: { type: string, examples: ["CONTENT_TYPE_MISMATCH"] }
-                        message: { type: string }
+              schema: { $ref: "#/components/schemas/UploadAssetsResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "413": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -2139,11 +1905,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  assets: { type: array, items: { $ref: "#/components/schemas/Asset" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/ListAssetsResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /v1/tenant/invoice-logo:
     put:
@@ -2153,16 +1915,16 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [asset_id], properties: { asset_id: { type: string, format: uuid } } }
+            schema: { $ref: "#/components/schemas/SetInvoiceLogoRequest" }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { invoice_logo_asset_id: { type: string } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SetInvoiceLogoResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
     delete:
       operationId: clearInvoiceLogo
       summary: Remove the invoice logo
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { invoice_logo_asset_id: { type: string } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ClearInvoiceLogoResponse" } } } }
   /v1/assets/{id}:
     get:
       operationId: getAsset
@@ -2189,11 +1951,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  url: { type: string, format: uri }
-                  expires_at: { type: string, format: date-time }
+              schema: { $ref: "#/components/schemas/DownloadAssetResponse" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
   /v1/analytics/usage:
@@ -2216,19 +1974,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  precision: { type: string, enum: [estimated, exact] }
-                  quantity_scale: { type: integer }
-                  points:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        start: { type: string, format: date-time }
-                        quantity: { type: string, examples: ["1.500"] }
-                        event_count: { type: string, description: int64 as a string }
+              schema: { $ref: "#/components/schemas/GetAnalyticsUsageResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
@@ -2245,20 +1991,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  precision: { type: string }
-                  quantity_scale: { type: integer }
-                  customers:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        customer_id: { type: string }
-                        customer_external_id: { type: string }
-                        quantity: { type: string }
-                        event_count: { type: string }
+              schema: { $ref: "#/components/schemas/GetTopCustomersResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
   /v1/sandbox/close-period:
@@ -2272,7 +2005,7 @@ paths:
       requestBody:
         content:
           application/json:
-            schema: { type: object, properties: { period: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" } } }
+            schema: { $ref: "#/components/schemas/SandboxClosePeriodRequest" }
       responses:
         "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/BillingRun" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2287,13 +2020,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [scenario]
-              properties:
-                scenario:
-                  type: string
-                  enum: [success, declined, insufficient_funds_once, error_then_success, timeout_committed, timeout_not_committed]
+            schema: { $ref: "#/components/schemas/SetPaymentScenarioRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
         "403": { $ref: "#/components/responses/Error" }
@@ -2313,15 +2040,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [email, password, account_name]
-              properties:
-                email: { type: string, format: email }
-                password: { type: string, minLength: 10, maxLength: 256, format: password }
-                display_name: { type: string, maxLength: 200 }
-                account_name: { type: string, maxLength: 200, description: The organisation the person starts }
-                locale: { type: string, enum: [en, tr, de, fr, es, ar], description: "The language of the mails. Default: the first supported language of Accept-Language, else English." }
+            schema: { $ref: "#/components/schemas/SignUpRequest" }
       responses:
         "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/Accepted" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2340,12 +2059,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  password: { type: boolean }
-                  otp: { type: boolean }
-                  google: { type: boolean }
+              schema: { $ref: "#/components/schemas/AuthMethodsResponse" }
   /auth/otp/request:
     post:
       operationId: requestLoginCode
@@ -2360,12 +2074,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [email]
-              properties:
-                email: { type: string, format: email }
-                locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+            schema: { $ref: "#/components/schemas/RequestLoginCodeRequest" }
       responses:
         "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/Accepted" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2384,15 +2093,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [email, code]
-              properties:
-                email: { type: string, format: email }
-                code: { type: string, pattern: "^[0-9]{6}$" }
-                display_name: { type: string, maxLength: 200, description: Used only when the code creates the account }
-                account_name: { type: string, maxLength: 200, description: Used only when the code creates the account }
-                locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+            schema: { $ref: "#/components/schemas/VerifyLoginCodeRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2445,13 +2146,9 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [token]
-              properties:
-                token: { type: string }
+            schema: { $ref: "#/components/schemas/VerifyEmailRequest" }
       responses:
-        "200": { description: Verified, content: { application/json: { schema: { type: object, properties: { user: { $ref: "#/components/schemas/AuthUser" } } } } } }
+        "200": { description: Verified, content: { application/json: { schema: { $ref: "#/components/schemas/VerifyEmailResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
   /auth/resend-verification:
@@ -2479,12 +2176,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [email]
-              properties:
-                email: { type: string, format: email }
-                locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+            schema: { $ref: "#/components/schemas/ForgotPasswordRequest" }
       responses:
         "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/Accepted" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2502,12 +2194,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [token, password]
-              properties:
-                token: { type: string }
-                password: { type: string, minLength: 10, maxLength: 256, format: password }
+            schema: { $ref: "#/components/schemas/ResetPasswordRequest" }
       responses:
         "204": { description: Password changed }
         "400": { $ref: "#/components/responses/Error" }
@@ -2526,11 +2213,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [token]
-              properties:
-                token: { type: string }
+            schema: { $ref: "#/components/schemas/LookupInvitationRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvitationLookup" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2549,14 +2232,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [token, password]
-              properties:
-                token: { type: string }
-                password: { type: string, minLength: 10, maxLength: 256, format: password }
-                display_name: { type: string, maxLength: 200 }
-                locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+            schema: { $ref: "#/components/schemas/AcceptInvitationRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2577,12 +2253,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [email, password]
-              properties:
-                email: { type: string, format: email }
-                password: { type: string, format: password }
+            schema: { $ref: "#/components/schemas/SignInRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionOpened" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2629,12 +2300,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                wizard: { $ref: "#/components/schemas/OnboardingWizard" }
-                seen_tours: { type: array, maxItems: 200, items: { type: string, pattern: "^[A-Za-z0-9._-]{1,64}$" } }
-                forget_tours: { type: array, items: { type: string, pattern: "^[A-Za-z0-9._-]{1,64}$" } }
+            schema: { $ref: "#/components/schemas/UpdateMyOnboardingRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Onboarding" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2650,11 +2316,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [name]
-              properties:
-                name: { type: string, maxLength: 200 }
+            schema: { $ref: "#/components/schemas/AppCreateAccountRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Membership" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2681,13 +2343,9 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [name]
-              properties:
-                name: { type: string, maxLength: 200 }
+            schema: { $ref: "#/components/schemas/AppRenameAccountRequest" }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { name: { type: string } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppRenameAccountResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -2719,11 +2377,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [plan_code]
-              properties:
-                plan_code: { type: string }
+            schema: { $ref: "#/components/schemas/AppChangePlanRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/OrganizationPlan" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2739,7 +2393,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { invoices: { type: array, items: { $ref: "#/components/schemas/PlanInvoice" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppListPlanInvoicesResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/account/plan/invoices/{id}/pay-link:
@@ -2753,7 +2407,7 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
         - { name: account_id, in: query, schema: { type: string, format: uuid } }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AppPlanInvoicePayLinkResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -2766,7 +2420,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
       responses:
-        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { url: { type: string }, expires_at: { type: string, format: date-time } } } } } }
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/AppPlanPortalLinkResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -2779,7 +2433,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { invitations: { type: array, items: { $ref: "#/components/schemas/Invitation" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppListInvitationsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -2798,13 +2452,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [email, role]
-              properties:
-                email: { type: string, format: email }
-                role: { type: string, enum: [owner, admin, viewer] }
-                locale: { type: string, enum: [en, tr, de, fr, es, ar], description: The language of the mail }
+            schema: { $ref: "#/components/schemas/AppInviteMemberRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Invitation" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2858,13 +2506,9 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [role]
-              properties:
-                role: { type: string, enum: [owner, admin, viewer] }
+            schema: { $ref: "#/components/schemas/AppUpdateMemberRoleRequest" }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { role: { type: string, enum: [owner, admin, viewer] } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppUpdateMemberRoleResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -2896,13 +2540,9 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [token]
-              properties:
-                token: { type: string }
+            schema: { $ref: "#/components/schemas/AppAcceptInvitationRequest" }
       responses:
-        "200": { description: Joined, content: { application/json: { schema: { type: object, properties: { account_id: { type: string, format: uuid }, memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } } } } } } }
+        "200": { description: Joined, content: { application/json: { schema: { $ref: "#/components/schemas/AppAcceptInvitationResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -2914,7 +2554,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ name: account_id, in: query, schema: { type: string, format: uuid } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { apps: { type: array, items: { $ref: "#/components/schemas/App" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppListAppsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
     post:
@@ -2928,14 +2568,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [name, currency, timezone]
-              properties:
-                name: { type: string, maxLength: 200 }
-                slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
-                currency: { type: string, pattern: "^[A-Z]{3}$", description: An active ISO 4217 code }
-                timezone: { type: string, examples: [Europe/Istanbul] }
+            schema: { $ref: "#/components/schemas/AppCreateAppRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -2952,7 +2585,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { app: { $ref: "#/components/schemas/App" }, role: { type: string, enum: [owner, admin, viewer] } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppGetAppResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
     patch:
@@ -2968,11 +2601,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [name]
-              properties:
-                name: { type: string, maxLength: 200 }
+            schema: { $ref: "#/components/schemas/AppRenameAppRequest" }
       responses:
         "200": { description: The app, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -3045,7 +2674,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { api_keys: { type: array, items: { $ref: "#/components/schemas/ApiKey" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppListApiKeysResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
     post:
@@ -3059,24 +2688,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [environment]
-              properties:
-                environment: { type: string, enum: [sandbox, live] }
-                role: { $ref: "#/components/schemas/ApiKeyRole" }
-                permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" }, description: "Required for the role custom; for a fixed role optional, and then a subset of the role's own." }
-                scope: { type: string, enum: [full, ingest, read], description: "Older way to choose a role when `role` and `permissions` are absent: full is admin, ingest is ingest_only, read is read_only." }
+            schema: { $ref: "#/components/schemas/AppCreateApiKeyRequest" }
       responses:
         "201":
           description: Created
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  api_key: { $ref: "#/components/schemas/ApiKey" }
-                  plaintext: { type: string, description: "qk_{test|live}_<prefix>_<secret>, shown once" }
+              schema: { $ref: "#/components/schemas/AppCreateApiKeyResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -3090,7 +2708,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: OK (an empty object when the sandbox was never reset), content: { application/json: { schema: { type: object, properties: { sandbox_reset: { $ref: "#/components/schemas/SandboxReset" } } } } } }
+        "200": { description: OK (an empty object when the sandbox was never reset), content: { application/json: { schema: { $ref: "#/components/schemas/AppSandboxResetStatusResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
     post:
@@ -3104,7 +2722,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "202": { description: Queued (or the one already running), content: { application/json: { schema: { type: object, properties: { sandbox_reset: { $ref: "#/components/schemas/SandboxReset" } } } } } }
+        "202": { description: Queued (or the one already running), content: { application/json: { schema: { $ref: "#/components/schemas/AppSandboxResetResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -3121,19 +2739,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  scenarios:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        scenario: { type: string, examples: [declined] }
-                        payment_method: { type: string, examples: [pm_sandbox_declined] }
-                        outcome: { type: string, enum: [paid, uncollectible, paid_after_retry, paid_after_status_query, paid_after_recharge] }
-                        default: { type: boolean }
-                        description: { type: string }
+              schema: { $ref: "#/components/schemas/SandboxScenariosResponse" }
         "403": { $ref: "#/components/responses/Error" }
   /v1/sandbox/invoices/{id}/simulate:
     post:
@@ -3149,25 +2755,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [scenario]
-              properties:
-                scenario: { type: string, description: "A name from /v1/sandbox/scenarios, with or without the pm_sandbox_ prefix." }
+            schema: { $ref: "#/components/schemas/SandboxSimulateInvoiceRequest" }
       responses:
         "200":
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  invoice_id: { type: string }
-                  customer_external_id: { type: string }
-                  scenario: { type: string }
-                  payment_method: { type: string }
-                  retried: { type: boolean }
-                  retry_error: { type: string }
+              schema: { $ref: "#/components/schemas/SandboxSimulateInvoiceResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -3187,38 +2781,13 @@ paths:
       requestBody:
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                dry_run: { type: boolean }
-                plan_hash: { type: string }
+            schema: { $ref: "#/components/schemas/AppPromoteRequest" }
       responses:
         "200":
           description: The changes
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  dry_run: { type: boolean }
-                  plan_hash: { type: string }
-                  created: { type: integer }
-                  unchanged: { type: integer }
-                  conflicts: { type: integer }
-                  skipped: { type: integer }
-                  failed: { type: integer }
-                  changes:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        family: { type: string, enum: [meters, plans, taxes, coupons, mail, webhooks] }
-                        key: { type: string }
-                        action: { type: string, enum: [ACTION_CREATE, ACTION_UNCHANGED, ACTION_CONFLICT, ACTION_SKIPPED] }
-                        detail: { type: string }
-                        applied: { type: boolean }
-                        error: { type: string }
-                        secret: { type: string, description: "A webhook endpoint made by the promotion: its new signing secret, shown once." }
+              schema: { $ref: "#/components/schemas/AppPromoteResponse" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -3238,21 +2807,13 @@ paths:
       requestBody:
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                overlap_hours: { type: number, minimum: 0, maximum: 168, default: 24, description: How long the old key keeps working. 0 ends it now. }
+            schema: { $ref: "#/components/schemas/AppRotateApiKeyRequest" }
       responses:
         "201":
           description: Created
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  api_key: { $ref: "#/components/schemas/ApiKey" }
-                  plaintext: { type: string, description: "shown once" }
-                  previous: { $ref: "#/components/schemas/ApiKey" }
+              schema: { $ref: "#/components/schemas/AppRotateApiKeyResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -3266,7 +2827,7 @@ paths:
       description: "One per seller environment the person is a partner of (live ones first). A partner sees only their own data: the records made for their verified e-mail address are linked to them by claim, or they apply."
       security: [{ sessionToken: [] }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { affiliations: { type: array, items: { $ref: "#/components/schemas/MyAffiliation" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyAffiliationsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
   /app/v1/affiliate/claim:
     post:
@@ -3276,7 +2837,7 @@ paths:
       description: "Needs a verified address (403 identity.email.not_verified otherwise). Repeating it only takes records nobody has claimed. The person becomes a member of the seller's account with the role affiliate, which sees none of the account."
       security: [{ sessionToken: [] }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { claimed: { type: integer }, affiliations: { type: array, items: { $ref: "#/components/schemas/MyAffiliation" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ClaimMyAffiliationsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
   /app/v1/affiliate/programs/{tenant_id}:
@@ -3288,7 +2849,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ name: tenant_id, in: path, required: true, schema: { type: string } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { seller_name: { type: string }, environment: { type: string }, applied: { type: boolean }, program: { $ref: "#/components/schemas/MyProgram" } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/LookupAffiliateProgramResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/affiliate/applications:
@@ -3300,7 +2861,7 @@ paths:
       security: [{ sessionToken: [] }]
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [tenant_id], properties: { tenant_id: { type: string }, name: { type: string, maxLength: 200 }, payout_method: { type: string, enum: [manual, bank_transfer] }, payout_details: { type: string, maxLength: 1000 } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/ApplyAsAffiliateRequest" } } }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/MyAffiliation" } } } }
         "401": { $ref: "#/components/responses/Error" }
@@ -3327,7 +2888,7 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       requestBody:
         required: true
-        content: { application/json: { schema: { type: object, required: [payout_method], properties: { name: { type: string }, payout_method: { type: string, enum: [manual, bank_transfer] }, payout_details: { type: string } } } } }
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateMyAffiliationRequest" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyAffiliation" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -3342,7 +2903,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { referrals: { type: array, items: { $ref: "#/components/schemas/MyReferral" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyReferralsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/affiliate/affiliations/{id}/commissions:
@@ -3354,7 +2915,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: status, in: query, schema: { type: string, enum: [pending, approved, paid, reversed] } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { commissions: { type: array, items: { $ref: "#/components/schemas/MyCommission" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyCommissionsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/affiliate/affiliations/{id}/payouts:
@@ -3366,7 +2927,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }, { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200 } }, { name: page_token, in: query, schema: { type: string } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { payouts: { type: array, items: { $ref: "#/components/schemas/MyPayout" } }, next_page_token: { type: string }, total: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/MyPayoutsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/go-live:
@@ -3381,7 +2942,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { go_live: { $ref: "#/components/schemas/GoLive" } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AppGoLiveResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
     post:
@@ -3394,12 +2955,9 @@ paths:
       requestBody:
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                accept_terms: { type: boolean, description: Accepts the terms of service in the same call. }
+            schema: { $ref: "#/components/schemas/AppActivateLiveRequest" }
       responses:
-        "200": { description: Activated, content: { application/json: { schema: { type: object, properties: { go_live: { $ref: "#/components/schemas/GoLive" } } } } } }
+        "200": { description: Activated, content: { application/json: { schema: { $ref: "#/components/schemas/AppActivateLiveResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -3420,12 +2978,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [legal, address]
-              properties:
-                legal: { $ref: "#/components/schemas/LegalInfo" }
-                address: { $ref: "#/components/schemas/Address" }
+            schema: { $ref: "#/components/schemas/AppSaveBillingProfileRequest" }
       responses:
         "200": { description: The live tenant as saved, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -3441,7 +2994,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: Accepted, content: { application/json: { schema: { type: object, properties: { accept_time: { type: string, format: date-time } } } } } }
+        "200": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/AppAcceptTermsResponse" } } } }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -3480,9 +3033,9 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, additionalProperties: true, description: The provider's settings. }
+            schema: { $ref: "#/components/schemas/AppConnectLiveProviderRequest" }
       responses:
-        "200": { description: Stored, content: { application/json: { schema: { type: object, properties: { provider: { type: string }, environment: { type: string, enum: [live] }, default: { type: boolean } } } } } }
+        "200": { description: Stored, content: { application/json: { schema: { $ref: "#/components/schemas/AppConnectLiveProviderResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -3513,15 +3066,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  account:
-                    type: [object, "null"]
-                    properties:
-                      provider: { type: string, enum: [nilvera, webhook] }
-                      mode: { type: string, enum: [test, production] }
-                      updated_at: { type: string, format: date-time }
+              schema: { $ref: "#/components/schemas/AppGetEInvoiceIntegrationResponse" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
@@ -3536,13 +3081,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [provider]
-              properties:
-                provider: { type: string, enum: [nilvera, webhook] }
-                mode: { type: string, enum: [test, production] }
-                credentials: { type: object, additionalProperties: { type: string }, description: "nilvera: api_key[, base_url]; webhook: url, secret." }
+            schema: { $ref: "#/components/schemas/AppPutEInvoiceIntegrationRequest" }
       responses:
         "200": { description: Stored, content: { application/json: { schema: { $ref: "#/components/schemas/EInvoiceAccount" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -3571,21 +3110,13 @@ paths:
       requestBody:
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                tax_id: { type: string, description: "The seller's tax id, for an integrator that can look up a registered business" }
+            schema: { $ref: "#/components/schemas/AppTestEInvoiceIntegrationRequest" }
       responses:
         "200":
           description: The result
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  checked: { type: string, enum: [credentials, configuration] }
-                  problem: { type: string, enum: [refused, unreachable] }
+              schema: { $ref: "#/components/schemas/AppTestEInvoiceIntegrationResponse" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -3601,11 +3132,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  connected: { type: boolean }
-                  integration: { $ref: "#/components/schemas/MailIntegration" }
+              schema: { $ref: "#/components/schemas/AppGetMailIntegrationResponse" }
         "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
     put:
@@ -3622,23 +3149,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [provider, base_url, api_key, from]
-              properties:
-                provider: { type: string, enum: [nafru] }
-                base_url: { type: string, examples: ["https://api.nafru.example"], description: The Resend-compatible API address (https) }
-                api_key: { type: string }
-                from: { type: string, examples: ["Acme Billing <billing@acme.example>"] }
+            schema: { $ref: "#/components/schemas/AppPutMailIntegrationRequest" }
       responses:
         "200":
           description: Stored
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  integration: { $ref: "#/components/schemas/MailIntegration" }
+              schema: { $ref: "#/components/schemas/AppPutMailIntegrationResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -3667,22 +3184,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [to]
-              properties:
-                to: { type: string, format: email }
+            schema: { $ref: "#/components/schemas/AppTestMailIntegrationRequest" }
       responses:
         "200":
           description: The result
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  ok: { type: boolean }
-                  problem: { type: string, enum: [unreachable, refused] }
-                  message_id: { type: string }
+              schema: { $ref: "#/components/schemas/AppTestMailIntegrationResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
@@ -3751,15 +3259,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [name, currency, timezone, grace_period]
-              properties:
-                name: { type: string }
-                currency: { type: string, pattern: "^[A-Z]{3}$", description: "Required, no default. Immutable. An active ISO 4217 code (USD, EUR, TRY, JPY, KWD, ...); the minor-unit exponent comes from the currency (0 for JPY, 3 for KWD)." }
-                timezone: { type: string, examples: [Europe/Istanbul], description: "Required IANA name, no default. Immutable." }
-                grace_period: { type: string, examples: ["86400s"], description: "Required, protobuf Duration JSON, 0s..604800s" }
-                tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+            schema: { $ref: "#/components/schemas/CreateAccountRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Account" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -3777,16 +3277,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [name, currency, timezone, grace_period]
-              properties:
-                name: { type: string }
-                slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
-                currency: { type: string, pattern: "^[A-Z]{3}$", description: An active ISO 4217 code }
-                timezone: { type: string, examples: [Europe/Istanbul] }
-                grace_period: { type: string, examples: ["86400s"] }
-                tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+            schema: { $ref: "#/components/schemas/CreateAppRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -3798,7 +3289,7 @@ paths:
       security: [{ operatorToken: [] }]
       parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { apps: { type: array, items: { $ref: "#/components/schemas/App" } } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListAppsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants:
     get:
@@ -3813,11 +3304,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/AdminListTenantsResponse" }
   /admin/v1/saas:
     get:
       operationId: adminGetSaas
@@ -3840,12 +3327,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  organizations: { type: array, items: { $ref: "#/components/schemas/OrganizationRow" } }
-                  next_page_token: { type: string }
-                  platform: { $ref: "#/components/schemas/PlatformInfo" }
+              schema: { $ref: "#/components/schemas/AdminListOrganizationsResponse" }
         "409": { $ref: "#/components/responses/Error" }
   /admin/v1/organizations/{account_id}/plan:
     put:
@@ -3860,11 +3342,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                plan_code: { type: string }
-                limits: { type: object, additionalProperties: { type: integer, format: int64, minimum: 0 } }
+            schema: { $ref: "#/components/schemas/AdminSetOrganizationPlanRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/OrganizationPlan" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -3896,11 +3374,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
-                  next_page_token: { type: string }
+              schema: { $ref: "#/components/schemas/AdminListInvoicesResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/invoices/{invoice_id}:
     get:
@@ -3926,7 +3400,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema: { type: object, properties: { url: { type: string }, expires_at: { type: string, format: date-time } } }
+              schema: { $ref: "#/components/schemas/AdminGetInvoicePdfResponse" }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/saga:
     get:
@@ -3941,11 +3415,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  saga: { $ref: "#/components/schemas/InvoiceSaga" }
-                  events: { type: array, items: { $ref: "#/components/schemas/SagaEvent" } }
+              schema: { $ref: "#/components/schemas/AdminGetInvoiceSagaResponse" }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/provider-accounts:
     get:
@@ -3957,18 +3427,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  accounts:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        provider: { type: string }
-                        environment: { type: string, enum: [sandbox, live] }
-                        is_default: { type: boolean }
-                        updated_at: { type: string, format: date-time }
+              schema: { $ref: "#/components/schemas/ListProviderAccountsResponse" }
         "503": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/provider-accounts/{provider}:
     put:
@@ -3986,7 +3445,7 @@ paths:
           reference_template, currencies and payment_window_days, validated: the IBAN by its check digits, the template by its placeholders)
         content:
           application/json:
-            schema: { type: object }
+            schema: { $ref: "#/components/schemas/PutProviderAccountRequest" }
       responses:
         "200": { description: Stored }
         "400": { $ref: "#/components/responses/Error" }
@@ -4078,10 +3537,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  accounts: { type: array, items: { $ref: "#/components/schemas/EInvoiceAccount" } }
+              schema: { $ref: "#/components/schemas/ListEInvoiceAccountsResponse" }
         "503": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/e-invoice-accounts/{environment}:
     put:
@@ -4121,26 +3577,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  entries:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id: { type: integer }
-                        invoice_id: { type: string, format: uuid }
-                        provider: { type: string }
-                        environment: { type: string }
-                        kind: { type: string, enum: [charge, refund, dispute, payout] }
-                        status: { type: string, enum: [succeeded, declined, failed, pending] }
-                        amount_minor: { type: integer }
-                        currency: { type: string }
-                        provider_ref: { type: string }
-                        source: { type: string, enum: [command, webhook, reconciliation, manual] }
-                        detail: { type: string }
-                        occurred_at: { type: string, format: date-time }
+              schema: { $ref: "#/components/schemas/ListPaymentLedgerResponse" }
         "503": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/invoices/{invoice_id}/transfer:
     get:
@@ -4174,15 +3611,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [amount_minor, currency, bank_reference]
-              properties:
-                amount_minor: { type: integer, format: int64, minimum: 1 }
-                currency: { type: string, examples: [TRY] }
-                received_at: { type: string, format: date-time, description: When the bank booked it. Default now; not in the future. }
-                bank_reference: { type: string, maxLength: 128, description: "The bank's transaction or statement reference; it makes the call idempotent." }
-                note: { type: string, maxLength: 500 }
+            schema: { $ref: "#/components/schemas/ConfirmInvoiceTransferRequest" }
       responses:
         "200": { description: The same receipt was recorded before, content: { application/json: { schema: { $ref: "#/components/schemas/TransferReceiptResult" } } } }
         "201": { description: Recorded, content: { application/json: { schema: { $ref: "#/components/schemas/TransferReceiptResult" } } } }
@@ -4205,11 +3634,7 @@ paths:
       requestBody:
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                outcome: { type: string, enum: [rejected, expired], default: rejected }
-                reason: { type: string, maxLength: 500 }
+            schema: { $ref: "#/components/schemas/RejectInvoiceTransferRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceTransfer" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -4225,7 +3650,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object }
+            schema: { $ref: "#/components/schemas/ProviderWebhookRequest" }
       responses:
         "200": { description: "Understood (processed, duplicate or ignored)" }
         "400": { $ref: "#/components/responses/Error" }
@@ -4244,7 +3669,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object }
+            schema: { $ref: "#/components/schemas/TenantProviderWebhookRequest" }
       responses:
         "200": { description: "Understood (processed, duplicate or ignored)" }
         "400": { $ref: "#/components/responses/Error" }
@@ -4261,21 +3686,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  subscriptions:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        provider: { type: string }
-                        environment: { type: string }
-                        provider_ref: { type: string }
-                        quotify_subscription_id: { type: string, format: uuid }
-                        status: { type: string }
-                        next_billed_at: { type: string, format: date-time }
-                        updated_at: { type: string, format: date-time }
+              schema: { $ref: "#/components/schemas/ListProviderSubscriptionsResponse" }
         "503": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/checkouts:
     post:
@@ -4288,24 +3699,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [provider, price_ref]
-              properties:
-                provider: { type: string, examples: [paddle] }
-                price_ref: { type: string, description: The provider's id of what is sold, examples: [pri_01] }
-                quantity: { type: integer, minimum: 1 }
-                quotify_subscription_id: { type: string, format: uuid, description: Ties the provider's subscription to ours }
+            schema: { $ref: "#/components/schemas/CreateProviderCheckoutRequest" }
       responses:
         "201":
           description: Created
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  url: { type: string }
-                  ref: { type: string }
+              schema: { $ref: "#/components/schemas/CreateProviderCheckoutResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4326,26 +3726,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [subscription_id, to_provider]
-              properties:
-                subscription_id: { type: string, format: uuid }
-                to_provider: { type: string, enum: [iyzico, paddle, banktransfer] }
-                price_ref: { type: string, description: "The target provider's catalogue price, for a provider that runs subscriptions itself" }
+            schema: { $ref: "#/components/schemas/StartProviderMigrationRequest" }
       responses:
         "201":
           description: Started (checkout_url, state started) or done (new_subscription, cutover, state completed)
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  migration: { type: string, format: uuid }
-                  state: { type: string, enum: [started, completed] }
-                  checkout_url: { type: string }
-                  new_subscription: { type: string, format: uuid }
-                  cutover: { type: string, format: date-time }
+              schema: { $ref: "#/components/schemas/StartProviderMigrationResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4379,26 +3766,13 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                plan_code: { type: string }
-                plan_version: { type: integer, description: 0 = latest }
-                product_name: { type: string }
-                tax_category: { type: string, description: Default saas }
+            schema: { $ref: "#/components/schemas/SyncProviderCatalogueRequest" }
       responses:
         "200":
           description: What was created, what was there already and what was skipped
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  plan_version_id: { type: string }
-                  product_ref: { type: string }
-                  created: { type: object, additionalProperties: { type: string }, description: Payrudder's key of each price created to the provider's id }
-                  existing: { type: object, additionalProperties: { type: string } }
-                  skipped: { type: object, additionalProperties: { type: string }, description: Key to the reason }
+              schema: { $ref: "#/components/schemas/SyncProviderCatalogueResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4418,12 +3792,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  objects:
-                    type: array
-                    items: { type: object, properties: { kind: { type: string }, key: { type: string }, ref: { type: string } } }
+              schema: { $ref: "#/components/schemas/ListProviderCatalogueResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4444,12 +3813,7 @@ paths:
           description: The provider's ids
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  customer_ref: { type: string }
-                  address_ref: { type: string }
-                  business_ref: { type: string }
+              schema: { $ref: "#/components/schemas/EnsureProviderCustomerResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4466,7 +3830,7 @@ paths:
         - { name: external_id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreateProviderPortalLinkResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4533,11 +3897,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                at_period_end: { type: boolean }
-                resume_at: { type: string, format: date-time }
+            schema: { $ref: "#/components/schemas/PauseProviderSubscriptionRequest" }
       responses:
         "202": { description: Requested; Payrudder's copy follows the provider's notification }
         "400": { $ref: "#/components/responses/Error" }
@@ -4573,7 +3933,7 @@ paths:
         - { name: id, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreateProviderPaymentMethodLinkResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4592,20 +3952,9 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                Description: { type: string }
-                Type: { type: string, enum: [percentage, flat] }
-                Amount: { type: string, description: "A percentage (10 for 10 %) or minor units of Currency" }
-                Currency: { type: string }
-                Code: { type: string }
-                Recurring: { type: boolean }
-                MaxIntervals: { type: integer }
-                UsageLimit: { type: integer }
-                ExpiresAt: { type: string, format: date-time }
+            schema: { $ref: "#/components/schemas/CreateProviderDiscountRequest" }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { type: object, properties: { discount_ref: { type: string }, code: { type: string } } } } } }
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreateProviderDiscountResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4622,7 +3971,7 @@ paths:
         - { name: ref, in: path, required: true, schema: { type: string } }
         - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { url: { type: string } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GetProviderInvoiceLinkResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
@@ -4641,31 +3990,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  period: { type: string }
-                  paid_invoices: { type: integer }
-                  successful_charges: { type: integer }
-                  discrepancy_counts:
-                    type: object
-                    additionalProperties: { type: integer }
-                    description: By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes
-                  discrepancies:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        kind: { type: string }
-                        invoice_id: { type: string }
-                        number: { type: string }
-                        provider: { type: string }
-                        provider_ref: { type: string }
-                        currency: { type: string }
-                        billed_minor: { type: integer }
-                        ledger_minor: { type: integer }
-                        detail: { type: string }
-                  truncated: { type: boolean }
+              schema: { $ref: "#/components/schemas/ReconcilePaymentsResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
   /admin/v1/dead-letters:
@@ -4681,19 +4006,7 @@ paths:
           description: OK
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  queues: { type: array, items: { type: object, properties: { queue: { type: string }, messages: { type: string, description: int64 as a string } } } }
-                  messages:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        message_id: { type: string }
-                        delivery_count: { type: string }
-                        reason: { type: string }
-                        body_bytes: { type: integer }
+              schema: { $ref: "#/components/schemas/AdminListDeadLettersResponse" }
         "400": { $ref: "#/components/responses/Error" }
   /admin/v1/dead-letters/redrive:
     post:
@@ -4704,9 +4017,9 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [queue], properties: { queue: { type: string }, limit: { type: integer, minimum: 1, maximum: 1000, default: 100 } } }
+            schema: { $ref: "#/components/schemas/AdminRedriveDeadLettersRequest" }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object, properties: { redriven: { type: integer } } } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdminRedriveDeadLettersResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/dashboard:
     get:
@@ -4747,14 +4060,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                grace_period: { type: string, examples: ["172800s"] }
-                tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
-                address: { $ref: "#/components/schemas/Address" }
-                legal: { $ref: "#/components/schemas/LegalInfo" }
-                e_invoice_on: { type: string, enum: ["off", finalized, paid] }
+            schema: { $ref: "#/components/schemas/UpdateTenantRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -4769,12 +4075,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [status]
-              properties:
-                status: { type: string, enum: [active, suspended] }
-                reason: { type: string }
+            schema: { $ref: "#/components/schemas/SetTenantStatusRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -4790,22 +4091,13 @@ paths:
       requestBody:
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                role: { $ref: "#/components/schemas/ApiKeyRole" }
-                permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" } }
-                scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], description: "Older way to choose a role when role and permissions are absent." }
+            schema: { $ref: "#/components/schemas/CreateApiKeyRequest" }
       responses:
         "201":
           description: Created
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  api_key: { $ref: "#/components/schemas/ApiKey" }
-                  plaintext: { type: string }
+              schema: { $ref: "#/components/schemas/CreateApiKeyResponse" }
         "404": { $ref: "#/components/responses/Error" }
   /admin/v1/analytics/ingest-stats:
     get:
@@ -4816,7 +4108,7 @@ paths:
         - { name: tenant_id, in: query, schema: { type: string, format: uuid } }
         - { name: window_seconds, in: query, schema: { type: integer, minimum: 1, maximum: 86400, default: 300 } }
       responses:
-        "200": { description: OK, content: { application/json: { schema: { type: object } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/AdminIngestStatsResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
   /admin/v1/billing/close-period:
     post:
@@ -4827,7 +4119,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [tenant_id, period_id], properties: { tenant_id: { type: string, format: uuid }, period_id: { type: string } } }
+            schema: { $ref: "#/components/schemas/AdminClosePeriodRequest" }
       responses:
         "202": { description: Accepted, content: { application/json: { schema: { $ref: "#/components/schemas/BillingRun" } } } }
         "409": { $ref: "#/components/responses/Error" }
@@ -4857,13 +4149,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [from_period_id, reason]
-              properties:
-                from_period_id: { type: string, examples: ["2026-10"] }
-                to_period_id: { type: string, description: Defaults to from_period_id }
-                reason: { type: string }
+            schema: { $ref: "#/components/schemas/AdminStartReplayRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ReplayJob" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -4920,7 +4206,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [plan_version_id], properties: { plan_version_id: { type: string, format: uuid } } }
+            schema: { $ref: "#/components/schemas/AdminStartReratingRequest" }
       responses:
         "200": { description: The job already existed, content: { application/json: { schema: { $ref: "#/components/schemas/ReratingJob" } } } }
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/ReratingJob" } } } }
@@ -4947,7 +4233,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [tenant_id], properties: { tenant_id: { type: string, format: uuid } } }
+            schema: { $ref: "#/components/schemas/AdminRetryInvoiceRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
         "409": { $ref: "#/components/responses/Error" }
@@ -4961,7 +4247,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { type: object, required: [tenant_id], properties: { tenant_id: { type: string, format: uuid }, reason: { type: string } } }
+            schema: { $ref: "#/components/schemas/AdminVoidInvoiceRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/InvoiceSaga" } } } }
         "409": { $ref: "#/components/responses/Error" }
@@ -4982,16 +4268,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [tenant_id, method, amount_minor]
-              properties:
-                tenant_id: { type: string, format: uuid }
-                method: { type: string, enum: [bank_transfer, cash, other] }
-                amount_minor: { type: string, description: int64 minor units as a string }
-                received_at: { type: string, format: date-time, description: Default now; not in the future. }
-                reference: { type: string, maxLength: 128 }
-                note: { type: string, maxLength: 500 }
+            schema: { $ref: "#/components/schemas/AdminRecordInvoicePaymentRequest" }
       responses:
         "200": { description: The same payment was recorded before, content: { application/json: { schema: { $ref: "#/components/schemas/RecordInvoicePaymentResult" } } } }
         "201": { description: Recorded, content: { application/json: { schema: { $ref: "#/components/schemas/RecordInvoicePaymentResult" } } } }
@@ -5012,14 +4289,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [tenant_id]
-              properties:
-                tenant_id: { type: string, format: uuid }
-                amount_minor: { type: string, description: "int64 minor units; 0 or absent = what is left of the invoice" }
-                reason: { type: string, maxLength: 500 }
-                refund_to_card: { type: boolean, description: "Refund the amount to the card instead of adding it to the credit balance" }
+            schema: { $ref: "#/components/schemas/AdminCreateCreditNoteRequest" }
       responses:
         "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreditNote" } } } }
         "400": { $ref: "#/components/responses/Error" }
@@ -5035,11 +4305,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [tenant_id]
-              properties:
-                tenant_id: { type: string, format: uuid }
+            schema: { $ref: "#/components/schemas/AdminRetryCreditNoteRefundRequest" }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/CreditNote" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -5346,8 +4612,7 @@ components:
         event_id: { type: string, description: Set for accepted and duplicate (the original id). }
         error_code:
           type: string
-          enum: [UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME, INVALID_QUANTITY,
-                 INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES]
+          enum: [UNKNOWN_METER, UNKNOWN_CUSTOMER, EVENT_TOO_OLD, EVENT_IN_FUTURE, INVALID_EVENT_TIME, INVALID_QUANTITY, INVALID_QUANTITY_PRECISION, IDEMPOTENCY_KEY_REQUIRED, IDEMPOTENCY_KEY_INVALID, IDEMPOTENCY_KEY_REUSED, INVALID_PROPERTIES]
         error_message: { type: string }
     AuthUser:
       type: object
@@ -5824,6 +5089,1288 @@ components:
             providers:
               type: array
               items: { type: object, properties: { provider: { type: string }, environment: { type: string }, is_default: { type: boolean } } }
+    ListCustomersResponse:
+      type: object
+      properties:
+        customers: { type: array, items: { $ref: "#/components/schemas/Customer" } }
+        next_page_token: { type: string }
+    SetPaymentMethodRequest:
+      type: object
+      required: [payment_method]
+      properties:
+        payment_method: { type: string }
+    ListMetersResponse:
+      type: object
+      properties:
+        meters: { type: array, items: { $ref: "#/components/schemas/Meter" } }
+    GetCustomerUsageResponse:
+      type: object
+      properties:
+        customer_external_id: { type: string }
+        period_id: { type: string }
+        usage:
+          type: array
+          items: { $ref: "#/components/schemas/GetCustomerUsageUsage" }
+    GetCustomerUsageUsage:
+      type: object
+      properties:
+        meter_code: { type: string }
+        quantity: { type: string, examples: ["1500.250"] }
+        event_count: { type: integer, format: int64 }
+    ListEntitlementsResponse:
+      type: object
+      properties:
+        items: { type: array, items: { $ref: "#/components/schemas/EntitlementStatus" } }
+    ListEntitlementOverridesResponse:
+      type: object
+      properties:
+        overrides: { type: array, items: { $ref: "#/components/schemas/EntitlementOverride" } }
+    CreatePlanRequest:
+      type: object
+      required: [code, name]
+      properties:
+        code: { type: string }
+        name: { type: string }
+    ListPlansResponse:
+      type: object
+      properties:
+        plans: { type: array, items: { $ref: "#/components/schemas/Plan" } }
+    PublishPlanVersionRequest:
+      type: object
+      properties:
+        base_fee_minor: { type: string, description: int64 minor units }
+        fees:
+          type: array
+          description: Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's
+          items: { $ref: "#/components/schemas/CurrencyFee" }
+        prices: { type: array, items: { $ref: "#/components/schemas/Price" } }
+        entitlements: { type: array, items: { $ref: "#/components/schemas/Entitlement" } }
+        trial_days: { type: integer, minimum: 0, maximum: 365, description: The trial a new subscription to this version gets unless its request says otherwise; 0 is none }
+    ListSubscriptionsResponse:
+      type: object
+      properties:
+        subscriptions: { type: array, items: { $ref: "#/components/schemas/Subscription" } }
+        next_page_token: { type: string }
+    CreateSubscriptionRequest:
+      type: object
+      required: [customer_external_id, plan_code]
+      properties:
+        customer_external_id: { type: string }
+        plan_code: { type: string }
+        plan_version: { type: integer, description: 0 = latest }
+        start_time: { type: string, format: date-time }
+        trial_days: { type: integer, minimum: 0, maximum: 365, description: "Left out: the package version's own default trial. 0: no trial whatever the default is" }
+        interval: { type: string, enum: [SUBSCRIPTION_INTERVAL_MONTH, SUBSCRIPTION_INTERVAL_YEAR] }
+        currency: { type: string, description: "Default is the customer's billing currency, then the tenant's" }
+        provider: { type: string, description: The payment provider that sells it (for example paddle); default is the tenant's default account }
+        coupon_code: { type: string, description: A coupon to redeem on the new subscription }
+        quantity: { type: integer, minimum: 1, maximum: 100000, description: "Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance" }
+        fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS], description: "Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee." }
+    CancelSubscriptionResponse:
+      oneOf:
+        - $ref: "#/components/schemas/Subscription"
+        - type: object
+          properties:
+            subscription: { $ref: "#/components/schemas/Subscription" }
+            credited_minor: { type: string, description: "Minor units of the subscription's currency" }
+    ChangePlanRequest:
+      type: object
+      required: [plan_code]
+      properties:
+        plan_code: { type: string }
+        plan_version: { type: integer, description: 0 = latest }
+        change_time: { type: string, format: date-time, description: Default now }
+    ChangePlanResponse:
+      type: object
+      properties:
+        subscription: { $ref: "#/components/schemas/Subscription" }
+        credit_minor: { type: string, description: Unused part of the old fixed fee }
+        charge_minor: { type: string, description: Remaining part of the new fixed fee }
+    ChangeSubscriptionResponse:
+      type: object
+      properties:
+        subscription: { $ref: "#/components/schemas/Subscription" }
+        quote: { $ref: "#/components/schemas/ChangeQuote" }
+        scheduled: { type: boolean, description: True when the change waits for the end of the period }
+    ApplyCouponRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+    EmptyObject:
+      type: object
+      description: An empty JSON object
+    VoidExpenseRequest:
+      type: object
+      properties:
+        reason: { type: string, maxLength: 200 }
+    ResolveInboxItemRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [accepted, dismissed] }
+        expense_id: { type: string, format: uuid }
+    ListExpenseRulesResponse:
+      type: object
+      properties:
+        rules: { type: array, items: { $ref: "#/components/schemas/ExpenseRule" } }
+    InboundInvoicesRequest:
+      type: object
+    InboundInvoicesResponse:
+      type: object
+      properties:
+        stored: { type: integer }
+    ListWebhookEndpointsResponse:
+      type: object
+      properties:
+        endpoints: { type: array, items: { $ref: "#/components/schemas/WebhookEndpoint" } }
+    ListWebhookDeliveriesResponse:
+      type: object
+      properties:
+        deliveries: { type: array, items: { $ref: "#/components/schemas/WebhookDelivery" } }
+        next_page_token: { type: string }
+    ListCouponsResponse:
+      type: object
+      properties:
+        coupons: { type: array, items: { $ref: "#/components/schemas/Coupon" } }
+    CreatePromotionCodesResponse:
+      type: object
+      properties:
+        codes: { type: array, items: { $ref: "#/components/schemas/PromotionCode" } }
+    ListPromotionCodesResponse:
+      type: object
+      properties:
+        codes: { type: array, items: { $ref: "#/components/schemas/PromotionCode" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    ListCouponRedemptionsResponse:
+      type: object
+      properties:
+        redemptions: { type: array, items: { $ref: "#/components/schemas/CouponRedemption" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    GrantCustomerCouponRequest:
+      type: object
+      required: [coupon_code, source, source_ref]
+      properties:
+        coupon_code: { type: string }
+        source: { type: string, description: "Who gives it, e.g. operator or affiliate" }
+        source_ref: { type: string }
+    GrantCustomerCouponResponse:
+      type: object
+      properties:
+        granted: { type: boolean }
+    CreateAffiliateRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+        name: { type: string }
+        code: { type: string }
+        payout_method: { type: string, enum: [manual, bank_transfer] }
+        payout_details: { type: string, maxLength: 1000 }
+        pending: { type: boolean }
+    ListAffiliatesResponse:
+      type: object
+      properties:
+        affiliates: { type: array, items: { $ref: "#/components/schemas/Affiliate" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    ListAffiliateReferralsResponse:
+      type: object
+      properties:
+        referrals: { type: array, items: { $ref: "#/components/schemas/AffiliateReferral" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    ListAffiliateCommissionsResponse:
+      type: object
+      properties:
+        commissions: { type: array, items: { $ref: "#/components/schemas/AffiliateCommission" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    ReverseAffiliateCommissionRequest:
+      type: object
+      required: [invoice_id, reason]
+      properties:
+        invoice_id: { type: string, format: uuid }
+        reason: { type: string, enum: [chargeback, manual] }
+        reference: { type: string, maxLength: 100, description: "Names this reversal; required for manual" }
+        amount_minor: { type: string, description: "How much to take back; 0 or absent is all that is left" }
+        note: { type: string, maxLength: 500 }
+    ReverseAffiliateCommissionResponse:
+      type: object
+      properties:
+        reversed_minor: { type: string, description: "How much this call took back; 0 on a repeat" }
+        commission: { $ref: "#/components/schemas/AffiliateCommission" }
+    GetAffiliateBalancesResponse:
+      type: object
+      properties:
+        balances: { type: array, items: { $ref: "#/components/schemas/AffiliateBalance" } }
+    ListAffiliatePayoutsResponse:
+      type: object
+      properties:
+        payouts: { type: array, items: { $ref: "#/components/schemas/AffiliatePayout" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    CreateAffiliatePayoutsRequest:
+      type: object
+      properties:
+        affiliate_id: { type: string, format: uuid }
+        currency: { type: string }
+    CreateAffiliatePayoutsResponse:
+      type: object
+      properties:
+        payouts: { type: array, items: { $ref: "#/components/schemas/AffiliatePayout" } }
+        skipped: { type: array, items: { $ref: "#/components/schemas/CreateAffiliatePayoutsSkipped" } }
+    CreateAffiliatePayoutsSkipped:
+      type: object
+      properties:
+        affiliate_id: { type: string, format: uuid }
+        currency: { type: string }
+        total_minor: { type: string }
+        reason: { type: string, enum: [below_minimum, not_positive] }
+    MarkAffiliatePayoutPaidRequest:
+      type: object
+      properties:
+        reference: { type: string, maxLength: 200, description: "Your note, e.g. the bank transfer reference" }
+    ListAffiliateJournalResponse:
+      type: object
+      properties:
+        entries: { type: array, items: { $ref: "#/components/schemas/AffiliateJournalEntry" } }
+        totals: { type: array, items: { $ref: "#/components/schemas/ListAffiliateJournalTotal" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    ListAffiliateJournalTotal:
+      type: object
+      properties:
+        currency: { type: string }
+        debit_minor: { type: string }
+        credit_minor: { type: string }
+    UpdateAffiliateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        payout_method: { type: string, enum: [manual, bank_transfer] }
+        payout_details: { type: string }
+        status: { type: string, enum: [active, suspended] }
+    LinkAffiliatePromotionCodeRequest:
+      type: object
+      required: [promotion_code]
+      properties:
+        promotion_code: { type: string }
+    AttributeCustomerRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        source: { type: string, enum: [link, code, api] }
+        touch_time: { type: string, format: date-time, description: When the visitor followed the link; default now }
+    AttributeCustomerResponse:
+      type: object
+      properties:
+        attributed: { type: boolean }
+        reason: { type: string }
+    GetRevenueReportResponse:
+      type: object
+      properties:
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/GetRevenueReportRow" }
+    GetRevenueReportRow:
+      type: object
+      properties:
+        period: { type: string }
+        provider: { type: string }
+        country: { type: string }
+        currency: { type: string }
+        invoices: { type: string }
+        billed_minor: { type: string, description: Finalized invoices that are not void }
+        collected_minor: { type: string, description: Paid }
+        refunded_minor: { type: string, description: Invoices that were refunded }
+        outstanding_minor: { type: string, description: Open }
+        uncollectible_minor: { type: string }
+        void_minor: { type: string }
+        credited_minor: { type: string, description: Credit notes issued against these invoices }
+    GetDunningReportResponse:
+      type: object
+      properties:
+        invoices:
+          type: array
+          items: { $ref: "#/components/schemas/GetDunningReportInvoice" }
+        summary:
+          type: array
+          items: { $ref: "#/components/schemas/GetDunningReportSummary" }
+    GetDunningReportInvoice:
+      type: object
+      properties:
+        invoice_id: { type: string, format: uuid }
+        number: { type: string }
+        customer_external_id: { type: string }
+        period: { type: string }
+        provider: { type: string }
+        currency: { type: string }
+        total_minor: { type: string }
+        state: { type: string, enum: [PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, UNCOLLECTIBLE] }
+        dunning_attempt: { type: integer }
+        next_attempt_time: { type: string, format: date-time }
+        last_error: { type: string }
+    GetDunningReportSummary:
+      type: object
+      properties:
+        state: { type: string }
+        provider: { type: string }
+        currency: { type: string }
+        invoices: { type: string }
+        total_minor: { type: string }
+    GetSubscriptionReportResponse:
+      type: object
+      properties:
+        month: { type: string }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/GetSubscriptionReportRow" }
+    GetSubscriptionReportRow:
+      type: object
+      properties:
+        provider: { type: string }
+        country: { type: string }
+        currency: { type: string }
+        active: { type: string }
+        trialing: { type: string }
+        paused: { type: string }
+        past_due: { type: string }
+        mrr_minor: { type: string, description: Fixed fees per month of active and past due subscriptions }
+        new_subscriptions: { type: string }
+        new_mrr_minor: { type: string }
+        churned: { type: string, description: Ended with no successor; a plan change or provider migration is not churn }
+        churned_mrr_minor: { type: string }
+    PreviewRoutingRequest:
+      type: object
+      properties:
+        country: { type: string, examples: [TR] }
+        currency: { type: string, examples: [TRY] }
+    PreviewRoutingResponse:
+      type: object
+      properties:
+        provider: { type: string, description: Empty when no rule matches (the tenant's default account) }
+        rule_index: { type: integer, description: "-1 when no rule matches" }
+        owner: { type: string, enum: [quotify, provider] }
+        can_charge: { type: boolean }
+    ListInvoicesResponse:
+      type: object
+      properties:
+        invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
+        next_page_token: { type: string }
+    ListCreditNotesResponse:
+      type: object
+      properties:
+        credit_notes: { type: array, items: { $ref: "#/components/schemas/CreditNote" } }
+        next_page_token: { type: string }
+    CreateInvoiceLinkRequest:
+      type: object
+      properties:
+        expires_in_days: { type: integer, minimum: 1, maximum: 365, default: 90 }
+    CreateInvoiceLinkResponse:
+      type: object
+      properties:
+        token: { type: string }
+        url: { type: string }
+        expires_at: { type: string, format: date-time }
+    RevokeInvoiceLinksResponse:
+      type: object
+      properties:
+        revoked: { type: integer }
+    ListPaymentLinksResponse:
+      type: object
+      properties:
+        links: { type: array, items: { $ref: "#/components/schemas/PaymentLink" } }
+        next_page_token: { type: string }
+    CreatePortalLinkRequest:
+      type: object
+      properties:
+        expires_in_days: { type: integer, minimum: 1, maximum: 365, default: 30 }
+    CreatePortalLinkResponse:
+      type: object
+      properties:
+        token: { type: string }
+        url: { type: string }
+        expires_at: { type: string, format: date-time }
+        customer_id: { type: string }
+    RevokePortalLinksResponse:
+      type: object
+      properties:
+        revoked: { type: integer }
+    ListCustomerPaymentsResponse:
+      type: object
+      properties:
+        invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
+        payments: { type: array, items: { $ref: "#/components/schemas/CustomerPayment" } }
+    GetInvoicePdfResponse:
+      type: object
+      properties:
+        url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+    ListPaymentsResponse:
+      type: object
+      properties:
+        payments: { type: array, items: { $ref: "#/components/schemas/Payment" } }
+        truncated: { type: boolean }
+    CreateUploadSessionRequest:
+      type: object
+      required: [files]
+      properties:
+        files:
+          type: array
+          maxItems: 50
+          items: { $ref: "#/components/schemas/CreateUploadSessionFile" }
+    CreateUploadSessionFile:
+      type: object
+      required: [filename, content_type, size, purpose]
+      properties:
+        filename: { type: string }
+        content_type: { type: string, examples: ["application/pdf"] }
+        size: { type: integer, format: int64 }
+        purpose: { type: string, enum: [invoice_logo, invoice_attachment, general] }
+        sha256: { type: string, description: Optional hex sha256 of the whole file }
+    PresignPartsResponse:
+      type: object
+      properties:
+        parts: { type: array, items: { $ref: "#/components/schemas/PresignedPart" } }
+    CompleteUploadFileRequest:
+      type: object
+      required: [parts]
+      properties:
+        parts:
+          type: array
+          items: { $ref: "#/components/schemas/CompleteUploadFilePart" }
+    CompleteUploadFilePart:
+      type: object
+      required: [part_number, etag]
+      properties:
+        part_number: { type: integer }
+        etag: { type: string }
+    UploadAssetsResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/UploadAssetsResult" }
+    UploadAssetsResult:
+      type: object
+      properties:
+        filename: { type: string }
+        status: { type: string, enum: [created, rejected] }
+        asset: { $ref: "#/components/schemas/Asset" }
+        error_code: { type: string, examples: ["CONTENT_TYPE_MISMATCH"] }
+        message: { type: string }
+    ListAssetsResponse:
+      type: object
+      properties:
+        assets: { type: array, items: { $ref: "#/components/schemas/Asset" } }
+        next_page_token: { type: string }
+    SetInvoiceLogoRequest:
+      type: object
+      required: [asset_id]
+      properties:
+        asset_id: { type: string, format: uuid }
+    SetInvoiceLogoResponse:
+      type: object
+      properties:
+        invoice_logo_asset_id: { type: string }
+    ClearInvoiceLogoResponse:
+      type: object
+      properties:
+        invoice_logo_asset_id: { type: string }
+    DownloadAssetResponse:
+      type: object
+      properties:
+        url: { type: string, format: uri }
+        expires_at: { type: string, format: date-time }
+    GetAnalyticsUsageResponse:
+      type: object
+      properties:
+        precision: { type: string, enum: [estimated, exact] }
+        quantity_scale: { type: integer }
+        points:
+          type: array
+          items: { $ref: "#/components/schemas/GetAnalyticsUsagePoint" }
+    GetAnalyticsUsagePoint:
+      type: object
+      properties:
+        start: { type: string, format: date-time }
+        quantity: { type: string, examples: ["1.500"] }
+        event_count: { type: string, description: int64 as a string }
+    GetTopCustomersResponse:
+      type: object
+      properties:
+        precision: { type: string }
+        quantity_scale: { type: integer }
+        customers:
+          type: array
+          items: { $ref: "#/components/schemas/GetTopCustomersCustomer" }
+    GetTopCustomersCustomer:
+      type: object
+      properties:
+        customer_id: { type: string }
+        customer_external_id: { type: string }
+        quantity: { type: string }
+        event_count: { type: string }
+    SandboxClosePeriodRequest:
+      type: object
+      properties:
+        period: { type: string, pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$" }
+    SetPaymentScenarioRequest:
+      type: object
+      required: [scenario]
+      properties:
+        scenario:
+          type: string
+          enum: [success, declined, insufficient_funds_once, error_then_success, timeout_committed, timeout_not_committed]
+    SignUpRequest:
+      type: object
+      required: [email, password, account_name]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 10, maxLength: 256, format: password }
+        display_name: { type: string, maxLength: 200 }
+        account_name: { type: string, maxLength: 200, description: The organisation the person starts }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar], description: "The language of the mails. Default: the first supported language of Accept-Language, else English." }
+    AuthMethodsResponse:
+      type: object
+      properties:
+        password: { type: boolean }
+        otp: { type: boolean }
+        google: { type: boolean }
+    RequestLoginCodeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+    VerifyLoginCodeRequest:
+      type: object
+      required: [email, code]
+      properties:
+        email: { type: string, format: email }
+        code: { type: string, pattern: "^[0-9]{6}$" }
+        display_name: { type: string, maxLength: 200, description: Used only when the code creates the account }
+        account_name: { type: string, maxLength: 200, description: Used only when the code creates the account }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    VerifyEmailResponse:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/AuthUser" }
+    ForgotPasswordRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+    ResetPasswordRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string }
+        password: { type: string, minLength: 10, maxLength: 256, format: password }
+    LookupInvitationRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    AcceptInvitationRequest:
+      type: object
+      required: [token, password]
+      properties:
+        token: { type: string }
+        password: { type: string, minLength: 10, maxLength: 256, format: password }
+        display_name: { type: string, maxLength: 200 }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar] }
+    SignInRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, format: password }
+    UpdateMyOnboardingRequest:
+      type: object
+      properties:
+        wizard: { $ref: "#/components/schemas/OnboardingWizard" }
+        seen_tours: { type: array, maxItems: 200, items: { type: string, pattern: "^[A-Za-z0-9._-]{1,64}$" } }
+        forget_tours: { type: array, items: { type: string, pattern: "^[A-Za-z0-9._-]{1,64}$" } }
+    AppCreateAccountRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 200 }
+    AppRenameAccountRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 200 }
+    AppRenameAccountResponse:
+      type: object
+      properties:
+        name: { type: string }
+    AppChangePlanRequest:
+      type: object
+      required: [plan_code]
+      properties:
+        plan_code: { type: string }
+    AppListPlanInvoicesResponse:
+      type: object
+      properties:
+        invoices: { type: array, items: { $ref: "#/components/schemas/PlanInvoice" } }
+    AppPlanInvoicePayLinkResponse:
+      type: object
+      properties:
+        url: { type: string }
+    AppPlanPortalLinkResponse:
+      type: object
+      properties:
+        url: { type: string }
+        expires_at: { type: string, format: date-time }
+    AppListInvitationsResponse:
+      type: object
+      properties:
+        invitations: { type: array, items: { $ref: "#/components/schemas/Invitation" } }
+    AppInviteMemberRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email: { type: string, format: email }
+        role: { type: string, enum: [owner, admin, viewer] }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar], description: The language of the mail }
+    AppUpdateMemberRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { type: string, enum: [owner, admin, viewer] }
+    AppUpdateMemberRoleResponse:
+      type: object
+      properties:
+        role: { type: string, enum: [owner, admin, viewer] }
+    AppAcceptInvitationRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    AppAcceptInvitationResponse:
+      type: object
+      properties:
+        account_id: { type: string, format: uuid }
+        memberships: { type: array, items: { $ref: "#/components/schemas/Membership" } }
+    AppListAppsResponse:
+      type: object
+      properties:
+        apps: { type: array, items: { $ref: "#/components/schemas/App" } }
+    AppCreateAppRequest:
+      type: object
+      required: [name, currency, timezone]
+      properties:
+        name: { type: string, maxLength: 200 }
+        slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
+        currency: { type: string, pattern: "^[A-Z]{3}$", description: An active ISO 4217 code }
+        timezone: { type: string, examples: [Europe/Istanbul] }
+    AppGetAppResponse:
+      type: object
+      properties:
+        app: { $ref: "#/components/schemas/App" }
+        role: { type: string, enum: [owner, admin, viewer] }
+    AppRenameAppRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 200 }
+    AppListApiKeysResponse:
+      type: object
+      properties:
+        api_keys: { type: array, items: { $ref: "#/components/schemas/ApiKey" } }
+    AppCreateApiKeyRequest:
+      type: object
+      required: [environment]
+      properties:
+        environment: { type: string, enum: [sandbox, live] }
+        role: { $ref: "#/components/schemas/ApiKeyRole" }
+        permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" }, description: "Required for the role custom; for a fixed role optional, and then a subset of the role's own." }
+        scope: { type: string, enum: [full, ingest, read], description: "Older way to choose a role when `role` and `permissions` are absent: full is admin, ingest is ingest_only, read is read_only." }
+    AppCreateApiKeyResponse:
+      type: object
+      properties:
+        api_key: { $ref: "#/components/schemas/ApiKey" }
+        plaintext: { type: string, description: "qk_{test|live}_<prefix>_<secret>, shown once" }
+    AppSandboxResetStatusResponse:
+      type: object
+      properties:
+        sandbox_reset: { $ref: "#/components/schemas/SandboxReset" }
+    AppSandboxResetResponse:
+      type: object
+      properties:
+        sandbox_reset: { $ref: "#/components/schemas/SandboxReset" }
+    SandboxScenariosResponse:
+      type: object
+      properties:
+        scenarios:
+          type: array
+          items: { $ref: "#/components/schemas/SandboxScenariosScenario" }
+    SandboxScenariosScenario:
+      type: object
+      properties:
+        scenario: { type: string, examples: [declined] }
+        payment_method: { type: string, examples: [pm_sandbox_declined] }
+        outcome: { type: string, enum: [paid, uncollectible, paid_after_retry, paid_after_status_query, paid_after_recharge] }
+        default: { type: boolean }
+        description: { type: string }
+    SandboxSimulateInvoiceRequest:
+      type: object
+      required: [scenario]
+      properties:
+        scenario: { type: string, description: "A name from /v1/sandbox/scenarios, with or without the pm_sandbox_ prefix." }
+    SandboxSimulateInvoiceResponse:
+      type: object
+      properties:
+        invoice_id: { type: string }
+        customer_external_id: { type: string }
+        scenario: { type: string }
+        payment_method: { type: string }
+        retried: { type: boolean }
+        retry_error: { type: string }
+    AppPromoteRequest:
+      type: object
+      properties:
+        dry_run: { type: boolean }
+        plan_hash: { type: string }
+    AppPromoteResponse:
+      type: object
+      properties:
+        dry_run: { type: boolean }
+        plan_hash: { type: string }
+        created: { type: integer }
+        unchanged: { type: integer }
+        conflicts: { type: integer }
+        skipped: { type: integer }
+        failed: { type: integer }
+        changes:
+          type: array
+          items: { $ref: "#/components/schemas/AppPromoteChange" }
+    AppPromoteChange:
+      type: object
+      properties:
+        family: { type: string, enum: [meters, plans, taxes, coupons, mail, webhooks] }
+        key: { type: string }
+        action: { type: string, enum: [ACTION_CREATE, ACTION_UNCHANGED, ACTION_CONFLICT, ACTION_SKIPPED] }
+        detail: { type: string }
+        applied: { type: boolean }
+        error: { type: string }
+        secret: { type: string, description: "A webhook endpoint made by the promotion: its new signing secret, shown once." }
+    AppRotateApiKeyRequest:
+      type: object
+      properties:
+        overlap_hours: { type: number, minimum: 0, maximum: 168, default: 24, description: How long the old key keeps working. 0 ends it now. }
+    AppRotateApiKeyResponse:
+      type: object
+      properties:
+        api_key: { $ref: "#/components/schemas/ApiKey" }
+        plaintext: { type: string, description: "shown once" }
+        previous: { $ref: "#/components/schemas/ApiKey" }
+    MyAffiliationsResponse:
+      type: object
+      properties:
+        affiliations: { type: array, items: { $ref: "#/components/schemas/MyAffiliation" } }
+    ClaimMyAffiliationsResponse:
+      type: object
+      properties:
+        claimed: { type: integer }
+        affiliations: { type: array, items: { $ref: "#/components/schemas/MyAffiliation" } }
+    LookupAffiliateProgramResponse:
+      type: object
+      properties:
+        seller_name: { type: string }
+        environment: { type: string }
+        applied: { type: boolean }
+        program: { $ref: "#/components/schemas/MyProgram" }
+    ApplyAsAffiliateRequest:
+      type: object
+      required: [tenant_id]
+      properties:
+        tenant_id: { type: string }
+        name: { type: string, maxLength: 200 }
+        payout_method: { type: string, enum: [manual, bank_transfer] }
+        payout_details: { type: string, maxLength: 1000 }
+    UpdateMyAffiliationRequest:
+      type: object
+      required: [payout_method]
+      properties:
+        name: { type: string }
+        payout_method: { type: string, enum: [manual, bank_transfer] }
+        payout_details: { type: string }
+    MyReferralsResponse:
+      type: object
+      properties:
+        referrals: { type: array, items: { $ref: "#/components/schemas/MyReferral" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    MyCommissionsResponse:
+      type: object
+      properties:
+        commissions: { type: array, items: { $ref: "#/components/schemas/MyCommission" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    MyPayoutsResponse:
+      type: object
+      properties:
+        payouts: { type: array, items: { $ref: "#/components/schemas/MyPayout" } }
+        next_page_token: { type: string }
+        total: { type: integer }
+    AppGoLiveResponse:
+      type: object
+      properties:
+        go_live: { $ref: "#/components/schemas/GoLive" }
+    AppActivateLiveRequest:
+      type: object
+      properties:
+        accept_terms: { type: boolean, description: Accepts the terms of service in the same call. }
+    AppActivateLiveResponse:
+      type: object
+      properties:
+        go_live: { $ref: "#/components/schemas/GoLive" }
+    AppSaveBillingProfileRequest:
+      type: object
+      required: [legal, address]
+      properties:
+        legal: { $ref: "#/components/schemas/LegalInfo" }
+        address: { $ref: "#/components/schemas/Address" }
+    AppAcceptTermsResponse:
+      type: object
+      properties:
+        accept_time: { type: string, format: date-time }
+    AppConnectLiveProviderRequest:
+      type: object
+      additionalProperties: true
+      description: The provider's settings.
+    AppConnectLiveProviderResponse:
+      type: object
+      properties:
+        provider: { type: string }
+        environment: { type: string, enum: [live] }
+        default: { type: boolean }
+    AppGetEInvoiceIntegrationResponse:
+      type: object
+      properties:
+        account:
+          type: [object, "null"]
+          properties:
+            provider: { type: string, enum: [nilvera, webhook] }
+            mode: { type: string, enum: [test, production] }
+            updated_at: { type: string, format: date-time }
+    AppPutEInvoiceIntegrationRequest:
+      type: object
+      required: [provider]
+      properties:
+        provider: { type: string, enum: [nilvera, webhook] }
+        mode: { type: string, enum: [test, production] }
+        credentials: { type: object, additionalProperties: { type: string }, description: "nilvera: api_key[, base_url]; webhook: url, secret." }
+    AppTestEInvoiceIntegrationRequest:
+      type: object
+      properties:
+        tax_id: { type: string, description: "The seller's tax id, for an integrator that can look up a registered business" }
+    AppTestEInvoiceIntegrationResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        checked: { type: string, enum: [credentials, configuration] }
+        problem: { type: string, enum: [refused, unreachable] }
+    AppGetMailIntegrationResponse:
+      type: object
+      properties:
+        connected: { type: boolean }
+        integration: { $ref: "#/components/schemas/MailIntegration" }
+    AppPutMailIntegrationRequest:
+      type: object
+      required: [provider, base_url, api_key, from]
+      properties:
+        provider: { type: string, enum: [nafru] }
+        base_url: { type: string, examples: ["https://api.nafru.example"], description: The Resend-compatible API address (https) }
+        api_key: { type: string }
+        from: { type: string, examples: ["Acme Billing <billing@acme.example>"] }
+    AppPutMailIntegrationResponse:
+      type: object
+      properties:
+        integration: { $ref: "#/components/schemas/MailIntegration" }
+    AppTestMailIntegrationRequest:
+      type: object
+      required: [to]
+      properties:
+        to: { type: string, format: email }
+    AppTestMailIntegrationResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        problem: { type: string, enum: [unreachable, refused] }
+        message_id: { type: string }
+    CreateAccountRequest:
+      type: object
+      required: [name, currency, timezone, grace_period]
+      properties:
+        name: { type: string }
+        currency: { type: string, pattern: "^[A-Z]{3}$", description: "Required, no default. Immutable. An active ISO 4217 code (USD, EUR, TRY, JPY, KWD, ...); the minor-unit exponent comes from the currency (0 for JPY, 3 for KWD)." }
+        timezone: { type: string, examples: [Europe/Istanbul], description: "Required IANA name, no default. Immutable." }
+        grace_period: { type: string, examples: ["86400s"], description: "Required, protobuf Duration JSON, 0s..604800s" }
+        tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+    CreateAppRequest:
+      type: object
+      required: [name, currency, timezone, grace_period]
+      properties:
+        name: { type: string }
+        slug: { type: string, description: "Lower case with dashes, unique within the account; default: the name" }
+        currency: { type: string, pattern: "^[A-Z]{3}$", description: An active ISO 4217 code }
+        timezone: { type: string, examples: [Europe/Istanbul] }
+        grace_period: { type: string, examples: ["86400s"] }
+        tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+    ListAppsResponse:
+      type: object
+      properties:
+        apps: { type: array, items: { $ref: "#/components/schemas/App" } }
+    AdminListTenantsResponse:
+      type: object
+      properties:
+        tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
+        next_page_token: { type: string }
+    AdminListOrganizationsResponse:
+      type: object
+      properties:
+        organizations: { type: array, items: { $ref: "#/components/schemas/OrganizationRow" } }
+        next_page_token: { type: string }
+        platform: { $ref: "#/components/schemas/PlatformInfo" }
+    AdminSetOrganizationPlanRequest:
+      type: object
+      properties:
+        plan_code: { type: string }
+        limits: { type: object, additionalProperties: { type: integer, format: int64, minimum: 0 } }
+    AdminListInvoicesResponse:
+      type: object
+      properties:
+        invoices: { type: array, items: { $ref: "#/components/schemas/Invoice" } }
+        next_page_token: { type: string }
+    AdminGetInvoicePdfResponse:
+      type: object
+      properties:
+        url: { type: string }
+        expires_at: { type: string, format: date-time }
+    AdminGetInvoiceSagaResponse:
+      type: object
+      properties:
+        saga: { $ref: "#/components/schemas/InvoiceSaga" }
+        events: { type: array, items: { $ref: "#/components/schemas/SagaEvent" } }
+    ListProviderAccountsResponse:
+      type: object
+      properties:
+        accounts:
+          type: array
+          items: { $ref: "#/components/schemas/ListProviderAccountsAccount" }
+    ListProviderAccountsAccount:
+      type: object
+      properties:
+        provider: { type: string }
+        environment: { type: string, enum: [sandbox, live] }
+        is_default: { type: boolean }
+        updated_at: { type: string, format: date-time }
+    PutProviderAccountRequest:
+      type: object
+    ListEInvoiceAccountsResponse:
+      type: object
+      properties:
+        accounts: { type: array, items: { $ref: "#/components/schemas/EInvoiceAccount" } }
+    ListPaymentLedgerResponse:
+      type: object
+      properties:
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/ListPaymentLedgerEntry" }
+    ListPaymentLedgerEntry:
+      type: object
+      properties:
+        id: { type: integer }
+        invoice_id: { type: string, format: uuid }
+        provider: { type: string }
+        environment: { type: string }
+        kind: { type: string, enum: [charge, refund, dispute, payout] }
+        status: { type: string, enum: [succeeded, declined, failed, pending] }
+        amount_minor: { type: integer }
+        currency: { type: string }
+        provider_ref: { type: string }
+        source: { type: string, enum: [command, webhook, reconciliation, manual] }
+        detail: { type: string }
+        occurred_at: { type: string, format: date-time }
+    ConfirmInvoiceTransferRequest:
+      type: object
+      required: [amount_minor, currency, bank_reference]
+      properties:
+        amount_minor: { type: integer, format: int64, minimum: 1 }
+        currency: { type: string, examples: [TRY] }
+        received_at: { type: string, format: date-time, description: When the bank booked it. Default now; not in the future. }
+        bank_reference: { type: string, maxLength: 128, description: "The bank's transaction or statement reference; it makes the call idempotent." }
+        note: { type: string, maxLength: 500 }
+    RejectInvoiceTransferRequest:
+      type: object
+      properties:
+        outcome: { type: string, enum: [rejected, expired], default: rejected }
+        reason: { type: string, maxLength: 500 }
+    ProviderWebhookRequest:
+      type: object
+    TenantProviderWebhookRequest:
+      type: object
+    ListProviderSubscriptionsResponse:
+      type: object
+      properties:
+        subscriptions:
+          type: array
+          items: { $ref: "#/components/schemas/ListProviderSubscriptionsSubscription" }
+    ListProviderSubscriptionsSubscription:
+      type: object
+      properties:
+        provider: { type: string }
+        environment: { type: string }
+        provider_ref: { type: string }
+        quotify_subscription_id: { type: string, format: uuid }
+        status: { type: string }
+        next_billed_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    CreateProviderCheckoutRequest:
+      type: object
+      required: [provider, price_ref]
+      properties:
+        provider: { type: string, examples: [paddle] }
+        price_ref: { type: string, description: The provider's id of what is sold, examples: [pri_01] }
+        quantity: { type: integer, minimum: 1 }
+        quotify_subscription_id: { type: string, format: uuid, description: Ties the provider's subscription to ours }
+    CreateProviderCheckoutResponse:
+      type: object
+      properties:
+        url: { type: string }
+        ref: { type: string }
+    StartProviderMigrationRequest:
+      type: object
+      required: [subscription_id, to_provider]
+      properties:
+        subscription_id: { type: string, format: uuid }
+        to_provider: { type: string, enum: [iyzico, paddle, banktransfer] }
+        price_ref: { type: string, description: "The target provider's catalogue price, for a provider that runs subscriptions itself" }
+    StartProviderMigrationResponse:
+      type: object
+      properties:
+        migration: { type: string, format: uuid }
+        state: { type: string, enum: [started, completed] }
+        checkout_url: { type: string }
+        new_subscription: { type: string, format: uuid }
+        cutover: { type: string, format: date-time }
+    SyncProviderCatalogueRequest:
+      type: object
+      properties:
+        plan_code: { type: string }
+        plan_version: { type: integer, description: 0 = latest }
+        product_name: { type: string }
+        tax_category: { type: string, description: Default saas }
+    SyncProviderCatalogueResponse:
+      type: object
+      properties:
+        plan_version_id: { type: string }
+        product_ref: { type: string }
+        created: { type: object, additionalProperties: { type: string }, description: Payrudder's key of each price created to the provider's id }
+        existing: { type: object, additionalProperties: { type: string } }
+        skipped: { type: object, additionalProperties: { type: string }, description: Key to the reason }
+    ListProviderCatalogueResponse:
+      type: object
+      properties:
+        objects:
+          type: array
+          items: { $ref: "#/components/schemas/ListProviderCatalogueObject" }
+    ListProviderCatalogueObject:
+      type: object
+      properties:
+        kind: { type: string }
+        key: { type: string }
+        ref: { type: string }
+    EnsureProviderCustomerResponse:
+      type: object
+      properties:
+        customer_ref: { type: string }
+        address_ref: { type: string }
+        business_ref: { type: string }
+    CreateProviderPortalLinkResponse:
+      type: object
+      properties:
+        url: { type: string }
+    PauseProviderSubscriptionRequest:
+      type: object
+      properties:
+        at_period_end: { type: boolean }
+        resume_at: { type: string, format: date-time }
+    CreateProviderPaymentMethodLinkResponse:
+      type: object
+      properties:
+        url: { type: string }
+    CreateProviderDiscountRequest:
+      type: object
+      properties:
+        Description: { type: string }
+        Type: { type: string, enum: [percentage, flat] }
+        Amount: { type: string, description: "A percentage (10 for 10 %) or minor units of Currency" }
+        Currency: { type: string }
+        Code: { type: string }
+        Recurring: { type: boolean }
+        MaxIntervals: { type: integer }
+        UsageLimit: { type: integer }
+        ExpiresAt: { type: string, format: date-time }
+    CreateProviderDiscountResponse:
+      type: object
+      properties:
+        discount_ref: { type: string }
+        code: { type: string }
+    GetProviderInvoiceLinkResponse:
+      type: object
+      properties:
+        url: { type: string }
+    ReconcilePaymentsResponse:
+      type: object
+      properties:
+        period: { type: string }
+        paid_invoices: { type: integer }
+        successful_charges: { type: integer }
+        discrepancy_counts:
+          type: object
+          additionalProperties: { type: integer }
+          description: By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes
+        discrepancies:
+          type: array
+          items: { $ref: "#/components/schemas/ReconcilePaymentsDiscrepancy" }
+        truncated: { type: boolean }
+    ReconcilePaymentsDiscrepancy:
+      type: object
+      properties:
+        kind: { type: string }
+        invoice_id: { type: string }
+        number: { type: string }
+        provider: { type: string }
+        provider_ref: { type: string }
+        currency: { type: string }
+        billed_minor: { type: integer }
+        ledger_minor: { type: integer }
+        detail: { type: string }
+    AdminListDeadLettersResponse:
+      type: object
+      properties:
+        queues: { type: array, items: { $ref: "#/components/schemas/AdminListDeadLettersQueue" } }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/AdminListDeadLettersMessage" }
+    AdminListDeadLettersQueue:
+      type: object
+      properties:
+        queue: { type: string }
+        messages: { type: string, description: int64 as a string }
+    AdminListDeadLettersMessage:
+      type: object
+      properties:
+        message_id: { type: string }
+        delivery_count: { type: string }
+        reason: { type: string }
+        body_bytes: { type: integer }
+    AdminRedriveDeadLettersRequest:
+      type: object
+      required: [queue]
+      properties:
+        queue: { type: string }
+        limit: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+    AdminRedriveDeadLettersResponse:
+      type: object
+      properties:
+        redriven: { type: integer }
+    UpdateTenantRequest:
+      type: object
+      properties:
+        grace_period: { type: string, examples: ["172800s"] }
+        tier: { type: string, enum: [TENANT_TIER_FREE, TENANT_TIER_STANDARD, TENANT_TIER_ENTERPRISE] }
+        address: { $ref: "#/components/schemas/Address" }
+        legal: { $ref: "#/components/schemas/LegalInfo" }
+        e_invoice_on: { type: string, enum: ["off", finalized, paid] }
+    SetTenantStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [active, suspended] }
+        reason: { type: string }
+    CreateApiKeyRequest:
+      type: object
+      properties:
+        role: { $ref: "#/components/schemas/ApiKeyRole" }
+        permissions: { type: array, items: { $ref: "#/components/schemas/ApiKeyPermission" } }
+        scope: { type: string, enum: [SCOPE_FULL, SCOPE_INGEST, SCOPE_READ], description: "Older way to choose a role when role and permissions are absent." }
+    CreateApiKeyResponse:
+      type: object
+      properties:
+        api_key: { $ref: "#/components/schemas/ApiKey" }
+        plaintext: { type: string }
+    AdminIngestStatsResponse:
+      type: object
+      additionalProperties: true
+      description: Ingest counters; the shape is not part of the contract
+    AdminClosePeriodRequest:
+      type: object
+      required: [tenant_id, period_id]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        period_id: { type: string }
+    AdminStartReplayRequest:
+      type: object
+      required: [from_period_id, reason]
+      properties:
+        from_period_id: { type: string, examples: ["2026-10"] }
+        to_period_id: { type: string, description: Defaults to from_period_id }
+        reason: { type: string }
+    AdminStartReratingRequest:
+      type: object
+      required: [plan_version_id]
+      properties:
+        plan_version_id: { type: string, format: uuid }
+    AdminRetryInvoiceRequest:
+      type: object
+      required: [tenant_id]
+      properties:
+        tenant_id: { type: string, format: uuid }
+    AdminVoidInvoiceRequest:
+      type: object
+      required: [tenant_id]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        reason: { type: string }
+    AdminRecordInvoicePaymentRequest:
+      type: object
+      required: [tenant_id, method, amount_minor]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        method: { type: string, enum: [bank_transfer, cash, other] }
+        amount_minor: { type: string, description: int64 minor units as a string }
+        received_at: { type: string, format: date-time, description: Default now; not in the future. }
+        reference: { type: string, maxLength: 128 }
+        note: { type: string, maxLength: 500 }
+    AdminCreateCreditNoteRequest:
+      type: object
+      required: [tenant_id]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        amount_minor: { type: string, description: "int64 minor units; 0 or absent = what is left of the invoice" }
+        reason: { type: string, maxLength: 500 }
+        refund_to_card: { type: boolean, description: "Refund the amount to the card instead of adding it to the credit balance" }
+    AdminRetryCreditNoteRefundRequest:
+      type: object
+      required: [tenant_id]
+      properties:
+        tenant_id: { type: string, format: uuid }
     Error:
       type: object
       required: [error]
