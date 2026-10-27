@@ -1,7 +1,7 @@
 import { useMutation, useQueries, useQueryClient, type QueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
-import { liveKeys, productKeys } from "@/features/product/api";
+import { liveKeys, productKeys, sandboxProviderKey } from "@/features/product/api";
 import type { LiveProviderName } from "@/features/product/liveProvider";
 import type { AppResult, AppRow } from "./connections";
 
@@ -25,9 +25,16 @@ export function useAppsProviders(apps: MaybeRefOrGetter<readonly AppRow[]>) {
   return computed(() => toValue(apps).map((app, i) => ({ app, query: results.value[i], accounts: results.value[i]?.data?.accounts })));
 }
 
-/** The app, its checklist and its provider list are read again after a change. */
+/** Which environment of the app a connection is for: the live one (any number of apps at once) or the sandbox's test mode (one app, a provider with a test host). */
+export type ConnectEnvironment = "live" | "sandbox";
+
+/** The app, its checklist and its provider lists are read again after a change. */
 function refresh(queries: QueryClient, ids: readonly string[]): Promise<unknown> {
-  return Promise.all([...ids.map((id) => queries.invalidateQueries({ queryKey: productKeys.app(id) })), queries.invalidateQueries({ queryKey: productKeys.apps })]);
+  return Promise.all([
+    ...ids.map((id) => queries.invalidateQueries({ queryKey: productKeys.app(id) })),
+    ...ids.map((id) => queries.invalidateQueries({ queryKey: sandboxProviderKey(id) })),
+    queries.invalidateQueries({ queryKey: productKeys.apps }),
+  ]);
 }
 
 async function eachApp(apps: readonly AppRow[], act: (id: string) => Promise<unknown>): Promise<AppResult[]> {
@@ -43,22 +50,34 @@ async function eachApp(apps: readonly AppRow[], act: (id: string) => Promise<unk
   return out;
 }
 
-/** Connects (or replaces) the live account at a provider on the given apps. The settings go up as they are typed and are never read back. */
+/** Connects (or replaces) the account at a provider on the given apps: the live one, or with environment "sandbox" the test mode of the sandbox. The settings go up as they are typed and are never read back. */
 export function useConnectProvider() {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; settings: Record<string, unknown> }) =>
-      eachApp(v.apps, (id) => unwrap(api.PUT("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.provider } }, body: v.settings }))),
+    mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; settings: Record<string, unknown>; environment?: ConnectEnvironment }) =>
+      eachApp(v.apps, async (id) => {
+        if (v.environment === "sandbox") {
+          await unwrap(api.PUT("/app/v1/apps/{id}/sandbox/providers/{provider}", { params: { path: { id, provider: v.provider as "iyzico" | "paddle" } }, body: v.settings }));
+        } else {
+          await unwrap(api.PUT("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.provider } }, body: v.settings }));
+        }
+      }),
     onSettled: (_r, _e, v) => refresh(queries, v.apps.map((a) => a.id)),
   });
 }
 
-/** Removes the live account at a provider from the given apps (the caller passes only the apps that have one). */
+/** Removes the account at a provider from the given apps (the caller passes only the apps that have one): the live one, or the sandbox's test mode. */
 export function useDisconnectProvider() {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName }) =>
-      eachApp(v.apps, (id) => unwrap(api.DELETE("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.provider } } }))),
+    mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; environment?: ConnectEnvironment }) =>
+      eachApp(v.apps, async (id) => {
+        if (v.environment === "sandbox") {
+          await unwrap(api.DELETE("/app/v1/apps/{id}/sandbox/providers/{provider}", { params: { path: { id, provider: v.provider as "iyzico" | "paddle" } } }));
+        } else {
+          await unwrap(api.DELETE("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.provider } } }));
+        }
+      }),
     onSettled: (_r, _e, v) => refresh(queries, v.apps.map((a) => a.id)),
   });
 }

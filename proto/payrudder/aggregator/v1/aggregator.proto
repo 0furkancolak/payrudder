@@ -3,6 +3,7 @@ syntax = "proto3";
 package payrudder.aggregator.v1;
 
 import "google/protobuf/timestamp.proto";
+import "payrudder/plans/v1/resources.proto";
 
 // UsageQueryService reads the aggregates maintained by the aggregator and runs the few period operations billing needs.
 // The tenant comes from gRPC metadata (set by the gateway or by billing-svc), never from a request body.
@@ -35,6 +36,9 @@ message UsageAggregate {
   int64 event_count = 6;
   // Generation the row belongs to (billing pins it for the whole run).
   int32 generation = 7;
+  // LAST meters only: the event the quantity is the value of, which limits-svc needs to repair its counter to the same event.
+  google.protobuf.Timestamp last_event_time = 8;
+  string last_event_id = 9;
 }
 
 // LateUsage is usage that arrived after its period's cutoff, billed in the period of its ingestion.
@@ -57,8 +61,12 @@ message UsageKey {
   // (months for a month, a year and the lifetime; hours for an hour, a day and a week), or their maximum when `max` is set. The hour totals
   // are kept for a limited time (about two weeks), so an hour, day or week window is only readable while it is recent.
   string period_id = 3;
-  // The meter's aggregation is MAX: combine the rows of a window with GREATEST instead of a sum.
+  // Deprecated spelling of aggregation = AGGREGATION_MAX, honoured when `aggregation` is unset.
   bool max = 4;
+  // How the rows of a window combine: a sum (SUM, COUNT, or unset), the maximum (MAX), the value of the latest event (LAST) or the number of
+  // distinct values across the rows (UNIQUE: the aggregator keeps the sets of values, not only the counts, because a distinct count of a year is
+  // not the sum of its months).
+  payrudder.plans.v1.Aggregation aggregation = 5;
 }
 
 message GetCustomerUsageRequest {

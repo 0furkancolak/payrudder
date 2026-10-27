@@ -7,6 +7,7 @@ import { envOf, keyMask, liveState } from "@/shared/lib/environment";
 import { useFormat } from "@/shared/lib/format";
 import { copyText } from "@/shared/lib/clipboard";
 import { firstError } from "@/shared/lib/errors";
+import { FormField } from "@/shared/ui/form-field";
 import { Button } from "@/shared/ui/button";
 import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Card } from "@/shared/ui/card";
@@ -15,7 +16,6 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
-import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -45,7 +45,7 @@ const me = useMe();
 
 const live = computed(() => props.env === "live");
 /** A live key is refused while the live environment is not active (the server says so too); the page points to the checklist instead. */
-const liveBlocked = computed(() => live.value && app.data.value?.app !== undefined && liveState(app.data.value.app) !== "active");
+const liveBlocked = computed(() => live.value && app.data.value?.app !== undefined && liveState(app.data.value.app ?? undefined) !== "active");
 /** A live key needs a verified address; until the profile has loaded the button stays usable and the server decides. */
 const unverified = computed(() => live.value && me.data.value?.user?.email_verified === false);
 const gate = computed(() => (unverified.value ? "needsVerified" : liveBlocked.value ? "liveInactive" : ""));
@@ -62,7 +62,7 @@ const table = useTableState(list, {
   searchFields: (k) => [k.prefix, k.id, roleOfKey(k)],
   url: "f_", filters: { role: (k, v) => roleOfKey(k) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
 });
-const when = (v?: string) => fmt.date(v, "day");
+const when = (v?: string | null) => fmt.date(v, "day");
 const keyEnv = (k: ApiKey): Environment => envOf(k.environment);
 /** What the list may show of a key: its kind and prefix. The secret part is never known here after creation. */
 const shown = (k: ApiKey) => `${keyMask(keyEnv(k), k.prefix)}_••••••••`;
@@ -226,13 +226,12 @@ function doRevoke() {
             <span class="text-muted-foreground">{{ t("product.keys.filterEnv") }}</span>
             <StatusPill :tone="live ? 'info' : 'neutral'" data-testid="new-key-env">{{ t(`product.env.${env}`) }}</StatusPill>
           </div>
-          <div class="flex flex-col gap-1.5">
-            <Label for="key-role">{{ t("product.keys.role") }}</Label>
+          <FormField for="key-role" :label="t('product.keys.role')">
             <NativeSelect id="key-role" v-model="role" data-testid="key-role">
               <option v-for="r in KEY_ROLES" :key="r" :value="r">{{ roleName(r) }}</option>
             </NativeSelect>
             <p class="text-muted-foreground text-xs" data-testid="key-role-help">{{ t(`product.keys.roleHelp.${role}`) }}</p>
-          </div>
+          </FormField>
           <fieldset class="flex flex-col gap-1">
             <legend class="mb-1 text-sm font-medium">{{ t("product.keys.permissions") }}</legend>
             <p class="text-muted-foreground mb-1 text-xs">{{ custom ? t("product.keys.permissionsCustom") : t("product.keys.permissionsFixed") }}</p>
@@ -253,7 +252,7 @@ function doRevoke() {
             </div>
           </fieldset>
           <p v-if="custom && !request" class="text-warning text-xs" role="status" data-testid="key-needs-permission">{{ t("product.keys.customNeedsOne") }}</p>
-          <ErrorText :error="create.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+          <ErrorText :error="create.error.value" box />
         </form>
       </SheetBody>
       <SheetFooter>
@@ -308,13 +307,12 @@ function doRevoke() {
       <SheetBody>
         <form id="rotate-key" class="flex flex-col gap-4" @submit.prevent="doRotate">
           <p class="mono bg-muted rounded-2xl p-3 text-sm">{{ rotating ? shown(rotating) : "" }}</p>
-          <div class="flex flex-col gap-1.5">
-            <Label for="rotate-overlap">{{ t("product.keys.overlap") }}</Label>
+          <FormField for="rotate-overlap" :label="t('product.keys.overlap')">
             <NativeSelect id="rotate-overlap" v-model="overlap" data-testid="rotate-overlap">
               <option v-for="h in OVERLAPS" :key="h" :value="h">{{ h === 0 ? t("product.keys.overlapNow") : t("product.keys.overlapHours", { n: h }) }}</option>
             </NativeSelect>
-          </div>
-          <ErrorText :error="rotate.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+          </FormField>
+          <ErrorText :error="rotate.error.value" box />
         </form>
       </SheetBody>
       <SheetFooter>

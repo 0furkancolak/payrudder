@@ -180,6 +180,22 @@ commit. A transaction that stamped `ingested_at = cutoff − 1 ms` and commits 2
 next invoice. Replay of the period reproduces identical classification. Watermark: block the relay during close →
 billing stays `WAITING_WATERMARK` until the outbox drains.
 
+**UNIQUE and LAST under lateness, ordering and replay.** "Aggregation is commutative" holds for these two only because each has a merge law that is, and the aggregator is built on the law,
+not on arrival order ([aggregator.md](03-services/aggregator.md#as-built-unique-and-last), [ADR 0025](adr/0025-unique-and-last-aggregations.md)):
+
+| | `UNIQUE` (distinct values of a property) | `LAST` (quantity of the latest event) |
+|---|---|---|
+| Order of events | none needed: the state of a value is `min` over its events (`''` = on time, else the earliest billing period) | total order `(event_time to the µs, event_id bytewise)`; ids are ULIDs assigned once at ingest, so no ties between events |
+| Across partitions, redeliveries, replay | the same set of events gives the same states and counts, in any order and any batching | the same set of events gives the same winner |
+| Duplicate event | absorbed twice: the inbox, and the set (idempotent) | the inbox, and the merge (idempotent) |
+| Late event (`ingested_at ≥ cutoff`) | a value no on-time event carried is billed once, as late usage of the origin period, in the period of its first late event; a value already on time adds nothing | **ignored**: the last value of a closed period is final; counted in `aggregator_late_last_events`, not stored, not billed |
+| 35-day lateness | as for every aggregation: older events are rejected at ingest, and the sets of an old period are kept for good | same |
+| Known hole | an on-time event of a value processed *after* a late event of it that was already invoiced takes the unit back from `late_usage`, but the invoice is not corrected | a late event that would have been the last is missing from the invoice, by design |
+
+Window reconciliation uses the same rows: the month row for a billing period, `usage_distinct_values` for a year or the lifetime window, the hour rows and `usage_distinct_hours` for an hour, a day
+or a week, so enforcement (limits-svc) and the invoice read the same events. The Redis side of `UNIQUE` is a bounded exact set of 128-bit digests and is repaired to the aggregator's exact count; billing
+never reads it.
+
 ---
 
 ## 5. Limit enforcement consistency across pods

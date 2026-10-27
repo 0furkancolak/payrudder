@@ -294,7 +294,7 @@ export type LiveProviders = S["LiveProviders"];
 export function useSaveBillingProfile(id: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (body: { legal: S["LegalInfo"]; address: S["Address"] }) => unwrap(api.PUT("/app/v1/apps/{id}/billing-profile", { params: { path: { id: toValue(id) } }, body })),
+    mutationFn: (body: { legal: S["LegalInfoInput"]; address: S["AddressInput"] }) => unwrap(api.PUT("/app/v1/apps/{id}/billing-profile", { params: { path: { id: toValue(id) } }, body })),
     onSuccess: () => Promise.all([queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) }), queries.invalidateQueries({ queryKey: productKeys.apps })]),
   });
 }
@@ -313,6 +313,18 @@ export function useLiveProviders(id: MaybeRefOrGetter<string>, on: MaybeRefOrGet
   return useQuery({
     queryKey: computed(() => [...liveKeys.goLive(toValue(id)), "providers"] as const),
     queryFn: () => unwrap(api.GET("/app/v1/apps/{id}/go-live/providers", { params: { path: { id: toValue(id) } } })),
+    enabled: computed(() => enabled.value && toValue(id) !== "" && toValue(on)),
+  });
+}
+
+/** The query key of an app's sandbox provider accounts (their test mode). */
+export const sandboxProviderKey = (id: string) => ["app", "apps", id, "sandbox-providers"] as const;
+
+/** The sandbox provider accounts of an app (the provider's test mode) and whether each works. No setting is in it. */
+export function useSandboxProviders(id: MaybeRefOrGetter<string>, on: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => sandboxProviderKey(toValue(id))),
+    queryFn: () => unwrap(api.GET("/app/v1/apps/{id}/sandbox/providers", { params: { path: { id: toValue(id) } } })),
     enabled: computed(() => enabled.value && toValue(id) !== "" && toValue(on)),
   });
 }

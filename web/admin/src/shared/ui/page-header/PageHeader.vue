@@ -1,13 +1,24 @@
 <script setup lang="ts">
-defineProps<{ title: string; description?: string }>()
+import { cn } from "@/shared/lib/utils";
+
+/**
+ * The head of a page: the title, a line under it (`description`, or the `subtitle` slot for anything richer), a `badge` next to the title (an environment
+ * pill, say) and the page's actions in the default slot. `flush` drops the space below, for a page that lays out its own gaps.
+ */
+defineProps<{ title: string; description?: string; flush?: boolean; titleTestId?: string }>();
 </script>
 
 <template>
-  <header class="mb-6 flex flex-wrap items-end justify-between gap-3 px-1">
-    <div>
-      <h1 class="text-3xl font-semibold tracking-tight">{{ title }}</h1>
-      <p v-if="description" class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ description }}</p>
+  <header :class="cn('flex flex-wrap items-end justify-between gap-3 px-1', !flush && 'mb-6')">
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-center gap-3">
+        <h1 class="text-3xl font-semibold tracking-tight md:text-4xl" :data-testid="titleTestId">{{ title }}</h1>
+        <slot name="badge" />
+      </div>
+      <slot name="subtitle">
+        <p v-if="description" class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ description }}</p>
+      </slot>
     </div>
-    <div class="flex items-center gap-2"><slot /></div>
+    <div v-if="$slots.default" class="flex items-center gap-2"><slot /></div>
   </header>
 </template>

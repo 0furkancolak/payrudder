@@ -55,7 +55,7 @@ func (c Capabilities) Owner() Owner {
 type Owner string
 
 const (
-	OwnerPayrudder Owner = "quotify"
+	OwnerPayrudder Owner = "payrudder"
 	OwnerProvider  Owner = "provider"
 )
 

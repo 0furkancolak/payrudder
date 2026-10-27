@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
-import { useInvoice } from "./billingApi";
+import { useTenantInvoice } from "./billingApi";
 import InvoiceDetail from "./InvoiceDetail.vue";
 
 /**
@@ -11,7 +11,7 @@ import InvoiceDetail from "./InvoiceDetail.vue";
 const props = defineProps<{ tenantId: string; invoiceId: string }>();
 const emit = defineEmits<{ close: [] }>();
 const { t } = useI18n();
-const invoice = useInvoice(() => props.tenantId, () => props.invoiceId);
+const invoice = useTenantInvoice(() => props.tenantId, () => props.invoiceId);
 </script>
 
 <template>

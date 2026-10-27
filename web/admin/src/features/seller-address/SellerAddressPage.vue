@@ -23,7 +23,7 @@ const form = ref<Address>({});
 const saved = ref(false);
 const open = ref(false);
 
-function load(a: Address | undefined) {
+function load(a: Address | null | undefined) {
   form.value = { ...(a ?? {}) };
 }
 // The stored address fills the form once the tenant arrives, and again after a save refreshes it.

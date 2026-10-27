@@ -283,18 +283,8 @@ func webhookHandler(cfg Config, pool *pgxpool.Pool, box *secretbox.Box, h *handl
 
 // serveHTTP runs the webhook and operator server until ctx ends.
 func serveHTTP(ctx context.Context, addr string, h http.Handler, log *slog.Logger) error {
-	srv := &http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second}
-	errc := make(chan error, 1)
-	go func() { errc <- srv.ListenAndServe() }()
 	log.Info("payments-worker http listening", "addr", addr)
-	select {
-	case err := <-errc:
-		return err
-	case <-ctx.Done():
-		c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		return srv.Shutdown(c)
-	}
+	return health.ServeServer(ctx, &http.Server{Addr: addr, Handler: h, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second})
 }
 
 // newEInvoiceRegistry registers the e-invoice adapters: the mock, Nilvera and the generic webhook.

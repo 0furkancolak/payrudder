@@ -1679,7 +1679,7 @@ func (q *Queries) ListRoutingRules(ctx context.Context) ([]ListRoutingRulesRow, 
 
 const listSubscriptionFeesDue = `-- name: ListSubscriptionFeesDue :many
 SELECT id, fee_due_at::timestamptz AS fee_due_at FROM subscriptions
-WHERE tenant_id = app_tenant_id() AND fee_timing = 'advance' AND owner = 'quotify' AND fee_due_at IS NOT NULL AND fee_due_at <= $1::timestamptz
+WHERE tenant_id = app_tenant_id() AND fee_timing = 'advance' AND owner = 'payrudder' AND fee_due_at IS NOT NULL AND fee_due_at <= $1::timestamptz
   AND state <> 'cancelled' AND (upper_inf(active) OR upper(active) > fee_due_at) AND id > $2::uuid
 ORDER BY id
 LIMIT $3
@@ -2071,7 +2071,7 @@ func (q *Queries) NotifyOutbox(ctx context.Context) error {
 }
 
 const releaseProviderLink = `-- name: ReleaseProviderLink :execrows
-UPDATE subscriptions SET owner = 'quotify', provider_ref = NULL WHERE tenant_id = app_tenant_id() AND id = $1
+UPDATE subscriptions SET owner = 'payrudder', provider_ref = NULL WHERE tenant_id = app_tenant_id() AND id = $1
 `
 
 // An ended subscription gives its provider id to its successor (the id is unique); it keeps the provider's name for history.

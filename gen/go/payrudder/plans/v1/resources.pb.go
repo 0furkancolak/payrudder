@@ -187,6 +187,10 @@ const (
 	Aggregation_AGGREGATION_SUM         Aggregation = 1
 	Aggregation_AGGREGATION_COUNT       Aggregation = 2
 	Aggregation_AGGREGATION_MAX         Aggregation = 3
+	// The number of distinct values of the event property named by value_property, per customer and period. quantity_scale must be 0.
+	Aggregation_AGGREGATION_UNIQUE Aggregation = 4
+	// The quantity of the latest event of the period, in the order (event_time, event_id).
+	Aggregation_AGGREGATION_LAST Aggregation = 5
 )
 
 // Enum value maps for Aggregation.
@@ -196,12 +200,16 @@ var (
 		1: "AGGREGATION_SUM",
 		2: "AGGREGATION_COUNT",
 		3: "AGGREGATION_MAX",
+		4: "AGGREGATION_UNIQUE",
+		5: "AGGREGATION_LAST",
 	}
 	Aggregation_value = map[string]int32{
 		"AGGREGATION_UNSPECIFIED": 0,
 		"AGGREGATION_SUM":         1,
 		"AGGREGATION_COUNT":       2,
 		"AGGREGATION_MAX":         3,
+		"AGGREGATION_UNIQUE":      4,
+		"AGGREGATION_LAST":        5,
 	}
 )
 
@@ -1679,7 +1687,7 @@ type Meter struct {
 	Code        string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
 	Version     int32                  `protobuf:"varint,2,opt,name=version,proto3" json:"version,omitempty"`
 	Aggregation Aggregation            `protobuf:"varint,3,opt,name=aggregation,proto3,enum=payrudder.plans.v1.Aggregation" json:"aggregation,omitempty"`
-	// Event property holding the quantity. Empty for COUNT.
+	// Event property holding the quantity (SUM, MAX, LAST) or the value whose distinct occurrences are counted (UNIQUE). Empty for COUNT.
 	ValueProperty string                   `protobuf:"bytes,4,opt,name=value_property,json=valueProperty,proto3" json:"value_property,omitempty"`
 	Filter        map[string]*FilterValues `protobuf:"bytes,5,rep,name=filter,proto3" json:"filter,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	// Decimal places accepted in event quantities (0..6, ADR 0010).
@@ -2634,7 +2642,7 @@ type Subscription struct {
 	Provider string `protobuf:"bytes,15,opt,name=provider,proto3" json:"provider,omitempty"`
 	// The provider's id of the subscription, when the provider runs it (for Paddle, "sub_...").
 	ProviderRef string `protobuf:"bytes,16,opt,name=provider_ref,json=providerRef,proto3" json:"provider_ref,omitempty"`
-	// Who renews the subscription and retries its failed renewals: "quotify" (the default) or "provider". A provider-owned subscription is
+	// Who renews the subscription and retries its failed renewals: "payrudder" (the default) or "provider". A provider-owned subscription is
 	// changed at the provider; its fixed fee is billed by the provider, not on Payrudder's invoice.
 	Owner string `protobuf:"bytes,17,opt,name=owner,proto3" json:"owner,omitempty"`
 	// The package (plan) and its version this subscription is on.
@@ -3733,12 +3741,14 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"\x17TENANT_TIER_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10TENANT_TIER_FREE\x10\x01\x12\x18\n" +
 	"\x14TENANT_TIER_STANDARD\x10\x02\x12\x1a\n" +
-	"\x16TENANT_TIER_ENTERPRISE\x10\x03*k\n" +
+	"\x16TENANT_TIER_ENTERPRISE\x10\x03*\x99\x01\n" +
 	"\vAggregation\x12\x1b\n" +
 	"\x17AGGREGATION_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fAGGREGATION_SUM\x10\x01\x12\x15\n" +
 	"\x11AGGREGATION_COUNT\x10\x02\x12\x13\n" +
-	"\x0fAGGREGATION_MAX\x10\x03*\xb9\x01\n" +
+	"\x0fAGGREGATION_MAX\x10\x03\x12\x16\n" +
+	"\x12AGGREGATION_UNIQUE\x10\x04\x12\x14\n" +
+	"\x10AGGREGATION_LAST\x10\x05*\xb9\x01\n" +
 	"\vQuotaWindow\x12\x1c\n" +
 	"\x18QUOTA_WINDOW_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12QUOTA_WINDOW_MONTH\x10\x01\x12\x15\n" +

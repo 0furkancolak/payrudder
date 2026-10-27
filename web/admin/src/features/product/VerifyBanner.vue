@@ -14,7 +14,7 @@ const { t } = useI18n();
 const errorText = useErrorText();
 const me = useMe();
 const resend = useResendVerification();
-const show = computed(() => me.data.value?.user !== undefined && me.data.value.user.email_verified === false);
+const show = computed(() => me.data.value?.user != null && me.data.value.user.email_verified === false);
 </script>
 
 <template>

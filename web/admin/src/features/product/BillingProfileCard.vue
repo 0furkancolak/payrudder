@@ -2,6 +2,7 @@
 import { FileText } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { liveTenant } from "@/shared/lib/environment";
 import { ADDRESS_MAX, countryProfile } from "@/shared/lib/address";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
@@ -18,7 +19,7 @@ import { emptyProfile, fromTenant, normalizeTaxId, profileBody, taxIdRequired, v
 const props = defineProps<{ appId: string }>();
 const { t } = useI18n();
 const app = useApp(() => props.appId);
-const live = computed(() => app.data.value?.app?.tenants?.find((x) => x.environment === "ENVIRONMENT_LIVE"));
+const live = computed(() => liveTenant(app.data.value?.app ?? undefined));
 const isOwner = computed(() => app.data.value?.role === "owner");
 const save = useSaveBillingProfile(() => props.appId);
 

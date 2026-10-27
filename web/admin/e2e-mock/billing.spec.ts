@@ -355,7 +355,7 @@ test.describe("subscriptions", () => {
     await gw.install(page);
     await openTenantPage(page, "/subscriptions");
     await page.getByRole("button", { name: "Manage" }).click();
-    const panel = page.getByRole("region", { name: "Change plan or interval" });
+    const panel = page.getByRole("region", { name: "Change plan, interval or seats" });
     await expect(panel).toContainText("Scheduled: basic (Monthly) from");
     await expect(panel.getByRole("button", { name: "Apply change" })).toBeDisabled();
     await panel.getByLabel("New package").selectOption("pro");
@@ -373,6 +373,91 @@ test.describe("subscriptions", () => {
     await panel.getByRole("button", { name: "Withdraw" }).click();
     await expect.poll(() => gw.called("DELETE", "/v1/subscriptions/s1/scheduled-change").length).toBe(1);
     await expect(panel).not.toContainText("Scheduled:");
+  });
+
+  test("seats are set when a subscription is made, shown in the list and the sheet, and refused out of range before anything is sent", async ({ page }) => {
+    const gw = common(new MockGateway(), [sub("s1", { fee_timing: "FEE_TIMING_ADVANCE", quantity: 5 }), sub("s0", { customer_external_id: "cus_2" })]).on((c) =>
+      c.method === "POST" && c.path === "/v1/subscriptions" ? { status: 201, body: sub("s9") } : undefined,
+    );
+    await gw.install(page);
+    await openTenantPage(page, "/subscriptions");
+    // The list shows the seats; a subscription made before seats existed has one.
+    await expect(page.getByRole("row", { name: /cus_1/ }).getByTestId("sub-seats-cell")).toHaveText("5");
+    await expect(page.getByRole("row", { name: /cus_2/ }).getByTestId("sub-seats-cell")).toHaveText("1");
+    await page.getByTestId("subscriptions-new").click();
+    const form = page.getByRole("form", { name: "new subscription" });
+    await expect(form.getByTestId("seats-hint")).toContainText("fixed fee is multiplied by the seats");
+    await pickPlace(form.getByLabel("Customer"), "cus_2");
+    await form.getByLabel("Package").selectOption("pro");
+    const create = page.getByRole("dialog").getByRole("button", { name: "Create subscription" });
+    await form.getByLabel("Seats").fill("0");
+    await expect(form.getByRole("alert")).toContainText("whole number from 1 to 100000");
+    await create.click();
+    expect(gw.called("POST", "/v1/subscriptions")).toHaveLength(0);
+    await form.getByLabel("Seats").fill("12");
+    await create.click();
+    await expect.poll(() => gw.called("POST", "/v1/subscriptions").length).toBe(1);
+    expect(gw.called("POST", "/v1/subscriptions")[0]?.body).toMatchObject({ customer_external_id: "cus_2", plan_code: "pro", quantity: 12 });
+    // Left empty, the seats are not sent: the server's default is one.
+    await page.getByTestId("subscriptions-new").click();
+    await pickPlace(form.getByLabel("Customer"), "cus_2");
+    await form.getByLabel("Package").selectOption("pro");
+    await create.click();
+    await expect.poll(() => gw.called("POST", "/v1/subscriptions").length).toBe(2);
+    expect(gw.called("POST", "/v1/subscriptions")[1]?.body).not.toHaveProperty("quantity");
+    // The sheet of the five-seat subscription says so.
+    await page.getByRole("row", { name: /cus_1/ }).getByRole("button", { name: "Manage" }).click();
+    await expect(page.getByTestId("sub-seats")).toContainText("5");
+  });
+
+  test("seats are changed with a preview first: only a different number is a change, and the quote names the seats after it", async ({ page }) => {
+    const quote = {
+      timing: "CHANGE_TIMING_IMMEDIATELY",
+      proration: "CHANGE_PRORATION_PRORATE",
+      effective_time: "2026-10-16T00:00:00Z",
+      credit_minor: "500",
+      charge_minor: "1500",
+      net_minor: "1000",
+      currency: "TRY",
+      next_renewal_time: "2026-11-01T00:00:00Z",
+      next_renewal_minor: "3000",
+      quantity: 8,
+    };
+    const gw = common(new MockGateway(), [sub("s1", { fee_timing: "FEE_TIMING_ADVANCE", quantity: 5, scheduled_change: { plan_code: "basic", plan_version: 1, interval: "SUBSCRIPTION_INTERVAL_MONTH", quantity: 3, effective_time: "2026-11-01T00:00:00Z" } })]).on((c) => {
+      if (c.method === "POST" && c.path === "/v1/subscriptions/s1/change-preview") return { body: quote };
+      if (c.method === "POST" && c.path === "/v1/subscriptions/s1/change") return { body: { subscription: sub("s1", { quantity: 8 }), quote } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/subscriptions");
+    await page.getByRole("button", { name: "Manage" }).click();
+    const panel = page.getByRole("region", { name: "Change plan, interval or seats" });
+    await expect(panel).toContainText("Scheduled: basic (Monthly), 3 seats from");
+    const preview = panel.getByRole("button", { name: "Preview" });
+    await expect(preview).toBeDisabled();
+    // The number the subscription has already is no change; neither is a bad one.
+    await panel.getByTestId("change-seats").fill("5");
+    await expect(preview).toBeDisabled();
+    await panel.getByTestId("change-seats").fill("0");
+    await expect(panel.getByRole("alert")).toContainText("whole number from 1 to 100000");
+    await expect(preview).toBeDisabled();
+    await panel.getByTestId("change-seats").fill("8");
+    await preview.click();
+    const result = panel.getByLabel("What this change costs");
+    await expect(result.getByTestId("quote-seats")).toHaveText("8");
+    await expect(result).toContainText("10.00 is invoiced now");
+    expect(gw.called("POST", "/v1/subscriptions/s1/change-preview")[0]?.body).toEqual({ quantity: 8 });
+    await panel.getByRole("button", { name: "Apply change" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/subscriptions/s1/change").length).toBe(1);
+    expect(gw.called("POST", "/v1/subscriptions/s1/change")[0]?.body).toEqual({ quantity: 8 });
+    // The panel clears itself once the change has gone through (the quote disappears): only then is it ready for the next one.
+    await expect(result).toHaveCount(0);
+    // The seats can be changed along with the package; both are sent.
+    await panel.getByTestId("change-seats").fill("9");
+    await panel.getByLabel("New package").selectOption("pro");
+    await preview.click();
+    await expect.poll(() => gw.called("POST", "/v1/subscriptions/s1/change-preview").length).toBe(2);
+    expect(gw.called("POST", "/v1/subscriptions/s1/change-preview")[1]?.body).toEqual({ plan_code: "pro", quantity: 9 });
   });
 
   test("a subscription a provider runs is changed, paused and given a payment link through the provider", async ({ page }) => {

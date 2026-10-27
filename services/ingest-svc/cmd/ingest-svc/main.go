@@ -6,7 +6,6 @@ import (
 	"context"
 	_ "embed" // config.default.yaml
 	"errors"
-	"fmt"
 	"net"
 	"time"
 
@@ -38,13 +37,13 @@ type Config struct {
 	pgxx.Settings
 	// CellSettings turns on cells mode (ADR 0018). Off unless PAYRUDDER_CELLS names at least one cell.
 	pgxx.CellSettings
-	GRPCAddr        string   `env:"PAYRUDDER_GRPC_ADDR"`
-	PlansAddr       string   `env:"PAYRUDDER_PLANS_ADDR"`
-	KafkaBrokers    []string `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
-	RelayWorkers    int      `env:"PAYRUDDER_RELAY_WORKERS"`
-	RelayBatchSize  int      `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
-	MaxOutboxDepth  int64    `env:"PAYRUDDER_MAX_OUTBOX_DEPTH"`
-	PartitionPeriod string   `env:"PAYRUDDER_PARTITION_MAINTENANCE_INTERVAL"`
+	GRPCAddr        string        `env:"PAYRUDDER_GRPC_ADDR"`
+	PlansAddr       string        `env:"PAYRUDDER_PLANS_ADDR"`
+	KafkaBrokers    []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
+	RelayWorkers    int           `env:"PAYRUDDER_RELAY_WORKERS"`
+	RelayBatchSize  int           `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
+	MaxOutboxDepth  int64         `env:"PAYRUDDER_MAX_OUTBOX_DEPTH"`
+	PartitionPeriod time.Duration `env:"PAYRUDDER_PARTITION_MAINTENANCE_INTERVAL"`
 }
 
 func (c *Config) Validate() error {
@@ -53,8 +52,8 @@ func (c *Config) Validate() error {
 	if c.RelayWorkers < 1 || c.RelayBatchSize < 1 {
 		errs = append(errs, errors.New("PAYRUDDER_RELAY_WORKERS and PAYRUDDER_RELAY_BATCH_SIZE must be ≥ 1"))
 	}
-	if _, err := time.ParseDuration(c.PartitionPeriod); err != nil {
-		errs = append(errs, fmt.Errorf("PAYRUDDER_PARTITION_MAINTENANCE_INTERVAL: %w", err))
+	if c.PartitionPeriod <= 0 {
+		errs = append(errs, errors.New("PAYRUDDER_PARTITION_MAINTENANCE_INTERVAL must be a positive duration"))
 	}
 	return errors.Join(errs...)
 }
@@ -122,7 +121,6 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	relay.WithCells(cells)
-	interval, _ := time.ParseDuration(cfg.PartitionPeriod)
 
 	hh := rt.Health()
 	hh.AddCheck("postgres", appPool.Ping)
@@ -140,7 +138,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	gctx := g.Context()
 	g.Go(func() error { return svc.Run(gctx) })
 	g.Go(func() error { return relay.Run(gctx) })
-	g.Go(func() error { maintenance.Run(gctx, systemPool, cells, interval, log); return nil })
+	g.Go(func() error { maintenance.Run(gctx, systemPool, cells, cfg.PartitionPeriod, log); return nil })
 	log.Info("grpc listening", "addr", cfg.GRPCAddr, "metrics", cfg.MetricsAddr, "kafka", cfg.KafkaBrokers)
 	g.ServeGRPC(srv, grpcHealth, lis)
 	return g.Wait()

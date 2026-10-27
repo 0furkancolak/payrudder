@@ -102,7 +102,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
       </TableBody>
     </Table>
     <DataPagination v-if="list.length" v-model:size="table.size.value" :page="table.current.value" :pages="table.pages.value" :total="table.total.value" @update:page="table.page.value = $event" />
-    <p v-if="!accounts.isPending.value && (accounts.data.value ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("einvoice.account.empty") }}</p>
+    <p v-if="!accounts.isPending.value && !accounts.error.value && (accounts.data.value ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("einvoice.account.empty") }}</p>
     <ErrorText :error="actions.remove.error.value" class="px-3" />
   </Card>
 

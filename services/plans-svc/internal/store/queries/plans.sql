@@ -257,7 +257,7 @@ LIMIT @page_size;
 -- name: ListSubscriptionFeesDue :many
 -- Advance-billed subscriptions whose next period has started and still has time left (an open-ended one, or one ending after that period began).
 SELECT id, fee_due_at::timestamptz AS fee_due_at FROM subscriptions
-WHERE tenant_id = app_tenant_id() AND fee_timing = 'advance' AND owner = 'quotify' AND fee_due_at IS NOT NULL AND fee_due_at <= @now::timestamptz
+WHERE tenant_id = app_tenant_id() AND fee_timing = 'advance' AND owner = 'payrudder' AND fee_due_at IS NOT NULL AND fee_due_at <= @now::timestamptz
   AND state <> 'cancelled' AND (upper_inf(active) OR upper(active) > fee_due_at) AND id > @after::uuid
 ORDER BY id
 LIMIT @page_size;
@@ -312,7 +312,7 @@ SELECT fee_due_at FROM subscriptions WHERE tenant_id = app_tenant_id() AND id = 
 
 -- name: ReleaseProviderLink :execrows
 -- An ended subscription gives its provider id to its successor (the id is unique); it keeps the provider's name for history.
-UPDATE subscriptions SET owner = 'quotify', provider_ref = NULL WHERE tenant_id = app_tenant_id() AND id = $1;
+UPDATE subscriptions SET owner = 'payrudder', provider_ref = NULL WHERE tenant_id = app_tenant_id() AND id = $1;
 
 -- name: GetSubscriptionIDByProviderRef :one
 -- The live subscription that holds a provider's id: after plan changes it is the last of the chain, not the one that was first linked.

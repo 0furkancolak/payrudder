@@ -107,7 +107,7 @@ CREATE TABLE go_live_audit (                          -- phase 45 follow-up: wha
   action text NOT NULL CHECK (action IN ('billing_profile_saved','terms_accepted')),
   detail jsonb NOT NULL DEFAULT '{}',                    -- the country and whether a tax id was given, never the profile
   created_at timestamptz NOT NULL DEFAULT now()
-);   -- the provider connection is audited in payments_db (provider_account_events)
+);   -- the provider connection is audited in payments_db (provider_account_events); a sandbox tenant's test-mode account is a provider_accounts row there with environment = 'sandbox' (phase 54, no new table)
 
 CREATE TABLE api_keys (
   id          uuid PRIMARY KEY,
@@ -150,8 +150,8 @@ CREATE TABLE meters (
   tenant_id       uuid NOT NULL,
   code            text NOT NULL,                     -- e.g. 'ai_tokens'
   version         int  NOT NULL,
-  aggregation     text NOT NULL CHECK (aggregation IN ('SUM','COUNT','MAX')),
-  value_property  text,                              -- NULL for COUNT
+  aggregation     text NOT NULL CHECK (aggregation IN ('SUM','COUNT','MAX','UNIQUE','LAST')),  -- UNIQUE, LAST: migration 00062; a code cannot change into or out of them
+  value_property  text,                              -- NULL for COUNT; for UNIQUE the property whose distinct values are counted (quantity_scale must be 0)
   quantity_scale  smallint NOT NULL CHECK (quantity_scale BETWEEN 0 AND 6),  -- decimal places; same for all versions of a code
   unit_label      text NOT NULL,                     -- 'GB-h', 'tokens'; shown on invoices
   filter          jsonb,                             -- {"model": ["gpt-x"]} equality-only
@@ -309,11 +309,28 @@ CREATE TABLE usage_aggregates (
   meter_code   text NOT NULL,
   period_id    text NOT NULL,
   generation   int  NOT NULL,
-  quantity     numeric(38,0) NOT NULL,               -- scaled units
-  quantity_scale smallint NOT NULL,                  -- the meter's scale (immutable), to render the decimal
+  quantity     numeric(38,0) NOT NULL,               -- scaled units; SUM/COUNT the sum, MAX the maximum, LAST the quantity of the latest event, UNIQUE the number of distinct values
+  quantity_scale smallint NOT NULL,                  -- the meter's scale (immutable), to render the decimal; 0 for UNIQUE
   event_count  bigint NOT NULL,
   updated_at   timestamptz NOT NULL,
+  last_at        timestamptz,                        -- LAST only (migration 00005): the event the quantity is of, ordered by (last_at, last_event_id bytewise)
+  last_event_id  text,
   PRIMARY KEY (tenant_id, period_id, customer_id, meter_code, generation)
+);
+
+-- UNIQUE meters (migration 00005): the distinct values, because a distinct count is not additive. One row per SHA-256 of a value; billed_period_id is the state:
+-- '' = an on-time event carried it, else the earliest billing period of a late event that carried it (min of the states, commutative). usage_aggregates.quantity and
+-- late_usage.quantity are the number of values in each state, kept by the batch transaction.
+CREATE TABLE usage_distinct_values (
+  tenant_id uuid NOT NULL, customer_id uuid NOT NULL, meter_code text NOT NULL, generation int NOT NULL,
+  period_id text NOT NULL, value_hash bytea NOT NULL, billed_period_id text NOT NULL DEFAULT '',
+  PRIMARY KEY (tenant_id, customer_id, meter_code, generation, period_id, value_hash)
+);
+-- The same per wall-clock hour, on-time events only, for the hour/day/week quota windows; deleted with the hour totals after 14 days.
+CREATE TABLE usage_distinct_hours (
+  tenant_id uuid NOT NULL, customer_id uuid NOT NULL, meter_code text NOT NULL, generation int NOT NULL,
+  hour_id text NOT NULL, value_hash bytea NOT NULL, period_id text GENERATED ALWAYS AS (left(hour_id, 7)) STORED,
+  PRIMARY KEY (tenant_id, customer_id, meter_code, generation, hour_id, value_hash)
 );
 
 -- Hour totals (migration 00004): what limits-svc reconciles its hour, day and ISO-week quota counters against. Written in the batch
@@ -325,10 +342,12 @@ CREATE TABLE usage_window_aggregates (
   generation   int  NOT NULL,
   hour_id      text NOT NULL,                        -- wall-clock hour of the tenant by event_time: '2026-11-05T13'
   period_id    text GENERATED ALWAYS AS (left(hour_id, 7)) STORED,   -- the month the hour belongs to, for replay's carry-over
-  quantity     numeric(38,0) NOT NULL,               -- scaled units; the sum, or the maximum for a MAX meter
+  quantity     numeric(38,0) NOT NULL,               -- scaled units; the sum, the maximum for a MAX meter, the latest event's quantity for LAST (UNIQUE has usage_distinct_hours instead)
   quantity_scale smallint NOT NULL,
   event_count  bigint NOT NULL,
   updated_at   timestamptz NOT NULL,
+  last_at      timestamptz,                          -- LAST only, as in usage_aggregates
+  last_event_id text,
   PRIMARY KEY (tenant_id, customer_id, meter_code, generation, hour_id)
 );                                                     -- + index (hour_id) for the retention delete
 
@@ -626,6 +645,7 @@ Workers are internal and single-purpose, and are not RLS'd: every row is keyed b
 | Outbox relay | PK `outbox (id)` + `SKIP LOCKED`. Watermark via `outbox_ingested_at` |
 | Aggregator dedup | PK `processed_events (period_id, tenant_id, event_id, generation)` |
 | Aggregator upsert | PK `usage_aggregates`, PK `usage_window_aggregates` |
+| UNIQUE value sets | PK `usage_distinct_values` (claim and state move by the PK, distinct count over a month range by its prefix), PK `usage_distinct_hours` + index `(hour_id)` for retention |
 | Limits reconciliation of a window | PK prefix `(tenant_id, customer_id, meter_code, generation)` + a range of `hour_id`; months by the PK of `usage_aggregates` |
 | Billing stream period usage | PK prefix `(tenant_id, period_id)` |
 | Saga timeout sweeper | partial `saga_deadlines` |

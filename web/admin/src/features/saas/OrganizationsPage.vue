@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { firstError } from "@/shared/lib/errors";
 import { useFormat } from "@/shared/lib/format";
+import { FormField } from "@/shared/ui/form-field";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
@@ -113,7 +114,7 @@ const events = (r: OrganizationRow) => `${fmt.count(r.events_used)} / ${isUnlimi
       </div>
       <Button type="submit" variant="outline">{{ t("saas.admin.find") }}</Button>
     </form>
-    <ErrorText :error="firstError(list)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorText :error="firstError(list)" box />
     <Skeleton v-if="list.isPending.value" class="h-40 rounded-2xl" />
     <div v-else class="surface overflow-x-auto p-2">
       <Table>
@@ -166,19 +167,18 @@ const events = (r: OrganizationRow) => `${fmt.count(r.events_used)} / ${isUnlimi
         </SheetHeader>
         <SheetBody>
           <form id="org-plan" class="flex flex-col gap-4" @submit.prevent="save">
-            <div class="flex flex-col gap-1.5">
-              <Label for="org-plan-code">{{ t("saas.admin.plan") }}</Label>
+            <FormField for="org-plan-code" :label="t('saas.admin.plan')">
               <NativeSelect id="org-plan-code" v-model="planCode">
                 <option v-for="p in planOptions" :key="p.code" :value="p.code">{{ p.name }}</option>
               </NativeSelect>
-            </div>
+            </FormField>
             <p class="text-muted-foreground text-xs">{{ t("saas.admin.limitsHint") }}</p>
             <div v-for="r in RESOURCES" :key="r" class="flex flex-col gap-1.5">
               <Label :for="`org-limit-${r}`">{{ t(`saas.resource.${r}`) }}</Label>
               <Input :id="`org-limit-${r}`" v-model="limits[r]" inputmode="numeric" autocomplete="off" :placeholder="t('saas.admin.keep')" />
             </div>
             <ErrorText v-if="bad" :message="t('saas.admin.badLimit')" />
-            <ErrorText :error="firstError(set, clear)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+            <ErrorText :error="firstError(set, clear)" box />
           </form>
         </SheetBody>
         <SheetFooter>

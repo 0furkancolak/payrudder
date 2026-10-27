@@ -21,7 +21,7 @@ import { checklist, nextStep, progress, type GoLiveKey } from "./golive";
 const props = defineProps<{ appId: string; compact?: boolean }>();
 const { t } = useI18n();
 const app = useApp(() => props.appId);
-const live = computed(() => tenantOf(app.data.value?.app, "live"));
+const live = computed(() => tenantOf(app.data.value?.app ?? undefined, "live"));
 const goLive = useGoLive(() => props.appId, () => live.value !== "");
 const activate = useActivateLive(() => props.appId);
 const acceptTerms = useAcceptTerms(() => props.appId);
@@ -88,7 +88,7 @@ function acceptNow() {
 
     <Skeleton v-if="goLive.isPending.value && live" class="h-32 rounded-2xl" />
     <p v-else-if="!live" class="text-muted-foreground text-sm" data-testid="go-live-none">{{ t("product.goLive.noLive") }}</p>
-    <ErrorText :error="goLive.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorText :error="goLive.error.value" box />
 
     <ol v-if="goLive.data.value" class="flex flex-col gap-2" :aria-label="t('product.goLive.title')">
       <li v-for="i in items" :key="i.key" class="flex items-start gap-3 rounded-2xl px-3 py-2" :class="i.key === next && !compact ? 'bg-muted' : ''" :data-testid="`go-live-${i.key}`" :data-done="i.done">

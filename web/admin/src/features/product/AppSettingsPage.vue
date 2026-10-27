@@ -5,11 +5,13 @@ import { useI18n } from "vue-i18n";
 import { formatDuration } from "@/shared/lib/duration";
 import { envOf } from "@/shared/lib/environment";
 import { currencyInfo, formatOffset, zoneMinutes } from "@/shared/lib/intl";
+import { enumWord, label } from "@/shared/lib/labels";
 import { Button } from "@/shared/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { PageHeader } from "@/shared/ui/page-header";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useApp, useDeleteApp, useRenameApp } from "./api";
@@ -22,7 +24,7 @@ import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
  * Packages and prices in other currencies are added per package, not here. Owners and admins rename the app here; an owner can also delete it, which archives it
  * (the billing records stay), after typing its name.
  */
-const { t, locale } = useI18n();
+const { t, te, locale } = useI18n();
 const params = useParams({ strict: false });
 const appId = computed(() => String(params.value.appId ?? ""));
 const app = useApp(appId);
@@ -62,18 +64,15 @@ const envs = computed(() =>
     info: currencyInfo(x.currency ?? FALLBACK_CURRENCY, locale.value),
     timezone: x.timezone ?? "",
     offset: formatOffset(zoneMinutes(x.timezone ?? "UTC")),
-    grace: formatDuration(x.grace_period, locale.value),
-    tier: (x.tier ?? "").replace("TENANT_TIER_", "").toLowerCase(),
+    grace: formatDuration(x.grace_period ?? undefined, locale.value),
+    tier: label(t, te, "tier", enumWord(x.tier, "TENANT_TIER_")),
   })),
 );
 </script>
 
 <template>
   <section class="flex flex-col gap-6">
-    <header class="px-1">
-      <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("shell.items.appSettings") }}</h1>
-      <p class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ t("product.appSettings.intro") }}</p>
-    </header>
+    <PageHeader flush :title="t('shell.items.appSettings')" :description="t('product.appSettings.intro')" />
 
     <Skeleton v-if="app.isPending.value" class="h-40 rounded-3xl" />
     <template v-else>

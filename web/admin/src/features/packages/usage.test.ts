@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { newQuota, type Meter } from "@/features/meters/quota";
 import { buildUsage, isFreeTier, newPrice } from "./usage";
 
+const meter = (m: Pick<Meter, "code" | "aggregation" | "unit_label" | "quantity_scale">): Meter => ({ value_property: "", filter: {}, category: "", version: 1, create_time: null, ...m });
 const meters: Meter[] = [
-  { code: "api_calls", aggregation: "AGGREGATION_COUNT", unit_label: "calls", quantity_scale: 0 },
-  { code: "gb_hours", aggregation: "AGGREGATION_SUM", unit_label: "GB-h", quantity_scale: 3 },
+  meter({ code: "api_calls", aggregation: "AGGREGATION_COUNT", unit_label: "calls", quantity_scale: 0 }),
+  meter({ code: "gb_hours", aggregation: "AGGREGATION_SUM", unit_label: "GB-h", quantity_scale: 3 }),
 ];
 
 describe("buildUsage", () => {
@@ -60,10 +61,10 @@ describe("buildUsage", () => {
 describe("isFreeTier", () => {
   it("is a version with no fee in any currency and no usage price", () => {
     expect(isFreeTier(undefined)).toBe(false);
-    expect(isFreeTier({ base_fee_minor: "0", fees: [], prices: [], entitlements: [{ meter_code: "api_calls", limit: "1000" }] })).toBe(true);
+    expect(isFreeTier({ base_fee_minor: "0", fees: [], prices: [], entitlements: [{ meter_code: "api_calls", limit: "1000", alert_thresholds_pct: [], window: "QUOTA_WINDOW_MONTH", mode: "QUOTA_MODE_HARD" }] })).toBe(true);
     expect(isFreeTier({ base_fee_minor: "0" })).toBe(true);
     expect(isFreeTier({ base_fee_minor: "2900" })).toBe(false);
     expect(isFreeTier({ base_fee_minor: "0", fees: [{ currency: "USD", base_fee_minor: "29000", interval: "SUBSCRIPTION_INTERVAL_YEAR" }] })).toBe(false);
-    expect(isFreeTier({ base_fee_minor: "0", prices: [{ meter_code: "api_calls", per_unit: { unit_price: "0.1" } }] })).toBe(false);
+    expect(isFreeTier({ base_fee_minor: "0", prices: [{ meter_code: "api_calls", included: "", per_unit: { unit_price: "0.1" } }] })).toBe(false);
   });
 });

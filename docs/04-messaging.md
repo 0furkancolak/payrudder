@@ -34,7 +34,7 @@
 ### Why `tenant_id` as the partition key
 
 - **Locality.** A tenant's events land on one partition, so per-tenant ordering is preserved and per-tenant lag is measurable.
-- **Aggregation doesn't need ordering.** `SUM`/`COUNT`/`MAX` are commutative. Ordering helps debuggability
+- **Aggregation doesn't need ordering.** `SUM`/`COUNT`/`MAX` are commutative, and `UNIQUE` and `LAST` are built on merge laws that are (a minimum over a value's states, a total order on `(event_time, event_id)`; [aggregator.md](03-services/aggregator.md#as-built-unique-and-last)). Ordering helps debuggability
   and keeps the late-event classification simple to reason about, but correctness doesn't depend on it.
 - **Trade-off: hot partitions.** One huge tenant saturates one partition (and one consumer). Mitigations and
   the escape hatch (salted keys `tenant_id#n` for designated "whale" tenants) are in

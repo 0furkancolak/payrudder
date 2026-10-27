@@ -26,8 +26,8 @@ const title = (i: number) => {
       <line x1="0" :x2="width" :y1="H" :y2="H" stroke="currentColor" class="text-border" stroke-width="0.4" vector-effect="non-scaling-stroke" />
       <g v-for="(b, i) in bars" :key="b.bucket">
         <title>{{ title(i) }}</title>
-        <rect :x="i * slot + 1" :y="H - b.income * H" :width="slot / 2 - 1" :height="b.income * H" fill="#059669" />
-        <rect :x="i * slot + slot / 2" :y="H - b.expense * H" :width="slot / 2 - 1" :height="b.expense * H" fill="#dc2626" />
+        <rect :x="i * slot + 1" :y="H - b.income * H" :width="slot / 2 - 1" :height="b.income * H" fill="var(--chart-income)" />
+        <rect :x="i * slot + slot / 2" :y="H - b.expense * H" :width="slot / 2 - 1" :height="b.expense * H" fill="var(--chart-expense)" />
       </g>
     </svg>
     <!-- The first and last date under the bars, and the legend on a line of its own: on a phone the three did not fit on one line and overlapped. -->
@@ -36,8 +36,8 @@ const title = (i: number) => {
       <span>{{ points.length ? label(points[points.length - 1]?.bucket ?? "") : "" }}</span>
     </div>
     <div class="text-muted-foreground mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-      <span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-sm bg-[#059669]" aria-hidden="true" />{{ t("billing.accounting.bars.income") }}</span>
-      <span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-sm bg-[#dc2626]" aria-hidden="true" />{{ t("billing.accounting.bars.expense") }}</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-sm bg-(--chart-income)" aria-hidden="true" />{{ t("billing.accounting.bars.income") }}</span>
+      <span class="flex items-center gap-1.5"><span class="inline-block size-2.5 rounded-sm bg-(--chart-expense)" aria-hidden="true" />{{ t("billing.accounting.bars.expense") }}</span>
     </div>
   </div>
 </template>

@@ -50,10 +50,16 @@ type Config struct {
 	OrphansEvery time.Duration `env:"ASSETS_ORPHANS_INTERVAL"`
 }
 
-// Validate checks the settings at load time like the other services: migrating needs the migrator DSN. (assets-svc used to find that out
-// only after it had started.)
+// Validate checks the settings at load time like the other services: migrating needs the migrator DSN (assets-svc used to find that out only after it had
+// started), and a job interval of zero would make its ticker panic.
 func (c *Config) Validate() error {
-	return errors.Join(c.Base.Validate(), c.CheckMigration(), c.CheckCells())
+	errs := []error{c.Base.Validate(), c.CheckMigration(), c.CheckCells()}
+	for name, d := range map[string]time.Duration{"ASSETS_SWEEP_INTERVAL": c.SweepEvery, "ASSETS_VERIFY_INTERVAL": c.VerifyEvery, "ASSETS_ORPHANS_INTERVAL": c.OrphansEvery} {
+		if d <= 0 {
+			errs = append(errs, errors.New(name+" must be a positive duration"))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 func main() { app.Main("assets-svc", defaults, start) }

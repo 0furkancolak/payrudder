@@ -1,5 +1,5 @@
 import { useRouterState } from "@tanstack/vue-router";
-import { computed } from "vue";
+import { computed, inject, provide, type InjectionKey } from "vue";
 import { useI18n } from "vue-i18n";
 import { useApps, useAccount, useMe, type App } from "@/features/product/api";
 import { hasPartnerRole } from "@/features/product/lib";
@@ -26,7 +26,7 @@ export function appOfTenant(apps: App[] | undefined, tenantId: string): { app: A
  * Where the person is, worked out from the route: the level of the console (organisation, app, operator platform, operator tenant), the navigation of
  * that level, which item is current and the breadcrumbs. Everything the sidebar, the drawer and the header show comes from here, so they follow the route.
  */
-export function useShell() {
+function createShell() {
   const { t } = useI18n();
   const location = useRouterState({ select: (s) => s.location });
   const apps = useApps();
@@ -129,4 +129,19 @@ export function useShell() {
   });
 
   return { path, search, context, sections, current, crumbs, apps, appName, orgName, located, tenant, scope, scopeApp, env, allInPath, inOperatorArea };
+}
+
+export type Shell = ReturnType<typeof createShell>;
+const SHELL: InjectionKey<Shell> = Symbol("shell");
+
+/** Works the shell out once, for the root layout, and gives it to every page and layout below it (`useShell` finds it). */
+export function provideShell(): Shell {
+  const shell = createShell();
+  provide(SHELL, shell);
+  return shell;
+}
+
+/** The shell of the root layout; a component outside it (a test mounting one page) works its own out. */
+export function useShell(): Shell {
+  return inject(SHELL, null) ?? createShell();
 }

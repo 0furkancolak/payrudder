@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildNav } from "@/app/layout/nav";
-import { earnedByCurrency, environmentTone, hasPartnerRole, isReversal, ownMemberships, programTerms, safeNext, sortAffiliations, sumBalances, affiliateTone, type MyProgram } from "./logic";
+import { earnedByCurrency, environmentTone, hasPartnerRole, isReversal, ownMemberships, programTerms, safeNext, sortAffiliations, sumBalances, affiliateTone, type Affiliation, type MyProgram } from "./logic";
 import { partnerRoutes } from "./routes";
 import { createRoute, type AnyRoute } from "@tanstack/vue-router";
 
@@ -56,8 +56,8 @@ describe("the sign-in return path", () => {
 describe("balances and earnings per currency", () => {
   it("keeps currencies apart and adds nothing across them", () => {
     const sums = sumBalances([
-      { currency: "USD", pending_minor: "0", approved_minor: "900", paid_minor: "0", reversed_minor: "0" },
-      { currency: "TRY", pending_minor: "400", approved_minor: "2500", paid_minor: "7000", reversed_minor: "300" },
+      { affiliate_id: "a1", currency: "USD", pending_minor: "0", approved_minor: "900", paid_minor: "0", reversed_minor: "0" },
+      { affiliate_id: "a1", currency: "TRY", pending_minor: "400", approved_minor: "2500", paid_minor: "7000", reversed_minor: "300" },
     ]);
     expect(sums).toEqual([
       { currency: "TRY", pending: "400", approved: "2500", paid: "7000", reversed: "300" },
@@ -74,7 +74,7 @@ describe("balances and earnings per currency", () => {
 });
 
 describe("the terms in words", () => {
-  const base: MyProgram = { commission_kind: "percent_bps", commission_value: "1250", commission_term: "months", commission_term_value: 12, attribution_window_days: 45, hold_days: 14, min_payout_minor: "2500", currency: "TRY" };
+  const base: MyProgram = { status: "active", commission_kind: "percent_bps", commission_value: "1250", commission_term: "months", commission_term_value: 12, attribution_window_days: 45, hold_days: 14, min_payout_minor: "2500", currency: "TRY" };
   it("reads a percentage from basis points", () => {
     expect(programTerms(base, money)).toEqual([
       { key: "percent", params: { pct: "12.5" } },
@@ -88,11 +88,11 @@ describe("the terms in words", () => {
     const fixed = programTerms({ ...base, commission_kind: "fixed", commission_value: "500", commission_term: "first_invoices", commission_term_value: 3, min_payout_minor: "0" }, money);
     expect(fixed.map((l) => l.key)).toEqual(["fixed", "firstInvoices", "window", "hold", "noMinimum"]);
     expect(fixed[0]?.params).toEqual({ amount: "TRY 500" });
-    expect(programTerms({ ...base, commission_term: "lifetime", commission_term_value: undefined, commission_value: "1000" }, money)[1]).toEqual({ key: "lifetime", params: {} });
+    expect(programTerms({ ...base, commission_term: "lifetime", commission_term_value: 0, commission_value: "1000" }, money)[1]).toEqual({ key: "lifetime", params: {} });
     expect(programTerms(undefined, money)).toEqual([]);
   });
   it("leaves the minimum out when no currency can read it", () => {
-    expect(programTerms({ ...base, currency: undefined }, money).map((l) => l.key)).toContain("noMinimum");
+    expect(programTerms({ ...base, currency: "" }, money).map((l) => l.key)).toContain("noMinimum");
   });
 });
 
@@ -105,10 +105,23 @@ describe("badges and order", () => {
     expect(affiliateTone("active")).toBe("success");
   });
   it("lists live affiliations first, newest first", () => {
+    const affiliation = (o: Pick<Affiliation, "id" | "environment" | "create_time">): Affiliation => ({
+      tenant_id: "t1",
+      seller_name: "Seller",
+      code: "CODE",
+      link: "https://example.test/r/CODE",
+      status: "active",
+      name: "Partner",
+      email: "partner@example.test",
+      payout_method: "manual",
+      payout_details: "",
+      program: null,
+      ...o,
+    });
     const list = sortAffiliations([
-      { id: "s", environment: "sandbox", create_time: "2026-10-03T00:00:00Z" },
-      { id: "old", environment: "live", create_time: "2026-10-01T00:00:00Z" },
-      { id: "new", environment: "live", create_time: "2026-10-02T00:00:00Z" },
+      affiliation({ id: "s", environment: "sandbox", create_time: "2026-10-03T00:00:00Z" }),
+      affiliation({ id: "old", environment: "live", create_time: "2026-10-01T00:00:00Z" }),
+      affiliation({ id: "new", environment: "live", create_time: "2026-10-02T00:00:00Z" }),
     ]);
     expect(list.map((a) => a.id)).toEqual(["new", "old", "s"]);
   });

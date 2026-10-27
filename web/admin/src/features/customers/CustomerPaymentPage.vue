@@ -25,7 +25,7 @@ watch(
 );
 
 async function make(): Promise<string> {
-  const res = (await act.create.mutateAsync({ externalId: props.customer, days: DAYS })) as { url?: string } | undefined;
+  const res = await act.create.mutateAsync({ externalId: props.customer, days: DAYS });
   link.value = absoluteUrl(res?.url, window.location.origin);
   return link.value;
 }

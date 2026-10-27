@@ -57,7 +57,7 @@ These are out of scope on purpose, to keep the project to ~12 weeks for one deve
 - Credit notes beyond the single "adjustment line" mechanism used for late events and re-rating.
 - Prepaid credits / wallets, commitments, minimums.
 - Per-event pricing functions beyond: per-unit, tiered (graduated), package, flat fee.
-- Unique-count meters (`COUNT DISTINCT`). Aggregations in scope: `SUM`, `COUNT`, `MAX`.
+- Approximate aggregations (HyperLogLog and the like). Aggregations in scope, all exact: `SUM`, `COUNT`, `MAX`, `UNIQUE` (distinct values of a property) and `LAST` (the latest value) ([ADR 0025](adr/0025-unique-and-last-aggregations.md)).
 - Customer-facing portal. An optional admin UI comes in Phase 12.
 - Multi-region active-active, cross-region replication.
 - Webhook delivery to tenants (limit-exceeded events are queryable and published to Kafka.

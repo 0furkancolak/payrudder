@@ -88,6 +88,28 @@ type UsageAggregate struct {
 	QuantityScale int16
 	EventCount    int64
 	UpdatedAt     time.Time
+	LastAt        *time.Time
+	LastEventID   *string
+}
+
+type UsageDistinctHour struct {
+	TenantID   uuid.UUID
+	CustomerID uuid.UUID
+	MeterCode  string
+	Generation int32
+	HourID     string
+	ValueHash  []byte
+	PeriodID   *string
+}
+
+type UsageDistinctValue struct {
+	TenantID       uuid.UUID
+	CustomerID     uuid.UUID
+	MeterCode      string
+	Generation     int32
+	PeriodID       string
+	ValueHash      []byte
+	BilledPeriodID string
 }
 
 type UsageWindowAggregate struct {
@@ -101,4 +123,6 @@ type UsageWindowAggregate struct {
 	QuantityScale int16
 	EventCount    int64
 	UpdatedAt     time.Time
+	LastAt        *time.Time
+	LastEventID   *string
 }

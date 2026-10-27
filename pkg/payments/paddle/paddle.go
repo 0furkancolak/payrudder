@@ -117,6 +117,17 @@ func (c *Client) Livemode() (live, known bool) {
 	return false, false
 }
 
+// KeyMode implements payments.KeyModer: a Paddle API key says which mode it is for (pdl_live_apikey_..., pdl_sdbx_apikey_...). Another format is not known.
+func (c *Client) KeyMode() (live, known bool) {
+	switch {
+	case strings.HasPrefix(c.s.APIKey, "pdl_live_"):
+		return true, true
+	case strings.HasPrefix(c.s.APIKey, "pdl_sdbx_"):
+		return false, true
+	}
+	return false, false
+}
+
 // Capabilities implements payments.Provider: Paddle runs renewals and retries, calculates tax and hosts the checkout.
 // Charges are not idempotent by key. Paddle bills in more currencies than Payrudder lists; the intersection is declared.
 func (c *Client) Capabilities() payments.Capabilities { return Caps() }

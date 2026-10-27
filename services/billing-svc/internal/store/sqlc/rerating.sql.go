@@ -184,6 +184,24 @@ func (q *Queries) ListRunningReratingJobs(ctx context.Context, createdBefore tim
 	return items, nil
 }
 
+const restartReratingJob = `-- name: RestartReratingJob :execrows
+UPDATE rerating_jobs SET status = 'RUNNING', last_error = NULL WHERE tenant_id = $1 AND id = $2 AND status = 'FAILED'
+`
+
+type RestartReratingJobParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+// A job that failed for good runs again when its start is requested again; whatever it wrote is keyed by the job.
+func (q *Queries) RestartReratingJob(ctx context.Context, arg RestartReratingJobParams) (int64, error) {
+	result, err := q.db.Exec(ctx, restartReratingJob, arg.TenantID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setReratingJobGeneration = `-- name: SetReratingJobGeneration :exec
 UPDATE rerating_jobs SET generation = $1 WHERE tenant_id = $2 AND id = $3
 `

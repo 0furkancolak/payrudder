@@ -178,7 +178,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List meters (latest version of each code) */
+        /**
+         * List meters (latest version of each code)
+         * @description Not paged: the response is the complete list.
+         */
         get: operations["listMeters"];
         put?: never;
         /** Create a meter, or the next version of an existing code */
@@ -237,7 +240,7 @@ export interface paths {
         };
         /**
          * Usage against the limits of every meter the customer has an entitlement on
-         * @description See `getEntitlement` for the semantics of each item.
+         * @description See `getEntitlement` for the semantics of each item. Not paged: the response is the complete list.
          */
         get: operations["listEntitlements"];
         put?: never;
@@ -285,7 +288,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The customer's own limits, which replace its package's on their meters */
+        /**
+         * The customer's own limits, which replace its package's on their meters
+         * @description Not paged: the response is the complete list.
+         */
         get: operations["listEntitlementOverrides"];
         put?: never;
         post?: never;
@@ -325,7 +331,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List plans */
+        /**
+         * List plans
+         * @description Not paged: the response is the complete list.
+         */
         get: operations["listPlans"];
         put?: never;
         /** Create a plan */
@@ -401,7 +410,7 @@ export interface paths {
         post?: never;
         /**
          * End a subscription (now, or at end_time)
-         * @description With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in advance that Payrudder runs, ended now, without a coupon); the response is then {subscription, credited_minor}.
+         * @description With credit_unused=true the fee paid in advance for the rest of the current period is credited to the customer's balance (for a subscription billed in advance that Payrudder runs, ended now, without a coupon). The response is always {subscription, credited_minor}; credited_minor is "0" when nothing was credited.
          */
         delete: operations["cancelSubscription"];
         options?: never;
@@ -590,7 +599,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The credit packs the tenant sells */
+        /**
+         * The credit packs the tenant sells
+         * @description Not paged: the response is the complete list.
+         */
         get: operations["listCreditPacks"];
         put?: never;
         /**
@@ -813,7 +825,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The attachments received by mail, newest first */
+        /**
+         * The attachments received by mail, newest first
+         * @description Not paged: the newest page_size items; there is no page_token, so older items come into view once the newer ones are resolved.
+         */
         get: operations["listInboxItems"];
         put?: never;
         post?: never;
@@ -867,7 +882,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The recurring-vendor rules */
+        /**
+         * The recurring-vendor rules
+         * @description Not paged: the response is the complete list.
+         */
         get: operations["listExpenseRules"];
         put?: never;
         /**
@@ -1007,7 +1025,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The tenant's webhook endpoints */
+        /**
+         * The tenant's webhook endpoints
+         * @description Not paged: the response is the complete list.
+         */
         get: operations["listWebhookEndpoints"];
         put?: never;
         /**
@@ -1114,7 +1135,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Coupons, newest first */
+        /**
+         * Coupons, newest first
+         * @description Not paged: the response is the complete list.
+         */
         get: operations["listCoupons"];
         put?: never;
         /** Make a coupon */
@@ -3457,6 +3481,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/sandbox/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The payment providers connected to the sandbox environment (their test mode), and whether each works
+         * @description Any member reads it. Same shape as the live list; no setting or secret is in the answer. Without a connection the sandbox runs on the built-in simulator.
+         */
+        get: operations["appSandboxProviders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/sandbox/providers/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Connect the sandbox environment to a payment provider's test mode (the owner only)
+         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id), as for the live connection, with the provider's sandbox credentials. base_url is the provider's test host unless the body names one; the environment is sandbox whatever the request says. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed, 502 payments.account.health_check_unreachable), a host that is not the provider's own is refused (payments.account.endpoint_not_allowed), and so are the provider's live host and a key in the live format (payments.account.livemode_mismatch). The first sandbox account becomes the default. A sandbox charge that carries the provider's own token goes to it; the pm_sandbox_ scenario tokens keep going to the simulator. A bank transfer has no test mode (400 payments.provider.not_supported). The settings are sealed, shown once and never echoed back; the change is recorded for the person.
+         */
+        put: operations["appConnectSandboxProvider"];
+        post?: never;
+        /** Remove the sandbox environment's account at a payment provider (the owner only) */
+        delete: operations["appRemoveSandboxProvider"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/integrations/e-invoice": {
         parameters: {
             query?: never;
@@ -4752,257 +4817,324 @@ export interface paths {
         trace?: never;
     };
 }
-export type webhooks = Record<string, never>;
+export interface webhooks {
+    event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A delivery to one of your webhook endpoints
+         * @description Payrudder POSTs this body to every active endpoint that wants the event type. Answer with any 2xx within 10 seconds; anything else is retried (1m, 5m, 30m, 2h, 6h, 24h). Verify the Payrudder-Signature header before you trust it.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["WebhookEvent"];
+                };
+            };
+            responses: {
+                /** @description Received */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+}
 export interface components {
     schemas: {
         Asset: {
-            id?: string;
-            session_id?: string;
+            id: string;
+            session_id: string;
             /** @enum {string} */
-            purpose?: "PURPOSE_INVOICE_LOGO" | "PURPOSE_INVOICE_ATTACHMENT" | "PURPOSE_GENERAL";
-            filename?: string;
-            content_type?: string;
-            /** @description int64 as a string */
-            size_bytes?: string;
-            sha256?: string;
+            purpose: "PURPOSE_INVOICE_LOGO" | "PURPOSE_INVOICE_ATTACHMENT" | "PURPOSE_GENERAL";
+            filename: string;
+            content_type: string;
+            /** Format: int64 */
+            size_bytes: string;
+            sha256: string;
             /** @enum {string} */
-            status?: "ASSET_STATUS_PENDING" | "ASSET_STATUS_UPLOADING" | "ASSET_STATUS_SCANNING" | "ASSET_STATUS_READY" | "ASSET_STATUS_REJECTED" | "ASSET_STATUS_ABORTED" | "ASSET_STATUS_CORRUPT" | "ASSET_STATUS_DELETED";
+            status: "ASSET_STATUS_PENDING" | "ASSET_STATUS_UPLOADING" | "ASSET_STATUS_SCANNING" | "ASSET_STATUS_READY" | "ASSET_STATUS_REJECTED" | "ASSET_STATUS_ABORTED" | "ASSET_STATUS_CORRUPT" | "ASSET_STATUS_DELETED";
             /** @example PART_MISMATCH */
-            reject_reason?: string;
+            reject_reason: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            complete_time?: string;
+            complete_time: string | null;
         };
         PresignedPart: {
-            part_number?: number;
+            part_number: number;
             /** Format: uri */
-            url?: string;
+            url: string;
         };
         UploadFile: {
-            asset_id?: string;
-            filename?: string;
-            status?: string;
-            reject_reason?: string;
-            size?: string;
-            part_size?: string;
-            part_count?: number;
-            presigned_parts?: components["schemas"]["PresignedPart"][];
-            uploaded_parts?: {
-                part_number?: number;
-                size?: string;
-                etag?: string;
+            asset_id: string;
+            filename: string;
+            status: string;
+            reject_reason: string;
+            /** Format: int64 */
+            size: string;
+            /** Format: int64 */
+            part_size: string;
+            part_count: number;
+            presigned_parts: components["schemas"]["PresignedPart"][];
+            uploaded_parts: {
+                part_number: number;
+                /** Format: int64 */
+                size: string;
+                etag: string;
             }[];
         };
         UploadSession: {
-            id?: string;
+            id: string;
             /** @enum {string} */
-            status?: "OPEN" | "COMPLETED" | "EXPIRED" | "ABORTED";
+            status: "OPEN" | "COMPLETED" | "EXPIRED" | "ABORTED";
             /** Format: date-time */
-            expire_time?: string;
-            files?: components["schemas"]["UploadFile"][];
+            expire_time: string | null;
+            files: components["schemas"]["UploadFile"][];
         };
         BillingRun: {
-            tenant_id?: string;
-            period_id?: string;
+            tenant_id: string;
+            period_id: string;
             /** @enum {string} */
-            status?: "RUN_STATUS_SCHEDULED" | "RUN_STATUS_WAITING_WATERMARK" | "RUN_STATUS_RATING" | "RUN_STATUS_INVOICING" | "RUN_STATUS_COMPLETED" | "RUN_STATUS_FAILED";
+            status: "RUN_STATUS_SCHEDULED" | "RUN_STATUS_WAITING_WATERMARK" | "RUN_STATUS_RATING" | "RUN_STATUS_INVOICING" | "RUN_STATUS_COMPLETED" | "RUN_STATUS_FAILED";
             /** Format: date-time */
-            cutoff_time?: string;
-            invoice_count?: number;
-            last_error?: string;
+            cutoff_time: string | null;
+            invoice_count: number;
+            last_error: string;
+            generation: number;
+            /** Format: date-time */
+            start_time: string | null;
+            /** Format: date-time */
+            complete_time: string | null;
         };
         SagaEvent: {
-            seq?: number;
-            from_state?: string;
-            to_state?: string;
-            cause?: string;
-            command_id?: string;
+            seq: number;
+            from_state: string;
+            to_state: string;
+            cause: string;
+            command_id: string;
             /** Format: date-time */
-            at?: string;
+            at: string | null;
         };
         ReplayJob: {
-            id?: string;
-            tenant_id?: string;
-            from_period_id?: string;
-            to_period_id?: string;
-            source_generation?: number;
-            target_generation?: number;
+            id: string;
+            tenant_id: string;
+            from_period_id: string;
+            to_period_id: string;
+            source_generation: number;
+            target_generation: number;
             /** @enum {string} */
-            status?: "REPLAY_STATUS_RUNNING" | "REPLAY_STATUS_CATCHING_UP" | "REPLAY_STATUS_READY" | "REPLAY_STATUS_PROMOTED" | "REPLAY_STATUS_DISCARDED" | "REPLAY_STATUS_FAILED";
-            reason?: string;
-            start_offsets?: {
+            status: "REPLAY_STATUS_RUNNING" | "REPLAY_STATUS_CATCHING_UP" | "REPLAY_STATUS_READY" | "REPLAY_STATUS_PROMOTED" | "REPLAY_STATUS_DISCARDED" | "REPLAY_STATUS_FAILED";
+            reason: string;
+            start_offsets: {
                 [key: string]: string;
             };
-            end_offsets?: {
+            end_offsets: {
                 [key: string]: string;
             };
-            dual_write_from?: {
+            dual_write_from: {
                 [key: string]: string;
             };
-            verification?: {
-                rows_compared?: string;
-                rows_changed?: string;
-                rows_only_in_old?: string;
-                rows_only_in_new?: string;
-                diffs?: {
+            verification: {
+                /** Format: int64 */
+                rows_compared: string;
+                /** Format: int64 */
+                rows_changed: string;
+                /** Format: int64 */
+                rows_only_in_old: string;
+                /** Format: int64 */
+                rows_only_in_new: string;
+                diffs: {
                     /** @enum {string} */
-                    kind?: "usage" | "late";
-                    customer_id?: string;
-                    meter_code?: string;
-                    period_id?: string;
-                    origin_period_id?: string;
-                    old_quantity?: string;
-                    new_quantity?: string;
-                    old_event_count?: string;
-                    new_event_count?: string;
+                    kind: "usage" | "late";
+                    customer_id: string;
+                    meter_code: string;
+                    period_id: string;
+                    origin_period_id: string;
+                    old_quantity: string;
+                    new_quantity: string;
+                    /** Format: int64 */
+                    old_event_count: string;
+                    /** Format: int64 */
+                    new_event_count: string;
                 }[];
             };
-            last_error?: string;
+            last_error: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            complete_time?: string;
+            complete_time: string | null;
         };
         ReratingJob: {
-            id?: string;
-            tenant_id?: string;
-            period_id?: string;
-            plan_version_id?: string;
+            id: string;
+            tenant_id: string;
+            period_id: string;
+            plan_version_id: string;
             /** @description The aggregate generation whose usage was priced */
-            generation?: number;
+            generation: number;
             /** @enum {string} */
-            status?: "RERATING_STATUS_RUNNING" | "RERATING_STATUS_COMPLETED" | "RERATING_STATUS_FAILED";
-            customers_rated?: number;
-            corrections?: number;
-            credits?: number;
-            /** @description int64 as a string */
-            correction_total_minor?: string;
-            /** @description int64 as a string */
-            credit_total_minor?: string;
-            last_error?: string;
+            status: "RERATING_STATUS_RUNNING" | "RERATING_STATUS_COMPLETED" | "RERATING_STATUS_FAILED";
+            customers_rated: number;
+            corrections: number;
+            credits: number;
+            /** Format: int64 */
+            correction_total_minor: string;
+            /** Format: int64 */
+            credit_total_minor: string;
+            last_error: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            complete_time?: string;
+            complete_time: string | null;
         };
         InvoiceSaga: {
-            id?: string;
-            invoice_id?: string;
-            state?: string;
-            attempt?: number;
-            dunning_attempt?: number;
-            last_error?: string;
+            id: string;
+            invoice_id: string;
+            state: string;
+            attempt: number;
+            dunning_attempt: number;
+            last_error: string;
+            version: number;
         };
         InvoiceLine: {
-            line_no?: number;
+            line_no: number;
             /** @enum {string} */
-            kind?: "BASE_FEE" | "USAGE" | "LATE_USAGE" | "CREDIT" | "CORRECTION" | "DISCOUNT" | "TAX";
-            meter_code?: string;
-            origin_period_id?: string;
+            kind: "BASE_FEE" | "USAGE" | "LATE_USAGE" | "CREDIT" | "CORRECTION" | "DISCOUNT" | "TAX";
+            meter_code: string;
+            origin_period_id: string;
             /** @example 1.250 */
-            quantity?: string;
-            /** @description int64 minor units as a string */
-            amount_minor?: string;
-            description?: string;
+            quantity: string;
+            /** Format: int64 */
+            amount_minor: string;
+            description: string;
             /**
              * Format: date-time
              * @description The service period the line covers
              */
-            service_from?: string;
+            service_from: string | null;
             /** Format: date-time */
-            service_to?: string;
+            service_to: string | null;
         };
         Invoice: {
-            id?: string;
-            customer_id?: string;
-            customer_external_id?: string;
-            period_id?: string;
+            id: string;
+            customer_id: string;
+            customer_external_id: string;
+            period_id: string;
             /**
              * @description FEE: a fixed fee invoiced in advance for one period, or what a plan change moved. LINK: made from an ad-hoc payment link
              * @enum {string}
              */
-            kind?: "REGULAR" | "CORRECTION" | "FEE" | "LINK";
+            kind: "REGULAR" | "CORRECTION" | "FEE" | "LINK";
             /** @example INV-2026-000123 */
-            number?: string;
-            currency?: string;
-            subtotal_minor?: string;
-            /** @description int64 minor units as a string */
-            total_minor?: string;
+            number: string;
+            currency: string;
+            /** Format: int64 */
+            subtotal_minor: string;
+            /** Format: int64 */
+            total_minor: string;
             /** @enum {string} */
-            status?: "draft" | "open" | "paid" | "uncollectible" | "void";
-            saga_state?: string;
+            status: "draft" | "open" | "paid" | "uncollectible" | "void";
+            saga_state: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            finalize_time?: string;
-            lines?: components["schemas"]["InvoiceLine"][];
+            finalize_time: string | null;
+            lines: components["schemas"]["InvoiceLine"][];
             /** @description Payments recorded by hand (POST /admin/v1/invoices/{id}/payments), oldest first. Only the single-invoice reads fill it. */
-            payments?: components["schemas"]["InvoicePayment"][];
+            payments: components["schemas"]["InvoicePayment"][];
+            plan_version_id: string;
+            pdf_object_key: string;
         };
         InvoicePayment: {
-            id?: string;
-            invoice_id?: string;
+            id: string;
+            invoice_id: string;
             /** @enum {string} */
-            method?: "bank_transfer" | "cash" | "other";
-            /** @description int64 minor units as a string */
-            amount_minor?: string;
-            currency?: string;
+            method: "bank_transfer" | "cash" | "other";
+            /** Format: int64 */
+            amount_minor: string;
+            currency: string;
             /** Format: date-time */
-            received_at?: string;
-            reference?: string;
-            note?: string;
-            recorded_by?: string;
+            received_at: string | null;
+            reference: string;
+            note: string;
+            recorded_by: string;
             /** Format: date-time */
-            recorded_at?: string;
+            recorded_at: string | null;
         };
         RecordInvoicePaymentResult: {
-            payment?: components["schemas"]["InvoicePayment"];
-            duplicate?: boolean;
-            /** @description The sum of the payments recorded by hand */
-            paid_minor?: string;
-            outstanding_minor?: string;
+            payment: components["schemas"]["InvoicePayment"] | null;
+            duplicate: boolean;
+            /**
+             * Format: int64
+             * @description The sum of the payments recorded by hand
+             */
+            paid_minor: string;
+            /** Format: int64 */
+            outstanding_minor: string;
             /** @description The invoice is paid */
-            settled?: boolean;
+            settled: boolean;
         };
         BankTransferInstructions: {
-            bank_name?: string;
-            account_holder?: string;
+            bank_name: string;
+            account_holder: string;
             /** @description Normalised: capitals, no spaces */
-            iban?: string;
+            iban: string;
             bic?: string;
             /** @description What the customer writes on the transfer */
-            reference?: string;
+            reference: string;
         };
         TransferReceipt: {
-            /** @description The ledger row */
-            id?: number;
+            /**
+             * Format: int64
+             * @description The ledger row
+             */
+            id: number;
             /** Format: int64 */
-            amount_minor?: number;
-            currency?: string;
+            amount_minor: number;
+            currency: string;
             /** Format: date-time */
-            received_at?: string;
-            bank_reference?: string;
+            received_at: string;
+            bank_reference: string;
             note?: string;
-            recorded_by?: string;
+            recorded_by: string;
             /** Format: date-time */
-            recorded_at?: string;
+            recorded_at: string;
         };
         InvoiceTransfer: {
             /** Format: uuid */
-            invoice_id?: string;
+            invoice_id: string;
             /**
              * @description none: not charged by bank transfer. pending: waiting for the money (partial receipts included). paid: the receipts reach the total. expired and rejected: given up, dunning applies.
              * @enum {string}
              */
-            state?: "none" | "pending" | "paid" | "expired" | "rejected";
+            state: "none" | "pending" | "paid" | "expired" | "rejected";
             reference?: string;
             instructions?: components["schemas"]["BankTransferInstructions"];
             currency?: string;
             /** Format: int64 */
             total_minor?: number;
             /** Format: int64 */
-            received_minor?: number;
+            received_minor: number;
             /** Format: int64 */
             outstanding_minor?: number;
             /** Format: date-time */
@@ -5013,58 +5145,58 @@ export interface components {
              */
             expires_at?: string;
             closed_reason?: string;
-            receipts?: components["schemas"]["TransferReceipt"][];
+            receipts: components["schemas"]["TransferReceipt"][];
         };
         TransferReceiptResult: {
-            receipt?: components["schemas"]["TransferReceipt"];
-            duplicate?: boolean;
+            receipt: components["schemas"]["TransferReceipt"];
+            duplicate: boolean;
             /** @description The receipts reach the total */
-            paid?: boolean;
+            paid: boolean;
             /** @description False when billing-svc could not be told now; the saga notices at its next poll. */
-            saga_notified?: boolean;
-            transfer?: components["schemas"]["InvoiceTransfer"];
+            saga_notified: boolean;
+            transfer: components["schemas"]["InvoiceTransfer"];
         };
         EntitlementStatus: {
-            customer_external_id?: string;
-            meter_code?: string;
+            customer_external_id: string;
+            meter_code: string;
             /** @example 2026-11 */
-            period_id?: string;
+            period_id: string;
             /**
              * @description Exact decimal with the meter's scale
              * @example 10.500
              */
-            used?: string;
+            used: string;
             /**
              * @description Exact decimal; null when unlimited
              * @example 10.500
              */
-            limit?: string | null;
-            unlimited?: boolean;
+            limit: string | null;
+            unlimited: boolean;
             /** @description unlimited, used < limit, or a soft or notify limit */
-            allowed?: boolean;
+            allowed: boolean;
             /** Format: date-time */
-            as_of?: string | null;
+            as_of: string | null;
             /**
              * @description What the limit counts over; month for a meter without a limit
              * @enum {string}
              */
-            window?: "hour" | "day" | "week" | "month" | "year" | "lifetime";
+            window: "hour" | "day" | "week" | "month" | "year" | "lifetime";
             /**
              * @description The window used counts in: period_id for a month, 2026-11-05T13, 2026-11-05, 2026-W45, 2026 for a year or all for the lifetime
              * @example 2026-11-05
              */
-            window_id?: string;
+            window_id: string;
             /**
              * Format: date-time
              * @description When the window ends and used starts again from zero; null for the lifetime window
              */
-            resets_at?: string | null;
+            resets_at: string | null;
             /** @enum {string} */
-            mode?: "hard" | "soft" | "notify";
+            mode: "hard" | "soft" | "notify";
             /** @description not unlimited and used >= limit, whatever the mode */
-            over_limit?: boolean;
-            /** @description The limit is the customer's own override */
-            overridden?: boolean;
+            over_limit: boolean;
+            /** @description The limit is the customer's own override, not its package's */
+            overridden: boolean;
         };
         IngestEventsRequest: {
             events: components["schemas"]["IncomingEvent"][];
@@ -5078,7 +5210,7 @@ export interface components {
             quantity: string | number;
             /**
              * Format: date-time
-             * @description Not older than 35 days
+             * @description Not older than 35 days, not more than 5 minutes ahead.
              */
             event_time: string;
             /** @description At most 32 entries and 4 KiB in total. */
@@ -5088,11 +5220,11 @@ export interface components {
         };
         IngestEventsResponse: {
             /** @description One per request event, same order. */
-            results?: components["schemas"]["EventResult"][];
+            results: components["schemas"]["EventResult"][];
         };
         EventResult: {
             /** @enum {string} */
-            status?: "accepted" | "duplicate" | "rejected";
+            status: "accepted" | "duplicate" | "rejected";
             /** @description Set for accepted and duplicate (the original id). */
             event_id?: string;
             /** @enum {string} */
@@ -5101,71 +5233,97 @@ export interface components {
         };
         AuthUser: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: email */
-            email?: string;
-            display_name?: string;
+            email: string;
+            display_name: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** @description True once the person opened a mailed link for this address. Until then live API keys cannot be created. */
-            email_verified?: boolean;
+            email_verified: boolean;
         };
         Payment: {
             /** @description The ledger row that carries the outcome */
-            id?: string;
-            invoice_id?: string;
-            provider?: string;
+            id: string;
+            invoice_id: string;
+            provider: string;
             /** @enum {string} */
-            kind?: "charge" | "refund";
+            kind: "charge" | "refund";
             /** @enum {string} */
-            status?: "paid" | "processing" | "failed" | "refunded";
-            /** @description int64 minor units as a string */
-            amount_minor?: string;
-            currency?: string;
+            status: "paid" | "processing" | "failed" | "refunded";
+            /** Format: int64 */
+            amount_minor: string;
+            currency: string;
             /** Format: date-time */
-            occurred_at?: string;
+            occurred_at: string;
         };
         Invitation: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: email */
-            email?: string;
+            email: string;
             /** @enum {string} */
-            role?: "owner" | "admin" | "viewer";
-            invited_by_email?: string;
-            invited_by_name?: string;
+            role: "owner" | "admin" | "viewer";
+            invited_by_email: string;
+            invited_by_name: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /**
              * Format: date-time
              * @description When the mail last went out
              */
-            send_time?: string;
+            send_time: string | null;
             /** Format: date-time */
-            expire_time?: string;
+            expire_time: string | null;
         };
         InvitationLookup: {
-            account_name?: string;
+            account_name: string;
             /** Format: email */
-            email?: string;
+            email: string;
             /** @enum {string} */
-            role?: "owner" | "admin" | "viewer";
-            has_account?: boolean;
-            invited_by_name?: string;
+            role: "owner" | "admin" | "viewer";
+            has_account: boolean;
+            invited_by_name: string;
         };
         Accepted: {
             /** @enum {string} */
-            status?: "accepted";
+            status: "accepted";
         };
         Membership: {
             /** Format: uuid */
-            account_id?: string;
-            account_name?: string;
+            account_id: string;
+            account_name: string;
             /** @enum {string} */
-            role?: "owner" | "admin" | "viewer";
+            role: "owner" | "admin" | "viewer";
         };
         /** @description The first-run wizard's progress. As a request body every field is optional and only those present are written. */
         OnboardingWizard: {
+            /** @enum {string|null} */
+            status: "active" | "skipped" | "done" | null;
+            /** @enum {string|null} */
+            step: "welcome" | "organisation" | "app" | "meter" | "package" | "event" | "done" | null;
+            /**
+             * @description Chosen in the organisation step
+             * @example TRY
+             */
+            currency: string | null;
+            /** @example Europe/Istanbul */
+            timezone: string | null;
+            /** @description Id of the app the wizard made */
+            app: string | null;
+            /** @description Code of the meter it made */
+            meter: string | null;
+            /** @description Code of the package it made */
+            plan: string | null;
+            /** @description The test customer exists */
+            customer: boolean | null;
+            /** @description The test event was sent */
+            event: boolean | null;
+            /** @description The person closed the Getting started card */
+            hidden: boolean | null;
+        };
+        /** @description The first-run wizard's progress. As a request body every field is optional and only those present are written. */
+        OnboardingWizardInput: {
             /** @enum {string} */
             status?: "active" | "skipped" | "done";
             /** @enum {string} */
@@ -5191,67 +5349,67 @@ export interface components {
             hidden?: boolean;
         };
         Onboarding: {
-            wizard?: components["schemas"]["OnboardingWizard"];
-            seen_tours?: string[];
+            wizard: components["schemas"]["OnboardingWizard"] | null;
+            seen_tours: string[];
         };
         SessionOpened: {
-            user?: components["schemas"]["AuthUser"];
-            memberships?: components["schemas"]["Membership"][];
+            user: components["schemas"]["AuthUser"] | null;
+            memberships: components["schemas"]["Membership"][];
             /** @description qs_..., shown once; send as Authorization: Bearer */
-            token?: string;
+            token: string;
             /**
              * Format: date-time
-             * @description 14 days from now; slides on use
+             * @description 14 days from now; slides on use, never beyond 90 days from sign-in
              */
-            expire_time?: string;
+            expire_time: string | null;
             /** @description The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
             operator?: boolean;
         };
         SessionInfo: {
-            user?: components["schemas"]["AuthUser"];
-            memberships?: components["schemas"]["Membership"][];
+            user: components["schemas"]["AuthUser"] | null;
+            memberships: components["schemas"]["Membership"][];
             /** Format: date-time */
-            expire_time?: string;
+            expire_time: string | null;
             /** @description The server's verdict: the person is a platform operator (verified address listed in PAYRUDDER_OPERATOR_EMAILS). The page uses it only to show the operator console; every operator route decides again. */
-            operator?: boolean;
+            operator: boolean;
         };
         PlanLimit: {
             /** @enum {string} */
-            resource?: "events" | "apps" | "members" | "api_keys";
+            resource: "events" | "apps" | "members" | "api_keys";
             /**
              * Format: int64
              * @description 0 is unlimited
              */
-            limit?: number;
+            limit: number;
             /** @enum {string} */
-            mode?: "hard" | "soft" | "notify";
+            mode: "hard" | "soft" | "notify";
         };
         PlanOffer: {
-            code?: string;
-            name?: string;
-            version?: number;
+            code: string;
+            name: string;
+            version: number;
             /** Format: int64 */
-            base_fee_minor?: number;
-            currency?: string;
+            base_fee_minor: number;
+            currency: string;
             /** @enum {string} */
-            interval?: "month";
-            trial_days?: number;
-            limits?: components["schemas"]["PlanLimit"][];
-            current?: boolean;
+            interval: "month";
+            trial_days: number;
+            limits: components["schemas"]["PlanLimit"][];
+            current: boolean;
         };
         PlanQuota: {
             /** @enum {string} */
-            resource?: "events" | "apps" | "members" | "api_keys";
+            resource: "events" | "apps" | "members" | "api_keys";
             /** Format: int64 */
-            used?: number;
+            used: number;
             /** Format: int64 */
-            limit?: number;
-            unlimited?: boolean;
+            limit: number;
+            unlimited: boolean;
             /** @enum {string} */
-            mode?: "hard" | "soft" | "notify";
-            over_limit?: boolean;
-            /** @description The limit is the organisation's own */
-            overridden?: boolean;
+            mode: "hard" | "soft" | "notify";
+            over_limit: boolean;
+            /** @description The limit is the organisation's own, set by the operator */
+            overridden: boolean;
             /**
              * Format: date-time
              * @description Only the events quota resets
@@ -5259,7 +5417,7 @@ export interface components {
             resets_time?: string;
         };
         PlatformInfo: {
-            enabled?: boolean;
+            enabled: boolean;
             /** Format: uuid */
             tenant_id?: string;
             /** @enum {string} */
@@ -5267,7 +5425,7 @@ export interface components {
             currency?: string;
         };
         OrganizationPlan: {
-            enabled?: boolean;
+            enabled: boolean;
             /** Format: uuid */
             account_id?: string;
             plan?: components["schemas"]["PlanOffer"];
@@ -5275,10 +5433,10 @@ export interface components {
             state?: "none" | "active" | "trialing" | "past_due" | "paused";
             /** Format: date-time */
             trial_end_time?: string;
-            overridden?: boolean;
-            quotas?: components["schemas"]["PlanQuota"][];
-            offers?: components["schemas"]["PlanOffer"][];
-            can_manage?: boolean;
+            overridden: boolean;
+            quotas: components["schemas"]["PlanQuota"][];
+            offers: components["schemas"]["PlanOffer"][];
+            can_manage: boolean;
             /** Format: uuid */
             customer_id?: string;
             /** Format: uuid */
@@ -5286,13 +5444,13 @@ export interface components {
         };
         PlanInvoice: {
             /** Format: uuid */
-            id?: string;
-            number?: string;
+            id: string;
+            number: string;
             /** @description open, paid, void ... */
-            status?: string;
-            currency?: string;
+            status: string;
+            currency: string;
             /** Format: int64 */
-            total_minor?: number;
+            total_minor: number;
             /** Format: date-time */
             create_time?: string;
             /** Format: date-time */
@@ -5300,381 +5458,2421 @@ export interface components {
         };
         OrganizationRow: {
             /** Format: uuid */
-            account_id?: string;
-            name?: string;
-            owner_email?: string;
-            plan_code?: string;
-            plan_name?: string;
-            state?: string;
-            overridden?: boolean;
+            account_id: string;
+            name: string;
+            owner_email: string;
+            plan_code: string;
+            plan_name: string;
+            state: string;
+            overridden: boolean;
             /** Format: int64 */
-            apps?: number;
+            apps: number;
             /** Format: int64 */
-            members?: number;
+            members: number;
             /** Format: int64 */
-            api_keys?: number;
+            api_keys: number;
             /** Format: int64 */
-            events_used?: number;
+            events_used: number;
             /**
              * Format: int64
              * @description 0 is unlimited
              */
-            events_limit?: number;
+            events_limit: number;
             /** Format: date-time */
             create_time?: string;
         };
         MyAccount: {
             /** Format: uuid */
-            id?: string;
-            name?: string;
+            id: string;
+            name: string;
             /**
              * @description The caller's own role
              * @enum {string}
              */
-            role?: "owner" | "admin" | "viewer";
+            role: "owner" | "admin" | "viewer";
             /** Format: date-time */
-            create_time?: string;
-            members?: {
+            create_time: string | null;
+            members: {
                 /** Format: uuid */
-                user_id?: string;
-                email?: string;
-                display_name?: string;
+                user_id: string;
+                email: string;
+                display_name: string;
                 /** @enum {string} */
-                role?: "owner" | "admin" | "viewer";
+                role: "owner" | "admin" | "viewer";
                 /** Format: date-time */
-                create_time?: string;
+                create_time: string | null;
             }[];
         };
         OverviewCount: {
-            count?: number;
+            count: number;
             /** @description The count stopped at its cap; there are more */
-            more?: boolean;
+            more: boolean;
         };
         /** @description Minor units of the block's currency. */
         DashboardRevenue: {
             /** Format: int64 */
-            gross_minor?: number;
+            gross_minor: number;
             /** Format: int64 */
-            tax_minor?: number;
+            tax_minor: number;
             /** Format: int64 */
-            refunds_minor?: number;
+            refunds_minor: number;
             /**
              * Format: int64
              * @description gross - tax - refunds
              */
-            net_minor?: number;
+            net_minor: number;
             /** Format: int64 */
-            expenses_minor?: number;
+            expenses_minor: number;
             /** Format: int64 */
-            profit_minor?: number;
+            profit_minor: number;
             /** Format: int64 */
-            paid_invoices?: number;
+            paid_invoices: number;
         };
         DashboardPayments: {
-            paid?: number;
+            paid: number;
             /** @description Failed attempts; a declined card that dunning retries counts each time */
-            failed?: number;
-            processing?: number;
-            refunds?: number;
+            failed: number;
+            processing: number;
+            refunds: number;
             /** Format: int64 */
-            paid_minor?: number;
+            paid_minor: number;
             /** Format: int64 */
-            failed_minor?: number;
+            failed_minor: number;
             /** Format: int64 */
-            refunded_minor?: number;
+            refunded_minor: number;
             /** @description failed / (paid + failed) in basis points; null when nothing settled */
-            failed_rate_bp?: number | null;
+            failed_rate_bp: number | null;
         };
         DashboardSubscriptions: {
             /** @description The month of the report (YYYY-MM) */
-            month?: string;
+            month: string;
             /** Format: int64 */
-            active?: number;
+            active: number;
             /** Format: int64 */
-            trialing?: number;
+            trialing: number;
             /** Format: int64 */
-            paused?: number;
+            paused: number;
             /** Format: int64 */
-            past_due?: number;
+            past_due: number;
             /** Format: int64 */
-            mrr_minor?: number;
+            mrr_minor: number;
             /**
              * Format: int64
              * @description mrr x 12
              */
-            arr_minor?: number;
+            arr_minor: number;
             /** Format: int64 */
-            new?: number;
+            new: number;
             /** Format: int64 */
-            new_mrr_minor?: number;
+            new_mrr_minor: number;
             /** Format: int64 */
-            churned?: number;
+            churned: number;
             /** Format: int64 */
-            churned_mrr_minor?: number;
-            churn_rate_bp?: number | null;
+            churned_mrr_minor: number;
+            churn_rate_bp: number | null;
         };
         /** @description Everything the dashboard knows in one currency. Nothing in it is in another currency. */
         DashboardCurrency: {
-            currency?: string;
-            revenue?: components["schemas"]["DashboardRevenue"];
-            prev_revenue?: components["schemas"]["DashboardRevenue"] | null;
+            currency: string;
+            revenue: components["schemas"]["DashboardRevenue"];
+            prev_revenue: components["schemas"]["DashboardRevenue"] | null;
             /** @description Net income per bucket (day, or the first day of a month), with the bucket of the previous period at the same position */
-            series?: {
+            series: {
                 /** Format: date */
-                date?: string;
+                date: string;
                 /** Format: int64 */
-                net_minor?: number;
+                net_minor: number;
                 /** Format: date */
                 prev_date?: string;
                 /** Format: int64 */
                 prev_net_minor?: number | null;
             }[];
-            payments?: components["schemas"]["DashboardPayments"] | null;
-            prev_payments?: components["schemas"]["DashboardPayments"] | null;
-            subscriptions?: components["schemas"]["DashboardSubscriptions"] | null;
-            prev_subscriptions?: components["schemas"]["DashboardSubscriptions"] | null;
+            payments: components["schemas"]["DashboardPayments"] | null;
+            prev_payments: components["schemas"]["DashboardPayments"] | null;
+            subscriptions: components["schemas"]["DashboardSubscriptions"] | null;
+            prev_subscriptions: components["schemas"]["DashboardSubscriptions"] | null;
             /**
              * Format: int64
              * @description Net revenue per active subscriber
              */
-            arpu_minor?: number | null;
+            arpu_minor: number | null;
             /** Format: int64 */
-            prev_arpu_minor?: number | null;
-            top_customers?: {
-                customer_id?: string;
-                customer_external_id?: string;
-                name?: string;
+            prev_arpu_minor: number | null;
+            top_customers: {
+                customer_id: string;
+                customer_external_id: string;
+                name: string;
                 /** Format: int64 */
-                income_minor?: number;
+                income_minor: number;
                 /** Format: int64 */
-                invoices?: number;
+                invoices: number;
             }[];
-            top_packages?: {
-                plan_code?: string;
+            top_packages: {
+                plan_code: string;
                 /** Format: int64 */
-                active?: number;
+                active: number;
                 /** Format: int64 */
-                mrr_minor?: number;
+                mrr_minor: number;
             }[];
             /** @description Open invoices by days open, in the order 0-7, 8-30, 31-60, 61+ */
-            aging?: {
+            aging: {
                 /** @enum {string} */
-                bucket?: "0-7" | "8-30" | "31-60" | "61+";
+                bucket: "0-7" | "8-30" | "31-60" | "61+";
                 /** Format: int64 */
-                count?: number;
+                count: number;
                 /** Format: int64 */
-                amount_minor?: number;
+                amount_minor: number;
             }[];
             /** Format: int64 */
-            open_count?: number;
+            open_count: number;
             /** Format: int64 */
-            open_minor?: number;
+            open_minor: number;
             /** @description The next charges of this currency in the coming 30 days, soonest first (at most six) */
-            renewals?: {
-                subscription_id?: string;
-                customer_external_id?: string;
-                plan_code?: string;
-                interval?: string;
+            renewals: {
+                subscription_id: string;
+                customer_external_id: string;
+                plan_code: string;
+                interval: string;
                 /** Format: date-time */
-                renews_at?: string;
-                state?: string;
+                renews_at: string;
+                state: string;
             }[];
         };
         Dashboard: {
-            app_id?: string;
+            app_id: string;
             /** @enum {string} */
-            environment?: "live" | "sandbox";
+            environment: "live" | "sandbox";
             /** Format: uuid */
-            tenant_id?: string;
-            timezone?: string;
-            default_currency?: string;
-            range?: {
-                period?: string;
+            tenant_id: string;
+            timezone: string;
+            default_currency: string;
+            range: {
+                period: string;
                 /** Format: date */
-                from?: string;
+                from: string;
                 /** Format: date */
-                to?: string;
-                days?: number;
+                to: string;
+                days: number;
                 /** @enum {string} */
-                granularity?: "day" | "month";
-                compare?: boolean;
+                granularity: "day" | "month";
+                compare: boolean;
                 /** Format: date */
                 prev_from?: string;
                 /** Format: date */
                 prev_to?: string;
             };
             /** Format: date-time */
-            generated_at?: string;
+            generated_at: string;
             /** @enum {string} */
-            status?: "ok" | "attention" | "degraded";
-            unavailable?: string[];
-            /** @description The period reaches past the newest 1000 ledger rows the gateway reads */
-            payments_truncated?: boolean;
-            /** @description False when the ledger window does not reach back over the previous period */
-            payments_prev_covered?: boolean;
-            renewals_truncated?: boolean;
+            status: "ok" | "attention" | "degraded";
+            unavailable: string[];
+            /** @description The period reaches past the newest 1000 ledger rows the gateway reads, so payment counts may be low */
+            payments_truncated: boolean;
+            /** @description False when the ledger window does not reach back over the previous period, so it has no payment comparison */
+            payments_prev_covered: boolean;
+            renewals_truncated: boolean;
             /** @description The tenant's own currency first, then by net revenue */
-            currencies?: components["schemas"]["DashboardCurrency"][];
-            customers?: {
+            currencies: components["schemas"]["DashboardCurrency"][];
+            customers: {
                 /** Format: int64 */
-                total?: number;
+                total: number;
                 /** Format: int64 */
-                new?: number;
+                new: number;
                 /** Format: int64 */
-                prev_new?: number;
+                prev_new: number;
             } | null;
             /** @description Usage against the limits of up to ten customers who have a subscription */
-            usage?: {
-                period_id?: string;
-                sampled?: number;
-                meters?: {
-                    meter_code?: string;
-                    customers?: number;
-                    over?: number;
+            usage: {
+                period_id: string;
+                sampled: number;
+                meters: {
+                    meter_code: string;
+                    customers: number;
+                    over: number;
                     /** @description At or above 80 % of the limit */
-                    near?: number;
-                    top?: {
-                        customer_external_id?: string;
-                        used?: string;
-                        limit?: string;
+                    near: number;
+                    top: {
+                        customer_external_id: string;
+                        used: string;
+                        limit: string;
                         /** @description For display only; the exact decimals are the entitlements endpoint's */
-                        percent?: number;
+                        percent: number;
                     }[];
                 }[];
             } | null;
             /** @description The newest invoices, payments and subscriptions, newest first (at most twelve) */
-            activity?: {
+            activity: {
                 /** @enum {string} */
-                kind?: "invoice" | "payment" | "subscription";
+                kind: "invoice" | "payment" | "subscription";
                 /** Format: date-time */
-                at?: string;
-                ref?: string;
-                label?: string;
+                at: string;
+                ref: string;
+                label: string;
                 customer?: string;
-                status?: string;
+                status: string;
                 /** Format: int64 */
                 amount_minor?: number;
                 currency?: string;
             }[];
-            health?: {
-                payments_reachable?: boolean;
-                webhook_endpoints?: number;
-                webhook_failed?: number;
-                webhook_failed_more?: boolean;
-                providers?: {
-                    provider?: string;
-                    environment?: string;
-                    is_default?: boolean;
+            health: {
+                payments_reachable: boolean;
+                webhook_endpoints: number;
+                webhook_failed: number;
+                webhook_failed_more: boolean;
+                providers: {
+                    provider: string;
+                    environment: string;
+                    is_default: boolean;
                 }[];
             };
         };
         AppOverview: {
             /** Format: uuid */
-            app_id?: string;
+            app_id: string;
             /** @enum {string} */
-            environment?: "live" | "sandbox";
+            environment: "live" | "sandbox";
             /** Format: uuid */
-            tenant_id?: string;
+            tenant_id: string;
             /** @description The environment's own currency */
-            currency?: string;
+            currency: string;
             /** @example 30 */
-            window_days?: number;
+            window_days: number;
             /** Format: date-time */
-            generated_at?: string;
+            generated_at: string;
             /**
              * @description attention: a failed payment or webhook delivery; degraded: a section is unavailable
              * @enum {string}
              */
-            status?: "ok" | "attention" | "degraded";
-            unavailable?: ("payments" | "invoices" | "customers" | "subscriptions" | "webhooks")[];
-            payments?: {
+            status: "ok" | "attention" | "degraded";
+            unavailable: ("payments" | "invoices" | "customers" | "subscriptions" | "webhooks")[];
+            payments: {
                 /** @description The ledger window held more rows than the gateway reads */
-                truncated?: boolean;
-                by_status?: {
+                truncated: boolean;
+                by_status: {
                     /** @enum {string} */
-                    status?: "paid" | "processing" | "failed" | "refunded";
-                    count?: number;
+                    status: "paid" | "processing" | "failed" | "refunded";
+                    count: number;
                 }[];
-                by_currency?: {
-                    currency?: string;
-                    paid_count?: number;
-                    paid_minor?: number;
-                    failed_count?: number;
-                    failed_minor?: number;
-                    pending_count?: number;
-                    pending_minor?: number;
-                    refunded_minor?: number;
+                by_currency: {
+                    currency: string;
+                    paid_count: number;
+                    /** Format: int64 */
+                    paid_minor: number;
+                    failed_count: number;
+                    /** Format: int64 */
+                    failed_minor: number;
+                    pending_count: number;
+                    /** Format: int64 */
+                    pending_minor: number;
+                    /** Format: int64 */
+                    refunded_minor: number;
                 }[];
                 /** @description Paid money per day of the window, per currency */
-                series?: {
-                    currency?: string;
-                    points?: {
+                series: {
+                    currency: string;
+                    points: {
                         /** Format: date */
-                        date?: string;
-                        amount_minor?: number;
+                        date: string;
+                        /** Format: int64 */
+                        amount_minor: number;
                     }[];
                 }[];
-                recent?: {
-                    id?: string;
-                    invoice_id?: string;
-                    provider?: string;
+                recent: {
+                    id: string;
+                    invoice_id: string;
+                    provider: string;
                     /** @enum {string} */
-                    kind?: "charge" | "refund";
+                    kind: "charge" | "refund";
                     /** @enum {string} */
-                    status?: "paid" | "processing" | "failed" | "refunded";
-                    amount_minor?: number;
-                    currency?: string;
+                    status: "paid" | "processing" | "failed" | "refunded";
+                    /** Format: int64 */
+                    amount_minor: number;
+                    currency: string;
                     /** Format: date-time */
-                    occurred_at?: string;
+                    occurred_at: string;
                 }[];
             } | null;
-            invoices?: {
-                open?: components["schemas"]["OverviewCount"];
-                paid?: components["schemas"]["OverviewCount"];
+            invoices: {
+                open: components["schemas"]["OverviewCount"];
+                paid: components["schemas"]["OverviewCount"];
                 /** @description All periods, per currency */
-                revenue?: {
-                    currency?: string;
-                    billed_minor?: number;
-                    collected_minor?: number;
-                    outstanding_minor?: number;
-                    refunded_minor?: number;
+                revenue: {
+                    currency: string;
+                    /** Format: int64 */
+                    billed_minor: number;
+                    /** Format: int64 */
+                    collected_minor: number;
+                    /** Format: int64 */
+                    outstanding_minor: number;
+                    /** Format: int64 */
+                    refunded_minor: number;
                 }[];
-                recent?: {
-                    id?: string;
-                    number?: string;
-                    customer_id?: string;
-                    customer_external_id?: string;
-                    status?: string;
-                    currency?: string;
-                    total_minor?: number;
+                recent: {
+                    id: string;
+                    number: string;
+                    customer_id: string;
+                    customer_external_id: string;
+                    status: string;
+                    currency: string;
+                    /** Format: int64 */
+                    total_minor: number;
                     /** Format: date-time */
-                    create_time?: string;
+                    create_time: string;
                     /** Format: date-time */
-                    finalize_time?: string;
+                    finalize_time: string;
                 }[];
             } | null;
-            customers?: components["schemas"]["OverviewCount"] | null;
+            customers: (components["schemas"]["OverviewCount"] | null) | null;
             /** @description Recurring revenue of the current month per currency */
-            subscriptions?: {
-                currency?: string;
-                active?: number;
-                trialing?: number;
-                past_due?: number;
-                mrr_minor?: number;
-                new_mrr_minor?: number;
-                churned_mrr_minor?: number;
+            subscriptions: {
+                currency: string;
+                /** Format: int64 */
+                active: number;
+                /** Format: int64 */
+                trialing: number;
+                /** Format: int64 */
+                past_due: number;
+                /** Format: int64 */
+                mrr_minor: number;
+                /** Format: int64 */
+                new_mrr_minor: number;
+                /** Format: int64 */
+                churned_mrr_minor: number;
             }[];
-            health?: {
-                payments_reachable?: boolean;
-                webhook_endpoints?: number;
-                webhook_failed?: number;
-                webhook_failed_more?: boolean;
-                providers?: {
-                    provider?: string;
-                    environment?: string;
-                    is_default?: boolean;
+            health: {
+                payments_reachable: boolean;
+                webhook_endpoints: number;
+                webhook_failed: number;
+                webhook_failed_more: boolean;
+                providers: {
+                    provider: string;
+                    environment: string;
+                    is_default: boolean;
                 }[];
             };
+        };
+        ListCustomersResponse: {
+            customers: components["schemas"]["Customer"][];
+            next_page_token: string;
+        };
+        SetPaymentMethodRequest: {
+            payment_method: string;
+        };
+        ListMetersResponse: {
+            meters: components["schemas"]["Meter"][];
+        };
+        GetCustomerUsageResponse: {
+            customer_external_id: string;
+            period_id: string;
+            usage: components["schemas"]["GetCustomerUsageUsage"][];
+        };
+        GetCustomerUsageUsage: {
+            meter_code: string;
+            /** @example 1500.250 */
+            quantity: string;
+            /** Format: int64 */
+            event_count: string;
+        };
+        ListEntitlementsResponse: {
+            items: components["schemas"]["EntitlementStatus"][];
+        };
+        ListEntitlementOverridesResponse: {
+            overrides: components["schemas"]["EntitlementOverride"][];
+        };
+        CreatePlanRequest: {
+            code: string;
+            name: string;
+        };
+        ListPlansResponse: {
+            plans: components["schemas"]["Plan"][];
+        };
+        PublishPlanVersionRequest: {
+            /** Format: int64 */
+            base_fee_minor?: string;
+            /** @description Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's */
+            fees?: components["schemas"]["CurrencyFeeInput"][];
+            prices?: components["schemas"]["PriceInput"][];
+            entitlements?: components["schemas"]["EntitlementInput"][];
+            /** @description The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
+            trial_days?: number;
+        };
+        ListSubscriptionsResponse: {
+            subscriptions: components["schemas"]["Subscription"][];
+            next_page_token: string;
+        };
+        CreateSubscriptionRequest: {
+            customer_external_id: string;
+            plan_code: string;
+            /** @description 0 = latest */
+            plan_version?: number;
+            /** Format: date-time */
+            start_time?: string;
+            /** @description Left out: the package version's own default trial. 0: no trial whatever the default is */
+            trial_days?: number;
+            /** @enum {string} */
+            interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            /** @description Default is the customer's billing currency, then the tenant's */
+            currency?: string;
+            /** @description The payment provider that sells it (for example paddle); default is the tenant's default account */
+            provider?: string;
+            /** @description A coupon to redeem on the new subscription */
+            coupon_code?: string;
+            /** @description Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance */
+            quantity?: number;
+            /**
+             * @description Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee.
+             * @enum {string}
+             */
+            fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
+        };
+        CancelSubscriptionResponse: {
+            subscription: components["schemas"]["Subscription"];
+            /**
+             * Format: int64
+             * @description Minor units of the subscription's currency credited to the customer; "0" unless credit_unused credited something
+             */
+            credited_minor: string;
+        };
+        ChangePlanRequest: {
+            plan_code: string;
+            /** @description 0 = latest */
+            plan_version?: number;
+            /**
+             * Format: date-time
+             * @description Default now
+             */
+            change_time?: string;
+        };
+        ChangePlanResponse: {
+            subscription: components["schemas"]["Subscription"] | null;
+            /**
+             * Format: int64
+             * @description The old plan's share of the current month's fixed fee, up to change_time (informational; billing recomputes it)
+             */
+            old_plan_fee_minor: string;
+            /**
+             * Format: int64
+             * @description The new plan's share of the current month's fixed fee, from change_time (informational; billing recomputes it)
+             */
+            new_plan_fee_minor: string;
+        };
+        ChangeSubscriptionResponse: {
+            subscription: components["schemas"]["Subscription"] | null;
+            quote: components["schemas"]["ChangeQuote"] | null;
+            /** @description True when the change waits for the end of the period */
+            scheduled: boolean;
+        };
+        ApplyCouponRequest: {
+            code: string;
+        };
+        /** @description An empty JSON object */
+        EmptyObject: Record<string, never>;
+        VoidExpenseRequest: {
+            reason: string;
+        };
+        ResolveInboxItemRequest: {
+            /** @enum {string} */
+            status: "accepted" | "dismissed";
+            /** Format: uuid */
+            expense_id?: string;
+        };
+        ListExpenseRulesResponse: {
+            rules: components["schemas"]["ExpenseRule"][];
+        };
+        InboundInvoicesRequest: Record<string, never>;
+        InboundInvoicesResponse: {
+            stored: number;
+        };
+        ListWebhookEndpointsResponse: {
+            endpoints: components["schemas"]["WebhookEndpoint"][];
+        };
+        ListWebhookDeliveriesResponse: {
+            deliveries: components["schemas"]["WebhookDelivery"][];
+            next_page_token: string;
+        };
+        ListCouponsResponse: {
+            coupons: components["schemas"]["Coupon"][];
+        };
+        CreatePromotionCodesResponse: {
+            codes: components["schemas"]["PromotionCode"][];
+        };
+        ListPromotionCodesResponse: {
+            codes: components["schemas"]["PromotionCode"][];
+            next_page_token: string;
+            total: number;
+        };
+        ListCouponRedemptionsResponse: {
+            redemptions: components["schemas"]["CouponRedemption"][];
+            next_page_token: string;
+            total: number;
+        };
+        GrantCustomerCouponRequest: {
+            coupon_code: string;
+            /** @description Who gives it, e.g. operator or affiliate */
+            source: string;
+            source_ref: string;
+        };
+        GrantCustomerCouponResponse: {
+            granted: boolean;
+        };
+        CreateAffiliateRequest: {
+            /** Format: email */
+            email: string;
+            name?: string;
+            code?: string;
+            /** @enum {string} */
+            payout_method?: "manual" | "bank_transfer";
+            payout_details?: string;
+            pending?: boolean;
+        };
+        ListAffiliatesResponse: {
+            affiliates: components["schemas"]["Affiliate"][];
+            next_page_token: string;
+            total: number;
+        };
+        ListAffiliateReferralsResponse: {
+            referrals: components["schemas"]["AffiliateReferral"][];
+            next_page_token: string;
+            total: number;
+        };
+        ListAffiliateCommissionsResponse: {
+            commissions: components["schemas"]["AffiliateCommission"][];
+            next_page_token: string;
+            total: number;
+        };
+        ReverseAffiliateCommissionRequest: {
+            /** Format: uuid */
+            invoice_id: string;
+            /** @enum {string} */
+            reason: "chargeback" | "manual";
+            /** @description Names this reversal; required for manual */
+            reference?: string;
+            /**
+             * Format: int64
+             * @description How much to take back; 0 or absent is all that is left
+             */
+            amount_minor?: string;
+            note?: string;
+        };
+        ReverseAffiliateCommissionResponse: {
+            /**
+             * Format: int64
+             * @description How much this call took back; 0 on a repeat
+             */
+            reversed_minor: string;
+            commission: components["schemas"]["AffiliateCommission"] | null;
+        };
+        GetAffiliateBalancesResponse: {
+            balances: components["schemas"]["AffiliateBalance"][];
+        };
+        ListAffiliatePayoutsResponse: {
+            payouts: components["schemas"]["AffiliatePayout"][];
+            next_page_token: string;
+            total: number;
+        };
+        CreateAffiliatePayoutsRequest: {
+            /** Format: uuid */
+            affiliate_id?: string;
+            currency?: string;
+        };
+        CreateAffiliatePayoutsResponse: {
+            payouts: components["schemas"]["AffiliatePayout"][];
+            skipped: components["schemas"]["CreateAffiliatePayoutsSkipped"][];
+        };
+        CreateAffiliatePayoutsSkipped: {
+            /** Format: uuid */
+            affiliate_id: string;
+            currency: string;
+            /** Format: int64 */
+            total_minor: string;
+            /** @enum {string} */
+            reason: "below_minimum" | "not_positive";
+        };
+        MarkAffiliatePayoutPaidRequest: {
+            /** @description Your note, e.g. the bank transfer reference */
+            reference?: string;
+        };
+        ListAffiliateJournalResponse: {
+            entries: components["schemas"]["AffiliateJournalEntry"][];
+            totals: components["schemas"]["ListAffiliateJournalTotal"][];
+            next_page_token: string;
+            total: number;
+        };
+        ListAffiliateJournalTotal: {
+            currency: string;
+            /** Format: int64 */
+            debit_minor: string;
+            /** Format: int64 */
+            credit_minor: string;
+        };
+        UpdateAffiliateRequest: {
+            name?: string;
+            /** @enum {string} */
+            payout_method?: "manual" | "bank_transfer";
+            payout_details?: string;
+            /** @enum {string} */
+            status?: "active" | "suspended";
+        };
+        LinkAffiliatePromotionCodeRequest: {
+            promotion_code: string;
+        };
+        AttributeCustomerRequest: {
+            code: string;
+            /** @enum {string} */
+            source?: "link" | "code" | "api";
+            /**
+             * Format: date-time
+             * @description When the visitor followed the link; default now
+             */
+            touch_time?: string;
+        };
+        AttributeCustomerResponse: {
+            attributed: boolean;
+            reason: string;
+        };
+        GetRevenueReportResponse: {
+            rows: components["schemas"]["GetRevenueReportRow"][];
+        };
+        GetRevenueReportRow: {
+            period: string;
+            provider: string;
+            country: string;
+            currency: string;
+            /** Format: int64 */
+            invoices: string;
+            /**
+             * Format: int64
+             * @description Finalized invoices that are not void
+             */
+            billed_minor: string;
+            /**
+             * Format: int64
+             * @description Paid
+             */
+            collected_minor: string;
+            /**
+             * Format: int64
+             * @description Invoices that were refunded
+             */
+            refunded_minor: string;
+            /**
+             * Format: int64
+             * @description Open
+             */
+            outstanding_minor: string;
+            /** Format: int64 */
+            uncollectible_minor: string;
+            /** Format: int64 */
+            void_minor: string;
+            /**
+             * Format: int64
+             * @description Credit notes issued against these invoices
+             */
+            credited_minor: string;
+        };
+        GetDunningReportResponse: {
+            invoices: components["schemas"]["GetDunningReportInvoice"][];
+            summary: components["schemas"]["GetDunningReportSummary"][];
+        };
+        GetDunningReportInvoice: {
+            /** Format: uuid */
+            invoice_id: string;
+            number: string;
+            customer_external_id: string;
+            period: string;
+            provider: string;
+            currency: string;
+            /** Format: int64 */
+            total_minor: string;
+            /** @enum {string} */
+            state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
+            dunning_attempt: number;
+            /** Format: date-time */
+            next_attempt_time: string | null;
+            last_error: string;
+        };
+        GetDunningReportSummary: {
+            state: string;
+            provider: string;
+            currency: string;
+            /** Format: int64 */
+            invoices: string;
+            /** Format: int64 */
+            total_minor: string;
+        };
+        GetSubscriptionReportResponse: {
+            month: string;
+            rows: components["schemas"]["GetSubscriptionReportRow"][];
+        };
+        GetSubscriptionReportRow: {
+            provider: string;
+            country: string;
+            currency: string;
+            /** Format: int64 */
+            active: string;
+            /** Format: int64 */
+            trialing: string;
+            /** Format: int64 */
+            paused: string;
+            /** Format: int64 */
+            past_due: string;
+            /**
+             * Format: int64
+             * @description Fixed fees per month of active and past due subscriptions
+             */
+            mrr_minor: string;
+            /** Format: int64 */
+            new_subscriptions: string;
+            /** Format: int64 */
+            new_mrr_minor: string;
+            /**
+             * Format: int64
+             * @description Ended with no successor; a plan change or provider migration is not churn
+             */
+            churned: string;
+            /** Format: int64 */
+            churned_mrr_minor: string;
+            plan_code: string;
+        };
+        PreviewRoutingRequest: {
+            /** @example TR */
+            country?: string;
+            /** @example TRY */
+            currency?: string;
+        };
+        PreviewRoutingResponse: {
+            /** @description Empty when no rule matches (the tenant's default account) */
+            provider: string;
+            /** @description -1 when no rule matches */
+            rule_index: number;
+            /** @enum {string} */
+            owner: "payrudder" | "provider";
+            can_charge: boolean;
+        };
+        ListInvoicesResponse: {
+            invoices: components["schemas"]["Invoice"][];
+            next_page_token: string;
+        };
+        ListCreditNotesResponse: {
+            credit_notes: components["schemas"]["CreditNote"][];
+            next_page_token: string;
+        };
+        CreateInvoiceLinkRequest: {
+            /** @default 90 */
+            expires_in_days: number;
+        };
+        CreateInvoiceLinkResponse: {
+            token: string;
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        RevokeInvoiceLinksResponse: {
+            revoked: number;
+        };
+        ListPaymentLinksResponse: {
+            links: components["schemas"]["PaymentLink"][];
+            next_page_token: string;
+        };
+        CreatePortalLinkRequest: {
+            /** @default 30 */
+            expires_in_days: number;
+        };
+        CreatePortalLinkResponse: {
+            token: string;
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+            customer_id: string;
+        };
+        RevokePortalLinksResponse: {
+            revoked: number;
+        };
+        ListCustomerPaymentsResponse: {
+            invoices: components["schemas"]["Invoice"][];
+            payments: components["schemas"]["CustomerPayment"][];
+        };
+        ListPaymentsResponse: {
+            payments: components["schemas"]["Payment"][];
+            truncated: boolean;
+        };
+        CreateUploadSessionRequest: {
+            files: components["schemas"]["CreateUploadSessionFile"][];
+        };
+        CreateUploadSessionFile: {
+            filename: string;
+            /** @example application/pdf */
+            content_type: string;
+            size: number;
+            /** @enum {string} */
+            purpose: "invoice_logo" | "invoice_attachment" | "general";
+            /** @description Optional hex sha256 of the whole file */
+            sha256?: string;
+        };
+        PresignPartsResponse: {
+            parts: components["schemas"]["PresignedPart"][];
+        };
+        CompleteUploadFileRequest: {
+            parts: components["schemas"]["CompleteUploadFilePart"][];
+        };
+        CompleteUploadFilePart: {
+            part_number: number;
+            etag: string;
+        };
+        UploadAssetsResponse: {
+            results: components["schemas"]["UploadAssetsResult"][];
+        };
+        UploadAssetsResult: {
+            filename: string;
+            /** @enum {string} */
+            status: "created" | "rejected";
+            asset?: components["schemas"]["Asset"];
+            /** @example CONTENT_TYPE_MISMATCH */
+            error_code?: string;
+            message?: string;
+        };
+        ListAssetsResponse: {
+            assets: components["schemas"]["Asset"][];
+            next_page_token: string;
+        };
+        SetInvoiceLogoRequest: {
+            /** Format: uuid */
+            asset_id: string;
+        };
+        SetInvoiceLogoResponse: {
+            invoice_logo_asset_id: string;
+        };
+        ClearInvoiceLogoResponse: {
+            invoice_logo_asset_id: string;
+        };
+        GetAnalyticsUsageResponse: {
+            /** @enum {string} */
+            precision: "estimated" | "exact";
+            quantity_scale: number;
+            points: components["schemas"]["GetAnalyticsUsagePoint"][];
+        };
+        GetAnalyticsUsagePoint: {
+            /** Format: date-time */
+            start: string | null;
+            /** @example 1.500 */
+            quantity: string;
+            /** Format: int64 */
+            event_count: string;
+        };
+        GetTopCustomersResponse: {
+            precision: string;
+            quantity_scale: number;
+            customers: components["schemas"]["GetTopCustomersCustomer"][];
+        };
+        GetTopCustomersCustomer: {
+            customer_id: string;
+            customer_external_id: string;
+            quantity: string;
+            /** Format: int64 */
+            event_count: string;
+        };
+        SandboxClosePeriodRequest: {
+            period?: string;
+        };
+        SetPaymentScenarioRequest: {
+            /** @enum {string} */
+            scenario: "success" | "declined" | "insufficient_funds_once" | "error_then_success" | "timeout_committed" | "timeout_not_committed";
+        };
+        SignUpRequest: {
+            /** Format: email */
+            email: string;
+            /** Format: password */
+            password: string;
+            display_name?: string;
+            /** @description The organisation the person starts */
+            account_name: string;
+            /**
+             * @description The language of the mails. Default: the first supported language of Accept-Language, else English.
+             * @enum {string}
+             */
+            locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+        };
+        AuthMethodsResponse: {
+            password: boolean;
+            otp: boolean;
+            google: boolean;
+        };
+        RequestLoginCodeRequest: {
+            /** Format: email */
+            email: string;
+            /** @enum {string} */
+            locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+        };
+        VerifyLoginCodeRequest: {
+            /** Format: email */
+            email: string;
+            code: string;
+            /** @description Used only when the code creates the account */
+            display_name?: string;
+            /** @description Used only when the code creates the account */
+            account_name?: string;
+            /** @enum {string} */
+            locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+        };
+        VerifyEmailRequest: {
+            token: string;
+        };
+        VerifyEmailResponse: {
+            user: components["schemas"]["AuthUser"] | null;
+        };
+        ForgotPasswordRequest: {
+            /** Format: email */
+            email: string;
+            /** @enum {string} */
+            locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+        };
+        ResetPasswordRequest: {
+            token: string;
+            /** Format: password */
+            password: string;
+        };
+        LookupInvitationRequest: {
+            token: string;
+        };
+        AcceptInvitationRequest: {
+            token: string;
+            /** Format: password */
+            password: string;
+            display_name?: string;
+            /** @enum {string} */
+            locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+        };
+        SignInRequest: {
+            /** Format: email */
+            email: string;
+            /** Format: password */
+            password: string;
+        };
+        UpdateMyOnboardingRequest: {
+            wizard?: components["schemas"]["OnboardingWizardInput"];
+            seen_tours?: string[];
+            forget_tours?: string[];
+        };
+        AppCreateAccountRequest: {
+            name: string;
+        };
+        AppRenameAccountRequest: {
+            name: string;
+        };
+        AppRenameAccountResponse: {
+            name: string;
+        };
+        AppChangePlanRequest: {
+            plan_code: string;
+        };
+        AppListPlanInvoicesResponse: {
+            invoices: components["schemas"]["PlanInvoice"][];
+        };
+        AppPlanInvoicePayLinkResponse: {
+            url: string;
+        };
+        AppPlanPortalLinkResponse: {
+            url: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        AppListInvitationsResponse: {
+            invitations: components["schemas"]["Invitation"][];
+        };
+        AppInviteMemberRequest: {
+            /** Format: email */
+            email: string;
+            /** @enum {string} */
+            role: "owner" | "admin" | "viewer";
+            /**
+             * @description The language of the mail
+             * @enum {string}
+             */
+            locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+        };
+        AppUpdateMemberRoleRequest: {
+            /** @enum {string} */
+            role: "owner" | "admin" | "viewer";
+        };
+        AppUpdateMemberRoleResponse: {
+            /** @enum {string} */
+            role: "owner" | "admin" | "viewer";
+        };
+        AppAcceptInvitationRequest: {
+            token: string;
+        };
+        AppAcceptInvitationResponse: {
+            /** Format: uuid */
+            account_id: string;
+            memberships: components["schemas"]["Membership"][];
+        };
+        AppListAppsResponse: {
+            apps: components["schemas"]["App"][];
+        };
+        AppCreateAppRequest: {
+            name: string;
+            /** @description Lower case with dashes, unique within the account; default: the name */
+            slug?: string;
+            /** @description An active ISO 4217 code */
+            currency: string;
+            /** @example Europe/Istanbul */
+            timezone: string;
+        };
+        AppGetAppResponse: {
+            app: components["schemas"]["App"] | null;
+            /** @enum {string} */
+            role: "owner" | "admin" | "viewer";
+        };
+        AppRenameAppRequest: {
+            name: string;
+        };
+        AppListApiKeysResponse: {
+            api_keys: components["schemas"]["ApiKey"][];
+        };
+        AppCreateApiKeyRequest: {
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            role?: components["schemas"]["ApiKeyRole"];
+            /** @description Required for the role custom; for a fixed role optional, and then a subset of the role's own. */
+            permissions?: components["schemas"]["ApiKeyPermission"][];
+            /**
+             * @description Older way to choose a role when `role` and `permissions` are absent: full is admin, ingest is ingest_only, read is read_only.
+             * @enum {string}
+             */
+            scope?: "full" | "ingest" | "read";
+        };
+        AppCreateApiKeyResponse: {
+            api_key: components["schemas"]["ApiKey"] | null;
+            /** @description qk_{test|live}_<prefix>_<secret>, shown once */
+            plaintext: string;
+        };
+        AppSandboxResetStatusResponse: {
+            sandbox_reset: components["schemas"]["SandboxReset"] | null;
+        };
+        AppSandboxResetResponse: {
+            sandbox_reset: components["schemas"]["SandboxReset"] | null;
+        };
+        SandboxScenariosResponse: {
+            scenarios: components["schemas"]["SandboxScenariosScenario"][];
+        };
+        SandboxScenariosScenario: {
+            /** @example declined */
+            scenario: string;
+            /** @example pm_sandbox_declined */
+            payment_method: string;
+            /** @enum {string} */
+            outcome: "paid" | "uncollectible" | "paid_after_retry" | "paid_after_status_query" | "paid_after_recharge";
+            default?: boolean;
+            description: string;
+        };
+        SandboxSimulateInvoiceRequest: {
+            /** @description A name from /v1/sandbox/scenarios, with or without the pm_sandbox_ prefix. */
+            scenario: string;
+        };
+        SandboxSimulateInvoiceResponse: {
+            invoice_id: string;
+            customer_external_id: string;
+            scenario: string;
+            payment_method: string;
+            retried: boolean;
+            retry_error?: string;
+        };
+        AppPromoteRequest: {
+            dry_run?: boolean;
+            plan_hash?: string;
+        };
+        AppPromoteResponse: {
+            dry_run: boolean;
+            plan_hash: string;
+            created: number;
+            unchanged: number;
+            conflicts: number;
+            skipped: number;
+            failed: number;
+            changes: components["schemas"]["AppPromoteChange"][];
+        };
+        AppPromoteChange: {
+            /** @enum {string} */
+            family: "meters" | "plans" | "taxes" | "coupons" | "mail" | "webhooks";
+            key: string;
+            /** @enum {string} */
+            action: "ACTION_CREATE" | "ACTION_UNCHANGED" | "ACTION_CONFLICT" | "ACTION_SKIPPED";
+            detail: string;
+            applied: boolean;
+            error: string;
+            /** @description A webhook endpoint made by the promotion: its new signing secret, shown once. */
+            secret: string;
+        };
+        AppRotateApiKeyRequest: {
+            /**
+             * @description How long the old key keeps working. 0 ends it now.
+             * @default 24
+             */
+            overlap_hours: number;
+        };
+        AppRotateApiKeyResponse: {
+            api_key: components["schemas"]["ApiKey"] | null;
+            /** @description shown once */
+            plaintext: string;
+            previous: components["schemas"]["ApiKey"] | null;
+        };
+        MyAffiliationsResponse: {
+            affiliations: components["schemas"]["MyAffiliation"][];
+        };
+        ClaimMyAffiliationsResponse: {
+            claimed: number;
+            affiliations: components["schemas"]["MyAffiliation"][];
+        };
+        LookupAffiliateProgramResponse: {
+            seller_name: string;
+            environment: string;
+            applied: boolean;
+            program: components["schemas"]["MyProgram"] | null;
+        };
+        ApplyAsAffiliateRequest: {
+            tenant_id: string;
+            name?: string;
+            /** @enum {string} */
+            payout_method?: "manual" | "bank_transfer";
+            payout_details?: string;
+        };
+        UpdateMyAffiliationRequest: {
+            name?: string;
+            /** @enum {string} */
+            payout_method: "manual" | "bank_transfer";
+            payout_details?: string;
+        };
+        MyReferralsResponse: {
+            referrals: components["schemas"]["MyReferral"][];
+            next_page_token: string;
+            total: number;
+        };
+        MyCommissionsResponse: {
+            commissions: components["schemas"]["MyCommission"][];
+            next_page_token: string;
+            total: number;
+        };
+        MyPayoutsResponse: {
+            payouts: components["schemas"]["MyPayout"][];
+            next_page_token: string;
+            total: number;
+        };
+        AppGoLiveResponse: {
+            go_live: components["schemas"]["GoLive"] | null;
+        };
+        AppActivateLiveRequest: {
+            /** @description Accepts the terms of service in the same call. */
+            accept_terms?: boolean;
+        };
+        AppActivateLiveResponse: {
+            go_live: components["schemas"]["GoLive"] | null;
+        };
+        AppSaveBillingProfileRequest: {
+            legal?: components["schemas"]["LegalInfoInput"];
+            address?: components["schemas"]["AddressInput"];
+        };
+        AppAcceptTermsResponse: {
+            /** Format: date-time */
+            accept_time: string | null;
+        };
+        /** @description The provider's settings. */
+        AppConnectLiveProviderRequest: {
+            [key: string]: unknown;
+        };
+        AppConnectLiveProviderResponse: {
+            provider: string;
+            /** @enum {string} */
+            environment: "live";
+            default: boolean;
+        };
+        AppGetEInvoiceIntegrationResponse: {
+            account: {
+                /** @enum {string} */
+                provider: "nilvera" | "webhook";
+                /** @enum {string} */
+                mode: "test" | "production";
+                /** Format: date-time */
+                updated_at?: string;
+            } | null;
+        };
+        AppPutEInvoiceIntegrationRequest: {
+            /** @enum {string} */
+            provider: "nilvera" | "webhook";
+            /** @enum {string} */
+            mode?: "test" | "production";
+            /** @description nilvera: api_key[, base_url]; webhook: url, secret. */
+            credentials?: {
+                [key: string]: string;
+            };
+        };
+        AppTestEInvoiceIntegrationRequest: {
+            /** @description The seller's tax id, for an integrator that can look up a registered business */
+            tax_id?: string;
+        };
+        AppTestEInvoiceIntegrationResponse: {
+            ok: boolean;
+            /** @enum {string} */
+            checked: "credentials" | "configuration";
+            /** @enum {string} */
+            problem?: "refused" | "unreachable";
+        };
+        AppGetMailIntegrationResponse: {
+            connected: boolean;
+            integration: components["schemas"]["MailIntegration"] | null;
+        };
+        AppPutMailIntegrationRequest: {
+            /** @enum {string} */
+            provider: "nafru";
+            /**
+             * @description The Resend-compatible API address (https)
+             * @example https://api.nafru.example
+             */
+            base_url: string;
+            api_key: string;
+            /** @example Acme Billing <billing@acme.example> */
+            from: string;
+        };
+        AppPutMailIntegrationResponse: {
+            integration: components["schemas"]["MailIntegration"] | null;
+        };
+        AppTestMailIntegrationRequest: {
+            /** Format: email */
+            to: string;
+        };
+        AppTestMailIntegrationResponse: {
+            ok: boolean;
+            /** @enum {string} */
+            problem: "unreachable" | "refused";
+            message_id: string;
+        };
+        CreateAccountRequest: {
+            name: string;
+            /** @description Required, no default. Immutable. An active ISO 4217 code (USD, EUR, TRY, JPY, KWD, ...); the minor-unit exponent comes from the currency (0 for JPY, 3 for KWD). */
+            currency: string;
+            /**
+             * @description Required IANA name, no default. Immutable.
+             * @example Europe/Istanbul
+             */
+            timezone: string;
+            /**
+             * @description Required, protobuf Duration JSON, 0s..604800s
+             * @example 86400s
+             */
+            grace_period: string;
+            /** @enum {string} */
+            tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
+        };
+        CreateAppRequest: {
+            name: string;
+            /** @description Lower case with dashes, unique within the account; default: the name */
+            slug?: string;
+            /** @description An active ISO 4217 code */
+            currency: string;
+            /** @example Europe/Istanbul */
+            timezone: string;
+            /** @example 86400s */
+            grace_period: string;
+            /** @enum {string} */
+            tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
+        };
+        ListAppsResponse: {
+            apps: components["schemas"]["App"][];
+        };
+        AdminListTenantsResponse: {
+            tenants: components["schemas"]["Tenant"][];
+            next_page_token: string;
+        };
+        AdminListOrganizationsResponse: {
+            organizations: components["schemas"]["OrganizationRow"][];
+            next_page_token: string;
+            platform: components["schemas"]["PlatformInfo"];
+        };
+        AdminSetOrganizationPlanRequest: {
+            plan_code?: string;
+            limits?: {
+                [key: string]: number;
+            };
+        };
+        AdminListInvoicesResponse: {
+            invoices: components["schemas"]["Invoice"][];
+            next_page_token: string;
+        };
+        AdminGetInvoiceSagaResponse: {
+            saga: components["schemas"]["InvoiceSaga"] | null;
+            events: components["schemas"]["SagaEvent"][];
+        };
+        ListProviderAccountsResponse: {
+            accounts: components["schemas"]["ListProviderAccountsAccount"][];
+        };
+        ListProviderAccountsAccount: {
+            provider: string;
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            is_default: boolean;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        PutProviderAccountRequest: Record<string, never>;
+        ListEInvoiceAccountsResponse: {
+            accounts: components["schemas"]["EInvoiceAccount"][];
+        };
+        ListPaymentLedgerResponse: {
+            entries: components["schemas"]["ListPaymentLedgerEntry"][];
+        };
+        ListPaymentLedgerEntry: {
+            /** Format: int64 */
+            id: number;
+            /** Format: uuid */
+            invoice_id?: string;
+            provider: string;
+            environment: string;
+            /** @enum {string} */
+            kind: "charge" | "refund" | "dispute" | "payout";
+            /** @enum {string} */
+            status: "succeeded" | "declined" | "failed" | "pending";
+            /** Format: int64 */
+            amount_minor: number;
+            currency: string;
+            provider_ref?: string;
+            /** @enum {string} */
+            source: "command" | "webhook" | "reconciliation" | "manual";
+            detail?: string;
+            /** Format: date-time */
+            occurred_at: string;
+        };
+        ConfirmInvoiceTransferRequest: {
+            /**
+             * Format: int64
+             * @description A JSON number like every amount of this operator route (a string of digits is accepted too)
+             */
+            amount_minor: number;
+            /** @example TRY */
+            currency: string;
+            /**
+             * Format: date-time
+             * @description When the bank booked it. Default now; not in the future.
+             */
+            received_at?: string;
+            /** @description The bank's transaction or statement reference; it makes the call idempotent. */
+            bank_reference: string;
+            note?: string;
+        };
+        RejectInvoiceTransferRequest: {
+            /**
+             * @default rejected
+             * @enum {string}
+             */
+            outcome: "rejected" | "expired";
+            reason?: string;
+        };
+        ProviderWebhookRequest: Record<string, never>;
+        TenantProviderWebhookRequest: Record<string, never>;
+        ListProviderSubscriptionsResponse: {
+            subscriptions: components["schemas"]["ListProviderSubscriptionsSubscription"][];
+        };
+        ListProviderSubscriptionsSubscription: {
+            provider: string;
+            environment: string;
+            provider_ref: string;
+            /** Format: uuid */
+            quotify_subscription_id?: string;
+            status: string;
+            /** Format: date-time */
+            next_billed_at?: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        CreateProviderCheckoutRequest: {
+            /** @example paddle */
+            provider: string;
+            /**
+             * @description The provider's id of what is sold
+             * @example pri_01
+             */
+            price_ref: string;
+            quantity?: number;
+            /**
+             * Format: uuid
+             * @description Ties the provider's subscription to ours
+             */
+            quotify_subscription_id?: string;
+        };
+        CreateProviderCheckoutResponse: {
+            url: string;
+            ref: string;
+        };
+        StartProviderMigrationRequest: {
+            /** Format: uuid */
+            subscription_id: string;
+            /** @enum {string} */
+            to_provider: "iyzico" | "paddle" | "banktransfer";
+            /** @description The target provider's catalogue price, for a provider that runs subscriptions itself */
+            price_ref?: string;
+        };
+        StartProviderMigrationResponse: {
+            /** Format: uuid */
+            migration?: string;
+            /** @enum {string} */
+            state?: "started" | "completed";
+            checkout_url?: string;
+            /** Format: uuid */
+            new_subscription?: string;
+            /** Format: date-time */
+            cutover?: string;
+        };
+        SyncProviderCatalogueRequest: {
+            plan_code: string;
+            /** @description 0 = latest */
+            plan_version?: number;
+            product_name?: string;
+            /** @description Default saas */
+            tax_category?: string;
+        };
+        SyncProviderCatalogueResponse: {
+            plan_version_id: string;
+            product_ref: string;
+            /** @description Payrudder's key of each price created to the provider's id */
+            created: {
+                [key: string]: string;
+            };
+            existing: {
+                [key: string]: string;
+            };
+            /** @description Key to the reason */
+            skipped: {
+                [key: string]: string;
+            };
+        };
+        ListProviderCatalogueResponse: {
+            objects: components["schemas"]["ListProviderCatalogueObject"][] | null;
+        };
+        ListProviderCatalogueObject: {
+            kind: string;
+            key: string;
+            ref: string;
+        };
+        EnsureProviderCustomerResponse: {
+            customer_ref: string;
+            address_ref: string;
+            business_ref: string;
+        };
+        CreateProviderPortalLinkResponse: {
+            url: string;
+        };
+        PauseProviderSubscriptionRequest: {
+            at_period_end?: boolean;
+            /** Format: date-time */
+            resume_at?: string;
+        };
+        CreateProviderPaymentMethodLinkResponse: {
+            url: string;
+        };
+        CreateProviderDiscountRequest: {
+            Description?: string;
+            /** @enum {string} */
+            Type?: "percentage" | "flat";
+            /** @description A percentage (10 for 10 %) or minor units of Currency */
+            Amount?: string;
+            Currency?: string;
+            Code?: string;
+            Recurring?: boolean;
+            MaxIntervals?: number;
+            UsageLimit?: number;
+            /** Format: date-time */
+            ExpiresAt?: string;
+        };
+        CreateProviderDiscountResponse: {
+            discount_ref: string;
+            code: string;
+        };
+        GetProviderInvoiceLinkResponse: {
+            url: string;
+        };
+        ReconcilePaymentsResponse: {
+            period: string;
+            paid_invoices: number;
+            successful_charges: number;
+            /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes */
+            discrepancy_counts: {
+                [key: string]: number;
+            };
+            discrepancies: components["schemas"]["ReconcilePaymentsDiscrepancy"][];
+            truncated?: boolean;
+        };
+        ReconcilePaymentsDiscrepancy: {
+            kind: string;
+            invoice_id: string;
+            number?: string;
+            provider?: string;
+            provider_ref?: string;
+            currency?: string;
+            /** Format: int64 */
+            billed_minor?: number;
+            /** Format: int64 */
+            ledger_minor?: number;
+            detail?: string;
+        };
+        AdminListDeadLettersResponse: {
+            queues: components["schemas"]["AdminListDeadLettersQueue"][];
+            messages: components["schemas"]["AdminListDeadLettersMessage"][];
+        };
+        AdminListDeadLettersQueue: {
+            queue: string;
+            /** Format: int64 */
+            messages: string;
+        };
+        AdminListDeadLettersMessage: {
+            message_id: string;
+            /** Format: int64 */
+            delivery_count: string;
+            reason: string;
+            body_bytes: number;
+        };
+        AdminRedriveDeadLettersRequest: {
+            queue: string;
+            /** @default 100 */
+            limit: number;
+        };
+        AdminRedriveDeadLettersResponse: {
+            redriven: number;
+        };
+        UpdateTenantRequest: {
+            /** @example 172800s */
+            grace_period?: string;
+            /** @enum {string} */
+            tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
+            address?: components["schemas"]["AddressInput"];
+            legal?: components["schemas"]["LegalInfoInput"];
+            /** @enum {string} */
+            e_invoice_on?: "off" | "finalized" | "paid";
+        };
+        SetTenantStatusRequest: {
+            /** @enum {string} */
+            status: "active" | "suspended";
+            reason?: string;
+        };
+        CreateApiKeyRequest: {
+            role?: components["schemas"]["ApiKeyRole"];
+            permissions?: components["schemas"]["ApiKeyPermission"][];
+            /**
+             * @description Older way to choose a role when role and permissions are absent.
+             * @enum {string}
+             */
+            scope?: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";
+        };
+        CreateApiKeyResponse: {
+            api_key: components["schemas"]["ApiKey"] | null;
+            plaintext: string;
+        };
+        /** @description Ingest counters; the shape is not part of the contract */
+        AdminIngestStatsResponse: {
+            [key: string]: unknown;
+        };
+        AdminClosePeriodRequest: {
+            /** Format: uuid */
+            tenant_id: string;
+            period_id: string;
+        };
+        AdminStartReplayRequest: {
+            /** @example 2026-10 */
+            from_period_id: string;
+            /** @description Defaults to from_period_id */
+            to_period_id?: string;
+            reason: string;
+        };
+        AdminStartReratingRequest: {
+            /** Format: uuid */
+            plan_version_id: string;
+        };
+        AdminRetryInvoiceRequest: {
+            /** Format: uuid */
+            tenant_id: string;
+        };
+        AdminVoidInvoiceRequest: {
+            /** Format: uuid */
+            tenant_id: string;
+            reason?: string;
+        };
+        AdminRecordInvoicePaymentRequest: {
+            /** Format: uuid */
+            tenant_id: string;
+            /** @enum {string} */
+            method: "bank_transfer" | "cash" | "other";
+            /** Format: int64 */
+            amount_minor: string;
+            /**
+             * Format: date-time
+             * @description Default now; not in the future.
+             */
+            received_at?: string;
+            reference?: string;
+            note?: string;
+        };
+        AdminCreateCreditNoteRequest: {
+            /** Format: uuid */
+            tenant_id: string;
+            /**
+             * Format: int64
+             * @description int64 minor units; 0 or absent = what is left of the invoice
+             */
+            amount_minor?: string;
+            reason?: string;
+            /** @description Refund the amount to the card instead of adding it to the credit balance */
+            refund_to_card?: boolean;
+        };
+        AdminRetryCreditNoteRefundRequest: {
+            /** Format: uuid */
+            tenant_id: string;
+        };
+        /** @description A time-limited link to a stored file (invoice PDF, uploaded asset, e-invoice document). GET it without credentials until expires_at. */
+        SignedUrl: {
+            /** Format: uri */
+            url: string;
+            /**
+             * Format: date-time
+             * @description RFC 3339, UTC
+             */
+            expires_at: string;
+        };
+        /** @description The data of an event of type invoice.finalized */
+        InvoiceFinalizedEventData: {
+            /** Format: uuid */
+            invoice_id: string;
+            /** @description invoice number, e.g. INV-2026-000007 */
+            number: string;
+            /** Format: uuid */
+            customer_id: string;
+            /** @description may be empty string */
+            customer_external_id: string;
+            /** @description billing period YYYY-MM */
+            period_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description int64 minor units as a JSON string (strconv.FormatInt)
+             */
+            total_minor: string;
+            /** @enum {string} */
+            status: "open";
+        };
+        /** @description The body of a delivery of type invoice.finalized */
+        InvoiceFinalizedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "invoice.finalized";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["InvoiceFinalizedEventData"];
+        };
+        /** @description The data of an event of type invoice.paid */
+        InvoicePaidEventData: {
+            /** Format: uuid */
+            invoice_id: string;
+            /** @description invoice number, e.g. INV-2026-000007 */
+            number: string;
+            /** Format: uuid */
+            customer_id: string;
+            /** @description may be empty string */
+            customer_external_id: string;
+            /** @description billing period YYYY-MM */
+            period_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description int64 minor units as a JSON string (strconv.FormatInt)
+             */
+            total_minor: string;
+            /** @enum {string} */
+            status: "paid";
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            /**
+             * Format: int64
+             * @description sum of the invoice's TAX lines
+             */
+            tax_minor: string;
+            /**
+             * Format: int64
+             * @description max(total-tax,0)
+             */
+            net_minor: string;
+        };
+        /** @description The body of a delivery of type invoice.paid */
+        InvoicePaidEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "invoice.paid";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["InvoicePaidEventData"];
+        };
+        /** @description The data of an event of type invoice.voided */
+        InvoiceVoidedEventData: {
+            /** Format: uuid */
+            invoice_id: string;
+            /** @description invoice number, e.g. INV-2026-000007 */
+            number: string;
+            /** Format: uuid */
+            customer_id: string;
+            /** @description may be empty string */
+            customer_external_id: string;
+            /** @description billing period YYYY-MM */
+            period_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description int64 minor units as a JSON string (strconv.FormatInt)
+             */
+            total_minor: string;
+            /** @enum {string} */
+            status: "void";
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+        };
+        /** @description The body of a delivery of type invoice.voided */
+        InvoiceVoidedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "invoice.voided";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["InvoiceVoidedEventData"];
+        };
+        /** @description The data of an event of type invoice.uncollectible */
+        InvoiceUncollectibleEventData: {
+            /** Format: uuid */
+            invoice_id: string;
+            /** @description invoice number, e.g. INV-2026-000007 */
+            number: string;
+            /** Format: uuid */
+            customer_id: string;
+            /** @description may be empty string */
+            customer_external_id: string;
+            /** @description billing period YYYY-MM */
+            period_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description int64 minor units as a JSON string (strconv.FormatInt)
+             */
+            total_minor: string;
+            /** @enum {string} */
+            status: "uncollectible";
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+        };
+        /** @description The body of a delivery of type invoice.uncollectible */
+        InvoiceUncollectibleEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "invoice.uncollectible";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["InvoiceUncollectibleEventData"];
+        };
+        /** @description The data of an event of type credit_note.created */
+        CreditNoteCreatedEventData: {
+            /** Format: uuid */
+            credit_note_id: string;
+            number: string;
+            /** Format: uuid */
+            invoice_id: string;
+            /** @description empty string if the invoice has no number */
+            invoice_number: string;
+            /** Format: uuid */
+            customer_id: string;
+            customer_external_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description string (fmt.Sprint)
+             */
+            total_minor: string;
+            reason: string;
+            /** @enum {string} */
+            disposition: "credit" | "refund";
+            /**
+             * @description only when disposition=refund (credit_note.created for a refund carries 'requested')
+             * @enum {string}
+             */
+            refund_state?: "requested" | "refunded" | "failed";
+            /** @description only when refund_state=failed and the error text is non-empty (format '<code>: <message>' or '<noAnswer> after N attempts') */
+            refund_error?: string;
+        };
+        /** @description The body of a delivery of type credit_note.created */
+        CreditNoteCreatedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "credit_note.created";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["CreditNoteCreatedEventData"];
+        };
+        /** @description The data of an event of type credit_note.refunded */
+        CreditNoteRefundedEventData: {
+            /** Format: uuid */
+            credit_note_id: string;
+            number: string;
+            /** Format: uuid */
+            invoice_id: string;
+            /** @description empty string if the invoice has no number */
+            invoice_number: string;
+            /** Format: uuid */
+            customer_id: string;
+            customer_external_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description string (fmt.Sprint)
+             */
+            total_minor: string;
+            reason: string;
+            /** @enum {string} */
+            disposition: "credit" | "refund";
+            /**
+             * @description only when disposition=refund (credit_note.created for a refund carries 'requested')
+             * @enum {string}
+             */
+            refund_state?: "requested" | "refunded" | "failed";
+            /** @description only when refund_state=failed and the error text is non-empty (format '<code>: <message>' or '<noAnswer> after N attempts') */
+            refund_error?: string;
+        };
+        /** @description The body of a delivery of type credit_note.refunded */
+        CreditNoteRefundedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "credit_note.refunded";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["CreditNoteRefundedEventData"];
+        };
+        /** @description The data of an event of type credit_note.refund_failed */
+        CreditNoteRefundFailedEventData: {
+            /** Format: uuid */
+            credit_note_id: string;
+            number: string;
+            /** Format: uuid */
+            invoice_id: string;
+            /** @description empty string if the invoice has no number */
+            invoice_number: string;
+            /** Format: uuid */
+            customer_id: string;
+            customer_external_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description string (fmt.Sprint)
+             */
+            total_minor: string;
+            reason: string;
+            /** @enum {string} */
+            disposition: "credit" | "refund";
+            /**
+             * @description only when disposition=refund (credit_note.created for a refund carries 'requested')
+             * @enum {string}
+             */
+            refund_state?: "requested" | "refunded" | "failed";
+            /** @description only when refund_state=failed and the error text is non-empty (format '<code>: <message>' or '<noAnswer> after N attempts') */
+            refund_error?: string;
+        };
+        /** @description The body of a delivery of type credit_note.refund_failed */
+        CreditNoteRefundFailedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "credit_note.refund_failed";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["CreditNoteRefundFailedEventData"];
+        };
+        /** @description The data of an event of type subscription.created */
+        SubscriptionCreatedEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+        };
+        /** @description The body of a delivery of type subscription.created */
+        SubscriptionCreatedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.created";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionCreatedEventData"];
+        };
+        /** @description The data of an event of type subscription.changed */
+        SubscriptionChangedEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+            /** Format: uuid */
+            previous_subscription_id: string;
+            quote?: components["schemas"]["WebhookChangeQuote"];
+            /** @description only true, only when a scheduled change was applied at period end (no quote then) */
+            scheduled?: boolean;
+        };
+        /** @description The body of a delivery of type subscription.changed */
+        SubscriptionChangedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.changed";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionChangedEventData"];
+        };
+        /** @description The data of an event of type subscription.change_scheduled */
+        SubscriptionChangeScheduledEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+            quote: components["schemas"]["WebhookChangeQuote"];
+        };
+        /** @description The body of a delivery of type subscription.change_scheduled */
+        SubscriptionChangeScheduledEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.change_scheduled";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionChangeScheduledEventData"];
+        };
+        /** @description The data of an event of type subscription.cancelled */
+        SubscriptionCancelledEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+            /**
+             * Format: int64
+             * @description int64 as string (strconv.FormatInt); present only when credit_unused credited > 0
+             */
+            credited_minor?: string;
+        };
+        /** @description The body of a delivery of type subscription.cancelled */
+        SubscriptionCancelledEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.cancelled";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionCancelledEventData"];
+        };
+        /** @description The data of an event of type subscription.cancellation_scheduled */
+        SubscriptionCancellationScheduledEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+        };
+        /** @description The body of a delivery of type subscription.cancellation_scheduled */
+        SubscriptionCancellationScheduledEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.cancellation_scheduled";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionCancellationScheduledEventData"];
+        };
+        /** @description The data of an event of type subscription.cancellation_withdrawn */
+        SubscriptionCancellationWithdrawnEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+        };
+        /** @description The body of a delivery of type subscription.cancellation_withdrawn */
+        SubscriptionCancellationWithdrawnEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.cancellation_withdrawn";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionCancellationWithdrawnEventData"];
+        };
+        /** @description The data of an event of type subscription.paused */
+        SubscriptionPausedEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+        };
+        /** @description The body of a delivery of type subscription.paused */
+        SubscriptionPausedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.paused";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionPausedEventData"];
+        };
+        /** @description The data of an event of type subscription.resumed */
+        SubscriptionResumedEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+        };
+        /** @description The body of a delivery of type subscription.resumed */
+        SubscriptionResumedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.resumed";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionResumedEventData"];
+        };
+        /** @description The data of an event of type subscription.moved_to_provider */
+        SubscriptionMovedToProviderEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+            /** Format: uuid */
+            previous_subscription_id: string;
+            /** @description provider name the subscription moved to */
+            to_provider: string;
+        };
+        /** @description The body of a delivery of type subscription.moved_to_provider */
+        SubscriptionMovedToProviderEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.moved_to_provider";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionMovedToProviderEventData"];
+        };
+        /** @description The data of an event of type subscription.trial_will_end */
+        SubscriptionTrialWillEndEventData: {
+            subscription: components["schemas"]["WebhookSubscription"];
+        };
+        /** @description The body of a delivery of type subscription.trial_will_end */
+        SubscriptionTrialWillEndEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "subscription.trial_will_end";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["SubscriptionTrialWillEndEventData"];
+        };
+        /** @description The data of an event of type payment_link.created */
+        PaymentLinkCreatedEventData: {
+            /** Format: uuid */
+            link_id: string;
+            /** @enum {string} */
+            kind: "invoice" | "adhoc" | "credit_pack";
+            single_use: boolean;
+            /**
+             * Format: date-time
+             * @description UTC, second precision
+             */
+            expires_at: string;
+            /**
+             * Format: uuid
+             * @description only kind=invoice
+             */
+            invoice_id?: string;
+            /**
+             * Format: int64
+             * @description only adhoc/credit_pack; string
+             */
+            amount_minor?: string;
+            /** @description only when set */
+            currency?: string;
+            /** @description only when set (adhoc description; credit_pack: pack name) */
+            description?: string;
+            /**
+             * Format: uuid
+             * @description credit_pack only
+             */
+            pack_id?: string;
+            /** @description credit_pack only; JSON number */
+            quantity?: number;
+            /**
+             * Format: int64
+             * @description credit_pack only; int64 as JSON NUMBER, not string
+             */
+            credits?: number;
+            /** @description only when set */
+            customer_external_id?: string;
+        };
+        /** @description The body of a delivery of type payment_link.created */
+        PaymentLinkCreatedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "payment_link.created";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["PaymentLinkCreatedEventData"];
+        };
+        /** @description The data of an event of type payment_link.paid */
+        PaymentLinkPaidEventData: {
+            /** Format: uuid */
+            link_id: string;
+            /** @enum {string} */
+            kind: "invoice" | "adhoc" | "credit_pack";
+            /** Format: uuid */
+            invoice_id: string;
+            invoice_number: string;
+            /** @description empty string when the link has none (always present) */
+            customer_external_id: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description string
+             */
+            total_minor: string;
+            /** @description link's paid_count; JSON number */
+            paid_count: number;
+        };
+        /** @description The body of a delivery of type payment_link.paid */
+        PaymentLinkPaidEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "payment_link.paid";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["PaymentLinkPaidEventData"];
+        };
+        /** @description The data of an event of type payment_link.expired */
+        PaymentLinkExpiredEventData: {
+            /** Format: uuid */
+            link_id: string;
+            /** @enum {string} */
+            kind: "invoice" | "adhoc" | "credit_pack";
+            /** Format: date-time */
+            expires_at: string;
+            /**
+             * Format: uuid
+             * @description only when set
+             */
+            invoice_id?: string;
+            /**
+             * Format: int64
+             * @description only when set; string
+             */
+            amount_minor?: string;
+            /** @description only when set */
+            currency?: string;
+            /** @description only when set */
+            customer_external_id?: string;
+        };
+        /** @description The body of a delivery of type payment_link.expired */
+        PaymentLinkExpiredEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "payment_link.expired";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["PaymentLinkExpiredEventData"];
+        };
+        /** @description The data of an event of type credits.purchased */
+        CreditsPurchasedEventData: {
+            /** Format: uuid */
+            link_id: string;
+            /** Format: uuid */
+            customer_id: string;
+            /** @description may be empty */
+            customer_external_id: string;
+            /**
+             * Format: int64
+             * @description int64 as JSON NUMBER; pack credits + coupon bonus
+             */
+            credits: number;
+            /** @description JSON number */
+            quantity: number;
+            /**
+             * Format: int64
+             * @description JSON NUMBER; spendable after grant
+             */
+            balance: number;
+            /** Format: uuid */
+            invoice_id: string;
+            invoice_number: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description string
+             */
+            amount_minor: string;
+            /**
+             * Format: int64
+             * @description JSON NUMBER; 0 without coupon
+             */
+            bonus_credits: number;
+            /**
+             * Format: uuid
+             * @description only when the link has a pack
+             */
+            pack_id?: string;
+            /** @description only together with pack_id; may be empty */
+            pack_name?: string;
+            /**
+             * Format: date-time
+             * @description only when the lot expires
+             */
+            expires_at?: string;
+        };
+        /** @description The body of a delivery of type credits.purchased */
+        CreditsPurchasedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "credits.purchased";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["CreditsPurchasedEventData"];
+        };
+        /** @description The data of an event of type credits.low */
+        CreditsLowEventData: {
+            /** Format: uuid */
+            customer_id: string;
+            /** @description may be empty */
+            customer_external_id: string;
+            /**
+             * Format: int64
+             * @description JSON NUMBER
+             */
+            balance: number;
+            /**
+             * Format: int64
+             * @description JSON NUMBER
+             */
+            threshold: number;
+        };
+        /** @description The body of a delivery of type credits.low */
+        CreditsLowEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "credits.low";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["CreditsLowEventData"];
+        };
+        /** @description The data of an event of type ping */
+        PingEventData: {
+            /** @enum {string} */
+            message: "This is a test event from Payrudder.";
+        };
+        /** @description The body of a delivery of type ping */
+        PingEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "ping";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["PingEventData"];
         };
         Error: {
             error: {
@@ -5691,10 +7889,12 @@ export interface components {
                  */
                 key: string;
                 message: string;
+                /** @description Left out when there is no field to point at */
                 details?: {
-                    field?: string;
-                    description?: string;
+                    field: string;
+                    description: string;
                 }[];
+                /** @description The X-Request-Id of the call; missing on an answer written by payments-worker */
                 request_id?: string;
             };
         };
@@ -5704,11 +7904,50 @@ export interface components {
              * @description paused and draft earn nothing and turn the links off
              * @enum {string}
              */
+            status: "draft" | "active" | "paused";
+            /** @enum {string} */
+            commission_kind: "percent_bps" | "fixed";
+            /**
+             * Format: int64
+             * @description Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed
+             */
+            commission_value: string;
+            /** @description Only for fixed; a percentage follows the currency of each invoice */
+            currency: string;
+            /** @enum {string} */
+            commission_term: "first_invoices" | "months" | "lifetime";
+            /** @description N invoices or N months; absent for lifetime */
+            commission_term_value: number;
+            /** @default 30 */
+            attribution_window_days: number;
+            /** @description How long a commission waits (the refund window) before it can be paid */
+            hold_days: number;
+            /** Format: int64 */
+            min_payout_minor: string;
+            /** @description Coupon a referred customer gets on their next checkout */
+            referred_coupon_code: string;
+            /** @default 1000 */
+            daily_click_cap: number;
+            /** @description Where /r/<code> sends the visitor; empty shows a plain page */
+            landing_url: string;
+            /** @description A partner who applies is active at once */
+            auto_approve: boolean;
+            /** Format: date-time */
+            readonly create_time: string | null;
+            /** Format: date-time */
+            readonly update_time: string | null;
+        };
+        /** @description The rules of the partner program of one environment. */
+        AffiliateProgramInput: {
+            /**
+             * @description paused and draft earn nothing and turn the links off
+             * @enum {string}
+             */
             status?: "draft" | "active" | "paused";
             /** @enum {string} */
-            commission_kind?: "percent_bps" | "fixed";
+            commission_kind: "percent_bps" | "fixed";
             /** @description Basis points of the net, pre-tax amount paid (1000 is 10 %), or minor units of currency for fixed */
-            commission_value?: string;
+            commission_value: string;
             /** @description Only for fixed; a percentage follows the currency of each invoice */
             currency?: string;
             /** @enum {string} */
@@ -5719,6 +7958,7 @@ export interface components {
             attribution_window_days: number;
             /** @description How long a commission waits (the refund window) before it can be paid */
             hold_days?: number;
+            /** Format: int64 */
             min_payout_minor?: string;
             /** @description Coupon a referred customer gets on their next checkout */
             referred_coupon_code?: string;
@@ -5735,237 +7975,279 @@ export interface components {
         };
         Affiliate: {
             /** Format: uuid */
-            id?: string;
-            code?: string;
-            email?: string;
-            name?: string;
+            id: string;
+            code: string;
+            email: string;
+            name: string;
             /** @enum {string} */
-            status?: "pending" | "active" | "suspended";
+            status: "pending" | "active" | "suspended";
             /** @enum {string} */
-            payout_method?: "manual" | "bank_transfer";
-            payout_details?: string;
+            payout_method: "manual" | "bank_transfer";
+            payout_details: string;
             /** @enum {string} */
-            source?: "owner" | "application";
+            source: "owner" | "application";
             /** @description The partner has signed in and claimed this affiliate */
-            signed_in?: boolean;
-            clicks?: string;
-            referrals?: string;
+            signed_in: boolean;
+            /** Format: int64 */
+            clicks: string;
+            /** Format: int64 */
+            referrals: string;
             /** Format: date-time */
-            approve_time?: string;
+            approve_time: string | null;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** @description The partner's public referral link, https://<gateway>/r/<code> */
-            link?: string;
+            link: string;
         };
         AffiliateCommission: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            affiliate_id?: string;
-            affiliate_code?: string;
-            customer_external_id?: string;
+            affiliate_id: string;
+            affiliate_code: string;
+            customer_external_id: string;
             /** @enum {string} */
-            kind?: "commission" | "reversal";
+            kind: "commission" | "reversal";
             /** Format: uuid */
-            invoice_id?: string;
-            invoice_number?: string;
-            currency?: string;
-            /** @description What the invoice came to, tax included */
-            invoice_total_minor?: string;
-            /** @description The base: the net, pre-tax amount actually paid */
-            net_minor?: string;
-            /** @description The commission; negative on a reversal row */
-            amount_minor?: string;
-            /** @description How much of the commission has been taken back */
-            reversed_minor?: string;
+            invoice_id: string;
+            invoice_number: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description What the invoice came to, tax included
+             */
+            invoice_total_minor: string;
+            /**
+             * Format: int64
+             * @description The base: the net, pre-tax amount actually paid
+             */
+            net_minor: string;
+            /**
+             * Format: int64
+             * @description The commission; negative on a reversal row
+             */
+            amount_minor: string;
+            /**
+             * Format: int64
+             * @description How much of the commission has been taken back
+             */
+            reversed_minor: string;
             /** @enum {string} */
-            status?: "pending" | "approved" | "paid" | "reversed";
+            status: "pending" | "approved" | "paid" | "reversed";
             /** Format: uuid */
-            parent_id?: string;
+            parent_id: string;
             /** Format: date-time */
-            earn_time?: string;
+            earn_time: string | null;
             /** Format: date-time */
-            approve_after_time?: string;
+            approve_after_time: string | null;
             /** Format: date-time */
-            approve_time?: string;
+            approve_time: string | null;
             /** Format: date-time */
-            pay_time?: string;
+            pay_time: string | null;
             /** Format: uuid */
-            payout_id?: string;
+            payout_id: string;
         };
         AffiliateBalance: {
             /** Format: uuid */
-            affiliate_id?: string;
-            currency?: string;
-            pending_minor?: string;
-            approved_minor?: string;
-            paid_minor?: string;
-            reversed_minor?: string;
+            affiliate_id: string;
+            currency: string;
+            /** Format: int64 */
+            pending_minor: string;
+            /** Format: int64 */
+            approved_minor: string;
+            /** Format: int64 */
+            paid_minor: string;
+            /** Format: int64 */
+            reversed_minor: string;
         };
         AffiliateFunnel: {
             /** Format: date */
-            from_date?: string;
+            from_date: string;
             /** Format: date */
-            to_date?: string;
-            clicks?: string;
-            /** @description Customers attributed in the period */
-            referrals?: string;
-            /** @description Customers with a commission earned in the period */
-            paying_customers?: string;
-            commissions?: {
-                currency?: string;
-                earned_minor?: string;
-                reversed_minor?: string;
+            to_date: string;
+            /** Format: int64 */
+            clicks: string;
+            /**
+             * Format: int64
+             * @description Customers attributed in the period
+             */
+            referrals: string;
+            /**
+             * Format: int64
+             * @description Customers with a commission earned in the period
+             */
+            paying_customers: string;
+            commissions: {
+                currency: string;
+                /** Format: int64 */
+                earned_minor: string;
+                /** Format: int64 */
+                reversed_minor: string;
             }[];
         };
         AffiliatePayout: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            affiliate_id?: string;
-            affiliate_code?: string;
-            currency?: string;
-            /** @description Open: what its commissions are worth now. Paid: what was paid */
-            total_minor?: string;
-            commission_count?: number;
+            affiliate_id: string;
+            affiliate_code: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description Open: what its commissions are worth now. Paid: what was paid
+             */
+            total_minor: string;
+            commission_count: number;
             /** @enum {string} */
-            method?: "manual" | "bank_transfer";
-            payout_details?: string;
-            reference?: string;
+            method: "manual" | "bank_transfer";
+            payout_details: string;
+            reference: string;
             /** @enum {string} */
-            status?: "open" | "paid" | "cancelled";
+            status: "open" | "paid" | "cancelled";
             /** @description A payout of a sandbox environment: nothing was or will be paid */
-            fake?: boolean;
+            fake: boolean;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            pay_time?: string;
+            pay_time: string | null;
             /** Format: date-time */
-            cancel_time?: string;
+            cancel_time: string | null;
         };
         AffiliateJournalEntry: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            payout_id?: string;
+            payout_id: string;
             /** Format: uuid */
-            affiliate_id?: string;
+            affiliate_id: string;
             /** Format: date-time */
-            post_time?: string;
-            currency?: string;
+            post_time: string | null;
+            currency: string;
             /** @enum {string} */
-            account?: "commission_expense" | "commissions_payable" | "cash";
-            debit_minor?: string;
-            credit_minor?: string;
-            memo?: string;
-            fake?: boolean;
+            account: "commission_expense" | "commissions_payable" | "cash";
+            /** Format: int64 */
+            debit_minor: string;
+            /** Format: int64 */
+            credit_minor: string;
+            memo: string;
+            fake: boolean;
         };
         MyProgram: {
             /** @enum {string} */
-            status?: "draft" | "active" | "paused";
+            status: "draft" | "active" | "paused";
             /** @enum {string} */
-            commission_kind?: "percent_bps" | "fixed";
-            commission_value?: string;
-            currency?: string;
+            commission_kind: "percent_bps" | "fixed";
+            /** Format: int64 */
+            commission_value: string;
+            currency: string;
             /** @enum {string} */
-            commission_term?: "first_invoices" | "months" | "lifetime";
-            commission_term_value?: number;
-            attribution_window_days?: number;
-            hold_days?: number;
-            min_payout_minor?: string;
+            commission_term: "first_invoices" | "months" | "lifetime";
+            commission_term_value: number;
+            attribution_window_days: number;
+            hold_days: number;
+            /** Format: int64 */
+            min_payout_minor: string;
         };
         MyAffiliation: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            tenant_id?: string;
+            tenant_id: string;
             /**
              * @description A sandbox partner earns fake money
              * @enum {string}
              */
-            environment?: "sandbox" | "live";
-            seller_name?: string;
-            code?: string;
+            environment: "sandbox" | "live";
+            seller_name: string;
+            code: string;
             /** @description The partner's public referral link */
-            link?: string;
+            link: string;
             /** @enum {string} */
-            status?: "pending" | "active" | "suspended";
-            name?: string;
-            email?: string;
+            status: "pending" | "active" | "suspended";
+            name: string;
+            email: string;
             /** @enum {string} */
-            payout_method?: "manual" | "bank_transfer";
-            payout_details?: string;
-            program?: components["schemas"]["MyProgram"];
+            payout_method: "manual" | "bank_transfer";
+            payout_details: string;
+            program: components["schemas"]["MyProgram"] | null;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
         };
         MyAffiliationDetail: {
-            affiliation?: components["schemas"]["MyAffiliation"];
+            affiliation: components["schemas"]["MyAffiliation"] | null;
             /** Format: date */
-            from_date?: string;
+            from_date: string;
             /** Format: date */
-            to_date?: string;
-            clicks?: string;
-            referrals?: string;
-            paying_customers?: string;
-            earned?: {
-                currency?: string;
-                earned_minor?: string;
-                reversed_minor?: string;
+            to_date: string;
+            /** Format: int64 */
+            clicks: string;
+            /** Format: int64 */
+            referrals: string;
+            /** Format: int64 */
+            paying_customers: string;
+            earned: {
+                currency: string;
+                /** Format: int64 */
+                earned_minor: string;
+                /** Format: int64 */
+                reversed_minor: string;
             }[];
-            balances?: components["schemas"]["AffiliateBalance"][];
+            balances: components["schemas"]["AffiliateBalance"][];
         };
         MyReferral: {
-            customer_email_masked?: string;
+            customer_email_masked: string;
             /** @enum {string} */
-            source?: "link" | "code" | "api";
+            source: "link" | "code" | "api";
             /** Format: date-time */
-            attribute_time?: string;
+            attribute_time: string | null;
         };
         MyCommission: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** @enum {string} */
-            kind?: "commission" | "reversal";
-            customer_email_masked?: string;
-            currency?: string;
-            amount_minor?: string;
-            reversed_minor?: string;
+            kind: "commission" | "reversal";
+            customer_email_masked: string;
+            currency: string;
+            /** Format: int64 */
+            amount_minor: string;
+            /** Format: int64 */
+            reversed_minor: string;
             /** @enum {string} */
-            status?: "pending" | "approved" | "paid" | "reversed";
+            status: "pending" | "approved" | "paid" | "reversed";
             /** Format: date-time */
-            earn_time?: string;
+            earn_time: string | null;
             /** Format: date-time */
-            approve_after_time?: string;
+            approve_after_time: string | null;
             /** Format: date-time */
-            pay_time?: string;
+            pay_time: string | null;
             /** Format: uuid */
-            payout_id?: string;
+            payout_id: string;
         };
         MyPayout: {
             /** Format: uuid */
-            id?: string;
-            currency?: string;
-            total_minor?: string;
+            id: string;
+            currency: string;
+            /** Format: int64 */
+            total_minor: string;
             /** @enum {string} */
-            status?: "open" | "paid" | "cancelled";
-            reference?: string;
-            fake?: boolean;
+            status: "open" | "paid" | "cancelled";
+            reference: string;
+            fake: boolean;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            pay_time?: string;
+            pay_time: string | null;
         };
         AffiliateReferral: {
             /** Format: uuid */
-            affiliate_id?: string;
-            affiliate_code?: string;
-            customer_external_id?: string;
-            customer_email_masked?: string;
+            affiliate_id: string;
+            affiliate_code: string;
+            customer_external_id: string;
+            customer_email_masked: string;
             /** @enum {string} */
-            source?: "link" | "code" | "api";
+            source: "link" | "code" | "api";
             /** Format: date-time */
-            attribute_time?: string;
+            attribute_time: string | null;
         };
         CreateCustomerRequest: {
             external_id: string;
@@ -5977,7 +8259,7 @@ export interface components {
             country?: string;
             /** @description ISO 4217; default is the tenant's currency */
             billing_currency?: string;
-            address?: components["schemas"]["Address"];
+            address?: components["schemas"]["AddressInput"];
             /** @description The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation. */
             referral_code?: string;
             /**
@@ -5988,6 +8270,17 @@ export interface components {
         };
         /** @description A postal address as printed on an invoice. Every part is optional. */
         Address: {
+            line1: string;
+            line2: string;
+            city: string;
+            /** @description State, province or county */
+            region: string;
+            postal_code: string;
+            /** @description ISO 3166-1 alpha-2 */
+            country: string;
+        };
+        /** @description A postal address as printed on an invoice. Every part is optional. */
+        AddressInput: {
             line1?: string;
             line2?: string;
             city?: string;
@@ -6044,34 +8337,40 @@ export interface components {
         };
         Customer: {
             /** Format: uuid */
-            id?: string;
-            external_id?: string;
-            name?: string;
-            email?: string;
-            payment_method?: string;
+            id: string;
+            external_id: string;
+            name: string;
+            email: string;
+            payment_method: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** @description ISO 3166-1 alpha-2 */
-            country?: string;
+            country: string;
             /** @description ISO 4217 */
-            billing_currency?: string;
-            address?: components["schemas"]["Address"];
-            tax_id?: string;
-            tax_office?: string;
-            e_invoice_registered?: boolean;
+            billing_currency: string;
+            address: components["schemas"]["Address"] | null;
+            tax_id: string;
+            tax_office: string;
+            e_invoice_registered: boolean;
         };
         CreateMeterRequest: {
             code: string;
-            /** @enum {string} */
-            aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX";
-            /** @description Required for SUM and MAX */
+            /**
+             * @description How a customer's events of a billing period combine into one quantity. SUM adds the quantities, COUNT counts the events, MAX keeps the
+             *     largest quantity. UNIQUE counts the distinct values of the event property named by value_property (an event without the property is not
+             *     counted; quantity_scale must be 0). LAST is the quantity of the latest event of the period by event_time, ties broken by event id; an
+             *     event that arrives after the period's cutoff never changes it. A code cannot change into or out of UNIQUE or LAST in a later version.
+             * @enum {string}
+             */
+            aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX" | "AGGREGATION_UNIQUE" | "AGGREGATION_LAST";
+            /** @description Required for SUM, MAX and LAST (the event property holding the quantity) and for UNIQUE (the property whose distinct values are counted) */
             value_property?: string;
             filter?: {
                 [key: string]: {
                     values?: string[];
                 };
             };
-            /** @description Decimal places */
+            /** @description Decimal places, fixed per code */
             quantity_scale?: number;
             /**
              * @description Any unit of your choice: tokens, GB-h, seats, minutes
@@ -6084,21 +8383,69 @@ export interface components {
              */
             category?: string;
         };
-        Meter: components["schemas"]["CreateMeterRequest"] & {
-            version?: number;
+        Meter: {
+            code: string;
+            /** @enum {string} */
+            aggregation: "AGGREGATION_SUM" | "AGGREGATION_COUNT" | "AGGREGATION_MAX" | "AGGREGATION_UNIQUE" | "AGGREGATION_LAST";
+            /** @description Required for SUM, MAX, UNIQUE and LAST */
+            value_property: string;
+            filter: {
+                [key: string]: {
+                    values: string[];
+                };
+            };
+            /** @description Decimal places, fixed per code */
+            quantity_scale: number;
+            /**
+             * @description Any unit of your choice: tokens, GB-h, seats, minutes
+             * @example tokens
+             */
+            unit_label: string;
+            /**
+             * @description Any group of your choice to file the meter under (compute, storage, AI); changes nothing in metering or billing
+             * @example AI
+             */
+            category: string;
+            version: number;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
         };
         Plan: {
             /** Format: uuid */
-            id?: string;
-            code?: string;
-            name?: string;
-            latest_version?: number;
+            id: string;
+            code: string;
+            name: string;
+            latest_version: number;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
         };
         Price: {
+            meter_code: string;
+            per_unit?: {
+                /** @example 0.002 */
+                unit_price: string;
+            };
+            tiered?: {
+                tiers: {
+                    /** @description Empty on the last (unbounded) tier */
+                    up_to: string;
+                    unit_price: string;
+                    /** Format: int64 */
+                    flat_fee_minor: string;
+                }[];
+            };
+            package?: {
+                package_size: string;
+                /** Format: int64 */
+                package_price_minor: string;
+            };
+            /**
+             * @description Quantity of every billing period that is free: the model prices only what is above it. Empty or 0 = none
+             * @example 1000
+             */
+            included: string;
+        };
+        PriceInput: {
             meter_code: string;
             per_unit?: {
                 /** @example 0.002 */
@@ -6109,11 +8456,13 @@ export interface components {
                     /** @description Empty on the last (unbounded) tier */
                     up_to?: string;
                     unit_price?: string;
+                    /** Format: int64 */
                     flat_fee_minor?: string;
                 }[];
             };
             package?: {
                 package_size?: string;
+                /** Format: int64 */
                 package_price_minor?: string;
             };
             /**
@@ -6151,100 +8500,188 @@ export interface components {
         };
         Entitlement: {
             meter_code: string;
-        } & components["schemas"]["EntitlementTerms"];
+            /** @description Decimal in meter units; "0" = unlimited */
+            limit: string;
+            /**
+             * @description Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100
+             * @example [
+             *       50,
+             *       80,
+             *       100
+             *     ]
+             */
+            alert_thresholds_pct: number[];
+            window: components["schemas"]["QuotaWindow"];
+            mode: components["schemas"]["QuotaMode"];
+        };
+        EntitlementInput: {
+            meter_code: string;
+            /** @description Decimal in meter units; "0" = unlimited */
+            limit: string;
+            /**
+             * @description Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100
+             * @example [
+             *       50,
+             *       80,
+             *       100
+             *     ]
+             */
+            alert_thresholds_pct?: number[];
+            window?: components["schemas"]["QuotaWindow"];
+            mode?: components["schemas"]["QuotaMode"];
+        };
         EntitlementOverride: {
-            customer_external_id?: string;
-            meter_code?: string;
+            customer_external_id: string;
+            meter_code: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            update_time?: string;
-        } & components["schemas"]["EntitlementTerms"];
+            update_time: string | null;
+            /** @description Decimal in meter units; "0" = unlimited */
+            limit: string;
+            /**
+             * @description Strictly ascending percentages of the limit at which an alert fires; empty = 80 and 100
+             * @example [
+             *       50,
+             *       80,
+             *       100
+             *     ]
+             */
+            alert_thresholds_pct: number[];
+            window: components["schemas"]["QuotaWindow"];
+            mode: components["schemas"]["QuotaMode"];
+        };
         PlanVersion: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            plan_id?: string;
-            plan_code?: string;
-            version?: number;
-            base_fee_minor?: string;
-            prices?: components["schemas"]["Price"][];
-            entitlements?: components["schemas"]["Entitlement"][];
+            plan_id: string;
+            plan_code: string;
+            version: number;
+            /** Format: int64 */
+            base_fee_minor: string;
+            prices: components["schemas"]["Price"][];
+            entitlements: components["schemas"]["Entitlement"][];
             /** Format: date-time */
-            publish_time?: string;
+            publish_time: string | null;
             /** @description The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
-            trial_days?: number;
+            trial_days: number;
             /** @description Fixed fees other than the tenant currency's monthly one, per currency and interval */
-            fees?: components["schemas"]["CurrencyFee"][];
+            fees: components["schemas"]["CurrencyFee"][];
         };
         Subscription: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            customer_id?: string;
+            customer_id: string;
+            customer_external_id: string;
+            /** Format: uuid */
+            plan_version_id: string;
+            /** Format: date-time */
+            start_time: string | null;
+            /** Format: date-time */
+            end_time: string | null;
+            /** Format: date-time */
+            create_time: string | null;
+            /** @enum {string} */
+            state: "SUBSCRIPTION_STATE_TRIALING" | "SUBSCRIPTION_STATE_ACTIVE" | "SUBSCRIPTION_STATE_PAST_DUE" | "SUBSCRIPTION_STATE_PAUSED" | "SUBSCRIPTION_STATE_CANCELLED";
+            /** @enum {string} */
+            interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            currency: string;
+            /** Format: date-time */
+            trial_end_time: string | null;
+            cancel_at_period_end: boolean;
+            /** Format: date-time */
+            pause_time: string | null;
+            provider: string;
+            /** @description The provider's id of the subscription, once it is linked */
+            provider_ref: string;
+            /**
+             * @description Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider
+             * @enum {string}
+             */
+            owner: "payrudder" | "provider";
+            plan_code: string;
+            plan_version: number;
+            /** @enum {string} */
+            fee_timing: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
+            scheduled_change: components["schemas"]["ScheduledChange"] | null;
+            coupon_code: string;
+            /** @description Seats: a plain multiplier of the plan's fixed fee, 1 unless set */
+            quantity: number;
+            changed_from_id: string;
+        };
+        /** @description Marshalled without unpopulated fields: a field at its zero value (empty string, 0, false, unset timestamp) is left out. */
+        WebhookSubscription: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            customer_id: string;
             customer_external_id?: string;
             /** Format: uuid */
-            plan_version_id?: string;
+            plan_version_id: string;
             /** Format: date-time */
             start_time?: string;
             /** Format: date-time */
-            end_time?: string | null;
+            end_time?: string;
             /** Format: date-time */
             create_time?: string;
             /** @enum {string} */
-            state?: "SUBSCRIPTION_STATE_TRIALING" | "SUBSCRIPTION_STATE_ACTIVE" | "SUBSCRIPTION_STATE_PAST_DUE" | "SUBSCRIPTION_STATE_PAUSED" | "SUBSCRIPTION_STATE_CANCELLED";
+            state: "SUBSCRIPTION_STATE_TRIALING" | "SUBSCRIPTION_STATE_ACTIVE" | "SUBSCRIPTION_STATE_PAST_DUE" | "SUBSCRIPTION_STATE_PAUSED" | "SUBSCRIPTION_STATE_CANCELLED";
             /** @enum {string} */
-            interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
-            currency?: string;
+            interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            currency: string;
             /** Format: date-time */
-            trial_end_time?: string | null;
+            trial_end_time?: string;
             cancel_at_period_end?: boolean;
             /** Format: date-time */
-            pause_time?: string | null;
+            pause_time?: string;
             provider?: string;
-            /** @description The provider's id of the subscription */
+            /** @description The provider's id of the subscription, once it is linked */
             provider_ref?: string;
             /**
              * @description Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider
              * @enum {string}
              */
-            owner?: "quotify" | "provider";
-            plan_code?: string;
-            plan_version?: number;
+            owner?: "payrudder" | "provider";
+            plan_code: string;
+            plan_version: number;
             /** @enum {string} */
             fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
-            scheduled_change?: components["schemas"]["ScheduledChange"];
+            scheduled_change?: components["schemas"]["WebhookScheduledChange"];
             coupon_code?: string;
             /** @description Seats: a plain multiplier of the plan's fixed fee, 1 unless set */
-            quantity?: number;
+            quantity: number;
+            changed_from_id?: string;
         };
         CreditNote: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** @description CN-2026-000007 (live) or SBX-CN-2026-000007 (sandbox) */
-            number?: string;
+            number: string;
             /** Format: uuid */
-            invoice_id?: string;
-            invoice_number?: string;
+            invoice_id: string;
+            invoice_number: string;
             /** Format: uuid */
-            customer_id?: string;
-            customer_external_id?: string;
-            currency?: string;
-            total_minor?: string;
-            reason?: string;
+            customer_id: string;
+            customer_external_id: string;
+            currency: string;
+            /** Format: int64 */
+            total_minor: string;
+            reason: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /**
              * @description Where the amount went: the credit balance, or back to the card
              * @enum {string}
              */
-            disposition?: "CREDIT_NOTE_DISPOSITION_CREDIT" | "CREDIT_NOTE_DISPOSITION_REFUND";
+            disposition: "CREDIT_NOTE_DISPOSITION_CREDIT" | "CREDIT_NOTE_DISPOSITION_REFUND";
             /**
              * @description Only for a refund to the card
              * @enum {string}
              */
-            refund_state?: "REFUND_STATE_REQUESTED" | "REFUND_STATE_REFUNDED" | "REFUND_STATE_FAILED";
-            refund_error?: string;
+            refund_state: "REFUND_STATE_REQUESTED" | "REFUND_STATE_REFUNDED" | "REFUND_STATE_FAILED";
+            refund_error: string;
         };
         CustomerTax: {
             /** @description VKN/TCKN (Turkey) or VAT id (EU) */
@@ -6256,6 +8693,14 @@ export interface components {
         };
         /** @description The seller's company data printed on invoices and sent in e-documents. */
         LegalInfo: {
+            legal_name: string;
+            tax_id: string;
+            tax_office: string;
+            mersis_no: string;
+            trade_registry_no: string;
+        };
+        /** @description The seller's company data printed on invoices and sent in e-documents. */
+        LegalInfoInput: {
             legal_name?: string;
             tax_id?: string;
             tax_office?: string;
@@ -6264,63 +8709,59 @@ export interface components {
         };
         EInvoiceDocument: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** @enum {string} */
-            kind?: "invoice" | "credit_note";
+            kind: "invoice" | "credit_note";
             /** Format: uuid */
-            invoice_id?: string;
+            invoice_id: string;
             /** Format: uuid */
-            credit_note_id?: string | null;
+            credit_note_id: string | null;
             /** @description Payrudder's invoice or credit note number */
-            number?: string;
+            number: string;
             /** @enum {string} */
-            status?: "pending" | "issued" | "failed" | "cancelled";
+            status: "pending" | "issued" | "failed" | "cancelled";
             /**
              * @description Empty until known
              * @enum {string}
              */
-            document_type?: "" | "e-fatura" | "e-arsiv" | "peppol";
-            provider?: string;
+            document_type: "" | "e-fatura" | "e-arsiv" | "peppol";
+            provider: string;
             /** @enum {string} */
-            environment?: "sandbox" | "live";
-            legal_number?: string;
-            external_id?: string;
-            attempts?: number;
+            environment: "sandbox" | "live";
+            legal_number: string;
+            external_id: string;
+            attempts: number;
             /** Format: date-time */
-            next_attempt_at?: string | null;
+            next_attempt_at: string | null;
             /** @example einvoice.provider.rejected */
-            last_error_key?: string;
+            last_error_key: string;
             /** @description English text */
-            last_error?: string;
-            has_xml?: boolean;
-            has_pdf?: boolean;
+            last_error: string;
+            has_xml: boolean;
+            has_pdf: boolean;
             /** Format: date-time */
-            created_at?: string;
+            created_at: string | null;
             /** Format: date-time */
-            issued_at?: string | null;
+            issued_at: string | null;
             /** Format: date-time */
-            updated_at?: string;
+            updated_at: string | null;
         };
         EInvoiceList: {
-            documents?: components["schemas"]["EInvoiceDocument"][];
-            next_page_token?: string;
-            total?: number;
-        };
-        EInvoiceFileLink: {
-            url?: string;
-            /** Format: date-time */
-            expires_at?: string;
+            documents: components["schemas"]["EInvoiceDocument"][];
+            next_page_token: string;
+            /** Format: int64 */
+            total: string;
         };
         EInvoiceAccount: {
             /** @enum {string} */
-            environment?: "sandbox" | "live";
+            environment: "sandbox" | "live";
             /** @enum {string} */
-            provider?: "mock" | "nilvera" | "webhook";
+            provider: "mock" | "nilvera" | "webhook";
             /** @enum {string} */
-            mode?: "test" | "production";
-            has_credentials?: boolean;
+            mode: "test" | "production";
+            has_credentials: boolean;
             /** Format: date-time */
-            updated_at?: string;
+            updated_at: string;
         };
         PutEInvoiceAccount: {
             /** @enum {string} */
@@ -6333,6 +8774,16 @@ export interface components {
             };
         };
         TaxRates: {
+            rates: {
+                /** @description ISO 3166-1 alpha-2; empty for every country without a rate of its own */
+                country: string;
+                /** @description Shown on the invoice, e.g. VAT */
+                name: string;
+                /** @description 2000 is 20 % */
+                rate_bps: number;
+            }[];
+        };
+        TaxRatesInput: {
             rates?: {
                 /** @description ISO 3166-1 alpha-2; empty for every country without a rate of its own */
                 country?: string;
@@ -6343,17 +8794,26 @@ export interface components {
             }[];
         };
         DunningSettings: {
-            retry_hours?: number[];
+            retry_hours: number[];
             /** @description True when nothing was set and the service-wide delays apply */
-            readonly defaults_in_use?: boolean;
+            readonly defaults_in_use: boolean;
             /** Format: date-time */
-            readonly update_time?: string;
+            readonly update_time: string | null;
+        };
+        DunningSettingsInput: {
+            retry_hours?: number[];
         };
         CreditPackInput: {
             name: string;
-            /** @description int64, above zero (a number is accepted too) */
+            /**
+             * Format: int64
+             * @description int64, above zero (a number is accepted too)
+             */
             credits: string;
-            /** @description int64 minor units of the currency, above zero */
+            /**
+             * Format: int64
+             * @description int64 minor units of the currency, above zero
+             */
             price_minor: string;
             currency: string;
             /** @description The credits bought expire after this many days; 0 or absent: they never expire */
@@ -6361,55 +8821,68 @@ export interface components {
         };
         CreditPack: {
             /** Format: uuid */
-            id?: string;
-            name?: string;
-            /** @description int64 as a string */
-            credits?: string;
-            /** @description int64 as a string */
-            price_minor?: string;
-            currency?: string;
-            active?: boolean;
+            id: string;
+            name: string;
+            /** Format: int64 */
+            credits: string;
+            /** Format: int64 */
+            price_minor: string;
+            currency: string;
+            active: boolean;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** @description 0: the credits bought never expire */
-            validity_days?: number;
+            validity_days: number;
         };
         CreditSettings: {
-            /** @description int64 credits; 0 turns credits.low off */
+            /**
+             * Format: int64
+             * @description int64 credits; 0 turns credits.low off
+             */
+            low_threshold: string;
+        };
+        CreditSettingsInput: {
+            /**
+             * Format: int64
+             * @description int64 credits; 0 turns credits.low off
+             */
             low_threshold?: string;
         };
         CreditPackList: {
-            packs?: components["schemas"]["CreditPack"][];
+            packs: components["schemas"]["CreditPack"][];
         };
         CreditLot: {
             /** Format: uuid */
-            id?: string;
-            /** @description int64 as a string */
-            granted?: string;
-            /** @description int64 as a string */
-            remaining?: string;
+            id: string;
+            /** Format: int64 */
+            granted: string;
+            /** Format: int64 */
+            remaining: string;
             /** @enum {string} */
-            source?: "purchase" | "promo" | "manual";
+            source: "purchase" | "promo" | "manual";
             /**
              * Format: date-time
              * @description Null: the credits never expire
              */
-            expire_time?: string | null;
+            expire_time: string | null;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
         };
         CreditBalance: {
-            /** @description int64 as a string */
-            balance?: string;
+            /** Format: int64 */
+            balance: string;
             /**
              * Format: date-time
              * @description When some of the credits run out; null when none does
              */
-            next_expire_time?: string | null;
-            lots?: components["schemas"]["CreditLot"][];
+            next_expire_time: string | null;
+            lots: components["schemas"]["CreditLot"][];
         };
         CreditGrantInput: {
-            /** @description int64, above zero (a number is accepted too) */
+            /**
+             * Format: int64
+             * @description int64, above zero (a number is accepted too)
+             */
             credits: string;
             /** @enum {string} */
             source: "promo" | "manual";
@@ -6422,47 +8895,59 @@ export interface components {
             idempotency_key?: string;
         };
         CreditConsumeInput: {
-            /** @description int64, above zero (a number is accepted too) */
+            /**
+             * Format: int64
+             * @description int64, above zero (a number is accepted too)
+             */
             credits: string;
             reason?: string;
             /** @description Required, here or in the Idempotency-Key header */
-            idempotency_key?: string;
+            idempotency_key: string;
         };
         CreditResult: {
-            /** @description int64 as a string: what the customer can spend after the call */
-            balance?: string;
+            /**
+             * Format: int64
+             * @description int64 as a string: what the customer can spend after the call
+             */
+            balance: string;
             /** @description True when the key had been used: nothing changed */
-            replayed?: boolean;
+            replayed: boolean;
         };
         CreditLedgerEntry: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            lot_id?: string;
+            lot_id: string;
             /** @enum {string} */
-            kind?: "grant" | "consume" | "expire";
-            /** @description int64 as a string; negative for consume and expire */
-            amount?: string;
-            reason?: string;
-            idempotency_key?: string;
+            kind: "grant" | "consume" | "expire";
+            /**
+             * Format: int64
+             * @description int64 as a string; negative for consume and expire
+             */
+            amount: string;
+            reason: string;
+            idempotency_key: string;
             /**
              * @description Where the credits it touched came from; a purchase is a credit pack that was paid for
              * @enum {string}
              */
-            source?: "purchase" | "promo" | "manual";
+            source: "purchase" | "promo" | "manual";
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
         };
         CreditLedgerPage: {
-            entries?: components["schemas"]["CreditLedgerEntry"][];
-            next_page_token?: string;
+            entries: components["schemas"]["CreditLedgerEntry"][];
+            next_page_token: string;
         };
         /** @enum {string} */
         ExpenseCategory: "infrastructure" | "payment_fees" | "marketing" | "payroll" | "tax" | "software" | "other";
         ExpenseInput: {
             vendor: string;
             category: components["schemas"]["ExpenseCategory"];
-            /** @description int64 minor units, above zero (a number is accepted too) */
+            /**
+             * Format: int64
+             * @description int64 minor units, above zero (a number is accepted too)
+             */
             amount_minor: string;
             currency: string;
             /**
@@ -6486,7 +8971,10 @@ export interface components {
              * @description Last day an occurrence may fall on; leave out for no end. Only for a recurring expense.
              */
             recurring_until?: string;
-            /** @description The tax inside amount_minor, when the receipt shows it (informational; no summary reads it) */
+            /**
+             * Format: int64
+             * @description The tax inside amount_minor, when the receipt shows it (informational; no summary reads it)
+             */
             tax_minor?: string;
             /**
              * Format: uuid
@@ -6496,55 +8984,76 @@ export interface components {
         };
         Expense: {
             /** Format: uuid */
-            id?: string;
-            app_id?: string;
-            vendor?: string;
-            category?: components["schemas"]["ExpenseCategory"];
-            /** @description int64 as a string */
-            amount_minor?: string;
-            currency?: string;
+            id: string;
+            app_id: string;
+            vendor: string;
+            category: components["schemas"]["ExpenseCategory"];
+            /** Format: int64 */
+            amount_minor: string;
+            currency: string;
             /** Format: date */
-            incurred_on?: string;
-            note?: string;
+            incurred_on: string;
+            note: string;
             /** @enum {string} */
-            recurring?: "none" | "monthly" | "yearly";
-            recurring_until?: string;
+            recurring: "none" | "monthly" | "yearly";
+            recurring_until: string;
             /** Format: date-time */
-            void_time?: string | null;
-            void_reason?: string;
+            void_time: string | null;
+            void_reason: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            update_time?: string;
-            /** @description int64 as a string */
-            tax_minor?: string;
-            attachment_asset_id?: string;
+            update_time: string | null;
+            /** Format: int64 */
+            tax_minor: string;
+            attachment_asset_id: string;
         };
         ExpenseInbox: {
-            token?: string;
-            app_id?: string;
+            token: string;
+            app_id: string;
             /** @description invoices+<token>@<inbound domain>; empty when no inbound domain is configured */
-            address?: string;
+            address: string;
         };
         InboxItem: {
             /** Format: uuid */
-            id?: string;
-            app_id?: string;
-            from?: string;
-            subject?: string;
-            filename?: string;
-            content_type?: string;
-            size_bytes?: string;
+            id: string;
+            app_id: string;
+            from: string;
+            subject: string;
+            filename: string;
+            content_type: string;
+            /** Format: int64 */
+            size_bytes: string;
             /** @enum {string} */
-            status?: "to_review" | "accepted" | "dismissed";
-            expense_id?: string;
+            status: "to_review" | "accepted" | "dismissed";
+            expense_id: string;
             /** Format: date-time */
-            receive_time?: string;
+            receive_time: string | null;
         };
         InboxItemPage: {
-            items?: components["schemas"]["InboxItem"][];
+            items: components["schemas"]["InboxItem"][];
         };
         ExpenseRule: {
+            /** Format: uuid */
+            readonly id: string;
+            /** @description Case-insensitive text the vendor name contains */
+            vendor_match: string;
+            category: components["schemas"]["ExpenseCategory"];
+            currency: string;
+            /** @description The tax share of the amount, in basis points */
+            tax_bps: number;
+            /**
+             * Format: int64
+             * @description What this vendor usually bills, in minor units; 0: no expectation
+             */
+            expected_amount_minor: string;
+            tolerance_bps: number;
+            /** @description Needs an expected amount */
+            auto_approve: boolean;
+            /** Format: uuid */
+            app_id: string;
+        };
+        ExpenseRuleInput: {
             /** Format: uuid */
             readonly id?: string;
             /** @description Case-insensitive text the vendor name contains */
@@ -6553,7 +9062,10 @@ export interface components {
             currency: string;
             /** @description The tax share of the amount, in basis points */
             tax_bps?: number;
-            /** @description What this vendor usually bills, in minor units; 0: no expectation */
+            /**
+             * Format: int64
+             * @description What this vendor usually bills, in minor units; 0: no expectation
+             */
             expected_amount_minor?: string;
             tolerance_bps?: number;
             /** @description Needs an expected amount */
@@ -6562,75 +9074,131 @@ export interface components {
             app_id?: string;
         };
         ExpensePage: {
-            expenses?: components["schemas"]["Expense"][];
-            next_page_token?: string;
+            expenses: components["schemas"]["Expense"][];
+            next_page_token: string;
         };
         AccountingPoint: {
             /**
              * Format: date
              * @description The day, or the first day of the month
              */
-            bucket?: string;
-            gross_income_minor?: string;
-            tax_minor?: string;
-            refunds_minor?: string;
-            net_income_minor?: string;
-            expenses_minor?: string;
-            profit_minor?: string;
-            /** @description What coupons took off the invoices paid in this bucket */
-            discounts_minor?: string;
+            bucket: string;
+            /** Format: int64 */
+            gross_income_minor: string;
+            /** Format: int64 */
+            tax_minor: string;
+            /** Format: int64 */
+            refunds_minor: string;
+            /** Format: int64 */
+            net_income_minor: string;
+            /** Format: int64 */
+            expenses_minor: string;
+            /** Format: int64 */
+            profit_minor: string;
+            /**
+             * Format: int64
+             * @description What coupons took off the invoices paid in this bucket
+             */
+            discounts_minor: string;
         };
         /** @description One currency of the period. Every amount is int64 minor units as a string. */
         AccountingCurrency: {
-            currency?: string;
-            /** @description Invoices paid in the period, tax included */
-            gross_income_minor?: string;
-            /** @description The tax lines of those invoices */
-            tax_minor?: string;
-            /** @description Credit notes against paid invoices plus invoices refunded in full */
-            refunds_minor?: string;
-            /** @description gross - tax - refunds */
-            net_income_minor?: string;
-            /** @description Every live occurrence in the period, provider fees included */
-            expenses_minor?: string;
-            /** @description The payment_fees expenses; meaningful only when provider_fees_recorded */
-            provider_fees_minor?: string;
+            currency: string;
+            /**
+             * Format: int64
+             * @description Invoices paid in the period, tax included
+             */
+            gross_income_minor: string;
+            /**
+             * Format: int64
+             * @description The tax lines of those invoices
+             */
+            tax_minor: string;
+            /**
+             * Format: int64
+             * @description Credit notes against paid invoices plus invoices refunded in full
+             */
+            refunds_minor: string;
+            /**
+             * Format: int64
+             * @description gross - tax - refunds
+             */
+            net_income_minor: string;
+            /**
+             * Format: int64
+             * @description Every live occurrence in the period, provider fees included
+             */
+            expenses_minor: string;
+            /**
+             * Format: int64
+             * @description The payment_fees expenses; meaningful only when provider_fees_recorded
+             */
+            provider_fees_minor: string;
             /** @description False: no commission was entered, which is not the same as zero */
-            provider_fees_recorded?: boolean;
-            /** @description net income - expenses; negative for a loss */
-            profit_minor?: string;
-            paid_invoices?: string;
-            expense_by_category?: {
-                category?: components["schemas"]["ExpenseCategory"];
-                amount_minor?: string;
+            provider_fees_recorded: boolean;
+            /**
+             * Format: int64
+             * @description net income - expenses; negative for a loss
+             */
+            profit_minor: string;
+            /** Format: int64 */
+            paid_invoices: string;
+            expense_by_category: {
+                category: components["schemas"]["ExpenseCategory"];
+                /** Format: int64 */
+                amount_minor: string;
             }[];
-            series?: components["schemas"]["AccountingPoint"][];
-            /** @description What coupons took off the paid invoices (contra-revenue, a positive number). gross_income_minor is already after it */
-            discounts_minor?: string;
-            /** @description Revenue before discounts: gross - tax + discounts */
-            sales_minor?: string;
+            series: components["schemas"]["AccountingPoint"][];
+            /**
+             * Format: int64
+             * @description What coupons took off the paid invoices (contra-revenue, a positive number). gross_income_minor is already after it
+             */
+            discounts_minor: string;
+            /**
+             * Format: int64
+             * @description Revenue before discounts: gross - tax + discounts
+             */
+            sales_minor: string;
             /** @description Gross, discounts and net per coupon, most discount first */
-            coupons?: components["schemas"]["AccountingCoupon"][];
+            coupons: components["schemas"]["AccountingCoupon"][];
         };
         AccountingCoupon: {
-            coupon_code?: string;
-            invoices?: string;
-            /** @description What those invoices came to before the coupon: positive lines, tax excluded */
-            gross_minor?: string;
-            discount_minor?: string;
-            /** @description gross - discount */
-            net_minor?: string;
+            coupon_code: string;
+            /** Format: int64 */
+            invoices: string;
+            /**
+             * Format: int64
+             * @description What those invoices came to before the coupon: positive lines, tax excluded
+             */
+            gross_minor: string;
+            /** Format: int64 */
+            discount_minor: string;
+            /**
+             * Format: int64
+             * @description gross - discount
+             */
+            net_minor: string;
         };
         AccountingSummary: {
             /** Format: date */
-            from_date?: string;
+            from_date: string;
             /** Format: date */
-            to_date?: string;
+            to_date: string;
             /** @enum {string} */
-            granularity?: "day" | "month";
-            app_id?: string;
+            granularity: "day" | "month";
+            app_id: string;
             /** @description Ordered by currency code; a currency with no income and no expenses has no block */
-            currencies?: components["schemas"]["AccountingCurrency"][];
+            currencies: components["schemas"]["AccountingCurrency"][];
+        };
+        CreateWebhookEndpointRequest: {
+            /**
+             * Format: uri
+             * @description https only, a public address, no credentials
+             */
+            url: string;
+            description?: string;
+            /** @description Empty means every type */
+            event_types?: components["schemas"]["WebhookEventType"][];
         };
         WebhookEndpointInput: {
             /**
@@ -6641,50 +9209,56 @@ export interface components {
             description?: string;
             /** @description Empty means every type */
             event_types?: components["schemas"]["WebhookEventType"][];
-            /** @description Only on update; a new endpoint is active */
-            active?: boolean;
+            /** @description A PUT replaces the endpoint: leaving active out deactivates it */
+            active: boolean;
         };
         /** @enum {string} */
         WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low";
         PaymentLink: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** @enum {string} */
-            kind?: "invoice" | "adhoc" | "credit_pack";
+            kind: "invoice" | "adhoc" | "credit_pack";
             /**
              * @description paid: a single-use link that was paid
              * @enum {string}
              */
-            status?: "active" | "paid" | "expired" | "revoked";
+            status: "active" | "paid" | "expired" | "revoked";
             /** @description kind credit_pack: the pack sold */
-            pack_id?: string;
+            pack_id: string;
             /** @description kind credit_pack: how many packs one use buys */
-            quantity?: number;
-            /** @description kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string */
-            credits?: string;
+            quantity: number;
+            /**
+             * Format: int64
+             * @description kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string
+             */
+            credits: string;
             /** @description The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
-            promotion_code?: string;
+            promotion_code: string;
             /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
-            invoice_id?: string;
-            customer_external_id?: string;
-            single_use?: boolean;
-            /** @description kind adhoc: int64 minor units as a string */
-            amount_minor?: string;
-            currency?: string;
-            description?: string;
+            invoice_id: string;
+            customer_external_id: string;
+            single_use: boolean;
+            /**
+             * Format: int64
+             * @description kind adhoc: int64 minor units as a string
+             */
+            amount_minor: string;
+            currency: string;
+            description: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            expire_time?: string;
+            expire_time: string | null;
             /** Format: date-time */
-            revoke_time?: string | null;
+            revoke_time: string | null;
             /** @description Invoices paid through the link */
-            paid_count?: number;
+            paid_count: number;
             /** Format: date-time */
-            last_paid_time?: string | null;
+            last_paid_time: string | null;
             /** @description Invoices the link created (ad hoc) */
-            use_count?: number;
-            idempotency_key?: string;
+            use_count: number;
+            idempotency_key: string;
         };
         CreatePaymentLinkRequest: {
             /**
@@ -6701,7 +9275,10 @@ export interface components {
             pack_id?: string;
             /** @description credit_pack: how many packs one payment buys (default 1) */
             quantity?: number;
-            /** @description adhoc: a positive int64 in minor units (a string or a number) */
+            /**
+             * Format: int64
+             * @description adhoc: a positive int64 in minor units (a string or a number)
+             */
             amount_minor?: string;
             /** @description adhoc: ISO 4217; the tenant's currency when empty */
             currency?: string;
@@ -6717,88 +9294,169 @@ export interface components {
             expires_in_days?: number;
             idempotency_key?: string;
         };
-        CreatedPaymentLink: components["schemas"]["PaymentLink"] & {
+        CreatedPaymentLink: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "invoice" | "adhoc" | "credit_pack";
+            /**
+             * @description paid: a single-use link that was paid
+             * @enum {string}
+             */
+            status: "active" | "paid" | "expired" | "revoked";
+            /** @description kind credit_pack: the pack sold */
+            pack_id: string;
+            /** @description kind credit_pack: how many packs one use buys */
+            quantity: number;
+            /**
+             * Format: int64
+             * @description kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string
+             */
+            credits: string;
+            /** @description The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
+            promotion_code: string;
+            /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
+            invoice_id: string;
+            customer_external_id: string;
+            single_use: boolean;
+            /**
+             * Format: int64
+             * @description kind adhoc: int64 minor units as a string
+             */
+            amount_minor: string;
+            currency: string;
+            description: string;
+            /** Format: date-time */
+            create_time: string | null;
+            /** Format: date-time */
+            expire_time: string | null;
+            /** Format: date-time */
+            revoke_time: string | null;
+            /** @description Invoices paid through the link */
+            paid_count: number;
+            /** Format: date-time */
+            last_paid_time: string | null;
+            /** @description Invoices the link created (ad hoc) */
+            use_count: number;
+            idempotency_key: string;
             /** @description The secret part of the link; shown once, empty on a replay */
-            token?: string;
+            token: string;
             /** @description Absolute when the gateway knows its public address (PAYRUDDER_PUBLIC_URL); empty on a replay */
-            url?: string;
-            replayed?: boolean;
+            url: string;
+            replayed: boolean;
         };
         CustomerPayment: {
             /** Format: uuid */
-            invoice_id?: string;
-            invoice_number?: string;
+            invoice_id: string;
+            invoice_number: string;
             /** @enum {string} */
-            kind?: "charge" | "refund";
+            kind: "charge" | "refund";
             /** @enum {string} */
-            status?: "succeeded" | "declined" | "failed" | "pending";
-            amount_minor?: string;
-            currency?: string;
-            provider?: string;
+            status: "succeeded" | "declined" | "failed" | "pending";
+            /** Format: int64 */
+            amount_minor: string;
+            currency: string;
+            provider: string;
             /** @enum {string} */
-            environment?: "sandbox" | "live";
+            environment: "sandbox" | "live";
             /** Format: date-time */
-            occurred_at?: string;
+            occurred_at: string;
         };
         WebhookEndpoint: {
             /** Format: uuid */
-            id?: string;
-            url?: string;
-            description?: string;
-            event_types?: string[];
-            active?: boolean;
+            id: string;
+            url: string;
+            description: string;
+            event_types: string[];
+            active: boolean;
             /** @description whsec_…; only in the response of create and rotate-secret */
-            secret?: string;
+            secret: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
         };
         WebhookDelivery: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /**
              * Format: uuid
              * @description The id inside the delivered body and the Payrudder-Event-Id header
              */
-            event_id?: string;
-            event_type?: string;
+            event_id: string;
+            /** @description A WebhookEventType, or ping for the test event */
+            event_type: string;
             /** Format: uuid */
-            endpoint_id?: string;
+            endpoint_id: string;
             /** @enum {string} */
-            state?: "WEBHOOK_DELIVERY_STATE_PENDING" | "WEBHOOK_DELIVERY_STATE_DELIVERED" | "WEBHOOK_DELIVERY_STATE_FAILED";
-            attempts?: number;
+            state: "WEBHOOK_DELIVERY_STATE_PENDING" | "WEBHOOK_DELIVERY_STATE_DELIVERED" | "WEBHOOK_DELIVERY_STATE_FAILED";
+            attempts: number;
             /**
              * Format: date-time
-             * @description While pending
+             * @description Set while the delivery is pending
              */
-            next_attempt_time?: string;
-            /** @description HTTP status of the last attempt; absent if none got an answer */
-            last_status?: number;
-            last_error?: string;
+            next_attempt_time: string | null;
+            /** @description HTTP status of the last attempt; 0 when no attempt got an answer */
+            last_status: number;
+            last_error: string;
             /** Format: date-time */
-            create_time?: string;
-            /** Format: date-time */
-            delivered_time?: string;
+            create_time: string | null;
+            /**
+             * Format: date-time
+             * @description Set once the endpoint answered 2xx
+             */
+            delivered_time: string | null;
         };
-        /** @description The body of a delivery. data depends on the type: credits.purchased carries the customer, the credits granted, the new balance and the invoice; credits.low the customer, the balance and the threshold; invoice.* carries the invoice's id, number, customer, period, currency, total_minor and status; credit_note.* the note, its invoice and (for a refund) its refund_state; subscription.* the subscription as the API returns it, plus previous_subscription_id for a change. */
-        WebhookEvent: {
-            /** Format: uuid */
-            id?: string;
-            type?: components["schemas"]["WebhookEventType"];
-            /** Format: date-time */
-            created?: string;
-            /** Format: uuid */
-            tenant_id?: string;
-            data?: Record<string, never>;
-        };
+        /** @description The body of a delivery: the common envelope plus data that depends on type. The signature and headers are described in docs/16-webhooks.md. Billing events (invoice, credit_note, payment_link, credits) send int64 values as strings except the credits and balance counts, which are JSON numbers; subscription events embed the subscription without its zero-valued fields. */
+        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["PingEvent"];
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
-            code?: string;
+            code: string;
+            name: string;
+            /** Format: uuid */
+            readonly id: string;
+            /** @description 1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps */
+            percent_bps: number;
+            /**
+             * Format: int64
+             * @description Minor units of currency; applies only in that currency
+             */
+            amount_minor: string;
+            currency: string;
+            /** @description Extra credits on a credit purchase, in the same lot: 1000 is 10 % more. Credit purchases only */
+            bonus_percent_bps: number;
+            /** @description Where the coupon works; empty means all three (a bonus coupon: credit purchases) */
+            applies_to: ("COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT")[];
+            /**
+             * @description How long a subscription keeps the coupon; required when it applies to subscriptions
+             * @enum {string}
+             */
+            duration: "COUPON_DURATION_ONCE" | "COUPON_DURATION_REPEATING" | "COUPON_DURATION_FOREVER";
+            /** @description For a repeating coupon, how many fees */
+            duration_periods: number;
+            /** @description 0 or absent = unlimited. Counts the uses through all the coupon's codes */
+            max_redemptions: number;
+            /** @description The uses that count against the limit */
+            readonly redeemed: number;
+            /** Format: date-time */
+            expire_time: string | null;
+            readonly active: boolean;
+            /** Format: date-time */
+            readonly create_time: string | null;
+            readonly promotion_code_count: number;
+            /** @description Do not make the promotion code with the coupon's own text that a new coupon gets */
+            without_default_code: boolean;
+        };
+        CouponInput: {
+            /** @description 2–40 letters, digits, - or _ */
+            code: string;
             name?: string;
             /** Format: uuid */
             readonly id?: string;
             /** @description 1000 is 10 %. Use one of percent_bps, amount_minor and bonus_percent_bps */
             percent_bps?: number;
-            /** @description Minor units of currency; applies only in that currency */
+            /**
+             * Format: int64
+             * @description Minor units of currency; applies only in that currency
+             */
             amount_minor?: string;
             currency?: string;
             /** @description Extra credits on a credit purchase, in the same lot: 1000 is 10 % more. Credit purchases only */
@@ -6828,6 +9486,40 @@ export interface components {
         /** @description What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions. */
         PromotionCode: {
             /** Format: uuid */
+            readonly id: string;
+            /** Format: uuid */
+            readonly coupon_id: string;
+            readonly coupon_code: string;
+            readonly code: string;
+            readonly active: boolean;
+            /** @description 0 or absent = unlimited */
+            max_redemptions: number;
+            readonly redeemed: number;
+            /** Format: date-time */
+            expire_time: string | null;
+            /** @description Only a customer who has paid for nothing yet */
+            first_purchase_only: boolean;
+            one_per_customer: boolean;
+            /**
+             * Format: int64
+             * @description A purchase under this amount cannot use the code; needs min_amount_currency
+             */
+            min_amount_minor: string;
+            min_amount_currency: string;
+            /** @description Plan codes; empty means any */
+            allowed_plans: string[];
+            /** @description Credit pack ids; empty means any */
+            allowed_packs: string[];
+            /** @description Empty means any */
+            allowed_currencies: string[];
+            /** @description A void or full refund gives the use back to the count. Off by default */
+            restore_on_reversal: boolean;
+            /** Format: date-time */
+            readonly create_time: string | null;
+        };
+        /** @description What a customer types. Many codes point to one coupon, each with its own limit, expiry and restrictions. */
+        PromotionCodeInput: {
+            /** Format: uuid */
             readonly id?: string;
             /** Format: uuid */
             readonly coupon_id?: string;
@@ -6842,7 +9534,10 @@ export interface components {
             /** @description Only a customer who has paid for nothing yet */
             first_purchase_only?: boolean;
             one_per_customer?: boolean;
-            /** @description A purchase under this amount cannot use the code; needs min_amount_currency */
+            /**
+             * Format: int64
+             * @description A purchase under this amount cannot use the code; needs min_amount_currency
+             */
             min_amount_minor?: string;
             min_amount_currency?: string;
             /** @description Plan codes; empty means any */
@@ -6857,7 +9552,7 @@ export interface components {
             readonly create_time?: string;
         };
         CreatePromotionCodes: {
-            template?: components["schemas"]["PromotionCode"];
+            template?: components["schemas"]["PromotionCodeInput"];
             /** @description Name the codes, or ask for count */
             codes?: string[];
             count?: number;
@@ -6866,40 +9561,47 @@ export interface components {
         };
         CouponRedemption: {
             /** Format: uuid */
-            id?: string;
-            coupon_code?: string;
+            id: string;
+            coupon_code: string;
             /** @description Empty when an operator applied the coupon or it came from a grant */
-            promotion_code?: string;
-            customer_external_id?: string;
+            promotion_code: string;
+            customer_external_id: string;
             /** @enum {string} */
-            target?: "COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
+            target: "COUPON_TARGET_SUBSCRIPTION" | "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
             /**
              * Format: uuid
              * @description The subscription, or the invoice
              */
-            target_id?: string;
+            target_id: string;
             /** Format: uuid */
-            invoice_id?: string;
-            /** @description What it took off; a subscription's grows with each fee */
-            discount_minor?: string;
-            bonus_credits?: string;
-            currency?: string;
+            invoice_id: string;
+            /**
+             * Format: int64
+             * @description What it took off; a subscription's grows with each fee
+             */
+            discount_minor: string;
+            /** Format: int64 */
+            bonus_credits: string;
+            currency: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /**
              * Format: date-time
              * @description Set when a void or a full refund reversed it
              */
-            reverse_time?: string;
+            reverse_time: string | null;
         };
         PromotionQuoteRequest: {
-            code: string;
+            code?: string;
             /** @description Needed by codes that are first-purchase-only or one per customer */
             customer_external_id?: string;
             /** @enum {string} */
             target: "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
-            /** @description The price before the discount */
-            amount_minor: string;
+            /**
+             * Format: int64
+             * @description The price before the discount
+             */
+            amount_minor?: string;
             currency: string;
             /** @description The credit pack id, for codes restricted to some packs */
             item?: string;
@@ -6909,15 +9611,21 @@ export interface components {
             prior_purchases?: boolean;
         };
         PromotionQuote: {
-            applied?: boolean;
-            coupon_code?: string;
-            coupon_name?: string;
-            promotion_code?: string;
-            discount_minor?: string;
-            bonus_credits?: string;
-            /** @description The price after the discount */
-            total_minor?: string;
-            currency?: string;
+            applied: boolean;
+            coupon_code: string;
+            coupon_name: string;
+            promotion_code: string;
+            /** Format: int64 */
+            discount_minor: string;
+            /** Format: int64 */
+            bonus_credits: string;
+            /**
+             * Format: int64
+             * @description The price after the discount, never below zero
+             */
+            total_minor: string;
+            currency: string;
+            redemption_id: string;
         };
         ChangeRequest: {
             /** @description Empty keeps the plan (to change the interval only) */
@@ -6949,6 +9657,45 @@ export interface components {
         };
         ChangeQuote: {
             /** @enum {string} */
+            timing: "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
+            /** @enum {string} */
+            proration: "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
+            /** Format: date-time */
+            effective_time: string | null;
+            /** Format: date-time */
+            period_start: string | null;
+            /** Format: date-time */
+            period_end: string | null;
+            /**
+             * Format: int64
+             * @description The unused, prepaid part of the old fee
+             */
+            credit_minor: string;
+            /**
+             * Format: int64
+             * @description What the new plan costs from the change
+             */
+            charge_minor: string;
+            /**
+             * Format: int64
+             * @description charge - credit: positive is invoiced, negative becomes a credit balance
+             */
+            net_minor: string;
+            currency: string;
+            /** Format: date-time */
+            next_renewal_time: string | null;
+            /** Format: int64 */
+            next_renewal_minor: string;
+            plan_code: string;
+            plan_version: number;
+            /** @enum {string} */
+            interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            /** @description The seats after the change */
+            quantity: number;
+        };
+        /** @description Marshalled without unpopulated fields: a field at its zero value (empty string, 0, false, unset timestamp) is left out. */
+        WebhookChangeQuote: {
+            /** @enum {string} */
             timing?: "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
             /** @enum {string} */
             proration?: "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
@@ -6958,15 +9705,25 @@ export interface components {
             period_start?: string;
             /** Format: date-time */
             period_end?: string;
-            /** @description The unused */
+            /**
+             * Format: int64
+             * @description The unused, prepaid part of the old fee
+             */
             credit_minor?: string;
-            /** @description What the new plan costs from the change */
+            /**
+             * Format: int64
+             * @description What the new plan costs from the change
+             */
             charge_minor?: string;
-            /** @description charge - credit: positive is invoiced, negative becomes a credit balance */
+            /**
+             * Format: int64
+             * @description charge - credit: positive is invoiced, negative becomes a credit balance
+             */
             net_minor?: string;
             currency?: string;
             /** Format: date-time */
             next_renewal_time?: string;
+            /** Format: int64 */
             next_renewal_minor?: string;
             plan_code?: string;
             plan_version?: number;
@@ -6975,7 +9732,46 @@ export interface components {
             /** @description The seats after the change */
             quantity?: number;
         };
+        /** @description The preview of a change at the payment provider (the provider subscription routes of the operator API) */
+        ProviderChangeQuote: {
+            /** @enum {string} */
+            timing: "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
+            /**
+             * Format: int64
+             * @description The unused, prepaid part of the old fee
+             */
+            credit_minor: string;
+            /**
+             * Format: int64
+             * @description What the new plan costs from the change
+             */
+            charge_minor: string;
+            /**
+             * Format: int64
+             * @description charge - credit: positive is invoiced, negative becomes a credit balance
+             */
+            net_minor: string;
+            currency: string;
+            /** Format: date-time */
+            next_renewal_time?: string;
+            /** Format: int64 */
+            next_renewal_minor: string;
+            /** @enum {string} */
+            interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            by_provider: boolean;
+        };
         ScheduledChange: {
+            plan_code: string;
+            plan_version: number;
+            /** @enum {string} */
+            interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+            /** Format: date-time */
+            effective_time: string | null;
+            /** @description The seats the subscription has from then */
+            quantity: number;
+        };
+        /** @description Marshalled without unpopulated fields: a field at its zero value (empty string, 0, false, unset timestamp) is left out. */
+        WebhookScheduledChange: {
             plan_code?: string;
             plan_version?: number;
             /** @enum {string} */
@@ -6986,7 +9782,18 @@ export interface components {
             quantity?: number;
         };
         CurrencyFee: {
+            currency: string;
+            /** Format: int64 */
+            base_fee_minor: string;
+            /**
+             * @description Default month
+             * @enum {string}
+             */
+            interval: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+        };
+        CurrencyFeeInput: {
             currency?: string;
+            /** Format: int64 */
             base_fee_minor?: string;
             /**
              * @description Default month
@@ -6995,6 +9802,13 @@ export interface components {
             interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
         };
         MailSettings: {
+            categories: {
+                /** @enum {string} */
+                category: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
+                enabled: boolean;
+            }[];
+        };
+        MailSettingsInput: {
             categories?: {
                 /** @enum {string} */
                 category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
@@ -7002,6 +9816,16 @@ export interface components {
             }[];
         };
         RoutingRules: {
+            rules: {
+                /** @description ISO 3166-1 alpha-2; empty matches any country */
+                country: string;
+                /** @description ISO 4217; empty matches any currency */
+                currency: string;
+                /** @enum {string} */
+                provider: "iyzico" | "paddle" | "banktransfer";
+            }[];
+        };
+        RoutingRulesInput: {
             rules?: {
                 /** @description ISO 3166-1 alpha-2; empty matches any country */
                 country?: string;
@@ -7013,116 +9837,117 @@ export interface components {
         };
         Tenant: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            account_id?: string;
+            account_id: string;
             /** Format: uuid */
-            app_id?: string;
-            address?: components["schemas"]["Address"];
-            legal?: components["schemas"]["LegalInfo"];
+            app_id: string;
+            address: components["schemas"]["Address"] | null;
+            legal: components["schemas"]["LegalInfo"] | null;
             /**
              * @description When an invoice becomes an e-document
              * @enum {string}
              */
-            e_invoice_on?: "off" | "finalized" | "paid";
+            e_invoice_on: "off" | "finalized" | "paid";
             /** @enum {string} */
-            environment?: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
-            name?: string;
-            tier?: string;
-            currency?: string;
-            timezone?: string;
-            grace_period?: string;
+            environment: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
+            name: string;
+            tier: string;
+            currency: string;
+            timezone: string;
+            grace_period: string | null;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /**
              * @description A sandbox tenant is always active. A live tenant starts inactive: no keys, no webhook endpoints, no invoices, until the go-live checklist is complete.
              * @enum {string}
              */
-            status?: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED";
+            status: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED";
             /** Format: date-time */
-            activate_time?: string;
+            activate_time: string | null;
             /** Format: date-time */
-            terms_accept_time?: string;
+            terms_accept_time: string | null;
+            invoice_logo_asset_id: string;
         };
         SandboxReset: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** @enum {string} */
-            state?: "queued" | "running" | "done" | "failed";
+            state: "queued" | "running" | "done" | "failed";
             /** @enum {string} */
-            kind?: "manual" | "retention";
-            error?: string;
+            kind: "manual" | "retention";
+            error: string;
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            finish_time?: string;
-            steps?: {
+            finish_time: string | null;
+            steps: {
                 /** @enum {string} */
-                name?: "plans" | "ingest" | "aggregator" | "analytics" | "billing" | "payments";
+                name: "plans" | "ingest" | "aggregator" | "analytics" | "billing" | "payments";
                 /** @enum {string} */
-                state?: "pending" | "done" | "failed" | "skipped";
-                /** @description Rows deleted */
-                deleted?: {
-                    [key: string]: number;
+                state: "pending" | "done" | "failed" | "skipped";
+                /** @description Rows deleted, by table. */
+                deleted: {
+                    [key: string]: string;
                 };
-                error?: string;
+                error: string;
             }[];
         };
         GoLive: {
             /** Format: uuid */
-            tenant_id?: string;
+            tenant_id: string;
             /** @enum {string} */
-            status?: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED";
+            status: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED";
             /** @description Every item is done. */
-            ready?: boolean;
-            items?: {
+            ready: boolean;
+            items: {
                 /** @enum {string} */
-                key?: "email_verified" | "legal_profile" | "payment_provider" | "plan_published" | "terms_accepted";
-                done?: boolean;
+                key: "email_verified" | "legal_profile" | "payment_provider" | "plan_published" | "terms_accepted";
+                done: boolean;
             }[];
         };
         LiveProviders: {
             /** @description At least one account works. */
-            ready?: boolean;
+            ready: boolean;
             /** @description The providers whose accounts work. */
-            providers?: string[];
-            accounts?: {
-                provider?: string;
+            providers: string[];
+            accounts: {
+                provider: string;
                 /** @description Live charges go to the default account unless a routing rule says otherwise. */
-                default?: boolean;
-                working?: boolean;
+                default: boolean;
+                working: boolean;
                 /** @description The provider itself was asked. */
-                checked?: boolean;
+                checked: boolean;
                 /** @enum {string} */
                 problem?: "unreadable" | "refused" | "unreachable";
                 /** Format: date-time */
-                updated_at?: string;
+                updated_at: string;
             }[];
         };
         Account: {
             /** Format: uuid */
-            id?: string;
-            name?: string;
-            tenants?: components["schemas"]["Tenant"][];
-            apps?: components["schemas"]["App"][];
+            id: string;
+            name: string;
+            tenants: components["schemas"]["Tenant"][];
+            apps: components["schemas"]["App"][];
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
         };
         App: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            account_id?: string;
-            name?: string;
-            slug?: string;
-            tenants?: components["schemas"]["Tenant"][];
+            account_id: string;
+            name: string;
+            slug: string;
+            tenants: components["schemas"]["Tenant"][];
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /**
              * Format: date-time
              * @description Set once the app was deleted (archived); only the operator API lists such an app.
              */
-            archive_time?: string;
+            archive_time: string | null;
         };
         /**
          * @description admin: every permission. billing: customers, subscriptions, credits and invoices, with events, the catalogue and usage to read. read_only: every :read. ingest_only: events:write. custom: the permissions chosen.
@@ -7137,53 +9962,53 @@ export interface components {
         /** @description The tenant's own e-mail provider. The key is never returned. */
         MailIntegration: {
             /** @enum {string} */
-            provider?: "nafru";
-            base_url?: string;
-            from?: string;
+            provider: "nafru";
+            base_url: string;
+            from: string;
             /** @description The last four characters of the stored key */
-            key_hint?: string;
+            key_hint: string;
             /** Format: date-time */
-            update_time?: string;
+            update_time: string | null;
             /**
              * Format: date-time
              * @description When the provider last accepted the key
              */
-            checked_time?: string;
+            checked_time: string | null;
             /** @enum {string} */
-            check_problem?: "" | "unreachable" | "refused";
+            check_problem: "" | "unreachable" | "refused";
         };
         ApiKey: {
             /** Format: uuid */
-            id?: string;
+            id: string;
             /** Format: uuid */
-            tenant_id?: string;
-            prefix?: string;
+            tenant_id: string;
+            prefix: string;
             /** @enum {string} */
-            environment?: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
+            environment: "ENVIRONMENT_SANDBOX" | "ENVIRONMENT_LIVE";
             /** @enum {string} */
-            status?: "STATUS_ACTIVE" | "STATUS_REVOKED";
+            status: "STATUS_ACTIVE" | "STATUS_REVOKED";
             /** Format: date-time */
-            create_time?: string;
+            create_time: string | null;
             /** Format: date-time */
-            revoke_time?: string;
+            revoke_time: string | null;
             /**
              * @description Older summary of the role: INGEST for ingest_only, READ for read_only, FULL for the rest. Nothing enforces it; the permissions do.
              * @enum {string}
              */
-            scope?: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";
-            role?: components["schemas"]["ApiKeyRole"];
+            scope: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";
+            role: components["schemas"]["ApiKeyRole"];
             /** @description What the key may do. A request that needs one the key lacks is 403 gateway.auth.permission_denied. */
-            permissions?: components["schemas"]["ApiKeyPermission"][];
+            permissions: components["schemas"]["ApiKeyPermission"][];
             /**
              * Format: date-time
              * @description Kept to within a few minutes.
              */
-            last_used_time?: string;
+            last_used_time: string | null;
             /**
              * Format: date-time
              * @description The key stops working at this time although it is not revoked (the old key of a rotation).
              */
-            expire_time?: string;
+            expire_time: string | null;
         };
     };
     responses: {
@@ -7201,6 +10026,8 @@ export interface components {
         ExternalID: string;
         PlanCode: string;
         ID: string;
+        /** @description Makes a retry safe: a repeat with the same key and the same payload does not do the work twice (credits answer the current balance with replayed: true, a payment link answers the first link without its token, an upload session answers the first session); the same key with another payload is a 409. The body field idempotency_key, where the operation has one, wins over the header. */
+        IdempotencyKey: string;
     };
     requestBodies: never;
     headers: never;
@@ -7254,10 +10081,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        customers?: components["schemas"]["Customer"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["ListCustomersResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -7324,9 +10148,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    payment_method: string;
-                };
+                "application/json": components["schemas"]["SetPaymentMethodRequest"];
             };
         };
         responses: {
@@ -7354,7 +10176,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Address"];
+                "application/json": components["schemas"]["AddressInput"];
             };
         };
         responses: {
@@ -7467,7 +10289,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EInvoiceFileLink"];
+                    "application/json": components["schemas"]["SignedUrl"];
                 };
             };
             404: components["responses"]["Error"];
@@ -7489,9 +10311,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        meters?: components["schemas"]["Meter"][];
-                    };
+                    "application/json": components["schemas"]["ListMetersResponse"];
                 };
             };
         };
@@ -7564,17 +10384,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        customer_external_id?: string;
-                        period_id?: string;
-                        usage?: {
-                            meter_code?: string;
-                            /** @example 1500.250 */
-                            quantity?: string;
-                            /** Format: int64 */
-                            event_count?: number;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["GetCustomerUsageResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -7601,9 +10411,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        items?: components["schemas"]["EntitlementStatus"][];
-                    };
+                    "application/json": components["schemas"]["ListEntitlementsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -7656,9 +10464,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        overrides?: components["schemas"]["EntitlementOverride"][];
-                    };
+                    "application/json": components["schemas"]["ListEntitlementOverridesResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -7730,9 +10536,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        plans?: components["schemas"]["Plan"][];
-                    };
+                    "application/json": components["schemas"]["ListPlansResponse"];
                 };
             };
         };
@@ -7746,10 +10550,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    code: string;
-                    name: string;
-                };
+                "application/json": components["schemas"]["CreatePlanRequest"];
             };
         };
         responses: {
@@ -7777,16 +10578,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @description int64 minor units */
-                    base_fee_minor?: string;
-                    /** @description Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's */
-                    fees?: components["schemas"]["CurrencyFee"][];
-                    prices?: components["schemas"]["Price"][];
-                    entitlements?: components["schemas"]["Entitlement"][];
-                    /** @description The trial a new subscription to this version gets unless its request says otherwise; 0 is none */
-                    trial_days?: number;
-                };
+                "application/json": components["schemas"]["PublishPlanVersionRequest"];
             };
         };
         responses: {
@@ -7847,10 +10639,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        subscriptions?: components["schemas"]["Subscription"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["ListSubscriptionsResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -7865,31 +10654,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    customer_external_id: string;
-                    plan_code: string;
-                    /** @description 0 = latest */
-                    plan_version?: number;
-                    /** Format: date-time */
-                    start_time?: string;
-                    /** @description Left out: the package version's own default trial. 0: no trial whatever the default is */
-                    trial_days?: number;
-                    /** @enum {string} */
-                    interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
-                    /** @description Default is the customer's billing currency */
-                    currency?: string;
-                    /** @description The payment provider that sells it (for example paddle); default is the tenant's default account */
-                    provider?: string;
-                    /** @description A coupon to redeem on the new subscription */
-                    coupon_code?: string;
-                    /** @description Seats: the fixed fee is multiplied by it, usage prices are not. Default 1. Only for a subscription Payrudder runs and bills in advance */
-                    quantity?: number;
-                    /**
-                     * @description Default advance: the fixed fee is invoiced at the start of each period, usage at the close of the month. Arrears (monthly only) bills the fee with the month's usage. A provider that renews subscriptions itself bills the fee.
-                     * @enum {string}
-                     */
-                    fee_timing?: "FEE_TIMING_ADVANCE" | "FEE_TIMING_ARREARS";
-                };
+                "application/json": components["schemas"]["CreateSubscriptionRequest"];
             };
         };
         responses: {
@@ -7949,11 +10714,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Subscription"] | {
-                        subscription?: components["schemas"]["Subscription"];
-                        /** @description Minor units of the subscription's currency */
-                        credited_minor?: string;
-                    };
+                    "application/json": components["schemas"]["CancelSubscriptionResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -8067,16 +10828,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    plan_code: string;
-                    /** @description 0 = latest */
-                    plan_version?: number;
-                    /**
-                     * Format: date-time
-                     * @description Default now
-                     */
-                    change_time?: string;
-                };
+                "application/json": components["schemas"]["ChangePlanRequest"];
             };
         };
         responses: {
@@ -8086,13 +10838,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        subscription?: components["schemas"]["Subscription"];
-                        /** @description Unused part of the old fixed fee */
-                        credit_minor?: string;
-                        /** @description Remaining part of the new fixed fee */
-                        charge_minor?: string;
-                    };
+                    "application/json": components["schemas"]["ChangePlanResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -8150,12 +10896,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        subscription?: components["schemas"]["Subscription"];
-                        quote?: components["schemas"]["ChangeQuote"];
-                        /** @description True when the change waits for the end of the period */
-                        scheduled?: boolean;
-                    };
+                    "application/json": components["schemas"]["ChangeSubscriptionResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -8174,9 +10915,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    code: string;
-                };
+                "application/json": components["schemas"]["ApplyCouponRequest"];
             };
         };
         responses: {
@@ -8247,7 +10986,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TaxRates"];
+                "application/json": components["schemas"]["TaxRatesInput"];
             };
         };
         responses: {
@@ -8292,7 +11031,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["DunningSettings"];
+                "application/json": components["schemas"]["DunningSettingsInput"];
             };
         };
         responses: {
@@ -8373,7 +11112,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["EmptyObject"];
                 };
             };
             404: components["responses"]["Error"];
@@ -8396,7 +11135,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["EmptyObject"];
                 };
             };
             404: components["responses"]["Error"];
@@ -8428,7 +11167,10 @@ export interface operations {
     grantCredits: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Makes a retry safe: a repeat with the same key and the same payload does not do the work twice (credits answer the current balance with replayed: true, a payment link answers the first link without its token, an upload session answers the first session); the same key with another payload is a 409. The body field idempotency_key, where the operation has one, wins over the header. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
             path: {
                 external_id: components["parameters"]["ExternalID"];
             };
@@ -8457,7 +11199,10 @@ export interface operations {
     consumeCredits: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Makes a retry safe: a repeat with the same key and the same payload does not do the work twice (credits answer the current balance with replayed: true, a payment link answers the first link without its token, an upload session answers the first session); the same key with another payload is a 409. The body field idempotency_key, where the operation has one, wins over the header. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
             path: {
                 external_id: components["parameters"]["ExternalID"];
             };
@@ -8609,9 +11354,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    reason?: string;
-                };
+                "application/json": components["schemas"]["VoidExpenseRequest"];
             };
         };
         responses: {
@@ -8711,7 +11454,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The file as it came (PDF */
+            /** @description The file as it came (PDF, PNG or JPEG) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -8734,12 +11477,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    status: "accepted" | "dismissed";
-                    /** Format: uuid */
-                    expense_id?: string;
-                };
+                "application/json": components["schemas"]["ResolveInboxItemRequest"];
             };
         };
         responses: {
@@ -8771,9 +11509,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        rules?: components["schemas"]["ExpenseRule"][];
-                    };
+                    "application/json": components["schemas"]["ListExpenseRulesResponse"];
                 };
             };
         };
@@ -8787,7 +11523,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExpenseRule"];
+                "application/json": components["schemas"]["ExpenseRuleInput"];
             };
         };
         responses: {
@@ -8815,7 +11551,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExpenseRule"];
+                "application/json": components["schemas"]["ExpenseRuleInput"];
             };
         };
         responses: {
@@ -8862,7 +11598,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": Record<string, never>;
+                "application/json": components["schemas"]["InboundInvoicesRequest"];
             };
         };
         responses: {
@@ -8872,9 +11608,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        stored?: number;
-                    };
+                    "application/json": components["schemas"]["InboundInvoicesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -8997,7 +11731,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["CreditSettings"];
+                "application/json": components["schemas"]["CreditSettingsInput"];
             };
         };
         responses: {
@@ -9028,9 +11762,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        endpoints?: components["schemas"]["WebhookEndpoint"][];
-                    };
+                    "application/json": components["schemas"]["ListWebhookEndpointsResponse"];
                 };
             };
         };
@@ -9044,7 +11776,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["WebhookEndpointInput"];
+                "application/json": components["schemas"]["CreateWebhookEndpointRequest"];
             };
         };
         responses: {
@@ -9176,10 +11908,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        deliveries?: components["schemas"]["WebhookDelivery"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["ListWebhookDeliveriesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9223,9 +11952,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        coupons?: components["schemas"]["Coupon"][];
-                    };
+                    "application/json": components["schemas"]["ListCouponsResponse"];
                 };
             };
         };
@@ -9239,7 +11966,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["Coupon"];
+                "application/json": components["schemas"]["CouponInput"];
             };
         };
         responses: {
@@ -9300,9 +12027,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        codes?: components["schemas"]["PromotionCode"][];
-                    };
+                    "application/json": components["schemas"]["CreatePromotionCodesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9333,11 +12058,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        codes?: components["schemas"]["PromotionCode"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["ListPromotionCodesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9387,11 +12108,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        redemptions?: components["schemas"]["CouponRedemption"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["ListCouponRedemptionsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9435,12 +12152,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    coupon_code: string;
-                    /** @description Who gives it, e.g. operator or affiliate */
-                    source: string;
-                    source_ref: string;
-                };
+                "application/json": components["schemas"]["GrantCustomerCouponRequest"];
             };
         };
         responses: {
@@ -9450,9 +12162,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        granted?: boolean;
-                    };
+                    "application/json": components["schemas"]["GrantCustomerCouponResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9489,7 +12199,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AffiliateProgram"];
+                "application/json": components["schemas"]["AffiliateProgramInput"];
             };
         };
         responses: {
@@ -9510,7 +12220,7 @@ export interface operations {
         parameters: {
             query?: {
                 status?: "pending" | "active" | "suspended";
-                /** @description Part of the code */
+                /** @description Part of the code, e-mail address or name */
                 search?: string;
                 page_size?: number;
                 page_token?: string;
@@ -9527,11 +12237,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        affiliates?: components["schemas"]["Affiliate"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["ListAffiliatesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9546,16 +12252,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    name?: string;
-                    code?: string;
-                    /** @enum {string} */
-                    payout_method?: "manual" | "bank_transfer";
-                    payout_details?: string;
-                    pending?: boolean;
-                };
+                "application/json": components["schemas"]["CreateAffiliateRequest"];
             };
         };
         responses: {
@@ -9592,11 +12289,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        referrals?: components["schemas"]["AffiliateReferral"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["ListAffiliateReferralsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9629,11 +12322,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        commissions?: components["schemas"]["AffiliateCommission"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["ListAffiliateCommissionsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9648,17 +12337,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    invoice_id: string;
-                    /** @enum {string} */
-                    reason: "chargeback" | "manual";
-                    /** @description Names this reversal; required for manual */
-                    reference?: string;
-                    /** @description How much to take back; 0 or absent is all that is left */
-                    amount_minor?: string;
-                    note?: string;
-                };
+                "application/json": components["schemas"]["ReverseAffiliateCommissionRequest"];
             };
         };
         responses: {
@@ -9668,11 +12347,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description How much this call took back; 0 on a repeat */
-                        reversed_minor?: string;
-                        commission?: components["schemas"]["AffiliateCommission"];
-                    };
+                    "application/json": components["schemas"]["ReverseAffiliateCommissionResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9696,9 +12371,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        balances?: components["schemas"]["AffiliateBalance"][];
-                    };
+                    "application/json": components["schemas"]["GetAffiliateBalancesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9751,11 +12424,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        payouts?: components["schemas"]["AffiliatePayout"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["ListAffiliatePayoutsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9770,11 +12439,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    affiliate_id?: string;
-                    currency?: string;
-                };
+                "application/json": components["schemas"]["CreateAffiliatePayoutsRequest"];
             };
         };
         responses: {
@@ -9784,17 +12449,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        payouts?: components["schemas"]["AffiliatePayout"][];
-                        skipped?: {
-                            /** Format: uuid */
-                            affiliate_id?: string;
-                            currency?: string;
-                            total_minor?: string;
-                            /** @enum {string} */
-                            reason?: "below_minimum" | "not_positive";
-                        }[];
-                    };
+                    "application/json": components["schemas"]["CreateAffiliatePayoutsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9813,10 +12468,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    /** @description Your note, e.g. the bank transfer reference */
-                    reference?: string;
-                };
+                "application/json": components["schemas"]["MarkAffiliatePayoutPaidRequest"];
             };
         };
         responses: {
@@ -9879,16 +12531,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        entries?: components["schemas"]["AffiliateJournalEntry"][];
-                        totals?: {
-                            currency?: string;
-                            debit_minor?: string;
-                            credit_minor?: string;
-                        }[];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["ListAffiliateJournalResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -9954,14 +12597,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name?: string;
-                    /** @enum {string} */
-                    payout_method?: "manual" | "bank_transfer";
-                    payout_details?: string;
-                    /** @enum {string} */
-                    status?: "active" | "suspended";
-                };
+                "application/json": components["schemas"]["UpdateAffiliateRequest"];
             };
         };
         responses: {
@@ -9989,9 +12625,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    promotion_code: string;
-                };
+                "application/json": components["schemas"]["LinkAffiliatePromotionCodeRequest"];
             };
         };
         responses: {
@@ -10018,16 +12652,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    code: string;
-                    /** @enum {string} */
-                    source?: "link" | "code" | "api";
-                    /**
-                     * Format: date-time
-                     * @description When the visitor followed the link; default now
-                     */
-                    touch_time?: string;
-                };
+                "application/json": components["schemas"]["AttributeCustomerRequest"];
             };
         };
         responses: {
@@ -10037,10 +12662,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        attributed?: boolean;
-                        reason?: string;
-                    };
+                    "application/json": components["schemas"]["AttributeCustomerResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -10074,9 +12696,9 @@ export interface operations {
     getRevenueReport: {
         parameters: {
             query?: {
-                /** @description First period */
+                /** @description First period, YYYY-MM */
                 from?: string;
-                /** @description Last period */
+                /** @description Last period, YYYY-MM */
                 to?: string;
                 /** @description Comma-separated: period, provider, country (default period). Currency is always split */
                 group_by?: string;
@@ -10093,27 +12715,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        rows?: {
-                            period?: string;
-                            provider?: string;
-                            country?: string;
-                            currency?: string;
-                            invoices?: string;
-                            /** @description Finalized invoices that are not void */
-                            billed_minor?: string;
-                            /** @description Paid */
-                            collected_minor?: string;
-                            /** @description Invoices that were refunded */
-                            refunded_minor?: string;
-                            /** @description Open */
-                            outstanding_minor?: string;
-                            uncollectible_minor?: string;
-                            void_minor?: string;
-                            /** @description Credit notes issued against these invoices */
-                            credited_minor?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["GetRevenueReportResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -10136,31 +12738,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invoices?: {
-                            /** Format: uuid */
-                            invoice_id?: string;
-                            number?: string;
-                            customer_external_id?: string;
-                            period?: string;
-                            provider?: string;
-                            currency?: string;
-                            total_minor?: string;
-                            /** @enum {string} */
-                            state?: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
-                            dunning_attempt?: number;
-                            /** Format: date-time */
-                            next_attempt_time?: string;
-                            last_error?: string;
-                        }[];
-                        summary?: {
-                            state?: string;
-                            provider?: string;
-                            currency?: string;
-                            invoices?: string;
-                            total_minor?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["GetDunningReportResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -10186,25 +12764,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        month?: string;
-                        rows?: {
-                            provider?: string;
-                            country?: string;
-                            currency?: string;
-                            active?: string;
-                            trialing?: string;
-                            paused?: string;
-                            past_due?: string;
-                            /** @description Fixed fees per month of active and past due subscriptions */
-                            mrr_minor?: string;
-                            new_subscriptions?: string;
-                            new_mrr_minor?: string;
-                            /** @description Ended with no successor; a plan change or provider migration is not churn */
-                            churned?: string;
-                            churned_mrr_minor?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["GetSubscriptionReportResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -10239,7 +12799,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["RoutingRules"];
+                "application/json": components["schemas"]["RoutingRulesInput"];
             };
         };
         responses: {
@@ -10284,7 +12844,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["MailSettings"];
+                "application/json": components["schemas"]["MailSettingsInput"];
             };
         };
         responses: {
@@ -10309,12 +12869,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @example TR */
-                    country?: string;
-                    /** @example TRY */
-                    currency?: string;
-                };
+                "application/json": components["schemas"]["PreviewRoutingRequest"];
             };
         };
         responses: {
@@ -10324,15 +12879,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @description Empty when no rule matches (the tenant's default account) */
-                        provider?: string;
-                        /** @description -1 when no rule matches */
-                        rule_index?: number;
-                        /** @enum {string} */
-                        owner?: "quotify" | "provider";
-                        can_charge?: boolean;
-                    };
+                    "application/json": components["schemas"]["PreviewRoutingResponse"];
                 };
             };
         };
@@ -10359,10 +12906,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invoices?: components["schemas"]["Invoice"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["ListInvoicesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -10391,10 +12935,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        credit_notes?: components["schemas"]["CreditNote"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["ListCreditNotesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -10458,10 +12999,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    /** @default 90 */
-                    expires_in_days?: number;
-                };
+                "application/json": components["schemas"]["CreateInvoiceLinkRequest"];
             };
         };
         responses: {
@@ -10471,12 +13009,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        token?: string;
-                        url?: string;
-                        /** Format: date-time */
-                        expires_at?: string;
-                    };
+                    "application/json": components["schemas"]["CreateInvoiceLinkResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -10501,9 +13034,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        revoked?: number;
-                    };
+                    "application/json": components["schemas"]["RevokeInvoiceLinksResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -11192,10 +13723,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        links?: components["schemas"]["PaymentLink"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["ListPaymentLinksResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -11205,7 +13733,8 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                "Idempotency-Key"?: string;
+                /** @description Makes a retry safe: a repeat with the same key and the same payload does not do the work twice (credits answer the current balance with replayed: true, a payment link answers the first link without its token, an upload session answers the first session); the same key with another payload is a 409. The body field idempotency_key, where the operation has one, wins over the header. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
             };
             path?: never;
             cookie?: never;
@@ -11296,10 +13825,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    /** @default 30 */
-                    expires_in_days?: number;
-                };
+                "application/json": components["schemas"]["CreatePortalLinkRequest"];
             };
         };
         responses: {
@@ -11309,13 +13835,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        token?: string;
-                        url?: string;
-                        /** Format: date-time */
-                        expires_at?: string;
-                        customer_id?: string;
-                    };
+                    "application/json": components["schemas"]["CreatePortalLinkResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -11339,9 +13859,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        revoked?: number;
-                    };
+                    "application/json": components["schemas"]["RevokePortalLinksResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -11350,6 +13868,7 @@ export interface operations {
     listCustomerPayments: {
         parameters: {
             query?: {
+                /** @description How many invoices to read; there is no page_token, so a customer with more invoices cannot be listed completely */
                 limit?: number;
             };
             header?: never;
@@ -11366,10 +13885,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invoices?: components["schemas"]["Invoice"][];
-                        payments?: components["schemas"]["CustomerPayment"][];
-                    };
+                    "application/json": components["schemas"]["ListCustomerPaymentsResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -11393,12 +13909,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** Format: uri */
-                        url?: string;
-                        /** Format: date-time */
-                        expires_at?: string;
-                    };
+                    "application/json": components["schemas"]["SignedUrl"];
                 };
             };
             404: components["responses"]["Error"];
@@ -11408,6 +13919,7 @@ export interface operations {
     listPayments: {
         parameters: {
             query?: {
+                /** @description The answer folds the newest 1000 ledger rows and returns the first limit payments; there is no page_token (truncated says when the window was full) */
                 limit?: number;
             };
             header?: never;
@@ -11422,10 +13934,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        payments?: components["schemas"]["Payment"][];
-                        truncated?: boolean;
-                    };
+                    "application/json": components["schemas"]["ListPaymentsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -11436,26 +13945,15 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
-                "Idempotency-Key"?: string;
+                /** @description Makes a retry safe: a repeat with the same key and the same payload does not do the work twice (credits answer the current balance with replayed: true, a payment link answers the first link without its token, an upload session answers the first session); the same key with another payload is a 409. The body field idempotency_key, where the operation has one, wins over the header. */
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
             };
             path?: never;
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": {
-                    files: {
-                        filename: string;
-                        /** @example application/pdf */
-                        content_type: string;
-                        /** Format: int64 */
-                        size: number;
-                        /** @enum {string} */
-                        purpose: "invoice_logo" | "invoice_attachment" | "general";
-                        /** @description Optional hex sha256 of the whole file */
-                        sha256?: string;
-                    }[];
-                };
+                "application/json": components["schemas"]["CreateUploadSessionRequest"];
             };
         };
         responses: {
@@ -11564,9 +14062,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        parts?: components["schemas"]["PresignedPart"][];
-                    };
+                    "application/json": components["schemas"]["PresignPartsResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -11585,12 +14081,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    parts: {
-                        part_number: number;
-                        etag: string;
-                    }[];
-                };
+                "application/json": components["schemas"]["CompleteUploadFileRequest"];
             };
         };
         responses: {
@@ -11626,10 +14117,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        assets?: components["schemas"]["Asset"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["ListAssetsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -11658,17 +14146,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        results?: {
-                            filename?: string;
-                            /** @enum {string} */
-                            status?: "created" | "rejected";
-                            asset?: components["schemas"]["Asset"];
-                            /** @example CONTENT_TYPE_MISMATCH */
-                            error_code?: string;
-                            message?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["UploadAssetsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -11685,10 +14163,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    asset_id: string;
-                };
+                "application/json": components["schemas"]["SetInvoiceLogoRequest"];
             };
         };
         responses: {
@@ -11698,9 +14173,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invoice_logo_asset_id?: string;
-                    };
+                    "application/json": components["schemas"]["SetInvoiceLogoResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -11722,9 +14195,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invoice_logo_asset_id?: string;
-                    };
+                    "application/json": components["schemas"]["ClearInvoiceLogoResponse"];
                 };
             };
         };
@@ -11793,12 +14264,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** Format: uri */
-                        url?: string;
-                        /** Format: date-time */
-                        expires_at?: string;
-                    };
+                    "application/json": components["schemas"]["SignedUrl"];
                 };
             };
             404: components["responses"]["Error"];
@@ -11828,19 +14294,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        precision?: "estimated" | "exact";
-                        quantity_scale?: number;
-                        points?: {
-                            /** Format: date-time */
-                            start?: string;
-                            /** @example 1.500 */
-                            quantity?: string;
-                            /** @description int64 as a string */
-                            event_count?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["GetAnalyticsUsageResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -11867,16 +14321,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        precision?: string;
-                        quantity_scale?: number;
-                        customers?: {
-                            customer_id?: string;
-                            customer_external_id?: string;
-                            quantity?: string;
-                            event_count?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["GetTopCustomersResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -11892,9 +14337,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    period?: string;
-                };
+                "application/json": components["schemas"]["SandboxClosePeriodRequest"];
             };
         };
         responses: {
@@ -11922,10 +14365,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    scenario: "success" | "declined" | "insufficient_funds_once" | "error_then_success" | "timeout_committed" | "timeout_not_committed";
-                };
+                "application/json": components["schemas"]["SetPaymentScenarioRequest"];
             };
         };
         responses: {
@@ -11950,20 +14390,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    /** Format: password */
-                    password: string;
-                    display_name?: string;
-                    /** @description The organisation the person starts */
-                    account_name: string;
-                    /**
-                     * @description The language of the mails. Default: the first supported language of Accept-Language, else English.
-                     * @enum {string}
-                     */
-                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
-                };
+                "application/json": components["schemas"]["SignUpRequest"];
             };
         };
         responses: {
@@ -11995,11 +14422,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        password?: boolean;
-                        otp?: boolean;
-                        google?: boolean;
-                    };
+                    "application/json": components["schemas"]["AuthMethodsResponse"];
                 };
             };
         };
@@ -12013,12 +14436,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    /** @enum {string} */
-                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
-                };
+                "application/json": components["schemas"]["RequestLoginCodeRequest"];
             };
         };
         responses: {
@@ -12044,17 +14462,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    code: string;
-                    /** @description Used only when the code creates the account */
-                    display_name?: string;
-                    /** @description Used only when the code creates the account */
-                    account_name?: string;
-                    /** @enum {string} */
-                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
-                };
+                "application/json": components["schemas"]["VerifyLoginCodeRequest"];
             };
         };
         responses: {
@@ -12127,9 +14535,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    token: string;
-                };
+                "application/json": components["schemas"]["VerifyEmailRequest"];
             };
         };
         responses: {
@@ -12139,9 +14545,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        user?: components["schemas"]["AuthUser"];
-                    };
+                    "application/json": components["schemas"]["VerifyEmailResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -12177,12 +14581,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    /** @enum {string} */
-                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
-                };
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
             };
         };
         responses: {
@@ -12208,11 +14607,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    token: string;
-                    /** Format: password */
-                    password: string;
-                };
+                "application/json": components["schemas"]["ResetPasswordRequest"];
             };
         };
         responses: {
@@ -12236,9 +14631,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    token: string;
-                };
+                "application/json": components["schemas"]["LookupInvitationRequest"];
             };
         };
         responses: {
@@ -12264,14 +14657,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    token: string;
-                    /** Format: password */
-                    password: string;
-                    display_name?: string;
-                    /** @enum {string} */
-                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
-                };
+                "application/json": components["schemas"]["AcceptInvitationRequest"];
             };
         };
         responses: {
@@ -12298,12 +14684,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    /** Format: password */
-                    password: string;
-                };
+                "application/json": components["schemas"]["SignInRequest"];
             };
         };
         responses: {
@@ -12391,11 +14772,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    wizard?: components["schemas"]["OnboardingWizard"];
-                    seen_tours?: string[];
-                    forget_tours?: string[];
-                };
+                "application/json": components["schemas"]["UpdateMyOnboardingRequest"];
             };
         };
         responses: {
@@ -12421,9 +14798,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                };
+                "application/json": components["schemas"]["AppCreateAccountRequest"];
             };
         };
         responses: {
@@ -12476,9 +14851,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                };
+                "application/json": components["schemas"]["AppRenameAccountRequest"];
             };
         };
         responses: {
@@ -12488,9 +14861,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        name?: string;
-                    };
+                    "application/json": components["schemas"]["AppRenameAccountResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -12534,9 +14905,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    plan_code: string;
-                };
+                "application/json": components["schemas"]["AppChangePlanRequest"];
             };
         };
         responses: {
@@ -12573,9 +14942,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invoices?: components["schemas"]["PlanInvoice"][];
-                    };
+                    "application/json": components["schemas"]["AppListPlanInvoicesResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -12601,9 +14968,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        url?: string;
-                    };
+                    "application/json": components["schemas"]["AppPlanInvoicePayLinkResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -12629,11 +14994,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        url?: string;
-                        /** Format: date-time */
-                        expires_at?: string;
-                    };
+                    "application/json": components["schemas"]["AppPlanPortalLinkResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -12658,9 +15019,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invitations?: components["schemas"]["Invitation"][];
-                    };
+                    "application/json": components["schemas"]["AppListInvitationsResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -12679,17 +15038,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    email: string;
-                    /** @enum {string} */
-                    role: "owner" | "admin" | "viewer";
-                    /**
-                     * @description The language of the mail
-                     * @enum {string}
-                     */
-                    locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
-                };
+                "application/json": components["schemas"]["AppInviteMemberRequest"];
             };
         };
         responses: {
@@ -12802,10 +15151,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    role: "owner" | "admin" | "viewer";
-                };
+                "application/json": components["schemas"]["AppUpdateMemberRoleRequest"];
             };
         };
         responses: {
@@ -12815,10 +15161,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        role?: "owner" | "admin" | "viewer";
-                    };
+                    "application/json": components["schemas"]["AppUpdateMemberRoleResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -12837,9 +15180,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    token: string;
-                };
+                "application/json": components["schemas"]["AppAcceptInvitationRequest"];
             };
         };
         responses: {
@@ -12849,11 +15190,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        account_id?: string;
-                        memberships?: components["schemas"]["Membership"][];
-                    };
+                    "application/json": components["schemas"]["AppAcceptInvitationResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -12878,9 +15215,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        apps?: components["schemas"]["App"][];
-                    };
+                    "application/json": components["schemas"]["AppListAppsResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -12898,15 +15233,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                    /** @description Lower case with dashes, unique within the account; default: the name */
-                    slug?: string;
-                    /** @description An active ISO 4217 code */
-                    currency: string;
-                    /** @example Europe/Istanbul */
-                    timezone: string;
-                };
+                "application/json": components["schemas"]["AppCreateAppRequest"];
             };
         };
         responses: {
@@ -12944,11 +15271,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        app?: components["schemas"]["App"];
-                        /** @enum {string} */
-                        role?: "owner" | "admin" | "viewer";
-                    };
+                    "application/json": components["schemas"]["AppGetAppResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -12989,9 +15312,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                };
+                "application/json": components["schemas"]["AppRenameAppRequest"];
             };
         };
         responses: {
@@ -13042,7 +15363,7 @@ export interface operations {
             query?: {
                 environment?: "live" | "sandbox";
                 period?: "7d" | "30d" | "90d" | "ytd" | "custom";
-                /** @description First day of a custom period (YYYY-MM-DD */
+                /** @description First day of a custom period (YYYY-MM-DD, the tenant's days) */
                 from?: string;
                 /** @description Last day of a custom period; not after today */
                 to?: string;
@@ -13088,9 +15409,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        api_keys?: components["schemas"]["ApiKey"][];
-                    };
+                    "application/json": components["schemas"]["AppListApiKeysResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13108,18 +15427,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    environment: "sandbox" | "live";
-                    role?: components["schemas"]["ApiKeyRole"];
-                    /** @description Required for the role custom; for a fixed role optional, and then a subset of the role's own. */
-                    permissions?: components["schemas"]["ApiKeyPermission"][];
-                    /**
-                     * @description Older way to choose a role when `role` and `permissions` are absent: full is admin, ingest is ingest_only, read is read_only.
-                     * @enum {string}
-                     */
-                    scope?: "full" | "ingest" | "read";
-                };
+                "application/json": components["schemas"]["AppCreateApiKeyRequest"];
             };
         };
         responses: {
@@ -13129,11 +15437,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        api_key?: components["schemas"]["ApiKey"];
-                        /** @description qk_{test|live}_<prefix>_<secret>, shown once */
-                        plaintext?: string;
-                    };
+                    "application/json": components["schemas"]["AppCreateApiKeyResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -13160,9 +15464,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        sandbox_reset?: components["schemas"]["SandboxReset"];
-                    };
+                    "application/json": components["schemas"]["AppSandboxResetStatusResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13186,9 +15488,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        sandbox_reset?: components["schemas"]["SandboxReset"];
-                    };
+                    "application/json": components["schemas"]["AppSandboxResetResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13212,18 +15512,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        scenarios?: {
-                            /** @example declined */
-                            scenario?: string;
-                            /** @example pm_sandbox_declined */
-                            payment_method?: string;
-                            /** @enum {string} */
-                            outcome?: "paid" | "uncollectible" | "paid_after_retry" | "paid_after_status_query" | "paid_after_recharge";
-                            default?: boolean;
-                            description?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["SandboxScenariosResponse"];
                 };
             };
             403: components["responses"]["Error"];
@@ -13240,10 +15529,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @description A name from /v1/sandbox/scenarios, with or without the pm_sandbox_ prefix. */
-                    scenario: string;
-                };
+                "application/json": components["schemas"]["SandboxSimulateInvoiceRequest"];
             };
         };
         responses: {
@@ -13253,14 +15539,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invoice_id?: string;
-                        customer_external_id?: string;
-                        scenario?: string;
-                        payment_method?: string;
-                        retried?: boolean;
-                        retry_error?: string;
-                    };
+                    "application/json": components["schemas"]["SandboxSimulateInvoiceResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -13279,10 +15558,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    dry_run?: boolean;
-                    plan_hash?: string;
-                };
+                "application/json": components["schemas"]["AppPromoteRequest"];
             };
         };
         responses: {
@@ -13292,27 +15568,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        dry_run?: boolean;
-                        plan_hash?: string;
-                        created?: number;
-                        unchanged?: number;
-                        conflicts?: number;
-                        skipped?: number;
-                        failed?: number;
-                        changes?: {
-                            /** @enum {string} */
-                            family?: "meters" | "plans" | "taxes" | "coupons" | "mail" | "webhooks";
-                            key?: string;
-                            /** @enum {string} */
-                            action?: "ACTION_CREATE" | "ACTION_UNCHANGED" | "ACTION_CONFLICT" | "ACTION_SKIPPED";
-                            detail?: string;
-                            applied?: boolean;
-                            error?: string;
-                            /** @description A webhook endpoint made by the promotion: its new signing secret, shown once. */
-                            secret?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["AppPromoteResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13333,13 +15589,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    /**
-                     * @description How long the old key keeps working. 0 ends it now.
-                     * @default 24
-                     */
-                    overlap_hours?: number;
-                };
+                "application/json": components["schemas"]["AppRotateApiKeyRequest"];
             };
         };
         responses: {
@@ -13349,12 +15599,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        api_key?: components["schemas"]["ApiKey"];
-                        /** @description shown once */
-                        plaintext?: string;
-                        previous?: components["schemas"]["ApiKey"];
-                    };
+                    "application/json": components["schemas"]["AppRotateApiKeyResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -13379,9 +15624,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        affiliations?: components["schemas"]["MyAffiliation"][];
-                    };
+                    "application/json": components["schemas"]["MyAffiliationsResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13402,10 +15645,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        claimed?: number;
-                        affiliations?: components["schemas"]["MyAffiliation"][];
-                    };
+                    "application/json": components["schemas"]["ClaimMyAffiliationsResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13429,12 +15669,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        seller_name?: string;
-                        environment?: string;
-                        applied?: boolean;
-                        program?: components["schemas"]["MyProgram"];
-                    };
+                    "application/json": components["schemas"]["LookupAffiliateProgramResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13450,13 +15685,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    tenant_id: string;
-                    name?: string;
-                    /** @enum {string} */
-                    payout_method?: "manual" | "bank_transfer";
-                    payout_details?: string;
-                };
+                "application/json": components["schemas"]["ApplyAsAffiliateRequest"];
             };
         };
         responses: {
@@ -13513,12 +15742,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name?: string;
-                    /** @enum {string} */
-                    payout_method: "manual" | "bank_transfer";
-                    payout_details?: string;
-                };
+                "application/json": components["schemas"]["UpdateMyAffiliationRequest"];
             };
         };
         responses: {
@@ -13556,11 +15780,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        referrals?: components["schemas"]["MyReferral"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["MyReferralsResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13588,11 +15808,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        commissions?: components["schemas"]["MyCommission"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["MyCommissionsResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13619,11 +15835,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        payouts?: components["schemas"]["MyPayout"][];
-                        next_page_token?: string;
-                        total?: number;
-                    };
+                    "application/json": components["schemas"]["MyPayoutsResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13647,9 +15859,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        go_live?: components["schemas"]["GoLive"];
-                    };
+                    "application/json": components["schemas"]["AppGoLiveResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13667,10 +15877,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    /** @description Accepts the terms of service in the same call. */
-                    accept_terms?: boolean;
-                };
+                "application/json": components["schemas"]["AppActivateLiveRequest"];
             };
         };
         responses: {
@@ -13680,9 +15887,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        go_live?: components["schemas"]["GoLive"];
-                    };
+                    "application/json": components["schemas"]["AppActivateLiveResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13702,10 +15907,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    legal: components["schemas"]["LegalInfo"];
-                    address: components["schemas"]["Address"];
-                };
+                "application/json": components["schemas"]["AppSaveBillingProfileRequest"];
             };
         };
         responses: {
@@ -13741,10 +15943,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** Format: date-time */
-                        accept_time?: string;
-                    };
+                    "application/json": components["schemas"]["AppAcceptTermsResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13789,9 +15988,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": components["schemas"]["AppConnectLiveProviderRequest"];
             };
         };
         responses: {
@@ -13801,12 +15998,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        provider?: string;
-                        /** @enum {string} */
-                        environment?: "live";
-                        default?: boolean;
-                    };
+                    "application/json": components["schemas"]["AppConnectLiveProviderResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -13823,6 +16015,94 @@ export interface operations {
             path: {
                 id: components["parameters"]["ID"];
                 provider: "banktransfer" | "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSandboxProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LiveProviders"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    appConnectSandboxProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: "iyzico" | "paddle";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Stored */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        provider?: string;
+                        /** @enum {string} */
+                        environment?: "sandbox";
+                        default?: boolean;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    appRemoveSandboxProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: "iyzico" | "paddle";
             };
             cookie?: never;
         };
@@ -13857,16 +16137,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        account?: {
-                            /** @enum {string} */
-                            provider?: "nilvera" | "webhook";
-                            /** @enum {string} */
-                            mode?: "test" | "production";
-                            /** Format: date-time */
-                            updated_at?: string;
-                        } | null;
-                    };
+                    "application/json": components["schemas"]["AppGetEInvoiceIntegrationResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13885,16 +16156,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    provider: "nilvera" | "webhook";
-                    /** @enum {string} */
-                    mode?: "test" | "production";
-                    /** @description nilvera: api_key[, base_url]; webhook: url, secret. */
-                    credentials?: {
-                        [key: string]: string;
-                    };
-                };
+                "application/json": components["schemas"]["AppPutEInvoiceIntegrationRequest"];
             };
         };
         responses: {
@@ -13947,10 +16209,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    /** @description The seller's tax id */
-                    tax_id?: string;
-                };
+                "application/json": components["schemas"]["AppTestEInvoiceIntegrationRequest"];
             };
         };
         responses: {
@@ -13960,13 +16219,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        ok?: boolean;
-                        /** @enum {string} */
-                        checked?: "credentials" | "configuration";
-                        /** @enum {string} */
-                        problem?: "refused" | "unreachable";
-                    };
+                    "application/json": components["schemas"]["AppTestEInvoiceIntegrationResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -13991,10 +16244,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        connected?: boolean;
-                        integration?: components["schemas"]["MailIntegration"];
-                    };
+                    "application/json": components["schemas"]["AppGetMailIntegrationResponse"];
                 };
             };
             401: components["responses"]["Error"];
@@ -14012,18 +16262,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    provider: "nafru";
-                    /**
-                     * @description The Resend-compatible API address (https)
-                     * @example https://api.nafru.example
-                     */
-                    base_url: string;
-                    api_key: string;
-                    /** @example Acme Billing <billing@acme.example> */
-                    from: string;
-                };
+                "application/json": components["schemas"]["AppPutMailIntegrationRequest"];
             };
         };
         responses: {
@@ -14033,9 +16272,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        integration?: components["schemas"]["MailIntegration"];
-                    };
+                    "application/json": components["schemas"]["AppPutMailIntegrationResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -14079,10 +16316,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: email */
-                    to: string;
-                };
+                "application/json": components["schemas"]["AppTestMailIntegrationRequest"];
             };
         };
         responses: {
@@ -14092,12 +16326,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        ok?: boolean;
-                        /** @enum {string} */
-                        problem?: "unreachable" | "refused";
-                        message_id?: string;
-                    };
+                    "application/json": components["schemas"]["AppTestMailIntegrationResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -14232,23 +16461,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                    /** @description Required, no default. Immutable. An active ISO 4217 code (USD, EUR, TRY, JPY, KWD, ...); the minor-unit exponent comes from the currency (0 for JPY, 3 for KWD). */
-                    currency: string;
-                    /**
-                     * @description Required IANA name
-                     * @example Europe/Istanbul
-                     */
-                    timezone: string;
-                    /**
-                     * @description Required, protobuf Duration JSON, 0s..604800s
-                     * @example 86400s
-                     */
-                    grace_period: string;
-                    /** @enum {string} */
-                    tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
-                };
+                "application/json": components["schemas"]["CreateAccountRequest"];
             };
         };
         responses: {
@@ -14282,9 +16495,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        apps?: components["schemas"]["App"][];
-                    };
+                    "application/json": components["schemas"]["ListAppsResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -14301,19 +16512,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    name: string;
-                    /** @description Lower case with dashes, unique within the account; default: the name */
-                    slug?: string;
-                    /** @description An active ISO 4217 code */
-                    currency: string;
-                    /** @example Europe/Istanbul */
-                    timezone: string;
-                    /** @example 86400s */
-                    grace_period: string;
-                    /** @enum {string} */
-                    tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
-                };
+                "application/json": components["schemas"]["CreateAppRequest"];
             };
         };
         responses: {
@@ -14349,10 +16548,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        tenants?: components["schemas"]["Tenant"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["AdminListTenantsResponse"];
                 };
             };
         };
@@ -14397,11 +16593,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        organizations?: components["schemas"]["OrganizationRow"][];
-                        next_page_token?: string;
-                        platform?: components["schemas"]["PlatformInfo"];
-                    };
+                    "application/json": components["schemas"]["AdminListOrganizationsResponse"];
                 };
             };
             409: components["responses"]["Error"];
@@ -14418,12 +16610,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    plan_code?: string;
-                    limits?: {
-                        [key: string]: number;
-                    };
-                };
+                "application/json": components["schemas"]["AdminSetOrganizationPlanRequest"];
             };
         };
         responses: {
@@ -14485,10 +16672,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        invoices?: components["schemas"]["Invoice"][];
-                        next_page_token?: string;
-                    };
+                    "application/json": components["schemas"]["AdminListInvoicesResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -14536,11 +16720,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        url?: string;
-                        /** Format: date-time */
-                        expires_at?: string;
-                    };
+                    "application/json": components["schemas"]["SignedUrl"];
                 };
             };
             404: components["responses"]["Error"];
@@ -14564,10 +16744,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        saga?: components["schemas"]["InvoiceSaga"];
-                        events?: components["schemas"]["SagaEvent"][];
-                    };
+                    "application/json": components["schemas"]["AdminGetInvoiceSagaResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -14590,16 +16767,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        accounts?: {
-                            provider?: string;
-                            /** @enum {string} */
-                            environment?: "sandbox" | "live";
-                            is_default?: boolean;
-                            /** Format: date-time */
-                            updated_at?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["ListProviderAccountsResponse"];
                 };
             };
             503: components["responses"]["Error"];
@@ -14622,7 +16790,7 @@ export interface operations {
         /** @description The provider's settings (for iyzico api_key, secret_key, base_url and the buyer defaults; for banktransfer bank_name, account_holder, iban, bic, reference_template, currencies and payment_window_days, validated: the IBAN by its check digits, the template by its placeholders) */
         requestBody: {
             content: {
-                "application/json": Record<string, never>;
+                "application/json": components["schemas"]["PutProviderAccountRequest"];
             };
         };
         responses: {
@@ -14735,7 +16903,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["EInvoiceFileLink"];
+                    "application/json": components["schemas"]["SignedUrl"];
                 };
             };
             404: components["responses"]["Error"];
@@ -14809,9 +16977,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        accounts?: components["schemas"]["EInvoiceAccount"][];
-                    };
+                    "application/json": components["schemas"]["ListEInvoiceAccountsResponse"];
                 };
             };
             503: components["responses"]["Error"];
@@ -14888,27 +17054,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        entries?: {
-                            id?: number;
-                            /** Format: uuid */
-                            invoice_id?: string;
-                            provider?: string;
-                            environment?: string;
-                            /** @enum {string} */
-                            kind?: "charge" | "refund" | "dispute" | "payout";
-                            /** @enum {string} */
-                            status?: "succeeded" | "declined" | "failed" | "pending";
-                            amount_minor?: number;
-                            currency?: string;
-                            provider_ref?: string;
-                            /** @enum {string} */
-                            source?: "command" | "webhook" | "reconciliation" | "manual";
-                            detail?: string;
-                            /** Format: date-time */
-                            occurred_at?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["ListPaymentLedgerResponse"];
                 };
             };
             503: components["responses"]["Error"];
@@ -14953,20 +17099,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: int64 */
-                    amount_minor: number;
-                    /** @example TRY */
-                    currency: string;
-                    /**
-                     * Format: date-time
-                     * @description When the bank booked it. Default now; not in the future.
-                     */
-                    received_at?: string;
-                    /** @description The bank's transaction or statement reference; it makes the call idempotent. */
-                    bank_reference: string;
-                    note?: string;
-                };
+                "application/json": components["schemas"]["ConfirmInvoiceTransferRequest"];
             };
         };
         responses: {
@@ -15008,14 +17141,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    /**
-                     * @default rejected
-                     * @enum {string}
-                     */
-                    outcome?: "rejected" | "expired";
-                    reason?: string;
-                };
+                "application/json": components["schemas"]["RejectInvoiceTransferRequest"];
             };
         };
         responses: {
@@ -15044,11 +17170,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": Record<string, never>;
+                "application/json": components["schemas"]["ProviderWebhookRequest"];
             };
         };
         responses: {
-            /** @description Understood (processed */
+            /** @description Understood (processed, duplicate or ignored) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -15073,11 +17199,11 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": Record<string, never>;
+                "application/json": components["schemas"]["TenantProviderWebhookRequest"];
             };
         };
         responses: {
-            /** @description Understood (processed */
+            /** @description Understood (processed, duplicate or ignored) */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -15107,20 +17233,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        subscriptions?: {
-                            provider?: string;
-                            environment?: string;
-                            provider_ref?: string;
-                            /** Format: uuid */
-                            quotify_subscription_id?: string;
-                            status?: string;
-                            /** Format: date-time */
-                            next_billed_at?: string;
-                            /** Format: date-time */
-                            updated_at?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["ListProviderSubscriptionsResponse"];
                 };
             };
             503: components["responses"]["Error"];
@@ -15139,21 +17252,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @example paddle */
-                    provider: string;
-                    /**
-                     * @description The provider's id of what is sold
-                     * @example pri_01
-                     */
-                    price_ref: string;
-                    quantity?: number;
-                    /**
-                     * Format: uuid
-                     * @description Ties the provider's subscription to ours
-                     */
-                    quotify_subscription_id?: string;
-                };
+                "application/json": components["schemas"]["CreateProviderCheckoutRequest"];
             };
         };
         responses: {
@@ -15163,10 +17262,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        url?: string;
-                        ref?: string;
-                    };
+                    "application/json": components["schemas"]["CreateProviderCheckoutResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15189,14 +17285,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    subscription_id: string;
-                    /** @enum {string} */
-                    to_provider: "iyzico" | "paddle" | "banktransfer";
-                    /** @description The target provider's catalogue price */
-                    price_ref?: string;
-                };
+                "application/json": components["schemas"]["StartProviderMigrationRequest"];
             };
         };
         responses: {
@@ -15206,17 +17295,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        /** Format: uuid */
-                        migration?: string;
-                        /** @enum {string} */
-                        state?: "started" | "completed";
-                        checkout_url?: string;
-                        /** Format: uuid */
-                        new_subscription?: string;
-                        /** Format: date-time */
-                        cutover?: string;
-                    };
+                    "application/json": components["schemas"]["StartProviderMigrationResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15264,14 +17343,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    plan_code?: string;
-                    /** @description 0 = latest */
-                    plan_version?: number;
-                    product_name?: string;
-                    /** @description Default saas */
-                    tax_category?: string;
-                };
+                "application/json": components["schemas"]["SyncProviderCatalogueRequest"];
             };
         };
         responses: {
@@ -15281,21 +17353,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        plan_version_id?: string;
-                        product_ref?: string;
-                        /** @description Payrudder's key of each price created to the provider's id */
-                        created?: {
-                            [key: string]: string;
-                        };
-                        existing?: {
-                            [key: string]: string;
-                        };
-                        /** @description Key to the reason */
-                        skipped?: {
-                            [key: string]: string;
-                        };
-                    };
+                    "application/json": components["schemas"]["SyncProviderCatalogueResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15326,13 +17384,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        objects?: {
-                            kind?: string;
-                            key?: string;
-                            ref?: string;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["ListProviderCatalogueResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15364,11 +17416,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        customer_ref?: string;
-                        address_ref?: string;
-                        business_ref?: string;
-                    };
+                    "application/json": components["schemas"]["EnsureProviderCustomerResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15400,9 +17448,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        url?: string;
-                    };
+                    "application/json": components["schemas"]["CreateProviderPortalLinkResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15438,7 +17484,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChangeQuote"];
+                    "application/json": components["schemas"]["ProviderChangeQuote"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15505,11 +17551,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    at_period_end?: boolean;
-                    /** Format: date-time */
-                    resume_at?: string;
-                };
+                "application/json": components["schemas"]["PauseProviderSubscriptionRequest"];
             };
         };
         responses: {
@@ -15579,9 +17621,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        url?: string;
-                    };
+                    "application/json": components["schemas"]["CreateProviderPaymentMethodLinkResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15606,20 +17646,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    Description?: string;
-                    /** @enum {string} */
-                    Type?: "percentage" | "flat";
-                    /** @description A percentage (10 for 10 %) or minor units of Currency */
-                    Amount?: string;
-                    Currency?: string;
-                    Code?: string;
-                    Recurring?: boolean;
-                    MaxIntervals?: number;
-                    UsageLimit?: number;
-                    /** Format: date-time */
-                    ExpiresAt?: string;
-                };
+                "application/json": components["schemas"]["CreateProviderDiscountRequest"];
             };
         };
         responses: {
@@ -15629,10 +17656,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        discount_ref?: string;
-                        code?: string;
-                    };
+                    "application/json": components["schemas"]["CreateProviderDiscountResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15664,9 +17688,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        url?: string;
-                    };
+                    "application/json": components["schemas"]["GetProviderInvoiceLinkResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15696,27 +17718,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        period?: string;
-                        paid_invoices?: number;
-                        successful_charges?: number;
-                        /** @description By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes */
-                        discrepancy_counts?: {
-                            [key: string]: number;
-                        };
-                        discrepancies?: {
-                            kind?: string;
-                            invoice_id?: string;
-                            number?: string;
-                            provider?: string;
-                            provider_ref?: string;
-                            currency?: string;
-                            billed_minor?: number;
-                            ledger_minor?: number;
-                            detail?: string;
-                        }[];
-                        truncated?: boolean;
-                    };
+                    "application/json": components["schemas"]["ReconcilePaymentsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15742,19 +17744,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        queues?: {
-                            queue?: string;
-                            /** @description int64 as a string */
-                            messages?: string;
-                        }[];
-                        messages?: {
-                            message_id?: string;
-                            delivery_count?: string;
-                            reason?: string;
-                            body_bytes?: number;
-                        }[];
-                    };
+                    "application/json": components["schemas"]["AdminListDeadLettersResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15769,11 +17759,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    queue: string;
-                    /** @default 100 */
-                    limit?: number;
-                };
+                "application/json": components["schemas"]["AdminRedriveDeadLettersRequest"];
             };
         };
         responses: {
@@ -15783,9 +17769,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        redriven?: number;
-                    };
+                    "application/json": components["schemas"]["AdminRedriveDeadLettersResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15795,7 +17779,7 @@ export interface operations {
         parameters: {
             query?: {
                 period?: "7d" | "30d" | "90d" | "ytd" | "custom";
-                /** @description First day of a custom period (YYYY-MM-DD */
+                /** @description First day of a custom period (YYYY-MM-DD, the tenant's days) */
                 from?: string;
                 /** @description Last day of a custom period; not after today */
                 to?: string;
@@ -15857,16 +17841,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @example 172800s */
-                    grace_period?: string;
-                    /** @enum {string} */
-                    tier?: "TENANT_TIER_FREE" | "TENANT_TIER_STANDARD" | "TENANT_TIER_ENTERPRISE";
-                    address?: components["schemas"]["Address"];
-                    legal?: components["schemas"]["LegalInfo"];
-                    /** @enum {string} */
-                    e_invoice_on?: "off" | "finalized" | "paid";
-                };
+                "application/json": components["schemas"]["UpdateTenantRequest"];
             };
         };
         responses: {
@@ -15893,11 +17868,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @enum {string} */
-                    status: "active" | "suspended";
-                    reason?: string;
-                };
+                "application/json": components["schemas"]["SetTenantStatusRequest"];
             };
         };
         responses: {
@@ -15926,15 +17897,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": {
-                    role?: components["schemas"]["ApiKeyRole"];
-                    permissions?: components["schemas"]["ApiKeyPermission"][];
-                    /**
-                     * @description Older way to choose a role when role and permissions are absent.
-                     * @enum {string}
-                     */
-                    scope?: "SCOPE_FULL" | "SCOPE_INGEST" | "SCOPE_READ";
-                };
+                "application/json": components["schemas"]["CreateApiKeyRequest"];
             };
         };
         responses: {
@@ -15944,10 +17907,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        api_key?: components["schemas"]["ApiKey"];
-                        plaintext?: string;
-                    };
+                    "application/json": components["schemas"]["CreateApiKeyResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -15971,7 +17931,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": components["schemas"]["AdminIngestStatsResponse"];
                 };
             };
             400: components["responses"]["Error"];
@@ -15986,11 +17946,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    tenant_id: string;
-                    period_id: string;
-                };
+                "application/json": components["schemas"]["AdminClosePeriodRequest"];
             };
         };
         responses: {
@@ -16041,13 +17997,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** @example 2026-10 */
-                    from_period_id: string;
-                    /** @description Defaults to from_period_id */
-                    to_period_id?: string;
-                    reason: string;
-                };
+                "application/json": components["schemas"]["AdminStartReplayRequest"];
             };
         };
         responses: {
@@ -16150,10 +18100,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    plan_version_id: string;
-                };
+                "application/json": components["schemas"]["AdminStartReratingRequest"];
             };
         };
         responses: {
@@ -16214,10 +18161,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    tenant_id: string;
-                };
+                "application/json": components["schemas"]["AdminRetryInvoiceRequest"];
             };
         };
         responses: {
@@ -16244,11 +18188,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    tenant_id: string;
-                    reason?: string;
-                };
+                "application/json": components["schemas"]["AdminVoidInvoiceRequest"];
             };
         };
         responses: {
@@ -16277,21 +18217,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    tenant_id: string;
-                    /** @enum {string} */
-                    method: "bank_transfer" | "cash" | "other";
-                    /** @description int64 minor units as a string */
-                    amount_minor: string;
-                    /**
-                     * Format: date-time
-                     * @description Default now; not in the future.
-                     */
-                    received_at?: string;
-                    reference?: string;
-                    note?: string;
-                };
+                "application/json": components["schemas"]["AdminRecordInvoicePaymentRequest"];
             };
         };
         responses: {
@@ -16329,15 +18255,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    tenant_id: string;
-                    /** @description int64 minor units; 0 or absent = what is left of the invoice */
-                    amount_minor?: string;
-                    reason?: string;
-                    /** @description Refund the amount to the card instead of adding it to the credit balance */
-                    refund_to_card?: boolean;
-                };
+                "application/json": components["schemas"]["AdminCreateCreditNoteRequest"];
             };
         };
         responses: {
@@ -16366,10 +18284,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": {
-                    /** Format: uuid */
-                    tenant_id: string;
-                };
+                "application/json": components["schemas"]["AdminRetryCreditNoteRefundRequest"];
             };
         };
         responses: {

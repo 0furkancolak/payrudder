@@ -41,6 +41,9 @@ func TestQuotas(t *testing.T) {
 	} {
 		t.Run(name, fn)
 	}
+	for name, fn := range uniqueAndLastTests {
+		t.Run(name, fn)
+	}
 }
 
 // quotaPod is one replica's entitlement map and apply loop over a flushed Redis, without Kafka (no LimitExceeded is produced; the fired markers
@@ -55,7 +58,10 @@ type quotaPod struct {
 	usedOff int64
 }
 
-func newQuotaPod(t *testing.T) *quotaPod {
+func newQuotaPod(t *testing.T) *quotaPod { return newQuotaPodWith(t, 0) }
+
+// newQuotaPodWith is newQuotaPod with a cap on the distinct values a UNIQUE counter remembers (0 is the default).
+func newQuotaPodWith(t *testing.T, uniqueCap int) *quotaPod {
 	t.Helper()
 	quotaOnce.Do(func() {
 		opts, err := redis.ParseURL(testkit.StartRedis(top))
@@ -69,7 +75,7 @@ func newQuotaPod(t *testing.T) *quotaPod {
 	}
 	q := &quotaPod{t: t, rdb: quotaRdb, ents: entitlements.New(quotaRdb, testkit.Logger()), ev: &env{t: t}}
 	var err error
-	q.applier, err = engine.NewApplier(engine.Config{Redis: quotaRdb, Meters: defaultMeters, Tenants: fixedTenants(), Ents: q.ents, LimitTopic: "unused", Log: testkit.Logger()})
+	q.applier, err = engine.NewApplier(engine.Config{Redis: quotaRdb, Meters: defaultMeters, Tenants: fixedTenants(), Ents: q.ents, LimitTopic: "unused", Log: testkit.Logger(), UniqueSetCap: uniqueCap})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -86,9 +86,9 @@ func validate(in Payment, ref, note string, now time.Time) error {
 	case !in.ReceivedAt.IsZero() && in.ReceivedAt.After(now.Add(clockSkew)):
 		return errkey.New(codes.InvalidArgument, "billing.payment.bad_date", "received_at is in the future")
 	case utf8.RuneCountInString(ref) > maxReferenceLen || strings.ContainsAny(ref, "\n\r\t\x00"):
-		return errkey.New(codes.InvalidArgument, "billing.payment.bad_amount", "reference is one line of at most 128 characters")
+		return errkey.New(codes.InvalidArgument, "billing.payment.bad_reference", "reference is one line of at most 128 characters")
 	case utf8.RuneCountInString(note) > maxNoteLen:
-		return errkey.New(codes.InvalidArgument, "billing.payment.bad_amount", "note is at most 500 characters")
+		return errkey.New(codes.InvalidArgument, "billing.payment.bad_note", "note is at most 500 characters")
 	}
 	return nil
 }

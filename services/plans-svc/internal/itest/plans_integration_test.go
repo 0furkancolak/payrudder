@@ -38,6 +38,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("SandboxOnlyProductPath", testSandboxOnlyProductPath)
 	t.Run("APIKeysFollowEnvironmentAndRevocationEvicts", testAPIKeysFollowEnvironmentAndRevocationEvicts)
 	t.Run("SandboxPaymentMethods", testSandboxPaymentMethods)
+	t.Run("MeterAggregations", testMeterAggregations)
 	t.Run("Subscriptions", testSubscriptions)
 	t.Run("SubscriptionLifecycle", testSubscriptionLifecycle)
 	t.Run("SubscriptionChanges", testSubscriptionChanges)

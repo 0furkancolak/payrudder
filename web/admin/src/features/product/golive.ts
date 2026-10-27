@@ -12,19 +12,19 @@ export function isGoLiveKey(k: unknown): k is GoLiveKey {
 }
 
 /** The items the console can name, in order, each with whether it is done. A missing item counts as not done, so a short answer never reads as complete. */
-export function checklist(g: GoLive | undefined): { key: GoLiveKey; done: boolean }[] {
+export function checklist(g: GoLive | null | undefined): { key: GoLiveKey; done: boolean }[] {
   const byKey = new Map<string, Item>((g?.items ?? []).map((i) => [i.key ?? "", i]));
   return GO_LIVE_ITEMS.map((key) => ({ key, done: byKey.get(key)?.done === true }));
 }
 
 /** How many of the five are done, for a card that says "3 of 5". */
-export function progress(g: GoLive | undefined): { done: number; total: number } {
+export function progress(g: GoLive | null | undefined): { done: number; total: number } {
   const items = checklist(g);
   return { done: items.filter((i) => i.done).length, total: items.length };
 }
 
 /** The first item that is not done, or null: what a card should point to next. */
-export function nextStep(g: GoLive | undefined): GoLiveKey | null {
+export function nextStep(g: GoLive | null | undefined): GoLiveKey | null {
   return checklist(g).find((i) => !i.done)?.key ?? null;
 }
 

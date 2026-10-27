@@ -16,7 +16,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { useMigrateSubscription, type SubscriptionActions } from "./api";
 import ChangePanel from "./ChangePanel.vue";
 import EntitlementsTable from "./EntitlementsTable.vue";
-import { subscriptionAbilities, trialDaysLeft } from "./lib";
+import { seatsOf, subscriptionAbilities, trialDaysLeft } from "./lib";
 import ProviderRunPanel from "./ProviderRunPanel.vue";
 
 /**
@@ -60,6 +60,9 @@ const migration = computed(() => migrate.data.value as { state?: string; checkou
   <div role="region" class="flex flex-col gap-4" :aria-label="t('billing.subscriptions.managing', { customer: subscription.customer_external_id ?? '' })">
     <p v-if="trialLeft !== null" class="bg-muted rounded-2xl px-4 py-3 text-sm" role="status" data-testid="trial-banner">
       {{ t("billing.subscriptions.trialBanner", { date: fmt.date(subscription.trial_end_time, "day"), n: trialLeft }, trialLeft) }}
+    </p>
+    <p class="text-sm" data-testid="sub-seats">
+      <span class="text-muted-foreground">{{ t("billing.subscriptions.seats") }}: </span><span class="font-medium tabular-nums">{{ seatsOf(subscription) }}</span>
     </p>
     <p v-if="can.providerRuns" class="text-muted-foreground text-sm">{{ t("billing.subscriptions.providerRuns", { provider: subscription.provider ?? "" }) }}</p>
     <ProviderRunPanel v-if="can.providerRuns && operator && !subscription.end_time" :subscription="subscription" :packages="packages" :tenant-id="tenantId" :environment="environment" />

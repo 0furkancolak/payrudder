@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
+import type { Address } from "@/shared/lib/address";
 import { usePayments } from "@/features/product/billingApi";
 import { useSubscriptions } from "@/features/subscriptions/api";
 import { summarise } from "./lib";
@@ -41,17 +42,10 @@ export function useCustomerSummaries(tenantId: MaybeRefOrGetter<string>) {
   return { byCustomer, loading, partial };
 }
 
-export interface Address {
-  line1?: string;
-  line2?: string;
-  city?: string;
-  region?: string;
-  postal_code?: string;
-  country?: string;
-}
+export type { Address };
 
 /** The address as one line for a table: "Atatürk Cd. 1, 34000 İstanbul, TR". */
-export function addressLine(a?: Address): string {
+export function addressLine(a?: Address | null): string {
   if (!a) return "";
   return [a.line1, a.line2, [a.postal_code, a.city].filter(Boolean).join(" "), a.region, a.country].filter(Boolean).join(", ");
 }

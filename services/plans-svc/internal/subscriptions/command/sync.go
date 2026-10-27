@@ -46,7 +46,7 @@ func (c *Commands) parseSync(req *plansv1.SyncProviderSubscriptionRequest) (sync
 		return a, domain.Invalid("provider_ref", "required")
 	}
 	if o := req.GetOwner(); o != domain.OwnerPayrudder && o != domain.OwnerProvider {
-		return a, domain.Invalid("owner", `"quotify" or "provider"`)
+		return a, domain.Invalid("owner", `"payrudder" or "provider"`)
 	}
 	a.state, a.known = providerStates[req.GetProviderStatus()]
 	if req.GetProviderStatus() != "" && !a.known {

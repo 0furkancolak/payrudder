@@ -11,7 +11,7 @@ import type { InvoicePayment } from "./payment";
 defineProps<{ payments: InvoicePayment[]; currency: string }>();
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
-const when = (v?: string) => fmt.date(v, "dateTime", "—");
+const when = (v?: string | null) => fmt.date(v, "dateTime", "—");
 </script>
 
 <template>

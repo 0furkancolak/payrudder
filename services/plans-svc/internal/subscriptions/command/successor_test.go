@@ -11,7 +11,7 @@ func TestCarriesCoupon(t *testing.T) {
 		want bool
 	}{
 		{"plan change, Payrudder-run, in advance", Successor{FeeTiming: "advance"}, true},
-		{"explicit Payrudder owner", Successor{FeeTiming: "advance", Owner: "quotify"}, true},
+		{"explicit Payrudder owner", Successor{FeeTiming: "advance", Owner: "payrudder"}, true},
 		{"billed in arrears", Successor{FeeTiming: "arrears"}, false},
 		{"run by a provider", Successor{FeeTiming: "advance", Owner: "provider"}, false},
 		{"run by a provider, in arrears (a sync)", Successor{FeeTiming: "arrears", Owner: "provider"}, false},

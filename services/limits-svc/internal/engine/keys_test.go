@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -70,5 +71,25 @@ func TestLongWindow(t *testing.T) {
 		if got, want := LongWindow(id), w == period.Year || w == period.Lifetime; got != want {
 			t.Errorf("LongWindow(%q) of the %s window = %v", id, w, got)
 		}
+	}
+}
+
+// The companion keys of a UNIQUE or LAST counter are derived from it, differ per counter and per kind, and never parse as a counter.
+func TestCompanionKeys(t *testing.T) {
+	tn, c := uuid.New(), uuid.New()
+	for _, k := range []string{CounterKey(tn, c, "users", "2026-11"), WindowKey(tn, c, "users", "2026-11-05T13"), WindowKey(tn, c, "users", "all")} {
+		set, ord := SetKey(k), OrderKey(k)
+		if set == k || ord == k || set == ord || !strings.HasPrefix(set, "lim:set:") || !strings.HasPrefix(ord, "lim:ord:") {
+			t.Errorf("companions of %s: %s %s", k, set, ord)
+		}
+		if _, ok := ParseKey(set); ok {
+			t.Errorf("%s parses as a counter", set)
+		}
+		if _, ok := ParseKey(ord); ok {
+			t.Errorf("%s parses as a counter", ord)
+		}
+	}
+	if SetKey(CounterKey(tn, c, "users", "2026-11")) == SetKey(CounterKey(tn, c, "users", "2026-12")) {
+		t.Error("two periods share a set")
 	}
 }

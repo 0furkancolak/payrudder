@@ -47,6 +47,7 @@ message GetOutboxWatermarkResponse {
 |---|---|
 | Meter exists for tenant (cached `GetMeter`) | `UNKNOWN_METER` |
 | Customer exists (cached `ResolveCustomer`) | `UNKNOWN_CUSTOMER` |
+| The meter is `UNIQUE` and the event lacks its `value_property` (or has it empty): it would count nothing | `INVALID_PROPERTIES` |
 | `event_time ≥ now − 35 days` (max lateness) | `EVENT_TOO_OLD` |
 | `event_time ≤ now + 5 min` (clock skew allowance) | `EVENT_IN_FUTURE` |
 | `quantity` is a valid decimal, `≥ 0`, and `quantity × 10^scale` fits in `int64` | `INVALID_QUANTITY` |

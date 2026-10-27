@@ -73,7 +73,7 @@ function actionsOf(e: Endpoint, i: number): RowAction[] {
 const deliveryStates = computed(() => [...new Set(log.value.map((d) => d.state as string | undefined).filter((s): s is string => !!s))].sort());
 /** A secret is shown right after it is made and never again. */
 const secret = computed(() => ((act.create.data.value ?? act.rotate.data.value) as { secret?: string } | undefined)?.secret ?? "");
-const when = (v?: string) => fmt.date(v, "shortSeconds", "—");
+const when = (v?: string | null) => fmt.date(v, "shortSeconds", "—");
 const stateVariant = (s?: string) => (s === "WEBHOOK_DELIVERY_STATE_DELIVERED" ? "success" : s === "WEBHOOK_DELIVERY_STATE_FAILED" ? "destructive" : "secondary");
 const stateWord = (s?: string) => t(`billing.webhooks.state.${(s ?? "").replace("WEBHOOK_DELIVERY_STATE_", "").toLowerCase()}`);
 const failure = computed(() => firstError(...Object.values(act)));
@@ -163,7 +163,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!endpoints.isPending.value && list.length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.webhooks.empty") }}</p>
+    <p v-if="!endpoints.isPending.value && !endpoints.error.value && list.length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.webhooks.empty") }}</p>
     <p v-else-if="list.length > 0 && endpointsTable.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
     <DataPagination v-if="list.length > 0" v-model:page="endpointsTable.page.value" v-model:size="endpointsTable.size.value" :pages="endpointsTable.pages.value" :total="endpointsTable.total.value" />
   </Card>
@@ -212,7 +212,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
             </TableRow>
           </TableBody>
         </Table>
-        <p v-if="!deliveries.isPending.value && (deliveries.data.value?.deliveries ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.webhooks.noDeliveries") }}</p>
+        <p v-if="!deliveries.isPending.value && !deliveries.error.value && (deliveries.data.value?.deliveries ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.webhooks.noDeliveries") }}</p>
         <p v-else-if="log.length === 0 || deliveriesTable.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
         <DataPagination v-if="log.length > 0" v-model:page="deliveriesTable.page.value" v-model:size="deliveriesTable.size.value" :pages="deliveriesTable.pages.value" :total="deliveriesTable.total.value" />
       </div>

@@ -527,7 +527,7 @@ func TestProviderMigrationThroughTheWorker(t *testing.T) {
 	const migID = "11111111-1111-1111-1111-111111111111"
 
 	t.Run("to a provider that runs subscriptions: a checkout first, the old subscription untouched", func(t *testing.T) {
-		plans.sub = &plansv1.Subscription{Id: subID, Provider: "iyzico", Owner: "quotify"}
+		plans.sub = &plansv1.Subscription{Id: subID, Provider: "iyzico", Owner: "payrudder"}
 		code, body := migrate(`{"subscription_id":"` + subID + `","to_provider":"paddle"}`)
 		if code != 400 {
 			t.Fatalf("without a price: %d %s", code, body)

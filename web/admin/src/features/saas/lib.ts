@@ -18,7 +18,7 @@ export type Resource = (typeof RESOURCES)[number];
 export const isUnlimited = (limit: number | undefined): boolean => !limit || limit <= 0;
 
 /** How full a quota is, 0..100 (an unlimited quota is never full). */
-export function quotaPercent(q: Pick<PlanQuota, "used" | "limit" | "unlimited">): number {
+export function quotaPercent(q: Partial<Pick<PlanQuota, "used" | "limit" | "unlimited">>): number {
   if (q.unlimited || isUnlimited(q.limit)) return 0;
   return Math.max(0, Math.min(100, Math.round(((q.used ?? 0) / (q.limit ?? 1)) * 100)));
 }
@@ -26,7 +26,7 @@ export function quotaPercent(q: Pick<PlanQuota, "used" | "limit" | "unlimited">)
 export type Tone = "ok" | "warning" | "danger";
 
 /** The colour of a quota bar: red once over the limit (whatever the mode), amber from 80 percent. */
-export function quotaTone(q: Pick<PlanQuota, "used" | "limit" | "unlimited" | "over_limit">): Tone {
+export function quotaTone(q: Partial<Pick<PlanQuota, "used" | "limit" | "unlimited" | "over_limit">>): Tone {
   if (q.over_limit || quotaPercent(q) >= 100) return "danger";
   return quotaPercent(q) >= 80 ? "warning" : "ok";
 }

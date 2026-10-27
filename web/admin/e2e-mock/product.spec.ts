@@ -720,7 +720,7 @@ test.describe("billing pages of the app", () => {
     await page.getByTestId("sidebar").getByRole("link", { name: "Coupons", exact: true }).click();
     await expect(page.getByRole("cell", { name: "SAVE10", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "New coupon" })).toBeEnabled();
-    await page.getByTestId("sidebar").getByRole("link", { name: "Pricing and tax" }).click();
+    await page.getByTestId("sidebar").getByRole("link", { name: "Tax and retries" }).click();
     await expect(page.getByRole("button", { name: "Save rates" })).toBeEnabled();
     await page.getByTestId("sidebar").getByRole("link", { name: "Reports", exact: true }).click();
     await expect(page.getByRole("cell", { name: "USD" }).first()).toBeVisible();
@@ -736,7 +736,7 @@ test.describe("billing pages of the app", () => {
     await page.getByTestId("sidebar").getByRole("link", { name: "Coupons", exact: true }).click();
     await expect(page.getByRole("cell", { name: "SAVE10", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "New coupon" })).toBeDisabled();
-    await page.getByTestId("sidebar").getByRole("link", { name: "Pricing and tax" }).click();
+    await page.getByTestId("sidebar").getByRole("link", { name: "Tax and retries" }).click();
     await expect(page.getByRole("button", { name: "Save retries" })).toBeDisabled();
     await page.goto(`/app/t/${LIVE}/invoices`);
     await expect(page.getByTestId("invoice-INV-2026-000003")).toBeVisible();
@@ -768,7 +768,7 @@ test.describe("billing pages of the app", () => {
     const gw = await open(page);
     await page.goto(`/app/t/${LIVE}/customers`);
     const nav = page.getByTestId("sidebar").getByRole("navigation", { name: "Main navigation" });
-    for (const tab of ["Customers", "Invoices", "Payments", "Packages", "Pricing and tax", "Coupons", "Usage", "Reports", "Payment links", "Credits", "Webhooks"]) {
+    for (const tab of ["Customers", "Invoices", "Payments", "Packages", "Tax and retries", "Coupons", "Usage", "Reports", "Payment links", "Credits", "Webhooks"]) {
       await expect(nav.getByRole("link", { name: tab, exact: true })).toBeVisible();
     }
     for (const path of ["customers", "invoices", "payments", "packages", "pricing", "coupons", "usage", "reports", "payment-links", "credits", "webhooks"]) {

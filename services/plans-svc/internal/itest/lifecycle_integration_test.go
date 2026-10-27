@@ -216,7 +216,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 			}
 		}
 		r, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_paddle", PlanCode: "basic", Provider: "paddle"})
-		if err != nil || r.GetSubscription().GetProvider() != "paddle" || r.GetSubscription().GetOwner() != "quotify" || r.GetSubscription().GetProviderRef() != "" {
+		if err != nil || r.GetSubscription().GetProvider() != "paddle" || r.GetSubscription().GetOwner() != "payrudder" || r.GetSubscription().GetProviderRef() != "" {
 			t.Fatalf("created = %v, %v; it names its provider but is not linked or provider-owned yet", r, err)
 		}
 		id := r.GetSubscription().GetId()
@@ -303,7 +303,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 			index                              int32
 			can                                bool
 		}{
-			{"TR", "TRY", "iyzico", "quotify", 0, true},
+			{"TR", "TRY", "iyzico", "payrudder", 0, true},
 			{"DE", "USD", "paddle", "provider", 1, true},
 			{"TR", "EUR", "", "", -1, true},
 		} {
@@ -477,7 +477,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 			t.Fatalf("back = %v, %v", back, err)
 		}
 		next := get(back.GetMigration().GetNewSubscriptionId())
-		if next.GetProvider() != "iyzico" || next.GetOwner() != "quotify" || next.GetProviderRef() != "" || !next.GetStartTime().AsTime().Equal(periodEnd) || next.GetChangedFromId() != paid.GetId() {
+		if next.GetProvider() != "iyzico" || next.GetOwner() != "payrudder" || next.GetProviderRef() != "" || !next.GetStartTime().AsTime().Equal(periodEnd) || next.GetChangedFromId() != paid.GetId() {
 			t.Fatalf("subscription at iyzico = %v", next)
 		}
 		if got := get(paid.GetId()); got.GetEndTime() == nil || !got.GetEndTime().AsTime().Equal(periodEnd) {

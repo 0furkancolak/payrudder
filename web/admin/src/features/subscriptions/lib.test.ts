@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { changeOutcome, intervalKey, subscriptionAbilities, trialDaysLeft, trialsEndingSoon } from "./lib";
+import { changeOutcome, intervalKey, MAX_SEATS, parseSeats, seatsOf, subscriptionAbilities, trialDaysLeft, trialsEndingSoon } from "./lib";
+
+describe("seats", () => {
+  it("reads a seats field: empty is nothing chosen, a whole number in range is a number, anything else is bad", () => {
+    expect(parseSeats("")).toBeNull();
+    expect(parseSeats("  ")).toBeNull();
+    expect(parseSeats(undefined)).toBeNull();
+    expect(parseSeats("5")).toBe(5);
+    expect(parseSeats(" 12 ")).toBe(12);
+    expect(parseSeats(3)).toBe(3);
+    expect(parseSeats(String(MAX_SEATS))).toBe(MAX_SEATS);
+    for (const bad of ["0", "-1", "1.5", "1e3", "abc", String(MAX_SEATS + 1), "0000001000000"]) expect(parseSeats(bad)).toBe("bad");
+  });
+
+  it("a subscription without the field has one seat", () => {
+    expect(seatsOf({})).toBe(1);
+    expect(seatsOf({ quantity: 0 })).toBe(1);
+    expect(seatsOf({ quantity: 7 })).toBe(7);
+  });
+});
 
 describe("subscription helpers", () => {
   it("names an interval, monthly unless it is a year", () => {
@@ -16,7 +35,7 @@ describe("subscription helpers", () => {
   });
 
   it("works out what can be done with a subscription", () => {
-    const active = { owner: "quotify", fee_timing: "FEE_TIMING_ADVANCE", state: "SUBSCRIPTION_STATE_ACTIVE" } as const;
+    const active = { owner: "payrudder", fee_timing: "FEE_TIMING_ADVANCE", state: "SUBSCRIPTION_STATE_ACTIVE" } as const;
     expect(subscriptionAbilities(active)).toEqual({ providerRuns: false, manageHere: true, advanceActions: true, canEndWithCredit: true });
     expect(subscriptionAbilities({ ...active, coupon_code: "SPRING" }).canEndWithCredit).toBe(false);
     expect(subscriptionAbilities({ ...active, end_time: "2026-10-01T00:00:00Z" })).toEqual({ providerRuns: false, manageHere: false, advanceActions: false, canEndWithCredit: false });

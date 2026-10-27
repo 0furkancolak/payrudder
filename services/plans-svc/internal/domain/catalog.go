@@ -30,6 +30,10 @@ func AggregationToDB(a plansv1.Aggregation) (string, bool) {
 		return "COUNT", true
 	case plansv1.Aggregation_AGGREGATION_MAX:
 		return "MAX", true
+	case plansv1.Aggregation_AGGREGATION_UNIQUE:
+		return "UNIQUE", true
+	case plansv1.Aggregation_AGGREGATION_LAST:
+		return "LAST", true
 	default:
 		return "", false
 	}
@@ -44,10 +48,17 @@ func AggregationFromDB(s string) plansv1.Aggregation {
 		return plansv1.Aggregation_AGGREGATION_COUNT
 	case "MAX":
 		return plansv1.Aggregation_AGGREGATION_MAX
+	case "UNIQUE":
+		return plansv1.Aggregation_AGGREGATION_UNIQUE
+	case "LAST":
+		return plansv1.Aggregation_AGGREGATION_LAST
 	default:
 		return plansv1.Aggregation_AGGREGATION_UNSPECIFIED
 	}
 }
+
+// isRowShaped reports whether the aggregation keeps more than a number per row (the value set of UNIQUE, the winning event of LAST).
+func isRowShaped(agg string) bool { return agg == "UNIQUE" || agg == "LAST" }
 
 // MeterInput is a validated CreateMeter request.
 type MeterInput struct {
@@ -60,8 +71,9 @@ type MeterInput struct {
 	Category      string
 }
 
-// ValidateMeter checks CreateMeter. previousScale is the scale of the code's latest version, or -1 for a new code.
-func ValidateMeter(req *plansv1.CreateMeterRequest, previousScale int) (MeterInput, error) {
+// ValidateMeter checks CreateMeter. previousScale and previousAggregation are the scale and the stored aggregation of the code's latest version, or -1
+// and "" for a new code.
+func ValidateMeter(req *plansv1.CreateMeterRequest, previousScale int, previousAggregation string) (MeterInput, error) {
 	var v Violations
 	in := MeterInput{Code: req.GetCode(), UnitLabel: strings.TrimSpace(req.GetUnitLabel()), Scale: int16(min(req.GetQuantityScale(), 99)),
 		Category: strings.TrimSpace(req.GetCategory())}
@@ -70,17 +82,28 @@ func ValidateMeter(req *plansv1.CreateMeterRequest, previousScale int) (MeterInp
 	}
 	agg, ok := AggregationToDB(req.GetAggregation())
 	if !ok {
-		v.Add("aggregation", "one of SUM, COUNT, MAX")
+		v.Add("aggregation", "one of SUM, COUNT, MAX, UNIQUE, LAST")
 	}
 	in.Aggregation = agg
 	switch {
 	case agg == "COUNT" && req.GetValueProperty() != "":
 		v.Add("value_property", "must be empty for COUNT")
+	case agg == "UNIQUE" && !propertyRe.MatchString(req.GetValueProperty()):
+		v.Add("value_property", "required for UNIQUE: the event property whose distinct values are counted")
 	case agg != "COUNT" && agg != "" && !propertyRe.MatchString(req.GetValueProperty()):
-		v.Add("value_property", "required for SUM and MAX: the event property holding the quantity")
+		v.Add("value_property", "required for SUM, MAX and LAST: the event property holding the quantity")
 	case agg != "COUNT":
 		vp := req.GetValueProperty()
 		in.ValueProperty = &vp
+	}
+	// A distinct count is a number of things, never a fraction of one; the aggregator stores it with scale 0.
+	if agg == "UNIQUE" && req.GetQuantityScale() != 0 {
+		v.Add("quantity_scale", "must be 0 for UNIQUE: the result is a count of distinct values")
+	}
+	// A new version may switch between SUM, COUNT and MAX (they merge the same rows), but not into or out of UNIQUE or LAST: the aggregator keeps
+	// value sets and the winning event beside the totals, and a period that holds rows of the old meaning cannot be read with the new one.
+	if previousAggregation != "" && agg != "" && agg != previousAggregation && (isRowShaped(agg) || isRowShaped(previousAggregation)) {
+		v.Add("aggregation", fmt.Sprintf("is fixed per meter code when it is or becomes UNIQUE or LAST (existing versions use %s); use a new code", previousAggregation))
 	}
 	if req.GetQuantityScale() > quantity.MaxScale {
 		v.Add("quantity_scale", fmt.Sprintf("between 0 and %d", quantity.MaxScale))

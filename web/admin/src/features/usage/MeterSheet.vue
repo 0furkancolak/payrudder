@@ -9,7 +9,7 @@ import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useSaveMeter, type Meter } from "./api";
-import { AGGREGATIONS, aggregationKey, emptyMeterForm, formOfMeter, toMeterBody } from "./meter";
+import { aggregationKey, aggregationsFor, emptyMeterForm, formOfMeter, isRowShaped, toMeterBody } from "./meter";
 
 /**
  * The form of a meter in a sheet. Without `base` it makes a new meter; with one it saves the next version of that meter (the code and the scale are fixed
@@ -33,6 +33,13 @@ watch(open, (v) => {
 
 const isVersion = computed(() => !!props.base);
 const counting = computed(() => form.value.aggregation === "AGGREGATION_COUNT");
+const distinct = computed(() => form.value.aggregation === "AGGREGATION_UNIQUE");
+// The aggregations a new version may take (UNIQUE and LAST are fixed per code), and a count of distinct values has no decimal places.
+const choices = computed(() => aggregationsFor(props.base?.aggregation));
+const locked = computed(() => isRowShaped(props.base?.aggregation));
+watch(distinct, (d) => {
+  if (d) form.value.scale = "0";
+});
 
 function submit() {
   error.value = "";
@@ -66,19 +73,20 @@ function submit() {
           <div class="grid gap-1.5">
             <Label for="meter-agg">{{ t("billing.usage.meters.aggregation") }}</Label>
             <NativeSelect id="meter-agg" v-model="form.aggregation">
-              <option v-for="a in AGGREGATIONS" :key="a" :value="a">{{ t(`billing.usage.aggregation.${aggregationKey(a)}`) }}</option>
+              <option v-for="a in choices" :key="a" :value="a">{{ t(`billing.usage.aggregation.${aggregationKey(a)}`) }}</option>
             </NativeSelect>
             <p class="text-muted-foreground text-xs">{{ t(`billing.usage.aggregationHint.${aggregationKey(form.aggregation)}`) }}</p>
+            <p v-if="isVersion" class="text-muted-foreground text-xs" data-testid="aggregation-locked">{{ locked ? t("billing.usage.meters.aggregationLocked") : t("billing.usage.meters.aggregationOpen") }}</p>
           </div>
           <div v-if="!counting" class="grid gap-1.5">
-            <Label for="meter-prop">{{ t("billing.usage.meters.property") }}</Label>
-            <Input id="meter-prop" v-model="form.property" class="mono" autocomplete="off" placeholder="tokens" />
-            <p class="text-muted-foreground text-xs">{{ t("billing.usage.meters.propertyHint") }}</p>
+            <Label for="meter-prop">{{ distinct ? t("billing.usage.meters.propertyUnique") : t("billing.usage.meters.property") }}</Label>
+            <Input id="meter-prop" v-model="form.property" class="mono" autocomplete="off" :placeholder="distinct ? 'user_id' : 'tokens'" />
+            <p class="text-muted-foreground text-xs">{{ distinct ? t("billing.usage.meters.propertyHintUnique") : t("billing.usage.meters.propertyHint") }}</p>
           </div>
           <div class="grid gap-1.5">
             <Label for="meter-scale">{{ t("billing.usage.meters.scale") }}</Label>
-            <Input id="meter-scale" v-model="form.scale" inputmode="numeric" class="max-w-24" :disabled="isVersion" />
-            <p class="text-muted-foreground text-xs">{{ isVersion ? t("billing.usage.meters.scaleFixed") : t("billing.usage.meters.scaleHint") }}</p>
+            <Input id="meter-scale" v-model="form.scale" inputmode="numeric" class="max-w-24" :disabled="isVersion || distinct" />
+            <p class="text-muted-foreground text-xs">{{ distinct ? t("billing.usage.meters.scaleUnique") : isVersion ? t("billing.usage.meters.scaleFixed") : t("billing.usage.meters.scaleHint") }}</p>
           </div>
           <fieldset class="m-0 grid min-w-0 gap-2 border-0 p-0">
             <legend class="mb-1 text-sm font-medium">{{ t("billing.usage.meters.filter") }}</legend>

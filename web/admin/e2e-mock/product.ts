@@ -305,6 +305,31 @@ const goLiveBody = (s: LiveState) => {
   return { tenant_id: LIVE, status: `TENANT_STATUS_${s.status}`, ready: items.every((i) => i.done), items };
 };
 
+/**
+ * The sandbox's provider accounts (a provider's test mode) of an app. The gateway answers the way the real one does: a key in the live format or a host that is
+ * not the provider's is refused with the key payments-worker gives, whatever the console sent; the first account is the default.
+ */
+export function sandboxProvidersGateway(gw: MockGateway, initial: { provider: string; working?: boolean; problem?: string }[] = []) {
+  const accounts = initial.map((a, i) => ({ provider: a.provider, default: i === 0, working: a.working ?? true, checked: true, ...(a.problem ? { problem: a.problem } : {}) }));
+  const base = `/app/v1/apps/${APP}/sandbox/providers`;
+  gw.on((c) => {
+    if (c.path === base && c.method === "GET") return { body: { ready: accounts.some((a) => a.working), providers: accounts.filter((a) => a.working).map((a) => a.provider), accounts } };
+    if (!c.path.startsWith(`${base}/`)) return undefined;
+    const provider = c.path.split("/").pop() ?? "";
+    if (c.method === "PUT") {
+      if (String(c.body?.api_key ?? "").startsWith("pdl_live_")) return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "payments.account.livemode_mismatch", message: "live key" } } };
+      accounts.splice(0, accounts.length, ...accounts.filter((a) => a.provider !== provider), { provider, default: accounts.length === 0, working: true, checked: true });
+      return { body: { provider, environment: "sandbox", default: accounts.length === 1 } };
+    }
+    if (c.method === "DELETE") {
+      accounts.splice(0, accounts.length, ...accounts.filter((a) => a.provider !== provider));
+      return { status: 204, body: {} };
+    }
+    return undefined;
+  });
+  return accounts;
+}
+
 /** The go-live checklist, promote, sandbox reset and key rotation of the product API (phase 45). `state` is the test's to change while it runs. */
 export function liveGateway(gw: MockGateway, state: Partial<LiveState> = {}): { gw: MockGateway; state: LiveState } {
   const s: LiveState = { done: { email_verified: true }, status: "INACTIVE", reset: null, changes: [], hash: "h1", stale: false, accounts: [], refuseProvider: null, profile: null, ...state };

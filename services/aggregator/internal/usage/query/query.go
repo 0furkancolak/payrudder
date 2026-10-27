@@ -4,13 +4,16 @@ package query
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -113,22 +116,47 @@ type Batch struct {
 }
 
 // rangeKeys are the keys of a batch that read one stored granule (months or hours), as the arrays the range queries take, and where each
-// came from in the request.
+// came from in the request. modes is how the rows of a key combine ("sum", "max" or "last"); the distinct counts of UNIQUE meters read the value sets
+// and take no mode.
 type rangeKeys struct {
 	at             []int
 	customers      []uuid.UUID
 	meterCodes     []string
 	fromIDs, toIDs []string
-	maxes          []bool
+	modes          []string
 }
 
-func (r *rangeKeys) add(i int, customer uuid.UUID, meter, from, to string, isMax bool) {
+func (r *rangeKeys) add(i int, customer uuid.UUID, meter, from, to, mode string) {
 	r.at, r.customers, r.meterCodes = append(r.at, i), append(r.customers, customer), append(r.meterCodes, meter)
-	r.fromIDs, r.toIDs, r.maxes = append(r.fromIDs, from), append(r.toIDs, to), append(r.maxes, isMax)
+	r.fromIDs, r.toIDs, r.modes = append(r.fromIDs, from), append(r.toIDs, to), append(r.modes, mode)
+}
+
+// modeOf is how the rows of a key's window combine: the key's aggregation, or MAX for the legacy `max` flag.
+func modeOf(k *aggregatorv1.UsageKey) (mode string, unique bool) {
+	switch {
+	case k.GetAggregation() == plansv1.Aggregation_AGGREGATION_UNIQUE:
+		return "sum", true
+	case k.GetAggregation() == plansv1.Aggregation_AGGREGATION_LAST:
+		return "last", false
+	case k.GetAggregation() == plansv1.Aggregation_AGGREGATION_MAX || k.GetMax():
+		return "max", false
+	}
+	return "sum", false
+}
+
+// rangeRow is one answer of a range query, whichever query it came from.
+type rangeRow struct {
+	found    bool
+	quantity string
+	scale    int32
+	events   int64
+	lastAt   string
+	lastID   string
 }
 
 // UsageBatch reads the usage of up to MaxBatchKeys keys, in the order given, in one snapshot with the offsets: "usage as of these offsets".
-// A key names a billing period or any other quota window (period.Span): the usage of a window is what its stored rows add up to.
+// A key names a billing period or any other quota window (period.Span): the usage of a window is what its stored rows combine to (see modeOf), and for a UNIQUE
+// meter the number of distinct values in its sets: a single month is the count kept in the month row, any wider window is counted from the sets.
 func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey, pinned int32) (*Batch, error) {
 	ti, err := tenant.Require(ctx)
 	if err != nil {
@@ -139,7 +167,7 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 		return nil, invalid("aggregator.usage.bad_batch_size", fmt.Sprintf("keys: need 1..%d, got %d", MaxBatchKeys, n))
 	}
 	customers := make([]uuid.UUID, n)
-	var months, hours rangeKeys
+	var months, hours, monthSets, hourSets rangeKeys
 	for i, k := range keys {
 		c, err := errkey.ParseUUID("aggregator.customer.bad_id", fmt.Sprintf("keys[%d].customer_id", i), k.GetCustomerId())
 		if err != nil {
@@ -150,10 +178,16 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 			return nil, invalid("aggregator.period.bad_id", "period_id must be a period (2026-11) or a window id (2026-11-05T13, 2026-11-05, 2026-W45, 2026, all)")
 		}
 		customers[i] = c
-		if g == period.Months {
-			months.add(i, c, k.GetMeterCode(), from, to, k.GetMax())
-		} else {
-			hours.add(i, c, k.GetMeterCode(), from, to, k.GetMax())
+		mode, unique := modeOf(k)
+		switch {
+		case unique && g == period.Months && from != to:
+			monthSets.add(i, c, k.GetMeterCode(), from, to, mode)
+		case unique && g == period.Hours:
+			hourSets.add(i, c, k.GetMeterCode(), from, to, mode)
+		case g == period.Months:
+			months.add(i, c, k.GetMeterCode(), from, to, mode)
+		default:
+			hours.add(i, c, k.GetMeterCode(), from, to, mode)
 		}
 	}
 	out := &Batch{ConsumerOffsets: map[int32]int64{}}
@@ -167,35 +201,64 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 			return err
 		}
 		out.Usage = make([]*aggregatorv1.UsageAggregate, n)
-		fill := func(r rangeKeys, found []bool, qty []string, scale []int32, events []int64) {
+		fill := func(r rangeKeys, rows []rangeRow) {
 			for j, i := range r.at {
 				k := keys[i]
 				agg := &aggregatorv1.UsageAggregate{CustomerId: customers[i].String(), MeterCode: k.GetMeterCode(), PeriodId: k.GetPeriodId(), Quantity: "0"}
-				if found[j] {
-					agg = usageRow(customers[i], k.GetMeterCode(), k.GetPeriodId(), qty[j], scale[j], events[j])
+				if rows[j].found {
+					agg = usageRow(customers[i], k.GetMeterCode(), k.GetPeriodId(), rows[j].quantity, rows[j].scale, rows[j].events)
+					if rows[j].lastID != "" {
+						if at, err := time.Parse(time.RFC3339Nano, rows[j].lastAt); err == nil {
+							agg.LastEventTime, agg.LastEventId = timestamppb.New(at), rows[j].lastID
+						}
+					}
 				}
 				out.Usage[i] = agg
 			}
 		}
 		if len(months.at) > 0 {
-			rows, err := q.UsageRangeMonths(ctx, sqlc.UsageRangeMonthsParams{Customers: months.customers, MeterCodes: months.meterCodes, FromIds: months.fromIDs, ToIds: months.toIDs, Maxes: months.maxes, Generation: gen})
+			rows, err := q.UsageRangeMonths(ctx, sqlc.UsageRangeMonthsParams{Customers: months.customers, MeterCodes: months.meterCodes, FromIds: months.fromIDs, ToIds: months.toIDs, Modes: months.modes, Generation: gen})
 			if err != nil {
 				return err
 			}
-			found, qty, scale, events := columns(len(rows), func(j int) (bool, string, int32, int64) {
-				return rows[j].Found, rows[j].Quantity, rows[j].QuantityScale, rows[j].EventCount
-			})
-			fill(months, found, qty, scale, events)
+			res := make([]rangeRow, len(rows))
+			for j, r := range rows {
+				res[j] = rangeRow{r.Found, r.Quantity, r.QuantityScale, r.EventCount, r.LastAt, r.LastEventID}
+			}
+			fill(months, res)
 		}
 		if len(hours.at) > 0 {
-			rows, err := q.UsageRangeHours(ctx, sqlc.UsageRangeHoursParams{Customers: hours.customers, MeterCodes: hours.meterCodes, FromIds: hours.fromIDs, ToIds: hours.toIDs, Maxes: hours.maxes, Generation: gen})
+			rows, err := q.UsageRangeHours(ctx, sqlc.UsageRangeHoursParams{Customers: hours.customers, MeterCodes: hours.meterCodes, FromIds: hours.fromIDs, ToIds: hours.toIDs, Modes: hours.modes, Generation: gen})
 			if err != nil {
 				return err
 			}
-			found, qty, scale, events := columns(len(rows), func(j int) (bool, string, int32, int64) {
-				return rows[j].Found, rows[j].Quantity, rows[j].QuantityScale, rows[j].EventCount
-			})
-			fill(hours, found, qty, scale, events)
+			res := make([]rangeRow, len(rows))
+			for j, r := range rows {
+				res[j] = rangeRow{r.Found, r.Quantity, r.QuantityScale, r.EventCount, r.LastAt, r.LastEventID}
+			}
+			fill(hours, res)
+		}
+		if len(monthSets.at) > 0 {
+			rows, err := q.UsageDistinctMonths(ctx, sqlc.UsageDistinctMonthsParams{Customers: monthSets.customers, MeterCodes: monthSets.meterCodes, FromIds: monthSets.fromIDs, ToIds: monthSets.toIDs, Generation: gen})
+			if err != nil {
+				return err
+			}
+			res := make([]rangeRow, len(rows))
+			for j, r := range rows {
+				res[j] = rangeRow{found: r.Found, quantity: fmt.Sprint(r.DistinctValues), events: r.DistinctValues}
+			}
+			fill(monthSets, res)
+		}
+		if len(hourSets.at) > 0 {
+			rows, err := q.UsageDistinctHours(ctx, sqlc.UsageDistinctHoursParams{Customers: hourSets.customers, MeterCodes: hourSets.meterCodes, FromIds: hourSets.fromIDs, ToIds: hourSets.toIDs, Generation: gen})
+			if err != nil {
+				return err
+			}
+			res := make([]rangeRow, len(rows))
+			for j, r := range rows {
+				res[j] = rangeRow{found: r.Found, quantity: fmt.Sprint(r.DistinctValues), events: r.DistinctValues}
+			}
+			fill(hourSets, res)
 		}
 		offs, err := q.ListOffsets(ctx, sqlc.ListOffsetsParams{ConsumerGroup: s.group, Topic: s.topic})
 		if err != nil {
@@ -208,15 +271,6 @@ func (s *Queries) UsageBatch(ctx context.Context, keys []*aggregatorv1.UsageKey,
 		return nil, store.MapErr(ctx, err)
 	}
 	return out, nil
-}
-
-// columns splits n result rows, read through row, into the columns fill takes.
-func columns(n int, row func(j int) (bool, string, int32, int64)) (found []bool, qty []string, scale []int32, events []int64) {
-	found, qty, scale, events = make([]bool, n), make([]string, n), make([]int32, n), make([]int64, n)
-	for j := 0; j < n; j++ {
-		found[j], qty[j], scale[j], events[j] = row(j)
-	}
-	return found, qty, scale, events
 }
 
 // PeriodUsage is the usage of every customer and meter in a period.

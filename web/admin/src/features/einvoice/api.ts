@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
-import { api, ApiError, unwrap, type Tenant } from "@/shared/api/client";
+import { api, unwrap, type Tenant } from "@/shared/api/client";
 import { PAGE, POLL } from "@/shared/api/limits";
+import { usePresignedOpen } from "@/shared/api/presigned";
 import type { components } from "@/shared/api/schema";
 import { tenantKeys } from "@/features/tenants/api";
 import type { Environment } from "@/shared/lib/environment";
 
 export type EInvoiceDocument = components["schemas"]["EInvoiceDocument"];
 export type EInvoiceAccount = components["schemas"]["EInvoiceAccount"];
-export type LegalInfo = components["schemas"]["LegalInfo"];
+export type LegalInfo = components["schemas"]["LegalInfoInput"];
 export type EInvoiceOn = "off" | "finalized" | "paid";
 
 export const einvoiceKeys = {
@@ -47,19 +48,10 @@ export function useEInvoiceActions(tenantId: MaybeRefOrGetter<string>) {
   return {
     retry: useMutation({ mutationFn: (id: string) => unwrap(api.POST("/admin/v1/tenants/{tenant_id}/e-invoices/{id}/retry", path(id))), onSuccess: done }),
     cancel: useMutation({ mutationFn: (id: string) => unwrap(api.POST("/admin/v1/tenants/{tenant_id}/e-invoices/{id}/cancel", path(id))), onSuccess: done }),
-    /** Asks for a presigned link (five minutes) and opens the file in a new tab. */
-    download: useMutation({
-      mutationFn: async (v: { id: string; kind: "xml" | "pdf" }) => {
-        const r = await unwrap(
-          api.GET("/admin/v1/tenants/{tenant_id}/e-invoices/{id}/files/{kind}", { params: { path: { tenant_id: toValue(tenantId), id: v.id, kind: v.kind } } }),
-        );
-        if (!r.url) throw new ApiError("no link", "NO_LINK");
-        return r.url;
-      },
-      onSuccess: (url) => {
-        window.open(url, "_blank", "noopener");
-      },
-    }),
+    /** Opens the XML or PDF of a document in a new tab. */
+    download: usePresignedOpen((v: { id: string; kind: "xml" | "pdf" }) =>
+      unwrap(api.GET("/admin/v1/tenants/{tenant_id}/e-invoices/{id}/files/{kind}", { params: { path: { tenant_id: toValue(tenantId), id: v.id, kind: v.kind } } })),
+    ),
   };
 }
 

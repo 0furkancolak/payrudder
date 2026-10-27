@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, useNavigate } from "@tanstack/vue-router";
+import { Link } from "@tanstack/vue-router";
 import { LogOut } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -11,19 +11,20 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { PageHeader } from "@/shared/ui/page-header";
 import { SegmentedControl } from "@/shared/ui/segmented";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { useAccount, useMe, useRenameAccount, useSignOut } from "./api";
+import { useAccount, useMe, useRenameAccount } from "./api";
+import { useLeave } from "./useLeave";
 import AccountSwitcher from "./AccountSwitcher.vue";
 
 const { t } = useI18n();
 const fmt = useFormat();
-const navigate = useNavigate();
 const me = useMe();
 const saas = useSaasEnabled();
 const account = useAccount();
-const signOut = useSignOut();
+const { leave, pending: leaving } = useLeave();
 
 const rename = useRenameAccount();
 const accountName = ref("");
@@ -31,26 +32,19 @@ watch(() => account.data.value?.name, (n) => (accountName.value = n ?? ""), { im
 const isOwner = computed(() => account.data.value?.role === "owner");
 const nameChanged = computed(() => accountName.value.trim() !== "" && accountName.value.trim() !== account.data.value?.name);
 
-const when = (v?: string) => fmt.date(v, "dateTime");
+const when = (v?: string | null) => fmt.date(v, "dateTime");
 const themes = computed(() => [
   { value: "system", label: t("product.settings.themeSystem") },
   { value: "light", label: t("product.settings.themeLight") },
   { value: "dark", label: t("product.settings.themeDark") },
 ]);
 
-async function leave() {
-  await signOut.mutateAsync();
-  await navigate({ to: "/signin", search: { app: undefined } as never });
-}
 </script>
 
 <template>
   <section class="flex flex-col gap-6">
-    <header class="px-1">
-      <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ t("product.settings.title") }}</h1>
-      <p class="text-muted-foreground mt-1 text-sm">{{ t("product.settings.intro") }}</p>
-    </header>
-    <ErrorText :error="firstError(account, me)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <PageHeader flush :title="t('product.settings.title')" :description="t('product.settings.intro')" />
+    <ErrorText :error="firstError(account, me)" box />
 
     <Link v-if="saas" to="/app/settings/plan" class="surface hover:border-ring flex flex-wrap items-center justify-between gap-2 p-5" data-testid="plan-link">
       <span class="font-semibold">{{ t("saas.title") }}</span>
@@ -95,7 +89,7 @@ async function leave() {
             <span class="text-muted-foreground text-sm">{{ t("product.settings.appearance") }}</span>
             <SegmentedControl :model-value="theme" :options="themes" :label="t('product.settings.appearance')" @update:model-value="(v) => applyTheme(v as ThemeChoice)" />
           </div>
-          <Button variant="outline" :disabled="signOut.isPending.value" @click="leave"><LogOut />{{ t("nav.signOut") }}</Button>
+          <Button variant="outline" :disabled="leaving" @click="leave"><LogOut />{{ t("nav.signOut") }}</Button>
         </div>
       </section>
     </div>

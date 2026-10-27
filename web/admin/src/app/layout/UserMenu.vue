@@ -4,8 +4,9 @@ import { Check, ChevronRight, Globe, LogOut, Monitor, Moon, Plus, Settings, Sun 
 import { DropdownMenuPortal, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useCreateAccount, useMe, useSignOut, useSwitchAccount } from "@/features/product/api";
+import { useCreateAccount, useMe, useSwitchAccount } from "@/features/product/api";
 import { ownMemberships } from "@/features/product/lib";
+import { useLeave } from "@/features/product/useLeave";
 import { activeAccount } from "@/shared/lib/session";
 import { applyTheme, theme, type ThemeChoice } from "@/shared/lib/theme";
 import { applyLocale, languages, locales } from "../i18n";
@@ -18,7 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 const { t, locale } = useI18n();
 const navigate = useNavigate();
 const me = useMe();
-const signOut = useSignOut();
+const { leave } = useLeave();
 const switchTo = useSwitchAccount();
 
 // The organisations the person works in (a seller's partner membership is not one); the current one is ticked. Choosing another moves the whole console to it.
@@ -60,11 +61,6 @@ const themes: { value: ThemeChoice; icon: typeof Sun }[] = [
   { value: "dark", icon: Moon },
 ];
 const subContent = 'bg-popover text-popover-foreground shadow-pop z-50 min-w-40 rounded-2xl border p-1.5';
-
-async function leave() {
-  await signOut.mutateAsync();
-  await navigate({ to: "/signin", search: { app: undefined } as never });
-}
 </script>
 
 <template>

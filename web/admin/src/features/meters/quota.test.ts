@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import en from "@/locales/en.json";
-import { categories, isQuantity, modeWord, newQuota, parseThresholds, quotaDraftOf, quotaTerms, scaleOf, WINDOWS, windowWord, type Meter } from "./quota";
+import { AGGREGATIONS, aggregationsFor, categories, isQuantity, isRowShaped, modeWord, newQuota, parseThresholds, quotaDraftOf, quotaTerms, scaleOf, WINDOWS, windowWord, type Meter } from "./quota";
 
 describe("quotaTerms", () => {
   it("builds the API's terms, leaving out default thresholds", () => {
@@ -61,8 +61,19 @@ describe("words", () => {
   });
 });
 
+describe("the aggregations of a meter", () => {
+  it("know distinct values and the latest value, which stay with their code", () => {
+    expect(AGGREGATIONS).toEqual(["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX", "AGGREGATION_UNIQUE", "AGGREGATION_LAST"]);
+    expect(aggregationsFor(undefined)).toEqual(AGGREGATIONS);
+    expect(aggregationsFor("AGGREGATION_UNIQUE")).toEqual(["AGGREGATION_UNIQUE"]);
+    expect(aggregationsFor("AGGREGATION_COUNT")).toEqual(["AGGREGATION_SUM", "AGGREGATION_COUNT", "AGGREGATION_MAX"]);
+    expect(isRowShaped("AGGREGATION_UNIQUE")).toBe(true);
+    expect(isRowShaped("AGGREGATION_SUM")).toBe(false);
+  });
+});
+
 describe("meters", () => {
-  const meter = (code: string, extra: Partial<Meter> = {}): Meter => ({ code, aggregation: "AGGREGATION_SUM", unit_label: "u", ...extra });
+  const meter = (code: string, extra: Partial<Meter> = {}): Meter => ({ code, aggregation: "AGGREGATION_SUM", value_property: "", filter: {}, quantity_scale: 0, unit_label: "u", category: "", version: 1, create_time: null, ...extra });
   const meters = [meter("a", { category: "AI", quantity_scale: 3 }), meter("b", { category: " ai " }), meter("c", { category: "Compute" }), meter("d", { category: "AI" }), meter("e")];
   it("lists the categories in use once each", () => {
     expect(categories(meters)).toEqual(["ai", "AI", "Compute"].sort((x, y) => x.localeCompare(y)));

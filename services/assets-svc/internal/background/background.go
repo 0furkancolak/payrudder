@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -377,27 +378,49 @@ func (j *Jobs) deleteOrphans(ctx context.Context, keys []string, where map[uuid.
 	return deleted, nil
 }
 
-// Run runs the jobs on their intervals until ctx is done.
+// loop is one job and how often it runs.
+type loop struct {
+	name  string
+	every time.Duration
+	fn    func(context.Context) error
+}
+
+// Run runs the jobs on their intervals until ctx is done, and returns when every one of them has stopped: a job in the middle of its work is not left
+// using the database and the object store after the service has closed them.
 func (j *Jobs) Run(ctx context.Context, sweep, verify, orphans time.Duration) {
 	if err := j.init(); err != nil {
 		j.Log.Error("background jobs not started", "error", err)
 		return
 	}
-	tick := func(d time.Duration, name string, fn func(context.Context) error) {
-		t := time.NewTicker(d)
-		defer t.Stop()
-		for {
-			select {
-			case <-ctx.Done():
+	j.run(ctx, []loop{
+		{"session sweeper", sweep, func(c context.Context) error { _, err := j.SweepExpired(c, 100); return err }},
+		{"upload verifier", verify, func(c context.Context) error { _, err := j.VerifyUploads(c, 50); return err }},
+		{"orphan reconciler", orphans, func(c context.Context) error { _, err := j.ReconcileOrphans(c); return err }},
+	})
+}
+
+func (j *Jobs) run(ctx context.Context, loops []loop) {
+	var wg sync.WaitGroup
+	for _, l := range loops {
+		wg.Go(func() { j.every(ctx, l) })
+	}
+	wg.Wait()
+}
+
+func (j *Jobs) every(ctx context.Context, l loop) {
+	t := time.NewTicker(l.every)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if ctx.Err() != nil { // both were ready: the cancellation wins
 				return
-			case <-t.C:
-				if err := fn(ctx); err != nil && ctx.Err() == nil {
-					j.Log.Warn(name+" failed", "error", err)
-				}
+			}
+			if err := l.fn(ctx); err != nil && ctx.Err() == nil {
+				j.Log.Warn(l.name+" failed", "error", err)
 			}
 		}
 	}
-	go tick(sweep, "session sweeper", func(c context.Context) error { _, err := j.SweepExpired(c, 100); return err })
-	go tick(verify, "upload verifier", func(c context.Context) error { _, err := j.VerifyUploads(c, 50); return err })
-	tick(orphans, "orphan reconciler", func(c context.Context) error { _, err := j.ReconcileOrphans(c); return err })
 }

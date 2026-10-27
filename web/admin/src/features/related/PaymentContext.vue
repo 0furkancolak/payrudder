@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { useInvoice } from "@/features/product/billingApi";
+import { useTenantInvoice } from "@/features/product/billingApi";
 import CustomerRef from "./CustomerRef.vue";
 import InvoiceRef from "./InvoiceRef.vue";
 import RelatedSection from "./RelatedSection.vue";
@@ -12,7 +12,7 @@ import RelatedSection from "./RelatedSection.vue";
  */
 const props = withDefaults(defineProps<{ tenantId: string; invoiceId?: string; customer?: string; payer?: boolean }>(), { invoiceId: "", customer: "", payer: true });
 const { t } = useI18n();
-const invoice = useInvoice(() => props.tenantId, () => props.invoiceId ?? "");
+const invoice = useTenantInvoice(() => props.tenantId, () => props.invoiceId ?? "");
 const customer = computed(() => props.customer || (props.invoiceId ? invoice.data.value?.customer_external_id : "") || "");
 </script>
 

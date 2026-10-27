@@ -24,6 +24,8 @@ export interface NewSubscription {
   provider?: string;
   coupon_code?: string;
   interval?: "SUBSCRIPTION_INTERVAL_MONTH" | "SUBSCRIPTION_INTERVAL_YEAR";
+  /** Seats: the fixed fee is multiplied by it. Left out, one. */
+  quantity?: number;
 }
 
 export interface ChangeInput {
@@ -35,6 +37,8 @@ export interface ChangeInput {
   /** Empty lets Payrudder decide by the direction of the change. */
   timing: "" | "CHANGE_TIMING_IMMEDIATELY" | "CHANGE_TIMING_PERIOD_END";
   proration: "" | "CHANGE_PRORATION_PRORATE" | "CHANGE_PRORATION_FULL" | "CHANGE_PRORATION_NONE";
+  /** The new number of seats; empty keeps them. */
+  quantity?: number | null;
 }
 
 /** Only what was chosen is sent: the rest is the server's default for the direction of the change. */
@@ -44,6 +48,7 @@ function changeBody(v: ChangeInput) {
     ...(v.interval ? { interval: v.interval } : {}),
     ...(v.timing ? { timing: v.timing } : {}),
     ...(v.proration ? { proration: v.proration } : {}),
+    ...(v.quantity ? { quantity: v.quantity } : {}),
   };
 }
 
