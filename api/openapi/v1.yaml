@@ -2606,6 +2606,39 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SessionInfo" } } } }
         "401": { $ref: "#/components/responses/Error" }
+  /app/v1/me/onboarding:
+    get:
+      operationId: getMyOnboarding
+      tags: [Product]
+      summary: What the console remembers for the person - the first-run wizard's progress and the tours they have seen
+      description: Kept per person, not per account or browser, so a second browser does not start the wizard or a tour again. A person who has stored nothing gets no `wizard` and no tours.
+      security: [{ sessionToken: [] }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Onboarding" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateMyOnboarding
+      tags: [Product]
+      summary: Merge a change into it
+      description: >
+        A merge, never a replacement, so two browsers writing lose nothing. The `wizard` fields given overwrite the stored ones and the others stay; a flag that is
+        set (customer, event, hidden) stays set. `seen_tours` are added to the stored set. `forget_tours` removes tours (a person asking to see one again) and is applied
+        after the additions. The answer is the merged record.
+      security: [{ sessionToken: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                wizard: { $ref: "#/components/schemas/OnboardingWizard" }
+                seen_tours: { type: array, maxItems: 200, items: { type: string, pattern: "^[A-Za-z0-9._-]{1,64}$" } }
+                forget_tours: { type: array, items: { type: string, pattern: "^[A-Za-z0-9._-]{1,64}$" } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Onboarding" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
   /app/v1/accounts:
     post:
       operationId: appCreateAccount
@@ -2921,6 +2954,46 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { type: object, properties: { app: { $ref: "#/components/schemas/App" }, role: { type: string, enum: [owner, admin, viewer] } } } } } }
         "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: appRenameApp
+      tags: [Product]
+      summary: Rename the app (owners and admins)
+      description: >
+        Renames the app and with it its sandbox and live tenants; the slug stays. Invoices already issued keep the name they were issued under, new ones carry the new
+        name. A viewer is answered 403; an app that was deleted is answered 404.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 200 }
+      responses:
+        "200": { description: The app, content: { application/json: { schema: { $ref: "#/components/schemas/App" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: appDeleteApp
+      tags: [Product]
+      summary: Delete the app (owners only)
+      description: >
+        Nothing is erased. The app is archived: it leaves the lists and every route of the account, its API keys are revoked at once (the gateway refuses them, so no
+        event is ingested), no key can be made for it again, and its slug is freed. Its customers, subscriptions, invoices, payments and usage stay for accounting and
+        retention, and billing keeps working on what already exists (a customer who owes is still invoiced and charged), so cancel the subscriptions first when
+        the app should stop billing. An admin or a viewer is answered 403; deleting twice is answered 404. The action is logged (`app_audit`).
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "204": { description: Archived }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/overview:
     get:
@@ -5324,6 +5397,25 @@ components:
         account_id: { type: string, format: uuid }
         account_name: { type: string }
         role: { type: string, enum: [owner, admin, viewer] }
+    OnboardingWizard:
+      type: object
+      description: The first-run wizard's progress. As a request body every field is optional and only those present are written.
+      properties:
+        status: { type: string, enum: [active, skipped, done] }
+        step: { type: string, enum: [welcome, organisation, app, meter, package, event, done] }
+        currency: { type: string, description: "Chosen in the organisation step", example: TRY }
+        timezone: { type: string, example: Europe/Istanbul }
+        app: { type: string, description: "Id of the app the wizard made" }
+        meter: { type: string, description: "Code of the meter it made" }
+        plan: { type: string, description: "Code of the package it made" }
+        customer: { type: boolean, description: "The test customer exists" }
+        event: { type: boolean, description: "The test event was sent" }
+        hidden: { type: boolean, description: "The person closed the Getting started card" }
+    Onboarding:
+      type: object
+      properties:
+        wizard: { $ref: "#/components/schemas/OnboardingWizard" }
+        seen_tours: { type: array, items: { type: string } }
     SessionOpened:
       type: object
       properties:
@@ -6809,6 +6901,7 @@ components:
         slug: { type: string }
         tenants: { type: array, items: { $ref: "#/components/schemas/Tenant" } }
         create_time: { type: string, format: date-time }
+        archive_time: { type: string, format: date-time, description: Set once the app was deleted (archived); only the operator API lists such an app. }
     ApiKeyRole:
       type: string
       enum: [admin, billing, read_only, ingest_only, custom]

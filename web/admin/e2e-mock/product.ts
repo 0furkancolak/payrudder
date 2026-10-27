@@ -244,6 +244,19 @@ export function productGateway(gw: MockGateway, state: Partial<ProductState> = {
       return { status: 201, body: created };
     }
     if (c.path === `/app/v1/apps/${APP}` && c.method === "GET") return { body: { app: (s.apps as { id: string }[]).find((a) => a.id === APP) ?? app, role: s.role } };
+    // Rename (owners and admins) and delete (owners only; the server archives the app, so it leaves the list).
+    if (c.path === `/app/v1/apps/${APP}` && c.method === "PATCH") {
+      if (s.role === "viewer") return forbidden;
+      const name = String(c.body?.name ?? "").trim();
+      if (!name) return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "common.invalid_argument", message: "name" } } };
+      s.apps = (s.apps as { id: string }[]).map((a) => (a.id === APP ? { ...a, name } : a));
+      return { body: (s.apps as { id: string }[]).find((a) => a.id === APP) };
+    }
+    if (c.path === `/app/v1/apps/${APP}` && c.method === "DELETE") {
+      if (s.role !== "owner") return forbidden;
+      s.apps = (s.apps as { id: string }[]).filter((a) => a.id !== APP);
+      return { status: 204, body: {} };
+    }
     if (c.path === `/app/v1/apps/${APP}/dashboard`) {
       const q = Object.fromEntries(c.query.entries());
       if (typeof s.dashboard === "function") return s.dashboard(q);

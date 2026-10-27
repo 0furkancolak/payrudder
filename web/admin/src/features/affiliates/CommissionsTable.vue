@@ -20,6 +20,7 @@ import { useAffiliateOptions, useCommissions, type CommissionFilter } from "./ap
 import { commissionTone, dayEnd, dayStart, isReversal, type Commission } from "./logic";
 import { DataPagination } from "@/shared/ui/data-table";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
+import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { usePager } from "./paging";
 import ReverseDialog from "./ReverseDialog.vue";
 
@@ -73,9 +74,25 @@ const kindOptions = computed(() => [
 ]);
 const items = computed(() => list.data.value?.items ?? []);
 /** The sheet steps through the loaded page and, at its ends, loads the page beyond. */
-const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") });
+const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!list.data.value?.next, prev: pager.prev, next: () => pager.next(list.data.value?.next ?? "") }, props.payoutId
+    ? undefined
+    : {
+        kind: "commission",
+        id: (c) => c.id ?? "",
+        ready: () => list.isSuccess.value,
+        rewind: pager.reset,
+        // The date range starts on this month: a commission of an earlier one is looked for with no range.
+        missing: () => {
+          if (range.value.from === "" && range.value.to === "") return false;
+          range.value = { from: "", to: "" };
+          return true;
+        },
+      },
+);
 const index = detail.index;
 const current = detail.row;
+// Taking a commission back is in the address too, found among the commissions on screen.
+useSheetTarget("reverse-commission", reverseOpen, reversing, { id: (c) => c.id ?? "", find: (id) => items.value.find((c) => c.id === id) });
 function reverseFrom(c: Commission) {
   index.value = null;
   reverse(c);

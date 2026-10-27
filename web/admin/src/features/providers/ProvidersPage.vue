@@ -178,7 +178,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     <ErrorText :error="actions.remove.error.value" class="px-3" />
     <p v-if="actions.save.isSuccess.value" class="text-success px-3 text-sm" role="status">{{ t("billing.providers.saved") }}</p>
 
-    <Sheet v-model:open="open">
+    <Sheet v-model:open="open" name="add-provider-account">
       <SheetContent class="sm:max-w-xl">
         <SheetHeader>
           <SheetTitle>{{ t("billing.providers.addAccount") }}</SheetTitle>

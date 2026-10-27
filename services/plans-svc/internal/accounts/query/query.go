@@ -18,10 +18,10 @@ type Queries struct{ pool *pgxpool.Pool }
 // New returns the account queries on the system pool.
 func New(systemPool *pgxpool.Pool) *Queries { return &Queries{pool: systemPool} }
 
-// Apps lists the apps of an account with their tenants.
+// Apps lists the apps of an account with their tenants, the archived ones included (the operator keeps their billing records in sight).
 func (q *Queries) Apps(ctx context.Context, accountID uuid.UUID) ([]*plansv1.App, error) {
 	db := sqlc.New(q.pool)
-	apps, err := db.ListAccountApps(ctx, accountID)
+	apps, err := db.ListAccountAppsWithArchived(ctx, accountID)
 	if err != nil {
 		return nil, convert.Err(err, "app")
 	}

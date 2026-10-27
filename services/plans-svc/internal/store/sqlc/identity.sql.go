@@ -161,6 +161,16 @@ func (q *Queries) DeleteStaleUserTokens(ctx context.Context, userID uuid.UUID) e
 	return err
 }
 
+const ensureUserOnboarding = `-- name: EnsureUserOnboarding :exec
+INSERT INTO user_onboarding (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING
+`
+
+// system. Creates the person's row when it is missing (a second writer doing the same is a no-op).
+func (q *Queries) EnsureUserOnboarding(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, ensureUserOnboarding, userID)
+	return err
+}
+
 const expireOpenInvites = `-- name: ExpireOpenInvites :exec
 UPDATE account_invites SET revoked_at = now()
 WHERE account_id = $1 AND lower(email) = lower($2::text) AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at <= now()
@@ -180,7 +190,7 @@ func (q *Queries) ExpireOpenInvites(ctx context.Context, arg ExpireOpenInvitesPa
 const getAppForUser = `-- name: GetAppForUser :one
 SELECT a.id, a.account_id, a.name, a.slug, a.created_at, m.role
 FROM apps a JOIN account_members m ON m.account_id = a.account_id AND m.user_id = $1 AND m.role <> 'affiliate'
-WHERE a.id = $2
+WHERE a.id = $2 AND a.archived_at IS NULL
 `
 
 type GetAppForUserParams struct {
@@ -198,6 +208,7 @@ type GetAppForUserRow struct {
 }
 
 // An app of an account the user is a member of, with the user's role. No membership, no row.
+// An archived app is gone for the account: it answers like one that never existed.
 func (q *Queries) GetAppForUser(ctx context.Context, arg GetAppForUserParams) (GetAppForUserRow, error) {
 	row := q.db.QueryRow(ctx, getAppForUser, arg.UserID, arg.AppID)
 	var i GetAppForUserRow
@@ -439,7 +450,7 @@ func (q *Queries) GetOpenInviteInAccount(ctx context.Context, arg GetOpenInviteI
 const getTenantForUser = `-- name: GetTenantForUser :one
 SELECT t.id, t.account_id, t.environment, t.name, t.tier, t.currency, t.timezone, t.grace_period, t.created_at, t.invoice_logo_asset_id, t.app_id, t.address, t.bank_transfer, t.legal, t.e_invoice_on, t.status, t.activated_at, t.terms_accepted_at, t.terms_accepted_by, m.role
 FROM tenants t JOIN account_members m ON m.account_id = t.account_id AND m.user_id = $1 AND m.role <> 'affiliate'
-WHERE t.id = $2
+WHERE t.id = $2 AND NOT EXISTS (SELECT 1 FROM apps a WHERE a.id = t.app_id AND a.archived_at IS NOT NULL)
 `
 
 type GetTenantForUserParams struct {
@@ -540,6 +551,23 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.EmailVerifiedAt,
 		&i.Locale,
 		&i.TakenNoticeAt,
+	)
+	return i, err
+}
+
+const getUserOnboarding = `-- name: GetUserOnboarding :one
+SELECT user_id, wizard, seen_tours, updated_at FROM user_onboarding WHERE user_id = $1
+`
+
+// system. The person's wizard progress and seen tours; no row: nothing stored yet.
+func (q *Queries) GetUserOnboarding(ctx context.Context, userID uuid.UUID) (UserOnboarding, error) {
+	row := q.db.QueryRow(ctx, getUserOnboarding, userID)
+	var i UserOnboarding
+	err := row.Scan(
+		&i.UserID,
+		&i.Wizard,
+		&i.SeenTours,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -1053,6 +1081,23 @@ func (q *Queries) LockAccount(ctx context.Context, accountID string) error {
 	return err
 }
 
+const lockUserOnboarding = `-- name: LockUserOnboarding :one
+SELECT user_id, wizard, seen_tours, updated_at FROM user_onboarding WHERE user_id = $1 FOR UPDATE
+`
+
+// system. The person's row, locked for the rest of the transaction, so two writers merge one after the other.
+func (q *Queries) LockUserOnboarding(ctx context.Context, userID uuid.UUID) (UserOnboarding, error) {
+	row := q.db.QueryRow(ctx, lockUserOnboarding, userID)
+	var i UserOnboarding
+	err := row.Scan(
+		&i.UserID,
+		&i.Wizard,
+		&i.SeenTours,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const markEmailVerified = `-- name: MarkEmailVerified :exec
 UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = $1
 `
@@ -1162,6 +1207,28 @@ UPDATE user_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS
 
 func (q *Queries) RevokeUserSessions(ctx context.Context, userID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, revokeUserSessions, userID)
+	return err
+}
+
+const saveUserOnboarding = `-- name: SaveUserOnboarding :exec
+UPDATE user_onboarding SET wizard = $1, seen_tours = $2, updated_at = $3 WHERE user_id = $4
+`
+
+type SaveUserOnboardingParams struct {
+	Wizard    []byte
+	SeenTours []string
+	UpdatedAt time.Time
+	UserID    uuid.UUID
+}
+
+// system. Writes the merged document.
+func (q *Queries) SaveUserOnboarding(ctx context.Context, arg SaveUserOnboardingParams) error {
+	_, err := q.db.Exec(ctx, saveUserOnboarding,
+		arg.Wizard,
+		arg.SeenTours,
+		arg.UpdatedAt,
+		arg.UserID,
+	)
 	return err
 }
 

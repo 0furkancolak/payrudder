@@ -185,10 +185,21 @@ type ApiKey struct {
 }
 
 type App struct {
+	ID         uuid.UUID
+	AccountID  uuid.UUID
+	Name       string
+	Slug       string
+	CreatedAt  time.Time
+	ArchivedAt *time.Time
+	ArchivedBy *uuid.UUID
+}
+
+type AppAudit struct {
 	ID        uuid.UUID
-	AccountID uuid.UUID
-	Name      string
-	Slug      string
+	AppID     uuid.UUID
+	UserID    uuid.UUID
+	Action    string
+	Detail    json.RawMessage
 	CreatedAt time.Time
 }
 
@@ -575,6 +586,13 @@ type UserIdentity struct {
 	Email       string
 	CreatedAt   time.Time
 	LastLoginAt time.Time
+}
+
+type UserOnboarding struct {
+	UserID    uuid.UUID
+	Wizard    []byte
+	SeenTours []string
+	UpdatedAt time.Time
 }
 
 type UserSession struct {

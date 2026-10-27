@@ -1116,7 +1116,8 @@
         "title": "Crédits d'un client",
         "pick": "Choisir un client",
         "balance": "crédits disponibles",
-        "nextExpiry": "Une partie expire le {when}"
+        "nextExpiry": "Une partie expire le {when}",
+        "empty": "Choisissez un client pour voir son solde, ses crédits et leur historique."
       },
       "lots": {
         "source": "Source",
@@ -1188,6 +1189,13 @@
         "threshold": "Alerter sous (crédits)",
         "save": "Enregistrer",
         "saved": "Enregistré."
+      },
+      "tabs": {
+        "lots": "Attributions"
+      },
+      "sell": {
+        "title": "Vendre des crédits",
+        "hint": "Les packs de crédits que vos clients achètent avec un lien de paiement et l'alerte de solde bas."
       }
     },
     "accounting": {
@@ -2463,7 +2471,8 @@
       },
       "api_key": {
         "tenant_not_active": "Cet environnement n'est pas actif et ne peut donc pas avoir de clés API. Terminez d'abord la liste de mise en production.",
-        "bad_role": "Le rôle doit être administrateur, facturation, lecture seule, envoi de consommation seul ou personnalisé, avec des permissions connues."
+        "bad_role": "Le rôle doit être administrateur, facturation, lecture seule, envoi de consommation seul ou personnalisé, avec des permissions connues.",
+        "app_archived": "Cette application a été supprimée et ne peut donc pas avoir de clés API."
       },
       "change": {
         "bad_proration": "Le montant de ce changement de plan ne peut pas être calculé pour cette période.",
@@ -3450,7 +3459,14 @@
       "timezone": "Fuseau horaire",
       "grace": "Délai de grâce",
       "tenant": "Identifiant de l'environnement",
-      "moreCurrencies": "Une application peut vendre dans plusieurs devises : ajoutez un prix dans une autre devise à un forfait, sous"
+      "moreCurrencies": "Une application peut vendre dans plusieurs devises : ajoutez un prix dans une autre devise à un forfait, sous",
+      "rename": "Enregistrer le nom",
+      "dangerTitle": "Zone de danger",
+      "deleteBody": "Supprimer une application la retire de votre compte : elle disparaît de toutes les listes, ses clés API cessent de fonctionner immédiatement et aucune nouvelle clé ne peut être créée. Rien n'est effacé. Ses clients, factures et paiements sont conservés pour la comptabilité et les obligations légales, et la facturation continue pour ce qui existe déjà : résiliez donc d'abord ses abonnements si elle doit cesser de facturer.",
+      "delete": "Supprimer l'application",
+      "confirmTitle": "Supprimer {name} ?",
+      "confirmBody": "L'application est archivée : ses clés API sont révoquées et elle disparaît de votre compte. Ses données de facturation sont conservées. Cette action ne peut pas être annulée depuis la console.",
+      "typeName": "Saisissez {name} pour confirmer"
     },
     "goLive": {
       "title": "Passer en production",

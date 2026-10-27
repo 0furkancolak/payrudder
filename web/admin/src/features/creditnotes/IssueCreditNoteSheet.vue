@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { sheetName } from "@/shared/lib/sheets";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useCreateCreditNote } from "./api";
 import { creditAmountMinor } from "./lib";
@@ -38,7 +39,7 @@ function issue() {
 </script>
 
 <template>
-  <Sheet v-model:open="open">
+  <Sheet v-model:open="open" :name="invoiceId ? sheetName('issue-credit-note', invoiceId) : undefined">
     <SheetContent>
       <SheetHeader>
         <SheetTitle>{{ t("billing.creditNotes.create") }}</SheetTitle>

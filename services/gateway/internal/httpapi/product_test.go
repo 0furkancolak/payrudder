@@ -65,6 +65,7 @@ type fakeIdentity struct {
 	signIns  int
 
 	mem            memberCalls
+	apps           appManageCalls
 	signUpReqs     []*plansv1.SignUpRequest
 	resetReqs      []*plansv1.RequestPasswordResetRequest
 	resetPasswords []*plansv1.ResetPasswordRequest
@@ -85,6 +86,10 @@ type fakeIdentity struct {
 	terms     []*plansv1.AcceptMyTermsRequest
 	lastRole  string
 	lastPerms []string
+
+	// What the onboarding routes passed on.
+	onboardingGets    []*plansv1.GetMyOnboardingRequest
+	onboardingUpdates []*plansv1.UpdateMyOnboardingRequest
 }
 
 const (

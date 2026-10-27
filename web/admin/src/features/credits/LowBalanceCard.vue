@@ -28,8 +28,8 @@ function save() {
 </script>
 
 <template>
-  <Card>
-    <h2 class="text-base font-semibold">{{ t("billing.credits.settings.title") }}</h2>
+  <Card data-testid="credits-alert">
+    <h3 class="text-base font-semibold">{{ t("billing.credits.settings.title") }}</h3>
     <p class="text-muted-foreground text-sm">{{ t("billing.credits.settings.hint") }}</p>
     <form class="grid gap-3 sm:grid-cols-3" role="form" :aria-label="t('billing.credits.settings.formLabel')" @submit.prevent="save">
       <Input v-model="threshold" inputmode="numeric" :aria-label="t('billing.credits.settings.threshold')" :placeholder="t('billing.credits.settings.threshold')" />
