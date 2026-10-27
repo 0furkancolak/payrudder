@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+// DirectoryService is the tenant directory of ADR 0018: where each tenant's data lives. It is operator-only and internal (no gateway route): the services that
+// reach a tenant's database call it through pkg/tenantdir, which caches the answers in process.
+service DirectoryService {
+  // GetPlacement returns where one tenant lives. A tenant in the pooled database has an empty cell.
+  rpc GetPlacement(GetPlacementRequest) returns (GetPlacementResponse);
+  // ListPlacements pages through the tenants placed in a cell (every cell when none is named), ordered by tenant id. Pooled tenants are not listed.
+  rpc ListPlacements(ListPlacementsRequest) returns (ListPlacementsResponse);
+}
+
+// PlacementStatus is the fence of a placement: only READY serves the tenant's traffic.
+enum PlacementStatus {
+  PLACEMENT_STATUS_UNSPECIFIED = 0;
+  PLACEMENT_STATUS_READY = 1;
+  // The tenant's schema is being created; no traffic yet.
+  PLACEMENT_STATUS_PROVISIONING = 2;
+  // The tenant is being moved: every request and job for it is refused until the move ends.
+  PLACEMENT_STATUS_MOVING = 3;
+}
+
+// Placement is one row of the directory.
+message Placement {
+  string tenant_id = 1;
+  // The cell holding the tenant's schema; empty for the pooled database (row-level security).
+  string cell = 2;
+  // Where the cell is; informational.
+  string region = 3;
+  PlacementStatus status = 4;
+}
+
+message GetPlacementRequest {
+  string tenant_id = 1;
+}
+
+message GetPlacementResponse {
+  Placement placement = 1;
+}
+
+message ListPlacementsRequest {
+  // Only this cell's tenants; empty lists every cell.
+  string cell = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListPlacementsResponse {
+  repeated Placement placements = 1;
+  string next_page_token = 2;
+}
