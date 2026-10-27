@@ -43,7 +43,7 @@ func directoryClient(t *testing.T, e *env, ready func() error) plansv1.Directory
 	return plansv1.NewDirectoryServiceClient(cc)
 }
 
-// testDirectoryMoves: the steps of a move are transitions of the placement, a tenant can go to a cell only when the inventory says every job is converted, and
+// testDirectoryMoves: the steps of a move are transitions of the placement, a tenant can go to a cell only when the inventory says every job is converted (it does now: the test also uses a stub that says it does not), and
 // nothing but an operator moves one.
 func testDirectoryMoves(t *testing.T) {
 	e := newEnv(t)
@@ -70,12 +70,18 @@ func testDirectoryMoves(t *testing.T) {
 		_, _ = e.system.Exec(context.Background(), `UPDATE tenants SET cell = '', region = '', placement_status = 'ready' WHERE id = $1`, live)
 	})
 
-	// The platform's real inventory refuses a placement in a cell, because the jobs of most services are not converted yet.
-	_, err := refusing.BeginMove(ctx, &plansv1.BeginMoveRequest{TenantId: live, ToCell: "c1"})
-	want(t, err, codes.FailedPrecondition, "cells_not_ready")
-	if p := state(t); p.GetStatus() != plansv1.PlacementStatus_PLACEMENT_STATUS_READY || p.GetCell() != "" {
-		t.Fatalf("a refused move changed the placement: %v", p)
+	// The platform's real inventory has every job converted, so it lets a move begin; the move is abandoned right away.
+	if _, err := refusing.BeginMove(ctx, &plansv1.BeginMoveRequest{TenantId: live, ToCell: "c1"}); err != nil {
+		t.Fatalf("real inventory: %v", err)
 	}
+	if _, err := refusing.AbortMove(ctx, &plansv1.AbortMoveRequest{TenantId: live}); err != nil {
+		t.Fatal(err)
+	}
+	if p := state(t); p.GetStatus() != plansv1.PlacementStatus_PLACEMENT_STATUS_READY || p.GetCell() != "" {
+		t.Fatalf("an abandoned move changed the placement: %v", p)
+	}
+	// An inventory with unconverted jobs refuses a placement in a cell.
+	var err error
 	_, err = notReady.BeginMove(ctx, &plansv1.BeginMoveRequest{TenantId: live, ToCell: "c1"})
 	want(t, err, codes.FailedPrecondition, "cells_not_ready")
 
