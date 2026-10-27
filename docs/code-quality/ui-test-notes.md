@@ -58,7 +58,7 @@ integrations, new-* forms restore from the URL after a reload.
   `identity.session.act_as_required` (a client bug) or a tenant-scoped call that the gateway refuses is not a dead session.
 - Expected: only log out when the key says the session is invalid/expired (or after one failed `/auth/me`).
 
-### UI-3 (major) MRR, ARR and "top packages" ignore the seat count
+### UI-3 (major) MRR, ARR and "top packages" ignore the seat count — fixed in #229
 - Page: dashboard `/app/apps/{id}` and Reports > Abonelikler (`/app/t/{id}/reports`).
 - Steps: create a subscription for package `pro` with 2 seats (fixed fee 999,00 x 2 is invoiced: invoice line "Base fee x 2 seats").
 - Expected: MRR +1.998,00 (dashboard 5.593,00, "pro" 4.995,00/ay). Actual: MRR 4.594,00 (+999,00 only), "pro: 4 abone, 3.996,00 / ay";
@@ -160,13 +160,13 @@ integrations, new-* forms restore from the URL after a reload.
 - Sidebar "Vergi ve yeniden denemeler" is truncated ("Vergi ve yeniden denem...") and lives at `/pricing`; "Sandbox araçları" stays in the sidebar and works
   in `env=live` (shows a "Sandbox" badge). Settings (org) and "Entegrasyonlar" exist twice in the sidebar (app and org) with the same label.
 
-### UI-21 (polish) Dashboard
+### UI-21 (polish) Dashboard — fixed in #229
 - The date range opens on "Özel" (1 Oct - today) instead of a preset; currency chip reads "TRY KENDİ" (the translation of "own", unexplained);
   chart ticks "₺1,3 B" read like "billion" (B = bin) to non-Turkish readers; card values are vertically misaligned (cards without a badge/spark line
   start lower). "Net gelir 0% Önceki döneme göre değişmedi" on empty accounts is noise.
 - Customer sheet stat tiles show a bare `0` (no currency) for spend / open balance / credit balance.
 
-### UI-22 (polish) Accounting inbox panel leaks configuration
+### UI-22 (polish) Accounting inbox panel leaks configuration — fixed in #229
 - "Bu kurulumda gelen posta alan adı ayarlanmamış (PAYRUDDER_INBOUND_DOMAIN); yalnızca belirteç gösterilir." with a truncated address `invoices+...@…` that
   cannot be used. Env var names should not be in the UI (dev-only hint at most).
 
@@ -176,11 +176,11 @@ integrations, new-* forms restore from the URL after a reload.
 ### UI-24 (polish) Webhook URL scheme
 - The page and sheet say "HTTPS uç noktaları" but `http://example.com/hook` was accepted without a warning (sandbox may allow it; say so).
 
-### UI-25 (polish) Format consistency
+### UI-25 (polish) Format consistency — fixed in #229
 - Dates: `27 Eki 2026` in most tables, `26.11.2026 18:40` in payment links and webhook deliveries, native `dd.mm.yyyy` pickers, `2026-10-01 – 2026-10-27` in range chips.
 - Tax rate typed as `20,5` (tr) is stored and shown back as `20.5`.
 
-### UI-26 (polish) Terminology
+### UI-26 (polish) Terminology — fixed in #229
 - Credit note: heading "Alacak dekontları", button "Yeni iade faturası", sheet "Alacak dekontu düzenle" ("düzenle" = issue, but also edit), KPI "İadeler".
 - "Kiracı"/"Kiracının para birimi" (tenant) leaks into customer-facing forms.
 - Credit grant reasons (welcome gift, goodwill, promotion) all end up as source "Promosyon" in the lots table.
@@ -189,7 +189,7 @@ integrations, new-* forms restore from the URL after a reload.
 - `GET /v1/affiliates/program` returns 404 for a tenant without a program (an expected empty state) and logs a red console error on every visit.
   Same for expected 4xx on forms (customer not found), which is fine, but the 404 could be a 200 with `null`.
 
-### UI-28 (polish) API keys
+### UI-28 (polish) API keys — fixed in #229
 - New key defaults to the "Yönetici" role (all 24 permissions); a least-privilege default (read-only or usage-only) is safer. Keys cannot be named, so a list
   of several keys is `qk_test_xxxx_••••` rows only.
 
