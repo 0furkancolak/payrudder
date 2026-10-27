@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/0furkancolak/payrudder/pkg/strx"
 )
 
 // PermanentError means the provider refused the message and will refuse it again (a wrong key, an address it does not accept, a sender domain that is not
@@ -153,9 +155,7 @@ func detail(body []byte) string {
 	return truncate(strings.Join(strings.Fields(string(body)), " "))
 }
 
-func truncate(s string) string {
-	if len(s) > 200 {
-		return s[:200]
-	}
-	return s
-}
+// maxDetail is the most of a provider's answer an error carries.
+const maxDetail = 200
+
+func truncate(s string) string { return strx.Truncate(s, maxDetail) }
