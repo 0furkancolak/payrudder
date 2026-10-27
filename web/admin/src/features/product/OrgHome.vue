@@ -6,10 +6,10 @@ import { useI18n } from "vue-i18n";
 import { useShell } from "@/app/layout/useShell";
 import OrgDashboard from "@/features/dashboard/OrgDashboard.vue";
 import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
-import { GettingStarted, loadProgress, OnboardingWizard, progress, wizardOpen } from "@/features/onboarding";
+import { GettingStarted, loadProgress, OnboardingWizard, progress, progressReady, wizardOpen } from "@/features/onboarding";
 import { ALL_APPS } from "@/shared/lib/scope";
 import { ErrorState } from "@/shared/ui/error-state";
-import { startTourOnce, welcomeOff } from "@/shared/ui/tour";
+import { startTourOnce, tourReady, welcomeOff } from "@/shared/ui/tour";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useAccount, useApps, useMe } from "./api";
@@ -57,12 +57,13 @@ const partner = computed(() => hasPartnerRole(me.data.value?.memberships));
 // The first-run wizard (features/onboarding) fills the screen for somebody with no app who has not been through it; after it (or when it is skipped) the
 // "Getting started" card carries on, and the tour of this page starts once, the first time the page is quiet.
 watch(() => me.data.value?.user?.id ?? "", loadProgress, { immediate: true });
-const known = computed(() => !!me.data.value?.user?.id && !!apps.data.value && !!account.data.value);
+// progressReady: not while the server is still saying how far the person got (in another browser they may be done).
+const known = computed(() => !!me.data.value?.user?.id && !!apps.data.value && !!account.data.value && progressReady.value);
 const showWizard = computed(() => !noAccount.value && !welcomeOff() && wizardOpen(progress.value, { appCount: known.value ? list.value.length : undefined, canCreate: account.data.value?.role !== "viewer" }));
 const showChecklist = computed(() => !!progress.value && !progress.value.hidden && !showWizard.value && !noAccount.value && known.value);
 watch(
   // Not while this page is only a doorway into an app: the tour starts on that app's home (HomeFirstRun) and must not be cut short by the redirect.
-  () => known.value && !showWizard.value && !noAccount.value && (shell.path.value !== "/app" || shell.scope.value === ALL_APPS || list.value.length === 0),
+  () => known.value && tourReady.value && !showWizard.value && !noAccount.value && (shell.path.value !== "/app" || shell.scope.value === ALL_APPS || list.value.length === 0),
   async (quiet) => {
     if (!quiet) return;
     await nextTick();
@@ -78,7 +79,7 @@ const enteringApp = computed(() => {
   // Somebody without an account of their own has nothing to be inside of: the page explains that instead.
   // Only while the address is this page's own: a link to an app's page changes the scope before this page is gone, and must not be turned back.
   // The first-run wizard stays on this page even once it has made the app: it is finished by the person, not by the app existing.
-  return shell.path.value === "/app" && !noAccount.value && !showWizard.value && s && s !== ALL_APPS ? s : "";
+  return shell.path.value === "/app" && !noAccount.value && progressReady.value && !showWizard.value && s && s !== ALL_APPS ? s : "";
 });
 watch(
   [enteringApp, env],

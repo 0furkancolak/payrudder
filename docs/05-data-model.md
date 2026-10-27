@@ -104,6 +104,9 @@ CREATE TABLE tenant_mail_integrations (tenant_id uuid PRIMARY KEY, provider text
 -- and an extended trial does. Customer-side history: a sandbox reset deletes it.
 CREATE TABLE subscription_trial_notices (tenant_id uuid NOT NULL, customer_id uuid NOT NULL, trial_ends_at timestamptz NOT NULL, subscription_id uuid NOT NULL, notified_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, customer_id, trial_ends_at), FOREIGN KEY (tenant_id, customer_id) REFERENCES customers (tenant_id, id));
+-- what the console remembers for a person, not an account (migration 00058): the first-run wizard's progress (a JSON object: status, step, what was chosen and made) and the
+-- page tours already seen. A person-level record like users and user_sessions: no tenant_id, no RLS, no plans_app grant, the system role only. Writes are merges (see plans-svc).
+CREATE TABLE user_onboarding (user_id uuid PRIMARY KEY REFERENCES users (id), wizard jsonb CHECK (jsonb_typeof(wizard) = 'object'), seen_tours text[] NOT NULL DEFAULT '{}', updated_at timestamptz NOT NULL DEFAULT now());
 
 CREATE TABLE customers (
   tenant_id    uuid NOT NULL,
@@ -212,7 +215,7 @@ CREATE TABLE outbox (                                  -- shared outbox shape, s
 );
 ```
 
-RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey), `sandbox_resets` (system role only, phase 45 E) and `outbox`.
+RLS: on all tables except `accounts`, `tenants`, `api_keys` (accessed only by `plans_system` via AdminService/ResolveApiKey), `sandbox_resets` (system role only, phase 45 E), the person tables (`users`, `account_members`, `user_sessions`, `user_onboarding`: no `tenant_id`, system role only) and `outbox`.
 
 ---
 

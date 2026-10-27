@@ -2741,6 +2741,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/me/onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the console remembers for the person - the first-run wizard's progress and the tours they have seen
+         * @description Kept per person, not per account or browser, so a second browser does not start the wizard or a tour again. A person who has stored nothing gets no `wizard` and no tours.
+         */
+        get: operations["getMyOnboarding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Merge a change into it
+         * @description A merge, never a replacement, so two browsers writing lose nothing. The `wizard` fields given overwrite the stored ones and the others stay; a flag that is set (customer, event, hidden) stays set. `seen_tours` are added to the stored set. `forget_tours` removes tours (a person asking to see one again) and is applied after the additions. The answer is the merged record.
+         */
+        patch: operations["updateMyOnboarding"];
+        trace?: never;
+    };
     "/app/v1/accounts": {
         parameters: {
             query?: never;
@@ -5131,6 +5155,36 @@ export interface components {
             account_name?: string;
             /** @enum {string} */
             role?: "owner" | "admin" | "viewer";
+        };
+        /** @description The first-run wizard's progress. As a request body every field is optional and only those present are written. */
+        OnboardingWizard: {
+            /** @enum {string} */
+            status?: "active" | "skipped" | "done";
+            /** @enum {string} */
+            step?: "welcome" | "organisation" | "app" | "meter" | "package" | "event" | "done";
+            /**
+             * @description Chosen in the organisation step
+             * @example TRY
+             */
+            currency?: string;
+            /** @example Europe/Istanbul */
+            timezone?: string;
+            /** @description Id of the app the wizard made */
+            app?: string;
+            /** @description Code of the meter it made */
+            meter?: string;
+            /** @description Code of the package it made */
+            plan?: string;
+            /** @description The test customer exists */
+            customer?: boolean;
+            /** @description The test event was sent */
+            event?: boolean;
+            /** @description The person closed the Getting started card */
+            hidden?: boolean;
+        };
+        Onboarding: {
+            wizard?: components["schemas"]["OnboardingWizard"];
+            seen_tours?: string[];
         };
         SessionOpened: {
             user?: components["schemas"]["AuthUser"];
@@ -12281,6 +12335,57 @@ export interface operations {
                     "application/json": components["schemas"]["SessionInfo"];
                 };
             };
+            401: components["responses"]["Error"];
+        };
+    };
+    getMyOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Onboarding"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    updateMyOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    wizard?: components["schemas"]["OnboardingWizard"];
+                    seen_tours?: string[];
+                    forget_tours?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Onboarding"];
+                };
+            };
+            400: components["responses"]["Error"];
             401: components["responses"]["Error"];
         };
     };

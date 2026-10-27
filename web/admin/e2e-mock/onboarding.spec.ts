@@ -253,3 +253,59 @@ test.describe("the first-run wizard", () => {
     await expect(wizard(page).getByTestId("onb-start")).toContainText("Hesabımı kur");
   });
 });
+
+// The progress is the person's, kept by the server (GET and PATCH /app/v1/me/onboarding), so another browser continues where the first one stopped. The
+// browser's own storage stays the fast copy and what there is when the server cannot be reached.
+test.describe("kept on the server", () => {
+  test("a second browser continues where the first stopped, and a wizard that was skipped does not open in a third", async ({ page, browser }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [] });
+    sandboxApi(gw);
+    await gw.install(page, { onboarded: false, tourSeen: true });
+    await signInAsAda(page);
+    await page.getByTestId("onb-start").click();
+    await wizard(page).getByTestId("onb-continue").click();
+    await expect(wizard(page).getByRole("heading", { name: "Your first app" })).toBeVisible();
+    await expect.poll(() => [...gw.onboarding.values()][0]?.wizard?.step).toBe("app");
+
+    // Another browser: its own storage is empty, the person is the same.
+    const second = await browser.newContext();
+    const secondPage = await second.newPage();
+    await gw.install(secondPage, { onboarded: false, tourSeen: true });
+    await signInAsAda(secondPage);
+    await expect(secondPage.getByTestId("onboarding").getByRole("heading", { name: "Your first app" })).toBeVisible();
+    await secondPage.getByTestId("onb-skip").click();
+    await expect(secondPage.getByTestId("onboarding")).toHaveCount(0);
+    await expect.poll(() => [...gw.onboarding.values()][0]?.wizard?.status).toBe("skipped");
+
+    // A third one never shows the wizard that was skipped.
+    const third = await browser.newContext();
+    const thirdPage = await third.newPage();
+    await gw.install(thirdPage, { onboarded: false, tourSeen: true });
+    await signInAsAda(thirdPage);
+    await expect(thirdPage.getByRole("heading", { name: "Create your first app" })).toBeVisible();
+    await expect(thirdPage.getByTestId("onboarding")).toHaveCount(0);
+    await expect(thirdPage.getByTestId("getting-started-resume")).toBeVisible();
+    await second.close();
+    await third.close();
+  });
+
+  test("what this browser knew before the server kept it is sent up, and the wizard goes on from this browser when the server is down", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [] });
+    sandboxApi(gw);
+    // Progress that only this browser has: the wizard half done, as an earlier version of the console stored it.
+    await page.addInitScript(() => {
+      const key = "payrudder.onboarding.11111111-1111-4111-8111-111111111111";
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify({ status: "active", step: "meter", app: "a1" }));
+    });
+    await gw.install(page, { onboarded: false, tourSeen: true });
+    await signInAsAda(page);
+    await expect(wizard(page).getByRole("heading", { name: "What do you measure?" })).toBeVisible();
+    await expect.poll(() => [...gw.onboarding.values()][0]?.wizard).toMatchObject({ status: "active", step: "meter", app: "a1" });
+
+    // The server goes away: the wizard goes on from the browser's copy.
+    gw.onboardingDown = true;
+    await wizard(page).getByRole("button", { name: "Back" }).click();
+    await page.reload();
+    await expect(wizard(page).getByRole("heading", { name: "Your first app" })).toBeVisible();
+  });
+});

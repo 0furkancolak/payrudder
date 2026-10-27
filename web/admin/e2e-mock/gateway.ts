@@ -50,6 +50,32 @@ const operatorSignIn: Handler = (c) => {
 export class MockGateway {
   readonly calls: Call[] = [];
   private handlers: Handler[] = [];
+  /**
+   * What the gateway keeps per person for GET and PATCH /app/v1/me/onboarding (the first-run wizard and the seen tours), by session token, merged the way plans-svc
+   * merges: wizard fields overwrite and a set flag stays set, seen tours only grow, forgotten ones are removed. It lives as long as the gateway, so a second
+   * browser context installed on the same gateway is the same person on another browser. `onboardingDown` makes both routes fail, as an outage would.
+   */
+  readonly onboarding = new Map<string, { wizard?: Record<string, unknown>; seen_tours: string[] }>();
+  onboardingDown = false;
+
+  private onboardingHandler: Handler = (c) => {
+    if (c.path !== "/app/v1/me/onboarding" || (c.method !== "GET" && c.method !== "PATCH")) return undefined;
+    if (this.onboardingDown) return { status: 503, body: { error: { code: "UNAVAILABLE", message: "down" } } };
+    const who = c.headers["authorization"] ?? "";
+    const rec = this.onboarding.get(who) ?? { seen_tours: [] };
+    if (c.method === "PATCH") {
+      const wizard = c.body?.wizard as Record<string, unknown> | undefined;
+      if (wizard && Object.keys(wizard).length) {
+        const next: Record<string, unknown> = { status: "active", step: "welcome", ...rec.wizard };
+        for (const [k, v] of Object.entries(wizard)) if (v !== false || next[k] === undefined) next[k] = v;
+        rec.wizard = next;
+      }
+      const forget = (c.body?.forget_tours as string[] | undefined) ?? [];
+      rec.seen_tours = [...new Set([...rec.seen_tours, ...((c.body?.seen_tours as string[] | undefined) ?? [])])].filter((t) => !forget.includes(t)).sort();
+    }
+    this.onboarding.set(who, rec);
+    return { body: { ...(rec.wizard ? { wizard: rec.wizard } : {}), seen_tours: rec.seen_tours } };
+  };
 
   on(handler: Handler): this {
     this.handlers.unshift(handler);
@@ -97,7 +123,7 @@ export class MockGateway {
       }
       const call: Call = { method: req.method(), path: url.pathname.replace(/^\/gw/, ""), query: url.searchParams, headers: req.headers(), body };
       this.calls.push(call);
-      for (const h of [...this.handlers, operatorSignIn, geoHandler] as Handler[]) {
+      for (const h of [...this.handlers, this.onboardingHandler, operatorSignIn, geoHandler] as Handler[]) {
         const r = h(call);
         if (r) {
           if (r.raw) await route.fulfill({ status: r.status ?? 200, contentType: r.contentType ?? "application/octet-stream", body: r.raw });

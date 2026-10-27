@@ -223,3 +223,50 @@ test.describe("the tour icon of a page header", () => {
     await expect(page.getByTestId("tour-unseen")).toBeVisible();
   });
 });
+
+// Which tours a person has seen is kept by the server (GET and PATCH /app/v1/me/onboarding), so another browser does not repeat them. The browser's storage
+// stays the fast copy and what there is when the server cannot be reached.
+test.describe("tours kept on the server", () => {
+  test("a tour taken in one browser does not start in another, and the dot says it is seen", async ({ page, browser }) => {
+    const gw = gateway();
+    await gw.install(page, { tourSeen: false });
+    await signInAsAda(page);
+    await expect(tour(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("tour")).toHaveCount(0);
+    await expect.poll(() => [...gw.onboarding.values()][0]?.seen_tours).toContain("overview");
+
+    // Another browser: no storage of its own, the same person.
+    const other = await browser.newContext();
+    const otherPage = await other.newPage();
+    await gw.install(otherPage, { onboarded: false, tourSeen: false });
+    await signInAsAda(otherPage);
+    await expect(otherPage.getByTestId("app-switcher")).toBeVisible();
+    await expect(otherPage.getByTestId("tour-button")).toBeVisible();
+    // The dot goes once the server has said the tour is seen; the tour never started.
+    await expect(otherPage.getByTestId("tour-unseen")).toHaveCount(0);
+    await expect(otherPage.getByTestId("tour")).toHaveCount(0);
+    await other.close();
+  });
+
+  test("a tour seen before the server kept them is sent up", async ({ page }) => {
+    const gw = gateway();
+    await gw.install(page, { tourSeen: true });
+    await signInAsAda(page);
+    await expect(page.getByTestId("app-switcher")).toBeVisible();
+    await expect.poll(() => [...gw.onboarding.values()][0]?.seen_tours).toContain("overview");
+  });
+
+  test("with the server down the tour still starts once and is remembered in this browser", async ({ page }) => {
+    const gw = gateway();
+    gw.onboardingDown = true;
+    await gw.install(page, { tourSeen: false });
+    await signInAsAda(page);
+    await expect(tour(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.reload();
+    await expect(page.getByTestId("app-switcher")).toBeVisible();
+    await expect(page.getByTestId("tour")).toHaveCount(0);
+    await expect(page.getByTestId("tour-unseen")).toHaveCount(0);
+  });
+});

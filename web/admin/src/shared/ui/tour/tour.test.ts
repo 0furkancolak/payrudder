@@ -1,13 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { activeStep, activeTour, endTour, markTourSeen, nextStep, pageTour, placeCard, prevStep, setTourScope, skipStep, startTour, startTourOnce, tourSeen } from "./tour";
+import { activeStep, activeTour, endTour, forgetTours, markTourSeen, nextStep, pageTour, placeCard, prevStep, setTourScope, setTourStore, skipStep, startTour, startTourOnce, tourReady, tourSeen, type TourStore } from "./tour";
 
+let store: Map<string, string>;
 const steps = (...ids: string[]) => ids.map((id) => ({ id }));
 const demo = pageTour("demo", "shell.items.customers", steps("a", "b", "c"));
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  vi.stubGlobal("window", { localStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) } });
+  store = new Map<string, string>();
+  vi.stubGlobal("window", {
+    localStorage: {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+      get length() {
+        return store.size;
+      },
+      key: (i: number) => [...store.keys()][i] ?? null,
+    },
+  });
   endTour(false);
+  setTourStore(null);
   setTourScope("u1");
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -101,5 +113,100 @@ describe("placeCard", () => {
     expect(side.x).toBe(290);
     const edge = placeCard({ x: 900, y: 100, w: 90, h: 40 }, card, view);
     expect(edge.x + card.w).toBeLessThanOrEqual(view.w - 12);
+  });
+});
+
+/** A server that keeps the seen tours of a person, and answers when the test lets it. */
+function fakeServer(initial: string[] | null) {
+  let answer: (v: string[] | null) => void = () => undefined;
+  const added: string[][] = [];
+  const forgotten: string[][] = [];
+  const server: TourStore = {
+    load: () => new Promise((r) => (answer = r)),
+    add: (ids) => void added.push([...ids]),
+    forget: (ids) => void forgotten.push([...ids]),
+  };
+  return { server, added, forgotten, answer: () => answer(initial) };
+}
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+describe("tours kept on the server", () => {
+  it("what the server says is seen is seen here, and a tour does not start by itself before it has said", async () => {
+    const f = fakeServer(["demo"]);
+    setTourStore(f.server);
+    setTourScope("u1");
+    expect(tourReady.value).toBe(false);
+    expect(startTourOnce(demo)).toBe(false);
+    expect(tourSeen("demo")).toBe(false);
+    f.answer();
+    await settle();
+    expect(tourReady.value).toBe(true);
+    expect(tourSeen("demo")).toBe(true);
+    expect(startTourOnce(demo)).toBe(false);
+    expect(startTourOnce(pageTour("fresh", "x", steps("a")))).toBe(true);
+  });
+
+  it("sends up what only this browser has seen, and nothing else", async () => {
+    store.set("payrudder.tour.u1.old", "1");
+    store.set("payrudder.tour.u1.shared", "1");
+    store.set("payrudder.tour.u2.other", "1");
+    const f = fakeServer(["shared", "theirs"]);
+    setTourStore(f.server);
+    setTourScope("u1");
+    f.answer();
+    await settle();
+    expect(f.added).toEqual([["old"]]);
+    expect(tourSeen("theirs")).toBe(true);
+  });
+
+  it("goes on with this browser's copy when the server cannot say", async () => {
+    store.set("payrudder.tour.u1.old", "1");
+    const f = fakeServer(null);
+    setTourStore(f.server);
+    setTourScope("u1");
+    expect(tourReady.value).toBe(false);
+    f.answer();
+    await settle();
+    expect(tourReady.value).toBe(true);
+    expect(tourSeen("old")).toBe(true);
+    expect(f.added).toEqual([]);
+    expect(startTourOnce(pageTour("fresh", "x", steps("a")))).toBe(true);
+  });
+
+  it("an answer for the person who was there before is ignored", async () => {
+    const f = fakeServer(["demo"]);
+    setTourStore(f.server);
+    setTourScope("u1");
+    const first = f.answer;
+    const g = fakeServer([]);
+    setTourStore(g.server);
+    setTourScope("u2");
+    first();
+    await settle();
+    expect(tourReady.value).toBe(false);
+    expect(tourSeen("demo")).toBe(false);
+    g.answer();
+    await settle();
+    expect(tourReady.value).toBe(true);
+  });
+
+  it("writes through: a tour marked seen or forgotten is told to the server, and nobody's tours are before the scope is set", () => {
+    const f = fakeServer([]);
+    setTourStore(f.server);
+    setTourScope("");
+    markTourSeen("demo");
+    expect(f.added).toEqual([]);
+    setTourScope("u1");
+    markTourSeen("demo");
+    expect(f.added).toEqual([["demo"]]);
+    forgetTours(["demo"]);
+    expect(f.forgotten).toEqual([["demo"]]);
+    expect(tourSeen("demo")).toBe(false);
+  });
+
+  it("is quiet without a store: the browser alone, as before", () => {
+    markTourSeen("demo");
+    forgetTours(["demo"]);
+    expect(tourReady.value).toBe(true);
   });
 });

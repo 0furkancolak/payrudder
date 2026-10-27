@@ -1,10 +1,11 @@
 import { computed, ref, shallowRef } from "vue";
-import { safeGet, safeSet } from "@/shared/lib/storage";
+import { safeGet, safeKeys, safeSet } from "@/shared/lib/storage";
 
 /**
  * The tour engine: a tour is a list of steps, each a message (the i18n keys of its title and body) and, usually, the element of the real page it is about.
- * One tour runs at a time. Which tours a person has seen is remembered per person (the scope is their id, set once by the app frame) and per tour, in
- * this browser; a blocked storage just means the tour may come again.
+ * One tour runs at a time. Which tours a person has seen is remembered per person (the scope is their id, set once by the app frame) and per tour. The
+ * server keeps the list (a `TourStore`, registered by the app), so another browser does not repeat a tour; this browser's storage is a fast copy of it and
+ * all there is when the server cannot be reached or no store is registered. A blocked storage just means the tour may come again.
  */
 export interface TourStep {
   id: string;
@@ -65,13 +66,64 @@ const KEY = "payrudder.tour.";
 const scope = ref("");
 /** Bumped when a tour is marked seen, so what depends on it re-reads. */
 const seenTick = ref(0);
+/** The person is known but the server has not yet said which tours they have seen (so another browser's tours are not repeated while it is asked). */
+const loading = ref(false);
+let loadSeq = 0;
 
+/** Where the seen tours are kept besides this browser. All three fail quietly: the browser's copy is then what there is. */
+export interface TourStore {
+  /** The seen tours, or null when the server cannot say. */
+  load(): Promise<readonly string[] | null>;
+  add(ids: readonly string[]): void;
+  forget(ids: readonly string[]): void;
+}
+let store: TourStore | null = null;
+
+/** Registers the server-backed store (null: the browser alone, which is how the engine starts and how its tests run). */
+export function setTourStore(next: TourStore | null): void {
+  store = next;
+}
+
+const seenKey = (id: string, who = scope.value) => `${KEY}${who}.${id}`;
+
+/** The ids this browser has marked seen for a person. */
+export function localSeen(who: string): string[] {
+  const prefix = seenKey("", who);
+  return safeKeys("local", prefix)
+    .filter((k) => safeGet("local", k) === "1")
+    .map((k) => k.slice(prefix.length));
+}
+
+/**
+ * Sets whose tours these are (the signed-in person; "" for nobody) and brings the browser's copy together with the server's: what the server says is
+ * seen becomes seen here, and what only this browser knows (seen before the server kept them) is sent up. A tour does not start by itself until the server
+ * has answered (or has failed to, for a few seconds at most).
+ */
 export function setTourScope(id: string): void {
   scope.value = id;
   seenTick.value++;
+  const mine = ++loadSeq;
+  loading.value = false;
+  if (!id || !store) return;
+  loading.value = true;
+  store
+    .load()
+    .then((server) => {
+      if (mine !== loadSeq || !server) return;
+      for (const t of server) safeSet("local", seenKey(t, id), "1");
+      const ours = localSeen(id).filter((t) => !server.includes(t));
+      if (ours.length) store?.add(ours);
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      if (mine !== loadSeq) return;
+      loading.value = false;
+      seenTick.value++;
+    });
 }
 
-const seenKey = (id: string) => `${KEY}${scope.value}.${id}`;
+/** Whether the person is known and their seen tours are settled: only then may a tour start by itself. */
+export const tourReady = computed(() => !!scope.value && !loading.value);
 
 export function tourSeen(id: string): boolean {
   void seenTick.value;
@@ -79,12 +131,16 @@ export function tourSeen(id: string): boolean {
 }
 
 export function markTourSeen(id: string): void {
-  if (scope.value) safeSet("local", seenKey(id), "1");
+  if (scope.value) {
+    safeSet("local", seenKey(id), "1");
+    store?.add([id]);
+  }
   seenTick.value++;
 }
 
 export function forgetTours(ids: readonly string[]): void {
   for (const id of ids) safeSet("local", seenKey(id), null);
+  if (scope.value && ids.length) store?.forget(ids);
   seenTick.value++;
 }
 
@@ -107,7 +163,7 @@ export function startTour(tour: Tour): void {
 
 /** Starts the tour of a page the first time the person is on it. Returns whether it started. */
 export function startTourOnce(tour: Tour): boolean {
-  if (!scope.value || running.value || welcomeOff() || tourSeen(tour.id)) return false;
+  if (!tourReady.value || running.value || welcomeOff() || tourSeen(tour.id)) return false;
   startTour(tour);
   return true;
 }

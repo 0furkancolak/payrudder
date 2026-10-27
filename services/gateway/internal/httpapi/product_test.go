@@ -85,6 +85,10 @@ type fakeIdentity struct {
 	terms     []*plansv1.AcceptMyTermsRequest
 	lastRole  string
 	lastPerms []string
+
+	// What the onboarding routes passed on.
+	onboardingGets    []*plansv1.GetMyOnboardingRequest
+	onboardingUpdates []*plansv1.UpdateMyOnboardingRequest
 }
 
 const (

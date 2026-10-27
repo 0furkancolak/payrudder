@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checklist, doneCount, type Facts } from "./checklist";
-import { finishOnboarding, hideChecklist, loadProgress, patchProgress, progress, resumeOnboarding, skipOnboarding, slug, stepBy, wizardOpen } from "./state";
+import { finishOnboarding, hideChecklist, loadProgress, patchProgress, progress, progressReady, resumeOnboarding, setProgressStore, skipOnboarding, slug, stepBy, wizardOpen, type Progress, type ProgressStore } from "./state";
 import { METER_TEMPLATES, templateByCode } from "./templates";
 
 let store: Map<string, string>;
 beforeEach(() => {
   store = new Map();
   vi.stubGlobal("window", { localStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) } });
+  setProgressStore(null);
   loadProgress("u1");
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -109,5 +110,116 @@ describe("meter templates", () => {
       expect(templateByCode(m.meter.code)).toBe(m);
     }
     expect(new Set(METER_TEMPLATES.map((m) => m.meter.code)).size).toBe(METER_TEMPLATES.length);
+  });
+});
+
+/** A server that keeps the wizard of a person, and answers when the test lets it. */
+function fakeServer(initial: Partial<Progress> | null | "down") {
+  let answer: () => void = () => undefined;
+  const patches: Partial<Progress>[] = [];
+  const server: ProgressStore = {
+    load: () => new Promise((r) => (answer = () => r(initial === "down" ? null : { wizard: initial }))),
+    patch: (c) => void patches.push(c),
+  };
+  return { server, patches, answer: () => answer() };
+}
+const settle = () => new Promise((r) => setTimeout(r, 0));
+
+describe("progress kept on the server", () => {
+  it("what the server has wins over this browser's copy, and the home waits for it", async () => {
+    store.set("payrudder.onboarding.s1", JSON.stringify({ status: "active", step: "meter" }));
+    const f = fakeServer({ status: "done", step: "done", app: "a1" });
+    setProgressStore(f.server);
+    loadProgress("s1");
+    expect(progressReady.value).toBe(false);
+    f.answer();
+    await settle();
+    expect(progressReady.value).toBe(true);
+    expect(progress.value).toMatchObject({ status: "done", step: "done", app: "a1" });
+    // The browser keeps it too, for the next page load.
+    expect(JSON.parse(store.get("payrudder.onboarding.s1") ?? "{}")).toMatchObject({ status: "done" });
+    expect(f.patches).toEqual([]);
+  });
+
+  it("a second browser with nothing takes the server's progress", async () => {
+    const f = fakeServer({ status: "skipped", step: "app", hidden: true });
+    setProgressStore(f.server);
+    loadProgress("s2");
+    expect(progress.value).toBeNull();
+    f.answer();
+    await settle();
+    expect(progress.value).toMatchObject({ status: "skipped", step: "app", hidden: true });
+    expect(wizardOpen(progress.value, { appCount: 0, canCreate: true })).toBe(false);
+  });
+
+  it("sends up the progress only this browser has, and the fields the server lacks", async () => {
+    store.set("payrudder.onboarding.s3", JSON.stringify({ status: "active", step: "event", app: "a", meter: "m" }));
+    const f = fakeServer(null);
+    setProgressStore(f.server);
+    loadProgress("s3");
+    f.answer();
+    await settle();
+    expect(f.patches).toEqual([{ status: "active", step: "event", app: "a", meter: "m" }]);
+
+    store.set("payrudder.onboarding.s4", JSON.stringify({ status: "active", step: "event", app: "a", meter: "m", currency: "TRY" }));
+    const g = fakeServer({ status: "active", step: "package", app: "a" });
+    setProgressStore(g.server);
+    loadProgress("s4");
+    g.answer();
+    await settle();
+    expect(g.patches).toEqual([{ meter: "m", currency: "TRY" }]);
+    expect(progress.value).toMatchObject({ step: "package", app: "a", meter: "m", currency: "TRY" });
+  });
+
+  it("goes on with this browser's copy when the server cannot say, and asks again the next time", async () => {
+    store.set("payrudder.onboarding.s5", JSON.stringify({ status: "active", step: "app" }));
+    const f = fakeServer("down");
+    setProgressStore(f.server);
+    loadProgress("s5");
+    f.answer();
+    await settle();
+    expect(progressReady.value).toBe(true);
+    expect(progress.value?.step).toBe("app");
+    const g = fakeServer({ status: "done", step: "done" });
+    setProgressStore(g.server);
+    loadProgress("s5");
+    expect(progressReady.value).toBe(false);
+    g.answer();
+    await settle();
+    expect(progress.value?.status).toBe("done");
+  });
+
+  it("asks once per person: coming back to the home does not undo what was done since", async () => {
+    const f = fakeServer({ status: "active", step: "meter" });
+    setProgressStore(f.server);
+    loadProgress("s6");
+    f.answer();
+    await settle();
+    patchProgress({ step: "package" });
+    const g = fakeServer({ status: "active", step: "meter" });
+    setProgressStore(g.server);
+    loadProgress("s6");
+    expect(progressReady.value).toBe(true);
+    expect(progress.value?.step).toBe("package");
+  });
+
+  it("a change made while the server is being asked for is newer than its answer", async () => {
+    const f = fakeServer({ status: "active", step: "meter", app: "a" });
+    setProgressStore(f.server);
+    loadProgress("s7");
+    patchProgress({ step: "package", plan: "p" });
+    f.answer();
+    await settle();
+    expect(progress.value).toMatchObject({ step: "package", plan: "p", app: "a" });
+  });
+
+  it("writes every change through, as the change and not the whole", () => {
+    const f = fakeServer({ status: "active", step: "welcome" });
+    setProgressStore(f.server);
+    loadProgress("s8");
+    patchProgress({ step: "app", currency: "USD" });
+    skipOnboarding();
+    hideChecklist();
+    expect(f.patches).toEqual([{ step: "app", currency: "USD" }, { status: "skipped" }, { hidden: true }]);
   });
 });
