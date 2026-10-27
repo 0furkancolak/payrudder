@@ -7107,8 +7107,9 @@ components:
             message: { type: string }
             details:
               type: array
-              items: { type: object, properties: { field: { type: string }, description: { type: string } } }
-            request_id: { type: string }
+              description: "Left out when there is no field to point at"
+              items: { type: object, required: [field, description], properties: { field: { type: string }, description: { type: string } } }
+            request_id: { type: string, description: "The X-Request-Id of the call; missing on an answer written by payments-worker" }
     AffiliateProgram:
       type: object
       description: The rules of the partner program of one environment.
