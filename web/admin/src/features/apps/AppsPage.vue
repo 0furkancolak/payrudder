@@ -9,13 +9,13 @@ import { useTenant } from "@/features/tenants";
 import { type Currency } from "@/shared/lib/currencies";
 import { firstError } from "@/shared/lib/errors";
 import { label } from "@/shared/lib/labels";
+import { FormField } from "@/shared/ui/form-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
-import { Label } from "@/shared/ui/label";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -153,20 +153,17 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
       </SheetHeader>
       <SheetBody>
         <form id="create-app-form" class="grid gap-4" role="form" :aria-label="t('apps.formLabel')" @submit.prevent="submit">
-          <div class="flex flex-col gap-1.5">
-            <Label for="app-name">{{ t("apps.name") }}</Label>
+          <FormField for="app-name" :label="t('apps.name')">
             <Input id="app-name" v-model="name" :aria-label="t('apps.name')" :placeholder="t('apps.name')" required />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <Label for="app-slug">{{ t("apps.slug") }}</Label>
+          </FormField>
+          <FormField for="app-slug" :label="t('apps.slug')">
             <Input id="app-slug" v-model="slug" maxlength="60" :aria-label="t('apps.slug')" :placeholder="t('apps.slugPlaceholder')" :aria-invalid="!slugOk" />
-          </div>
+          </FormField>
           <CurrencySelect v-model="currency" :aria-label="t('apps.currency')" />
           <TimezoneSelect v-model="timezone" :aria-label="t('apps.timezone')" />
-          <div class="flex flex-col gap-1.5">
-            <Label for="app-grace">{{ t("apps.grace") }}</Label>
+          <FormField for="app-grace" :label="t('apps.grace')">
             <Input id="app-grace" v-model="graceHours" type="number" min="0" max="168" :aria-label="t('apps.grace')" :placeholder="t('apps.gracePlaceholder')" required />
-          </div>
+          </FormField>
           <p v-if="!slugOk" class="text-destructive text-sm" role="alert">{{ t("apps.badSlug") }}</p>
           <ErrorText :error="createApp.error.value" />
         </form>

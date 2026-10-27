@@ -58,7 +58,7 @@ function go() {
         <Button variant="outline" :disabled="!canReset || running || reset.isPending.value" data-testid="sandbox-reset-open" @click="confirming = true"><RotateCcw />{{ t("product.sandbox.reset") }}</Button>
       </div>
       <p v-if="!canReset" class="text-muted-foreground text-xs">{{ t("product.promote.adminOnly") }}</p>
-      <ErrorText :error="reset.error.value ?? status.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+      <ErrorText :error="reset.error.value ?? status.error.value" box />
 
       <div v-if="job" class="flex flex-col gap-3 border-t pt-4" data-testid="sandbox-reset-job" :data-state="job.state">
         <div class="flex flex-wrap items-center gap-2">

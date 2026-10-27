@@ -3,9 +3,9 @@ import { Link } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { takeFragmentToken } from "@/shared/lib/fragment";
+import { FormField } from "@/shared/ui/form-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
-import { Label } from "@/shared/ui/label";
 import { useResetPassword } from "./api";
 import { PASSWORD_MIN } from "./lib";
 import AuthShell from "./AuthShell.vue";
@@ -34,12 +34,11 @@ function submit() {
     </div>
     <p v-else-if="token === ''" class="bg-warning-soft text-warning rounded-2xl px-4 py-3 text-sm" role="alert">{{ t("product.reset.noToken") }}</p>
     <form v-else class="flex flex-col gap-4" :aria-label="t('product.reset.title')" @submit.prevent="submit">
-      <div class="flex flex-col gap-1.5">
-        <Label for="rp-password">{{ t("product.reset.newPassword") }}</Label>
+      <FormField for="rp-password" :label="t('product.reset.newPassword')">
         <PasswordField id="rp-password" v-model="password" autocomplete="new-password" describedby="rp-password-hint" />
         <p id="rp-password-hint" :class="['text-xs', password === '' || longEnough ? 'text-muted-foreground' : 'text-destructive']">{{ t("product.auth.passwordHint", { min: PASSWORD_MIN }) }}</p>
-      </div>
-      <ErrorText :error="reset.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+      </FormField>
+      <ErrorText :error="reset.error.value" box />
       <Button type="submit" size="lg" :disabled="reset.isPending.value || !longEnough">{{ t("product.reset.submit") }}</Button>
     </form>
     <template #footer>

@@ -44,7 +44,7 @@ const themes = computed(() => [
 <template>
   <section class="flex flex-col gap-6">
     <PageHeader flush :title="t('product.settings.title')" :description="t('product.settings.intro')" />
-    <ErrorText :error="firstError(account, me)" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorText :error="firstError(account, me)" box />
 
     <Link v-if="saas" to="/app/settings/plan" class="surface hover:border-ring flex flex-wrap items-center justify-between gap-2 p-5" data-testid="plan-link">
       <span class="font-semibold">{{ t("saas.title") }}</span>

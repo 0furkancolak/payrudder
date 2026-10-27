@@ -4,11 +4,11 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Currency } from "@/shared/lib/currencies";
 import { ownZone } from "@/shared/lib/intl";
+import { FormField } from "@/shared/ui/form-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useCreateApp } from "./api";
@@ -55,22 +55,19 @@ function submit() {
       </SheetHeader>
       <SheetBody>
         <form id="create-app" class="flex flex-col gap-4" @submit.prevent="submit">
-          <div class="flex flex-col gap-1.5">
-            <Label for="ca-name">{{ t("product.createApp.name") }}</Label>
+          <FormField for="ca-name" :label="t('product.createApp.name')">
             <Input id="ca-name" v-model="name" autocomplete="off" required />
-          </div>
+          </FormField>
           <div class="grid gap-4">
-            <div class="flex flex-col gap-1.5">
-              <Label for="ca-currency">{{ t("product.createApp.currency") }}</Label>
+            <FormField for="ca-currency" :label="t('product.createApp.currency')">
               <CurrencySelect id="ca-currency" v-model="currency" :aria-label="t('product.createApp.currency')" />
-            </div>
-            <div class="flex flex-col gap-1.5">
-              <Label for="ca-tz">{{ t("product.createApp.timezone") }}</Label>
+            </FormField>
+            <FormField for="ca-tz" :label="t('product.createApp.timezone')">
               <TimezoneSelect id="ca-tz" v-model="timezone" :aria-label="t('product.createApp.timezone')" />
-            </div>
+            </FormField>
           </div>
           <p class="text-muted-foreground text-xs">{{ t("product.createApp.immutable") }}</p>
-          <ErrorText :error="create.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+          <ErrorText :error="create.error.value" box />
           <UpgradeHint :error="create.error.value" />
         </form>
       </SheetBody>
