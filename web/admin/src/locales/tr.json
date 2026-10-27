@@ -327,6 +327,21 @@
       "outcome": "Ödeme sonucu: {scenario}",
       "usage": "Kullanım gönderildi: {n} çağrı",
       "closed": "Dönem kapatıldı (sandbox): faturalama şimdi çalışıyor"
+    },
+    "components": {
+      "title": "Bileşenler",
+      "intro": "Konsolun ortak denetimleri yan yana: arama kutulu listeler, çok değerli filtreler ve tarih aralığı.",
+      "single": "Tek seçim",
+      "multiple": "Birden çok seçim",
+      "creatable": "Birden çok, ya da yeni",
+      "remote": "Bir API’den",
+      "remoteMany": "Bir API’den, birden çok ya da yeni",
+      "failing": "Bir kez hata veren API’den",
+      "pick": "Bir meyve seçin",
+      "pickOrType": "Seçin ya da yazın",
+      "requests": "istek: {n}",
+      "filter": "Durum",
+      "any": "Her durum"
     }
   },
   "billing": {
@@ -3605,8 +3620,34 @@
     "countryPlaceholder": "Ülke ara",
     "placePlaceholder": "Ara veya yaz",
     "useTyped": "“{value}” kullan",
-    "useCode": "{code} kodunu kullan",
-    "geoAttribution": "Yer adları: GeoNames (CC BY 4.0)"
+    "useCode": "{code} kodunu kullan"
+  },
+  "combobox": {
+    "create": "“{value}” oluştur",
+    "loading": "Yükleniyor…",
+    "results": "{n} sonuç",
+    "remove": "{label} öğesini kaldır",
+    "retry": "Tekrar dene",
+    "more": "{n} tane daha var, listeyi daraltmak için yazmaya devam edin"
+  },
+  "errorState": {
+    "title": {
+      "generic": "Bir şeyler ters gitti",
+      "notFound": "Aradığınızı bulamadık",
+      "forbidden": "Buna erişiminiz yok",
+      "unauthenticated": "Lütfen yeniden oturum açın",
+      "network": "Sunucuya ulaşılamadı"
+    },
+    "retry": "Tekrar dene",
+    "retrying": "Tekrar deneniyor…",
+    "requestId": "İstek kimliği",
+    "copyRequestId": "İstek kimliğini kopyala",
+    "home": "Konsola dön",
+    "notFoundTitle": "Sayfa bulunamadı",
+    "notFoundBody": "Aradığınız sayfa yok ya da taşınmış.",
+    "pageTitle": "Bu sayfa gösterilemedi",
+    "pageBody": "Sayfa çizilirken bir şey bozuldu. Verileriniz güvende. Tekrar deneyin ya da konsola dönün.",
+    "fallback": "Beklenmeyen bir hata oluştu. Sürerse destek ekibine istek kimliğini iletin."
   },
   "dash": {
     "retry": "Tekrar dene",

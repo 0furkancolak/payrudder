@@ -327,6 +327,21 @@
       "outcome": "Payment outcome: {scenario}",
       "usage": "Sent usage: {n} calls",
       "closed": "Period closed (sandbox): billing runs now"
+    },
+    "components": {
+      "title": "Components",
+      "intro": "The console’s shared controls side by side: lists with a search box, multi-value filters and the date range.",
+      "single": "One choice",
+      "multiple": "Several choices",
+      "creatable": "Several, or a new one",
+      "remote": "From an API",
+      "remoteMany": "From an API, several or new",
+      "failing": "From an API that fails once",
+      "pick": "Pick a fruit",
+      "pickOrType": "Pick or type",
+      "requests": "requests: {n}",
+      "filter": "Status",
+      "any": "Any status"
     }
   },
   "billing": {
@@ -3605,8 +3620,34 @@
     "countryPlaceholder": "Search a country",
     "placePlaceholder": "Search or type",
     "useTyped": "Use “{value}”",
-    "useCode": "Use the code {code}",
-    "geoAttribution": "Place names: GeoNames (CC BY 4.0)"
+    "useCode": "Use the code {code}"
+  },
+  "combobox": {
+    "create": "Create “{value}”",
+    "loading": "Loading…",
+    "results": "{n} results",
+    "remove": "Remove {label}",
+    "retry": "Try again",
+    "more": "{n} more, keep typing to narrow the list"
+  },
+  "errorState": {
+    "title": {
+      "generic": "Something went wrong",
+      "notFound": "We could not find that",
+      "forbidden": "You do not have access to this",
+      "unauthenticated": "Please sign in again",
+      "network": "Could not reach the server"
+    },
+    "retry": "Try again",
+    "retrying": "Trying again…",
+    "requestId": "Request id",
+    "copyRequestId": "Copy the request id",
+    "home": "Back to the console",
+    "notFoundTitle": "Page not found",
+    "notFoundBody": "The page you are looking for does not exist or has moved.",
+    "pageTitle": "This page could not be shown",
+    "pageBody": "Something broke while drawing this page. Your data is safe. Try again, or go back to the console.",
+    "fallback": "An unexpected error occurred. If it keeps happening, tell support the request id."
   },
   "dash": {
     "retry": "Try again",

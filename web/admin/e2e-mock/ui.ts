@@ -39,10 +39,21 @@ export async function rowAction(row: Locator, name: string | RegExp): Promise<vo
   await row.page().getByRole("menuitem", { name }).click();
 }
 
+/**
+ * Chooses options of a filter chip: opens the chip by its name and picks the options in turn (an empty name picks the "all" entry by its text), then closes
+ * the list. A chip with several values keeps its list open between choices; one with a single value closes it itself.
+ */
+export async function pickFilters(page: Page, label: string, ...options: (string | RegExp)[]): Promise<void> {
+  await page.getByRole("button", { name: label, exact: true }).click();
+  const list = page.getByRole("listbox", { name: label });
+  for (const option of options) await list.getByRole("option", { name: option, exact: typeof option === "string" }).click();
+  if (await list.isVisible()) await page.keyboard.press("Escape");
+  await list.waitFor({ state: "hidden" });
+}
+
 /** Chooses an option of a filter chip: opens the chip by its name and picks the option (an empty name picks the "all" entry by its text). */
 export async function pickFilter(page: Page, label: string, option: string | RegExp): Promise<void> {
-  await page.getByRole("button", { name: label, exact: true }).click();
-  await page.getByRole("listbox", { name: label }).getByRole("option", { name: option, exact: typeof option === "string" }).click();
+  await pickFilters(page, label, option);
 }
 
 /** Chooses a preset of a date range chip (today, 7d, 30d, month, lastMonth, year); `nth` picks among several chips on the page. */

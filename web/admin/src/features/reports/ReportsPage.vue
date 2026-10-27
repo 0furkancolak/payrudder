@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { thisMonth } from "@/shared/lib/dateRange";
-import { Check, Eye } from "@lucide/vue";
+import { Check, ArrowUpRight } from "@lucide/vue";
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -41,7 +41,7 @@ const revenueTable = useTableState<RevenueRow>(() => revenue.data.value?.rows ??
   searchFields: (r) => [r.period, r.provider, r.country, r.currency],
   filters: { currency: (r, v) => r.currency === v },
 });
-const revenueCurrency = computed({ get: () => revenueTable.filters.value.currency ?? "", set: (v) => (revenueTable.filters.value.currency = String(v)) });
+const revenueCurrency = computed({ get: () => revenueTable.filters.value.currency ?? [], set: (v: string[]) => (revenueTable.filters.value.currency = v) });
 const revenueCurrencies = computed(() => distinct((revenue.data.value?.rows ?? []).map((r) => r.currency)));
 const revenueActive = computed(() => revenueTable.active.value || range.value.from !== "" || range.value.to !== "");
 function clearRevenue() {
@@ -71,7 +71,7 @@ const subTable = useTableState<SubRow>(() => subs.data.value?.rows ?? [], {
   searchFields: (r) => [r.provider, r.country, r.currency],
   filters: { currency: (r, v) => r.currency === v },
 });
-const subCurrency = computed({ get: () => subTable.filters.value.currency ?? "", set: (v) => (subTable.filters.value.currency = String(v)) });
+const subCurrency = computed({ get: () => subTable.filters.value.currency ?? [], set: (v: string[]) => (subTable.filters.value.currency = v) });
 const subCurrencies = computed(() => distinct((subs.data.value?.rows ?? []).map((r) => r.currency)));
 const subActive = computed(() => subTable.active.value || month.value !== "");
 function clearSubs() {
@@ -87,8 +87,8 @@ const dunningTable = useTableState<DunningRow>(() => dunning.data.value?.invoice
   searchFields: (d) => [d.number, d.invoice_id, d.customer_external_id, d.provider, d.period],
   filters: { state: (d, v) => d.state === v, currency: (d, v) => d.currency === v },
 });
-const dunningState = computed({ get: () => dunningTable.filters.value.state ?? "", set: (v) => (dunningTable.filters.value.state = String(v)) });
-const dunningCurrency = computed({ get: () => dunningTable.filters.value.currency ?? "", set: (v) => (dunningTable.filters.value.currency = String(v)) });
+const dunningState = computed({ get: () => dunningTable.filters.value.state ?? [], set: (v: string[]) => (dunningTable.filters.value.state = v) });
+const dunningCurrency = computed({ get: () => dunningTable.filters.value.currency ?? [], set: (v: string[]) => (dunningTable.filters.value.currency = v) });
 const dunningStates = computed(() => [all.value, ...[...new Set((dunning.data.value?.invoices ?? []).map((d) => d.state ?? "").filter(Boolean))].map((x) => ({ value: x, label: label(t, te, "dunningState", x) }))]);
 const dunningCurrencies = computed(() => distinct((dunning.data.value?.invoices ?? []).map((d) => d.currency)));
 const when = (v?: string) => fmt.date(v, "short", "—");
@@ -108,7 +108,7 @@ const detailRows = computed(() => {
     { key: "next", label: t("billing.reports.nextAttempt"), value: when(d.next_attempt_time) },
   ];
 });
-const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => dunningTable.open(i) }];
+const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => dunningTable.open(i) }];
 </script>
 
 <template>
@@ -128,7 +128,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
 
   <Card v-if="tab === 'revenue'" class="p-3">
     <DataToolbar v-model:search="revenueTable.search.value" :active="revenueActive" @clear="clearRevenue">
-      <FilterSelect v-model="revenueCurrency" :label="t('billing.reports.currency')" :options="revenueCurrencies" />
+      <FilterSelect v-model="revenueCurrency" multiple :label="t('billing.reports.currency')" :options="revenueCurrencies" />
       <DateRangePicker v-model="range" />
       <div class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.reports.splitBy')">
         <button v-for="g in ['period', 'provider', 'country']" :key="g" type="button" role="checkbox" :aria-checked="split.includes(g)" :aria-label="t(`billing.reports.by.${g}`)" :class="chip(split.includes(g))" @click="toggle(g)">
@@ -178,7 +178,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
   <Card v-else-if="tab === 'subscriptions'" class="p-3">
     <DataToolbar v-model:search="subTable.search.value" :active="subActive" @clear="clearSubs">
       <FilterSelect v-model="month" :label="t('billing.reports.month')" :options="months" />
-      <FilterSelect v-model="subCurrency" :label="t('billing.reports.currency')" :options="subCurrencies" />
+      <FilterSelect v-model="subCurrency" multiple :label="t('billing.reports.currency')" :options="subCurrencies" />
       <div class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('billing.reports.splitBy')">
         <button v-for="g in ['provider', 'country']" :key="g" type="button" role="checkbox" :aria-checked="subSplit.includes(g)" :aria-label="t(`billing.reports.by.${g}`)" :class="chip(subSplit.includes(g))" @click="toggleSub(g)">
           <Check v-if="subSplit.includes(g)" class="size-4" aria-hidden="true" />{{ t(`billing.reports.by.${g}`) }}
@@ -230,8 +230,8 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
     </ul>
     <ErrorText :error="dunning.error.value" class="px-3" />
     <DataToolbar v-model:search="dunningTable.search.value" :active="dunningTable.active.value" @clear="dunningTable.clear()">
-      <FilterSelect v-model="dunningState" :label="t('billing.reports.state')" :options="dunningStates" />
-      <FilterSelect v-model="dunningCurrency" :label="t('billing.reports.currency')" :options="dunningCurrencies" />
+      <FilterSelect v-model="dunningState" multiple :label="t('billing.reports.state')" :options="dunningStates" />
+      <FilterSelect v-model="dunningCurrency" multiple :label="t('billing.reports.currency')" :options="dunningCurrencies" />
     </DataToolbar>
     <Table>
       <TableHeader>

@@ -164,7 +164,9 @@ test.describe("currency and time zone fields", () => {
     const currency = dialog.getByLabel("Currency");
     await currency.click();
     // The whole ISO 4217 list is offered, with names, not the seven of before.
-    expect(await page.getByRole("option").count()).toBeGreaterThan(140);
+    // It shows the first ten and says how many more there are.
+    await expect(page.getByRole("option")).toHaveCount(10);
+    await expect(page.locator('[data-testid="combobox-more"]:visible')).toContainText(/^1\d\d more/);
     await currency.fill("japanese");
     await expect(page.getByRole("option")).toHaveCount(1);
     await expect(page.getByRole("option", { name: /JPY · Japanese Yen/ })).toBeVisible();
@@ -177,7 +179,7 @@ test.describe("currency and time zone fields", () => {
 
     const zone = dialog.getByLabel("Time zone");
     await zone.click();
-    expect(await page.getByRole("option").count()).toBeGreaterThan(300);
+    await expect(page.locator('[data-testid="combobox-more"]:visible')).toContainText(/^[234]\d\d more/);
     await zone.fill("kathmandu");
     // Engines list "Asia/Katmandu"; the search knows the modern spelling.
     await expect(page.getByRole("option", { name: /Asia\/Kat/ })).toContainText("UTC+05:45");

@@ -30,7 +30,7 @@ const table = useTableState<Obj>(() => catalogue.data.value?.objects ?? [], {
   searchFields: (o) => [o.kind, o.key, o.ref],
   filters: { kind: (o, v) => o.kind === v },
 });
-const kindFilter = computed({ get: () => table.filters.value.kind ?? "", set: (v) => (table.filters.value.kind = String(v)) });
+const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v: string[]) => (table.filters.value.kind = v) });
 const kinds = computed(() => [{ value: "", label: t("common.all") }, ...[...new Set((catalogue.data.value?.objects ?? []).map((o) => o.kind ?? "").filter(Boolean))].map((k) => ({ value: k, label: k }))]);
 const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
 </script>
@@ -60,7 +60,7 @@ const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
       <p v-for="[key, why] in skipped" :key="key" class="text-muted-foreground">{{ t("billing.providers.catalogue.skipped", { key, why }) }}</p>
     </div>
     <DataToolbar v-if="(catalogue.data.value?.objects ?? []).length > 0" v-model:search="table.search.value" :active="table.active.value" class="px-0" @clear="table.clear()">
-      <FilterSelect v-model="kindFilter" :label="t('billing.providers.catalogue.kind')" :options="kinds" />
+      <FilterSelect v-model="kindFilter" multiple :label="t('billing.providers.catalogue.kind')" :options="kinds" />
     </DataToolbar>
     <Table v-if="(catalogue.data.value?.objects ?? []).length > 0">
       <TableHeader>

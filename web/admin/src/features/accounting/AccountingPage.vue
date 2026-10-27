@@ -9,7 +9,7 @@ import { useApps } from "@/features/apps/api";
 import { useTenant } from "@/features/tenants";
 import { useErrorText } from "@/shared/lib/errors";
 import { formatUtcDay } from "@/shared/lib/format";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -56,12 +56,13 @@ const expenses = useExpenses(tenantId, app, showVoided);
 const expenseRange = ref<DateRange>(thisMonth());
 const table = useTableState(() => (expenses.data.value?.expenses ?? []).filter((e) => inRange(e.incurred_on, expenseRange.value)), {
   sheet: { kind: "expense", id: (e) => e.id }, searchFields: (e) => [e.vendor, e.note, e.category ? t(`billing.accounting.category.${e.category}`) : "", e.amount_minor],
+  url: true,
   filters: {
     category: (e, v) => e.category === v,
     recurring: (e, v) => (e.recurring ?? "none") === v,
   },
 });
-const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v: string) => (table.filters.value = { ...table.filters.value, [key]: v }) });
+const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const categoryFilter = filter("category");
 const recurringFilter = filter("recurring");
 watch(expenseRange, () => (table.page.value = 1), { deep: true });
@@ -139,7 +140,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
     <p class="text-muted-foreground text-xs">{{ t("billing.accounting.currencyNote") }}</p>
   </div>
 
-  <ErrorText :error="summary.error.value" class="mb-4" />
+  <ErrorState :error="summary.error.value" :retrying="summary.isFetching.value" class="mb-4" @retry="summary.refetch()" />
   <p v-if="rangeOk && summary.data.value && !currencies.length" class="text-muted-foreground mb-6 text-sm">{{ t("billing.accounting.empty") }}</p>
 
   <section v-for="c in currencies" :key="c.currency" class="mb-6" :aria-label="c.currency">
@@ -232,10 +233,10 @@ async function exportCsv(report: "export" | "coupons" = "export") {
 
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.accounting.expenses.title") }}</h2>
-    <ErrorText :error="expenses.error.value" class="px-3" />
+    <ErrorState :error="expenses.error.value" :retrying="expenses.isFetching.value" compact @retry="expenses.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="expensesActive" class="pt-3" @clear="clearExpenses">
-      <FilterSelect v-model="categoryFilter" :label="t('billing.accounting.form.category')" :options="categoryOptions" />
-      <FilterSelect v-model="recurringFilter" :label="t('billing.accounting.form.recurring')" :options="recurringOptions" />
+      <FilterSelect v-model="categoryFilter" multiple :label="t('billing.accounting.form.category')" :options="categoryOptions" />
+      <FilterSelect v-model="recurringFilter" multiple :label="t('billing.accounting.form.recurring')" :options="recurringOptions" />
       <DateRangePicker v-model="expenseRange" />
       <label class="text-muted-foreground flex items-center gap-2 text-sm">
         <Checkbox :model-value="showVoided" @update:model-value="showVoided = $event === true" />

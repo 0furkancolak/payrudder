@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useAccount, useApp, useApps } from "@/features/product/api";
 import { LIVE_PROVIDERS, type LiveProviderName } from "@/features/product/liveProvider";
 import { Button } from "@/shared/ui/button";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useAppsProviders } from "./connectApi";
@@ -91,7 +91,7 @@ const LOGO: Record<LiveProviderName, string> = {
     </header>
 
     <Skeleton v-if="loading" class="h-48 rounded-2xl" />
-    <ErrorText :error="apps.error.value" />
+    <ErrorState :error="apps.error.value" :retrying="apps.isFetching.value" class="mb-4" @retry="apps.refetch()" />
     <p v-if="!loading && !hasLive" class="text-muted-foreground surface p-6 text-sm" data-testid="providers-no-live">{{ t("product.goLive.noLive") }}</p>
     <template v-else-if="!loading">
       <p v-if="notice" class="text-success text-sm" role="status" data-testid="provider-connected">{{ notice }}</p>

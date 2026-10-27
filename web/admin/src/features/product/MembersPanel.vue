@@ -52,7 +52,7 @@ const expired = (v?: string) => (v ? new Date(v).getTime() < Date.now() : false)
 
 const table = useTableState(members, {
   sheet: { kind: "member", id: (m) => m.user_id }, searchFields: (m) => [m.display_name, m.email],
-  filters: { role: (m, v) => m.role === v },
+  url: true, filters: { role: (m, v) => m.role === v },
 });
 
 const inviting = ref(false);
@@ -98,7 +98,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
     <Skeleton v-if="loading" class="mx-3 h-20 rounded-2xl" />
     <template v-else>
       <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-        <FilterSelect v-model="table.filters.value.role" :label="t('product.members.role')" :options="[{ value: '', label: t('product.members.allRoles') }, ...['owner', 'admin', 'viewer'].map((r) => ({ value: r, label: t(`product.role.${r}`) }))]" />
+        <FilterSelect v-model="table.filters.value.role" multiple :label="t('product.members.role')" :options="[{ value: '', label: t('product.members.allRoles') }, ...['owner', 'admin', 'viewer'].map((r) => ({ value: r, label: t(`product.role.${r}`) }))]" />
         <template v-if="canManage" #actions>
           <Button data-testid="invite-open" @click="inviting = true"><Plus class="size-4" />{{ t("product.members.inviteTitle") }}</Button>
         </template>

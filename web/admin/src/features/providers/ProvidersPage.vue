@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
-import { Eye, Plus, Trash2, X } from "@lucide/vue";
+import { ArrowUpRight, Plus, Trash2, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { useTableState } from "@/shared/lib/useTableState";
 import { PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { CountrySelect } from "@/shared/ui/location-fields";
 import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
@@ -59,7 +60,7 @@ const accountTable = useTableState<Account>(() => accounts.data.value?.accounts 
 const all = computed(() => ({ value: "", label: t("common.all") }));
 const environments = computed(() => [all.value, { value: "live", label: "live" }, { value: "sandbox", label: "sandbox" }]);
 const accountActions = (a: Account) => [{ key: "remove", label: t("billing.common.remove"), icon: Trash2, destructive: true, onSelect: () => removeAccount(a.provider ?? "", (a.environment ?? "live") as Environment) }];
-const accountEnv = computed({ get: () => accountTable.filters.value.environment ?? "", set: (v) => (accountTable.filters.value.environment = String(v)) });
+const accountEnv = computed({ get: () => accountTable.filters.value.environment ?? [], set: (v: string[]) => (accountTable.filters.value.environment = v) });
 /** Bank transfer has a structured form instead of the JSON text. */
 const isBank = computed(() => provider.value === "banktransfer");
 const bankForm = ref<InstanceType<typeof BankTransferForm> | null>(null);
@@ -122,7 +123,7 @@ const subTable = useTableState<ProviderSub>(() => providerSubs.data.value?.subsc
   searchFields: (s) => [s.provider, s.provider_ref, s.environment],
   filters: { status: (s, v) => s.status === v },
 });
-const subStatus = computed({ get: () => subTable.filters.value.status ?? "", set: (v) => (subTable.filters.value.status = String(v)) });
+const subStatus = computed({ get: () => subTable.filters.value.status ?? [], set: (v: string[]) => (subTable.filters.value.status = v) });
 const subStatuses = computed(() => [all.value, ...new Set((providerSubs.data.value?.subscriptions ?? []).map((s) => s.status ?? "").filter(Boolean))].map((s) => (typeof s === "string" ? { value: s, label: s } : s)));
 const subCurrent = subTable.row;
 const subRows = computed(() => {
@@ -137,7 +138,7 @@ const subRows = computed(() => {
     { key: "updated", label: t("billing.providers.updated"), value: when(s.updated_at) },
   ];
 });
-const subActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => subTable.open(i) }];
+const subActions = (i: number) => [{ key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => subTable.open(i) }];
 const when = (v?: string) => fmt.date(v, "day", "—");
 </script>
 
@@ -145,12 +146,12 @@ const when = (v?: string) => fmt.date(v, "day", "—");
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.providers.accounts") }}</h2>
     <DataToolbar v-model:search="accountTable.search.value" :active="accountTable.active.value" @clear="accountTable.clear()">
-      <FilterSelect v-model="accountEnv" :label="t('billing.providers.environment')" :options="environments" />
+      <FilterSelect v-model="accountEnv" multiple :label="t('billing.providers.environment')" :options="environments" />
       <template #actions>
         <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.providers.addAccount") }}</Button>
       </template>
     </DataToolbar>
-    <ErrorText :error="accounts.error.value" class="px-3" />
+    <ErrorState :error="accounts.error.value" :retrying="accounts.isFetching.value" compact @retry="accounts.refetch()" />
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -214,7 +215,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
   <Card class="mb-6 p-3">
     <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.providers.runByProviders") }}</h2>
     <DataToolbar v-model:search="subTable.search.value" :active="subTable.active.value" @clear="subTable.clear()">
-      <FilterSelect v-model="subStatus" :label="t('billing.subscriptions.state')" :options="subStatuses" />
+      <FilterSelect v-model="subStatus" multiple :label="t('billing.subscriptions.state')" :options="subStatuses" />
     </DataToolbar>
     <Table>
       <TableHeader>

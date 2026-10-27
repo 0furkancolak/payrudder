@@ -12,6 +12,7 @@ import { validLinkDays } from "@/shared/lib/rules";
 import { absoluteUrl } from "@/shared/lib/url";
 import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -77,7 +78,7 @@ const day = (v?: string) => fmt.date(v, "day");
     <Button v-if="canRecord" type="button" variant="outline" @click="recordOpen = true"><Banknote />{{ t("invoice.payment.record") }}</Button>
     <Button type="button" :disabled="!inv?.number || pdf.isPending.value" @click="pdf.mutate()"><FileText />{{ t("invoice.openPdf") }}</Button>
   </div>
-  <ErrorText :error="invoice.error.value" class="mb-3" />
+  <ErrorState :error="invoice.error.value" :retrying="invoice.isFetching.value" class="mb-4" @retry="invoice.refetch()" />
 
   <div v-if="inv" class="mb-4 grid gap-4 sm:grid-cols-2">
     <Card class="gap-2">

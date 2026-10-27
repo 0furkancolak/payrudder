@@ -23,7 +23,7 @@ const envOf = (v?: string) => enumWord(v, "ENVIRONMENT_");
 const tierOf = (v?: string) => enumWord(v, "TENANT_TIER_");
 const table = useTableState(list, {
   sheet: { kind: "tenant", id: (x) => x.id }, searchFields: (x) => [x.name, x.id, x.currency, x.timezone],
-  filters: { env: (x, v) => envOf(x.environment) === v, tier: (x, v) => tierOf(x.tier) === v, currency: (x, v) => x.currency === v },
+  url: "f_", filters: { env: (x, v) => envOf(x.environment) === v, tier: (x, v) => tierOf(x.tier) === v, currency: (x, v) => x.currency === v },
 });
 const distinct = (pick: (x: (typeof list.value)[number]) => string | undefined) => computed(() => [...new Set(list.value.map((x) => pick(x) ?? "").filter(Boolean))].sort());
 const envs = distinct((x) => envOf(x.environment));
@@ -37,9 +37,9 @@ const currencies = distinct((x) => x.currency);
   <ErrorText :error="tenants.error.value" class="mb-3" />
   <Card class="p-3">
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <FilterSelect v-model="table.filters.value.env" :label="t('tenants.columns.environment')" :options="[{ value: '', label: t('tenants.allEnvironments') }, ...envs.map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
-      <FilterSelect v-model="table.filters.value.tier" :label="t('tenants.columns.tier')" :options="[{ value: '', label: t('tenants.allTiers') }, ...tiers.map((x) => ({ value: x, label: label(t, te, 'tier', x) }))]" />
-      <FilterSelect v-model="table.filters.value.currency" :label="t('tenants.columns.currency')" :options="[{ value: '', label: t('tenants.allCurrencies') }, ...currencies.map((c) => ({ value: c }))]" />
+      <FilterSelect v-model="table.filters.value.env" multiple :label="t('tenants.columns.environment')" :options="[{ value: '', label: t('tenants.allEnvironments') }, ...envs.map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
+      <FilterSelect v-model="table.filters.value.tier" multiple :label="t('tenants.columns.tier')" :options="[{ value: '', label: t('tenants.allTiers') }, ...tiers.map((x) => ({ value: x, label: label(t, te, 'tier', x) }))]" />
+      <FilterSelect v-model="table.filters.value.currency" multiple :label="t('tenants.columns.currency')" :options="[{ value: '', label: t('tenants.allCurrencies') }, ...currencies.map((c) => ({ value: c }))]" />
     </DataToolbar>
     <Table>
       <TableHeader>

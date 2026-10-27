@@ -87,6 +87,8 @@ export class ApiError extends Error {
     readonly key = "",
     /** Values a translated message may use ({field}, {detail}), taken from the envelope's first detail. */
     readonly params: Readonly<Record<string, string>> = {},
+    /** The id the gateway gave the request (the envelope's request_id): what support looks a failure up by. Empty when the answer carried none. */
+    readonly requestId = "",
   ) {
     super(message);
   }
@@ -95,10 +97,10 @@ export class ApiError extends Error {
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
   if (error && typeof error === "object" && "error" in error) {
-    const e = (error as { error?: { code?: string; key?: string; message?: string; details?: { field?: string; description?: string }[] } }).error;
+    const e = (error as { error?: { code?: string; key?: string; message?: string; request_id?: string; details?: { field?: string; description?: string }[] } }).error;
     if (e?.message) {
       const first = e.details?.[0];
-      return new ApiError(e.message, e.code ?? "ERROR", e.key ?? "", first ? { field: first.field ?? "", detail: first.description ?? "" } : {});
+      return new ApiError(e.message, e.code ?? "ERROR", e.key ?? "", first ? { field: first.field ?? "", detail: first.description ?? "" } : {}, e.request_id ?? "");
     }
   }
   return new ApiError(error instanceof Error ? error.message : "request failed", "ERROR");

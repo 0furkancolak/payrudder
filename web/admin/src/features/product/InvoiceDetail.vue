@@ -12,6 +12,7 @@ import { InvoiceRelated } from "@/features/related";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
@@ -41,7 +42,7 @@ const canSimulate = computed(() => sandbox.value && (inv.value?.status === "open
 
 <template>
   <section class="flex flex-col gap-6">
-    <ErrorText :error="invoice.error.value" class="bg-destructive-soft rounded-2xl px-4 py-3" />
+    <ErrorState :error="invoice.error.value" :retrying="invoice.isFetching.value" class="mb-4" @retry="invoice.refetch()" />
     <Skeleton v-if="invoice.isPending.value" class="h-48 rounded-3xl" />
 
     <template v-if="inv">

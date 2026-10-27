@@ -4,7 +4,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Card } from "@/shared/ui/card";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
@@ -13,7 +13,7 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
-import { Eye, FileText } from "@lucide/vue";
+import { ArrowUpRight, FileText } from "@lucide/vue";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
@@ -37,7 +37,7 @@ const navigate = useNavigate();
 const toInvoice = (id?: string) => void navigate({ to: "/app/t/$id/invoices", params: { id: tenantId.value }, search: { invoice: id ?? "" } as never });
 const table = useTableState(rows, {
   sheet: { kind: "payment", id: (p) => p.id }, searchFields: (p) => [p.provider, p.invoice_id, p.id, p.amount_minor],
-  filters: { status: (p, v) => p.status === v, kind: (p, v) => p.kind === v },
+  url: true, filters: { status: (p, v) => p.status === v, kind: (p, v) => p.kind === v },
 });
 const statuses = computed(() => [...new Set(all.value.map((p) => p.status as string | undefined).filter((v): v is string => !!v))].sort());
 const kinds = computed(() => [...new Set(all.value.map((p) => p.kind as string | undefined).filter((v): v is string => !!v))].sort());
@@ -61,10 +61,10 @@ const when = (v?: string) => fmt.date(v, "dateTime");
 
 <template>
   <Card class="p-3" role="region" :aria-label="t('product.billing.payments.title')">
-    <ErrorText :error="payments.error.value" class="bg-destructive-soft mx-3 mb-3 rounded-2xl px-4 py-3" />
+    <ErrorState :error="payments.error.value" :retrying="payments.isFetching.value" compact @retry="payments.refetch()" />
     <DataToolbar v-if="all.length > 0" v-model:search="table.search.value" :active="filtering" @clear="clear()">
-      <FilterSelect v-model="table.filters.value.status" :label="t('product.payments.status')" :options="[{ value: '', label: t('product.payments.allStatuses') }, ...statuses.map((s) => ({ value: s, label: t(`product.status.${s}`) }))]" />
-      <FilterSelect v-model="table.filters.value.kind" :label="t('product.billing.payments.kind')" :options="[{ value: '', label: t('product.payments.allKinds') }, ...kinds.map((k) => ({ value: k, label: t(`product.billing.payments.kinds.${k}`) }))]" />
+      <FilterSelect v-model="table.filters.value.status" multiple :label="t('product.payments.status')" :options="[{ value: '', label: t('product.payments.allStatuses') }, ...statuses.map((s) => ({ value: s, label: t(`product.status.${s}`) }))]" />
+      <FilterSelect v-model="table.filters.value.kind" multiple :label="t('product.billing.payments.kind')" :options="[{ value: '', label: t('product.payments.allKinds') }, ...kinds.map((k) => ({ value: k, label: t(`product.billing.payments.kinds.${k}`) }))]" />
       <DateRangePicker v-model="range" />
       <template #actions>
         <span v-if="payments.data.value?.truncated" class="text-muted-foreground text-xs">{{ t("product.payments.truncated") }}</span>
@@ -94,7 +94,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
             <TableCell>
               <RowActions
                 :actions="[
-                  { key: 'view', label: t('common.view'), icon: Eye, onSelect: () => table.open(i) },
+                  { key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) },
                   ...(p.invoice_id ? [{ key: 'invoice', label: t('product.billing.payments.viewInvoice'), icon: FileText, onSelect: () => toInvoice(p.invoice_id) }] : []),
                 ]"
               />

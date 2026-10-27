@@ -10,6 +10,7 @@ import { brandName } from "@/shared/lib/brand";
 import { privacyMode, setPrivacyMode, sidebarCollapsed } from "@/shared/lib/prefs";
 import { isOperator, isPerson, OPERATOR_PATHS } from "@/shared/lib/session";
 import { envOf, rememberEnv } from "@/shared/lib/environment";
+import PageBoundary from "@/app/errors/PageBoundary.vue";
 import Breadcrumbs from "./Breadcrumbs.vue";
 import ContextSwitcher from "./ContextSwitcher.vue";
 import EnvBanner from "./EnvBanner.vue";
@@ -139,7 +140,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
         :class="['mx-auto min-w-0 outline-none md:px-8', signedIn ? 'max-w-[1320px] px-4 pt-2 pb-16 md:pt-4' : 'flex max-w-[1240px] flex-col items-center px-4 pt-8 pb-12 md:pt-14']"
       >
         <VerifyBanner v-if="isPerson" />
-        <Outlet />
+        <PageBoundary><Outlet /></PageBoundary>
       </main>
       <PeekHost v-if="isPerson" />
     </div>

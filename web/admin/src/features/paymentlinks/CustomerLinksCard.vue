@@ -35,7 +35,7 @@ const table = useTableState<Payment>(rows, {
   searchFields: (p) => [p.invoice_number, p.invoice_id, p.provider],
   filters: { status: (p, v) => p.status === v },
 });
-const statusFilter = computed({ get: () => table.filters.value.status ?? "", set: (v) => (table.filters.value.status = String(v)) });
+const statusFilter = computed({ get: () => table.filters.value.status ?? [], set: (v: string[]) => (table.filters.value.status = v) });
 const statusOptions = computed(() => [{ value: "", label: t("billing.paymentLinks.anyStatus") }, ...["succeeded", "pending", "failed"].map((s) => ({ value: s, label: s }))]);
 const url = computed(() => absoluteUrl((act.create.data.value as { url?: string } | undefined)?.url, window.location.origin));
 
@@ -75,7 +75,7 @@ const when = (v?: string) => fmt.date(v, "short", "—");
     <h3 class="mt-2 font-medium">{{ t("billing.paymentLinks.portal.payments") }}</h3>
     <ErrorText :error="payments.error.value" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="px-0" @clear="table.clear()">
-      <FilterSelect v-model="statusFilter" :label="t('billing.paymentLinks.status')" :options="statusOptions" />
+      <FilterSelect v-model="statusFilter" multiple :label="t('billing.paymentLinks.status')" :options="statusOptions" />
     </DataToolbar>
     <Table>
       <TableHeader>

@@ -10,14 +10,33 @@ GeoNames data is licensed under the [Creative Commons Attribution 4.0 License](h
 given where the data is used:
 
 - every answer of the gateway's `/app/v1/geo/*` routes carries `attribution`: "Data from GeoNames (https://www.geonames.org), licensed under CC BY 4.0";
-- the console shows "Place names: GeoNames (CC BY 4.0)", linked to geonames.org, under the address fields whenever a region list is shown (the console
-  has no footer or about page);
-- [NOTICE](../NOTICE) names the source.
+- [NOTICE](../NOTICE) names the source. The console shows no credit line next to the fields (phase 50 took it out: the licence asks for attribution
+  where the data is distributed, which the API answer and NOTICE do).
 
 The data was changed: the importer keeps only some columns (codes, names, ASCII names, GeoNames ids), leaves out the dissolved countries GeoNames still
 lists (CS Serbia and Montenegro, AN Netherlands Antilles), and merges towns into the second-level divisions of their region (a town with the name of a
 division is listed once). Country names are shown in the page's language by the browser (`Intl.DisplayNames`); GeoNames' English name is the fallback.
-Region and district names are GeoNames' `name` (local spelling); `alternateNamesV2` is not used (too large).
+Names are described in the next section.
+
+## Names
+
+GeoNames names a division with what it is: "Adıyaman Province", "Kadıköy İlçesi", "Cook County", "State of Alabama". An address does not carry that word, so
+the importer makes the name an address would use:
+
+1. **Local language first.** The importer reads `alternateNamesV2` (205 MB zipped, streamed: only the ids of the regions, districts and towns and only the
+   languages needed are kept) and takes, for a place, the alternate name in the first language of its country's `countryInfo` row ("tr" for TR) when it
+   is not short, colloquial or historic and is written in Latin script. Otherwise GeoNames' own name is kept when it is Latin script ("Kadıköy İlçesi" is
+   already Turkish), and only when that is not (Cyrillic, Arabic, Han) the English alternate name is used. A name never changes script: the ASCII name
+   stays the search key and the sort key.
+2. **Generic words go** (`CleanName` in `internal/geo/names.go`): trailing "Province", "Region", "County", "Department", "District", "Oblast", "State",
+   "Governorate", "Municipality", "Parish", "Prefecture", "İlçesi"/"ilçesi", "Kommun", "pagasts" and the like, any number of them ("Foo District
+   Municipality" is "Foo"); leading "State of", "Région", "Land", "Département de", "Comuna", "Amphoe", "Municipio" and the like; Japanese "-ken", "-shi" and
+   "-gun". A name that is nothing but such a word is kept, and islands, atolls and cities ("Rhode Island", "Quezon City") are left alone because they are the name.
+3. **ASCII fallback.** `ascii_name` is GeoNames' ASCII name cleaned the same way; the console searches the name, the ASCII name and the code, so "istanbul" finds
+   "İstanbul" and "kadikoy" finds "Kadıköy". A stored address (which keeps the name as text) is still matched by name or ASCII name, case and accents ignored.
+
+`TestEmbeddedNamesHaveNoSuffix` fails when a served name (or ASCII name) would be changed by `CleanName` again; a change of the lists in `names.go` needs a
+re-import, which `make geo-data` does. `-no-alternates` skips the big download (names then come from GeoNames' own columns, cleaned).
 
 ## Where it lives
 
@@ -40,7 +59,8 @@ make geo-data                         # downloads the dumps from download.geonam
 cd services/gateway && go run ./cmd/geoimport -src /path/to/dumps -version geonames-2026-10-26
 ```
 
-The importer reads `countryInfo.txt`, `admin1CodesASCII.txt`, `admin2Codes.txt` and `cities15000.zip` (`-no-cities` leaves the towns out). The same
+The importer reads `countryInfo.txt`, `admin1CodesASCII.txt`, `admin2Codes.txt`, `cities15000.zip` (`-no-cities` leaves the towns out) and `alternateNamesV2.zip`
+(`-no-alternates` leaves the local names out). The same
 dumps and `-version` give the same file byte for byte (sorted lists, no time stamp in the gzip header), so a refresh shows up as a reviewable change of
 one file. Commit it with the version in the message; nothing else needs to change.
 

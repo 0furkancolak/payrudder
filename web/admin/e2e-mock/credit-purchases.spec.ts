@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { rowAction } from "./ui";
+import { pickPlace, rowAction } from "./ui";
 
 const pack = (id: string, name: string, credits: string, price: string, validity = 0) => ({
   id,
@@ -47,7 +47,7 @@ test.describe("credit purchases", () => {
 
     await rowAction(page.getByRole("row", { name: /Starter/ }), "Create purchase link");
     const link = page.getByRole("dialog");
-    await link.getByLabel("Customer").selectOption("cus_1");
+    await pickPlace(link.getByLabel("Customer"), "cus_1");
     await link.getByLabel("Quantity").fill("2");
     await link.getByLabel("Promotion code (optional)").fill("SPRING10");
     await link.getByRole("button", { name: "Create link" }).click();
@@ -71,7 +71,7 @@ test.describe("credit purchases", () => {
     await openTenantPage(page, "/credits");
     await rowAction(page.getByRole("row", { name: /Starter/ }), "Create purchase link");
     const link = page.getByRole("dialog");
-    await link.getByLabel("Customer").selectOption("cus_1");
+    await pickPlace(link.getByLabel("Customer"), "cus_1");
     await link.getByLabel("Quantity").fill("2");
     await link.getByRole("button", { name: "Create link" }).click();
     await expect(page.getByTestId("purchase-link-url")).toBeVisible();
@@ -112,7 +112,7 @@ test.describe("credit purchases", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/credits");
-    await page.getByLabel("Choose a customer").selectOption("cus_1");
+    await pickPlace(page.getByLabel("Choose a customer"), "cus_1");
     await expect(page.getByRole("row", { name: /Added/ })).toContainText("credit pack purchase: Starter");
     await expect(page.getByRole("row", { name: /Added/ })).toContainText("Purchase");
 

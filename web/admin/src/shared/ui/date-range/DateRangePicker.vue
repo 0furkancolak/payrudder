@@ -10,7 +10,9 @@ import { rangeOf, type RangePreset } from "@/shared/lib/dateRange";
 
 /**
  * A date range for a list: presets on the left (today, the last 7 and 30 days, this and last month, this year) and two dates for anything else. The
- * model is `{ from, to }` as YYYY-MM-DD, both empty for "any time".
+ * model is `{ from, to }` as YYYY-MM-DD, both empty for "any time". The two dates are the browser's own date fields (a wheel on a phone, a calendar on a
+ * desktop), so they work with touch and with the keyboard everywhere. The panel never leaves the screen: it flips to the side with room, slides along the
+ * edge it would cross, and is never wider than the screen less a margin (on a 375 px phone the presets sit above the dates).
  */
 export interface DateRange {
   from: string;
@@ -45,21 +47,29 @@ function clear() {
 <template>
   <PopoverRoot v-model:open="open">
     <PopoverTrigger as-child>
-      <button type="button" :aria-label="t('dateRange.label')" :class="cn('inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-medium transition-colors', active ? 'bg-brand-soft text-brand-strong border-transparent' : 'bg-card text-foreground border-border/70 hover:bg-muted')" data-testid="date-range">
+      <button type="button" :aria-label="t('dateRange.label')" :data-active="active ? '' : undefined" :class="cn('field inline-flex h-10 max-w-full items-center gap-2 rounded-xl px-3.5 text-sm font-medium', active ? '' : 'text-foreground hover:bg-muted')" data-testid="date-range">
         <CalendarDays class="size-4" aria-hidden="true" />
         <span class="tabular">{{ label }}</span>
       </button>
     </PopoverTrigger>
     <PopoverPortal>
-      <PopoverContent align="start" :side-offset="6" class="bg-popover text-popover-foreground shadow-pop data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 z-50 flex w-[min(34rem,calc(100vw-2rem))] flex-col gap-4 rounded-2xl border p-4 sm:flex-row">
+      <PopoverContent
+        align="start"
+        :side-offset="6"
+        :collision-padding="12"
+        avoid-collisions
+        sticky="always"
+        data-testid="date-range-panel"
+        class="bg-popover text-popover-foreground shadow-pop data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 z-50 flex max-h-[min(var(--reka-popover-content-available-height),32rem)] w-[min(34rem,calc(100vw-1.5rem))] max-w-[calc(100vw-1.5rem)] flex-col gap-4 overflow-y-auto overscroll-contain rounded-2xl border p-4 sm:flex-row"
+      >
         <ul class="flex shrink-0 flex-wrap gap-1.5 sm:w-40 sm:flex-col sm:gap-0.5">
           <li v-for="p in presets" :key="p">
             <button type="button" class="hover:bg-accent w-full rounded-xl px-3 py-1.5 text-start text-sm" :data-testid="`range-${p}`" @click="pick(p)">{{ t(`dateRange.presets.${p}`) }}</button>
           </li>
         </ul>
         <form class="flex flex-1 flex-col gap-3" @submit.prevent="apply">
-          <label class="flex flex-col gap-1 text-xs font-medium">{{ t("dateRange.from") }}<Input v-model="draft.from" type="date" :max="draft.to || undefined" /></label>
-          <label class="flex flex-col gap-1 text-xs font-medium">{{ t("dateRange.to") }}<Input v-model="draft.to" type="date" :min="draft.from || undefined" /></label>
+          <label class="flex flex-col gap-1 text-xs font-medium">{{ t("dateRange.from") }}<Input v-model="draft.from" type="date" class="min-w-0" :max="draft.to || undefined" /></label>
+          <label class="flex flex-col gap-1 text-xs font-medium">{{ t("dateRange.to") }}<Input v-model="draft.to" type="date" class="min-w-0" :min="draft.from || undefined" /></label>
           <div class="mt-auto flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" @click="clear">{{ t("dateRange.clear") }}</Button>
             <Button type="submit" size="sm" :disabled="!valid">{{ t("dateRange.apply") }}</Button>

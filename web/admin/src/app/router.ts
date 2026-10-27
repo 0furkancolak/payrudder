@@ -8,6 +8,8 @@ import { personRoutes, publicProductRoutes } from "@/features/product/routes";
 import { tenantRoutes } from "@/features/tenants/routes";
 import { queryClient } from "./query";
 import { onSessionLost } from "@/shared/lib/session";
+import NotFound from "./errors/NotFound.vue";
+import RouteError from "./errors/RouteError.vue";
 import RootLayout from "./layout/RootLayout.vue";
 
 // Code-based routes: every feature owns its routes and the app only composes them. Three groups:
@@ -27,7 +29,7 @@ const routeTree = root.addChildren([
 // The router is deliberately not registered with `declare module "@tanstack/vue-router"`: registering it makes every page's types depend on the
 // router's, and the router's on the pages (routes import pages, pages use Link and useNavigate), a cycle TypeScript cannot resolve. Route paths
 // stay plain strings, checked by the Playwright tests instead.
-export const router = createRouter({ routeTree, defaultPreload: "intent" });
+export const router = createRouter({ routeTree, defaultPreload: "intent", defaultErrorComponent: RouteError, defaultNotFoundComponent: NotFound });
 
 // The gateway refused the person's session (expired, revoked): everything cached belongs to nobody now, and the sign-in page says why.
 onSessionLost(() => {

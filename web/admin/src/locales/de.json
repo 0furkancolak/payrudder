@@ -327,6 +327,21 @@
       "outcome": "Zahlungsergebnis: {scenario}",
       "usage": "Nutzung gesendet: {n} Aufrufe",
       "closed": "Zeitraum abgeschlossen (Sandbox): Abrechnung läuft jetzt"
+    },
+    "components": {
+      "title": "Komponenten",
+      "intro": "Die gemeinsamen Steuerelemente der Konsole nebeneinander: Listen mit Suchfeld, Filter mit mehreren Werten und der Datumsbereich.",
+      "single": "Eine Auswahl",
+      "multiple": "Mehrere Auswahlen",
+      "creatable": "Mehrere oder eine neue",
+      "remote": "Aus einer API",
+      "remoteMany": "Aus einer API, mehrere oder neu",
+      "failing": "Aus einer API, die einmal fehlschlägt",
+      "pick": "Obst wählen",
+      "pickOrType": "Wählen oder tippen",
+      "requests": "Anfragen: {n}",
+      "filter": "Status",
+      "any": "Jeder Status"
     }
   },
   "billing": {
@@ -3605,8 +3620,34 @@
     "countryPlaceholder": "Land suchen",
     "placePlaceholder": "Suchen oder eingeben",
     "useTyped": "„{value}“ verwenden",
-    "useCode": "Code {code} verwenden",
-    "geoAttribution": "Ortsnamen: GeoNames (CC BY 4.0)"
+    "useCode": "Code {code} verwenden"
+  },
+  "combobox": {
+    "create": "„{value}“ anlegen",
+    "loading": "Wird geladen…",
+    "results": "{n} Ergebnisse",
+    "remove": "{label} entfernen",
+    "retry": "Erneut versuchen",
+    "more": "{n} weitere, tippen Sie weiter, um die Liste einzugrenzen"
+  },
+  "errorState": {
+    "title": {
+      "generic": "Etwas ist schiefgelaufen",
+      "notFound": "Das haben wir nicht gefunden",
+      "forbidden": "Sie haben darauf keinen Zugriff",
+      "unauthenticated": "Bitte melden Sie sich erneut an",
+      "network": "Der Server ist nicht erreichbar"
+    },
+    "retry": "Erneut versuchen",
+    "retrying": "Neuer Versuch…",
+    "requestId": "Anfrage-ID",
+    "copyRequestId": "Anfrage-ID kopieren",
+    "home": "Zurück zur Konsole",
+    "notFoundTitle": "Seite nicht gefunden",
+    "notFoundBody": "Die gesuchte Seite existiert nicht oder wurde verschoben.",
+    "pageTitle": "Diese Seite konnte nicht angezeigt werden",
+    "pageBody": "Beim Aufbau der Seite ist etwas kaputtgegangen. Ihre Daten sind sicher. Versuchen Sie es erneut oder gehen Sie zurück zur Konsole.",
+    "fallback": "Ein unerwarteter Fehler ist aufgetreten. Falls er bestehen bleibt, nennen Sie dem Support die Anfrage-ID."
   },
   "dash": {
     "retry": "Erneut versuchen",

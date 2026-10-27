@@ -120,6 +120,7 @@ test.describe("location fields", () => {
     await form.getByLabel("Ülke", { exact: true }).fill("isveç");
     await expect(page.getByRole("option", { name: "İsveç" })).toBeVisible();
     await form.getByLabel("Ülke", { exact: true }).press("Escape");
-    await expect(form.getByTestId("geo-attribution")).toContainText("Yer adları: GeoNames (CC BY 4.0)");
+    // The licence stays in NOTICE and docs/geo-data.md; the form carries no credit line.
+    await expect(form.getByText(/GeoNames/)).toHaveCount(0);
   });
 });

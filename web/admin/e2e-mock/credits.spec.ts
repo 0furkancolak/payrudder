@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { rowAction } from "./ui";
+import { pickPlace, rowAction } from "./ui";
 
 const pack = (id: string, name: string, credits: string, price: string, active = true) => ({ id, name, credits, price_minor: price, currency: "USD", active, create_time: "2026-10-21T09:00:00Z" });
 
@@ -55,7 +55,7 @@ test.describe("credits", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/credits");
-    await page.getByLabel("Choose a customer").selectOption("cus_1");
+    await pickPlace(page.getByLabel("Choose a customer"), "cus_1");
     await expect(page.getByRole("status", { name: "credits available" })).toContainText("300");
     await expect(page.getByRole("row", { name: /Promotion/ })).toContainText("Never");
     await expect(page.getByRole("row", { name: /Spent/ })).toContainText("-120");
@@ -88,7 +88,7 @@ test.describe("credits", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/credits");
-    await page.getByLabel("Choose a customer").selectOption("cus_1");
+    await pickPlace(page.getByLabel("Choose a customer"), "cus_1");
     await page.getByRole("button", { name: "Add credits" }).click();
     const form = page.getByRole("dialog");
     await form.getByLabel("Credits to add").fill("50");

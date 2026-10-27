@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Eye } from "@lucide/vue";
+import { ArrowUpRight } from "@lucide/vue";
 import { Link, useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -9,6 +9,7 @@ import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { useTableState } from "@/shared/lib/useTableState";
 import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -46,10 +47,10 @@ type Entry = NonNullable<NonNullable<typeof ledger.data.value>["entries"]>[numbe
 const range = ref<DateRange>(thisMonth());
 const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filter((e) => inRange(e.occurred_at, range.value)), {
   searchFields: (e) => [e.provider, e.provider_ref, e.kind, e.source],
-  filters: { status: (e, v) => e.status === v, provider: (e, v) => e.provider === v },
+  url: true, filters: { status: (e, v) => e.status === v, provider: (e, v) => e.provider === v },
 });
-const statusFilter = computed({ get: () => table.filters.value.status ?? "", set: (v) => (table.filters.value.status = String(v)) });
-const providerFilter = computed({ get: () => table.filters.value.provider ?? "", set: (v) => (table.filters.value.provider = String(v)) });
+const statusFilter = computed({ get: () => table.filters.value.status ?? [], set: (v: string[]) => (table.filters.value.status = v) });
+const providerFilter = computed({ get: () => table.filters.value.provider ?? [], set: (v: string[]) => (table.filters.value.provider = v) });
 const statuses = computed(() => [all.value, ...distinct((e) => e.status).map((s) => ({ value: s, label: label(t, te, "ledgerStatus", s) }))]);
 const providers = computed(() => [all.value, ...distinct((e) => e.provider).map((p) => ({ value: p, label: p }))]);
 const ledgerActive = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
@@ -81,7 +82,7 @@ useOpenParam("payment", () => !ledger.isPending.value, (id) => {
     table.openWhere(is);
   }
 });
-const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: Eye, onSelect: () => table.open(i) }];
+const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => table.open(i) }];
 
 // --- the discrepancies a reconciliation found
 type Discrepancy = NonNullable<NonNullable<typeof reconcile.data.value>["discrepancies"]>[number];
@@ -89,16 +90,16 @@ const issues = useTableState<Discrepancy>(() => result.value?.discrepancies ?? [
   searchFields: (d) => [d.number, d.invoice_id, d.provider, d.provider_ref, d.detail],
   filters: { kind: (d, v) => d.kind === v },
 });
-const issueKind = computed({ get: () => issues.filters.value.kind ?? "", set: (v) => (issues.filters.value.kind = String(v)) });
+const issueKind = computed({ get: () => issues.filters.value.kind ?? [], set: (v: string[]) => (issues.filters.value.kind = v) });
 const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ value: k, label: label(t, te, "discrepancy", k) }))]);
 </script>
 
 <template>
   <Card class="mb-6 p-3">
-    <ErrorText :error="ledger.error.value" class="px-3" />
+    <ErrorState :error="ledger.error.value" :retrying="ledger.isFetching.value" compact @retry="ledger.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="ledgerActive" @clear="clearLedger">
-      <FilterSelect v-model="statusFilter" :label="t('billing.payments.status')" :options="statuses" />
-      <FilterSelect v-model="providerFilter" :label="t('billing.payments.provider')" :options="providers" />
+      <FilterSelect v-model="statusFilter" multiple :label="t('billing.payments.status')" :options="statuses" />
+      <FilterSelect v-model="providerFilter" multiple :label="t('billing.payments.provider')" :options="providers" />
       <DateRangePicker v-model="range" />
     </DataToolbar>
     <Table>
@@ -159,7 +160,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
       </ul>
       <div v-if="(result.discrepancies ?? []).length > 0" class="-mx-3 border-t pt-3">
         <DataToolbar v-model:search="issues.search.value" :active="issues.active.value" @clear="issues.clear()">
-          <FilterSelect v-model="issueKind" :label="t('billing.payments.kind')" :options="issueKinds" />
+          <FilterSelect v-model="issueKind" multiple :label="t('billing.payments.kind')" :options="issueKinds" />
         </DataToolbar>
         <Table>
           <TableHeader>

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, openTenantPage, TENANT } from "./gateway";
-import { pickCurrency, pickLanguage } from "./ui";
+import { pickCurrency, pickLanguage, pickPlace } from "./ui";
 
 const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
 
@@ -260,7 +260,7 @@ test.describe("subscriptions", () => {
     await openTenantPage(page, "/subscriptions");
     await page.getByTestId("subscriptions-new").click();
     const form = page.getByRole("form", { name: "new subscription" });
-    await form.getByLabel("Customer").selectOption("cus_2");
+    await pickPlace(form.getByLabel("Customer"), "cus_2");
     await form.getByLabel("Package").selectOption("pro");
     await form.getByLabel("Billing interval").selectOption("SUBSCRIPTION_INTERVAL_YEAR");
     await form.getByLabel("Trial days").fill("14");
@@ -291,7 +291,7 @@ test.describe("subscriptions", () => {
     await openTenantPage(page, "/subscriptions");
     await page.getByTestId("subscriptions-new").click();
     const form = page.getByRole("form", { name: "new subscription" });
-    await form.getByLabel("Customer").selectOption("cus_2");
+    await pickPlace(form.getByLabel("Customer"), "cus_2");
     await form.getByLabel("Package").selectOption("pro");
     await form.getByLabel("Coupon code").fill("WELCOME");
     await page.getByRole("dialog").getByRole("button", { name: "Create subscription" }).click();

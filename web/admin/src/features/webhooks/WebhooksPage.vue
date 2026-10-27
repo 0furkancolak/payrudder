@@ -39,7 +39,7 @@ const range = ref<DateRange>(thisMonth());
 const log = computed(() => (deliveries.data.value?.deliveries ?? []).filter((d) => inRange(d.create_time, range.value)));
 const endpointsTable = useTableState(list, {
   sheet: { kind: "endpoint", id: (e) => e.id }, searchFields: (e) => [e.url, e.description, ...(e.event_types ?? [])],
-  filters: { status: (e, v) => (e.active ? "active" : "paused") === v },
+  url: true, filters: { status: (e, v) => (e.active ? "active" : "paused") === v },
 });
 const deliveriesTable = useTableState(log, {
   sheet: { kind: "delivery", id: (d) => d.id }, searchFields: (d) => [d.event_type, d.last_error, d.last_status],
@@ -135,7 +135,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
 
   <Card class="mb-6 p-3">
     <DataToolbar v-model:search="endpointsTable.search.value" :active="endpointsTable.active.value" @clear="endpointsTable.clear()">
-      <FilterSelect v-model="endpointsTable.filters.value.status" :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, { value: 'active', label: t('billing.webhooks.active') }, { value: 'paused', label: t('billing.webhooks.paused') }]" />
+      <FilterSelect v-model="endpointsTable.filters.value.status" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, { value: 'active', label: t('billing.webhooks.active') }, { value: 'paused', label: t('billing.webhooks.paused') }]" />
       <template #actions>
         <Button data-testid="webhooks-new" @click="creating = true"><Plus class="size-4" />{{ t("billing.webhooks.add") }}</Button>
       </template>
@@ -180,7 +180,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       <h3 class="text-base font-semibold">{{ t("billing.webhooks.deliveries") }}</h3>
       <div class="-mx-3">
         <DataToolbar v-model:search="deliveriesTable.search.value" :active="deliveriesActive" @clear="clearDeliveries()">
-          <FilterSelect v-model="deliveriesTable.filters.value.state" :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, ...deliveryStates.map((s) => ({ value: s, label: stateWord(s) }))]" />
+          <FilterSelect v-model="deliveriesTable.filters.value.state" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, ...deliveryStates.map((s) => ({ value: s, label: stateWord(s) }))]" />
           <DateRangePicker v-model="range" />
         </DataToolbar>
         <Table>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { refDebounced } from "@vueuse/core";
-import { Check, Eye, Link2, Minus, Pencil, Users } from "@lucide/vue";
+import { Check, ArrowUpRight, Link2, Minus, Pencil, Users } from "@lucide/vue";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -71,7 +71,7 @@ const current = detail.row;
 /** The status change that fits the partner's status: approve a waiting one, suspend an active one, reinstate a suspended one. */
 const statusStep = (a: Affiliate) => (a.status === "pending" ? { key: "approve", to: "active" as const } : a.status === "active" ? { key: "suspend", to: "suspended" as const } : { key: "reinstate", to: "active" as const });
 const actionsOf = (a: Affiliate, i: number) => [
-  { key: "view", label: t("common.view"), icon: Eye, onSelect: () => (index.value = i) },
+  { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => (index.value = i) },
   { key: statusStep(a).key, label: t(`affiliates.partners.${statusStep(a).key}`), disabled: !canWrite.value || update.isPending.value, onSelect: () => setStatus(a, statusStep(a).to) },
   { key: "edit", label: t("affiliates.partners.edit"), icon: Pencil, disabled: !canWrite.value, onSelect: () => open("edit", a) },
   { key: "link", label: t("affiliates.partners.linkAndCode"), icon: Link2, onSelect: () => open("link", a) },

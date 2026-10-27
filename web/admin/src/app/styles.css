@@ -40,6 +40,9 @@
   --color-warning-soft: var(--warning-soft);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-field: var(--field);
+  --color-field-border: var(--field-border);
+  --color-field-ring: var(--field-ring);
   --color-ring: var(--ring);
   --radius-sm: calc(var(--radius) - 8px);
   --radius-md: calc(var(--radius) - 4px);
@@ -89,6 +92,10 @@
   --border: oklch(0.915 0.009 258);
   --input: oklch(0.885 0.011 258);
   --ring: oklch(0.673 0.164 261);
+  /* The one look of every field (inputs, the search box, selects, the filter chips, the date trigger): a white a shade greyer than the cards, its border and its focus ring. */
+  --field: oklch(0.978 0.004 258);
+  --field-border: oklch(0.9 0.009 258);
+  --field-ring: oklch(0.673 0.164 261);
   --chart-1: oklch(0.519 0.212 266);
   --chart-2: oklch(0.762 0.123 256);
   --chart-3: oklch(0.437 0.19 265);
@@ -133,6 +140,9 @@
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.673 0.164 261);
+  --field: oklch(0.225 0.018 268);
+  --field-border: oklch(1 0 0 / 13%);
+  --field-ring: oklch(0.673 0.164 261);
   --chart-1: oklch(0.762 0.123 256);
   --chart-2: oklch(0.581 0.202 265);
   --chart-3: oklch(0.84 0.081 254);
@@ -177,6 +187,9 @@
     --border: oklch(1 0 0 / 9%);
     --input: oklch(1 0 0 / 14%);
     --ring: oklch(0.673 0.164 261);
+    --field: oklch(0.225 0.018 268);
+    --field-border: oklch(1 0 0 / 13%);
+    --field-ring: oklch(0.673 0.164 261);
     --chart-1: oklch(0.762 0.123 256);
     --chart-2: oklch(0.581 0.202 265);
     --chart-3: oklch(0.84 0.081 254);
@@ -229,6 +242,20 @@
   }
 }
 
+/*
+ * A field: the fill, the border and the focus ring every input-like control shares (Input, Textarea, NativeSelect, Combobox, FilterSelect, the date
+ * trigger, the table search), so they sit next to each other as one family. One token each (--field, --field-border, --field-ring), so a change is one line.
+ */
+@layer components {
+  .field { background-color: var(--field); border: 1px solid var(--field-border); outline: none; transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s; }
+  .field:hover:not(:disabled):not(:focus-visible):not(:focus-within) { border-color: color-mix(in oklab, var(--field-border) 70%, var(--muted-foreground)); }
+  .field:focus-visible, .field:focus-within { border-color: var(--field-ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--field-ring) 30%, transparent); }
+  .field[aria-invalid="true"], .field:has([aria-invalid="true"]) { border-color: var(--destructive); }
+  .field[aria-invalid="true"]:focus-visible, .field:focus-within:has([aria-invalid="true"]) { box-shadow: 0 0 0 3px color-mix(in oklab, var(--destructive) 25%, transparent); }
+  /* A chip that holds a value (a filter that is on) turns brand-coloured. */
+  .field[data-active] { background-color: var(--brand-soft); border-color: transparent; color: var(--brand-strong); }
+}
+
 /* A big rounded white card: the unit of the product's pages. */
 .surface { @apply bg-card text-card-foreground rounded-3xl shadow-card min-w-0; }
 .tabular { font-variant-numeric: tabular-nums; }
@@ -265,6 +292,15 @@
 [data-testid="sidebar"] *::-webkit-scrollbar { width: 8px; }
 [data-testid="sidebar"] *::-webkit-scrollbar-thumb { background-color: color-mix(in oklab, var(--rail-foreground) 25%, transparent); border-width: 2px; }
 [data-testid="sidebar"] *::-webkit-scrollbar-thumb:hover { background-color: color-mix(in oklab, var(--rail-foreground) 45%, transparent); }
+
+/*
+ * A scroll that reaches its end does not carry on into the page behind: sheets, dialogs, the sidebar and its drawer, popovers, listboxes and menus keep
+ * their scrolling to themselves.
+ */
+[data-slot^="sheet"], [data-slot^="sheet"] *, [data-slot^="dialog"], [data-slot^="dialog"] *, [role="dialog"], [role="dialog"] *, [data-testid="sidebar"], [data-testid="sidebar"] *,
+[role="listbox"], [role="menu"], [data-reka-popper-content-wrapper] * {
+  overscroll-behavior: contain;
+}
 
 /* A sheet behind the one in front shows a sliver of itself, so a stack of sheets reads as a stack (a phone shows only the one in front). */
 @media (min-width: 40rem) {

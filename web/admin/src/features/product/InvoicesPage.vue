@@ -4,7 +4,7 @@ import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { matchesSearch } from "@/shared/lib/paging";
 import { Card } from "@/shared/ui/card";
@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
-import { Eye } from "@lucide/vue";
+import { ArrowUpRight } from "@lucide/vue";
 import InvoiceDetail from "./InvoiceDetail.vue";
 import InvoiceSheetById from "./InvoiceSheetById.vue";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
@@ -80,7 +80,7 @@ const day = (v?: string) => fmt.date(v, "day");
       <DateRangePicker v-model="range" />
     </DataToolbar>
 
-    <ErrorText :error="invoices.error.value" class="bg-destructive-soft mx-3 rounded-2xl px-4 py-3" />
+    <ErrorState :error="invoices.error.value" :retrying="invoices.isFetching.value" compact @retry="invoices.refetch()" />
     <Skeleton v-if="invoices.isPending.value" class="mx-3 h-40 rounded-2xl" />
     <template v-else>
       <Table>
@@ -103,7 +103,7 @@ const day = (v?: string) => fmt.date(v, "day");
             <TableCell class="text-muted-foreground whitespace-nowrap max-md:hidden">{{ day(inv.create_time) }}</TableCell>
             <TableCell><StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill></TableCell>
             <TableCell class="text-end font-medium whitespace-nowrap tabular">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
-            <TableCell><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => (shown = i) }]" :label="`${t('common.moreActions')} ${inv.number ?? ''}`" /></TableCell>
+            <TableCell><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => (shown = i) }]" :label="`${t('common.moreActions')} ${inv.number ?? ''}`" /></TableCell>
           </TableRow>
         </TableBody>
       </Table>

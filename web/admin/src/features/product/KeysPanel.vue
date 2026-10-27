@@ -47,7 +47,7 @@ const list = computed(() => (keys.data.value?.api_keys ?? []).slice().sort((a, b
 const isRevoked = (k: ApiKey) => k.status === "STATUS_REVOKED";
 const table = useTableState(list, {
   sheet: { kind: "key", id: (k) => k.id }, searchFields: (k) => [k.prefix, k.id, envOf(k.environment)],
-  filters: { env: (k, v) => envOf(k.environment) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
+  url: "f_", filters: { env: (k, v) => envOf(k.environment) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
 });
 const keyEnv = (k: ApiKey): Environment => envOf(k.environment);
 const when = (v?: string) => fmt.date(v, "day");
@@ -114,8 +114,8 @@ function doRevoke() {
     <ErrorText :error="firstError(create, revoke, keys)" class="bg-destructive-soft mx-3 rounded-2xl px-4 py-3" />
 
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
-      <FilterSelect v-model="table.filters.value.env" :label="t('product.keys.filterEnv')" :options="[{ value: '', label: t('product.keys.allEnvs') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: t(`product.env.${e}`) }))]" />
-      <FilterSelect v-model="table.filters.value.status" :label="t('product.keys.filterStatus')" :options="[{ value: '', label: t('product.keys.allStatuses') }, { value: 'active', label: t('product.keys.active') }, { value: 'revoked', label: t('product.keys.revoked') }]" />
+      <FilterSelect v-model="table.filters.value.env" multiple :label="t('product.keys.filterEnv')" :options="[{ value: '', label: t('product.keys.allEnvs') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: t(`product.env.${e}`) }))]" />
+      <FilterSelect v-model="table.filters.value.status" multiple :label="t('product.keys.filterStatus')" :options="[{ value: '', label: t('product.keys.allStatuses') }, { value: 'active', label: t('product.keys.active') }, { value: 'revoked', label: t('product.keys.revoked') }]" />
       <template v-if="canManage" #actions>
         <NativeSelect v-model="scope" class="w-44" :aria-label="t('product.keys.scope')" data-testid="key-scope">
           <option v-for="s in ['full', 'ingest', 'read']" :key="s" :value="s">{{ t(`product.keys.scopes.${s}`) }}</option>

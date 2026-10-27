@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Eye, GitBranchPlus, Plus } from "@lucide/vue";
+import { ArrowUpRight, GitBranchPlus, Plus } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import BarList from "@/features/dashboard/BarList.vue";
@@ -13,6 +13,7 @@ import type { DateRange } from "@/shared/ui/date-range";
 import { DetailList } from "@/shared/ui/detail-list";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -39,7 +40,7 @@ const table = useTableState<Meter>(list, {
   searchFields: (m) => [m.code, m.unit_label, m.value_property],
   filters: { aggregation: (m, v) => m.aggregation === v },
 });
-const aggregation = computed({ get: () => table.filters.value.aggregation ?? "", set: (v) => (table.filters.value = { ...table.filters.value, aggregation: String(v) }) });
+const aggregation = computed({ get: () => table.filters.value.aggregation ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, aggregation: v }) });
 const aggregationOptions = computed(() => [{ value: "", label: t("billing.usage.meters.allAggregations") }, ...AGGREGATIONS.map((a) => ({ value: a, label: t(`billing.usage.aggregation.${aggregationKey(a)}`) }))]);
 
 const codes = computed(() => list.value.map((m) => m.code));
@@ -90,16 +91,16 @@ function openForm(m: Meter | null) {
   sheet.value = true;
 }
 const actionsOf = (m: Meter, i: number) => [
-  { key: "view", label: t("common.view"), icon: Eye, onSelect: () => table.open(i) },
+  { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => table.open(i) },
   { key: "version", label: t("billing.usage.meters.newVersion"), icon: GitBranchPlus, disabled: !canWrite.value, onSelect: () => openForm(m) },
 ];
 </script>
 
 <template>
   <Card class="p-3" data-testid="usage-meters">
-    <ErrorText :error="meters.error.value" class="px-3 pb-2" />
+    <ErrorState :error="meters.error.value" :retrying="meters.isFetching.value" compact @retry="meters.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.usage.meters.search')" @clear="table.clear()">
-      <FilterSelect v-model="aggregation" :label="t('billing.usage.meters.aggregation')" :options="aggregationOptions" />
+      <FilterSelect v-model="aggregation" multiple :label="t('billing.usage.meters.aggregation')" :options="aggregationOptions" />
       <PeriodControls v-model:range="range" v-model:compare="compare" :period="period" :too-long="tooLong" />
       <template #actions>
         <Button type="button" data-testid="meters-new" :disabled="!canWrite" @click="openForm(null)"><Plus class="size-4" aria-hidden="true" />{{ t("billing.usage.meters.new") }}</Button>

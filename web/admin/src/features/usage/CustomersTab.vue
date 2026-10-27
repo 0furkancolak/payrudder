@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Eye } from "@lucide/vue";
+import { ArrowUpRight } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCustomers } from "@/features/customers/api";
@@ -46,7 +46,7 @@ const table = useTableState<UsageRow>(rows, {
     usage: (r, v) => (v === "used" ? Object.keys(r.usage).length > 0 : Object.keys(r.usage).length === 0),
   },
 });
-const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? "", set: (v) => (table.filters.value = { ...table.filters.value, [key]: String(v) }) });
+const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const meterFilter = filter("meter");
 const usageFilter = filter("usage");
 const meterOptions = computed(() => [{ value: "", label: t("billing.usage.customers.allMeters") }, ...codes.value.map((c) => ({ value: c }))]);
@@ -109,8 +109,8 @@ const error = computed(() => customers.error.value ?? meters.error.value ?? top.
   <Card class="p-3" data-testid="usage-customers">
     <ErrorText :error="error" class="px-3 pb-2" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.usage.customers.search')" @clear="table.clear()">
-      <FilterSelect v-model="meterFilter" :label="t('billing.usage.customers.meter')" :options="meterOptions" />
-      <FilterSelect v-model="usageFilter" :label="t('billing.usage.customers.usage')" :options="usageOptions" />
+      <FilterSelect v-model="meterFilter" multiple :label="t('billing.usage.customers.meter')" :options="meterOptions" />
+      <FilterSelect v-model="usageFilter" multiple :label="t('billing.usage.customers.usage')" :options="usageOptions" />
       <PeriodControls v-model:range="range" v-model:compare="compare" :period="period" :too-long="tooLong" />
     </DataToolbar>
     <Table>
@@ -132,7 +132,7 @@ const error = computed(() => customers.error.value ?? meters.error.value ?? top.
             <Skeleton v-if="stateOf(r.externalId) === undefined" class="h-5 w-16" />
             <StatusPill v-else :tone="tone[stateOf(r.externalId)!]" :data-state="stateOf(r.externalId)">{{ t(`billing.usage.state.${stateOf(r.externalId)}`) }}</StatusPill>
           </TableCell>
-          <TableCell><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: Eye, onSelect: () => table.open(i) }]" :label="`${t('common.moreActions')} ${r.externalId}`" /></TableCell>
+          <TableCell><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) }]" :label="`${t('common.moreActions')} ${r.externalId}`" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>

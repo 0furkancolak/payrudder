@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nextTick, ref } from "vue";
-import { useTableState } from "./useTableState";
+import { parseValues, useTableState, writeValues } from "./useTableState";
 
 const rows = ref(Array.from({ length: 25 }, (_, i) => ({ id: i, name: i % 2 ? `odd ${i}` : `even ${i}` })));
 const make = () => useTableState(rows, { searchFields: (r) => [r.name], filters: { parity: (r, v) => (r.id % 2 === 0) === (v === "even") }, size: 10 });
@@ -33,7 +33,7 @@ describe("useTableState detail", () => {
 
   it("walks only the filtered rows", async () => {
     const t = make();
-    t.filters.value = { parity: "even" };
+    t.filters.value = { parity: ["even"] };
     await nextTick();
     expect(t.total.value).toBe(13);
     t.detail.value = 12;
@@ -60,5 +60,41 @@ describe("useTableState detail", () => {
     await nextTick();
     expect(t.detail.value).toBeNull();
     expect(t.row.value).toBeUndefined();
+  });
+});
+
+describe("useTableState filters with several values", () => {
+  it("passes a row that matches any of the values, and every row when there are none", async () => {
+    const t = make();
+    t.filters.value = { parity: ["even", "odd"] };
+    await nextTick();
+    expect(t.total.value).toBe(25);
+    t.filters.value = { parity: ["even"] };
+    await nextTick();
+    expect(t.total.value).toBe(13);
+    t.filters.value = { parity: [] };
+    await nextTick();
+    expect(t.total.value).toBe(25);
+    expect(t.active.value).toBe(false);
+  });
+
+  it("is active while any value is chosen, and clear() removes them all", () => {
+    const t = make();
+    t.filters.value = { parity: ["odd"] };
+    expect(t.active.value).toBe(true);
+    t.clear();
+    expect(t.filters.value).toEqual({});
+  });
+});
+
+describe("filter values in the address", () => {
+  it("reads and writes comma separated values, escaping a comma inside one", () => {
+    expect(parseValues("open,paid")).toEqual(["open", "paid"]);
+    expect(parseValues(undefined)).toEqual([]);
+    expect(parseValues("")).toEqual([]);
+    expect(parseValues(5)).toEqual(["5"]);
+    expect(writeValues(["open", "paid"])).toBe("open,paid");
+    expect(writeValues([])).toBeUndefined();
+    expect(parseValues(writeValues(["a,b", "100%", "c"]))).toEqual(["a,b", "100%", "c"]);
   });
 });

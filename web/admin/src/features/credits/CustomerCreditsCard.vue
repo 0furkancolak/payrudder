@@ -43,7 +43,7 @@ const lots = useTableState<Lot>(() => balance.data.value?.lots ?? [], {
   searchFields: (l) => [l.source ? t(`billing.credits.source.${l.source}`) : ""],
   filters: { source: (l, v) => l.source === v },
 });
-const sourceFilter = computed({ get: () => lots.filters.value.source ?? "", set: (v) => (lots.filters.value.source = String(v)) });
+const sourceFilter = computed({ get: () => lots.filters.value.source ?? [], set: (v: string[]) => (lots.filters.value.source = v) });
 // The sources a lot can come from, as far as this customer's lots show.
 const sources = computed(() => [{ value: "", label: t("common.all") }, ...[...new Set((balance.data.value?.lots ?? []).map((l) => l.source ?? "").filter(Boolean))].map((s) => ({ value: s, label: t(`billing.credits.source.${s}`) }))]);
 
@@ -95,7 +95,7 @@ function submitGrant() {
       </div>
 
       <DataToolbar v-model:search="lots.search.value" :active="lots.active.value" @clear="lots.clear()">
-        <FilterSelect v-model="sourceFilter" :label="t('billing.credits.lots.source')" :options="sources" />
+        <FilterSelect v-model="sourceFilter" multiple :label="t('billing.credits.lots.source')" :options="sources" />
         <template #actions>
           <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.credits.grant.submit") }}</Button>
         </template>
