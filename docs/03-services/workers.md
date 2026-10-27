@@ -144,7 +144,7 @@ It doesn't round-trip through RabbitMQ because there is no saga to reply to. The
 This is the one place a worker reads Kafka, and it's justified: the input is a *fact* ("threshold crossed")
 and the email is the consumer's own side effect.
 
-Trial reminders: a second Kafka consumer on `subscription.trial-will-end.v1` (group `notifier-trials`, own DLQ `subscription.trial-will-end.dlq.v1`, `sent_notifications.kind = 'trial'`, migration `00002`) mails the customer that their trial ends soon (`trial_will_end.v1`). The end of the trial is written in the tenant's time zone. The template is in the mail category `system` (it is in no family of `pkg/mailcategory`), so a tenant switches it off with the other system mail. Like all customer mail it is English only; a customer has no language on file.
+Trial reminders: a second Kafka consumer on `subscription.trial-will-end.v1` (group `notifier-trials`, own DLQ `subscription.trial-will-end.dlq.v1`, `sent_notifications.kind = 'trial'`) mails the customer that their trial ends soon (`trial_will_end.v1`). The end of the trial is written in the tenant's time zone. The template is in the mail category `system` (it is in no family of `pkg/mailcategory`), so a tenant switches it off with the other system mail. Like all customer mail it is English only; a customer has no language on file.
 
 Templates: Go `html/template`, embedded with `embed.FS`, versioned by name (`invoice_paid.v1.html`).
 

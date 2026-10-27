@@ -1,5 +1,7 @@
 -- ClickHouse schema of analytics-svc (docs/03-services/analytics-svc.md). Statements are separated by a semicolon at the
 -- end of a line; the migration runner applies each file once and records it in schema_migrations.
+-- This is the baseline: it was written once, before the first release, and it starts the history. Every change from here on is a new numbered migration (00002_...),
+-- never an edit of this file.
 
 CREATE TABLE IF NOT EXISTS usage_events
 (

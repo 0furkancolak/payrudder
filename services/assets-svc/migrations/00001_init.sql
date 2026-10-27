@@ -1,5 +1,7 @@
--- assets_db (docs/05-data-model.md#assets_db). Roles: assets_migrator owns everything; assets_app (request handlers, RLS
--- enforced); assets_system (sweeper, verifier, orphan reconciler: BYPASSRLS).
+-- assets_db (docs/05-data-model.md#assets_db).
+-- This is the baseline: it was written once, before the first release, from the schema the pre-release migrations had built, and it starts the history.
+-- Every change from here on is a new numbered migration (00002_...), never an edit of this file.
+-- Roles: assets_migrator owns everything; assets_app (request handlers, RLS enforced); assets_system (sweeper, verifier, orphan reconciler: BYPASSRLS).
 
 -- +goose Up
 CREATE FUNCTION app_tenant_id() RETURNS uuid

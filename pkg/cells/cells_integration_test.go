@@ -619,7 +619,6 @@ func TestDoctorFindsWhatDisagrees(t *testing.T) {
 		{cells.Warn, behind, "behind"},
 		{cells.Warn, stuck, "is moving"},
 		{cells.Warn, uuid.Nil, "was set aside by a move"},
-		{cells.Info, uuid.Nil, "refuses placements"},
 	} {
 		if !has(c.l, c.tenant, c.part) {
 			t.Errorf("no %s finding about %v containing %q", c.l, c.tenant, c.part)

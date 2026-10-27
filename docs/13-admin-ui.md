@@ -152,7 +152,7 @@ The dashboard of an app environment (`/app/apps/{app}`), of a tenant for the ope
 - **Charts without a library:** the net-revenue area with the previous period dashed under the same axis, hover and arrow-key tooltip; the payments donut; ranked bars for the top customers (paid most in the period), top packages (MRR) and open invoices by age (0-7, 8-30, 31-60, 61+ days).
 - **Usage against limits** (up to ten customers with a subscription, each meter: how many over, how many past 80 %), **upcoming charges** (next 30 days, per currency), **recent activity** (newest invoices, payments and subscriptions) and **health**.
 - **States:** skeletons with the shape of the page while loading; the previous answer stays while a new period loads; an error with "Try again"; "nothing yet" with what to do; a section that did not answer is named and the rest stays. Answers are remembered 15 seconds in the gateway (never a degraded one).
-- **Backend:** plans-svc `GetCustomerStats` and `GetSubscriptionReport(group_by=plan)`; billing-svc `GetDashboardStats` (top customers, ageing, newest invoices; migration `00024` adds a partial index of open invoices). See phase 41.
+- **Backend:** plans-svc `GetCustomerStats` and `GetSubscriptionReport(group_by=plan)`; billing-svc `GetDashboardStats` (top customers, ageing, newest invoices; a partial index of open invoices keeps the ageing read short). See phase 41.
 
 ## Phase 54: customer payment page, receipts and the invoice inbox
 

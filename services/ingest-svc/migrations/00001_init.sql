@@ -1,4 +1,6 @@
 -- ingest_db schema (docs/05-data-model.md#ingest_db).
+-- This is the baseline: it was written once, before the first release, from the schema the pre-release migrations had built, and it starts the history.
+-- Every change from here on is a new numbered migration (00002_...), never an edit of this file.
 -- Roles: ingest_migrator owns everything; ingest_app (request handlers, RLS enforced); ingest_system (BYPASSRLS: relay,
 -- partition maintenance, watermark).
 
@@ -127,6 +129,8 @@ GRANT EXECUTE ON FUNCTION app_tenant_id(), enqueue_outbox(uuid, text, text, byte
 -- grant lets the relay lock rows without letting it change anything.
 GRANT SELECT, DELETE, UPDATE (id) ON outbox TO ingest_system;
 GRANT EXECUTE ON FUNCTION maintain_idempotency_partitions(timestamptz, int, interval) TO ingest_system;
+-- Resetting a sandbox deletes the tenant's dedup keys.
+GRANT SELECT, DELETE ON idempotency_keys TO ingest_system;
 
 -- +goose Down
 DROP FUNCTION maintain_idempotency_partitions(timestamptz, int, interval);

@@ -180,7 +180,7 @@ whole), the value of the latest event (`aggregation = AGGREGATION_LAST`) or the 
 
 - **Month, year, lifetime** read `usage_aggregates`: a year is the twelve month rows of the tenant's calendar year, the lifetime window every month row there
   is. These rows are kept for good and are what billing rates, so these windows agree with the invoice by construction.
-- **Hour, day, ISO week** read `usage_window_aggregates` (migration 00004), a total per customer, meter and wall-clock hour (`2026-11-05T13`), written by the
+- **Hour, day, ISO week** read `usage_window_aggregates`, a total per customer, meter and wall-clock hour (`2026-11-05T13`), written by the
   batch transaction next to the month row: the same dedup, meter filter and on-time rule (a late or frozen-period event is in neither), the hour taken from
   `event_time` in the time zone of the period snapshot. A day is the hours of that date and a week the hours from Monday 00 to Sunday 23, as a range of the
   sortable hour id, so no time zone is needed to read it. The wall-clock id is what makes daylight saving harmless: the repeated hour of a fall-back day is one id
@@ -206,7 +206,7 @@ the first three keep one number per row and merge by adding or keeping a maximum
   ULIDs assigned once at ingest, so two different events never compare equal, and the latest event of a set does not depend on the order in which partitions, redeliveries or a
   replay deliver it. Postgres compares with `COLLATE "C"`, Lua with its own byte loop (the `<` of Redis strings follows the server's locale), Go with `<` on strings; one test
   feeds all three the same ties.
-- **Storage**: `usage_aggregates.quantity` is the quantity of the winning event, and `last_at` / `last_event_id` (migration 00005, NULL for every other aggregation) name it. The upsert
+- **Storage**: `usage_aggregates.quantity` is the quantity of the winning event, and `last_at` / `last_event_id` (NULL for every other aggregation) name it. The upsert
   keeps the incoming `(quantity, last_at, last_event_id)` only if `(last_at, last_event_id COLLATE "C")` is greater than the stored one. The hour rows (`usage_window_aggregates`) carry the same
   columns, so a day, a week, a year or the lifetime window is the winner among its rows (`array_agg(... ORDER BY last_at DESC, last_event_id COLLATE "C" DESC)`), and the answer names the event
   (`UsageAggregate.last_event_time` / `last_event_id`) so that limits-svc repairs its counter to that event and not only to its value.

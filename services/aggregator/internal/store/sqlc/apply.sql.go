@@ -464,7 +464,7 @@ type UpsertUsageWindowAggregatesParams struct {
 	Mode        string
 }
 
-// The hour totals of the window quotas (migration 00004); @mode is the merge of UpsertUsageAggregates.
+// The hour totals of the window quotas; @mode is the merge of UpsertUsageAggregates.
 func (q *Queries) UpsertUsageWindowAggregates(ctx context.Context, arg UpsertUsageWindowAggregatesParams) error {
 	_, err := q.db.Exec(ctx, upsertUsageWindowAggregates,
 		arg.Tenants,
