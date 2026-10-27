@@ -60,6 +60,11 @@ type Config struct {
 	// AfterPublish runs after the sink acked and before the delete commits. Returning an error aborts the batch
 	// without deleting, which is what a crash at that point looks like. Used by chaos tests only.
 	AfterPublish func() error
+	// CellSweep is how often a relay that serves cells visits every tenant placed in one even when nobody was notified (default 2s). A tenant is visited at
+	// once when its writer notifies; the sweep is the fallback, like PollInterval.
+	CellSweep time.Duration
+	// PlacementRefresh is how often a relay that serves cells asks the directory for the placed tenants (default 10s).
+	PlacementRefresh time.Duration
 }
 
 func (c *Config) defaults() {
@@ -75,14 +80,21 @@ func (c *Config) defaults() {
 	if c.ErrorBackoff <= 0 {
 		c.ErrorBackoff = time.Second
 	}
+	if c.CellSweep <= 0 {
+		c.CellSweep = 2 * time.Second
+	}
+	if c.PlacementRefresh <= 0 {
+		c.PlacementRefresh = 10 * time.Second
+	}
 }
 
 // Relay moves outbox rows to a Sink. Run it with the service's system pool (BYPASSRLS, SELECT and DELETE on the table).
 type Relay struct {
-	pool *pgxpool.Pool
-	sink Sink
-	cfg  Config
-	log  *slog.Logger
+	pool  *pgxpool.Pool
+	sink  Sink
+	cfg   Config
+	log   *slog.Logger
+	cells *cellRelay // nil: pooled only
 
 	published metric.Int64Counter
 	failures  metric.Int64Counter
@@ -133,6 +145,9 @@ func (r *Relay) Run(ctx context.Context) error {
 			defer wg.Done()
 			r.work(ctx, id, wake)
 		}(i)
+	}
+	if r.cells != nil {
+		r.cells.start(ctx, &wg)
 	}
 	<-ctx.Done()
 	wg.Wait()
@@ -197,18 +212,29 @@ func (r *Relay) work(ctx context.Context, id int, wake chan struct{}) {
 	}
 }
 
-// RelayOnce claims, publishes and deletes at most one batch and returns the number of rows published.
+// RelayOnce claims, publishes and deletes at most one batch of the pooled outbox and returns the number of rows published.
 func (r *Relay) RelayOnce(ctx context.Context) (int, error) {
-	start := time.Now()
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("outbox: begin: %w", err)
 	}
+	return r.relay(ctx, tx, "")
+}
+
+// relay is RelayOnce over a transaction that is already on the outbox to serve; it always ends the transaction. tenantID is set when the outbox is a tenant's
+// schema, in which case a row of another tenant stops the batch before anything is published.
+func (r *Relay) relay(ctx context.Context, tx pgx.Tx, tenantID string) (int, error) {
+	start := time.Now()
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
 
 	rows, err := r.claim(ctx, tx)
 	if err != nil || len(rows) == 0 {
 		return 0, err
+	}
+	for _, row := range rows {
+		if tenantID != "" && row.TenantID != tenantID {
+			return 0, fmt.Errorf("outbox: row %d of tenant %s is in the schema of tenant %s", row.ID, row.TenantID, tenantID)
+		}
 	}
 	pubStart := time.Now()
 	if err := r.sink.Publish(ctx, rows); err != nil {

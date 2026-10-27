@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -54,6 +56,10 @@ type Router struct {
 	pooled *pgxpool.Pool
 	cells  map[string]*pgxpool.Pool
 	dir    tenantdir.Source
+
+	placedMu   sync.Mutex
+	placedList []PlacedTenant
+	placedAt   time.Time
 }
 
 // NewRouter returns a Router over the pooled pool and the pools of the cells (by name). dir may be nil only when there are no cells.
@@ -158,6 +164,25 @@ func (r *Router) Placed(ctx context.Context) ([]PlacedTenant, error) {
 	return out, errors.Join(errs...)
 }
 
+// PlacedWithin is Placed with the answer kept for maxAge: for a loop that visits every tenant every second or two and must not ask the directory each time. A
+// list that cannot be had leaves the last one in use, for as long as the directory is down.
+func (r *Router) PlacedWithin(ctx context.Context, maxAge time.Duration) ([]PlacedTenant, error) {
+	r.placedMu.Lock()
+	defer r.placedMu.Unlock()
+	if r.placedList != nil && time.Since(r.placedAt) < maxAge {
+		return r.placedList, nil
+	}
+	list, err := r.Placed(ctx)
+	if err != nil && list == nil {
+		if r.placedList != nil {
+			return r.placedList, nil
+		}
+		return nil, err
+	}
+	r.placedList, r.placedAt = list, time.Now()
+	return list, err
+}
+
 // EachReady runs fn for every tenant placed in a cell that is serving, one after the other: the converted form of a job that used to scan one shared table.
 // A tenant that is moving is skipped (a job must not touch it), one whose fn fails does not stop the others; the errors come back joined.
 func (r *Router) EachReady(ctx context.Context, fn func(ctx context.Context, t PlacedTenant) error) error {
@@ -215,15 +240,23 @@ func SearchPath(schema string) string { return quoteIdent(schema) + ", " + Share
 // InTenantSchemaTx runs fn in a transaction on pool whose search path is the tenant's schema, without app.tenant_id: it is for the system role of a cell, which
 // bypasses row-level security and names the tenant by the schema (a relay claiming that tenant's outbox, a job running its maintenance).
 func InTenantSchemaTx(ctx context.Context, pool Beginner, tenantID uuid.UUID, fn func(pgx.Tx) error) error {
+	return runTx(ctx, func() (pgx.Tx, error) { return BeginTenantSchema(ctx, pool, tenantID) }, fn)
+}
+
+// BeginTenantSchema starts the transaction of InTenantSchemaTx for a caller that commits it itself (a relay that publishes between claiming and deleting).
+func BeginTenantSchema(ctx context.Context, pool Beginner, tenantID uuid.UUID) (pgx.Tx, error) {
 	if tenantID == uuid.Nil {
-		return errors.New("pgxx: InTenantSchemaTx with nil tenant")
+		return nil, errors.New("pgxx: tenant schema transaction with nil tenant")
 	}
-	return InTx(ctx, pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `SELECT set_config('search_path', $1, true)`, SearchPath(tenantdir.Schema(tenantID))); err != nil {
-			return fmt.Errorf("pgxx: set search path: %w", err)
-		}
-		return fn(tx)
-	})
+	tx, err := pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(ctx, `SELECT set_config('search_path', $1, true)`, SearchPath(tenantdir.Schema(tenantID))); err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, fmt.Errorf("pgxx: set search path: %w", err)
+	}
+	return tx, nil
 }
 
 func quoteIdent(s string) string { return pgx.Identifier{s}.Sanitize() }
