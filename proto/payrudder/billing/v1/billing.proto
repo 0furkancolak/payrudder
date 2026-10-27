@@ -68,8 +68,13 @@ service BillingService {
   rpc ListExpenses(ListExpensesRequest) returns (ListExpensesResponse);
   // GetExpenseInbox returns the tenant's invoice inbox: the token of the address invoices+<token>@<inbound domain> that forwarded invoices are sent to (made on first use).
   // With app_id it is the inbox of that app.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc GetExpenseInbox(GetExpenseInboxRequest) returns (ExpenseInbox);
   // RotateExpenseInbox gives the inbox a new address; mail sent to the old one is dropped.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
   rpc RotateExpenseInbox(GetExpenseInboxRequest) returns (ExpenseInbox);
   // ListInboxItems lists the attachments received by mail, newest first (status to_review by default).
   rpc ListInboxItems(ListInboxItemsRequest) returns (ListInboxItemsResponse);
