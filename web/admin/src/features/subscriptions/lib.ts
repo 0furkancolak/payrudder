@@ -26,7 +26,7 @@ export function subscriptionAbilities(s: Pick<Subscription, "owner" | "end_time"
   const active = s.state === "SUBSCRIPTION_STATE_ACTIVE";
   return {
     providerRuns,
-    /** Quotify runs it and it has not ended: pause, cancel, change plan, move. */
+    /** Payrudder runs it and it has not ended: pause, cancel, change plan, move. */
     manageHere: !providerRuns && open,
     /** The quote-based change and the coupon apply to fees paid in advance. */
     advanceActions: !providerRuns && open && advance,

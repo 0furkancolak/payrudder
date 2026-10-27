@@ -5619,7 +5619,7 @@ components:
       properties:
         provider: { type: string, description: Empty when no rule matches (the tenant's default account) }
         rule_index: { type: integer, description: "-1 when no rule matches" }
-        owner: { type: string, enum: [quotify, provider] }
+        owner: { type: string, enum: [payrudder, provider] }
         can_charge: { type: boolean }
     ListInvoicesResponse:
       type: object
@@ -7595,7 +7595,7 @@ components:
         pause_time: { type: [string, "null"], format: date-time }
         provider: { type: string }
         provider_ref: { type: string, description: "The provider's id of the subscription, once it is linked" }
-        owner: { type: string, enum: [quotify, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
+        owner: { type: string, enum: [payrudder, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
         plan_code: { type: string }
         plan_version: { type: integer }
         fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS] }
@@ -7622,7 +7622,7 @@ components:
         pause_time: { type: string, format: date-time }
         provider: { type: string }
         provider_ref: { type: string, description: "The provider's id of the subscription, once it is linked" }
-        owner: { type: string, enum: [quotify, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
+        owner: { type: string, enum: [payrudder, provider], description: Who renews it and retries failed renewals; a provider-owned subscription is changed at the provider }
         plan_code: { type: string }
         plan_version: { type: integer }
         fee_timing: { type: string, enum: [FEE_TIMING_ADVANCE, FEE_TIMING_ARREARS] }

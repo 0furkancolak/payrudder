@@ -405,7 +405,7 @@ message SyncProviderSubscriptionRequest {
   string subscription_id = 1;
   string provider = 2;
   string provider_ref = 3;
-  // "quotify" or "provider", from the provider's capabilities.
+  // "payrudder" or "provider", from the provider's capabilities.
   string owner = 4;
   // The provider's status word: active, trialing, past_due, paused or canceled. Empty links without changing the state.
   string provider_status = 5;
@@ -478,7 +478,7 @@ message PreviewRoutingResponse {
   string provider = 1;
   // Position of the matching rule, -1 when none matched.
   int32 rule_index = 2;
-  // "quotify" or "provider": who renews and retries a subscription sold through it; empty when no provider is chosen.
+  // "payrudder" or "provider": who renews and retries a subscription sold through it; empty when no provider is chosen.
   string owner = 3;
   // Whether the chosen provider can charge in the currency (always true when no provider is chosen).
   bool can_charge = 4;

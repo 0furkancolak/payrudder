@@ -359,7 +359,7 @@ message Subscription {
   string provider = 15;
   // The provider's id of the subscription, when the provider runs it (for Paddle, "sub_...").
   string provider_ref = 16;
-  // Who renews the subscription and retries its failed renewals: "quotify" (the default) or "provider". A provider-owned subscription is
+  // Who renews the subscription and retries its failed renewals: "payrudder" (the default) or "provider". A provider-owned subscription is
   // changed at the provider; its fixed fee is billed by the provider, not on Payrudder's invoice.
   string owner = 17;
   // The package (plan) and its version this subscription is on.

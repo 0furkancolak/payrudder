@@ -16,7 +16,7 @@ describe("subscription helpers", () => {
   });
 
   it("works out what can be done with a subscription", () => {
-    const active = { owner: "quotify", fee_timing: "FEE_TIMING_ADVANCE", state: "SUBSCRIPTION_STATE_ACTIVE" } as const;
+    const active = { owner: "payrudder", fee_timing: "FEE_TIMING_ADVANCE", state: "SUBSCRIPTION_STATE_ACTIVE" } as const;
     expect(subscriptionAbilities(active)).toEqual({ providerRuns: false, manageHere: true, advanceActions: true, canEndWithCredit: true });
     expect(subscriptionAbilities({ ...active, coupon_code: "SPRING" }).canEndWithCredit).toBe(false);
     expect(subscriptionAbilities({ ...active, end_time: "2026-10-01T00:00:00Z" })).toEqual({ providerRuns: false, manageHere: false, advanceActions: false, canEndWithCredit: false });

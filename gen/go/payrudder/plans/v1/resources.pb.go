@@ -2634,7 +2634,7 @@ type Subscription struct {
 	Provider string `protobuf:"bytes,15,opt,name=provider,proto3" json:"provider,omitempty"`
 	// The provider's id of the subscription, when the provider runs it (for Paddle, "sub_...").
 	ProviderRef string `protobuf:"bytes,16,opt,name=provider_ref,json=providerRef,proto3" json:"provider_ref,omitempty"`
-	// Who renews the subscription and retries its failed renewals: "quotify" (the default) or "provider". A provider-owned subscription is
+	// Who renews the subscription and retries its failed renewals: "payrudder" (the default) or "provider". A provider-owned subscription is
 	// changed at the provider; its fixed fee is billed by the provider, not on Payrudder's invoice.
 	Owner string `protobuf:"bytes,17,opt,name=owner,proto3" json:"owner,omitempty"`
 	// The package (plan) and its version this subscription is on.
