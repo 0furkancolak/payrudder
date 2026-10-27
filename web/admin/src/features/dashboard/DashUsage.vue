@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Link } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -7,7 +8,7 @@ import DashSection from "./DashSection.vue";
 import type { Dashboard } from "./lib";
 
 /** How close the customers are to the limits of their packages, per meter: who is over, who is near, and the heaviest users as bars. */
-const props = defineProps<{ data: Dashboard }>();
+const props = defineProps<{ data: Dashboard; base: string }>();
 const { t } = useI18n();
 const fmt = useFormat();
 
@@ -40,5 +41,8 @@ const clamp = (percent: number | undefined) => Math.min(100, percent ?? 0);
         </ul>
       </li>
     </ul>
+    <template #footer>
+      <Link v-if="meters.length > 0" :to="`${base}/usage`" class="text-primary text-sm font-medium hover:underline" data-testid="usage-all">{{ t("dash.usage.open") }}</Link>
+    </template>
   </DashSection>
 </template>

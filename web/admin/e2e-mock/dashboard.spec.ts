@@ -124,6 +124,7 @@ test.describe("one app", () => {
     await expect(usage).toContainText("api_calls");
     await expect(usage).toContainText("1 over the limit");
     await expect(usage).toContainText("2 close to it");
+    await expect(usage.getByTestId("usage-all")).toHaveAttribute("href", /\/usage/);
     await expect(usage.getByRole("progressbar", { name: "globex" })).toHaveAttribute("aria-valuenow", "100");
     await expect(page.getByTestId("renewals")).toContainText("acme");
     await expect(page.getByTestId("renewals")).toContainText("Trial");
