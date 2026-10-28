@@ -31,7 +31,7 @@ test("the playground takes a visitor from an empty account to a paid invoice", a
   await expect(invoice).toContainText("COMPLETED", { timeout: 240_000 });
   await expect(invoice).toContainText("paid");
 
-  await invoice.getByRole("link", { name: "Open" }).click();
+  await invoice.getByRole("button", { name: "Open" }).click();
   await expect(page.getByTestId("saga-event").last()).toContainText(/completed/i);
 });
 
