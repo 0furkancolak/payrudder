@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
 
-const customer = (id: string) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com` });
+const customer = (id: string) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, create_time: "2026-10-05T10:00:00Z" });
 
 async function open(page: Page, query = "") {
   const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/customers" && c.method === "GET" ? { body: { customers: [customer("cus_1"), customer("cus_2"), customer("cus_3")] } } : undefined));

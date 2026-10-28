@@ -151,7 +151,7 @@ test.describe("privacy mode", () => {
 
   test("customer e-mail addresses are masked too", async ({ page }) => {
     const gw = productGateway(new MockGateway()).gw;
-    gw.on((c) => (c.path === "/v1/customers" ? { body: { customers: [{ id: "c1", external_id: "cus_1", name: "Acme Ltd", email: "billing@acme.test" }] } } : undefined));
+    gw.on((c) => (c.path === "/v1/customers" ? { body: { customers: [{ id: "c1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Acme Ltd", email: "billing@acme.test" }] } } : undefined));
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/t/${LIVE}/customers`);

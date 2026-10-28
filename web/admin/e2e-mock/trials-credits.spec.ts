@@ -8,7 +8,7 @@ import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
 const DAY = 86_400_000;
 const inDays = (n: number) => new Date(Date.now() + n * DAY).toISOString();
 const customers = [
-  { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", create_time: "2026-09-01T10:00:00Z" },
+  { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", create_time: "2026-10-01T10:00:00Z" },
   { id: "id-2", external_id: "cus_2", name: "Grace Hopper", email: "grace@example.com", create_time: "2026-10-02T10:00:00Z" },
 ];
 const sub = (id: string, customer: string, extra: Record<string, unknown> = {}) => ({

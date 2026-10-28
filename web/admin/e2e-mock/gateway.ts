@@ -95,6 +95,8 @@ export class MockGateway {
    */
   async install(page: Page, opts: { onboarded?: boolean; tourSeen?: boolean } = {}): Promise<void> {
     const marks = { wizard: opts.onboarded ?? true, tour: opts.tourSeen ?? true };
+    // Lists start on this month, so the mocks' dates (October 2026) need a today that is in October 2026.
+    await page.clock.setFixedTime(new Date(2026, 9, 21, 12, 0, 0));
     if (marks.wizard || marks.tour) {
       await page.addInitScript(
         ([ids, m]) => {

@@ -46,7 +46,7 @@ test.describe("forms", () => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/payment-links" && c.method === "POST") return { status: 201, body: { id: "l1", url: "https://pay.example.test/l/abc", status: "open" } };
       if (c.path === "/v1/payment-links") return { body: { links: [] } };
-      if (c.path === "/v1/customers") return { body: { customers: [{ external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com" }] } };
+      if (c.path === "/v1/customers") return { body: { customers: [{ external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada Lovelace", email: "ada@example.com" }] } };
       return undefined;
     });
     await gw.install(page);

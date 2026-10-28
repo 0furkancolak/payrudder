@@ -6,7 +6,7 @@ import { pickFilter } from "./ui";
 // invoices, payments and subscriptions the console loads. A row opens the customer's sheet: figures, quick actions and a tab per kind of record.
 
 const customers = [
-  { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", country: "TR", billing_currency: "TRY", create_time: "2026-09-01T10:00:00Z", address: { line1: "Atatürk Cd. 1", city: "İstanbul", country: "TR" }, tax_id: "11111111111" },
+  { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", country: "TR", billing_currency: "TRY", create_time: "2026-10-01T10:00:00Z", address: { line1: "Atatürk Cd. 1", city: "İstanbul", country: "TR" }, tax_id: "11111111111" },
   { id: "id-2", external_id: "cus_2", name: "Grace Hopper", email: "grace@example.com", country: "DE", billing_currency: "EUR", create_time: "2026-10-02T10:00:00Z" },
   { id: "id-3", external_id: "cus_3", name: "", email: "", create_time: "2026-10-10T10:00:00Z" },
 ];
@@ -17,7 +17,7 @@ const invoices = [
 ];
 const payments = [{ id: "pay-1", invoice_id: "inv-1", provider: "mockpsp", kind: "charge", status: "paid", amount_minor: "150000", currency: "TRY", occurred_at: "2026-10-01T10:05:00Z" }];
 const subscriptions = [
-  { id: "sub-1", customer_external_id: "cus_1", plan_code: "pro", plan_version: 2, state: "SUBSCRIPTION_STATE_ACTIVE", currency: "TRY", start_time: "2026-09-01T10:00:00Z" },
+  { id: "sub-1", customer_external_id: "cus_1", plan_code: "pro", plan_version: 2, state: "SUBSCRIPTION_STATE_ACTIVE", currency: "TRY", start_time: "2026-10-01T10:00:00Z" },
   { id: "sub-2", customer_external_id: "cus_2", plan_code: "basic", plan_version: 1, state: "SUBSCRIPTION_STATE_PAST_DUE", currency: "EUR", start_time: "2026-10-02T10:00:00Z" },
 ];
 
@@ -32,7 +32,7 @@ function customerGateway() {
     if (c.path === "/v1/subscriptions" && c.method === "POST") return { status: 201, body: { id: "sub-new", ...c.body, state: "SUBSCRIPTION_STATE_ACTIVE" } };
     if (c.path === "/v1/subscriptions") return { body: { subscriptions } };
     if (c.path === "/v1/plans") return { body: { plans: [{ id: "p1", code: "pro", name: "Pro", latest_version: 2 }] } };
-    if (c.path === "/v1/plans/pro/versions/latest") return { body: { id: "v2", plan_code: "pro", version: 2, base_fee_minor: "9900", prices: [] } };
+    if (c.path === "/v1/plans/pro/versions/latest") return { body: { id: "v2", plan_code: "pro", version: 2, base_fee_minor: "9900", prices: [], publish_time: "2026-10-05T10:00:00Z" } };
     const credits = /^\/v1\/customers\/(cus_\d)\/credits$/.exec(c.path);
     if (credits) return { body: { balance: credits[1] === "cus_1" ? "1200" : "0", lots: [] } };
     if (/^\/v1\/customers\/cus_\d\/credits\/ledger$/.test(c.path)) return { body: { entries: [], next_page_token: "" } };

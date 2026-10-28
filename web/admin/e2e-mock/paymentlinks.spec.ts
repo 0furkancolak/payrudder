@@ -78,7 +78,7 @@ test.describe("payment links", () => {
     await context.grantPermissions(["clipboard-read", "clipboard-write"]);
     let n = 0;
     const gw = baseTenant(new MockGateway()).on((c) => {
-      if (c.method === "GET" && c.path === "/v1/customers") return { body: { customers: [{ id: "id-1", external_id: "cus_1", name: "Ada", email: "a@example.com" }] } };
+      if (c.method === "GET" && c.path === "/v1/customers") return { body: { customers: [{ id: "id-1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "a@example.com" }] } };
       if (c.method === "POST" && c.path === "/v1/customers/cus_1/portal-links") return { status: 201, body: { token: `t${++n}`, url: `/c/t${n}`, expires_at: "2026-11-19T10:00:00Z", customer_id: "id-1" } };
       if (c.method === "DELETE" && c.path === "/v1/customers/cus_1/portal-links") return { body: { revoked: 1 } };
       return undefined;

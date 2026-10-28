@@ -222,7 +222,7 @@ test.describe("failed pages", () => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.method === "GET" && c.path === "/v1/customers") {
         if (failing) return { status: 403, body: { error: { code: "PERMISSION_DENIED", key: "common.permission_denied", message: "denied", request_id: "req-7f3a" } } };
-        return { body: { customers: [{ id: "id-1", external_id: "cus_1", name: "Ada", email: "ada@example.com", create_time: "2026-09-01T10:00:00Z" }] } };
+        return { body: { customers: [{ id: "id-1", external_id: "cus_1", name: "Ada", email: "ada@example.com", create_time: "2026-10-01T10:00:00Z" }] } };
       }
       if (c.method === "GET" && c.path.startsWith("/v1/")) return { body: { invoices: [], payments: [], subscriptions: [], plans: [], entries: [], lots: [] } };
       return undefined;

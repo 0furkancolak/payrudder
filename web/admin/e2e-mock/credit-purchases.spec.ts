@@ -13,7 +13,7 @@ const pack = (id: string, name: string, credits: string, price: string, validity
   create_time: "2026-10-21T09:00:00Z",
 });
 
-const ada = { id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com" };
+const ada = { id: "id-cus_1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" };
 
 test.describe("credit purchases", () => {
   test("a pack with a validity gets a purchase link whose address is shown once, and the price is never sent", async ({ page }) => {

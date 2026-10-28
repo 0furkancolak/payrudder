@@ -11,9 +11,9 @@ const LIVE2 = "a2000000-0000-4000-8000-000000000001";
 const SANDBOX2 = "a2000000-0000-4000-8000-000000000002";
 const app2 = { id: APP2, account_id: ACCOUNT, name: "Mobile game", slug: "mobile-game", create_time: "2026-10-03T09:00:00Z", tenants: [{ ...tenant(LIVE2, "LIVE"), app_id: APP2, name: "Mobile game" }, { ...tenant(SANDBOX2, "SANDBOX"), app_id: APP2, name: "Mobile game (sandbox)" }] };
 
-const customersOf: Record<string, { id: string; external_id: string; name: string; email: string }[]> = {
-  [LIVE]: [{ id: "c1", external_id: "cus_shop", name: "Shop customer", email: "a@shop.test" }],
-  [LIVE2]: [{ id: "c2", external_id: "cus_game", name: "Game customer", email: "b@game.test" }],
+const customersOf: Record<string, { id: string; external_id: string; create_time: string; name: string; email: string }[]> = {
+  [LIVE]: [{ id: "c1", external_id: "cus_shop", create_time: "2026-10-05T10:00:00Z", name: "Shop customer", email: "a@shop.test" }],
+  [LIVE2]: [{ id: "c2", external_id: "cus_game", create_time: "2026-10-05T10:00:00Z", name: "Game customer", email: "b@game.test" }],
   [SANDBOX]: [],
   [SANDBOX2]: [],
 };
