@@ -55,7 +55,8 @@
       "amountHigh": "Tutar, çoktan aza",
       "amountLow": "Tutar, azdan çoğa",
       "nameAsc": "Ad, A'dan Z'ye",
-      "nameDesc": "Ad, Z'den A'ya"
+      "nameDesc": "Ad, Z'den A'ya",
+      "lastUsed": "Son kullanılan"
     },
     "bulk": {
       "label": "Toplu işlemler",
@@ -1150,6 +1151,13 @@
       "insecure": {
         "sandbox": "Bu adres http kullanıyor; test için sandbox'ta kabul edilir. Canlı uç noktalar https kullanmalıdır.",
         "live": "Bu adres http kullanıyor: müşteri ve fatura verileri şifresiz iletilir. https adresi kullanın."
+      },
+      "bulk": {
+        "pause": "Seçilenleri duraklat",
+        "resume": "Seçilenleri sürdür",
+        "delete": "Seçilenleri sil",
+        "deleteTitle": "Seçilen uç noktalar silinsin mi?",
+        "confirmDelete": "Seçilen uç noktalar silinir ve olay almayı bırakır. Gizli anahtarları geri getirilemez."
       }
     },
     "paymentLinks": {
@@ -1426,6 +1434,7 @@
       "expenses": {
         "title": "Giderler",
         "showVoided": "İptal edilenleri göster",
+        "hideVoided": "İptal edilenleri gizle",
         "none": "Henüz gider kaydedilmedi.",
         "voided": "İptal",
         "until": "{date} tarihine kadar",
@@ -3517,6 +3526,11 @@
       "empty": {
         "sandbox": "Henüz sandbox anahtarı yok. API'yi test verileriyle denemek için bir tane oluşturun.",
         "live": "Henüz canlı anahtar yok. Gerçek kullanımı göndermeye başlamak için bir tane oluşturun."
+      },
+      "bulk": {
+        "revoke": "Seçilenleri iptal et",
+        "revokeTitle": "Seçilen anahtarlar iptal edilsin mi?",
+        "confirmRevoke": "Hâlâ etkin olan her seçili anahtar hemen çalışmayı bırakır. Birini kullanan servisler 401 almaya başlar. Bu geri alınamaz."
       }
     },
     "links": {

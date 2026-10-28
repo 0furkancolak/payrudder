@@ -12,6 +12,8 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, amountHigh, amountLow, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
@@ -54,6 +56,7 @@ const where = (n: { disposition?: string; refund_state?: string }) => t(`billing
 const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((n) => inRange(n.create_time, range.value)), {
   sheet: { kind: "creditnote", id: (n) => n.id }, searchFields: (n) => [n.number, n.invoice_number, n.customer_external_id, n.reason],
+  sorts: () => [newest(t, (n) => time(n.create_time)), oldest(t, (n) => time(n.create_time)), amountHigh(t, (n) => amount(n.total_minor)), amountLow(t, (n) => amount(n.total_minor))],
   filters: { where: (n, v) => whereKey(n) === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
@@ -77,6 +80,7 @@ const current = table.row;
     <ErrorText :error="retry.error.value" class="px-3" />
     <ErrorText :error="notes.error.value" class="px-3" />
     <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" @clear="clear">
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <FilterSelect v-model="whereFilter" multiple :label="t('billing.creditNotes.where')" :options="whereOptions" />
       <DateRangePicker v-model="range" />
       <!-- On a page the button is the page's (the header's); inside an invoice's sheet the header is behind the sheet, so the button is in the card. -->

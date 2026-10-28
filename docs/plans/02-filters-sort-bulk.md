@@ -41,3 +41,13 @@ Screen-reader behaviour (needs a person with the tools).
 
 ## Risks
 Touching every list at once is a wide change: do it list by list in small PRs, never "one PR for all lists".
+
+## Inventory (2026-10-29)
+
+50 lists/tables were found in `web/admin/src`. Status of the interaction contract (`docs/13-admin-ui.md`, "Lists"):
+
+- **Filters on Apply:** every list uses `FilterSelect` / `DateRangePicker` except the two that were fixed in the first contract PR (support inbox: status, priority, "only late"; accounting: "show voided"). Two text boxes of the support inbox (assignee, search) apply when left, as a search does. `saas/OrganizationsPage` has a search form only.
+- **Sort:** `SortSelect` is on customers, invoices, subscriptions, expenses, tenants, product payments and the two support lists (8). Missing, client-side lists where it makes sense: tenant payments ledger, payment issues, credit notes, apps, keys, members, packages, meters, usage tabs, webhooks, deliveries, dead letters, coupons, credit packs/lots/ledger, reports, providers. **Server-paged lists get no client sort** (payment links, app invoices, promotion codes, redemptions, organisations, all affiliate and partner tabs) by the rule above.
+- **Sort, step 2:** apps, meters, webhook endpoints, API keys, credit notes and packages gained it (14 lists now). Still without: tenant payments ledger, payment issues, members (no time column), usage tabs, deliveries, dead letters, coupons, credit packs/lots/ledger, reports, providers.
+- **Sort in the URL:** done in `useTableState` (`?sort=`) for every list that has `url` and `sorts`.
+- **Bulk:** support inbox, customers, tenants, and (step 3) API keys (revoke) and webhook endpoints (pause, resume, delete) through the shared `useBulk` (`shared/lib/bulk.ts`: one question when it cannot be undone, "n done, m not changed" with the names, failed rows stay ticked). Candidates, by list: invoices (download, remind), subscriptions (cancel at period end, resume), payment links (revoke), keys (revoke), members (remove), webhooks (pause, resume, delete), dead letters (redrive, discard), packages (archive), coupons and codes (deactivate), meters (archive), affiliates (approve, suspend, pay).

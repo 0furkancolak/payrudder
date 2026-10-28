@@ -55,7 +55,8 @@
       "amountHigh": "Betrag, absteigend",
       "amountLow": "Betrag, aufsteigend",
       "nameAsc": "Name, A bis Z",
-      "nameDesc": "Name, Z bis A"
+      "nameDesc": "Name, Z bis A",
+      "lastUsed": "Zuletzt benutzt"
     },
     "bulk": {
       "label": "Sammelaktionen",
@@ -1150,6 +1151,13 @@
       "insecure": {
         "sandbox": "Diese URL verwendet http, was in der Sandbox zum Testen akzeptiert wird. Live-Endpunkte sollten https verwenden.",
         "live": "Diese URL verwendet http: Ereignisse mit Kunden- und Rechnungsdaten würden unverschlüsselt übertragen. Verwenden Sie eine https-URL."
+      },
+      "bulk": {
+        "pause": "Ausgewählte pausieren",
+        "resume": "Ausgewählte fortsetzen",
+        "delete": "Ausgewählte löschen",
+        "deleteTitle": "Die ausgewählten Endpunkte löschen?",
+        "confirmDelete": "Die ausgewählten Endpunkte werden entfernt und erhalten keine Ereignisse mehr. Ihre Geheimnisse lassen sich nicht wiederherstellen."
       }
     },
     "paymentLinks": {
@@ -1426,6 +1434,7 @@
       "expenses": {
         "title": "Ausgaben",
         "showVoided": "Stornierte anzeigen",
+        "hideVoided": "Stornierte ausblenden",
         "none": "Noch keine Ausgaben erfasst.",
         "voided": "Storniert",
         "until": "bis {date}",
@@ -3517,6 +3526,11 @@
       "empty": {
         "sandbox": "Noch keine Sandbox-Schlüssel. Erstellen Sie einen, um die API mit Testdaten auszuprobieren.",
         "live": "Noch keine Live-Schlüssel. Erstellen Sie einen, um echte Nutzung zu senden."
+      },
+      "bulk": {
+        "revoke": "Ausgewählte widerrufen",
+        "revokeTitle": "Die ausgewählten Schlüssel widerrufen?",
+        "confirmRevoke": "Jeder ausgewählte aktive Schlüssel funktioniert sofort nicht mehr. Dienste, die einen davon nutzen, erhalten 401. Das lässt sich nicht rückgängig machen."
       }
     },
     "links": {

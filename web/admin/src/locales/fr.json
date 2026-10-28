@@ -55,7 +55,8 @@
       "amountHigh": "Montant, décroissant",
       "amountLow": "Montant, croissant",
       "nameAsc": "Nom, A à Z",
-      "nameDesc": "Nom, Z à A"
+      "nameDesc": "Nom, Z à A",
+      "lastUsed": "Utilisée récemment"
     },
     "bulk": {
       "label": "Actions groupées",
@@ -1150,6 +1151,13 @@
       "insecure": {
         "sandbox": "Cette URL utilise http, accepté dans le bac à sable pour les tests. Les points de terminaison en production doivent utiliser https.",
         "live": "Cette URL utilise http : les événements contenant des données clients et factures circuleraient en clair. Utilisez une URL https."
+      },
+      "bulk": {
+        "pause": "Suspendre la sélection",
+        "resume": "Reprendre la sélection",
+        "delete": "Supprimer la sélection",
+        "deleteTitle": "Supprimer les points de terminaison sélectionnés ?",
+        "confirmDelete": "Les points de terminaison sélectionnés sont supprimés et ne reçoivent plus d'événements. Leurs secrets ne peuvent pas être récupérés."
       }
     },
     "paymentLinks": {
@@ -1426,6 +1434,7 @@
       "expenses": {
         "title": "Dépenses",
         "showVoided": "Afficher les annulées",
+        "hideVoided": "Masquer les annulées",
         "none": "Aucune dépense enregistrée pour l'instant.",
         "voided": "Annulée",
         "until": "jusqu'au {date}",
@@ -3517,6 +3526,11 @@
       "empty": {
         "sandbox": "Aucune clé sandbox pour l'instant. Créez-en une pour essayer l'API avec des données de test.",
         "live": "Aucune clé live pour l'instant. Créez-en une pour envoyer de la vraie consommation."
+      },
+      "bulk": {
+        "revoke": "Révoquer la sélection",
+        "revokeTitle": "Révoquer les clés sélectionnées ?",
+        "confirmRevoke": "Chaque clé sélectionnée encore active cesse de fonctionner immédiatement. Les services qui en utilisent une reçoivent 401. Action irréversible."
       }
     },
     "links": {

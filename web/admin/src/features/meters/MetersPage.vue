@@ -13,6 +13,8 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
@@ -41,6 +43,7 @@ const inUse = computed(() => categories(list.value));
 const aggWord = (a: string | undefined) => (a ?? "").replace("AGGREGATION_", "").toLowerCase();
 const table = useTableState(list, {
   sheet: { kind: "meter", id: (m) => m.code }, searchFields: (m) => [m.code, m.category, m.unit_label, m.value_property],
+  sorts: () => [nameAsc(t, (m) => m.code), nameDesc(t, (m) => m.code), newest(t, (m) => time(m.create_time)), oldest(t, (m) => time(m.create_time))],
   url: true, filters: { category: (m, v) => (m.category ?? "").trim() === v, aggregation: (m, v) => m.aggregation === v },
 });
 // The detail sheet is in the address (`?sheet=meter:<code>`), so a reload or a shared link brings it back.
@@ -176,6 +179,7 @@ function submit() {
   <Card class="p-3">
     <ErrorText :error="meters.error.value" class="px-3" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <FilterSelect v-model="table.filters.value.category" multiple :label="t('billing.meters.category')" :options="[{ value: '', label: t('billing.meters.allCategories') }, ...inUse.map((c) => ({ value: c }))]" />
       <FilterSelect v-model="table.filters.value.aggregation"
         multiple

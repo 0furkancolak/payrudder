@@ -214,3 +214,25 @@ One look and a few primitives that every page uses; nothing here is page-specifi
 - **Tour button slot**: an empty `#tour-slot` in the header, where the guided tour (phase 52) mounts its button.
 
 **App settings: rename and delete** (`/app/apps/{app}/settings`, `features/product/AppSettingsPage.vue`, rules in `appManage.ts`). Owners and admins get a name field in the General card (Save is enabled only for a real, trimmed change; the answer is read again so the sidebar and the lists show the new name). Only an owner sees the **Danger zone**: *Delete app* opens a dialog that explains what happens and asks for the app's name, typed in full (case counts, outer spaces are forgiven); the delete button stays disabled until it matches. Deleting archives the app on the server (keys revoked, hidden everywhere, billing records kept, billing continues for what exists) and the console then returns to `/app`, which no longer lists it. A refusal (the role changed meanwhile) is shown in the dialog. Mock specs: `e2e-mock/app-manage.spec.ts`; vitest: `appManage.test.ts`.
+
+## Lists: filters, sort, search and selection (the contract)
+
+One set of rules for every list of the console. A list that breaks a rule is a bug, not a variation.
+
+| Control | When it takes effect | Where it lives |
+|---|---|---|
+| **Filter** (a status, a kind, a country, a currency, "only late", "show voided"…) | Only when **Apply** is pressed in the chip's popover. Choosing in the popover is a draft; closing it any other way drops the draft. The cross on an active chip clears that filter at once. | `FilterSelect` (single or `multiple`). Kept in the address as `?key=a,b` when the list has `url`. |
+| **Date range** | Only when its own Apply is pressed. | `DateRangePicker`. |
+| **Sort** | At once: it is an order, not a subset. One select names column and direction together ("Newest first", "Amount, high to low"). | `SortSelect` over `useTableState` `sorts`. Kept in the address as `?sort=<key>` when the list has `url` and `sorts`; a key the list does not offer is ignored. |
+| **Search** | As the person types (client lists) or when the box is left or Enter is pressed (a search that goes to the server). A search is not a filter: it narrows by text, and waiting for Apply would make it feel broken. | `DataToolbar`. |
+| **Selection** | Ticks are kept by id, survive a refetch, and `selectedRows` are only the ticked rows the current search and filters still show: a row a filter hides is never acted on. | `useTableState` `selectId`, `RowCheck`, `BulkBar`. |
+| **A bulk action** | Runs one request per ticked row (`runBulk`), reports "n done, m not changed" with the ids that failed, and leaves the failed rows ticked so the same action can be repeated. | `runBulk`, `BulkBar`. |
+
+Rules that follow:
+
+- **A control that filters a list never applies on change.** A native `<select>`, a checkbox or a toggle that changes which rows are listed is a filter and uses `FilterSelect` (a toggle is a chip with two options).
+- **Server-paged lists do not offer a sort of the loaded page.** Ordering a page that is one slice of many would present a wrong order as a right one. A list that pages by token shows the server's order (newest first) and says so; it gets a sort only when the endpoint takes an `order_by` (a contract change, SDKs included).
+- **Lists that are limited to the first N rows** (customers, invoices… fetched up to 100 or 200 and paged in the browser) sort and filter those rows only. The list says "showing the first N" when the server returned the limit.
+- The address is the source of truth for filters and sort; a reload, a shared link and "back" bring the same view.
+
+Inventory of the lists and what each has today: `docs/plans/02-filters-sort-bulk.md` ("Inventory").

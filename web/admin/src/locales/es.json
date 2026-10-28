@@ -55,7 +55,8 @@
       "amountHigh": "Importe, de mayor a menor",
       "amountLow": "Importe, de menor a mayor",
       "nameAsc": "Nombre, A a Z",
-      "nameDesc": "Nombre, Z a A"
+      "nameDesc": "Nombre, Z a A",
+      "lastUsed": "Usado recientemente"
     },
     "bulk": {
       "label": "Acciones masivas",
@@ -1150,6 +1151,13 @@
       "insecure": {
         "sandbox": "Esta URL usa http, que se acepta en el sandbox para pruebas. Los endpoints en producción deben usar https.",
         "live": "Esta URL usa http: los eventos con datos de clientes y facturas viajarían sin cifrar. Use una URL https."
+      },
+      "bulk": {
+        "pause": "Pausar seleccionados",
+        "resume": "Reanudar seleccionados",
+        "delete": "Eliminar seleccionados",
+        "deleteTitle": "¿Eliminar los endpoints seleccionados?",
+        "confirmDelete": "Los endpoints seleccionados se eliminan y dejan de recibir eventos. Sus secretos no se pueden recuperar."
       }
     },
     "paymentLinks": {
@@ -1426,6 +1434,7 @@
       "expenses": {
         "title": "Gastos",
         "showVoided": "Mostrar anulados",
+        "hideVoided": "Ocultar anulados",
         "none": "Aún no hay gastos registrados.",
         "voided": "Anulado",
         "until": "hasta {date}",
@@ -3517,6 +3526,11 @@
       "empty": {
         "sandbox": "Aún no hay claves de sandbox. Crea una para probar la API con datos de prueba.",
         "live": "Aún no hay claves live. Crea una para empezar a enviar uso real."
+      },
+      "bulk": {
+        "revoke": "Revocar seleccionadas",
+        "revokeTitle": "¿Revocar las claves seleccionadas?",
+        "confirmRevoke": "Cada clave seleccionada que siga activa deja de funcionar de inmediato. Los servicios que usen una recibirán 401. No se puede deshacer."
       }
     },
     "links": {

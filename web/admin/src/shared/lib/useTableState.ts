@@ -18,6 +18,8 @@ import { idOf, searchParams, setKind, updateSearch } from "./sheets";
  * names the column and the direction together ("Newest first", "Amount, high to low"), see SortDef. Sorting is stable, empty values go last either way,
  * and a new choice starts again from the first page.
  *
+ * With `url` and `sorts` the chosen order is kept in the address too, as `?sort=<key>` (with the same prefix).
+ *
  * With `selectId` (or `sheet`, whose id is used) rows can be ticked for a bulk action: `selectedRows` are the ticked rows that the current search and filters
  * still show (a row a filter hides is not acted on, whatever was ticked before), `togglePage` ticks or unticks every row of the page shown, and
  * `clearSelection` drops all ticks. Ticks are kept by id, so a refetch does not lose them.
@@ -61,6 +63,23 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
       },
       { deep: true },
     );
+    // The sort is kept the same way (`?sort=amount_desc`): a reload and a shared link bring the order back. A key the list does not offer is ignored.
+    if (opts.sorts !== undefined) {
+      const sortKey = prefix + "sort";
+      const known = (v: unknown) => (typeof v === "string" && (toValue(opts.sorts) ?? []).some((d) => d.key === v) ? v : "");
+      sort.value = known(searchParams.value[sortKey]);
+      watch(sort, (now) => {
+        if (String(searchParams.value[sortKey] ?? "") === now) return;
+        updateSearch((prev) => ({ ...prev, [sortKey]: now === "" ? undefined : now }));
+      });
+      watch(
+        () => String(searchParams.value[sortKey] ?? ""),
+        (fromUrl) => {
+          const next = known(fromUrl);
+          if (next !== sort.value) sort.value = next;
+        },
+      );
+    }
     watch(
       () => keys.map((k) => String(searchParams.value[prefix + k] ?? "")).join(SEP),
       () => {

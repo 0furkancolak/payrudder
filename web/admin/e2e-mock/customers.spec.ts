@@ -119,6 +119,24 @@ test.describe("customer order", () => {
   });
 });
 
+test.describe("customer order in the address", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("the chosen order is kept in the address, comes back on a reload, and a key the list does not offer is ignored", async ({ page }) => {
+    await openCustomers(page);
+    const ids = async () => await page.getByTestId(/^customer-cus_/).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+    await page.getByTestId("sort-select").selectOption("newest");
+    await expect.poll(() => new URL(page.url()).searchParams.get("sort")).toBe("newest");
+    await page.reload();
+    await expect(page.getByTestId("sort-select")).toHaveValue("newest");
+    expect(await ids()).toEqual(["customer-cus_3", "customer-cus_2", "customer-cus_1"]);
+    await page.getByTestId("sort-select").selectOption("");
+    await expect.poll(() => new URL(page.url()).searchParams.has("sort")).toBe(false);
+    await page.goto(`${new URL(page.url()).pathname}?sort=nonsense`);
+    await expect(page.getByTestId("sort-select")).toHaveValue("");
+  });
+});
+
 test.describe("customer bulk export", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
