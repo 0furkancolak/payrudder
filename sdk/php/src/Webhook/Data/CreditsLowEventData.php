@@ -10,7 +10,7 @@ use Payrudder\Internal\Cast;
  * The `data` of `credits.low`. Credit amounts are decimal strings.
  * Read it with `WebhookEvent::dataAs(CreditsLowEventData::class)`. Money is an int of minor units.
  */
-final class CreditsLowEventData
+final class CreditsLowEventData implements EventData
 {
     public function __construct(
         public readonly string $customerId,

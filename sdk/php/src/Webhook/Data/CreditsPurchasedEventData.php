@@ -10,7 +10,7 @@ use Payrudder\Internal\Cast;
  * The `data` of `credits.purchased`. Credit amounts are decimal strings.
  * Read it with `WebhookEvent::dataAs(CreditsPurchasedEventData::class)`. Money is an int of minor units.
  */
-final class CreditsPurchasedEventData
+final class CreditsPurchasedEventData implements EventData
 {
     public function __construct(
         public readonly string $customerId,

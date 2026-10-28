@@ -7738,7 +7738,7 @@ components:
         country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2 }
         billing_currency: { type: string, description: ISO 4217; default is the tenant's currency }
         address: { $ref: "#/components/schemas/AddressInput" }
-        locale: { type: string, enum: [en, tr, de, fr, es, ar], description: The language of the customer's mails, receipts and payment pages }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar], description: "The language of the customer's mails, receipts and payment pages" }
         customer_type: { type: string, enum: [individual, business], description: A person or a taxpayer }
         referral_code: { type: string, description: "The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation." }
         referral_touch_time: { type: string, format: date-time, description: When the visitor followed that link; default now }

@@ -10,7 +10,7 @@ use Payrudder\Internal\Cast;
  * The `data` of `payment_link.*` events.
  * Read it with `WebhookEvent::dataAs(PaymentLinkEventData::class)`. Money is an int of minor units.
  */
-final class PaymentLinkEventData
+final class PaymentLinkEventData implements EventData
 {
     public function __construct(
         public readonly string $linkId,

@@ -49,20 +49,6 @@ final class PlansResource extends AbstractResource
     }
 
     /**
-     * Move every subscription on one plan version to another at its next renewal, and tell the customers (POST /v1/plans/{code}/price-changes).
-     *
-     * @param string $code
-     * @param SchedulePriceChangeRequest|array<string,mixed> $body
-     * @param RequestOptions|null $options
-     *
-     * @throws PayrudderException
-     */
-    public function schedulePriceChange(string $code, SchedulePriceChangeRequest|array $body, ?RequestOptions $options = null): SchedulePriceChangeResponse
-    {
-        return SchedulePriceChangeResponse::fromArray($this->call('POST', '/v1/plans/' . rawurlencode($code) . '/price-changes', [], Cast::body($body), $options));
-    }
-
-    /**
      * Publish the next immutable plan version (POST /v1/plans/{code}/versions).
      *
      * @param string $code
@@ -88,5 +74,19 @@ final class PlansResource extends AbstractResource
     public function getPlanVersion(string $code, string $version, ?RequestOptions $options = null): PlanVersion
     {
         return PlanVersion::fromArray($this->call('GET', '/v1/plans/' . rawurlencode($code) . '/versions/' . rawurlencode($version), [], null, $options));
+    }
+
+    /**
+     * Move every subscription on one plan version to another at its next renewal, and tell the customers (POST /v1/plans/{code}/price-changes).
+     *
+     * @param string $code
+     * @param SchedulePriceChangeRequest|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function schedulePriceChange(string $code, SchedulePriceChangeRequest|array $body, ?RequestOptions $options = null): SchedulePriceChangeResponse
+    {
+        return SchedulePriceChangeResponse::fromArray($this->call('POST', '/v1/plans/' . rawurlencode($code) . '/price-changes', [], Cast::body($body), $options));
     }
 }

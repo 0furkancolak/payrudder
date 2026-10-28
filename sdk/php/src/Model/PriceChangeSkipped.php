@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Payrudder\Model;
 
 use Payrudder\Contract\Model;
+use Payrudder\Enum\PriceChangeSkippedReason;
 use Payrudder\Internal\Cast;
 
 /**
@@ -17,12 +18,12 @@ final class PriceChangeSkipped implements Model
     /**
      * @param string|null $subscriptionId
      * @param string|null $customerExternalId
-     * @param string|null $reason
+     * @param PriceChangeSkippedReason|string|null $reason
      */
     public function __construct(
         public readonly ?string $subscriptionId = null,
         public readonly ?string $customerExternalId = null,
-        public readonly ?string $reason = null,
+        public readonly PriceChangeSkippedReason|string|null $reason = null,
     ) {}
 
     /**
@@ -33,7 +34,7 @@ final class PriceChangeSkipped implements Model
         return new static(
             subscriptionId: Cast::string($data['subscription_id'] ?? null),
             customerExternalId: Cast::string($data['customer_external_id'] ?? null),
-            reason: Cast::string($data['reason'] ?? null),
+            reason: Cast::enum(PriceChangeSkippedReason::class, $data['reason'] ?? null),
         );
     }
 
@@ -45,7 +46,7 @@ final class PriceChangeSkipped implements Model
         return Cast::compact([
             'subscription_id' => $this->subscriptionId,
             'customer_external_id' => $this->customerExternalId,
-            'reason' => $this->reason,
+            'reason' => Cast::wire($this->reason),
         ]);
     }
 }

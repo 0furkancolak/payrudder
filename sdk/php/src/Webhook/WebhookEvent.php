@@ -6,6 +6,7 @@ namespace Payrudder\Webhook;
 
 use JsonException;
 use Payrudder\Exception\WebhookException;
+use Payrudder\Webhook\Data\EventData;
 
 /**
  * The envelope of a delivery. `data` depends on `type` (see docs/16-webhooks.md); money in it
@@ -30,13 +31,13 @@ final class WebhookEvent
      * `credit_note.*`, SubscriptionEventData for `subscription.*`, PaymentLinkEventData for `payment_link.*`,
      * CreditsPurchasedEventData for `credits.purchased` and CreditsLowEventData for `credits.low`.
      *
-     * @template T of object
+     * @template T of EventData
      *
      * @param class-string<T> $class one of the classes in Payrudder\Webhook\Data
      *
      * @return T
      */
-    public function dataAs(string $class): object
+    public function dataAs(string $class): EventData
     {
         /** @var T */
         return $class::fromArray($this->data);

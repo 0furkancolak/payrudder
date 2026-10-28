@@ -12,7 +12,7 @@ use Payrudder\Model\Subscription;
  * The `data` of `subscription.*` events.
  * Read it with `WebhookEvent::dataAs(SubscriptionEventData::class)`. Money is an int of minor units.
  */
-final class SubscriptionEventData
+final class SubscriptionEventData implements EventData
 {
     public function __construct(
         public readonly Subscription $subscription,
@@ -28,9 +28,9 @@ final class SubscriptionEventData
     public static function fromArray(array $data): self
     {
         return new self(
-            subscription: Subscription::fromArray(\is_array($data['subscription'] ?? null) ? $data['subscription'] : []),
+            subscription: Subscription::fromArray(Cast::map($data['subscription'] ?? null) ?? []),
             previousSubscriptionId: Cast::string($data['previous_subscription_id'] ?? null),
-            quote: \is_array($data['quote'] ?? null) ? ChangeQuote::fromArray($data['quote']) : null,
+            quote: ($quote = Cast::map($data['quote'] ?? null)) !== null ? ChangeQuote::fromArray($quote) : null,
             toProvider: Cast::string($data['to_provider'] ?? null),
             creditedMinor: Cast::int($data['credited_minor'] ?? null),
         );

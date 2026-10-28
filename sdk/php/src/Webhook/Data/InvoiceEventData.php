@@ -10,7 +10,7 @@ use Payrudder\Internal\Cast;
  * The `data` of `invoice.*` events.
  * Read it with `WebhookEvent::dataAs(InvoiceEventData::class)`. Money is an int of minor units.
  */
-final class InvoiceEventData
+final class InvoiceEventData implements EventData
 {
     public function __construct(
         public readonly string $invoiceId,

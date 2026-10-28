@@ -168,6 +168,8 @@ final class CustomersResource extends AbstractResource
      *
      * @param string $externalId
      * @param BlockCustomerRequest|array<string,mixed>|null $body
+     * @param RequestOptions|null $options
+     *
      * @throws PayrudderException
      */
     public function blockCustomer(string $externalId, BlockCustomerRequest|array|null $body = null, ?RequestOptions $options = null): Customer
@@ -179,6 +181,8 @@ final class CustomersResource extends AbstractResource
      * Lift a customer's block (POST /v1/customers/{external_id}/unblock).
      *
      * @param string $externalId
+     * @param RequestOptions|null $options
+     *
      * @throws PayrudderException
      */
     public function unblockCustomer(string $externalId, ?RequestOptions $options = null): Customer
