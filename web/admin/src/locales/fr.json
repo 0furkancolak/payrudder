@@ -3907,7 +3907,30 @@
         "problem": "Mode test : problème",
         "done": "Mode test de {provider} connecté pour le sandbox."
       },
-      "confirmDisconnectSandbox": "Retirer le compte sandbox chez {provider} ? Le sandbox repasse sur le simulateur intégré."
+      "confirmDisconnectSandbox": "Retirer le compte sandbox chez {provider} ? Le sandbox repasse sur le simulateur intégré.",
+      "account": {
+        "title": "Comptes de paiement",
+        "intro": "Connectez plusieurs comptes chez un même fournisseur (un compte Paddle par région, un compte iyzico par société), choisissez le compte par défaut et indiquez quel compte encaisse les clients de quel pays.",
+        "add": "Ajouter un compte {provider}",
+        "empty": "Aucun compte de paiement n'est encore connecté. Connectez-en un ci-dessus.",
+        "default": "Par défaut",
+        "makeDefault": "Définir par défaut",
+        "label": "Libellé",
+        "labelHelp": "Distingue ce compte des autres : minuscules, chiffres et tirets, par exemple eu ou istanbul. Non modifiable ensuite.",
+        "labelBad": "Utilisez des minuscules, des chiffres et des tirets, en commençant par une lettre ou un chiffre (31 caractères au plus).",
+        "routing": {
+          "title": "Quel compte prend quels clients",
+          "intro": "La première règle qui correspond au pays du client et à la devise s'applique. Tous les autres sont encaissés via le compte par défaut. Les abonnements existants gardent leur compte.",
+          "country": "Pays",
+          "currency": "Devise",
+          "account": "Compte",
+          "any": "Tous",
+          "addRule": "Ajouter une règle",
+          "remove": "Retirer",
+          "save": "Enregistrer les règles",
+          "saved": "Règles enregistrées"
+        }
+      }
     },
     "integrations": {
       "introApp": "Connectez les prestataires de paiement, l'intégrateur de facturation électronique et le fournisseur d'e-mail de {app}. Les clients sont servis par les connexions live ; la sandbox n'en a pas besoin.",

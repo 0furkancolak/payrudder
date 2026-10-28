@@ -36,6 +36,7 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 	mux.HandleFunc("GET "+base+"/provider-accounts", guard(h.list))
 	mux.HandleFunc("PUT "+base+"/provider-accounts/{provider}", guard(h.put))
 	mux.HandleFunc("DELETE "+base+"/provider-accounts/{provider}", guard(h.delete))
+	mux.HandleFunc("POST "+base+"/provider-accounts/{provider}/default", guard(h.makeDefault))
 	mux.HandleFunc("GET "+base+"/go-live", guard(h.goLive))
 	mux.HandleFunc("GET "+base+"/provider-health", guard(h.health))
 }
@@ -91,6 +92,23 @@ func (h *Handler) delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := command.DeleteAccount(r.Context(), h.Command, t, r.PathValue("provider"), mode, actor(r)); err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// makeDefault makes a stored account the default of the environment named by ?environment=.
+func (h *Handler) makeDefault(w http.ResponseWriter, r *http.Request) {
+	t, ok := httpx.Tenant(w, r)
+	if !ok {
+		return
+	}
+	mode, ok := httpx.Environment(w, r)
+	if !ok {
+		return
+	}
+	if err := command.SetDefaultAccount(r.Context(), h.Command, t, r.PathValue("provider"), mode); err != nil {
 		httpx.Reply(h.Log, w, r, err)
 		return
 	}

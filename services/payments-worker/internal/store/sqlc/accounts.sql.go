@@ -148,6 +148,25 @@ func (q *Queries) ListProviderAccounts(ctx context.Context, tenantID uuid.UUID) 
 	return items, nil
 }
 
+const markProviderAccountDefault = `-- name: MarkProviderAccountDefault :execrows
+UPDATE provider_accounts SET is_default = true, updated_at = now()
+WHERE tenant_id = $1 AND provider = $2 AND environment = $3
+`
+
+type MarkProviderAccountDefaultParams struct {
+	TenantID    uuid.UUID
+	Provider    string
+	Environment string
+}
+
+func (q *Queries) MarkProviderAccountDefault(ctx context.Context, arg MarkProviderAccountDefaultParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markProviderAccountDefault, arg.TenantID, arg.Provider, arg.Environment)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const upsertProviderAccount = `-- name: UpsertProviderAccount :exec
 INSERT INTO provider_accounts (tenant_id, provider, environment, is_default, settings_enc)
 VALUES ($1, $2, $3, $4, $5)

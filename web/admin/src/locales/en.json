@@ -3907,7 +3907,30 @@
         "problem": "Test mode: problem",
         "done": "{provider} test mode connected for the sandbox."
       },
-      "confirmDisconnectSandbox": "Remove the sandbox account at {provider}? The sandbox goes back to the built-in simulator."
+      "confirmDisconnectSandbox": "Remove the sandbox account at {provider}? The sandbox goes back to the built-in simulator.",
+      "account": {
+        "title": "Payment accounts",
+        "intro": "Connect more than one account at a provider (a Paddle account per region, an iyzico account per company), choose the default, and say which account takes the customers of which country.",
+        "add": "Add a {provider} account",
+        "empty": "No payment account is connected yet. Connect one above.",
+        "default": "Default",
+        "makeDefault": "Make default",
+        "label": "Label",
+        "labelHelp": "Names this account next to the others: lower-case letters, digits and dashes, for example eu or istanbul. It cannot be changed later.",
+        "labelBad": "Use lower-case letters, digits and dashes, starting with a letter or digit (31 characters at most).",
+        "routing": {
+          "title": "Which account takes which customers",
+          "intro": "The first rule that matches the customer's country and the currency wins. Everyone else is charged through the default account. Subscriptions that already exist keep their account.",
+          "country": "Country",
+          "currency": "Currency",
+          "account": "Account",
+          "any": "Any",
+          "addRule": "Add a rule",
+          "remove": "Remove",
+          "save": "Save rules",
+          "saved": "Rules saved"
+        }
+      }
     },
     "integrations": {
       "introApp": "Connect the payment providers, the e-invoice integrator and the e-mail provider of {app}. Customers are served through the live connections; the sandbox needs none.",

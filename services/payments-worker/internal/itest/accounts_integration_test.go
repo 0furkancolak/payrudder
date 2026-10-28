@@ -381,3 +381,80 @@ func TestProviderAccountsLedgerAndWebhooks(t *testing.T) {
 		}
 	})
 }
+
+// A tenant can hold several accounts at one provider: each is named by a key with a label, only one is the default, and the default can be moved without
+// sending the settings again.
+func TestSeveralAccountsAtOneProvider(t *testing.T) {
+	pg := testkit.StartPostgres(t)
+	pool := openDB(t, pg).DB
+	ctx := context.Background()
+	fake := newFakeIyzico(t)
+
+	box, _ := secretbox.New(bytes.Repeat([]byte{7}, 32))
+	registry := payments.NewRegistry()
+	iyzico.Register(registry)
+	accounts := store.Accounts{DB: pool, Box: box}
+	resolver := &handler.Resolver{Registry: registry, Accounts: accounts}
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	api := httptest.NewServer((&webhook.Server{Registry: registry, Resolver: resolver, Accounts: accounts, Events: store.Events{DB: pool}, Attempts: store.Attempts{DB: pool},
+		Ledger: store.Ledger{DB: pool}, Log: log, Token: "internal"}).Handler())
+	defer api.Close()
+
+	tenant := uuid.New()
+	do := func(method, path, body string) (int, string) {
+		t.Helper()
+		req, _ := http.NewRequest(method, api.URL+path, strings.NewReader(body))
+		req.Header.Set("X-Internal-Token", "internal")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		b, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(b)
+	}
+	settings := `{"api_key":"api","secret_key":"K","base_url":"` + fake.srv.URL + `","buyer":{"name":"Ada","surname":"L","identity_number":"11111111111","address":"x","city":"Istanbul","country":"Turkey","zip_code":"34000","ip":"1.2.3.4","email":"b@example.com"}}`
+	path := func(key string) string { return "/admin/tenants/" + tenant.String() + "/provider-accounts/" + key }
+
+	if code, body := do("PUT", path("iyzico")+"?environment=live&default=true", settings); code != 200 {
+		t.Fatalf("primary: %d %s", code, body)
+	}
+	if code, body := do("PUT", path("iyzico~istanbul")+"?environment=live", settings); code != 200 {
+		t.Fatalf("labelled: %d %s", code, body)
+	}
+	for _, bad := range []string{"iyzico~", "iyzico~UP", "iyzico~a~b", "nope~eu"} {
+		if code, _ := do("PUT", path(bad)+"?environment=live", settings); code != 404 && code != 400 {
+			t.Errorf("%q accepted: %d", bad, code)
+		}
+	}
+	if code, _ := do("PUT", path("banktransfer~second")+"?environment=live", `{}`); code != 400 {
+		t.Errorf("a second bank transfer account: %d", code)
+	}
+
+	list, err := accounts.List(ctx, tenant)
+	if err != nil || len(list) != 2 {
+		t.Fatalf("list: %v %+v", err, list)
+	}
+	if name, ok, _ := accounts.Default(ctx, tenant, "live"); !ok || name != "iyzico" {
+		t.Fatalf("default: %q %v", name, ok)
+	}
+	if _, err := resolver.Named(ctx, tenant, "iyzico~istanbul", "live"); err != nil {
+		t.Fatalf("the labelled account does not build: %v", err)
+	}
+
+	if code, _ := do("POST", path("iyzico~istanbul")+"/default?environment=live", ""); code != 204 {
+		t.Fatalf("make default: %d", code)
+	}
+	if name, _, _ := accounts.Default(ctx, tenant, "live"); name != "iyzico~istanbul" {
+		t.Errorf("default after the move: %q", name)
+	}
+	if code, _ := do("POST", path("iyzico~ankara")+"/default?environment=live", ""); code != 404 {
+		t.Errorf("default of an account that is not there: %d", code)
+	}
+	if code, _ := do("DELETE", path("iyzico~istanbul")+"?environment=live", ""); code != 204 {
+		t.Errorf("delete: %d", code)
+	}
+	if list, _ := accounts.List(ctx, tenant); len(list) != 1 || list[0].Provider != "iyzico" {
+		t.Errorf("after the delete: %+v", list)
+	}
+}

@@ -23,3 +23,7 @@ SELECT provider FROM provider_accounts WHERE tenant_id = @tenant_id AND environm
 -- name: InsertProviderAccountEvent :exec
 INSERT INTO provider_account_events (tenant_id, provider, environment, action, actor, is_default, verified_remote)
 VALUES (@tenant_id, @provider, @environment, @action, @actor, @is_default, @verified_remote);
+
+-- name: MarkProviderAccountDefault :execrows
+UPDATE provider_accounts SET is_default = true, updated_at = now()
+WHERE tenant_id = @tenant_id AND provider = @provider AND environment = @environment;

@@ -1319,7 +1319,7 @@ class GetSubscriptionReportResponse(TypedDict):
 class RoutingRulesRulesItem(TypedDict):
     country: str
     currency: str
-    provider: Literal["iyzico", "paddle", "banktransfer"]
+    provider: str
 
 
 class RoutingRules(TypedDict):
@@ -1329,7 +1329,7 @@ class RoutingRules(TypedDict):
 class RoutingRulesInputRulesItem(TypedDict, total=False):
     country: str
     currency: str
-    provider: Literal["iyzico", "paddle", "banktransfer"]
+    provider: str
 
 
 class RoutingRulesInput(TypedDict, total=False):

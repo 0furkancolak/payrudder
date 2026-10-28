@@ -134,3 +134,18 @@ func (a Accounts) Default(ctx context.Context, tenant uuid.UUID, env string) (st
 		return q.GetDefaultProvider(ctx, sqlc.GetDefaultProviderParams{TenantID: tenant, Environment: env})
 	})
 }
+
+// SetDefault makes an existing account the one live charges go to, without touching its settings; the previous default stops being one. It reports whether
+// there was such an account.
+func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, env string) (bool, error) {
+	var found bool
+	err := tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+		if err := q.ClearDefaultProviderAccounts(ctx, sqlc.ClearDefaultProviderAccountsParams{TenantID: tenant, Environment: env, Provider: provider}); err != nil {
+			return err
+		}
+		n, err := q.MarkProviderAccountDefault(ctx, sqlc.MarkProviderAccountDefaultParams{TenantID: tenant, Provider: provider, Environment: env})
+		found = n == 1
+		return err
+	})
+	return found, err
+}

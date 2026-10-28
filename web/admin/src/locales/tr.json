@@ -3907,7 +3907,30 @@
         "problem": "Test modu: sorun var",
         "done": "{provider} test modu sandbox için bağlandı."
       },
-      "confirmDisconnectSandbox": "{provider} sandbox hesabı kaldırılsın mı? Sandbox yeniden yerleşik simülatöre döner."
+      "confirmDisconnectSandbox": "{provider} sandbox hesabı kaldırılsın mı? Sandbox yeniden yerleşik simülatöre döner.",
+      "account": {
+        "title": "Ödeme hesapları",
+        "intro": "Bir sağlayıcıda birden fazla hesap bağlayın (bölge başına bir Paddle hesabı, şirket başına bir iyzico hesabı), varsayılanı seçin ve hangi ülkenin müşterilerini hangi hesabın tahsil edeceğini belirleyin.",
+        "add": "{provider} hesabı ekle",
+        "empty": "Henüz bağlı bir ödeme hesabı yok. Yukarıdan bir tane bağlayın.",
+        "default": "Varsayılan",
+        "makeDefault": "Varsayılan yap",
+        "label": "Etiket",
+        "labelHelp": "Bu hesabı diğerlerinden ayırır: küçük harf, rakam ve tire, örneğin eu veya istanbul. Sonradan değiştirilemez.",
+        "labelBad": "Küçük harf, rakam ve tire kullanın; harf ya da rakamla başlasın (en çok 31 karakter).",
+        "routing": {
+          "title": "Hangi hesap hangi müşteriyi alır",
+          "intro": "Müşterinin ülkesi ve para birimiyle eşleşen ilk kural geçerlidir. Diğer herkes varsayılan hesaptan tahsil edilir. Var olan abonelikler hesaplarını korur.",
+          "country": "Ülke",
+          "currency": "Para birimi",
+          "account": "Hesap",
+          "any": "Hepsi",
+          "addRule": "Kural ekle",
+          "remove": "Kaldır",
+          "save": "Kuralları kaydet",
+          "saved": "Kurallar kaydedildi"
+        }
+      }
     },
     "integrations": {
       "introApp": "{app} için ödeme sağlayıcılarını, e-fatura entegratörünü ve e-posta sağlayıcısını bağlayın. Müşteriler canlı bağlantılarla hizmet alır; sandbox'ta bağlantı gerekmez.",
