@@ -103,7 +103,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
     <template v-else>
       <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
         <FilterSelect v-model="table.filters.value.role" multiple :label="t('product.members.role')" :options="[{ value: '', label: t('product.members.allRoles') }, ...['owner', 'admin', 'viewer'].map((r) => ({ value: r, label: t(`product.role.${r}`) }))]" />
-        <HeaderAction v-if="canManage" data-testid="invite-open" :label="t('product.members.inviteTitle')" @click="inviting = true" />
+        <HeaderAction v-if="canManage" test-id="invite-open" :label="t('product.members.inviteTitle')" @click="inviting = true" />
       </DataToolbar>
       <Table>
         <TableHeader>

@@ -86,7 +86,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
       <FilterSelect v-model="currencyFilter" multiple :label="t('billing.subscriptions.currency')" :options="currencyOptions" />
       <FilterSelect v-model="intervalFilter" multiple :label="t('billing.subscriptions.interval')" :options="intervalOptions" />
       <DateRangePicker v-model="range" />
-      <HeaderAction data-testid="subscriptions-new" :label="t('billing.subscriptions.new')" @click="emit('create')" />
+      <HeaderAction test-id="subscriptions-new" :label="t('billing.subscriptions.new')" @click="emit('create')" />
     </DataToolbar>
     <Table>
       <TableHeader>

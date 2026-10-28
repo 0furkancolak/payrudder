@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { cn } from "@/shared/lib/utils";
+import HeaderActions from "./HeaderActions.vue";
 
 /**
  * The head of a page: the title, a line under it (`description`, or the `subtitle` slot for anything richer), a `badge` next to the title (an environment
- * pill, say) and the page's actions in the default slot. `flush` drops the space below, for a page that lays out its own gaps.
+ * pill, say) and the page's actions in the default slot, then the page's main create button (a HeaderAction, an icon only on a phone). `flush` drops the space below, for a page that lays out its own gaps.
  */
 defineProps<{ title: string; description?: string; flush?: boolean; titleTestId?: string }>();
 </script>
@@ -19,6 +20,9 @@ defineProps<{ title: string; description?: string; flush?: boolean; titleTestId?
         <p v-if="description" class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ description }}</p>
       </slot>
     </div>
-    <div v-if="$slots.default" class="flex items-center gap-2"><slot /></div>
+    <div class="flex items-center gap-2 empty:hidden">
+      <slot />
+      <HeaderActions />
+    </div>
   </header>
 </template>

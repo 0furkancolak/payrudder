@@ -63,7 +63,7 @@ const actionsOf = (c: Coupon, i: number) => [
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.coupons.searchCoupons')" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.subscriptions.state')" :options="stateOptions" />
       <FilterSelect v-model="targetFilter" multiple :label="t('billing.pricing.promotions.appliesTo')" :options="targetOptions" />
-      <HeaderAction data-testid="coupons-new" :disabled="!canWrite" :label="t('billing.coupons.new')" @click="creating = true" />
+      <HeaderAction test-id="coupons-new" :disabled="!canWrite" :label="t('billing.coupons.new')" @click="creating = true" />
     </DataToolbar>
     <Table>
       <TableHeader>

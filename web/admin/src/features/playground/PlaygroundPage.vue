@@ -42,7 +42,7 @@ function create() {
 
 <template>
   <PageHeader :title="t('playground.title')" :description="t('playground.intro')" />
-  <HeaderAction v-if="play.tenantId.value === null" data-testid="playground-account-open" :label="t('playground.account.create')" @click="creating = true" />
+  <HeaderAction v-if="play.tenantId.value === null" test-id="playground-account-open" :label="t('playground.account.create')" @click="creating = true" />
   <ErrorText :error="play.error.value" class="bg-destructive/10 mb-4 rounded-2xl px-4 py-3" />
 
   <div class="grid gap-4 lg:grid-cols-2">

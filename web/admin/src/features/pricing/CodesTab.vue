@@ -94,7 +94,7 @@ const detailRows = computed(() => {
     <DataToolbar v-model:search="search" :placeholder="t('billing.pricing.promotions.codes.search')" :active="active" @clear="clear">
       <FilterSelect v-model="coupon" :label="t('billing.pricing.promotions.redemptions.coupon')" :options="couponOptions" />
       <FilterSelect v-model="state" :label="t('billing.subscriptions.state')" :options="stateOptions" />
-      <HeaderAction data-testid="codes-new" :disabled="!canWrite" :label="t('billing.pricing.promotions.codes.create')" @click="emit('newCode', coupon)" />
+      <HeaderAction test-id="codes-new" :disabled="!canWrite" :label="t('billing.pricing.promotions.codes.create')" @click="emit('newCode', coupon)" />
     </DataToolbar>
     <CodesTable :rows="rows" :selected="index" show-coupon @select="(i) => (index = i)" @deactivate="(c) => act.deactivate.mutate(c)" />
     <Skeleton v-if="codes.isPending.value" class="mx-3 my-4 h-24" />

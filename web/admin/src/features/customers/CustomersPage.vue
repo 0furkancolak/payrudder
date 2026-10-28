@@ -172,6 +172,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
 </script>
 
 <template>
+  <HeaderAction test-id="customers-new" :label="t('billing.customers.new')" @click="creating = true" />
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.name || currentId" wide>
     <CustomerSheet
       v-if="current"
@@ -191,7 +192,6 @@ function actionsOf(c: Customer, i: number): RowAction[] {
   </DetailSheet>
   <!-- After the customer's sheet: a sheet portals to where it was first rendered, so these open above the one they are opened from. -->
   <CustomerCreateSheet v-model:open="creating" :tenant-id="tenantId" />
-  <HeaderAction data-testid="customers-new" :label="t('billing.customers.new')" @click="creating = true" />
   <PaymentLinkSheet v-model:open="linking" :tenant-id="tenantId" invoice="" :customer="linkFor" />
   <CustomerQuotasSheet v-model:open="quotasOpen" :tenant-id="tenantId" :customer="quotasOf" />
   <CustomerEditSheets v-model:contact="editingContact" v-model:address="editingAddress" v-model:tax="editingTax" :tenant-id="tenantId" />

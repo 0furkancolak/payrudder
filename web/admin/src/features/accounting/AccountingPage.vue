@@ -181,7 +181,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
       <div class="ms-auto flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" :disabled="!rangeOk || exporting" @click="exportCsv('export')"><Download class="size-4" aria-hidden="true" />{{ t("billing.accounting.export") }}</Button>
         <Button type="button" variant="outline" data-testid="scan-receipts" @click="scan"><ScanLine class="size-4" aria-hidden="true" />{{ t("billing.accounting.scan.open") }}</Button>
-        <HeaderAction data-testid="add-expense" :label="t('billing.accounting.addExpense')" @click="add" />
+        <HeaderAction test-id="add-expense" :label="t('billing.accounting.addExpense')" @click="add" />
       </div>
     </div>
     <p v-if="!rangeOk" class="text-muted-foreground text-sm">{{ t("billing.accounting.period.invalid") }}</p>

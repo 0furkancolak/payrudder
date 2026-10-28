@@ -169,8 +169,6 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
           </button>
           <!-- On a phone the breadcrumb takes a row of its own below the buttons, so the page name is not squeezed to two letters. -->
           <Breadcrumbs :crumbs="shell.crumbs.value" class="min-w-0 flex-1 max-sm:order-last max-sm:basis-full" />
-          <!-- The page's main button (a HeaderAction) is drawn here: next to the breadcrumb, an icon only on a phone. -->
-          <div id="header-actions" data-testid="header-actions" class="flex shrink-0 items-center gap-2 empty:hidden"></div>
           <!-- The tour button of the guided tour (phase 52) mounts here, in the header of every page. -->
           <div id="tour-slot" data-testid="tour-slot" class="flex shrink-0 items-center gap-2 max-sm:ms-auto"></div>
           <div class="flex shrink-0 items-center gap-2">

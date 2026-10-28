@@ -182,7 +182,7 @@ function submit() {
         :label="t('billing.meters.aggregation')"
         :options="[{ value: '', label: t('billing.meters.allAggregations') }, ...AGGREGATIONS.map((a) => ({ value: a, label: t(`billing.meters.aggregations.${aggWord(a)}`) }))]"
       />
-      <HeaderAction v-if="canWrite" data-testid="meters-new" :label="t('billing.meters.new')" @click="start()" />
+      <HeaderAction v-if="canWrite" test-id="meters-new" :label="t('billing.meters.new')" @click="start()" />
     </DataToolbar>
     <Table>
       <TableHeader>

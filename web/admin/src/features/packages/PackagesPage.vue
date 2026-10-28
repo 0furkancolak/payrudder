@@ -237,7 +237,7 @@ function submit() {
     <ErrorText :error="packages.error.value" class="px-3" />
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
       <DateRangePicker v-model="range" />
-      <HeaderAction v-if="canWrite" data-testid="packages-new" :label="t('billing.packages.new')" @click="creating = true" />
+      <HeaderAction v-if="canWrite" test-id="packages-new" :label="t('billing.packages.new')" @click="creating = true" />
     </DataToolbar>
     <Table>
       <TableHeader>

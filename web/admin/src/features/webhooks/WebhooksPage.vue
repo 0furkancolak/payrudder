@@ -160,7 +160,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
   <Card class="mb-6 p-3">
     <DataToolbar v-model:search="endpointsTable.search.value" :active="endpointsTable.active.value" @clear="endpointsTable.clear()">
       <FilterSelect v-model="endpointsTable.filters.value.status" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, { value: 'active', label: t('billing.webhooks.active') }, { value: 'paused', label: t('billing.webhooks.paused') }]" />
-      <HeaderAction data-testid="webhooks-new" :label="t('billing.webhooks.add')" @click="creating = true" />
+      <HeaderAction test-id="webhooks-new" :label="t('billing.webhooks.add')" @click="creating = true" />
     </DataToolbar>
     <Table>
       <TableHeader>

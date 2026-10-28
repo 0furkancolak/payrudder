@@ -16,6 +16,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useEInvoiceIntegration, useMailIntegration, type EInvoiceProvider } from "./api";
 import { BRANDS, CONNECTABLE, GROUPS, IN_GROUP, type IntegrationId } from "./brands";
+import AccountsCard from "./AccountsCard.vue";
 import EInvoiceSheet from "./EInvoiceSheet.vue";
 import MailSheet from "./MailSheet.vue";
 import ProviderLogo from "./ProviderLogo.vue";
@@ -244,6 +245,7 @@ const disabled = (id: IntegrationId) => (id === "payrudderMail" ? false : !isOwn
           </li>
         </ul>
         <p v-if="g === 'payments'" class="text-muted-foreground px-1 text-xs">{{ t("product.providers.sandboxNote") }}</p>
+        <AccountsCard v-if="g === 'payments' && inApp" :app-id="appId" :apps="rows" :is-owner="isOwner" />
         <p v-else-if="!inApp" class="text-muted-foreground px-1 text-xs" :data-testid="`integration-per-app-${g}`">{{ t("product.integrations.perAppNote") }}</p>
       </section>
 

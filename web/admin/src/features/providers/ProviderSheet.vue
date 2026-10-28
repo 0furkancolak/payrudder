@@ -35,7 +35,7 @@ const props = defineProps<{
   /** Which environment of the app the sheet connects; the sandbox's is the provider's test mode. */
   environment?: ConnectEnvironment;
   /** The label of the further account the sheet manages ("eu" for paddle~eu); empty for the provider's own account. */
-  label?: string;
+  tag?: string;
   /** The sheet adds a further account at the provider: the person names it with a label. For one app, in live mode. */
   adding?: boolean;
 }>();
@@ -58,11 +58,11 @@ const disconnect = useDisconnectProvider();
 const sandbox = computed(() => props.environment === "sandbox");
 const typedLabel = ref("");
 /** The label of the account this sheet acts on: the one it was opened for, or the one being named. */
-const accountLabel = computed(() => (props.adding ? typedLabel.value.trim() : (props.label ?? "")));
+const accountLabel = computed(() => (props.adding ? typedLabel.value.trim() : (props.tag ?? "")));
 const labelProblem = computed(() => props.adding && !ACCOUNT_LABEL.test(accountLabel.value));
 const key = computed(() => accountKey(props.provider, accountLabel.value));
 /** A further account is of one app (there is no organisation-wide choice for it) and has no test mode of its own. */
-const further = computed(() => props.adding || (props.label ?? "") !== "");
+const further = computed(() => props.adding || (props.tag ?? "") !== "");
 const names = computed(() => props.apps.filter((a) => a.hasLive));
 /** The sandbox exists on every app and is connected for one app only. */
 const targets = computed(() => (sandbox.value || further.value ? props.apps.filter((a) => a.id === props.appId) : targetsOf(scope.value, props.appId, props.apps)));
@@ -123,7 +123,7 @@ function clear() {
 }
 // A sheet that opens starts clean, in the scope it was opened for, with the buyer details filled in from the billing profile where they are already known.
 watch(
-  () => [open.value, props.provider, props.scope, props.label, props.adding] as const,
+  () => [open.value, props.provider, props.scope, props.tag, props.adding] as const,
   ([isOpen, p, s]) => {
     if (!isOpen) {
       clear();

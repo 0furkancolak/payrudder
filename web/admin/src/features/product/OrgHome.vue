@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { HeaderAction } from "@/shared/ui/page-header";
+import { HeaderAction, HeaderActions } from "@/shared/ui/page-header";
 import { Link, useNavigate, useSearch } from "@tanstack/vue-router";
 import { Plus, Rocket } from "@lucide/vue";
 import { computed, nextTick, ref, watch } from "vue";
@@ -108,6 +108,7 @@ watch(
         <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ first ? t("product.home.welcome", { name: first }) : t("product.home.title") }}</h1>
         <p class="text-muted-foreground mt-1 text-sm">{{ t("product.home.intro") }}</p>
       </div>
+      <HeaderActions />
     </header>
     <HeaderAction v-if="canCreate" :label="t('product.home.create')" @click="creating = true" />
 

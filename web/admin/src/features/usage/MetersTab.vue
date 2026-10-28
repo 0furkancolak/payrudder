@@ -105,7 +105,7 @@ const actionsOf = (m: Meter, i: number) => [
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.usage.meters.search')" @clear="table.clear()">
       <FilterSelect v-model="aggregation" multiple :label="t('billing.usage.meters.aggregation')" :options="aggregationOptions" />
       <PeriodControls v-model:range="range" v-model:compare="compare" :period="period" :too-long="tooLong" />
-      <HeaderAction data-testid="meters-new" :disabled="!canWrite" :label="t('billing.usage.meters.new')" @click="openForm(null)" />
+      <HeaderAction test-id="meters-new" :disabled="!canWrite" :label="t('billing.usage.meters.new')" @click="openForm(null)" />
     </DataToolbar>
     <Table>
       <TableHeader>

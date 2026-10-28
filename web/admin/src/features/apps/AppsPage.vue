@@ -111,7 +111,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
     <ErrorText :error="apps.error.value" class="px-3 pb-2" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="table.filters.value.env" multiple :label="t('apps.environments')" :options="[{ value: '', label: t('apps.allEnvironments') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
-      <HeaderAction data-testid="apps-new" :label="t('apps.new')" @click="creating = true" />
+      <HeaderAction test-id="apps-new" :label="t('apps.new')" @click="creating = true" />
     </DataToolbar>
     <Table>
       <TableHeader>
