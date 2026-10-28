@@ -290,6 +290,11 @@
 [data-testid="sidebar"] *::-webkit-scrollbar { width: 8px; }
 [data-testid="sidebar"] *::-webkit-scrollbar-thumb { background-color: color-mix(in oklab, var(--rail-foreground) 25%, transparent); border-width: 2px; }
 [data-testid="sidebar"] *::-webkit-scrollbar-thumb:hover { background-color: color-mix(in oklab, var(--rail-foreground) 45%, transparent); }
+/* A phone scrolls by touch and shows its own indicator while moving; a bar that sits there at rest (the overview cards', a wide table's) is only noise. */
+@media (max-width: 63.999rem) {
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+}
 
 /*
  * A scroll that reaches its end does not carry on into the page behind: sheets, dialogs, the sidebar and its drawer, popovers, listboxes and menus keep
