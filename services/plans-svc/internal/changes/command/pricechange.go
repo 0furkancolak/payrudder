@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -91,7 +92,7 @@ func (c *Commands) SchedulePriceChange(ctx context.Context, req *plansv1.Schedul
 			if _, err := q.GetPendingChange(ctx, s.id); err == nil {
 				reason = "has_pending_change"
 				return nil
-			} else if err != pgx.ErrNoRows {
+			} else if !errors.Is(err, pgx.ErrNoRows) {
 				return err
 			}
 			pc, err := changesqry.Price(ctx, q, c.now(), row, &plansv1.ChangeSubscriptionRequest{SubscriptionId: s.id.String(), PlanCode: req.GetPlanCode(), PlanVersion: toVersion, Timing: plansv1.ChangeTiming_CHANGE_TIMING_PERIOD_END})

@@ -182,7 +182,8 @@ func validTag(v string) bool {
 		return false
 	}
 	for _, r := range v {
-		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-') {
+		letter := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z'
+		if !letter && (r < '0' || r > '9') && r != '_' && r != '-' {
 			return false
 		}
 	}

@@ -24,12 +24,12 @@ import (
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
-	"github.com/0furkancolak/payrudder/services/plans-svc/internal/support"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/saas"
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 	saasqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/query"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/support"
 )
 
 // Deps is what the gRPC services of plans-svc are built from. The service and its integration tests both call Register with it, so what a test
