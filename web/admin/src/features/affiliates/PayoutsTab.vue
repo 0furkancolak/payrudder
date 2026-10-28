@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
-import { Ban, Banknote, ArrowUpRight, Plus } from "@lucide/vue";
+import { Ban, Banknote, ArrowUpRight } from "@lucide/vue";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -119,9 +120,7 @@ function createAll() {
   <Card class="p-3">
     <FilterBar :active="status !== ''" class="pt-2" @clear="status = ''">
       <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
-      <template #actions>
-        <Button type="button" :disabled="!canWrite || create.isPending.value" @click="createAll"><Plus class="size-4" aria-hidden="true" />{{ t("affiliates.payouts.create") }}</Button>
-      </template>
+      <HeaderAction :disabled="!canWrite || create.isPending.value" :label="t('affiliates.payouts.create')" @click="createAll" />
     </FilterBar>
     <ErrorText :error="list.error.value" class="px-3" />
     <Skeleton v-if="list.isPending.value" class="mx-3 h-32" />

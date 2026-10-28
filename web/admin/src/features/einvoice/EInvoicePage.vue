@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
-import { Plus } from "@lucide/vue";
 import { useFormat } from "@/shared/lib/format";
 import { useTenant } from "@/features/tenants/api";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -75,9 +75,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     <ErrorState :error="accounts.error.value" :retrying="accounts.isFetching.value" compact @retry="accounts.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="pt-3" @clear="table.clear()">
       <FilterSelect v-model="environmentFilter" multiple :label="t('einvoice.account.environment')" :options="environmentOptions" />
-      <template #actions>
-        <Button type="button" @click="accountOpen = true"><Plus class="size-4" aria-hidden="true" />{{ t("einvoice.account.add") }}</Button>
-      </template>
+      <HeaderAction :label="t('einvoice.account.add')" @click="accountOpen = true" />
     </DataToolbar>
     <p v-if="list.length && !table.total.value" class="text-muted-foreground px-3 py-4 text-center text-sm">{{ t("common.noMatches") }}</p>
     <Table v-else-if="list.length">

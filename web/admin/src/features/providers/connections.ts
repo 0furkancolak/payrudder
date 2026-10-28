@@ -110,3 +110,37 @@ const HELPED: Record<"iyzico" | "paddle", readonly string[]> = {
 export function helpKey(provider: "iyzico" | "paddle", path: string): string | null {
   return HELPED[provider].includes(path) ? `product.providers.help.${provider}.${path.replace(/\./g, "_")}` : null;
 }
+
+/** An account of an app is named by its key: the provider, or the provider, a tilde and a label ("paddle~eu") for a further account at the same provider. */
+export function accountKey(provider: string, label: string): string {
+  return label === "" ? provider : `${provider}~${label}`;
+}
+
+export function splitAccountKey(key: string): { provider: string; label: string } {
+  const i = key.indexOf("~");
+  return i < 0 ? { provider: key, label: "" } : { provider: key.slice(0, i), label: key.slice(i + 1) };
+}
+
+/** What a label may be: lower-case letters, digits and dashes, starting with a letter or digit, at most 31 characters (the server's rule). */
+export const ACCOUNT_LABEL = /^[a-z0-9][a-z0-9-]{0,30}$/;
+
+export interface AccountRow {
+  key: string;
+  provider: string;
+  label: string;
+  state: ConnectionState;
+  problem: AccountProblem | null;
+  isDefault: boolean;
+}
+
+/** Every account of an app as a row: the primary account of a provider first, then its further accounts by label. */
+export function accountRows(accounts: readonly AccountView[] | undefined): AccountRow[] {
+  const rows = (accounts ?? [])
+    .filter((a) => a.provider)
+    .map((a) => {
+      const key = a.provider ?? "";
+      const c = connectionOf(accounts, key);
+      return { key, ...splitAccountKey(key), state: c.state, problem: c.problem, isDefault: c.isDefault };
+    });
+  return rows.sort((a, b) => a.provider.localeCompare(b.provider) || a.label.localeCompare(b.label));
+}

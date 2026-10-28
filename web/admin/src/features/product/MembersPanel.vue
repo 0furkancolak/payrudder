@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Mail, Plus, RefreshCw, Send, UserMinus, X } from "@lucide/vue";
+import { HeaderAction } from "@/shared/ui/page-header";
+import { Mail, RefreshCw, Send, UserMinus, X } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -102,9 +103,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
     <template v-else>
       <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
         <FilterSelect v-model="table.filters.value.role" multiple :label="t('product.members.role')" :options="[{ value: '', label: t('product.members.allRoles') }, ...['owner', 'admin', 'viewer'].map((r) => ({ value: r, label: t(`product.role.${r}`) }))]" />
-        <template v-if="canManage" #actions>
-          <Button data-testid="invite-open" @click="inviting = true"><Plus class="size-4" />{{ t("product.members.inviteTitle") }}</Button>
-        </template>
+        <HeaderAction v-if="canManage" data-testid="invite-open" :label="t('product.members.inviteTitle')" @click="inviting = true" />
       </DataToolbar>
       <Table>
         <TableHeader>

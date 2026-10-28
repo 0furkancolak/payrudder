@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { Link, useNavigate, useSearch } from "@tanstack/vue-router";
 import { Plus, Rocket } from "@lucide/vue";
 import { computed, nextTick, ref, watch } from "vue";
@@ -10,7 +11,6 @@ import { GettingStarted, loadProgress, OnboardingWizard, progress, progressReady
 import { ALL_APPS } from "@/shared/lib/scope";
 import { ErrorState } from "@/shared/ui/error-state";
 import { startTourOnce, tourReady, welcomeOff } from "@/shared/ui/tour";
-import { Button } from "@/shared/ui/button";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { useAccount, useApps, useMe } from "./api";
 import AccountSwitcher from "./AccountSwitcher.vue";
@@ -108,8 +108,8 @@ watch(
         <h1 class="text-3xl font-semibold tracking-tight md:text-4xl">{{ first ? t("product.home.welcome", { name: first }) : t("product.home.title") }}</h1>
         <p class="text-muted-foreground mt-1 text-sm">{{ t("product.home.intro") }}</p>
       </div>
-      <Button v-if="canCreate" size="lg" @click="creating = true"><Plus />{{ t("product.home.create") }}</Button>
     </header>
+    <HeaderAction v-if="canCreate" :label="t('product.home.create')" @click="creating = true" />
 
     <ErrorState :error="apps.error.value" :retrying="apps.isFetching.value" class="mb-4" @retry="apps.refetch()" />
 
@@ -146,8 +146,7 @@ watch(
         <h2 class="text-xl font-semibold tracking-tight">{{ t("product.home.emptyTitle") }}</h2>
         <p class="text-muted-foreground mx-auto mt-1 max-w-md text-sm">{{ t("product.home.emptyBody") }}</p>
       </div>
-      <Button v-if="canCreate" size="lg" @click="creating = true"><Plus />{{ t("product.home.create") }}</Button>
-      <p v-else class="text-muted-foreground text-sm">{{ t("product.home.viewerEmpty") }}</p>
+      <p v-if="!canCreate" class="text-muted-foreground text-sm">{{ t("product.home.viewerEmpty") }}</p>
     </div>
 
     <CreateAppDialog v-model:open="creating" />

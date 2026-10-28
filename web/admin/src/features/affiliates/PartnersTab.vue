@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { refDebounced } from "@vueuse/core";
 import { Check, ArrowUpRight, Link2, Minus, Pencil, Users } from "@lucide/vue";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
@@ -9,7 +10,6 @@ import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
-import { Plus } from "@lucide/vue";
 import { Card } from "@/shared/ui/card";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -99,9 +99,7 @@ function openFrom(kind: "edit" | "link" | "referrals", a: Affiliate) {
   <Card class="p-3">
     <DataToolbar v-model:search="search" :placeholder="t('affiliates.partners.search')" :active="status !== '' || search !== ''" class="pt-2" @clear="status = ''; search = ''">
       <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
-      <template #actions>
-        <Button type="button" :disabled="!canWrite" @click="addOpen = true"><Plus class="size-4" aria-hidden="true" />{{ t("affiliates.partners.add") }}</Button>
-      </template>
+      <HeaderAction :disabled="!canWrite" :label="t('affiliates.partners.add')" @click="addOpen = true" />
     </DataToolbar>
     <ErrorText :error="list.error.value" class="px-3" />
     <ErrorText :error="update.error.value" class="px-3" />

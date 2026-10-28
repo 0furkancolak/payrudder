@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { Link } from "@tanstack/vue-router";
-import { Plus } from "@lucide/vue";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
@@ -14,7 +13,7 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { NativeSelect } from "@/shared/ui/native-select";
-import { PageHeader } from "@/shared/ui/page-header";
+import { HeaderAction, PageHeader } from "@/shared/ui/page-header";
 import { Table, TableBody, TableCell, TableRow } from "@/shared/ui/table";
 import type { Currency } from "@/shared/lib/currencies";
 import { SCENARIOS, usePlayground, type Scenario } from "./usePlayground";
@@ -43,15 +42,13 @@ function create() {
 
 <template>
   <PageHeader :title="t('playground.title')" :description="t('playground.intro')" />
+  <HeaderAction v-if="play.tenantId.value === null" data-testid="playground-account-open" :label="t('playground.account.create')" @click="creating = true" />
   <ErrorText :error="play.error.value" class="bg-destructive/10 mb-4 rounded-2xl px-4 py-3" />
 
   <div class="grid gap-4 lg:grid-cols-2">
     <Card>
       <h2 class="text-base font-semibold">{{ t("playground.account.title") }}</h2>
-      <div v-if="play.tenantId.value === null">
-        <Button type="button" data-testid="playground-account-open" @click="creating = true"><Plus class="size-4" />{{ t("playground.account.create") }}</Button>
-      </div>
-      <i18n-t v-else keypath="playground.account.ready" tag="p" class="text-success bg-success/10 rounded-2xl px-4 py-3 text-sm" scope="global">
+      <i18n-t v-if="play.tenantId.value !== null" keypath="playground.account.ready" tag="p" class="text-success bg-success/10 rounded-2xl px-4 py-3 text-sm" scope="global">
         <template #tenant>
           <Link to="/tenants/$id" :params="{ id: play.tenantId.value }" class="mono underline">{{ play.tenantId.value }}</Link>
         </template>

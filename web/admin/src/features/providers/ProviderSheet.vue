@@ -14,7 +14,7 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { StatusPill } from "@/shared/ui/status-pill";
 import BankTransferForm from "./BankTransferForm.vue";
 import { useAppsProviders, useConnectProvider, useDisconnectProvider, type ConnectEnvironment } from "./connectApi";
-import { PROVIDER_LINKS, connectionOf, helpKey, summarize, targetsOf, type AppResult, type AppRow, type Scope } from "./connections";
+import { ACCOUNT_LABEL, PROVIDER_LINKS, accountKey, connectionOf, helpKey, summarize, targetsOf, type AppResult, type AppRow, type Scope } from "./connections";
 
 /**
  * The side sheet that connects one payment provider (or replaces its keys, tests it, or disconnects it). The keys are typed once, are password fields, are
@@ -34,6 +34,10 @@ const props = defineProps<{
   isOwner: boolean;
   /** Which environment of the app the sheet connects; the sandbox's is the provider's test mode. */
   environment?: ConnectEnvironment;
+  /** The label of the further account the sheet manages ("eu" for paddle~eu); empty for the provider's own account. */
+  label?: string;
+  /** The sheet adds a further account at the provider: the person names it with a label. For one app, in live mode. */
+  adding?: boolean;
 }>();
 const open = defineModel<boolean>("open", { required: true });
 const emit = defineEmits<{ done: [summary: { provider: LiveProviderName; scope: Scope; ok: number; failed: number }] }>();
@@ -52,9 +56,16 @@ const connect = useConnectProvider();
 const disconnect = useDisconnectProvider();
 
 const sandbox = computed(() => props.environment === "sandbox");
+const typedLabel = ref("");
+/** The label of the account this sheet acts on: the one it was opened for, or the one being named. */
+const accountLabel = computed(() => (props.adding ? typedLabel.value.trim() : (props.label ?? "")));
+const labelProblem = computed(() => props.adding && !ACCOUNT_LABEL.test(accountLabel.value));
+const key = computed(() => accountKey(props.provider, accountLabel.value));
+/** A further account is of one app (there is no organisation-wide choice for it) and has no test mode of its own. */
+const further = computed(() => props.adding || (props.label ?? "") !== "");
 const names = computed(() => props.apps.filter((a) => a.hasLive));
 /** The sandbox exists on every app and is connected for one app only. */
-const targets = computed(() => (sandbox.value ? props.apps.filter((a) => a.id === props.appId) : targetsOf(scope.value, props.appId, props.apps)));
+const targets = computed(() => (sandbox.value || further.value ? props.apps.filter((a) => a.id === props.appId) : targetsOf(scope.value, props.appId, props.apps)));
 const prefillApp = computed(() => (props.appId !== "" ? props.appId : (names.value[0]?.id ?? "")));
 const app = useApp(prefillApp);
 const me = useMe();
@@ -66,10 +77,14 @@ const all = useAppsProviders(() => props.apps);
 
 /** The accounts of the apps this sheet would act on, for "connected here" and the disconnect button. */
 const connectedTargets = computed(() =>
-  targets.value.filter((a) => connectionOf(sandbox.value ? ownSandbox.data.value?.accounts : all.value.find((r) => r.app.id === a.id)?.accounts, props.provider).state !== "none"),
+  targets.value.filter((a) => connectionOf(sandbox.value ? ownSandbox.data.value?.accounts : all.value.find((r) => r.app.id === a.id)?.accounts, key.value).state !== "none"),
 );
-const here = computed(() => connectionOf(own.value.data.value?.accounts, props.provider));
-const providerName = computed(() => (props.provider ? t(`product.goLive.provider.names.${props.provider}`) : ""));
+const here = computed(() => connectionOf(own.value.data.value?.accounts, key.value));
+const providerName = computed(() => {
+  if (!props.provider) return "";
+  const name = t(`product.goLive.provider.names.${props.provider}`);
+  return accountLabel.value !== "" ? `${name} (${accountLabel.value})` : name;
+});
 const typed = computed(() => (props.provider === "iyzico" || props.provider === "paddle" ? PROVIDER_FIELDS[props.provider] : []));
 const fieldKey = (path: string) => path.replace(/\./g, "_");
 const label = (path: string) => t(`product.goLive.provider.fields.${fieldKey(path)}`);
@@ -101,19 +116,20 @@ function clear() {
   failures.value = [];
   tested.value = null;
   testProblem.value = null;
+  typedLabel.value = "";
   connect.reset();
   disconnect.reset();
   bankForm.value?.reset();
 }
 // A sheet that opens starts clean, in the scope it was opened for, with the buyer details filled in from the billing profile where they are already known.
 watch(
-  () => [open.value, props.provider, props.scope] as const,
+  () => [open.value, props.provider, props.scope, props.label, props.adding] as const,
   ([isOpen, p, s]) => {
     if (!isOpen) {
       clear();
       return;
     }
-    scope.value = sandbox.value ? "app" : s;
+    scope.value = sandbox.value || further.value ? "app" : s;
     clear();
     if (p === "iyzico" || p === "paddle") Object.assign(values, prefilled(p, known.value));
   },
@@ -128,7 +144,7 @@ watch(known, (k) => {
 
 function submit() {
   const p = props.provider;
-  if (p === "" || !props.isOwner || targets.value.length === 0) return;
+  if (p === "" || !props.isOwner || targets.value.length === 0 || labelProblem.value) return;
   let settings: Record<string, unknown> | null;
   if (p === "banktransfer") {
     settings = (bankForm.value?.build() as Record<string, unknown> | null) ?? null;
@@ -141,7 +157,7 @@ function submit() {
   const used = scope.value;
   failures.value = [];
   connect.mutate(
-    { apps: targets.value, provider: p, settings, environment: props.environment },
+    { apps: targets.value, provider: p, key: key.value, settings, environment: props.environment },
     {
       onSuccess: (results) => {
         const s = summarize(results);
@@ -161,7 +177,7 @@ function submit() {
 async function test() {
   tested.value = null;
   const r = await own.value.refetch();
-  const c = connectionOf(r.data?.accounts, props.provider);
+  const c = connectionOf(r.data?.accounts, key.value);
   tested.value = c.state === "working" ? "working" : "problem";
   testProblem.value = c.problem;
 }
@@ -172,7 +188,7 @@ async function removeNow() {
   const ask = sandbox.value ? "product.providers.confirmDisconnectSandbox" : scope.value === "org" ? "product.providers.confirmDisconnectOrg" : "product.goLive.provider.confirmRemove";
   if (!(await askConfirm({ body: t(ask, { provider: providerName.value, count: connectedTargets.value.length }) }))) return;
   disconnect.mutate(
-    { apps: connectedTargets.value, provider: p, environment: props.environment },
+    { apps: connectedTargets.value, provider: p, key: key.value, environment: props.environment },
     {
       onSuccess: (results) => {
         failures.value = results.filter((r) => !r.ok);
@@ -194,7 +210,7 @@ async function removeNow() {
       <SheetBody>
         <p v-if="!isOwner" class="text-muted-foreground text-sm" data-testid="provider-owner-only">{{ t("product.goLive.provider.ownerOnly") }}</p>
 
-        <div v-if="canOrg && !sandbox" class="grid gap-1.5">
+        <div v-if="canOrg && !sandbox && !further" class="grid gap-1.5">
           <span class="text-sm font-medium">{{ t("product.providers.scope.title") }}</span>
           <SegmentedControl v-model="scope" :options="scopeOptions" :label="t('product.providers.scope.title')" data-testid="provider-scope" />
           <p class="text-muted-foreground text-xs" data-testid="provider-scope-note">
@@ -226,6 +242,12 @@ async function removeNow() {
               <span v-if="sandbox && (provider === 'iyzico' || provider === 'paddle')" data-testid="provider-sandbox-keys">{{ t(`product.providers.sheet.sandboxKeys.${provider}`) }} </span>
               <a v-if="link" :href="link" target="_blank" rel="noopener noreferrer" class="text-primary font-medium hover:underline">{{ t("product.providers.sheet.openDashboard", { provider: providerName }) }}</a>
             </p>
+            <div v-if="adding" class="grid gap-1">
+              <label class="text-sm" for="lp-account-label">{{ t("product.providers.account.label") }}</label>
+              <Input id="lp-account-label" v-model="typedLabel" class="mono" spellcheck="false" autocomplete="off" maxlength="31" :aria-invalid="typedLabel !== '' && labelProblem" data-testid="lp-account-label" />
+              <p v-if="typedLabel !== '' && labelProblem" class="text-destructive text-xs" role="alert">{{ t("product.providers.account.labelBad") }}</p>
+              <p v-else class="text-muted-foreground text-xs">{{ t("product.providers.account.labelHelp") }}</p>
+            </div>
             <div class="grid gap-3 sm:grid-cols-2">
               <div v-for="f in typed" :key="f.path" class="grid gap-1" :class="f.secret || f.path === 'usage_product_id' ? 'sm:col-span-2' : ''">
                 <label class="text-sm" :for="`lp-${fieldKey(f.path)}`">{{ label(f.path) }}<span v-if="f.optional" class="text-muted-foreground"> ({{ t("product.goLive.provider.optional") }})</span></label>
@@ -257,7 +279,7 @@ async function removeNow() {
           {{ scope === "org" ? t("product.providers.sheet.disconnectOrg", { count: connectedTargets.length }) : t("product.goLive.provider.remove") }}
         </Button>
         <Button variant="ghost" type="button" @click="open = false">{{ t("common.cancel") }}</Button>
-        <Button type="submit" form="provider-sheet-form" :disabled="!isOwner || connect.isPending.value || targets.length === 0" data-testid="provider-connect">
+        <Button type="submit" form="provider-sheet-form" :disabled="!isOwner || connect.isPending.value || targets.length === 0 || labelProblem" data-testid="provider-connect">
           {{ connect.isPending.value ? t("product.goLive.provider.checking") : provider === "banktransfer" ? t("product.goLive.provider.saveBank") : t("product.goLive.provider.checkAndConnect") }}
         </Button>
       </SheetFooter>

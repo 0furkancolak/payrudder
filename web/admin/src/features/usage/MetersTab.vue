@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ArrowUpRight, GitBranchPlus, Plus } from "@lucide/vue";
+import { HeaderAction } from "@/shared/ui/page-header";
+import { ArrowUpRight, GitBranchPlus } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import BarList from "@/features/dashboard/BarList.vue";
@@ -104,9 +105,7 @@ const actionsOf = (m: Meter, i: number) => [
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.usage.meters.search')" @clear="table.clear()">
       <FilterSelect v-model="aggregation" multiple :label="t('billing.usage.meters.aggregation')" :options="aggregationOptions" />
       <PeriodControls v-model:range="range" v-model:compare="compare" :period="period" :too-long="tooLong" />
-      <template #actions>
-        <Button type="button" data-testid="meters-new" :disabled="!canWrite" @click="openForm(null)"><Plus class="size-4" aria-hidden="true" />{{ t("billing.usage.meters.new") }}</Button>
-      </template>
+      <HeaderAction data-testid="meters-new" :disabled="!canWrite" :label="t('billing.usage.meters.new')" @click="openForm(null)" />
     </DataToolbar>
     <Table>
       <TableHeader>

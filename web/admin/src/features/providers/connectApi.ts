@@ -1,4 +1,4 @@
-import { useMutation, useQueries, useQueryClient, type QueryClient } from "@tanstack/vue-query";
+import { useMutation, useQuery, useQueries, useQueryClient, type QueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
 import { liveKeys, productKeys, sandboxProviderKey } from "@/features/product/api";
@@ -54,12 +54,12 @@ async function eachApp(apps: readonly AppRow[], act: (id: string) => Promise<unk
 export function useConnectProvider() {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; settings: Record<string, unknown>; environment?: ConnectEnvironment }) =>
+    mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; /** The account key when it is a further account ("paddle~eu"); the provider's own name otherwise. */ key?: string; settings: Record<string, unknown>; environment?: ConnectEnvironment }) =>
       eachApp(v.apps, async (id) => {
         if (v.environment === "sandbox") {
           await unwrap(api.PUT("/app/v1/apps/{id}/sandbox/providers/{provider}", { params: { path: { id, provider: v.provider as "iyzico" | "paddle" } }, body: v.settings }));
         } else {
-          await unwrap(api.PUT("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.provider } }, body: v.settings }));
+          await unwrap(api.PUT("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.key ?? v.provider } }, body: v.settings }));
         }
       }),
     onSettled: (_r, _e, v) => refresh(queries, v.apps.map((a) => a.id)),
@@ -70,14 +70,51 @@ export function useConnectProvider() {
 export function useDisconnectProvider() {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; environment?: ConnectEnvironment }) =>
+    mutationFn: (v: { apps: readonly AppRow[]; provider: LiveProviderName; key?: string; environment?: ConnectEnvironment }) =>
       eachApp(v.apps, async (id) => {
         if (v.environment === "sandbox") {
           await unwrap(api.DELETE("/app/v1/apps/{id}/sandbox/providers/{provider}", { params: { path: { id, provider: v.provider as "iyzico" | "paddle" } } }));
         } else {
-          await unwrap(api.DELETE("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.provider } } }));
+          await unwrap(api.DELETE("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id, provider: v.key ?? v.provider } } }));
         }
       }),
     onSettled: (_r, _e, v) => refresh(queries, v.apps.map((a) => a.id)),
+  });
+}
+
+/** Makes one of an app's live accounts (by its key, "paddle~eu") the default. The account's settings are not sent again. */
+export function useMakeDefaultAccount(appId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (key: string) => unwrap(api.POST("/app/v1/apps/{id}/go-live/providers/{provider}/default", { params: { path: { id: toValue(appId), provider: key } } })),
+    onSettled: () => refresh(queries, [toValue(appId)]),
+  });
+}
+
+/** One routing rule: a customer in `country` (empty: any) paying in `currency` (empty: any) is charged through the account `provider` (an account key). */
+export interface RoutingRule {
+  country: string;
+  currency: string;
+  provider: string;
+}
+
+const routingKey = (appId: string) => [...liveKeys.goLive(appId), "routing"] as const;
+
+export function useLiveRouting(appId: MaybeRefOrGetter<string>, on: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => routingKey(toValue(appId))),
+    queryFn: async (): Promise<RoutingRule[]> => {
+      const r = await unwrap(api.GET("/app/v1/apps/{id}/go-live/routing", { params: { path: { id: toValue(appId) } } }));
+      return (r.rules ?? []).map((x) => ({ country: x.country ?? "", currency: x.currency ?? "", provider: x.provider ?? "" }));
+    },
+    enabled: computed(() => toValue(appId) !== "" && toValue(on)),
+  });
+}
+
+export function useSetLiveRouting(appId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (rules: readonly RoutingRule[]) => unwrap(api.PUT("/app/v1/apps/{id}/go-live/routing", { params: { path: { id: toValue(appId) } }, body: { rules: [...rules] } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: routingKey(toValue(appId)) }),
   });
 }

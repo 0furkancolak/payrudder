@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { useParams } from "@tanstack/vue-router";
 import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
@@ -181,9 +182,7 @@ function submit() {
         :label="t('billing.meters.aggregation')"
         :options="[{ value: '', label: t('billing.meters.allAggregations') }, ...AGGREGATIONS.map((a) => ({ value: a, label: t(`billing.meters.aggregations.${aggWord(a)}`) }))]"
       />
-      <template v-if="canWrite" #actions>
-        <Button data-testid="meters-new" @click="start()"><Plus class="size-4" />{{ t("billing.meters.new") }}</Button>
-      </template>
+      <HeaderAction v-if="canWrite" data-testid="meters-new" :label="t('billing.meters.new')" @click="start()" />
     </DataToolbar>
     <Table>
       <TableHeader>

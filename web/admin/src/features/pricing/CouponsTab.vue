@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Ban, ArrowUpRight, Plus, Ticket } from "@lucide/vue";
+import { HeaderAction } from "@/shared/ui/page-header";
+import { Ban, ArrowUpRight, Ticket } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
@@ -62,9 +63,7 @@ const actionsOf = (c: Coupon, i: number) => [
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.coupons.searchCoupons')" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.subscriptions.state')" :options="stateOptions" />
       <FilterSelect v-model="targetFilter" multiple :label="t('billing.pricing.promotions.appliesTo')" :options="targetOptions" />
-      <template #actions>
-        <Button type="button" data-testid="coupons-new" :disabled="!canWrite" @click="creating = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.coupons.new") }}</Button>
-      </template>
+      <HeaderAction data-testid="coupons-new" :disabled="!canWrite" :label="t('billing.coupons.new')" @click="creating = true" />
     </DataToolbar>
     <Table>
       <TableHeader>

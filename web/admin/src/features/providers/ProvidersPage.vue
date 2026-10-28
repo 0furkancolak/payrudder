@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
 import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
@@ -148,9 +149,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.providers.accounts") }}</h2>
     <DataToolbar v-model:search="accountTable.search.value" :active="accountTable.active.value" @clear="accountTable.clear()">
       <FilterSelect v-model="accountEnv" multiple :label="t('billing.providers.environment')" :options="environments" />
-      <template #actions>
-        <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.providers.addAccount") }}</Button>
-      </template>
+      <HeaderAction :label="t('billing.providers.addAccount')" @click="open = true" />
     </DataToolbar>
     <ErrorState :error="accounts.error.value" :retrying="accounts.isFetching.value" compact @retry="accounts.refetch()" />
     <Table>

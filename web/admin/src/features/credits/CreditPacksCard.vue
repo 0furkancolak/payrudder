@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Ban, Link2, Plus, Undo2 } from "@lucide/vue";
+import { HeaderAction } from "@/shared/ui/page-header";
+import { Ban, Link2, Undo2 } from "@lucide/vue";
 import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -97,9 +98,7 @@ function submitPack() {
     <h3 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.credits.packs.title") }}</h3>
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.credits.packs.state')" :options="states" />
-      <template #actions>
-        <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.credits.packs.create") }}</Button>
-      </template>
+      <HeaderAction :label="t('billing.credits.packs.create')" @click="open = true" />
     </DataToolbar>
     <ErrorText :error="packs.error.value" class="px-3" />
     <Table>
