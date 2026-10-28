@@ -26,6 +26,8 @@ const (
 	PlansService_SetPaymentMethod_FullMethodName                 = "/payrudder.plans.v1.PlansService/SetPaymentMethod"
 	PlansService_SetCustomerAddress_FullMethodName               = "/payrudder.plans.v1.PlansService/SetCustomerAddress"
 	PlansService_SetCustomerContact_FullMethodName               = "/payrudder.plans.v1.PlansService/SetCustomerContact"
+	PlansService_BlockCustomer_FullMethodName                    = "/payrudder.plans.v1.PlansService/BlockCustomer"
+	PlansService_UnblockCustomer_FullMethodName                  = "/payrudder.plans.v1.PlansService/UnblockCustomer"
 	PlansService_SetCustomerTax_FullMethodName                   = "/payrudder.plans.v1.PlansService/SetCustomerTax"
 	PlansService_CreateMeter_FullMethodName                      = "/payrudder.plans.v1.PlansService/CreateMeter"
 	PlansService_GetMeter_FullMethodName                         = "/payrudder.plans.v1.PlansService/GetMeter"
@@ -100,6 +102,9 @@ type PlansServiceClient interface {
 	SetCustomerAddress(ctx context.Context, in *SetCustomerAddressRequest, opts ...grpc.CallOption) (*SetCustomerAddressResponse, error)
 	// SetCustomerContact replaces the customer's name and e-mail address, which invoices, receipts and dunning mails carry.
 	SetCustomerContact(ctx context.Context, in *SetCustomerContactRequest, opts ...grpc.CallOption) (*SetCustomerContactResponse, error)
+	// BlockCustomer stops new subscriptions for a customer (what exists runs on); UnblockCustomer lifts it. Blocking twice keeps the first time.
+	BlockCustomer(ctx context.Context, in *BlockCustomerRequest, opts ...grpc.CallOption) (*BlockCustomerResponse, error)
+	UnblockCustomer(ctx context.Context, in *UnblockCustomerRequest, opts ...grpc.CallOption) (*UnblockCustomerResponse, error)
 	// SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
 	SetCustomerTax(ctx context.Context, in *SetCustomerTaxRequest, opts ...grpc.CallOption) (*SetCustomerTaxResponse, error)
 	// CreateMeter creates version 1 of a code, or the next version of an existing code.
@@ -268,6 +273,26 @@ func (c *plansServiceClient) SetCustomerContact(ctx context.Context, in *SetCust
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetCustomerContactResponse)
 	err := c.cc.Invoke(ctx, PlansService_SetCustomerContact_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) BlockCustomer(ctx context.Context, in *BlockCustomerRequest, opts ...grpc.CallOption) (*BlockCustomerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(BlockCustomerResponse)
+	err := c.cc.Invoke(ctx, PlansService_BlockCustomer_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) UnblockCustomer(ctx context.Context, in *UnblockCustomerRequest, opts ...grpc.CallOption) (*UnblockCustomerResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnblockCustomerResponse)
+	err := c.cc.Invoke(ctx, PlansService_UnblockCustomer_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -841,6 +866,9 @@ type PlansServiceServer interface {
 	SetCustomerAddress(context.Context, *SetCustomerAddressRequest) (*SetCustomerAddressResponse, error)
 	// SetCustomerContact replaces the customer's name and e-mail address, which invoices, receipts and dunning mails carry.
 	SetCustomerContact(context.Context, *SetCustomerContactRequest) (*SetCustomerContactResponse, error)
+	// BlockCustomer stops new subscriptions for a customer (what exists runs on); UnblockCustomer lifts it. Blocking twice keeps the first time.
+	BlockCustomer(context.Context, *BlockCustomerRequest) (*BlockCustomerResponse, error)
+	UnblockCustomer(context.Context, *UnblockCustomerRequest) (*UnblockCustomerResponse, error)
 	// SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
 	SetCustomerTax(context.Context, *SetCustomerTaxRequest) (*SetCustomerTaxResponse, error)
 	// CreateMeter creates version 1 of a code, or the next version of an existing code.
@@ -965,6 +993,12 @@ func (UnimplementedPlansServiceServer) SetCustomerAddress(context.Context, *SetC
 }
 func (UnimplementedPlansServiceServer) SetCustomerContact(context.Context, *SetCustomerContactRequest) (*SetCustomerContactResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetCustomerContact not implemented")
+}
+func (UnimplementedPlansServiceServer) BlockCustomer(context.Context, *BlockCustomerRequest) (*BlockCustomerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BlockCustomer not implemented")
+}
+func (UnimplementedPlansServiceServer) UnblockCustomer(context.Context, *UnblockCustomerRequest) (*UnblockCustomerResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnblockCustomer not implemented")
 }
 func (UnimplementedPlansServiceServer) SetCustomerTax(context.Context, *SetCustomerTaxRequest) (*SetCustomerTaxResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetCustomerTax not implemented")
@@ -1271,6 +1305,42 @@ func _PlansService_SetCustomerContact_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlansServiceServer).SetCustomerContact(ctx, req.(*SetCustomerContactRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_BlockCustomer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BlockCustomerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).BlockCustomer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_BlockCustomer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).BlockCustomer(ctx, req.(*BlockCustomerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_UnblockCustomer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnblockCustomerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).UnblockCustomer(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_UnblockCustomer_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).UnblockCustomer(ctx, req.(*UnblockCustomerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2274,6 +2344,14 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetCustomerContact",
 			Handler:    _PlansService_SetCustomerContact_Handler,
+		},
+		{
+			MethodName: "BlockCustomer",
+			Handler:    _PlansService_BlockCustomer_Handler,
+		},
+		{
+			MethodName: "UnblockCustomer",
+			Handler:    _PlansService_UnblockCustomer_Handler,
 		},
 		{
 			MethodName: "SetCustomerTax",

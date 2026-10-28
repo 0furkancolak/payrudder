@@ -189,7 +189,11 @@
     },
     "allEnvironments": "Alle Umgebungen",
     "allTiers": "Alle Stufen",
-    "allCurrencies": "Alle Währungen"
+    "allCurrencies": "Alle Währungen",
+    "suspend": "Aussetzen",
+    "reinstate": "Wieder freigeben",
+    "suspended": "Ausgesetzt",
+    "suspendConfirm": "{n} Tenant aussetzen? Seine API-Schlüssel funktionieren sofort nicht mehr. | {n} Tenants aussetzen? Ihre API-Schlüssel funktionieren sofort nicht mehr."
   },
   "tenant": {
     "fallbackTitle": "Mandant",
@@ -549,7 +553,14 @@
         "manageCredits": "Guthaben verwalten",
         "paymentMethod": "Zahlungsmethode"
       },
-      "exportSelected": "Auswahl als CSV exportieren"
+      "exportSelected": "Auswahl als CSV exportieren",
+      "block": {
+        "badge": "Gesperrt",
+        "action": "Sperren",
+        "lift": "Sperre aufheben",
+        "confirm": "{name} sperren? Für diesen Kunden kann kein neues Abonnement angelegt werden. Bestehende laufen weiter.",
+        "confirmMany": "{n} Kunden sperren? Für sie kann kein neues Abonnement angelegt werden. Bestehende laufen weiter."
+      }
     },
     "packages": {
       "new": "Neues Paket",
@@ -2606,7 +2617,8 @@
       },
       "customer": {
         "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig.",
-        "quota_reached": "Das Kundenlimit des Tarifs dieses Kontos ist erreicht."
+        "quota_reached": "Das Kundenlimit des Tarifs dieses Kontos ist erreicht.",
+        "blocked": "Dieser Kunde ist gesperrt: Für ihn kann kein neues Abonnement angelegt werden."
       },
       "common": {
         "not_found": "Der Eintrag wurde nicht gefunden.",

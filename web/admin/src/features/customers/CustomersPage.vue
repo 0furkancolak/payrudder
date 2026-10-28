@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import { useRouter } from "@tanstack/vue-router";
-import { CreditCard, ArrowUpRight, Gauge, Link2, MapPin, Receipt, Repeat, UserPen, Users } from "@lucide/vue";
+import { CreditCard, ArrowUpRight, Ban, CircleCheck, Gauge, Link2, MapPin, Receipt, Repeat, UserPen, Users } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
@@ -19,6 +19,8 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Button } from "@/shared/ui/button";
 import { downloadCsv } from "@/shared/lib/csv";
+import { runBulk } from "@/shared/lib/bulk";
+import { askConfirm } from "@/shared/lib/confirm";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 
@@ -32,7 +34,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
 import CustomerQuotasSheet from "./CustomerQuotasSheet.vue";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { useCustomers, useCustomerSummaries } from "./api";
+import { useBlockCustomer, useCustomers, useCustomerSummaries } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
 import CustomerCreateSheet from "./CustomerCreateSheet.vue";
 import CustomerEditSheets from "./CustomerEditSheets.vue";
@@ -127,6 +129,22 @@ const editingAddress = ref<Customer | null>(null);
 const editingTax = ref<Customer | null>(null);
 const packages = usePackages(tenantId);
 const act = useSubscriptionActions(tenantId);
+const blocking = useBlockCustomer(tenantId);
+const bulkNote = ref("");
+async function setBlocked(c: Customer, on: boolean) {
+  if (on && !(await askConfirm({ body: t("billing.customers.block.confirm", { name: c.name || c.external_id }) }))) return;
+  if (on) await blocking.block.mutateAsync({ externalId: c.external_id ?? "" });
+  else await blocking.unblock.mutateAsync(c.external_id ?? "");
+}
+/** The same change to every ticked customer; a failure on one does not stop the rest, and the ones not changed are named. */
+async function bulkBlock(on: boolean) {
+  const rows = table.selectedRows.value.filter((c) => (c.block_time ? 1 : 0) !== (on ? 1 : 0));
+  if (rows.length === 0) return;
+  if (on && !(await askConfirm({ body: t("billing.customers.block.confirmMany", { n: rows.length }) }))) return;
+  const r = await runBulk(rows, (c) => (on ? blocking.block.mutateAsync({ externalId: c.external_id ?? "" }) : blocking.unblock.mutateAsync(c.external_id ?? "")));
+  for (const c of r.ok) table.tick(c, false);
+  bulkNote.value = t("common.bulk.done", { ok: r.ok.length, failed: r.failed.length }) + (r.failed.length ? ` · ${t("common.bulk.notChanged")}: ${r.failed.map((f) => f.row.external_id).join(", ")}` : "");
+}
 const subscribing = ref(false);
 const subscribeFor = ref("");
 function newSubscription(c: Customer) {
@@ -175,6 +193,9 @@ function actionsOf(c: Customer, i: number): RowAction[] {
     { key: "address", label: t("billing.customers.address.edit"), icon: MapPin, onSelect: () => (editingAddress.value = c) },
     { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => (editingTax.value = c) },
     { key: "quotas", label: t("billing.quotas.action"), icon: Gauge, onSelect: () => (quotasOf.value = c.external_id ?? "") },
+    c.block_time
+      ? { key: "unblock", label: t("billing.customers.block.lift"), icon: CircleCheck, separatorBefore: true, onSelect: () => setBlocked(c, false) }
+      : { key: "block", label: t("billing.customers.block.action"), icon: Ban, separatorBefore: true, onSelect: () => setBlocked(c, true) },
   ];
 }
 
@@ -216,8 +237,11 @@ function exportSelected() {
 
   <Card class="gap-0 p-3">
     <BulkBar :count="table.selectedRows.value.length" @clear="table.clearSelection()">
+      <Button type="button" size="sm" variant="outline" data-testid="bulk-block" @click="bulkBlock(true)">{{ t("billing.customers.block.action") }}</Button>
+      <Button type="button" size="sm" variant="outline" data-testid="bulk-unblock" @click="bulkBlock(false)">{{ t("billing.customers.block.lift") }}</Button>
       <Button type="button" size="sm" variant="outline" data-testid="bulk-export" @click="exportSelected">{{ t("billing.customers.exportSelected") }}</Button>
     </BulkBar>
+    <p v-if="bulkNote" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulkNote }}</p>
     <h2 class="sr-only">{{ t("shell.items.customers") }}</h2>
     <ErrorState :error="customers.error.value" :retrying="customers.isFetching.value" compact @retry="customers.refetch()" />
     <ErrorText :error="act.create.error.value" class="px-3 pb-2" />
@@ -281,7 +305,7 @@ function exportSelected() {
               <div class="flex min-w-0 items-center gap-3">
                 <CustomerAvatar :customer="c" />
                 <div class="flex min-w-0 flex-col">
-                  <span class="truncate font-medium" dir="auto">{{ c.name || c.external_id }}</span>
+                  <span class="flex min-w-0 items-center gap-2"><span class="truncate font-medium" dir="auto">{{ c.name || c.external_id }}</span><StatusPill v-if="c.block_time" tone="danger" :title="c.block_reason || undefined" data-testid="customer-blocked">{{ t("billing.customers.block.badge") }}</StatusPill></span>
                   <span class="text-muted-foreground truncate text-xs" dir="auto">{{ maskEmail(c.email) || c.external_id }}</span>
                 </div>
               </div>

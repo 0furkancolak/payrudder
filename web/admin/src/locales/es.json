@@ -189,7 +189,11 @@
     },
     "allEnvironments": "Todos los entornos",
     "allTiers": "Todos los niveles",
-    "allCurrencies": "Todas las monedas"
+    "allCurrencies": "Todas las monedas",
+    "suspend": "Suspender",
+    "reinstate": "Reactivar",
+    "suspended": "Suspendido",
+    "suspendConfirm": "¿Suspender {n} tenant? Sus claves de API dejan de funcionar al instante. | ¿Suspender {n} tenants? Sus claves de API dejan de funcionar al instante."
   },
   "tenant": {
     "fallbackTitle": "Inquilino",
@@ -549,7 +553,14 @@
         "manageCredits": "Gestionar créditos",
         "paymentMethod": "Método de pago"
       },
-      "exportSelected": "Exportar la selección como CSV"
+      "exportSelected": "Exportar la selección como CSV",
+      "block": {
+        "badge": "Bloqueado",
+        "action": "Bloquear",
+        "lift": "Quitar el bloqueo",
+        "confirm": "¿Bloquear a {name}? No se podrá crear una nueva suscripción. Las actuales siguen.",
+        "confirmMany": "¿Bloquear a {n} clientes? No se podrá crear una nueva suscripción para ellos. Las actuales siguen."
+      }
     },
     "packages": {
       "new": "Nuevo paquete",
@@ -2606,7 +2617,8 @@
       },
       "customer": {
         "tax_invalid": "El identificador fiscal o la oficina fiscal del cliente no es válido.",
-        "quota_reached": "Se alcanzó el límite de clientes del plan de esta cuenta."
+        "quota_reached": "Se alcanzó el límite de clientes del plan de esta cuenta.",
+        "blocked": "Este cliente está bloqueado: no se puede crear una nueva suscripción para él."
       },
       "common": {
         "not_found": "No se encontró.",

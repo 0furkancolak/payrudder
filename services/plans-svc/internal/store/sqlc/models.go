@@ -270,6 +270,8 @@ type Customer struct {
 	EInvoiceRegistered bool
 	Locale             string
 	CustomerType       string
+	BlockedAt          *time.Time
+	BlockReason        string
 }
 
 type CustomerCoupon struct {

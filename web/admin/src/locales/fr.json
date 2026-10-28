@@ -189,7 +189,11 @@
     },
     "allEnvironments": "Tous les environnements",
     "allTiers": "Tous les niveaux",
-    "allCurrencies": "Toutes les devises"
+    "allCurrencies": "Toutes les devises",
+    "suspend": "Suspendre",
+    "reinstate": "Réactiver",
+    "suspended": "Suspendu",
+    "suspendConfirm": "Suspendre {n} tenant ? Ses clés d'API cessent de fonctionner immédiatement. | Suspendre {n} tenants ? Leurs clés d'API cessent de fonctionner immédiatement."
   },
   "tenant": {
     "fallbackTitle": "Locataire",
@@ -549,7 +553,14 @@
         "manageCredits": "Gérer les crédits",
         "paymentMethod": "Moyen de paiement"
       },
-      "exportSelected": "Exporter la sélection en CSV"
+      "exportSelected": "Exporter la sélection en CSV",
+      "block": {
+        "badge": "Bloqué",
+        "action": "Bloquer",
+        "lift": "Lever le blocage",
+        "confirm": "Bloquer {name} ? Aucun nouvel abonnement ne pourra être créé. Ceux en cours continuent.",
+        "confirmMany": "Bloquer {n} clients ? Aucun nouvel abonnement ne pourra être créé pour eux. Ceux en cours continuent."
+      }
     },
     "packages": {
       "new": "Nouveau forfait",
@@ -2606,7 +2617,8 @@
       },
       "customer": {
         "tax_invalid": "Le numéro fiscal ou le centre des impôts du client n'est pas valide.",
-        "quota_reached": "La limite de clients du forfait de ce compte est atteinte."
+        "quota_reached": "La limite de clients du forfait de ce compte est atteinte.",
+        "blocked": "Ce client est bloqué : aucun nouvel abonnement ne peut être créé pour lui."
       },
       "common": {
         "not_found": "Élément introuvable.",

@@ -29,6 +29,8 @@ final class Customer implements Model
      * @param bool|null $eInvoiceRegistered
      * @param string|null $locale
      * @param string|null $customerType
+     * @param string|null $blockTime
+     * @param string|null $blockReason
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -45,6 +47,8 @@ final class Customer implements Model
         public readonly ?bool $eInvoiceRegistered = null,
         public readonly ?string $locale = null,
         public readonly ?string $customerType = null,
+        public readonly ?string $blockTime = null,
+        public readonly ?string $blockReason = null,
     ) {}
 
     /**
@@ -67,6 +71,8 @@ final class Customer implements Model
             eInvoiceRegistered: Cast::bool($data['e_invoice_registered'] ?? null),
             locale: Cast::string($data['locale'] ?? null),
             customerType: Cast::string($data['customer_type'] ?? null),
+            blockTime: Cast::string($data['block_time'] ?? null),
+            blockReason: Cast::string($data['block_reason'] ?? null),
         );
     }
 
@@ -90,6 +96,8 @@ final class Customer implements Model
             'e_invoice_registered' => $this->eInvoiceRegistered,
             'locale' => $this->locale,
             'customer_type' => $this->customerType,
+            'block_time' => $this->blockTime,
+            'block_reason' => $this->blockReason,
         ]);
     }
 }

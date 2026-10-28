@@ -50,7 +50,7 @@ class Address(TypedDict):
     country: str
 
 
-class Customer(TypedDict):
+class _CustomerRequired(TypedDict):
     id: str
     external_id: str
     name: str
@@ -65,6 +65,11 @@ class Customer(TypedDict):
     e_invoice_registered: bool
     locale: str
     customer_type: str
+    block_reason: str
+
+
+class Customer(_CustomerRequired, total=False):
+    block_time: str | None
 
 
 class ListCustomersResponse(TypedDict):
@@ -111,6 +116,10 @@ class _CustomerContactRequired(TypedDict):
 class CustomerContact(_CustomerContactRequired, total=False):
     locale: Literal["en", "tr", "de", "fr", "es", "ar"]
     customer_type: Literal["individual", "business"]
+
+
+class BlockCustomerRequest(TypedDict, total=False):
+    reason: str
 
 
 class CustomerTax(TypedDict, total=False):

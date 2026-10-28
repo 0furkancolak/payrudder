@@ -94,6 +94,9 @@ func (c *Commands) create(ctx context.Context, q *sqlc.Queries, tenantID uuid.UU
 	if err != nil {
 		return nil, convert.Err(err, "customer")
 	}
+	if cust.BlockedAt != nil {
+		return nil, errkey.New(codes.FailedPrecondition, "plans.customer.blocked", "this customer is blocked: no new subscription")
+	}
 	pv, err := q.GetPlanVersionByCode(ctx, sqlc.GetPlanVersionByCodeParams{PlanCode: req.GetPlanCode(), Version: req.GetPlanVersion()})
 	if err != nil {
 		return nil, convert.Err(err, "plan version")

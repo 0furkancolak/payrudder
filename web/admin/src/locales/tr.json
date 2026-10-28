@@ -189,7 +189,11 @@
     },
     "allEnvironments": "Tüm ortamlar",
     "allTiers": "Tüm katmanlar",
-    "allCurrencies": "Tüm para birimleri"
+    "allCurrencies": "Tüm para birimleri",
+    "suspend": "Dondur",
+    "reinstate": "Yeniden etkinleştir",
+    "suspended": "Donduruldu",
+    "suspendConfirm": "{n} tenant dondurulsun mu? API anahtarları hemen çalışmaz. | {n} tenant dondurulsun mu? API anahtarları hemen çalışmaz."
   },
   "tenant": {
     "fallbackTitle": "Kiracı",
@@ -549,7 +553,14 @@
         "manageCredits": "Kredileri yönet",
         "paymentMethod": "Ödeme yöntemi"
       },
-      "exportSelected": "Seçilenleri CSV olarak dışa aktar"
+      "exportSelected": "Seçilenleri CSV olarak dışa aktar",
+      "block": {
+        "badge": "Engelli",
+        "action": "Engelle",
+        "lift": "Engeli kaldır",
+        "confirm": "{name} engellensin mi? Onun için yeni abonelik oluşturulamaz. Mevcut abonelikleri sürer.",
+        "confirmMany": "{n} müşteri engellensin mi? Onlar için yeni abonelik oluşturulamaz. Mevcut abonelikleri sürer."
+      }
     },
     "packages": {
       "new": "Yeni paket",
@@ -2606,7 +2617,8 @@
       },
       "customer": {
         "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil.",
-        "quota_reached": "Bu hesabın planının müşteri sınırına ulaşıldı."
+        "quota_reached": "Bu hesabın planının müşteri sınırına ulaşıldı.",
+        "blocked": "Bu müşteri engellenmiş: onun için yeni abonelik oluşturulamaz."
       },
       "common": {
         "not_found": "Bulunamadı.",
