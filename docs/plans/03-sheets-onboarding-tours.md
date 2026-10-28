@@ -1,0 +1,40 @@
+# 03 — Sheets, onboarding, tours, icons
+
+## The request
+List 1: (5) onboarding has needless forcing: steps must be skippable ("atla"); (6) the Payrudder welcome tour keeps appearing; (7) Usage and Meters need different icons; (9) on any scrolled page, opening a sheet scrolls the page behind it to the top (and back on close), and the multi-select inside a sheet does not scroll correctly; (13) some sheets navigate to another page instead of opening on top.
+
+## Where we are
+- #238: tour marked seen at start (`startTourOnce`), "Skip this step" in the old five-step wizard, Usage → `Activity` icon, sheet URL change uses `resetScroll: false`, Combobox scrolls only its list, invoice mentions and payment links open as sheets over the page (`PeekInvoice`).
+- **#243 (another session) then rewrote onboarding into three screens and changed empty states / page headers.** The skip button and its test were part of the older wizard; the current state of 5, 6 and 13 after #243 has not been re-verified. The mock e2e for onboarding fails on main.
+
+## Gaps
+- Skipping was added to the old wizard only; the new three-screen onboarding must be checked against "nothing forced".
+- The welcome tour fix was verified by one e2e; the real cause (the seen list is kept on the server per person: what if the save fails, or a second device) was not reproduced against the real stack.
+- Scroll fix was checked on one page in the mock; sheets stack and the router writes `?sheet=`, so back/forward and nested sheets (sheet over sheet) were not exercised; the Combobox fix was not tried inside every sheet that has one (multi-select in sheets: customer create, payment link, webhooks events, coupons).
+- Other places that still **navigate** where a sheet is expected were found only by grep for two patterns (invoice and payment link); an audit of every `Link`/`navigate` that goes from a sheet context to another page was not done.
+- Icons: only Usage changed; no audit of other duplicates in the sidebar and cards.
+
+## Research first
+1. Reproduce each of the five complaints in the **real stack** (not the mock): fresh sign-up, onboarding every screen, close tab mid-way, sign in on a second browser; long pages (invoices, customers) with a sheet; the multi-select in each sheet.
+2. Audit: every `Link`/`router.navigate` reachable from inside a sheet or from a row action → list with "should open over (sheet) / should go to a page" decision.
+3. List the sidebar and overview icons and find duplicates or confusing pairs.
+
+## Decisions needed
+Which destinations are allowed to leave the current page at all (a full customer or invoice view?). Proposal: nothing leaves the page unless the person clicks a clearly page-like link.
+
+## Work
+1. Reproduce and record the findings from the research step in this file.
+2. Onboarding: every screen has a visible skip; no screen blocks the console; a person who skipped can resume from the checklist; verify with the real stack.
+3. Tour: write the "seen" logic as a small state table (started, finished, skipped, save failed, second device) with a unit test per row.
+4. Sheets: a single scroll-lock/restore mechanism owned by the Sheet component (not per page); test nested sheets and back/forward; Combobox inside every sheet.
+5. Navigation audit fixes, one PR per feature area.
+6. Icon audit fixes.
+
+## Done means
+Each complaint has a reproduction (before) and a passing real-stack check (after), plus an e2e where the mock can express it. Screenshots in the PR.
+
+## Not verifiable here
+Feel (scroll smoothness, focus) on real touch devices.
+
+## Risks
+Conflict with the other session working on the same files (#243 area): coordinate through branches, never edit the shared checkout.

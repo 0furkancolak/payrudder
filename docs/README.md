@@ -3,6 +3,8 @@
 Status: **built**; what is left is on the [roadmap](phases/ROADMAP.md). These documents are the source of truth for the design. Code that disagrees
 with them is a bug in the code or in the docs. Fix one of them in the same PR.
 
+> **Work plans:** the owner's open requests, ordered, each with its gaps, research and acceptance criteria, are in [plans/](plans/README.md). Nothing in them is started until it is agreed.
+
 ## Core
 
 | Doc | What it answers |
