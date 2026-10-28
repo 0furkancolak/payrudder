@@ -50,7 +50,7 @@ final class SchedulePriceChangeResponse implements Model
     {
         return Cast::compact([
             'scheduled' => $this->scheduled,
-            'scheduled_subscription_ids' => $this->scheduledSubscriptionIds,
+            'scheduled_subscription_ids' => Cast::wire($this->scheduledSubscriptionIds),
             'skipped' => Cast::wire($this->skipped),
             'to_version' => $this->toVersion,
             'notice_days' => $this->noticeDays,

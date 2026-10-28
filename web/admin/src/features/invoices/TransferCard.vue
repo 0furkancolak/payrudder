@@ -6,7 +6,6 @@ import { label } from "@/shared/lib/labels";
 import type { BadgeVariants } from "@/shared/ui/badge";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Card } from "@/shared/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import type { InvoiceTransfer } from "./payment";
 
@@ -24,7 +23,7 @@ const bank = computed(() => props.transfer.instructions);
 </script>
 
 <template>
-  <Card class="mb-6 gap-3" role="region" :aria-label="t('invoice.transfer.title')" data-testid="transfer-card">
+  <section class="bg-muted/50 flex flex-col gap-3 rounded-2xl p-4" role="region" :aria-label="t('invoice.transfer.title')" data-testid="transfer-card">
     <div class="flex flex-wrap items-center gap-3">
       <h2 class="text-lg font-semibold">{{ t("invoice.transfer.title") }}</h2>
       <Badge :variant="tone" data-testid="transfer-state">{{ label(t, te, "transferState", state) }}</Badge>
@@ -91,5 +90,5 @@ const bank = computed(() => props.transfer.instructions);
         </TableBody>
       </Table>
     </template>
-  </Card>
+  </section>
 </template>

@@ -7,6 +7,8 @@ declare(strict_types=1);
 namespace Payrudder\Model;
 
 use Payrudder\Contract\RequestBody;
+use Payrudder\Enum\CustomerContactCustomerType;
+use Payrudder\Enum\CustomerContactLocale;
 use Payrudder\Internal\Cast;
 
 /**
@@ -17,14 +19,14 @@ final class CustomerContact implements RequestBody
     /**
      * @param string $name
      * @param string $email
-     * @param string|null $locale
-     * @param string|null $customerType
+     * @param CustomerContactLocale|string|null $locale
+     * @param CustomerContactCustomerType|string|null $customerType
      */
     public function __construct(
         public readonly string $name,
         public readonly string $email,
-        public readonly ?string $locale = null,
-        public readonly ?string $customerType = null,
+        public readonly CustomerContactLocale|string|null $locale = null,
+        public readonly CustomerContactCustomerType|string|null $customerType = null,
     ) {}
 
     /**
@@ -35,8 +37,8 @@ final class CustomerContact implements RequestBody
         return Cast::compact([
             'name' => $this->name,
             'email' => $this->email,
-            'locale' => $this->locale,
-            'customer_type' => $this->customerType,
+            'locale' => Cast::wire($this->locale),
+            'customer_type' => Cast::wire($this->customerType),
         ]);
     }
 }

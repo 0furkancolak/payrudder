@@ -7,14 +7,15 @@ import { METERS } from "./usage";
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
-const today = new Date().toISOString().slice(0, 10);
 function gateway(state: { meters: unknown[]; customers: unknown[]; counted: boolean }) {
   return baseTenant(new MockGateway()).on((c) => {
     if (c.method !== "GET") return undefined;
     if (c.path === "/v1/meters") return { body: { meters: state.meters } };
     if (c.path === "/v1/customers") return { body: { customers: state.customers } };
     if (c.path === "/v1/analytics/usage") {
-      return { body: { precision: "exact", quantity_scale: 0, points: state.counted ? [{ start: `${today}T00:00:00Z`, quantity: "3", event_count: "3" }] : [] } };
+      // The console's clock is not the test's (a fixture may fix it), so the event is put on the last day of the range that was asked for.
+      const last = new Date(Date.parse(c.query.get("to") ?? "") - 86_400_000).toISOString().slice(0, 10);
+      return { body: { precision: "exact", quantity_scale: 0, points: state.counted ? [{ start: `${last}T00:00:00Z`, quantity: "3", event_count: "3" }] : [] } };
     }
     return undefined;
   });

@@ -8643,7 +8643,7 @@ export interface components {
             billing_currency?: string;
             address?: components["schemas"]["AddressInput"];
             /**
-             * @description The language of the customer's mails
+             * @description The language of the customer's mails, receipts and payment pages
              * @enum {string}
              */
             locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";

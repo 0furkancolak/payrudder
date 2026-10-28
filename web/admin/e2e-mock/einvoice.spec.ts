@@ -78,7 +78,7 @@ test.describe("e-invoice status on the invoice page", () => {
   test("nothing is drawn for an invoice without a document", async ({ page }) => {
     await withInvoice([]).install(page);
     await openTenantPage(page, "/invoices?invoice=inv1");
-    await expect(page.getByRole("heading", { name: "INV-2026-000001" })).toBeVisible();
+    await expect(page.getByTestId("invoice-total")).toBeVisible();
     await expect(page.getByTestId("einvoice-status")).toHaveCount(0);
   });
 });

@@ -10,7 +10,7 @@ use Payrudder\Internal\Cast;
  * The `data` of `credit_note.*` events.
  * Read it with `WebhookEvent::dataAs(CreditNoteEventData::class)`. Money is an int of minor units.
  */
-final class CreditNoteEventData
+final class CreditNoteEventData implements EventData
 {
     public function __construct(
         public readonly string $creditNoteId,

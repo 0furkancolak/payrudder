@@ -561,7 +561,7 @@ export interface CreateCustomerRequest {
   /** ISO 4217; default is the tenant's currency */
   billing_currency?: string;
   address?: AddressInput;
-  /** The language of the customer's mails */
+  /** The language of the customer's mails, receipts and payment pages */
   locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
   /** A person or a taxpayer */
   customer_type?: "individual" | "business";

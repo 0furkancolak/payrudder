@@ -591,7 +591,7 @@ type CreateCustomerRequest struct {
 	// ISO 4217; default is the tenant's currency
 	BillingCurrency string        `json:"billing_currency,omitempty"`
 	Address         *AddressInput `json:"address,omitempty"`
-	// The language of the customer's mails. One of: en, tr, de, fr, es, ar.
+	// The language of the customer's mails, receipts and payment pages. One of: en, tr, de, fr, es, ar.
 	Locale string `json:"locale,omitempty"`
 	// A person or a taxpayer. One of: individual, business.
 	CustomerType string `json:"customer_type,omitempty"`

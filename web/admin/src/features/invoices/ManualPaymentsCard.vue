@@ -3,7 +3,6 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
-import { Card } from "@/shared/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import type { InvoicePayment } from "./payment";
 
@@ -15,8 +14,8 @@ const when = (v?: string | null) => fmt.date(v, "dateTime", "—");
 </script>
 
 <template>
-  <Card class="mb-6 p-3" role="region" :aria-label="t('invoice.payment.listTitle')">
-    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.payment.listTitle") }}</h2>
+  <section class="flex flex-col gap-3" :aria-label="t('invoice.payment.listTitle')">
+    <h2 class="text-lg font-semibold tracking-tight">{{ t("invoice.payment.listTitle") }}</h2>
     <Table :aria-label="t('invoice.payment.listTitle')">
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -39,5 +38,5 @@ const when = (v?: string | null) => fmt.date(v, "dateTime", "—");
         </TableRow>
       </TableBody>
     </Table>
-  </Card>
+  </section>
 </template>

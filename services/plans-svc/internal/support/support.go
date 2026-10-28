@@ -37,7 +37,9 @@ func New(pool *pgxpool.Pool, log *slog.Logger) *Service {
 	return &Service{pool: pool, log: log, now: time.Now}
 }
 
-func notFound() error { return errkey.New(codes.NotFound, "support.ticket.not_found", "ticket not found") }
+func notFound() error {
+	return errkey.New(codes.NotFound, "support.ticket.not_found", "ticket not found")
+}
 
 func parse(id string) (uuid.UUID, error) {
 	u, err := uuid.Parse(id)
