@@ -1,0 +1,17 @@
+{
+  "name": "payrudder-docs-site",
+  "private": true,
+  "type": "module",
+  "description": "Builds the public developer documentation (a static site) from api/openapi/v1.yaml and the guides in docs/.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "marked": "18.1.2",
+    "yaml": "2.9.1"
+  }
+}
