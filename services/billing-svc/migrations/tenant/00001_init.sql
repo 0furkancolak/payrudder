@@ -9,7 +9,7 @@
 -- own), so a move between the pooled database and a cell leaves it where it is: the rows only stop a redelivered reply from being applied twice, and the saga ignores
 -- a reply that is stale for its state anyway.
 --
--- Constraints that were renamed or re-added by the public history keep their final public names (invoice_links_*, which is what payment_links was first called).
+-- Constraints that were renamed or re-added by the public history keep their final public names.
 
 -- +goose Up
 CREATE FUNCTION app_tenant_id() RETURNS uuid
@@ -262,7 +262,7 @@ CREATE TABLE tenant_event_outbox (
 );
 CREATE INDEX tenant_event_outbox_by_age ON tenant_event_outbox (created_at);
 
--- Payment links. The public history called the table invoice_links, and its constraints keep that name.
+-- Payment links. The public history called the table invoice_links; 00002 renames its constraints.
 CREATE TABLE payment_links (
   tenant_id   uuid NOT NULL,
   id          uuid NOT NULL,
