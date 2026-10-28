@@ -42,6 +42,22 @@ func (h *Handler) SetCustomerContact(ctx context.Context, req *plansv1.SetCustom
 	return &plansv1.SetCustomerContactResponse{Customer: c}, nil
 }
 
+func (h *Handler) BlockCustomer(ctx context.Context, req *plansv1.BlockCustomerRequest) (*plansv1.BlockCustomerResponse, error) {
+	c, err := h.cmd.Block(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.BlockCustomerResponse{Customer: c}, nil
+}
+
+func (h *Handler) UnblockCustomer(ctx context.Context, req *plansv1.UnblockCustomerRequest) (*plansv1.UnblockCustomerResponse, error) {
+	c, err := h.cmd.Unblock(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.UnblockCustomerResponse{Customer: c}, nil
+}
+
 func (h *Handler) SetCustomerTax(ctx context.Context, req *plansv1.SetCustomerTaxRequest) (*plansv1.SetCustomerTaxResponse, error) {
 	c, err := h.cmd.SetTax(ctx, req)
 	if err != nil {

@@ -39,6 +39,17 @@ UPDATE customers SET name = @name, email = @email, locale = @locale, customer_ty
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
+-- Blocking twice keeps the first time (and its reason is replaced by the new one only when the customer was not blocked).
+-- name: BlockCustomer :one
+UPDATE customers SET blocked_at = COALESCE(blocked_at, now()), block_reason = CASE WHEN blocked_at IS NULL THEN @reason ELSE block_reason END
+WHERE tenant_id = app_tenant_id() AND external_id = @external_id
+RETURNING *;
+
+-- name: UnblockCustomer :one
+UPDATE customers SET blocked_at = NULL, block_reason = ''
+WHERE tenant_id = app_tenant_id() AND external_id = @external_id
+RETURNING *;
+
 -- name: SetCustomerTax :one
 UPDATE customers SET tax_id = @tax_id, tax_office = @tax_office, e_invoice_registered = @e_invoice_registered
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id

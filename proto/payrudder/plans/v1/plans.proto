@@ -19,6 +19,9 @@ service PlansService {
   rpc SetCustomerAddress(SetCustomerAddressRequest) returns (SetCustomerAddressResponse);
   // SetCustomerContact replaces the customer's name and e-mail address, which invoices, receipts and dunning mails carry.
   rpc SetCustomerContact(SetCustomerContactRequest) returns (SetCustomerContactResponse);
+  // BlockCustomer stops new subscriptions for a customer (what exists runs on); UnblockCustomer lifts it. Blocking twice keeps the first time.
+  rpc BlockCustomer(BlockCustomerRequest) returns (BlockCustomerResponse);
+  rpc UnblockCustomer(UnblockCustomerRequest) returns (UnblockCustomerResponse);
   // SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
   rpc SetCustomerTax(SetCustomerTaxRequest) returns (SetCustomerTaxResponse);
 
@@ -198,6 +201,24 @@ message SetCustomerContactRequest {
 }
 
 message SetCustomerContactResponse {
+  Customer customer = 1;
+}
+
+message BlockCustomerRequest {
+  string external_id = 1;
+  // The seller's note, at most 500 characters.
+  string reason = 2;
+}
+
+message BlockCustomerResponse {
+  Customer customer = 1;
+}
+
+message UnblockCustomerRequest {
+  string external_id = 1;
+}
+
+message UnblockCustomerResponse {
   Customer customer = 1;
 }
 

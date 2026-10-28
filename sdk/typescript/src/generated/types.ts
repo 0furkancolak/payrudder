@@ -325,6 +325,11 @@ export interface BillingRun {
   complete_time: string | null;
 }
 
+export interface BlockCustomerRequest {
+  /** Your note on why; never shown to the customer. */
+  reason?: string;
+}
+
 export interface CancelSubscriptionQuery {
   end_time?: string;
   credit_unused?: boolean;
@@ -956,6 +961,10 @@ export interface Customer {
   locale: string;
   /** individual (a person) or business (a taxpayer with a tax id). Empty is unknown. */
   customer_type: string;
+  /** Set while the customer is blocked: no new subscription can be created for them (existing ones run on). */
+  block_time?: string | null;
+  /** The seller's own note on the block; never shown to the customer. */
+  block_reason: string;
 }
 
 export interface CustomerContact {

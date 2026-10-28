@@ -189,7 +189,11 @@
     },
     "allEnvironments": "All environments",
     "allTiers": "All tiers",
-    "allCurrencies": "All currencies"
+    "allCurrencies": "All currencies",
+    "suspend": "Suspend",
+    "reinstate": "Reinstate",
+    "suspended": "Suspended",
+    "suspendConfirm": "Suspend {n} tenant? Its API keys stop working at once. | Suspend {n} tenants? Their API keys stop working at once."
   },
   "tenant": {
     "fallbackTitle": "Tenant",
@@ -549,7 +553,14 @@
         "manageCredits": "Manage credits",
         "paymentMethod": "Payment method"
       },
-      "exportSelected": "Export selected as CSV"
+      "exportSelected": "Export selected as CSV",
+      "block": {
+        "badge": "Blocked",
+        "action": "Block",
+        "lift": "Lift the block",
+        "confirm": "Block {name}? No new subscription can be created for them. What they have now runs on.",
+        "confirmMany": "Block {n} customers? No new subscription can be created for them. What they have now runs on."
+      }
     },
     "packages": {
       "new": "New package",
@@ -2606,7 +2617,8 @@
       },
       "customer": {
         "tax_invalid": "The customer's tax id or tax office is not valid.",
-        "quota_reached": "The customer limit of this account's plan has been reached."
+        "quota_reached": "The customer limit of this account's plan has been reached.",
+        "blocked": "This customer is blocked: no new subscription can be created for them."
       },
       "common": {
         "not_found": "It was not found.",

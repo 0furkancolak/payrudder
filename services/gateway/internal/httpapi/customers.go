@@ -67,6 +67,24 @@ func (s *Server) setCustomerContact(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
 }
 
+// blockCustomer is POST /v1/customers/{external_id}/block: the body may carry the seller's note.
+func (s *Server) blockCustomer(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.BlockCustomerRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.ExternalId = r.PathValue("external_id")
+	resp, err := s.d.Plans.BlockCustomer(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
+}
+
+// unblockCustomer is POST /v1/customers/{external_id}/unblock.
+func (s *Server) unblockCustomer(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.UnblockCustomer(r.Context(), &plansv1.UnblockCustomerRequest{ExternalId: r.PathValue("external_id")})
+	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
+}
+
 // setPaymentScenario is the sandbox spelling of SetPaymentMethod: {"scenario": "declined"} → pm_sandbox_declined.
 func (s *Server) setPaymentScenario(w http.ResponseWriter, r *http.Request) {
 	var body struct {

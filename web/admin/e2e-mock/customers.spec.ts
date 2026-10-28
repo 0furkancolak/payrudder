@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
-import { pickFilter } from "./ui";
+import { confirmDialog, pickFilter, rowAction } from "./ui";
 
 // The customer list after Stripe's: who, how their subscriptions stand, where, what they spent and when they last paid, worked out from the
 // invoices, payments and subscriptions the console loads. A row opens the customer's sheet: figures, quick actions and a tab per kind of record.
@@ -143,6 +143,45 @@ test.describe("customer bulk export", () => {
     await expect(page.getByTestId("bulk-count")).toHaveText("3 selected");
     await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
     await expect(page.getByTestId("bulk-bar")).toHaveCount(0);
+  });
+});
+
+test.describe("customer block", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("a customer is blocked from a row action after asking, shown as blocked, and unblocked; many at once name the ones that failed", async ({ page }) => {
+    const gw = customerGateway();
+    const blocked = new Map<string, string>();
+    gw.on((c) => {
+      const m = /^\/v1\/customers\/(cus_\d)\/(block|unblock)$/.exec(c.path);
+      if (!m || c.method !== "POST") return undefined;
+      if (m[1] === "cus_2" && m[2] === "block") return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.request.invalid", message: "no" } } };
+      if (m[2] === "block") blocked.set(m[1]!, "x");
+      else blocked.delete(m[1]!);
+      return { body: {} };
+    });
+    // The list answers with the block state the server now holds.
+    gw.on((c) => (c.method === "GET" && c.path === "/v1/customers" ? { body: { customers: customers.map((x) => (blocked.has(x.external_id) ? { ...x, block_time: "2026-10-28T10:00:00Z", block_reason: "chargebacks" } : x)) } } : undefined));
+    await gw.install(page);
+    await openTenantPage(page, "/customers");
+    await expect(page.getByTestId("customer-cus_1")).toBeVisible();
+
+    await rowAction(page.getByTestId("customer-cus_1"), "Block");
+    await confirmDialog(page);
+    await expect(page.getByTestId("customer-cus_1").getByTestId("customer-blocked")).toBeVisible();
+    expect(gw.called("POST", "/v1/customers/cus_1/block")).toHaveLength(1);
+
+    await rowAction(page.getByTestId("customer-cus_1"), "Lift the block");
+    await expect(page.getByTestId("customer-cus_1").getByTestId("customer-blocked")).toHaveCount(0);
+
+    // Two ticked: one is refused, the other is blocked, and the refused one is named.
+    await page.getByTestId("customer-cus_1").getByTestId("row-check").click();
+    await page.getByTestId("customer-cus_2").getByTestId("row-check").click();
+    await page.getByTestId("bulk-block").click();
+    await confirmDialog(page);
+    await expect(page.getByTestId("bulk-note")).toContainText("1 done, 1 not changed");
+    await expect(page.getByTestId("bulk-note")).toContainText("cus_2");
+    await expect(page.getByTestId("customer-cus_1").getByTestId("customer-blocked")).toBeVisible();
   });
 });
 

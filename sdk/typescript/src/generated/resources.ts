@@ -14,6 +14,7 @@ import type {
   AttributeCustomerRequest,
   AttributeCustomerResponse,
   BillingRun,
+  BlockCustomerRequest,
   CancelSubscriptionQuery,
   CancelSubscriptionResponse,
   ChangePlanRequest,
@@ -773,6 +774,26 @@ export class CustomersResource {
    */
   setCustomerContact(externalId: string, body: CustomerContact, options?: RequestOptions): Promise<Customer> {
     return this.t.request<Customer>({ method: "PUT", path: `/v1/customers/${seg(externalId)}/contact`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Block a customer from new subscriptions
+   *
+   * A blocked customer cannot get a new subscription (error key plans.customer.blocked); what exists runs on until you end it. Blocking again keeps the first time and note. The note is yours, up to 500 characters.
+   *
+   * `POST /v1/customers/{external_id}/block`
+   */
+  blockCustomer(externalId: string, body?: BlockCustomerRequest, options?: RequestOptions): Promise<Customer> {
+    return this.t.request<Customer>({ method: "POST", path: `/v1/customers/${seg(externalId)}/block`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Lift a customer's block
+   *
+   * `POST /v1/customers/{external_id}/unblock`
+   */
+  unblockCustomer(externalId: string, options?: RequestOptions): Promise<Customer> {
+    return this.t.request<Customer>({ method: "POST", path: `/v1/customers/${seg(externalId)}/unblock`, response: "json" }, options);
   }
 
   /**

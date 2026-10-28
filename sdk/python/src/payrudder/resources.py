@@ -102,6 +102,20 @@ class CustomersResource:
         """
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/contact", body=body, options=options))
 
+    def block_customer(self, external_id: str, body: m.BlockCustomerRequest | None = None, *, options: RequestOptions | None = None) -> m.Customer:
+        """Block a customer from new subscriptions.
+
+        ``POST /v1/customers/{external_id}/block``
+        """
+        return cast("m.Customer", self._client._request("POST", f"/v1/customers/{_p(external_id)}/block", body=body, options=options))
+
+    def unblock_customer(self, external_id: str, *, options: RequestOptions | None = None) -> m.Customer:
+        """Lift a customer's block.
+
+        ``POST /v1/customers/{external_id}/unblock``
+        """
+        return cast("m.Customer", self._client._request("POST", f"/v1/customers/{_p(external_id)}/unblock", options=options))
+
     def set_customer_tax(self, external_id: str, body: m.CustomerTax, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's tax data used on e-invoices.
 
@@ -1600,6 +1614,20 @@ class AsyncCustomersResource:
         ``PUT /v1/customers/{external_id}/contact``
         """
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/contact", body=body, options=options))
+
+    async def block_customer(self, external_id: str, body: m.BlockCustomerRequest | None = None, *, options: RequestOptions | None = None) -> m.Customer:
+        """Block a customer from new subscriptions.
+
+        ``POST /v1/customers/{external_id}/block``
+        """
+        return cast("m.Customer", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/block", body=body, options=options))
+
+    async def unblock_customer(self, external_id: str, *, options: RequestOptions | None = None) -> m.Customer:
+        """Lift a customer's block.
+
+        ``POST /v1/customers/{external_id}/unblock``
+        """
+        return cast("m.Customer", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/unblock", options=options))
 
     async def set_customer_tax(self, external_id: str, body: m.CustomerTax, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's tax data used on e-invoices.

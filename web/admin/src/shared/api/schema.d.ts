@@ -120,6 +120,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Block a customer from new subscriptions
+         * @description A blocked customer cannot get a new subscription (error key plans.customer.blocked); what exists runs on until you end it. Blocking again keeps the first time and note. The note is yours, up to 500 characters.
+         */
+        post: operations["blockCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/unblock": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Lift a customer's block */
+        post: operations["unblockCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/tax": {
         parameters: {
             query?: never;
@@ -5050,6 +5087,10 @@ export interface webhooks {
 }
 export interface components {
     schemas: {
+        BlockCustomerRequest: {
+            /** @description Your note on why; never shown to the customer. */
+            reason?: string;
+        };
         SupportTicket: {
             /** Format: uuid */
             id: string;
@@ -8659,6 +8700,13 @@ export interface components {
             locale: string;
             /** @description individual (a person) or business (a taxpayer with a tax id). Empty is unknown. */
             customer_type: string;
+            /**
+             * Format: date-time
+             * @description Set while the customer is blocked: no new subscription can be created for them (existing ones run on).
+             */
+            block_time?: string | null;
+            /** @description The seller's own note on the block; never shown to the customer. */
+            block_reason: string;
         };
         CreateMeterRequest: {
             code: string;
@@ -10540,6 +10588,57 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    blockCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BlockCustomerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    unblockCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
             404: components["responses"]["Error"];
         };
     };

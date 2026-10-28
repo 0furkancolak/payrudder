@@ -57,6 +57,8 @@ func (s *Server) ingestAndCatalogRoutes() []Route {
 		{"PUT", "/v1/customers/{external_id}/payment-method", AccessTenant, ratelimit.ClassWrite, s.setPaymentMethod},
 		{"PUT", "/v1/customers/{external_id}/address", AccessTenant, ratelimit.ClassWrite, s.setCustomerAddress},
 		{"PUT", "/v1/customers/{external_id}/contact", AccessTenant, ratelimit.ClassWrite, s.setCustomerContact},
+		{"POST", "/v1/customers/{external_id}/block", AccessTenant, ratelimit.ClassWrite, s.blockCustomer},
+		{"POST", "/v1/customers/{external_id}/unblock", AccessTenant, ratelimit.ClassWrite, s.unblockCustomer},
 		{"PUT", "/v1/customers/{external_id}/tax", AccessTenant, ratelimit.ClassWrite, s.setCustomerTax},
 		// Meters
 		{"POST", "/v1/meters", AccessTenant, ratelimit.ClassWrite, s.createMeter},

@@ -100,6 +100,23 @@ export function useSetCustomerContact(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
+/** Blocks a customer from new subscriptions (what exists runs on), or lifts the block. The note is the seller's own. */
+export function useBlockCustomer(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  const done = () => queries.invalidateQueries({ queryKey: customerKeys.list(toValue(tenantId)) });
+  return {
+    block: useMutation({
+      mutationFn: (v: { externalId: string; reason?: string }) =>
+        unwrap(tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/block", { params: { path: { external_id: v.externalId } }, body: { reason: v.reason ?? "" } })),
+      onSuccess: done,
+    }),
+    unblock: useMutation({
+      mutationFn: (externalId: string) => unwrap(tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/unblock", { params: { path: { external_id: externalId } } })),
+      onSuccess: done,
+    }),
+  };
+}
+
 export interface CustomerTax {
   tax_id?: string;
   tax_office?: string;

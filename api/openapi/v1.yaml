@@ -133,6 +133,28 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/customers/{external_id}/block:
+    post:
+      operationId: blockCustomer
+      summary: Block a customer from new subscriptions
+      description: A blocked customer cannot get a new subscription (error key plans.customer.blocked); what exists runs on until you end it. Blocking again keeps the first time and note. The note is yours, up to 500 characters.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/BlockCustomerRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /v1/customers/{external_id}/unblock:
+    post:
+      operationId: unblockCustomer
+      summary: Lift a customer's block
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
   /v1/customers/{external_id}/tax:
     put:
       operationId: setCustomerTax
@@ -4614,6 +4636,10 @@ components:
       description: Error envelope
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    BlockCustomerRequest:
+      type: object
+      properties:
+        reason: { type: string, maxLength: 500, description: "Your note on why; never shown to the customer." }
     SupportTicket:
       type: object
       required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count]
@@ -7746,7 +7772,7 @@ components:
         districts: { type: array, items: { $ref: "#/components/schemas/GeoDistrict" } }
     Customer:
       type: object
-      required: [id, external_id, name, email, payment_method, create_time, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type]
+      required: [id, external_id, name, email, payment_method, create_time, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, block_reason]
       properties:
         id: { type: string, format: uuid }
         external_id: { type: string }
@@ -7762,6 +7788,8 @@ components:
         e_invoice_registered: { type: boolean }
         locale: { type: string, description: "The language of the customer's mails, receipts and payment pages: en, tr, de, fr, es or ar. Empty is the browser's language (pages) and English (mails)." }
         customer_type: { type: string, description: "individual (a person) or business (a taxpayer with a tax id). Empty is unknown." }
+        block_time: { type: string, format: date-time, nullable: true, description: "Set while the customer is blocked: no new subscription can be created for them (existing ones run on)." }
+        block_reason: { type: string, description: "The seller's own note on the block; never shown to the customer." }
     CreateMeterRequest:
       type: object
       required: [code, aggregation, unit_label]

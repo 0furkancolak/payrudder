@@ -3,7 +3,9 @@ package command
 
 import (
 	"context"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"google.golang.org/grpc/codes"
 
@@ -130,6 +132,40 @@ func (c *Commands) SetContact(ctx context.Context, req *plansv1.SetCustomerConta
 	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
 		var err error
 		out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), Locale: req.GetLocale(), CustomerType: req.GetCustomerType()})
+		return err
+	})
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	return convert.Customer(out), nil
+}
+
+// Block stops new subscriptions and plan changes for the customer. The reason is the seller's note.
+func (c *Commands) Block(ctx context.Context, req *plansv1.BlockCustomerRequest) (*plansv1.Customer, error) {
+	if req.GetExternalId() == "" {
+		return nil, domain.Invalid("external_id", "required")
+	}
+	if utf8.RuneCountInString(req.GetReason()) > 500 {
+		return nil, domain.Invalid("reason", "at most 500 characters")
+	}
+	return c.setBlock(ctx, func(q *sqlc.Queries) (sqlc.Customer, error) {
+		return q.BlockCustomer(ctx, sqlc.BlockCustomerParams{ExternalID: req.GetExternalId(), Reason: strings.TrimSpace(req.GetReason())})
+	})
+}
+
+// Unblock lifts the block.
+func (c *Commands) Unblock(ctx context.Context, req *plansv1.UnblockCustomerRequest) (*plansv1.Customer, error) {
+	if req.GetExternalId() == "" {
+		return nil, domain.Invalid("external_id", "required")
+	}
+	return c.setBlock(ctx, func(q *sqlc.Queries) (sqlc.Customer, error) { return q.UnblockCustomer(ctx, req.GetExternalId()) })
+}
+
+func (c *Commands) setBlock(ctx context.Context, do func(*sqlc.Queries) (sqlc.Customer, error)) (*plansv1.Customer, error) {
+	var out sqlc.Customer
+	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+		var err error
+		out, err = do(q)
 		return err
 	})
 	if err != nil {

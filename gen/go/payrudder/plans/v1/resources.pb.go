@@ -1521,7 +1521,10 @@ type Customer struct {
 	// The language of the customer's mails, receipts and payment pages (en, tr, de, fr, es, ar). Empty = the browser's language, English in mails.
 	Locale string `protobuf:"bytes,13,opt,name=locale,proto3" json:"locale,omitempty"`
 	// "individual" (a person) or "business" (a taxpayer with a tax id). Empty = unknown.
-	CustomerType  string `protobuf:"bytes,14,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	CustomerType string `protobuf:"bytes,14,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	// Set while the seller has blocked the customer: no new subscription. The reason is the seller's own note.
+	BlockTime     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=block_time,json=blockTime,proto3" json:"block_time,omitempty"`
+	BlockReason   string                 `protobuf:"bytes,16,opt,name=block_reason,json=blockReason,proto3" json:"block_reason,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1650,6 +1653,20 @@ func (x *Customer) GetLocale() string {
 func (x *Customer) GetCustomerType() string {
 	if x != nil {
 		return x.CustomerType
+	}
+	return ""
+}
+
+func (x *Customer) GetBlockTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.BlockTime
+	}
+	return nil
+}
+
+func (x *Customer) GetBlockReason() string {
+	if x != nil {
+		return x.BlockReason
 	}
 	return ""
 }
@@ -3543,7 +3560,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"SCOPE_FULL\x10\x01\x12\x10\n" +
 	"\fSCOPE_INGEST\x10\x02\x12\x0e\n" +
 	"\n" +
-	"SCOPE_READ\x10\x03\"\xea\x03\n" +
+	"SCOPE_READ\x10\x03\"\xc8\x04\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vexternal_id\x18\x02 \x01(\tR\n" +
@@ -3562,7 +3579,10 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"tax_office\x18\v \x01(\tR\ttaxOffice\x120\n" +
 	"\x14e_invoice_registered\x18\f \x01(\bR\x12eInvoiceRegistered\x12\x16\n" +
 	"\x06locale\x18\r \x01(\tR\x06locale\x12#\n" +
-	"\rcustomer_type\x18\x0e \x01(\tR\fcustomerType\"&\n" +
+	"\rcustomer_type\x18\x0e \x01(\tR\fcustomerType\x129\n" +
+	"\n" +
+	"block_time\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tblockTime\x12!\n" +
+	"\fblock_reason\x18\x10 \x01(\tR\vblockReason\"&\n" +
 	"\fFilterValues\x12\x16\n" +
 	"\x06values\x18\x01 \x03(\tR\x06values\"\xda\x03\n" +
 	"\x05Meter\x12\x12\n" +
@@ -3893,53 +3913,54 @@ var file_payrudder_plans_v1_resources_proto_depIdxs = []int32{
 	40, // 22: payrudder.plans.v1.ApiKey.expire_time:type_name -> google.protobuf.Timestamp
 	40, // 23: payrudder.plans.v1.Customer.create_time:type_name -> google.protobuf.Timestamp
 	13, // 24: payrudder.plans.v1.Customer.address:type_name -> payrudder.plans.v1.Address
-	3,  // 25: payrudder.plans.v1.Meter.aggregation:type_name -> payrudder.plans.v1.Aggregation
-	39, // 26: payrudder.plans.v1.Meter.filter:type_name -> payrudder.plans.v1.Meter.FilterEntry
-	40, // 27: payrudder.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
-	40, // 28: payrudder.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
-	24, // 29: payrudder.plans.v1.TieredGraduatedPrice.tiers:type_name -> payrudder.plans.v1.PriceTier
-	25, // 30: payrudder.plans.v1.Price.per_unit:type_name -> payrudder.plans.v1.PerUnitPrice
-	26, // 31: payrudder.plans.v1.Price.tiered:type_name -> payrudder.plans.v1.TieredGraduatedPrice
-	27, // 32: payrudder.plans.v1.Price.package:type_name -> payrudder.plans.v1.PackagePrice
-	4,  // 33: payrudder.plans.v1.Entitlement.window:type_name -> payrudder.plans.v1.QuotaWindow
-	5,  // 34: payrudder.plans.v1.Entitlement.mode:type_name -> payrudder.plans.v1.QuotaMode
-	4,  // 35: payrudder.plans.v1.EntitlementOverride.window:type_name -> payrudder.plans.v1.QuotaWindow
-	5,  // 36: payrudder.plans.v1.EntitlementOverride.mode:type_name -> payrudder.plans.v1.QuotaMode
-	40, // 37: payrudder.plans.v1.EntitlementOverride.create_time:type_name -> google.protobuf.Timestamp
-	40, // 38: payrudder.plans.v1.EntitlementOverride.update_time:type_name -> google.protobuf.Timestamp
-	28, // 39: payrudder.plans.v1.PlanVersion.prices:type_name -> payrudder.plans.v1.Price
-	29, // 40: payrudder.plans.v1.PlanVersion.entitlements:type_name -> payrudder.plans.v1.Entitlement
-	40, // 41: payrudder.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
-	33, // 42: payrudder.plans.v1.PlanVersion.fees:type_name -> payrudder.plans.v1.CurrencyFee
-	32, // 43: payrudder.plans.v1.PlanVersion.currency_prices:type_name -> payrudder.plans.v1.CurrencyPrices
-	28, // 44: payrudder.plans.v1.CurrencyPrices.prices:type_name -> payrudder.plans.v1.Price
-	8,  // 45: payrudder.plans.v1.CurrencyFee.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	40, // 46: payrudder.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
-	40, // 47: payrudder.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
-	40, // 48: payrudder.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
-	7,  // 49: payrudder.plans.v1.Subscription.state:type_name -> payrudder.plans.v1.SubscriptionState
-	8,  // 50: payrudder.plans.v1.Subscription.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	40, // 51: payrudder.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
-	40, // 52: payrudder.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
-	6,  // 53: payrudder.plans.v1.Subscription.fee_timing:type_name -> payrudder.plans.v1.FeeTiming
-	35, // 54: payrudder.plans.v1.Subscription.scheduled_change:type_name -> payrudder.plans.v1.ScheduledChange
-	8,  // 55: payrudder.plans.v1.ScheduledChange.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
-	40, // 56: payrudder.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
-	10, // 57: payrudder.plans.v1.Coupon.duration:type_name -> payrudder.plans.v1.CouponDuration
-	40, // 58: payrudder.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
-	40, // 59: payrudder.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
-	9,  // 60: payrudder.plans.v1.Coupon.applies_to:type_name -> payrudder.plans.v1.CouponTarget
-	40, // 61: payrudder.plans.v1.PromotionCode.expire_time:type_name -> google.protobuf.Timestamp
-	40, // 62: payrudder.plans.v1.PromotionCode.create_time:type_name -> google.protobuf.Timestamp
-	9,  // 63: payrudder.plans.v1.CouponRedemption.target:type_name -> payrudder.plans.v1.CouponTarget
-	40, // 64: payrudder.plans.v1.CouponRedemption.create_time:type_name -> google.protobuf.Timestamp
-	40, // 65: payrudder.plans.v1.CouponRedemption.reverse_time:type_name -> google.protobuf.Timestamp
-	21, // 66: payrudder.plans.v1.Meter.FilterEntry.value:type_name -> payrudder.plans.v1.FilterValues
-	67, // [67:67] is the sub-list for method output_type
-	67, // [67:67] is the sub-list for method input_type
-	67, // [67:67] is the sub-list for extension type_name
-	67, // [67:67] is the sub-list for extension extendee
-	0,  // [0:67] is the sub-list for field type_name
+	40, // 25: payrudder.plans.v1.Customer.block_time:type_name -> google.protobuf.Timestamp
+	3,  // 26: payrudder.plans.v1.Meter.aggregation:type_name -> payrudder.plans.v1.Aggregation
+	39, // 27: payrudder.plans.v1.Meter.filter:type_name -> payrudder.plans.v1.Meter.FilterEntry
+	40, // 28: payrudder.plans.v1.Meter.create_time:type_name -> google.protobuf.Timestamp
+	40, // 29: payrudder.plans.v1.Plan.create_time:type_name -> google.protobuf.Timestamp
+	24, // 30: payrudder.plans.v1.TieredGraduatedPrice.tiers:type_name -> payrudder.plans.v1.PriceTier
+	25, // 31: payrudder.plans.v1.Price.per_unit:type_name -> payrudder.plans.v1.PerUnitPrice
+	26, // 32: payrudder.plans.v1.Price.tiered:type_name -> payrudder.plans.v1.TieredGraduatedPrice
+	27, // 33: payrudder.plans.v1.Price.package:type_name -> payrudder.plans.v1.PackagePrice
+	4,  // 34: payrudder.plans.v1.Entitlement.window:type_name -> payrudder.plans.v1.QuotaWindow
+	5,  // 35: payrudder.plans.v1.Entitlement.mode:type_name -> payrudder.plans.v1.QuotaMode
+	4,  // 36: payrudder.plans.v1.EntitlementOverride.window:type_name -> payrudder.plans.v1.QuotaWindow
+	5,  // 37: payrudder.plans.v1.EntitlementOverride.mode:type_name -> payrudder.plans.v1.QuotaMode
+	40, // 38: payrudder.plans.v1.EntitlementOverride.create_time:type_name -> google.protobuf.Timestamp
+	40, // 39: payrudder.plans.v1.EntitlementOverride.update_time:type_name -> google.protobuf.Timestamp
+	28, // 40: payrudder.plans.v1.PlanVersion.prices:type_name -> payrudder.plans.v1.Price
+	29, // 41: payrudder.plans.v1.PlanVersion.entitlements:type_name -> payrudder.plans.v1.Entitlement
+	40, // 42: payrudder.plans.v1.PlanVersion.publish_time:type_name -> google.protobuf.Timestamp
+	33, // 43: payrudder.plans.v1.PlanVersion.fees:type_name -> payrudder.plans.v1.CurrencyFee
+	32, // 44: payrudder.plans.v1.PlanVersion.currency_prices:type_name -> payrudder.plans.v1.CurrencyPrices
+	28, // 45: payrudder.plans.v1.CurrencyPrices.prices:type_name -> payrudder.plans.v1.Price
+	8,  // 46: payrudder.plans.v1.CurrencyFee.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	40, // 47: payrudder.plans.v1.Subscription.start_time:type_name -> google.protobuf.Timestamp
+	40, // 48: payrudder.plans.v1.Subscription.end_time:type_name -> google.protobuf.Timestamp
+	40, // 49: payrudder.plans.v1.Subscription.create_time:type_name -> google.protobuf.Timestamp
+	7,  // 50: payrudder.plans.v1.Subscription.state:type_name -> payrudder.plans.v1.SubscriptionState
+	8,  // 51: payrudder.plans.v1.Subscription.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	40, // 52: payrudder.plans.v1.Subscription.trial_end_time:type_name -> google.protobuf.Timestamp
+	40, // 53: payrudder.plans.v1.Subscription.pause_time:type_name -> google.protobuf.Timestamp
+	6,  // 54: payrudder.plans.v1.Subscription.fee_timing:type_name -> payrudder.plans.v1.FeeTiming
+	35, // 55: payrudder.plans.v1.Subscription.scheduled_change:type_name -> payrudder.plans.v1.ScheduledChange
+	8,  // 56: payrudder.plans.v1.ScheduledChange.interval:type_name -> payrudder.plans.v1.SubscriptionInterval
+	40, // 57: payrudder.plans.v1.ScheduledChange.effective_time:type_name -> google.protobuf.Timestamp
+	10, // 58: payrudder.plans.v1.Coupon.duration:type_name -> payrudder.plans.v1.CouponDuration
+	40, // 59: payrudder.plans.v1.Coupon.expire_time:type_name -> google.protobuf.Timestamp
+	40, // 60: payrudder.plans.v1.Coupon.create_time:type_name -> google.protobuf.Timestamp
+	9,  // 61: payrudder.plans.v1.Coupon.applies_to:type_name -> payrudder.plans.v1.CouponTarget
+	40, // 62: payrudder.plans.v1.PromotionCode.expire_time:type_name -> google.protobuf.Timestamp
+	40, // 63: payrudder.plans.v1.PromotionCode.create_time:type_name -> google.protobuf.Timestamp
+	9,  // 64: payrudder.plans.v1.CouponRedemption.target:type_name -> payrudder.plans.v1.CouponTarget
+	40, // 65: payrudder.plans.v1.CouponRedemption.create_time:type_name -> google.protobuf.Timestamp
+	40, // 66: payrudder.plans.v1.CouponRedemption.reverse_time:type_name -> google.protobuf.Timestamp
+	21, // 67: payrudder.plans.v1.Meter.FilterEntry.value:type_name -> payrudder.plans.v1.FilterValues
+	68, // [68:68] is the sub-list for method output_type
+	68, // [68:68] is the sub-list for method input_type
+	68, // [68:68] is the sub-list for extension type_name
+	68, // [68:68] is the sub-list for extension extendee
+	0,  // [0:68] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_plans_v1_resources_proto_init() }

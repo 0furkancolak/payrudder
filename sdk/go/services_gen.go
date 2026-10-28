@@ -923,6 +923,22 @@ func (s *CustomersService) SetCustomerAddress(ctx context.Context, externalID st
 	return &out, nil
 }
 
+// BlockCustomer: Block a customer from new subscriptions (POST /v1/customers/{external_id}/block).
+//
+// A blocked customer cannot get a new subscription (error key plans.customer.blocked); what exists runs on
+// until you end it. Blocking again keeps the first time and note. The note is yours, up to 500 characters.
+func (s *CustomersService) BlockCustomer(ctx context.Context, externalID string, req *BlockCustomerRequest, opts ...RequestOption) (*Customer, error) {
+	var body any
+	if req != nil {
+		body = req
+	}
+	var out Customer
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/block", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // SetCustomerContact: Replace the customer's name and e-mail address (PUT /v1/customers/{external_id}/contact).
 //
 // Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language.
@@ -1184,6 +1200,15 @@ func (s *CustomersService) SetCustomerTax(ctx context.Context, externalID string
 	var body any = req
 	var out Customer
 	if err := s.c.do(ctx, requestSpec{method: http.MethodPut, path: "/v1/customers/" + url.PathEscape(externalID) + "/tax", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// UnblockCustomer: Lift a customer's block (POST /v1/customers/{external_id}/unblock).
+func (s *CustomersService) UnblockCustomer(ctx context.Context, externalID string, opts ...RequestOption) (*Customer, error) {
+	var out Customer
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/unblock", query: nil, body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil

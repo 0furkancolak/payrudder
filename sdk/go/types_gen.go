@@ -357,6 +357,12 @@ type BillingRun struct {
 	CompleteTime *time.Time `json:"complete_time"`
 }
 
+// BlockCustomerRequest is the request body of BlockCustomer.
+type BlockCustomerRequest struct {
+	// Your note on why; never shown to the customer.
+	Reason string `json:"reason,omitempty"`
+}
+
 // CancelSubscriptionResponse is the response of CancelSubscription.
 type CancelSubscriptionResponse struct {
 	Subscription Subscription `json:"subscription"`
@@ -967,6 +973,10 @@ type Customer struct {
 	Locale string `json:"locale"`
 	// individual (a person) or business (a taxpayer with a tax id). Empty is unknown.
 	CustomerType string `json:"customer_type"`
+	// Set while the customer is blocked: no new subscription can be created for them (existing ones run on).
+	BlockTime *time.Time `json:"block_time,omitempty"`
+	// The seller's own note on the block; never shown to the customer.
+	BlockReason string `json:"block_reason"`
 }
 
 // CustomerContact is an object of the API; see components.schemas.CustomerContact in api/openapi/v1.yaml.

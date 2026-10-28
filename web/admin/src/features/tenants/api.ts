@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/vue-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, api, unwrap, type Tenant } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
@@ -16,6 +16,16 @@ export function useTenants(options: { enabled?: MaybeRefOrGetter<boolean> } = {}
     queryKey: tenantKeys.list,
     queryFn: () => unwrap(api.GET("/admin/v1/tenants", { params: { query: { page_size: PAGE.whole } } })),
     enabled: computed(() => toValue(options.enabled ?? true)),
+  });
+}
+
+/** Suspends an active tenant (its API keys stop working at once) or reinstates a suspended one. The reason is kept in the log. */
+export function useSetTenantStatus() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { id: string; status: "active" | "suspended"; reason?: string }) =>
+      unwrap(api.PUT("/admin/v1/tenants/{id}/status", { params: { path: { id: v.id } }, body: { status: v.status, reason: v.reason ?? "" } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: tenantKeys.list }),
   });
 }
 

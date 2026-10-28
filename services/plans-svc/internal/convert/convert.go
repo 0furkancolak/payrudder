@@ -73,6 +73,13 @@ func Duration(iv pgtype.Interval) time.Duration {
 
 func ts(t time.Time) *timestamppb.Timestamp { return timestamppb.New(t) }
 
+func tsPtr(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	return timestamppb.New(*t)
+}
+
 // Tenant maps a tenant row.
 func Tenant(t sqlc.Tenant) *plansv1.Tenant {
 	return &plansv1.Tenant{
@@ -151,7 +158,7 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 		Id: c.ID.String(), ExternalId: c.ExternalID, Name: c.Name, Email: c.Email,
 		PaymentMethod: Str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
 		Country: Str(c.Country), BillingCurrency: Str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
-		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered, Locale: c.Locale, CustomerType: c.CustomerType,
+		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered, Locale: c.Locale, CustomerType: c.CustomerType, BlockTime: tsPtr(c.BlockedAt), BlockReason: c.BlockReason,
 	}
 }
 

@@ -13,6 +13,7 @@ use Payrudder\Internal\Cast;
 use Payrudder\Model\AddressInput;
 use Payrudder\Model\AttributeCustomerRequest;
 use Payrudder\Model\AttributeCustomerResponse;
+use Payrudder\Model\BlockCustomerRequest;
 use Payrudder\Model\CreateCustomerRequest;
 use Payrudder\Model\CreatePortalLinkRequest;
 use Payrudder\Model\CreatePortalLinkResponse;
@@ -160,6 +161,29 @@ final class CustomersResource extends AbstractResource
     public function setCustomerContact(string $externalId, CustomerContact|array $body, ?RequestOptions $options = null): Customer
     {
         return Customer::fromArray($this->call('PUT', '/v1/customers/' . rawurlencode($externalId) . '/contact', [], Cast::body($body), $options));
+    }
+
+    /**
+     * Block a customer from new subscriptions (POST /v1/customers/{external_id}/block).
+     *
+     * @param string $externalId
+     * @param BlockCustomerRequest|array<string,mixed>|null $body
+     * @throws PayrudderException
+     */
+    public function blockCustomer(string $externalId, BlockCustomerRequest|array|null $body = null, ?RequestOptions $options = null): Customer
+    {
+        return Customer::fromArray($this->call('POST', '/v1/customers/' . rawurlencode($externalId) . '/block', [], $body === null ? null : Cast::body($body), $options));
+    }
+
+    /**
+     * Lift a customer's block (POST /v1/customers/{external_id}/unblock).
+     *
+     * @param string $externalId
+     * @throws PayrudderException
+     */
+    public function unblockCustomer(string $externalId, ?RequestOptions $options = null): Customer
+    {
+        return Customer::fromArray($this->call('POST', '/v1/customers/' . rawurlencode($externalId) . '/unblock', [], null, $options));
     }
 
     /**

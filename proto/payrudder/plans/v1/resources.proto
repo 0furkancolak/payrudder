@@ -179,6 +179,9 @@ message Customer {
   string locale = 13;
   // "individual" (a person) or "business" (a taxpayer with a tax id). Empty = unknown.
   string customer_type = 14;
+  // Set while the seller has blocked the customer: no new subscription. The reason is the seller's own note.
+  google.protobuf.Timestamp block_time = 15;
+  string block_reason = 16;
 }
 
 enum Aggregation {
