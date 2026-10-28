@@ -8,7 +8,9 @@ import (
 
 // The hosted pages use the console's tokens in both themes and fit a phone, and a promo-code field is a plain text field that password managers leave alone.
 func TestHostedPageStyleAndPromoField(t *testing.T) {
-	v := &portalView{pageBase: newBase("en"), Seller: "Acme", Customer: "Ada", ShowCredits: true, CanBuy: true, Buy: "/c/x/credits/buy",
+	base := newBase("en")
+	base.SideSeller = "Acme"
+	v := &portalView{pageBase: base, Seller: "Acme", Customer: "Ada", ShowCredits: true, CanBuy: true, Buy: "/c/x/credits/buy",
 		Packs: []portalPackRow{{ID: "p1", Name: "500 gems", Credits: "500", Price: "4.99", Currency: "USD", Valid: "never expires"}}}
 	var out bytes.Buffer
 	if err := pageTemplates.ExecuteTemplate(&out, "portal", v); err != nil {

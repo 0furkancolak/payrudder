@@ -67,6 +67,7 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 	}
 	q := langSuffix(r)
 	v := &portalView{pageBase: newBase(lang), Seller: resp.GetSellerName(), Customer: resp.GetCustomerName()}
+	v.SideSeller, v.SideNote = v.Seller, v.Customer
 	v.Test = resp.GetEnvironment() == env.Sandbox.String()
 	if resp.GetLogoAvailable() {
 		v.Logo = scope{portal: token}.logo()

@@ -136,6 +136,8 @@ type pageBase struct {
 	Lang, Dir, Brand string
 	Logo             string
 	Test, Refresh    bool
+	// What the coloured side of the page says: who the page is from, the amount it is about and a line under it (the state of the invoice, the customer).
+	SideSeller, SideAmount, SideNote string
 }
 
 func newBase(lang string) pageBase {
@@ -189,6 +191,7 @@ func newInvoiceHeader(resp *billingv1.GetHostedInvoiceResponse, withPeriod bool)
 func hostedBase(resp *billingv1.GetHostedInvoiceResponse, sc scope, lang string) pageBase {
 	b := newBase(lang)
 	b.Test = resp.GetEnvironment() == env.Sandbox.String()
+	b.SideSeller = resp.GetSellerName()
 	if resp.GetLogoAvailable() {
 		b.Logo = sc.logo()
 	}
@@ -280,6 +283,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 	}
 	v.State = refineState(v.State, s.ledgerRowsOf(ctx, resp), inv.GetId(), s.now())
 	v.StateLabel = v.L["st_"+v.State]
+	v.SideAmount, v.SideNote = v.Total+" "+v.Currency, v.StateLabel
 	switch v.State {
 	case "processing":
 		v.Refresh, v.Hint = true, v.L["hint_processing"]
@@ -386,6 +390,10 @@ func (s *Server) adhocPageWith(w http.ResponseWriter, r *http.Request, sc scope,
 	}
 	if in.ErrKey != "" {
 		v.PromoError = promoErrorText(v.L, in.ErrKey)
+	}
+	v.SideSeller, v.SideAmount = v.Seller, v.Amount+" "+v.Currency
+	if v.Quote != nil && v.Quote.HasDiscount {
+		v.SideAmount = v.Quote.Total + " " + v.Currency
 	}
 	if a.GetLogoAvailable() || resp.GetLogoAvailable() {
 		v.Logo = sc.logo()
@@ -613,6 +621,7 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	inv := resp.GetInvoice()
 	v := &receiptView{pageBase: hostedBase(resp, sc, lang), invoiceHeader: newInvoiceHeader(resp, false), Back: sc.page() + langSuffix(r)}
+	v.SideAmount = v.Total + " " + v.Currency
 	for _, row := range s.ledgerRowsOf(r.Context(), resp) {
 		if row.InvoiceID == inv.GetId() && row.Kind == "charge" && row.Status == "succeeded" {
 			v.PaidOn, v.PaidWith = row.OccurredAt.UTC().Format(time.DateOnly), row.Provider
