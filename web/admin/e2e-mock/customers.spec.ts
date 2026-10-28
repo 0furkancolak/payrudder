@@ -119,6 +119,33 @@ test.describe("customer order", () => {
   });
 });
 
+test.describe("customer bulk export", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("ticked customers are exported as a CSV file, and ticking a row does not open its sheet", async ({ page }) => {
+    await openCustomers(page);
+    await page.getByTestId("customer-cus_1").getByTestId("row-check").click();
+    await expect(page.getByTestId("detail-sheet")).toHaveCount(0);
+    await page.getByTestId("customer-cus_2").getByTestId("row-check").click();
+    await expect(page.getByTestId("bulk-count")).toHaveText("2 selected");
+    const download = page.waitForEvent("download");
+    await page.getByTestId("bulk-export").click();
+    const file = await download;
+    expect(file.suggestedFilename()).toBe("customers.csv");
+    const text = (await (await import("node:fs/promises")).readFile((await file.path())!, "utf8")).replace("\uFEFF", "");
+    expect(text.split("\r\n")[0]).toBe("external_id,name,email,country,billing_currency,tax_id,created");
+    expect(text).toContain("cus_1,Ada Lovelace,ada@example.com,TR,TRY");
+    expect(text).toContain("cus_2,Grace Hopper");
+    expect(text).not.toContain("cus_3");
+    // The header tick takes the whole page, a second press takes it off.
+    await page.getByTestId("bulk-clear").click();
+    await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+    await expect(page.getByTestId("bulk-count")).toHaveText("3 selected");
+    await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+    await expect(page.getByTestId("bulk-bar")).toHaveCount(0);
+  });
+});
+
 test.describe("customer sheet", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 

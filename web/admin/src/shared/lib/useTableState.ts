@@ -18,10 +18,14 @@ import { idOf, searchParams, setKind, updateSearch } from "./sheets";
  * names the column and the direction together ("Newest first", "Amount, high to low"), see SortDef. Sorting is stable, empty values go last either way,
  * and a new choice starts again from the first page.
  *
+ * With `selectId` (or `sheet`, whose id is used) rows can be ticked for a bulk action: `selectedRows` are the ticked rows that the current search and filters
+ * still show (a row a filter hides is not acted on, whatever was ticked before), `togglePage` ticks or unticks every row of the page shown, and
+ * `clearSelection` drops all ticks. Ticks are kept by id, so a refetch does not lose them.
+ *
  * With `sheet` ({ kind, id }) the open row is written into the address as `?sheet=<kind>:<id>` and the sheet opens by itself when the address names a
  * row (a reload, a shared link, "forward" in the strip of sheets); a filter that hides the named row is cleared.
  */
-export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined>, opts: { searchFields: (row: T) => (string | number | null | undefined)[]; sorts?: MaybeRefOrGetter<readonly SortDef<T>[]>; filters?: Record<string, (row: T, value: string) => boolean>; url?: boolean | string; size?: number; sheet?: { kind: string; id: (row: T) => string | undefined; loaded?: MaybeRefOrGetter<boolean> } }) {
+export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined>, opts: { searchFields: (row: T) => (string | number | null | undefined)[]; sorts?: MaybeRefOrGetter<readonly SortDef<T>[]>; filters?: Record<string, (row: T, value: string) => boolean>; url?: boolean | string; size?: number; sheet?: { kind: string; id: (row: T) => string | undefined; loaded?: MaybeRefOrGetter<boolean> }; selectId?: (row: T) => string | undefined }) {
   const search = ref("");
   const filters = ref<Record<string, string[]>>({});
   const page = ref(1);
@@ -65,6 +69,17 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
       },
     );
   }
+
+  const rowId = opts.selectId ?? opts.sheet?.id;
+  const ticked = ref<Set<string>>(new Set());
+  const idOfRow = (r: T) => rowId?.(r);
+  const selectedRows = computed(() => filtered.value.filter((r) => {
+    const id = idOfRow(r);
+    return id !== undefined && ticked.value.has(id);
+  }));
+  const pageIds = computed(() => paged.value.items.map(idOfRow).filter((id): id is string => id !== undefined));
+  const allOnPage = computed(() => pageIds.value.length > 0 && pageIds.value.every((id) => ticked.value.has(id)));
+  const someOnPage = computed(() => pageIds.value.some((id) => ticked.value.has(id)));
 
   const detail = ref<number | null>(null);
   const row = computed(() => (detail.value === null ? undefined : filtered.value[detail.value]));
@@ -135,6 +150,34 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
     },
     /** Whether the row at this index of the page shown is the one the sheet shows. */
     isOpen: (i: number) => detail.value === (paged.value.page - 1) * size.value + i,
+    selectedRows,
+    allOnPage,
+    someOnPage,
+    isTicked: (r: T) => {
+      const id = idOfRow(r);
+      return id !== undefined && ticked.value.has(id);
+    },
+    tick(r: T, on: boolean) {
+      const id = idOfRow(r);
+      if (id === undefined) return;
+      const next = new Set(ticked.value);
+      if (on) next.add(id);
+      else next.delete(id);
+      ticked.value = next;
+    },
+    /** Ticks every row of the page shown, or unticks them when all are ticked. */
+    togglePage() {
+      const next = new Set(ticked.value);
+      const on = !allOnPage.value;
+      for (const id of pageIds.value) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      ticked.value = next;
+    },
+    clearSelection() {
+      ticked.value = new Set();
+    },
     active: computed(() => search.value.trim() !== "" || Object.values(filters.value).some((vs) => vs.some((v) => v !== ""))),
     clear() {
       search.value = "";

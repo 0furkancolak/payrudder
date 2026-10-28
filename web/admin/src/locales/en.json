@@ -54,6 +54,15 @@
       "amountLow": "Amount, low to high",
       "nameAsc": "Name, A to Z",
       "nameDesc": "Name, Z to A"
+    },
+    "bulk": {
+      "label": "Bulk actions",
+      "selected": "{n} selected | {n} selected",
+      "clear": "Clear selection",
+      "selectPage": "Select all rows on this page",
+      "selectRow": "Select row",
+      "done": "{ok} done, {failed} not changed",
+      "notChanged": "Not changed"
     }
   },
   "enums": {
@@ -539,7 +548,8 @@
         "noPayments": "No payments yet.",
         "manageCredits": "Manage credits",
         "paymentMethod": "Payment method"
-      }
+      },
+      "exportSelected": "Export selected as CSV"
     },
     "packages": {
       "new": "New package",

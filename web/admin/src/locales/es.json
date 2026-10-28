@@ -54,6 +54,15 @@
       "amountLow": "Importe, de menor a mayor",
       "nameAsc": "Nombre, A a Z",
       "nameDesc": "Nombre, Z a A"
+    },
+    "bulk": {
+      "label": "Acciones masivas",
+      "selected": "{n} seleccionado | {n} seleccionados",
+      "clear": "Borrar selección",
+      "selectPage": "Seleccionar todas las filas de esta página",
+      "selectRow": "Seleccionar fila",
+      "done": "{ok} hechos, {failed} sin cambiar",
+      "notChanged": "Sin cambiar"
     }
   },
   "enums": {
@@ -539,7 +548,8 @@
         "noPayments": "Aún no hay pagos.",
         "manageCredits": "Gestionar créditos",
         "paymentMethod": "Método de pago"
-      }
+      },
+      "exportSelected": "Exportar la selección como CSV"
     },
     "packages": {
       "new": "Nuevo paquete",
