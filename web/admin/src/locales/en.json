@@ -55,7 +55,8 @@
       "amountHigh": "Amount, high to low",
       "amountLow": "Amount, low to high",
       "nameAsc": "Name, A to Z",
-      "nameDesc": "Name, Z to A"
+      "nameDesc": "Name, Z to A",
+      "lastUsed": "Last used"
     },
     "bulk": {
       "label": "Bulk actions",

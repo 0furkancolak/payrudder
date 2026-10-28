@@ -55,7 +55,8 @@
       "amountHigh": "Betrag, absteigend",
       "amountLow": "Betrag, aufsteigend",
       "nameAsc": "Name, A bis Z",
-      "nameDesc": "Name, Z bis A"
+      "nameDesc": "Name, Z bis A",
+      "lastUsed": "Zuletzt benutzt"
     },
     "bulk": {
       "label": "Sammelaktionen",

@@ -55,7 +55,8 @@
       "amountHigh": "Tutar, çoktan aza",
       "amountLow": "Tutar, azdan çoğa",
       "nameAsc": "Ad, A'dan Z'ye",
-      "nameDesc": "Ad, Z'den A'ya"
+      "nameDesc": "Ad, Z'den A'ya",
+      "lastUsed": "Son kullanılan"
     },
     "bulk": {
       "label": "Toplu işlemler",

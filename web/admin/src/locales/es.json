@@ -55,7 +55,8 @@
       "amountHigh": "Importe, de mayor a menor",
       "amountLow": "Importe, de menor a mayor",
       "nameAsc": "Nombre, A a Z",
-      "nameDesc": "Nombre, Z a A"
+      "nameDesc": "Nombre, Z a A",
+      "lastUsed": "Usado recientemente"
     },
     "bulk": {
       "label": "Acciones masivas",

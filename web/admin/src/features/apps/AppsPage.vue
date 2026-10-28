@@ -17,6 +17,8 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -41,6 +43,7 @@ const revokeKey = useRevokeApiKey();
 const list = computed(() => apps.data.value?.apps ?? []);
 const table = useTableState(list, {
   sheet: { kind: "app", id: (a) => a.id }, searchFields: (a) => [a.name, a.slug, ...(a.tenants ?? []).map((e) => e.id)],
+  sorts: () => [nameAsc(t, (a) => a.name), nameDesc(t, (a) => a.name), newest(t, (a) => time(a.create_time)), oldest(t, (a) => time(a.create_time))],
   url: "f_", filters: { env: (a, v) => (a.tenants ?? []).some((e) => environmentWord(e) === v) },
 });
 const when = (v?: string | null) => fmt.date(v, "day", "—");
@@ -110,6 +113,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
   <Card class="mb-6 p-3">
     <ErrorText :error="apps.error.value" class="px-3 pb-2" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <FilterSelect v-model="table.filters.value.env" multiple :label="t('apps.environments')" :options="[{ value: '', label: t('apps.allEnvironments') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
       <HeaderAction test-id="apps-new" :label="t('apps.new')" @click="creating = true" />
     </DataToolbar>

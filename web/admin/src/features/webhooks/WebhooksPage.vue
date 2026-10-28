@@ -16,6 +16,8 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
@@ -49,6 +51,7 @@ const range = ref<DateRange>(thisMonth());
 const log = computed(() => (deliveries.data.value?.deliveries ?? []).filter((d) => inRange(d.create_time, range.value)));
 const endpointsTable = useTableState(list, {
   sheet: { kind: "endpoint", id: (e) => e.id }, searchFields: (e) => [e.url, e.description, ...(e.event_types ?? [])],
+  sorts: () => [newest(t, (e) => time(e.create_time)), oldest(t, (e) => time(e.create_time)), nameAsc(t, (e) => e.url), nameDesc(t, (e) => e.url)],
   url: true, filters: { status: (e, v) => (e.active ? "active" : "paused") === v },
 });
 const deliveriesTable = useTableState(log, {
@@ -159,6 +162,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
 
   <Card class="mb-6 p-3">
     <DataToolbar v-model:search="endpointsTable.search.value" :active="endpointsTable.active.value" @clear="endpointsTable.clear()">
+      <SortSelect v-if="endpointsTable.sorts.value.length > 0" v-model="endpointsTable.sort.value" :options="endpointsTable.sorts.value" />
       <FilterSelect v-model="endpointsTable.filters.value.status" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, { value: 'active', label: t('billing.webhooks.active') }, { value: 'paused', label: t('billing.webhooks.paused') }]" />
       <HeaderAction test-id="webhooks-new" :label="t('billing.webhooks.add')" @click="creating = true" />
     </DataToolbar>

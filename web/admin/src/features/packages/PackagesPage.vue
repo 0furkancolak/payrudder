@@ -21,6 +21,8 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -49,7 +51,8 @@ const priceFor = ref("");
 const pricing = computed({ get: () => priceFor.value !== "", set: (v) => { if (!v) priceFor.value = ""; } });
 const fmt = useFormat();
 const range = ref<DateRange>(thisMonth());
-const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { sheet: { kind: "package", id: (p) => p.plan.code }, searchFields: (p) => [p.plan.code, p.plan.name] });
+const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { sheet: { kind: "package", id: (p) => p.plan.code }, searchFields: (p) => [p.plan.code, p.plan.name],
+  sorts: () => [nameAsc(t, (p) => p.plan.name), nameDesc(t, (p) => p.plan.name), newest(t, (p) => time(p.version?.publish_time)), oldest(t, (p) => time(p.version?.publish_time))] });
 watch(range, () => (table.page.value = 1), { deep: true });
 const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
@@ -241,6 +244,7 @@ function submit() {
   <Card class="p-3">
     <ErrorText :error="packages.error.value" class="px-3" />
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <DateRangePicker v-model="range" />
       <HeaderAction v-if="canWrite" test-id="packages-new" :label="t('billing.packages.new')" @click="creating = true" />
     </DataToolbar>

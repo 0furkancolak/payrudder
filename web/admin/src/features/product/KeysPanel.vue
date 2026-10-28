@@ -14,6 +14,8 @@ import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
@@ -61,6 +63,7 @@ const list = computed(() =>
 const table = useTableState(list, {
   sheet: { kind: "key", id: (k) => k.id },
   searchFields: (k) => [k.prefix, k.id, roleOfKey(k)],
+  sorts: () => [newest(t, (k) => time(k.create_time)), oldest(t, (k) => time(k.create_time)), { key: "used", label: t("common.sort.lastUsed"), by: (k) => time(k.last_used_time), dir: "desc" }],
   url: "f_", filters: { role: (k, v) => roleOfKey(k) === v, status: (k, v) => (isRevoked(k) ? "revoked" : "active") === v },
 });
 const when = (v?: string | null) => fmt.date(v, "day");
@@ -172,6 +175,7 @@ function doRevoke() {
     <UpgradeHint :error="create.error.value" class="mx-3" />
 
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <FilterSelect v-model="table.filters.value.role" multiple :label="t('product.keys.role')" :options="[{ value: '', label: t('product.keys.allRoles') }, ...KEY_ROLES.map((r) => ({ value: r, label: roleName(r) }))]" />
       <FilterSelect v-model="table.filters.value.status" multiple :label="t('product.keys.filterStatus')" :options="[{ value: '', label: t('product.keys.allStatuses') }, { value: 'active', label: t('product.keys.active') }, { value: 'revoked', label: t('product.keys.revoked') }]" />
       <HeaderAction v-if="canManage" :disabled="!!gate" :title="gate ? t(`product.keys.${gate}`) : undefined" :test-id="live ? 'new-live-key' : 'new-sandbox-key'" :label="t(live ? 'product.keys.newLive' : 'product.keys.newSandbox')" @click="making = true" />
