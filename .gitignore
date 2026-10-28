@@ -38,3 +38,8 @@ tools/payrudderctl/payrudderctl
 # Documentation site
 /docs-site/dist/
 /docs-site/node_modules/
+
+# MCP server
+/mcp/dist/
+/mcp/node_modules/
+

@@ -42,4 +42,4 @@ Every error has a stable `error.key` (see [Error keys](error-keys.html)): transl
 
 ## SDKs
 
-TypeScript, Python, Go and PHP: [SDKs](sdks.html). They are generated from the same OpenAPI file as the [API reference](api/index.html).
+TypeScript, Python, Go and PHP: [SDKs](sdks.html). They are generated from the same OpenAPI file as the [API reference](api/index.html). To let an AI assistant read your account, see the [MCP server](mcp.html).

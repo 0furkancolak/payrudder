@@ -11,6 +11,7 @@ on:
       - "docs/16-webhooks.md"
       - "docs/18-sdks.md"
       - "docs/error-keys.md"
+      - "mcp/README.md"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
@@ -19,6 +20,7 @@ on:
       - "docs/16-webhooks.md"
       - "docs/18-sdks.md"
       - "docs/error-keys.md"
+      - "mcp/README.md"
       - ".github/workflows/docs.yml"
 
 permissions:
