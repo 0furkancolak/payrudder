@@ -1518,8 +1518,12 @@ type Customer struct {
 	TaxId              string `protobuf:"bytes,10,opt,name=tax_id,json=taxId,proto3" json:"tax_id,omitempty"`
 	TaxOffice          string `protobuf:"bytes,11,opt,name=tax_office,json=taxOffice,proto3" json:"tax_office,omitempty"`
 	EInvoiceRegistered bool   `protobuf:"varint,12,opt,name=e_invoice_registered,json=eInvoiceRegistered,proto3" json:"e_invoice_registered,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// The language of the customer's mails, receipts and payment pages (en, tr, de, fr, es, ar). Empty = the browser's language, English in mails.
+	Locale string `protobuf:"bytes,13,opt,name=locale,proto3" json:"locale,omitempty"`
+	// "individual" (a person) or "business" (a taxpayer with a tax id). Empty = unknown.
+	CustomerType  string `protobuf:"bytes,14,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Customer) Reset() {
@@ -1634,6 +1638,20 @@ func (x *Customer) GetEInvoiceRegistered() bool {
 		return x.EInvoiceRegistered
 	}
 	return false
+}
+
+func (x *Customer) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *Customer) GetCustomerType() string {
+	if x != nil {
+		return x.CustomerType
+	}
+	return ""
 }
 
 // FilterValues is the set of accepted values for one event property (equality only).
@@ -3525,7 +3543,7 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	"SCOPE_FULL\x10\x01\x12\x10\n" +
 	"\fSCOPE_INGEST\x10\x02\x12\x0e\n" +
 	"\n" +
-	"SCOPE_READ\x10\x03\"\xad\x03\n" +
+	"SCOPE_READ\x10\x03\"\xea\x03\n" +
 	"\bCustomer\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vexternal_id\x18\x02 \x01(\tR\n" +
@@ -3542,7 +3560,9 @@ const file_payrudder_plans_v1_resources_proto_rawDesc = "" +
 	" \x01(\tR\x05taxId\x12\x1d\n" +
 	"\n" +
 	"tax_office\x18\v \x01(\tR\ttaxOffice\x120\n" +
-	"\x14e_invoice_registered\x18\f \x01(\bR\x12eInvoiceRegistered\"&\n" +
+	"\x14e_invoice_registered\x18\f \x01(\bR\x12eInvoiceRegistered\x12\x16\n" +
+	"\x06locale\x18\r \x01(\tR\x06locale\x12#\n" +
+	"\rcustomer_type\x18\x0e \x01(\tR\fcustomerType\"&\n" +
 	"\fFilterValues\x12\x16\n" +
 	"\x06values\x18\x01 \x03(\tR\x06values\"\xda\x03\n" +
 	"\x05Meter\x12\x12\n" +

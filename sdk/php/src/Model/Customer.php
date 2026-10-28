@@ -27,6 +27,8 @@ final class Customer implements Model
      * @param string|null $taxId
      * @param string|null $taxOffice
      * @param bool|null $eInvoiceRegistered
+     * @param string|null $locale
+     * @param string|null $customerType
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -41,6 +43,8 @@ final class Customer implements Model
         public readonly ?string $taxId = null,
         public readonly ?string $taxOffice = null,
         public readonly ?bool $eInvoiceRegistered = null,
+        public readonly ?string $locale = null,
+        public readonly ?string $customerType = null,
     ) {}
 
     /**
@@ -61,6 +65,8 @@ final class Customer implements Model
             taxId: Cast::string($data['tax_id'] ?? null),
             taxOffice: Cast::string($data['tax_office'] ?? null),
             eInvoiceRegistered: Cast::bool($data['e_invoice_registered'] ?? null),
+            locale: Cast::string($data['locale'] ?? null),
+            customerType: Cast::string($data['customer_type'] ?? null),
         );
     }
 
@@ -82,6 +88,8 @@ final class Customer implements Model
             'tax_id' => $this->taxId,
             'tax_office' => $this->taxOffice,
             'e_invoice_registered' => $this->eInvoiceRegistered,
+            'locale' => $this->locale,
+            'customer_type' => $this->customerType,
         ]);
     }
 }

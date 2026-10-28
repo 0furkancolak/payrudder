@@ -196,8 +196,11 @@ type CreateCustomerRequest struct {
 	ReferralCode string `protobuf:"bytes,8,opt,name=referral_code,json=referralCode,proto3" json:"referral_code,omitempty"`
 	// When the visitor followed that link; empty is now.
 	ReferralTouchTime *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=referral_touch_time,json=referralTouchTime,proto3" json:"referral_touch_time,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// The language of the customer's mails and pages, and whether it is a person or a business; both optional (see Customer).
+	Locale        string `protobuf:"bytes,10,opt,name=locale,proto3" json:"locale,omitempty"`
+	CustomerType  string `protobuf:"bytes,11,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateCustomerRequest) Reset() {
@@ -291,6 +294,20 @@ func (x *CreateCustomerRequest) GetReferralTouchTime() *timestamppb.Timestamp {
 		return x.ReferralTouchTime
 	}
 	return nil
+}
+
+func (x *CreateCustomerRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *CreateCustomerRequest) GetCustomerType() string {
+	if x != nil {
+		return x.CustomerType
+	}
+	return ""
 }
 
 type CreateCustomerResponse struct {
@@ -824,6 +841,8 @@ type SetCustomerContactRequest struct {
 	ExternalId    string                 `protobuf:"bytes,1,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	Locale        string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	CustomerType  string                 `protobuf:"bytes,5,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -875,6 +894,20 @@ func (x *SetCustomerContactRequest) GetName() string {
 func (x *SetCustomerContactRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
+	}
+	return ""
+}
+
+func (x *SetCustomerContactRequest) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *SetCustomerContactRequest) GetCustomerType() string {
+	if x != nil {
+		return x.CustomerType
 	}
 	return ""
 }
@@ -7436,7 +7469,7 @@ var File_payrudder_plans_v1_plans_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\n" +
-	"\x1epayrudder/plans/v1/plans.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"payrudder/plans/v1/resources.proto\"\xf6\x02\n" +
+	"\x1epayrudder/plans/v1/plans.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"payrudder/plans/v1/resources.proto\"\xb3\x03\n" +
 	"\x15CreateCustomerRequest\x12\x1f\n" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
 	"externalId\x12\x12\n" +
@@ -7447,7 +7480,10 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x10billing_currency\x18\x06 \x01(\tR\x0fbillingCurrency\x125\n" +
 	"\aaddress\x18\a \x01(\v2\x1b.payrudder.plans.v1.AddressR\aaddress\x12#\n" +
 	"\rreferral_code\x18\b \x01(\tR\freferralCode\x12J\n" +
-	"\x13referral_touch_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x11referralTouchTime\"R\n" +
+	"\x13referral_touch_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x11referralTouchTime\x12\x16\n" +
+	"\x06locale\x18\n" +
+	" \x01(\tR\x06locale\x12#\n" +
+	"\rcustomer_type\x18\v \x01(\tR\fcustomerType\"R\n" +
 	"\x16CreateCustomerResponse\x128\n" +
 	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"E\n" +
 	"\x12GetCustomerRequest\x12\x1f\n" +
@@ -7479,12 +7515,14 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"externalId\x125\n" +
 	"\aaddress\x18\x02 \x01(\v2\x1b.payrudder.plans.v1.AddressR\aaddress\"V\n" +
 	"\x1aSetCustomerAddressResponse\x128\n" +
-	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"f\n" +
+	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"\xa3\x01\n" +
 	"\x19SetCustomerContactRequest\x12\x1f\n" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
 	"externalId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
-	"\x05email\x18\x03 \x01(\tR\x05email\"V\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12\x16\n" +
+	"\x06locale\x18\x04 \x01(\tR\x06locale\x12#\n" +
+	"\rcustomer_type\x18\x05 \x01(\tR\fcustomerType\"V\n" +
 	"\x1aSetCustomerContactResponse\x128\n" +
 	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"\xa0\x01\n" +
 	"\x15SetCustomerTaxRequest\x12\x1f\n" +

@@ -240,6 +240,8 @@ type Page struct {
 	ExpiresAt            time.Time
 	SellerName           string
 	CustomerName         string
+	CustomerLocale       string
+	CustomerType         string
 	CurrencyExponent     int32
 	SellerAddressLines   []string
 	CustomerAddressLines []string
@@ -327,6 +329,7 @@ func (d Deps) invoice(ctx context.Context, s *Scope) (*Page, error) {
 	p.SellerName, p.CustomerName, p.CurrencyExponent = snap.TenantName, snap.CustomerName, int32(snap.CurrencyExponent) //nolint:gosec // 0..3
 	p.SellerAddressLines, p.CustomerAddressLines = snap.SellerAddress, snap.CustomerAddress
 	p.Environment = snap.Environment
+	p.CustomerLocale, p.CustomerType = snap.CustomerLocale, snap.CustomerType
 	if p.Country == "" {
 		p.Country = snap.Country
 	}
@@ -401,11 +404,12 @@ type PortalInvoice struct {
 
 // PortalPage is the customer's page.
 type PortalPage struct {
-	CustomerName  string
-	SellerName    string
-	LogoAvailable bool
-	Environment   string
-	Invoices      []PortalInvoice
+	CustomerName   string
+	CustomerLocale string
+	SellerName     string
+	LogoAvailable  bool
+	Environment    string
+	Invoices       []PortalInvoice
 	// Credits (phase 36): the spendable balance with its lots, the packs on sale, and whether this portal link can start a purchase.
 	CreditBalance int64
 	CreditLots    []sqlc.ListCreditLotsRow
@@ -465,6 +469,7 @@ func GetPortal(ctx context.Context, d Deps, s *Scope) (*PortalPage, error) {
 		}
 	}
 	out.CustomerName, out.SellerName, out.Environment = snap.CustomerName, snap.TenantName, snap.Environment
+	out.CustomerLocale = snap.CustomerLocale
 	logoKey := snap.LogoObjectKey
 	if out.SellerName == "" || out.Environment == "" {
 		seller, err := d.Seller(ctx, s.TenantID)

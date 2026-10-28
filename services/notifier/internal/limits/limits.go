@@ -106,7 +106,7 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 		window = le.GetPeriodId()
 	}
 	data := map[string]string{
-		"customer_name": cust.GetCustomer().GetName(), "tenant_name": tn.GetTenant().GetName(), "meter_code": le.GetMeterCode(),
+		"customer_name": cust.GetCustomer().GetName(), "locale": cust.GetCustomer().GetLocale(), "tenant_name": tn.GetTenant().GetName(), "meter_code": le.GetMeterCode(),
 		"period": window, "threshold_pct": fmt.Sprint(le.GetThresholdPct()),
 		"used": quantity.FormatUnits(le.GetUsedUnits(), scale), "limit": quantity.FormatUnits(le.GetLimitUnits(), scale),
 	}

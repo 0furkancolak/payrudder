@@ -133,6 +133,9 @@ message CreateCustomerRequest {
   string referral_code = 8;
   // When the visitor followed that link; empty is now.
   google.protobuf.Timestamp referral_touch_time = 9;
+  // The language of the customer's mails and pages, and whether it is a person or a business; both optional (see Customer).
+  string locale = 10;
+  string customer_type = 11;
 }
 
 message CreateCustomerResponse {
@@ -190,6 +193,8 @@ message SetCustomerContactRequest {
   string external_id = 1;
   string name = 2;
   string email = 3;
+  string locale = 4;
+  string customer_type = 5;
 }
 
 message SetCustomerContactResponse {

@@ -925,8 +925,9 @@ func (s *CustomersService) SetCustomerAddress(ctx context.Context, externalID st
 
 // SetCustomerContact: Replace the customer's name and e-mail address (PUT /v1/customers/{external_id}/contact).
 //
-// Invoices, receipts and dunning mails carry the name and go to the e-mail address. Both are required, with the
-// limits of customer creation. The external id cannot change.
+// Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language.
+// Name and e-mail are required, with the limits of customer creation; language and kind are replaced too, so
+// omit them to clear them. The external id cannot change.
 func (s *CustomersService) SetCustomerContact(ctx context.Context, externalID string, req *CustomerContact, opts ...RequestOption) (*Customer, error) {
 	if req == nil {
 		req = &CustomerContact{}

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CustomerProfileFields from "./CustomerProfileFields.vue";
 import { computed, ref, watch } from "vue";
 import AppField from "@/app/layout/AppField.vue";
 import { useI18n } from "vue-i18n";
@@ -13,7 +14,8 @@ import { useErrorText } from "@/shared/lib/errors";
 import { LocationFields } from "@/shared/ui/location-fields";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
-import { useCreateCustomer, type Address } from "./api";
+import type { ApiLocale } from "@/shared/lib/locale";
+import { useCreateCustomer, type Address, type CustomerKind } from "./api";
 import AddressLines from "./AddressLines.vue";
 
 /** Adds a customer by hand: id, name, e-mail, and optionally a country, a billing currency and an address. */
@@ -26,6 +28,8 @@ const errorText = useErrorText();
 const externalId = ref("");
 const name = ref("");
 const email = ref("");
+const locale = ref("");
+const kind = ref("");
 const country = ref("");
 const currency = ref("");
 const address = ref<Address>({});
@@ -50,7 +54,7 @@ const idError = computed(() => form.errors.value.externalId ?? duplicate.value);
 watch([externalId, name, email, country, currency, address], () => create.reset(), { deep: true });
 
 function reset() {
-  externalId.value = name.value = email.value = country.value = currency.value = "";
+  externalId.value = name.value = email.value = country.value = currency.value = locale.value = kind.value = "";
   address.value = {};
 }
 // A sheet that was closed opens clean: the last values and error are not shown again.
@@ -73,6 +77,8 @@ function submit() {
       email: email.value.trim(),
       country: cc || undefined,
       billing_currency: currency.value || undefined,
+      locale: (locale.value || undefined) as ApiLocale | undefined,
+      customer_type: (kind.value || undefined) as CustomerKind | undefined,
       address: Object.keys(a).length ? { ...a, ...(cc ? { country: cc } : {}) } : undefined,
     },
     {
@@ -107,6 +113,7 @@ function submit() {
           <FormField :label="t('billing.customers.currency')" for="new-customer-currency">
             <CurrencySelect id="new-customer-currency" v-model="currency" :aria-label="t('billing.customers.currency')" :blank="t('billing.customers.tenantCurrency')" />
           </FormField>
+          <CustomerProfileFields v-model:locale="locale" v-model:kind="kind" id-prefix="new-customer" />
           <fieldset class="grid gap-3">
             <legend class="text-muted-foreground mb-1 text-sm">{{ t("billing.customers.address.title") }}</legend>
             <LocationFields v-model:country="country" v-model:region="address.region" v-model:city="address.city" id-prefix="new-customer" :labels="placeLabels" />

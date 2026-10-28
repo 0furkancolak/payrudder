@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذه ليست فاتورة حقيقية.</strong></p>{{end}}
+<h2>الفاتورة {{index .D "invoice_number"}}: يرجى الدفع بالتحويل المصرفي</h2>
+<p>مرحبًا {{index .D "customer_name"}}، فاتورتك <strong>{{index .D "invoice_number"}}</strong> (الفترة {{index .D "period"}}) بمبلغ <strong>{{index .D "amount"}} {{index .D "currency"}}</strong>. يرجى إرسال المبلغ بالتحويل المصرفي:</p>
+<table style="border-collapse: collapse">
+{{if index .D "bank_name"}}<tr><td style="padding: 2px 16px 2px 0">البنك</td><td>{{index .D "bank_name"}}</td></tr>{{end}}
+{{if index .D "account_holder"}}<tr><td style="padding: 2px 16px 2px 0">صاحب الحساب</td><td>{{index .D "account_holder"}}</td></tr>{{end}}
+{{if index .D "iban"}}<tr><td style="padding: 2px 16px 2px 0">IBAN</td><td><strong>{{index .D "iban"}}</strong></td></tr>{{end}}
+{{if index .D "bic"}}<tr><td style="padding: 2px 16px 2px 0">BIC / SWIFT</td><td>{{index .D "bic"}}</td></tr>{{end}}
+{{if index .D "reference"}}<tr><td style="padding: 2px 16px 2px 0">مرجع الدفع</td><td><strong>{{index .D "reference"}}</strong></td></tr>{{end}}
+</table>
+<p>اكتب مرجع الدفع في التحويل حتى نتمكن من مطابقته مع هذه الفاتورة. سنؤكد عبر البريد الإلكتروني عند وصول المبلغ.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

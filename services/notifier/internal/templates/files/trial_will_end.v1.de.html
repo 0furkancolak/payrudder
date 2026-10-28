@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="de" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — dies ist keine echte Erinnerung.</strong></p>{{end}}
+<h2>Ihre Testphase endet bald</h2>
+<p>Hallo {{index .D "customer_name"}}, Ihre kostenlose Testphase für <strong>{{index .D "plan_code"}}</strong> endet am <strong>{{index .D "trial_end"}}</strong>. Bis dahin ist keine Karte nötig; danach wird die Gebühr des Tarifs, falls vorhanden, berechnet.</p>
+<p>Wenn Sie nicht fortfahren möchten, teilen Sie uns das bitte vorher mit.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

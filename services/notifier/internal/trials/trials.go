@@ -100,13 +100,19 @@ func (c *Consumer) one(ctx context.Context, rec *kgo.Record) error {
 	}
 	_, err = c.Mailer.Deliver(ctx, delivery.Delivery{
 		Key: ev.GetEventId(), Kind: "trial", TenantID: tid, Template: Template, To: cust.GetCustomer().GetEmail(),
-		Data:    mailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone()),
+		Data:    withLocale(mailData(&ev, cust.GetCustomer().GetName(), tn.GetTenant().GetName(), tn.GetTenant().GetTimezone()), cust.GetCustomer().GetLocale()),
 		Sandbox: tn.GetTenant().GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX,
 	})
 	if err != nil && errors.Is(err, workerx.ErrPoison) {
 		return c.dlq(ctx, rec, "INVALID_EVENT", err)
 	}
 	return err
+}
+
+// withLocale adds the language of the customer, which the template is chosen by (empty is English).
+func withLocale(d map[string]string, locale string) map[string]string {
+	d["locale"] = locale
+	return d
 }
 
 // mailData is what the template reads. The end of the trial is written in the tenant's time zone (UTC when it has none, or one this host does not know), which is

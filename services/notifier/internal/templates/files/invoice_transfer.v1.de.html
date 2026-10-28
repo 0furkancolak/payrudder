@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="de" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — dies ist keine echte Rechnung.</strong></p>{{end}}
+<h2>Rechnung {{index .D "invoice_number"}}: bitte per Überweisung bezahlen</h2>
+<p>Hallo {{index .D "customer_name"}}, Ihre Rechnung <strong>{{index .D "invoice_number"}}</strong> (Zeitraum {{index .D "period"}}) beträgt <strong>{{index .D "amount"}} {{index .D "currency"}}</strong>. Bitte überweisen Sie den Betrag:</p>
+<table style="border-collapse: collapse">
+{{if index .D "bank_name"}}<tr><td style="padding: 2px 16px 2px 0">Bank</td><td>{{index .D "bank_name"}}</td></tr>{{end}}
+{{if index .D "account_holder"}}<tr><td style="padding: 2px 16px 2px 0">Kontoinhaber</td><td>{{index .D "account_holder"}}</td></tr>{{end}}
+{{if index .D "iban"}}<tr><td style="padding: 2px 16px 2px 0">IBAN</td><td><strong>{{index .D "iban"}}</strong></td></tr>{{end}}
+{{if index .D "bic"}}<tr><td style="padding: 2px 16px 2px 0">BIC / SWIFT</td><td>{{index .D "bic"}}</td></tr>{{end}}
+{{if index .D "reference"}}<tr><td style="padding: 2px 16px 2px 0">Verwendungszweck</td><td><strong>{{index .D "reference"}}</strong></td></tr>{{end}}
+</table>
+<p>Geben Sie den Verwendungszweck bei der Überweisung an, damit wir die Zahlung dieser Rechnung zuordnen können. Wir bestätigen per E-Mail, sobald das Geld eingegangen ist.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذه ليست فاتورة حقيقية.</strong></p>{{end}}
+<h2>تعذّر تحصيل دفعتك</h2>
+<p>مرحبًا {{index .D "customer_name"}}، لم تتم دفعة <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> للفاتورة <strong>{{index .D "invoice_number"}}</strong> (الفترة {{index .D "period"}}) بعد عدة محاولات. يرجى تحديث وسيلة الدفع.</p>
+{{if index .D "iban"}}<p>ما زال بإمكانك دفع هذه الفاتورة بتحويل مصرفي إلى {{index .D "account_holder"}}، IBAN <strong>{{index .D "iban"}}</strong>{{if index .D "bank_name"}} ({{index .D "bank_name"}}){{end}}، مرجع الدفع <strong>{{index .D "reference"}}</strong>.</p>{{end}}
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir fatura değildir.</strong></p>{{end}}
+<h2>Fatura {{index .D "invoice_number"}}: lütfen banka havalesiyle ödeyin</h2>
+<p>Merhaba {{index .D "customer_name"}}, <strong>{{index .D "invoice_number"}}</strong> numaralı faturanız (dönem {{index .D "period"}}) <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> tutarındadır. Lütfen tutarı banka havalesiyle gönderin:</p>
+<table style="border-collapse: collapse">
+{{if index .D "bank_name"}}<tr><td style="padding: 2px 16px 2px 0">Banka</td><td>{{index .D "bank_name"}}</td></tr>{{end}}
+{{if index .D "account_holder"}}<tr><td style="padding: 2px 16px 2px 0">Hesap sahibi</td><td>{{index .D "account_holder"}}</td></tr>{{end}}
+{{if index .D "iban"}}<tr><td style="padding: 2px 16px 2px 0">IBAN</td><td><strong>{{index .D "iban"}}</strong></td></tr>{{end}}
+{{if index .D "bic"}}<tr><td style="padding: 2px 16px 2px 0">BIC / SWIFT</td><td>{{index .D "bic"}}</td></tr>{{end}}
+{{if index .D "reference"}}<tr><td style="padding: 2px 16px 2px 0">Ödeme referansı</td><td><strong>{{index .D "reference"}}</strong></td></tr>{{end}}
+</table>
+<p>Havalenizde ödeme referansını yazın; böylece ödemeyi bu faturayla eşleştirebiliriz. Para ulaştığında e-posta ile onaylayacağız.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

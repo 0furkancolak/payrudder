@@ -123,7 +123,7 @@ paths:
     put:
       operationId: setCustomerContact
       summary: Replace the customer's name and e-mail address
-      description: Invoices, receipts and dunning mails carry the name and go to the e-mail address. Both are required, with the limits of customer creation. The external id cannot change.
+      description: Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language. Name and e-mail are required, with the limits of customer creation; language and kind are replaced too, so omit them to clear them. The external id cannot change.
       parameters: [{ $ref: "#/components/parameters/ExternalID" }]
       requestBody:
         required: true
@@ -7410,6 +7410,8 @@ components:
         country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2 }
         billing_currency: { type: string, description: ISO 4217; default is the tenant's currency }
         address: { $ref: "#/components/schemas/AddressInput" }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar], description: The language of the customer's mails, receipts and payment pages }
+        customer_type: { type: string, enum: [individual, business], description: A person or a taxpayer }
         referral_code: { type: string, description: "The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation." }
         referral_touch_time: { type: string, format: date-time, description: When the visitor followed that link; default now }
     Address:
@@ -7484,7 +7486,7 @@ components:
         districts: { type: array, items: { $ref: "#/components/schemas/GeoDistrict" } }
     Customer:
       type: object
-      required: [id, external_id, name, email, payment_method, create_time, country, billing_currency, address, tax_id, tax_office, e_invoice_registered]
+      required: [id, external_id, name, email, payment_method, create_time, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type]
       properties:
         id: { type: string, format: uuid }
         external_id: { type: string }
@@ -7498,6 +7500,8 @@ components:
         tax_id: { type: string }
         tax_office: { type: string }
         e_invoice_registered: { type: boolean }
+        locale: { type: string, description: "The language of the customer's mails, receipts and payment pages: en, tr, de, fr, es or ar. Empty is the browser's language (pages) and English (mails)." }
+        customer_type: { type: string, description: "individual (a person) or business (a taxpayer with a tax id). Empty is unknown." }
     CreateMeterRequest:
       type: object
       required: [code, aggregation, unit_label]
@@ -7731,6 +7735,8 @@ components:
       properties:
         name: { type: string, maxLength: 200 }
         email: { type: string, format: email }
+        locale: { type: string, enum: [en, tr, de, fr, es, ar], description: "The language of the customer's mails, receipts and payment pages; omit to clear it" }
+        customer_type: { type: string, enum: [individual, business], description: "A person or a taxpayer; omit to clear it" }
     CustomerTax:
       type: object
       properties:

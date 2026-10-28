@@ -175,6 +175,10 @@ message Customer {
   string tax_id = 10;
   string tax_office = 11;
   bool e_invoice_registered = 12;
+  // The language of the customer's mails, receipts and payment pages (en, tr, de, fr, es, ar). Empty = the browser's language, English in mails.
+  string locale = 13;
+  // "individual" (a person) or "business" (a taxpayer with a tax id). Empty = unknown.
+  string customer_type = 14;
 }
 
 enum Aggregation {

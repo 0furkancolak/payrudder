@@ -108,6 +108,15 @@ func pickLang(r *http.Request) string {
 	return "en"
 }
 
+// customerLang is the language of a page about a customer: ?lang= still wins (the language switch of the page), then the customer's own language
+// (en, tr, de, fr, es, ar; empty for none), then what pickLang chooses from the browser.
+func customerLang(r *http.Request, locale string) string {
+	if slices.Contains(hostedLangs, r.URL.Query().Get("lang")) || !slices.Contains(hostedLangs, locale) {
+		return pickLang(r)
+	}
+	return locale
+}
+
 func hostedDir(lang string) string {
 	if lang == "ar" {
 		return "rtl"

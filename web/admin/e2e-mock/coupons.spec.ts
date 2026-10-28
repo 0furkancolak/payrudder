@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
+import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { pickCurrency, pickFilter, rowAction } from "./ui";
 
 const ALL = ["COUPON_TARGET_SUBSCRIPTION", "COUPON_TARGET_CREDIT_PURCHASE", "COUPON_TARGET_PAYMENT"];

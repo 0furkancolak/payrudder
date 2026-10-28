@@ -2,6 +2,7 @@ package templates
 
 import (
 	"io/fs"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -12,7 +13,14 @@ func Names() []string {
 	var out []string
 	if err := fs.WalkDir(files, "files", func(p string, d fs.DirEntry, err error) error {
 		if err == nil && !d.IsDir() {
-			out = append(out, strings.TrimSuffix(strings.TrimPrefix(p, "files/"), ".html"))
+			// "invoice_paid.v1.tr.html" is the Turkish file of "invoice_paid.v1": the language is not part of the template's name.
+			name := strings.TrimSuffix(strings.TrimPrefix(p, "files/"), ".html")
+			for _, l := range Locales[1:] {
+				name = strings.TrimSuffix(name, "."+l)
+			}
+			if !slices.Contains(out, name) {
+				out = append(out, name)
+			}
 		}
 		return err
 	}); err != nil {
@@ -79,5 +87,44 @@ func TestHTMLIsEscaped(t *testing.T) {
 	r, err := Render("invoice_paid.v1", map[string]string{"customer_name": "<script>x</script>"}, false)
 	if err != nil || strings.Contains(r.HTML, "<script>") {
 		t.Fatalf("customer-controlled text must be escaped: %v %q", err, r.HTML)
+	}
+}
+
+// Every template exists in every language, its subject is translated, and a language the data does not name (or one nobody wrote) is English.
+func TestRenderInEveryLanguage(t *testing.T) {
+	data := map[string]string{"customer_name": "Ada", "amount": "11.16", "currency": "USD", "invoice_number": "INV-2026-000001",
+		"period": "2026-10", "tenant_name": "Acme", "meter_code": "api_calls", "used": "80", "limit": "100", "threshold_pct": "80", "plan_code": "pro", "trial_end": "6 Nov 2026", "trial_end_date": "6 Nov 2026",
+		"iban": "DE89370400440532013000", "account_holder": "Acme GmbH", "reference": "INV-1"}
+	english := map[string]string{}
+	for _, n := range Names() {
+		r, err := Render(n, data, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		english[n] = r.Subject
+		for _, l := range Locales[1:] {
+			d := map[string]string{"locale": l}
+			for k, v := range data {
+				d[k] = v
+			}
+			got, err := Render(n, d, false)
+			if err != nil {
+				t.Fatalf("%s in %s: %v", n, l, err)
+			}
+			if got.Subject == english[n] || !strings.Contains(got.Text, "Ada") || strings.Contains(got.HTML, "{{") {
+				t.Errorf("%s in %s: subject %q, text %q", n, l, got.Subject, got.Text)
+			}
+		}
+	}
+	d := map[string]string{"locale": "tr"}
+	for k, v := range data {
+		d[k] = v
+	}
+	if r, _ := Render("invoice_paid.v1", d, false); r.Subject != "INV-2026-000001 numaralı fatura için makbuz" {
+		t.Errorf("Turkish subject = %q", r.Subject)
+	}
+	d["locale"] = "xx"
+	if r, _ := Render("invoice_paid.v1", d, false); r.Subject != english["invoice_paid.v1"] {
+		t.Errorf("an unknown language must be English, got %q", r.Subject)
 	}
 }

@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="es" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — esto no es un recordatorio real.</strong></p>{{end}}
+<h2>Su prueba termina pronto</h2>
+<p>Hola {{index .D "customer_name"}}, su prueba gratuita de <strong>{{index .D "plan_code"}}</strong> termina el <strong>{{index .D "trial_end"}}</strong>. No necesita tarjeta hasta entonces; después se factura la tarifa del plan, si la tiene.</p>
+<p>Si no desea continuar, avísenos antes de esa fecha.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

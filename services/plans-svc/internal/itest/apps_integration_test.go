@@ -118,14 +118,20 @@ func testAddresses(t *testing.T) {
 		t.Errorf("unknown customer: %v", err)
 	}
 
-	renamed, err := e.plans.SetCustomerContact(ctx, &plansv1.SetCustomerContactRequest{ExternalId: "cus_a", Name: "Ada Lovelace", Email: "ada@lovelace.example"})
-	if err != nil || renamed.GetCustomer().GetName() != "Ada Lovelace" || renamed.GetCustomer().GetEmail() != "ada@lovelace.example" || renamed.GetCustomer().GetCountry() != "DE" {
-		t.Fatalf("renamed = %v, %v; only the name and e-mail change", renamed, err)
+	renamed, err := e.plans.SetCustomerContact(ctx, &plansv1.SetCustomerContactRequest{ExternalId: "cus_a", Name: "Ada Lovelace", Email: "ada@lovelace.example", Locale: "tr", CustomerType: "business"})
+	if err != nil || renamed.GetCustomer().GetName() != "Ada Lovelace" || renamed.GetCustomer().GetEmail() != "ada@lovelace.example" || renamed.GetCustomer().GetCountry() != "DE" ||
+		renamed.GetCustomer().GetLocale() != "tr" || renamed.GetCustomer().GetCustomerType() != "business" {
+		t.Fatalf("renamed = %v, %v; the name, e-mail, language and kind change, the country does not", renamed, err)
+	}
+	if again, err := e.plans.GetCustomer(ctx, &plansv1.GetCustomerRequest{ExternalId: "cus_a"}); err != nil || again.GetCustomer().GetLocale() != "tr" || again.GetCustomer().GetCustomerType() != "business" {
+		t.Fatalf("stored = %v, %v", again, err)
 	}
 	for _, bad := range []*plansv1.SetCustomerContactRequest{
 		{ExternalId: "cus_a", Name: " ", Email: "ada@example.com"},
 		{ExternalId: "cus_a", Name: "Ada", Email: "not-an-email"},
 		{Name: "Ada", Email: "ada@example.com"},
+		{ExternalId: "cus_a", Name: "Ada", Email: "ada@example.com", Locale: "xx"},
+		{ExternalId: "cus_a", Name: "Ada", Email: "ada@example.com", CustomerType: "robot"},
 	} {
 		if _, err := e.plans.SetCustomerContact(ctx, bad); status.Code(err) != codes.InvalidArgument {
 			t.Errorf("contact %v: %v", bad, err)

@@ -441,6 +441,14 @@
       "tenantCurrency": "Account's currency",
       "create": "Create customer",
       "empty": "No customers yet.",
+      "profile": {
+        "language": "Language",
+        "auto": "Browser's language",
+        "type": "Type",
+        "unknown": "Not specified",
+        "individual": "Individual",
+        "business": "Business (taxpayer)"
+      },
       "contact": {
         "edit": "Edit name and e-mail",
         "title": "Name and e-mail",

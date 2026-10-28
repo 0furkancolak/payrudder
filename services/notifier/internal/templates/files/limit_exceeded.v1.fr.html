@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="fr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — ceci n'est pas une vraie alerte.</strong></p>{{end}}
+<h2>Alerte d'utilisation</h2>
+<p>Bonjour {{index .D "customer_name"}}, vous avez utilisé <strong>{{index .D "used"}}</strong> sur <strong>{{index .D "limit"}}</strong> {{index .D "meter_code"}} ({{index .D "threshold_pct"}} % atteint) pendant la période {{index .D "period"}}.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

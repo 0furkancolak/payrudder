@@ -161,9 +161,11 @@ test.describe("customer sheet", () => {
     const contact = page.getByRole("dialog", { name: "Contact of cus_1" });
     await contact.getByLabel("Name").fill("Yeni Ad");
     await contact.getByLabel("E-mail").fill("yeni@example.com");
+    await contact.getByLabel("Language").selectOption("tr");
+    await contact.getByLabel("Type").selectOption("business");
     await contact.getByRole("button", { name: "Save contact" }).click();
     await expect.poll(() => gw.called("PUT", "/v1/customers/cus_1/contact").length).toBe(1);
-    expect(gw.called("PUT", "/v1/customers/cus_1/contact")[0]?.body).toEqual({ name: "Yeni Ad", email: "yeni@example.com" });
+    expect(gw.called("PUT", "/v1/customers/cus_1/contact")[0]?.body).toEqual({ name: "Yeni Ad", email: "yeni@example.com", locale: "tr", customer_type: "business" });
 
     await page.getByTestId("customer-edit").click();
     await page.getByTestId("customer-edit-address").click();

@@ -73,7 +73,7 @@ func (c *Commands) Create(ctx context.Context, req *plansv1.CreateCustomerReques
 		}
 		out, err = q.CreateCustomer(ctx, sqlc.CreateCustomerParams{
 			ID: idgen.NewUUIDv7(), ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), PaymentMethod: pm,
-			Country: country, BillingCurrency: billing, Address: convert.AddressJSON(req.GetAddress()),
+			Country: country, BillingCurrency: billing, Address: convert.AddressJSON(req.GetAddress()), Locale: req.GetLocale(), CustomerType: req.GetCustomerType(),
 		})
 		if err != nil {
 			return err
@@ -123,13 +123,13 @@ func (c *Commands) SetContact(ctx context.Context, req *plansv1.SetCustomerConta
 	if req.GetExternalId() == "" {
 		return nil, domain.Invalid("external_id", "required")
 	}
-	if err := domain.ValidateCustomerContact(req.GetName(), req.GetEmail()); err != nil {
+	if err := domain.ValidateCustomerContact(req.GetName(), req.GetEmail(), req.GetLocale(), req.GetCustomerType()); err != nil {
 		return nil, err
 	}
 	var out sqlc.Customer
 	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
 		var err error
-		out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail()})
+		out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail(), Locale: req.GetLocale(), CustomerType: req.GetCustomerType()})
 		return err
 	})
 	if err != nil {

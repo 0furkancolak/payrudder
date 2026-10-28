@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="de" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — dies ist keine echte Rechnung.</strong></p>{{end}}
+<h2>Wir konnten Ihre Zahlung nicht einziehen</h2>
+<p>Hallo {{index .D "customer_name"}}, die Zahlung von <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> für die Rechnung <strong>{{index .D "invoice_number"}}</strong> (Zeitraum {{index .D "period"}}) ist nach mehreren Versuchen fehlgeschlagen. Bitte aktualisieren Sie Ihre Zahlungsmethode.</p>
+{{if index .D "iban"}}<p>Sie können die Rechnung weiterhin per Überweisung an {{index .D "account_holder"}}, IBAN <strong>{{index .D "iban"}}</strong>{{if index .D "bank_name"}} ({{index .D "bank_name"}}){{end}}, Verwendungszweck <strong>{{index .D "reference"}}</strong> bezahlen.</p>{{end}}
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

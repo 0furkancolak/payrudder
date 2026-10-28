@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/mail"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -180,9 +181,26 @@ func ValidatePaymentMethod(environment, pm string) error {
 	}
 }
 
-// ValidateCustomerContact checks the name and e-mail of SetCustomerContact with the rules CreateCustomer applies.
-func ValidateCustomerContact(name, email string) error {
+// CustomerLocales are the languages a customer can be addressed in; CustomerTypes the kinds of customer (empty is unknown, in both).
+var (
+	CustomerLocales = []string{"en", "tr", "de", "fr", "es", "ar"}
+	CustomerTypes   = []string{"individual", "business"}
+)
+
+// customerProfile checks the language and the kind of a customer, which Create and SetContact take the same way.
+func customerProfile(v *Violations, locale, kind string) {
+	if locale != "" && !slices.Contains(CustomerLocales, locale) {
+		v.Add("locale", "one of "+strings.Join(CustomerLocales, ", ")+", or empty")
+	}
+	if kind != "" && !slices.Contains(CustomerTypes, kind) {
+		v.Add("customer_type", "individual or business, or empty")
+	}
+}
+
+// ValidateCustomerContact checks the name, e-mail, language and kind of SetCustomerContact with the rules CreateCustomer applies.
+func ValidateCustomerContact(name, email, locale, kind string) error {
 	var v Violations
+	customerProfile(&v, locale, kind)
 	if strings.TrimSpace(name) == "" || len(name) > 200 {
 		v.Add("name", "required, at most 200 characters")
 	}
@@ -204,6 +222,7 @@ func ValidateCustomer(environment string, req *plansv1.CreateCustomerRequest) er
 	if addr, err := mail.ParseAddress(req.GetEmail()); err != nil || addr.Address != req.GetEmail() {
 		v.Add("email", "must be a plain e-mail address")
 	}
+	customerProfile(&v, req.GetLocale(), req.GetCustomerType())
 	if err := ValidatePaymentMethod(environment, req.GetPaymentMethod()); err != nil {
 		v.Add("payment_method", err.Error())
 	}

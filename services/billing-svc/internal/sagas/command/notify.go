@@ -13,7 +13,7 @@ import (
 func mailData(s *saga) map[string]string {
 	return map[string]string{
 		"invoice_number": s.Number, "invoice_id": s.InvoiceID.String(), "period": s.PeriodID, "amount": quantity.FormatUnits(s.TotalMinor, s.Snap.CurrencyExponent),
-		"currency": s.Currency, "customer_name": s.Snap.CustomerName, "tenant_name": s.Snap.TenantName,
+		"currency": s.Currency, "customer_name": s.Snap.CustomerName, "tenant_name": s.Snap.TenantName, "locale": s.Snap.CustomerLocale,
 		env.Sandbox.String(): fmt.Sprint(s.Snap.Environment == env.Sandbox.String()),
 	}
 }
