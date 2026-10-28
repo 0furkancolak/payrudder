@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
@@ -57,6 +58,14 @@ func testCustomerBlock(t *testing.T) {
 	}
 	if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: "nobody"}); code(t, err) != codes.NotFound {
 		t.Errorf("a customer that is not there: %v", err)
+	}
+
+	// A blocked customer's subscription stays on its plan too: the block stops plan changes as well as new subscriptions.
+	if _, err := e.plans.PublishPlanVersion(ctx, &plansv1.PublishPlanVersionRequest{PlanCode: "basic", BaseFeeMinor: 5000, Fees: yearlyFees("basic", 5000)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.plans.ChangePlan(ctx, &plansv1.ChangePlanRequest{SubscriptionId: before.GetSubscription().GetId(), PlanCode: "basic", PlanVersion: 2}); status.Convert(err).Message() != "this customer is blocked: no plan change" {
+		t.Errorf("a plan change for a blocked customer: %v", err)
 	}
 
 	u, err := e.plans.UnblockCustomer(ctx, &plansv1.UnblockCustomerRequest{ExternalId: "cus_bad"})

@@ -34,8 +34,11 @@ UPDATE customers SET address = @address::jsonb, country = COALESCE(sqlc.narg(cou
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
+-- An empty language or kind keeps what the customer has: a client that sends only the name and e-mail does not wipe them.
 -- name: SetCustomerContact :one
-UPDATE customers SET name = @name, email = @email, locale = @locale, customer_type = @customer_type
+UPDATE customers SET name = @name, email = @email,
+  locale = CASE WHEN @locale::text = '' THEN locale ELSE @locale::text END,
+  customer_type = CASE WHEN @customer_type::text = '' THEN customer_type ELSE @customer_type::text END
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
