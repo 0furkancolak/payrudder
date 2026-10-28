@@ -190,6 +190,8 @@ http_response_code(200);
 ```
 
 `Webhook::verify()` throws `WebhookException`, `Webhook::isValid()` returns a boolean. The scheme is documented in [`docs/16-webhooks.md`](../../docs/16-webhooks.md): HMAC-SHA256 over `"<t>.<body>"`, constant-time comparison, several `v1` signatures while a secret is being rotated, and a timestamp more than `tolerance` seconds from now is refused. Deliveries are at least once and not in order: use `$event->id` to drop a repeat.
+
+`$event->dataAs(InvoiceEventData::class)` reads `data` as a typed object (`Payrudder\Webhook\Data`: `InvoiceEventData` for `invoice.*`, `CreditNoteEventData`, `SubscriptionEventData`, `PaymentLinkEventData`, `CreditsPurchasedEventData`, `CreditsLowEventData`); money fields are ints of minor units.
 `WebhookEventType::all()` lists the type names (and the `Payrudder\Enum\WebhookEventType` enum is what an endpoint's `event_types` accepts).
 
 ## Uploads

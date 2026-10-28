@@ -10,10 +10,11 @@ import hashlib
 import hmac
 import json
 import time
-from typing import Any, TypedDict
+from typing import Any, Literal, TypedDict
 
 from . import _wire
 from .errors import WebhookSignatureError
+from .models import ChangeQuote, Subscription
 
 SIGNATURE_HEADER = "Payrudder-Signature"
 EVENT_ID_HEADER = "Payrudder-Event-Id"
@@ -53,8 +54,121 @@ class EventType:
 EVENT_TYPES: tuple[str, ...] = tuple(v for k, v in vars(EventType).items() if k.isupper())
 
 
+class _InvoiceEventDataRequired(TypedDict):
+    invoice_id: str
+    total_minor: int
+
+
+class InvoiceEventData(_InvoiceEventDataRequired, total=False):
+    """``data`` of ``invoice.*`` events."""
+
+    number: str
+    customer_id: str
+    customer_external_id: str
+    period_id: str
+    currency: str
+    status: str
+    environment: str
+    tax_minor: int  # invoice.paid only
+    net_minor: int  # invoice.paid only: the total less its TAX lines
+
+
+class _CreditNoteEventDataRequired(TypedDict):
+    credit_note_id: str
+    total_minor: int
+
+
+class CreditNoteEventData(_CreditNoteEventDataRequired, total=False):
+    """``data`` of ``credit_note.*`` events."""
+
+    number: str
+    invoice_id: str
+    invoice_number: str
+    customer_id: str
+    customer_external_id: str
+    currency: str
+    reason: str
+    disposition: Literal["credit", "refund"]
+    refund_state: str
+    refund_error: str
+
+
+class _SubscriptionEventDataRequired(TypedDict):
+    subscription: Subscription
+
+
+class SubscriptionEventData(_SubscriptionEventDataRequired, total=False):
+    """``data`` of ``subscription.*`` events."""
+
+    previous_subscription_id: str
+    quote: ChangeQuote
+    to_provider: str
+    credited_minor: int
+
+
+class _PaymentLinkEventDataRequired(TypedDict):
+    link_id: str
+
+
+class PaymentLinkEventData(_PaymentLinkEventDataRequired, total=False):
+    """``data`` of ``payment_link.*`` events."""
+
+    kind: str
+    invoice_id: str
+    invoice_number: str
+    amount_minor: int
+    total_minor: int
+    currency: str
+    description: str
+    customer_external_id: str
+    single_use: bool
+    expires_at: str
+    paid_count: int
+
+
+class _CreditsPurchasedEventDataRequired(TypedDict):
+    customer_id: str
+    credits: str
+    balance: str
+
+
+class CreditsPurchasedEventData(_CreditsPurchasedEventDataRequired, total=False):
+    """``data`` of ``credits.purchased``."""
+
+    customer_external_id: str
+    bonus_credits: str
+    quantity: int
+    pack_id: str
+    pack_name: str
+    link_id: str
+    invoice_id: str
+    invoice_number: str
+    currency: str
+    amount_minor: int
+    expires_at: str
+
+
+class _CreditsLowEventDataRequired(TypedDict):
+    customer_id: str
+    balance: str
+    threshold: str
+
+
+class CreditsLowEventData(_CreditsLowEventDataRequired, total=False):
+    """``data`` of ``credits.low``."""
+
+    customer_external_id: str
+
+
 class WebhookEvent(TypedDict):
-    """A delivery's JSON body. ``data`` depends on ``type``; its ``*_minor`` values are ints."""
+    """A delivery's JSON body. ``data`` depends on ``type``; its ``*_minor`` values are ints.
+
+    ``data`` stays a plain dict so one handler can take every type; narrow it with ``typing.cast`` to the
+    ``*EventData`` class of the type (``invoice.*`` is ``InvoiceEventData``, ``credit_note.*`` is
+    ``CreditNoteEventData``, ``subscription.*`` is ``SubscriptionEventData``, ``payment_link.*`` is
+    ``PaymentLinkEventData``, ``credits.purchased`` / ``credits.low`` are ``CreditsPurchasedEventData`` /
+    ``CreditsLowEventData``).
+    """
 
     id: str
     type: str
