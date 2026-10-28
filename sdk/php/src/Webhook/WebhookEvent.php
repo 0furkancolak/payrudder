@@ -31,7 +31,9 @@ final class WebhookEvent
      * CreditsPurchasedEventData for `credits.purchased` and CreditsLowEventData for `credits.low`.
      *
      * @template T of object
+     *
      * @param class-string<T> $class one of the classes in Payrudder\Webhook\Data
+     *
      * @return T
      */
     public function dataAs(string $class): object
