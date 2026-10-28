@@ -31,6 +31,8 @@
     "close": "Cerrar",
     "search": "Buscar",
     "clearFilters": "Borrar filtros",
+    "filters": "Filtros",
+    "showResults": "Ver resultados",
     "noMatches": "Nada coincide con estos filtros.",
     "moreActions": "Más acciones",
     "view": "Ver",
@@ -4432,7 +4434,7 @@
       "today": "Hoy",
       "7d": "Últimos 7 días",
       "30d": "Últimos 30 días",
-      "month": "Este mes",
+      "month": "En lo que va del mes",
       "lastMonth": "Mes pasado",
       "year": "Este año"
     }

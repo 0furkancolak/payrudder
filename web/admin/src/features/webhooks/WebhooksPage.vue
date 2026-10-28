@@ -18,7 +18,7 @@ import { Label } from "@/shared/ui/label";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
@@ -61,13 +61,13 @@ watch(
   (id) => {
     selected.value = id ?? "";
     deliveriesTable.clear();
-    range.value = { from: "", to: "" };
+    range.value = thisMonth();
   },
 );
-const deliveriesActive = computed(() => deliveriesTable.active.value || range.value.from !== "" || range.value.to !== "");
+const deliveriesActive = computed(() => deliveriesTable.active.value || rangeChanged(range.value));
 function clearDeliveries() {
   deliveriesTable.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 type Endpoint = (typeof list.value)[number];
 function actionsOf(e: Endpoint, i: number): RowAction[] {

@@ -6,9 +6,11 @@ import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
 // (days, no card) with a default on the package, trial ends shown and reminded, and a free-tier package.
 
 const DAY = 86_400_000;
-const inDays = (n: number) => new Date(Date.now() + n * DAY).toISOString();
+// The mocks run on 21 October 2026 (gateway.ts), whatever the day the suite runs on.
+const NOW = new Date(2026, 9, 21, 12, 0, 0).getTime();
+const inDays = (n: number) => new Date(NOW + n * DAY).toISOString();
 const customers = [
-  { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", create_time: "2026-09-01T10:00:00Z" },
+  { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", create_time: "2026-10-01T10:00:00Z" },
   { id: "id-2", external_id: "cus_2", name: "Grace Hopper", email: "grace@example.com", create_time: "2026-10-02T10:00:00Z" },
 ];
 const sub = (id: string, customer: string, extra: Record<string, unknown> = {}) => ({
@@ -66,8 +68,8 @@ test.describe("free credits", () => {
     expect(body).toMatchObject({ credits: "300", source: "manual", reason: "Goodwill: late invoice" });
     expect(body.idempotency_key).toMatch(/^[0-9a-f-]{36}$/);
     const expires = Date.parse(body.expire_time ?? "");
-    expect(expires).toBeGreaterThan(Date.now() + 29 * DAY);
-    expect(expires).toBeLessThan(Date.now() + 32 * DAY);
+    expect(expires).toBeGreaterThan(NOW + 29 * DAY);
+    expect(expires).toBeLessThan(NOW + 32 * DAY);
     expect(gw.called("POST", "/v1/customers/cus_1/credits/grant")[0]?.headers["x-payrudder-tenant"]).toBeTruthy();
 
     // The sheet closes and the customer's balance is read again.
@@ -211,7 +213,7 @@ test.describe("trials and free tiers on a package", () => {
       }
       const v = /^\/v1\/plans\/([^/]+)\/versions(\/latest)?$/.exec(c.path);
       if (v && c.method === "POST") {
-        made.versions[v[1] ?? ""] = { version: 1, publish_time: "2026-10-26T10:00:00Z", ...c.body };
+        made.versions[v[1] ?? ""] = { version: 1, publish_time: "2026-10-20T10:00:00Z", ...c.body };
         return { status: 201, body: made.versions[v[1] ?? ""] };
       }
       if (v) return { body: made.versions[v[1] ?? ""] ?? {} };

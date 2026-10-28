@@ -172,7 +172,7 @@ test.describe("app dashboard", () => {
     await expect(keys).not.toContainText("SECRET");
 
     // The page is the live view (the app is active): a live key is made here, in a sheet that names the environment and the role.
-    await page.getByTestId("new-live-key").click();
+    await page.getByRole("button", { name: "New live key" }).click();
     const sheet = page.getByTestId("new-key-sheet");
     await expect(sheet.getByTestId("new-key-env")).toHaveText("Live");
     await sheet.getByTestId("create-key").click();
@@ -198,7 +198,7 @@ test.describe("app dashboard", () => {
 
   test("the deeper views are the console's own pages, spoken to as the person's tenant", async ({ page }) => {
     const { gw } = productGateway(new MockGateway());
-    gw.on((c) => (c.path === "/v1/customers" ? { body: { customers: [{ id: "c1", external_id: "cus_1", name: "Acme Ltd", email: "billing@acme.test" }] } } : undefined));
+    gw.on((c) => (c.path === "/v1/customers" ? { body: { customers: [{ id: "c1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Acme Ltd", email: "billing@acme.test" }] } } : undefined));
     await gw.install(page);
     await signInAsAda(page);
     await page.goto(`/app/apps/${APP}`);

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Link, Outlet, useNavigate } from "@tanstack/vue-router";
 import { Menu } from "@lucide/vue";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import PeekHost from "@/features/related/PeekHost.vue";
 import VerifyBanner from "@/features/product/VerifyBanner.vue";
@@ -48,6 +48,24 @@ const drawer = ref(false);
 
 // A route change closes the drawer (the links also do; this covers the browser's back button).
 watch(shell.path, () => (drawer.value = false));
+
+/**
+ * A page's name is written once. On a phone the page's own heading is the name while it is in view; once it has scrolled away the name appears small in the
+ * sticky top bar (a row of its own under the buttons), so the page is still named without saying it twice at the top.
+ */
+const titleGone = ref(false);
+let titleWatch: IntersectionObserver | undefined;
+function watchTitle() {
+  titleWatch?.disconnect();
+  titleGone.value = false;
+  const heading = document.querySelector("#main h1");
+  if (!heading || !("IntersectionObserver" in window)) return;
+  titleWatch = new IntersectionObserver(([e]) => (titleGone.value = !!e && !e.isIntersecting && e.boundingClientRect.top < 0), { rootMargin: "-64px 0px 0px 0px" });
+  titleWatch.observe(heading);
+}
+// The page renders after the address changes (and its heading may wait for data), so the heading is looked for a moment later.
+watch(shell.path, () => nextTick(() => setTimeout(watchTitle, 350)), { immediate: true });
+onUnmounted(() => titleWatch?.disconnect());
 
 /**
  * An app or a tenant in the address that is none of the person's, known once the apps have arrived: the page answers "not found" instead of loading
@@ -168,7 +186,7 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
             <Menu class="size-5" aria-hidden="true" />
           </button>
           <!-- On a phone the breadcrumb takes a row of its own below the buttons, so the page name is not squeezed to two letters. -->
-          <Breadcrumbs :crumbs="shell.crumbs.value" class="min-w-0 flex-1 max-sm:order-last max-sm:basis-full" />
+          <Breadcrumbs :crumbs="shell.crumbs.value" :class="['min-w-0 flex-1 max-sm:order-last max-sm:basis-full', !titleGone && 'max-sm:hidden']" />
           <!-- The tour button of the guided tour (phase 52) mounts here, in the header of every page. -->
           <div id="tour-slot" data-testid="tour-slot" class="flex shrink-0 items-center gap-2 max-sm:ms-auto"></div>
           <div class="flex shrink-0 items-center gap-2">

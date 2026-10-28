@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
-import { thisMonth } from "@/shared/lib/dateRange";
+import { rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { ArrowUpRight } from "@lucide/vue";
 
 import { computed, ref } from "vue";
@@ -45,10 +45,10 @@ const revenueTable = useTableState<RevenueRow>(() => revenue.data.value?.rows ??
 });
 const revenueCurrency = computed({ get: () => revenueTable.filters.value.currency ?? [], set: (v: string[]) => (revenueTable.filters.value.currency = v) });
 const revenueCurrencies = computed(() => distinct((revenue.data.value?.rows ?? []).map((r) => r.currency)));
-const revenueActive = computed(() => revenueTable.active.value || range.value.from !== "" || range.value.to !== "");
+const revenueActive = computed(() => revenueTable.active.value || rangeChanged(range.value));
 function clearRevenue() {
   revenueTable.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const money = (v: string | number | undefined, currency?: string) => fmt.amount(v, currency);
 

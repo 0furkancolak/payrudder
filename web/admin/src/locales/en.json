@@ -31,6 +31,8 @@
     "close": "Close",
     "search": "Search",
     "clearFilters": "Clear filters",
+    "filters": "Filters",
+    "showResults": "Show results",
     "noMatches": "Nothing matches these filters.",
     "moreActions": "More actions",
     "view": "View",
@@ -4432,7 +4434,7 @@
       "today": "Today",
       "7d": "Last 7 days",
       "30d": "Last 30 days",
-      "month": "This month",
+      "month": "Month to date",
       "lastMonth": "Last month",
       "year": "This year"
     }

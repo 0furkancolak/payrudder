@@ -146,7 +146,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
 
 <template>
   <Card class="mb-6 p-3">
-    <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.providers.accounts") }}</h2>
+    <h2 class="px-3 pt-2 text-base font-semibold">{{ t("billing.providers.accounts") }}</h2>
     <DataToolbar v-model:search="accountTable.search.value" :active="accountTable.active.value" @clear="accountTable.clear()">
       <FilterSelect v-model="accountEnv" multiple :label="t('billing.providers.environment')" :options="environments" />
       <HeaderAction :label="t('billing.providers.addAccount')" @click="open = true" />
@@ -213,7 +213,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
   </Card>
 
   <Card class="mb-6 p-3">
-    <h2 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.providers.runByProviders") }}</h2>
+    <h2 class="px-3 pt-2 text-base font-semibold">{{ t("billing.providers.runByProviders") }}</h2>
     <DataToolbar v-model:search="subTable.search.value" :active="subTable.active.value" @clear="subTable.clear()">
       <FilterSelect v-model="subStatus" multiple :label="t('billing.subscriptions.state')" :options="subStatuses" />
     </DataToolbar>

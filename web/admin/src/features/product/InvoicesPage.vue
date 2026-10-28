@@ -19,7 +19,7 @@ import { peek } from "@/features/related/peek";
 import { setKind } from "@/shared/lib/sheets";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { ArrowUpRight } from "@lucide/vue";
 import InvoiceDetail from "./InvoiceDetail.vue";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
@@ -40,11 +40,11 @@ watch(status, () => (at.value = 0));
 const loaded = computed(() => invoices.data.value?.pages ?? []);
 const range = ref<DateRange>(thisMonth());
 const rows = computed(() => (loaded.value[at.value]?.invoices ?? []).filter((i) => matchesSearch([i.number, i.customer_external_id, i.period_id], search.value) && inRange(i.create_time, range.value)));
-const filtering = computed(() => search.value !== "" || status.value !== "" || range.value.from !== "" || range.value.to !== "");
+const filtering = computed(() => search.value !== "" || status.value !== "" || rangeChanged(range.value));
 function clear() {
   search.value = "";
   status.value = "";
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const hasNext = computed(() => at.value + 1 < loaded.value.length || !!invoices.hasNextPage.value);
 async function next() {
@@ -72,7 +72,7 @@ function openInvoice(id: string) {
     return;
   }
   search.value = "";
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
   at.value = where;
   // After the watcher that closes the sheet when what is listed changes has run.
   void nextTick(() => (shown.value = rows.value.findIndex((i) => i.id === id)));

@@ -73,7 +73,7 @@ test.describe("customers", () => {
     await fixedToday(page);
     const gw = baseTenant(new MockGateway()).on((c) =>
       c.path === "/v1/customers" && c.method === "GET"
-        ? { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com", address: { city: "Izmir", country: "TR" } }] } }
+        ? { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com", create_time: "2026-10-05T10:00:00Z", address: { city: "Izmir", country: "TR" } }] } }
         : undefined,
     );
     await gw.install(page);

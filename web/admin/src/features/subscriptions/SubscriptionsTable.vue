@@ -5,7 +5,7 @@ import { Settings2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Subscription } from "@/shared/api/client";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { enumWord, label } from "@/shared/lib/labels";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
@@ -45,10 +45,10 @@ const table = useTableState(() => list.value.filter((s) => inRange(s.start_time,
   url: true, filters: { state: (s, v) => state(s) === v, currency: (s, v) => s.currency === v, interval: (s, v) => s.interval === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
-const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const stateFilter = filter("state");

@@ -5,7 +5,7 @@ import { pickPlace } from "./ui";
 // The address forms take the country, the region and the district from the GeoNames lists (GET /app/v1/geo/..., mocked in geo.ts), and still store
 // the country code and the region and city as text.
 
-const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
+const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, create_time: "2026-10-05T10:00:00Z", ...extra });
 
 test.describe("location fields", () => {
   test("a customer's address is picked country, region, district, and sent as text", async ({ page }) => {

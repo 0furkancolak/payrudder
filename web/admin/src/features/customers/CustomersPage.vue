@@ -7,7 +7,7 @@ import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
 import { useSubscriptionActions } from "@/features/subscriptions/api";
 import CreateSubscriptionForm from "@/features/subscriptions/CreateSubscriptionForm.vue";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor, maskEmail } from "@/shared/lib/money";
 import { tenantBase } from "@/shared/lib/session";
@@ -57,7 +57,7 @@ const summaries = useCustomerSummaries(tenantId);
 const list = computed(() => customers.data.value?.customers ?? []);
 const summaryOf = (c: Customer) => summaries.byCustomer.value.get(c.external_id ?? "") ?? emptySummary();
 
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((c) => inRange(c.create_time, range.value)), {
   sheet: { kind: "customer", id: (c) => c.external_id, loaded: () => customers.isSuccess.value },
   selectId: (c) => c.external_id,
@@ -72,10 +72,10 @@ const table = useTableState(() => list.value.filter((c) => inRange(c.create_time
   },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
-const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const countryFilter = filter("country");
@@ -245,7 +245,7 @@ function exportSelected() {
     <h2 class="sr-only">{{ t("shell.items.customers") }}</h2>
     <ErrorState :error="customers.error.value" :retrying="customers.isFetching.value" compact @retry="customers.refetch()" />
     <ErrorText :error="act.create.error.value" class="px-3 pb-2" />
-    <DataToolbar v-if="customers.isPending.value || list.length > 0 || customers.error.value" v-model:search="table.search.value" :placeholder="t('billing.customers.searchPlaceholder')" :active="active" class="pt-2" @clear="clear">
+    <DataToolbar v-if="customers.isPending.value || list.length > 0 || customers.error.value" v-model:search="table.search.value" :placeholder="t('billing.customers.searchPlaceholder')" :active="active" @clear="clear">
       <FilterSelect v-model="subscriptionFilter" multiple :label="t('billing.customers.filters.subscription')" :options="subscriptionOptions" />
       <FilterSelect v-model="billingFilter" multiple :label="t('billing.customers.filters.billing')" :options="billingOptions" />
       <FilterSelect v-model="countryFilter" multiple :label="t('billing.customers.country')" :options="countryOptions" />

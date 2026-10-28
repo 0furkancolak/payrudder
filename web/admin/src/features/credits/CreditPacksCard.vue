@@ -95,7 +95,7 @@ function submitPack() {
 
 <template>
   <Card class="p-3" data-testid="credits-packs">
-    <h3 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.credits.packs.title") }}</h3>
+    <h3 class="px-3 pt-2 text-base font-semibold">{{ t("billing.credits.packs.title") }}</h3>
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.credits.packs.state')" :options="states" />
       <HeaderAction :label="t('billing.credits.packs.new')" @click="open = true" />

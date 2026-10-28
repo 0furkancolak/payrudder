@@ -16,7 +16,7 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { ArrowUpRight, FileText } from "@lucide/vue";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -46,10 +46,10 @@ const table = useTableState(rows, {
 });
 const statuses = computed(() => [...new Set(all.value.map((p) => p.status as string | undefined).filter((v): v is string => !!v))].sort());
 const kinds = computed(() => [...new Set(all.value.map((p) => p.kind as string | undefined).filter((v): v is string => !!v))].sort());
-const filtering = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const filtering = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const current = table.row;
 watch([table.search, table.filters, table.size, range], () => (table.detail.value = null), { deep: true });

@@ -35,3 +35,9 @@ export function inRange(when: string | null | undefined, r: { from: string; to: 
 
 /** What a list's date filter starts as: the current month, from its first day to today. Clearing the filter shows every date. */
 export const thisMonth = (now: Date = new Date()): { from: string; to: string } => rangeOf("month", now);
+
+/** Whether a list's date filter is anything other than what it starts as; only then is there something to clear (and the clear goes back to the start, not to every date). */
+export const rangeChanged = (r: { from: string; to: string }, now: Date = new Date()): boolean => {
+  const d = thisMonth(now);
+  return r.from !== d.from || r.to !== d.to;
+};
