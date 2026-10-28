@@ -14,26 +14,31 @@ import { idOf, searchParams, setKind, updateSearch } from "./sheets";
  * shared link and "back" bring the same filters; a string is put before every key (two lists on one page, or a key the address already uses: `env`).
  * Only one table of a page should use the bare keys.
  *
+ * With `sorts` the list can be ordered by one choice of a single select (`sort` is the chosen key, empty for the order the rows arrived in): each choice
+ * names the column and the direction together ("Newest first", "Amount, high to low"), see SortDef. Sorting is stable, empty values go last either way,
+ * and a new choice starts again from the first page.
+ *
  * With `sheet` ({ kind, id }) the open row is written into the address as `?sheet=<kind>:<id>` and the sheet opens by itself when the address names a
  * row (a reload, a shared link, "forward" in the strip of sheets); a filter that hides the named row is cleared.
  */
-export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined>, opts: { searchFields: (row: T) => (string | number | null | undefined)[]; filters?: Record<string, (row: T, value: string) => boolean>; url?: boolean | string; size?: number; sheet?: { kind: string; id: (row: T) => string | undefined; loaded?: MaybeRefOrGetter<boolean> } }) {
+export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined>, opts: { searchFields: (row: T) => (string | number | null | undefined)[]; sorts?: MaybeRefOrGetter<readonly SortDef<T>[]>; filters?: Record<string, (row: T, value: string) => boolean>; url?: boolean | string; size?: number; sheet?: { kind: string; id: (row: T) => string | undefined; loaded?: MaybeRefOrGetter<boolean> } }) {
   const search = ref("");
   const filters = ref<Record<string, string[]>>({});
   const page = ref(1);
   const size = ref<number>(opts.size ?? PAGE_SIZES[0]);
 
+  const sort = ref("");
   const filtered = computed(() =>
-    (toValue(rows) ?? []).filter((r) => {
+    sorted((toValue(rows) ?? []).filter((r) => {
       if (!matchesSearch(opts.searchFields(r), search.value)) return false;
       return Object.entries(filters.value).every(([k, vs]) => {
         const wanted = vs.filter((v) => v !== "");
         return wanted.length === 0 || wanted.some((v) => opts.filters?.[k]?.(r, v) ?? true);
       });
-    }),
+    }), toValue(opts.sorts)?.find((d) => d.key === sort.value)),
   );
   const paged = computed(() => paginate(filtered.value, page.value, size.value));
-  watch([search, filters, size], () => (page.value = 1), { deep: true });
+  watch([search, filters, size, sort], () => (page.value = 1), { deep: true });
 
   if (opts.url) {
     const prefix = typeof opts.url === "string" ? opts.url : "";
@@ -107,6 +112,8 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
   return {
     search,
     filters,
+    sort,
+    sorts: computed(() => toValue(opts.sorts) ?? []),
     page,
     size,
     filtered,
@@ -148,4 +155,30 @@ export function parseValues(raw: unknown): string[] {
 /** The address parameter for some values (undefined takes the parameter off). */
 export function writeValues(values: readonly string[]): string | undefined {
   return values.length === 0 ? undefined : values.map((v) => v.replaceAll("%", "%25").replaceAll(",", "%2C")).join(",");
+}
+
+/** One choice of a sort select: what to order by and which way, named together. `by` gives the value compared (text compares by the locale's collation, numbers numerically); null or undefined go last either way. */
+export interface SortDef<T> {
+  key: string;
+  label: string;
+  by: (row: T) => string | number | null | undefined;
+  dir: "asc" | "desc";
+}
+
+const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
+
+/** The rows ordered by one choice (a copy; the input is not touched), or as they are when there is none. Equal values keep their order. */
+export function sorted<T>(rows: readonly T[], def: SortDef<T> | undefined): T[] {
+  if (!def) return [...rows];
+  const sign = def.dir === "asc" ? 1 : -1;
+  return rows
+    .map((row, i) => ({ row, i, v: def.by(row) }))
+    .sort((a, b) => {
+      const an = a.v === null || a.v === undefined || a.v === "";
+      const bn = b.v === null || b.v === undefined || b.v === "";
+      if (an || bn) return an === bn ? a.i - b.i : an ? 1 : -1;
+      const c = typeof a.v === "number" && typeof b.v === "number" ? a.v - b.v : collator.compare(String(a.v), String(b.v));
+      return c !== 0 ? sign * c : a.i - b.i;
+    })
+    .map((x) => x.row);
 }

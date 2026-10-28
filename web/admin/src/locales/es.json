@@ -44,7 +44,17 @@
       "required": "Este campo es obligatorio.",
       "email": "Introduzca un correo electrónico válido."
     },
-    "applyFilter": "Aplicar"
+    "applyFilter": "Aplicar",
+    "sort": {
+      "label": "Ordenar",
+      "default": "Orden original",
+      "newest": "Más recientes primero",
+      "oldest": "Más antiguos primero",
+      "amountHigh": "Importe, de mayor a menor",
+      "amountLow": "Importe, de menor a mayor",
+      "nameAsc": "Nombre, A a Z",
+      "nameDesc": "Nombre, Z a A"
+    }
   },
   "enums": {
     "environment": {
@@ -4795,6 +4805,8 @@
       "customer": "Usted",
       "operator": "Soporte de Payrudder",
       "system": "Sistema"
-    }
+    },
+    "sortPriority": "Mayor prioridad primero",
+    "sortDue": "Vence antes primero"
   }
 }

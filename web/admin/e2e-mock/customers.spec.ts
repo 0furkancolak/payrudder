@@ -101,6 +101,24 @@ test.describe("customer list", () => {
   });
 });
 
+test.describe("customer order", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test("one select orders the list by column and direction together, empty names last", async ({ page }) => {
+    await openCustomers(page);
+    const ids = async () => await page.getByTestId(/^customer-cus_/).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")));
+    await page.getByTestId("sort-select").selectOption("newest");
+    expect(await ids()).toEqual(["customer-cus_3", "customer-cus_2", "customer-cus_1"]);
+    await page.getByTestId("sort-select").selectOption("oldest");
+    expect(await ids()).toEqual(["customer-cus_1", "customer-cus_2", "customer-cus_3"]);
+    await page.getByTestId("sort-select").selectOption("name_desc");
+    // A customer with no name is ordered by its id, which sorts before the names here.
+    expect((await ids())[0]).toBe("customer-cus_2");
+    await page.getByTestId("sort-select").selectOption("");
+    expect(await ids()).toEqual(["customer-cus_1", "customer-cus_2", "customer-cus_3"]);
+  });
+});
+
 test.describe("customer sheet", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 

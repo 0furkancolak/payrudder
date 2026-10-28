@@ -8,6 +8,9 @@ import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { PageHeader } from "@/shared/ui/page-header";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
+
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { useTableState } from "@/shared/lib/useTableState";
@@ -23,6 +26,7 @@ const list = computed(() => tenants.data.value?.tenants ?? []);
 const envOf = (v?: string) => enumWord(v, "ENVIRONMENT_");
 const tierOf = (v?: string) => enumWord(v, "TENANT_TIER_");
 const table = useTableState(list, {
+  sorts: () => [nameAsc(t, (x) => x.name), nameDesc(t, (x) => x.name), newest(t, (x) => time(x.create_time)), oldest(t, (x) => time(x.create_time))],
   sheet: { kind: "tenant", id: (x) => x.id }, searchFields: (x) => [x.name, x.id, x.currency, x.timezone],
   url: "f_", filters: { env: (x, v) => envOf(x.environment) === v, tier: (x, v) => tierOf(x.tier) === v, currency: (x, v) => x.currency === v },
 });
@@ -41,6 +45,7 @@ const currencies = distinct((x) => x.currency);
       <FilterSelect v-model="table.filters.value.env" multiple :label="t('tenants.columns.environment')" :options="[{ value: '', label: t('tenants.allEnvironments') }, ...envs.map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
       <FilterSelect v-model="table.filters.value.tier" multiple :label="t('tenants.columns.tier')" :options="[{ value: '', label: t('tenants.allTiers') }, ...tiers.map((x) => ({ value: x, label: label(t, te, 'tier', x) }))]" />
       <FilterSelect v-model="table.filters.value.currency" multiple :label="t('tenants.columns.currency')" :options="[{ value: '', label: t('tenants.allCurrencies') }, ...currencies.map((c) => ({ value: c }))]" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <Table>
       <TableHeader>

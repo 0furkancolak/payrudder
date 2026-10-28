@@ -44,7 +44,17 @@
       "required": "Ce champ est obligatoire.",
       "email": "Saisissez une adresse e-mail valide."
     },
-    "applyFilter": "Appliquer"
+    "applyFilter": "Appliquer",
+    "sort": {
+      "label": "Trier",
+      "default": "Ordre d'origine",
+      "newest": "Plus récents d'abord",
+      "oldest": "Plus anciens d'abord",
+      "amountHigh": "Montant, décroissant",
+      "amountLow": "Montant, croissant",
+      "nameAsc": "Nom, A à Z",
+      "nameDesc": "Nom, Z à A"
+    }
   },
   "enums": {
     "environment": {
@@ -4795,6 +4805,8 @@
       "customer": "Vous",
       "operator": "Support Payrudder",
       "system": "Système"
-    }
+    },
+    "sortPriority": "Priorité la plus haute d'abord",
+    "sortDue": "Échéance la plus proche d'abord"
   }
 }
