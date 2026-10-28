@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { refDebounced } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -12,8 +13,6 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { Link } from "@tanstack/vue-router";
-import { tenantBase } from "@/shared/lib/session";
 import { useCoupons, useRedemptions } from "./api";
 import { targetKey } from "./promotions";
 import RedemptionsTable from "./RedemptionsTable.vue";
@@ -88,7 +87,7 @@ const detailRows = computed(() => {
   <DetailSheet v-model:index="index" :total="rows.length" :title="current ? (current.promotion_code || current.coupon_code || '') : ''" :description="current?.customer_external_id" wide>
     <DetailList v-if="current" :rows="detailRows" data-testid="redemption-detail">
       <template #invoice>
-        <Link v-if="current.invoice_id" :to="`${tenantBase()}/$id/invoices` as never" :params="{ id: tenantId } as never" :search="{ invoice: current.invoice_id } as never" class="mono text-xs hover:underline">{{ current.invoice_id }}</Link>
+        <PeekInvoice v-if="current.invoice_id" :id="current.invoice_id" :tenant-id="tenantId" class="mono text-xs hover:underline">{{ current.invoice_id }}</PeekInvoice>
         <span v-else>—</span>
       </template>
       <template #state>

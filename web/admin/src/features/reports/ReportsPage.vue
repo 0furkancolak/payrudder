@@ -1,13 +1,13 @@
 <script setup lang="ts">
+import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { thisMonth } from "@/shared/lib/dateRange";
 import { ArrowUpRight } from "@lucide/vue";
-import { Link, useParams } from "@tanstack/vue-router";
+import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { ym } from "@/shared/lib/dates";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
-import { recordLink } from "@/features/related/link";
 import { useTableState } from "@/shared/lib/useTableState";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Card } from "@/shared/ui/card";
@@ -233,7 +233,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
       </TableHeader>
       <TableBody>
         <TableRow v-for="(d, i) in dunningTable.items.value" :key="d.invoice_id" class="cursor-pointer" @click="dunningTable.open(i)">
-          <TableCell><Link v-bind="recordLink('invoice', d.invoice_id ?? '', tenantId)" class="font-medium hover:underline" @click.stop>{{ d.number || d.invoice_id?.slice(0, 8) }}</Link></TableCell>
+          <TableCell><PeekInvoice :id="d.invoice_id ?? ''" :tenant-id="tenantId" class="font-medium hover:underline">{{ d.number || d.invoice_id?.slice(0, 8) }}</PeekInvoice></TableCell>
           <TableCell>{{ d.customer_external_id }}</TableCell>
           <TableCell>{{ d.period }}</TableCell>
           <TableCell>{{ d.provider || "—" }}</TableCell>
@@ -253,7 +253,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
 
   <DetailSheet v-model:index="dunningTable.detail.value" :total="dunningTable.total.value" :title="current?.number || current?.invoice_id?.slice(0, 8) || ''" :description="t('billing.reports.dunning')">
     <DetailList :rows="detailRows">
-      <template #invoice><Link v-bind="recordLink('invoice', current?.invoice_id ?? '', tenantId)" class="font-medium hover:underline">{{ current?.number || current?.invoice_id?.slice(0, 8) }}</Link></template>
+      <template #invoice><PeekInvoice :id="current?.invoice_id ?? ''" :tenant-id="tenantId" class="font-medium hover:underline">{{ current?.number || current?.invoice_id?.slice(0, 8) }}</PeekInvoice></template>
       <template #state><StatusPill :tone="dunningTone(current?.state)">{{ label(t, te, "dunningState", current?.state) }}</StatusPill></template>
     </DetailList>
   </DetailSheet>

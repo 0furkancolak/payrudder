@@ -4493,6 +4493,7 @@
     }
   },
   "onboarding": {
+    "skipStep": "Passer cette étape",
     "skip": "Passer pour l'instant",
     "back": "Retour",
     "continue": "Continuer",

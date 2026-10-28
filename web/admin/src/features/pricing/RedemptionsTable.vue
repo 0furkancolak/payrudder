@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { Link } from "@tanstack/vue-router";
+import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { tenantBase } from "@/shared/lib/session";
 import { Badge } from "@/shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import type { Redemption } from "./api";
@@ -37,7 +36,7 @@ const amount = (r: Redemption) => (r.discount_minor && r.discount_minor !== "0" 
         <TableCell>{{ r.customer_external_id || "—" }}</TableCell>
         <TableCell class="text-xs max-md:hidden">{{ t(`billing.pricing.promotions.targets.${targetKey(r.target)}`) }}</TableCell>
         <TableCell class="max-md:hidden">
-          <Link v-if="r.invoice_id" :to="`${tenantBase()}/$id/invoices` as never" :params="{ id: tenantId } as never" :search="{ invoice: r.invoice_id } as never" class="mono text-xs hover:underline" @click.stop>{{ r.invoice_id.slice(0, 8) }}</Link>
+          <PeekInvoice v-if="r.invoice_id" :id="r.invoice_id" :tenant-id="tenantId" class="mono text-xs hover:underline">{{ r.invoice_id.slice(0, 8) }}</PeekInvoice>
           <span v-else class="text-muted-foreground">—</span>
         </TableCell>
         <TableCell class="text-end tabular-nums">{{ amount(r) }}</TableCell>

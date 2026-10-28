@@ -968,7 +968,9 @@ test.describe("reports", () => {
     await expect(row).toContainText("21,000.00");
     await expect(row).toContainText("1 · TRY 9,000.00");
     await page.getByRole("tab", { name: "Unpaid invoices" }).click();
-    await expect(page.getByRole("link", { name: "INV-2026-000009" })).toHaveAttribute("href", `/tenants/${TENANT}/invoices?invoice=inv-9`);
+    // The invoice opens over this page, not on the invoices list.
+    await page.getByRole("button", { name: "INV-2026-000009" }).click();
+    await expect(page).toHaveURL(/sheet=peek(%3A|:)invoice/);
     await expect(page.getByText("given up").first()).toBeVisible();
   });
 });

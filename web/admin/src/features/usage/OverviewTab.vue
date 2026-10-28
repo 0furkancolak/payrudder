@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Gauge, Sparkles } from "@lucide/vue";
+import { ArrowDownRight, ArrowRight, Activity, ArrowUpRight, Sparkles } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import BarList from "@/features/dashboard/BarList.vue";
@@ -84,7 +84,7 @@ const error = computed(() => meters.error.value ?? series.value.error ?? top.val
       <Skeleton v-for="i in 3" :key="i" class="h-36 rounded-3xl" />
     </div>
     <Card v-else-if="codes.length === 0 && !meters.error.value" class="items-center gap-2 py-12 text-center" data-testid="usage-empty">
-      <Gauge class="text-muted-foreground size-8" aria-hidden="true" />
+      <Activity class="text-muted-foreground size-8" aria-hidden="true" />
       <h2 class="text-lg font-semibold">{{ t("billing.usage.empty.title") }}</h2>
       <p class="text-muted-foreground max-w-md text-sm">{{ t("billing.usage.empty.hint") }}</p>
     </Card>

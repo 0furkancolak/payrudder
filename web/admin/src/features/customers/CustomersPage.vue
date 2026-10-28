@@ -30,6 +30,7 @@ import { useCustomers, useCustomerSummaries } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
 import CustomerCreateSheet from "./CustomerCreateSheet.vue";
 import CustomerEditSheets from "./CustomerEditSheets.vue";
+import PaymentLinkSheet from "@/features/paymentlinks/PaymentLinkSheet.vue";
 import CustomerSheet from "./CustomerSheet.vue";
 import { countryName, emptySummary, flagOf, headline, type Customer, type CustomerTab, type SubscriptionStatus } from "./lib";
 
@@ -124,9 +125,12 @@ function newSubscription(c: Customer) {
   subscribeFor.value = c.external_id ?? "";
   subscribing.value = true;
 }
+// The payment link form opens over the customer's sheet, with the customer filled in, rather than taking the reader to the payment links page.
+const linking = ref(false);
+const linkFor = ref("");
 function paymentLink(externalId?: string) {
-  // A person reaches their tenants under /app/t, the operator under /tenants.
-  void router.navigate({ to: `${tenantBase()}/$id/payment-links`, params: { id: tenantId.value }, search: { customer: externalId ?? "" } as never });
+  linkFor.value = externalId ?? "";
+  linking.value = true;
 }
 function toCredits() {
   void router.navigate({ to: `${tenantBase()}/$id/credits`, params: { id: tenantId.value } as never });
@@ -187,6 +191,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
   </DetailSheet>
   <!-- After the customer's sheet: a sheet portals to where it was first rendered, so these open above the one they are opened from. -->
   <CustomerCreateSheet v-model:open="creating" :tenant-id="tenantId" />
+  <PaymentLinkSheet v-model:open="linking" :tenant-id="tenantId" invoice="" :customer="linkFor" />
   <CustomerQuotasSheet v-model:open="quotasOpen" :tenant-id="tenantId" :customer="quotasOf" />
   <CustomerEditSheets v-model:contact="editingContact" v-model:address="editingAddress" v-model:tax="editingTax" :tenant-id="tenantId" />
   <CreateSubscriptionForm v-model:open="subscribing" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" :for-customer="subscribeFor" />

@@ -4493,6 +4493,7 @@
     }
   },
   "onboarding": {
+    "skipStep": "Skip this step",
     "skip": "Skip for now",
     "back": "Back",
     "continue": "Continue",

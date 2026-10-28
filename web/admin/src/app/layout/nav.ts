@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   Building2,
   CreditCard,
@@ -106,7 +107,7 @@ const PAGES: Page[] = [
   { key: "payments", icon: Wallet, path: "payments", section: "customersBilling", person: true },
   { key: "paymentLinks", icon: Link2, path: "payment-links", section: "customersBilling", person: true },
   { key: "credits", icon: Gift, path: "credits", section: "customersBilling", person: true },
-  { key: "usage", icon: Gauge, path: "usage", section: "usageProducts", person: true },
+  { key: "usage", icon: Activity, path: "usage", section: "usageProducts", person: true },
   { key: "meters", icon: Gauge, path: "meters", section: "usageProducts", person: true },
   { key: "packages", icon: Package, path: "packages", section: "usageProducts", person: true },
   { key: "pricing", icon: Percent, path: "pricing", section: "usageProducts", person: true },

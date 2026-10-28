@@ -86,7 +86,8 @@ test.describe("coupons", () => {
     const red = detail.getByTestId("redemption-r1");
     await expect(red).toContainText("cus_1");
     await expect(red).toContainText("$5.00");
-    await expect(red.getByRole("link")).toHaveAttribute("href", /\/invoices\?invoice=d0000000-0000-4000-8000-000000000001/);
+    await red.getByRole("button").click();
+    await expect(page).toHaveURL(/sheet=.*peek(%3A|:)invoice(%3A|:)[^,]*d0000000-0000-4000-8000-000000000001/);
     await expect(detail.getByTestId("redemption-r2")).toContainText("Reversed");
     await expect(detail.getByTestId("redemption-r2")).toContainText("+250 credits");
   });
@@ -273,7 +274,8 @@ test.describe("redemptions", () => {
     const detail = page.getByTestId("redemption-detail");
     await expect(detail).toContainText("WELCOME");
     await expect(detail).toContainText("cus_1");
-    await expect(detail.getByRole("link")).toHaveAttribute("href", new RegExp(`/tenants/${TENANT}/invoices\\?invoice=d0000000`));
+    await detail.getByRole("button").click();
+    await expect(page).toHaveURL(/sheet=.*peek(%3A|:)invoice(%3A|:)[^,]*d0000000/);
   });
 
   test("nothing redeemed yet says so", async ({ page }) => {

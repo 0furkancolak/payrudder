@@ -146,6 +146,7 @@ async function show() {
   active.value = many.value || at < 0 ? 0 : at;
   await nextTick();
   scrollToActive();
+  revealList();
 }
 
 function hide() {
@@ -190,8 +191,28 @@ function remove(v: string) {
   input.value?.focus();
 }
 
+/**
+ * Brings the active option into view by scrolling the list itself. Not `scrollIntoView`: that scrolls every scrollable ancestor too, so in a sheet it moved
+ * the sheet's body (and the page behind it) while the list was being walked with the arrow keys.
+ */
 function scrollToActive() {
-  list.value?.querySelector<HTMLElement>(`[data-index="${active.value}"]`)?.scrollIntoView({ block: "nearest" });
+  const box = list.value;
+  const item = box?.querySelector<HTMLElement>(`[data-index="${active.value}"]`);
+  if (!box || !item) return;
+  const top = item.offsetTop - box.offsetTop;
+  if (top < box.scrollTop) box.scrollTop = top;
+  else if (top + item.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = top + item.offsetHeight - box.clientHeight;
+}
+
+/** A list that opens below the fold of a sheet's scrolling body is brought into view once, by scrolling the nearest scrolling ancestor and nothing above it. */
+function revealList() {
+  const box = list.value;
+  if (!box) return;
+  let parent = box.parentElement;
+  while (parent && !(parent.scrollHeight > parent.clientHeight && /(auto|scroll)/.test(getComputedStyle(parent).overflowY))) parent = parent.parentElement;
+  if (!parent) return;
+  const room = parent.getBoundingClientRect().bottom - box.getBoundingClientRect().bottom;
+  if (room < 0) parent.scrollTop += -room + 8;
 }
 
 function move(by: number) {

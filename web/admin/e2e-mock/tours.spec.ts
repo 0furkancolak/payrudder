@@ -132,6 +132,16 @@ test.describe("the tour of the home", () => {
 });
 
 test.describe("the tour icon of a page header", () => {
+  test("a tour that started by itself and was walked away from does not come back at the next visit", async ({ page }) => {
+    await gateway().install(page, { tourSeen: false });
+    await signInAsAda(page);
+    await expect(tour(page)).toBeVisible();
+    // Neither finished nor skipped: the person simply goes to another page and back.
+    await page.goto(`/app/t/${LIVE}/invoices`);
+    await page.goto("/app");
+    await expect(page.getByTestId("tour")).toHaveCount(0);
+  });
+
   test("the home's tour can be taken again from its icon", async ({ page }) => {
     await gateway().install(page);
     await signInAsAda(page);

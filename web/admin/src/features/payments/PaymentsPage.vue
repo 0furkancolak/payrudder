@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { ArrowUpRight } from "@lucide/vue";
-import { Link, useParams } from "@tanstack/vue-router";
+import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
@@ -24,7 +25,7 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
-import { PaymentContext, recordLink } from "@/features/related";
+import { PaymentContext } from "@/features/related";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useLedger, useReconcile } from "./api";
 
@@ -177,7 +178,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
           <TableBody>
             <TableRow v-for="(d, i) in issues.items.value" :key="i">
               <TableCell>
-                <Link v-if="d.invoice_id" v-bind="recordLink('invoice', d.invoice_id, tenantId)" class="mono font-medium hover:underline">{{ d.number || d.invoice_id.slice(0, 8) }}</Link>
+                <PeekInvoice v-if="d.invoice_id" :id="d.invoice_id" :tenant-id="tenantId" class="mono font-medium hover:underline">{{ d.number || d.invoice_id.slice(0, 8) }}</PeekInvoice>
               </TableCell>
               <TableCell>{{ label(t, te, "discrepancy", d.kind) }}</TableCell>
               <TableCell>{{ label(t, te, "provider", d.provider) }} <span class="mono text-xs">{{ d.provider_ref }}</span></TableCell>
