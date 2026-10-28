@@ -133,6 +133,28 @@ test.describe("filters with several values", () => {
       return undefined;
     });
 
+  test("a filter changes nothing until Apply is pressed, and a closed list throws its draft away", async ({ page }) => {
+    const gw = gateway();
+    await gw.install(page);
+    await openTenantPage(page, "/invoices");
+    await expect(page.getByRole("row")).toHaveCount(5);
+    const chip = page.getByRole("button", { name: "Status", exact: true });
+    await chip.click();
+    const list = page.getByRole("listbox", { name: "Status" });
+    await list.getByRole("option", { name: "paid" }).click();
+    await expect(page.getByRole("row")).toHaveCount(5);
+    await expect(page.getByTestId("filter-apply")).toBeEnabled();
+    await page.keyboard.press("Escape");
+    await expect(chip).not.toContainText("paid");
+    await expect(page.getByRole("row")).toHaveCount(5);
+    await chip.click();
+    await expect(list.getByRole("option", { name: "paid" })).toHaveAttribute("aria-selected", "false");
+    await expect(page.getByTestId("filter-apply")).toBeDisabled();
+    await list.getByRole("option", { name: "paid" }).click();
+    await page.getByTestId("filter-apply").click();
+    await expect(chip).toContainText("paid");
+  });
+
   test("a row passes when it matches any chosen value; the choice is in the address and survives a reload", async ({ page }) => {
     await gateway().install(page);
     await openTenantPage(page, "/invoices");
@@ -154,7 +176,7 @@ test.describe("filters with several values", () => {
     // Taking one value off keeps the other; clearing the chip takes the parameter off the address.
     await page.getByRole("button", { name: "Status", exact: true }).click();
     await page.getByRole("listbox", { name: "Status" }).getByRole("option", { name: "open" }).click();
-    await page.keyboard.press("Escape");
+    await page.getByTestId("filter-apply").click();
     await expect(page.getByRole("row")).toHaveCount(3);
     await page.getByRole("button", { name: "Status: ×" }).click();
     await expect(page.getByRole("row")).toHaveCount(5);
@@ -276,3 +298,4 @@ test.describe("fields", () => {
     expect(await sheet.evaluate((el) => getComputedStyle(el).overscrollBehaviorY)).toBe("contain");
   });
 });
+
