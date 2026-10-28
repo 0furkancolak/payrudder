@@ -284,7 +284,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Currency: "TRY", Provider: "paddle"}}}); code(t, err) != codes.InvalidArgument {
 			t.Fatalf("paddle cannot charge TRY: %v", err)
 		}
-		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Provider: "stripe"}}}); code(t, err) != codes.InvalidArgument {
+		if _, err := e.plans.SetRoutingRules(ctx, &plansv1.SetRoutingRulesRequest{Rules: []*plansv1.RoutingRule{{Provider: "adyen"}}}); code(t, err) != codes.InvalidArgument {
 			t.Fatalf("unknown provider: %v", err)
 		}
 		got, err := e.plans.GetRoutingRules(ctx, &plansv1.GetRoutingRulesRequest{})
@@ -358,7 +358,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_tr2", PlanCode: "basic", Provider: "paddle"}); code(t, err) != codes.FailedPrecondition {
 			t.Errorf("paddle for a lira subscription: %v", err)
 		}
-		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_tr2", PlanCode: "basic", Provider: "stripe"}); code(t, err) != codes.InvalidArgument {
+		if _, err := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_tr2", PlanCode: "basic", Provider: "adyen"}); code(t, err) != codes.InvalidArgument {
 			t.Errorf("unknown provider: %v", err)
 		}
 	})
@@ -497,7 +497,7 @@ func testSubscriptionLifecycle(t *testing.T) {
 		r3, _ := e.plans.CreateSubscription(ctx, &plansv1.CreateSubscriptionRequest{CustomerExternalId: "cus_mig3", PlanCode: "basic", Provider: "iyzico"})
 		for name, req := range map[string]*plansv1.StartProviderMigrationRequest{
 			"same provider":    {SubscriptionId: r3.GetSubscription().GetId(), ToProvider: "iyzico"},
-			"unknown provider": {SubscriptionId: r3.GetSubscription().GetId(), ToProvider: "stripe"},
+			"unknown provider": {SubscriptionId: r3.GetSubscription().GetId(), ToProvider: "adyen"},
 			"not a uuid":       {SubscriptionId: "x", ToProvider: "paddle"},
 		} {
 			if _, err := e.plans.StartProviderMigration(ctx, req); code(t, err) != codes.InvalidArgument {

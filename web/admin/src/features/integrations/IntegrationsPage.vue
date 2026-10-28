@@ -63,6 +63,7 @@ function card(id: IntegrationId): { state: CardState; line: string } {
   switch (id) {
     case "iyzico":
     case "paddle":
+    case "stripe":
     case "banktransfer":
       return paymentLine(id);
     case "simulator":

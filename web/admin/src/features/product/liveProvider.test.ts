@@ -8,7 +8,7 @@ const iyzicoValues = (over: Record<string, string> = {}) => ({
 
 describe("connecting a live provider yourself", () => {
   it("offers the providers Payrudder has adapters for, and never the mock", () => {
-    expect([...LIVE_PROVIDERS]).toEqual(["iyzico", "paddle", "banktransfer"]);
+    expect([...LIVE_PROVIDERS]).toEqual(["iyzico", "paddle", "stripe", "banktransfer"]);
     expect(isLiveProvider("iyzico")).toBe(true);
     expect(isLiveProvider("mockpsp")).toBe(false);
     expect(isLiveProvider("mock-psp")).toBe(false);
@@ -59,5 +59,21 @@ describe("connecting a live provider yourself", () => {
     expect(problemCode("unreachable")).toBe("unreachable");
     expect(problemCode("refused")).toBe("refused");
     expect(problemCode("something new")).toBe("refused");
+  });
+});
+
+describe("the Stripe form", () => {
+  it("asks for a secret or restricted key and the webhook signing secret, and nothing else", () => {
+    expect(PROVIDER_FIELDS.stripe.map((f) => f.path)).toEqual(["api_key", "webhook_secret"]);
+    expect(PROVIDER_FIELDS.stripe.every((f) => f.secret)).toBe(true);
+  });
+
+  it("builds the settings payments-worker stores, and refuses what Stripe would refuse", () => {
+    const ok = buildProviderSettings("stripe", { api_key: "sk_live_abc123", webhook_secret: "whsec_abc123" });
+    expect(ok).toEqual({ ok: true, settings: { api_key: "sk_live_abc123", webhook_secret: "whsec_abc123" } });
+    expect(buildProviderSettings("stripe", { api_key: "rk_test_abc", webhook_secret: "whsec_x" }).ok).toBe(true);
+    const bad = buildProviderSettings("stripe", { api_key: "pk_live_publishable", webhook_secret: "secret" });
+    expect(bad).toEqual({ ok: false, errors: { api_key: "badFormat", webhook_secret: "badFormat" } });
+    expect(buildProviderSettings("stripe", { api_key: "", webhook_secret: "" }).ok).toBe(false);
   });
 });

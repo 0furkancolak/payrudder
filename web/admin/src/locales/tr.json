@@ -152,7 +152,8 @@
       "iyzico": "iyzico",
       "paddle": "Paddle",
       "mockpsp": "Mock PSP",
-      "banktransfer": "Banka havalesi"
+      "banktransfer": "Banka havalesi",
+      "stripe": "Stripe"
     }
   },
   "tenants": {
@@ -3721,7 +3722,8 @@
         "names": {
           "iyzico": "iyzico",
           "paddle": "Paddle",
-          "banktransfer": "Banka havalesi"
+          "banktransfer": "Banka havalesi",
+          "stripe": "Stripe"
         },
         "fields": {
           "api_key": "API anahtarı",
@@ -3860,7 +3862,8 @@
       "about": {
         "iyzico": "Türk kartları ve yerel yöntemler",
         "paddle": "Dünya genelinde kartlar; abonelikleri sağlayıcı yürütür",
-        "banktransfer": "Kendi banka hesabınıza havale ile ödeme"
+        "banktransfer": "Kendi banka hesabınıza havale ile ödeme",
+        "stripe": "Dünya genelinde kartlar, Stripe hesabınızda Payrudder tarafından tahsil edilir"
       },
       "scope": {
         "title": "Nereye bağlansın",
@@ -3876,7 +3879,8 @@
         "intro": {
           "iyzico": "Canlı iyzico üye iş yeri anahtarlarınızı girin. Saklanmadan önce iyzico ile doğrulanır.",
           "paddle": "Canlı Paddle anahtarlarınızı ve webhook sırrınızı girin. Saklanmadan önce Paddle ile doğrulanır.",
-          "banktransfer": "Havale ile ödeyen müşteriler için faturalara basılan banka bilgilerini girin. Bankada denetlenecek bir şey yoktur."
+          "banktransfer": "Havale ile ödeyen müşteriler için faturalara basılan banka bilgilerini girin. Bankada denetlenecek bir şey yoktur.",
+          "stripe": "Canlı Stripe gizli anahtarınızı ve webhook uç noktasının imza sırrını girin. Anahtar saklanmadan önce Stripe ile doğrulanır."
         },
         "envNote": "Bu işlem canlı ortamı bağlar. Sandbox yerleşik simülatörle çalışmaya devam eder.",
         "testOk": "Sağlayıcı bu anahtarları kabul ediyor.",
@@ -3911,6 +3915,10 @@
           "api_key": "Paddle'da Developer tools, Authentication altında canlı bir API anahtarı oluşturun.",
           "webhook_secret": "Developer tools, Notifications altında Payrudder için bir hedef oluşturun ve gizli anahtarını kopyalayın.",
           "usage_product_id": "Paddle'ın kullanım ücretleri için kullandığı ürünün kimliği. Catalog'da ürünü açıp pro_ ile başlayan kimliğini kopyalayın."
+        },
+        "stripe": {
+          "api_key": "Stripe panelinde Geliştiriciler, API anahtarları bölümünde kısıtlı ya da gizli bir canlı anahtar oluşturun (sk_live_ veya rk_live_ ile başlar).",
+          "webhook_secret": "Geliştiriciler, Webhook'lar bölümünde Payrudder'da gösterilen adrese; payment_intent, checkout.session ve refund olayları için bir uç nokta ekleyin ve imza sırrını kopyalayın (whsec_ ile başlar)."
         }
       },
       "sandbox": {
@@ -3967,7 +3975,8 @@
         "simulator": "Yerleşik simülatör",
         "webhook": "Özel entegratör",
         "einvoiceSimulator": "Yerleşik simülatör",
-        "payrudderMail": "Payrudder e-postası"
+        "payrudderMail": "Payrudder e-postası",
+        "stripe": "Stripe"
       },
       "about": {
         "iyzico": "Türk kartları ve yerel yöntemler",
@@ -3978,7 +3987,8 @@
         "webhook": "Her belgeyi kendi entegratörünüzün adresine gönderin",
         "einvoiceSimulator": "Sandbox için sahte e-belgeler",
         "payrudderMail": "Sizin adınıza Payrudder'ın gönderdiği e-posta",
-        "nafru": "Kendi Nafru Email hesabınız üzerinden gönderin"
+        "nafru": "Kendi Nafru Email hesabınız üzerinden gönderin",
+        "stripe": "Dünya genelinde kartlar, Stripe hesabınızda Payrudder tarafından tahsil edilir"
       },
       "state": {
         "none": "Bağlı değil",

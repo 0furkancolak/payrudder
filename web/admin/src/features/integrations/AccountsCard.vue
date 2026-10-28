@@ -80,7 +80,7 @@ function save() {
         <p class="text-muted-foreground max-w-2xl text-sm">{{ t("product.providers.account.intro") }}</p>
       </div>
       <div v-if="isOwner" class="flex flex-wrap gap-2">
-        <Button v-for="p in (['iyzico', 'paddle'] as const)" :key="p" variant="outline" size="sm" :data-testid="`account-add-${p}`" @click="add(p)">
+        <Button v-for="p in (['iyzico', 'paddle', 'stripe'] as const)" :key="p" variant="outline" size="sm" :data-testid="`account-add-${p}`" @click="add(p)">
           <Plus class="size-4" />{{ t("product.providers.account.add", { provider: nameOf(p) }) }}
         </Button>
       </div>
