@@ -271,7 +271,7 @@ test.describe("product app, real stack", () => {
   test("sign out and in; a wrong password says so; five wrong passwords lock the person out", async ({ page }) => {
     await signInUi(page, email);
     await page.waitForURL(/\/app(\/apps\/[^/?]+)?(?![^?])/);
-    await page.getByRole("link", { name: "Settings" }).click();
+    await page.locator('a[data-nav="settings"]').click();
     await page.getByRole("button", { name: "Sign out" }).click();
     await page.waitForURL("**/signin");
     await page.goto("/app");

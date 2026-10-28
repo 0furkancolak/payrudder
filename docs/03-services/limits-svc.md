@@ -153,7 +153,7 @@ our ingest **targets**. `CheckEntitlement` is a single `MGET` (counter + entitle
   (an hour, a day or a week that ended more than two hours ago is final and nobody reads it) and only if updated in the last hour; the year and lifetime
   counters are listed in `lim:active:{p}` and reconciled for as long as they are being updated (45 days). A counter that reconciliation had to create is given
   the expiry the apply script would have given it, none for the lifetime counter. Redis lost with its offsets is replayed from the log
-  (30-day retention) as before; what the log no longer holds comes from the aggregator.
+  (30-day retention) as before, also when no batch arrives to show the loss: every reconcile cycle checks that the offset key of each partition this pod has applied to still exists, and rewinds the consumer to the start if not; what the log no longer holds comes from the aggregator.
 - A threshold of a monthly limit fires on the month counter only, of a daily limit on the day counters only, and so on. `LimitExceeded` carries `window` and
   `window_id`; `period_id` stays the billing period the window starts in (the current one for the lifetime window), and `event_id` is
   `uuidv5(tenant|customer|meter|window_id|pct)` (for a month that is the period id, as before). The fired marker lives 80 days, a year's until 80 days after the

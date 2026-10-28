@@ -133,7 +133,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 
 	rec := engine.NewReconciler(engine.ReconcilerConfig{
 		Applier: applier, Redis: rdb, Aggregator: aggregatorv1.NewUsageQueryServiceClient(aggConn), Meters: ms,
-		Owned: owned.Partitions, Interval: cfg.ReconcileInterval, Log: log,
+		Owned: owned.Partitions, Interval: cfg.ReconcileInterval, Log: log, Replay: usage.Rewind,
 	})
 
 	hh := rt.Health()

@@ -130,12 +130,16 @@ test.describe("webhooks", () => {
     await expect(cell).not.toContainText("HTTP 405");
     // The date and the action are inside the sheet, no sideways scroll needed.
     const log = page.getByRole("region", { name: "Deliveries" });
-    const box = await log.getByRole("button", { name: "Send again" }).evaluate((el) => {
-      const sheet = el.closest('[data-slot="sheet-content"]')?.getBoundingClientRect();
-      const r = el.getBoundingClientRect();
-      return { inside: !!sheet && r.right <= sheet.right && r.left >= sheet.left };
-    }).catch(() => ({ inside: true }));
-    expect(box.inside).toBe(true);
+    // The sheet slides in: measure until it has settled.
+    await expect
+      .poll(async () =>
+        log.getByRole("button", { name: "Send again" }).evaluate((el) => {
+          const sheet = el.closest('[data-slot="sheet-content"]')?.getBoundingClientRect();
+          const r = el.getBoundingClientRect();
+          return !!sheet && r.right <= sheet.right + 1 && r.left >= sheet.left - 1;
+        }),
+      )
+      .toBe(true);
   });
 
   test("an http URL is warned about, an https one is not", async ({ page }) => {

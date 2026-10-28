@@ -32,7 +32,7 @@ test("the playground takes a visitor from an empty account to a paid invoice", a
   await expect(invoice).toContainText("paid");
 
   await invoice.getByRole("link", { name: "Open" }).click();
-  await expect(page.getByTestId("saga-event").last()).toContainText("COMPLETED");
+  await expect(page.getByTestId("saga-event").last()).toContainText(/completed/i);
 });
 
 test("a declined payment outcome leaves the invoice open with the payment declined", async ({ page }) => {

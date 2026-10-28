@@ -117,7 +117,7 @@ test.describe.serial("operator console", () => {
     await expect(page.getByRole("heading", { name: invoiceNumber })).toBeVisible();
     await expect(page.getByTestId("saga-event").first()).toBeVisible();
     expect(await page.getByTestId("saga-event").count()).toBeGreaterThanOrEqual(5);
-    await expect(page.getByTestId("saga-event").last()).toContainText("COMPLETED");
+    await expect(page.getByTestId("saga-event").last()).toContainText(/completed/i);
     await shot(page, "admin-invoice-saga");
     await expect(page.getByRole("button", { name: "Open PDF" })).toBeEnabled();
   });

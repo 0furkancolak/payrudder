@@ -49,6 +49,8 @@ type ReconcilerConfig struct {
 	Owned func() []int32
 	// Interval between cycles of Run (default 5 minutes).
 	Interval time.Duration
+	// Replay is asked to feed a partition again from the start of the log after Redis lost its offsets with nothing arriving to show it.
+	Replay func(ctx context.Context, partition int32)
 	// CheckpointTimeout is how long a checkpoint may wait for its offset (default 30 s).
 	CheckpointTimeout time.Duration
 	Log               *slog.Logger
@@ -105,6 +107,12 @@ func (r *Reconciler) RunOnce(ctx context.Context) (Result, error) {
 
 	var total Result
 	var waiting []pending
+	if r.cfg.Replay != nil {
+		for _, p := range r.cfg.Applier.LostOffsets(ctx, r.cfg.Owned()) {
+			r.log.WarnContext(ctx, "redis lost its offsets, replaying partition", "partition", p)
+			r.cfg.Replay(ctx, p)
+		}
+	}
 	for _, p := range r.cfg.Owned() {
 		cps, skipped, err := r.partition(ctx, p)
 		if err != nil {

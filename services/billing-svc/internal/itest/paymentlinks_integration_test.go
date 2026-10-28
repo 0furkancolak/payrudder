@@ -140,6 +140,11 @@ func testAdhocPaymentLinkPaid(t *testing.T) {
 		t.Fatalf("Continue made %d invoices", invoices)
 	}
 	open := l.waitState(invToken, "open")
+	// The page is open before the saga has reached the payment step (the PDF is still being asked for): wait for it.
+	testkit.Eventually(t, 30*time.Second, "saga awaits payment", func() bool {
+		open, _ = l.page(invToken)
+		return open.GetInvoice().GetSagaState() == "AWAITING_PAYMENT"
+	})
 	inv := open.GetInvoice()
 	if !open.GetPayable() || inv.GetKind() != "LINK" || !strings.HasPrefix(inv.GetNumber(), "SBX-") || inv.GetTotalMinor() != 4900 || inv.GetSagaState() != "AWAITING_PAYMENT" ||
 		inv.GetPlanVersionId() != "" || len(inv.GetLines()) != 1 || inv.GetLines()[0].GetDescription() != "Onboarding workshop" {
