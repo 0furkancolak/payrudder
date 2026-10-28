@@ -24,8 +24,8 @@ describe("memberships of the role affiliate", () => {
   });
   it("give the organisation level a Partner portal entry only for a partner", () => {
     const keys = (partner: boolean) => buildNav({ level: "org", partner }).flatMap((s) => s.items.map((i) => i.key));
-    expect(keys(false)).toEqual(["members", "orgIntegrations", "settings"]);
-    expect(keys(true)).toEqual(["members", "partner", "orgIntegrations", "settings"]);
+    expect(keys(false)).toEqual(["members", "orgIntegrations", "support", "settings"]);
+    expect(keys(true)).toEqual(["members", "partner", "orgIntegrations", "support", "settings"]);
     const item = buildNav({ level: "org", partner: true }).flatMap((s) => s.items).find((i) => i.key === "partner");
     expect(item?.to).toBe("/app/partner");
     expect(item?.owns("/app/partner/abc")).toBe(true);

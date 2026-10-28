@@ -15,13 +15,13 @@ describe("buildNav", () => {
     const inApp = buildNav(app());
     expect(keys(org)).toEqual(keys(inApp));
     expect(org.at(-1)?.key).toBe("account");
-    expect(org.at(-1)?.items.map((i) => i.key)).toEqual(["members", "orgIntegrations", "settings"]);
+    expect(org.at(-1)?.items.map((i) => i.key)).toEqual(["members", "orgIntegrations", "support", "settings"]);
   });
 
   it("Plan and billing is in the organisation group only where SaaS runs, and Settings does not own its page", () => {
     expect(keys(buildNav(app({ saas: false })))).not.toContain("plan");
     const nav = buildNav(app({ saas: true }));
-    expect(nav.at(-1)?.items.map((i) => i.key)).toEqual(["members", "orgIntegrations", "settings", "plan"]);
+    expect(nav.at(-1)?.items.map((i) => i.key)).toEqual(["members", "orgIntegrations", "support", "settings", "plan"]);
     expect(activeItem(nav, "/app/settings/plan")?.key).toBe("plan");
     expect(activeItem(nav, "/app/settings")?.key).toBe("settings");
   });
@@ -72,7 +72,7 @@ describe("buildNav", () => {
 
   it("a page that has no route is not listed", () => {
     const nav = buildNav(app(), new Set(["customers"]));
-    expect(keys(nav)).toEqual(["dashboard", "goLive", "customers", "apiKeys", "sandbox", "appSettings", "integrations", "orgIntegrations", "settings"]);
+    expect(keys(nav)).toEqual(["dashboard", "goLive", "customers", "apiKeys", "sandbox", "appSettings", "integrations", "orgIntegrations", "support", "settings"]);
   });
 
   it("all apps: the same pages over every app under /app/t/all, without the pages of one app", () => {
@@ -89,11 +89,11 @@ describe("buildNav", () => {
   });
 
   it("before the apps have arrived there is a tenant-less sidebar: the organisation group alone", () => {
-    expect(keys(buildNav({ level: "org" }))).toEqual(["members", "orgIntegrations", "settings"]);
+    expect(keys(buildNav({ level: "org" }))).toEqual(["members", "orgIntegrations", "support", "settings"]);
   });
 
   it("the operator sees the platform, and a tenant with the operator-only pages too", () => {
-    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "organisations", "playground", "deadLetters", "myApps"]);
+    expect(keys(buildNav({ level: "platform" }))).toEqual(["tenants", "organisations", "playground", "deadLetters", "supportInbox", "myApps"]);
     const tenant = keys(buildNav({ level: "tenant", tenantId: "T" }));
     for (const k of ["dashboard", "customers", "invoices", "payments", "providers", "einvoice", "address", "mail", "apps", "myApps"]) expect(tenant).toContain(k);
   });
@@ -109,7 +109,7 @@ describe("buildNav", () => {
   });
 
   it("the partner portal is a door of the organisation group for a partner", () => {
-    expect(buildNav(app({ partner: true })).at(-1)?.items.map((i) => i.key)).toEqual(["members", "partner", "orgIntegrations", "settings"]);
+    expect(buildNav(app({ partner: true })).at(-1)?.items.map((i) => i.key)).toEqual(["members", "partner", "orgIntegrations", "support", "settings"]);
   });
 });
 

@@ -518,6 +518,37 @@ type SubscriptionTrialNotice struct {
 	NotifiedAt     time.Time
 }
 
+type SupportMessage struct {
+	ID           uuid.UUID
+	TicketID     uuid.UUID
+	AuthorKind   string
+	AuthorUserID *uuid.UUID
+	AuthorName   string
+	Internal     bool
+	Body         string
+	CreatedAt    time.Time
+}
+
+type SupportTicket struct {
+	ID               uuid.UUID
+	Number           *int64
+	AccountID        uuid.UUID
+	AppID            *uuid.UUID
+	OpenedBy         uuid.UUID
+	Subject          string
+	Category         string
+	Priority         string
+	Status           string
+	Assignee         string
+	LastAuthor       string
+	FirstResponseDue time.Time
+	FirstRespondedAt *time.Time
+	LastMessageAt    time.Time
+	SolvedAt         *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
 type TaxRate struct {
 	TenantID uuid.UUID
 	Country  string
