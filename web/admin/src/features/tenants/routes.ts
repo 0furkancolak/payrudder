@@ -20,6 +20,7 @@ import { subscriptionRoutes } from "@/features/subscriptions/routes";
 import { usageRoutes } from "@/features/usage/routes";
 import { paymentLinkRoutes } from "@/features/paymentlinks/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
+import { connectRoutes } from "@/features/connect/routes";
 
 /**
  * The tenant routes, mounted under the signed-in layout. A tenant is a layout (its header and tabs) with a page per tab; the invoice page lives
@@ -31,6 +32,6 @@ export function tenantRoutes(parent: AnyRoute) {
   const overview = createRoute({ getParentRoute: () => tenant, path: "/", component: lazyPage(() => import("./TenantOverview.vue")), validateSearch: dashSearch });
   return [
     list,
-    tenant.addChildren([overview, ...invoiceRoutes(tenant), ...customerRoutes(tenant), ...meterRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...usageRoutes(tenant), ...pricingRoutes(tenant), ...paymentRoutes(tenant), ...creditRoutes(tenant), ...accountingRoutes(tenant), ...affiliateRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant), ...paymentLinkRoutes(tenant), ...webhookRoutes(tenant), ...appRoutes(tenant), ...sellerAddressRoutes(tenant), ...mailRoutes(tenant), ...einvoiceRoutes(tenant)]),
+    tenant.addChildren([overview, ...invoiceRoutes(tenant), ...customerRoutes(tenant), ...meterRoutes(tenant), ...packageRoutes(tenant), ...subscriptionRoutes(tenant), ...usageRoutes(tenant), ...pricingRoutes(tenant), ...paymentRoutes(tenant), ...creditRoutes(tenant), ...accountingRoutes(tenant), ...affiliateRoutes(tenant), ...providerRoutes(tenant), ...reportRoutes(tenant), ...paymentLinkRoutes(tenant), ...webhookRoutes(tenant), ...connectRoutes(tenant), ...appRoutes(tenant), ...sellerAddressRoutes(tenant), ...mailRoutes(tenant), ...einvoiceRoutes(tenant)]),
   ];
 }

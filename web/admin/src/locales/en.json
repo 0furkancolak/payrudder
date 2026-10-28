@@ -4226,7 +4226,8 @@
       "organisations": "Organisations",
       "platformPlans": "Platform plans",
       "support": "Help",
-      "supportInbox": "Support inbox"
+      "supportInbox": "Support inbox",
+      "connect": "Connect your app"
     },
     "noApps": "No apps yet",
     "newApp": "New app"
@@ -4600,6 +4601,13 @@
       },
       "deadLetters": {
         "intro": "Messages the platform could not process after several tries, for operators to inspect and replay."
+      },
+      "connect": {
+        "intro": "The way from an app to its first usage event.",
+        "checklist": "Your checklist turns green as you go: a meter, a customer, then the first event, which this page waits for.",
+        "code": "Pick your language and paste the code. It already has your meter and the address of the API.",
+        "checklistTitle": "Your checklist",
+        "codeTitle": "The code"
       }
     }
   },
@@ -4851,5 +4859,59 @@
     },
     "sortPriority": "Highest priority first",
     "sortDue": "Answer due soonest"
+  },
+  "connect": {
+    "nav": "Connect your app",
+    "title": "Connect your app",
+    "intro": "From an app to its first usage event: the code to paste, and a checklist that turns green as it works.",
+    "checklist": "Where you are",
+    "waiting": "Waiting for your first event. This page looks every few seconds.",
+    "codeTitle": "The code",
+    "keyTest": "This is the sandbox: use a key that starts with qk_test_. Create one on the API keys page; it is shown once.",
+    "keyLive": "This is live: use a key that starts with qk_live_. Live events need an idempotency_key (the code has one).",
+    "language": "Language",
+    "copy": "Copy",
+    "webhookHelp": "To get webhooks, add your endpoint and copy its signing secret.",
+    "webhookLink": "Open webhooks",
+    "blocks": {
+      "install": "1. Install",
+      "send": "2. Send your first event",
+      "webhook": "3. Verify webhooks"
+    },
+    "fields": {
+      "address": "API address",
+      "meter": "Meter",
+      "customer": "Customer id"
+    },
+    "langs": {
+      "curl": "curl",
+      "typescript": "TypeScript",
+      "python": "Python",
+      "go": "Go",
+      "php": "PHP"
+    },
+    "steps": {
+      "key": {
+        "title": "An API key",
+        "todo": "Create one on the API keys page of the app; it is shown once.",
+        "done": "You have a key."
+      },
+      "meter": {
+        "title": "A meter",
+        "todo": "Define what you count (API calls, tokens, seats).",
+        "done": "A meter exists.",
+        "link": "Create a meter"
+      },
+      "customer": {
+        "title": "A customer",
+        "todo": "The code creates the first one, or add one by hand.",
+        "done": "A customer exists."
+      },
+      "event": {
+        "title": "A usage event",
+        "todo": "Send one with the code below.",
+        "done": "An event has been counted."
+      }
+    }
   }
 }

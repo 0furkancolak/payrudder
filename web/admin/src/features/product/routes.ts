@@ -12,6 +12,7 @@ import { reportRoutes } from "@/features/reports/routes";
 import { subscriptionRoutes } from "@/features/subscriptions/routes";
 import { usageRoutes } from "@/features/usage/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
+import { connectRoutes } from "@/features/connect/routes";
 import { dashSearch, sheetSearch } from "@/features/dashboard/lib";
 import { supportRoutes } from "@/features/support/routes";
 import { lazyPage } from "@/shared/lib/lazy";
@@ -130,6 +131,7 @@ export function personRoutes(parent: AnyRoute) {
       ...affiliateRoutes(tenant),
       ...reportRoutes(tenant),
       ...webhookRoutes(tenant),
+      ...connectRoutes(tenant),
       ...mailRoutes(tenant),
     ]),
   ]);

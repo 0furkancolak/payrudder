@@ -4226,7 +4226,8 @@
       "organisations": "Organisationen",
       "platformPlans": "Plattform-Tarife",
       "support": "Hilfe",
-      "supportInbox": "Support-Eingang"
+      "supportInbox": "Support-Eingang",
+      "connect": "App verbinden"
     },
     "noApps": "Noch keine Apps",
     "newApp": "Neue App"
@@ -4600,6 +4601,13 @@
       },
       "deadLetters": {
         "intro": "Nachrichten, die die Plattform nach mehreren Versuchen nicht verarbeiten konnte, zum Prüfen und erneuten Abspielen durch Betreiber."
+      },
+      "connect": {
+        "intro": "Der Weg von einer App zum ersten Nutzungsereignis.",
+        "checklist": "Die Checkliste wird grün: Zähler, Kunde, dann das erste Ereignis, auf das diese Seite wartet.",
+        "code": "Wählen Sie Ihre Sprache und fügen Sie den Code ein. Zähler und API-Adresse sind schon darin.",
+        "checklistTitle": "Ihre Checkliste",
+        "codeTitle": "Der Code"
       }
     }
   },
@@ -4851,5 +4859,59 @@
     },
     "sortPriority": "Höchste Priorität zuerst",
     "sortDue": "Früheste Frist zuerst"
+  },
+  "connect": {
+    "nav": "App verbinden",
+    "title": "App verbinden",
+    "intro": "Von einer App zum ersten Nutzungsereignis: der Code zum Einfügen und eine Checkliste, die grün wird, sobald es läuft.",
+    "checklist": "Wo Sie stehen",
+    "waiting": "Warte auf Ihr erstes Ereignis. Diese Seite schaut alle paar Sekunden nach.",
+    "codeTitle": "Der Code",
+    "keyTest": "Das ist die Sandbox: Verwenden Sie einen Schlüssel, der mit qk_test_ beginnt. Erstellen Sie ihn auf der Seite API-Schlüssel; er wird einmal angezeigt.",
+    "keyLive": "Das ist Live: Verwenden Sie einen Schlüssel, der mit qk_live_ beginnt. Live-Ereignisse brauchen einen idempotency_key (der Code hat einen).",
+    "language": "Sprache",
+    "copy": "Kopieren",
+    "webhookHelp": "Für Webhooks fügen Sie Ihren Endpunkt hinzu und kopieren sein Signaturgeheimnis.",
+    "webhookLink": "Webhooks öffnen",
+    "blocks": {
+      "install": "1. Installieren",
+      "send": "2. Erstes Ereignis senden",
+      "webhook": "3. Webhooks prüfen"
+    },
+    "fields": {
+      "address": "API-Adresse",
+      "meter": "Zähler",
+      "customer": "Kunden-ID"
+    },
+    "langs": {
+      "curl": "curl",
+      "typescript": "TypeScript",
+      "python": "Python",
+      "go": "Go",
+      "php": "PHP"
+    },
+    "steps": {
+      "key": {
+        "title": "Ein API-Schlüssel",
+        "todo": "Erstellen Sie einen auf der Seite API-Schlüssel der App; er wird einmal angezeigt.",
+        "done": "Sie haben einen Schlüssel."
+      },
+      "meter": {
+        "title": "Ein Zähler",
+        "todo": "Legen Sie fest, was Sie zählen (API-Aufrufe, Tokens, Plätze).",
+        "done": "Ein Zähler existiert.",
+        "link": "Zähler anlegen"
+      },
+      "customer": {
+        "title": "Ein Kunde",
+        "todo": "Der Code legt den ersten an, oder fügen Sie einen von Hand hinzu.",
+        "done": "Ein Kunde existiert."
+      },
+      "event": {
+        "title": "Ein Nutzungsereignis",
+        "todo": "Senden Sie eines mit dem Code unten.",
+        "done": "Ein Ereignis wurde gezählt."
+      }
+    }
   }
 }

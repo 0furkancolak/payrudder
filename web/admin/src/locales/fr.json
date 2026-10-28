@@ -4226,7 +4226,8 @@
       "organisations": "Organisations",
       "platformPlans": "Offres de la plateforme",
       "support": "Aide",
-      "supportInbox": "Boîte de support"
+      "supportInbox": "Boîte de support",
+      "connect": "Connecter votre app"
     },
     "noApps": "Aucune application",
     "newApp": "Nouvelle application"
@@ -4600,6 +4601,13 @@
       },
       "deadLetters": {
         "intro": "Les messages que la plateforme n'a pas pu traiter après plusieurs essais, que les opérateurs inspectent et rejouent."
+      },
+      "connect": {
+        "intro": "Le chemin d'une app à son premier événement d'usage.",
+        "checklist": "La liste passe au vert : un compteur, un client, puis le premier événement, que cette page attend.",
+        "code": "Choisissez votre langage et collez le code. Votre compteur et l'adresse de l'API y sont déjà.",
+        "checklistTitle": "Votre liste",
+        "codeTitle": "Le code"
       }
     }
   },
@@ -4851,5 +4859,59 @@
     },
     "sortPriority": "Priorité la plus haute d'abord",
     "sortDue": "Échéance la plus proche d'abord"
+  },
+  "connect": {
+    "nav": "Connecter votre app",
+    "title": "Connecter votre app",
+    "intro": "D'une app à son premier événement d'usage : le code à coller et une liste qui passe au vert au fur et à mesure.",
+    "checklist": "Où vous en êtes",
+    "waiting": "En attente de votre premier événement. Cette page regarde toutes les quelques secondes.",
+    "codeTitle": "Le code",
+    "keyTest": "C'est le bac à sable : utilisez une clé qui commence par qk_test_. Créez-la sur la page Clés API ; elle n'est montrée qu'une fois.",
+    "keyLive": "C'est la production : utilisez une clé qui commence par qk_live_. Les événements live demandent une idempotency_key (le code en a une).",
+    "language": "Langage",
+    "copy": "Copier",
+    "webhookHelp": "Pour recevoir des webhooks, ajoutez votre point de terminaison et copiez son secret de signature.",
+    "webhookLink": "Ouvrir les webhooks",
+    "blocks": {
+      "install": "1. Installer",
+      "send": "2. Envoyer votre premier événement",
+      "webhook": "3. Vérifier les webhooks"
+    },
+    "fields": {
+      "address": "Adresse de l'API",
+      "meter": "Compteur",
+      "customer": "Identifiant client"
+    },
+    "langs": {
+      "curl": "curl",
+      "typescript": "TypeScript",
+      "python": "Python",
+      "go": "Go",
+      "php": "PHP"
+    },
+    "steps": {
+      "key": {
+        "title": "Une clé d'API",
+        "todo": "Créez-en une sur la page Clés API de l'app ; elle n'est montrée qu'une fois.",
+        "done": "Vous avez une clé."
+      },
+      "meter": {
+        "title": "Un compteur",
+        "todo": "Définissez ce que vous comptez (appels d'API, jetons, sièges).",
+        "done": "Un compteur existe.",
+        "link": "Créer un compteur"
+      },
+      "customer": {
+        "title": "Un client",
+        "todo": "Le code crée le premier, ou ajoutez-en un à la main.",
+        "done": "Un client existe."
+      },
+      "event": {
+        "title": "Un événement d'usage",
+        "todo": "Envoyez-en un avec le code ci-dessous.",
+        "done": "Un événement a été compté."
+      }
+    }
   }
 }
