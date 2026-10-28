@@ -29,7 +29,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>
 
 <template>
-  <DialogPortal>
+  <DialogPortal :force-mount="props.forceMount">
     <DialogOverlay />
     <DialogContent
       data-slot="dialog-content"

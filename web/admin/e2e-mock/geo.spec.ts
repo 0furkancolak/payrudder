@@ -33,9 +33,9 @@ test.describe("location fields", () => {
     const region = form.getByLabel("State / region");
     await expect(region).toHaveAttribute("role", "combobox"); // a plain text box until the regions have come
     await region.click();
-    await expect(page.getByRole("option")).toHaveText(["Ankara", "Istanbul", "İzmir"]);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Ankara", "Istanbul", "İzmir"]);
     await region.fill("izm");
-    await expect(page.getByRole("option")).toHaveText(["İzmir", "Use “izm”"]);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["İzmir", "Use “izm”"]);
     await region.fill("ist");
     await region.press("Enter");
     await expect(region).toHaveValue("Istanbul");
@@ -45,9 +45,9 @@ test.describe("location fields", () => {
     // The city is a plain text box until the districts have come; only then is it the searchable list that the typing below goes to.
     await expect(city).toHaveAttribute("role", "combobox");
     await city.fill("uskudar");
-    await expect(page.getByRole("option")).toHaveText(["Üsküdar"]);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Üsküdar"]);
     await city.fill("Moda");
-    await expect(page.getByRole("option")).toHaveText(["Use “Moda”"]);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Use “Moda”"]);
     await city.press("Enter");
     await expect(city).toHaveValue("Moda");
     await pickPlace(city, "besiktas");

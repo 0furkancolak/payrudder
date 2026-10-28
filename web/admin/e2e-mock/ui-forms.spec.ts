@@ -94,7 +94,7 @@ test.describe("empty submits", () => {
     await expect(dialog.locator("#exp-vendor-error")).toHaveCount(0);
 
     await page.goto(`/tenants/${TENANT}/credits`);
-    await page.getByRole("button", { name: "Add pack" }).first().click();
+    await page.getByRole("button", { name: "New credit pack" }).first().click();
     const pack = page.getByRole("dialog");
     await pack.getByRole("button", { name: "Add pack" }).click();
     await expect(pack.locator("#pack-name-error")).toBeVisible();

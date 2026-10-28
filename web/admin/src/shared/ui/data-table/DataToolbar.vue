@@ -10,7 +10,7 @@ import { Input } from "@/shared/ui/input";
 /**
  * The row above a table: a search box, then the filters the page puts in the default slot (selects), a clear button while something is filtered, and an
  * `actions` slot at the end for the page's main button. On a phone the search stays in the row and the filters move into a drawer behind one button, so
- * the row does not fill the screen; the clear button is in the drawer.
+ * the row does not fill the screen; the clear button is in the drawer. The drawer stays mounted while closed (hidden), so whatever a page puts in the filter slot besides filters (its main button, which draws in the page header) is still there.
  */
 defineProps<{ placeholder?: string; active?: boolean }>();
 const search = defineModel<string>("search", { default: "" });
@@ -33,7 +33,7 @@ const drawer = ref(false);
         <span v-if="active" class="bg-brand absolute end-2 top-2 size-2 rounded-full" aria-hidden="true" />
       </Button>
       <Dialog v-model:open="drawer">
-        <DialogContent class="top-auto bottom-0 left-0 max-h-[85dvh] max-w-none translate-x-0 translate-y-0 gap-3 overflow-y-auto rounded-b-none rounded-t-3xl p-5 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:max-w-none" data-testid="filters-drawer">
+        <DialogContent force-mount class="data-[state=closed]:hidden top-auto bottom-0 left-0 max-h-[85dvh] max-w-none translate-x-0 translate-y-0 gap-3 overflow-y-auto rounded-b-none rounded-t-3xl p-5 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:max-w-none" data-testid="filters-drawer">
           <DialogHeader class="text-start">
             <DialogTitle>{{ t("common.filters") }}</DialogTitle>
             <DialogDescription class="sr-only">{{ t("common.filters") }}</DialogDescription>

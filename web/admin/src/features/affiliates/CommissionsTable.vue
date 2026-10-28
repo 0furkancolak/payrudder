@@ -84,7 +84,7 @@ const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!l
         // The date range starts on this month: a commission of an earlier one is looked for with no range.
         missing: () => {
           if (range.value.from === "" && range.value.to === "") return false;
-          range.value = thisMonth();
+          range.value = { from: "", to: "" };
           return true;
         },
       },

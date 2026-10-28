@@ -35,7 +35,7 @@ test.describe("credit purchases", () => {
     await openTenantPage(page, "/credits");
     await expect(page.getByRole("row", { name: /Starter/ })).toContainText("30 days");
 
-    await page.getByRole("button", { name: "Add pack" }).click();
+    await page.getByRole("button", { name: "New credit pack" }).click();
     const form = page.getByRole("dialog");
     await form.getByLabel("Pack name").fill("Annual");
     await form.getByLabel("Credits", { exact: true }).fill("12000");

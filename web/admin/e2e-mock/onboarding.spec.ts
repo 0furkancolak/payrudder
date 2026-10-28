@@ -35,6 +35,7 @@ test.describe("the first-run wizard", () => {
     await wizard(page).getByTestId("onb-app-name").fill("Docs bot");
     await wizard(page).getByTestId("onb-continue").click();
     await expect.poll(() => state.accountName).toBe("Lovelace Labs");
+    await expect.poll(() => gw.called("POST", "/app/v1/apps").length).toBe(1);
     expect(gw.called("POST", "/app/v1/apps")[0]?.body).toMatchObject({ name: "Docs bot", currency: "USD" });
 
     // Done, with the next steps; the home then carries on with the checklist.

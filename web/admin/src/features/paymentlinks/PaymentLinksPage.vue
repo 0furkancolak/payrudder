@@ -64,7 +64,7 @@ const nav = useEdgeDetail(
     missing: (id) => {
       if (!list.value.some((l) => l.id === id) || (query.value === "" && range.value.from === "" && range.value.to === "")) return false;
       query.value = "";
-      range.value = thisMonth();
+      range.value = { from: "", to: "" };
       return true;
     },
   },

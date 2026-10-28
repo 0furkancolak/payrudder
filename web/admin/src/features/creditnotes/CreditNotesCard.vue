@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
-import { RotateCw } from "@lucide/vue";
+import { Plus, RotateCw } from "@lucide/vue";
 import { Link } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -79,7 +79,11 @@ const current = table.row;
     <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" @clear="clear">
       <FilterSelect v-model="whereFilter" multiple :label="t('billing.creditNotes.where')" :options="whereOptions" />
       <DateRangePicker v-model="range" />
-      <HeaderAction v-if="issuable" :label="t('billing.creditNotes.new')" @click="issueOpen = true" />
+      <!-- On a page the button is the page's (the header's); inside an invoice's sheet the header is behind the sheet, so the button is in the card. -->
+      <HeaderAction v-if="issuable && !invoiceId" :label="t('billing.creditNotes.new')" @click="issueOpen = true" />
+      <template v-if="issuable && invoiceId" #actions>
+        <Button type="button" size="sm" @click="issueOpen = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.creditNotes.new") }}</Button>
+      </template>
     </DataToolbar>
     <p v-if="list.length && !table.total.value" class="text-muted-foreground px-3 py-2 text-sm">{{ t("common.noMatches") }}</p>
     <Table v-else-if="list.length">
