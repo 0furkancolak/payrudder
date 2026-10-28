@@ -46,7 +46,7 @@ test.describe("forms", () => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/payment-links" && c.method === "POST") return { status: 201, body: { id: "l1", url: "https://pay.example.test/l/abc", status: "open" } };
       if (c.path === "/v1/payment-links") return { body: { links: [] } };
-      if (c.path === "/v1/customers") return { body: { customers: [{ external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com" }] } };
+      if (c.path === "/v1/customers") return { body: { customers: [{ external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada Lovelace", email: "ada@example.com" }] } };
       return undefined;
     });
     await gw.install(page);
@@ -94,7 +94,7 @@ test.describe("empty submits", () => {
     await expect(dialog.locator("#exp-vendor-error")).toHaveCount(0);
 
     await page.goto(`/tenants/${TENANT}/credits`);
-    await page.getByRole("button", { name: "Add pack" }).first().click();
+    await page.getByRole("button", { name: "New credit pack" }).first().click();
     const pack = page.getByRole("dialog");
     await pack.getByRole("button", { name: "Add pack" }).click();
     await expect(pack.locator("#pack-name-error")).toBeVisible();

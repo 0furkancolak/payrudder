@@ -52,7 +52,7 @@ test.describe("session and navigation fixes", () => {
 
   test("a sheet that names no customer is taken off the address", async ({ page }) => {
     await baseTenant(new MockGateway())
-      .on((c) => (c.path === "/v1/customers" ? { body: { customers: [{ id: "id-1", external_id: "cus_1", name: "Ada", email: "ada@example.com", create_time: "2026-09-01T10:00:00Z" }] } } : undefined))
+      .on((c) => (c.path === "/v1/customers" ? { body: { customers: [{ id: "id-1", external_id: "cus_1", name: "Ada", email: "ada@example.com", create_time: "2026-10-01T10:00:00Z" }] } } : undefined))
       .install(page);
     await openTenantPage(page, "/customers?sheet=customer:nope");
     await expect(page.getByTestId("customer-cus_1")).toBeVisible();

@@ -42,7 +42,7 @@ test.describe("credits", () => {
     const ledger = [{ id: "e1", lot_id: "l1", kind: "consume", amount: "-120", reason: "ai run", create_time: "2026-10-21T09:05:00Z" }];
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/credit-packs") return { body: { packs: [] } };
-      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" }] } };
       if (c.path === "/v1/customers/cus_1/credits/grant") {
         balance += Number(c.body?.credits);
         ledger.unshift({ id: "e2", lot_id: "l2", kind: "grant", amount: String(c.body?.credits), reason: String(c.body?.reason ?? ""), create_time: "2026-10-21T09:10:00Z" });
@@ -79,7 +79,7 @@ test.describe("credits", () => {
     let calls = 0;
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/credit-packs") return { body: { packs: [] } };
-      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" }] } };
       if (c.path === "/v1/customers/cus_1/credits/grant") {
         calls++;
         // the first try times out at the gateway (it may or may not have been applied)
@@ -132,7 +132,7 @@ test.describe("credits", () => {
   test("the balance is on top with the grants and the ledger in tabs, and selling credits is a section of its own", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/credit-packs") return { body: { packs: [pack("p1", "Starter", "1000", "500")] } };
-      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" }] } };
       if (c.path === "/v1/customers/cus_1/credits/ledger") return { body: { entries: [{ id: "e1", lot_id: "l1", kind: "consume", amount: "-120", reason: "ai run", create_time: "2026-10-21T09:05:00Z" }], next_page_token: "" } };
       if (c.path === "/v1/customers/cus_1/credits")
         return { body: { balance: "300", next_expire_time: "2026-12-01T00:00:00Z", lots: [{ id: "l1", granted: "420", remaining: "300", source: "promo", expire_time: null, create_time: "2026-10-21T09:00:00Z" }] } };
@@ -162,7 +162,7 @@ test.describe("credits", () => {
   test("the grant sheet and a pack's purchase link come back from the address", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/credit-packs") return { body: { packs: [pack("p1", "Starter", "1000", "500")] } };
-      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" }] } };
       if (c.path === "/v1/customers/cus_1/credits/ledger") return { body: { entries: [], next_page_token: "" } };
       if (c.path === "/v1/customers/cus_1/credits") return { body: { balance: "300", lots: [] } };
       return undefined;
@@ -196,7 +196,7 @@ test.describe("credits on a phone", () => {
   test("nothing scrolls sideways, with the customer's grants and ledger open too", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.path === "/v1/credit-packs") return { body: { packs: [pack("p1", "Starter", "1000", "500")] } };
-      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+      if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" }] } };
       if (c.path === "/v1/customers/cus_1/credits/ledger") return { body: { entries: [{ id: "e1", lot_id: "l1", kind: "consume", amount: "-120", reason: "ai run", create_time: "2026-10-21T09:05:00Z" }], next_page_token: "" } };
       if (c.path === "/v1/customers/cus_1/credits") return { body: { balance: "300", next_expire_time: "2026-12-01T00:00:00Z", lots: [{ id: "l1", granted: "420", remaining: "300", source: "promo", expire_time: null, create_time: "2026-10-21T09:00:00Z" }] } };
       return undefined;

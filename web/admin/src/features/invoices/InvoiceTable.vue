@@ -4,7 +4,7 @@ import { ArrowUpRight } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
@@ -40,10 +40,10 @@ const table = useTableState(() => list.value.filter((inv) => inRange(inv.create_
   url: true, filters: { status: (inv, v) => inv.status === v, kind: (inv, v) => inv.kind === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
-const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const setFilter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const statusFilter = setFilter("status");
@@ -63,7 +63,7 @@ useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
 
 <template>
   <ErrorState :error="invoices.error.value" :retrying="invoices.isFetching.value" compact @retry="invoices.refetch()" />
-  <DataToolbar v-if="list.length" v-model:search="table.search.value" :active="active" class="pt-2" @clear="clear">
+  <DataToolbar v-if="list.length" v-model:search="table.search.value" :active="active" @clear="clear">
     <FilterSelect v-model="statusFilter" multiple :label="t('tenant.columns.status')" :options="statusOptions" />
     <FilterSelect v-model="kindFilter" multiple :label="t('tenant.columns.kind')" :options="kindOptions" />
     <DateRangePicker v-model="range" />

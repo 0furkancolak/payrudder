@@ -22,9 +22,9 @@ const sub = (id: string, extra: Record<string, unknown> = {}) => ({
 const subscriptionsTenant = (subs: Record<string, unknown>[]) =>
   baseTenant(new MockGateway()).on((c) => {
     if (c.method === "GET" && c.path === "/v1/subscriptions") return { body: { subscriptions: subs } };
-    if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", name: "Name cus_1", email: "cus_1@example.com" }] } };
+    if (c.path === "/v1/customers") return { body: { customers: [{ id: "id-cus_1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Name cus_1", email: "cus_1@example.com" }] } };
     if (c.path === "/v1/plans") return { body: { plans: [{ id: "p1", code: "basic", name: "Basic", latest_version: 1 }, { id: "p2", code: "pro", name: "Pro", latest_version: 1 }] } };
-    if (c.path.startsWith("/v1/plans/") && c.path.endsWith("/versions/latest")) return { body: { version: 1, base_fee_minor: "1000" } };
+    if (c.path.startsWith("/v1/plans/") && c.path.endsWith("/versions/latest")) return { body: { version: 1, base_fee_minor: "1000", publish_time: "2026-10-05T10:00:00Z" } };
     return undefined;
   });
 

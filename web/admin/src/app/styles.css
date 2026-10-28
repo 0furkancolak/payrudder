@@ -234,7 +234,7 @@
     input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]) {
       min-height: 2.75rem;
     }
-    [data-size^="icon"] { min-width: 2.75rem; }
+    [data-size^="icon"], button:is([class~="size-8"], [class~="size-9"], [class~="size-10"]) { min-width: 2.75rem; flex-shrink: 0; }
   }
   @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
@@ -290,6 +290,11 @@
 [data-testid="sidebar"] *::-webkit-scrollbar { width: 8px; }
 [data-testid="sidebar"] *::-webkit-scrollbar-thumb { background-color: color-mix(in oklab, var(--rail-foreground) 25%, transparent); border-width: 2px; }
 [data-testid="sidebar"] *::-webkit-scrollbar-thumb:hover { background-color: color-mix(in oklab, var(--rail-foreground) 45%, transparent); }
+/* A phone scrolls by touch and shows its own indicator while moving; a bar that sits there at rest (the overview cards', a wide table's) is only noise. */
+@media (max-width: 63.999rem) {
+  * { scrollbar-width: none; }
+  *::-webkit-scrollbar { display: none; }
+}
 
 /*
  * A scroll that reaches its end does not carry on into the page behind: sheets, dialogs, the sidebar and its drawer, popovers, listboxes and menus keep
@@ -305,4 +310,42 @@
   .sheet-stacked {
     inset-inline-end: calc(0.75rem + var(--sheet-behind, 0) * 0.875rem);
   }
+}
+
+/*
+ * Tables as cards. A <Table> below the `lg` breakpoint (the width a sidebar and eight columns stop fitting) lays each row out as a card: the first cell is
+ * the title, the others are label/value lines (Table.vue copies the header text onto each cell as data-label), and a last cell without a heading is the
+ * row's actions. Columns a page hides on a narrow screen (max-lg:hidden and the like) are shown again here, since a card has room for them.
+ */
+@media (max-width: 63.999rem) {
+  [data-slot="table"][data-stack] { display: block; }
+  [data-slot="table"][data-stack] > thead { display: none; }
+  [data-slot="table"][data-stack] > tbody { display: grid; gap: 0.5rem; padding: 0 0.25rem; }
+  [data-slot="table"][data-stack] > tbody > [data-slot="table-row"] {
+    display: block; min-width: 0; padding: 0.625rem 0.875rem; border: 0; border-radius: 1rem;
+    background-color: color-mix(in oklab, var(--muted) 70%, transparent);
+  }
+  [data-slot="table"][data-stack] > tbody > [data-slot="table-row"]:hover { background-color: var(--muted); }
+  [data-slot="table"][data-stack] [data-slot="table-cell"] {
+    display: flex !important; align-items: center; justify-content: space-between; gap: 0.75rem; width: auto; max-width: none; min-width: 0;
+    padding: 0.35rem 0; text-align: end; white-space: normal; overflow-wrap: anywhere;
+    border-top: 1px solid color-mix(in oklab, var(--border) 30%, transparent);
+  }
+  [data-slot="table"][data-stack] [data-slot="table-cell"][data-label]::before {
+    content: attr(data-label); flex: none; max-width: 45%; text-align: start; font: 400 0.8125rem/1.25 var(--font-sans); color: var(--muted-foreground);
+  }
+  /* The title: the first cell that has content, with no label and no rule above it. */
+  [data-slot="table"][data-stack] [data-slot="table-cell"][data-lead] {
+    justify-content: flex-start; padding-top: 0; border-top: 0; text-align: start; font-weight: 500;
+  }
+  [data-slot="table"][data-stack] [data-slot="table-cell"][data-lead]::before { content: none; }
+  /* The actions: a cell without a heading closes the card, to the end. */
+  [data-slot="table"][data-stack] [data-slot="table-cell"]:not([data-label]):not([data-lead]) { justify-content: flex-end; }
+  /* A cell with nothing in it takes no line (Table.vue marks it). */
+  [data-slot="table"][data-stack] [data-slot="table-cell"][data-empty] { display: none !important; }
+  /* A row that is one cell across the table (a message, a skeleton) is not a card of lines. */
+  [data-slot="table"][data-stack] [data-slot="table-cell"][colspan] { justify-content: center; text-align: center; border-top: 0; }
+}
+@media (min-width: 40rem) and (max-width: 63.999rem) {
+  [data-slot="table"][data-stack] > tbody { padding: 0 0.75rem; }
 }

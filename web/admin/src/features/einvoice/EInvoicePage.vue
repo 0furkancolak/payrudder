@@ -73,7 +73,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
       <p class="text-muted-foreground text-sm">{{ t("einvoice.account.hint") }}</p>
     </div>
     <ErrorState :error="accounts.error.value" :retrying="accounts.isFetching.value" compact @retry="accounts.refetch()" />
-    <DataToolbar v-model:search="table.search.value" :active="table.active.value" class="pt-3" @clear="table.clear()">
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="environmentFilter" multiple :label="t('einvoice.account.environment')" :options="environmentOptions" />
       <HeaderAction :label="t('einvoice.account.add')" @click="accountOpen = true" />
     </DataToolbar>

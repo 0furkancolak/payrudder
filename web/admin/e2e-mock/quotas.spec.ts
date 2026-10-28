@@ -229,7 +229,7 @@ test.describe("package usage prices and quotas", () => {
         if (c.path === "/v1/plans/ai/versions/latest") {
           return {
             body: {
-              version: 1,
+              version: 1, publish_time: "2026-10-05T10:00:00Z",
               base_fee_minor: "1000",
               prices: [{ meter_code: "tokens", included: "1000", per_unit: { unit_price: "0.02" } }],
               entitlements: [{ meter_code: "tokens", limit: "5000", window: "QUOTA_WINDOW_WEEK", mode: "QUOTA_MODE_NOTIFY", alert_thresholds_pct: [50, 100] }],
@@ -257,7 +257,7 @@ test.describe("customer quota overrides", () => {
     const gw = baseTenant(new MockGateway())
       .on(metersMock)
       .on((c) => {
-        if (c.path === "/v1/customers" && c.method === "GET") return { body: { customers: [{ id: "id-1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+        if (c.path === "/v1/customers" && c.method === "GET") return { body: { customers: [{ id: "id-1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" }] } };
         if (c.path === "/v1/customers/cus_1/entitlement-overrides" && c.method === "GET") return { body: { overrides } };
         if (c.path === "/v1/customers/cus_1/entitlement-overrides/api_calls" && c.method === "PUT") {
           overrides = [...overrides, { customer_external_id: "cus_1", meter_code: "api_calls", ...c.body }];
@@ -317,7 +317,7 @@ test.describe("customer quota overrides", () => {
     const gw = baseTenant(new MockGateway())
       .on(metersMock)
       .on((c) => {
-        if (c.path === "/v1/customers" && c.method === "GET") return { body: { customers: [{ id: "id-1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+        if (c.path === "/v1/customers" && c.method === "GET") return { body: { customers: [{ id: "id-1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" }] } };
         if (c.path === "/v1/customers/cus_1/entitlement-overrides") return { body: { overrides: [] } };
         if (c.path === "/v1/customers/cus_1/entitlements") return { body: { items: [] } };
         return undefined;

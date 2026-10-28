@@ -4,7 +4,7 @@ import { ArrowUpRight } from "@lucide/vue";
 
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { ym } from "@/shared/lib/dates";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
@@ -55,10 +55,10 @@ const statusFilter = computed({ get: () => table.filters.value.status ?? [], set
 const providerFilter = computed({ get: () => table.filters.value.provider ?? [], set: (v: string[]) => (table.filters.value.provider = v) });
 const statuses = computed(() => [all.value, ...distinct((e) => e.status).map((s) => ({ value: s, label: label(t, te, "ledgerStatus", s) }))]);
 const providers = computed(() => [all.value, ...distinct((e) => e.provider).map((p) => ({ value: p, label: label(t, te, "provider", p) }))]);
-const ledgerActive = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const ledgerActive = computed(() => table.active.value || rangeChanged(range.value));
 function clearLedger() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 
 const current = table.row;

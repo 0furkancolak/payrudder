@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
-import { RotateCw } from "@lucide/vue";
+import { Plus, RotateCw } from "@lucide/vue";
 import { Link } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -16,7 +16,7 @@ import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
@@ -57,10 +57,10 @@ const table = useTableState(() => list.value.filter((n) => inRange(n.create_time
   filters: { where: (n, v) => whereKey(n) === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
-const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const whereFilter = computed({ get: () => table.filters.value.where ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, where: v }) });
 const whereOptions = computed(() => [{ value: "", label: t("billing.creditNotes.allWhere") }, ...WHERE.map((w) => ({ value: w, label: t(`billing.creditNotes.${w}`) }))]);
@@ -76,10 +76,14 @@ const current = table.row;
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.creditNotes.title") }}</h2>
     <ErrorText :error="retry.error.value" class="px-3" />
     <ErrorText :error="notes.error.value" class="px-3" />
-    <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" class="pt-3" @clear="clear">
+    <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" @clear="clear">
       <FilterSelect v-model="whereFilter" multiple :label="t('billing.creditNotes.where')" :options="whereOptions" />
       <DateRangePicker v-model="range" />
-      <HeaderAction v-if="issuable" :label="t('billing.creditNotes.new')" @click="issueOpen = true" />
+      <!-- On a page the button is the page's (the header's); inside an invoice's sheet the header is behind the sheet, so the button is in the card. -->
+      <HeaderAction v-if="issuable && !invoiceId" :label="t('billing.creditNotes.new')" @click="issueOpen = true" />
+      <template v-if="issuable && invoiceId" #actions>
+        <Button type="button" size="sm" @click="issueOpen = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.creditNotes.new") }}</Button>
+      </template>
     </DataToolbar>
     <p v-if="list.length && !table.total.value" class="text-muted-foreground px-3 py-2 text-sm">{{ t("common.noMatches") }}</p>
     <Table v-else-if="list.length">

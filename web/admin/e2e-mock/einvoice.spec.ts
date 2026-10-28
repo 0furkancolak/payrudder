@@ -133,7 +133,7 @@ test.describe("e-invoice settings", () => {
 
 test("a customer's tax data is saved with the customer tax endpoint", async ({ page }) => {
   const gw = baseTenant(new MockGateway()).on((c) => {
-    if (c.method === "GET" && c.path === "/v1/customers") return { body: { customers: [{ id: "id1", external_id: "cus_1", name: "Ada", email: "ada@example.com" }] } };
+    if (c.method === "GET" && c.path === "/v1/customers") return { body: { customers: [{ id: "id1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Ada", email: "ada@example.com" }] } };
     if (c.method === "PUT" && c.path === "/v1/customers/cus_1/tax") return { body: { id: "id1", external_id: "cus_1", ...c.body } };
     return undefined;
   });

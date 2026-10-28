@@ -40,7 +40,7 @@ const pill = "inline-flex h-8 min-w-8 items-center justify-center rounded-full p
 </script>
 
 <template>
-  <div v-if="showSize || prevOk || nextOk || (pages ?? 1) > 1" data-testid="pagination" class="flex flex-col gap-3 px-3 pt-4 pb-1 select-none md:flex-row md:items-center md:justify-between">
+  <div v-if="showSize || prevOk || nextOk || (pages ?? 1) > 1" data-testid="pagination" class="flex flex-col gap-3 px-1 pt-3 pb-2 select-none sm:px-3 sm:pt-4 md:flex-row md:items-center md:justify-between">
     <div v-if="showSize" class="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px]">
       <label :for="'ps-' + $.uid">{{ t("pagination.perPage") }}</label>
       <NativeSelect :id="'ps-' + $.uid" v-model="sizeModel" class="bg-muted h-8 w-20 rounded-full border-0 text-xs">

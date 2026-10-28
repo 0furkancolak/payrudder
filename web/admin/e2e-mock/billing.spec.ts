@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, openTenantPage, TENANT } from "./gateway";
 import { pickCurrency, pickLanguage, pickPlace, confirmDialog, rowAction } from "./ui";
 
-const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
+const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, create_time: "2026-10-05T10:00:00Z", ...extra });
 
 test("the console speaks the tenant API as the operator user (a session), naming the tenant", async ({ page }) => {
   const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/customers" && c.method === "GET" ? { body: { customers: [customer("cus_1")] } } : undefined));
@@ -114,7 +114,7 @@ test.describe("packages", () => {
   const tenantList = (c: { method: string; path: string }) =>
     c.method === "GET" && c.path === "/admin/v1/tenants" ? { body: { tenants: [{ id: TENANT, name: "Acme", environment: "ENVIRONMENT_LIVE", currency: "TRY", timezone: "Europe/Istanbul" }] } } : undefined;
   const plan = { id: "p1", code: "pro", name: "Pro", latest_version: 2 };
-  const version = { id: "v2", plan_code: "pro", version: 2, base_fee_minor: "9900", fees: [{ currency: "USD", base_fee_minor: "300" }], prices: [{ meter_code: "calls" }] };
+  const version = { id: "v2", plan_code: "pro", version: 2, base_fee_minor: "9900", fees: [{ currency: "USD", base_fee_minor: "300" }], prices: [{ meter_code: "calls" }], publish_time: "2026-10-05T10:00:00Z" };
 
   test("packages are listed with their latest fixed fees", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
@@ -255,7 +255,7 @@ test.describe("subscriptions", () => {
           },
         };
       }
-      if (c.path.startsWith("/v1/plans/") && c.path.endsWith("/versions/latest")) return { body: { version: 1, base_fee_minor: "1000" } };
+      if (c.path.startsWith("/v1/plans/") && c.path.endsWith("/versions/latest")) return { body: { version: 1, base_fee_minor: "1000", publish_time: "2026-10-05T10:00:00Z" } };
       return undefined;
     });
 
@@ -778,7 +778,7 @@ test.describe("providers", () => {
       .on(quiet)
       .on((c) => {
         if (c.path === "/v1/plans") return { body: { plans: [{ id: "p2", code: "pro", name: "Pro", latest_version: 1 }] } };
-        if (c.path.startsWith("/v1/plans/") && c.path.endsWith("/versions/latest")) return { body: { version: 1, base_fee_minor: "1000" } };
+        if (c.path.startsWith("/v1/plans/") && c.path.endsWith("/versions/latest")) return { body: { version: 1, base_fee_minor: "1000", publish_time: "2026-10-05T10:00:00Z" } };
         if (c.method === "GET" && c.path === cat) return { body: { objects } };
         if (c.method === "POST" && c.path === `${cat}/sync`) {
           objects.push({ kind: "price", key: "v1|month|USD", ref: "pri_1" });

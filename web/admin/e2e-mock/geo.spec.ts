@@ -5,7 +5,7 @@ import { pickPlace } from "./ui";
 // The address forms take the country, the region and the district from the GeoNames lists (GET /app/v1/geo/..., mocked in geo.ts), and still store
 // the country code and the region and city as text.
 
-const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
+const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, create_time: "2026-10-05T10:00:00Z", ...extra });
 
 test.describe("location fields", () => {
   test("a customer's address is picked country, region, district, and sent as text", async ({ page }) => {
@@ -33,9 +33,9 @@ test.describe("location fields", () => {
     const region = form.getByLabel("State / region");
     await expect(region).toHaveAttribute("role", "combobox"); // a plain text box until the regions have come
     await region.click();
-    await expect(page.getByRole("option")).toHaveText(["Ankara", "Istanbul", "İzmir"]);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Ankara", "Istanbul", "İzmir"]);
     await region.fill("izm");
-    await expect(page.getByRole("option")).toHaveText(["İzmir", "Use “izm”"]);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["İzmir", "Use “izm”"]);
     await region.fill("ist");
     await region.press("Enter");
     await expect(region).toHaveValue("Istanbul");
@@ -45,9 +45,9 @@ test.describe("location fields", () => {
     // The city is a plain text box until the districts have come; only then is it the searchable list that the typing below goes to.
     await expect(city).toHaveAttribute("role", "combobox");
     await city.fill("uskudar");
-    await expect(page.getByRole("option")).toHaveText(["Üsküdar"]);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Üsküdar"]);
     await city.fill("Moda");
-    await expect(page.getByRole("option")).toHaveText(["Use “Moda”"]);
+    await expect(page.getByRole("listbox").getByRole("option")).toHaveText(["Use “Moda”"]);
     await city.press("Enter");
     await expect(city).toHaveValue("Moda");
     await pickPlace(city, "besiktas");
