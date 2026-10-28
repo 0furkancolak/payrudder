@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import CustomerLabel from "@/features/customers/CustomerLabel.vue";
-import { useParams } from "@tanstack/vue-router";
+
 import { computed, nextTick, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -24,12 +24,12 @@ import { ArrowUpRight } from "@lucide/vue";
 import InvoiceDetail from "./InvoiceDetail.vue";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { useInvoices } from "./billingApi";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /** The environment's invoices: number, customer, period, total (in its own currency), status. A row opens the invoice. Reads /v1/invoices only. */
 const { t, locale } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const status = ref("");
 const invoices = useInvoices(tenantId, status);
 

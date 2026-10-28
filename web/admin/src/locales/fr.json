@@ -4524,18 +4524,12 @@
     }
   },
   "onboarding": {
-    "skipStep": "Passer cette étape",
     "skip": "Passer pour l'instant",
     "back": "Retour",
     "continue": "Continuer",
-    "stepLabel": "Étape {n} sur {total}",
     "steps": {
       "welcome": "Bienvenue",
-      "organisation": "Organisation",
-      "app": "Première application",
-      "meter": "Premier compteur",
-      "package": "Premier forfait",
-      "event": "Événement de test",
+      "app": "Configuration",
       "done": "Terminé"
     },
     "welcome": {
@@ -4562,85 +4556,39 @@
       "start": "Configurer mon compte",
       "time": "Cela prend environ deux minutes."
     },
-    "organisation": {
-      "title": "Votre organisation",
-      "body": "Le nom que voient votre équipe et vos clients, et les valeurs par défaut de votre première application.",
-      "name": "Nom de l'organisation",
+    "setup": {
+      "title": "Configurez votre première app",
+      "body": "Une app est un produit que vous facturez. Elle vient avec un sandbox pour tester et un environnement live pour les vrais paiements.",
+      "org": "Nom de l'organisation",
+      "app": "Nom de l'app",
+      "appHint": "Vos clients voient ce nom sur leurs factures et pages de paiement.",
       "currency": "Devise",
       "timezone": "Fuseau horaire",
-      "note": "La devise et le fuseau horaire déterminent le calcul des factures : on ne peut plus les changer une fois l'application créée."
-    },
-    "app": {
-      "title": "Votre première application",
-      "body": "Une application est un produit que vous facturez. Elle vient avec un bac à sable pour tester et un environnement de production pour les vrais paiements.",
-      "name": "Nom de l'application",
-      "defaultName": "Ma première application",
-      "create": "Créer l'application",
-      "created": "{name} est prête, avec son bac à sable."
-    },
-    "meter": {
-      "title": "Que mesurez-vous ?",
-      "body": "Un compteur transforme les événements d'usage en une quantité facturable. Choisissez un modèle ; vous pourrez ajouter ou modifier des compteurs plus tard.",
-      "create": "Créer le compteur",
-      "templates": {
-        "api_calls": {
-          "name": "Appels d'API",
-          "body": "Compte chaque requête de vos clients."
-        },
-        "storage": {
-          "name": "Stockage (Go)",
-          "body": "Le stockage maximal utilisé par un client sur la période."
-        },
-        "seats": {
-          "name": "Sièges",
-          "body": "Le plus grand nombre de sièges d'un client sur la période."
-        },
-        "tokens": {
-          "name": "Jetons d'IA",
-          "body": "Additionne les jetons que dépensent vos clients."
-        }
-      }
-    },
-    "package": {
-      "title": "Votre premier forfait",
-      "body": "Un forfait est ce à quoi un client s'abonne : un tarif mensuel fixe plus un prix pour chaque unité utilisée.",
-      "name": "Nom du forfait",
-      "defaultName": "Démarrage",
-      "fee": "Tarif mensuel ({currency})",
-      "unitPrice": "Prix par {unit} ({currency})",
-      "note": "Vous pourrez ajouter des limites, d'autres devises et un essai gratuit sur la page Forfaits.",
-      "create": "Publier le forfait"
-    },
-    "event": {
-      "title": "Envoyer un événement de test",
-      "body": "Nous créons un client de test, l'abonnons à votre forfait et envoyons un événement d'usage à votre bac à sable, pour que vous voyiez tout le trajet fonctionner.",
-      "customer": "Client",
-      "meter": "Compteur",
-      "quantity": "Quantité",
-      "send": "Envoyer l'événement de test",
-      "sending": "Envoi…",
-      "sent": "Accepté : {quantity} {unit} d'usage dans votre bac à sable."
+      "note": "La devise et le fuseau horaire déterminent le calcul des factures ; ils ne peuvent plus être modifiés une fois l'app créée.",
+      "create": "Créer mon app",
+      "defaultAppName": "Ma première app",
+      "created": "{name} est prête, avec son sandbox."
     },
     "done": {
       "title": "Tout est prêt",
-      "body": "Votre bac à sable a un compteur, un forfait et son premier événement d'usage. Voici ce qui suit en général.",
+      "body": "Votre app et son sandbox sont prêts. Décrivez maintenant ce que vous vendez : un compteur pour l'usage et un forfait avec son prix.",
       "finish": "Aller à mon tableau de bord",
       "next": {
-        "dashboard": {
-          "title": "Ouvrir le tableau de bord du bac à sable",
-          "body": "Voyez l'usage et la facture auxquels mène l'événement de test."
+        "meters": {
+          "title": "Ajouter un compteur",
+          "body": "Choisissez ce que vous mesurez : appels d'API, stockage, sièges, tokens."
+        },
+        "packages": {
+          "title": "Publier un forfait",
+          "body": "Un tarif fixe plus un prix par unité utilisée."
         },
         "keys": {
           "title": "Créer une clé d'API",
-          "body": "Faites envoyer l'usage par votre propre serveur."
-        },
-        "team": {
-          "title": "Inviter votre équipe",
-          "body": "Vos collègues peuvent rejoindre avec leur propre rôle."
+          "body": "Laissez votre propre serveur envoyer l'usage."
         },
         "live": {
-          "title": "Passer en production",
-          "body": "Connectez un prestataire de paiement et activez la vraie facturation."
+          "title": "Passer en live",
+          "body": "Connectez un prestataire de paiement et activez la facturation réelle."
         }
       }
     },
@@ -4656,7 +4604,6 @@
         "app": "Créer votre première application",
         "meter": "Ajouter un compteur",
         "package": "Publier un forfait avec un prix",
-        "event": "Envoyer un événement de test",
         "key": "Créer une clé d'API",
         "live": "Passer en production"
       }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
-import { useParams } from "@tanstack/vue-router";
+
 import AppField from "@/app/layout/AppField.vue";
 import { ListTree, Pause, Play, RefreshCw, Send, Trash2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
@@ -23,14 +23,14 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions, type RowAction } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { answerBody, isInsecureUrl, plainAnswer } from "./lib";
 import { EVENT_TYPES, useWebhookActions, useWebhookDeliveries, useWebhookEndpoints, isEventType, type EventType } from "./api";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const endpoints = useWebhookEndpoints(tenantId);
 const act = useWebhookActions(tenantId);
 const shell = useShell();
@@ -184,8 +184,8 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!endpoints.isPending.value && !endpoints.error.value && list.length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.webhooks.empty") }}</p>
-    <p v-else-if="list.length > 0 && endpointsTable.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="!endpoints.isPending.value && !endpoints.error.value && list.length === 0">{{ t("billing.webhooks.empty") }}</TableEmpty>
+    <TableEmpty v-else-if="list.length > 0 && endpointsTable.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-if="list.length > 0" v-model:page="endpointsTable.page.value" v-model:size="endpointsTable.size.value" :pages="endpointsTable.pages.value" :total="endpointsTable.total.value" />
   </Card>
 
@@ -238,8 +238,8 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
             </TableRow>
           </TableBody>
         </Table>
-        <p v-if="!deliveries.isPending.value && !deliveries.error.value && (deliveries.data.value?.deliveries ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.webhooks.noDeliveries") }}</p>
-        <p v-else-if="log.length === 0 || deliveriesTable.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+        <TableEmpty v-if="!deliveries.isPending.value && !deliveries.error.value && (deliveries.data.value?.deliveries ?? []).length === 0">{{ t("billing.webhooks.noDeliveries") }}</TableEmpty>
+        <TableEmpty v-else-if="log.length === 0 || deliveriesTable.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
         <DataPagination v-if="log.length > 0" v-model:page="deliveriesTable.page.value" v-model:size="deliveriesTable.size.value" :pages="deliveriesTable.pages.value" :total="deliveriesTable.total.value" />
       </div>
     </div>

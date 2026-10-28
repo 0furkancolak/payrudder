@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
-import { useParams } from "@tanstack/vue-router";
+
 import { computed, ref, watch } from "vue";
 import { ArrowUpRight, Plus, Trash2, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
@@ -22,7 +22,7 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
 import { useAccountActions, usePreviewRouting, useProviderAccounts, useProviderSubscriptions, useRoutingRules, useSetRoutingRules, type Rule } from "./api";
 import CatalogueCard from "./CatalogueCard.vue";
@@ -30,11 +30,11 @@ import BankTransferForm from "./BankTransferForm.vue";
 import { templateText } from "./templates";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import type { Environment } from "@/shared/lib/environment";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 
 // --- accounts
 const accounts = useProviderAccounts(tenantId);
@@ -172,8 +172,8 @@ const when = (v?: string) => fmt.date(v, "day", "—");
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!accounts.isPending.value && (accounts.data.value?.accounts ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.providers.noAccounts") }}</p>
-    <p v-else-if="accountTable.total.value === 0 && accountTable.active.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="!accounts.isPending.value && (accounts.data.value?.accounts ?? []).length === 0">{{ t("billing.providers.noAccounts") }}</TableEmpty>
+    <TableEmpty v-else-if="accountTable.total.value === 0 && accountTable.active.value">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-model:page="accountTable.page.value" v-model:size="accountTable.size.value" :pages="accountTable.pages.value" :total="accountTable.total.value" />
     <ErrorText :error="actions.remove.error.value" class="px-3" />
     <p v-if="actions.save.isSuccess.value" class="text-success px-3 text-sm" role="status">{{ t("billing.providers.saved") }}</p>
@@ -239,10 +239,10 @@ const when = (v?: string) => fmt.date(v, "day", "—");
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!providerSubs.isPending.value && (providerSubs.data.value?.subscriptions ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">
+    <TableEmpty v-if="!providerSubs.isPending.value && (providerSubs.data.value?.subscriptions ?? []).length === 0">
       {{ t("billing.providers.noProviderSubscriptions") }}
-    </p>
-    <p v-else-if="subTable.total.value === 0 && subTable.active.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    </TableEmpty>
+    <TableEmpty v-else-if="subTable.total.value === 0 && subTable.active.value">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-model:page="subTable.page.value" v-model:size="subTable.size.value" :pages="subTable.pages.value" :total="subTable.total.value" />
   </Card>
 

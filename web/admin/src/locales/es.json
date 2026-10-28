@@ -4524,18 +4524,12 @@
     }
   },
   "onboarding": {
-    "skipStep": "Omitir este paso",
     "skip": "Omitir por ahora",
     "back": "Atrás",
     "continue": "Continuar",
-    "stepLabel": "Paso {n} de {total}",
     "steps": {
       "welcome": "Bienvenida",
-      "organisation": "Organización",
-      "app": "Primera app",
-      "meter": "Primer medidor",
-      "package": "Primer paquete",
-      "event": "Evento de prueba",
+      "app": "Configuración",
       "done": "Listo"
     },
     "welcome": {
@@ -4562,85 +4556,39 @@
       "start": "Configurar mi cuenta",
       "time": "Lleva unos dos minutos."
     },
-    "organisation": {
-      "title": "Tu organización",
-      "body": "El nombre que ven tu equipo y tus clientes, y los valores por defecto de tu primera app.",
-      "name": "Nombre de la organización",
+    "setup": {
+      "title": "Configura tu primera app",
+      "body": "Una app es un producto que facturas. Incluye un sandbox para probar y un entorno en vivo para pagos reales.",
+      "org": "Nombre de la organización",
+      "app": "Nombre de la app",
+      "appHint": "Tus clientes ven este nombre en sus facturas y páginas de pago.",
       "currency": "Moneda",
       "timezone": "Zona horaria",
-      "note": "La moneda y la zona horaria deciden cómo se calculan las facturas, así que no pueden cambiarse una vez creada la app."
-    },
-    "app": {
-      "title": "Tu primera app",
-      "body": "Una app es un producto que facturas. Incluye una sandbox para probar y un entorno de producción para pagos reales.",
-      "name": "Nombre de la app",
-      "defaultName": "Mi primera app",
-      "create": "Crear app",
+      "note": "La moneda y la zona horaria deciden cómo se calculan las facturas, así que no se pueden cambiar una vez creada la app.",
+      "create": "Crear mi app",
+      "defaultAppName": "Mi primera app",
       "created": "{name} está lista, con su sandbox."
-    },
-    "meter": {
-      "title": "¿Qué mides?",
-      "body": "Un medidor convierte los eventos de uso en una cantidad facturable. Elige una plantilla; podrás añadir o cambiar medidores después.",
-      "create": "Crear medidor",
-      "templates": {
-        "api_calls": {
-          "name": "Llamadas a la API",
-          "body": "Cuenta cada petición de tus clientes."
-        },
-        "storage": {
-          "name": "Almacenamiento (GB)",
-          "body": "El máximo de almacenamiento que un cliente usó en el periodo."
-        },
-        "seats": {
-          "name": "Puestos",
-          "body": "El máximo de puestos que tuvo un cliente en el periodo."
-        },
-        "tokens": {
-          "name": "Tokens de IA",
-          "body": "Suma los tokens que gastan tus clientes."
-        }
-      }
-    },
-    "package": {
-      "title": "Tu primer paquete",
-      "body": "Un paquete es a lo que se suscribe un cliente: una cuota mensual fija más un precio por cada unidad que usa.",
-      "name": "Nombre del paquete",
-      "defaultName": "Inicial",
-      "fee": "Cuota mensual ({currency})",
-      "unitPrice": "Precio por {unit} ({currency})",
-      "note": "Puedes añadir límites, otras monedas y una prueba gratuita en la página Paquetes.",
-      "create": "Publicar paquete"
-    },
-    "event": {
-      "title": "Envía un evento de prueba",
-      "body": "Creamos un cliente de prueba, lo suscribimos a tu paquete y enviamos un evento de uso a tu sandbox, para que veas funcionar todo el recorrido.",
-      "customer": "Cliente",
-      "meter": "Medidor",
-      "quantity": "Cantidad",
-      "send": "Enviar evento de prueba",
-      "sending": "Enviando…",
-      "sent": "Aceptado: {quantity} {unit} de uso en tu sandbox."
     },
     "done": {
       "title": "Todo listo",
-      "body": "Tu sandbox tiene un medidor, un paquete y su primer evento de uso. Esto suele venir después.",
+      "body": "Tu app y su sandbox están listas. Ahora describe lo que vendes: un medidor para lo que usan tus clientes y un paquete con su precio.",
       "finish": "Ir a mi panel",
       "next": {
-        "dashboard": {
-          "title": "Abre el panel de tu sandbox",
-          "body": "Mira el uso y la factura a los que lleva el evento de prueba."
+        "meters": {
+          "title": "Añadir un medidor",
+          "body": "Elige qué medir: llamadas a la API, almacenamiento, asientos, tokens."
+        },
+        "packages": {
+          "title": "Publicar un paquete",
+          "body": "Una tarifa fija más un precio por cada unidad usada."
         },
         "keys": {
-          "title": "Crea una clave de API",
-          "body": "Haz que tu propio servidor envíe el uso."
-        },
-        "team": {
-          "title": "Invita a tu equipo",
-          "body": "Los compañeros pueden unirse con su propio rol."
+          "title": "Crear una clave de API",
+          "body": "Deja que tu propio servidor envíe el uso."
         },
         "live": {
-          "title": "Pasar a producción",
-          "body": "Conecta un proveedor de pago y activa la facturación real."
+          "title": "Salir a producción",
+          "body": "Conecta un proveedor de pagos y activa la facturación real."
         }
       }
     },
@@ -4656,7 +4604,6 @@
         "app": "Crea tu primera app",
         "meter": "Añade un medidor",
         "package": "Publica un paquete con precio",
-        "event": "Envía un evento de prueba",
         "key": "Crea una clave de API",
         "live": "Pasa a producción"
       }

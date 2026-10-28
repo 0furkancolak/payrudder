@@ -16,6 +16,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { useCoupons, useRedemptions } from "./api";
 import { targetKey } from "./promotions";
 import RedemptionsTable from "./RedemptionsTable.vue";
+import { TableEmpty } from "@/shared/ui/table";
 
 /** Every use of a coupon, newest first, a page at a time: narrowed by coupon or by customer. A row opens the redemption with what it took off and where it landed. */
 const props = defineProps<{ tenantId: string }>();
@@ -80,7 +81,7 @@ const detailRows = computed(() => {
     </DataToolbar>
     <RedemptionsTable :rows="rows" :tenant-id="tenantId" :selected="index" @select="(i) => (index = i)" />
     <Skeleton v-if="list.isPending.value" class="mx-3 my-4 h-24" />
-    <p v-else-if="rows.length === 0 && !list.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ active ? t("common.noMatches") : t("billing.pricing.promotions.redemptions.none") }}</p>
+    <TableEmpty v-else-if="rows.length === 0 && !list.error.value">{{ active ? t("common.noMatches") : t("billing.pricing.promotions.redemptions.none") }}</TableEmpty>
     <DataPagination v-model:size="size" :page="history.length + 1" :total="list.data.value?.total ?? 0" :has-prev="history.length > 0" :has-next="!!list.data.value?.next_page_token" @prev="back" @next="next" />
   </Card>
 

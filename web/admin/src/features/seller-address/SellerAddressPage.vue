@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Pencil } from "@lucide/vue";
-import { useParams } from "@tanstack/vue-router";
+
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useTenant } from "@/features/tenants";
@@ -12,10 +12,10 @@ import { Input } from "@/shared/ui/input";
 import { LocationFields } from "@/shared/ui/location-fields";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useSetSellerAddress } from "./api";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t } = useI18n();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tenant = useTenant(tenantId);
 const save = useSetSellerAddress(tenantId);
 

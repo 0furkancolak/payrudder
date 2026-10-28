@@ -23,7 +23,7 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreateCreditPack, useCreditPacks, useSetCreditPackActive } from "./api";
 import { formatCredits, validityDays } from "./lib";
 
@@ -98,7 +98,7 @@ function submitPack() {
     <h3 class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.credits.packs.title") }}</h3>
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.credits.packs.state')" :options="states" />
-      <HeaderAction :label="t('billing.credits.packs.create')" @click="open = true" />
+      <HeaderAction :label="t('billing.credits.packs.new')" @click="open = true" />
     </DataToolbar>
     <ErrorText :error="packs.error.value" class="px-3" />
     <Table>
@@ -123,8 +123,8 @@ function submitPack() {
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="packs.data.value && !(packs.data.value.packs ?? []).length" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.credits.packs.none") }}</p>
-    <p v-else-if="table.total.value === 0 && packs.data.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="packs.data.value && !(packs.data.value.packs ?? []).length">{{ t("billing.credits.packs.none") }}</TableEmpty>
+    <TableEmpty v-else-if="table.total.value === 0 && packs.data.value">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
     <ErrorText :error="setActive.error.value" class="px-3" />
 

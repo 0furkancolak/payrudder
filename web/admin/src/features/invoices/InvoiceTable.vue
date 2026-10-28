@@ -17,7 +17,7 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorState } from "@/shared/ui/error-state";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useTenantInvoices } from "./api";
 import InvoiceDetail from "./InvoiceDetail.vue";
 import { peek } from "@/features/related/peek";
@@ -94,9 +94,9 @@ useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
     </TableBody>
   </Table>
   <DataPagination v-if="list.length" v-model:size="table.size.value" :page="table.current.value" :pages="table.pages.value" :total="table.total.value" @update:page="table.page.value = $event" />
-  <p v-if="!invoices.isPending.value && list.length === 0 && !invoices.error.value" class="text-muted-foreground p-4 text-center text-sm">
+  <TableEmpty v-if="!invoices.isPending.value && list.length === 0 && !invoices.error.value">
     {{ t("tenant.noInvoices") }}
-  </p>
+  </TableEmpty>
 
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.number || t('tenant.draft')" :description="current ? [label(t, te, 'invoiceKind', current.kind), current.customer_external_id].filter(Boolean).join(' · ') : undefined" wide>
     <InvoiceDetail v-if="current" :key="current.id" :tenant-id="tenantId" :invoice-id="current.id ?? ''" />

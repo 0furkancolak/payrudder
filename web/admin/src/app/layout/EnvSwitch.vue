@@ -51,7 +51,7 @@ function confirm() {
     <FlaskConical v-if="env === 'sandbox'" class="size-4" aria-hidden="true" />
     <Radio v-else class="size-4" aria-hidden="true" />
     <span data-testid="env-switch-current">{{ t(`product.env.${env}`) }}</span>
-    <ArrowLeftRight class="text-muted-foreground size-3.5" aria-hidden="true" />
+    <ArrowLeftRight class="text-muted-foreground size-3.5 max-sm:hidden" aria-hidden="true" />
   </button>
 
   <Dialog v-model:open="asking">

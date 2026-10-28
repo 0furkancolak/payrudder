@@ -14,7 +14,7 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCouponActions, useCoupons, type Coupon } from "./api";
 import CouponDetail from "./CouponDetail.vue";
 import CouponSheet from "./CouponSheet.vue";
@@ -95,8 +95,8 @@ const actionsOf = (c: Coupon, i: number) => [
       </TableBody>
     </Table>
     <Skeleton v-if="coupons.isPending.value" class="mx-3 my-4 h-24" />
-    <p v-else-if="list.length === 0 && !coupons.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.pricing.coupons.empty") }}</p>
-    <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-else-if="list.length === 0 && !coupons.error.value">{{ t("billing.pricing.coupons.empty") }}</TableEmpty>
+    <TableEmpty v-else-if="list.length > 0 && table.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
-import { Link, useParams } from "@tanstack/vue-router";
+import { Link } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { keyMask } from "@/shared/lib/environment";
@@ -22,14 +22,14 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { environmentWord, isValidSlug, useAccountApps, useCreateApiKey, useCreateApp, useRevokeApiKey, type CreatedKey } from "./api";
 import { CurrencySelect, TimezoneSelect } from "@/shared/ui/search-select";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, te } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tenant = useTenant(tenantId);
 /** Apps belong to an account; the tenant this tab is opened from says which. */
 const accountId = computed(() => tenant.data.value?.account_id ?? "");
@@ -139,8 +139,8 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!apps.isPending.value && !apps.error.value && list.length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("apps.empty") }}</p>
-    <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="!apps.isPending.value && !apps.error.value && list.length === 0">{{ t("apps.empty") }}</TableEmpty>
+    <TableEmpty v-else-if="list.length > 0 && table.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 

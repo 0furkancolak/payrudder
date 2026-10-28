@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Copy, CreditCard, Gift, Link2, MapPin, Pencil, Plus, UserPen } from "@lucide/vue";
+import { Check, Copy, CreditCard, Coins, Link2, MapPin, Pencil, Plus, UserPen } from "@lucide/vue";
 import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -164,7 +164,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
             <span v-if="balance.data.value?.next_expire_time" class="text-muted-foreground text-xs">{{ t("billing.credits.customer.nextExpiry", { when: fmt.date(balance.data.value.next_expire_time, "dateTime") }) }}</span>
           </div>
           <div class="flex flex-wrap gap-2">
-            <Button size="sm" data-testid="customer-grant-credits" @click="granting = true"><Gift aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
+            <Button size="sm" data-testid="customer-grant-credits" @click="granting = true"><Coins aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
             <Button size="sm" variant="outline" @click="emit('credits')">{{ t("billing.customers.sheet.manageCredits") }}</Button>
           </div>
         </div>

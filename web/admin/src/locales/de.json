@@ -4524,18 +4524,12 @@
     }
   },
   "onboarding": {
-    "skipStep": "Diesen Schritt überspringen",
     "skip": "Vorerst überspringen",
     "back": "Zurück",
     "continue": "Weiter",
-    "stepLabel": "Schritt {n} von {total}",
     "steps": {
       "welcome": "Willkommen",
-      "organisation": "Organisation",
-      "app": "Erste App",
-      "meter": "Erster Zähler",
-      "package": "Erstes Paket",
-      "event": "Testereignis",
+      "app": "Einrichten",
       "done": "Fertig"
     },
     "welcome": {
@@ -4562,85 +4556,39 @@
       "start": "Mein Konto einrichten",
       "time": "Es dauert etwa zwei Minuten."
     },
-    "organisation": {
-      "title": "Ihre Organisation",
-      "body": "Der Name, den Ihr Team und Ihre Kunden sehen, und die Standardwerte für Ihre erste App.",
-      "name": "Name der Organisation",
+    "setup": {
+      "title": "Erste App einrichten",
+      "body": "Eine App ist ein Produkt, das Sie abrechnen. Sie hat eine Sandbox zum Testen und eine Live-Umgebung für echte Zahlungen.",
+      "org": "Name der Organisation",
+      "app": "App-Name",
+      "appHint": "Ihre Kunden sehen diesen Namen auf Rechnungen und Zahlungsseiten.",
       "currency": "Währung",
       "timezone": "Zeitzone",
-      "note": "Währung und Zeitzone bestimmen, wie Rechnungen berechnet werden, und lassen sich nach dem Anlegen der App nicht mehr ändern."
-    },
-    "app": {
-      "title": "Ihre erste App",
-      "body": "Eine App ist ein Produkt, das Sie abrechnen. Sie kommt mit einer Sandbox zum Testen und einer Live-Umgebung für echte Zahlungen.",
-      "name": "Name der App",
-      "defaultName": "Meine erste App",
+      "note": "Währung und Zeitzone bestimmen, wie Rechnungen berechnet werden. Sie lassen sich nach dem Anlegen der App nicht mehr ändern.",
       "create": "App erstellen",
-      "created": "{name} ist bereit, mit ihrer Sandbox."
-    },
-    "meter": {
-      "title": "Was messen Sie?",
-      "body": "Ein Zähler macht aus Nutzungsereignissen eine abrechenbare Menge. Wählen Sie eine Vorlage; Zähler lassen sich später ergänzen oder ändern.",
-      "create": "Zähler erstellen",
-      "templates": {
-        "api_calls": {
-          "name": "API-Aufrufe",
-          "body": "Zählt jede Anfrage Ihrer Kunden."
-        },
-        "storage": {
-          "name": "Speicher (GB)",
-          "body": "Der höchste Speicher, den ein Kunde im Zeitraum nutzte."
-        },
-        "seats": {
-          "name": "Plätze",
-          "body": "Die höchste Zahl an Plätzen, die ein Kunde im Zeitraum hatte."
-        },
-        "tokens": {
-          "name": "KI-Tokens",
-          "body": "Addiert die Tokens, die Ihre Kunden verbrauchen."
-        }
-      }
-    },
-    "package": {
-      "title": "Ihr erstes Paket",
-      "body": "Ein Paket ist das, was ein Kunde abonniert: eine feste Monatsgebühr plus ein Preis für jede genutzte Einheit.",
-      "name": "Name des Pakets",
-      "defaultName": "Starter",
-      "fee": "Monatsgebühr ({currency})",
-      "unitPrice": "Preis pro {unit} ({currency})",
-      "note": "Limits, weitere Währungen und eine kostenlose Testphase fügen Sie auf der Seite Pakete hinzu.",
-      "create": "Paket veröffentlichen"
-    },
-    "event": {
-      "title": "Testereignis senden",
-      "body": "Wir legen einen Testkunden an, abonnieren ihn auf Ihr Paket und senden ein Nutzungsereignis an Ihre Sandbox, damit Sie den ganzen Weg funktionieren sehen.",
-      "customer": "Kunde",
-      "meter": "Zähler",
-      "quantity": "Menge",
-      "send": "Testereignis senden",
-      "sending": "Wird gesendet…",
-      "sent": "Angenommen: {quantity} {unit} Nutzung in Ihrer Sandbox."
+      "defaultAppName": "Meine erste App",
+      "created": "{name} ist mit ihrer Sandbox bereit."
     },
     "done": {
       "title": "Alles bereit",
-      "body": "Ihre Sandbox hat einen Zähler, ein Paket und das erste Nutzungsereignis. Das folgt meist als Nächstes.",
+      "body": "Ihre App und ihre Sandbox sind bereit. Als Nächstes beschreiben Sie, was Sie verkaufen: einen Zähler für die Nutzung und ein Paket mit Preis.",
       "finish": "Zu meinem Dashboard",
       "next": {
-        "dashboard": {
-          "title": "Sandbox-Dashboard öffnen",
-          "body": "Sehen Sie die Nutzung und die Rechnung, zu der das Testereignis führt."
+        "meters": {
+          "title": "Zähler hinzufügen",
+          "body": "Legen Sie fest, was gemessen wird: API-Aufrufe, Speicher, Plätze, Tokens."
+        },
+        "packages": {
+          "title": "Paket veröffentlichen",
+          "body": "Eine feste Gebühr plus ein Preis je genutzter Einheit."
         },
         "keys": {
           "title": "API-Schlüssel erstellen",
-          "body": "Lassen Sie Ihren eigenen Server die Nutzung senden."
-        },
-        "team": {
-          "title": "Team einladen",
-          "body": "Kollegen können mit einer eigenen Rolle beitreten."
+          "body": "Ihr eigener Server sendet die Nutzung."
         },
         "live": {
           "title": "Live gehen",
-          "body": "Verbinden Sie einen Zahlungsanbieter und schalten Sie die echte Abrechnung ein."
+          "body": "Zahlungsanbieter verbinden und echte Abrechnung einschalten."
         }
       }
     },
@@ -4656,7 +4604,6 @@
         "app": "Erste App erstellen",
         "meter": "Zähler hinzufügen",
         "package": "Ein Paket mit Preis veröffentlichen",
-        "event": "Ein Testereignis senden",
         "key": "API-Schlüssel erstellen",
         "live": "Live gehen"
       }

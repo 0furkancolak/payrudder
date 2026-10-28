@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
-import { computed, ref } from "vue";
+import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useTabParam } from "@/shared/lib/useSearchValue";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
@@ -10,6 +9,7 @@ import OverviewTab from "./OverviewTab.vue";
 import PartnersTab from "./PartnersTab.vue";
 import PayoutsTab from "./PayoutsTab.vue";
 import ProgramTab from "./ProgramTab.vue";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /**
  * Growth > Affiliates: the partner program of one environment. One tab per job; each tab is its own component and asks the API only while it is open.
@@ -19,8 +19,7 @@ const TABS = ["overview", "program", "partners", "commissions", "payouts", "jour
 type Tab = (typeof TABS)[number];
 
 const { t } = useI18n();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tab = useTabParam<Tab>("tab", TABS, "overview");
 /** A payout another tab sends the reader to (the payout of a commission). */
 const focusPayout = ref("");

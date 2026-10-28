@@ -2,7 +2,7 @@
 import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
 import { ArrowUpRight, Ban } from "@lucide/vue";
-import { useParams, useSearch } from "@tanstack/vue-router";
+import { useSearch } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -22,14 +22,14 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { usePaymentLinkActions, usePaymentLinks } from "./api";
 import PaymentLinkSheet from "./PaymentLinkSheet.vue";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, locale } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 
 // A page can be opened from an invoice or a customer with the form prefilled (?invoice=…, ?customer=…); the sheet follows the address when it changes in the page.
 const search = useSearch({ strict: false });
@@ -167,8 +167,8 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!links.isPending.value && list.length === 0 && !links.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.paymentLinks.empty") }}</p>
-    <p v-else-if="shown.length === 0 && active" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="!links.isPending.value && list.length === 0 && !links.error.value">{{ t("billing.paymentLinks.empty") }}</TableEmpty>
+    <TableEmpty v-else-if="shown.length === 0 && active">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination :page="history.length + 1" :has-prev="history.length > 0" :has-next="!!links.data.value?.next_page_token" @prev="back" @next="next" />
 
     <DetailSheet v-model:index="detail" :total="shown.length" :title="t('billing.paymentLinks.title')" :description="current?.id ?? ''" :edge="nav.edge.value" @edge="nav.onEdge">

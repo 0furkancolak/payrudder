@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
-import { useParams } from "@tanstack/vue-router";
+
 import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { ArrowUpRight, Plus, X } from "@lucide/vue";
@@ -26,15 +26,15 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreatePackage, usePackages } from "./api";
 import { buildUsage, isFreeTier, newPrice, type Price, type PriceDraft, type PriceModel, type QuotaRow } from "./usage";
 import { CurrencySelect } from "@/shared/ui/search-select";
 import { FALLBACK_CURRENCY } from "@/shared/lib/currencies";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, locale } = useI18n();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tenantCurrency = useTenantCurrency(tenantId);
 const canWrite = useCanWrite();
 const packages = usePackages(tenantId);
@@ -277,10 +277,10 @@ function submit() {
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!packages.isPending.value && (packages.data.value ?? []).length === 0 && !packages.error.value" class="text-muted-foreground p-4 text-center text-sm">
+    <TableEmpty v-if="!packages.isPending.value && (packages.data.value ?? []).length === 0 && !packages.error.value">
       {{ t("billing.packages.empty") }}
-    </p>
-    <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    </TableEmpty>
+    <TableEmpty v-else-if="list.length > 0 && table.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 

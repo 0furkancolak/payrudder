@@ -19,7 +19,7 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useSubscriptions } from "./api";
 import { intervalKey, seatsOf, TRIAL_WARNING_DAYS, trialDaysLeft, trialsEndingSoon } from "./lib";
 
@@ -125,10 +125,10 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!subs.isPending.value && list.length === 0 && !subs.error.value" class="text-muted-foreground p-4 text-center text-sm">
+    <TableEmpty v-if="!subs.isPending.value && list.length === 0 && !subs.error.value">
       {{ t("billing.subscriptions.empty") }}
-    </p>
-    <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    </TableEmpty>
+    <TableEmpty v-else-if="list.length > 0 && table.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 

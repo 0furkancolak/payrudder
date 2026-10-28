@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { checklist, doneCount, type Facts } from "./checklist";
-import { finishOnboarding, hideChecklist, loadProgress, patchProgress, progress, progressReady, resumeOnboarding, setProgressStore, skipOnboarding, slug, stepBy, wizardOpen, type Progress, type ProgressStore } from "./state";
-import { METER_TEMPLATES, templateByCode } from "./templates";
+import { finishOnboarding, hideChecklist, loadProgress, patchProgress, progress, progressReady, resumeOnboarding, setProgressStore, skipOnboarding, stepBy, wizardOpen, type Progress, type ProgressStore } from "./state";
 
 let store: Map<string, string>;
 beforeEach(() => {
@@ -24,7 +23,7 @@ describe("who sees the wizard", () => {
   });
 
   it("keeps opening while it is half done, even once the first app exists, and stays shut after a skip or the end", () => {
-    expect(wizardOpen({ status: "active", step: "meter" }, { appCount: 1, canCreate: true })).toBe(true);
+    expect(wizardOpen({ status: "active", step: "app" }, { appCount: 1, canCreate: true })).toBe(true);
     expect(wizardOpen({ status: "skipped", step: "app" }, { appCount: 0, canCreate: true })).toBe(false);
     expect(wizardOpen({ status: "done", step: "done" }, { appCount: 0, canCreate: true })).toBe(false);
   });
@@ -32,27 +31,27 @@ describe("who sees the wizard", () => {
 
 describe("progress is kept per person", () => {
   it("is resumable: a step and what was made survive a reload", () => {
-    patchProgress({ step: "package", app: "app-1", meter: "api_calls" });
-    expect(JSON.parse(store.get("payrudder.onboarding.u1") ?? "{}")).toMatchObject({ status: "active", step: "package", app: "app-1", meter: "api_calls" });
+    patchProgress({ step: "app", app: "app-1" });
+    expect(JSON.parse(store.get("payrudder.onboarding.u1") ?? "{}")).toMatchObject({ status: "active", step: "app", app: "app-1" });
     progress.value = null;
     loadProgress("u1");
-    expect(progress.value).toMatchObject({ step: "package", app: "app-1" });
+    expect(progress.value).toMatchObject({ step: "app", app: "app-1" });
   });
 
   it("is not shared with another person on the same browser", () => {
-    patchProgress({ step: "meter" });
+    patchProgress({ step: "app" });
     loadProgress("u2");
     expect(progress.value).toBeNull();
     loadProgress("u1");
-    expect(progress.value?.step).toBe("meter");
+    expect(progress.value?.step).toBe("app");
   });
 
   it("can be skipped, resumed where it stopped, finished, and its checklist hidden", () => {
-    patchProgress({ step: "meter", app: "a" });
+    patchProgress({ step: "app", app: "a" });
     skipOnboarding();
-    expect(progress.value).toMatchObject({ status: "skipped", step: "meter", app: "a" });
+    expect(progress.value).toMatchObject({ status: "skipped", step: "app", app: "a" });
     resumeOnboarding();
-    expect(progress.value).toMatchObject({ status: "active", step: "meter" });
+    expect(progress.value).toMatchObject({ status: "active", step: "app" });
     finishOnboarding();
     expect(progress.value).toMatchObject({ status: "done", step: "done" });
     hideChecklist();
@@ -73,43 +72,19 @@ describe("progress is kept per person", () => {
 
   it("moves between steps inside the list", () => {
     expect(stepBy("welcome", -1)).toBe("welcome");
-    expect(stepBy("organisation", 1)).toBe("app");
+    expect(stepBy("welcome", 1)).toBe("app");
     expect(stepBy("done", 1)).toBe("done");
   });
 });
 
 describe("the checklist reads the data", () => {
-  const none: Facts = { apps: 0, meters: 0, packages: 0, event: false, keys: 0, live: false };
+  const none: Facts = { apps: 0, meters: 0, packages: 0, keys: 0, live: false };
 
   it("ticks what exists, whoever made it", () => {
     expect(doneCount(checklist(none))).toBe(0);
     const rows = checklist({ ...none, apps: 1, meters: 2, packages: 1 });
     expect(rows.filter((r) => r.done).map((r) => r.key)).toEqual(["app", "meter", "package"]);
-    expect(doneCount(checklist({ apps: 1, meters: 1, packages: 1, event: true, keys: 1, live: true }))).toBe(6);
-  });
-});
-
-describe("package codes", () => {
-  it("are what the API accepts", () => {
-    expect(slug("Starter")).toBe("starter");
-    expect(slug("Başlangıç Paketi 2")).toBe("baslangic-paketi-2");
-    expect(slug("2024 plan")).toBe("p-2024-plan");
-    expect(slug("***")).toBe("starter");
-    expect(slug("a".repeat(100)).length).toBe(63);
-    for (const name of ["Pro", "çok güzel", "x_y z", "1"]) expect(slug(name)).toMatch(/^[a-z][a-z0-9_-]{0,62}$/);
-  });
-});
-
-describe("meter templates", () => {
-  it("are valid meters: a sum or a maximum names the property it reads, codes are the API's", () => {
-    for (const m of METER_TEMPLATES) {
-      expect(m.meter.code).toMatch(/^[a-z][a-z0-9_]{0,62}$/);
-      expect(m.meter.unit_label.length).toBeGreaterThan(0);
-      if (m.meter.aggregation !== "AGGREGATION_COUNT") expect(m.meter.value_property).toBeTruthy();
-      expect(Number(m.sample)).toBeGreaterThan(0);
-      expect(templateByCode(m.meter.code)).toBe(m);
-    }
-    expect(new Set(METER_TEMPLATES.map((m) => m.meter.code)).size).toBe(METER_TEMPLATES.length);
+    expect(doneCount(checklist({ apps: 1, meters: 1, packages: 1, keys: 1, live: true }))).toBe(5);
   });
 });
 
@@ -127,7 +102,7 @@ const settle = () => new Promise((r) => setTimeout(r, 0));
 
 describe("progress kept on the server", () => {
   it("what the server has wins over this browser's copy, and the home waits for it", async () => {
-    store.set("payrudder.onboarding.s1", JSON.stringify({ status: "active", step: "meter" }));
+    store.set("payrudder.onboarding.s1", JSON.stringify({ status: "active", step: "app" }));
     const f = fakeServer({ status: "done", step: "done", app: "a1" });
     setProgressStore(f.server);
     loadProgress("s1");
@@ -153,22 +128,22 @@ describe("progress kept on the server", () => {
   });
 
   it("sends up the progress only this browser has, and the fields the server lacks", async () => {
-    store.set("payrudder.onboarding.s3", JSON.stringify({ status: "active", step: "event", app: "a", meter: "m" }));
+    store.set("payrudder.onboarding.s3", JSON.stringify({ status: "active", step: "app", app: "a", meter: "m" }));
     const f = fakeServer(null);
     setProgressStore(f.server);
     loadProgress("s3");
     f.answer();
     await settle();
-    expect(f.patches).toEqual([{ status: "active", step: "event", app: "a", meter: "m" }]);
+    expect(f.patches).toEqual([{ status: "active", step: "app", app: "a", meter: "m" }]);
 
-    store.set("payrudder.onboarding.s4", JSON.stringify({ status: "active", step: "event", app: "a", meter: "m", currency: "TRY" }));
-    const g = fakeServer({ status: "active", step: "package", app: "a" });
+    store.set("payrudder.onboarding.s4", JSON.stringify({ status: "active", step: "app", app: "a", meter: "m", currency: "TRY" }));
+    const g = fakeServer({ status: "active", step: "app", app: "a" });
     setProgressStore(g.server);
     loadProgress("s4");
     g.answer();
     await settle();
     expect(g.patches).toEqual([{ meter: "m", currency: "TRY" }]);
-    expect(progress.value).toMatchObject({ step: "package", app: "a", meter: "m", currency: "TRY" });
+    expect(progress.value).toMatchObject({ step: "app", app: "a", meter: "m", currency: "TRY" });
   });
 
   it("goes on with this browser's copy when the server cannot say, and asks again the next time", async () => {
@@ -190,27 +165,27 @@ describe("progress kept on the server", () => {
   });
 
   it("asks once per person: coming back to the home does not undo what was done since", async () => {
-    const f = fakeServer({ status: "active", step: "meter" });
+    const f = fakeServer({ status: "active", step: "app" });
     setProgressStore(f.server);
     loadProgress("s6");
     f.answer();
     await settle();
-    patchProgress({ step: "package" });
-    const g = fakeServer({ status: "active", step: "meter" });
+    patchProgress({ step: "app" });
+    const g = fakeServer({ status: "active", step: "app" });
     setProgressStore(g.server);
     loadProgress("s6");
     expect(progressReady.value).toBe(true);
-    expect(progress.value?.step).toBe("package");
+    expect(progress.value?.step).toBe("app");
   });
 
   it("a change made while the server is being asked for is newer than its answer", async () => {
-    const f = fakeServer({ status: "active", step: "meter", app: "a" });
+    const f = fakeServer({ status: "active", step: "app", app: "a" });
     setProgressStore(f.server);
     loadProgress("s7");
-    patchProgress({ step: "package", plan: "p" });
+    patchProgress({ step: "app" });
     f.answer();
     await settle();
-    expect(progress.value).toMatchObject({ step: "package", plan: "p", app: "a" });
+    expect(progress.value).toMatchObject({ step: "app", app: "a" });
   });
 
   it("writes every change through, as the change and not the whole", () => {

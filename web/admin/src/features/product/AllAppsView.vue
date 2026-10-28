@@ -12,7 +12,7 @@ import { formatMinor, maskEmail } from "@/shared/lib/money";
 import { Card } from "@/shared/ui/card";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useApps } from "./api";
 
 /**
@@ -167,7 +167,7 @@ const failed = computed(() => targets.value.filter((_, i) => results.value[i]?.i
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!loading && rows.length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("scope.noData") }}</p>
+    <TableEmpty v-if="!loading && rows.length === 0">{{ t("scope.noData") }}</TableEmpty>
   </Card>
 
   <Card v-else class="flex flex-col gap-3 p-6" data-testid="all-apps-choose">

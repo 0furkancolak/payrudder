@@ -18,7 +18,7 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import { useCreditNotes, useRetryCreditNoteRefund } from "./api";
 import IssueCreditNoteSheet from "./IssueCreditNoteSheet.vue";
@@ -114,7 +114,7 @@ const current = table.row;
       </TableBody>
     </Table>
     <DataPagination v-if="list.length" v-model:size="table.size.value" :page="table.current.value" :pages="table.pages.value" :total="table.total.value" @update:page="table.page.value = $event" />
-    <p v-if="!notes.isPending.value && list.length === 0 && !notes.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.creditNotes.empty") }}</p>
+    <TableEmpty v-if="!notes.isPending.value && list.length === 0 && !notes.error.value">{{ t("billing.creditNotes.empty") }}</TableEmpty>
   </Card>
 
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.number ?? ''" :description="current?.reason || undefined">
