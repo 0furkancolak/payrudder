@@ -54,6 +54,15 @@
       "amountLow": "المبلغ، من الأدنى إلى الأعلى",
       "nameAsc": "الاسم، من أ إلى ي",
       "nameDesc": "الاسم، من ي إلى أ"
+    },
+    "bulk": {
+      "label": "إجراءات جماعية",
+      "selected": "{n} محدد | {n} محدد",
+      "clear": "مسح التحديد",
+      "selectPage": "تحديد كل صفوف هذه الصفحة",
+      "selectRow": "تحديد الصف",
+      "done": "تم {ok}، ولم يتغير {failed}",
+      "notChanged": "لم تتغير"
     }
   },
   "enums": {
@@ -539,7 +548,8 @@
         "noPayments": "لا توجد دفعات بعد.",
         "manageCredits": "إدارة الأرصدة",
         "paymentMethod": "طريقة الدفع"
-      }
+      },
+      "exportSelected": "تصدير المحدد بصيغة CSV"
     },
     "packages": {
       "new": "باقة جديدة",

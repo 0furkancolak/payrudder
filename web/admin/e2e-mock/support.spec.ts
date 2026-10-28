@@ -222,4 +222,34 @@ test.describe("support: the operator's inbox", () => {
     await expect(page.getByTestId("inbox-row-1050")).toHaveCount(0);
     await expect(page.getByTestId("inbox-row-1042")).toBeVisible();
   });
+
+  test("ticked tickets get the same change, a failure is named and the others still change", async ({ page }) => {
+    const gw = new MockGateway();
+    const a = ticket();
+    const b = ticket({ id: "c0000000-0000-4000-8000-000000000002", number: 1043, subject: "Second" });
+    const c = ticket({ id: "c0000000-0000-4000-8000-000000000003", number: 1044, subject: "Third" });
+    helpDesk(gw, [a, b, c]);
+    // The second ticket's update is refused.
+    gw.on((call) => (call.method === "PATCH" && call.path.endsWith(b.id) ? { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.request.invalid", message: "no" } } } : undefined));
+    await gw.install(page);
+    await signInAsOperator(page);
+    await page.goto("/support");
+    await expect(page.getByTestId("bulk-bar")).toHaveCount(0);
+    await page.getByTestId("inbox-row-1042").getByTestId("row-check").click();
+    await page.getByTestId("inbox-row-1043").getByTestId("row-check").click();
+    await page.getByTestId("inbox-row-1044").getByTestId("row-check").click();
+    await expect(page.getByTestId("bulk-count")).toHaveText("3 selected");
+    await page.getByTestId("bulk-priority").selectOption("urgent");
+    await page.getByTestId("bulk-assignee").fill("Sam");
+    await page.getByTestId("bulk-apply").click();
+    await expect(page.getByTestId("bulk-note")).toContainText("2 done, 1 not changed");
+    await expect(page.getByTestId("bulk-note")).toContainText("#1043");
+    expect([a.priority, c.priority, b.priority]).toEqual(["urgent", "urgent", "high"]);
+    expect(a.assignee).toBe("Sam");
+    // Only the one that failed stays ticked.
+    await expect(page.getByTestId("bulk-count")).toHaveText("1 selected");
+    await page.getByTestId("bulk-clear").click();
+    await expect(page.getByTestId("bulk-bar")).toHaveCount(0);
+  });
 });
+

@@ -54,6 +54,15 @@
       "amountLow": "Montant, croissant",
       "nameAsc": "Nom, A à Z",
       "nameDesc": "Nom, Z à A"
+    },
+    "bulk": {
+      "label": "Actions groupées",
+      "selected": "{n} sélectionné | {n} sélectionnés",
+      "clear": "Effacer la sélection",
+      "selectPage": "Sélectionner toutes les lignes de cette page",
+      "selectRow": "Sélectionner la ligne",
+      "done": "{ok} faits, {failed} non modifiés",
+      "notChanged": "Non modifiés"
     }
   },
   "enums": {
@@ -539,7 +548,8 @@
         "noPayments": "Aucun paiement pour l'instant.",
         "manageCredits": "Gérer les crédits",
         "paymentMethod": "Moyen de paiement"
-      }
+      },
+      "exportSelected": "Exporter la sélection en CSV"
     },
     "packages": {
       "new": "Nouveau forfait",

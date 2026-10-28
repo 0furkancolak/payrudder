@@ -54,6 +54,15 @@
       "amountLow": "Betrag, aufsteigend",
       "nameAsc": "Name, A bis Z",
       "nameDesc": "Name, Z bis A"
+    },
+    "bulk": {
+      "label": "Sammelaktionen",
+      "selected": "{n} ausgewählt | {n} ausgewählt",
+      "clear": "Auswahl aufheben",
+      "selectPage": "Alle Zeilen dieser Seite auswählen",
+      "selectRow": "Zeile auswählen",
+      "done": "{ok} erledigt, {failed} nicht geändert",
+      "notChanged": "Nicht geändert"
     }
   },
   "enums": {
@@ -539,7 +548,8 @@
         "noPayments": "Noch keine Zahlungen.",
         "manageCredits": "Guthaben verwalten",
         "paymentMethod": "Zahlungsmethode"
-      }
+      },
+      "exportSelected": "Auswahl als CSV exportieren"
     },
     "packages": {
       "new": "Neues Paket",

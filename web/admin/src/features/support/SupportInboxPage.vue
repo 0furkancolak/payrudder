@@ -16,6 +16,8 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PageHeader } from "@/shared/ui/page-header";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
+import { runBulk } from "@/shared/lib/bulk";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
 import { PRIORITIES, STATUSES, useOperatorSupportActions, useOperatorTicket, useQueue, type QueueFilter, type SupportPriority, type SupportStatus } from "./api";
@@ -60,6 +62,28 @@ watch(
   },
   { immediate: true },
 );
+// --- bulk: the same change to every ticked ticket, one call each; the ones that failed stay ticked and are named
+const bulkStatus = ref("");
+const bulkPriority = ref("");
+const bulkAssignee = ref("");
+const bulkNote = ref("");
+const bulkFailed = ref<string[]>([]);
+const bulkBusy = ref(false);
+async function applyBulk() {
+  const patch: { status?: SupportStatus; priority?: SupportPriority; assignee?: string } = {};
+  if (bulkStatus.value) patch.status = bulkStatus.value as SupportStatus;
+  if (bulkPriority.value) patch.priority = bulkPriority.value as SupportPriority;
+  if (bulkAssignee.value.trim()) patch.assignee = bulkAssignee.value.trim();
+  if (Object.keys(patch).length === 0) return;
+  bulkBusy.value = true;
+  const r = await runBulk(table.selectedRows.value, (row) => actions.update.mutateAsync({ id: row.id, ...patch }));
+  bulkBusy.value = false;
+  bulkFailed.value = r.failed.map((f) => `#${f.row.number}`);
+  bulkNote.value = t("common.bulk.done", { ok: r.ok.length, failed: r.failed.length });
+  for (const row of r.ok) table.tick(row, false);
+  bulkStatus.value = bulkPriority.value = bulkAssignee.value = "";
+}
+
 function change(patch: { status?: SupportStatus; priority?: SupportPriority; assignee?: string }) {
   const id = shown.value?.id;
   if (id) actions.update.mutate({ id, ...patch });
@@ -76,6 +100,19 @@ function send() {
   <ErrorState :error="queue.error.value" :retrying="queue.isFetching.value" class="mb-4" @retry="queue.refetch()" />
 
   <Card class="p-3">
+    <BulkBar :count="table.selectedRows.value.length" @clear="table.clearSelection()">
+      <NativeSelect v-model="bulkStatus" :aria-label="t('support.columns.status')" data-testid="bulk-status">
+        <option value="">{{ t("support.columns.status") }}</option>
+        <option v-for="s in STATUSES" :key="s" :value="s">{{ t(`support.status.${s}`) }}</option>
+      </NativeSelect>
+      <NativeSelect v-model="bulkPriority" :aria-label="t('support.fields.priority')" data-testid="bulk-priority">
+        <option value="">{{ t("support.fields.priority") }}</option>
+        <option v-for="p in PRIORITIES" :key="p" :value="p">{{ t(`support.priority.${p}`) }}</option>
+      </NativeSelect>
+      <Input v-model="bulkAssignee" class="w-36" maxlength="100" :placeholder="t('support.columns.assignee')" :aria-label="t('support.columns.assignee')" data-testid="bulk-assignee" />
+      <Button type="button" size="sm" :disabled="bulkBusy" data-testid="bulk-apply" @click="applyBulk">{{ t("common.applyFilter") }}</Button>
+    </BulkBar>
+    <p v-if="bulkNote" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulkNote }}<template v-if="bulkFailed.length > 0"> · {{ t("common.bulk.notChanged") }}: {{ bulkFailed.join(", ") }}</template></p>
     <div class="flex flex-wrap items-end gap-3 p-2" data-testid="support-filters">
       <label class="grid gap-1 text-xs">{{ t("support.columns.status") }}
         <NativeSelect v-model="filter.status" data-testid="filter-status">
@@ -104,6 +141,7 @@ function send() {
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
+          <TableHead class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
           <TableHead class="w-24">{{ t("support.columns.number") }}</TableHead>
           <TableHead>{{ t("support.columns.subject") }}</TableHead>
           <TableHead>{{ t("support.columns.account") }}</TableHead>
@@ -114,6 +152,7 @@ function send() {
       </TableHeader>
       <TableBody>
         <TableRow v-for="(r, i) in table.items.value" :key="r.id" class="cursor-pointer" :data-testid="`inbox-row-${r.number}`" @click="table.open(i)">
+          <TableCell><RowCheck :label="t('common.bulk.selectRow')" :checked="table.isTicked(r)" @change="(on) => table.tick(r, on)" /></TableCell>
           <TableCell class="mono text-sm">#{{ r.number }}</TableCell>
           <TableCell class="font-medium">{{ r.subject }}</TableCell>
           <TableCell class="text-sm">{{ r.account_name }}<span v-if="r.app_name" class="text-muted-foreground"> · {{ r.app_name }}</span></TableCell>

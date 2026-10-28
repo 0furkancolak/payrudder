@@ -54,6 +54,15 @@
       "amountLow": "Tutar, azdan çoğa",
       "nameAsc": "Ad, A'dan Z'ye",
       "nameDesc": "Ad, Z'den A'ya"
+    },
+    "bulk": {
+      "label": "Toplu işlemler",
+      "selected": "{n} seçili | {n} seçili",
+      "clear": "Seçimi temizle",
+      "selectPage": "Bu sayfadaki tüm satırları seç",
+      "selectRow": "Satırı seç",
+      "done": "{ok} tamamlandı, {failed} değişmedi",
+      "notChanged": "Değişmeyenler"
     }
   },
   "enums": {
@@ -539,7 +548,8 @@
         "noPayments": "Henüz ödeme yok.",
         "manageCredits": "Kredileri yönet",
         "paymentMethod": "Ödeme yöntemi"
-      }
+      },
+      "exportSelected": "Seçilenleri CSV olarak dışa aktar"
     },
     "packages": {
       "new": "Yeni paket",
