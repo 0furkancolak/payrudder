@@ -1,7 +1,8 @@
 <script setup lang="ts" generic="M extends boolean = false">
 import { Check, ChevronDown, X } from "@lucide/vue";
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { cn } from "@/shared/lib/utils";
 
 /**
@@ -9,17 +10,26 @@ import { cn } from "@/shared/lib/utils";
  * It opens a short list. With `multiple` the model is the list of chosen values (several may be on at once: the chip shows the first and how many more,
  * the list stays open to tick more), empty for "no filter"; without it the model is the one chosen value, empty for "no filter". Either way it stands in
  * for a select box wherever one filtered a list. An option whose value is empty is the "any" entry: it carries the words for it and clears the filter.
+ *
+ * Choosing in the list changes nothing yet: the choice is a draft, and the list (and the page behind it) follows it only when the person presses "Apply".
+ * Closing the list any other way throws the draft away. The cross on the chip clears the filter at once.
  */
 const props = defineProps<{ label: string; options: readonly { value: string; label?: string }[]; multiple?: M }>();
 const model = defineModel<M extends true ? string[] : string>();
+const { t } = useI18n();
 
 /** `multiple` as a bare attribute reaches a generic prop as an empty string: anything but absent or false is on. */
 const many = computed(() => props.multiple !== undefined && (props.multiple as unknown) !== false);
 const open = ref(false);
-const values = computed<string[]>(() => {
-  const v = model.value as string | string[] | undefined;
-  return (Array.isArray(v) ? v : v ? [v] : []).filter((x) => x !== "");
+const toList = (v: string | string[] | undefined) => (Array.isArray(v) ? v : v ? [v] : []).filter((x) => x !== "");
+/** What is applied: the model. */
+const values = computed<string[]>(() => toList(model.value as string | string[] | undefined));
+/** What the open list shows: the draft, which starts as what is applied. */
+const draft = ref<string[]>([]);
+watch(open, (isOpen) => {
+  if (isOpen) draft.value = [...values.value];
 });
+const changed = computed(() => draft.value.length !== values.value.length || draft.value.some((v) => !values.value.includes(v)));
 const text = (o: { value: string; label?: string }) => o.label ?? o.value;
 const labelOf = (v: string) => {
   const o = props.options.find((x) => x.value === v);
@@ -30,13 +40,13 @@ const rest = computed(() => values.value.length - 1);
 const anyLabel = computed(() => props.options.find((x) => x.value === "")?.label ?? "—");
 
 function pick(value: string) {
-  if (!many.value) {
-    model.value = value as never;
-    open.value = false;
-    return;
-  }
-  if (value === "") model.value = [] as never;
-  else model.value = (values.value.includes(value) ? values.value.filter((v) => v !== value) : [...values.value, value]) as never;
+  if (value === "") draft.value = [];
+  else if (!many.value) draft.value = [value];
+  else draft.value = draft.value.includes(value) ? draft.value.filter((v) => v !== value) : [...draft.value, value];
+}
+function apply() {
+  model.value = (many.value ? [...draft.value] : (draft.value[0] ?? "")) as never;
+  open.value = false;
 }
 function clear() {
   model.value = (many.value ? [] : "") as never;
@@ -65,15 +75,18 @@ function clear() {
             <button
               type="button"
               role="option"
-              :aria-selected="o.value === '' ? values.length === 0 : values.includes(o.value)"
+              :aria-selected="o.value === '' ? draft.length === 0 : draft.includes(o.value)"
               class="hover:bg-accent flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-start text-sm"
               @click="pick(o.value)"
             >
               <span :class="o.value === '' ? 'text-muted-foreground' : ''">{{ o.value === "" ? anyLabel : text(o) }}</span>
-              <Check v-if="o.value === '' ? values.length === 0 : values.includes(o.value)" class="size-4" aria-hidden="true" />
+              <Check v-if="o.value === '' ? draft.length === 0 : draft.includes(o.value)" class="size-4" aria-hidden="true" />
             </button>
           </li>
         </ul>
+        <div class="mt-1.5 flex justify-end border-t pt-1.5">
+          <button type="button" class="bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl px-3 py-1.5 text-sm font-medium disabled:opacity-50" :disabled="!changed" data-testid="filter-apply" @click="apply">{{ t("common.applyFilter") }}</button>
+        </div>
       </PopoverContent>
     </PopoverPortal>
   </PopoverRoot>

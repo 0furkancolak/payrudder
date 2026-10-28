@@ -43,7 +43,8 @@
     "validation": {
       "required": "هذا الحقل مطلوب.",
       "email": "أدخل عنوان بريد إلكتروني صالحًا."
-    }
+    },
+    "applyFilter": "تطبيق"
   },
   "enums": {
     "environment": {

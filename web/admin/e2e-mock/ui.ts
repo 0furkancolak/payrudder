@@ -68,14 +68,15 @@ export async function rowAction(row: Locator, name: string | RegExp): Promise<vo
 }
 
 /**
- * Chooses options of a filter chip: opens the chip by its name and picks the options in turn (an empty name picks the "all" entry by its text), then closes
- * the list. A chip with several values keeps its list open between choices; one with a single value closes it itself.
+ * Chooses options of a filter chip: opens the chip by its name and picks the options in turn (an empty name picks the "all" entry by its text), then applies
+ * them with the list's Apply button.
  */
 export async function pickFilters(page: Page, label: string, ...options: (string | RegExp)[]): Promise<void> {
   await page.getByRole("button", { name: label, exact: true }).click();
   const list = page.getByRole("listbox", { name: label });
   for (const option of options) await list.getByRole("option", { name: option, exact: typeof option === "string" }).click();
-  if (await list.isVisible()) await page.keyboard.press("Escape");
+  // Choosing is a draft until "Apply" is pressed.
+  await page.getByTestId("filter-apply").click();
   await list.waitFor({ state: "hidden" });
 }
 

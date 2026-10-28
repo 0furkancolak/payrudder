@@ -43,7 +43,8 @@
     "validation": {
       "required": "Ce champ est obligatoire.",
       "email": "Saisissez une adresse e-mail valide."
-    }
+    },
+    "applyFilter": "Appliquer"
   },
   "enums": {
     "environment": {

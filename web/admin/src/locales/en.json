@@ -43,7 +43,8 @@
     "validation": {
       "required": "This field is required.",
       "email": "Enter a valid e-mail address."
-    }
+    },
+    "applyFilter": "Apply"
   },
   "enums": {
     "environment": {
