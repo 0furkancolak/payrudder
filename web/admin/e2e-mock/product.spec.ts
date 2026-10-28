@@ -172,7 +172,7 @@ test.describe("app dashboard", () => {
     await expect(keys).not.toContainText("SECRET");
 
     // The page is the live view (the app is active): a live key is made here, in a sheet that names the environment and the role.
-    await keys.getByRole("button", { name: "New live key" }).click();
+    await page.getByTestId("new-live-key").click();
     const sheet = page.getByTestId("new-key-sheet");
     await expect(sheet.getByTestId("new-key-env")).toHaveText("Live");
     await sheet.getByTestId("create-key").click();
@@ -404,7 +404,7 @@ test.describe("members and invitations", () => {
     await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
     await expect(panel.getByTestId("member-grace@example.com")).toContainText("Grace Hopper");
-    await panel.getByTestId("invite-open").click();
+    await page.getByTestId("invite-open").click();
     const sheet = page.getByRole("dialog", { name: "Invite someone" });
     await sheet.getByLabel("E-mail").fill("ned@example.com");
     await sheet.getByLabel("Role", { exact: true }).selectOption("admin");
@@ -430,7 +430,7 @@ test.describe("members and invitations", () => {
     await signInAsAda(page);
     await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
-    await panel.getByTestId("invite-open").click();
+    await page.getByTestId("invite-open").click();
     const sheet = page.getByRole("dialog", { name: "Invite someone" });
     await sheet.getByLabel("E-mail").fill("grace@example.com");
     await sheet.getByRole("button", { name: "Send invitation" }).click();
@@ -480,7 +480,7 @@ test.describe("members and invitations", () => {
     await signInAsAda(page);
     await page.goto("/app/members");
     const panel = page.getByRole("region", { name: "Members" });
-    await panel.getByTestId("invite-open").click();
+    await page.getByTestId("invite-open").click();
     await expect(page.getByRole("dialog").getByLabel("Role", { exact: true }).locator("option")).toHaveText(["Administrator", "Viewer"]);
     await page.keyboard.press("Escape");
     // Ada's own row (listed as the owner) and her role cannot be changed here; Grace and Linus can.
