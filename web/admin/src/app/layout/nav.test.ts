@@ -40,7 +40,7 @@ describe("buildNav", () => {
     expect(section("customersBilling")).toEqual(["customers", "subscriptions", "invoices", "payments", "paymentLinks", "credits"]);
     expect(section("usageProducts")).toEqual(["usage", "meters", "packages", "pricing", "coupons"]);
     expect(section("money")).toEqual(["accounting", "reports", "affiliates"]);
-    expect(section("developers")).toEqual(["apiKeys", "webhooks", "sandbox"]);
+    expect(section("developers")).toEqual(["apiKeys", "connect", "webhooks", "sandbox"]);
     expect(section("settings")).toEqual(["appSettings", "integrations", "mail"]);
   });
 

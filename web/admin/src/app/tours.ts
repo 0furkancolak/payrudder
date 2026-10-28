@@ -19,6 +19,7 @@ import { subscriptionsTour } from "@/features/subscriptions/tour";
 import { tenantsTour } from "@/features/tenants/tour";
 import { usageTour } from "@/features/usage/tour";
 import { webhooksTour } from "@/features/webhooks/tour";
+import { connectTour } from "@/features/connect/tour";
 import { setTourScope, type Tour } from "@/shared/ui/tour";
 
 /**
@@ -53,6 +54,7 @@ const TOURS: Readonly<Record<string, Tour>> = {
   reports: reportsTour,
   affiliates: affiliatesTour,
   webhooks: webhooksTour,
+  connect: connectTour,
   mail: mailTour,
   tenants: tenantsTour,
   playground: playgroundTour,

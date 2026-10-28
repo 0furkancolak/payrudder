@@ -4226,7 +4226,8 @@
       "organisations": "Organizaciones",
       "platformPlans": "Planes de la plataforma",
       "support": "Ayuda",
-      "supportInbox": "Bandeja de soporte"
+      "supportInbox": "Bandeja de soporte",
+      "connect": "Conectar su app"
     },
     "noApps": "Aún no hay aplicaciones",
     "newApp": "Nueva aplicación"
@@ -4600,6 +4601,13 @@
       },
       "deadLetters": {
         "intro": "Mensajes que la plataforma no pudo procesar tras varios intentos, para que los operadores los revisen y reproduzcan."
+      },
+      "connect": {
+        "intro": "El camino de una app a su primer evento de uso.",
+        "checklist": "La lista se pone en verde: un medidor, un cliente y luego el primer evento, que esta página espera.",
+        "code": "Elija su lenguaje y pegue el código. Ya trae su medidor y la dirección de la API.",
+        "checklistTitle": "Su lista",
+        "codeTitle": "El código"
       }
     }
   },
@@ -4851,5 +4859,59 @@
     },
     "sortPriority": "Mayor prioridad primero",
     "sortDue": "Vence antes primero"
+  },
+  "connect": {
+    "nav": "Conectar su app",
+    "title": "Conectar su app",
+    "intro": "De una app a su primer evento de uso: el código para pegar y una lista que se pone en verde conforme funciona.",
+    "checklist": "Dónde está",
+    "waiting": "Esperando su primer evento. Esta página mira cada pocos segundos.",
+    "codeTitle": "El código",
+    "keyTest": "Esto es el sandbox: use una clave que empiece por qk_test_. Créela en la página de claves de API; se muestra una vez.",
+    "keyLive": "Esto es producción: use una clave que empiece por qk_live_. Los eventos live necesitan una idempotency_key (el código la trae).",
+    "language": "Lenguaje",
+    "copy": "Copiar",
+    "webhookHelp": "Para recibir webhooks, añada su endpoint y copie su secreto de firma.",
+    "webhookLink": "Abrir webhooks",
+    "blocks": {
+      "install": "1. Instalar",
+      "send": "2. Enviar su primer evento",
+      "webhook": "3. Verificar webhooks"
+    },
+    "fields": {
+      "address": "Dirección de la API",
+      "meter": "Medidor",
+      "customer": "ID de cliente"
+    },
+    "langs": {
+      "curl": "curl",
+      "typescript": "TypeScript",
+      "python": "Python",
+      "go": "Go",
+      "php": "PHP"
+    },
+    "steps": {
+      "key": {
+        "title": "Una clave de API",
+        "todo": "Cree una en la página de claves de API de la app; se muestra una vez.",
+        "done": "Tiene una clave."
+      },
+      "meter": {
+        "title": "Un medidor",
+        "todo": "Defina qué cuenta (llamadas de API, tokens, puestos).",
+        "done": "Existe un medidor.",
+        "link": "Crear un medidor"
+      },
+      "customer": {
+        "title": "Un cliente",
+        "todo": "El código crea el primero, o añada uno a mano.",
+        "done": "Existe un cliente."
+      },
+      "event": {
+        "title": "Un evento de uso",
+        "todo": "Envíe uno con el código de abajo.",
+        "done": "Se contó un evento."
+      }
+    }
   }
 }

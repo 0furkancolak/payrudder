@@ -4226,7 +4226,8 @@
       "organisations": "Organizasyonlar",
       "platformPlans": "Platform planları",
       "support": "Yardım",
-      "supportInbox": "Destek kutusu"
+      "supportInbox": "Destek kutusu",
+      "connect": "Uygulamanı bağla"
     },
     "noApps": "Henüz uygulama yok",
     "newApp": "Yeni uygulama"
@@ -4600,6 +4601,13 @@
       },
       "deadLetters": {
         "intro": "Platformun birkaç denemeden sonra işleyemediği mesajlar; operatörler inceleyip yeniden oynatır."
+      },
+      "connect": {
+        "intro": "Bir uygulamadan ilk kullanım olayına giden yol.",
+        "checklist": "Kontrol listesi ilerledikçe yeşile döner: sayaç, müşteri, sonra bu sayfanın beklediği ilk olay.",
+        "code": "Dilini seç ve kodu yapıştır. Sayacın ve API adresi zaten içinde.",
+        "checklistTitle": "Kontrol listen",
+        "codeTitle": "Kod"
       }
     }
   },
@@ -4851,5 +4859,59 @@
     },
     "sortPriority": "Önce en yüksek öncelik",
     "sortDue": "Yanıt süresi en yakın önce"
+  },
+  "connect": {
+    "nav": "Uygulamanı bağla",
+    "title": "Uygulamanı bağla",
+    "intro": "Bir uygulamadan ilk kullanım olayına: yapıştıracağın kod ve çalıştıkça yeşile dönen bir kontrol listesi.",
+    "checklist": "Neredesin",
+    "waiting": "İlk olayın bekleniyor. Bu sayfa birkaç saniyede bir bakar.",
+    "codeTitle": "Kod",
+    "keyTest": "Burası sandbox: qk_test_ ile başlayan bir anahtar kullan. API anahtarları sayfasında oluştur; bir kez gösterilir.",
+    "keyLive": "Burası canlı: qk_live_ ile başlayan bir anahtar kullan. Canlı olaylar idempotency_key ister (kodda var).",
+    "language": "Dil",
+    "copy": "Kopyala",
+    "webhookHelp": "Webhook almak için uç noktanı ekle ve imza sırrını kopyala.",
+    "webhookLink": "Webhook'ları aç",
+    "blocks": {
+      "install": "1. Kur",
+      "send": "2. İlk olayını gönder",
+      "webhook": "3. Webhook'ları doğrula"
+    },
+    "fields": {
+      "address": "API adresi",
+      "meter": "Sayaç",
+      "customer": "Müşteri kimliği"
+    },
+    "langs": {
+      "curl": "curl",
+      "typescript": "TypeScript",
+      "python": "Python",
+      "go": "Go",
+      "php": "PHP"
+    },
+    "steps": {
+      "key": {
+        "title": "Bir API anahtarı",
+        "todo": "Uygulamanın API anahtarları sayfasında oluştur; bir kez gösterilir.",
+        "done": "Bir anahtarın var."
+      },
+      "meter": {
+        "title": "Bir sayaç",
+        "todo": "Ne saydığını tanımla (API çağrıları, token, koltuk).",
+        "done": "Bir sayaç var.",
+        "link": "Sayaç oluştur"
+      },
+      "customer": {
+        "title": "Bir müşteri",
+        "todo": "Kod ilkini oluşturur ya da elle ekle.",
+        "done": "Bir müşteri var."
+      },
+      "event": {
+        "title": "Bir kullanım olayı",
+        "todo": "Aşağıdaki kodla bir tane gönder.",
+        "done": "Bir olay sayıldı."
+      }
+    }
   }
 }
