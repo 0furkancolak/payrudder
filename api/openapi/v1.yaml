@@ -119,6 +119,20 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
 
+  /v1/customers/{external_id}/contact:
+    put:
+      operationId: setCustomerContact
+      summary: Replace the customer's name and e-mail address
+      description: Invoices, receipts and dunning mails carry the name and go to the e-mail address. Both are required, with the limits of customer creation. The external id cannot change.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CustomerContact" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+
   /v1/customers/{external_id}/tax:
     put:
       operationId: setCustomerTax
@@ -7711,6 +7725,12 @@ components:
         disposition: { type: string, enum: [CREDIT_NOTE_DISPOSITION_CREDIT, CREDIT_NOTE_DISPOSITION_REFUND], description: "Where the amount went: the credit balance, or back to the card" }
         refund_state: { type: string, enum: [REFUND_STATE_REQUESTED, REFUND_STATE_REFUNDED, REFUND_STATE_FAILED], description: "Only for a refund to the card" }
         refund_error: { type: string }
+    CustomerContact:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string, maxLength: 200 }
+        email: { type: string, format: email }
     CustomerTax:
       type: object
       properties:

@@ -441,6 +441,14 @@
       "tenantCurrency": "Währung des Kontos",
       "create": "Kunden anlegen",
       "empty": "Noch keine Kunden.",
+      "contact": {
+        "edit": "Name und E-Mail bearbeiten",
+        "title": "Name und E-Mail",
+        "editing": "Kontakt von {id}",
+        "name": "Name",
+        "email": "E-Mail",
+        "save": "Kontakt speichern"
+      },
       "address": {
         "title": "Rechnungsadresse",
         "line1": "Adresszeile 1",

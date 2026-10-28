@@ -54,6 +54,7 @@ import type {
   CreditSettings,
   CreditSettingsInputParams,
   Customer,
+  CustomerContact,
   CustomerTax,
   DunningSettings,
   DunningSettingsInput,
@@ -761,6 +762,17 @@ export class CustomersResource {
    */
   setCustomerAddress(externalId: string, body: AddressInput, options?: RequestOptions): Promise<Customer> {
     return this.t.request<Customer>({ method: "PUT", path: `/v1/customers/${seg(externalId)}/address`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Replace the customer's name and e-mail address
+   *
+   * Invoices, receipts and dunning mails carry the name and go to the e-mail address. Both are required, with the limits of customer creation. The external id cannot change.
+   *
+   * `PUT /v1/customers/{external_id}/contact`
+   */
+  setCustomerContact(externalId: string, body: CustomerContact, options?: RequestOptions): Promise<Customer> {
+    return this.t.request<Customer>({ method: "PUT", path: `/v1/customers/${seg(externalId)}/contact`, body, bodyKind: "json", response: "json" }, options);
   }
 
   /**

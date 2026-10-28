@@ -152,10 +152,19 @@ test.describe("customer sheet", () => {
     expect(gw.called("POST", "/v1/subscriptions")[0]?.body).toMatchObject({ customer_external_id: "cus_1", plan_code: "pro" });
   });
 
-  test("the edit menu opens the address and tax sheets above the customer's sheet", async ({ page }) => {
+  test("the edit menu opens the contact, address and tax sheets above the customer's sheet", async ({ page }) => {
     const gw = await openCustomers(page);
-    gw.on((c) => (c.method === "PUT" && /^\/v1\/customers\/cus_1\/(address|tax)$/.test(c.path) ? { body: { ...customers[0], ...c.body } } : undefined));
+    gw.on((c) => (c.method === "PUT" && /^\/v1\/customers\/cus_1\/(contact|address|tax)$/.test(c.path) ? { body: { ...customers[0], ...c.body } } : undefined));
     await page.getByTestId("customer-cus_1").click();
+    await page.getByTestId("customer-edit").click();
+    await page.getByTestId("customer-edit-contact").click();
+    const contact = page.getByRole("dialog", { name: "Contact of cus_1" });
+    await contact.getByLabel("Name").fill("Yeni Ad");
+    await contact.getByLabel("E-mail").fill("yeni@example.com");
+    await contact.getByRole("button", { name: "Save contact" }).click();
+    await expect.poll(() => gw.called("PUT", "/v1/customers/cus_1/contact").length).toBe(1);
+    expect(gw.called("PUT", "/v1/customers/cus_1/contact")[0]?.body).toEqual({ name: "Yeni Ad", email: "yeni@example.com" });
+
     await page.getByTestId("customer-edit").click();
     await page.getByTestId("customer-edit-address").click();
     const address = page.getByRole("dialog", { name: "Address of cus_1" });

@@ -441,6 +441,14 @@
       "tenantCurrency": "Hesabın para birimi",
       "create": "Müşteri oluştur",
       "empty": "Henüz müşteri yok.",
+      "contact": {
+        "edit": "Ad ve e-postayı düzenle",
+        "title": "Ad ve e-posta",
+        "editing": "{id} iletişim bilgisi",
+        "name": "Ad",
+        "email": "E-posta",
+        "save": "İletişimi kaydet"
+      },
       "address": {
         "title": "Fatura adresi",
         "line1": "Adres satırı 1",

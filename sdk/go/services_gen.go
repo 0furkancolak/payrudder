@@ -923,6 +923,22 @@ func (s *CustomersService) SetCustomerAddress(ctx context.Context, externalID st
 	return &out, nil
 }
 
+// SetCustomerContact: Replace the customer's name and e-mail address (PUT /v1/customers/{external_id}/contact).
+//
+// Invoices, receipts and dunning mails carry the name and go to the e-mail address. Both are required, with the
+// limits of customer creation. The external id cannot change.
+func (s *CustomersService) SetCustomerContact(ctx context.Context, externalID string, req *CustomerContact, opts ...RequestOption) (*Customer, error) {
+	if req == nil {
+		req = &CustomerContact{}
+	}
+	var body any = req
+	var out Customer
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPut, path: "/v1/customers/" + url.PathEscape(externalID) + "/contact", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // GrantCustomerCoupon: Give a customer a coupon that their next eligible checkout uses without a code (POST
 // /v1/customers/{external_id}/coupons).
 //

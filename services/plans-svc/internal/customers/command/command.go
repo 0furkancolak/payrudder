@@ -118,6 +118,26 @@ func (c *Commands) SetAddress(ctx context.Context, req *plansv1.SetCustomerAddre
 	return convert.Customer(out), nil
 }
 
+// SetContact replaces the customer's name and e-mail address.
+func (c *Commands) SetContact(ctx context.Context, req *plansv1.SetCustomerContactRequest) (*plansv1.Customer, error) {
+	if req.GetExternalId() == "" {
+		return nil, domain.Invalid("external_id", "required")
+	}
+	if err := domain.ValidateCustomerContact(req.GetName(), req.GetEmail()); err != nil {
+		return nil, err
+	}
+	var out sqlc.Customer
+	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+		var err error
+		out, err = q.SetCustomerContact(ctx, sqlc.SetCustomerContactParams{ExternalID: req.GetExternalId(), Name: req.GetName(), Email: req.GetEmail()})
+		return err
+	})
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	return convert.Customer(out), nil
+}
+
 // SetTax replaces the customer's tax id, tax office and e-fatura registration flag.
 func (c *Commands) SetTax(ctx context.Context, req *plansv1.SetCustomerTaxRequest) (*plansv1.Customer, error) {
 	if req.GetExternalId() == "" {

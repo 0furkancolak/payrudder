@@ -122,7 +122,7 @@ integrations, new-* forms restore from the URL after a reload.
 - New subscription and new payment link take the customer as a typed id (`ui_test_1`); Credits has a searchable picker ("UI Test Müşteri (ui_test_1)").
 - Lists show `dev_cus_07`/`ui_test_1` instead of the name (subscriptions, invoices, usage "Müşteri" column), while the Usage > Müşteriler tab and
   the customer sheet show names.
-- Customer sheet "Düzenle" is a menu with only "Adresi düzenle" and "Vergi bilgisi"; no way to change name or e-mail (confirm if intended). Update: the API has no endpoint to change name or e-mail (only address and tax), so that stays as is until the backend offers one.
+- Customer sheet "Düzenle" is a menu with only "Adresi düzenle" and "Vergi bilgisi"; no way to change name or e-mail (confirm if intended). Update: `PUT /v1/customers/{external_id}/contact` (`setCustomerContact`) now changes name and e-mail, and the edit menu has "Edit name and e-mail" for it.
 
 ### UI-13 (minor) Subscription change panel — fixed in #232
 - The four selects (package, period, when, proration) share one row in the 670 px sheet and are truncated: "Dönem aynı ka", "Ne zaman: değ",
