@@ -1,0 +1,93 @@
+{{- if and .Values.postgres.enabled .Values.backup.enabled }}
+# Nightly pg_dump of every database, and a weekly restore drill (deploy/backup). The dumps are on their own volume (and in backup.s3Url when set); the result goes to
+# backup.pushgatewayUrl for the BackupStale / RestoreDrillFailed alerts. Restoring: docs/runbooks/backup-restore.md.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-backup
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "postgres-backup") | nindent 4 }}
+data:
+  backup.sh: |
+    {{- .Files.Get "files/backup.sh" | nindent 4 }}
+  restore.sh: |
+    {{- .Files.Get "files/restore.sh" | nindent 4 }}
+  verify.sh: |
+    {{- .Files.Get "files/verify.sh" | nindent 4 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backups
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" "postgres-backup") | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests: { storage: {{ .Values.backup.storage | quote }} }
+{{- range $job := list "backup" "verify" }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-{{ $job }}
+  labels:
+    {{- include "infra.labels" (dict "root" $ "name" (printf "postgres-%s" $job)) | nindent 4 }}
+spec:
+  schedule: {{ if eq $job "backup" }}{{ $.Values.backup.schedule | quote }}{{ else }}{{ $.Values.backup.verifySchedule | quote }}{{ end }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: {{ $job }}
+              image: {{ $.Values.postgres.image }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  apk add --no-cache curl {{ if $.Values.backup.s3Url }}aws-cli{{ end }} >/dev/null
+                  exec sh /scripts/{{ $job }}.sh
+              env:
+                - { name: PGHOST, value: postgres }
+                - name: PGUSER
+                  valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_USER } }
+                - name: PGPASSWORD
+                  valueFrom: { secretKeyRef: { name: postgres, key: POSTGRES_PASSWORD } }
+                - { name: BACKUP_DIR, value: /backups }
+                - { name: BACKUP_KEEP, value: {{ $.Values.backup.keep | quote }} }
+                - { name: PUSHGATEWAY_URL, value: {{ $.Values.backup.pushgatewayUrl | quote }} }
+                {{- with $.Values.backup.s3Url }}
+                - { name: BACKUP_S3_URL, value: {{ . | quote }} }
+                {{- end }}
+                {{- with $.Values.backup.s3SecretName }}
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: {{ . }}, key: AWS_ACCESS_KEY_ID } }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: {{ . }}, key: AWS_SECRET_ACCESS_KEY } }
+                {{- end }}
+                {{- with $.Values.backup.s3Endpoint }}
+                - { name: AWS_ENDPOINT_URL, value: {{ . | quote }} }
+                {{- end }}
+              volumeMounts:
+                - { name: scripts, mountPath: /scripts }
+                - { name: backups, mountPath: /backups }
+              resources:
+                requests: { cpu: 20m, memory: 64Mi }
+                limits: { memory: 256Mi }
+          volumes:
+            - name: scripts
+              configMap: { name: postgres-backup, defaultMode: 0555 }
+            - name: backups
+              persistentVolumeClaim: { claimName: postgres-backups }
+{{- end }}
+{{- end }}

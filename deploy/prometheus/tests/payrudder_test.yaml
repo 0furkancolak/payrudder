@@ -208,3 +208,43 @@ tests:
           - exp_labels: { severity: page, job: payrudder, service: billing-svc }
             exp_annotations:
               summary: "billing-svc is not being scraped"
+
+  - interval: 1m
+    name: BackupStale fires when the last success is older than 26 hours, and not before
+    input_series:
+      - series: 'payrudder_backup_last_success_timestamp_seconds{job="payrudder_backup"}'
+        values: '0+0x2000'
+    alert_rule_test:
+      - eval_time: 20h
+        alertname: BackupStale
+        exp_alerts: []
+      - eval_time: 30h
+        alertname: BackupStale
+        exp_alerts:
+          - exp_labels: { severity: page, service: postgres }
+            exp_annotations:
+              summary: "no database backup has succeeded for over 26 hours"
+
+  - interval: 1m
+    name: A failed backup run pages after five minutes
+    input_series:
+      - series: 'payrudder_backup_failed{job="payrudder_backup"}'
+        values: '1+0x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: BackupFailed
+        exp_alerts:
+          - exp_labels: { severity: page, service: postgres }
+            exp_annotations:
+              summary: "the last backup run failed for at least one database"
+
+  - interval: 1m
+    name: A passing restore drill is quiet and a failing one pages
+    input_series:
+      - series: 'payrudder_restore_verify_failed{job="payrudder_restore_verify", case="ok"}'
+        values: '0+0x20'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: RestoreDrillFailed
+        exp_alerts: []
+

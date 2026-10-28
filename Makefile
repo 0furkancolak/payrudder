@@ -61,6 +61,9 @@ test: ## Unit tests (race detector)
 	@for m in $(MODULES); do (cd $$m && go test -race -count=1 ./...); done
 
 .PHONY: test-rules
+test-backup-scripts: ## The Helm chart's copies of the backup scripts match deploy/backup
+	@for f in backup restore verify; do diff -q deploy/backup/$$f.sh deploy/helm/payrudder-infra/files/$$f.sh || exit 1; done
+
 test-rules: ## Prometheus alert rules: promtool check + unit tests (Docker)
 	docker run --rm -v "$(CURDIR)/deploy/prometheus:/p:ro" --entrypoint promtool prom/prometheus:v3.15.0 check rules /p/rules/payrudder.yaml
 	docker run --rm -v "$(CURDIR)/deploy/prometheus:/p:ro" --entrypoint promtool prom/prometheus:v3.15.0 test rules /p/tests/payrudder_test.yaml

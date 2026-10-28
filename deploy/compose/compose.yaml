@@ -1,6 +1,7 @@
 # Payrudder local stack. Ports and profiles: docs/10-local-dev.md
 #   default (no profile): infrastructure       make up-infra
-#   obs:   otel-collector, prometheus, tempo, loki, vector, grafana, postgres-exporter, redis-exporter
+#   obs:   otel-collector, prometheus, alertmanager, pushgateway, tempo, loki, vector, grafana, postgres-exporter, redis-exporter
+#   ops:   backup (pg_dump every night, restore drill every week; needs the default profile's postgres)
 #   app:   Payrudder services                    make up
 #   chaos: toxiproxy                           Phase 09
 #   oidc:  mockoidc, a stand-in for Google    (development only)
@@ -274,6 +275,30 @@ services:
       retries: 20
     deploy: { resources: { limits: { memory: 256m } } }
 
+  alertmanager:
+    <<: *defaults
+    profiles: [obs]
+    image: prom/alertmanager:v0.28.1
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml", "--storage.path=/alertmanager"]
+    volumes:
+      - ${ALERTMANAGER_CONFIG:-../alertmanager/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
+      - ${ALERT_WEBHOOK_URL_FILE:-../alertmanager/webhook_url.example}:/etc/alertmanager/webhook_url:ro
+      - alertmanager-data:/alertmanager
+    ports: ["42993:9093"]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9093/-/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy: { resources: { limits: { memory: 64m } } }
+
+  pushgateway:
+    <<: *defaults
+    profiles: [obs]
+    image: prom/pushgateway:v1.11.1
+    ports: ["42991:9091"]
+    deploy: { resources: { limits: { memory: 48m } } }
+
   grafana:
     <<: *defaults
     profiles: [obs]
@@ -318,6 +343,38 @@ services:
       REDIS_ADDR: redis://redis:6379
     depends_on: { redis: { condition: service_healthy } }
     deploy: { resources: { limits: { memory: 48m } } }
+
+  # --- ops profile -------------------------------------------------------------------------------
+  # Backs up every database once a day (BACKUP_INTERVAL_SECONDS) and proves the newest dump restores once a week. Dumps are in the backup-data volume (and in
+  # BACKUP_S3_URL when set). Results go to the pushgateway when the obs profile runs. Restoring by hand: docs/runbooks/backup-restore.md.
+  backup:
+    <<: *defaults
+    profiles: [ops]
+    image: postgres:17.11-alpine
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache curl >/dev/null
+        n=0
+        while true; do
+          sh /scripts/backup.sh || true
+          n=$$((n + 1))
+          [ $$((n % ($${VERIFY_EVERY_RUNS:-7}))) -eq 1 ] && { sh /scripts/verify.sh || true; }
+          sleep "$${BACKUP_INTERVAL_SECONDS:-86400}"
+        done
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: postgres_local
+      BACKUP_DIR: /backups
+      BACKUP_KEEP: ${BACKUP_KEEP:-7}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      PUSHGATEWAY_URL: ${PUSHGATEWAY_URL:-http://pushgateway:9091}
+    volumes:
+      - ../backup:/scripts:ro
+      - backup-data:/backups
+    depends_on: { postgres: { condition: service_healthy } }
+    deploy: { resources: { limits: { memory: 96m } } }
 
   # --- chaos profile -----------------------------------------------------------------------------
   toxiproxy:
@@ -827,3 +884,5 @@ volumes:
   minio-data:
   tempo-data:
   loki-data:
+  alertmanager-data:
+  backup-data:

@@ -1,0 +1,47 @@
+# Alertmanager routes the alerts of deploy/prometheus/rules.
+#
+#   page  - wakes someone: the process, the data or the money is at risk
+#   warn  - looked at in working hours
+#
+# This is the file to use when alerts must reach people: the URL in the file ALERT_WEBHOOK_URL_FILE names is where they are posted as Alertmanager's JSON (a chat bridge, an
+# incident tool, an on-call service; the URL is a secret, so it is read from a file and never written here). Select this file with
+# ALERTMANAGER_CONFIG=../alertmanager/alertmanager.webhook.yml and point ALERT_WEBHOOK_URL_FILE at a file holding the URL. alertmanager.yml keeps alerts in
+# Alertmanager only (http://localhost:42993), which needs no setup.
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: keep
+  group_by: [alertname, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="page"]
+      receiver: on-call
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: false
+    - matchers: [severity="warn"]
+      receiver: team
+      repeat_interval: 12h
+
+# A page for a service silences its warnings: one problem is one message.
+inhibit_rules:
+  - source_matchers: [severity="page"]
+    target_matchers: [severity="warn"]
+    equal: [service]
+
+receivers:
+  # Alerts only stay in Alertmanager.
+  - name: keep
+  - name: on-call
+    webhook_configs:
+      - url_file: /etc/alertmanager/webhook_url
+        send_resolved: true
+        max_alerts: 20
+  - name: team
+    webhook_configs:
+      - url_file: /etc/alertmanager/webhook_url
+        send_resolved: true
+        max_alerts: 20
