@@ -1151,6 +1151,13 @@
       "insecure": {
         "sandbox": "Bu adres http kullanıyor; test için sandbox'ta kabul edilir. Canlı uç noktalar https kullanmalıdır.",
         "live": "Bu adres http kullanıyor: müşteri ve fatura verileri şifresiz iletilir. https adresi kullanın."
+      },
+      "bulk": {
+        "pause": "Seçilenleri duraklat",
+        "resume": "Seçilenleri sürdür",
+        "delete": "Seçilenleri sil",
+        "deleteTitle": "Seçilen uç noktalar silinsin mi?",
+        "confirmDelete": "Seçilen uç noktalar silinir ve olay almayı bırakır. Gizli anahtarları geri getirilemez."
       }
     },
     "paymentLinks": {
@@ -3519,6 +3526,11 @@
       "empty": {
         "sandbox": "Henüz sandbox anahtarı yok. API'yi test verileriyle denemek için bir tane oluşturun.",
         "live": "Henüz canlı anahtar yok. Gerçek kullanımı göndermeye başlamak için bir tane oluşturun."
+      },
+      "bulk": {
+        "revoke": "Seçilenleri iptal et",
+        "revokeTitle": "Seçilen anahtarlar iptal edilsin mi?",
+        "confirmRevoke": "Hâlâ etkin olan her seçili anahtar hemen çalışmayı bırakır. Birini kullanan servisler 401 almaya başlar. Bu geri alınamaz."
       }
     },
     "links": {

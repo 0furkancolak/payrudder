@@ -16,6 +16,8 @@ import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
+import { useBulk } from "@/shared/lib/bulk";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { FilterSelect } from "@/shared/ui/filter-select";
@@ -111,6 +113,12 @@ async function remove(id: string | undefined) {
 async function rotate(id: string | undefined) {
   if (id && (await askConfirm({ title: t("billing.webhooks.rotateTitle"), body: t("billing.webhooks.confirmRotate"), confirmLabel: t("billing.webhooks.rotate") }))) act.rotate.mutate(id);
 }
+const bulk = useBulk<Endpoint>({ selected: () => endpointsTable.selectedRows.value, untick: (e) => endpointsTable.tick(e, false), name: (e) => e.url ?? e.id ?? "" });
+const setActive = (e: Endpoint, active: boolean) => act.update.mutateAsync({ id: e.id ?? "", url: e.url ?? "", description: e.description ?? "", event_types: (e.event_types ?? []).filter(isEventType), active });
+const bulkPause = () => bulk.run((e) => setActive(e, false), { rows: (all) => all.filter((e) => e.active) });
+const bulkResume = () => bulk.run((e) => setActive(e, true), { rows: (all) => all.filter((e) => !e.active) });
+const bulkDelete = () =>
+  bulk.run((e) => act.remove.mutateAsync(e.id ?? ""), { confirm: { title: t("billing.webhooks.bulk.deleteTitle"), body: t("billing.webhooks.bulk.confirmDelete"), confirmLabel: t("billing.webhooks.delete") } });
 function toggle(e: { id?: string; url?: string; description?: string; event_types?: string[]; active?: boolean }) {
   act.update.mutate({ id: e.id ?? "", url: e.url ?? "", description: e.description ?? "", event_types: (e.event_types ?? []).filter(isEventType), active: !e.active });
 }
@@ -166,9 +174,16 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       <FilterSelect v-model="endpointsTable.filters.value.status" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, { value: 'active', label: t('billing.webhooks.active') }, { value: 'paused', label: t('billing.webhooks.paused') }]" />
       <HeaderAction test-id="webhooks-new" :label="t('billing.webhooks.add')" @click="creating = true" />
     </DataToolbar>
+    <BulkBar :count="endpointsTable.selectedRows.value.length" @clear="endpointsTable.clearSelection()">
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-pause" @click="bulkPause">{{ t("billing.webhooks.pause") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-resume" @click="bulkResume">{{ t("billing.webhooks.resume") }}</Button>
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-delete" @click="bulkDelete">{{ t("billing.webhooks.delete") }}</Button>
+    </BulkBar>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
+          <TableHead class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="endpointsTable.allOnPage.value" :indeterminate="endpointsTable.someOnPage.value && !endpointsTable.allOnPage.value" @change="endpointsTable.togglePage()" /></TableHead>
           <TableHead>{{ t("billing.webhooks.url") }}</TableHead>
           <TableHead class="max-md:hidden">{{ t("billing.webhooks.events") }}</TableHead>
           <TableHead>{{ t("billing.webhooks.status") }}</TableHead>
@@ -177,6 +192,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       </TableHeader>
       <TableBody>
         <TableRow v-for="(e, i) in endpointsTable.items.value" :key="e.id" class="cursor-pointer" @click="endpointsTable.open(i)">
+          <TableCell><RowCheck :label="`${t('common.bulk.selectRow')} ${e.url}`" :checked="endpointsTable.isTicked(e)" @change="(on) => endpointsTable.tick(e, on)" /></TableCell>
           <TableCell>
             <span class="mono text-sm break-all">{{ e.url }}</span>
             <span v-if="insecureNote(e.url)" class="text-warning block text-xs" data-testid="webhook-insecure-row">{{ insecureNote(e.url) }}</span>

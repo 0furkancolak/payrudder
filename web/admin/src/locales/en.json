@@ -1151,6 +1151,13 @@
       "insecure": {
         "sandbox": "This URL uses http, which is accepted in the sandbox for testing. Live endpoints should use https.",
         "live": "This URL uses http: events with customer and invoice data would travel unencrypted. Use an https URL."
+      },
+      "bulk": {
+        "pause": "Pause selected",
+        "resume": "Resume selected",
+        "delete": "Delete selected",
+        "deleteTitle": "Delete the selected endpoints?",
+        "confirmDelete": "The selected endpoints are removed and stop receiving events. Their secrets cannot be recovered."
       }
     },
     "paymentLinks": {
@@ -3519,6 +3526,11 @@
       "empty": {
         "sandbox": "No sandbox keys yet. Create one to try the API with test data.",
         "live": "No live keys yet. Create one to start sending real usage."
+      },
+      "bulk": {
+        "revoke": "Revoke selected",
+        "revokeTitle": "Revoke the selected keys?",
+        "confirmRevoke": "Every selected key that is still active stops working at once. Services that use one of them start getting 401. This cannot be undone."
       }
     },
     "links": {

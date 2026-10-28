@@ -14,6 +14,8 @@ import UpgradeHint from "@/features/saas/UpgradeHint.vue";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
+import { useBulk } from "@/shared/lib/bulk";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
@@ -150,6 +152,14 @@ function actionsOf(k: ApiKey): RowAction[] {
   ];
 }
 
+// --- revoking several at once: the ticked keys that are not revoked yet, after one question
+const bulk = useBulk<ApiKey>({ selected: () => table.selectedRows.value, untick: (k) => table.tick(k, false), name: (k) => keyMask(keyEnv(k), k.prefix) });
+const bulkRevoke = () =>
+  bulk.run((k) => revoke.mutateAsync(k.id ?? ""), {
+    rows: (all) => all.filter((k) => !isRevoked(k)),
+    confirm: { title: t("product.keys.bulk.revokeTitle"), body: t("product.keys.bulk.confirmRevoke"), confirmLabel: t("product.keys.revoke") },
+  });
+
 // --- revoking asks first
 const revoking = ref<ApiKey | null>(null);
 const confirm = computed({ get: () => revoking.value !== null, set: (v) => { if (!v) revoking.value = null; } });
@@ -180,9 +190,14 @@ function doRevoke() {
       <FilterSelect v-model="table.filters.value.status" multiple :label="t('product.keys.filterStatus')" :options="[{ value: '', label: t('product.keys.allStatuses') }, { value: 'active', label: t('product.keys.active') }, { value: 'revoked', label: t('product.keys.revoked') }]" />
       <HeaderAction v-if="canManage" :disabled="!!gate" :title="gate ? t(`product.keys.${gate}`) : undefined" :test-id="live ? 'new-live-key' : 'new-sandbox-key'" :label="t(live ? 'product.keys.newLive' : 'product.keys.newSandbox')" @click="making = true" />
     </DataToolbar>
+    <BulkBar v-if="canManage" :count="table.selectedRows.value.length" @clear="table.clearSelection()">
+      <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-revoke" @click="bulkRevoke">{{ t("product.keys.bulk.revoke") }}</Button>
+    </BulkBar>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <Table v-if="table.items.value.length > 0">
       <TableHeader>
         <TableRow class="hover:bg-transparent">
+          <TableHead v-if="canManage" class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
           <TableHead>{{ t("product.keys.title") }}</TableHead>
           <TableHead class="max-md:hidden">{{ t("product.keys.role") }}</TableHead>
           <TableHead class="max-md:hidden">{{ t("product.keys.filterEnv") }}</TableHead>
@@ -192,6 +207,7 @@ function doRevoke() {
       </TableHeader>
       <TableBody>
         <TableRow v-for="k in table.items.value" :key="k.id">
+          <TableCell v-if="canManage"><RowCheck :label="`${t('common.bulk.selectRow')} ${shown(k)}`" :checked="table.isTicked(k)" @change="(on) => table.tick(k, on)" /></TableCell>
           <TableCell>
             <div class="flex items-center gap-3">
               <span class="bg-brand-soft text-brand-strong flex size-8 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><KeyRound class="size-4" /></span>

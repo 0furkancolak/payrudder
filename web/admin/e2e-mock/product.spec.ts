@@ -196,6 +196,23 @@ test.describe("app dashboard", () => {
     expect(gw.called("DELETE", `/app/v1/apps/${APP}/api-keys/k9`)).toHaveLength(1);
   });
 
+  test("ticked API keys are revoked together after one question, and keys that are revoked already are left alone", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway());
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/keys`);
+    const keys = page.getByRole("region", { name: "API keys" });
+    await expect(keys).toContainText("qk_live_abcd1234_••••••••");
+    await keys.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+    await page.getByTestId("bulk-revoke").click();
+    await expect(page.getByRole("dialog")).toContainText("Revoke the selected keys?");
+    await page.getByRole("dialog").getByRole("button", { name: "Revoke" }).click();
+    await expect(page.getByTestId("bulk-note")).toContainText("done, 0 not changed");
+    const deleted = gw.called("DELETE", /\/api-keys\//);
+    expect(deleted.length).toBeGreaterThan(0);
+    expect(new Set(deleted.map((c) => c.path)).size).toBe(deleted.length);
+  });
+
   test("the deeper views are the console's own pages, spoken to as the person's tenant", async ({ page }) => {
     const { gw } = productGateway(new MockGateway());
     gw.on((c) => (c.path === "/v1/customers" ? { body: { customers: [{ id: "c1", external_id: "cus_1", create_time: "2026-10-05T10:00:00Z", name: "Acme Ltd", email: "billing@acme.test" }] } } : undefined));
