@@ -26,7 +26,7 @@ const fmt = useFormat();
   <div class="flex flex-wrap items-start justify-between gap-4">
     <div class="flex flex-col gap-1">
       <p class="text-muted-foreground text-sm">{{ label(t, te, "invoiceKind", inv.kind) }}</p>
-      <h2 class="sr-only" data-testid="invoice-number">{{ inv.number || t("product.billing.invoices.draft") }}</h2>
+      <p class="sr-only" data-testid="invoice-number">{{ inv.number || t("product.billing.invoices.draft") }}</p>
       <p class="text-4xl font-semibold tracking-tight tabular-nums" data-testid="invoice-total">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</p>
       <div class="mt-1 flex flex-wrap gap-2">
         <StatusPill :tone="toneOf(inv.status)">{{ t(`product.invoiceStatus.${inv.status}`) }}</StatusPill>
