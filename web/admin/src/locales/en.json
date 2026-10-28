@@ -1426,6 +1426,7 @@
       "expenses": {
         "title": "Expenses",
         "showVoided": "Show voided",
+        "hideVoided": "Hide voided",
         "none": "No expenses recorded yet.",
         "voided": "Voided",
         "until": "until {date}",

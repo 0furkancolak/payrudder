@@ -209,7 +209,9 @@ test.describe("accounting", () => {
     await voidDialog.getByRole("button", { name: "Void expense" }).click();
     await expect(page.getByRole("row", { name: /Amazon Web Services/ })).toHaveCount(0);
     expect(gw.called("DELETE", "/v1/expenses/e1")[0]?.query.get("reason")).toBe("duplicate of the invoice");
-    await page.getByLabel("Show voided").click();
+    await page.getByRole("button", { name: "Voided", exact: true }).click();
+    await page.getByRole("listbox", { name: "Voided" }).getByRole("option", { name: "Show voided" }).click();
+    await page.getByTestId("filter-apply").click();
     await expect(page.getByRole("row", { name: /Amazon Web Services/ })).toContainText("Voided");
   });
 

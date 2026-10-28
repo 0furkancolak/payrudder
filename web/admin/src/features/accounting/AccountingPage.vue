@@ -17,7 +17,6 @@ import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { Checkbox } from "@/shared/ui/checkbox";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
@@ -67,6 +66,12 @@ const defaultCurrency = computed(() => tenant.data.value?.currency || FALLBACK_C
 
 // --- the expenses
 const showVoided = ref(false);
+// Whether voided entries are listed is a filter like the others: a choice that waits for Apply.
+const voidedOptions = computed(() => [{ value: "", label: t("billing.accounting.expenses.hideVoided") }, { value: "shown", label: t("billing.accounting.expenses.showVoided") }]);
+const voidedFilter = computed({
+  get: () => (showVoided.value ? "shown" : ""),
+  set: (v: string) => (showVoided.value = v === "shown"),
+});
 const expenses = useExpenses(tenantId, app, showVoided);
 const expenseRange = ref<DateRange>(thisMonth());
 const table = useTableState(() => (expenses.data.value?.expenses ?? []).filter((e) => inRange(e.incurred_on, expenseRange.value)), {
@@ -82,8 +87,9 @@ const filter = (key: string) => computed({ get: () => table.filters.value[key] ?
 const categoryFilter = filter("category");
 const recurringFilter = filter("recurring");
 watch(expenseRange, () => (table.page.value = 1), { deep: true });
-const expensesActive = computed(() => table.active.value || expenseRange.value.from !== "" || expenseRange.value.to !== "");
+const expensesActive = computed(() => table.active.value || showVoided.value || expenseRange.value.from !== "" || expenseRange.value.to !== "");
 function clearExpenses() {
+  showVoided.value = false;
   table.clear();
   expenseRange.value = { from: "", to: "" };
 }
@@ -208,10 +214,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
       <FilterSelect v-model="categoryFilter" multiple :label="t('billing.accounting.form.category')" :options="categoryOptions" />
       <FilterSelect v-model="recurringFilter" multiple :label="t('billing.accounting.form.recurring')" :options="recurringOptions" />
       <DateRangePicker v-model="expenseRange" />
-      <label class="text-muted-foreground flex items-center gap-2 text-sm">
-        <Checkbox :model-value="showVoided" @update:model-value="showVoided = $event === true" />
-        {{ t("billing.accounting.expenses.showVoided") }}
-      </label>
+      <FilterSelect v-model="voidedFilter" :label="t('billing.accounting.expenses.voided')" :options="voidedOptions" />
       <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <p v-if="expenses.data.value && !(expenses.data.value.expenses ?? []).length" class="text-muted-foreground px-3 py-4 text-center text-sm">{{ t("billing.accounting.expenses.none") }}</p>

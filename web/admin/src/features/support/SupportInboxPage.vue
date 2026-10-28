@@ -13,6 +13,7 @@ import { DataPagination } from "@/shared/ui/data-table";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
+import { FilterSelect } from "@/shared/ui/filter-select";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PageHeader } from "@/shared/ui/page-header";
@@ -33,6 +34,18 @@ const { t, locale } = useI18n();
 const filter = reactive<QueueFilter>({ status: "active", priority: "", assignee: "", search: "", late: false });
 const queue = useQueue(() => ({ ...filter }));
 const actions = useOperatorSupportActions();
+// The filters that are a choice wait for Apply (FilterSelect); the two text boxes are searches and apply when left or on Enter.
+const statusOptions = computed(() => [
+  { value: "active", label: t("support.status.active") },
+  ...STATUSES.map((s) => ({ value: s, label: t(`support.status.${s}`) })),
+  { value: "", label: t("support.filters.any") },
+]);
+const priorityOptions = computed(() => [{ value: "", label: t("support.filters.any") }, ...PRIORITIES.map((p) => ({ value: p, label: t(`support.priority.${p}`) }))]);
+const lateOptions = computed(() => [{ value: "", label: t("support.filters.any") }, { value: "late", label: t("support.filters.late") }]);
+const lateFilter = computed({
+  get: () => (filter.late ? "late" : ""),
+  set: (v: string) => (filter.late = v === "late"),
+});
 
 const rows = computed(() => queue.data.value ?? []);
 const rank: Record<string, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
@@ -114,19 +127,8 @@ function send() {
     </BulkBar>
     <p v-if="bulkNote" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulkNote }}<template v-if="bulkFailed.length > 0"> · {{ t("common.bulk.notChanged") }}: {{ bulkFailed.join(", ") }}</template></p>
     <div class="flex flex-wrap items-end gap-3 p-2" data-testid="support-filters">
-      <label class="grid gap-1 text-xs">{{ t("support.columns.status") }}
-        <NativeSelect v-model="filter.status" data-testid="filter-status">
-          <option value="active">{{ t("support.status.active") }}</option>
-          <option value="">{{ t("support.filters.any") }}</option>
-          <option v-for="s in STATUSES" :key="s" :value="s">{{ t(`support.status.${s}`) }}</option>
-        </NativeSelect>
-      </label>
-      <label class="grid gap-1 text-xs">{{ t("support.fields.priority") }}
-        <NativeSelect v-model="filter.priority" data-testid="filter-priority">
-          <option value="">{{ t("support.filters.any") }}</option>
-          <option v-for="p in PRIORITIES" :key="p" :value="p">{{ t(`support.priority.${p}`) }}</option>
-        </NativeSelect>
-      </label>
+      <FilterSelect v-model="filter.status" :label="t('support.columns.status')" :options="statusOptions" />
+      <FilterSelect v-model="filter.priority" :label="t('support.fields.priority')" :options="priorityOptions" />
       <label class="grid gap-1 text-xs">{{ t("support.columns.assignee") }}
         <Input v-model.lazy="filter.assignee" class="w-40" data-testid="filter-assignee" />
       </label>
@@ -134,9 +136,7 @@ function send() {
         <Input v-model.lazy="filter.search" class="w-56" :placeholder="t('support.filters.searchHint')" data-testid="filter-search" />
       </label>
       <SortSelect v-model="table.sort.value" :options="table.sorts.value" />
-      <label class="flex items-center gap-2 pb-2 text-sm">
-        <Checkbox :model-value="filter.late" data-testid="filter-late" @update:model-value="(v: boolean | 'indeterminate') => (filter.late = v === true)" />{{ t("support.filters.late") }}
-      </label>
+      <FilterSelect v-model="lateFilter" :label="t('support.filters.late')" :options="lateOptions" />
     </div>
     <Table>
       <TableHeader>

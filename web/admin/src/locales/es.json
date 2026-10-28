@@ -1426,6 +1426,7 @@
       "expenses": {
         "title": "Gastos",
         "showVoided": "Mostrar anulados",
+        "hideVoided": "Ocultar anulados",
         "none": "Aún no hay gastos registrados.",
         "voided": "Anulado",
         "until": "hasta {date}",

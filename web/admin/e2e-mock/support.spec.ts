@@ -218,7 +218,11 @@ test.describe("support: the operator's inbox", () => {
     await page.goto("/support");
     await expect(page.getByTestId("inbox-row-1050")).toBeVisible();
     await expect(page.getByTestId("inbox-row-1042").getByTestId("support-late")).toBeVisible();
-    await page.getByTestId("filter-late").click();
+    // The choice waits for Apply: nothing changes until it is pressed.
+    await page.getByRole("button", { name: "Only late", exact: true }).click();
+    await page.getByRole("listbox", { name: "Only late" }).getByRole("option", { name: "Only late" }).click();
+    await expect(page.getByTestId("inbox-row-1050")).toBeVisible();
+    await page.getByTestId("filter-apply").click();
     await expect(page.getByTestId("inbox-row-1050")).toHaveCount(0);
     await expect(page.getByTestId("inbox-row-1042")).toBeVisible();
   });

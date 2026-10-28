@@ -1426,6 +1426,7 @@
       "expenses": {
         "title": "Dépenses",
         "showVoided": "Afficher les annulées",
+        "hideVoided": "Masquer les annulées",
         "none": "Aucune dépense enregistrée pour l'instant.",
         "voided": "Annulée",
         "until": "jusqu'au {date}",

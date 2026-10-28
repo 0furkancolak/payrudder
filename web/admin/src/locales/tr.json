@@ -1426,6 +1426,7 @@
       "expenses": {
         "title": "Giderler",
         "showVoided": "İptal edilenleri göster",
+        "hideVoided": "İptal edilenleri gizle",
         "none": "Henüz gider kaydedilmedi.",
         "voided": "İptal",
         "until": "{date} tarihine kadar",

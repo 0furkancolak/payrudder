@@ -1426,6 +1426,7 @@
       "expenses": {
         "title": "Ausgaben",
         "showVoided": "Stornierte anzeigen",
+        "hideVoided": "Stornierte ausblenden",
         "none": "Noch keine Ausgaben erfasst.",
         "voided": "Storniert",
         "until": "bis {date}",
