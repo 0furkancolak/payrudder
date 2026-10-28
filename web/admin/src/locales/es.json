@@ -441,6 +441,14 @@
       "tenantCurrency": "Moneda de la cuenta",
       "create": "Crear cliente",
       "empty": "Aún no hay clientes.",
+      "contact": {
+        "edit": "Editar nombre y correo",
+        "title": "Nombre y correo",
+        "editing": "Contacto de {id}",
+        "name": "Nombre",
+        "email": "Correo electrónico",
+        "save": "Guardar contacto"
+      },
       "address": {
         "title": "Dirección de facturación",
         "line1": "Dirección línea 1",

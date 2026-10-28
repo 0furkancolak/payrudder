@@ -2136,6 +2136,39 @@ func (q *Queries) SetCustomerAddress(ctx context.Context, arg SetCustomerAddress
 	return i, err
 }
 
+const setCustomerContact = `-- name: SetCustomerContact :one
+UPDATE customers SET name = $1, email = $2
+WHERE tenant_id = app_tenant_id() AND external_id = $3
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered
+`
+
+type SetCustomerContactParams struct {
+	Name       string
+	Email      string
+	ExternalID string
+}
+
+func (q *Queries) SetCustomerContact(ctx context.Context, arg SetCustomerContactParams) (Customer, error) {
+	row := q.db.QueryRow(ctx, setCustomerContact, arg.Name, arg.Email, arg.ExternalID)
+	var i Customer
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.ExternalID,
+		&i.Name,
+		&i.Email,
+		&i.PaymentMethod,
+		&i.CreatedAt,
+		&i.Country,
+		&i.BillingCurrency,
+		&i.Address,
+		&i.TaxID,
+		&i.TaxOffice,
+		&i.EInvoiceRegistered,
+	)
+	return i, err
+}
+
 const setCustomerTax = `-- name: SetCustomerTax :one
 UPDATE customers SET tax_id = $1, tax_office = $2, e_invoice_registered = $3
 WHERE tenant_id = app_tenant_id() AND external_id = $4

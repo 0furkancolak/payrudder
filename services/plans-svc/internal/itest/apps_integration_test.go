@@ -118,6 +118,23 @@ func testAddresses(t *testing.T) {
 		t.Errorf("unknown customer: %v", err)
 	}
 
+	renamed, err := e.plans.SetCustomerContact(ctx, &plansv1.SetCustomerContactRequest{ExternalId: "cus_a", Name: "Ada Lovelace", Email: "ada@lovelace.example"})
+	if err != nil || renamed.GetCustomer().GetName() != "Ada Lovelace" || renamed.GetCustomer().GetEmail() != "ada@lovelace.example" || renamed.GetCustomer().GetCountry() != "DE" {
+		t.Fatalf("renamed = %v, %v; only the name and e-mail change", renamed, err)
+	}
+	for _, bad := range []*plansv1.SetCustomerContactRequest{
+		{ExternalId: "cus_a", Name: " ", Email: "ada@example.com"},
+		{ExternalId: "cus_a", Name: "Ada", Email: "not-an-email"},
+		{Name: "Ada", Email: "ada@example.com"},
+	} {
+		if _, err := e.plans.SetCustomerContact(ctx, bad); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("contact %v: %v", bad, err)
+		}
+	}
+	if _, err := e.plans.SetCustomerContact(ctx, &plansv1.SetCustomerContactRequest{ExternalId: "nobody", Name: "Ada", Email: "ada@example.com"}); status.Code(err) != codes.NotFound {
+		t.Errorf("unknown customer: %v", err)
+	}
+
 	seller := &plansv1.Address{Line1: "1 Market St", City: "London", Country: "GB"}
 	tn, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), Address: seller})
 	if err != nil || tn.GetTenant().GetAddress().GetCity() != "London" {

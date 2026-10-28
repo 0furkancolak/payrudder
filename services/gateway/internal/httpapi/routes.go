@@ -55,6 +55,7 @@ func (s *Server) ingestAndCatalogRoutes() []Route {
 		{"DELETE", "/v1/customers/{external_id}/entitlement-overrides/{meter}", AccessTenant, ratelimit.ClassWrite, s.deleteEntitlementOverride},
 		{"PUT", "/v1/customers/{external_id}/payment-method", AccessTenant, ratelimit.ClassWrite, s.setPaymentMethod},
 		{"PUT", "/v1/customers/{external_id}/address", AccessTenant, ratelimit.ClassWrite, s.setCustomerAddress},
+		{"PUT", "/v1/customers/{external_id}/contact", AccessTenant, ratelimit.ClassWrite, s.setCustomerContact},
 		{"PUT", "/v1/customers/{external_id}/tax", AccessTenant, ratelimit.ClassWrite, s.setCustomerTax},
 		// Meters
 		{"POST", "/v1/meters", AccessTenant, ratelimit.ClassWrite, s.createMeter},

@@ -960,6 +960,12 @@ type Customer struct {
 	EInvoiceRegistered bool     `json:"e_invoice_registered"`
 }
 
+// CustomerContact is an object of the API; see components.schemas.CustomerContact in api/openapi/v1.yaml.
+type CustomerContact struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
 // CustomerPayment is an object of the API; see components.schemas.CustomerPayment in api/openapi/v1.yaml.
 type CustomerPayment struct {
 	InvoiceID     string `json:"invoice_id"`

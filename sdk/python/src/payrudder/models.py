@@ -99,6 +99,11 @@ class SetPaymentMethodRequest(TypedDict):
     payment_method: str
 
 
+class CustomerContact(TypedDict):
+    name: str
+    email: str
+
+
 class CustomerTax(TypedDict, total=False):
     tax_id: str
     tax_office: str

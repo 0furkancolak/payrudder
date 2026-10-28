@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useParams, useRouter } from "@tanstack/vue-router";
-import { CreditCard, ArrowUpRight, Gauge, Link2, MapPin, Plus, Receipt, Repeat, Users } from "@lucide/vue";
+import { CreditCard, ArrowUpRight, Gauge, Link2, MapPin, Plus, Receipt, Repeat, UserPen, Users } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
@@ -113,6 +113,7 @@ useOpenParam("customer", () => customers.isSuccess.value, (id) => {
 
 // --- what the sheet and the row actions lead to
 const creating = ref(false);
+const editingContact = ref<Customer | null>(null);
 const editingAddress = ref<Customer | null>(null);
 const editingTax = ref<Customer | null>(null);
 const packages = usePackages(tenantId);
@@ -147,6 +148,7 @@ const openOf = (target: typeof editingAddress) =>
       if (!v) target.value = null;
     },
   });
+useSheetTarget("customer-contact", openOf(editingContact), editingContact, { id: (c) => c.external_id ?? "", find: customerOf });
 useSheetTarget("customer-address", openOf(editingAddress), editingAddress, { id: (c) => c.external_id ?? "", find: customerOf });
 useSheetTarget("customer-tax", openOf(editingTax), editingTax, { id: (c) => c.external_id ?? "", find: customerOf });
 const quotaTarget = computed({ get: () => (quotasOf.value === "" ? null : quotasOf.value), set: (v) => (quotasOf.value = v ?? "") });
@@ -157,7 +159,8 @@ function actionsOf(c: Customer, i: number): RowAction[] {
     { key: "subscription", label: t("billing.customers.sheet.newSubscription"), icon: Repeat, onSelect: () => newSubscription(c) },
     { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: Receipt, onSelect: () => open(i) },
     { key: "link", label: t("billing.paymentLinks.paymentLink"), icon: Link2, onSelect: () => paymentLink(c.external_id) },
-    { key: "address", label: t("billing.customers.address.edit"), icon: MapPin, separatorBefore: true, onSelect: () => (editingAddress.value = c) },
+    { key: "contact", label: t("billing.customers.contact.edit"), icon: UserPen, separatorBefore: true, onSelect: () => (editingContact.value = c) },
+    { key: "address", label: t("billing.customers.address.edit"), icon: MapPin, onSelect: () => (editingAddress.value = c) },
     { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => (editingTax.value = c) },
     { key: "quotas", label: t("billing.quotas.action"), icon: Gauge, onSelect: () => (quotasOf.value = c.external_id ?? "") },
   ];
@@ -174,6 +177,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
       :customer="current"
       :summary="summaryOf(current)"
       :summary-loading="summaries.loading.value"
+      @edit-contact="editingContact = current"
       @edit-address="editingAddress = current"
       @edit-tax="editingTax = current"
       @new-subscription="newSubscription(current)"
@@ -184,7 +188,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
   <!-- After the customer's sheet: a sheet portals to where it was first rendered, so these open above the one they are opened from. -->
   <CustomerCreateSheet v-model:open="creating" :tenant-id="tenantId" />
   <CustomerQuotasSheet v-model:open="quotasOpen" :tenant-id="tenantId" :customer="quotasOf" />
-  <CustomerEditSheets v-model:address="editingAddress" v-model:tax="editingTax" :tenant-id="tenantId" />
+  <CustomerEditSheets v-model:contact="editingContact" v-model:address="editingAddress" v-model:tax="editingTax" :tenant-id="tenantId" />
   <CreateSubscriptionForm v-model:open="subscribing" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" :for-customer="subscribeFor" />
 
   <Card class="gap-0 p-3">

@@ -23,6 +23,7 @@ use Payrudder\Model\CreditLedgerEntry;
 use Payrudder\Model\CreditLedgerPage;
 use Payrudder\Model\CreditResult;
 use Payrudder\Model\Customer;
+use Payrudder\Model\CustomerContact;
 use Payrudder\Model\CustomerTax;
 use Payrudder\Model\EntitlementOverride;
 use Payrudder\Model\EntitlementStatus;
@@ -145,6 +146,20 @@ final class CustomersResource extends AbstractResource
     public function setCustomerAddress(string $externalId, AddressInput|array $body, ?RequestOptions $options = null): Customer
     {
         return Customer::fromArray($this->call('PUT', '/v1/customers/' . rawurlencode($externalId) . '/address', [], Cast::body($body), $options));
+    }
+
+    /**
+     * Replace the customer's name and e-mail address (PUT /v1/customers/{external_id}/contact).
+     *
+     * @param string $externalId
+     * @param CustomerContact|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function setCustomerContact(string $externalId, CustomerContact|array $body, ?RequestOptions $options = null): Customer
+    {
+        return Customer::fromArray($this->call('PUT', '/v1/customers/' . rawurlencode($externalId) . '/contact', [], Cast::body($body), $options));
     }
 
     /**

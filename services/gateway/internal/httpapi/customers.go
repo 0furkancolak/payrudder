@@ -55,6 +55,18 @@ func (s *Server) setCustomerAddress(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
 }
 
+// setCustomerContact is PUT /v1/customers/{external_id}/contact: the body is the name and e-mail.
+func (s *Server) setCustomerContact(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SetCustomerContactRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.ExternalId = r.PathValue("external_id")
+	resp, err := s.d.Plans.SetCustomerContact(r.Context(), req)
+	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
+}
+
 // setPaymentScenario is the sandbox spelling of SetPaymentMethod: {"scenario": "declined"} → pm_sandbox_declined.
 func (s *Server) setPaymentScenario(w http.ResponseWriter, r *http.Request) {
 	var body struct {

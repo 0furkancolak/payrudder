@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Copy, CreditCard, Gift, Link2, MapPin, Pencil, Plus } from "@lucide/vue";
+import { Check, Copy, CreditCard, Gift, Link2, MapPin, Pencil, Plus, UserPen } from "@lucide/vue";
 import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -28,7 +28,7 @@ import { countryName, flagOf, headline, type Customer, type CustomerSummary, typ
  */
 
 const props = defineProps<{ tenantId: string; customer: Customer; summary?: CustomerSummary; summaryLoading?: boolean }>();
-const emit = defineEmits<{ editAddress: []; editTax: []; newSubscription: []; paymentLink: []; credits: [] }>();
+const emit = defineEmits<{ editContact: []; editAddress: []; editTax: []; newSubscription: []; paymentLink: []; credits: [] }>();
 const tab = defineModel<CustomerTab>("tab", { default: "overview" });
 const { t, locale } = useI18n();
 const fmt = useFormat();
@@ -93,6 +93,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
           <Button size="sm" variant="outline" data-testid="customer-edit"><Pencil aria-hidden="true" />{{ t("billing.customers.sheet.edit") }}</Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" class="min-w-44">
+          <DropdownMenuItem class="rounded-xl" data-testid="customer-edit-contact" @select="emit('editContact')"><UserPen class="size-4" aria-hidden="true" />{{ t("billing.customers.contact.edit") }}</DropdownMenuItem>
           <DropdownMenuItem class="rounded-xl" data-testid="customer-edit-address" @select="emit('editAddress')"><MapPin class="size-4" aria-hidden="true" />{{ t("billing.customers.address.edit") }}</DropdownMenuItem>
           <DropdownMenuItem class="rounded-xl" data-testid="customer-edit-tax" @select="emit('editTax')"><CreditCard class="size-4" aria-hidden="true" />{{ t("einvoice.customer.edit") }}</DropdownMenuItem>
         </DropdownMenuContent>

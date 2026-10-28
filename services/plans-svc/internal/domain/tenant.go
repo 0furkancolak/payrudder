@@ -180,6 +180,18 @@ func ValidatePaymentMethod(environment, pm string) error {
 	}
 }
 
+// ValidateCustomerContact checks the name and e-mail of SetCustomerContact with the rules CreateCustomer applies.
+func ValidateCustomerContact(name, email string) error {
+	var v Violations
+	if strings.TrimSpace(name) == "" || len(name) > 200 {
+		v.Add("name", "required, at most 200 characters")
+	}
+	if addr, err := mail.ParseAddress(email); err != nil || addr.Address != email {
+		v.Add("email", "must be a plain e-mail address")
+	}
+	return v.Err()
+}
+
 // ValidateCustomer checks CreateCustomer fields.
 func ValidateCustomer(environment string, req *plansv1.CreateCustomerRequest) error {
 	var v Violations

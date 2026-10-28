@@ -100,6 +100,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/contact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace the customer's name and e-mail address
+         * @description Invoices, receipts and dunning mails carry the name and go to the e-mail address. Both are required, with the limits of customer creation. The external id cannot change.
+         */
+        put: operations["setCustomerContact"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/tax": {
         parameters: {
             query?: never;
@@ -8683,6 +8703,11 @@ export interface components {
             refund_state: "REFUND_STATE_REQUESTED" | "REFUND_STATE_REFUNDED" | "REFUND_STATE_FAILED";
             refund_error: string;
         };
+        CustomerContact: {
+            name: string;
+            /** Format: email */
+            email: string;
+        };
         CustomerTax: {
             /** @description VKN/TCKN (Turkey) or VAT id (EU) */
             tax_id?: string;
@@ -10177,6 +10202,34 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AddressInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Customer"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    setCustomerContact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerContact"];
             };
         };
         responses: {

@@ -950,6 +950,11 @@ export interface Customer {
   e_invoice_registered: boolean;
 }
 
+export interface CustomerContact {
+  name: string;
+  email: string;
+}
+
 export interface CustomerPayment {
   invoice_id: string;
   invoice_number: string;

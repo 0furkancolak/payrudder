@@ -441,6 +441,14 @@
       "tenantCurrency": "Account's currency",
       "create": "Create customer",
       "empty": "No customers yet.",
+      "contact": {
+        "edit": "Edit name and e-mail",
+        "title": "Name and e-mail",
+        "editing": "Contact of {id}",
+        "name": "Name",
+        "email": "E-mail",
+        "save": "Save contact"
+      },
       "address": {
         "title": "Billing address",
         "line1": "Address line 1",

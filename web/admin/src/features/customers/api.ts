@@ -77,6 +77,21 @@ export function useSetCustomerAddress(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
+export interface CustomerContact {
+  name: string;
+  email: string;
+}
+
+/** Replaces a customer's name and e-mail address. */
+export function useSetCustomerContact(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { externalId: string; contact: CustomerContact }) =>
+      unwrap(tenantApi(toValue(tenantId)).PUT("/v1/customers/{external_id}/contact", { params: { path: { external_id: v.externalId } }, body: v.contact })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: customerKeys.list(toValue(tenantId)) }),
+  });
+}
+
 export interface CustomerTax {
   tax_id?: string;
   tax_office?: string;

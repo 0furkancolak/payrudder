@@ -95,6 +95,13 @@ class CustomersResource:
         """
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/address", body=body, options=options))
 
+    def set_customer_contact(self, external_id: str, body: m.CustomerContact, *, options: RequestOptions | None = None) -> m.Customer:
+        """Replace the customer's name and e-mail address.
+
+        ``PUT /v1/customers/{external_id}/contact``
+        """
+        return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/contact", body=body, options=options))
+
     def set_customer_tax(self, external_id: str, body: m.CustomerTax, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's tax data used on e-invoices.
 
@@ -1586,6 +1593,13 @@ class AsyncCustomersResource:
         ``PUT /v1/customers/{external_id}/address``
         """
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/address", body=body, options=options))
+
+    async def set_customer_contact(self, external_id: str, body: m.CustomerContact, *, options: RequestOptions | None = None) -> m.Customer:
+        """Replace the customer's name and e-mail address.
+
+        ``PUT /v1/customers/{external_id}/contact``
+        """
+        return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/contact", body=body, options=options))
 
     async def set_customer_tax(self, external_id: str, body: m.CustomerTax, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's tax data used on e-invoices.
