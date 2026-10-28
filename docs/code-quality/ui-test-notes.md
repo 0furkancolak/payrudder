@@ -185,9 +185,11 @@ integrations, new-* forms restore from the URL after a reload.
 - "Kiracı"/"Kiracının para birimi" (tenant) leaks into customer-facing forms.
 - Credit grant reasons (welcome gift, goodwill, promotion) all end up as source "Promosyon" in the lots table.
 
-### UI-27 (polish) Console noise
+### UI-27 (polish) Console noise — decided: kept as is
 - `GET /v1/affiliates/program` returns 404 for a tenant without a program (an expected empty state) and logs a red console error on every visit.
   Same for expected 4xx on forms (customer not found), which is fine, but the 404 could be a 200 with `null`.
+  Decision: the 404 stays. A missing resource is a 404 in the public API, the console handles it as the empty state (`features/affiliates/api.ts`),
+  and a `200 null` would change the OpenAPI contract, both SDKs and the generated types for a cosmetic console line.
 
 ### UI-28 (polish) API keys — fixed in #229
 - New key defaults to the "Yönetici" role (all 24 permissions); a least-privilege default (read-only or usage-only) is safer. Keys cannot be named, so a list
