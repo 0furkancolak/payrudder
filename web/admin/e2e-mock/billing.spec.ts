@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, OPERATOR, OPERATOR_EMAIL, OPERATOR_PASSWORD, openTenantPage, TENANT } from "./gateway";
-import { pickCurrency, pickLanguage, pickPlace, confirmDialog } from "./ui";
+import { pickCurrency, pickLanguage, pickPlace, confirmDialog, rowAction } from "./ui";
 
 const customer = (id: string, extra: Record<string, unknown> = {}) => ({ id: `id-${id}`, external_id: id, name: `Name ${id}`, email: `${id}@example.com`, ...extra });
 
@@ -128,6 +128,38 @@ test.describe("packages", () => {
     await expect(row).toContainText("v2");
     await expect(row).toContainText("99.00");
     await expect(row).toContainText("3.00");
+  });
+
+  test("a price change is checked first, then scheduled after asking, and the subscriptions left out are explained", async ({ page }) => {
+    const result = (dry: boolean) => ({ scheduled: 3, scheduled_subscription_ids: ["s1", "s2", "s3"], skipped: [{ subscription_id: "s4", customer_external_id: "cus_4", reason: "renews_soon" }, { subscription_id: "s5", customer_external_id: "cus_5", reason: "renews_soon" }, { subscription_id: "s6", customer_external_id: "cus_6", reason: "has_pending_change" }], to_version: 2, notice_days: dry ? 21 : 21 });
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
+      if (c.path === "/v1/plans") return { body: { plans: [plan] } };
+      if (c.path === "/v1/plans/pro/versions/latest") return { body: version };
+      if (c.method === "POST" && c.path === "/v1/plans/pro/price-changes") return { body: result(c.body?.dry_run === true) };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/packages");
+    await rowAction(page.getByRole("row", { name: /pro/ }), "Schedule a price change");
+    const sheet = page.getByTestId("price-change-sheet");
+    // The notice cannot be shorter than 14 days, and nothing can be scheduled before it is checked.
+    await expect(sheet.getByTestId("pc-schedule")).toBeDisabled();
+    await sheet.getByTestId("pc-notice").fill("7");
+    await expect(sheet.getByTestId("pc-check-button")).toBeDisabled();
+    await sheet.getByTestId("pc-notice").fill("21");
+    await sheet.getByTestId("pc-check-button").click();
+    await expect(sheet.getByTestId("pc-check")).toContainText("3 subscriptions will move to v2");
+    await expect(sheet.getByTestId("pc-check")).toContainText("2 renew too soon");
+    await expect(sheet.getByTestId("pc-check")).toContainText("1 already have a change waiting");
+    expect(gw.called("POST", "/v1/plans/pro/price-changes")[0]?.body).toEqual({ from_version: 1, notice_days: 21, dry_run: true });
+    // Changing a field throws the check away.
+    await sheet.getByTestId("pc-notice").fill("30");
+    await expect(sheet.getByTestId("pc-schedule")).toBeDisabled();
+    await sheet.getByTestId("pc-check-button").click();
+    await sheet.getByTestId("pc-schedule").click();
+    await confirmDialog(page);
+    await expect(sheet.getByTestId("pc-done")).toContainText("3 subscriptions scheduled to move to v2");
+    expect(gw.called("POST", "/v1/plans/pro/price-changes").at(-1)?.body).toEqual({ from_version: 1, notice_days: 30, dry_run: false });
   });
 
   test("a version is published with amounts in minor units, one fee per currency", async ({ page }) => {

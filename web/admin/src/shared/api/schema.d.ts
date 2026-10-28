@@ -564,6 +564,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/plans/{code}/price-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move every subscription on one plan version to another at its next renewal, and tell the customers
+         * @description For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
+         *     (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+         *     The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
+         *     `run_by_provider` and `not_changeable` (for example a fee invoiced in arrears). `dry_run` counts and changes nothing. Each scheduled change also sends the
+         *     `subscription.change_scheduled` webhook event.
+         */
+        post: operations["schedulePriceChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{id}/change": {
         parameters: {
             query?: never;
@@ -5087,6 +5111,30 @@ export interface webhooks {
 }
 export interface components {
     schemas: {
+        SchedulePriceChangeRequest: {
+            /** @description The plan version the subscriptions are on now */
+            from_version: number;
+            /** @description The version they move to; 0 or absent is the latest published */
+            to_version?: number;
+            /** @description Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14 */
+            notice_days?: number;
+            /** @description Only count; change nothing and mail nobody */
+            dry_run?: boolean;
+        };
+        PriceChangeSkipped: {
+            /** Format: uuid */
+            subscription_id: string;
+            customer_external_id: string;
+            /** @enum {string} */
+            reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable";
+        };
+        SchedulePriceChangeResponse: {
+            scheduled: number;
+            scheduled_subscription_ids: string[];
+            skipped: components["schemas"]["PriceChangeSkipped"][];
+            to_version: number;
+            notice_days: number;
+        };
         BlockCustomerRequest: {
             /** @description Your note on why; never shown to the customer. */
             reason?: string;
@@ -11322,6 +11370,34 @@ export interface operations {
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    schedulePriceChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SchedulePriceChangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulePriceChangeResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     changeSubscription: {

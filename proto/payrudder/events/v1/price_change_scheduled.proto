@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package payrudder.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// PriceChangeScheduled says a subscription will move to another plan version (another price) at its next renewal, and that its customer is to be told. plans-svc
+// writes it to its outbox in the transaction that schedules the change and publishes it on subscription.price-change.v1 (key: {tenant_id}/{customer_id}); notifier
+// turns it into the customer's e-mail, in the customer's language.
+//
+// Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
+message PriceChangeScheduled {
+  // uuidv5(tenant|change id): one scheduled change is one event, so consumers dedup a repeated publish.
+  string event_id = 1;
+  string tenant_id = 2;
+  string customer_id = 3;
+  string subscription_id = 4;
+  string plan_code = 5;
+  // The plan version the subscription moves to.
+  int32 new_plan_version = 6;
+  // When the new price starts: the renewal the change is scheduled for.
+  google.protobuf.Timestamp effective_at = 7;
+  // What each renewal costs from then, in minor units of `currency`.
+  int64 new_renewal_minor = 8;
+  string currency = 9;
+  google.protobuf.Timestamp scheduled_at = 10;
+}

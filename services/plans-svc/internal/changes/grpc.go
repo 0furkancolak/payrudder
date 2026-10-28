@@ -30,6 +30,10 @@ func (h *Handler) ChangeSubscription(ctx context.Context, req *plansv1.ChangeSub
 	return h.cmd.Change(ctx, req)
 }
 
+func (h *Handler) SchedulePriceChange(ctx context.Context, req *plansv1.SchedulePriceChangeRequest) (*plansv1.SchedulePriceChangeResponse, error) {
+	return h.cmd.SchedulePriceChange(ctx, req)
+}
+
 func (h *Handler) CancelScheduledChange(ctx context.Context, req *plansv1.CancelScheduledChangeRequest) (*plansv1.CancelScheduledChangeResponse, error) {
 	sub, err := h.cmd.CancelScheduled(ctx, req)
 	if err != nil {

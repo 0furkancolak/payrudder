@@ -14,6 +14,8 @@ use Payrudder\Model\ListPlansResponse;
 use Payrudder\Model\Plan;
 use Payrudder\Model\PlanVersion;
 use Payrudder\Model\PublishPlanVersionRequest;
+use Payrudder\Model\SchedulePriceChangeRequest;
+use Payrudder\Model\SchedulePriceChangeResponse;
 use Payrudder\RequestOptions;
 
 /**
@@ -44,6 +46,20 @@ final class PlansResource extends AbstractResource
     public function createPlan(CreatePlanRequest|array $body, ?RequestOptions $options = null): Plan
     {
         return Plan::fromArray($this->call('POST', '/v1/plans', [], Cast::body($body), $options));
+    }
+
+    /**
+     * Move every subscription on one plan version to another at its next renewal, and tell the customers (POST /v1/plans/{code}/price-changes).
+     *
+     * @param string $code
+     * @param SchedulePriceChangeRequest|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function schedulePriceChange(string $code, SchedulePriceChangeRequest|array $body, ?RequestOptions $options = null): SchedulePriceChangeResponse
+    {
+        return SchedulePriceChangeResponse::fromArray($this->call('POST', '/v1/plans/' . rawurlencode($code) . '/price-changes', [], Cast::body($body), $options));
     }
 
     /**

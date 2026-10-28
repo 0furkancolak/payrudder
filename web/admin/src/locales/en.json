@@ -650,7 +650,28 @@
       "trialBadge": "{n}-day trial",
       "trialColumn": "Free trial",
       "trialDaysValue": "{n} days",
-      "noTrial": "None"
+      "noTrial": "None",
+      "priceChange": {
+        "action": "Schedule a price change",
+        "title": "Price change for {code}",
+        "intro": "Moves the customers of one version to another at their next renewal and tells each of them by mail, in their language. Nothing changes before then.",
+        "from": "From version",
+        "to": "To version",
+        "latest": "Latest (v{n})",
+        "notice": "Notice, in days",
+        "noticeHelp": "The least time before the renewal that the customer is told. At least 14.",
+        "check": "Check",
+        "schedule": "Schedule and tell customers",
+        "confirm": "Schedule the new price for {n} subscriptions (to v{version}) and mail their customers?",
+        "willSchedule": "{n} subscriptions will move to v{version}.",
+        "done": "{n} subscriptions scheduled to move to v{version}; their customers are being mailed.",
+        "reasons": {
+          "renews_soon": "{n} renew too soon to give the notice: run it again later.",
+          "has_pending_change": "{n} already have a change waiting and were left alone.",
+          "run_by_provider": "{n} are run by a payment provider.",
+          "not_changeable": "{n} cannot be moved this way (for example the fee is invoiced in arrears)."
+        }
+      }
     },
     "subscriptions": {
       "new": "New subscription",

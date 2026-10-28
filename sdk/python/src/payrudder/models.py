@@ -497,6 +497,30 @@ class ChangeQuote(TypedDict):
     quantity: int
 
 
+class _SchedulePriceChangeRequestRequired(TypedDict):
+    from_version: int
+
+
+class SchedulePriceChangeRequest(_SchedulePriceChangeRequestRequired, total=False):
+    to_version: int
+    notice_days: int
+    dry_run: bool
+
+
+class PriceChangeSkipped(TypedDict):
+    subscription_id: str
+    customer_external_id: str
+    reason: Literal["renews_soon", "has_pending_change", "run_by_provider", "not_changeable"]
+
+
+class SchedulePriceChangeResponse(TypedDict):
+    scheduled: int
+    scheduled_subscription_ids: list[str]
+    skipped: list[PriceChangeSkipped]
+    to_version: int
+    notice_days: int
+
+
 class ChangeSubscriptionResponse(TypedDict):
     subscription: Subscription | None
     quote: ChangeQuote | None

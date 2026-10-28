@@ -3,7 +3,7 @@ import { HeaderAction } from "@/shared/ui/page-header";
 
 import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
-import { ArrowUpRight, Plus, X } from "@lucide/vue";
+import { ArrowUpRight, Plus, TrendingUp, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { inRange } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
@@ -24,6 +24,7 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
+import PriceChangeSheet from "./PriceChangeSheet.vue";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -44,6 +45,8 @@ const meterList = computed(() => meters.data.value ?? []);
 const unitOf = (code: string) => meterList.value.find((m) => m.code === code)?.unit_label ?? "";
 
 const list = computed(() => packages.data.value ?? []);
+const priceFor = ref("");
+const pricing = computed({ get: () => priceFor.value !== "", set: (v) => { if (!v) priceFor.value = ""; } });
 const fmt = useFormat();
 const range = ref<DateRange>({ from: "", to: "" });
 const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { sheet: { kind: "package", id: (p) => p.plan.code }, searchFields: (p) => [p.plan.code, p.plan.name] });
@@ -143,6 +146,8 @@ function submit() {
 </script>
 
 <template>
+  <PriceChangeSheet v-if="canWrite" v-model:open="pricing" :tenant-id="tenantId" :code="priceFor" :latest="list.find((x) => x.plan.code === priceFor)?.version?.version ?? 1" />
+
   <Sheet v-if="canWrite" v-model:open="creating" name="new-package">
     <SheetContent>
       <SheetHeader>
@@ -273,7 +278,7 @@ function submit() {
             </div>
           </TableCell>
           <TableCell class="text-end tabular-nums">{{ (p.version?.prices ?? []).length }}</TableCell>
-          <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) }]" /></TableCell>
+          <TableCell class="text-end"><RowActions :actions="[{ key: 'view', label: t('common.view'), icon: ArrowUpRight, onSelect: () => table.open(i) }, ...(canWrite && (p.version?.version ?? 0) > 1 ? [{ key: 'price', label: t('billing.packages.priceChange.action'), icon: TrendingUp, separatorBefore: true, onSelect: () => (priceFor = p.plan.code ?? '') }] : [])]" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>

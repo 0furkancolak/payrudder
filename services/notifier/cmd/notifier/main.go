@@ -20,6 +20,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/pricechange"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/trials"
 	"github.com/0furkancolak/payrudder/services/notifier/migrations"
@@ -31,14 +32,14 @@ var defaults []byte
 type Config struct {
 	config.Base
 	pgxx.SystemSettings
-	RabbitMQURL   string        `env:"PAYRUDDER_RABBITMQ_URL,required"`
-	KafkaBrokers  []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
-	PlansAddr     string        `env:"PAYRUDDER_PLANS_ADDR"`
-	SMTPAddr      string        `env:"SMTP_ADDR"`
+	RabbitMQURL  string   `env:"PAYRUDDER_RABBITMQ_URL,required"`
+	KafkaBrokers []string `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
+	PlansAddr    string   `env:"PAYRUDDER_PLANS_ADDR"`
+	SMTPAddr     string   `env:"SMTP_ADDR"`
 	// NafruBaseURL and NafruAPIKey make Nafru Email the sender of Payrudder's own mail (the default every plan includes, nothing for a customer to set up). Both
 	// or neither: with neither, mail goes to SMTP_ADDR (a development mail catcher). A tenant that connected its own Nafru account still sends through that.
-	NafruBaseURL string `env:"NAFRU_BASE_URL"`
-	NafruAPIKey  string `env:"NAFRU_API_KEY"`
+	NafruBaseURL  string        `env:"NAFRU_BASE_URL"`
+	NafruAPIKey   string        `env:"NAFRU_API_KEY"`
 	SandboxSMTP   string        `env:"SANDBOX_SMTP_ADDR"`
 	MailFrom      string        `env:"MAIL_FROM"`
 	SendingStale  time.Duration `env:"NOTIFIER_SENDING_STALE"`
@@ -48,8 +49,10 @@ type Config struct {
 	Group            string `env:"PAYRUDDER_CONSUMER_GROUP"`
 	DLQTopic         string `env:"PAYRUDDER_DLQ_TOPIC"`
 	// TrialDLQTopic receives the trial-ending facts that can never be mailed; the Kafka group of that consumer is the group with "-trials" appended.
-	TrialDLQTopic  string        `env:"PAYRUDDER_TRIAL_DLQ_TOPIC"`
-	SessionTimeout time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
+	TrialDLQTopic string `env:"PAYRUDDER_TRIAL_DLQ_TOPIC"`
+	// PriceChangeDLQTopic receives the price-change facts that can never be mailed; the Kafka group of that consumer is the group with "-price-change" appended.
+	PriceChangeDLQTopic string        `env:"PAYRUDDER_PRICE_CHANGE_DLQ_TOPIC"`
+	SessionTimeout      time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -123,6 +126,17 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer trialConsumer.Close()
 
+	priceGroup := cfg.Group + "-price-change"
+	priceOffsets := store.Offsets{DB: pool, Group: priceGroup, Topic: pricechange.Topic}
+	pc := &pricechange.Consumer{Mailer: mailer, Plans: plansv1.NewPlansServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
+		Offsets: priceOffsets, DLQ: kafkax.DLQ{Client: producer, Topic: cfg.PriceChangeDLQTopic, Consumer: priceGroup}, Log: log}
+	priceConsumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: cfg.KafkaBrokers, GroupID: priceGroup, Topic: pricechange.Topic,
+		LoadOffsets: priceOffsets.Load, Handler: pc, MaxPollRecords: 100, Backoff: 2 * time.Second, SessionTimeout: cfg.SessionTimeout, Log: log})
+	if err != nil {
+		return err
+	}
+	defer priceConsumer.Close()
+
 	hh := rt.Health()
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
@@ -135,5 +149,6 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	})
 	g.Go(func() error { return consumer.Run(gctx) })
 	g.Go(func() error { return trialConsumer.Run(gctx) })
+	g.Go(func() error { return priceConsumer.Run(gctx) })
 	return g.Wait()
 }

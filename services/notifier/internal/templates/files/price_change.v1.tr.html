@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir bildirim değildir.</strong></p>{{end}}
+<h2>Fiyatınız değişiyor</h2>
+<p>Merhaba {{index .D "customer_name"}}, <strong>{{index .D "effective_date"}}</strong> tarihinden itibaren <strong>{{index .D "plan_code"}}</strong> aboneliğiniz her yenilemede <strong>{{index .D "new_renewal"}}</strong> tutarında olacak. O tarihe kadar hiçbir şey değişmez.</p>
+<p>Yeni fiyattan devam etmek istemiyorsanız lütfen o tarihten önce bize bildirin.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

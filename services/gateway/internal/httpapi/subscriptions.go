@@ -80,6 +80,18 @@ func (s *Server) previewSubscriptionChange(w http.ResponseWriter, r *http.Reques
 	respond(w, r, http.StatusOK, resp.GetQuote(), err)
 }
 
+// schedulePriceChange is POST /v1/plans/{code}/price-changes: the body names the versions and the notice.
+func (s *Server) schedulePriceChange(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SchedulePriceChangeRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.PlanCode = r.PathValue("code")
+	resp, err := s.d.Plans.SchedulePriceChange(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
 func (s *Server) changeSubscription(w http.ResponseWriter, r *http.Request) {
 	req := &plansv1.ChangeSubscriptionRequest{}
 	if err := decode(r, req); err != nil {

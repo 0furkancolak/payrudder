@@ -650,7 +650,28 @@
       "trialBadge": "Essai de {n} jours",
       "trialColumn": "Essai gratuit",
       "trialDaysValue": "{n} jours",
-      "noTrial": "Aucun"
+      "noTrial": "Aucun",
+      "priceChange": {
+        "action": "Planifier un changement de prix",
+        "title": "Changement de prix pour {code}",
+        "intro": "Fait passer les clients d'une version à une autre à leur prochain renouvellement et prévient chacun par e-mail, dans sa langue. Rien ne change avant.",
+        "from": "De la version",
+        "to": "À la version",
+        "latest": "Dernière (v{n})",
+        "notice": "Préavis, en jours",
+        "noticeHelp": "Le délai minimal avant le renouvellement auquel le client est prévenu. Au moins 14.",
+        "check": "Vérifier",
+        "schedule": "Planifier et prévenir les clients",
+        "confirm": "Planifier le nouveau prix (v{version}) pour {n} abonnements et envoyer un e-mail à leurs clients ?",
+        "willSchedule": "{n} abonnements passeront à la v{version}.",
+        "done": "{n} abonnements planifiés vers la v{version} ; leurs clients sont prévenus par e-mail.",
+        "reasons": {
+          "renews_soon": "{n} se renouvellent trop tôt pour le préavis : relancez plus tard.",
+          "has_pending_change": "{n} ont déjà un changement en attente et n'ont pas été touchés.",
+          "run_by_provider": "{n} sont gérés par un prestataire de paiement.",
+          "not_changeable": "{n} ne peuvent pas être déplacés ainsi (par exemple frais facturés à terme échu)."
+        }
+      }
     },
     "subscriptions": {
       "new": "Nouvel abonnement",

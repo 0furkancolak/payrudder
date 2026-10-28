@@ -26,6 +26,8 @@
 | `usage.limit-exceeded.v1` | `tenant_id` | `LimitExceeded` | 6 | `delete`, 90 days | limits-svc | analytics-svc (`analytics`), notifier (`notifier`) |
 | `usage.limit-exceeded.dlq.v1` | `tenant_id` | original bytes | 1 | `delete`, 30 days | analytics-svc, notifier | operator |
 | `subscription.trial-will-end.v1` | `{tenant_id}/{customer_id}` | `TrialWillEnd` | 6 | `delete`, 90 days | plans-svc (outbox) | notifier (`notifier-trials`) |
+| `subscription.price-change.v1` | `{tenant_id}/{customer_id}` | `PriceChangeScheduled` | 6 | `delete`, 90 days | plans-svc (outbox) | notifier (`notifier-price-change`) |
+| `subscription.price-change.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
 | `subscription.trial-will-end.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
 | `plans.entitlements.v1` | `{tenant_id}/{customer_id}/{meter_code}` | `EntitlementState` or tombstone | 6 | **`compact`**, `min.compaction.lag.ms=1h`, `delete.retention.ms=1d` | plans-svc (outbox) | limits-svc (per-pod group, reads from earliest) |
 | `billing.invoices.v1` | `tenant_id` | `InvoiceFact` (`oneof`: finalized / paid / voided / corrected) | 6 | `delete`, 400 days | billing-svc (outbox) | analytics-svc (`analytics`) |

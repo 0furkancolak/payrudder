@@ -172,6 +172,8 @@ import type {
   SandboxScenariosResponse,
   SandboxSimulateInvoiceRequest,
   SandboxSimulateInvoiceResponse,
+  SchedulePriceChangeRequest,
+  SchedulePriceChangeResponse,
   SetInvoiceLogoRequest,
   SetInvoiceLogoResponse,
   SetPaymentMethodRequest,
@@ -1413,6 +1415,21 @@ export class PlansResource {
    */
   getPlanVersion(code: string, version: string, options?: RequestOptions): Promise<PlanVersion> {
     return this.t.request<PlanVersion>({ method: "GET", path: `/v1/plans/${seg(code)}/versions/${seg(version)}`, response: "json" }, options);
+  }
+
+  /**
+   * Move every subscription on one plan version to another at its next renewal, and tell the customers
+   *
+   * For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
+   * (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+   * The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
+   * `run_by_provider` and `not_changeable` (for example a fee invoiced in arrears). `dry_run` counts and changes nothing. Each scheduled change also sends the
+   * `subscription.change_scheduled` webhook event.
+   *
+   * `POST /v1/plans/{code}/price-changes`
+   */
+  schedulePriceChange(code: string, body: SchedulePriceChangeRequest, options?: RequestOptions): Promise<SchedulePriceChangeResponse> {
+    return this.t.request<SchedulePriceChangeResponse>({ method: "POST", path: `/v1/plans/${seg(code)}/price-changes`, body, bodyKind: "json", response: "json" }, options);
   }
 }
 

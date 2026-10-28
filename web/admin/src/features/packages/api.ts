@@ -75,3 +75,26 @@ export function useCreatePackage(tenantId: MaybeRefOrGetter<string>) {
     onSuccess: () => queries.invalidateQueries({ queryKey: packageKeys.list(toValue(tenantId)) }),
   });
 }
+
+export type PriceChangeResult = {
+  scheduled: number;
+  scheduled_subscription_ids: string[];
+  skipped: { subscription_id: string; customer_external_id: string; reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable" }[];
+  to_version: number;
+  notice_days: number;
+};
+
+/** Moves the subscriptions on one version of a package to another at their next renewal and mails the customers; `dryRun` only counts. */
+export function useSchedulePriceChange(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { code: string; fromVersion: number; toVersion?: number; noticeDays: number; dryRun: boolean }): Promise<PriceChangeResult> =>
+      unwrap(
+        tenantApi(toValue(tenantId)).POST("/v1/plans/{code}/price-changes", {
+          params: { path: { code: v.code } },
+          body: { from_version: v.fromVersion, ...(v.toVersion ? { to_version: v.toVersion } : {}), notice_days: v.noticeDays, dry_run: v.dryRun },
+        }),
+      ) as Promise<PriceChangeResult>,
+    onSuccess: (_r, v) => (v.dryRun ? undefined : queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId)] })),
+  });
+}

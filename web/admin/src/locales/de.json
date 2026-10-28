@@ -650,7 +650,28 @@
       "trialBadge": "{n} Tage Test",
       "trialColumn": "Kostenlose Testphase",
       "trialDaysValue": "{n} Tage",
-      "noTrial": "Keine"
+      "noTrial": "Keine",
+      "priceChange": {
+        "action": "Preisänderung planen",
+        "title": "Preisänderung für {code}",
+        "intro": "Verschiebt die Kunden einer Version bei ihrer nächsten Verlängerung auf eine andere und informiert jeden per Mail in seiner Sprache. Bis dahin ändert sich nichts.",
+        "from": "Ab Version",
+        "to": "Auf Version",
+        "latest": "Neueste (v{n})",
+        "notice": "Vorlauf in Tagen",
+        "noticeHelp": "Mindestens so lange vor der Verlängerung wird der Kunde informiert. Mindestens 14.",
+        "check": "Prüfen",
+        "schedule": "Planen und Kunden informieren",
+        "confirm": "Den neuen Preis (v{version}) für {n} Abonnements planen und ihre Kunden per Mail informieren?",
+        "willSchedule": "{n} Abonnements wechseln auf v{version}.",
+        "done": "{n} Abonnements für den Wechsel auf v{version} geplant; ihre Kunden werden informiert.",
+        "reasons": {
+          "renews_soon": "{n} verlängern zu bald für den Vorlauf: später erneut ausführen.",
+          "has_pending_change": "{n} haben schon eine wartende Änderung und blieben unberührt.",
+          "run_by_provider": "{n} werden von einem Zahlungsanbieter geführt.",
+          "not_changeable": "{n} lassen sich so nicht verschieben (z. B. Gebühr im Nachhinein berechnet)."
+        }
+      }
     },
     "subscriptions": {
       "new": "Neues Abonnement",

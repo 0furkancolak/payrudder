@@ -1478,6 +1478,38 @@ func (q *Queries) ListLatestMeters(ctx context.Context) ([]Meter, error) {
 	return items, nil
 }
 
+const listLiveSubscriptionsOnVersion = `-- name: ListLiveSubscriptionsOnVersion :many
+SELECT s.id, c.external_id AS customer_external_id FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+WHERE s.tenant_id = app_tenant_id() AND s.plan_version_id = $1 AND s.state <> 'cancelled' AND upper_inf(s.active)
+ORDER BY s.id
+`
+
+type ListLiveSubscriptionsOnVersionRow struct {
+	ID                 uuid.UUID
+	CustomerExternalID string
+}
+
+// The subscriptions a price change looks at: Payrudder-run, not ended, on one plan version.
+func (q *Queries) ListLiveSubscriptionsOnVersion(ctx context.Context, planVersionID uuid.UUID) ([]ListLiveSubscriptionsOnVersionRow, error) {
+	rows, err := q.db.Query(ctx, listLiveSubscriptionsOnVersion, planVersionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLiveSubscriptionsOnVersionRow{}
+	for rows.Next() {
+		var i ListLiveSubscriptionsOnVersionRow
+		if err := rows.Scan(&i.ID, &i.CustomerExternalID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPendingChangesFor = `-- name: ListPendingChangesFor :many
 SELECT c.id, c.subscription_id, c.plan_version_id, c.interval, c.effective_at, c.quantity, pl.code AS plan_code, pv.version AS plan_version
 FROM subscription_changes c

@@ -1768,6 +1768,28 @@ func (s *PlansService) CreatePlan(ctx context.Context, req *CreatePlanRequest, o
 	return &out, nil
 }
 
+// SchedulePriceChange: Move every subscription on one plan version to another at its next renewal, and tell the
+// customers (POST /v1/plans/{code}/price-changes).
+//
+// For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away
+// (default 30, at least 14), a change to `to_version` (default: the latest published) is scheduled for that
+// renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+// The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a
+// change is waiting and is never replaced), `run_by_provider` and `not_changeable` (for example a fee invoiced
+// in arrears). `dry_run` counts and changes nothing. Each scheduled change also sends the
+// `subscription.change_scheduled` webhook event.
+func (s *PlansService) SchedulePriceChange(ctx context.Context, code string, req *SchedulePriceChangeRequest, opts ...RequestOption) (*SchedulePriceChangeResponse, error) {
+	if req == nil {
+		req = &SchedulePriceChangeRequest{}
+	}
+	var body any = req
+	var out SchedulePriceChangeResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/plans/" + url.PathEscape(code) + "/price-changes", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // PublishPlanVersion: Publish the next immutable plan version (POST /v1/plans/{code}/versions).
 func (s *PlansService) PublishPlanVersion(ctx context.Context, code string, req *PublishPlanVersionRequest, opts ...RequestOption) (*PlanVersion, error) {
 	if req == nil {

@@ -650,7 +650,28 @@
       "trialBadge": "Prueba de {n} días",
       "trialColumn": "Prueba gratuita",
       "trialDaysValue": "{n} días",
-      "noTrial": "Ninguna"
+      "noTrial": "Ninguna",
+      "priceChange": {
+        "action": "Programar un cambio de precio",
+        "title": "Cambio de precio para {code}",
+        "intro": "Pasa a los clientes de una versión a otra en su próxima renovación y avisa a cada uno por correo, en su idioma. Hasta entonces no cambia nada.",
+        "from": "Desde la versión",
+        "to": "A la versión",
+        "latest": "La última (v{n})",
+        "notice": "Aviso, en días",
+        "noticeHelp": "El tiempo mínimo antes de la renovación con que se avisa al cliente. Al menos 14.",
+        "check": "Comprobar",
+        "schedule": "Programar y avisar a los clientes",
+        "confirm": "¿Programar el nuevo precio (v{version}) para {n} suscripciones y avisar por correo a sus clientes?",
+        "willSchedule": "{n} suscripciones pasarán a la v{version}.",
+        "done": "{n} suscripciones programadas hacia la v{version}; se avisa a sus clientes por correo.",
+        "reasons": {
+          "renews_soon": "{n} se renuevan demasiado pronto para el aviso: vuelva a ejecutarlo más tarde.",
+          "has_pending_change": "{n} ya tienen un cambio pendiente y no se tocaron.",
+          "run_by_provider": "{n} las gestiona un proveedor de pagos.",
+          "not_changeable": "{n} no se pueden mover así (por ejemplo, cuota facturada a mes vencido)."
+        }
+      }
     },
     "subscriptions": {
       "new": "Nueva suscripción",
