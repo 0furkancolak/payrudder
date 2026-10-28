@@ -1,5 +1,7 @@
 # Owner roadmap (2026-10-28)
 
+> **Superseded by [plans/](plans/README.md).** This file records what was shipped on 2026-10-28 and is kept as history; its "Done" notes overstate several items (see the gaps in each plan). Work continues from the plans, one at a time.
+
 Two lists the owner gave on 2026-10-28, with what is done, what is next and what only the owner can unblock. Updated as work lands.
 
 ## List 1 (13 items)
