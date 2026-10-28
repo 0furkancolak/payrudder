@@ -347,6 +347,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.account.health_check_unreachable`
 - `payments.account.livemode_mismatch`
 - `payments.account.not_found`
+- `payments.account.single_only`
 - `payments.account.sync_failed`
 - `payments.billing.failed`
 - `payments.billing.not_configured`
@@ -486,3 +487,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.webhook.not_configured`
 - `plans.webhook.tenant_not_active`
 - `plans.webhook.too_many_endpoints`
+- `support.account.not_member`
+- `support.app.not_found`
+- `support.ticket.closed`
+- `support.ticket.not_found`

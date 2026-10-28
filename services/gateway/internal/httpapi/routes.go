@@ -28,6 +28,7 @@ func (s *Server) routes() []Route {
 		s.onboardingRoutes(),
 		s.goLiveRoutes(),
 		s.integrationRoutes(),
+		s.supportRoutes(),
 		s.sandboxRoutes(),
 		s.sandboxProviderRoutes(),
 		s.memberRoutes(),

@@ -63,6 +63,7 @@ type Deps struct {
 	Identity        plansv1.IdentityServiceClient
 	Webhooks        plansv1.WebhookServiceClient
 	MailIntegration plansv1.MailIntegrationServiceClient
+	Support         plansv1.SupportServiceClient
 	Affiliates      plansv1.AffiliateServiceClient
 	AffiliatePub    plansv1.AffiliatePublicServiceClient
 	AffiliatePortal plansv1.AffiliatePortalServiceClient

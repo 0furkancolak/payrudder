@@ -24,6 +24,7 @@ import (
 	identityqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/support"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/promote"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/saas"
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
@@ -72,6 +73,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.Log)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
+	plansv1.RegisterSupportServiceServer(srv, support.New(d.SystemPool, d.Log))
 	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now).WithPlaces(d.Places)
 	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log)
 	plansv1.RegisterSaasServiceServer(srv, saas.New(saasC, saasQ, d.SystemPool))

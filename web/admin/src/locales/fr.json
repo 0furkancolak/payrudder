@@ -2713,7 +2713,8 @@
         "livemode_mismatch": "Ce compte fournisseur pointe vers l'autre mode du fournisseur : un environnement live exige le point de terminaison et les clés live du fournisseur, un environnement sandbox son point de terminaison de test.",
         "endpoint_not_allowed": "Seul le point d'accès réel du prestataire est autorisé. Laissez ce champ vide.",
         "health_check_failed": "Le prestataire n'a pas accepté ces identifiants. Vérifiez les clés et qu'il s'agit de clés réelles.",
-        "health_check_unreachable": "Le prestataire n'a pas pu être joint pour vérifier ces identifiants. Réessayez dans un instant."
+        "health_check_unreachable": "Le prestataire n'a pas pu être joint pour vérifier ces identifiants. Réessayez dans un instant.",
+        "single_only": "Le virement bancaire n'a qu'un compte par environnement."
       },
       "billing": {
         "not_configured": "La facturation n'est pas configurée sur ce déploiement.",
@@ -3162,6 +3163,18 @@
       "email": "E-mail",
       "currency": "Devise",
       "code": "Code"
+    },
+    "support": {
+      "account": {
+        "not_member": "Vous n'êtes pas membre de cette organisation."
+      },
+      "app": {
+        "not_found": "Cette application est introuvable dans l'organisation."
+      },
+      "ticket": {
+        "closed": "Ce ticket est clos. Ouvrez-en un nouveau.",
+        "not_found": "Ce ticket est introuvable."
+      }
     }
   },
   "product": {
@@ -4146,7 +4159,9 @@
       "orgIntegrations": "Intégrations de l'organisation",
       "plan": "Offre et facturation",
       "organisations": "Organisations",
-      "platformPlans": "Offres de la plateforme"
+      "platformPlans": "Offres de la plateforme",
+      "support": "Aide",
+      "supportInbox": "Boîte de support"
     },
     "noApps": "Aucune application",
     "newApp": "Nouvelle application"
@@ -4748,6 +4763,79 @@
       "save": "Enregistrer",
       "saved": "Enregistré.",
       "cleared": "Limites propres retirées."
+    }
+  },
+  "support": {
+    "intro": "Demandez de l'aide à Payrudder. Tous les membres de votre organisation voient ces tickets ; nous répondons ici.",
+    "new": "Nouveau ticket",
+    "newIntro": "Décrivez ce dont vous avez besoin. Plus nous en savons, plus vite nous aidons : ce que vous avez fait, ce que vous attendiez, ce qui s'est passé.",
+    "send": "Envoyer le ticket",
+    "sendReply": "Envoyer la réponse",
+    "addNote": "Ajouter une note",
+    "empty": "Aucun ticket pour l'instant. Si quelque chose n'est pas clair ou ne marche pas, ouvrez-en un.",
+    "closedNote": "Ce ticket est clos. Ouvrez-en un nouveau si vous avez encore besoin d'aide.",
+    "markSolved": "Marquer comme résolu",
+    "reopen": "Rouvrir",
+    "late": "En retard",
+    "internalNote": "Note interne",
+    "dueBy": "Nous visons une réponse avant le {time}.",
+    "answeredAt": "Première réponse : {time}",
+    "unassigned": "Non assigné",
+    "inboxIntro": "Tous les tickets de toutes les organisations, activité la plus récente d'abord. Les notes internes ne sont jamais montrées au client.",
+    "inboxEmpty": "La file est vide.",
+    "columns": {
+      "number": "N°",
+      "subject": "Objet",
+      "status": "Statut",
+      "updated": "Dernière activité",
+      "account": "Organisation",
+      "assignee": "Responsable"
+    },
+    "fields": {
+      "subject": "Objet",
+      "category": "Sujet",
+      "priority": "Priorité",
+      "app": "Application",
+      "noApp": "L'organisation dans son ensemble",
+      "body": "Que s'est-il passé ?",
+      "reply": "Écrire une réponse",
+      "note": "Écrire une note pour l'équipe"
+    },
+    "filters": {
+      "any": "Tous",
+      "late": "En retard seulement",
+      "searchHint": "Objet ou #numéro"
+    },
+    "status": {
+      "active": "Actifs",
+      "open": "En attente de nous",
+      "pending": "En attente de vous",
+      "solved": "Résolu",
+      "closed": "Clos"
+    },
+    "priority": {
+      "low": "Basse",
+      "normal": "Normale",
+      "high": "Haute",
+      "urgent": "Urgente"
+    },
+    "answerWithin": {
+      "low": "réponse sous 3 jours",
+      "normal": "réponse sous 1 jour",
+      "high": "réponse sous 4 heures",
+      "urgent": "réponse sous 1 heure"
+    },
+    "category": {
+      "billing": "Facturation",
+      "integration": "Intégrations",
+      "bug": "Quelque chose est cassé",
+      "question": "Question",
+      "other": "Autre"
+    },
+    "author": {
+      "customer": "Vous",
+      "operator": "Support Payrudder",
+      "system": "Système"
     }
   }
 }

@@ -3,6 +3,7 @@ import { createRootRoute, createRoute, createRouter, retainSearchParams } from "
 import { authRoutes } from "@/features/auth/routes";
 import { requireOperator } from "@/features/auth";
 import { deadLetterRoutes } from "@/features/dead-letters/routes";
+import { supportInboxRoutes } from "@/features/support/routes";
 import { playgroundRoutes } from "@/features/playground/routes";
 import { personRoutes, publicProductRoutes } from "@/features/product/routes";
 import { saasOperatorRoutes } from "@/features/saas/routes";
@@ -25,7 +26,7 @@ const routeTree = root.addChildren([
   ...publicProductRoutes(root),
   ...authRoutes(root),
   personRoutes(root),
-  operator.addChildren([...tenantRoutes(operator), ...playgroundRoutes(operator), ...deadLetterRoutes(operator), ...saasOperatorRoutes(operator)]),
+  operator.addChildren([...tenantRoutes(operator), ...playgroundRoutes(operator), ...deadLetterRoutes(operator), ...supportInboxRoutes(operator), ...saasOperatorRoutes(operator)]),
 ]);
 
 // The router is deliberately not registered with `declare module "@tanstack/vue-router"`: registering it makes every page's types depend on the

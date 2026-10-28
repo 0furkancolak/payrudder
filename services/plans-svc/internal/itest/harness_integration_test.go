@@ -108,6 +108,7 @@ type env struct {
 	hooks    plansv1.WebhookServiceClient
 	mailprov plansv1.MailIntegrationServiceClient
 	aff      plansv1.AffiliateServiceClient
+	support  plansv1.SupportServiceClient
 	pub      plansv1.AffiliatePublicServiceClient
 	portal   plansv1.AffiliatePortalServiceClient
 	box      *secretbox.Box
@@ -342,7 +343,7 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{w: w, saas: saas, saasAPI: plansv1.NewSaasServiceClient(cc), runner: runner, remotes: remotes, db: w.db, app: app, system: system, appDB: appDB, places: places, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), support: plansv1.NewSupportServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 
 func operator() context.Context {

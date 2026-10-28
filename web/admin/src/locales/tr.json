@@ -2713,7 +2713,8 @@
         "livemode_mismatch": "Bu sağlayıcı hesabı sağlayıcının diğer moduna işaret ediyor: canlı ortam sağlayıcının canlı uç noktasını ve canlı anahtarlarını, sandbox ortamı ise test uç noktasını kullanmalıdır.",
         "endpoint_not_allowed": "Yalnızca sağlayıcının kendi canlı adresine izin verilir. Adres alanını boş bırakın.",
         "health_check_failed": "Sağlayıcı bu kimlik bilgilerini kabul etmedi. Anahtarları ve canlı anahtar olduklarını denetleyin.",
-        "health_check_unreachable": "Kimlik bilgilerini denetlemek için sağlayıcıya ulaşılamadı. Biraz sonra yeniden deneyin."
+        "health_check_unreachable": "Kimlik bilgilerini denetlemek için sağlayıcıya ulaşılamadı. Biraz sonra yeniden deneyin.",
+        "single_only": "Havalenin her ortamda yalnızca bir hesabı olur."
       },
       "billing": {
         "not_configured": "Bu kurulumda faturalama yapılandırılmamış.",
@@ -3162,6 +3163,18 @@
       "email": "E-posta",
       "currency": "Para birimi",
       "code": "Kod"
+    },
+    "support": {
+      "account": {
+        "not_member": "Bu kuruluşun üyesi değilsiniz."
+      },
+      "app": {
+        "not_found": "Bu uygulama kuruluşta bulunamadı."
+      },
+      "ticket": {
+        "closed": "Bu talep kapalı. Yeni bir talep açın.",
+        "not_found": "Talep bulunamadı."
+      }
     }
   },
   "product": {
@@ -4146,7 +4159,9 @@
       "orgIntegrations": "Kuruluş entegrasyonları",
       "plan": "Plan ve faturalama",
       "organisations": "Organizasyonlar",
-      "platformPlans": "Platform planları"
+      "platformPlans": "Platform planları",
+      "support": "Yardım",
+      "supportInbox": "Destek kutusu"
     },
     "noApps": "Henüz uygulama yok",
     "newApp": "Yeni uygulama"
@@ -4748,6 +4763,79 @@
       "save": "Kaydet",
       "saved": "Kaydedildi.",
       "cleared": "Özel limitler kaldırıldı."
+    }
+  },
+  "support": {
+    "intro": "Payrudder'dan yardım isteyin. Kuruluşunuzdaki herkes bu talepleri görür; yanıtları buradan veririz.",
+    "new": "Yeni talep",
+    "newIntro": "İhtiyacınızı anlatın. Ne kadar çok bilirsek o kadar hızlı yardım ederiz: ne yaptınız, ne bekliyordunuz, ne oldu.",
+    "send": "Talebi gönder",
+    "sendReply": "Yanıtı gönder",
+    "addNote": "Not ekle",
+    "empty": "Henüz talep yok. Bir şey belirsiz ya da bozuksa bir talep açın.",
+    "closedNote": "Bu talep kapandı. Daha fazla yardım gerekirse yeni bir talep açın.",
+    "markSolved": "Çözüldü olarak işaretle",
+    "reopen": "Yeniden aç",
+    "late": "Gecikmiş",
+    "internalNote": "Dahili not",
+    "dueBy": "En geç {time} tarihine kadar yanıtlamayı hedefliyoruz.",
+    "answeredAt": "İlk yanıt: {time}",
+    "unassigned": "Atanmamış",
+    "inboxIntro": "Tüm kuruluşların tüm talepleri, en son hareket edenler üstte. Dahili notlar müşteriye hiçbir zaman gösterilmez.",
+    "inboxEmpty": "Kuyrukta bir şey yok.",
+    "columns": {
+      "number": "No.",
+      "subject": "Konu",
+      "status": "Durum",
+      "updated": "Son hareket",
+      "account": "Kuruluş",
+      "assignee": "Sorumlu"
+    },
+    "fields": {
+      "subject": "Konu",
+      "category": "Başlık",
+      "priority": "Öncelik",
+      "app": "Uygulama",
+      "noApp": "Kuruluşun tamamı",
+      "body": "Ne oldu?",
+      "reply": "Yanıt yazın",
+      "note": "Ekip için not yazın"
+    },
+    "filters": {
+      "any": "Hepsi",
+      "late": "Yalnızca geciken",
+      "searchHint": "Konu veya #numara"
+    },
+    "status": {
+      "active": "Aktif",
+      "open": "Bizden yanıt bekliyor",
+      "pending": "Sizden yanıt bekliyor",
+      "solved": "Çözüldü",
+      "closed": "Kapalı"
+    },
+    "priority": {
+      "low": "Düşük",
+      "normal": "Normal",
+      "high": "Yüksek",
+      "urgent": "Acil"
+    },
+    "answerWithin": {
+      "low": "3 gün içinde yanıt",
+      "normal": "1 gün içinde yanıt",
+      "high": "4 saat içinde yanıt",
+      "urgent": "1 saat içinde yanıt"
+    },
+    "category": {
+      "billing": "Faturalama",
+      "integration": "Entegrasyonlar",
+      "bug": "Bir şey bozuk",
+      "question": "Soru",
+      "other": "Diğer"
+    },
+    "author": {
+      "customer": "Siz",
+      "operator": "Payrudder desteği",
+      "system": "Sistem"
     }
   }
 }
