@@ -3946,6 +3946,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/support/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The support tickets of every account the person belongs to, newest activity first */
+        get: operations["appSupportTickets"];
+        put?: never;
+        /**
+         * Open a support ticket for an account (and optionally one of its apps)
+         * @description The first answer is due by the priority (urgent 1 hour, high 4 hours, normal 24 hours, low 72 hours).
+         */
+        post: operations["appOpenSupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/support/tickets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A ticket with its thread (the operator's internal notes are not in it) */
+        get: operations["appSupportTicket"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/support/tickets/{id}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write to a ticket. A ticket waiting for the person or solved goes back to the operator; a closed one takes no reply */
+        post: operations["appReplySupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/support/tickets/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Mark a ticket solved, or reopen it */
+        put: operations["appSetSupportTicketStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The whole support queue (operator), newest activity first, at most 200 */
+        get: operations["listSupportTickets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/support/tickets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A ticket with its whole thread, internal notes included (operator) */
+        get: operations["getSupportTicket"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer */
+        patch: operations["updateSupportTicket"];
+        trace?: never;
+    };
+    "/admin/v1/support/tickets/{id}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer a ticket (operator). An internal note is never shown to the person and does not count as an answer */
+        post: operations["replySupportTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{tenant_id}/provider-accounts": {
         parameters: {
             query?: never;
@@ -4926,6 +5050,111 @@ export interface webhooks {
 }
 export interface components {
     schemas: {
+        SupportTicket: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: int64
+             * @description The short number shown as #1042
+             */
+            number: number;
+            /** Format: uuid */
+            account_id: string;
+            account_name: string;
+            /** @description Empty when the ticket is about the account as a whole */
+            app_id?: string;
+            app_name?: string;
+            /** Format: uuid */
+            opened_by?: string;
+            opened_by_name?: string;
+            subject: string;
+            /** @enum {string} */
+            category: "billing" | "integration" | "bug" | "question" | "other";
+            /** @enum {string} */
+            priority: "low" | "normal" | "high" | "urgent";
+            /**
+             * @description open waits for the operator, pending for the person
+             * @enum {string}
+             */
+            status: "open" | "pending" | "solved" | "closed";
+            assignee: string;
+            /** Format: date-time */
+            create_time: string;
+            /** Format: date-time */
+            update_time: string;
+            /** Format: date-time */
+            last_message_time: string;
+            /** @enum {string} */
+            last_author: "customer" | "operator";
+            /** Format: date-time */
+            first_response_due: string;
+            /** Format: date-time */
+            first_response_time?: string | null;
+            /** @description The first answer is overdue, or was late */
+            sla_breached: boolean;
+            /** Format: date-time */
+            solve_time?: string | null;
+            message_count: number;
+        };
+        SupportMessage: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            author_kind: "customer" | "operator" | "system";
+            author_name: string;
+            body: string;
+            /** @description An operator note the person does not see */
+            internal: boolean;
+            /** Format: date-time */
+            create_time: string;
+        };
+        SupportTicketList: {
+            tickets: components["schemas"]["SupportTicket"][];
+        };
+        SupportTicketResult: {
+            ticket: components["schemas"]["SupportTicket"];
+        };
+        SupportTicketThread: {
+            ticket: components["schemas"]["SupportTicket"];
+            messages: components["schemas"]["SupportMessage"][];
+        };
+        OpenSupportTicketRequest: {
+            /** Format: uuid */
+            account_id: string;
+            /**
+             * Format: uuid
+             * @description Optional, an app of that account
+             */
+            app_id?: string;
+            subject: string;
+            /** @enum {string} */
+            category: "billing" | "integration" | "bug" | "question" | "other";
+            /**
+             * @default normal
+             * @enum {string}
+             */
+            priority: "low" | "normal" | "high" | "urgent";
+            body: string;
+        };
+        SupportReplyRequest: {
+            body: string;
+        };
+        SupportStatusRequest: {
+            /** @enum {string} */
+            status: "solved" | "open";
+        };
+        SupportUpdateRequest: {
+            /** @enum {string} */
+            status?: "open" | "pending" | "solved" | "closed";
+            /** @enum {string} */
+            priority?: "low" | "normal" | "high" | "urgent";
+            assignee?: string;
+        };
+        SupportOperatorReplyRequest: {
+            body: string;
+            /** @description A note for the operator's team; the person never sees it and it does not count as an answer */
+            internal?: boolean;
+        };
         Asset: {
             id: string;
             session_id: string;
@@ -16949,6 +17178,250 @@ export interface operations {
                     "application/json": components["schemas"]["AdminGetInvoiceSagaResponse"];
                 };
             };
+            404: components["responses"]["Error"];
+        };
+    };
+    appSupportTickets: {
+        parameters: {
+            query?: {
+                /** @description active is open and pending */
+                status?: "active" | "open" | "pending" | "solved" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketList"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+        };
+    };
+    appOpenSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenSupportTicketRequest"];
+            };
+        };
+        responses: {
+            /** @description Opened */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketThread"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appReplySupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportReplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    appSetSupportTicketStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description Changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listSupportTickets: {
+        parameters: {
+            query?: {
+                status?: "active" | "open" | "pending" | "solved" | "closed";
+                priority?: "low" | "normal" | "high" | "urgent";
+                assignee?: string;
+                /** @description Matches the subject and the ticket number */
+                search?: string;
+                /** @description Only tickets whose first answer is overdue */
+                sla_breached?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketList"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketThread"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    updateSupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description Changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    replySupportTicket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SupportOperatorReplyRequest"];
+            };
+        };
+        responses: {
+            /** @description Added */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportTicketResult"];
+                };
+            };
+            400: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };
