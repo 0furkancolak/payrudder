@@ -17,6 +17,8 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHea
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { newest, oldest, time } from "@/shared/lib/sortDefs";
 import { CATEGORIES, PRIORITIES, useMySupportActions, useMyTicket, useMyTickets, type SupportCategory, type SupportPriority } from "./api";
 import TicketBadges from "./TicketBadges.vue";
 import TicketThread from "./TicketThread.vue";
@@ -34,6 +36,7 @@ const actions = useMySupportActions();
 const rows = computed(() => tickets.data.value ?? []);
 const table = useTableState(rows, {
   searchFields: (r) => [r.subject, r.number, r.app_name],
+  sorts: () => [newest(t, (r) => time(r.last_message_time)), oldest(t, (r) => time(r.last_message_time))],
   sheet: { kind: "ticket", id: (r) => r.id, loaded: () => tickets.isSuccess.value },
 });
 const current = computed(() => table.row.value);
@@ -88,7 +91,9 @@ const solved = computed(() => shown.value?.status === "solved");
   <ErrorState :error="tickets.error.value" :retrying="tickets.isFetching.value" class="mb-4" @retry="tickets.refetch()" />
 
   <Card class="p-3">
-    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()" />
+    <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
+    </DataToolbar>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">

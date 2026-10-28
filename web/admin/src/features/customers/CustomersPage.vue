@@ -16,6 +16,9 @@ import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
+
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -53,6 +56,7 @@ const range = ref<DateRange>({ from: "", to: "" });
 const table = useTableState(() => list.value.filter((c) => inRange(c.create_time, range.value)), {
   sheet: { kind: "customer", id: (c) => c.external_id, loaded: () => customers.isSuccess.value },
   searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id, c.country, c.billing_currency],
+  sorts: () => [newest(t, (c) => time(c.create_time)), oldest(t, (c) => time(c.create_time)), nameAsc(t, (c) => c.name || c.external_id), nameDesc(t, (c) => c.name || c.external_id)],
   url: true,
   filters: {
     country: (c, v) => (c.country ?? "") === v,
@@ -207,6 +211,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
       <FilterSelect v-model="countryFilter" multiple :label="t('billing.customers.country')" :options="countryOptions" />
       <FilterSelect v-model="currencyFilter" multiple :label="t('billing.customers.currency')" :options="currencyOptions" />
       <DateRangePicker v-model="range" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
 
     <!-- Nothing yet: say what a customer is and offer the first one. -->

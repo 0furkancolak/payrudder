@@ -3,6 +3,9 @@ import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { formatDate } from "@/shared/lib/format";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { newest, oldest, time } from "@/shared/lib/sortDefs";
+import type { SortDef } from "@/shared/lib/useTableState";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
@@ -30,7 +33,14 @@ const queue = useQueue(() => ({ ...filter }));
 const actions = useOperatorSupportActions();
 
 const rows = computed(() => queue.data.value ?? []);
-const table = useTableState(rows, { searchFields: () => [], sheet: { kind: "ticket", id: (r) => r.id, loaded: () => queue.isSuccess.value } });
+const rank: Record<string, number> = { low: 0, normal: 1, high: 2, urgent: 3 };
+const sorts = (): SortDef<(typeof rows.value)[number]>[] => [
+  newest(t, (r) => time(r.last_message_time)),
+  oldest(t, (r) => time(r.last_message_time)),
+  { key: "priority_desc", label: t("support.sortPriority"), by: (r) => rank[r.priority] ?? 0, dir: "desc" },
+  { key: "due_asc", label: t("support.sortDue"), by: (r) => time(r.first_response_due), dir: "asc" },
+];
+const table = useTableState(rows, { searchFields: () => [], sorts, sheet: { kind: "ticket", id: (r) => r.id, loaded: () => queue.isSuccess.value } });
 const current = computed(() => table.row.value);
 const thread = useOperatorTicket(() => current.value?.id ?? "");
 const messages = computed(() => thread.data.value?.messages ?? []);
@@ -86,6 +96,7 @@ function send() {
       <label class="grid gap-1 text-xs">{{ t("common.search") }}
         <Input v-model.lazy="filter.search" class="w-56" :placeholder="t('support.filters.searchHint')" data-testid="filter-search" />
       </label>
+      <SortSelect v-model="table.sort.value" :options="table.sorts.value" />
       <label class="flex items-center gap-2 pb-2 text-sm">
         <Checkbox :model-value="filter.late" data-testid="filter-late" @update:model-value="(v: boolean | 'indeterminate') => (filter.late = v === true)" />{{ t("support.filters.late") }}
       </label>

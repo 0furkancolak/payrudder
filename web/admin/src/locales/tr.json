@@ -44,7 +44,17 @@
       "required": "Bu alan zorunludur.",
       "email": "Geçerli bir e-posta adresi girin."
     },
-    "applyFilter": "Uygula"
+    "applyFilter": "Uygula",
+    "sort": {
+      "label": "Sırala",
+      "default": "Geldiği gibi",
+      "newest": "En yeni önce",
+      "oldest": "En eski önce",
+      "amountHigh": "Tutar, çoktan aza",
+      "amountLow": "Tutar, azdan çoğa",
+      "nameAsc": "Ad, A'dan Z'ye",
+      "nameDesc": "Ad, Z'den A'ya"
+    }
   },
   "enums": {
     "environment": {
@@ -4795,6 +4805,8 @@
       "customer": "Siz",
       "operator": "Payrudder desteği",
       "system": "Sistem"
-    }
+    },
+    "sortPriority": "Önce en yüksek öncelik",
+    "sortDue": "Yanıt süresi en yakın önce"
   }
 }

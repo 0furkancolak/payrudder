@@ -44,7 +44,17 @@
       "required": "هذا الحقل مطلوب.",
       "email": "أدخل عنوان بريد إلكتروني صالحًا."
     },
-    "applyFilter": "تطبيق"
+    "applyFilter": "تطبيق",
+    "sort": {
+      "label": "الترتيب",
+      "default": "كما وردت",
+      "newest": "الأحدث أولًا",
+      "oldest": "الأقدم أولًا",
+      "amountHigh": "المبلغ، من الأعلى إلى الأدنى",
+      "amountLow": "المبلغ، من الأدنى إلى الأعلى",
+      "nameAsc": "الاسم، من أ إلى ي",
+      "nameDesc": "الاسم، من ي إلى أ"
+    }
   },
   "enums": {
     "environment": {
@@ -4795,6 +4805,8 @@
       "customer": "أنت",
       "operator": "دعم Payrudder",
       "system": "النظام"
-    }
+    },
+    "sortPriority": "الأولوية الأعلى أولًا",
+    "sortDue": "الأقرب موعدًا أولًا"
   }
 }
