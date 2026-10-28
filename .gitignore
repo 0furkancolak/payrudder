@@ -35,3 +35,6 @@ tests/chaos/chaos-report.json
 tools/payrudderctl/payrudderctl
 
 .playwright-mcp/
+# Documentation site
+/docs-site/dist/
+/docs-site/node_modules/
