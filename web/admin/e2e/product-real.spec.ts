@@ -246,7 +246,7 @@ test.describe("product app, real stack", () => {
   test("hosted payment link: pay it; the customer portal sells the credit pack", async ({ page }) => {
     const problems = watch(page);
     await page.goto(adhocUrl);
-    await expect(page.getByText("Hosted test")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Hosted test" })).toBeVisible();
     await shoot(page, "r7-link");
     await page.getByRole("button", { name: "Continue" }).click();
     // The invoice is made and goes through its saga first ("being processed", the page refreshes by itself); then the sandbox offers the mock method.
