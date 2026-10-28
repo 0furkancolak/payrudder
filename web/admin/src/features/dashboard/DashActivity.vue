@@ -35,7 +35,7 @@ const amountOf = (a: Item) => (a.kind === "payment" && a.status === "refunded" ?
 
 <template>
   <DashSection :title="t('dash.activity.title')" testid="activity" class="lg:col-span-2 xl:col-span-1" :empty="(data.activity ?? []).length === 0" :empty-text="t('dash.activity.empty')">
-    <ul class="divide-border/70 divide-y">
+    <ul class="divide-border/70 max-h-96 divide-y overflow-y-auto">
       <li v-for="a in data.activity" :key="`${a.kind}-${a.ref}`" class="flex items-center gap-3 py-2.5">
         <span class="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><component :is="iconOf(a)" class="size-4" /></span>
         <div class="min-w-0 flex-1">

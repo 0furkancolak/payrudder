@@ -97,7 +97,7 @@ function openFrom(kind: "edit" | "link" | "referrals", a: Affiliate) {
   </div>
 
   <Card class="p-3">
-    <DataToolbar v-model:search="search" :placeholder="t('affiliates.partners.search')" :active="status !== '' || search !== ''" class="pt-2" @clear="status = ''; search = ''">
+    <DataToolbar v-model:search="search" :placeholder="t('affiliates.partners.search')" :active="status !== '' || search !== ''" @clear="status = ''; search = ''">
       <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
       <HeaderAction :disabled="!canWrite" :label="t('affiliates.partners.add')" @click="addOpen = true" />
     </DataToolbar>

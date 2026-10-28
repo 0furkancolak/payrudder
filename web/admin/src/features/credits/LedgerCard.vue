@@ -40,7 +40,7 @@ const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v
 
 <template>
   <Card :class="bare ? 'gap-2 border-0 bg-transparent p-0 shadow-none' : 'p-3'" data-testid="credits-ledger">
-    <h2 v-if="!bare" class="px-3 pt-2 pb-3 text-base font-semibold">{{ t("billing.credits.ledger.title") }}</h2>
+    <h2 v-if="!bare" class="px-3 pt-2 text-base font-semibold">{{ t("billing.credits.ledger.title") }}</h2>
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
       <FilterSelect v-model="kindFilter" multiple :label="t('billing.credits.ledger.kind')" :options="kinds" />
       <DateRangePicker v-model="range" />

@@ -31,7 +31,15 @@ function label() {
         const text = cell.colSpan === 1 ? heads[i] : ""
         if (text) cell.dataset.label = text
         else delete cell.dataset.label
+        // A cell with nothing to show (an expander's, a column a row leaves blank) takes no line in a card.
+        if (!cell.querySelector("*") && !cell.textContent?.trim()) cell.dataset.empty = ""
+        else delete cell.dataset.empty
       })
+      // The card's title is the row's first cell that has something in it.
+      const cells = Array.from(row.cells)
+      cells.forEach((cell) => delete cell.dataset.lead)
+      const lead = cells.find((cell) => cell.dataset.empty === undefined)
+      if (lead) lead.dataset.lead = ""
     }
   }
 }

@@ -5,7 +5,7 @@ import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { ArrowUpRight, Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { inRange } from "@/shared/lib/dateRange";
+import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor, parseMajor, unitPriceToMajor } from "@/shared/lib/money";
 import { useCanWrite } from "@/shared/lib/access";
@@ -45,7 +45,7 @@ const unitOf = (code: string) => meterList.value.find((m) => m.code === code)?.u
 
 const list = computed(() => packages.data.value ?? []);
 const fmt = useFormat();
-const range = ref<DateRange>({ from: "", to: "" });
+const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { sheet: { kind: "package", id: (p) => p.plan.code }, searchFields: (p) => [p.plan.code, p.plan.name] });
 watch(range, () => (table.page.value = 1), { deep: true });
 const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");

@@ -59,7 +59,7 @@ useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
 
 <template>
   <ErrorState :error="invoices.error.value" :retrying="invoices.isFetching.value" compact @retry="invoices.refetch()" />
-  <DataToolbar v-if="list.length" v-model:search="table.search.value" :active="active" class="pt-2" @clear="clear">
+  <DataToolbar v-if="list.length" v-model:search="table.search.value" :active="active" @clear="clear">
     <FilterSelect v-model="statusFilter" multiple :label="t('tenant.columns.status')" :options="statusOptions" />
     <FilterSelect v-model="kindFilter" multiple :label="t('tenant.columns.kind')" :options="kindOptions" />
     <DateRangePicker v-model="range" />

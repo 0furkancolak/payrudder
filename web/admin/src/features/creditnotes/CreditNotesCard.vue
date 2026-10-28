@@ -76,7 +76,7 @@ const current = table.row;
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.creditNotes.title") }}</h2>
     <ErrorText :error="retry.error.value" class="px-3" />
     <ErrorText :error="notes.error.value" class="px-3" />
-    <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" class="pt-3" @clear="clear">
+    <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" @clear="clear">
       <FilterSelect v-model="whereFilter" multiple :label="t('billing.creditNotes.where')" :options="whereOptions" />
       <DateRangePicker v-model="range" />
       <HeaderAction v-if="issuable" :label="t('billing.creditNotes.new')" @click="issueOpen = true" />

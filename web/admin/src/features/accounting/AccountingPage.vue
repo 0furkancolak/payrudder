@@ -200,7 +200,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
   <Card class="p-3">
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.accounting.expenses.title") }}</h2>
     <ErrorState :error="expenses.error.value" :retrying="expenses.isFetching.value" compact @retry="expenses.refetch()" />
-    <DataToolbar v-model:search="table.search.value" :active="expensesActive" class="pt-3" @clear="clearExpenses">
+    <DataToolbar v-model:search="table.search.value" :active="expensesActive" @clear="clearExpenses">
       <FilterSelect v-model="categoryFilter" multiple :label="t('billing.accounting.form.category')" :options="categoryOptions" />
       <FilterSelect v-model="recurringFilter" multiple :label="t('billing.accounting.form.recurring')" :options="recurringOptions" />
       <DateRangePicker v-model="expenseRange" />

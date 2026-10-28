@@ -27,7 +27,7 @@ const customersDown = computed(() => down("customers") || !props.data.customers)
 </script>
 
 <template>
-  <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
     <KpiCard testid="revenue" :label="t('dash.kpi.net')" :delta="k.dNet" :previous="prevRev ? money(prevRev.net_minor) : undefined" :spark="spark">
       <template #value>{{ money(rev?.net_minor) }}</template>
       <template #sub>{{ t("dash.kpi.netSub", { gross: money(rev?.gross_minor), refunds: money(rev?.refunds_minor) }) }}</template>

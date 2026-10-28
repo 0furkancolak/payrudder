@@ -15,7 +15,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2 px-3 pb-3" role="search">
+  <div class="flex flex-wrap items-center gap-2 px-1 py-2 sm:px-3 sm:py-3" role="search">
     <div class="relative min-w-48 flex-1 sm:max-w-xs">
       <Search class="text-muted-foreground pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2" aria-hidden="true" />
       <Input v-model="search" type="search" :aria-label="placeholder ?? t('common.search')" :placeholder="placeholder ?? t('common.search')" class="ps-9" />
