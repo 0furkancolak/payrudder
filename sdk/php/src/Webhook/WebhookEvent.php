@@ -26,6 +26,21 @@ final class WebhookEvent
     ) {}
 
     /**
+     * The data as the class of its event family: InvoiceEventData for `invoice.*`, CreditNoteEventData for
+     * `credit_note.*`, SubscriptionEventData for `subscription.*`, PaymentLinkEventData for `payment_link.*`,
+     * CreditsPurchasedEventData for `credits.purchased` and CreditsLowEventData for `credits.low`.
+     *
+     * @template T of object
+     * @param class-string<T> $class one of the classes in Payrudder\Webhook\Data
+     * @return T
+     */
+    public function dataAs(string $class): object
+    {
+        /** @var T */
+        return $class::fromArray($this->data);
+    }
+
+    /**
      * @throws WebhookException
      */
     public static function fromJson(string $json): self

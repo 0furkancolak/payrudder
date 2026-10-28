@@ -183,6 +183,8 @@ def hook():
 `verify_webhook(payload, header, secret, tolerance=300)` only verifies. A delivery signed while a secret rotates carries two
 `v1` signatures and verifies with either the new or the old secret. Deliveries are at least once and unordered: ignore a
 repeated `event["id"]`. `EVENT_TYPES` and `EventType` list the event names of [docs/16-webhooks.md](../../docs/16-webhooks.md).
+`InvoiceEventData`, `CreditNoteEventData`, `SubscriptionEventData`, `PaymentLinkEventData`, `CreditsPurchasedEventData` and
+`CreditsLowEventData` type `event["data"]` per event family; narrow with `typing.cast(InvoiceEventData, event["data"])`.
 
 ## Development
 

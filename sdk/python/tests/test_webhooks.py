@@ -119,3 +119,29 @@ def test_event_type_constants_cover_the_documented_table() -> None:
     assert documented, "no event types parsed from the docs"
     assert documented <= set(EVENT_TYPES), sorted(documented - set(EVENT_TYPES))
     assert "ping" in EVENT_TYPES
+
+
+def test_event_data_types_cover_each_event_family() -> None:
+    from typing import cast, get_type_hints
+
+    from payrudder import (
+        CreditNoteEventData,
+        CreditsLowEventData,
+        CreditsPurchasedEventData,
+        InvoiceEventData,
+        PaymentLinkEventData,
+        SubscriptionEventData,
+    )
+
+    event = construct_event(BODY, header(sign(BODY)), SECRET, now=NOW)
+    data = cast(InvoiceEventData, event["data"])
+    assert data["invoice_id"] == "i1"
+    assert data["total_minor"] == 9007199254740993
+    assert data["tax_minor"] == 186
+    assert InvoiceEventData.__required_keys__ == {"invoice_id", "total_minor"}
+    assert CreditNoteEventData.__required_keys__ == {"credit_note_id", "total_minor"}
+    assert SubscriptionEventData.__required_keys__ == {"subscription"}
+    assert PaymentLinkEventData.__required_keys__ == {"link_id"}
+    assert CreditsPurchasedEventData.__required_keys__ == {"customer_id", "credits", "balance"}
+    assert CreditsLowEventData.__required_keys__ == {"customer_id", "balance", "threshold"}
+    assert "net_minor" in get_type_hints(InvoiceEventData)

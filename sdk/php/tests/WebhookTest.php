@@ -6,7 +6,11 @@ namespace Payrudder\Tests;
 
 use Payrudder\Exception\WebhookException;
 use Payrudder\Tools\SpecLoader;
+use Payrudder\Webhook\Data\CreditsLowEventData;
+use Payrudder\Webhook\Data\InvoiceEventData;
+use Payrudder\Webhook\Data\PaymentLinkEventData;
 use Payrudder\Webhook\Webhook;
+use Payrudder\Webhook\WebhookEvent;
 use Payrudder\Webhook\WebhookEventType;
 use PHPUnit\Framework\TestCase;
 
@@ -117,5 +121,25 @@ final class WebhookTest extends TestCase
         foreach (WebhookEventType::all() as $type) {
             self::assertStringContainsString('`' . $type . '`', $docs, "docs/16-webhooks.md does not list $type");
         }
+    }
+
+    public function testDataAsReadsTheEventFamily(): void
+    {
+        $invoice = WebhookEvent::fromJson(self::BODY)->dataAs(InvoiceEventData::class);
+        self::assertSame('i1', $invoice->invoiceId);
+        self::assertSame(1116, $invoice->totalMinor);
+        self::assertSame(186, $invoice->taxMinor);
+        self::assertNull($invoice->netMinor);
+
+        $link = WebhookEvent::fromJson('{"id":"1","type":"payment_link.paid","data":{"link_id":"l1","single_use":true,"paid_count":"2"}}')
+            ->dataAs(PaymentLinkEventData::class);
+        self::assertSame('l1', $link->linkId);
+        self::assertTrue($link->singleUse);
+        self::assertSame(2, $link->paidCount);
+
+        $low = WebhookEvent::fromJson('{"id":"2","type":"credits.low","data":{"customer_id":"c1","balance":"4.5","threshold":"5"}}')
+            ->dataAs(CreditsLowEventData::class);
+        self::assertSame('4.5', $low->balance);
+        self::assertNull($low->customerExternalId);
     }
 }
