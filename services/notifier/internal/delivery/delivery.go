@@ -83,7 +83,7 @@ func (m *Mailer) Deliver(ctx context.Context, d Delivery) (string, error) {
 			sender, from = p.Sender, p.From
 		}
 	}
-	mid, err := sender.Send(ctx, mailx.Message{From: from, To: d.To, Subject: msg.Subject, HTML: msg.HTML, Text: msg.Text, ID: d.Key})
+	mid, err := sender.Send(ctx, mailx.Message{From: from, To: d.To, Subject: msg.Subject, HTML: msg.HTML, Text: msg.Text, ID: d.Key, Template: d.Template})
 	if err != nil {
 		var perm *mailx.PermanentError
 		if errors.As(err, &perm) {

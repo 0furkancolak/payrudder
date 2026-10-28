@@ -3991,7 +3991,7 @@
         "simulatorPayments": "Utilisé par la sandbox. Rien à connecter.",
         "simulatorEInvoice": "Utilisé par la sandbox. Rien à connecter.",
         "perApp": "Se règle sur chaque app.",
-        "mailBuiltIn": "Les factures, reçus et alertes partent de Payrudder.",
+        "mailBuiltIn": "Envoyé via Nafru Email, inclus dans votre forfait.",
         "mailUnused": "Votre propre fournisseur envoie les e-mails live.",
         "mailOwn": "Les e-mails live partent de {from}."
       },
@@ -4048,7 +4048,7 @@
       },
       "mail": {
         "builtInTitle": "Courrier Payrudder",
-        "builtInIntro": "Payrudder envoie les e-mails de vos clients. Choisissez quels types partent.",
+        "builtInIntro": "Payrudder envoie les e-mails de vos clients via Nafru Email. C'est inclus dans votre forfait et rien n'est à configurer. Choisissez les types envoyés.",
         "unusedNote": "Votre propre fournisseur est connecté : les e-mails live passent par lui. Ces interrupteurs décident toujours quels types sont envoyés.",
         "nafruIntro": "Envoyez les e-mails de vos clients via votre propre compte Nafru Email, depuis votre propre adresse. Saisissez l'adresse du compte et sa clé d'API.",
         "envNote": "Cela connecte l'environnement live. Les e-mails de la sandbox vont toujours dans la boîte sandbox.",
@@ -4067,7 +4067,8 @@
           "from": "Un nom et une adresse sur un domaine vérifié chez Nafru Email."
         },
         "checkAndConnect": "Vérifier et connecter",
-        "confirmRemove": "Déconnecter votre propre fournisseur d'e-mail ? Les e-mails live repartent de Payrudder."
+        "confirmRemove": "Déconnecter votre propre fournisseur d'e-mail ? Les e-mails live repartent de Payrudder.",
+        "templatesNote": "Envie de votre propre style ? Dans Nafru Email, ajoutez Payrudder sous Applications et modifiez les modèles là-bas. Chaque e-mail porte son nom dans l'étiquette payrudder_template, pour que le bon modèle s'applique."
       }
     },
     "envSwitch": {

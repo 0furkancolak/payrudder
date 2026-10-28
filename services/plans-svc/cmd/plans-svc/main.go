@@ -71,6 +71,10 @@ type Config struct {
 	// mail to its customers goes through the notifier and the tenant's mail switch instead.
 	SMTPAddr string `env:"SMTP_ADDR"`
 	MailFrom string `env:"MAIL_FROM"`
+	// NafruBaseURL and NafruAPIKey make Nafru Email the sender of that mail (and, in the notifier, of every tenant's mail that has no provider of its own): the
+	// default every plan includes. Both or neither; with neither the mail goes to SMTP_ADDR.
+	NafruBaseURL string `env:"NAFRU_BASE_URL"`
+	NafruAPIKey  string `env:"NAFRU_API_KEY"`
 	// AppURL is the console's public address; the links in those mails point into it.
 	AppURL string `env:"PAYRUDDER_APP_URL"`
 	// The services a sandbox reset empties besides plans-svc itself (phase 45 E). An empty address skips that step, so a deployment without the service still resets
@@ -115,6 +119,9 @@ func (c *Config) saasConfig() saascmd.Config {
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	errs = append(errs, c.CheckMigration(), c.CheckCells())
+	if (c.NafruBaseURL == "") != (c.NafruAPIKey == "") {
+		errs = append(errs, errors.New("NAFRU_BASE_URL and NAFRU_API_KEY go together: set both, or neither"))
+	}
 	for _, e := range c.AllowedEnvs {
 		if e != tenant.EnvSandbox && e != tenant.EnvLive {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
@@ -345,7 +352,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *p
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
 		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
-		Mail: usermail.NewSMTP(mailx.SMTP{Addr: cfg.SMTPAddr}, cfg.MailFrom, log), AppURL: cfg.AppURL, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
+		Mail: usermail.NewSMTP(platformMail(cfg), cfg.MailFrom, log), AppURL: cfg.AppURL, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})
 	return srv, grpcHealth, box, saasCmd, nil
@@ -393,4 +400,12 @@ func (w *workers) run(ctx context.Context) error {
 	w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "environments", w.cfg.AllowedEnvs)
 	g.ServeGRPC(w.srv, w.grpcHealth, w.lis)
 	return g.Wait()
+}
+
+// platformMail is the sender of Payrudder's own mail to people: Nafru Email when it is configured, the SMTP relay (a development mail catcher) otherwise.
+func platformMail(cfg *Config) mailx.Sender {
+	if cfg.NafruBaseURL == "" {
+		return mailx.SMTP{Addr: cfg.SMTPAddr}
+	}
+	return mailx.Resend{BaseURL: cfg.NafruBaseURL, APIKey: cfg.NafruAPIKey, Client: safehttp.NewClient(15*time.Second, cfg.WebhookAllowPrivate)}
 }

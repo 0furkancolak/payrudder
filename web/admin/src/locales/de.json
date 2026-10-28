@@ -3991,7 +3991,7 @@
         "simulatorPayments": "Wird von der Sandbox genutzt. Nichts zu verbinden.",
         "simulatorEInvoice": "Wird von der Sandbox genutzt. Nichts zu verbinden.",
         "perApp": "Wird für jede App eingerichtet.",
-        "mailBuiltIn": "Rechnungen, Belege und Hinweise gehen von Payrudder aus.",
+        "mailBuiltIn": "Über Nafru Email versendet, in Ihrem Paket enthalten.",
         "mailUnused": "Ihr eigener Anbieter versendet die Live-E-Mails.",
         "mailOwn": "Live-E-Mails gehen von {from} aus."
       },
@@ -4048,7 +4048,7 @@
       },
       "mail": {
         "builtInTitle": "Payrudder-Mail",
-        "builtInIntro": "Payrudder versendet die E-Mails an Ihre Kunden. Wählen Sie, welche Arten verschickt werden.",
+        "builtInIntro": "Payrudder versendet die Mails an Ihre Kunden über Nafru Email. Das ist in Ihrem Paket enthalten und braucht keine Einrichtung. Wählen Sie, welche Arten verschickt werden.",
         "unusedNote": "Ihr eigener Anbieter ist verbunden, daher laufen die Live-E-Mails über ihn. Diese Schalter bestimmen weiterhin, welche Arten gesendet werden.",
         "nafruIntro": "Versenden Sie die E-Mails an Ihre Kunden über Ihr eigenes Nafru-Email-Konto, von Ihrer eigenen Adresse. Geben Sie die Adresse und den API-Schlüssel des Kontos ein.",
         "envNote": "Dies verbindet die Live-Umgebung. Die E-Mails der Sandbox gehen immer in den Sandbox-Posteingang.",
@@ -4067,7 +4067,8 @@
           "from": "Ein Name und eine Adresse auf einer bei Nafru Email verifizierten Domain."
         },
         "checkAndConnect": "Prüfen und verbinden",
-        "confirmRemove": "Ihren eigenen E-Mail-Anbieter trennen? Die Live-E-Mails gehen wieder von Payrudder aus."
+        "confirmRemove": "Ihren eigenen E-Mail-Anbieter trennen? Die Live-E-Mails gehen wieder von Payrudder aus.",
+        "templatesNote": "Eigenes Aussehen gewünscht? Fügen Sie in Nafru Email unter Anwendungen Payrudder hinzu und bearbeiten Sie die Vorlagen dort. Jede Mail trägt ihren Namen im Tag payrudder_template, damit die passende Vorlage angewendet wird."
       }
     },
     "envSwitch": {

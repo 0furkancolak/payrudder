@@ -88,3 +88,30 @@ func TestResendCheck(t *testing.T) {
 		t.Errorf("a bad key: %v", err)
 	}
 }
+
+// The mail's name travels as a tag and a header, so a Nafru Email application added for Payrudder can apply its own template to it; a name a provider would
+// refuse is left out instead of failing the send.
+func TestResendCarriesTheTemplateName(t *testing.T) {
+	var got resendBody
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = resendBody{}
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		_, _ = w.Write([]byte(`{"id":"em_1"}`))
+	}))
+	defer srv.Close()
+	s := Resend{BaseURL: srv.URL, APIKey: "k"}
+	if _, err := s.Send(context.Background(), Message{From: "a@b.c", To: "x@y.z", Subject: "s", Text: "t", Template: "invoice_issued"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Tags) != 1 || got.Tags[0] != (resendTag{Name: "payrudder_template", Value: "invoice_issued"}) || got.Headers["X-Payrudder-Template"] != "invoice_issued" {
+		t.Errorf("body = %+v", got)
+	}
+	for _, bad := range []string{"", "has space", "ünï"} {
+		if _, err := s.Send(context.Background(), Message{From: "a@b.c", To: "x@y.z", Subject: "s", Text: "t", Template: bad}); err != nil {
+			t.Fatal(err)
+		}
+		if len(got.Tags) != 0 || len(got.Headers) != 0 {
+			t.Errorf("template %q was sent as %+v", bad, got)
+		}
+	}
+}

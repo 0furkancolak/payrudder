@@ -319,6 +319,8 @@ test.describe("integrations: groups, marks and the other integrations", () => {
     await page.getByTestId("integration-open-nafru").click();
     const sheet = page.getByTestId("mail-sheet");
     await expect(sheet.getByTestId("nafru-link")).toHaveAttribute("href", /nafru\.com/);
+    // Custom templates are edited at Nafru Email, under Applications; the sheet says so.
+    await expect(sheet.getByTestId("mail-templates-note")).toContainText("add Payrudder under Applications");
     // A key the provider refuses is explained and not stored.
     await sheet.getByTestId("mail-base-url").fill("https://mail.nafru.example");
     await sheet.getByTestId("mail-api-key").fill("refused");
