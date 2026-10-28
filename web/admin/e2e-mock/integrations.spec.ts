@@ -424,3 +424,32 @@ test.describe("several accounts at one provider", () => {
   });
 });
 
+test.describe("Stripe", () => {
+  test("is connected with a secret key and the webhook's signing secret, shown by its name with a general icon, and has no test mode of its own", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, {});
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const card = page.getByTestId("integration-card-stripe");
+    await expect(card).toHaveAttribute("data-state", "none");
+    await expect(card).toContainText("Stripe");
+    // A provider without a licensed mark is drawn with a general-purpose icon, never an image.
+    await expect(card.locator("img")).toHaveCount(0);
+    await expect(page.getByTestId("integration-open-sandbox-stripe")).toHaveCount(0);
+    await page.getByTestId("integration-open-stripe").click();
+    const sheet = page.getByTestId("provider-sheet");
+    await sheet.getByTestId("lp-api_key").fill("pk_live_publishable");
+    await sheet.getByTestId("lp-webhook_secret").fill("whsec_SECRETHOOK");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(sheet.getByRole("alert").first()).toContainText("This does not look right.");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/stripe`)).toHaveLength(0);
+    await sheet.getByTestId("lp-api_key").fill("sk_live_SECRETKEY");
+    await sheet.getByTestId("provider-connect").click();
+    await expect(page.getByTestId("provider-connected")).toContainText("Stripe connected");
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/stripe`)[0]?.body).toEqual({ api_key: "sk_live_SECRETKEY", webhook_secret: "whsec_SECRETHOOK" });
+    await expect(card).toHaveAttribute("data-state", "working");
+    expect(await page.content()).not.toContain("SECRETKEY");
+  });
+});
+

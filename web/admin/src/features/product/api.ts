@@ -335,12 +335,12 @@ export function useLiveProviderActions(id: MaybeRefOrGetter<string>) {
   const refresh = () => queries.invalidateQueries({ queryKey: productKeys.app(toValue(id)) });
   return {
     connect: useMutation({
-      mutationFn: (v: { provider: "iyzico" | "paddle" | "banktransfer"; settings: Record<string, unknown> }) =>
+      mutationFn: (v: { provider: "iyzico" | "paddle" | "stripe" | "banktransfer"; settings: Record<string, unknown> }) =>
         unwrap(api.PUT("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id: toValue(id), provider: v.provider } }, body: v.settings })),
       onSuccess: refresh,
     }),
     remove: useMutation({
-      mutationFn: (provider: "iyzico" | "paddle" | "banktransfer") => unwrap(api.DELETE("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id: toValue(id), provider } } })),
+      mutationFn: (provider: "iyzico" | "paddle" | "stripe" | "banktransfer") => unwrap(api.DELETE("/app/v1/apps/{id}/go-live/providers/{provider}", { params: { path: { id: toValue(id), provider } } })),
       onSuccess: refresh,
     }),
   };

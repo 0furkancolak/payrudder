@@ -152,7 +152,8 @@
       "iyzico": "iyzico",
       "paddle": "Paddle",
       "mockpsp": "Mock PSP",
-      "banktransfer": "Bank transfer"
+      "banktransfer": "Bank transfer",
+      "stripe": "Stripe"
     }
   },
   "tenants": {
@@ -3721,7 +3722,8 @@
         "names": {
           "iyzico": "iyzico",
           "paddle": "Paddle",
-          "banktransfer": "Bank transfer"
+          "banktransfer": "Bank transfer",
+          "stripe": "Stripe"
         },
         "fields": {
           "api_key": "API key",
@@ -3860,7 +3862,8 @@
       "about": {
         "iyzico": "Turkish cards and local methods",
         "paddle": "Cards worldwide, with subscriptions run by the provider",
-        "banktransfer": "Pay by transfer to your own bank account"
+        "banktransfer": "Pay by transfer to your own bank account",
+        "stripe": "Cards worldwide, charged by Payrudder on your Stripe account"
       },
       "scope": {
         "title": "Where to connect",
@@ -3876,7 +3879,8 @@
         "intro": {
           "iyzico": "Enter your live iyzico merchant keys. They are checked with iyzico before they are stored.",
           "paddle": "Enter your live Paddle keys and webhook secret. They are checked with Paddle before they are stored.",
-          "banktransfer": "Enter the bank details printed on invoices for customers who pay by transfer. There is nothing to check at a bank."
+          "banktransfer": "Enter the bank details printed on invoices for customers who pay by transfer. There is nothing to check at a bank.",
+          "stripe": "Enter your live Stripe secret key and the signing secret of the webhook endpoint. The key is checked with Stripe before it is stored."
         },
         "envNote": "This connects the live environment. The sandbox keeps running on the built-in simulator.",
         "testOk": "The provider accepts these keys.",
@@ -3911,6 +3915,10 @@
           "api_key": "In Paddle under Developer tools, Authentication, create a live API key.",
           "webhook_secret": "Under Developer tools, Notifications: create a destination for Payrudder and copy its secret key.",
           "usage_product_id": "The id of the product Paddle uses for usage charges. In the Catalog, open the product and copy its id, which starts with pro_."
+        },
+        "stripe": {
+          "api_key": "In the Stripe Dashboard under Developers, API keys, create a restricted or secret live key (it starts with sk_live_ or rk_live_).",
+          "webhook_secret": "Under Developers, Webhooks, add an endpoint to the address shown in Payrudder for payment_intent, checkout.session and refund events, and copy its signing secret (it starts with whsec_)."
         }
       },
       "sandbox": {
@@ -3967,7 +3975,8 @@
         "simulator": "Built-in simulator",
         "webhook": "Custom integrator",
         "einvoiceSimulator": "Built-in simulator",
-        "payrudderMail": "Payrudder mail"
+        "payrudderMail": "Payrudder mail",
+        "stripe": "Stripe"
       },
       "about": {
         "iyzico": "Turkish cards and local methods",
@@ -3978,7 +3987,8 @@
         "webhook": "Send each document to your own integrator's address",
         "einvoiceSimulator": "Pretend e-documents for the sandbox",
         "payrudderMail": "Mail sent by Payrudder for you",
-        "nafru": "Send through your own Nafru Email account"
+        "nafru": "Send through your own Nafru Email account",
+        "stripe": "Cards worldwide, charged by Payrudder on your Stripe account"
       },
       "state": {
         "none": "Not connected",

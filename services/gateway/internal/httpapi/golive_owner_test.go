@@ -163,7 +163,7 @@ func TestLiveProviderRoutes(t *testing.T) {
 	if resp, m := p.call(t, "PUT", "/app/v1/apps/"+bobApp+"/go-live/providers/iyzico", tokAda, "", settings); resp.StatusCode != 404 || errKeyOf(m) != "identity.app.not_found" {
 		t.Errorf("another account's app: %d %v", resp.StatusCode, m)
 	}
-	for _, name := range []string{"mockpsp", "mock-psp", "stripe", "..%2Fx"} {
+	for _, name := range []string{"mockpsp", "mock-psp", "adyen", "..%2Fx"} {
 		if resp, m := p.call(t, "PUT", "/app/v1/apps/"+adaApp+"/go-live/providers/"+name, tokAda, "", settings); resp.StatusCode != 404 || errKeyOf(m) != "payments.provider.unknown" {
 			t.Errorf("provider %q: %d %v", name, resp.StatusCode, m)
 		}

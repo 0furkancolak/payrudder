@@ -152,7 +152,8 @@
       "iyzico": "iyzico",
       "paddle": "Paddle",
       "mockpsp": "Mock PSP",
-      "banktransfer": "حوالة مصرفية"
+      "banktransfer": "حوالة مصرفية",
+      "stripe": "Stripe"
     }
   },
   "tenants": {
@@ -3721,7 +3722,8 @@
         "names": {
           "iyzico": "iyzico",
           "paddle": "Paddle",
-          "banktransfer": "حوالة مصرفية"
+          "banktransfer": "حوالة مصرفية",
+          "stripe": "Stripe"
         },
         "fields": {
           "api_key": "مفتاح API",
@@ -3860,7 +3862,8 @@
       "about": {
         "iyzico": "البطاقات التركية والطرق المحلية",
         "paddle": "بطاقات حول العالم، والاشتراكات يديرها المزود",
-        "banktransfer": "الدفع بالتحويل إلى حسابك المصرفي"
+        "banktransfer": "الدفع بالتحويل إلى حسابك المصرفي",
+        "stripe": "بطاقات حول العالم، تحصّلها Payrudder على حسابك في Stripe"
       },
       "scope": {
         "title": "أين يُربط",
@@ -3876,7 +3879,8 @@
         "intro": {
           "iyzico": "أدخل مفاتيح التاجر الحية لدى iyzico. يتم التحقق منها لدى iyzico قبل حفظها.",
           "paddle": "أدخل مفاتيح Paddle الحية وسر الـ webhook. يتم التحقق منها لدى Paddle قبل حفظها.",
-          "banktransfer": "أدخل البيانات المصرفية المطبوعة على فواتير العملاء الذين يدفعون بالتحويل. لا شيء يُتحقق منه لدى مصرف."
+          "banktransfer": "أدخل البيانات المصرفية المطبوعة على فواتير العملاء الذين يدفعون بالتحويل. لا شيء يُتحقق منه لدى مصرف.",
+          "stripe": "أدخل مفتاح Stripe السري للبيئة الحية وسرّ توقيع نقطة نهاية الـ webhook. يُتحقَّق من المفتاح لدى Stripe قبل حفظه."
         },
         "envNote": "هذا يربط البيئة الحية. ويواصل الـ sandbox العمل على المحاكي المدمج.",
         "testOk": "المزود يقبل هذه المفاتيح.",
@@ -3911,6 +3915,10 @@
           "api_key": "في Paddle ضمن Developer tools ثم Authentication أنشئ مفتاح API حياً.",
           "webhook_secret": "ضمن Developer tools ثم Notifications: أنشئ وجهة لـ Payrudder وانسخ مفتاحها السري.",
           "usage_product_id": "معرّف المنتج الذي يستخدمه Paddle لرسوم الاستخدام. في Catalog افتح المنتج وانسخ معرّفه الذي يبدأ بـ pro_."
+        },
+        "stripe": {
+          "api_key": "من لوحة Stripe ضمن المطورون ثم مفاتيح API، أنشئ مفتاحًا حيًا مقيّدًا أو سريًا (يبدأ بـ sk_live_ أو rk_live_).",
+          "webhook_secret": "ضمن المطورون ثم Webhooks، أضف نقطة نهاية إلى العنوان الظاهر في Payrudder لأحداث payment_intent وcheckout.session وrefund، وانسخ سرّ التوقيع (يبدأ بـ whsec_)."
         }
       },
       "sandbox": {
@@ -3967,7 +3975,8 @@
         "simulator": "المحاكي المدمج",
         "webhook": "مُكامِل مخصص",
         "einvoiceSimulator": "المحاكي المدمج",
-        "payrudderMail": "بريد Payrudder"
+        "payrudderMail": "بريد Payrudder",
+        "stripe": "Stripe"
       },
       "about": {
         "iyzico": "البطاقات التركية والطرق المحلية",
@@ -3978,7 +3987,8 @@
         "webhook": "أرسل كل مستند إلى عنوان مُكامِلك الخاص",
         "einvoiceSimulator": "مستندات إلكترونية تجريبية لـ sandbox",
         "payrudderMail": "بريد يرسله Payrudder نيابةً عنك",
-        "nafru": "أرسل عبر حسابك في Nafru Email"
+        "nafru": "أرسل عبر حسابك في Nafru Email",
+        "stripe": "بطاقات حول العالم، تحصّلها Payrudder على حسابك في Stripe"
       },
       "state": {
         "none": "غير متصل",

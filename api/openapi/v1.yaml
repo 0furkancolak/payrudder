@@ -3056,7 +3056,7 @@ paths:
       tags: [Product]
       summary: Connect the live environment to a payment provider (the owner only)
       description: >
-        The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id; bank transfer: bank details). The
+        The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id; Stripe: api_key, webhook_secret; bank transfer: bank details). The
         environment is live whatever the request says. The settings are sealed, shown once and never echoed back. The provider is asked to accept the credentials
         before they are stored (400 payments.account.health_check_failed when it does not, 502 payments.account.health_check_unreachable when it cannot be asked), a
         base_url other than the provider's own live host is refused (payments.account.endpoint_not_allowed), and so is the provider's test host
@@ -3064,7 +3064,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/ID" }
-        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$' }, description: 'The provider, or the provider, a tilde and a label of your choice to connect a further account at the same provider (paddle~eu).' }
+        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$' }, description: 'The provider, or the provider, a tilde and a label of your choice to connect a further account at the same provider (paddle~eu).' }
       requestBody:
         required: true
         content:
@@ -3084,7 +3084,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/ID" }
-        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$' }, description: 'The provider, or the provider, a tilde and a label of your choice to connect a further account at the same provider (paddle~eu).' }
+        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$' }, description: 'The provider, or the provider, a tilde and a label of your choice to connect a further account at the same provider (paddle~eu).' }
       responses:
         "204": { description: Removed }
         "401": { $ref: "#/components/responses/Error" }
@@ -3100,7 +3100,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/ID" }
-        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$' } }
+        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$' } }
       responses:
         "204": { description: Changed }
         "401": { $ref: "#/components/responses/Error" }
@@ -8813,7 +8813,7 @@ components:
             properties:
               country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2; empty matches any country }
               currency: { type: string, description: ISO 4217; empty matches any currency }
-              provider: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
+              provider: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
     RoutingRulesInput:
       type: object
       properties:
@@ -8824,7 +8824,7 @@ components:
             properties:
               country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2; empty matches any country }
               currency: { type: string, description: ISO 4217; empty matches any currency }
-              provider: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
+              provider: { type: string, pattern: '^(banktransfer|iyzico|paddle|stripe)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
     Tenant:
       type: object
       required: [id, account_id, app_id, address, legal, e_invoice_on, environment, name, tier, currency, timezone, grace_period, create_time, status, activate_time, terms_accept_time, invoice_logo_asset_id]

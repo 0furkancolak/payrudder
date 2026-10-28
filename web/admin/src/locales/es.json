@@ -152,7 +152,8 @@
       "iyzico": "iyzico",
       "paddle": "Paddle",
       "mockpsp": "Mock PSP",
-      "banktransfer": "Transferencia bancaria"
+      "banktransfer": "Transferencia bancaria",
+      "stripe": "Stripe"
     }
   },
   "tenants": {
@@ -3721,7 +3722,8 @@
         "names": {
           "iyzico": "iyzico",
           "paddle": "Paddle",
-          "banktransfer": "Transferencia bancaria"
+          "banktransfer": "Transferencia bancaria",
+          "stripe": "Stripe"
         },
         "fields": {
           "api_key": "Clave de API",
@@ -3860,7 +3862,8 @@
       "about": {
         "iyzico": "Tarjetas turcas y métodos locales",
         "paddle": "Tarjetas de todo el mundo, con suscripciones gestionadas por el proveedor",
-        "banktransfer": "Pago por transferencia a tu propia cuenta bancaria"
+        "banktransfer": "Pago por transferencia a tu propia cuenta bancaria",
+        "stripe": "Tarjetas en todo el mundo, cobradas por Payrudder en su cuenta de Stripe"
       },
       "scope": {
         "title": "Dónde conectar",
@@ -3876,7 +3879,8 @@
         "intro": {
           "iyzico": "Introduce tus claves de comercio live de iyzico. Se comprueban con iyzico antes de guardarse.",
           "paddle": "Introduce tus claves live de Paddle y el secreto del webhook. Se comprueban con Paddle antes de guardarse.",
-          "banktransfer": "Introduce los datos bancarios que se imprimen en las facturas de los clientes que pagan por transferencia. No hay nada que comprobar en un banco."
+          "banktransfer": "Introduce los datos bancarios que se imprimen en las facturas de los clientes que pagan por transferencia. No hay nada que comprobar en un banco.",
+          "stripe": "Introduzca su clave secreta live de Stripe y el secreto de firma del endpoint de webhook. La clave se comprueba con Stripe antes de guardarse."
         },
         "envNote": "Esto conecta el entorno live. El sandbox sigue funcionando con el simulador integrado.",
         "testOk": "El proveedor acepta estas claves.",
@@ -3911,6 +3915,10 @@
           "api_key": "En Paddle, en Developer tools, Authentication, crea una clave API live.",
           "webhook_secret": "En Developer tools, Notifications: crea un destino para Payrudder y copia su clave secreta.",
           "usage_product_id": "El id del producto que Paddle usa para los cargos por uso. En el Catalog, abre el producto y copia su id, que empieza por pro_."
+        },
+        "stripe": {
+          "api_key": "En el panel de Stripe, en Desarrolladores, Claves de API, cree una clave live restringida o secreta (empieza por sk_live_ o rk_live_).",
+          "webhook_secret": "En Desarrolladores, Webhooks, añada un endpoint a la dirección que muestra Payrudder para los eventos payment_intent, checkout.session y refund, y copie su secreto de firma (empieza por whsec_)."
         }
       },
       "sandbox": {
@@ -3967,7 +3975,8 @@
         "simulator": "Simulador integrado",
         "webhook": "Integrador propio",
         "einvoiceSimulator": "Simulador integrado",
-        "payrudderMail": "Correo de Payrudder"
+        "payrudderMail": "Correo de Payrudder",
+        "stripe": "Stripe"
       },
       "about": {
         "iyzico": "Tarjetas turcas y métodos locales",
@@ -3978,7 +3987,8 @@
         "webhook": "Envía cada documento a la dirección de tu propio integrador",
         "einvoiceSimulator": "Documentos electrónicos simulados para el sandbox",
         "payrudderMail": "Correo enviado por Payrudder en tu nombre",
-        "nafru": "Envía con tu propia cuenta de Nafru Email"
+        "nafru": "Envía con tu propia cuenta de Nafru Email",
+        "stripe": "Tarjetas en todo el mundo, cobradas por Payrudder en su cuenta de Stripe"
       },
       "state": {
         "none": "No conectado",

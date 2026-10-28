@@ -4,7 +4,7 @@ import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { fromTenant } from "@/features/product/billingProfile";
 import { useApp, useLiveProviders, useMe, useSandboxProviders } from "@/features/product/api";
-import { PROVIDER_FIELDS, buildProviderSettings, prefilled, problemCode, type LiveProviderName, type ProviderErrors } from "@/features/product/liveProvider";
+import { PROVIDER_FIELDS, buildProviderSettings, isFielded, prefilled, problemCode, type LiveProviderName, type ProviderErrors } from "@/features/product/liveProvider";
 import { useErrorText } from "@/shared/lib/errors";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -85,12 +85,12 @@ const providerName = computed(() => {
   const name = t(`product.goLive.provider.names.${props.provider}`);
   return accountLabel.value !== "" ? `${name} (${accountLabel.value})` : name;
 });
-const typed = computed(() => (props.provider === "iyzico" || props.provider === "paddle" ? PROVIDER_FIELDS[props.provider] : []));
+const typed = computed(() => (isFielded(props.provider) ? PROVIDER_FIELDS[props.provider] : []));
 const fieldKey = (path: string) => path.replace(/\./g, "_");
 const label = (path: string) => t(`product.goLive.provider.fields.${fieldKey(path)}`);
 const error = (path: string) => (errors.value[path] ? t(`product.goLive.provider.problems.${errors.value[path]}`) : "");
 const help = (path: string) => {
-  const k = props.provider === "iyzico" || props.provider === "paddle" ? helpKey(props.provider, path) : null;
+  const k = isFielded(props.provider) ? helpKey(props.provider, path) : null;
   return k ? t(k) : "";
 };
 const link = computed(() => (props.provider ? PROVIDER_LINKS[props.provider] : null));
@@ -131,14 +131,14 @@ watch(
     }
     scope.value = sandbox.value || further.value ? "app" : s;
     clear();
-    if (p === "iyzico" || p === "paddle") Object.assign(values, prefilled(p, known.value));
+    if (isFielded(p)) Object.assign(values, prefilled(p, known.value));
   },
   { immediate: true },
 );
 // The profile arrives after the sheet opened: fill what was left empty, never what the person typed.
 watch(known, (k) => {
   const p = props.provider;
-  if (!open.value || (p !== "iyzico" && p !== "paddle")) return;
+  if (!open.value || !isFielded(p)) return;
   for (const [path, v] of Object.entries(prefilled(p, k))) if (!values[path] && v) values[path] = v;
 });
 

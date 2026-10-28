@@ -9,7 +9,7 @@ import (
 )
 
 func TestCatalogue(t *testing.T) {
-	if got := providers.Names(); !slices.Equal(got, []string{"banktransfer", "iyzico", "paddle"}) {
+	if got := providers.Names(); !slices.Equal(got, []string{"banktransfer", "iyzico", "paddle", "stripe"}) {
 		t.Fatalf("Names = %v", got)
 	}
 	iy, ok := providers.Lookup("iyzico")
@@ -19,6 +19,10 @@ func TestCatalogue(t *testing.T) {
 	pd, ok := providers.Lookup("paddle")
 	if !ok || pd.Owner() != payments.OwnerProvider || !pd.CanCharge("USD") || pd.CanCharge("TRY") {
 		t.Errorf("paddle = %+v", pd)
+	}
+	st, ok := providers.Lookup("stripe")
+	if !ok || st.Owner() != payments.OwnerPayrudder || !st.CanCharge("USD") || !st.CanCharge("TRY") || !st.IdempotentCharges || st.SendsOwnReceipts {
+		t.Errorf("stripe = %+v", st)
 	}
 	if _, ok := providers.Lookup("nope"); ok {
 		t.Error("an unknown provider is not in the catalogue")

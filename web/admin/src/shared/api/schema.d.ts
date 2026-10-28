@@ -3490,7 +3490,7 @@ export interface paths {
         get?: never;
         /**
          * Connect the live environment to a payment provider (the owner only)
-         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id; bank transfer: bank details). The environment is live whatever the request says. The settings are sealed, shown once and never echoed back. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed when it does not, 502 payments.account.health_check_unreachable when it cannot be asked), a base_url other than the provider's own live host is refused (payments.account.endpoint_not_allowed), and so is the provider's test host (payments.account.livemode_mismatch). The first live account becomes the default. The change is recorded for the person.
+         * @description The body is the provider's settings (iyzico: api_key, secret_key, buyer; Paddle: api_key, webhook_secret, usage_product_id; Stripe: api_key, webhook_secret; bank transfer: bank details). The environment is live whatever the request says. The settings are sealed, shown once and never echoed back. The provider is asked to accept the credentials before they are stored (400 payments.account.health_check_failed when it does not, 502 payments.account.health_check_unreachable when it cannot be asked), a base_url other than the provider's own live host is refused (payments.account.endpoint_not_allowed), and so is the provider's test host (payments.account.livemode_mismatch). The first live account becomes the default. The change is recorded for the person.
          */
         put: operations["appConnectLiveProvider"];
         post?: never;

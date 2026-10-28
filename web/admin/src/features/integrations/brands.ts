@@ -1,4 +1,4 @@
-import { Banknote, FlaskConical, Mail, Webhook } from "@lucide/vue";
+import { Banknote, CreditCard, FlaskConical, Mail, Webhook } from "@lucide/vue";
 import type { Component } from "vue";
 
 /**
@@ -6,7 +6,7 @@ import type { Component } from "vue";
  * LICENSES.md there); a provider without one is shown by its plain name and nothing is drawn in its place. A generic method (bank transfer, a simulator, a
  * custom integrator) has no company behind it and gets a general-purpose icon.
  */
-export type IntegrationId = "iyzico" | "paddle" | "banktransfer" | "simulator" | "nilvera" | "webhook" | "einvoiceSimulator" | "payrudderMail" | "nafru";
+export type IntegrationId = "iyzico" | "paddle" | "stripe" | "banktransfer" | "simulator" | "nilvera" | "webhook" | "einvoiceSimulator" | "payrudderMail" | "nafru";
 export type GroupId = "payments" | "einvoice" | "email";
 
 export interface Brand {
@@ -29,6 +29,8 @@ export const NAFRU_EMAIL_URL = "https://nafru.com";
 export const BRANDS: Record<IntegrationId, Brand> = {
   iyzico: { group: "payments", name: "iyzico", logo: { light: "/brand/providers/iyzico-light.svg", dark: "/brand/providers/iyzico-dark.svg" }, wide: true, url: "https://www.iyzico.com" },
   paddle: { group: "payments", name: "Paddle", logo: { light: "/brand/providers/paddle-light.svg", dark: "/brand/providers/paddle-dark.svg" }, url: "https://www.paddle.com" },
+  // No licensed Stripe mark is in the repository, so a general-purpose icon stands in and the name comes from the translations.
+  stripe: { group: "payments", icon: CreditCard, url: "https://stripe.com" },
   banktransfer: { group: "payments", icon: Banknote },
   simulator: { group: "payments", icon: FlaskConical },
   nilvera: { group: "einvoice", name: "Nilvera", logo: { light: "/brand/providers/nilvera-light.svg", dark: "/brand/providers/nilvera-dark.svg" }, wide: true, url: "https://nilvera.com" },
@@ -42,13 +44,13 @@ export const GROUPS: readonly GroupId[] = ["payments", "einvoice", "email"];
 
 /** The integrations of a group, in the order they are shown. */
 export const IN_GROUP: Record<GroupId, readonly IntegrationId[]> = {
-  payments: ["iyzico", "paddle", "banktransfer", "simulator"],
+  payments: ["iyzico", "paddle", "stripe", "banktransfer", "simulator"],
   einvoice: ["nilvera", "webhook", "einvoiceSimulator"],
   email: ["payrudderMail", "nafru"],
 };
 
 /** Whether a card can be connected by the person (the others are always on and only explain themselves). */
-export const CONNECTABLE: readonly IntegrationId[] = ["iyzico", "paddle", "banktransfer", "nilvera", "webhook", "nafru"];
+export const CONNECTABLE: readonly IntegrationId[] = ["iyzico", "paddle", "stripe", "banktransfer", "nilvera", "webhook", "nafru"];
 
 /** Providers shown by name only, for the report to the owner: no licensed or official mark is in the repository for them. */
 export const WITHOUT_LOGO = (Object.entries(BRANDS) as [IntegrationId, Brand][]).filter(([, b]) => b.name && !b.logo).map(([id]) => id);

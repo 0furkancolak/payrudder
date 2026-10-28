@@ -29,6 +29,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
 	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/payments/stripe"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
@@ -168,6 +169,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	registry := payments.NewRegistry()
 	iyzico.Register(registry)
 	paddle.Register(registry)
+	stripe.Register(registry)
 	einvoices := newEInvoiceRegistry(cfg)
 	box, err := newBox(cfg.SecretsKey)
 	if err != nil {
