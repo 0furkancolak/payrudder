@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useNavigate, useParams } from "@tanstack/vue-router";
+import { peek } from "@/features/related/peek";
+import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -34,8 +35,7 @@ const payments = usePayments(tenantId);
 const all = computed(() => payments.data.value?.payments ?? []);
 const range = ref<DateRange>(thisMonth());
 const rows = computed(() => all.value.filter((p) => inRange(p.occurred_at, range.value)));
-const navigate = useNavigate();
-const toInvoice = (id?: string) => void navigate({ to: "/app/t/$id/invoices", params: { id: tenantId.value }, search: { invoice: id ?? "" } as never });
+const toInvoice = (id?: string) => id && peek("invoice", tenantId.value, id);
 const table = useTableState(rows, {
   sheet: { kind: "payment", id: (p) => p.id }, searchFields: (p) => [p.provider, p.invoice_id, p.id, p.amount_minor],
   url: true, filters: { status: (p, v) => p.status === v, kind: (p, v) => p.kind === v },

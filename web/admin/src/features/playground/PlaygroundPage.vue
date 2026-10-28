@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { Link } from "@tanstack/vue-router";
 import { Plus } from "@lucide/vue";
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { sagaVariant, statusVariant } from "@/shared/lib/badges";
-import { recordLink } from "@/features/related/link";
 import { formatMinor } from "@/shared/lib/money";
 import { playgroundDefaults, prefillPlayground } from "@/shared/lib/prefill";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -135,9 +135,9 @@ function create() {
           <TableCell><Badge :variant="statusVariant(inv.status)">{{ inv.status }}</Badge></TableCell>
           <TableCell class="text-end tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</TableCell>
           <TableCell class="text-end">
-            <Link v-if="play.tenantId.value && inv.id" v-bind="recordLink('invoice', inv.id, play.tenantId.value)" class="font-medium underline">
+            <PeekInvoice v-if="play.tenantId.value && inv.id" :id="inv.id" :tenant-id="play.tenantId.value" class="font-medium underline">
               {{ t("playground.invoice.open") }}
-            </Link>
+            </PeekInvoice>
           </TableCell>
         </TableRow>
       </TableBody>

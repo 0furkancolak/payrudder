@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Link } from "@tanstack/vue-router";
 import { Banknote, FileText } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import PaymentLinkSheet from "@/features/paymentlinks/PaymentLinkSheet.vue";
 import { lineText } from "./lineText";
 import { useFormat } from "@/shared/lib/format";
 import { useErrorText } from "@/shared/lib/errors";
@@ -43,6 +43,8 @@ const invoice = useInvoice(tenantId, invoiceId);
 const saga = useInvoiceSaga(tenantId, invoiceId);
 const pdf = useOpenPdf(tenantId, invoiceId);
 const links = useInvoiceLinks(tenantId, invoiceId);
+// The payment link form opens over this sheet, with the invoice filled in; the payment links page is not left for it.
+const paying = ref(false);
 const linkDays = ref("90");
 const linkError = ref("");
 function makeLink() {
@@ -142,7 +144,8 @@ const utcDay = (v: string) => fmt.utcDay(v, "day", v);
       <Button type="button" variant="outline" :disabled="links.revoke.isPending.value" @click="links.revoke.mutate()">{{ t("invoice.share.revoke") }}</Button>
     </form>
     <CopyField v-if="shareUrl" :value="shareUrl" :label="t('invoice.share.link')" :copy-label="t('invoice.share.copy')" />
-    <Link to="/tenants/$id/payment-links" :params="{ id: tenantId }" :search="{ invoice: invoiceId } as never" class="text-sm underline">{{ t("invoice.share.paymentLink") }}</Link>
+    <button type="button" class="w-fit text-sm underline" @click="paying = true">{{ t("invoice.share.paymentLink") }}</button>
+    <PaymentLinkSheet v-model:open="paying" :tenant-id="tenantId" :invoice="invoiceId" :customer="invoice.data.value?.customer_external_id ?? ''" />
     <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
     <ErrorText :message="linkError" />
     <ErrorText :error="links.create.error.value" />

@@ -85,6 +85,16 @@ onMounted(() => heading.value?.focus());
 const go = (to: Step) => patchProgress({ step: to });
 const back = () => go(stepBy(step.value, -1));
 
+/**
+ * "Skip this step": the organisation step has nothing later steps need, and the test event is the last; from the steps that make the app, the meter and the
+ * package everything after depends on what they make, so skipping them hands over to the checklist on the home, which offers each one again.
+ */
+function skipThisStep() {
+  if (step.value === "organisation") return go("app");
+  if (step.value === "event") return go("done");
+  skipOnboarding();
+}
+
 function start() {
   patchProgress({ status: "active", step: "organisation" });
 }
@@ -245,6 +255,7 @@ const NEXT = computed(() => [
           <ErrorText :error="renameAccount.error.value" />
           <div class="flex items-center justify-between gap-3">
             <Button type="button" variant="ghost" @click="back">{{ t("onboarding.back") }}</Button>
+            <Button type="button" variant="ghost" class="text-muted-foreground" data-testid="onb-skip-step" @click="skipThisStep">{{ t("onboarding.skipStep") }}</Button>
             <Button type="submit" :disabled="busy || (isOwner && orgName.trim() === '')" data-testid="onb-continue">{{ t("onboarding.continue") }}</Button>
           </div>
         </form>
@@ -265,6 +276,7 @@ const NEXT = computed(() => [
           <ErrorText :error="createApp.error.value" />
           <div class="flex items-center justify-between gap-3">
             <Button type="button" variant="ghost" :disabled="!!app" @click="back">{{ t("onboarding.back") }}</Button>
+            <Button type="button" variant="ghost" class="text-muted-foreground" data-testid="onb-skip-step" @click="skipThisStep">{{ t("onboarding.skipStep") }}</Button>
             <Button type="submit" :disabled="busy || (!app && appName.trim() === '')" data-testid="onb-continue">{{ app ? t("onboarding.continue") : t("onboarding.app.create") }}</Button>
           </div>
         </form>
@@ -300,6 +312,7 @@ const NEXT = computed(() => [
           <ErrorText :error="createMeter.error.value" />
           <div class="flex items-center justify-between gap-3">
             <Button type="button" variant="ghost" @click="back">{{ t("onboarding.back") }}</Button>
+            <Button type="button" variant="ghost" class="text-muted-foreground" data-testid="onb-skip-step" @click="skipThisStep">{{ t("onboarding.skipStep") }}</Button>
             <Button type="submit" :disabled="busy || !tenantId" data-testid="onb-continue">{{ t("onboarding.meter.create") }}</Button>
           </div>
         </form>
@@ -329,6 +342,7 @@ const NEXT = computed(() => [
           <ErrorText :error="createPackage.error.value" />
           <div class="flex items-center justify-between gap-3">
             <Button type="button" variant="ghost" @click="back">{{ t("onboarding.back") }}</Button>
+            <Button type="button" variant="ghost" class="text-muted-foreground" data-testid="onb-skip-step" @click="skipThisStep">{{ t("onboarding.skipStep") }}</Button>
             <Button type="submit" :disabled="busy || pkgName.trim() === ''" data-testid="onb-continue">{{ t("onboarding.package.create") }}</Button>
           </div>
         </form>
@@ -354,6 +368,7 @@ const NEXT = computed(() => [
           <div class="flex items-center justify-between gap-3">
             <Button type="button" variant="ghost" @click="back">{{ t("onboarding.back") }}</Button>
             <div class="flex items-center gap-2">
+              <Button v-if="!progress?.event" type="button" variant="ghost" class="text-muted-foreground" data-testid="onb-skip-step" @click="skipThisStep">{{ t("onboarding.skipStep") }}</Button>
               <Button v-if="progress?.event" type="button" data-testid="onb-continue" @click="go('done')">{{ t("onboarding.continue") }}</Button>
               <Button v-else type="button" :disabled="busy" data-testid="onb-send" @click="send">{{ sendEvent.isPending.value ? t("onboarding.event.sending") : t("onboarding.event.send") }}</Button>
             </div>

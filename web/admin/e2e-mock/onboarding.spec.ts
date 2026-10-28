@@ -183,6 +183,20 @@ test.describe("the first-run wizard", () => {
     await expect(wizard(page).getByRole("heading", { name: "Your first app" })).toBeVisible();
   });
 
+  test("a step can be skipped on its own: the organisation step goes on to the app, a later step hands over to the checklist", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [] });
+    sandboxApi(gw);
+    await gw.install(page, { onboarded: false, tourSeen: true });
+    await signInAsAda(page);
+    await page.getByTestId("onb-start").click();
+    await expect(wizard(page).getByRole("heading", { name: "Your organisation" })).toBeVisible();
+    await wizard(page).getByTestId("onb-skip-step").click();
+    await expect(wizard(page).getByRole("heading", { name: "Your first app" })).toBeVisible();
+    await wizard(page).getByTestId("onb-skip-step").click();
+    await expect(wizard(page)).toHaveCount(0);
+    expect(gw.called("POST", "/app/v1/apps")).toHaveLength(0);
+  });
+
   test("a failed test event says why, and trying again does not make the customer twice", async ({ page }) => {
     const { gw } = productGateway(new MockGateway(), { apps: [] });
     let reject = true;

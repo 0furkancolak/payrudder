@@ -67,6 +67,14 @@ describe("running a tour", () => {
     expect(startTourOnce(demo)).toBe(false);
   });
 
+  it("counts a tour that started by itself as seen at once, so walking away from it does not bring it back", () => {
+    setTourScope("u1");
+    expect(startTourOnce(demo)).toBe(true);
+    endTour(false); // leaving the page ends it without the person finishing it
+    expect(tourSeen("demo")).toBe(true);
+    expect(startTourOnce(demo)).toBe(false);
+  });
+
   it("remembers per person", () => {
     markTourSeen("demo");
     expect(tourSeen("demo")).toBe(true);

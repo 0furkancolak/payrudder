@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { Plus, RotateCw } from "@lucide/vue";
 import { Link } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
@@ -122,7 +123,7 @@ const current = table.row;
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.amount") }}</dt>
       <dd class="text-end text-lg font-semibold tabular-nums">{{ formatMinor(current.total_minor, current.currency, locale) }}</dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.invoice") }}</dt>
-      <dd class="mono text-end"><Link v-if="current.invoice_id" v-bind="recordLink('invoice', current.invoice_id, tenantId)" class="hover:underline">{{ current.invoice_number || current.invoice_id.slice(0, 8) }}</Link><template v-else>—</template></dd>
+      <dd class="mono text-end"><PeekInvoice v-if="current.invoice_id" :id="current.invoice_id" :tenant-id="tenantId" class="hover:underline">{{ current.invoice_number || current.invoice_id.slice(0, 8) }}</PeekInvoice><template v-else>—</template></dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.customer") }}</dt>
       <dd class="text-end"><Link v-if="current.customer_external_id" v-bind="recordLink('customer', current.customer_external_id, tenantId)" class="hover:underline">{{ current.customer_external_id }}</Link><template v-else>—</template></dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.date") }}</dt>

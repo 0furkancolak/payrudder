@@ -161,9 +161,13 @@ export function startTour(tour: Tour): void {
   running.value = { tour, index: 0, dir: 1 };
 }
 
-/** Starts the tour of a page the first time the person is on it. Returns whether it started. */
+/**
+ * Starts the tour of a page the first time the person is on it. Returns whether it started. A tour that starts by itself counts as seen from that moment:
+ * one that is walked away from (a click on the page, another page) must not come back at the next visit; the tour button starts it again on purpose.
+ */
 export function startTourOnce(tour: Tour): boolean {
   if (!tourReady.value || running.value || welcomeOff() || tourSeen(tour.id)) return false;
+  markTourSeen(tour.id);
   startTour(tour);
   return true;
 }

@@ -116,12 +116,13 @@ let routerRef: { navigate: (o: never) => Promise<unknown> } | undefined;
 let queue: Promise<unknown> = Promise.resolve();
 /**
  * Changes the search of the current page. Changes go one after the other, each seeing the address the one before it left, so two parts of a page that
- * change different parameters at nearly the same moment do not overwrite each other.
+ * change different parameters at nearly the same moment do not overwrite each other. The page keeps its scroll position: a sheet opening (or a filter
+ * changing) is not a new page, and the router's default of scrolling to the top threw the list behind a sheet back to its start, until the sheet closed.
  */
 export function updateSearch(change: (prev: Record<string, unknown>) => Record<string, unknown>) {
   const router = routerRef;
   if (!router) return;
-  queue = queue.then(() => router.navigate({ search: change, replace: true } as never)).catch(() => undefined);
+  queue = queue.then(() => router.navigate({ search: change, replace: true, resetScroll: false } as never)).catch(() => undefined);
 }
 
 /** Keeps `names` and the `sheet` parameter of the address the same thing; called once, by the frame of the pages. */

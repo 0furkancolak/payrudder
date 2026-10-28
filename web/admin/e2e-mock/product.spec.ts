@@ -703,8 +703,8 @@ test.describe("billing pages of the app", () => {
     await shoot(page, "32-payments");
     await rows.nth(0).getByTestId("row-actions").click();
     await page.getByTestId("row-action-invoice").click();
-    // The invoice list opens with the invoice's sheet on top.
-    await page.waitForURL(`**/app/t/${LIVE}/invoices*`);
+    // The invoice opens over the payments page; the page is not left.
+    await expect(page).toHaveURL(new RegExp(`/app/t/${LIVE}/payments`));
     await expect(page.getByTestId("detail-sheet")).toContainText("INV-2026-000003");
     expect(gw.called("GET", "/v1/payments")[0]?.headers["x-payrudder-tenant"]).toBe(LIVE);
     expect(gw.calls.filter((c) => c.path.startsWith("/admin/"))).toEqual([]);
