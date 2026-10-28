@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
 import { Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { CountrySelect } from "@/shared/ui/location-fields";
@@ -11,11 +10,11 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { localizePercent, parsePercent, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type Rate } from "./api";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, locale } = useI18n();
 const canWrite = useCanWrite();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 
 // --- tax
 const stored = useTaxRates(tenantId);

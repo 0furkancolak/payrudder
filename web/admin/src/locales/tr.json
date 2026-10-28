@@ -4524,18 +4524,12 @@
     }
   },
   "onboarding": {
-    "skipStep": "Bu adımı atla",
     "skip": "Şimdilik atla",
     "back": "Geri",
     "continue": "Devam",
-    "stepLabel": "Adım {n} / {total}",
     "steps": {
       "welcome": "Hoş geldiniz",
-      "organisation": "Kuruluş",
-      "app": "İlk uygulama",
-      "meter": "İlk sayaç",
-      "package": "İlk paket",
-      "event": "Test olayı",
+      "app": "Kurulum",
       "done": "Bitti"
     },
     "welcome": {
@@ -4562,85 +4556,39 @@
       "start": "Hesabımı kur",
       "time": "Yaklaşık iki dakika sürer."
     },
-    "organisation": {
-      "title": "Kuruluşunuz",
-      "body": "Ekibinizin ve müşterilerinizin gördüğü ad ve ilk uygulamanız için varsayılanlar.",
-      "name": "Kuruluş adı",
+    "setup": {
+      "title": "İlk uygulamanı kur",
+      "body": "Uygulama, faturaladığın tek bir üründür. Test edebileceğin bir sandbox ve gerçek ödemeler için canlı ortamla gelir.",
+      "org": "Kuruluş adı",
+      "app": "Uygulama adı",
+      "appHint": "Müşterilerin bu adı faturalarında ve ödeme sayfalarında görür.",
       "currency": "Para birimi",
       "timezone": "Saat dilimi",
-      "note": "Para birimi ve saat dilimi faturaların nasıl hesaplanacağını belirler; bu yüzden uygulama oluştuktan sonra değiştirilemez."
-    },
-    "app": {
-      "title": "İlk uygulamanız",
-      "body": "Uygulama, faturalandırdığınız tek bir üründür. Test için bir sandbox ve gerçek ödemeler için bir canlı ortamla gelir.",
-      "name": "Uygulama adı",
-      "defaultName": "İlk uygulamam",
-      "create": "Uygulamayı oluştur",
+      "note": "Para birimi ve saat dilimi faturaların nasıl hesaplanacağını belirler; uygulama oluştuktan sonra değiştirilemez.",
+      "create": "Uygulamamı oluştur",
+      "defaultAppName": "İlk uygulamam",
       "created": "{name} sandbox'ıyla birlikte hazır."
-    },
-    "meter": {
-      "title": "Neyi ölçüyorsunuz?",
-      "body": "Sayaç, kullanım olaylarını faturalayabileceğiniz bir miktara çevirir. Bir şablon seçin; sayaçları sonra ekleyebilir veya değiştirebilirsiniz.",
-      "create": "Sayacı oluştur",
-      "templates": {
-        "api_calls": {
-          "name": "API çağrıları",
-          "body": "Müşterilerinizin yaptığı her isteği sayar."
-        },
-        "storage": {
-          "name": "Depolama (GB)",
-          "body": "Bir müşterinin dönemde kullandığı en yüksek depolama."
-        },
-        "seats": {
-          "name": "Koltuklar",
-          "body": "Bir müşterinin dönemde sahip olduğu en yüksek koltuk sayısı."
-        },
-        "tokens": {
-          "name": "Yapay zekâ token'ları",
-          "body": "Müşterilerinizin harcadığı token'ları toplar."
-        }
-      }
-    },
-    "package": {
-      "title": "İlk paketiniz",
-      "body": "Paket, müşterinin abone olduğu şeydir: sabit bir aylık ücret ve kullandığı her birim için bir fiyat.",
-      "name": "Paket adı",
-      "defaultName": "Başlangıç",
-      "fee": "Aylık ücret ({currency})",
-      "unitPrice": "{unit} başına fiyat ({currency})",
-      "note": "Limitleri, diğer para birimlerini ve ücretsiz denemeyi Paketler sayfasından ekleyebilirsiniz.",
-      "create": "Paketi yayımla"
-    },
-    "event": {
-      "title": "Test olayı gönderin",
-      "body": "Bir test müşterisi oluşturur, onu paketinize abone eder ve sandbox'ınıza bir kullanım olayı göndeririz; böylece tüm yolun çalıştığını görürsünüz.",
-      "customer": "Müşteri",
-      "meter": "Sayaç",
-      "quantity": "Miktar",
-      "send": "Test olayı gönder",
-      "sending": "Gönderiliyor…",
-      "sent": "Kabul edildi: sandbox'ınızda {quantity} {unit} kullanım."
     },
     "done": {
       "title": "Her şey hazır",
-      "body": "Sandbox'ınızda bir sayaç, bir paket ve ilk kullanım olayı var. Genellikle sonra şunlar gelir.",
+      "body": "Uygulaman ve sandbox'ı hazır. Sıradaki adım ne sattığını anlatmak: müşterilerin kullandığı şey için bir sayaç ve fiyatıyla bir paket.",
       "finish": "Panoma git",
       "next": {
-        "dashboard": {
-          "title": "Sandbox panonuzu açın",
-          "body": "Test olayının yol açtığı kullanımı ve faturayı görün."
+        "meters": {
+          "title": "Sayaç ekle",
+          "body": "Neyi ölçeceğini seç: API çağrıları, depolama, koltuk, token."
+        },
+        "packages": {
+          "title": "Paket yayınla",
+          "body": "Sabit bir ücret ve kullanılan her birim için bir fiyat."
         },
         "keys": {
-          "title": "Bir API anahtarı oluşturun",
-          "body": "Kendi sunucunuz kullanım göndersin."
-        },
-        "team": {
-          "title": "Ekibinizi davet edin",
-          "body": "İş arkadaşları kendi rolleriyle katılabilir."
+          "title": "API anahtarı oluştur",
+          "body": "Kendi sunucun kullanım göndersin."
         },
         "live": {
-          "title": "Canlıya geçin",
-          "body": "Bir ödeme sağlayıcı bağlayın ve gerçek faturalamayı açın."
+          "title": "Canlıya geç",
+          "body": "Bir ödeme sağlayıcısı bağla ve gerçek faturalamayı aç."
         }
       }
     },
@@ -4656,7 +4604,6 @@
         "app": "İlk uygulamanızı oluşturun",
         "meter": "Bir sayaç ekleyin",
         "package": "Fiyatlı bir paket yayımlayın",
-        "event": "Bir test olayı gönderin",
         "key": "Bir API anahtarı oluşturun",
         "live": "Canlıya geçin"
       }

@@ -20,7 +20,7 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Sparkline } from "@/shared/ui/sparkline";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useMeters, useSeriesOf, useTopCustomers, type Meter } from "./api";
 import { chartPoints, formatQuantity, granularityFor, totalOf, values, type Range } from "./lib";
 import { AGGREGATIONS, aggregationKey } from "./meter";
@@ -136,8 +136,8 @@ const actionsOf = (m: Meter, i: number) => [
       </TableBody>
     </Table>
     <Skeleton v-if="meters.isPending.value" class="mx-3 my-4 h-24" />
-    <p v-else-if="list.length === 0 && !meters.error.value" class="text-muted-foreground p-4 text-center text-sm" data-testid="meters-empty">{{ t("billing.usage.empty.hint") }}</p>
-    <p v-else-if="list.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-else-if="list.length === 0 && !meters.error.value" data-testid="meters-empty">{{ t("billing.usage.empty.hint") }}</TableEmpty>
+    <TableEmpty v-else-if="list.length > 0 && table.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-if="list.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 

@@ -4524,18 +4524,12 @@
     }
   },
   "onboarding": {
-    "skipStep": "Skip this step",
     "skip": "Skip for now",
     "back": "Back",
     "continue": "Continue",
-    "stepLabel": "Step {n} of {total}",
     "steps": {
       "welcome": "Welcome",
-      "organisation": "Organisation",
-      "app": "First app",
-      "meter": "First meter",
-      "package": "First package",
-      "event": "Test event",
+      "app": "Set up",
       "done": "Done"
     },
     "welcome": {
@@ -4562,81 +4556,35 @@
       "start": "Set up my account",
       "time": "It takes about two minutes."
     },
-    "organisation": {
-      "title": "Your organisation",
-      "body": "The name your team and customers see, and the defaults for your first app.",
-      "name": "Organisation name",
+    "setup": {
+      "title": "Set up your first app",
+      "body": "An app is one product you bill for. It comes with a sandbox to test in and a live environment for real payments.",
+      "org": "Organisation name",
+      "app": "App name",
+      "appHint": "Your customers see this name on their invoices and payment pages.",
       "currency": "Currency",
       "timezone": "Time zone",
-      "note": "The currency and the time zone decide how invoices are worked out, so they cannot be changed once the app exists."
-    },
-    "app": {
-      "title": "Your first app",
-      "body": "An app is one product you bill for. It comes with a sandbox to test in and a live environment for real payments.",
-      "name": "App name",
-      "defaultName": "My first app",
-      "create": "Create app",
+      "note": "The currency and the time zone decide how invoices are worked out, so they cannot be changed once the app exists.",
+      "create": "Create my app",
+      "defaultAppName": "My first app",
       "created": "{name} is ready, with its sandbox."
-    },
-    "meter": {
-      "title": "What do you measure?",
-      "body": "A meter turns usage events into a quantity you can bill. Pick a template; you can add or change meters later.",
-      "create": "Create meter",
-      "templates": {
-        "api_calls": {
-          "name": "API calls",
-          "body": "Counts every request your customers make."
-        },
-        "storage": {
-          "name": "Storage (GB)",
-          "body": "The most storage a customer used in the period."
-        },
-        "seats": {
-          "name": "Seats",
-          "body": "The most seats a customer had in the period."
-        },
-        "tokens": {
-          "name": "AI tokens",
-          "body": "Adds up the tokens your customers spend."
-        }
-      }
-    },
-    "package": {
-      "title": "Your first package",
-      "body": "A package is what a customer subscribes to: a fixed monthly fee plus a price for each unit they use.",
-      "name": "Package name",
-      "defaultName": "Starter",
-      "fee": "Monthly fee ({currency})",
-      "unitPrice": "Price per {unit} ({currency})",
-      "note": "You can add limits, other currencies and a free trial on the Packages page.",
-      "create": "Publish package"
-    },
-    "event": {
-      "title": "Send a test event",
-      "body": "We create a test customer, subscribe it to your package and send one usage event to your sandbox, so you see the whole path work.",
-      "customer": "Customer",
-      "meter": "Meter",
-      "quantity": "Quantity",
-      "send": "Send test event",
-      "sending": "Sending…",
-      "sent": "Accepted: {quantity} {unit} of usage in your sandbox."
     },
     "done": {
       "title": "You are all set",
-      "body": "Your sandbox has a meter, a package and its first usage event. Here is what usually comes next.",
+      "body": "Your app and its sandbox are ready. Next you describe what you sell: a meter for what customers use, and a package with its price.",
       "finish": "Go to my dashboard",
       "next": {
-        "dashboard": {
-          "title": "Open your sandbox dashboard",
-          "body": "See the usage and the invoice the test event leads to."
+        "meters": {
+          "title": "Add a meter",
+          "body": "Choose what you measure: API calls, storage, seats, tokens."
+        },
+        "packages": {
+          "title": "Publish a package",
+          "body": "A fixed fee plus a price for each unit used."
         },
         "keys": {
           "title": "Create an API key",
           "body": "Let your own server send usage."
-        },
-        "team": {
-          "title": "Invite your team",
-          "body": "Colleagues can join with a role of their own."
         },
         "live": {
           "title": "Go live",
@@ -4656,7 +4604,6 @@
         "app": "Create your first app",
         "meter": "Add a meter",
         "package": "Publish a package with a price",
-        "event": "Send a test event",
         "key": "Create an API key",
         "live": "Go live"
       }

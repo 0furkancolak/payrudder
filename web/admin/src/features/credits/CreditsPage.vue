@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { idOf } from "@/shared/lib/sheets";
@@ -10,14 +9,14 @@ import CreditPacksCard from "./CreditPacksCard.vue";
 import CustomerCreditsCard from "./CustomerCreditsCard.vue";
 import LowBalanceCard from "./LowBalanceCard.vue";
 import PurchaseLinkCard from "./PurchaseLinkCard.vue";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /**
  * Prepaid credits of a tenant. First one customer's balance with the grants it comes from and its ledger (and the sheet to give free credits); then, as a
  * secondary section, what is needed to sell credits: the packs (with a purchase link per pack) and the low-balance alert.
  */
 const { t } = useI18n();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 // The customer picked is in the address, so a reload or a shared link shows the same balance.
 const customer = useSearchValue("customer");
 // The grant sheet is in the address with the customer it is for: a reload or a shared link chooses that customer again.

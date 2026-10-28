@@ -10,19 +10,20 @@ defineProps<{ title: string; description?: string; flush?: boolean; titleTestId?
 </script>
 
 <template>
-  <header :class="cn('flex flex-wrap items-end justify-between gap-3 px-1', !flush && 'mb-6')">
-    <div class="min-w-0">
-      <div class="flex flex-wrap items-center gap-3">
-        <h1 class="text-3xl font-semibold tracking-tight md:text-4xl" :data-testid="titleTestId">{{ title }}</h1>
-        <slot name="badge" />
-      </div>
-      <slot name="subtitle">
-        <p v-if="description" class="text-muted-foreground mt-1 max-w-2xl text-sm">{{ description }}</p>
-      </slot>
+  <!-- The title and the actions share the first row, also on a phone (where the create button is an icon); the line under the title takes the full width below. -->
+  <header :class="cn('grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-1', !flush && 'mb-6')">
+    <div class="flex min-w-0 flex-wrap items-center gap-x-3">
+      <h1 class="text-3xl font-semibold tracking-tight md:text-4xl" :data-testid="titleTestId">{{ title }}</h1>
+      <slot name="badge" />
     </div>
-    <div class="flex items-center gap-2 empty:hidden">
+    <div class="col-start-2 row-start-1 flex items-center gap-2 empty:hidden">
       <slot />
       <HeaderActions />
+    </div>
+    <div class="col-span-full min-w-0 empty:hidden">
+      <slot name="subtitle">
+        <p v-if="description" class="text-muted-foreground max-w-2xl text-sm">{{ description }}</p>
+      </slot>
     </div>
   </header>
 </template>

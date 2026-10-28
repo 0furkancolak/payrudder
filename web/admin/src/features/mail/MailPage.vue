@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { firstError } from "@/shared/lib/errors";
@@ -7,10 +6,10 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Card } from "@/shared/ui/card";
 import { Switch } from "@/shared/ui/switch";
 import { MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "./api";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t } = useI18n();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const settings = useMailSettings(tenantId);
 const set = useSetMailCategory(tenantId);
 

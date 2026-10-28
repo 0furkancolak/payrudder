@@ -7,7 +7,7 @@ import type { App } from "@/features/product/api";
 import { Button } from "@/shared/ui/button";
 import { useSetupFacts } from "./api";
 import { checklist, doneCount, type Item } from "./checklist";
-import { hideChecklist, patchProgress, progress, resumeOnboarding } from "./state";
+import { hideChecklist, progress, resumeOnboarding } from "./state";
 
 /**
  * The "Getting started" card of the organisation's home: what is left of the first setup, ticked from the person's real data (a meter made on the
@@ -29,8 +29,6 @@ const target: (item: Item) => { to: string; search?: Record<string, string> } | 
       return tenant.value ? { to: `/app/t/${tenant.value}/meters` } : null;
     case "package":
       return tenant.value ? { to: `/app/t/${tenant.value}/packages` } : null;
-    case "event":
-      return tenant.value ? { to: `/app/t/${tenant.value}/usage` } : null;
     case "key":
       return appId.value ? { to: `/app/apps/${appId.value}/keys`, search: { env: "sandbox" } } : null;
     case "live":
@@ -39,11 +37,6 @@ const target: (item: Item) => { to: string; search?: Record<string, string> } | 
       return null;
   }
 };
-/** The test event is sent from the wizard's own step, which needs the meter and the package it made. */
-const canSendTest = computed(() => !!progress.value?.meter && !!progress.value?.plan);
-function sendTest() {
-  patchProgress({ status: "active", step: "event" });
-}
 const wizardUnfinished = computed(() => progress.value?.status !== "done");
 </script>
 
@@ -66,7 +59,6 @@ const wizardUnfinished = computed(() => progress.value?.status !== "done");
         <span :class="['flex-1 text-sm', r.done ? 'text-muted-foreground line-through' : 'font-medium']">{{ t(`onboarding.checklist.items.${r.key}`) }}<span class="sr-only"> — {{ r.done ? t("onboarding.checklist.done") : t("onboarding.checklist.todo") }}</span></span>
         <template v-if="!r.done">
           <Button v-if="r.key === 'app'" type="button" variant="outline" size="sm" @click="emit('createApp')">{{ t("onboarding.checklist.open") }}</Button>
-          <Button v-else-if="r.key === 'event' && canSendTest" type="button" variant="outline" size="sm" data-testid="todo-event-send" @click="sendTest">{{ t("onboarding.checklist.open") }}</Button>
           <Link v-else-if="target(r.key)" :to="target(r.key)!.to" :search="target(r.key)!.search as never" class="text-brand-strong inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline">
             {{ t("onboarding.checklist.open") }}<ArrowRight class="size-3.5 rtl:rotate-180" aria-hidden="true" />
           </Link>

@@ -24,7 +24,7 @@ test.describe("credits", () => {
     await openTenantPage(page, "/credits");
     await expect(page.getByRole("row", { name: /Starter/ })).toContainText("$5.00");
 
-    await page.getByRole("button", { name: "Add pack" }).click();
+    await page.getByRole("button", { name: "New credit pack" }).click();
     const form = page.getByRole("dialog");
     await form.getByLabel("Pack name").fill("Team");
     await form.getByLabel("Credits", { exact: true }).fill("10000");
@@ -120,7 +120,7 @@ test.describe("credits", () => {
     });
     await gw.install(page);
     await openTenantPage(page, "/credits");
-    await page.getByRole("button", { name: "Add pack" }).click();
+    await page.getByRole("button", { name: "New credit pack" }).click();
     const form = page.getByRole("dialog");
     await form.getByLabel("Pack name").fill("Odd");
     await form.getByLabel("Credits", { exact: true }).fill("5");

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useTabParam } from "@/shared/lib/useSearchValue";
@@ -9,6 +8,7 @@ import CodeSheet from "./CodeSheet.vue";
 import CodesTab from "./CodesTab.vue";
 import CouponsTab from "./CouponsTab.vue";
 import RedemptionsTab from "./RedemptionsTab.vue";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /**
  * Coupons: what is taken off (the coupons), the codes customers type for it (promotion codes), and every use of either (redemptions). A tab each, and
@@ -16,8 +16,7 @@ import RedemptionsTab from "./RedemptionsTab.vue";
  */
 const TABS = ["coupons", "codes", "redemptions"] as const;
 const { t } = useI18n();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tab = useTabParam("tab", TABS, "coupons");
 
 const coupons = useCoupons(tenantId);

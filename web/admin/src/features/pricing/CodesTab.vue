@@ -20,6 +20,7 @@ import { useCodeActions, useCoupons, usePromotionCodes, useRedemptions } from ".
 import CodesTable from "./CodesTable.vue";
 import { codeRules, describeCoupon } from "./promotions";
 import RedemptionsTable from "./RedemptionsTable.vue";
+import { TableEmpty } from "@/shared/ui/table";
 
 /** Every promotion code of the tenant, a page at a time, with the coupon each points to. A row opens the code with its rules and its redemptions. */
 const props = defineProps<{ tenantId: string }>();
@@ -98,7 +99,7 @@ const detailRows = computed(() => {
     </DataToolbar>
     <CodesTable :rows="rows" :selected="index" show-coupon @select="(i) => (index = i)" @deactivate="(c) => act.deactivate.mutate(c)" />
     <Skeleton v-if="codes.isPending.value" class="mx-3 my-4 h-24" />
-    <p v-else-if="rows.length === 0 && !codes.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ active ? t("common.noMatches") : t("billing.pricing.promotions.codes.none") }}</p>
+    <TableEmpty v-else-if="rows.length === 0 && !codes.error.value">{{ active ? t("common.noMatches") : t("billing.pricing.promotions.codes.none") }}</TableEmpty>
     <DataPagination v-model:size="size" :page="history.length + 1" :total="codes.data.value?.total ?? 0" :has-prev="history.length > 0" :has-next="!!codes.data.value?.next_page_token" @prev="back" @next="next" />
   </Card>
 

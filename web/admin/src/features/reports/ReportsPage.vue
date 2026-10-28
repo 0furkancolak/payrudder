@@ -2,7 +2,7 @@
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { thisMonth } from "@/shared/lib/dateRange";
 import { ArrowUpRight } from "@lucide/vue";
-import { useParams } from "@tanstack/vue-router";
+
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { ym } from "@/shared/lib/dates";
@@ -20,14 +20,14 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useTabParam } from "@/shared/lib/useSearchValue";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDunningReport, useRevenueReport, useSubscriptionReport } from "./api";
 import GroupChips from "./GroupChips.vue";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, te } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tabs = ["revenue", "subscriptions", "dunning"] as const;
 const tab = useTabParam("tab", tabs, "revenue");
 
@@ -157,8 +157,8 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!revenue.isPending.value && (revenue.data.value?.rows ?? []).length === 0 && !revenue.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.reports.empty") }}</p>
-    <p v-else-if="revenueTable.total.value === 0 && revenueActive" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="!revenue.isPending.value && (revenue.data.value?.rows ?? []).length === 0 && !revenue.error.value">{{ t("billing.reports.empty") }}</TableEmpty>
+    <TableEmpty v-else-if="revenueTable.total.value === 0 && revenueActive">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-model:page="revenueTable.page.value" v-model:size="revenueTable.size.value" :pages="revenueTable.pages.value" :total="revenueTable.total.value" />
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.revenueHint") }}</p>
   </Card>
@@ -200,8 +200,8 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!subs.isPending.value && (subs.data.value?.rows ?? []).length === 0 && !subs.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.reports.empty") }}</p>
-    <p v-else-if="subTable.total.value === 0 && subActive" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="!subs.isPending.value && (subs.data.value?.rows ?? []).length === 0 && !subs.error.value">{{ t("billing.reports.empty") }}</TableEmpty>
+    <TableEmpty v-else-if="subTable.total.value === 0 && subActive">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-model:page="subTable.page.value" v-model:size="subTable.size.value" :pages="subTable.pages.value" :total="subTable.total.value" />
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.subscriptionsHint") }}</p>
   </Card>
@@ -245,8 +245,8 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!dunning.isPending.value && (dunning.data.value?.invoices ?? []).length === 0 && !dunning.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.reports.noDunning") }}</p>
-    <p v-else-if="dunningTable.total.value === 0 && dunningTable.active.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="!dunning.isPending.value && (dunning.data.value?.invoices ?? []).length === 0 && !dunning.error.value">{{ t("billing.reports.noDunning") }}</TableEmpty>
+    <TableEmpty v-else-if="dunningTable.total.value === 0 && dunningTable.active.value">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-model:page="dunningTable.page.value" v-model:size="dunningTable.size.value" :pages="dunningTable.pages.value" :total="dunningTable.total.value" />
     <p class="text-muted-foreground px-3 text-xs">{{ t("billing.reports.dunningHint") }}</p>
   </Card>

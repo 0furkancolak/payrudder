@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
-import { useParams } from "@tanstack/vue-router";
+
 import { Download, Pencil, Ban, ScanLine, Paperclip } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -36,12 +36,12 @@ import InboxCard from "./InboxCard.vue";
 import ReceiptScanSheet from "./ReceiptScanSheet.vue";
 import { granularityOf, presetRange, validRange } from "./period";
 import VoidDialog from "./VoidDialog.vue";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, locale } = useI18n();
 const fmt = useFormat();
 const errorText = useErrorText();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tenant = useTenant(tenantId);
 
 // --- the period and the app

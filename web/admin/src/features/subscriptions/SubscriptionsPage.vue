@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { usePackages } from "@/features/packages";
 import { SubscriptionRelated } from "@/features/related";
@@ -12,10 +11,10 @@ import { useSubscriptionActions } from "./api";
 import CreateSubscriptionForm from "./CreateSubscriptionForm.vue";
 import ManageSubscriptionCard from "./ManageSubscriptionCard.vue";
 import SubscriptionsTable from "./SubscriptionsTable.vue";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /** Subscriptions of a tenant: start one, see them all, and manage the one a row opens in a sheet. Operators also move a subscription to another payment provider. */
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tenant = useTenant(tenantId);
 const environment = computed(() => envOf(tenant.data.value?.environment));
 const packages = usePackages(tenantId);

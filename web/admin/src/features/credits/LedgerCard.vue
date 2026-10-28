@@ -10,7 +10,7 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCreditLedger } from "./api";
 import { formatCredits } from "./lib";
 
@@ -69,8 +69,8 @@ const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="ledger.data.value && !(ledger.data.value.entries ?? []).length" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.credits.ledger.none") }}</p>
-    <p v-else-if="table.total.value === 0 && active" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="ledger.data.value && !(ledger.data.value.entries ?? []).length">{{ t("billing.credits.ledger.none") }}</TableEmpty>
+    <TableEmpty v-else-if="table.total.value === 0 && active">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 </template>

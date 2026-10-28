@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { peek } from "@/features/related/peek";
-import { useParams } from "@tanstack/vue-router";
+
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -22,6 +22,7 @@ import { PaymentContext } from "@/features/related";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { label } from "@/shared/lib/labels";
 import { usePayments } from "./billingApi";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /**
  * The environment's payments, newest first: charges and refunds, each as the one outcome it settled on (pending, paid, failed, refunded). Reads /v1/payments.
@@ -29,8 +30,7 @@ import { usePayments } from "./billingApi";
  */
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const payments = usePayments(tenantId);
 const all = computed(() => payments.data.value?.payments ?? []);
 const range = ref<DateRange>(thisMonth());

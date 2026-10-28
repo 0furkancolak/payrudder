@@ -11,7 +11,7 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
 import { useTableState } from "@/shared/lib/useTableState";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDeadLetters, useRedrive } from "./api";
 
 const { t } = useI18n();
@@ -64,7 +64,7 @@ async function run(name: string, count: number) {
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="queues.length > 0 && queuesTable.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-if="queues.length > 0 && queuesTable.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-if="queues.length > 0" v-model:page="queuesTable.page.value" v-model:size="queuesTable.size.value" :pages="queuesTable.pages.value" :total="queuesTable.total.value" />
   </Card>
 
@@ -89,8 +89,8 @@ async function run(name: string, count: number) {
           </TableRow>
         </TableBody>
       </Table>
-      <p v-if="messages.length > 0 && messagesTable.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
-      <p v-else-if="messages.length === 0 && !list.isPending.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("deadLetters.noMessages") }}</p>
+      <TableEmpty v-if="messages.length > 0 && messagesTable.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
+      <TableEmpty v-else-if="messages.length === 0 && !list.isPending.value">{{ t("deadLetters.noMessages") }}</TableEmpty>
       <DataPagination v-if="messages.length > 0" v-model:page="messagesTable.page.value" v-model:size="messagesTable.size.value" :pages="messagesTable.pages.value" :total="messagesTable.total.value" />
     </div>
   </DetailSheet>

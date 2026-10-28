@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useParams } from "@tanstack/vue-router";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { thisMonth } from "@/shared/lib/dateRange";
@@ -11,6 +10,7 @@ import { periodOf, validRange } from "./lib";
 import MetersTab from "./MetersTab.vue";
 import OverviewTab from "./OverviewTab.vue";
 import PeriodControls from "./PeriodControls.vue";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /**
  * Usage, for a person's app and for the operator's tenant (the same page, the tenant comes from the route): an overview of the meters, the meters
@@ -18,8 +18,7 @@ import PeriodControls from "./PeriodControls.vue";
  */
 const TABS = ["overview", "meters", "customers"] as const;
 const { t } = useI18n();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tab = useTabParam("tab", TABS, "overview");
 
 const range = ref<DateRange>(thisMonth());

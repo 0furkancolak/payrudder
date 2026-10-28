@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
-import { useParams, useRouter } from "@tanstack/vue-router";
+import { useRouter } from "@tanstack/vue-router";
 import { CreditCard, ArrowUpRight, Gauge, Link2, MapPin, Receipt, Repeat, UserPen, Users } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -33,6 +33,7 @@ import CustomerEditSheets from "./CustomerEditSheets.vue";
 import PaymentLinkSheet from "@/features/paymentlinks/PaymentLinkSheet.vue";
 import CustomerSheet from "./CustomerSheet.vue";
 import { countryName, emptySummary, flagOf, headline, type Customer, type CustomerTab, type SubscriptionStatus } from "./lib";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /**
  * The customers of a tenant, after Stripe's customer list: who (initials, name, e-mail), how their subscriptions stand, currency and country, what they
@@ -41,8 +42,7 @@ import { countryName, emptySummary, flagOf, headline, type Customer, type Custom
  */
 const { t, locale } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const router = useRouter();
 const customers = useCustomers(tenantId);
 const summaries = useCustomerSummaries(tenantId);

@@ -2,7 +2,7 @@ import { ref } from "vue";
 import { safeGet, safeSet } from "@/shared/lib/storage";
 
 /** The steps of the first-run wizard, in order. */
-export const STEPS = ["welcome", "organisation", "app", "meter", "package", "event", "done"] as const;
+export const STEPS = ["welcome", "app", "done"] as const;
 export type Step = (typeof STEPS)[number];
 
 /**
@@ -13,15 +13,11 @@ export interface Progress {
   /** active: started and not finished, so the wizard opens by itself; skipped and done: it stays closed, and the checklist on the home carries on. */
   status: "active" | "skipped" | "done";
   step: Step;
-  /** What the person chose in the organisation step, for the app step to use. */
+  /** What the person chose in the setup step. */
   currency?: string;
   timezone?: string;
-  /** What the wizard made (ids and codes), so a step that already ran is not run again. */
+  /** The app the wizard made, so coming back to the step does not make another. */
   app?: string;
-  meter?: string;
-  plan?: string;
-  customer?: boolean;
-  event?: boolean;
   /** The person closed the "Getting started" card. */
   hidden?: boolean;
 }
@@ -61,9 +57,16 @@ function parse(text: string | null): Progress | null {
   }
 }
 
+/** The steps of earlier versions (organisation, app) are the one app step now; the ones after it (meter, package, event) are on the checklist. */
+function stepOf(stored: string | undefined): Step {
+  if (STEPS.includes(stored as Step)) return stored as Step;
+  if (stored === "organisation") return "app";
+  return stored === "meter" || stored === "package" || stored === "event" ? "done" : "welcome";
+}
+
 function parseDoc(v: Partial<Progress> | null | undefined): Progress | null {
   if (!v || (v.status !== "active" && v.status !== "skipped" && v.status !== "done")) return null;
-  return { ...v, status: v.status, step: STEPS.includes(v.step as Step) ? (v.step as Step) : "welcome" };
+  return { ...v, status: v.status, step: stepOf(v.step) };
 }
 
 /**
@@ -139,18 +142,4 @@ export function wizardOpen(p: Progress | null, o: { appCount: number | undefined
 export function stepBy(step: Step, by: 1 | -1): Step {
   const i = STEPS.indexOf(step) + by;
   return STEPS[Math.min(STEPS.length - 1, Math.max(0, i))] ?? "welcome";
-}
-
-/** A package code from a name: lower case, letters and digits, dashes between words, starting with a letter (what the API accepts). */
-export function slug(name: string): string {
-  const s = name
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    // The dotless i of Turkish has no decomposition.
-    .replace(/ı/g, "i")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  if (s === "") return "starter";
-  return (/^[a-z]/.test(s) ? s : `p-${s}`).slice(0, 63).replace(/-+$/, "");
 }

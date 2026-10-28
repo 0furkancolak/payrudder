@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Gift } from "@lucide/vue";
+import { Coins } from "@lucide/vue";
 import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -14,7 +14,7 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { useCreditBalance, useCreditLedger } from "./api";
 import GrantCreditsSheet from "./GrantCreditsSheet.vue";
@@ -74,7 +74,7 @@ const TAB_CLASS =
             {{ t("billing.credits.customer.nextExpiry", { when: fmt.date(balance.data.value.next_expire_time, "dateTime") }) }}
           </span>
         </div>
-        <Button type="button" data-testid="credits-grant" @click="open = true"><Gift class="size-4" aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
+        <Button type="button" data-testid="credits-grant" @click="open = true"><Coins class="size-4" aria-hidden="true" />{{ t("billing.credits.grant.free") }}</Button>
       </div>
 
       <Tabs v-model="view" class="min-w-0 gap-3">
@@ -105,7 +105,7 @@ const TAB_CLASS =
               </TableRow>
             </TableBody>
           </Table>
-          <p v-if="lots.total.value === 0 && lots.active.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+          <TableEmpty v-if="lots.total.value === 0 && lots.active.value">{{ t("common.noMatches") }}</TableEmpty>
           <DataPagination v-model:page="lots.page.value" v-model:size="lots.size.value" :pages="lots.pages.value" :total="lots.total.value" />
         </TabsContent>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
-import { useParams } from "@tanstack/vue-router";
+
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -18,14 +18,14 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { useTableState } from "@/shared/lib/useTableState";
 import EInvoiceAccountSheet from "./EInvoiceAccountSheet.vue";
 import { NativeSelect } from "@/shared/ui/native-select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEInvoiceAccountActions, useEInvoiceAccounts, useSaveEInvoiceSettings, type EInvoiceOn, type LegalInfo } from "./api";
 import type { Environment } from "@/shared/lib/environment";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const tenant = useTenant(tenantId);
 
 // --- when an invoice becomes an e-document, and the seller's company data
@@ -101,7 +101,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
       </TableBody>
     </Table>
     <DataPagination v-if="list.length" v-model:size="table.size.value" :page="table.current.value" :pages="table.pages.value" :total="table.total.value" @update:page="table.page.value = $event" />
-    <p v-if="!accounts.isPending.value && !accounts.error.value && (accounts.data.value ?? []).length === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("einvoice.account.empty") }}</p>
+    <TableEmpty v-if="!accounts.isPending.value && !accounts.error.value && (accounts.data.value ?? []).length === 0">{{ t("einvoice.account.empty") }}</TableEmpty>
     <ErrorText :error="actions.remove.error.value" class="px-3" />
   </Card>
 

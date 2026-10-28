@@ -16,7 +16,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useCustomerUsage, useEntitlements, useMeters, useSeries, useTopOfAll } from "./api";
 import LimitBar from "./LimitBar.vue";
 import { chartPoints, formatQuantity, granularityFor, limitState, mergeCustomers, totalOf, worstState, type LimitState, type Range, type UsageRow } from "./lib";
@@ -137,8 +137,8 @@ const error = computed(() => customers.error.value ?? meters.error.value ?? top.
       </TableBody>
     </Table>
     <Skeleton v-if="customers.isPending.value" class="mx-3 my-4 h-24" />
-    <p v-else-if="rows.length === 0 && !customers.error.value" class="text-muted-foreground p-4 text-center text-sm">{{ t("billing.customers.empty") }}</p>
-    <p v-else-if="rows.length > 0 && table.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    <TableEmpty v-else-if="rows.length === 0 && !customers.error.value">{{ t("billing.customers.empty") }}</TableEmpty>
+    <TableEmpty v-else-if="rows.length > 0 && table.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-if="rows.length > 0" v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 

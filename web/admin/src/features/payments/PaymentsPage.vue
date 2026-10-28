@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { ArrowUpRight } from "@lucide/vue";
-import { useParams } from "@tanstack/vue-router";
+
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
@@ -23,16 +23,16 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { Input } from "@/shared/ui/input";
 import { RowActions } from "@/shared/ui/row-actions";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
 import { PaymentContext } from "@/features/related";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useLedger, useReconcile } from "./api";
+import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
-const params = useParams({ strict: false });
-const tenantId = computed(() => String(params.value.id ?? ""));
+const tenantId = useRouteTenantId();
 const ledger = useLedger(tenantId);
 const reconcile = useReconcile(tenantId);
 
@@ -130,10 +130,10 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
         </TableRow>
       </TableBody>
     </Table>
-    <p v-if="!ledger.isPending.value && (ledger.data.value?.entries ?? []).length === 0 && !ledger.error.value" class="text-muted-foreground p-4 text-center text-sm">
+    <TableEmpty v-if="!ledger.isPending.value && (ledger.data.value?.entries ?? []).length === 0 && !ledger.error.value">
       {{ t("billing.payments.empty") }}
-    </p>
-    <p v-else-if="table.total.value === 0 && ledgerActive" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+    </TableEmpty>
+    <TableEmpty v-else-if="table.total.value === 0 && ledgerActive">{{ t("common.noMatches") }}</TableEmpty>
     <DataPagination v-model:page="table.page.value" v-model:size="table.size.value" :pages="table.pages.value" :total="table.total.value" />
   </Card>
 
@@ -188,7 +188,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
             </TableRow>
           </TableBody>
         </Table>
-        <p v-if="issues.total.value === 0" class="text-muted-foreground p-4 text-center text-sm">{{ t("common.noMatches") }}</p>
+        <TableEmpty v-if="issues.total.value === 0">{{ t("common.noMatches") }}</TableEmpty>
         <DataPagination v-model:page="issues.page.value" v-model:size="issues.size.value" :pages="issues.pages.value" :total="issues.total.value" />
       </div>
       <p v-if="result.truncated" class="text-muted-foreground text-xs">{{ t("billing.payments.truncated") }}</p>
