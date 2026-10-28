@@ -25,14 +25,43 @@ h2.sec{font-size:1.05rem;margin:32px 0 10px;padding-top:24px;border-top:1px soli
 .pack{display:grid;grid-template-columns:1fr auto;gap:12px 16px;align-items:center;padding:16px;border:1px solid var(--border);border-radius:calc(var(--radius) - 4px)}
 .pack .price{font-weight:600;font-variant-numeric:tabular-nums;text-align:end}.pack .name{font-weight:600}
 .pack form{grid-column:1/-1;display:flex;gap:8px;margin:0}.pack form input.code{max-width:none;margin:0}
+/* The page is a split layout like the checkout and portal pages of Stripe and Paddle: the seller and what the page is about on a coloured panel, the work on a calm pane. */
+.shell{min-height:100vh;display:grid;grid-template-columns:minmax(300px,38%) 1fr}
+.side{position:relative;display:flex;flex-direction:column;justify-content:space-between;gap:32px;padding:48px 44px;color:#fff;background:linear-gradient(158deg,oklch(.46 .21 266),oklch(.3 .15 272))}
+.side .brandrow{display:flex;align-items:center;gap:14px;min-height:44px}.side .logochip{display:inline-flex;align-items:center;background:#fff;border-radius:12px;padding:6px 10px}.side .logo{max-height:34px;max-width:150px}
+.side .seller{font-size:1.15rem;font-weight:650;letter-spacing:-.01em;margin:0}
+.side .sidetitle{font-size:2rem;line-height:1.15;font-weight:700;letter-spacing:-.025em;margin:0}
+.side .sideamt{margin-top:14px;font-size:2.6rem;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.side .sidenote{margin-top:6px;opacity:.78}
+.side .sidefoot{font-size:.82rem;opacity:.7}
+.pane{width:100%;max-width:700px;margin:0;padding:56px 48px 48px}
+.pane .card{background:none;border:0;border-radius:0;box-shadow:none;padding:0}
+.pane h1{font-size:1.75rem;letter-spacing:-.02em;margin:0 0 6px}
+h2.sec{border-top:0;padding-top:0;margin:44px 0 12px;font-size:.78rem;color:var(--muted-foreground);font-weight:650;text-transform:uppercase;letter-spacing:.07em}
+.pane table{border-collapse:separate;border-spacing:0}.pane td{padding:14px 8px 14px 0;border-bottom:1px solid var(--border)}.pane th{padding:8px 8px 8px 0}
+.pane .wrap{border-top:1px solid var(--border)}.pane thead th{border-bottom:1px solid var(--border)}
+.pane .stat{background:var(--muted);border-radius:16px;padding:20px 22px}.pane .pack{border-radius:16px;padding:18px 20px;transition:border-color .15s,box-shadow .15s}.pane .pack:hover{border-color:var(--ring);box-shadow:var(--shadow)}
+.pane .pay{border:0;padding:0;margin-top:28px}.pane .pay h2{font-size:.78rem;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-foreground);margin:0 0 12px}
+.pane .pay form{display:block;margin:0 0 10px}.pane .pay button.btn{width:100%;min-height:52px;font-size:1rem;border-radius:14px;box-shadow:0 1px 2px rgb(16 24 40/.12),0 6px 16px -8px var(--primary)}
+.pane button.btn,.pane a.btn{border-radius:12px;min-height:46px}
+.pane .promo-row input,.pane input.code{height:48px;border-radius:12px}
+.pane .meta{padding:18px 20px;border-radius:16px;background:var(--muted);margin:22px 0}
+.pane .hint{border-radius:14px}
+.pane .foot{display:none}
+@media (max-width:860px){.shell{grid-template-columns:1fr}.side{padding:22px 20px;gap:12px}.side .sidetitle{display:none}.side .sideamt{font-size:1.8rem;margin-top:6px}.side .sidefoot{display:none}.side .sidemid{display:flex;flex-direction:column}.pane{max-width:none;padding:28px 20px 40px}}
+@media print{.side{display:none}.shell{display:block}.pane{padding:0;max-width:none}}
 @media print{body{background:#fff;color:#000}.card{border:0;padding:0;box-shadow:none}.noprint,.foot{display:none}}
 @media (max-width:480px){main{padding:12px 8px 24px}.card{padding:18px;border-radius:calc(var(--radius) - 4px)}.big{font-size:1.6rem}.pack form{flex-direction:column}.pack form input.code{flex:none;width:100%}.pack form .btn{width:100%}td,th{padding:10px 6px}}`
 
 const pageHead = `{{define "head"}}<!doctype html>
 <html lang="{{.Lang}}" dir="{{.Dir}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">{{if .Refresh}}<meta http-equiv="refresh" content="5">{{end}}
-<title>{{.Title}}</title><style>` + pageCSS + `</style></head><body><main><div class="card">
-{{if .Test}}<div class="banner">{{.L.test_mode}}</div>{{end}}{{if .Logo}}<div class="top"><img class="logo" src="{{.Logo}}" alt=""></div>{{end}}{{end}}
-{{define "foot"}}</div><p class="muted foot">{{.L.powered}} {{.Brand}}</p></main></body></html>{{end}}`
+<title>{{.Title}}</title><style>` + pageCSS + `</style></head><body><div class="shell">
+<aside class="side"><div class="brandrow">{{if .Logo}}<span class="logochip"><img class="logo" src="{{.Logo}}" alt=""></span>{{end}}{{if .SideSeller}}<span class="seller">{{.SideSeller}}</span>{{end}}</div>
+<div class="sidemid"><p class="sidetitle" aria-hidden="true">{{.Title}}</p>{{if .SideAmount}}<div class="sideamt">{{.SideAmount}}</div>{{end}}{{if .SideNote}}<div class="sidenote">{{.SideNote}}</div>{{end}}</div>
+<div class="sidefoot">{{.L.powered}} {{.Brand}}</div></aside>
+<main class="pane"><div class="card">
+{{if .Test}}<div class="banner">{{.L.test_mode}}</div>{{end}}{{end}}
+{{define "foot"}}</div></main></div></body></html>{{end}}`
 
 const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 <h1>{{.L.invoice}} {{.Number}}</h1><div class="muted">{{.Seller}}</div>
@@ -95,7 +124,7 @@ const privacyTmpl = `{{define "privacy"}}{{template "head" .}}
 {{template "foot" .}}{{end}}`
 
 const portalTmpl = `{{define "portal"}}{{template "head" .}}
-<div class="seller">{{.Seller}}</div><h1>{{.L.portal_title}}</h1><div class="muted">{{.Customer}}</div>
+<h1>{{.L.portal_title}}</h1><div class="muted">{{.Customer}}</div>
 <h2 class="sec">{{.L.portal_invoices}}</h2>
 {{if .Invoices}}<div class="wrap"><table class="nw"><thead><tr><th>{{.L.number}}</th><th>{{.L.date}}</th><th>{{.L.status}}</th><th class="n">{{.L.total}}</th><th></th></tr></thead><tbody>
 {{range .Invoices}}<tr><td>{{.Number}}</td><td>{{.Date}}</td><td><span class="badge {{.State}}">{{.StateLabel}}</span></td><td class="n">{{.Total}} {{.Currency}}</td><td><a href="{{.Href}}">{{if .Payable}}{{$.L.pay_title}}{{else}}{{$.L.view}}{{end}}</a></td></tr>
