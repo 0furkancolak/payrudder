@@ -2230,7 +2230,9 @@ func (q *Queries) SetCustomerAddress(ctx context.Context, arg SetCustomerAddress
 }
 
 const setCustomerContact = `-- name: SetCustomerContact :one
-UPDATE customers SET name = $1, email = $2, locale = $3, customer_type = $4
+UPDATE customers SET name = $1, email = $2,
+  locale = CASE WHEN $3::text = '' THEN locale ELSE $3::text END,
+  customer_type = CASE WHEN $4::text = '' THEN customer_type ELSE $4::text END
 WHERE tenant_id = app_tenant_id() AND external_id = $5
 RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason
 `
@@ -2243,6 +2245,7 @@ type SetCustomerContactParams struct {
 	ExternalID   string
 }
 
+// An empty language or kind keeps what the customer has: a client that sends only the name and e-mail does not wipe them.
 func (q *Queries) SetCustomerContact(ctx context.Context, arg SetCustomerContactParams) (Customer, error) {
 	row := q.db.QueryRow(ctx, setCustomerContact,
 		arg.Name,

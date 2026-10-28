@@ -126,6 +126,11 @@ func testAddresses(t *testing.T) {
 	if again, err := e.plans.GetCustomer(ctx, &plansv1.GetCustomerRequest{ExternalId: "cus_a"}); err != nil || again.GetCustomer().GetLocale() != "tr" || again.GetCustomer().GetCustomerType() != "business" {
 		t.Fatalf("stored = %v, %v", again, err)
 	}
+	// A client that sends only the name and the e-mail does not wipe the language and the kind.
+	if kept, err := e.plans.SetCustomerContact(ctx, &plansv1.SetCustomerContactRequest{ExternalId: "cus_a", Name: "Ada L.", Email: "ada@lovelace.example"}); err != nil || kept.GetCustomer().GetName() != "Ada L." ||
+		kept.GetCustomer().GetLocale() != "tr" || kept.GetCustomer().GetCustomerType() != "business" {
+		t.Fatalf("an empty language and kind must keep the stored ones: %v, %v", kept, err)
+	}
 	for _, bad := range []*plansv1.SetCustomerContactRequest{
 		{ExternalId: "cus_a", Name: " ", Email: "ada@example.com"},
 		{ExternalId: "cus_a", Name: "Ada", Email: "not-an-email"},

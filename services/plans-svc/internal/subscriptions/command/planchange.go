@@ -64,6 +64,13 @@ func (c *Commands) changePlan(ctx context.Context, q *sqlc.Queries, tenantID, id
 	if err != nil {
 		return res, err
 	}
+	cust, err := q.GetCustomerByID(ctx, row.CustomerID)
+	if err != nil {
+		return res, convert.Err(err, "customer")
+	}
+	if cust.BlockedAt != nil {
+		return res, errkey.New(codes.FailedPrecondition, "plans.customer.blocked", "this customer is blocked: no plan change")
+	}
 	eff, err := c.requirePlanChangeable(row, at)
 	if err != nil {
 		return res, err

@@ -43,3 +43,8 @@ tools/payrudderctl/payrudderctl
 /mcp/dist/
 /mcp/node_modules/
 
+
+# Built service binaries (go build in a service directory writes one next to main.go)
+/services/*/cmd/*/*-svc
+/services/*/cmd/*/*-worker
+/services/*/cmd/*/gateway

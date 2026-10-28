@@ -451,6 +451,10 @@ func TestSeveralAccountsAtOneProvider(t *testing.T) {
 	if code, _ := do("POST", path("iyzico~ankara")+"/default?environment=live", ""); code != 404 {
 		t.Errorf("default of an account that is not there: %d", code)
 	}
+	// The refused move must not have cleared the default that was there (the clear and the mark are one transaction).
+	if name, ok, _ := accounts.Default(ctx, tenant, "live"); !ok || name != "iyzico~istanbul" {
+		t.Errorf("default after a move to an account that is not there: %q %v", name, ok)
+	}
 	if code, _ := do("DELETE", path("iyzico~istanbul")+"?environment=live", ""); code != 204 {
 		t.Errorf("delete: %d", code)
 	}

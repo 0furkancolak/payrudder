@@ -144,8 +144,18 @@ func (a Accounts) SetDefault(ctx context.Context, tenant uuid.UUID, provider, en
 			return err
 		}
 		n, err := q.MarkProviderAccountDefault(ctx, sqlc.MarkProviderAccountDefaultParams{TenantID: tenant, Provider: provider, Environment: env})
-		found = n == 1
-		return err
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			// Nothing to promote: leave the tenant's default where it was (returning the error rolls the clear back).
+			return ErrNoAccount
+		}
+		found = true
+		return nil
 	})
+	if errors.Is(err, ErrNoAccount) {
+		return false, nil
+	}
 	return found, err
 }
