@@ -7,6 +7,9 @@ import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
 import { ErrorState } from "@/shared/ui/error-state";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, amountHigh, amountLow, newest, oldest, time } from "@/shared/lib/sortDefs";
+
 import { Card } from "@/shared/ui/card";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
@@ -37,6 +40,7 @@ const range = ref<DateRange>(thisMonth());
 const rows = computed(() => all.value.filter((p) => inRange(p.occurred_at, range.value)));
 const toInvoice = (id?: string) => id && peek("invoice", tenantId.value, id);
 const table = useTableState(rows, {
+  sorts: () => [newest(t, (p) => time(p.occurred_at)), oldest(t, (p) => time(p.occurred_at)), amountHigh(t, (p) => amount(p.amount_minor)), amountLow(t, (p) => amount(p.amount_minor))],
   sheet: { kind: "payment", id: (p) => p.id }, searchFields: (p) => [p.provider, p.invoice_id, p.id, p.amount_minor],
   url: true, filters: { status: (p, v) => p.status === v, kind: (p, v) => p.kind === v },
 });
@@ -70,6 +74,7 @@ const when = (v?: string) => fmt.date(v, "dateTime");
       <template #actions>
         <span v-if="payments.data.value?.truncated" class="text-muted-foreground text-xs">{{ t("product.payments.truncated") }}</span>
       </template>
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <Skeleton v-if="payments.isPending.value" class="mx-3 h-40 rounded-2xl" />
     <p v-else-if="all.length === 0 && !payments.error.value" class="text-muted-foreground py-10 text-center text-sm">{{ t("product.billing.payments.empty") }}</p>

@@ -55,7 +55,7 @@ func TestValidateRules(t *testing.T) {
 		rules []Rule
 		want  string
 	}{
-		"unknown provider":       {[]Rule{{Provider: "stripe"}}, "unknown provider"},
+		"unknown provider":       {[]Rule{{Provider: "adyen"}}, "unknown provider"},
 		"provider cannot charge": {[]Rule{{Currency: "TRY", Provider: "paddle"}}, "paddle cannot charge in TRY"},
 		"bad country":            {[]Rule{{Country: "turkey", Provider: "iyzico"}}, "country"},
 		"bad currency":           {[]Rule{{Currency: "XXX", Provider: "iyzico"}}, "currency"},

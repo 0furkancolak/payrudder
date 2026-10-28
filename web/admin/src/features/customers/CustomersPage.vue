@@ -16,6 +16,12 @@ import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { BulkBar, RowCheck } from "@/shared/ui/bulk";
+import { Button } from "@/shared/ui/button";
+import { downloadCsv } from "@/shared/lib/csv";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
+
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -52,7 +58,9 @@ const summaryOf = (c: Customer) => summaries.byCustomer.value.get(c.external_id 
 const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((c) => inRange(c.create_time, range.value)), {
   sheet: { kind: "customer", id: (c) => c.external_id, loaded: () => customers.isSuccess.value },
+  selectId: (c) => c.external_id,
   searchFields: (c) => [c.external_id, c.name, c.email, c.tax_id, c.country, c.billing_currency],
+  sorts: () => [newest(t, (c) => time(c.create_time)), oldest(t, (c) => time(c.create_time)), nameAsc(t, (c) => c.name || c.external_id), nameDesc(t, (c) => c.name || c.external_id)],
   url: true,
   filters: {
     country: (c, v) => (c.country ?? "") === v,
@@ -169,6 +177,15 @@ function actionsOf(c: Customer, i: number): RowAction[] {
     { key: "quotas", label: t("billing.quotas.action"), icon: Gauge, onSelect: () => (quotasOf.value = c.external_id ?? "") },
   ];
 }
+
+/** The ticked customers as a CSV file: the fields the list knows, no secret. */
+function exportSelected() {
+  downloadCsv(
+    "customers.csv",
+    ["external_id", "name", "email", "country", "billing_currency", "tax_id", "created"],
+    table.selectedRows.value.map((c) => [c.external_id, c.name ?? "", c.email ?? "", c.country ?? "", c.billing_currency ?? "", c.tax_id ?? "", c.create_time ?? ""]),
+  );
+}
 </script>
 
 <template>
@@ -198,6 +215,9 @@ function actionsOf(c: Customer, i: number): RowAction[] {
   <CreateSubscriptionForm v-model:open="subscribing" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" :for-customer="subscribeFor" />
 
   <Card class="gap-0 p-3">
+    <BulkBar :count="table.selectedRows.value.length" @clear="table.clearSelection()">
+      <Button type="button" size="sm" variant="outline" data-testid="bulk-export" @click="exportSelected">{{ t("billing.customers.exportSelected") }}</Button>
+    </BulkBar>
     <h2 class="sr-only">{{ t("shell.items.customers") }}</h2>
     <ErrorState :error="customers.error.value" :retrying="customers.isFetching.value" compact @retry="customers.refetch()" />
     <ErrorText :error="act.create.error.value" class="px-3 pb-2" />
@@ -207,6 +227,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
       <FilterSelect v-model="countryFilter" multiple :label="t('billing.customers.country')" :options="countryOptions" />
       <FilterSelect v-model="currencyFilter" multiple :label="t('billing.customers.currency')" :options="currencyOptions" />
       <DateRangePicker v-model="range" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
 
     <!-- Nothing yet: say what a customer is and offer the first one. -->
@@ -220,6 +241,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
       <Table>
         <TableHeader>
           <TableRow class="hover:bg-transparent">
+            <TableHead class="w-10"><RowCheck :label="t('common.bulk.selectPage')" :checked="table.allOnPage.value" :indeterminate="table.someOnPage.value && !table.allOnPage.value" @change="table.togglePage()" /></TableHead>
             <TableHead>{{ t("billing.customers.columns.customer") }}</TableHead>
             <TableHead class="max-md:hidden">{{ t("billing.customers.columns.subscriptions") }}</TableHead>
             <TableHead class="max-xl:hidden">{{ t("billing.customers.columns.currency") }}</TableHead>
@@ -233,6 +255,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
         <TableBody>
           <template v-if="customers.isPending.value">
             <TableRow v-for="n in 6" :key="n" class="hover:bg-transparent" data-testid="customers-skeleton">
+              <TableCell />
               <TableCell>
                 <div class="flex items-center gap-3"><Skeleton class="size-9 rounded-full" /><div class="flex flex-col gap-1.5"><Skeleton class="h-3.5 w-32" /><Skeleton class="h-3 w-44 max-sm:w-28" /></div></div>
               </TableCell>
@@ -253,6 +276,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
             :data-testid="`customer-${c.external_id}`"
             @click="open(i)"
           >
+            <TableCell><RowCheck :label="`${t('common.bulk.selectRow')} ${c.external_id}`" :checked="table.isTicked(c)" @change="(on) => table.tick(c, on)" /></TableCell>
             <TableCell class="w-full max-w-0 min-w-0">
               <div class="flex min-w-0 items-center gap-3">
                 <CustomerAvatar :customer="c" />

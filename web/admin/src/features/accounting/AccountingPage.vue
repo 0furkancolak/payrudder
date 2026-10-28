@@ -23,6 +23,9 @@ import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, amountHigh, amountLow, newest, oldest, time } from "@/shared/lib/sortDefs";
+
 import { inRange, thisMonth } from "@/shared/lib/dateRange";
 import { names } from "@/shared/lib/sheets";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
@@ -67,6 +70,7 @@ const showVoided = ref(false);
 const expenses = useExpenses(tenantId, app, showVoided);
 const expenseRange = ref<DateRange>(thisMonth());
 const table = useTableState(() => (expenses.data.value?.expenses ?? []).filter((e) => inRange(e.incurred_on, expenseRange.value)), {
+  sorts: () => [newest(t, (e) => time(e.incurred_on)), oldest(t, (e) => time(e.incurred_on)), amountHigh(t, (e) => amount(e.amount_minor)), amountLow(t, (e) => amount(e.amount_minor))],
   sheet: { kind: "expense", id: (e) => e.id }, searchFields: (e) => [e.vendor, e.note, e.category ? t(`billing.accounting.category.${e.category}`) : "", e.amount_minor],
   url: true,
   filters: {
@@ -208,6 +212,7 @@ async function exportCsv(report: "export" | "coupons" = "export") {
         <Checkbox :model-value="showVoided" @update:model-value="showVoided = $event === true" />
         {{ t("billing.accounting.expenses.showVoided") }}
       </label>
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <p v-if="expenses.data.value && !(expenses.data.value.expenses ?? []).length" class="text-muted-foreground px-3 py-4 text-center text-sm">{{ t("billing.accounting.expenses.none") }}</p>
     <p v-else-if="!table.total.value" class="text-muted-foreground px-3 py-4 text-center text-sm">{{ t("common.noMatches") }}</p>

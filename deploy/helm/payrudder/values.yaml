@@ -50,6 +50,12 @@ s3:
 smtp:
   addr: mailpit:1025
 
+# Nafru Email is the sender of Payrudder's own mail (sign-in, invitations) and of every tenant's mail that has no provider of its own: the mail every plan
+# includes. Set both, or neither (then the SMTP relay above is used, which is a development mail catcher).
+nafru:
+  baseURL: ""
+  apiKey: ""
+
 operatorToken: local-operator-token-change-me-0123456789   # the machine credential of the operator API (scripts, payrudderctl, tests); no page asks for it
 
 # How people sign in (phase 42): e-mail and password always, a one-time code mailed to the address, and Google when set up.
@@ -140,6 +146,8 @@ services:
       PAYRUDDER_ALLOWED_ENVIRONMENTS: "{{ .Values.global.allowedEnvironments }}"
       PAYRUDDER_SAAS: "{{ .Values.global.saas }}"
       SMTP_ADDR: "{{ .Values.smtp.addr }}"
+      NAFRU_BASE_URL: "{{ .Values.nafru.baseURL }}"
+      NAFRU_API_KEY: "{{ .Values.nafru.apiKey }}"
   ingest-svc:
     kind: grpc
     port: 7002
@@ -259,6 +267,8 @@ services:
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       SMTP_ADDR: "{{ .Values.smtp.addr }}"
+      NAFRU_BASE_URL: "{{ .Values.nafru.baseURL }}"
+      NAFRU_API_KEY: "{{ .Values.nafru.apiKey }}"
   mockpsp:
     enabled: true
     kind: http

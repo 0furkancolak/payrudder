@@ -45,6 +45,26 @@
     "validation": {
       "required": "Bu alan zorunludur.",
       "email": "Geçerli bir e-posta adresi girin."
+    },
+    "applyFilter": "Uygula",
+    "sort": {
+      "label": "Sırala",
+      "default": "Geldiği gibi",
+      "newest": "En yeni önce",
+      "oldest": "En eski önce",
+      "amountHigh": "Tutar, çoktan aza",
+      "amountLow": "Tutar, azdan çoğa",
+      "nameAsc": "Ad, A'dan Z'ye",
+      "nameDesc": "Ad, Z'den A'ya"
+    },
+    "bulk": {
+      "label": "Toplu işlemler",
+      "selected": "{n} seçili | {n} seçili",
+      "clear": "Seçimi temizle",
+      "selectPage": "Bu sayfadaki tüm satırları seç",
+      "selectRow": "Satırı seç",
+      "done": "{ok} tamamlandı, {failed} değişmedi",
+      "notChanged": "Değişmeyenler"
     }
   },
   "enums": {
@@ -154,7 +174,8 @@
       "iyzico": "iyzico",
       "paddle": "Paddle",
       "mockpsp": "Mock PSP",
-      "banktransfer": "Banka havalesi"
+      "banktransfer": "Banka havalesi",
+      "stripe": "Stripe"
     }
   },
   "tenants": {
@@ -529,7 +550,8 @@
         "noPayments": "Henüz ödeme yok.",
         "manageCredits": "Kredileri yönet",
         "paymentMethod": "Ödeme yöntemi"
-      }
+      },
+      "exportSelected": "Seçilenleri CSV olarak dışa aktar"
     },
     "packages": {
       "new": "Yeni paket",
@@ -2715,7 +2737,8 @@
         "livemode_mismatch": "Bu sağlayıcı hesabı sağlayıcının diğer moduna işaret ediyor: canlı ortam sağlayıcının canlı uç noktasını ve canlı anahtarlarını, sandbox ortamı ise test uç noktasını kullanmalıdır.",
         "endpoint_not_allowed": "Yalnızca sağlayıcının kendi canlı adresine izin verilir. Adres alanını boş bırakın.",
         "health_check_failed": "Sağlayıcı bu kimlik bilgilerini kabul etmedi. Anahtarları ve canlı anahtar olduklarını denetleyin.",
-        "health_check_unreachable": "Kimlik bilgilerini denetlemek için sağlayıcıya ulaşılamadı. Biraz sonra yeniden deneyin."
+        "health_check_unreachable": "Kimlik bilgilerini denetlemek için sağlayıcıya ulaşılamadı. Biraz sonra yeniden deneyin.",
+        "single_only": "Havalenin her ortamda yalnızca bir hesabı olur."
       },
       "billing": {
         "not_configured": "Bu kurulumda faturalama yapılandırılmamış.",
@@ -3164,6 +3187,18 @@
       "email": "E-posta",
       "currency": "Para birimi",
       "code": "Kod"
+    },
+    "support": {
+      "account": {
+        "not_member": "Bu kuruluşun üyesi değilsiniz."
+      },
+      "app": {
+        "not_found": "Bu uygulama kuruluşta bulunamadı."
+      },
+      "ticket": {
+        "closed": "Bu talep kapalı. Yeni bir talep açın.",
+        "not_found": "Talep bulunamadı."
+      }
     }
   },
   "product": {
@@ -3710,7 +3745,8 @@
         "names": {
           "iyzico": "iyzico",
           "paddle": "Paddle",
-          "banktransfer": "Banka havalesi"
+          "banktransfer": "Banka havalesi",
+          "stripe": "Stripe"
         },
         "fields": {
           "api_key": "API anahtarı",
@@ -3849,7 +3885,8 @@
       "about": {
         "iyzico": "Türk kartları ve yerel yöntemler",
         "paddle": "Dünya genelinde kartlar; abonelikleri sağlayıcı yürütür",
-        "banktransfer": "Kendi banka hesabınıza havale ile ödeme"
+        "banktransfer": "Kendi banka hesabınıza havale ile ödeme",
+        "stripe": "Dünya genelinde kartlar, Stripe hesabınızda Payrudder tarafından tahsil edilir"
       },
       "scope": {
         "title": "Nereye bağlansın",
@@ -3865,7 +3902,8 @@
         "intro": {
           "iyzico": "Canlı iyzico üye iş yeri anahtarlarınızı girin. Saklanmadan önce iyzico ile doğrulanır.",
           "paddle": "Canlı Paddle anahtarlarınızı ve webhook sırrınızı girin. Saklanmadan önce Paddle ile doğrulanır.",
-          "banktransfer": "Havale ile ödeyen müşteriler için faturalara basılan banka bilgilerini girin. Bankada denetlenecek bir şey yoktur."
+          "banktransfer": "Havale ile ödeyen müşteriler için faturalara basılan banka bilgilerini girin. Bankada denetlenecek bir şey yoktur.",
+          "stripe": "Canlı Stripe gizli anahtarınızı ve webhook uç noktasının imza sırrını girin. Anahtar saklanmadan önce Stripe ile doğrulanır."
         },
         "envNote": "Bu işlem canlı ortamı bağlar. Sandbox yerleşik simülatörle çalışmaya devam eder.",
         "testOk": "Sağlayıcı bu anahtarları kabul ediyor.",
@@ -3900,6 +3938,10 @@
           "api_key": "Paddle'da Developer tools, Authentication altında canlı bir API anahtarı oluşturun.",
           "webhook_secret": "Developer tools, Notifications altında Payrudder için bir hedef oluşturun ve gizli anahtarını kopyalayın.",
           "usage_product_id": "Paddle'ın kullanım ücretleri için kullandığı ürünün kimliği. Catalog'da ürünü açıp pro_ ile başlayan kimliğini kopyalayın."
+        },
+        "stripe": {
+          "api_key": "Stripe panelinde Geliştiriciler, API anahtarları bölümünde kısıtlı ya da gizli bir canlı anahtar oluşturun (sk_live_ veya rk_live_ ile başlar).",
+          "webhook_secret": "Geliştiriciler, Webhook'lar bölümünde Payrudder'da gösterilen adrese; payment_intent, checkout.session ve refund olayları için bir uç nokta ekleyin ve imza sırrını kopyalayın (whsec_ ile başlar)."
         }
       },
       "sandbox": {
@@ -3956,7 +3998,8 @@
         "simulator": "Yerleşik simülatör",
         "webhook": "Özel entegratör",
         "einvoiceSimulator": "Yerleşik simülatör",
-        "payrudderMail": "Payrudder e-postası"
+        "payrudderMail": "Payrudder e-postası",
+        "stripe": "Stripe"
       },
       "about": {
         "iyzico": "Türk kartları ve yerel yöntemler",
@@ -3967,7 +4010,8 @@
         "webhook": "Her belgeyi kendi entegratörünüzün adresine gönderin",
         "einvoiceSimulator": "Sandbox için sahte e-belgeler",
         "payrudderMail": "Sizin adınıza Payrudder'ın gönderdiği e-posta",
-        "nafru": "Kendi Nafru Email hesabınız üzerinden gönderin"
+        "nafru": "Kendi Nafru Email hesabınız üzerinden gönderin",
+        "stripe": "Dünya genelinde kartlar, Stripe hesabınızda Payrudder tarafından tahsil edilir"
       },
       "state": {
         "none": "Bağlı değil",
@@ -3980,7 +4024,7 @@
         "simulatorPayments": "Sandbox tarafından kullanılır. Bağlanacak bir şey yok.",
         "simulatorEInvoice": "Sandbox tarafından kullanılır. Bağlanacak bir şey yok.",
         "perApp": "Her uygulamada ayrı ayarlanır.",
-        "mailBuiltIn": "Faturalar, makbuzlar ve uyarılar Payrudder'dan gider.",
+        "mailBuiltIn": "Nafru Email üzerinden gönderilir, paketinize dahildir.",
         "mailUnused": "Canlı e-postaları kendi sağlayıcınız gönderir.",
         "mailOwn": "Canlı e-postalar {from} adresinden gider."
       },
@@ -4037,7 +4081,7 @@
       },
       "mail": {
         "builtInTitle": "Payrudder e-postası",
-        "builtInIntro": "Müşterilerinizin e-postalarını Payrudder gönderir. Hangi türlerin gideceğini seçin.",
+        "builtInIntro": "Payrudder müşterilerinizin e-postalarını Nafru Email üzerinden gönderir. Paketinize dahildir, kurulum gerektirmez. Hangi türlerin gideceğini seçin.",
         "unusedNote": "Kendi sağlayıcınız bağlı olduğundan canlı e-postalar onun üzerinden gider. Bu anahtarlar yine de hangi türlerin gönderileceğini belirler.",
         "nafruIntro": "Müşterilerinizin e-postalarını kendi Nafru Email hesabınız üzerinden, kendi adresinizden gönderin. Hesabın adresini ve API anahtarını girin.",
         "envNote": "Bu, canlı ortamı bağlar. Sandbox e-postaları her zaman sandbox gelen kutusuna gider.",
@@ -4056,7 +4100,8 @@
           "from": "Nafru Email'de doğrulanmış bir alan adındaki ad ve adres."
         },
         "checkAndConnect": "Denetle ve bağla",
-        "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider."
+        "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider.",
+        "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır."
       }
     },
     "envSwitch": {
@@ -4148,7 +4193,9 @@
       "orgIntegrations": "Kuruluş entegrasyonları",
       "plan": "Plan ve faturalama",
       "organisations": "Organizasyonlar",
-      "platformPlans": "Platform planları"
+      "platformPlans": "Platform planları",
+      "support": "Yardım",
+      "supportInbox": "Destek kutusu"
     },
     "noApps": "Henüz uygulama yok",
     "newApp": "Yeni uygulama"
@@ -4698,5 +4745,80 @@
       "saved": "Kaydedildi.",
       "cleared": "Özel limitler kaldırıldı."
     }
+  },
+  "support": {
+    "intro": "Payrudder'dan yardım isteyin. Kuruluşunuzdaki herkes bu talepleri görür; yanıtları buradan veririz.",
+    "new": "Yeni talep",
+    "newIntro": "İhtiyacınızı anlatın. Ne kadar çok bilirsek o kadar hızlı yardım ederiz: ne yaptınız, ne bekliyordunuz, ne oldu.",
+    "send": "Talebi gönder",
+    "sendReply": "Yanıtı gönder",
+    "addNote": "Not ekle",
+    "empty": "Henüz talep yok. Bir şey belirsiz ya da bozuksa bir talep açın.",
+    "closedNote": "Bu talep kapandı. Daha fazla yardım gerekirse yeni bir talep açın.",
+    "markSolved": "Çözüldü olarak işaretle",
+    "reopen": "Yeniden aç",
+    "late": "Gecikmiş",
+    "internalNote": "Dahili not",
+    "dueBy": "En geç {time} tarihine kadar yanıtlamayı hedefliyoruz.",
+    "answeredAt": "İlk yanıt: {time}",
+    "unassigned": "Atanmamış",
+    "inboxIntro": "Tüm kuruluşların tüm talepleri, en son hareket edenler üstte. Dahili notlar müşteriye hiçbir zaman gösterilmez.",
+    "inboxEmpty": "Kuyrukta bir şey yok.",
+    "columns": {
+      "number": "No.",
+      "subject": "Konu",
+      "status": "Durum",
+      "updated": "Son hareket",
+      "account": "Kuruluş",
+      "assignee": "Sorumlu"
+    },
+    "fields": {
+      "subject": "Konu",
+      "category": "Başlık",
+      "priority": "Öncelik",
+      "app": "Uygulama",
+      "noApp": "Kuruluşun tamamı",
+      "body": "Ne oldu?",
+      "reply": "Yanıt yazın",
+      "note": "Ekip için not yazın"
+    },
+    "filters": {
+      "any": "Hepsi",
+      "late": "Yalnızca geciken",
+      "searchHint": "Konu veya #numara"
+    },
+    "status": {
+      "active": "Aktif",
+      "open": "Bizden yanıt bekliyor",
+      "pending": "Sizden yanıt bekliyor",
+      "solved": "Çözüldü",
+      "closed": "Kapalı"
+    },
+    "priority": {
+      "low": "Düşük",
+      "normal": "Normal",
+      "high": "Yüksek",
+      "urgent": "Acil"
+    },
+    "answerWithin": {
+      "low": "3 gün içinde yanıt",
+      "normal": "1 gün içinde yanıt",
+      "high": "4 saat içinde yanıt",
+      "urgent": "1 saat içinde yanıt"
+    },
+    "category": {
+      "billing": "Faturalama",
+      "integration": "Entegrasyonlar",
+      "bug": "Bir şey bozuk",
+      "question": "Soru",
+      "other": "Diğer"
+    },
+    "author": {
+      "customer": "Siz",
+      "operator": "Payrudder desteği",
+      "system": "Sistem"
+    },
+    "sortPriority": "Önce en yüksek öncelik",
+    "sortDue": "Yanıt süresi en yakın önce"
   }
 }

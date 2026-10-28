@@ -9,12 +9,14 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
 	"github.com/0furkancolak/payrudder/pkg/payments/paddle"
+	"github.com/0furkancolak/payrudder/pkg/payments/stripe"
 )
 
 var catalogue = map[string]payments.Capabilities{
 	banktransfer.Name: banktransfer.Caps(),
 	iyzico.Name:       iyzico.Caps(),
 	paddle.Name:       paddle.Caps(),
+	stripe.Name:       stripe.Caps(),
 }
 
 // Lookup returns the capabilities of a provider by name.

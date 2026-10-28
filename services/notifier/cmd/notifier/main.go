@@ -35,6 +35,10 @@ type Config struct {
 	KafkaBrokers  []string      `env:"PAYRUDDER_KAFKA_BROKERS,required" envSeparator:","`
 	PlansAddr     string        `env:"PAYRUDDER_PLANS_ADDR"`
 	SMTPAddr      string        `env:"SMTP_ADDR"`
+	// NafruBaseURL and NafruAPIKey make Nafru Email the sender of Payrudder's own mail (the default every plan includes, nothing for a customer to set up). Both
+	// or neither: with neither, mail goes to SMTP_ADDR (a development mail catcher). A tenant that connected its own Nafru account still sends through that.
+	NafruBaseURL string `env:"NAFRU_BASE_URL"`
+	NafruAPIKey  string `env:"NAFRU_API_KEY"`
 	SandboxSMTP   string        `env:"SANDBOX_SMTP_ADDR"`
 	MailFrom      string        `env:"MAIL_FROM"`
 	SendingStale  time.Duration `env:"NOTIFIER_SENDING_STALE"`
@@ -51,6 +55,9 @@ type Config struct {
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
 	errs = append(errs, c.CheckMigration())
+	if (c.NafruBaseURL == "") != (c.NafruAPIKey == "") {
+		errs = append(errs, errors.New("NAFRU_BASE_URL and NAFRU_API_KEY go together: set both, or neither"))
+	}
 	return errors.Join(errs...)
 }
 
@@ -74,7 +81,12 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	defer func() { _ = plansConn.Close() }()
 
 	notes := store.Notifications{DB: pool, Stale: cfg.SendingStale}
-	mailer := &delivery.Mailer{Default: mailx.SMTP{Addr: cfg.SMTPAddr}, From: cfg.MailFrom, Notes: notes}
+	var platform mailx.Sender = mailx.SMTP{Addr: cfg.SMTPAddr}
+	if cfg.NafruBaseURL != "" {
+		// Payrudder's own mail goes through Nafru Email; its address is the operator's, but the same guard that protects a tenant's provider applies.
+		platform = mailx.Resend{BaseURL: cfg.NafruBaseURL, APIKey: cfg.NafruAPIKey, Client: safehttp.NewClient(15*time.Second, cfg.MailAllowPrivate)}
+	}
+	mailer := &delivery.Mailer{Default: platform, From: cfg.MailFrom, Notes: notes}
 	// A tenant's mail switch (plans-svc) is read before every send.
 	mailer.Switch = &delivery.PlansSwitch{Client: plansv1.NewPlansServiceClient(plansConn), TTL: cfg.MailSwitchTTL}
 	// A tenant that connected its own e-mail provider (Nafru Email) is sent through it, live mail only.
@@ -118,7 +130,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
 	gctx := g.Context()
 	g.Go(func() error {
-		log.Info("notifier consuming commands and limit alerts", "smtp", cfg.SMTPAddr)
+		log.Info("notifier consuming commands and limit alerts", "smtp", cfg.SMTPAddr, "nafru_default", cfg.NafruBaseURL != "")
 		return w.Run(gctx)
 	})
 	g.Go(func() error { return consumer.Run(gctx) })

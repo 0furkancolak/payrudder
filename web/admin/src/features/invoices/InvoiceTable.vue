@@ -12,6 +12,9 @@ import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Badge } from "@/shared/ui/badge";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, amountHigh, amountLow, newest, oldest, time } from "@/shared/lib/sortDefs";
+
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorState } from "@/shared/ui/error-state";
@@ -32,6 +35,7 @@ const STATUSES = ["draft", "open", "paid", "uncollectible", "void"] as const;
 const KINDS = ["REGULAR", "CORRECTION", "CREDIT_NOTE"] as const;
 const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((inv) => inRange(inv.create_time, range.value)), {
+  sorts: () => [newest(t, (inv) => time(inv.create_time)), oldest(t, (inv) => time(inv.create_time)), amountHigh(t, (inv) => amount(inv.total_minor)), amountLow(t, (inv) => amount(inv.total_minor))],
   sheet: { kind: "invoice", id: (inv) => inv.id }, searchFields: (inv) => [inv.number, inv.period_id, inv.customer_external_id, inv.total_minor],
   url: true, filters: { status: (inv, v) => inv.status === v, kind: (inv, v) => inv.kind === v },
 });
@@ -63,6 +67,7 @@ useOpenParam("invoice", () => invoices.isSuccess.value, (id) => {
     <FilterSelect v-model="statusFilter" multiple :label="t('tenant.columns.status')" :options="statusOptions" />
     <FilterSelect v-model="kindFilter" multiple :label="t('tenant.columns.kind')" :options="kindOptions" />
     <DateRangePicker v-model="range" />
+    <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
   </DataToolbar>
   <p v-if="list.length && !table.total.value" class="text-muted-foreground px-3 py-4 text-sm">{{ t("common.noMatches") }}</p>
   <Table v-else>

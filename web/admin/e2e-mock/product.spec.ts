@@ -635,7 +635,7 @@ test.describe("billing pages of the app", () => {
 
     await page.getByRole("button", { name: "Status", exact: true }).click();
     await page.getByRole("option", { name: "Open" }).click();
-    await page.keyboard.press("Escape");
+    await page.getByTestId("filter-apply").click();
     await expect(page.getByTestId("invoice-INV-2026-000003")).toHaveCount(0);
     expect(gw.called("GET", "/v1/invoices").some((c) => c.query.get("status") === "open")).toBe(true);
     await page.getByRole("button", { name: "Status: ×" }).click();

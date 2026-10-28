@@ -45,6 +45,26 @@
     "validation": {
       "required": "Este campo es obligatorio.",
       "email": "Introduzca un correo electrónico válido."
+    },
+    "applyFilter": "Aplicar",
+    "sort": {
+      "label": "Ordenar",
+      "default": "Orden original",
+      "newest": "Más recientes primero",
+      "oldest": "Más antiguos primero",
+      "amountHigh": "Importe, de mayor a menor",
+      "amountLow": "Importe, de menor a mayor",
+      "nameAsc": "Nombre, A a Z",
+      "nameDesc": "Nombre, Z a A"
+    },
+    "bulk": {
+      "label": "Acciones masivas",
+      "selected": "{n} seleccionado | {n} seleccionados",
+      "clear": "Borrar selección",
+      "selectPage": "Seleccionar todas las filas de esta página",
+      "selectRow": "Seleccionar fila",
+      "done": "{ok} hechos, {failed} sin cambiar",
+      "notChanged": "Sin cambiar"
     }
   },
   "enums": {
@@ -154,7 +174,8 @@
       "iyzico": "iyzico",
       "paddle": "Paddle",
       "mockpsp": "Mock PSP",
-      "banktransfer": "Transferencia bancaria"
+      "banktransfer": "Transferencia bancaria",
+      "stripe": "Stripe"
     }
   },
   "tenants": {
@@ -529,7 +550,8 @@
         "noPayments": "Aún no hay pagos.",
         "manageCredits": "Gestionar créditos",
         "paymentMethod": "Método de pago"
-      }
+      },
+      "exportSelected": "Exportar la selección como CSV"
     },
     "packages": {
       "new": "Nuevo paquete",
@@ -2715,7 +2737,8 @@
         "livemode_mismatch": "Esta cuenta de proveedor apunta al otro modo del proveedor: un entorno live necesita el endpoint y las claves live del proveedor, un entorno sandbox su endpoint de prueba.",
         "endpoint_not_allowed": "Solo se permite el punto de acceso real del propio proveedor. Deje el campo vacío.",
         "health_check_failed": "El proveedor no aceptó estas credenciales. Compruebe las claves y que sean claves reales.",
-        "health_check_unreachable": "No se pudo contactar con el proveedor para comprobar las credenciales. Inténtelo de nuevo en un momento."
+        "health_check_unreachable": "No se pudo contactar con el proveedor para comprobar las credenciales. Inténtelo de nuevo en un momento.",
+        "single_only": "La transferencia bancaria tiene una sola cuenta por entorno."
       },
       "billing": {
         "not_configured": "La facturación no está configurada en este despliegue.",
@@ -3164,6 +3187,18 @@
       "email": "Correo",
       "currency": "Moneda",
       "code": "Código"
+    },
+    "support": {
+      "account": {
+        "not_member": "No es miembro de esta organización."
+      },
+      "app": {
+        "not_found": "Esa aplicación no se encontró en la organización."
+      },
+      "ticket": {
+        "closed": "Este ticket está cerrado. Abra uno nuevo.",
+        "not_found": "No se encontró ese ticket."
+      }
     }
   },
   "product": {
@@ -3710,7 +3745,8 @@
         "names": {
           "iyzico": "iyzico",
           "paddle": "Paddle",
-          "banktransfer": "Transferencia bancaria"
+          "banktransfer": "Transferencia bancaria",
+          "stripe": "Stripe"
         },
         "fields": {
           "api_key": "Clave de API",
@@ -3849,7 +3885,8 @@
       "about": {
         "iyzico": "Tarjetas turcas y métodos locales",
         "paddle": "Tarjetas de todo el mundo, con suscripciones gestionadas por el proveedor",
-        "banktransfer": "Pago por transferencia a tu propia cuenta bancaria"
+        "banktransfer": "Pago por transferencia a tu propia cuenta bancaria",
+        "stripe": "Tarjetas en todo el mundo, cobradas por Payrudder en su cuenta de Stripe"
       },
       "scope": {
         "title": "Dónde conectar",
@@ -3865,7 +3902,8 @@
         "intro": {
           "iyzico": "Introduce tus claves de comercio live de iyzico. Se comprueban con iyzico antes de guardarse.",
           "paddle": "Introduce tus claves live de Paddle y el secreto del webhook. Se comprueban con Paddle antes de guardarse.",
-          "banktransfer": "Introduce los datos bancarios que se imprimen en las facturas de los clientes que pagan por transferencia. No hay nada que comprobar en un banco."
+          "banktransfer": "Introduce los datos bancarios que se imprimen en las facturas de los clientes que pagan por transferencia. No hay nada que comprobar en un banco.",
+          "stripe": "Introduzca su clave secreta live de Stripe y el secreto de firma del endpoint de webhook. La clave se comprueba con Stripe antes de guardarse."
         },
         "envNote": "Esto conecta el entorno live. El sandbox sigue funcionando con el simulador integrado.",
         "testOk": "El proveedor acepta estas claves.",
@@ -3900,6 +3938,10 @@
           "api_key": "En Paddle, en Developer tools, Authentication, crea una clave API live.",
           "webhook_secret": "En Developer tools, Notifications: crea un destino para Payrudder y copia su clave secreta.",
           "usage_product_id": "El id del producto que Paddle usa para los cargos por uso. En el Catalog, abre el producto y copia su id, que empieza por pro_."
+        },
+        "stripe": {
+          "api_key": "En el panel de Stripe, en Desarrolladores, Claves de API, cree una clave live restringida o secreta (empieza por sk_live_ o rk_live_).",
+          "webhook_secret": "En Desarrolladores, Webhooks, añada un endpoint a la dirección que muestra Payrudder para los eventos payment_intent, checkout.session y refund, y copie su secreto de firma (empieza por whsec_)."
         }
       },
       "sandbox": {
@@ -3956,7 +3998,8 @@
         "simulator": "Simulador integrado",
         "webhook": "Integrador propio",
         "einvoiceSimulator": "Simulador integrado",
-        "payrudderMail": "Correo de Payrudder"
+        "payrudderMail": "Correo de Payrudder",
+        "stripe": "Stripe"
       },
       "about": {
         "iyzico": "Tarjetas turcas y métodos locales",
@@ -3967,7 +4010,8 @@
         "webhook": "Envía cada documento a la dirección de tu propio integrador",
         "einvoiceSimulator": "Documentos electrónicos simulados para el sandbox",
         "payrudderMail": "Correo enviado por Payrudder en tu nombre",
-        "nafru": "Envía con tu propia cuenta de Nafru Email"
+        "nafru": "Envía con tu propia cuenta de Nafru Email",
+        "stripe": "Tarjetas en todo el mundo, cobradas por Payrudder en su cuenta de Stripe"
       },
       "state": {
         "none": "No conectado",
@@ -3980,7 +4024,7 @@
         "simulatorPayments": "Lo usa el sandbox. Nada que conectar.",
         "simulatorEInvoice": "Lo usa el sandbox. Nada que conectar.",
         "perApp": "Se configura en cada app.",
-        "mailBuiltIn": "Las facturas, recibos y alertas salen desde Payrudder.",
+        "mailBuiltIn": "Enviado a través de Nafru Email, incluido en su plan.",
         "mailUnused": "Tu propio proveedor envía el correo live.",
         "mailOwn": "El correo live sale desde {from}."
       },
@@ -4037,7 +4081,7 @@
       },
       "mail": {
         "builtInTitle": "Correo de Payrudder",
-        "builtInIntro": "Payrudder envía el correo de tus clientes. Elige qué tipos se envían.",
+        "builtInIntro": "Payrudder envía el correo de sus clientes a través de Nafru Email. Está incluido en su plan y no hay nada que configurar. Elija qué tipos se envían.",
         "unusedNote": "Tu propio proveedor está conectado, así que el correo live pasa por él. Estos interruptores siguen decidiendo qué tipos se envían.",
         "nafruIntro": "Envía el correo de tus clientes con tu propia cuenta de Nafru Email, desde tu propia dirección. Introduce la dirección de la cuenta y su clave de API.",
         "envNote": "Esto conecta el entorno live. El correo del sandbox siempre va a la bandeja del sandbox.",
@@ -4056,7 +4100,8 @@
           "from": "Un nombre y una dirección en un dominio verificado en Nafru Email."
         },
         "checkAndConnect": "Comprobar y conectar",
-        "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder."
+        "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder.",
+        "templatesNote": "¿Quiere su propio estilo? En Nafru Email, añada Payrudder en Aplicaciones y edite allí las plantillas. Cada correo lleva su nombre en la etiqueta payrudder_template para aplicar la plantilla correcta."
       }
     },
     "envSwitch": {
@@ -4148,7 +4193,9 @@
       "orgIntegrations": "Integraciones de la organización",
       "plan": "Plan y facturación",
       "organisations": "Organizaciones",
-      "platformPlans": "Planes de la plataforma"
+      "platformPlans": "Planes de la plataforma",
+      "support": "Ayuda",
+      "supportInbox": "Bandeja de soporte"
     },
     "noApps": "Aún no hay aplicaciones",
     "newApp": "Nueva aplicación"
@@ -4698,5 +4745,80 @@
       "saved": "Guardado.",
       "cleared": "Límites propios quitados."
     }
+  },
+  "support": {
+    "intro": "Pida ayuda a Payrudder. Todos en su organización ven estos tickets; respondemos aquí.",
+    "new": "Nuevo ticket",
+    "newIntro": "Describa lo que necesita. Cuanto más sepamos, más rápido ayudamos: qué hizo, qué esperaba, qué ocurrió.",
+    "send": "Enviar ticket",
+    "sendReply": "Enviar respuesta",
+    "addNote": "Añadir nota",
+    "empty": "Aún no hay tickets. Si algo no está claro o falla, abra uno.",
+    "closedNote": "Este ticket está cerrado. Abra uno nuevo si necesita más ayuda.",
+    "markSolved": "Marcar como resuelto",
+    "reopen": "Reabrir",
+    "late": "Atrasado",
+    "internalNote": "Nota interna",
+    "dueBy": "Intentamos responder antes del {time}.",
+    "answeredAt": "Primera respuesta: {time}",
+    "unassigned": "Sin asignar",
+    "inboxIntro": "Todos los tickets de todas las organizaciones, la actividad más reciente primero. El cliente nunca ve las notas internas.",
+    "inboxEmpty": "No hay nada en la cola.",
+    "columns": {
+      "number": "N.º",
+      "subject": "Asunto",
+      "status": "Estado",
+      "updated": "Última actividad",
+      "account": "Organización",
+      "assignee": "Responsable"
+    },
+    "fields": {
+      "subject": "Asunto",
+      "category": "Tema",
+      "priority": "Prioridad",
+      "app": "Aplicación",
+      "noApp": "La organización en conjunto",
+      "body": "¿Qué ocurrió?",
+      "reply": "Escribir una respuesta",
+      "note": "Escribir una nota para el equipo"
+    },
+    "filters": {
+      "any": "Todos",
+      "late": "Solo atrasados",
+      "searchHint": "Asunto o #número"
+    },
+    "status": {
+      "active": "Activos",
+      "open": "Esperando por nosotros",
+      "pending": "Esperando por usted",
+      "solved": "Resuelto",
+      "closed": "Cerrado"
+    },
+    "priority": {
+      "low": "Baja",
+      "normal": "Normal",
+      "high": "Alta",
+      "urgent": "Urgente"
+    },
+    "answerWithin": {
+      "low": "respuesta en 3 días",
+      "normal": "respuesta en 1 día",
+      "high": "respuesta en 4 horas",
+      "urgent": "respuesta en 1 hora"
+    },
+    "category": {
+      "billing": "Facturación",
+      "integration": "Integraciones",
+      "bug": "Algo falla",
+      "question": "Pregunta",
+      "other": "Otro"
+    },
+    "author": {
+      "customer": "Usted",
+      "operator": "Soporte de Payrudder",
+      "system": "Sistema"
+    },
+    "sortPriority": "Mayor prioridad primero",
+    "sortDue": "Vence antes primero"
   }
 }

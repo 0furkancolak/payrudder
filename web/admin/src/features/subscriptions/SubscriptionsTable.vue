@@ -14,6 +14,9 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { newest, oldest, time } from "@/shared/lib/sortDefs";
+
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -37,6 +40,7 @@ const BAD_STATES = ["cancelled", "past_due"];
 const stateVariant = (s: Subscription) => (state(s) === "active" ? "success" : BAD_STATES.includes(state(s)) ? "destructive" : "secondary");
 const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((s) => inRange(s.start_time, range.value)), {
+  sorts: () => [newest(t, (s) => time(s.start_time)), oldest(t, (s) => time(s.start_time))],
   sheet: { kind: "subscription", id: (s) => s.id }, searchFields: (s) => [s.customer_external_id, s.plan_code, s.provider],
   url: true, filters: { state: (s, v) => state(s) === v, currency: (s, v) => s.currency === v, interval: (s, v) => s.interval === v },
 });
@@ -87,6 +91,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
       <FilterSelect v-model="intervalFilter" multiple :label="t('billing.subscriptions.interval')" :options="intervalOptions" />
       <DateRangePicker v-model="range" />
       <HeaderAction test-id="subscriptions-new" :label="t('billing.subscriptions.new')" @click="emit('create')" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <Table>
       <TableHeader>

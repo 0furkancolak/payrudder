@@ -99,15 +99,17 @@ export function summarize(results: readonly AppResult[]): { ok: number; failed: 
 export const PROVIDER_LINKS: Record<LiveProviderName, string | null> = {
   iyzico: "https://merchant.iyzipay.com",
   paddle: "https://vendors.paddle.com/authentication-v2",
+  stripe: "https://dashboard.stripe.com/apikeys",
   banktransfer: null,
 };
 
 /** The i18n key of the help text under a field of a provider's form (`product.providers.help.<provider>.<field>`); fields without help return null. */
-const HELPED: Record<"iyzico" | "paddle", readonly string[]> = {
+const HELPED: Record<"iyzico" | "paddle" | "stripe", readonly string[]> = {
   iyzico: ["api_key", "secret_key", "buyer.identity_number", "buyer.ip"],
   paddle: ["api_key", "webhook_secret", "usage_product_id"],
+  stripe: ["api_key", "webhook_secret"],
 };
-export function helpKey(provider: "iyzico" | "paddle", path: string): string | null {
+export function helpKey(provider: "iyzico" | "paddle" | "stripe", path: string): string | null {
   return HELPED[provider].includes(path) ? `product.providers.help.${provider}.${path.replace(/\./g, "_")}` : null;
 }
 

@@ -3,10 +3,14 @@
  * documents the operator pastes on the operator's page, built from fields instead of typed as JSON. `base_url` is never asked: a person gets the provider's own
  * live host, and the server refuses any other.
  */
-export type LiveProviderName = "iyzico" | "paddle" | "banktransfer";
+export type LiveProviderName = "iyzico" | "paddle" | "stripe" | "banktransfer";
 
 /** The providers a person connects themselves, in the order they are offered. */
-export const LIVE_PROVIDERS: readonly LiveProviderName[] = ["iyzico", "paddle", "banktransfer"];
+export const LIVE_PROVIDERS: readonly LiveProviderName[] = ["iyzico", "paddle", "stripe", "banktransfer"];
+
+/** The providers whose settings are typed fields (bank transfer has a form of its own). */
+export type FieldedProvider = "iyzico" | "paddle" | "stripe";
+export const isFielded = (p: string): p is FieldedProvider => p === "iyzico" || p === "paddle" || p === "stripe";
 
 export function isLiveProvider(v: unknown): v is LiveProviderName {
   return (LIVE_PROVIDERS as readonly unknown[]).includes(v);
@@ -38,16 +42,17 @@ const BUYER: ProviderField[] = [
 ];
 
 /** The fields of a provider whose settings are typed fields. Bank transfer has a form of its own (the operator's BankTransferForm). */
-export const PROVIDER_FIELDS: Record<"iyzico" | "paddle", readonly ProviderField[]> = {
+export const PROVIDER_FIELDS: Record<FieldedProvider, readonly ProviderField[]> = {
   iyzico: [{ path: "api_key", secret: true }, { path: "secret_key", secret: true }, ...BUYER],
   paddle: [{ path: "api_key", secret: true }, { path: "webhook_secret", secret: true }, { path: "usage_product_id", pattern: /^pro_[A-Za-z0-9]+$/ }],
+  stripe: [{ path: "api_key", secret: true, pattern: /^[sr]k_(live|test)_[A-Za-z0-9]+$/ }, { path: "webhook_secret", secret: true, pattern: /^whsec_[A-Za-z0-9]+$/ }],
 };
 
 export type FieldProblem = "required" | "badFormat";
 export type ProviderErrors = Record<string, FieldProblem>;
 
 /** Fills the settings document from the values typed (by path). Empty optional fields are left out; nothing else is added. */
-export function buildProviderSettings(provider: "iyzico" | "paddle", values: Record<string, string>): { ok: true; settings: Record<string, unknown> } | { ok: false; errors: ProviderErrors } {
+export function buildProviderSettings(provider: FieldedProvider, values: Record<string, string>): { ok: true; settings: Record<string, unknown> } | { ok: false; errors: ProviderErrors } {
   const errors: ProviderErrors = {};
   const settings: Record<string, unknown> = {};
   for (const f of PROVIDER_FIELDS[provider]) {
@@ -69,7 +74,7 @@ export function buildProviderSettings(provider: "iyzico" | "paddle", values: Rec
 }
 
 /** Initial values of the form: what the billing profile and the person already told us, so the buyer details are not typed twice. */
-export function prefilled(provider: "iyzico" | "paddle", known: Partial<Record<NonNullable<ProviderField["prefill"]>, string>>): Record<string, string> {
+export function prefilled(provider: FieldedProvider, known: Partial<Record<NonNullable<ProviderField["prefill"]>, string>>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const f of PROVIDER_FIELDS[provider]) out[f.path] = f.prefill ? (known[f.prefill] ?? "") : "";
   return out;

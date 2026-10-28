@@ -13,6 +13,7 @@ import { subscriptionRoutes } from "@/features/subscriptions/routes";
 import { usageRoutes } from "@/features/usage/routes";
 import { webhookRoutes } from "@/features/webhooks/routes";
 import { dashSearch, sheetSearch } from "@/features/dashboard/lib";
+import { supportRoutes } from "@/features/support/routes";
 import { lazyPage } from "@/shared/lib/lazy";
 import { isPerson } from "@/shared/lib/session";
 import { partnerRoutes } from "@/features/partner/routes";
@@ -112,6 +113,7 @@ export function personRoutes(parent: AnyRoute) {
     settings,
     plan,
     ...partnerRoutes(signedIn),
+    ...supportRoutes(signedIn),
     // One line per page, and the same page in PERSON_PAGES (app/layout/nav.ts), which is what puts it in the sidebar.
     tenant.addChildren([
       ...customerRoutes(tenant),

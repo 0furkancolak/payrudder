@@ -130,6 +130,7 @@ const failure = computed(() => firstError(actions.save, actions.remove, actions.
         <SheetBody>
           <p v-if="!isOwner" class="text-muted-foreground text-sm" data-testid="integration-owner-only">{{ t("product.integrations.ownerOnly") }}</p>
           <p class="bg-muted text-muted-foreground rounded-xl px-3 py-2 text-xs">{{ t("product.integrations.mail.envNote") }}</p>
+          <p class="bg-muted text-muted-foreground rounded-xl px-3 py-2 text-xs" data-testid="mail-templates-note">{{ t("product.integrations.mail.templatesNote") }}</p>
           <p class="text-xs"><a :href="NAFRU_EMAIL_URL" target="_blank" rel="noopener noreferrer" class="text-primary font-medium hover:underline" data-testid="nafru-link">{{ t("product.integrations.mail.aboutNafru") }}</a></p>
 
           <div v-if="own !== 'none'" class="bg-muted flex flex-wrap items-center justify-between gap-3 rounded-2xl px-4 py-3" data-testid="integration-sheet-status">

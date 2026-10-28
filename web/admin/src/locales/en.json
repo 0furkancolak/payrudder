@@ -45,6 +45,26 @@
     "validation": {
       "required": "This field is required.",
       "email": "Enter a valid e-mail address."
+    },
+    "applyFilter": "Apply",
+    "sort": {
+      "label": "Sort",
+      "default": "As received",
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "amountHigh": "Amount, high to low",
+      "amountLow": "Amount, low to high",
+      "nameAsc": "Name, A to Z",
+      "nameDesc": "Name, Z to A"
+    },
+    "bulk": {
+      "label": "Bulk actions",
+      "selected": "{n} selected | {n} selected",
+      "clear": "Clear selection",
+      "selectPage": "Select all rows on this page",
+      "selectRow": "Select row",
+      "done": "{ok} done, {failed} not changed",
+      "notChanged": "Not changed"
     }
   },
   "enums": {
@@ -154,7 +174,8 @@
       "iyzico": "iyzico",
       "paddle": "Paddle",
       "mockpsp": "Mock PSP",
-      "banktransfer": "Bank transfer"
+      "banktransfer": "Bank transfer",
+      "stripe": "Stripe"
     }
   },
   "tenants": {
@@ -529,7 +550,8 @@
         "noPayments": "No payments yet.",
         "manageCredits": "Manage credits",
         "paymentMethod": "Payment method"
-      }
+      },
+      "exportSelected": "Export selected as CSV"
     },
     "packages": {
       "new": "New package",
@@ -2715,7 +2737,8 @@
         "livemode_mismatch": "This provider account points at the provider's other mode: a live environment needs the provider's live endpoint and live keys, a sandbox environment its test endpoint.",
         "endpoint_not_allowed": "Only the provider's own live endpoint is allowed. Leave the endpoint out.",
         "health_check_failed": "The provider did not accept these credentials. Check the keys, and that they are live keys.",
-        "health_check_unreachable": "The provider could not be reached to check these credentials. Try again in a moment."
+        "health_check_unreachable": "The provider could not be reached to check these credentials. Try again in a moment.",
+        "single_only": "Bank transfer has one account per environment."
       },
       "billing": {
         "not_configured": "Billing is not set up on this deployment.",
@@ -3164,6 +3187,18 @@
       "email": "E-mail",
       "currency": "Currency",
       "code": "Code"
+    },
+    "support": {
+      "account": {
+        "not_member": "You are not a member of this organisation."
+      },
+      "app": {
+        "not_found": "That app was not found in this organisation."
+      },
+      "ticket": {
+        "closed": "This ticket is closed. Open a new one.",
+        "not_found": "That ticket was not found."
+      }
     }
   },
   "product": {
@@ -3710,7 +3745,8 @@
         "names": {
           "iyzico": "iyzico",
           "paddle": "Paddle",
-          "banktransfer": "Bank transfer"
+          "banktransfer": "Bank transfer",
+          "stripe": "Stripe"
         },
         "fields": {
           "api_key": "API key",
@@ -3849,7 +3885,8 @@
       "about": {
         "iyzico": "Turkish cards and local methods",
         "paddle": "Cards worldwide, with subscriptions run by the provider",
-        "banktransfer": "Pay by transfer to your own bank account"
+        "banktransfer": "Pay by transfer to your own bank account",
+        "stripe": "Cards worldwide, charged by Payrudder on your Stripe account"
       },
       "scope": {
         "title": "Where to connect",
@@ -3865,7 +3902,8 @@
         "intro": {
           "iyzico": "Enter your live iyzico merchant keys. They are checked with iyzico before they are stored.",
           "paddle": "Enter your live Paddle keys and webhook secret. They are checked with Paddle before they are stored.",
-          "banktransfer": "Enter the bank details printed on invoices for customers who pay by transfer. There is nothing to check at a bank."
+          "banktransfer": "Enter the bank details printed on invoices for customers who pay by transfer. There is nothing to check at a bank.",
+          "stripe": "Enter your live Stripe secret key and the signing secret of the webhook endpoint. The key is checked with Stripe before it is stored."
         },
         "envNote": "This connects the live environment. The sandbox keeps running on the built-in simulator.",
         "testOk": "The provider accepts these keys.",
@@ -3900,6 +3938,10 @@
           "api_key": "In Paddle under Developer tools, Authentication, create a live API key.",
           "webhook_secret": "Under Developer tools, Notifications: create a destination for Payrudder and copy its secret key.",
           "usage_product_id": "The id of the product Paddle uses for usage charges. In the Catalog, open the product and copy its id, which starts with pro_."
+        },
+        "stripe": {
+          "api_key": "In the Stripe Dashboard under Developers, API keys, create a restricted or secret live key (it starts with sk_live_ or rk_live_).",
+          "webhook_secret": "Under Developers, Webhooks, add an endpoint to the address shown in Payrudder for payment_intent, checkout.session and refund events, and copy its signing secret (it starts with whsec_)."
         }
       },
       "sandbox": {
@@ -3956,7 +3998,8 @@
         "simulator": "Built-in simulator",
         "webhook": "Custom integrator",
         "einvoiceSimulator": "Built-in simulator",
-        "payrudderMail": "Payrudder mail"
+        "payrudderMail": "Payrudder mail",
+        "stripe": "Stripe"
       },
       "about": {
         "iyzico": "Turkish cards and local methods",
@@ -3967,7 +4010,8 @@
         "webhook": "Send each document to your own integrator's address",
         "einvoiceSimulator": "Pretend e-documents for the sandbox",
         "payrudderMail": "Mail sent by Payrudder for you",
-        "nafru": "Send through your own Nafru Email account"
+        "nafru": "Send through your own Nafru Email account",
+        "stripe": "Cards worldwide, charged by Payrudder on your Stripe account"
       },
       "state": {
         "none": "Not connected",
@@ -3980,7 +4024,7 @@
         "simulatorPayments": "Used by the sandbox. Nothing to connect.",
         "simulatorEInvoice": "Used by the sandbox. Nothing to connect.",
         "perApp": "Set up on each app.",
-        "mailBuiltIn": "Invoices, receipts and alerts go out from Payrudder.",
+        "mailBuiltIn": "Sent through Nafru Email, included in your plan.",
         "mailUnused": "Your own provider sends the live mail.",
         "mailOwn": "Live mail goes out from {from}."
       },
@@ -4037,7 +4081,7 @@
       },
       "mail": {
         "builtInTitle": "Payrudder mail",
-        "builtInIntro": "Payrudder sends your customers' mail. Choose which kinds go out.",
+        "builtInIntro": "Payrudder sends your customers' mail through Nafru Email. It is included in your plan and there is nothing to set up. Choose which kinds go out.",
         "unusedNote": "Your own provider is connected, so the live mail goes through it. These switches still decide which kinds are sent.",
         "nafruIntro": "Send your customers' mail through your own Nafru Email account, from your own address. Enter the account's address and API key.",
         "envNote": "This connects the live environment. The sandbox's mail always goes to the sandbox inbox.",
@@ -4056,7 +4100,8 @@
           "from": "A name and address on a domain verified at Nafru Email."
         },
         "checkAndConnect": "Check and connect",
-        "confirmRemove": "Disconnect your own e-mail provider? The live mail goes out from Payrudder again."
+        "confirmRemove": "Disconnect your own e-mail provider? The live mail goes out from Payrudder again.",
+        "templatesNote": "Want your own look? In Nafru Email, add Payrudder under Applications and edit the templates there. Every mail carries its name in the payrudder_template tag, so the right template is applied."
       }
     },
     "envSwitch": {
@@ -4148,7 +4193,9 @@
       "orgIntegrations": "Organisation integrations",
       "plan": "Plan and billing",
       "organisations": "Organisations",
-      "platformPlans": "Platform plans"
+      "platformPlans": "Platform plans",
+      "support": "Help",
+      "supportInbox": "Support inbox"
     },
     "noApps": "No apps yet",
     "newApp": "New app"
@@ -4698,5 +4745,80 @@
       "saved": "Saved.",
       "cleared": "Own limits cleared."
     }
+  },
+  "support": {
+    "intro": "Ask Payrudder for help. Everyone in your organisation sees these tickets; we answer here.",
+    "new": "New ticket",
+    "newIntro": "Describe what you need. The more we know, the faster we can help: what you did, what you expected, what happened.",
+    "send": "Send ticket",
+    "sendReply": "Send reply",
+    "addNote": "Add note",
+    "empty": "No tickets yet. When something is unclear or broken, open one.",
+    "closedNote": "This ticket is closed. Open a new one if you need more help.",
+    "markSolved": "Mark as solved",
+    "reopen": "Reopen",
+    "late": "Late",
+    "internalNote": "Internal note",
+    "dueBy": "We aim to answer by {time}.",
+    "answeredAt": "First answer: {time}",
+    "unassigned": "Unassigned",
+    "inboxIntro": "Every ticket of every organisation, newest activity first. Internal notes are never shown to the customer.",
+    "inboxEmpty": "Nothing in the queue.",
+    "columns": {
+      "number": "No.",
+      "subject": "Subject",
+      "status": "Status",
+      "updated": "Last activity",
+      "account": "Organisation",
+      "assignee": "Assignee"
+    },
+    "fields": {
+      "subject": "Subject",
+      "category": "Topic",
+      "priority": "Priority",
+      "app": "App",
+      "noApp": "The organisation as a whole",
+      "body": "What happened?",
+      "reply": "Write a reply",
+      "note": "Write a note for the team"
+    },
+    "filters": {
+      "any": "Any",
+      "late": "Only late",
+      "searchHint": "Subject or #number"
+    },
+    "status": {
+      "active": "Active",
+      "open": "Waiting for us",
+      "pending": "Waiting for you",
+      "solved": "Solved",
+      "closed": "Closed"
+    },
+    "priority": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "answerWithin": {
+      "low": "answer within 3 days",
+      "normal": "answer within 1 day",
+      "high": "answer within 4 hours",
+      "urgent": "answer within 1 hour"
+    },
+    "category": {
+      "billing": "Billing",
+      "integration": "Integrations",
+      "bug": "Something is broken",
+      "question": "Question",
+      "other": "Other"
+    },
+    "author": {
+      "customer": "You",
+      "operator": "Payrudder support",
+      "system": "System"
+    },
+    "sortPriority": "Highest priority first",
+    "sortDue": "Answer due soonest"
   }
 }

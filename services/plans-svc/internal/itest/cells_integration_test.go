@@ -23,7 +23,7 @@ import (
 // looked up without knowing the tenant (the api keys by prefix, the queue of the reset runner).
 var globalTables = []string{
 	"accounts", "tenants", "apps", "users", "account_members", "account_invites", "user_sessions", "user_tokens", "user_identities", "login_codes", "user_onboarding",
-	"config_promotions", "app_audit", "go_live_audit", "api_keys", "sandbox_resets",
+	"config_promotions", "app_audit", "go_live_audit", "api_keys", "sandbox_resets", "support_tickets", "support_messages",
 }
 
 // The functions of the public schema that belong to those tables.
