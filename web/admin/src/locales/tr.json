@@ -31,6 +31,8 @@
     "close": "Kapat",
     "search": "Ara",
     "clearFilters": "Filtreleri temizle",
+    "filters": "Filtreler",
+    "showResults": "Sonuçları göster",
     "noMatches": "Bu filtrelere uyan kayıt yok.",
     "moreActions": "Diğer işlemler",
     "view": "Görüntüle",

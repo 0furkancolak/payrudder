@@ -5,7 +5,7 @@ import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
 import { ArrowUpRight, Plus, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor, parseMajor, unitPriceToMajor } from "@/shared/lib/money";
 import { useCanWrite } from "@/shared/lib/access";
@@ -48,10 +48,10 @@ const fmt = useFormat();
 const range = ref<DateRange>(thisMonth());
 const table = useTableState(() => list.value.filter((p) => inRange(p.version?.publish_time, range.value)), { sheet: { kind: "package", id: (p) => p.plan.code }, searchFields: (p) => [p.plan.code, p.plan.name] });
 watch(range, () => (table.page.value = 1), { deep: true });
-const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const current = table.row;
 

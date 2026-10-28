@@ -31,6 +31,8 @@
     "close": "Cerrar",
     "search": "Buscar",
     "clearFilters": "Borrar filtros",
+    "filters": "Filtros",
+    "showResults": "Ver resultados",
     "noMatches": "Nada coincide con estos filtros.",
     "moreActions": "Más acciones",
     "view": "Ver",

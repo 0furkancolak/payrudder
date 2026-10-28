@@ -7,7 +7,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor } from "@/shared/lib/money";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { matchesSearch } from "@/shared/lib/paging";
 import { PaymentContext } from "@/features/related";
 import { useEdgeDetail } from "@/shared/lib/useEdgeDetail";
@@ -64,7 +64,7 @@ const nav = useEdgeDetail(
     missing: (id) => {
       if (!list.value.some((l) => l.id === id) || (query.value === "" && range.value.from === "" && range.value.to === "")) return false;
       query.value = "";
-      range.value = { from: "", to: "" };
+      range.value = thisMonth();
       return true;
     },
   },
@@ -95,10 +95,10 @@ function filter() {
   history.value = [];
 }
 watch([kind, status], filter);
-const active = computed(() => kind.value !== "" || status.value !== "" || query.value !== "" || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => kind.value !== "" || status.value !== "" || query.value !== "" || rangeChanged(range.value));
 function clear() {
   kind.value = status.value = query.value = "";
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const when = (v?: string | null) => fmt.date(v, "short", "—");
 const usesOf = (l: { use_count?: number; paid_count?: number }) => t("billing.paymentLinks.usesValue", { used: l.use_count ?? 0, paid: l.paid_count ?? 0 });

@@ -27,7 +27,7 @@ const customersDown = computed(() => down("customers") || !props.data.customers)
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
+  <div class="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 max-sm:-mx-4 max-sm:scroll-px-4 max-sm:px-4 max-sm:[&>*]:w-[46%] max-sm:[&>*]:shrink-0 max-sm:[&>*]:snap-start sm:grid sm:snap-none sm:grid-cols-2 sm:gap-5 sm:overflow-visible sm:pb-0 xl:grid-cols-4">
     <KpiCard testid="revenue" :label="t('dash.kpi.net')" :delta="k.dNet" :previous="prevRev ? money(prevRev.net_minor) : undefined" :spark="spark">
       <template #value>{{ money(rev?.net_minor) }}</template>
       <template #sub>{{ t("dash.kpi.netSub", { gross: money(rev?.gross_minor), refunds: money(rev?.refunds_minor) }) }}</template>

@@ -31,6 +31,8 @@
     "close": "Close",
     "search": "Search",
     "clearFilters": "Clear filters",
+    "filters": "Filters",
+    "showResults": "Show results",
     "noMatches": "Nothing matches these filters.",
     "moreActions": "More actions",
     "view": "View",

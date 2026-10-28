@@ -16,7 +16,7 @@ import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
@@ -57,10 +57,10 @@ const table = useTableState(() => list.value.filter((n) => inRange(n.create_time
   filters: { where: (n, v) => whereKey(n) === v },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
-const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const whereFilter = computed({ get: () => table.filters.value.where ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, where: v }) });
 const whereOptions = computed(() => [{ value: "", label: t("billing.creditNotes.allWhere") }, ...WHERE.map((w) => ({ value: w, label: t(`billing.creditNotes.${w}`) }))]);

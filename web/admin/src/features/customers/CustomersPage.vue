@@ -7,7 +7,7 @@ import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
 import { useSubscriptionActions } from "@/features/subscriptions/api";
 import CreateSubscriptionForm from "@/features/subscriptions/CreateSubscriptionForm.vue";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useFormat } from "@/shared/lib/format";
 import { formatMinor, maskEmail } from "@/shared/lib/money";
 import { tenantBase } from "@/shared/lib/session";
@@ -62,10 +62,10 @@ const table = useTableState(() => list.value.filter((c) => inRange(c.create_time
   },
 });
 watch(range, () => (table.page.value = 1), { deep: true });
-const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const filter = (key: string) => computed({ get: () => table.filters.value[key] ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, [key]: v }) });
 const countryFilter = filter("country");

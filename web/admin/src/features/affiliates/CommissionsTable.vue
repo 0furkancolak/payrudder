@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { thisMonth } from "@/shared/lib/dateRange";
+import { rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
@@ -49,10 +49,10 @@ const filter = computed<CommissionFilter>(() => ({
 }));
 const pager = usePager();
 watch(filter, () => pager.reset());
-const active = computed(() => affiliate.value !== "" || status.value !== "" || kind.value !== "" || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => affiliate.value !== "" || status.value !== "" || kind.value !== "" || rangeChanged(range.value));
 function clear() {
   affiliate.value = status.value = kind.value = "";
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 
 const options = useAffiliateOptions(tenantId);
@@ -84,7 +84,7 @@ const detail = useEdgeDetail(items, { hasPrev: pager.hasPrev, hasNext: () => !!l
         // The date range starts on this month: a commission of an earlier one is looked for with no range.
         missing: () => {
           if (range.value.from === "" && range.value.to === "") return false;
-          range.value = { from: "", to: "" };
+          range.value = thisMonth();
           return true;
         },
       },

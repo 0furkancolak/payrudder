@@ -2,7 +2,7 @@
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { inRange, thisMonth } from "@/shared/lib/dateRange";
+import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -29,10 +29,10 @@ const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filt
   filters: { kind: (e, v) => e.kind === v },
 });
 const kinds = computed(() => [{ value: "", label: t("common.all") }, ...["grant", "consume", "expire"].map((k) => ({ value: k, label: t(`billing.credits.kind.${k}`) }))]);
-const active = computed(() => table.active.value || range.value.from !== "" || range.value.to !== "");
+const active = computed(() => table.active.value || rangeChanged(range.value));
 function clear() {
   table.clear();
-  range.value = { from: "", to: "" };
+  range.value = thisMonth();
 }
 const kindTone = (k?: string) => (k === "grant" ? "success" : k === "consume" ? "info" : "neutral");
 const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v: string[]) => (table.filters.value.kind = v) });
