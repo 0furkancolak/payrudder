@@ -5,6 +5,11 @@ global:
 rule_files:
   - /etc/prometheus/rules/*.yaml
 
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: otel-collector
     static_configs:
@@ -78,3 +83,11 @@ scrape_configs:
   - job_name: loki
     static_configs:
       - targets: ["loki:3100"]
+  # Backup and restore-drill jobs push their result here when they end (deploy/backup); honor_labels keeps the job label they set.
+  - job_name: pushgateway
+    honor_labels: true
+    static_configs:
+      - targets: ["pushgateway:9091"]
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]

@@ -16,6 +16,19 @@ postgres:
     requests: { cpu: 50m, memory: 128Mi }
     limits: { memory: 512Mi }
 
+# Nightly pg_dump of every database on a volume of its own (and in S3-compatible storage when s3Url is set), and a weekly restore drill. Off by default on a laptop;
+# a deployment turns it on. The result goes to pushgatewayUrl for the BackupStale and RestoreDrillFailed alerts. docs/runbooks/backup-restore.md.
+backup:
+  enabled: false
+  schedule: "17 2 * * *"          # every night at 02:17
+  verifySchedule: "47 3 * * 0"    # every Sunday at 03:47, after the backup
+  keep: 7                         # dumps kept per database on the volume
+  storage: 5Gi
+  pushgatewayUrl: ""              # e.g. http://pushgateway:9091
+  s3Url: ""                       # e.g. s3://my-bucket/payrudder (the volume is not the only copy then)
+  s3Endpoint: ""                  # for MinIO and other S3-compatible storage
+  s3SecretName: ""                # a Secret with AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+
 redpanda:
   enabled: true
   image: redpandadata/redpanda:v26.2.5

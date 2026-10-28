@@ -1,0 +1,23 @@
+# Alertmanager for a local stack: every alert is kept in Alertmanager (http://localhost:42993) and sent nowhere. alertmanager.webhook.yml is the same routing with
+# the page and warn receivers posting to the URL in ALERT_WEBHOOK_URL_FILE; select it with ALERTMANAGER_CONFIG (docs/runbooks/backup-restore.md, docs/08-observability.md).
+#
+#   page  - wakes someone: the process, the data or the money is at risk
+#   warn  - looked at in working hours
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: keep
+  group_by: [alertname, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+# A page for a service silences its warnings: one problem is one message.
+inhibit_rules:
+  - source_matchers: [severity="page"]
+    target_matchers: [severity="warn"]
+    equal: [service]
+
+receivers:
+  - name: keep
