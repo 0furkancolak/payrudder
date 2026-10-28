@@ -1,29 +1,26 @@
 <script setup lang="ts">
-import { Banknote, FileText } from "@lucide/vue";
+import { Banknote } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import PaymentLinkSheet from "@/features/paymentlinks/PaymentLinkSheet.vue";
-import { lineText } from "./lineText";
 import { useFormat } from "@/shared/lib/format";
-import { useErrorText } from "@/shared/lib/errors";
-import { sagaVariant, statusVariant } from "@/shared/lib/badges";
 import { capFirst, label } from "@/shared/lib/labels";
 import { names, sheetName } from "@/shared/lib/sheets";
-import { formatMinor } from "@/shared/lib/money";
 import { validLinkDays } from "@/shared/lib/rules";
 import { absoluteUrl } from "@/shared/lib/url";
 import { CopyField } from "@/shared/ui/copy-field";
 import { ErrorText } from "@/shared/ui/error-text";
 import { ErrorState } from "@/shared/ui/error-state";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Card } from "@/shared/ui/card";
+import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
 import { InvoiceRelated } from "@/features/related";
 import { Input } from "@/shared/ui/input";
 import { useInvoice, useInvoiceLinks, useInvoiceSaga, useOpenPdf } from "./api";
+import InvoiceHeadline from "./InvoiceHeadline.vue";
+import InvoiceLines from "./InvoiceLines.vue";
 import ManualPaymentsCard from "./ManualPaymentsCard.vue";
 import { canRecordPayment, isTransferCharge, outstandingAfter, wantsTransferState } from "./payment";
 import { useInvoiceTransfer } from "./paymentApi";
@@ -34,7 +31,6 @@ import TransferCard from "./TransferCard.vue";
 /** Everything about one invoice: what to do with it, its figures, payments, lines, the shared link, the e-document, credit notes, the records related to it and the saga. It is the body of the sheet the invoices list opens. */
 const { t, te, locale } = useI18n();
 const fmt = useFormat();
-const errorText = useErrorText();
 const props = defineProps<{ tenantId: string; invoiceId: string }>();
 const tenantId = computed(() => props.tenantId);
 const invoiceId = computed(() => props.invoiceId);
@@ -74,115 +70,75 @@ function askReject(outcome: "rejected" | "expired") {
   rejectOutcome.value = outcome;
   rejectOpen.value = true;
 }
-const day = (v?: string | null) => fmt.date(v, "day");
-const utcDay = (v: string) => fmt.utcDay(v, "day", v);
 </script>
 
 <template>
-  <div class="mb-4 flex flex-wrap items-center justify-end gap-2">
-    <span v-if="pdf.error.value" class="text-destructive text-sm" role="alert">{{ errorText(pdf.error.value) }}</span>
-    <Button v-if="canRecord" type="button" variant="outline" @click="recordOpen = true"><Banknote />{{ t("invoice.payment.record") }}</Button>
-    <Button type="button" :disabled="!inv?.number || pdf.isPending.value" @click="pdf.mutate()"><FileText />{{ t("invoice.openPdf") }}</Button>
-  </div>
   <ErrorState :error="invoice.error.value" :retrying="invoice.isFetching.value" class="mb-4" @retry="invoice.refetch()" />
 
-  <div v-if="inv" class="mb-4 grid gap-4 sm:grid-cols-2">
-    <Card class="gap-2">
-      <span class="text-muted-foreground text-sm">{{ t("tenant.columns.total") }}</span>
-      <span class="text-4xl font-semibold tracking-tight tabular-nums">{{ formatMinor(inv.total_minor, inv.currency, locale) }}</span>
-      <div class="mt-1 flex flex-wrap gap-2">
-        <Badge :variant="statusVariant(inv.status)">{{ capFirst(label(t, te, "invoiceStatus", inv.status), locale) }}</Badge>
-        <Badge :variant="sagaVariant(inv.saga_state)">{{ capFirst(label(t, te, "sagaState", inv.saga_state), locale) }}</Badge>
-      </div>
-    </Card>
-    <Card class="gap-1 text-sm">
-      <span class="font-medium">{{ label(t, te, "invoiceKind", inv.kind) }}</span>
-      <span>{{ inv.period_id }}</span>
-      <span>{{ inv.customer_external_id }}</span>
-    </Card>
-  </div>
+  <section v-if="inv" class="flex flex-col gap-6">
+    <InvoiceHeadline :inv="inv" :pdf-pending="pdf.isPending.value" :pdf-error="pdf.error.value" @open-pdf="pdf.mutate()">
+      <template #pills><StatusPill :tone="toneOf(inv.saga_state)">{{ capFirst(label(t, te, "sagaState", inv.saga_state), locale) }}</StatusPill></template>
+      <template v-if="canRecord" #actions><Button type="button" variant="outline" @click="recordOpen = true"><Banknote />{{ t("invoice.payment.record") }}</Button></template>
+    </InvoiceHeadline>
 
-  <TransferCard v-if="inv && transfer && transfer.state !== 'none'" :transfer="transfer" @confirm="recordOpen = true" @reject="askReject" />
-  <ManualPaymentsCard v-if="inv && (inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
+    <TransferCard v-if="transfer && transfer.state !== 'none'" :transfer="transfer" @confirm="recordOpen = true" @reject="askReject" />
+    <ManualPaymentsCard v-if="(inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
+
+    <InvoiceLines :inv="inv" />
+
+    <section v-if="inv.number" class="flex flex-col gap-3" :aria-label="t('invoice.share.title')">
+      <div>
+        <h2 class="text-lg font-semibold tracking-tight">{{ t("invoice.share.title") }}</h2>
+        <p class="text-muted-foreground text-sm">{{ t("invoice.share.hint") }}</p>
+      </div>
+      <form class="flex flex-wrap items-center gap-3" @submit.prevent="makeLink">
+        <Input v-model="linkDays" inputmode="numeric" class="w-28" :aria-label="t('invoice.share.days')" />
+        <Button type="submit" :disabled="links.create.isPending.value">{{ t("invoice.share.create") }}</Button>
+        <Button type="button" variant="outline" :disabled="links.revoke.isPending.value" @click="links.revoke.mutate()">{{ t("invoice.share.revoke") }}</Button>
+      </form>
+      <CopyField v-if="shareUrl" :value="shareUrl" :label="t('invoice.share.link')" :copy-label="t('invoice.share.copy')" />
+      <button type="button" class="w-fit text-sm underline" @click="paying = true">{{ t("invoice.share.paymentLink") }}</button>
+      <PaymentLinkSheet v-model:open="paying" :tenant-id="tenantId" :invoice="invoiceId" :customer="inv.customer_external_id ?? ''" />
+      <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
+      <ErrorText :message="linkError" />
+      <ErrorText :error="links.create.error.value" />
+    </section>
+
+    <EInvoiceStatus v-if="inv.number" :tenant-id="tenantId" :invoice-id="invoiceId" />
+
+    <CreditNotesCard :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" :issuable="inv.status === 'paid'" />
+
+    <section class="flex flex-col gap-3" :aria-label="t('related.title')">
+      <h2 class="text-lg font-semibold tracking-tight">{{ t("related.title") }}</h2>
+      <InvoiceRelated :tenant-id="tenantId" :invoice-id="invoiceId" :customer="inv.customer_external_id" :credit-notes="false" />
+    </section>
+
+    <section class="flex flex-col gap-3" :aria-label="t('invoice.saga')">
+      <h2 class="text-lg font-semibold tracking-tight">{{ t("invoice.saga") }}</h2>
+      <ErrorText :error="saga.error.value" />
+      <Table :aria-label="t('invoice.saga')">
+        <TableHeader>
+          <TableRow class="hover:bg-transparent">
+            <TableHead class="text-end">{{ t("invoice.sagaColumns.seq") }}</TableHead>
+            <TableHead>{{ t("invoice.sagaColumns.from") }}</TableHead>
+            <TableHead>{{ t("invoice.sagaColumns.to") }}</TableHead>
+            <TableHead>{{ t("invoice.sagaColumns.cause") }}</TableHead>
+            <TableHead>{{ t("invoice.sagaColumns.at") }}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="e in saga.data.value?.events ?? []" :key="e.seq" class="hover:bg-transparent" data-testid="saga-event">
+            <TableCell class="text-end tabular-nums">{{ e.seq }}</TableCell>
+            <TableCell class="text-xs">{{ label(t, te, "sagaState", e.from_state) }}</TableCell>
+            <TableCell><StatusPill :tone="toneOf(e.to_state)">{{ capFirst(label(t, te, "sagaState", e.to_state), locale) }}</StatusPill></TableCell>
+            <TableCell class="mono text-xs">{{ e.cause }}</TableCell>
+            <TableCell class="text-muted-foreground text-xs whitespace-nowrap">{{ fmt.date(e.at, "dateTime") }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </section>
+  </section>
+
   <RecordPaymentDialog v-if="inv" v-model:open="recordOpen" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency ?? ''" :outstanding-minor="outstanding" :transfer="transferCharge" />
   <RejectTransferDialog v-model:open="rejectOpen" :tenant-id="tenantId" :invoice-id="invoiceId" :outcome="rejectOutcome" />
-
-  <Card class="mb-6 p-3">
-    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.lines") }}</h2>
-    <Table>
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead>{{ t("invoice.lineColumns.no") }}</TableHead>
-          <TableHead>{{ t("invoice.lineColumns.kind") }}</TableHead>
-          <TableHead>{{ t("invoice.lineColumns.description") }}</TableHead>
-          <TableHead>{{ t("invoice.lineColumns.period") }}</TableHead>
-          <TableHead>{{ t("invoice.lineColumns.meter") }}</TableHead>
-          <TableHead class="text-end">{{ t("invoice.lineColumns.quantity") }}</TableHead>
-          <TableHead class="text-end">{{ t("invoice.lineColumns.amount") }}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="line in inv?.lines ?? []" :key="line.line_no">
-          <TableCell>{{ line.line_no }}</TableCell>
-          <TableCell>{{ label(t, te, "invoiceLineKind", line.kind) }}</TableCell>
-          <TableCell>{{ lineText(line.description, t, utcDay) }}</TableCell>
-          <TableCell class="text-muted-foreground text-xs whitespace-nowrap">{{ day(line.service_from) }}<template v-if="line.service_from"> – {{ day(line.service_to) }}</template></TableCell>
-          <TableCell>{{ line.meter_code }}</TableCell>
-          <TableCell class="text-end tabular-nums">{{ line.quantity }}</TableCell>
-          <TableCell class="text-end font-medium tabular-nums">{{ formatMinor(line.amount_minor, inv?.currency, locale) }}</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </Card>
-
-  <Card v-if="inv && inv.number" class="mb-6" role="region" :aria-label="t('invoice.share.title')">
-    <h2 class="text-lg font-semibold">{{ t("invoice.share.title") }}</h2>
-    <p class="text-muted-foreground text-sm">{{ t("invoice.share.hint") }}</p>
-    <form class="flex flex-wrap items-center gap-3" @submit.prevent="makeLink">
-      <Input v-model="linkDays" inputmode="numeric" class="w-28" :aria-label="t('invoice.share.days')" />
-      <Button type="submit" :disabled="links.create.isPending.value">{{ t("invoice.share.create") }}</Button>
-      <Button type="button" variant="outline" :disabled="links.revoke.isPending.value" @click="links.revoke.mutate()">{{ t("invoice.share.revoke") }}</Button>
-    </form>
-    <CopyField v-if="shareUrl" :value="shareUrl" :label="t('invoice.share.link')" :copy-label="t('invoice.share.copy')" />
-    <button type="button" class="w-fit text-sm underline" @click="paying = true">{{ t("invoice.share.paymentLink") }}</button>
-    <PaymentLinkSheet v-model:open="paying" :tenant-id="tenantId" :invoice="invoiceId" :customer="invoice.data.value?.customer_external_id ?? ''" />
-    <p v-if="links.revoke.isSuccess.value" class="text-success text-sm" role="status">{{ t("invoice.share.revoked") }}</p>
-    <ErrorText :message="linkError" />
-    <ErrorText :error="links.create.error.value" />
-  </Card>
-
-  <EInvoiceStatus v-if="inv && inv.number" :tenant-id="tenantId" :invoice-id="invoiceId" boxed />
-
-  <CreditNotesCard v-if="inv && inv.status === 'paid'" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" issuable />
-  <CreditNotesCard v-else-if="inv" :tenant-id="tenantId" :invoice-id="invoiceId" :currency="inv.currency" />
-
-  <Card v-if="inv" class="mb-6" role="region" :aria-label="t('related.title')">
-    <h2 class="text-lg font-semibold">{{ t("related.title") }}</h2>
-    <InvoiceRelated :tenant-id="tenantId" :invoice-id="invoiceId" :customer="inv.customer_external_id" :credit-notes="false" />
-  </Card>
-
-  <Card class="p-3">
-    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("invoice.saga") }}</h2>
-    <ErrorText :error="saga.error.value" class="px-3" />
-    <Table :aria-label="t('invoice.saga')">
-      <TableHeader>
-        <TableRow class="hover:bg-transparent">
-          <TableHead class="text-end">{{ t("invoice.sagaColumns.seq") }}</TableHead>
-          <TableHead>{{ t("invoice.sagaColumns.from") }}</TableHead>
-          <TableHead>{{ t("invoice.sagaColumns.to") }}</TableHead>
-          <TableHead>{{ t("invoice.sagaColumns.cause") }}</TableHead>
-          <TableHead>{{ t("invoice.sagaColumns.at") }}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="e in saga.data.value?.events ?? []" :key="e.seq" data-testid="saga-event">
-          <TableCell class="text-end tabular-nums">{{ e.seq }}</TableCell>
-          <TableCell class="text-xs">{{ label(t, te, "sagaState", e.from_state) }}</TableCell>
-          <TableCell><Badge :variant="sagaVariant(e.to_state)">{{ capFirst(label(t, te, "sagaState", e.to_state), locale) }}</Badge></TableCell>
-          <TableCell class="mono text-xs">{{ e.cause }}</TableCell>
-          <TableCell class="text-muted-foreground text-xs whitespace-nowrap">{{ fmt.date(e.at, "dateTime") }}</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </Card>
 </template>

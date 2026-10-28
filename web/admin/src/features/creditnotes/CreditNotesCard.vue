@@ -72,8 +72,8 @@ const current = table.row;
 </script>
 
 <template>
-  <Card class="mb-6 p-3">
-    <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("billing.creditNotes.title") }}</h2>
+  <Card :class="invoiceId ? 'gap-3 rounded-none border-0 bg-transparent p-0 shadow-none' : 'mb-6 p-3'">
+    <h2 :class="invoiceId ? 'text-lg font-semibold tracking-tight' : 'px-3 pt-2 text-lg font-semibold'">{{ t("billing.creditNotes.title") }}</h2>
     <ErrorText :error="retry.error.value" class="px-3" />
     <ErrorText :error="notes.error.value" class="px-3" />
     <DataToolbar v-if="list.length || issuable" v-model:search="table.search.value" :active="active" @clear="clear">
