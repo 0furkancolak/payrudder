@@ -63,6 +63,8 @@ class Customer(TypedDict):
     tax_id: str
     tax_office: str
     e_invoice_registered: bool
+    locale: str
+    customer_type: str
 
 
 class ListCustomersResponse(TypedDict):
@@ -91,6 +93,8 @@ class CreateCustomerRequest(_CreateCustomerRequestRequired, total=False):
     country: str
     billing_currency: str
     address: AddressInput
+    locale: Literal["en", "tr", "de", "fr", "es", "ar"]
+    customer_type: Literal["individual", "business"]
     referral_code: str
     referral_touch_time: str | datetime
 
@@ -99,9 +103,14 @@ class SetPaymentMethodRequest(TypedDict):
     payment_method: str
 
 
-class CustomerContact(TypedDict):
+class _CustomerContactRequired(TypedDict):
     name: str
     email: str
+
+
+class CustomerContact(_CustomerContactRequired, total=False):
+    locale: Literal["en", "tr", "de", "fr", "es", "ar"]
+    customer_type: Literal["individual", "business"]
 
 
 class CustomerTax(TypedDict, total=False):

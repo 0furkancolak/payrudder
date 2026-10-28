@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="es" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — esto no es una factura real.</strong></p>{{end}}
+<h2>Factura {{index .D "invoice_number"}}: pague por transferencia bancaria</h2>
+<p>Hola {{index .D "customer_name"}}, su factura <strong>{{index .D "invoice_number"}}</strong> (periodo {{index .D "period"}}) es de <strong>{{index .D "amount"}} {{index .D "currency"}}</strong>. Envíe el importe por transferencia bancaria:</p>
+<table style="border-collapse: collapse">
+{{if index .D "bank_name"}}<tr><td style="padding: 2px 16px 2px 0">Banco</td><td>{{index .D "bank_name"}}</td></tr>{{end}}
+{{if index .D "account_holder"}}<tr><td style="padding: 2px 16px 2px 0">Titular de la cuenta</td><td>{{index .D "account_holder"}}</td></tr>{{end}}
+{{if index .D "iban"}}<tr><td style="padding: 2px 16px 2px 0">IBAN</td><td><strong>{{index .D "iban"}}</strong></td></tr>{{end}}
+{{if index .D "bic"}}<tr><td style="padding: 2px 16px 2px 0">BIC / SWIFT</td><td>{{index .D "bic"}}</td></tr>{{end}}
+{{if index .D "reference"}}<tr><td style="padding: 2px 16px 2px 0">Referencia de pago</td><td><strong>{{index .D "reference"}}</strong></td></tr>{{end}}
+</table>
+<p>Indique la referencia de pago en su transferencia para que podamos asociarla a esta factura. Confirmaremos por correo cuando llegue el dinero.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

@@ -17,10 +17,14 @@ final class CustomerContact implements RequestBody
     /**
      * @param string $name
      * @param string $email
+     * @param string|null $locale
+     * @param string|null $customerType
      */
     public function __construct(
         public readonly string $name,
         public readonly string $email,
+        public readonly ?string $locale = null,
+        public readonly ?string $customerType = null,
     ) {}
 
     /**
@@ -31,6 +35,8 @@ final class CustomerContact implements RequestBody
         return Cast::compact([
             'name' => $this->name,
             'email' => $this->email,
+            'locale' => $this->locale,
+            'customer_type' => $this->customerType,
         ]);
     }
 }

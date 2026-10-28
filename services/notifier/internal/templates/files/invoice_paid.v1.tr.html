@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir fatura değildir.</strong></p>{{end}}
+<h2>Teşekkürler, {{index .D "customer_name"}}</h2>
+<p><strong>{{index .D "invoice_number"}}</strong> numaralı fatura için <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> tutarındaki ödemenizi aldık (dönem {{index .D "period"}}).</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

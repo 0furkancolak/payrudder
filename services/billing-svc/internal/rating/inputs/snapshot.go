@@ -32,7 +32,7 @@ type SnapshotOf struct {
 func (s SnapshotOf) Snapshot() sagamodel.Snapshot {
 	t, cu := s.Tenant, s.Customer
 	snap := sagamodel.Snapshot{
-		CustomerExternalID: s.External, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(),
+		CustomerExternalID: s.External, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(), CustomerLocale: cu.GetLocale(), CustomerType: cu.GetCustomerType(),
 		PaymentMethod: s.PaymentMethod, Provider: s.Provider, TenantName: t.GetName(), Environment: Environment(t), CurrencyExponent: s.CurrencyExponent,
 		LogoObjectKey: LogoKey(s.TenantID, t), ProviderMails: ProviderMails(s.Provider),
 		SellerAddress: AddressLines(t.GetAddress()), CustomerAddress: AddressLines(cu.GetAddress()),

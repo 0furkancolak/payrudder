@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="fr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — ceci n'est pas un vrai rappel.</strong></p>{{end}}
+<h2>Votre essai se termine bientôt</h2>
+<p>Bonjour {{index .D "customer_name"}}, votre essai gratuit de <strong>{{index .D "plan_code"}}</strong> se termine le <strong>{{index .D "trial_end"}}</strong>. Aucune carte n'est nécessaire d'ici là ; ensuite, les frais du forfait, s'il y en a, sont facturés.</p>
+<p>Si vous ne souhaitez pas continuer, merci de nous le dire avant cette date.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

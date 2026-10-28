@@ -291,7 +291,7 @@ func (h *Handler) GetPortal(ctx context.Context, req *billingv1.GetPortalRequest
 		return nil, err
 	}
 	resp := &billingv1.GetPortalResponse{
-		CustomerName: page.CustomerName, SellerName: page.SellerName, LogoAvailable: page.LogoAvailable, Environment: page.Environment,
+		CustomerName: page.CustomerName, CustomerLocale: page.CustomerLocale, SellerName: page.SellerName, LogoAvailable: page.LogoAvailable, Environment: page.Environment,
 		ExpireTime: timestamppb.New(scope.ExpiresAt), TenantId: scope.TenantID.String(), CustomerId: scope.Portal.CustomerID.String(),
 	}
 	for _, i := range page.Invoices {
@@ -346,7 +346,7 @@ func (h *Handler) StartPortalPurchase(ctx context.Context, req *billingv1.StartP
 
 func pageProto(scope *query.Scope, p *query.Page) *billingv1.GetHostedInvoiceResponse {
 	resp := &billingv1.GetHostedInvoiceResponse{
-		Kind: p.Kind, ExpireTime: timestamppb.New(p.ExpiresAt), SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment,
+		CustomerLocale: p.CustomerLocale, CustomerType: p.CustomerType, Kind: p.Kind, ExpireTime: timestamppb.New(p.ExpiresAt), SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment,
 	}
 	if p.Adhoc != nil {
 		resp.Adhoc = &billingv1.HostedAdhoc{Description: p.Adhoc.Description, AmountMinor: p.Adhoc.AmountMinor, Currency: p.Adhoc.Currency,

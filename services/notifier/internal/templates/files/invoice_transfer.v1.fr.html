@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — ceci n'est pas une vraie facture.</strong></p>{{end}}
+<h2>Facture {{index .D "invoice_number"}} : merci de payer par virement bancaire</h2>
+<p>Bonjour {{index .D "customer_name"}}, votre facture <strong>{{index .D "invoice_number"}}</strong> (période {{index .D "period"}}) s'élève à <strong>{{index .D "amount"}} {{index .D "currency"}}</strong>. Merci d'envoyer le montant par virement :</p>
+<table style="border-collapse: collapse">
+{{if index .D "bank_name"}}<tr><td style="padding: 2px 16px 2px 0">Banque</td><td>{{index .D "bank_name"}}</td></tr>{{end}}
+{{if index .D "account_holder"}}<tr><td style="padding: 2px 16px 2px 0">Titulaire du compte</td><td>{{index .D "account_holder"}}</td></tr>{{end}}
+{{if index .D "iban"}}<tr><td style="padding: 2px 16px 2px 0">IBAN</td><td><strong>{{index .D "iban"}}</strong></td></tr>{{end}}
+{{if index .D "bic"}}<tr><td style="padding: 2px 16px 2px 0">BIC / SWIFT</td><td>{{index .D "bic"}}</td></tr>{{end}}
+{{if index .D "reference"}}<tr><td style="padding: 2px 16px 2px 0">Référence de paiement</td><td><strong>{{index .D "reference"}}</strong></td></tr>{{end}}
+</table>
+<p>Indiquez la référence de paiement sur votre virement afin que nous puissions le rapprocher de cette facture. Nous confirmerons par e-mail dès réception des fonds.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

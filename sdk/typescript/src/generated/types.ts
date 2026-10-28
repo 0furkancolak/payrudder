@@ -556,6 +556,10 @@ export interface CreateCustomerRequest {
   /** ISO 4217; default is the tenant's currency */
   billing_currency?: string;
   address?: AddressInput;
+  /** The language of the customer's mails */
+  locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+  /** A person or a taxpayer */
+  customer_type?: "individual" | "business";
   /** The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation. */
   referral_code?: string;
   /** When the visitor followed that link; default now */
@@ -948,11 +952,19 @@ export interface Customer {
   tax_id: string;
   tax_office: string;
   e_invoice_registered: boolean;
+  /** The language of the customer's mails, receipts and payment pages: en, tr, de, fr, es or ar. Empty is the browser's language (pages) and English (mails). */
+  locale: string;
+  /** individual (a person) or business (a taxpayer with a tax id). Empty is unknown. */
+  customer_type: string;
 }
 
 export interface CustomerContact {
   name: string;
   email: string;
+  /** The language of the customer's mails, receipts and payment pages; omit to clear it */
+  locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+  /** A person or a taxpayer; omit to clear it */
+  customer_type?: "individual" | "business";
 }
 
 export interface CustomerPayment {

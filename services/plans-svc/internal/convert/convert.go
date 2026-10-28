@@ -151,7 +151,7 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 		Id: c.ID.String(), ExternalId: c.ExternalID, Name: c.Name, Email: c.Email,
 		PaymentMethod: Str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
 		Country: Str(c.Country), BillingCurrency: Str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
-		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered,
+		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered, Locale: c.Locale, CustomerType: c.CustomerType,
 	}
 }
 

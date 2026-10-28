@@ -13,7 +13,10 @@ type Snapshot struct {
 	CustomerExternalID string `json:"customer_external_id"`
 	CustomerName       string `json:"customer_name"`
 	CustomerEmail      string `json:"customer_email"`
-	PaymentMethod      string `json:"payment_method"`
+	// CustomerLocale is the language of the customer (en, tr, de, fr, es, ar) and CustomerType "individual" or "business", as the customer had them when the draft was made; empty for none.
+	CustomerLocale string `json:"customer_locale,omitempty"`
+	CustomerType   string `json:"customer_type,omitempty"`
+	PaymentMethod  string `json:"payment_method"`
 	// Provider names the payment provider of the customer's subscription; empty is the tenant's default.
 	Provider         string `json:"provider,omitempty"`
 	TenantName       string `json:"tenant_name"`

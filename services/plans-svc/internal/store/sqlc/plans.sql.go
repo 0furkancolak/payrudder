@@ -65,9 +65,9 @@ func (q *Queries) CountMeterCodes(ctx context.Context) (int64, error) {
 }
 
 const createCustomer = `-- name: CreateCustomer :one
-INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered
+INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address, locale, customer_type)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type
 `
 
 type CreateCustomerParams struct {
@@ -79,6 +79,8 @@ type CreateCustomerParams struct {
 	Country         *string
 	BillingCurrency *string
 	Address         json.RawMessage
+	Locale          string
+	CustomerType    string
 }
 
 func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) (Customer, error) {
@@ -91,6 +93,8 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 		arg.Country,
 		arg.BillingCurrency,
 		arg.Address,
+		arg.Locale,
+		arg.CustomerType,
 	)
 	var i Customer
 	err := row.Scan(
@@ -107,6 +111,8 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 		&i.TaxID,
 		&i.TaxOffice,
 		&i.EInvoiceRegistered,
+		&i.Locale,
+		&i.CustomerType,
 	)
 	return i, err
 }
@@ -266,7 +272,7 @@ func (q *Queries) GetChangedFromID(ctx context.Context, id uuid.UUID) (*uuid.UUI
 }
 
 const getCustomerByExternalID = `-- name: GetCustomerByExternalID :one
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
 `
 
 func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string) (Customer, error) {
@@ -286,12 +292,14 @@ func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string
 		&i.TaxID,
 		&i.TaxOffice,
 		&i.EInvoiceRegistered,
+		&i.Locale,
+		&i.CustomerType,
 	)
 	return i, err
 }
 
 const getCustomerByID = `-- name: GetCustomerByID :one
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
 `
 
 func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, error) {
@@ -311,6 +319,8 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 		&i.TaxID,
 		&i.TaxOffice,
 		&i.EInvoiceRegistered,
+		&i.Locale,
+		&i.CustomerType,
 	)
 	return i, err
 }
@@ -1261,7 +1271,7 @@ func (q *Queries) ListCouponCodesFor(ctx context.Context, ids []uuid.UUID) ([]Li
 }
 
 const listCustomers = `-- name: ListCustomers :many
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered FROM customers
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type FROM customers
 WHERE tenant_id = app_tenant_id() AND external_id > $1::text
 ORDER BY external_id
 LIMIT $2
@@ -1295,6 +1305,8 @@ func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([
 			&i.TaxID,
 			&i.TaxOffice,
 			&i.EInvoiceRegistered,
+			&i.Locale,
+			&i.CustomerType,
 		); err != nil {
 			return nil, err
 		}
@@ -2106,7 +2118,7 @@ func (q *Queries) ReopenSubscription(ctx context.Context, arg ReopenSubscription
 const setCustomerAddress = `-- name: SetCustomerAddress :one
 UPDATE customers SET address = $1::jsonb, country = COALESCE($2::text, country)
 WHERE tenant_id = app_tenant_id() AND external_id = $3
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type
 `
 
 type SetCustomerAddressParams struct {
@@ -2132,24 +2144,34 @@ func (q *Queries) SetCustomerAddress(ctx context.Context, arg SetCustomerAddress
 		&i.TaxID,
 		&i.TaxOffice,
 		&i.EInvoiceRegistered,
+		&i.Locale,
+		&i.CustomerType,
 	)
 	return i, err
 }
 
 const setCustomerContact = `-- name: SetCustomerContact :one
-UPDATE customers SET name = $1, email = $2
-WHERE tenant_id = app_tenant_id() AND external_id = $3
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered
+UPDATE customers SET name = $1, email = $2, locale = $3, customer_type = $4
+WHERE tenant_id = app_tenant_id() AND external_id = $5
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type
 `
 
 type SetCustomerContactParams struct {
-	Name       string
-	Email      string
-	ExternalID string
+	Name         string
+	Email        string
+	Locale       string
+	CustomerType string
+	ExternalID   string
 }
 
 func (q *Queries) SetCustomerContact(ctx context.Context, arg SetCustomerContactParams) (Customer, error) {
-	row := q.db.QueryRow(ctx, setCustomerContact, arg.Name, arg.Email, arg.ExternalID)
+	row := q.db.QueryRow(ctx, setCustomerContact,
+		arg.Name,
+		arg.Email,
+		arg.Locale,
+		arg.CustomerType,
+		arg.ExternalID,
+	)
 	var i Customer
 	err := row.Scan(
 		&i.TenantID,
@@ -2165,6 +2187,8 @@ func (q *Queries) SetCustomerContact(ctx context.Context, arg SetCustomerContact
 		&i.TaxID,
 		&i.TaxOffice,
 		&i.EInvoiceRegistered,
+		&i.Locale,
+		&i.CustomerType,
 	)
 	return i, err
 }
@@ -2172,7 +2196,7 @@ func (q *Queries) SetCustomerContact(ctx context.Context, arg SetCustomerContact
 const setCustomerTax = `-- name: SetCustomerTax :one
 UPDATE customers SET tax_id = $1, tax_office = $2, e_invoice_registered = $3
 WHERE tenant_id = app_tenant_id() AND external_id = $4
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type
 `
 
 type SetCustomerTaxParams struct {
@@ -2204,6 +2228,8 @@ func (q *Queries) SetCustomerTax(ctx context.Context, arg SetCustomerTaxParams) 
 		&i.TaxID,
 		&i.TaxOffice,
 		&i.EInvoiceRegistered,
+		&i.Locale,
+		&i.CustomerType,
 	)
 	return i, err
 }
@@ -2211,7 +2237,7 @@ func (q *Queries) SetCustomerTax(ctx context.Context, arg SetCustomerTaxParams) 
 const setPaymentMethod = `-- name: SetPaymentMethod :one
 UPDATE customers SET payment_method = $2
 WHERE tenant_id = app_tenant_id() AND external_id = $1
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type
 `
 
 type SetPaymentMethodParams struct {
@@ -2236,6 +2262,8 @@ func (q *Queries) SetPaymentMethod(ctx context.Context, arg SetPaymentMethodPara
 		&i.TaxID,
 		&i.TaxOffice,
 		&i.EInvoiceRegistered,
+		&i.Locale,
+		&i.CustomerType,
 	)
 	return i, err
 }

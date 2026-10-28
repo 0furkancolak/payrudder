@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir hatırlatma değildir.</strong></p>{{end}}
+<h2>Deneme süreniz yakında bitiyor</h2>
+<p>Merhaba {{index .D "customer_name"}}, <strong>{{index .D "plan_code"}}</strong> ücretsiz denemeniz <strong>{{index .D "trial_end"}}</strong> tarihinde bitiyor. O zamana kadar kart gerekmez; sonrasında planın ücreti varsa faturalanır.</p>
+<p>Devam etmek istemiyorsanız lütfen o tarihten önce bize bildirin.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

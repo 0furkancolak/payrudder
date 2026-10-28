@@ -255,6 +255,7 @@ func (s *Server) invoiceOrAdhoc(w http.ResponseWriter, r *http.Request, sc scope
 		http.Error(w, "the invoice cannot be shown right now", http.StatusServiceUnavailable)
 		return
 	}
+	lang = customerLang(r, resp.GetCustomerLocale())
 	if resp.GetInvoice() == nil && resp.GetAdhoc() != nil {
 		s.adhocPage(w, r, sc, lang, resp)
 		return
@@ -620,6 +621,7 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 		return
 	}
 	inv := resp.GetInvoice()
+	lang = customerLang(r, resp.GetCustomerLocale())
 	v := &receiptView{pageBase: hostedBase(resp, sc, lang), invoiceHeader: newInvoiceHeader(resp, false), Back: sc.page() + langSuffix(r)}
 	v.SideAmount = v.Total + " " + v.Currency
 	for _, row := range s.ledgerRowsOf(r.Context(), resp) {

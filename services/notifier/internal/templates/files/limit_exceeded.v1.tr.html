@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir uyarı değildir.</strong></p>{{end}}
+<h2>Kullanım uyarısı</h2>
+<p>Merhaba {{index .D "customer_name"}}, {{index .D "period"}} döneminde <strong>{{index .D "limit"}}</strong> {{index .D "meter_code"}} limitinizin <strong>{{index .D "used"}}</strong> kadarını kullandınız (%{{index .D "threshold_pct"}} doldu).</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

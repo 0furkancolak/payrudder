@@ -1,3 +1,4 @@
+import type { ApiLocale } from "@/shared/lib/locale";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
@@ -50,6 +51,8 @@ export function addressLine(a?: Address | null): string {
   return [a.line1, a.line2, [a.postal_code, a.city].filter(Boolean).join(" "), a.region, a.country].filter(Boolean).join(", ");
 }
 
+export type CustomerKind = "individual" | "business";
+
 export interface NewCustomer {
   external_id: string;
   name: string;
@@ -57,6 +60,8 @@ export interface NewCustomer {
   country?: string;
   billing_currency?: string;
   address?: Address;
+  locale?: ApiLocale;
+  customer_type?: CustomerKind;
 }
 
 export function useCreateCustomer(tenantId: MaybeRefOrGetter<string>) {
@@ -80,6 +85,9 @@ export function useSetCustomerAddress(tenantId: MaybeRefOrGetter<string>) {
 export interface CustomerContact {
   name: string;
   email: string;
+  /** The language of the customer's mails and pages, and whether it is a person or a business; empty clears them. */
+  locale?: ApiLocale;
+  customer_type?: CustomerKind;
 }
 
 /** Replaces a customer's name and e-mail address. */

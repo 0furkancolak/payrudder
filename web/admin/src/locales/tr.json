@@ -441,6 +441,14 @@
       "tenantCurrency": "Hesabın para birimi",
       "create": "Müşteri oluştur",
       "empty": "Henüz müşteri yok.",
+      "profile": {
+        "language": "Dil",
+        "auto": "Tarayıcının dili",
+        "type": "Tür",
+        "unknown": "Belirtilmemiş",
+        "individual": "Bireysel",
+        "business": "Kurumsal (mükellef)"
+      },
       "contact": {
         "edit": "Ad ve e-postayı düzenle",
         "title": "Ad ve e-posta",

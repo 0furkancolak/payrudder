@@ -268,6 +268,8 @@ type Customer struct {
 	TaxID              string
 	TaxOffice          string
 	EInvoiceRegistered bool
+	Locale             string
+	CustomerType       string
 }
 
 type CustomerCoupon struct {

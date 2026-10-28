@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="es" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — esto no es una factura real.</strong></p>{{end}}
+<h2>No pudimos cobrar su pago</h2>
+<p>Hola {{index .D "customer_name"}}, el pago de <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> de la factura <strong>{{index .D "invoice_number"}}</strong> (periodo {{index .D "period"}}) no se completó tras varios intentos. Actualice su método de pago.</p>
+{{if index .D "iban"}}<p>Aún puede pagar esta factura por transferencia a {{index .D "account_holder"}}, IBAN <strong>{{index .D "iban"}}</strong>{{if index .D "bank_name"}} ({{index .D "bank_name"}}){{end}}, referencia de pago <strong>{{index .D "reference"}}</strong>.</p>{{end}}
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

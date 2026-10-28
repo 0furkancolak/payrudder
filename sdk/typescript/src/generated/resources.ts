@@ -767,7 +767,7 @@ export class CustomersResource {
   /**
    * Replace the customer's name and e-mail address
    *
-   * Invoices, receipts and dunning mails carry the name and go to the e-mail address. Both are required, with the limits of customer creation. The external id cannot change.
+   * Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language. Name and e-mail are required, with the limits of customer creation; language and kind are replaced too, so omit them to clear them. The external id cannot change.
    *
    * `PUT /v1/customers/{external_id}/contact`
    */

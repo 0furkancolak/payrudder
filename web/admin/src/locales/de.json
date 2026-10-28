@@ -441,6 +441,14 @@
       "tenantCurrency": "Währung des Kontos",
       "create": "Kunden anlegen",
       "empty": "Noch keine Kunden.",
+      "profile": {
+        "language": "Sprache",
+        "auto": "Sprache des Browsers",
+        "type": "Art",
+        "unknown": "Nicht angegeben",
+        "individual": "Privatperson",
+        "business": "Unternehmen (steuerpflichtig)"
+      },
       "contact": {
         "edit": "Name und E-Mail bearbeiten",
         "title": "Name und E-Mail",

@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir fatura değildir.</strong></p>{{end}}
+<h2>Ödemenizi tahsil edemedik</h2>
+<p>Merhaba {{index .D "customer_name"}}, <strong>{{index .D "invoice_number"}}</strong> numaralı fatura için <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> tutarındaki ödeme (dönem {{index .D "period"}}) birkaç denemeye rağmen gerçekleşmedi. Lütfen ödeme yönteminizi güncelleyin.</p>
+{{if index .D "iban"}}<p>Bu faturayı yine de {{index .D "account_holder"}} hesabına, IBAN <strong>{{index .D "iban"}}</strong>{{if index .D "bank_name"}} ({{index .D "bank_name"}}){{end}}, ödeme referansı <strong>{{index .D "reference"}}</strong> ile banka havalesiyle ödeyebilirsiniz.</p>{{end}}
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

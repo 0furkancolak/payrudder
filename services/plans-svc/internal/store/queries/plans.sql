@@ -5,8 +5,8 @@
 SELECT id, environment, status, tier, currency, timezone FROM current_tenant();
 
 -- name: CreateCustomer :one
-INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address)
-VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address, locale, customer_type)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
 -- name: GetCustomerByExternalID :one
@@ -35,7 +35,7 @@ WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
 -- name: SetCustomerContact :one
-UPDATE customers SET name = @name, email = @email
+UPDATE customers SET name = @name, email = @email, locale = @locale, customer_type = @customer_type
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -207,5 +208,30 @@ func TestHostedPagesAreRateLimitedPerAddress(t *testing.T) {
 	}
 	if !l.allow("1.2.3.4", now.Add(61*time.Second)) {
 		t.Error("the window never reopens")
+	}
+}
+
+// A page about a customer is in the customer's own language, unless the reader picked another with ?lang=; a customer with no language (or one the pages do
+// not have) gets what the browser asks for.
+func TestCustomerLang(t *testing.T) {
+	req := func(url, accept string) *http.Request {
+		r := httptest.NewRequest(http.MethodGet, url, nil)
+		if accept != "" {
+			r.Header.Set("Accept-Language", accept)
+		}
+		return r
+	}
+	for _, c := range []struct {
+		name, url, accept, locale, want string
+	}{
+		{"the customer's language", "/c/x", "en-US", "tr", "tr"},
+		{"the reader's choice wins", "/c/x?lang=de", "en-US", "tr", "de"},
+		{"no language: the browser's", "/c/x", "fr-FR,fr;q=0.9", "", "fr"},
+		{"an unknown language: the browser's", "/c/x", "es", "xx", "es"},
+		{"nothing at all: English", "/c/x", "", "", "en"},
+	} {
+		if got := customerLang(req(c.url, c.accept), c.locale); got != c.want {
+			t.Errorf("%s: %q, want %q", c.name, got, c.want)
+		}
 	}
 }

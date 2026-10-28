@@ -110,7 +110,7 @@ export interface paths {
         get?: never;
         /**
          * Replace the customer's name and e-mail address
-         * @description Invoices, receipts and dunning mails carry the name and go to the e-mail address. Both are required, with the limits of customer creation. The external id cannot change.
+         * @description Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language. Name and e-mail are required, with the limits of customer creation; language and kind are replaced too, so omit them to clear them. The external id cannot change.
          */
         put: operations["setCustomerContact"];
         post?: never;
@@ -8280,6 +8280,16 @@ export interface components {
             /** @description ISO 4217; default is the tenant's currency */
             billing_currency?: string;
             address?: components["schemas"]["AddressInput"];
+            /**
+             * @description The language of the customer's mails
+             * @enum {string}
+             */
+            locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            /**
+             * @description A person or a taxpayer
+             * @enum {string}
+             */
+            customer_type?: "individual" | "business";
             /** @description The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation. */
             referral_code?: string;
             /**
@@ -8372,6 +8382,10 @@ export interface components {
             tax_id: string;
             tax_office: string;
             e_invoice_registered: boolean;
+            /** @description The language of the customer's mails, receipts and payment pages: en, tr, de, fr, es or ar. Empty is the browser's language (pages) and English (mails). */
+            locale: string;
+            /** @description individual (a person) or business (a taxpayer with a tax id). Empty is unknown. */
+            customer_type: string;
         };
         CreateMeterRequest: {
             code: string;
@@ -8707,6 +8721,16 @@ export interface components {
             name: string;
             /** Format: email */
             email: string;
+            /**
+             * @description The language of the customer's mails, receipts and payment pages; omit to clear it
+             * @enum {string}
+             */
+            locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            /**
+             * @description A person or a taxpayer; omit to clear it
+             * @enum {string}
+             */
+            customer_type?: "individual" | "business";
         };
         CustomerTax: {
             /** @description VKN/TCKN (Turkey) or VAT id (EU) */

@@ -662,6 +662,9 @@ message GetHostedInvoiceResponse {
   HostedAdhoc adhoc = 15;
   // Where to send the money, for an invoice paid by bank transfer; unset otherwise.
   BankTransferInstructions payment_instructions = 16;
+  // The customer's language (en, tr, de, fr, es, ar) and kind (individual, business) as frozen with the invoice; empty when the customer has none.
+  string customer_locale = 17;
+  string customer_type = 18;
 }
 
 // BankTransferInstructions are the tenant's bank details and the reference the customer puts on the transfer.
@@ -890,6 +893,8 @@ message GetPortalResponse {
   repeated PortalCreditLot credit_lots = 10;
   repeated PortalCreditPack credit_packs = 11;
   bool can_buy_credits = 12;
+  // The customer's language, as frozen with their latest invoice.
+  string customer_locale = 13;
 }
 message PortalCreditLot {
   int64 granted = 1;

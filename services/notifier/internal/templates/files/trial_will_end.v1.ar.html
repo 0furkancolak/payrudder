@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذا ليس تذكيرًا حقيقيًا.</strong></p>{{end}}
+<h2>تنتهي فترتك التجريبية قريبًا</h2>
+<p>مرحبًا {{index .D "customer_name"}}، تنتهي تجربتك المجانية لـ <strong>{{index .D "plan_code"}}</strong> في <strong>{{index .D "trial_end"}}</strong>. لا حاجة إلى بطاقة حتى ذلك الحين؛ بعده تُفوتر رسوم الخطة إن وُجدت.</p>
+<p>إذا كنت لا ترغب في المتابعة، يرجى إخبارنا قبل ذلك.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

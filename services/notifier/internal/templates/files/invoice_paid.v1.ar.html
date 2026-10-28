@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذه ليست فاتورة حقيقية.</strong></p>{{end}}
+<h2>شكرًا، {{index .D "customer_name"}}</h2>
+<p>استلمنا دفعتك بمبلغ <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> للفاتورة <strong>{{index .D "invoice_number"}}</strong> (الفترة {{index .D "period"}}).</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

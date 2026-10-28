@@ -7,8 +7,10 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { LocationFields } from "@/shared/ui/location-fields";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
-import { useSetCustomerAddress, useSetCustomerContact, useSetCustomerTax, type Address, type CustomerContact, type CustomerTax } from "./api";
+import type { ApiLocale } from "@/shared/lib/locale";
+import { useSetCustomerAddress, useSetCustomerContact, useSetCustomerTax, type Address, type CustomerContact, type CustomerKind, type CustomerTax } from "./api";
 import AddressLines from "./AddressLines.vue";
+import CustomerProfileFields from "./CustomerProfileFields.vue";
 import type { Customer } from "./lib";
 
 /**
@@ -23,15 +25,19 @@ const { t } = useI18n();
 
 const setContact = useSetCustomerContact(() => props.tenantId);
 const editContact = ref<CustomerContact>({ name: "", email: "" });
+const editLocale = ref("");
+const editKind = ref("");
 const contactId = computed(() => contactOf.value?.external_id ?? "");
 const contactOpen = computed({ get: () => contactOf.value !== null, set: (v) => !v && (contactOf.value = null) });
 watch(contactOf, (c) => {
   if (!c) return;
   editContact.value = { name: c.name ?? "", email: c.email ?? "" };
+  editLocale.value = c.locale ?? "";
+  editKind.value = c.customer_type ?? "";
   setContact.reset();
 });
 function saveContact() {
-  setContact.mutate({ externalId: contactId.value, contact: { name: editContact.value.name.trim(), email: editContact.value.email.trim() } }, { onSuccess: () => (contactOf.value = null) });
+  setContact.mutate({ externalId: contactId.value, contact: { name: editContact.value.name.trim(), email: editContact.value.email.trim(), locale: (editLocale.value || undefined) as ApiLocale | undefined, customer_type: (editKind.value || undefined) as CustomerKind | undefined } }, { onSuccess: () => (contactOf.value = null) });
 }
 
 const setAddress = useSetCustomerAddress(() => props.tenantId);
@@ -77,6 +83,7 @@ function saveTax() {
         <form id="edit-contact" class="grid gap-3" @submit.prevent="saveContact">
           <Input v-model="editContact.name" required maxlength="200" :aria-label="t('billing.customers.contact.name')" :placeholder="t('billing.customers.contact.name')" />
           <Input v-model="editContact.email" required type="email" :aria-label="t('billing.customers.contact.email')" :placeholder="t('billing.customers.contact.email')" />
+          <CustomerProfileFields v-model:locale="editLocale" v-model:kind="editKind" id-prefix="edit-contact" />
           <ErrorText :error="setContact.error.value" />
         </form>
       </SheetBody>
