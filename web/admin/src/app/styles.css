@@ -306,3 +306,38 @@
     inset-inline-end: calc(0.75rem + var(--sheet-behind, 0) * 0.875rem);
   }
 }
+
+/*
+ * Tables as cards. A <Table> below the `lg` breakpoint (the width a sidebar and eight columns stop fitting) lays each row out as a card: the first cell is
+ * the title, the others are label/value lines (Table.vue copies the header text onto each cell as data-label), and a last cell without a heading is the
+ * row's actions. Columns a page hides on a narrow screen (max-lg:hidden and the like) are shown again here, since a card has room for them.
+ */
+@media (max-width: 63.999rem) {
+  [data-slot="table"][data-stack] { display: block; }
+  [data-slot="table"][data-stack] > thead { display: none; }
+  [data-slot="table"][data-stack] > tbody { display: grid; gap: 0.625rem; padding: 0.25rem; }
+  [data-slot="table"][data-stack] > tbody > [data-slot="table-row"] {
+    display: block; min-width: 0; padding: 0.875rem 1rem; border: 0; border-radius: 1rem;
+    background-color: color-mix(in oklab, var(--muted) 70%, transparent);
+  }
+  [data-slot="table"][data-stack] > tbody > [data-slot="table-row"]:hover { background-color: var(--muted); }
+  [data-slot="table"][data-stack] [data-slot="table-cell"] {
+    display: flex !important; align-items: center; justify-content: space-between; gap: 0.75rem; width: auto; max-width: none; min-width: 0;
+    padding: 0.4rem 0; text-align: end; white-space: normal; overflow-wrap: anywhere;
+    border-top: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  }
+  [data-slot="table"][data-stack] [data-slot="table-cell"][data-label]::before {
+    content: attr(data-label); flex: none; max-width: 45%; text-align: start; font: 400 0.8125rem/1.25 var(--font-sans); color: var(--muted-foreground);
+  }
+  /* The title: the first cell, with no label and no rule above it. */
+  [data-slot="table"][data-stack] [data-slot="table-cell"]:first-child {
+    justify-content: flex-start; padding-top: 0; border-top: 0; text-align: start; font-weight: 500;
+  }
+  [data-slot="table"][data-stack] [data-slot="table-cell"]:first-child::before { content: none; }
+  /* The actions: a cell without a heading closes the card, to the end. */
+  [data-slot="table"][data-stack] [data-slot="table-cell"]:not([data-label]):not(:first-child) { justify-content: flex-end; }
+  /* A cell with nothing in it takes no line. */
+  [data-slot="table"][data-stack] [data-slot="table-cell"]:empty { display: none !important; }
+  /* A row that is one cell across the table (a message, a skeleton) is not a card of lines. */
+  [data-slot="table"][data-stack] [data-slot="table-cell"][colspan] { justify-content: center; text-align: center; border-top: 0; }
+}
