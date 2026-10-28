@@ -1988,6 +1988,12 @@ export interface Price {
   included: string;
 }
 
+export interface PriceChangeSkipped {
+  subscription_id: string;
+  customer_external_id: string;
+  reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable";
+}
+
 export interface PriceInput {
   meter_code: string;
   per_unit?: {
@@ -2292,6 +2298,25 @@ export interface ScheduledChange {
   effective_time: string | null;
   /** The seats the subscription has from then */
   quantity: number;
+}
+
+export interface SchedulePriceChangeRequest {
+  /** The plan version the subscriptions are on now */
+  from_version: number;
+  /** The version they move to; 0 or absent is the latest published */
+  to_version?: number;
+  /** Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14 */
+  notice_days?: number;
+  /** Only count; change nothing and mail nobody */
+  dry_run?: boolean;
+}
+
+export interface SchedulePriceChangeResponse {
+  scheduled: number;
+  scheduled_subscription_ids: Array<string>;
+  skipped: Array<PriceChangeSkipped>;
+  to_version: number;
+  notice_days: number;
 }
 
 export interface SetInvoiceLogoRequest {

@@ -339,6 +339,13 @@ class PlansResource:
         """
         return cast("m.PlanVersion", self._client._request("GET", f"/v1/plans/{_p(code)}/versions/{_p(version)}", response_wire='PlanVersion', options=options))
 
+    def schedule_price_change(self, code: str, body: m.SchedulePriceChangeRequest, *, options: RequestOptions | None = None) -> m.SchedulePriceChangeResponse:
+        """Move every subscription on one plan version to another at its next renewal, and tell the customers.
+
+        ``POST /v1/plans/{code}/price-changes``
+        """
+        return cast("m.SchedulePriceChangeResponse", self._client._request("POST", f"/v1/plans/{_p(code)}/price-changes", body=body, options=options))
+
 
 class SubscriptionsResource:
     """``/v1/subscriptions`` and related operations."""
@@ -1853,6 +1860,13 @@ class AsyncPlansResource:
         ``GET /v1/plans/{code}/versions/{version}``
         """
         return cast("m.PlanVersion", await self._client._request("GET", f"/v1/plans/{_p(code)}/versions/{_p(version)}", response_wire='PlanVersion', options=options))
+
+    async def schedule_price_change(self, code: str, body: m.SchedulePriceChangeRequest, *, options: RequestOptions | None = None) -> m.SchedulePriceChangeResponse:
+        """Move every subscription on one plan version to another at its next renewal, and tell the customers.
+
+        ``POST /v1/plans/{code}/price-changes``
+        """
+        return cast("m.SchedulePriceChangeResponse", await self._client._request("POST", f"/v1/plans/{_p(code)}/price-changes", body=body, options=options))
 
 
 class AsyncSubscriptionsResource:

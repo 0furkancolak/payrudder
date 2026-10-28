@@ -87,6 +87,7 @@ func (s *Server) subscriptionTaxAndCouponRoutes() []Route {
 		{"POST", "/v1/subscriptions/{id}/change-plan", AccessTenant, ratelimit.ClassWrite, s.changePlan},
 		{"POST", "/v1/subscriptions/{id}/change-preview", AccessTenant, ratelimit.ClassRead, s.previewSubscriptionChange},
 		{"POST", "/v1/subscriptions/{id}/change", AccessTenant, ratelimit.ClassWrite, s.changeSubscription},
+		{"POST", "/v1/plans/{code}/price-changes", AccessTenant, ratelimit.ClassWrite, s.schedulePriceChange},
 		{"POST", "/v1/subscriptions/{id}/coupon", AccessTenant, ratelimit.ClassWrite, s.applyCoupon},
 		{"DELETE", "/v1/subscriptions/{id}/coupon", AccessTenant, ratelimit.ClassWrite, s.removeCoupon},
 		{"GET", "/v1/tax-rates", AccessTenant, ratelimit.ClassRead, s.getTaxRates},

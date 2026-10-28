@@ -1820,6 +1820,14 @@ type Price struct {
 	Included string `json:"included"`
 }
 
+// PriceChangeSkipped is an object of the API; see components.schemas.PriceChangeSkipped in api/openapi/v1.yaml.
+type PriceChangeSkipped struct {
+	SubscriptionID     string `json:"subscription_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	// One of: renews_soon, has_pending_change, run_by_provider, not_changeable.
+	Reason string `json:"reason"`
+}
+
 // PriceInput is an object of the API; see components.schemas.PriceInput in api/openapi/v1.yaml.
 type PriceInput struct {
 	MeterCode string             `json:"meter_code"`
@@ -2085,6 +2093,27 @@ type SandboxSimulateInvoiceResponse struct {
 	PaymentMethod      string `json:"payment_method"`
 	Retried            bool   `json:"retried"`
 	RetryError         string `json:"retry_error,omitempty"`
+}
+
+// SchedulePriceChangeRequest is the request body of SchedulePriceChange.
+type SchedulePriceChangeRequest struct {
+	// The plan version the subscriptions are on now
+	FromVersion int `json:"from_version"`
+	// The version they move to; 0 or absent is the latest published
+	ToVersion *int `json:"to_version,omitempty"`
+	// Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14
+	NoticeDays *int `json:"notice_days,omitempty"`
+	// Only count; change nothing and mail nobody
+	DryRun *bool `json:"dry_run,omitempty"`
+}
+
+// SchedulePriceChangeResponse is the response of SchedulePriceChange.
+type SchedulePriceChangeResponse struct {
+	Scheduled                int                  `json:"scheduled"`
+	ScheduledSubscriptionIds []string             `json:"scheduled_subscription_ids"`
+	Skipped                  []PriceChangeSkipped `json:"skipped"`
+	ToVersion                int                  `json:"to_version"`
+	NoticeDays               int                  `json:"notice_days"`
 }
 
 // ScheduledChange is an object of the API; see components.schemas.ScheduledChange in api/openapi/v1.yaml.

@@ -650,7 +650,28 @@
       "trialBadge": "{n} günlük deneme",
       "trialColumn": "Ücretsiz deneme",
       "trialDaysValue": "{n} gün",
-      "noTrial": "Yok"
+      "noTrial": "Yok",
+      "priceChange": {
+        "action": "Fiyat değişikliği planla",
+        "title": "{code} için fiyat değişikliği",
+        "intro": "Bir sürümdeki müşterileri bir sonraki yenilemede diğerine taşır ve her birine kendi dilinde e-posta ile bildirir. O zamana kadar hiçbir şey değişmez.",
+        "from": "Başlangıç sürümü",
+        "to": "Yeni sürüm",
+        "latest": "En yeni (v{n})",
+        "notice": "Bildirim süresi (gün)",
+        "noticeHelp": "Müşteriye yenilemeden en az bu kadar önce haber verilir. En az 14.",
+        "check": "Kontrol et",
+        "schedule": "Planla ve müşterilere bildir",
+        "confirm": "{n} abonelik için yeni fiyat (v{version}) planlansın ve müşterilerine e-posta gönderilsin mi?",
+        "willSchedule": "{n} abonelik v{version} sürümüne taşınacak.",
+        "done": "{n} abonelik v{version} sürümüne taşınmak üzere planlandı; müşterilerine e-posta gönderiliyor.",
+        "reasons": {
+          "renews_soon": "{n} abonelik bildirim süresini vermek için çok yakın yenileniyor: daha sonra yeniden çalıştırın.",
+          "has_pending_change": "{n} aboneliğin zaten bekleyen bir değişikliği var, dokunulmadı.",
+          "run_by_provider": "{n} abonelik bir ödeme sağlayıcısı tarafından yürütülüyor.",
+          "not_changeable": "{n} abonelik bu yolla taşınamaz (örneğin ücret dönem sonunda faturalanıyor)."
+        }
+      }
     },
     "subscriptions": {
       "new": "Yeni abonelik",

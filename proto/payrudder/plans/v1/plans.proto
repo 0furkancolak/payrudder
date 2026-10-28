@@ -87,6 +87,9 @@ service PlansService {
   // PreviewSubscriptionChange prices a change of plan or interval without making it. ChangeSubscription makes it with the same calculation.
   rpc PreviewSubscriptionChange(PreviewSubscriptionChangeRequest) returns (PreviewSubscriptionChangeResponse);
   rpc ChangeSubscription(ChangeSubscriptionRequest) returns (ChangeSubscriptionResponse);
+  // SchedulePriceChange moves every subscription on one plan version to another at its next renewal, if that renewal is at least notice_days away, and mails
+  // each customer. The others are listed with why they were not scheduled; running it again later picks up the ones whose renewal was too close.
+  rpc SchedulePriceChange(SchedulePriceChangeRequest) returns (SchedulePriceChangeResponse);
   rpc CancelScheduledChange(CancelScheduledChangeRequest) returns (CancelScheduledChangeResponse);
   // ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
   rpc ApplyScheduledChanges(ApplyScheduledChangesRequest) returns (ApplyScheduledChangesResponse);
@@ -711,6 +714,33 @@ message ChangeSubscriptionRequest {
   google.protobuf.Timestamp change_time = 7;
   // The new quantity. 0 keeps it. A change of quantity alone is immediate and prorated unless timing says otherwise.
   int32 quantity = 8;
+}
+
+message SchedulePriceChangeRequest {
+  string plan_code = 1;
+  // The version the subscriptions are on now.
+  int32 from_version = 2;
+  // The version they move to. 0 = the latest published one.
+  int32 to_version = 3;
+  // How many days before the renewal the customer must be told at the least. 0 = 30. At least 14.
+  int32 notice_days = 4;
+  // Only count, change nothing and mail nobody.
+  bool dry_run = 5;
+}
+
+message PriceChangeSkipped {
+  string subscription_id = 1;
+  string customer_external_id = 2;
+  // renews_soon, has_pending_change, run_by_provider, not_changeable.
+  string reason = 3;
+}
+
+message SchedulePriceChangeResponse {
+  int32 scheduled = 1;
+  repeated string scheduled_subscription_ids = 2;
+  repeated PriceChangeSkipped skipped = 3;
+  int32 to_version = 4;
+  int32 notice_days = 5;
 }
 
 message ChangeQuote {

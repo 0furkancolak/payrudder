@@ -61,6 +61,7 @@ const (
 	PlansService_ChangePlan_FullMethodName                       = "/payrudder.plans.v1.PlansService/ChangePlan"
 	PlansService_PreviewSubscriptionChange_FullMethodName        = "/payrudder.plans.v1.PlansService/PreviewSubscriptionChange"
 	PlansService_ChangeSubscription_FullMethodName               = "/payrudder.plans.v1.PlansService/ChangeSubscription"
+	PlansService_SchedulePriceChange_FullMethodName              = "/payrudder.plans.v1.PlansService/SchedulePriceChange"
 	PlansService_CancelScheduledChange_FullMethodName            = "/payrudder.plans.v1.PlansService/CancelScheduledChange"
 	PlansService_ApplyScheduledChanges_FullMethodName            = "/payrudder.plans.v1.PlansService/ApplyScheduledChanges"
 	PlansService_ListSubscriptionAdjustments_FullMethodName      = "/payrudder.plans.v1.PlansService/ListSubscriptionAdjustments"
@@ -166,6 +167,9 @@ type PlansServiceClient interface {
 	// PreviewSubscriptionChange prices a change of plan or interval without making it. ChangeSubscription makes it with the same calculation.
 	PreviewSubscriptionChange(ctx context.Context, in *PreviewSubscriptionChangeRequest, opts ...grpc.CallOption) (*PreviewSubscriptionChangeResponse, error)
 	ChangeSubscription(ctx context.Context, in *ChangeSubscriptionRequest, opts ...grpc.CallOption) (*ChangeSubscriptionResponse, error)
+	// SchedulePriceChange moves every subscription on one plan version to another at its next renewal, if that renewal is at least notice_days away, and mails
+	// each customer. The others are listed with why they were not scheduled; running it again later picks up the ones whose renewal was too close.
+	SchedulePriceChange(ctx context.Context, in *SchedulePriceChangeRequest, opts ...grpc.CallOption) (*SchedulePriceChangeResponse, error)
 	CancelScheduledChange(ctx context.Context, in *CancelScheduledChangeRequest, opts ...grpc.CallOption) (*CancelScheduledChangeResponse, error)
 	// ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
 	ApplyScheduledChanges(ctx context.Context, in *ApplyScheduledChangesRequest, opts ...grpc.CallOption) (*ApplyScheduledChangesResponse, error)
@@ -629,6 +633,16 @@ func (c *plansServiceClient) ChangeSubscription(ctx context.Context, in *ChangeS
 	return out, nil
 }
 
+func (c *plansServiceClient) SchedulePriceChange(ctx context.Context, in *SchedulePriceChangeRequest, opts ...grpc.CallOption) (*SchedulePriceChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SchedulePriceChangeResponse)
+	err := c.cc.Invoke(ctx, PlansService_SchedulePriceChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) CancelScheduledChange(ctx context.Context, in *CancelScheduledChangeRequest, opts ...grpc.CallOption) (*CancelScheduledChangeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CancelScheduledChangeResponse)
@@ -930,6 +944,9 @@ type PlansServiceServer interface {
 	// PreviewSubscriptionChange prices a change of plan or interval without making it. ChangeSubscription makes it with the same calculation.
 	PreviewSubscriptionChange(context.Context, *PreviewSubscriptionChangeRequest) (*PreviewSubscriptionChangeResponse, error)
 	ChangeSubscription(context.Context, *ChangeSubscriptionRequest) (*ChangeSubscriptionResponse, error)
+	// SchedulePriceChange moves every subscription on one plan version to another at its next renewal, if that renewal is at least notice_days away, and mails
+	// each customer. The others are listed with why they were not scheduled; running it again later picks up the ones whose renewal was too close.
+	SchedulePriceChange(context.Context, *SchedulePriceChangeRequest) (*SchedulePriceChangeResponse, error)
 	CancelScheduledChange(context.Context, *CancelScheduledChangeRequest) (*CancelScheduledChangeResponse, error)
 	// ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
 	ApplyScheduledChanges(context.Context, *ApplyScheduledChangesRequest) (*ApplyScheduledChangesResponse, error)
@@ -1098,6 +1115,9 @@ func (UnimplementedPlansServiceServer) PreviewSubscriptionChange(context.Context
 }
 func (UnimplementedPlansServiceServer) ChangeSubscription(context.Context, *ChangeSubscriptionRequest) (*ChangeSubscriptionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ChangeSubscription not implemented")
+}
+func (UnimplementedPlansServiceServer) SchedulePriceChange(context.Context, *SchedulePriceChangeRequest) (*SchedulePriceChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SchedulePriceChange not implemented")
 }
 func (UnimplementedPlansServiceServer) CancelScheduledChange(context.Context, *CancelScheduledChangeRequest) (*CancelScheduledChangeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelScheduledChange not implemented")
@@ -1939,6 +1959,24 @@ func _PlansService_ChangeSubscription_Handler(srv interface{}, ctx context.Conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_SchedulePriceChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SchedulePriceChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).SchedulePriceChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_SchedulePriceChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).SchedulePriceChange(ctx, req.(*SchedulePriceChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_CancelScheduledChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CancelScheduledChangeRequest)
 	if err := dec(in); err != nil {
@@ -2484,6 +2522,10 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ChangeSubscription",
 			Handler:    _PlansService_ChangeSubscription_Handler,
+		},
+		{
+			MethodName: "SchedulePriceChange",
+			Handler:    _PlansService_SchedulePriceChange_Handler,
 		},
 		{
 			MethodName: "CancelScheduledChange",

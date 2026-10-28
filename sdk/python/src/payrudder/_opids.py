@@ -42,6 +42,7 @@ OPERATIONS: dict[str, tuple[str, str, str]] = {
     "withdrawCancellation": ("subscriptions", "withdraw_cancellation", "DELETE /v1/subscriptions/{id}/cancel-at-period-end"),
     "changePlan": ("subscriptions", "change_plan", "POST /v1/subscriptions/{id}/change-plan"),
     "previewSubscriptionChange": ("subscriptions", "preview_subscription_change", "POST /v1/subscriptions/{id}/change-preview"),
+    "schedulePriceChange": ("plans", "schedule_price_change", "POST /v1/plans/{code}/price-changes"),
     "changeSubscription": ("subscriptions", "change_subscription", "POST /v1/subscriptions/{id}/change"),
     "applyCoupon": ("subscriptions", "apply_coupon", "POST /v1/subscriptions/{id}/coupon"),
     "removeCoupon": ("subscriptions", "remove_coupon", "DELETE /v1/subscriptions/{id}/coupon"),

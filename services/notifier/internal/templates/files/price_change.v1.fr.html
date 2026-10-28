@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="fr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — ceci n'est pas un vrai avis.</strong></p>{{end}}
+<h2>Votre tarif change</h2>
+<p>Bonjour {{index .D "customer_name"}}, à partir du <strong>{{index .D "effective_date"}}</strong>, votre abonnement <strong>{{index .D "plan_code"}}</strong> coûtera <strong>{{index .D "new_renewal"}}</strong> à chaque renouvellement. Rien ne change avant.</p>
+<p>Si vous ne souhaitez pas continuer au nouveau tarif, merci de nous le dire avant cette date.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

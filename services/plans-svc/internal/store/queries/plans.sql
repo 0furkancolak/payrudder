@@ -389,3 +389,9 @@ DELETE FROM tenant_mail_integrations WHERE tenant_id = app_tenant_id();
 -- name: MarkMailIntegrationChecked :exec
 UPDATE tenant_mail_integrations SET checked_at = CASE WHEN @problem::text = '' THEN now() ELSE checked_at END, check_problem = @problem::text
 WHERE tenant_id = app_tenant_id();
+
+-- The subscriptions a price change looks at: Payrudder-run, not ended, on one plan version.
+-- name: ListLiveSubscriptionsOnVersion :many
+SELECT s.id, c.external_id AS customer_external_id FROM subscriptions s JOIN customers c ON c.tenant_id = s.tenant_id AND c.id = s.customer_id
+WHERE s.tenant_id = app_tenant_id() AND s.plan_version_id = @plan_version_id AND s.state <> 'cancelled' AND upper_inf(s.active)
+ORDER BY s.id;

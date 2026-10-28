@@ -505,6 +505,24 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /v1/plans/{code}/price-changes:
+    post:
+      operationId: schedulePriceChange
+      summary: Move every subscription on one plan version to another at its next renewal, and tell the customers
+      description: |
+        For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
+        (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
+        The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
+        `run_by_provider` and `not_changeable` (for example a fee invoiced in arrears). `dry_run` counts and changes nothing. Each scheduled change also sends the
+        `subscription.change_scheduled` webhook event.
+      parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/SchedulePriceChangeRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SchedulePriceChangeResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}/change:
     post:
       operationId: changeSubscription
@@ -4636,6 +4654,30 @@ components:
       description: Error envelope
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
   schemas:
+    SchedulePriceChangeRequest:
+      type: object
+      required: [from_version]
+      properties:
+        from_version: { type: integer, minimum: 1, description: The plan version the subscriptions are on now }
+        to_version: { type: integer, minimum: 0, description: The version they move to; 0 or absent is the latest published }
+        notice_days: { type: integer, minimum: 0, maximum: 365, description: "Days before the renewal the customer must be told at the least: absent or 0 is 30, otherwise at least 14" }
+        dry_run: { type: boolean, description: Only count; change nothing and mail nobody }
+    PriceChangeSkipped:
+      type: object
+      required: [subscription_id, customer_external_id, reason]
+      properties:
+        subscription_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        reason: { type: string, enum: [renews_soon, has_pending_change, run_by_provider, not_changeable] }
+    SchedulePriceChangeResponse:
+      type: object
+      required: [scheduled, scheduled_subscription_ids, skipped, to_version, notice_days]
+      properties:
+        scheduled: { type: integer }
+        scheduled_subscription_ids: { type: array, items: { type: string, format: uuid } }
+        skipped: { type: array, items: { $ref: "#/components/schemas/PriceChangeSkipped" } }
+        to_version: { type: integer }
+        notice_days: { type: integer }
     BlockCustomerRequest:
       type: object
       properties:
