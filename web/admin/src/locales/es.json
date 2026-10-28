@@ -3991,7 +3991,7 @@
         "simulatorPayments": "Lo usa el sandbox. Nada que conectar.",
         "simulatorEInvoice": "Lo usa el sandbox. Nada que conectar.",
         "perApp": "Se configura en cada app.",
-        "mailBuiltIn": "Las facturas, recibos y alertas salen desde Payrudder.",
+        "mailBuiltIn": "Enviado a través de Nafru Email, incluido en su plan.",
         "mailUnused": "Tu propio proveedor envía el correo live.",
         "mailOwn": "El correo live sale desde {from}."
       },
@@ -4048,7 +4048,7 @@
       },
       "mail": {
         "builtInTitle": "Correo de Payrudder",
-        "builtInIntro": "Payrudder envía el correo de tus clientes. Elige qué tipos se envían.",
+        "builtInIntro": "Payrudder envía el correo de sus clientes a través de Nafru Email. Está incluido en su plan y no hay nada que configurar. Elija qué tipos se envían.",
         "unusedNote": "Tu propio proveedor está conectado, así que el correo live pasa por él. Estos interruptores siguen decidiendo qué tipos se envían.",
         "nafruIntro": "Envía el correo de tus clientes con tu propia cuenta de Nafru Email, desde tu propia dirección. Introduce la dirección de la cuenta y su clave de API.",
         "envNote": "Esto conecta el entorno live. El correo del sandbox siempre va a la bandeja del sandbox.",
@@ -4067,7 +4067,8 @@
           "from": "Un nombre y una dirección en un dominio verificado en Nafru Email."
         },
         "checkAndConnect": "Comprobar y conectar",
-        "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder."
+        "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder.",
+        "templatesNote": "¿Quiere su propio estilo? En Nafru Email, añada Payrudder en Aplicaciones y edite allí las plantillas. Cada correo lleva su nombre en la etiqueta payrudder_template para aplicar la plantilla correcta."
       }
     },
     "envSwitch": {

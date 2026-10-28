@@ -35,12 +35,23 @@ type Resend struct {
 }
 
 type resendBody struct {
-	From    string   `json:"from"`
-	To      []string `json:"to"`
-	Subject string   `json:"subject"`
-	HTML    string   `json:"html,omitempty"`
-	Text    string   `json:"text,omitempty"`
+	From    string            `json:"from"`
+	To      []string          `json:"to"`
+	Subject string            `json:"subject"`
+	HTML    string            `json:"html,omitempty"`
+	Text    string            `json:"text,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Tags    []resendTag       `json:"tags,omitempty"`
 }
+
+type resendTag struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// templateTag is the name of the tag, and the header, that carry which Payrudder mail a message is. Nafru Email shows tags on each message, and an application
+// added there for Payrudder can match on it to apply its own template.
+const templateTag = "payrudder_template"
 
 func (s Resend) endpoint(path string) (string, error) {
 	base, err := url.Parse(strings.TrimRight(s.BaseURL, "/"))
@@ -60,7 +71,12 @@ func (s Resend) Send(ctx context.Context, m Message) (string, error) {
 	if err != nil {
 		return "", &NotSentError{err}
 	}
-	payload, err := json.Marshal(resendBody{From: m.From, To: []string{m.To}, Subject: m.Subject, HTML: m.HTML, Text: m.Text})
+	out := resendBody{From: m.From, To: []string{m.To}, Subject: m.Subject, HTML: m.HTML, Text: m.Text}
+	if validTag(m.Template) {
+		out.Tags = []resendTag{{Name: templateTag, Value: m.Template}}
+		out.Headers = map[string]string{"X-Payrudder-Template": m.Template}
+	}
+	payload, err := json.Marshal(out)
 	if err != nil {
 		return "", &NotSentError{err}
 	}
@@ -159,3 +175,16 @@ func detail(body []byte) string {
 const maxDetail = 200
 
 func truncate(s string) string { return strx.Truncate(s, maxDetail) }
+
+// validTag: a Resend tag value is ASCII letters, digits, underscores and dashes, at most 256 characters; anything else is left out rather than refused.
+func validTag(v string) bool {
+	if v == "" || len(v) > 256 {
+		return false
+	}
+	for _, r := range v {
+		if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '-') {
+			return false
+		}
+	}
+	return true
+}

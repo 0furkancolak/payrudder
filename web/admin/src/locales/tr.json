@@ -3991,7 +3991,7 @@
         "simulatorPayments": "Sandbox tarafından kullanılır. Bağlanacak bir şey yok.",
         "simulatorEInvoice": "Sandbox tarafından kullanılır. Bağlanacak bir şey yok.",
         "perApp": "Her uygulamada ayrı ayarlanır.",
-        "mailBuiltIn": "Faturalar, makbuzlar ve uyarılar Payrudder'dan gider.",
+        "mailBuiltIn": "Nafru Email üzerinden gönderilir, paketinize dahildir.",
         "mailUnused": "Canlı e-postaları kendi sağlayıcınız gönderir.",
         "mailOwn": "Canlı e-postalar {from} adresinden gider."
       },
@@ -4048,7 +4048,7 @@
       },
       "mail": {
         "builtInTitle": "Payrudder e-postası",
-        "builtInIntro": "Müşterilerinizin e-postalarını Payrudder gönderir. Hangi türlerin gideceğini seçin.",
+        "builtInIntro": "Payrudder müşterilerinizin e-postalarını Nafru Email üzerinden gönderir. Paketinize dahildir, kurulum gerektirmez. Hangi türlerin gideceğini seçin.",
         "unusedNote": "Kendi sağlayıcınız bağlı olduğundan canlı e-postalar onun üzerinden gider. Bu anahtarlar yine de hangi türlerin gönderileceğini belirler.",
         "nafruIntro": "Müşterilerinizin e-postalarını kendi Nafru Email hesabınız üzerinden, kendi adresinizden gönderin. Hesabın adresini ve API anahtarını girin.",
         "envNote": "Bu, canlı ortamı bağlar. Sandbox e-postaları her zaman sandbox gelen kutusuna gider.",
@@ -4067,7 +4067,8 @@
           "from": "Nafru Email'de doğrulanmış bir alan adındaki ad ve adres."
         },
         "checkAndConnect": "Denetle ve bağla",
-        "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider."
+        "confirmRemove": "Kendi e-posta sağlayıcınızın bağlantısı kesilsin mi? Canlı e-postalar yeniden Payrudder'dan gider.",
+        "templatesNote": "Kendi tasarımınızı mı istiyorsunuz? Nafru Email'de Uygulamalar bölümüne Payrudder'ı ekleyin ve şablonları orada düzenleyin. Her e-posta adını payrudder_template etiketiyle taşır, böylece doğru şablon uygulanır."
       }
     },
     "envSwitch": {

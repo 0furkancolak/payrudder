@@ -365,6 +365,9 @@ services:
       PAYRUDDER_WEBHOOK_ALLOW_PRIVATE: ${PAYRUDDER_WEBHOOK_ALLOW_PRIVATE:-true}
       # Mail to people (e-mail verification, password reset, invitations) goes to Mailpit; its links open the console.
       SMTP_ADDR: mailpit:1025
+      # Set both to send through Nafru Email instead of Mailpit (the sender every plan includes).
+      NAFRU_BASE_URL: ${NAFRU_BASE_URL:-}
+      NAFRU_API_KEY: ${NAFRU_API_KEY:-}
       PAYRUDDER_APP_URL: ${PAYRUDDER_APP_URL:-http://localhost:42301}
       # Keys the hash of one-time sign-in codes (a code has only a million values). Local stack only: generate your own with `openssl rand -hex 32`.
       PAYRUDDER_OTP_PEPPER: ${PAYRUDDER_OTP_PEPPER:-local-otp-pepper-change-me-0123456789}
@@ -591,6 +594,8 @@ services:
       PAYRUDDER_KAFKA_BROKERS: redpanda:9092
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       SMTP_ADDR: mailpit:1025
+      NAFRU_BASE_URL: ${NAFRU_BASE_URL:-}
+      NAFRU_API_KEY: ${NAFRU_API_KEY:-}
       # The local stack may send a tenant's mail through an e-mail provider on http:// and a private address. Never set this in production.
       NOTIFIER_MAIL_ALLOW_PRIVATE: ${NOTIFIER_MAIL_ALLOW_PRIVATE:-true}
       PAYRUDDER_OTLP_ENDPOINT: otel-collector:4317

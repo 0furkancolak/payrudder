@@ -3991,7 +3991,7 @@
         "simulatorPayments": "Used by the sandbox. Nothing to connect.",
         "simulatorEInvoice": "Used by the sandbox. Nothing to connect.",
         "perApp": "Set up on each app.",
-        "mailBuiltIn": "Invoices, receipts and alerts go out from Payrudder.",
+        "mailBuiltIn": "Sent through Nafru Email, included in your plan.",
         "mailUnused": "Your own provider sends the live mail.",
         "mailOwn": "Live mail goes out from {from}."
       },
@@ -4048,7 +4048,7 @@
       },
       "mail": {
         "builtInTitle": "Payrudder mail",
-        "builtInIntro": "Payrudder sends your customers' mail. Choose which kinds go out.",
+        "builtInIntro": "Payrudder sends your customers' mail through Nafru Email. It is included in your plan and there is nothing to set up. Choose which kinds go out.",
         "unusedNote": "Your own provider is connected, so the live mail goes through it. These switches still decide which kinds are sent.",
         "nafruIntro": "Send your customers' mail through your own Nafru Email account, from your own address. Enter the account's address and API key.",
         "envNote": "This connects the live environment. The sandbox's mail always goes to the sandbox inbox.",
@@ -4067,7 +4067,8 @@
           "from": "A name and address on a domain verified at Nafru Email."
         },
         "checkAndConnect": "Check and connect",
-        "confirmRemove": "Disconnect your own e-mail provider? The live mail goes out from Payrudder again."
+        "confirmRemove": "Disconnect your own e-mail provider? The live mail goes out from Payrudder again.",
+        "templatesNote": "Want your own look? In Nafru Email, add Payrudder under Applications and edit the templates there. Every mail carries its name in the payrudder_template tag, so the right template is applied."
       }
     },
     "envSwitch": {

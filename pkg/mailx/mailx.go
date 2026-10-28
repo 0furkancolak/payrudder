@@ -24,6 +24,8 @@ type Message struct {
 	Text    string
 	// ID is the Message-ID local part (the dedup key makes it traceable).
 	ID string
+	// Template names the Payrudder mail this is ("invoice_issued", "payment_failed"...). A provider that keeps templates of its own can route on it.
+	Template string
 }
 
 // NotSentError means the message was certainly not accepted (the failure came before the end of DATA), so the caller may
