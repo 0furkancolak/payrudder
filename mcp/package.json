@@ -1,0 +1,27 @@
+{
+  "name": "@payrudder/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An MCP server over the Payrudder tenant API: read tools by default, a few writes behind an explicit switch.",
+  "type": "module",
+  "bin": {
+    "payrudder-mcp": "dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5"
+  }
+}

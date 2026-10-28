@@ -14,6 +14,7 @@ export const GUIDES = [
   { src: join(here, "content/getting-started.md"), page: "getting-started", title: "Getting started" },
   { src: join(root, "docs/16-webhooks.md"), page: "webhooks", title: "Webhooks" },
   { src: join(root, "docs/18-sdks.md"), page: "sdks", title: "SDKs" },
+  { src: join(root, "mcp/README.md"), page: "mcp", title: "MCP server" },
   { src: join(root, "docs/error-keys.md"), page: "error-keys", title: "Error keys" },
 ];
 
