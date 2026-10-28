@@ -96,8 +96,11 @@ func (r *Registry) Register(name string, f Factory) {
 // Build returns the provider called name configured by settings, or ErrUnknownProvider.
 func (r *Registry) Build(name string, settings []byte) (Provider, error) {
 	r.mu.RLock()
-	f, ok := r.factories[name]
+	f, ok := r.factories[BaseProvider(name)]
 	r.mu.RUnlock()
+	if !ValidAccountKey(name) {
+		ok = false
+	}
 	if !ok {
 		return nil, fmt.Errorf("%w: %q", ErrUnknownProvider, name)
 	}
@@ -238,7 +241,7 @@ func (r *Registry) RegisterParser(name string, p ParseNotification) {
 func (r *Registry) Parser(name string) (ParseNotification, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	p, ok := r.parsers[name]
+	p, ok := r.parsers[BaseProvider(name)]
 	return p, ok
 }
 

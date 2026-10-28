@@ -19,7 +19,10 @@ var catalogue = map[string]payments.Capabilities{
 
 // Lookup returns the capabilities of a provider by name.
 func Lookup(name string) (payments.Capabilities, bool) {
-	c, ok := catalogue[name]
+	if !payments.ValidAccountKey(name) {
+		return payments.Capabilities{}, false
+	}
+	c, ok := catalogue[payments.BaseProvider(name)]
 	return c, ok
 }
 

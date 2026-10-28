@@ -3907,7 +3907,30 @@
         "problem": "Modo de prueba: problema",
         "done": "Modo de prueba de {provider} conectado al sandbox."
       },
-      "confirmDisconnectSandbox": "¿Quitar la cuenta sandbox en {provider}? El sandbox vuelve al simulador integrado."
+      "confirmDisconnectSandbox": "¿Quitar la cuenta sandbox en {provider}? El sandbox vuelve al simulador integrado.",
+      "account": {
+        "title": "Cuentas de pago",
+        "intro": "Conecte varias cuentas en un mismo proveedor (una cuenta de Paddle por región, una de iyzico por empresa), elija la predeterminada e indique qué cuenta cobra a los clientes de cada país.",
+        "add": "Añadir una cuenta de {provider}",
+        "empty": "Todavía no hay ninguna cuenta de pago conectada. Conecte una arriba.",
+        "default": "Predeterminada",
+        "makeDefault": "Hacer predeterminada",
+        "label": "Etiqueta",
+        "labelHelp": "Distingue esta cuenta de las demás: minúsculas, dígitos y guiones, por ejemplo eu o istanbul. No se puede cambiar después.",
+        "labelBad": "Use minúsculas, dígitos y guiones, empezando por letra o dígito (31 caracteres como máximo).",
+        "routing": {
+          "title": "Qué cuenta se queda con qué clientes",
+          "intro": "Se aplica la primera regla que coincide con el país del cliente y la moneda. El resto se cobra con la cuenta predeterminada. Las suscripciones existentes conservan su cuenta.",
+          "country": "País",
+          "currency": "Moneda",
+          "account": "Cuenta",
+          "any": "Todos",
+          "addRule": "Añadir regla",
+          "remove": "Quitar",
+          "save": "Guardar reglas",
+          "saved": "Reglas guardadas"
+        }
+      }
     },
     "integrations": {
       "introApp": "Conecta los proveedores de pago, el integrador de facturación electrónica y el proveedor de correo de {app}. Los clientes se atienden por las conexiones live; el sandbox no necesita ninguna.",

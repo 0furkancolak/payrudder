@@ -3907,7 +3907,30 @@
         "problem": "Testmodus: Problem",
         "done": "{provider}-Testmodus für die Sandbox verbunden."
       },
-      "confirmDisconnectSandbox": "Das Sandbox-Konto bei {provider} entfernen? Die Sandbox läuft dann wieder auf dem eingebauten Simulator."
+      "confirmDisconnectSandbox": "Das Sandbox-Konto bei {provider} entfernen? Die Sandbox läuft dann wieder auf dem eingebauten Simulator.",
+      "account": {
+        "title": "Zahlungskonten",
+        "intro": "Verbinden Sie mehrere Konten bei einem Anbieter (ein Paddle-Konto je Region, ein iyzico-Konto je Firma), wählen Sie das Standardkonto und legen Sie fest, welches Konto die Kunden welchen Landes abrechnet.",
+        "add": "{provider}-Konto hinzufügen",
+        "empty": "Noch kein Zahlungskonto verbunden. Verbinden Sie oben eines.",
+        "default": "Standard",
+        "makeDefault": "Zum Standard machen",
+        "label": "Bezeichnung",
+        "labelHelp": "Unterscheidet dieses Konto von den anderen: Kleinbuchstaben, Ziffern und Bindestriche, zum Beispiel eu oder istanbul. Später nicht änderbar.",
+        "labelBad": "Kleinbuchstaben, Ziffern und Bindestriche verwenden, beginnend mit Buchstabe oder Ziffer (höchstens 31 Zeichen).",
+        "routing": {
+          "title": "Welches Konto welche Kunden übernimmt",
+          "intro": "Es gilt die erste Regel, die zu Land und Währung des Kunden passt. Alle anderen werden über das Standardkonto abgerechnet. Bestehende Abonnements behalten ihr Konto.",
+          "country": "Land",
+          "currency": "Währung",
+          "account": "Konto",
+          "any": "Alle",
+          "addRule": "Regel hinzufügen",
+          "remove": "Entfernen",
+          "save": "Regeln speichern",
+          "saved": "Regeln gespeichert"
+        }
+      }
     },
     "integrations": {
       "introApp": "Verbinden Sie die Zahlungsanbieter, den E-Rechnungs-Integrator und den E-Mail-Anbieter von {app}. Kunden werden über die Live-Verbindungen bedient; die Sandbox braucht keine.",

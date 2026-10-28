@@ -380,3 +380,45 @@ test.describe("integrations: groups, marks and the other integrations", () => {
     await expect(page).toHaveURL(new RegExp(`/app/apps/${APP}/integrations`));
   });
 });
+
+test.describe("several accounts at one provider", () => {
+  test("adds a second Paddle account under a label, makes it the default and routes a country to it", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, { accounts: [{ provider: "paddle", default: true, working: true, checked: true }] });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const card = page.getByTestId("accounts-card");
+    await expect(card.getByTestId("account-paddle")).toBeVisible();
+    await expect(card.getByTestId("account-default-paddle")).toBeVisible();
+
+    await card.getByTestId("account-add-paddle").click();
+    const sheet = page.getByTestId("provider-sheet");
+    // A label is required, and it has the server's shape.
+    await sheet.getByTestId("lp-account-label").fill("EU West");
+    await expect(sheet.getByRole("alert")).toContainText("lower-case");
+    await expect(sheet.getByTestId("provider-connect")).toBeDisabled();
+    await sheet.getByTestId("lp-account-label").fill("eu");
+    await keys(sheet);
+    await sheet.getByTestId("provider-connect").click();
+    expect(gw.called("PUT", `/app/v1/apps/${APP}/go-live/providers/paddle~eu`)).toHaveLength(1);
+    await expect(card.getByTestId("account-paddle~eu")).toBeVisible();
+    expect(await page.content()).not.toContain("SECRETKEY");
+
+    // The default moves without sending any key again.
+    await card.getByTestId("account-make-default-paddle~eu").click();
+    await expect(card.getByTestId("account-default-paddle~eu")).toBeVisible();
+    await expect(card.getByTestId("account-default-paddle")).toHaveCount(0);
+    expect(gw.called("POST", `/app/v1/apps/${APP}/go-live/providers/paddle~eu/default`)).toHaveLength(1);
+
+    // A rule sends a country to an account.
+    await card.getByTestId("routing-add").click();
+    await card.getByTestId("routing-country-0").fill("de");
+    await card.getByTestId("routing-account-0").selectOption("paddle");
+    await card.getByTestId("routing-save").click();
+    await expect(card.getByTestId("routing-saved")).toBeVisible();
+    const sent = gw.called("PUT", `/app/v1/apps/${APP}/go-live/routing`)[0]?.body as { rules: { country: string; provider: string }[] };
+    expect(sent.rules).toEqual([{ country: "DE", currency: "", provider: "paddle" }]);
+  });
+});
+

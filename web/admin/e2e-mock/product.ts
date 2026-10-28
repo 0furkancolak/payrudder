@@ -298,6 +298,8 @@ export interface LiveState {
   refuseProvider: { status: number; key: string } | null;
   /** The billing profile the owner saved. */
   profile: Record<string, unknown> | null;
+  /** The routing rules of the live environment. */
+  routing?: { country: string; currency: string; provider: string }[];
 }
 
 const goLiveBody = (s: LiveState) => {
@@ -345,6 +347,15 @@ export function liveGateway(gw: MockGateway, state: Partial<LiveState> = {}): { 
       return { body: { id: LIVE, ...c.body } };
     }
     if (c.path === providers && c.method === "GET") return { body: { ready: s.accounts.some((a) => a.working), providers: s.accounts.filter((a) => a.working).map((a) => a.provider), accounts: s.accounts } };
+    if (c.path.startsWith(`${providers}/`) && c.path.endsWith("/default") && c.method === "POST") {
+      const key = c.path.slice(providers.length + 1, -"/default".length);
+      s.accounts = s.accounts.map((a) => ({ ...a, default: a.provider === key }));
+      return { status: 204, body: {} };
+    }
+    if (c.path === `/app/v1/apps/${APP}/go-live/routing`) {
+      if (c.method === "PUT") s.routing = (c.body as { rules?: { country: string; currency: string; provider: string }[] } | undefined)?.rules ?? [];
+      return { body: { rules: s.routing ?? [] } };
+    }
     if (c.path.startsWith(`${providers}/`) && c.method === "PUT") {
       if (s.refuseProvider) return { status: s.refuseProvider.status, body: { error: { code: "INVALID_ARGUMENT", key: s.refuseProvider.key, message: "refused" } } };
       const provider = c.path.split("/").pop() ?? "";

@@ -2024,7 +2024,8 @@ type RoutingRulesInputRules struct {
 	Country string `json:"country,omitempty"`
 	// ISO 4217; empty matches any currency
 	Currency string `json:"currency,omitempty"`
-	// One of: iyzico, paddle, banktransfer.
+	// The account the rule sends to: a provider, or a provider with the label of one of its further accounts
+	// (paddle~eu).
 	Provider string `json:"provider,omitempty"`
 }
 
@@ -2034,7 +2035,8 @@ type RoutingRulesRules struct {
 	Country string `json:"country"`
 	// ISO 4217; empty matches any currency
 	Currency string `json:"currency"`
-	// One of: iyzico, paddle, banktransfer.
+	// The account the rule sends to: a provider, or a provider with the label of one of its further accounts
+	// (paddle~eu).
 	Provider string `json:"provider"`
 }
 

@@ -53,6 +53,9 @@ type Put struct {
 
 // PutAccount stores (or replaces) an account. The settings are validated by building the adapter, and the provider's own mode must be the environment's.
 func PutAccount(ctx context.Context, d Deps, in Put) error {
+	if payments.BaseProvider(in.Provider) == banktransfer.Name && in.Provider != banktransfer.Name {
+		return refuse.New(http.StatusBadRequest, "payments.account.single_only", "bank transfer has one account per environment")
+	}
 	built, err := d.Registry.Build(in.Provider, in.Settings)
 	if err != nil {
 		if errors.Is(err, payments.ErrUnknownProvider) {
@@ -90,6 +93,24 @@ func PutAccount(ctx context.Context, d Deps, in Put) error {
 		if err := syncBankTransfer(ctx, d, in.Tenant); err != nil {
 			d.Log.ErrorContext(ctx, "bank details not passed on to plans-svc", "err", err)
 			return refuse.New(http.StatusBadGateway, "payments.account.sync_failed", "the account is stored, but plans-svc could not be told the bank details for the invoices; send the request again")
+		}
+	}
+	return nil
+}
+
+// SetDefaultAccount makes a stored account the default of the environment. Bank details follow the default (see syncBankTransfer).
+func SetDefaultAccount(ctx context.Context, d Deps, tenant uuid.UUID, provider, environment string) error {
+	found, err := d.Accounts.SetDefault(ctx, tenant, provider, environment)
+	if err != nil {
+		return fmt.Errorf("provider account default failed: %w", err)
+	}
+	if !found {
+		return refuse.New(http.StatusNotFound, "payments.account.not_found", "no such account")
+	}
+	if environment == env.Live.String() {
+		if err := syncBankTransfer(ctx, d, tenant); err != nil {
+			d.Log.ErrorContext(ctx, "bank details not passed on to plans-svc", "err", err)
+			return refuse.New(http.StatusBadGateway, "payments.account.sync_failed", "the default is changed, but plans-svc could not be told the bank details for the invoices; send the request again")
 		}
 	}
 	return nil

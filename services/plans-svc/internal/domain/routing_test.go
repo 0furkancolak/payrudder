@@ -77,3 +77,16 @@ func TestValidateRules(t *testing.T) {
 		t.Error("too many rules must be refused")
 	}
 }
+
+// Several accounts at one provider are told apart by a label in the key: a rule may name any of them, and a malformed key is not a provider.
+func TestValidateRulesAccountKeys(t *testing.T) {
+	ok := []Rule{{Country: "TR", Provider: "iyzico~istanbul"}, {Country: "DE", Provider: "paddle~eu"}, {Provider: "paddle"}}
+	if err := ValidateRules(ok, caps); err != nil {
+		t.Fatalf("labelled accounts: %v", err)
+	}
+	for _, key := range []string{"paddle~", "paddle~EU", "paddle~a~b", "nope~eu", "~eu"} {
+		if err := ValidateRules([]Rule{{Provider: key}}, caps); err == nil {
+			t.Errorf("%q accepted", key)
+		}
+	}
+}

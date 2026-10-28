@@ -2230,7 +2230,8 @@ export interface RoutingRules {
     country: string;
     /** ISO 4217; empty matches any currency */
     currency: string;
-    provider: "iyzico" | "paddle" | "banktransfer";
+    /** The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu). */
+    provider: string;
   }>;
 }
 
@@ -2240,7 +2241,8 @@ export interface RoutingRulesInput {
     country?: string;
     /** ISO 4217; empty matches any currency */
     currency?: string;
-    provider?: "iyzico" | "paddle" | "banktransfer";
+    /** The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu). */
+    provider?: string;
   }>;
 }
 

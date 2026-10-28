@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/payments/providers"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
@@ -31,6 +33,9 @@ func (s *Server) goLiveRoutes() []Route {
 		{"GET", "/app/v1/apps/{id}/go-live/providers", AccessSession, ratelimit.ClassRead, s.appLiveProviders},
 		{"PUT", "/app/v1/apps/{id}/go-live/providers/{provider}", AccessSession, ratelimit.ClassWrite, s.appLiveProviderPut},
 		{"DELETE", "/app/v1/apps/{id}/go-live/providers/{provider}", AccessSession, ratelimit.ClassWrite, s.appLiveProviderDelete},
+		{"GET", "/app/v1/apps/{id}/go-live/routing", AccessSession, ratelimit.ClassRead, s.appLiveRoutingGet},
+		{"PUT", "/app/v1/apps/{id}/go-live/routing", AccessSession, ratelimit.ClassWrite, s.appLiveRoutingPut},
+		{"POST", "/app/v1/apps/{id}/go-live/providers/{provider}/default", AccessSession, ratelimit.ClassWrite, s.appLiveProviderDefault},
 		{"POST", "/app/v1/apps/{id}/api-keys/{key_id}/rotate", AccessSession, ratelimit.ClassWrite, s.appKeyRotate},
 		{"POST", "/app/v1/apps/{id}/promote", AccessSession, ratelimit.ClassWrite, s.appPromote},
 		{"PUT", "/admin/v1/tenants/{id}/status", AccessOperator, "", s.setTenantStatus},
@@ -225,6 +230,70 @@ func (s *Server) appLiveProviderDelete(w http.ResponseWriter, r *http.Request) {
 		pr.Out.URL.RawQuery = url.Values{"environment": {env.Live.String()}}.Encode()
 		pr.Out.Header.Set("X-Payrudder-Actor", "user:"+sess.UserID)
 	})(w, r)
+}
+
+// appLiveProviderDefault makes one of the app's live accounts the default: the one charges go to when no routing rule names another. Only the owner; recorded
+// for this person (the account's settings are not touched, so none is sent).
+func (s *Server) appLiveProviderDefault(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	tenant, err := s.ownerLiveTenant(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	provider := r.PathValue("provider")
+	if !connectableProviders(provider) {
+		writeError(w, r, errkey.New(codes.NotFound, "payments.provider.unknown", "unknown provider"))
+		return
+	}
+	noStore(w)
+	s.paymentsForward(func(*http.Request) string {
+		return "/admin/tenants/" + url.PathEscape(tenant) + "/provider-accounts/" + url.PathEscape(provider) + "/default"
+	}, func(pr *httputil.ProxyRequest) {
+		pr.Out.URL.RawQuery = url.Values{"environment": {env.Live.String()}}.Encode()
+		pr.Out.Header.Set("X-Payrudder-Actor", "user:"+sess.UserID)
+	})(w, r)
+}
+
+// appLiveRoutingGet returns the routing rules of the app's live environment. Any member reads them.
+func (s *Server) appLiveRoutingGet(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	id, perr := uuid.Parse(live)
+	if perr != nil {
+		writeError(w, r, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable"))
+		return
+	}
+	resp, err := s.d.Plans.GetRoutingRules(tenant.OutgoingFor(r.Context(), id), &plansv1.GetRoutingRulesRequest{})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appLiveRoutingPut replaces the routing rules of the app's live environment: which account takes a customer of a country paying in a currency. Only the owner.
+func (s *Server) appLiveRoutingPut(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, err := s.ownerLiveTenant(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	id, perr := uuid.Parse(live)
+	if perr != nil {
+		writeError(w, r, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable"))
+		return
+	}
+	req := &plansv1.SetRoutingRulesRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStore(w)
+	resp, err := s.d.Plans.SetRoutingRules(tenant.OutgoingFor(r.Context(), id), req)
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 func (s *Server) appKeyRotate(w http.ResponseWriter, r *http.Request) {

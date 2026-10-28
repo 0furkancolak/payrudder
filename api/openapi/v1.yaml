@@ -3064,7 +3064,7 @@ paths:
       security: [{ sessionToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/ID" }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [banktransfer, iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$' }, description: 'The provider, or the provider, a tilde and a label of your choice to connect a further account at the same provider (paddle~eu).' }
       requestBody:
         required: true
         content:
@@ -3084,9 +3084,58 @@ paths:
       security: [{ sessionToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/ID" }
-        - { name: provider, in: path, required: true, schema: { type: string, enum: [banktransfer, iyzico, paddle] } }
+        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$' }, description: 'The provider, or the provider, a tilde and a label of your choice to connect a further account at the same provider (paddle~eu).' }
       responses:
         "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/go-live/providers/{provider}/default:
+    post:
+      operationId: appDefaultLiveProvider
+      tags: [Product]
+      summary: Make a connected live account the default (the owner only)
+      description: >
+        The default account takes the charges that no routing rule sends elsewhere. The previous default stops being one. The account's settings are not touched.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: provider, in: path, required: true, schema: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$' } }
+      responses:
+        "204": { description: Changed }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/go-live/routing:
+    get:
+      operationId: appLiveRouting
+      tags: [Product]
+      summary: The rules that choose the live account by the customer's country and the currency
+      description: Any member reads it. First match wins; charges no rule matches go to the default account.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RoutingRules" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: appSetLiveRouting
+      tags: [Product]
+      summary: Replace the live routing rules (the owner only)
+      description: >
+        A rule names an account by its key (iyzico, or paddle~eu for a further account at the same provider); an unknown account, a currency its provider cannot
+        charge, or a rule an earlier one makes unreachable is refused. Existing subscriptions keep their account.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RoutingRulesInput" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/RoutingRules" } } } }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
@@ -8553,7 +8602,7 @@ components:
             properties:
               country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2; empty matches any country }
               currency: { type: string, description: ISO 4217; empty matches any currency }
-              provider: { type: string, enum: [iyzico, paddle, banktransfer] }
+              provider: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
     RoutingRulesInput:
       type: object
       properties:
@@ -8564,7 +8613,7 @@ components:
             properties:
               country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2; empty matches any country }
               currency: { type: string, description: ISO 4217; empty matches any currency }
-              provider: { type: string, enum: [iyzico, paddle, banktransfer] }
+              provider: { type: string, pattern: '^(banktransfer|iyzico|paddle)(~[a-z0-9][a-z0-9-]{0,30})?$', description: 'The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu).' }
     Tenant:
       type: object
       required: [id, account_id, app_id, address, legal, e_invoice_on, environment, name, tier, currency, timezone, grace_period, create_time, status, activate_time, terms_accept_time, invoice_logo_asset_id]

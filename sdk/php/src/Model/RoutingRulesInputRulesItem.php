@@ -7,7 +7,6 @@ declare(strict_types=1);
 namespace Payrudder\Model;
 
 use Payrudder\Contract\RequestBody;
-use Payrudder\Enum\RoutingRulesInputRulesItemProvider;
 use Payrudder\Internal\Cast;
 
 /**
@@ -18,12 +17,12 @@ final class RoutingRulesInputRulesItem implements RequestBody
     /**
      * @param string|null $country
      * @param string|null $currency
-     * @param RoutingRulesInputRulesItemProvider|string|null $provider
+     * @param string|null $provider
      */
     public function __construct(
         public readonly ?string $country = null,
         public readonly ?string $currency = null,
-        public readonly RoutingRulesInputRulesItemProvider|string|null $provider = null,
+        public readonly ?string $provider = null,
     ) {}
 
     /**
@@ -34,7 +33,7 @@ final class RoutingRulesInputRulesItem implements RequestBody
         return Cast::compact([
             'country' => $this->country,
             'currency' => $this->currency,
-            'provider' => Cast::wire($this->provider),
+            'provider' => $this->provider,
         ]);
     }
 }
