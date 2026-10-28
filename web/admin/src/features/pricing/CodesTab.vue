@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Ban, Plus } from "@lucide/vue";
+import { HeaderAction } from "@/shared/ui/page-header";
+import { Ban } from "@lucide/vue";
 import { refDebounced } from "@vueuse/core";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -93,9 +94,7 @@ const detailRows = computed(() => {
     <DataToolbar v-model:search="search" :placeholder="t('billing.pricing.promotions.codes.search')" :active="active" @clear="clear">
       <FilterSelect v-model="coupon" :label="t('billing.pricing.promotions.redemptions.coupon')" :options="couponOptions" />
       <FilterSelect v-model="state" :label="t('billing.subscriptions.state')" :options="stateOptions" />
-      <template #actions>
-        <Button type="button" data-testid="codes-new" :disabled="!canWrite" @click="emit('newCode', coupon)"><Plus class="size-4" aria-hidden="true" />{{ t("billing.pricing.promotions.codes.create") }}</Button>
-      </template>
+      <HeaderAction test-id="codes-new" :disabled="!canWrite" :label="t('billing.pricing.promotions.codes.create')" @click="emit('newCode', coupon)" />
     </DataToolbar>
     <CodesTable :rows="rows" :selected="index" show-coupon @select="(i) => (index = i)" @deactivate="(c) => act.deactivate.mutate(c)" />
     <Skeleton v-if="codes.isPending.value" class="mx-3 my-4 h-24" />

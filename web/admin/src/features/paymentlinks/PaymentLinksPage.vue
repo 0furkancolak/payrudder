@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
-import { ArrowUpRight, Ban, Plus } from "@lucide/vue";
+import { ArrowUpRight, Ban } from "@lucide/vue";
 import { useParams, useSearch } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -131,9 +132,7 @@ const what = (l: { kind?: string; amount_minor?: string; currency?: string; invo
       <FilterSelect v-model="kind" :label="t('billing.paymentLinks.kind')" :options="kinds" />
       <FilterSelect v-model="status" :label="t('billing.paymentLinks.status')" :options="statuses" />
       <DateRangePicker v-model="range" />
-      <template #actions>
-        <Button type="button" @click="open = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.paymentLinks.create") }}</Button>
-      </template>
+      <HeaderAction :label="t('billing.paymentLinks.create')" @click="open = true" />
     </DataToolbar>
     <ErrorText :error="links.error.value" class="px-3" />
     <ErrorText :error="act.revoke.error.value" class="px-3" />

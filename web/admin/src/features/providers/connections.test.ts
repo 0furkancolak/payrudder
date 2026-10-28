@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appRows, connectionOf, helpKey, orgSummary, summarize, targetsOf, type AppRow } from "./connections";
+import { ACCOUNT_LABEL, accountKey, accountRows, appRows, connectionOf, helpKey, orgSummary, splitAccountKey, summarize, targetsOf, type AppRow } from "./connections";
 
 const live = (id: string): AppRow => ({ id, name: `App ${id}`, hasLive: true });
 const sandboxOnly: AppRow = { id: "s", name: "Sandbox only", hasLive: false };
@@ -58,5 +58,30 @@ describe("helpKey", () => {
     expect(helpKey("iyzico", "secret_key")).toBe("product.providers.help.iyzico.secret_key");
     expect(helpKey("iyzico", "buyer.ip")).toBe("product.providers.help.iyzico.buyer_ip");
     expect(helpKey("iyzico", "buyer.city")).toBeNull();
+  });
+});
+
+describe("accounts of one provider", () => {
+  it("joins and splits the key", () => {
+    expect(accountKey("paddle", "")).toBe("paddle");
+    expect(accountKey("paddle", "eu")).toBe("paddle~eu");
+    expect(splitAccountKey("paddle~eu")).toEqual({ provider: "paddle", label: "eu" });
+    expect(splitAccountKey("iyzico")).toEqual({ provider: "iyzico", label: "" });
+  });
+
+  it("accepts the labels the server accepts", () => {
+    for (const ok of ["eu", "a", "tr-istanbul", "2024"]) expect(ACCOUNT_LABEL.test(ok)).toBe(true);
+    for (const bad of ["", "EU", "-eu", "eu west", "a~b", "x".repeat(32)]) expect(ACCOUNT_LABEL.test(bad)).toBe(false);
+  });
+
+  it("lists the primary account before the further ones and keeps the default", () => {
+    const rows = accountRows([
+      { provider: "paddle~uk", working: true },
+      { provider: "paddle", working: true, default: true },
+      { provider: "iyzico~ist", working: false, problem: "refused" },
+    ]);
+    expect(rows.map((r) => r.key)).toEqual(["iyzico~ist", "paddle", "paddle~uk"]);
+    expect(rows.find((r) => r.key === "paddle")?.isDefault).toBe(true);
+    expect(rows.find((r) => r.key === "iyzico~ist")?.state).toBe("problem");
   });
 });

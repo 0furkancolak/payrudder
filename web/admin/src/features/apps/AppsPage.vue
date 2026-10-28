@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
 import { Link, useParams } from "@tanstack/vue-router";
-import { Plus } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { keyMask } from "@/shared/lib/environment";
@@ -111,9 +111,7 @@ const sessionOf = (tenant?: string) => session.value.filter((k) => k.tenantId ==
     <ErrorText :error="apps.error.value" class="px-3 pb-2" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="table.filters.value.env" multiple :label="t('apps.environments')" :options="[{ value: '', label: t('apps.allEnvironments') }, ...['sandbox', 'live'].map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
-      <template #actions>
-        <Button data-testid="apps-new" @click="creating = true"><Plus class="size-4" />{{ t("apps.new") }}</Button>
-      </template>
+      <HeaderAction test-id="apps-new" :label="t('apps.new')" @click="creating = true" />
     </DataToolbar>
     <Table>
       <TableHeader>

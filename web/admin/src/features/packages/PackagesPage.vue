@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { useParams } from "@tanstack/vue-router";
 import AppField from "@/app/layout/AppField.vue";
 import { computed, ref, watch } from "vue";
@@ -236,9 +237,7 @@ function submit() {
     <ErrorText :error="packages.error.value" class="px-3" />
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
       <DateRangePicker v-model="range" />
-      <template v-if="canWrite" #actions>
-        <Button data-testid="packages-new" @click="creating = true"><Plus class="size-4" />{{ t("billing.packages.new") }}</Button>
-      </template>
+      <HeaderAction v-if="canWrite" test-id="packages-new" :label="t('billing.packages.new')" @click="creating = true" />
     </DataToolbar>
     <Table>
       <TableHeader>

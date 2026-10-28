@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { useParams, useRouter } from "@tanstack/vue-router";
-import { CreditCard, ArrowUpRight, Gauge, Link2, MapPin, Plus, Receipt, Repeat, UserPen, Users } from "@lucide/vue";
+import { CreditCard, ArrowUpRight, Gauge, Link2, MapPin, Receipt, Repeat, UserPen, Users } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
@@ -13,7 +14,6 @@ import { tenantBase } from "@/shared/lib/session";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
-import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
@@ -172,6 +172,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
 </script>
 
 <template>
+  <HeaderAction test-id="customers-new" :label="t('billing.customers.new')" @click="creating = true" />
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current?.name || currentId" wide>
     <CustomerSheet
       v-if="current"
@@ -206,9 +207,6 @@ function actionsOf(c: Customer, i: number): RowAction[] {
       <FilterSelect v-model="countryFilter" multiple :label="t('billing.customers.country')" :options="countryOptions" />
       <FilterSelect v-model="currencyFilter" multiple :label="t('billing.customers.currency')" :options="currencyOptions" />
       <DateRangePicker v-model="range" />
-      <template #actions>
-        <Button data-testid="customers-new" @click="creating = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.customers.new") }}</Button>
-      </template>
     </DataToolbar>
 
     <!-- Nothing yet: say what a customer is and offer the first one. -->
@@ -216,7 +214,6 @@ function actionsOf(c: Customer, i: number): RowAction[] {
       <span class="bg-brand-soft text-brand-strong inline-flex size-12 items-center justify-center rounded-2xl"><Users class="size-6" aria-hidden="true" /></span>
       <p class="m-0 text-base font-semibold">{{ t("billing.customers.empty") }}</p>
       <p class="text-muted-foreground m-0 max-w-sm text-sm">{{ t("billing.customers.emptyHint") }}</p>
-      <Button data-testid="customers-new" @click="creating = true"><Plus class="size-4" aria-hidden="true" />{{ t("billing.customers.new") }}</Button>
     </div>
 
     <template v-else>

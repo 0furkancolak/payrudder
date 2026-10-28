@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import CustomerLabel from "@/features/customers/CustomerLabel.vue";
-import { Plus, Settings2 } from "@lucide/vue";
+import { Settings2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import type { Subscription } from "@/shared/api/client";
@@ -85,9 +86,7 @@ useOpenParam("subscription", () => subs.isSuccess.value, (id) => {
       <FilterSelect v-model="currencyFilter" multiple :label="t('billing.subscriptions.currency')" :options="currencyOptions" />
       <FilterSelect v-model="intervalFilter" multiple :label="t('billing.subscriptions.interval')" :options="intervalOptions" />
       <DateRangePicker v-model="range" />
-      <template #actions>
-        <Button data-testid="subscriptions-new" @click="emit('create')"><Plus class="size-4" />{{ t("billing.subscriptions.new") }}</Button>
-      </template>
+      <HeaderAction test-id="subscriptions-new" :label="t('billing.subscriptions.new')" @click="emit('create')" />
     </DataToolbar>
     <Table>
       <TableHeader>

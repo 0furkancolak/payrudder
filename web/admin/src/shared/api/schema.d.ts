@@ -3501,6 +3501,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/go-live/providers/{provider}/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make a connected live account the default (the owner only)
+         * @description The default account takes the charges that no routing rule sends elsewhere. The previous default stops being one. The account's settings are not touched.
+         */
+        post: operations["appDefaultLiveProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/go-live/routing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The rules that choose the live account by the customer's country and the currency
+         * @description Any member reads it. First match wins; charges no rule matches go to the default account.
+         */
+        get: operations["appLiveRouting"];
+        /**
+         * Replace the live routing rules (the owner only)
+         * @description A rule names an account by its key (iyzico, or paddle~eu for a further account at the same provider); an unknown account, a currency its provider cannot charge, or a rule an earlier one makes unreachable is refused. Existing subscriptions keep their account.
+         */
+        put: operations["appSetLiveRouting"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/sandbox/providers": {
         parameters: {
             query?: never;
@@ -9870,8 +9914,8 @@ export interface components {
                 country: string;
                 /** @description ISO 4217; empty matches any currency */
                 currency: string;
-                /** @enum {string} */
-                provider: "iyzico" | "paddle" | "banktransfer";
+                /** @description The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu). */
+                provider: string;
             }[];
         };
         RoutingRulesInput: {
@@ -9880,8 +9924,8 @@ export interface components {
                 country?: string;
                 /** @description ISO 4217; empty matches any currency */
                 currency?: string;
-                /** @enum {string} */
-                provider?: "iyzico" | "paddle" | "banktransfer";
+                /** @description The account the rule sends to: a provider, or a provider with the label of one of its further accounts (paddle~eu). */
+                provider?: string;
             }[];
         };
         Tenant: {
@@ -16059,7 +16103,8 @@ export interface operations {
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
-                provider: "banktransfer" | "iyzico" | "paddle";
+                /** @description The provider, or the provider, a tilde and a label of your choice to connect a further account at the same provider (paddle~eu). */
+                provider: string;
             };
             cookie?: never;
         };
@@ -16091,7 +16136,8 @@ export interface operations {
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
-                provider: "banktransfer" | "iyzico" | "paddle";
+                /** @description The provider, or the provider, a tilde and a label of your choice to connect a further account at the same provider (paddle~eu). */
+                provider: string;
             };
             cookie?: never;
         };
@@ -16104,6 +16150,85 @@ export interface operations {
                 };
                 content?: never;
             };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appDefaultLiveProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Changed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    appLiveRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutingRules"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSetLiveRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoutingRulesInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutingRules"];
+                };
+            };
+            400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];

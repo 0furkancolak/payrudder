@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { HeaderAction } from "@/shared/ui/page-header";
 import { askConfirm } from "@/shared/lib/confirm";
 import { useParams } from "@tanstack/vue-router";
 import AppField from "@/app/layout/AppField.vue";
-import { ListTree, Pause, Play, Plus, RefreshCw, Send, Trash2 } from "@lucide/vue";
+import { ListTree, Pause, Play, RefreshCw, Send, Trash2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useShell } from "@/app/layout/useShell";
 import { useI18n } from "vue-i18n";
@@ -159,9 +160,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
   <Card class="mb-6 p-3">
     <DataToolbar v-model:search="endpointsTable.search.value" :active="endpointsTable.active.value" @clear="endpointsTable.clear()">
       <FilterSelect v-model="endpointsTable.filters.value.status" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, { value: 'active', label: t('billing.webhooks.active') }, { value: 'paused', label: t('billing.webhooks.paused') }]" />
-      <template #actions>
-        <Button data-testid="webhooks-new" @click="creating = true"><Plus class="size-4" />{{ t("billing.webhooks.add") }}</Button>
-      </template>
+      <HeaderAction test-id="webhooks-new" :label="t('billing.webhooks.add')" @click="creating = true" />
     </DataToolbar>
     <Table>
       <TableHeader>
