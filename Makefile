@@ -146,6 +146,11 @@ web-check: ## The operator console: install, lint, type check, build, and the Op
 web-e2e-mock: ## The product pages against a mocked gateway (Playwright; no stack needed)
 	cd web/admin && npx playwright install chromium && npm run e2e:mock
 
+.PHONY: sdk-php-check
+sdk-php-check: ## The PHP SDK as sdk-php.yml checks it: code style, PHPStan, tests, then regenerate and compare (Docker; the generator reads the OpenAPI file with symfony/yaml, which is stricter than the other languages' parsers)
+	docker run --rm -v "$(CURDIR)":/work -w /work/sdk/php php:8.4-cli sh -c 'apt-get update -qq && apt-get install -y -qq git unzip >/dev/null && php -r "copy(\"https://getcomposer.org/installer\", \"/tmp/c.php\");" && php /tmp/c.php --quiet --install-dir=/usr/local/bin --filename=composer && composer update -q --no-interaction --prefer-dist && composer validate --strict && composer cs && composer stan && composer test && composer generate'
+	git diff --exit-code sdk/php
+
 .PHONY: ci-local
 ci-local: ## The gate before every merge: what CI's static, unit, integration and web jobs run (needs Docker for the integration tests and the alert rules)
 	$(MAKE) lint
@@ -154,6 +159,7 @@ ci-local: ## The gate before every merge: what CI's static, unit, integration an
 	test -z "$$(git status --porcelain)"
 	$(MAKE) test test-rules test-integration
 	$(MAKE) web-check web-e2e-mock
+	$(MAKE) sdk-php-check
 
 .PHONY: web-e2e
 web-e2e: ## Playwright smoke test of the console against the running stack (make up first)
