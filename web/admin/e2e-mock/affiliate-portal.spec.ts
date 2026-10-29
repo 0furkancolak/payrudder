@@ -191,13 +191,17 @@ test.describe("partner portal", () => {
     // The claim is made once and the list is read again after it claimed something.
     await expect.poll(() => gw.called("POST", "/app/v1/affiliate/claim").length).toBe(1);
     // The first read may be cancelled before it leaves the browser when the claim answers first, so the check is the order, not the count.
-    await expect
-      .poll(() => {
-        const claimAt = gw.calls.findIndex((c) => c.method === "POST" && c.path === "/app/v1/affiliate/claim");
-        const listAt = gw.calls.map((c) => `${c.method} ${c.path}`).lastIndexOf("GET /app/v1/affiliate/affiliations");
-        return claimAt >= 0 && listAt > claimAt;
-      })
-      .toBe(true);
+    const readAfterClaim = () => {
+      const claimAt = gw.calls.findIndex((c) => c.method === "POST" && c.path === "/app/v1/affiliate/claim");
+      const listAt = gw.calls.map((c) => `${c.method} ${c.path}`).lastIndexOf("GET /app/v1/affiliate/affiliations");
+      return claimAt >= 0 && listAt > claimAt;
+    };
+    // When it fails in CI the order that was seen is in the message (it has failed there and never locally).
+    try {
+      await expect.poll(readAfterClaim).toBe(true);
+    } catch (e) {
+      throw new Error(`calls: ${gw.calls.map((c) => `${c.method} ${c.path}`).filter((c) => c.includes("affiliate") || c.includes("/me")).join(" | ")}\n${String(e)}`);
+    }
     // Live ones first.
     const order = await page.locator("[data-affiliation]").evaluateAll((els) => els.map((e) => e.getAttribute("data-affiliation")));
     expect(order).toEqual([LIVE_AFF, SAND_AFF]);
