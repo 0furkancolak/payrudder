@@ -41,3 +41,9 @@ Legal correctness (needs an accountant); e-invoice acceptance by the tax authori
 
 ## Risks
 Tax is where silent errors cost money: nothing ships without the owner's explicit scope and a reviewer.
+
+## Done so far (2026-10-29)
+
+- `pkg/taxid` (Go) and `web/admin/src/shared/lib/taxid.ts`: the TCKN and VKN checksums and the shape of EU VAT ids (checksums of the VAT ids and the VIES lookup are **not** done). Both sides share vectors produced and judged by python-stdnum, an independent implementation.
+- The customer tax form hints when the number does not look like the kind of number the customer should have (a TCKN for an individual, a VKN for a business in Turkey; the shape of a VAT id for a business in the EU). It **never blocks** the save: strictness is the owner's decision below.
+- Not done and waiting for the owner: whether Payrudder calculates tax or only records it; which countries and languages are in scope; hard error versus warning for a wrong id (the server still accepts 5 to 20 letters and digits); the e-invoice buyer rules by type (needs plan 09); per-country document rules (needs an accountant); locale-aware number and date formats on PDFs, pages and mails.
