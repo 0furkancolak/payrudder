@@ -29,6 +29,9 @@ const (
 	tokPack        = "tok-pack-0123456789abcdefghijklmnopqrstuvw"
 	tokProcessing  = "tok-processing-0123456789abcdefghijklmnop"
 	tokHostile     = "tok-hostile-0123456789abcdefghijklmnopqrs"
+	tokVoid        = "tok-void-0123456789abcdefghijklmnopqrstuvw"
+	tokUncollect   = "tok-uncollectible-0123456789abcdefghijklmn"
+	tokBroken      = "tok-broken-0123456789abcdefghijklmnopqrstu"
 	portalTok      = "portal-0123456789abcdefghijklmnopqrstuvwxyz"
 	liveTenantID   = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e"
 )
@@ -56,6 +59,14 @@ func scenarioInvoice(req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHost
 		return openInvoice("sandbox", "open", true), true
 	case req.GetToken() == tokOpenLive:
 		return openInvoice("live", "open", true), true
+	case req.GetToken() == tokVoid:
+		r := openInvoice("live", "void", false)
+		r.Invoice.Status = "void"
+		return r, true
+	case req.GetToken() == tokUncollect:
+		r := openInvoice("live", "failed", false)
+		r.Invoice.Status = "uncollectible"
+		return r, true
 	case req.GetToken() == tokProcessing:
 		return openInvoice("live", "processing", true), true
 	case req.GetToken() == tokHostile:

@@ -133,8 +133,9 @@ test.describe("product app, real stack", () => {
     await must("POST", "/v1/expenses", sandboxKey, { vendor: "Notion", category: "software", amount_minor: "1000", currency: "EUR", incurred_on: today(), recurring: "monthly" });
     const voided = await must("POST", "/v1/expenses", sandboxKey, { vendor: "Void me", category: "other", amount_minor: "777", currency: "TRY", incurred_on: today() });
     await must("DELETE", `/v1/expenses/${voided.id}?reason=entered%20twice`, sandboxKey, undefined, 200);
+    // The range ends today: a fixed day (the 28th) left out the expenses entered on the 29th to the 31st.
     const month = today().slice(0, 8);
-    const summary = await must("GET", `/v1/accounting/summary?from=${month}01&to=${month}28`, sandboxKey, undefined, 200);
+    const summary = await must("GET", `/v1/accounting/summary?from=${month}01&to=${today()}`, sandboxKey, undefined, 200);
     const text = JSON.stringify(summary);
     expect(text).not.toContain("777"); // the voided expense is out of every number
     expect(text).toContain("20000");

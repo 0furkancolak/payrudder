@@ -51,3 +51,6 @@ Conflict with the other session working on the same files (#243 area): coordinat
 **Tour:** the "seen" states are in `docs/13-admin-ui.md` as a table, each row with its unit test.
 
 **Still open in this plan:** a peekable payment sheet; reproduction of all five complaints against the real stack (needs the compose stack and a person's eyes: not done here); scroll-lock owned by the Sheet component and nested-sheet/back-forward tests; Combobox inside every sheet that has one; the three onboarding screens against "nothing is forced".
+**Onboarding, read against "nothing is forced" (2026-10-29, by reading the code, not the real stack):** the wizard has three screens (welcome, app, done). "Skip for now" (`onb-skip`) is shown on every screen except the last, which ends with "Finish"; the only required fields (organisation and app name) block "Create", not skipping; a person who skipped resumes from the checklist on the home. Covered by `e2e-mock/onboarding.spec.ts`.
+
+**Scroll (complaint 9):** `e2e-mock/sheet-scroll.spec.ts` opens a sheet on a scrolled customer list and checks the page behind does not move on open or on close. It passes, so the jump is not reproducible on this page in the mock; other lists, nested peeks and a phone are not covered.
