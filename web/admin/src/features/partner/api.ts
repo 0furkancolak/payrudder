@@ -1,4 +1,4 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { api, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
@@ -25,18 +25,22 @@ export function useAffiliations() {
   return useQuery({ queryKey: partnerKeys.list, queryFn: async () => (await unwrap(api.GET("/app/v1/affiliate/affiliations"))).affiliations ?? [], enabled });
 }
 
+/**
+ * What a claim that linked records changes: the list of affiliations is read again, and the profile's memberships too (a claim makes the person a member of
+ * the seller's account, role affiliate). A claim that linked nothing changes nothing. A function of its own so the rule is tested without a page.
+ */
+export function invalidateAfterClaim(queries: QueryClient, claimed: number | undefined): void {
+  if ((claimed ?? 0) <= 0) return;
+  void queries.invalidateQueries({ queryKey: partnerKeys.list });
+  void queries.invalidateQueries({ queryKey: ["app", "me"] });
+}
+
 /** Links the records a seller made for the person's verified e-mail address to them. Idempotent; the list is fetched again when it claimed something. */
 export function useClaim() {
   const queries = useQueryClient();
   return useMutation({
     mutationFn: () => unwrap(api.POST("/app/v1/affiliate/claim")),
-    onSuccess: (r) => {
-      if ((r.claimed ?? 0) > 0) {
-        void queries.invalidateQueries({ queryKey: partnerKeys.list });
-        // A claim makes the person a member of the seller's account (role affiliate): the profile's memberships change with it.
-        void queries.invalidateQueries({ queryKey: ["app", "me"] });
-      }
-    },
+    onSuccess: (r) => invalidateAfterClaim(queries, r.claimed),
   });
 }
 
