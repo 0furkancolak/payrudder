@@ -2321,7 +2321,15 @@
       "taxId": "Tax id (VKN/TCKN or VAT id)",
       "taxOffice": "Tax office",
       "registered": "Registered for e-fatura",
-      "save": "Save tax data"
+      "save": "Save tax data",
+      "hint": {
+        "tr_individual": "An individual in Turkey has an 11-digit TCKN. This does not look like one; you can still save it.",
+        "tr_business": "A business in Turkey has a 10-digit VKN. This does not look like one; you can still save it.",
+        "tr_any": "A tax number in Turkey is a 10-digit VKN or an 11-digit TCKN. This does not look like either; you can still save it.",
+        "tr_is_tckn": "This is a TCKN, the number of an individual, but the customer is a business (which has a VKN). You can still save it.",
+        "tr_is_vkn": "This is a VKN, the number of a business, but the customer is an individual (who has a TCKN). You can still save it.",
+        "eu_vat": "A business in the EU has a VAT id that starts with its country code (for example DE123456789). This does not look like one; you can still save it."
+      }
     },
     "errorKeys": {
       "einvoice": {

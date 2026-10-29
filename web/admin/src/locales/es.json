@@ -2321,7 +2321,15 @@
       "taxId": "Id fiscal (VKN/TCKN o NIF-IVA)",
       "taxOffice": "Oficina tributaria",
       "registered": "Registrado en e-fatura",
-      "save": "Guardar datos fiscales"
+      "save": "Guardar datos fiscales",
+      "hint": {
+        "tr_individual": "Una persona física en Turquía tiene un TCKN de 11 dígitos. Esto no lo parece; aun así puedes guardarlo.",
+        "tr_business": "Una empresa en Turquía tiene un VKN de 10 dígitos. Esto no lo parece; aun así puedes guardarlo.",
+        "tr_any": "Un número fiscal en Turquía es un VKN de 10 dígitos o un TCKN de 11. Esto no parece ninguno de los dos; aun así puedes guardarlo.",
+        "tr_is_tckn": "Este es un TCKN, el número de una persona física, pero el cliente es una empresa (que tiene un VKN). Aun así puedes guardarlo.",
+        "tr_is_vkn": "Este es un VKN, el número de una empresa, pero el cliente es una persona física (que tiene un TCKN). Aun así puedes guardarlo.",
+        "eu_vat": "Una empresa de la UE tiene un número de IVA que empieza por el código de su país (por ejemplo DE123456789). Esto no lo parece; aun así puedes guardarlo."
+      }
     },
     "errorKeys": {
       "einvoice": {

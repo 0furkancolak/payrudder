@@ -8,6 +8,7 @@ import { Input } from "@/shared/ui/input";
 import { LocationFields } from "@/shared/ui/location-fields";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import type { ApiLocale } from "@/shared/lib/locale";
+import { taxIdHint } from "@/shared/lib/taxid";
 import { useSetCustomerAddress, useSetCustomerContact, useSetCustomerTax, type Address, type CustomerContact, type CustomerKind, type CustomerTax } from "./api";
 import AddressLines from "./AddressLines.vue";
 import CustomerProfileFields from "./CustomerProfileFields.vue";
@@ -58,6 +59,8 @@ function saveAddress() {
 const setTax = useSetCustomerTax(() => props.tenantId);
 const editTax = ref<CustomerTax>({});
 const taxId = computed(() => taxOf.value?.external_id ?? "");
+// A hint under the tax id when it does not look like the kind of number this customer should have; the save is never blocked (docs/plans/05).
+const taxHint = computed(() => taxIdHint(editTax.value.tax_id ?? "", taxOf.value?.country, (taxOf.value?.customer_type ?? "") as "individual" | "business" | ""));
 const taxOpen = computed({ get: () => taxOf.value !== null, set: (v) => !v && (taxOf.value = null) });
 watch(taxOf, (c) => {
   if (!c) return;
@@ -122,7 +125,8 @@ function saveTax() {
       </SheetHeader>
       <SheetBody>
         <form id="edit-tax" class="grid gap-3" @submit.prevent="saveTax">
-          <Input v-model="editTax.tax_id" maxlength="40" :aria-label="t('einvoice.customer.taxId')" :placeholder="t('einvoice.customer.taxId')" />
+          <Input v-model="editTax.tax_id" maxlength="40" :aria-label="t('einvoice.customer.taxId')" :placeholder="t('einvoice.customer.taxId')" :aria-describedby="taxHint ? 'tax-id-hint' : undefined" />
+          <p v-if="taxHint" id="tax-id-hint" class="text-warning -mt-1 text-xs" role="status" data-testid="tax-id-hint">{{ t(`einvoice.customer.hint.${taxHint}`) }}</p>
           <Input v-model="editTax.tax_office" maxlength="120" :aria-label="t('einvoice.customer.taxOffice')" :placeholder="t('einvoice.customer.taxOffice')" />
           <label class="flex items-center gap-2 text-sm"><input v-model="editTax.e_invoice_registered" type="checkbox" :aria-label="t('einvoice.customer.registered')" />{{ t("einvoice.customer.registered") }}</label>
           <ErrorText :error="setTax.error.value" />

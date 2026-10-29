@@ -2321,7 +2321,15 @@
       "taxId": "Steuernummer (VKN/TCKN oder USt-IdNr.)",
       "taxOffice": "Finanzamt",
       "registered": "Für e-Fatura registriert",
-      "save": "Steuerdaten speichern"
+      "save": "Steuerdaten speichern",
+      "hint": {
+        "tr_individual": "Eine Privatperson in der Türkei hat eine 11-stellige TCKN. Das sieht nicht danach aus; Sie können es trotzdem speichern.",
+        "tr_business": "Ein Unternehmen in der Türkei hat eine 10-stellige VKN. Das sieht nicht danach aus; Sie können es trotzdem speichern.",
+        "tr_any": "Eine Steuernummer in der Türkei ist eine 10-stellige VKN oder eine 11-stellige TCKN. Das sieht nach keinem von beiden aus; Sie können es trotzdem speichern.",
+        "tr_is_tckn": "Das ist eine TCKN, die Nummer einer Privatperson, der Kunde ist aber ein Unternehmen (mit einer VKN). Sie können es trotzdem speichern.",
+        "tr_is_vkn": "Das ist eine VKN, die Nummer eines Unternehmens, der Kunde ist aber eine Privatperson (mit einer TCKN). Sie können es trotzdem speichern.",
+        "eu_vat": "Ein Unternehmen in der EU hat eine USt-IdNr., die mit dem Ländercode beginnt (zum Beispiel DE123456789). Das sieht nicht danach aus; Sie können es trotzdem speichern."
+      }
     },
     "errorKeys": {
       "einvoice": {
