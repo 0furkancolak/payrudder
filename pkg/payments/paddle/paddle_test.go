@@ -338,3 +338,20 @@ func TestParseNotificationAndRegistration(t *testing.T) {
 		t.Error("signature header format")
 	}
 }
+
+// A refusal keeps what Paddle says about it: the fields that are wrong and the request id its support asks for (error.errors[], meta.request_id).
+func TestRefusalKeepsFieldsAndRequestID(t *testing.T) {
+	f, c := newFake(t, nil)
+	f.reply = func() (int, string) {
+		return 400, `{"error":{"type":"request_error","code":"invalid_field","detail":"Invalid request","errors":[{"field":"items[0].quantity","message":"must be at least 1"}]},"meta":{"request_id":"req_123"}}`
+	}
+	var out map[string]any
+	err := c.do(context.Background(), http.MethodGet, "/x", nil, &out)
+	var pe *Error
+	if !errors.As(err, &pe) || pe.RequestID != "req_123" || len(pe.Fields) != 1 || pe.Fields[0] != "items[0].quantity: must be at least 1" {
+		t.Fatalf("err = %#v", err)
+	}
+	if msg := err.Error(); !strings.Contains(msg, "items[0].quantity") || !strings.Contains(msg, "req_123") {
+		t.Errorf("the message must carry the fields and the request id: %q", msg)
+	}
+}

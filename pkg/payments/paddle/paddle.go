@@ -150,7 +150,15 @@ type apiError struct {
 		Type   string `json:"type"`
 		Code   string `json:"code"`
 		Detail string `json:"detail"`
+		// Errors names the fields Paddle found wrong (its documented error shape: error.errors[] with field and message).
+		Errors []struct {
+			Field   string `json:"field"`
+			Message string `json:"message"`
+		} `json:"errors"`
 	} `json:"error"`
+	Meta struct {
+		RequestID string `json:"request_id"`
+	} `json:"meta"`
 }
 
 func (c *Client) do(ctx context.Context, method, path string, in, out any) error {
@@ -185,7 +193,11 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 	case resp.StatusCode >= 400:
 		var e apiError
 		_ = json.Unmarshal(raw, &e)
-		return &Error{Status: resp.StatusCode, Code: e.Error.Code, Detail: e.Error.Detail}
+		out := &Error{Status: resp.StatusCode, Code: e.Error.Code, Detail: e.Error.Detail, RequestID: e.Meta.RequestID}
+		for _, f := range e.Error.Errors {
+			out.Fields = append(out.Fields, f.Field+": "+f.Message)
+		}
+		return out
 	}
 	if out != nil && len(raw) > 0 {
 		if err := json.Unmarshal(raw, out); err != nil {
@@ -200,10 +212,20 @@ type Error struct {
 	Status int
 	Code   string
 	Detail string
+	// RequestID is Paddle's id of the request (meta.request_id): what its support asks for. Fields are the ones it found wrong, "field: message".
+	RequestID string
+	Fields    []string
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("paddle refused the request (%d %s): %s", e.Status, e.Code, e.Detail)
+	msg := fmt.Sprintf("paddle refused the request (%d %s): %s", e.Status, e.Code, e.Detail)
+	if len(e.Fields) > 0 {
+		msg += " [" + strings.Join(e.Fields, "; ") + "]"
+	}
+	if e.RequestID != "" {
+		msg += " (request " + e.RequestID + ")"
+	}
+	return msg
 }
 
 type money struct {
