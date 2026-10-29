@@ -1,32 +1,37 @@
 import {
   Activity,
+  AppWindow,
   BarChart3,
+  Blocks,
   Building2,
+  Coins,
   CreditCard,
+  FileCheck,
   FileText,
   FlaskConical,
   Gauge,
-  Coins,
   Handshake,
-  Inbox,
   KeyRound,
   LayoutDashboard,
   LayoutGrid,
   LifeBuoy,
   Link2,
   Mail,
+  MailX,
   MapPin,
   Package,
-  Percent,
   Plug,
   Receipt,
   Repeat,
   Rocket,
   Settings,
+  Share2,
   ShieldCheck,
+  SlidersHorizontal,
+  Tag,
   Ticket,
+  UserCog,
   Users,
-  UsersRound,
   Wallet,
   Webhook,
 } from "@lucide/vue";
@@ -111,18 +116,18 @@ const PAGES: Page[] = [
   { key: "usage", icon: Activity, path: "usage", section: "usageProducts", person: true },
   { key: "meters", icon: Gauge, path: "meters", section: "usageProducts", person: true },
   { key: "packages", icon: Package, path: "packages", section: "usageProducts", person: true },
-  { key: "pricing", icon: Percent, path: "pricing", section: "usageProducts", person: true },
+  { key: "pricing", icon: Tag, path: "pricing", section: "usageProducts", person: true },
   { key: "coupons", icon: Ticket, path: "coupons", section: "usageProducts", person: true },
   { key: "accounting", icon: Receipt, path: "accounting", section: "money", person: true },
   { key: "reports", icon: BarChart3, path: "reports", section: "money", person: true },
-  { key: "affiliates", icon: Handshake, path: "affiliates", section: "money", person: true },
+  { key: "affiliates", icon: Share2, path: "affiliates", section: "money", person: true },
   { key: "connect", icon: Rocket, path: "connect", section: "developers", person: true },
   { key: "webhooks", icon: Webhook, path: "webhooks", section: "developers", person: true },
-  { key: "apps", icon: KeyRound, path: "apps", section: "developers", person: false },
+  { key: "apps", icon: AppWindow, path: "apps", section: "developers", person: false },
   { key: "providers", icon: Plug, path: "providers", section: "developers", person: false },
   { key: "mail", icon: Mail, path: "mail", section: "settings", person: true },
   { key: "address", icon: MapPin, path: "address", section: "settings", person: false },
-  { key: "einvoice", icon: FileText, path: "e-invoice", section: "settings", person: false },
+  { key: "einvoice", icon: FileCheck, path: "e-invoice", section: "settings", person: false },
 ];
 
 const SECTION_ORDER = ["customersBilling", "usageProducts", "money", "developers", "settings"] as const;
@@ -169,7 +174,7 @@ function personNav(ctx: ShellContext, has: ReadonlySet<string>): NavSection[] {
         items.push(item("sandbox", `${app}/sandbox`, FlaskConical, under(`${app}/sandbox`), appSearch));
       }
       if (s === "settings") {
-        items.unshift(item("appSettings", `${app}/settings`, Building2, under(`${app}/settings`), appSearch), item("integrations", `${app}/integrations`, Plug, under(`${app}/integrations`), appSearch));
+        items.unshift(item("appSettings", `${app}/settings`, SlidersHorizontal, under(`${app}/settings`), appSearch), item("integrations", `${app}/integrations`, Plug, under(`${app}/integrations`), appSearch));
       }
     }
     if (items.length > 0) sections.push({ key: s, items });
@@ -180,9 +185,9 @@ function personNav(ctx: ShellContext, has: ReadonlySet<string>): NavSection[] {
   sections.push({
     key: "account",
     items: [
-      ...(has.has("members") ? [item("members", "/app/members", UsersRound, under("/app/members"), org)] : []),
+      ...(has.has("members") ? [item("members", "/app/members", UserCog, under("/app/members"), org)] : []),
       ...(ctx.partner ? [item("partner", "/app/partner", Handshake, under("/app/partner"), org)] : []),
-      item("orgIntegrations", "/app/integrations", Plug, under("/app/integrations"), org),
+      item("orgIntegrations", "/app/integrations", Blocks, under("/app/integrations"), org),
       item("support", "/app/support", LifeBuoy, under("/app/support"), org),
       item("settings", "/app/settings", Settings, ctx.saas ? exact("/app/settings") : under("/app/settings"), org),
       ...(ctx.saas ? [item("plan", "/app/settings/plan", CreditCard, under("/app/settings/plan"), org)] : []),
@@ -208,7 +213,7 @@ export function buildNav(ctx: ShellContext, has: ReadonlySet<string> = new Set<s
             item("organisations", "/organisations", Building2, under("/organisations")),
             ...(ctx.platformTenant ? [item("platformPlans", `/tenants/${ctx.platformTenant}/packages`, Package, exact(`/tenants/${ctx.platformTenant}/packages`))] : []),
             item("playground", "/playground", FlaskConical, under("/playground")),
-            item("deadLetters", "/dead-letters", Inbox, under("/dead-letters")),
+            item("deadLetters", "/dead-letters", MailX, under("/dead-letters")),
             item("supportInbox", "/support", LifeBuoy, under("/support")),
           ],
         },
