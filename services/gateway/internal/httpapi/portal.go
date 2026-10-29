@@ -61,8 +61,7 @@ func (s *Server) portalPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		hostedHeaders(w)
-		http.Error(w, "the page cannot be shown right now", http.StatusServiceUnavailable)
+		hostedTrouble(w, lang)
 		return
 	}
 	lang = customerLang(r, resp.GetCustomerLocale())

@@ -1,7 +1,7 @@
 package httpapi
 
 import (
-	"html/template"
+	"bytes"
 	"maps"
 	"net"
 	"net/http"
@@ -89,10 +89,26 @@ func hostedHeadersCSP(w http.ResponseWriter, formAction string) {
 }
 
 func hostedNotFound(w http.ResponseWriter, lang string) {
-	hostedHeaders(w)
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusNotFound)
-	_ = hostedGone.Execute(w, map[string]any{"L": hostedText(lang), "Lang": lang, "Dir": hostedDir(lang)})
+	hostedMessage(w, http.StatusNotFound, lang, hostedText(lang)["gone"], hostedText(lang)["goneHint"])
+}
+
+// hostedTrouble answers a page that cannot be built because something it needs is down: the same layout as every page, in the visitor's language, to try again
+// in a minute (it was plain English text).
+func hostedTrouble(w http.ResponseWriter, lang string) {
+	w.Header().Set("Retry-After", retryAfterMinute)
+	hostedMessage(w, http.StatusServiceUnavailable, lang, hostedText(lang)["trouble"], hostedText(lang)["troubleHint"])
+}
+
+// hostedMessage writes the message page without a Server: a refusal that has no record to show.
+func hostedMessage(w http.ResponseWriter, code int, lang, heading, text string) {
+	var buf bytes.Buffer
+	if err := pageTemplates.ExecuteTemplate(&buf, "message", &messageView{pageBase: newBase(lang), Heading: heading, Text: text}); err != nil {
+		hostedHeaders(w)
+		http.Error(w, heading, code)
+		return
+	}
+	htmlPage(w, code, "form-action 'none'")
+	_, _ = w.Write(buf.Bytes())
 }
 
 // pickLang chooses the page language: ?lang= first, then the browser's Accept-Language, else English.
@@ -129,10 +145,10 @@ var hostedTexts = func() map[string]map[string]string {
 	out := map[string]map[string]string{}
 	for _, lang := range hostedLangs {
 		merged := map[string]string{}
-		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings} {
+		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings} {
 			maps.Copy(merged, src["en"])
 		}
-		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings} {
+		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings} {
 			maps.Copy(merged, src[lang])
 		}
 		out[lang] = merged
@@ -197,7 +213,3 @@ input.code::placeholder,.promo-row input::placeholder{text-transform:none;letter
 .promo-row input:focus-visible,input.code:focus-visible,.btn:focus-visible,a:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .promo-row .btn{margin-top:0}
 a.btn{display:inline-block;margin-top:20px;padding:10px 16px;border-radius:calc(var(--radius) - 6px);background:var(--primary);color:var(--primary-foreground);text-decoration:none}`
-
-var hostedGone = template.Must(template.New("gone").Parse(`<!doctype html>
-<html lang="{{.Lang}}" dir="{{.Dir}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow">
-<title>404</title><style>` + hostedCSS + `</style></head><body><main><div class="card"><h1>{{.L.gone}}</h1><p class="muted">{{.L.goneHint}}</p></div></main></body></html>`))
