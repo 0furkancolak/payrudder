@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
 import { useRouter } from "@tanstack/vue-router";
-import { CreditCard, ArrowUpRight, Ban, CircleCheck, Gauge, Link2, MapPin, Receipt, Repeat, UserPen, Users } from "@lucide/vue";
+import { ArrowUpRight, Ban, CircleCheck, ExternalLink, FileText, Link2, MapPin, Repeat, SlidersHorizontal, UserPen, Users } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
@@ -187,12 +187,12 @@ function actionsOf(c: Customer, i: number): RowAction[] {
   return [
     { key: "view", label: t("common.view"), icon: ArrowUpRight, onSelect: () => open(i) },
     { key: "subscription", label: t("billing.customers.sheet.newSubscription"), icon: Repeat, onSelect: () => newSubscription(c) },
-    { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: Receipt, onSelect: () => open(i) },
+    { key: "portal", label: t("billing.paymentLinks.portal.open"), icon: ExternalLink, onSelect: () => open(i) },
     { key: "link", label: t("billing.paymentLinks.paymentLink"), icon: Link2, onSelect: () => paymentLink(c.external_id) },
     { key: "contact", label: t("billing.customers.contact.edit"), icon: UserPen, separatorBefore: true, onSelect: () => (editingContact.value = c) },
     { key: "address", label: t("billing.customers.address.edit"), icon: MapPin, onSelect: () => (editingAddress.value = c) },
-    { key: "tax", label: t("einvoice.customer.edit"), icon: CreditCard, onSelect: () => (editingTax.value = c) },
-    { key: "quotas", label: t("billing.quotas.action"), icon: Gauge, onSelect: () => (quotasOf.value = c.external_id ?? "") },
+    { key: "tax", label: t("einvoice.customer.edit"), icon: FileText, onSelect: () => (editingTax.value = c) },
+    { key: "quotas", label: t("billing.quotas.action"), icon: SlidersHorizontal, onSelect: () => (quotasOf.value = c.external_id ?? "") },
     c.block_time
       ? { key: "unblock", label: t("billing.customers.block.lift"), icon: CircleCheck, separatorBefore: true, onSelect: () => setBlocked(c, false) }
       : { key: "block", label: t("billing.customers.block.action"), icon: Ban, separatorBefore: true, onSelect: () => setBlocked(c, true) },

@@ -4472,7 +4472,8 @@
     "creditNotes": "Credit notes",
     "none": "None yet",
     "notFound": "Not in the list",
-    "open": "Open"
+    "open": "Open",
+    "openCustomerPage": "Open on the customers page to change something"
   },
   "sheets": {
     "back": "Back",

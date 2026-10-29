@@ -418,6 +418,13 @@ func checkLimits(t *testing.T, fx []*tenantFx, onTime map[string]*cell, period s
 					}
 					for _, m := range meterSet {
 						w := want[key{tn.id, c, m.code}]
+						if _, there := got[m.code]; !there {
+							// The meter is not in the answer at all (the pod that answered has no entitlement for it): a different failure from a counter that is wrong.
+							mu.Lock()
+							bad = append(bad, fmt.Sprintf("A4 %s/%s/%s: the entitlements answer has no entry for this meter (%d of %d meters answered), aggregator=%s units", tn.id, c, m.code, len(got), len(meterSet), w))
+							mu.Unlock()
+							continue
+						}
 						u, ok := parseUnits(got[m.code], m.scale)
 						if !ok || u.Cmp(w) != 0 {
 							mu.Lock()

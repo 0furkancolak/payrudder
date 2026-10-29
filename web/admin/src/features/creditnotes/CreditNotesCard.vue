@@ -2,11 +2,10 @@
 import { HeaderAction } from "@/shared/ui/page-header";
 import PeekInvoice from "@/features/related/PeekInvoice.vue";
 import { Plus, RotateCw } from "@lucide/vue";
-import { Link } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { recordLink } from "@/features/related/link";
+import { peek } from "@/features/related/peek";
 import { formatMinor } from "@/shared/lib/money";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
@@ -132,7 +131,7 @@ const current = table.row;
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.invoice") }}</dt>
       <dd class="mono text-end"><PeekInvoice v-if="current.invoice_id" :id="current.invoice_id" :tenant-id="tenantId" class="hover:underline">{{ current.invoice_number || current.invoice_id.slice(0, 8) }}</PeekInvoice><template v-else>—</template></dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.customer") }}</dt>
-      <dd class="text-end"><Link v-if="current.customer_external_id" v-bind="recordLink('customer', current.customer_external_id, tenantId)" class="hover:underline">{{ current.customer_external_id }}</Link><template v-else>—</template></dd>
+      <dd class="text-end"><button v-if="current.customer_external_id" type="button" class="cursor-pointer hover:underline" @click="peek('customer', tenantId, current.customer_external_id)">{{ current.customer_external_id }}</button><template v-else>—</template></dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.date") }}</dt>
       <dd class="text-end">{{ date(current.create_time) }}</dd>
       <dt class="text-muted-foreground">{{ t("billing.creditNotes.where") }}</dt>

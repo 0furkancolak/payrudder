@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
-import { Mail, RefreshCw, Send, UserMinus, X } from "@lucide/vue";
+import { LogOut, Mail, RefreshCw, Send, UserMinus, X } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -139,7 +139,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
             <TableCell>
               <RowActions
                 v-if="m.user_id === myId && !soleOwner"
-                :actions="[{ key: 'leave', label: t('product.members.leave'), icon: UserMinus, onSelect: () => (removing = { id: m.user_id ?? '', name: nameOf(m), self: true }) }]"
+                :actions="[{ key: 'leave', label: t('product.members.leave'), icon: LogOut, onSelect: () => (removing = { id: m.user_id ?? '', name: nameOf(m), self: true }) }]"
               />
               <RowActions
                 v-else-if="mayHandle(m.role)"

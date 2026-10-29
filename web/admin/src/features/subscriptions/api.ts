@@ -16,6 +16,15 @@ export function useSubscriptions(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
+/** One subscription by id (a mention in another sheet names it; the list holds only the newest hundred). It shares the list's key prefix, so a change refreshes it. */
+export function useSubscriptionById(tenantId: MaybeRefOrGetter<string>, id: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...subscriptionKeys.list(toValue(tenantId)), "one", toValue(id)] as const),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/subscriptions/{id}", { params: { path: { id: toValue(id) } } })),
+    enabled: computed(() => toValue(id) !== ""),
+  });
+}
+
 export interface NewSubscription {
   customer_external_id: string;
   plan_code: string;

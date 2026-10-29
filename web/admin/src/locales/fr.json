@@ -4472,7 +4472,8 @@
     "creditNotes": "Avoirs",
     "none": "Aucun pour l'instant",
     "notFound": "Absent de la liste",
-    "open": "Ouvrir"
+    "open": "Ouvrir",
+    "openCustomerPage": "Ouvrir dans la page des clients pour modifier"
   },
   "sheets": {
     "back": "Retour",
