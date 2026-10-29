@@ -4464,7 +4464,8 @@
     "creditNotes": "Notas de crédito",
     "none": "Aún no hay",
     "notFound": "No está en la lista",
-    "open": "Abrir"
+    "open": "Abrir",
+    "openCustomerPage": "Abrir en la página de clientes para cambiar algo"
   },
   "sheets": {
     "back": "Atrás",

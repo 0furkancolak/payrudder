@@ -4464,7 +4464,8 @@
     "creditNotes": "Gutschriften",
     "none": "Noch keine",
     "notFound": "Nicht in der Liste",
-    "open": "Öffnen"
+    "open": "Öffnen",
+    "openCustomerPage": "Auf der Kundenseite öffnen, um etwas zu ändern"
   },
   "sheets": {
     "back": "Zurück",

@@ -158,6 +158,9 @@ func (c *Consumer) Run(ctx context.Context) error {
 		})
 		switch {
 		case fetchErr != nil && fetches.NumRecords() == 0:
+			// BlockRebalanceOnPoll holds every rebalance from a poll until AllowRebalance: a member that polls again and again without releasing it (a broker that
+			// is down answers every poll with an error) can never rejoin its group when the broker is back, and its partitions stay unconsumed.
+			c.cl.AllowRebalance()
 			retry.Fail(ctx, c.log, "kafka fetch error", fetchErr)
 			continue
 		case fetchErr != nil:

@@ -19,6 +19,15 @@ export function useCustomers(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
+/** One customer by external id (a mention in another sheet names it; the list holds only the first page of customers). */
+export function useCustomerById(tenantId: MaybeRefOrGetter<string>, externalId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...customerKeys.list(toValue(tenantId)), "one", toValue(externalId)] as const),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}", { params: { path: { external_id: toValue(externalId) } } })),
+    enabled: computed(() => toValue(externalId) !== ""),
+  });
+}
+
 /** The tenant's newest invoices through the tenant API (which an operator and a person both speak), for the figures of the customer list. */
 export function useRecentInvoices(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({

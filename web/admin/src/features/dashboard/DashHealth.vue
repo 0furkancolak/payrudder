@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
-import { Activity, CreditCard, Webhook } from "@lucide/vue";
+import { HeartPulse, Plug, Webhook } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
@@ -25,12 +25,12 @@ const endpoints = computed(() => health.value?.webhook_endpoints ?? 0);
     </div>
     <ul class="grid gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
       <li class="flex min-w-0 items-center gap-3">
-        <span class="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><Activity class="size-4" /></span>
+        <span class="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><HeartPulse class="size-4" /></span>
         <span class="min-w-0 flex-1">{{ t("product.health.payments") }}</span>
         <StatusPill :tone="health?.payments_reachable ? 'success' : 'danger'">{{ health?.payments_reachable ? t("product.health.up") : t("product.health.down") }}</StatusPill>
       </li>
       <li class="flex min-w-0 items-center gap-3">
-        <span class="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><CreditCard class="size-4" /></span>
+        <span class="bg-muted text-muted-foreground flex size-9 shrink-0 items-center justify-center rounded-xl" aria-hidden="true"><Plug class="size-4" /></span>
         <span class="min-w-0 flex-1">{{ t("product.health.providers") }}</span>
         <span v-if="providers" class="text-muted-foreground capitalize">{{ providers }}</span>
         <span v-else class="text-muted-foreground">{{ t("product.health.noProviders") }}</span>

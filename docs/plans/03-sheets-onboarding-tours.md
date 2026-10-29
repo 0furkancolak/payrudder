@@ -39,6 +39,19 @@ Feel (scroll smoothness, focus) on real touch devices.
 ## Risks
 Conflict with the other session working on the same files (#243 area): coordinate through branches, never edit the shared checkout.
 
+## Findings (2026-10-29)
+
+**Navigation audit** (read-only, every `Link`/`navigate` reachable from a sheet or row action):
+- The one working model is the invoice: `peek.ts` (`peek:<kind>:<tenant>:<id>` in the sheet stack), `PeekHost`, `InvoiceRef`/`PeekInvoice`.
+- Sheet-to-page jumps for records: **customer** (`CustomerRef`, in the invoice, subscription, payment and payment-link sheets; `CreditNotesCard`) — fixed in the customer-peek PR; **subscription** rows of the "related" lists — fixed too (`SubscriptionSheetById`, with what the list's sheet offers); **payment** rows (`RelatedRow` falls back to a link for kinds that are not peekable) — open, the payment detail is inline in two page variants and needs extracting first; the customer sheet's "Manage credits" button (`CustomersPage.toCredits`) goes to the credits page without the customer — open.
+- Fine as they are: creating an app leaves for its dashboard, "Upgrade" links to the plan page, the App field of create sheets (keeps `?sheet=`), external URLs open a new tab.
+
+**Icon audit:** a dozen clashes or wrong meanings fixed in the icon PR (sidebar pairs, dashboard, customer and key menus); `Send` for "Send test" and `ArrowUpRight` for "View" left as they are.
+
+**Tour:** the "seen" states are in `docs/13-admin-ui.md` as a table, each row with its unit test.
+
+**Still open in this plan:** a peekable payment sheet; reproduction of all five complaints against the real stack (needs the compose stack and a person's eyes: not done here); scroll-lock owned by the Sheet component and nested-sheet/back-forward tests; Combobox inside every sheet that has one; the three onboarding screens against "nothing is forced".
+
 **Onboarding, read against "nothing is forced" (2026-10-29, by reading the code, not the real stack):** the wizard has three screens (welcome, app, done). "Skip for now" (`onb-skip`) is shown on every screen except the last, which ends with "Finish"; the only required fields (organisation and app name) block "Create", not skipping; a person who skipped resumes from the checklist on the home. Covered by `e2e-mock/onboarding.spec.ts`.
 
 **Scroll (complaint 9):** `e2e-mock/sheet-scroll.spec.ts` opens a sheet on a scrolled customer list and checks the page behind does not move on open or on close. It passes, so the jump is not reproducible on this page in the mock; other lists, nested peeks and a phone are not covered.

@@ -4464,7 +4464,8 @@
     "creditNotes": "Alacak dekontları",
     "none": "Henüz yok",
     "notFound": "Listede yok",
-    "open": "Aç"
+    "open": "Aç",
+    "openCustomerPage": "Bir şeyi değiştirmek için müşteriler sayfasında aç"
   },
   "sheets": {
     "back": "Geri",

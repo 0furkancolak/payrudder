@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { HeaderAction } from "@/shared/ui/page-header";
-import { Check, Copy, Eye, KeyRound, RefreshCw, Trash2 } from "@lucide/vue";
+import { Ban, Check, Copy, Eye, KeyRound, RefreshCw } from "@lucide/vue";
 import { Link } from "@tanstack/vue-router";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
@@ -148,7 +148,7 @@ function actionsOf(k: ApiKey): RowAction[] {
   return [
     view,
     ...(k.expire_time ? [] : [{ key: `rotate-${k.id}`, label: t("product.keys.rotate"), icon: RefreshCw, onSelect: () => (rotating.value = k) }]),
-    { key: `revoke-${k.id}`, label: t("product.keys.revoke"), icon: Trash2, destructive: true, separatorBefore: true, onSelect: () => (revoking.value = k) },
+    { key: `revoke-${k.id}`, label: t("product.keys.revoke"), icon: Ban, destructive: true, separatorBefore: true, onSelect: () => (revoking.value = k) },
   ];
 }
 

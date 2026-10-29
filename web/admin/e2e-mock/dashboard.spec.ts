@@ -146,13 +146,13 @@ test.describe("one app", () => {
   });
 
   test("while it loads the page has its shape, and when it fails there is a way to try again", async ({ page }) => {
-    let calls = 0;
     let armed = false;
+    let failing = true;
     const answer = (q: Record<string, string>) => {
-      // Signing in lands on a dashboard too: only what is asked once the page under test is open counts.
-      if (!armed) return { body: dashboardFixture(q) };
-      calls++;
-      return calls <= 3 ? { status: 500, body: { error: { code: "INTERNAL", key: "common.internal", message: "boom" } } } : { body: dashboardFixture(q) };
+      // Signing in lands on a dashboard too: only what is asked once the page under test is open counts. It fails until the test says it stops: a count of failures
+      // ("the first three calls") raced the query's own retries, and the page showed no error when a retry fell on the first good answer.
+      if (!armed || !failing) return { body: dashboardFixture(q) };
+      return { status: 500, body: { error: { code: "INTERNAL", key: "common.internal", message: "boom" } } };
     };
     await productGateway(new MockGateway(), { dashboard: answer }).gw.install(page);
     await signInAsAda(page);
@@ -160,6 +160,7 @@ test.describe("one app", () => {
     await page.goto(dash);
     const err = page.getByTestId("dash-error");
     await expect(err).toBeVisible();
+    failing = false;
     await err.getByRole("button", { name: "Try again" }).click();
     await expect(page.getByTestId("kpi-revenue-value")).toBeVisible();
     await expect(err).toHaveCount(0);
