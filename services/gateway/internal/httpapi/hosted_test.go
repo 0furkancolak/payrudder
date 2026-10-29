@@ -34,6 +34,9 @@ func (fakeBilling) RevokeInvoiceLinks(context.Context, *billingv1.RevokeInvoiceL
 }
 
 func (fakeBilling) GetHostedInvoice(_ context.Context, req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHostedInvoiceResponse, error) {
+	if req.GetToken() == tokBroken {
+		return nil, status.Error(codes.Unavailable, "billing is down")
+	}
 	if r, ok := scenarioInvoice(req); ok {
 		return r, nil
 	}
