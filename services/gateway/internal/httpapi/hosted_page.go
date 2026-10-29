@@ -423,6 +423,9 @@ func (s *Server) hostedLinkStart(w http.ResponseWriter, r *http.Request) {
 		s.adhocAgain(w, r, lang, promoInput{Code: code, ErrKey: errkey.Of(err), Status: http.StatusUnprocessableEntity})
 	case goneError(err):
 		hostedNotFound(w, lang)
+	case errkey.Of(err) == "billing.customer.blocked":
+		// The seller has blocked this customer: not "already used", and not a reason to say more than that the payment cannot be made.
+		s.message(w, r, http.StatusConflict, lang, hostedText(lang)["adhoc_title"], hostedText(lang)["pay_blocked"], "")
 	case status.Code(err) == codes.FailedPrecondition:
 		s.message(w, r, http.StatusConflict, lang, hostedText(lang)["adhoc_title"], hostedText(lang)["adhoc_used"], "")
 	case err != nil:

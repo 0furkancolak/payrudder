@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -62,6 +63,20 @@ func TestEveryStateStringIsTranslated(t *testing.T) {
 			if _, ok := en[k]; !ok {
 				t.Errorf("%s has a key English lacks: %q", lang, k)
 			}
+		}
+	}
+}
+
+// A payment started for a customer the seller has blocked says the payment cannot be made, not that the link was used.
+func TestBlockedCustomerStartSaysSo(t *testing.T) {
+	ts := withWorker(t, &fakeWorker{}, false)
+	r, page := send(t, noRedirect(), http.MethodPost, ts.URL+"/i/"+tokBlockedLink+"/start?lang=tr", url.Values{}, nil)
+	if r.StatusCode != http.StatusConflict || !strings.Contains(page, "Bu ödeme yapılamıyor") || strings.Contains(page, "kullanıl") {
+		t.Errorf("blocked start: %d\n%s", r.StatusCode, page)
+	}
+	for _, lang := range hostedLangs {
+		if stateStrings[lang]["pay_blocked"] == "" {
+			t.Errorf("%s lacks pay_blocked", lang)
 		}
 	}
 }
