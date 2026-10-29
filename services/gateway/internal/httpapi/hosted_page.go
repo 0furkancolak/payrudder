@@ -251,8 +251,7 @@ func (s *Server) invoiceOrAdhoc(w http.ResponseWriter, r *http.Request, sc scope
 		return
 	}
 	if err != nil {
-		hostedHeaders(w)
-		http.Error(w, "the invoice cannot be shown right now", http.StatusServiceUnavailable)
+		hostedTrouble(w, lang)
 		return
 	}
 	lang = customerLang(r, resp.GetCustomerLocale())
@@ -289,7 +288,14 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 	case "processing":
 		v.Refresh, v.Hint = true, v.L["hint_processing"]
 	case "failed":
-		v.Hint = v.L["hint_failed"]
+		// An invoice the provider could not collect and the seller wrote off has no way to pay; saying "you can try again" with no button would be a lie.
+		if inv.GetStatus() == "uncollectible" {
+			v.Hint = v.L["hint_uncollectible"]
+		} else {
+			v.Hint = v.L["hint_failed"]
+		}
+	case "void":
+		v.Hint = v.L["hint_void"]
 	case "paid":
 		v.Receipt = sc.page() + "/receipt" + q
 	}
@@ -616,8 +622,7 @@ func (s *Server) receipt(w http.ResponseWriter, r *http.Request, sc scope) {
 		return
 	}
 	if err != nil {
-		hostedHeaders(w)
-		http.Error(w, "the receipt cannot be shown right now", http.StatusServiceUnavailable)
+		hostedTrouble(w, lang)
 		return
 	}
 	inv := resp.GetInvoice()
