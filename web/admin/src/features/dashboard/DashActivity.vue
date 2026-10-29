@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CreditCard, FileText, Repeat } from "@lucide/vue";
+import { FileText, Repeat, Wallet } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { StatusPill, toneOf, type Tone } from "@/shared/ui/status-pill";
@@ -13,7 +13,7 @@ const fmt = useFormat();
 
 type Item = NonNullable<Dashboard["activity"]>[number];
 
-const ICONS = { invoice: FileText, payment: CreditCard } as const;
+const ICONS = { invoice: FileText, payment: Wallet } as const;
 const iconOf = (a: Item) => ICONS[a.kind as keyof typeof ICONS] ?? Repeat;
 
 /** The status as words: invoices, payments and subscriptions each have their own list of them. */
