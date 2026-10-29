@@ -236,3 +236,21 @@ Rules that follow:
 - The address is the source of truth for filters and sort; a reload, a shared link and "back" bring the same view.
 
 Inventory of the lists and what each has today: `docs/plans/02-filters-sort-bulk.md` ("Inventory").
+
+### The tour's "seen" states (and the test that holds each)
+
+A tour starts by itself only when `tourReady` (the person is known and the server has answered or failed). One row per state; every row has a unit test in `shared/ui/tour/tour.test.ts`.
+
+| State | What happens | Test |
+|---|---|---|
+| Started by itself | Counts as seen from that moment, so walking away from it does not bring it back. | "counts a tour that started by itself as seen at once…" |
+| Finished | Marked seen; written to the server. | "walks forward and back, and finishing marks it seen" |
+| Skipped | Marked seen. Leaving the page without skipping does not mark a tour that was started by hand. | "skipping marks it seen; leaving the page does not" |
+| Seen in another browser | The server's list is a union into this browser's copy; the tour does not start before the server has answered. | "what the server says is seen is seen here, and a tour does not start by itself before it has said" |
+| Seen only here (before the server kept the list) | Sent up once; nothing else is. | "sends up what only this browser has seen, and nothing else" |
+| The server cannot say / the save fails | This browser's copy is all there is and a tour may come again on another browser; what only this browser knows is sent up the next time the server answers. | "goes on with this browser's copy when the server cannot say" |
+| Another person signs in | Their own list; an answer for the person who was there before is ignored. | "remembers per person", "an answer for the person who was there before is ignored" |
+| Nobody known yet / no store | No tour starts by itself; with no store registered the browser alone is the record. | "writes through… and nobody's tours are before the scope is set", "is quiet without a store" |
+| "Show the tour again" | `forgetTours` clears the local copy and tells the server. | "writes through: a tour marked seen or forgotten is told to the server" |
+
+Not reproduced against the real stack (a second device on a slow connection): listed in `docs/plans/03-sheets-onboarding-tours.md` as still open.
