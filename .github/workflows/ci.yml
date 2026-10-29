@@ -231,5 +231,14 @@ jobs:
           if-no-files-found: ignore
       - if: failure()
         run: docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app --profile chaos ps -a && docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app --profile chaos logs --tail 80 ingest-svc aggregator limits-svc
+      # The tail above cuts the broker outage and the restarts out; the whole logs of the services a failure of the invariants points at are kept as an artifact.
+      - if: failure()
+        run: docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.chaos.yaml --profile app --profile chaos logs --no-color --timestamps limits-svc plans-svc redpanda aggregator ingest-svc > tests/chaos-logs.txt 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: chaos-logs
+          path: tests/chaos-logs.txt
+          if-no-files-found: ignore
       - if: always()
         run: make down
