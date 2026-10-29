@@ -27,7 +27,8 @@ import { countryName, flagOf, headline, type Customer, type CustomerSummary, typ
  * model, so a row action of the list can open the sheet on them. The figures come from the list page (`summary`), so list and sheet agree.
  */
 
-const props = defineProps<{ tenantId: string; customer: Customer; summary?: CustomerSummary; summaryLoading?: boolean }>();
+/** `readonly`: the sheet opened over another one (a mention of the customer): it shows, it does not offer the forms that live on the customers page. */
+const props = defineProps<{ tenantId: string; customer: Customer; summary?: CustomerSummary; summaryLoading?: boolean; readonly?: boolean }>();
 const emit = defineEmits<{ editContact: []; editAddress: []; editTax: []; newSubscription: []; paymentLink: []; credits: [] }>();
 const tab = defineModel<CustomerTab>("tab", { default: "overview" });
 const { t, locale } = useI18n();
@@ -84,7 +85,7 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
     </div>
 
     <!-- What can be done -->
-    <div class="flex flex-wrap gap-2" role="group" :aria-label="t('billing.customers.sheet.actions')">
+    <div v-if="!readonly" class="flex flex-wrap gap-2" role="group" :aria-label="t('billing.customers.sheet.actions')">
       <Button size="sm" data-testid="customer-new-subscription" @click="emit('newSubscription')"><Plus aria-hidden="true" />{{ t("billing.customers.sheet.newSubscription") }}</Button>
       <Button size="sm" variant="outline" @click="emit('paymentLink')"><Link2 aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
       <CustomerPaymentPage :tenant-id="tenantId" :customer="id" />

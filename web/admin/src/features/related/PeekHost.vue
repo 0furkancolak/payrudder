@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import OperatorInvoiceSheet from "@/features/invoices/InvoiceSheetById.vue";
+import CustomerSheetById from "@/features/customers/CustomerSheetById.vue";
 import PersonInvoiceSheet from "@/features/product/InvoiceSheetById.vue";
 import { names } from "@/shared/lib/sheets";
 import { tenantBase } from "@/shared/lib/session";
@@ -14,5 +15,6 @@ const invoiceSheet = computed(() => (tenantBase() === "/app/t" ? PersonInvoiceSh
 <template>
   <template v-for="p in peeks" :key="`${p.kind}:${p.tenantId}:${p.id}`">
     <component :is="invoiceSheet" v-if="p.kind === 'invoice'" :tenant-id="p.tenantId" :invoice-id="p.id" @close="unpeek('invoice', p.tenantId, p.id)" />
+    <CustomerSheetById v-else-if="p.kind === 'customer'" :tenant-id="p.tenantId" :external-id="p.id" @close="unpeek('customer', p.tenantId, p.id)" />
   </template>
 </template>
