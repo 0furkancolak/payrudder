@@ -404,8 +404,8 @@ func ParseWebhook(body []byte) (WebhookEvent, error) {
 // Otherwise a real payment of one invoice could be notified as the payment of another (UNVERIFIED: that /payment/detail answers with the basketId; one that
 // does not is refused rather than believed).
 func (c *Client) Confirm(ctx context.Context, e WebhookEvent) (payments.StatusResult, error) {
-	invoice, _, ok := strings.Cut(e.ConversationID, ":")
-	if !ok || invoice == "" {
+	invoice, ok := invoiceOfKey(e.ConversationID)
+	if !ok {
 		return payments.StatusResult{}, fmt.Errorf("%w: the conversation id %q is not one of Payrudder's charges", payments.ErrUnverified, e.ConversationID)
 	}
 	out, err := c.do(ctx, "/payment/detail", map[string]any{"locale": "en", "conversationId": e.ConversationID, "paymentId": e.ID()})
@@ -419,6 +419,17 @@ func (c *Client) Confirm(ctx context.Context, e WebhookEvent) (payments.StatusRe
 		return payments.StatusResult{}, fmt.Errorf("%w: payment %s is not a payment of conversation %q", payments.ErrUnverified, e.ID(), e.ConversationID)
 	}
 	return out.state()
+}
+
+// linkKeyPrefix starts the idempotency key of a payment made on a hosted page (payments-worker invoicepayments.LinkKeyPrefix, which this package cannot import).
+const linkKeyPrefix = "link:"
+
+// invoiceOfKey is the invoice an idempotency key belongs to: "<invoice>:charge:<attempt>" for a charge Payrudder made, "link:<invoice>:<attempt>" or
+// "link:<invoice>:i:<provider>" for a payment on a hosted page. Cutting a link key at its first colon gave "link", which is never the basket of a payment, so every
+// payment on a hosted page was refused as unverified.
+func invoiceOfKey(key string) (string, bool) {
+	invoice, _, ok := strings.Cut(strings.TrimPrefix(key, linkKeyPrefix), ":")
+	return invoice, ok && invoice != ""
 }
 
 // ParseNotification reads an iyzico webhook for payments.Registry.RegisterParser. iyzico's paymentConversationId is the idempotency

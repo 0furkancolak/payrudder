@@ -359,3 +359,29 @@ func TestAnUnstatedPaymentIsNotASuccess(t *testing.T) {
 		}
 	}
 }
+
+// A payment on a hosted page has the key "link:<invoice>:<attempt>": its invoice is the second part, not "link".
+func TestConfirmAcceptsAPaymentOfAHostedPageKey(t *testing.T) {
+	for _, key := range []string{"link:inv-1:3", "link:inv-1:i:iyzico", "inv-1:charge:0"} {
+		f, c := newFake(t, nil)
+		f.reply = func(string, map[string]any) (int, string) {
+			return 200, `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS","basketId":"inv-1"}`
+		}
+		got, err := c.Confirm(context.Background(), WebhookEvent{PaymentID: "7", ConversationID: key, Status: "SUCCESS"})
+		if err != nil || got.State != payments.StateSucceeded {
+			t.Errorf("%s: Confirm = %+v, %v; want a confirmed payment of inv-1", key, got, err)
+		}
+		// The same key with the basket of another invoice is still refused.
+		f.reply = func(string, map[string]any) (int, string) {
+			return 200, `{"status":"success","paymentId":"7","paymentStatus":"SUCCESS","basketId":"inv-2"}`
+		}
+		if _, err := c.Confirm(context.Background(), WebhookEvent{PaymentID: "7", ConversationID: key, Status: "SUCCESS"}); !errors.Is(err, payments.ErrUnverified) {
+			t.Errorf("%s: a payment of another invoice must be unverified, got %v", key, err)
+		}
+	}
+	for _, key := range []string{"", "link:", "link::1", "nocolon"} {
+		if _, ok := invoiceOfKey(key); ok {
+			t.Errorf("%q is not a key of a charge", key)
+		}
+	}
+}
