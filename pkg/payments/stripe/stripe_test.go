@@ -321,3 +321,14 @@ func TestRegisteredLikeTheOthers(t *testing.T) {
 		t.Errorf("capabilities: %+v", c)
 	}
 }
+
+// A refund Stripe says failed or canceled moved no money: it is not booked as done. A pending one (it settles later) is accepted.
+func TestRefundStatus(t *testing.T) {
+	for status, wantErr := range map[string]bool{"succeeded": false, "pending": false, "requires_action": false, "failed": true, "canceled": true} {
+		f := newFake(t, 200, `{"id":"re_1","status":"`+status+`"}`)
+		_, err := f.client(t).Refund(context.Background(), payments.RefundRequest{IdempotencyKey: "k", ChargeID: "pi_1", AmountMinor: 500, Currency: "EUR"})
+		if (err != nil) != wantErr {
+			t.Errorf("status %q: err = %v, want error %v", status, err, wantErr)
+		}
+	}
+}

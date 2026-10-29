@@ -306,13 +306,19 @@ func (c *Client) Refund(ctx context.Context, r payments.RefundRequest) (payments
 		form.Set("amount", amt)
 	}
 	var out struct {
-		ID string `json:"id"`
+		ID     string `json:"id"`
+		Status string `json:"status"`
 	}
 	if err := c.do(ctx, http.MethodPost, "/v1/refunds", form, r.IdempotencyKey, &out); err != nil {
 		return payments.RefundResult{}, err
 	}
 	if out.ID == "" {
 		return payments.RefundResult{}, errors.New("stripe: a refund without an id")
+	}
+	// Stripe documents the refund's status as pending, requires_action, succeeded, failed or canceled (docs.stripe.com/api/refunds/object, read 2026-10-29). A refund
+	// that failed or was canceled moved no money and must not be booked as done; the others are accepted (a pending one settles later).
+	if out.Status == "failed" || out.Status == "canceled" {
+		return payments.RefundResult{}, fmt.Errorf("stripe: the refund %s is %s", out.ID, out.Status)
 	}
 	return payments.RefundResult{RefundID: out.ID}, nil
 }
