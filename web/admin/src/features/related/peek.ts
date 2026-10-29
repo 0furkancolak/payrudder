@@ -4,7 +4,7 @@ import { closeName, openName } from "@/shared/lib/sheets";
  * A record opened over the sheet that mentions it, not by leaving the page: its name in the stack of sheets is `peek:<kind>:<tenant>:<id>`, so the
  * address holds it like any sheet and a reload brings it back. Only the kinds with a sheet that stands on its own (PeekHost) can be peeked.
  */
-export const PEEK_KINDS = ["invoice"] as const;
+export const PEEK_KINDS = ["invoice", "customer", "subscription"] as const;
 export type PeekKind = (typeof PEEK_KINDS)[number];
 
 export const peekName = (kind: PeekKind, tenantId: string, id: string) => `peek:${kind}:${tenantId}:${encodeURIComponent(id)}`;
