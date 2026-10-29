@@ -56,10 +56,11 @@ func testTenantDunningSettings(t *testing.T) {
 	if res, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil || res.Dunned != 2 {
 		t.Fatalf("dunning pass: %+v, %v; want 2 retries", res, err)
 	}
+	// Both invoices, not only the first: the count below is of both customers' retries, and the second one may still be on its way when the first is written off.
 	testkit.Eventually(t, 30*time.Second, "uncollectible after the only retry", func() bool {
-		var status string
-		err := shared.sql.QueryRow(context.Background(), `SELECT status FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&status)
-		return err == nil && status == "uncollectible"
+		var n int
+		err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND status = 'uncollectible' AND snapshot->>'customer_external_id' IN ('cus_a', 'cus_b')`, e.tid).Scan(&n)
+		return err == nil && n == 2
 	})
 	if n := stub.Count("charge"); n != 4 { // 2 invoices × (first charge + one retry)
 		t.Fatalf("charge commands = %d, want 4", n)
