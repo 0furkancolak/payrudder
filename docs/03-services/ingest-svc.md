@@ -128,7 +128,7 @@ With `PAYRUDDER_CELLS` set ([runbook](../runbooks/cells.md)) a tenant that the d
 
 ## Owned data (`ingest_db`)
 
-`idempotency_keys` (partitioned by `created_at`, monthly, retained 45 days), `outbox`.
+`idempotency_keys` (partitioned by `created_at`, monthly, a partition kept until 45 days after its month ends: a key is remembered 45 to 76 days), `outbox`.
 See [05-data-model.md](../05-data-model.md#ingest_db).
 
 ## Produced messages
@@ -148,7 +148,7 @@ left by concurrent relays make it overestimate slightly). Above `PAYRUDDER_MAX_O
 ## Partition maintenance
 
 `maintain_idempotency_partitions(now)` (SECURITY DEFINER, executable by `ingest_system` only) creates the partitions of the
-current month and the next two, and drops those that ended more than 45 days ago. ingest-svc calls it on start and
+current month and the next two, and drops those that ended more than 45 days ago (so a key lives at least 45 days, the 35 of max lateness plus 10 of margin, [ADR 0014](../adr/0014-idempotency-key-retention.md)). ingest-svc calls it on start and
 every hour (`PAYRUDDER_PARTITION_MAINTENANCE_INTERVAL`); the migration calls it once too. If a month has no partition,
 ingest answers `UNAVAILABLE` for keyed events until the job succeeds, so alert on `partition maintenance failed` logs.
 

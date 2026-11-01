@@ -11,6 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
+const resetBegin = `-- name: ResetBegin :exec
+SELECT set_config('payrudder.sandbox_reset', $1, true)
+`
+
+func (q *Queries) ResetBegin(ctx context.Context, setConfig string) error {
+	_, err := q.db.Exec(ctx, resetBegin, setConfig)
+	return err
+}
+
 const resetBillingRuns = `-- name: ResetBillingRuns :execrows
 DELETE FROM billing_runs WHERE tenant_id = $1
 `
@@ -182,6 +191,19 @@ func (q *Queries) ResetInvoices(ctx context.Context, tenantID uuid.UUID) (int64,
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const resetLiveInvoiceCount = `-- name: ResetLiveInvoiceCount :one
+SELECT count(*) FROM invoices WHERE tenant_id = $1 AND snapshot ->> 'environment' IS DISTINCT FROM 'sandbox'
+`
+
+// The financial tables refuse every DELETE (migration 00003) unless the transaction names the tenant as being reset. ResetLiveInvoiceCount is asked first, before
+// ResetBegin: the caller's word that a tenant is a sandbox is not the database's, and no invoice of the live environment is ever deleted.
+func (q *Queries) ResetLiveInvoiceCount(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, resetLiveInvoiceCount, tenantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const resetOutbox = `-- name: ResetOutbox :execrows

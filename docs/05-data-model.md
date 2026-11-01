@@ -37,6 +37,8 @@ erroring or leaking. The Go helper `pkg/pgxx.InTenantTx(ctx, pool, tenantID, fn)
 is the only way handlers open a transaction. It runs `SELECT set_config('app.tenant_id', $1, true)` first.
 Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
 
+`pgxx.VerifyForcedRLS` fails for every table with a `tenant_id` that lacks the template above and is not on the service's exempt list. It runs in the integration tests of every service with Postgres, and at startup in billing-svc, payments-worker and assets-svc (a deployment with such a table does not serve); the exempt lists are `RLSExempt` in each service's `migrations` package, each table with its reason (billing: `invoice_number_seq`, `outbox`, `expense_inboxes`; payments-worker: every table, the database has no RLS by design; assets-svc: none).
+
 ### Cells: a tenant schema (phase 28, [ADR 0018](adr/0018-tenant-isolation-modes.md))
 
 A tenant placed in a cell (`tenants.cell` not empty) has its tables of a service in schema `t_<32 hex digits of the tenant id>` of that service's database in the cell, which holds nothing else but the (so far empty) `shared` schema and, after a move, schemas set aside as `m_<id>_<unix>`. The tables are the ones this document describes, with the same names, columns, constraints, indexes, **policies** (row-level security stays on as the second guard), grants and functions, so the queries do not change; their definitions are the service's `migrations/tenant` set, applied to each schema with its own `goose_db_version`. A transaction for the tenant runs with `app.tenant_id` set as in pooled mode and `search_path = "t_<id>", shared`, both transaction-local. Rules for a tenant set: only tables with a `tenant_id`; no schema named in any statement; functions are `SET search_path FROM CURRENT`, not `= public`; a change to the public migrations is made in the tenant set too (a test per service compares the two). Converted so far: `ingest_db` (`idempotency_keys` partitioned by month in each schema, `outbox`, `enqueue_outbox`, `maintain_idempotency_partitions`) `assets_db` (`upload_sessions`, `assets`, `storage_usage`) and `payments_db` (all ten tables, plus `shared.charge_keys`, the key-to-tenant index of a cell, filled by a trigger on `payment_attempts`; no row-level security, the schema is the boundary). Nothing is in a cell yet. plans-svc: its tenant schema holds the 36 tables with a `tenant_id` except `api_keys` and `sandbox_resets`, which are looked up without a tenant and stay pooled with the global tables; `current_tenant()` reads the tenant row from the setting `app.tenant_row`.
@@ -277,7 +279,9 @@ is on `(tenant_id, idempotency_key, created_at)`, which **isn't** uniqueness on 
 Resolution: `created_at` isn't `now()` but the **start of the dedup window bucket**, i.e. `date_trunc('month', now())`.
 A key is then unique within its month's partition, and the insert path checks the two previous months' partitions too
 (`ON CONFLICT` covers the current month, plus an explicit `SELECT` against the two before it). The dedup window is therefore
-"≥ 2 months, < 3 months" (35 days can span three calendar months), which covers the 35-day max lateness. Covered by a unit + integration test.
+the lookup reaches back over three month buckets (35 days can span three calendar months), but a bucket's partition is dropped 45 days after its month ended, so a key is
+remembered for at least 45 and less than 76 days after it was first seen: the 35-day max lateness plus 10 days of margin ([ADR 0014](adr/0014-idempotency-key-retention.md)).
+Covered by a unit + integration test, and by `KeyRetentionOutlivesTheLateWindow` at the retention boundary.
 (Alternative: unpartitioned table plus a batched `DELETE` job. Simpler, but `DELETE` bloat at volume. Decided: partitions. The benchmark of both is recorded in [ADR 0014](adr/0014-idempotency-key-retention.md): dropping a month took 24 ms against 8.4 s of batched deletes plus a vacuum.)
 
 RLS: `idempotency_keys` RLS'd for `ingest_app` (SELECT, INSERT only). `outbox` accessed only by `ingest_system` (relay: SELECT, DELETE and
@@ -539,6 +543,8 @@ CREATE TABLE outbox (                                  -- the shared pkg/outbox 
 
 RLS on all tenant tables for `billing_app`. Scheduler, sweeper, reply consumer and relay use `billing_system`.
 
+**History is immutable in the database, not only by grants** (migrations `00003`, plan 22 G3). An invoice that has left `draft` keeps `subtotal_minor`, `total_minor`, `currency`, `customer_id`, `period_id`, `kind`, `plan_version_id`, `number`, `created_at`, `finalized_at` and its `snapshot` except `snapshot.payment_method` (trigger `invoices_frozen`, SQLSTATE `P0001`, hint `invoice_frozen`); the updates the code makes are `SetInvoiceTotals`, `OpenInvoice` (while a draft), `SetInvoiceStatus`, `SetInvoicePDFKeyBySaga`, `SetInvoicePaymentMethod` and `SetInvoicePromotion`. `invoices`, `invoice_lines`, `credit_notes`, `invoice_payments`, `credit_ledger`, `credit_applications` and `saga_events` refuse every `DELETE` (`financial_row_no_delete`, hint `financial_row_delete`) unless the transaction names the tenant in `payrudder.sandbox_reset` (the sandbox reset after it found no invoice of the live environment; an `invoices` row of a live environment is refused even then) or `payrudder.tenant_move` (`pkg/pgxx` `Move`, after it copied the rows), or the row is a `credit_applications` of an invoice that is now `void` (a void gives back the credit it consumed). `credit_ledger` has a unique index on `(tenant_id, customer_id, idempotency_key, lot_id)` where the key is set (migration `00004`): a consume that takes from several lots writes a row per lot under one key, a grant one row. Not covered: a role with the table owner's rights (the migrator) or `session_replication_role`; the settings above are a guard against code that is wrong, not against a person who holds the database.
+
 ---
 
 ## `assets_db`
@@ -601,6 +607,9 @@ CREATE TABLE payment_attempts (
   amount_minor bigint, status text NOT NULL, psp_response jsonb, created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX ON payment_attempts (tenant_id, invoice_id);
+-- payment_ledger and manual_receipts (as built, migration 00002 of payments-worker, plan 22 G3) refuse every DELETE (trigger ledger_no_delete, SQLSTATE P0001, hint ledger_row_delete)
+-- unless the transaction names the tenant in payrudder.sandbox_reset (the sandbox reset, after it found no attempt or ledger row of the live environment; a row whose environment
+-- is not 'sandbox' is refused even then) or payrudder.tenant_move (pkg/pgxx Move). payments_system has no UPDATE on them either.
 
 -- notifier_db
 CREATE TABLE sent_notifications (

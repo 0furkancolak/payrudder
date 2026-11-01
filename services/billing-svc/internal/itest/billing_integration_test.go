@@ -123,6 +123,10 @@ func TestBilling(t *testing.T) {
 		{"RefundCreditNoteNeedsACardPayment", testRefundCreditNoteNeedsACardPayment},
 		{"NumberSeriesIsEnforcedByTheDatabase", testNumberSeriesIsEnforcedByTheDatabase},
 		{"SandboxResetKeepsConfigurationAndOtherTenants", testSandboxResetKeepsConfigurationAndOtherTenants},
+		{"RowLevelSecurityIsForcedOnEveryTenantTable", testRowLevelSecurityIsForcedOnEveryTenantTable},
+		{"FinancialRowsAreImmutableInTheDatabase", testFinancialRowsAreImmutable},
+		{"CreditLedgerKeyIsUsedOncePerLot", testCreditLedgerKeyIsUsedOncePerLot},
+		{"RepeatedLedgerKeysAreRenamedByTheMigration", testRepeatedLedgerKeysAreRenamedByTheMigration},
 		{"EnvironmentIdsAreNotFoundInTheOtherEnvironment", testEnvironmentIdsAreNotFoundInTheOtherEnvironment},
 	} {
 		t.Run(tc.name, tc.fn)

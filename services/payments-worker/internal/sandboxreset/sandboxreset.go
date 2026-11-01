@@ -3,10 +3,12 @@ package sandboxreset
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/refuse"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
@@ -25,10 +27,22 @@ type Resetter struct{ db store.DB }
 func New(db store.DB) *Resetter { return &Resetter{db: db} }
 
 // Reset deletes the tenant's rows in one transaction and returns how many, by table (tables with none are left out). The ledger rows go after the receipts that
-// point at them. A tenant that is moving is not reset (the error matches tenantdir.ErrNotServing): a reset must not run where the tenant's rows are being copied.
+// point at them. The ledger and the receipts refuse deletes (migration 00002) unless the transaction names the tenant as being reset; the request said the tenant is a
+// sandbox, and the database is asked too: a tenant with an attempt or a ledger row of the live environment is refused before anything is deleted. A tenant that is
+// moving is not reset (the error matches tenantdir.ErrNotServing): a reset must not run where the tenant's rows are being copied.
 func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]int64, error) {
 	out := map[string]int64{}
 	err := store.Tx(ctx, r.db, tenantID, func(tx pgx.Tx, q *sqlc.Queries, schema string) error {
+		live, err := q.ResetLiveRowCount(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		if live > 0 {
+			return refuse.New(http.StatusConflict, "admin.sandbox.live_refused", "only a sandbox tenant can be reset")
+		}
+		if err := q.ResetBegin(ctx, tenantID.String()); err != nil {
+			return err
+		}
 		for _, s := range []struct {
 			table string
 			run   func(context.Context, uuid.UUID) (int64, error)

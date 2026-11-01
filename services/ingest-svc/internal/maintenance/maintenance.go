@@ -1,5 +1,6 @@
-// Package maintenance keeps the monthly partitions of idempotency_keys: the next two months always exist, and
-// partitions older than the 45-day retention are dropped. In cells mode (ADR 0018) every tenant placed in a cell has its own partitioned table, kept by
+// Package maintenance keeps the monthly partitions of idempotency_keys: the next two months always exist, and a partition is dropped once its month ended more than 45
+// days ago. A key is therefore remembered for at least 45 and less than 76 days after it was first seen, against the 35 days of lateness it has to cover (ADR 0014);
+// the itest KeyRetentionOutlivesTheLateWindow holds the retention to that. In cells mode (ADR 0018) every tenant placed in a cell has its own partitioned table, kept by
 // the same function in its own schema.
 package maintenance
 

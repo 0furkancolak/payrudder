@@ -32,9 +32,10 @@ func testHostedInvoiceLinks(t *testing.T) {
 	code := func(err error) codes.Code { return status.Code(err) }
 
 	customer := uuid.New()
-	paid := seedOne(t, e.tid, customer, "cus_h", "paid", "USD", "INV-2026-000201", 1500, "live")
+	// The snapshot is completed while the invoice is a draft; once it is paid the database refuses to change it (migration 00003).
+	paid := seedOne(t, e.tid, customer, "cus_h", "draft", "USD", "INV-2026-000201", 1500, "live")
 	draft := seedOne(t, e.tid, customer, "cus_h", "draft", "USD", "", 700, "live")
-	if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET snapshot = snapshot || '{"tenant_name":"Acme Ltd","customer_name":"Ada Lovelace"}'::jsonb WHERE tenant_id = $2 AND id = $1`, paid, e.tid); err != nil {
+	if _, err := shared.sql.Exec(context.Background(), `UPDATE invoices SET snapshot = snapshot || '{"tenant_name":"Acme Ltd","customer_name":"Ada Lovelace"}'::jsonb, status = 'paid' WHERE tenant_id = $2 AND id = $1`, paid, e.tid); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO invoice_lines (tenant_id, invoice_id, line_no, kind, amount_minor, description) VALUES ($1,$2,1,'BASE_FEE',1500,'Base fee')`, e.tid, paid); err != nil {
