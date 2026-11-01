@@ -43,6 +43,10 @@ func newRefundFake(t *testing.T) *refundFake {
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/transactions/") { // Paddle reads the transaction before it refunds an amount; that is no refund
+			_, _ = io.WriteString(w, `{"data":{"id":"txn_01","currency_code":"USD","details":{"totals":{"grand_total":"1116"},"line_items":[{"id":"txnitm_01"}]}}}`)
+			return
+		}
 		f.refunds++
 		iyz := r.URL.Path == "/v2/payment/refund"
 		switch {

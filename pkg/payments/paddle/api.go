@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -13,8 +14,9 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments"
 )
 
-// The calls below are written from Paddle's API reference (https://developer.paddle.com/api-reference). Where the reference does not
-// settle a path, a field or a response shape, the code says UNVERIFIED and reads the response defensively; no sandbox has been run.
+// The calls below are written from Paddle's API reference (https://developer.paddle.com/api-reference), each page re-read as raw markdown on 2026-11-02
+// (docs/paddle-compatibility-matrix.md). Where the reference does not settle a path, a field or a response shape, the code says UNVERIFIED and reads the
+// response defensively; no sandbox has been run.
 
 var (
 	_ payments.Catalogue       = (*Client)(nil)
@@ -28,8 +30,56 @@ type reply[T any] struct {
 	Data T `json:"data"`
 }
 
+// maxPages bounds listAll: 200 entities a page makes this far more than a customer has addresses or businesses.
+const maxPages = 50
+
+type page[T any] struct {
+	Data []T `json:"data"`
+	Meta struct {
+		Pagination struct {
+			Next    string `json:"next"`
+			HasMore bool   `json:"has_more"`
+		} `json:"pagination"`
+	} `json:"meta"`
+}
+
+// listAll reads every page of a list call (path may carry a query) by Paddle's cursor: meta.pagination.has_more says there is another page, and the `after`
+// value of meta.pagination.next is where it starts (Paddle always returns next, also on the last page). The next URL itself is never fetched, so the API key is
+// only ever sent to the configured host. Skip-Count spares Paddle the count query nobody here reads (developer.paddle.com/api-reference/about/pagination, read 2026-11-02).
+func listAll[T any](ctx context.Context, c *Client, path string) ([]T, error) {
+	var all []T
+	next := path
+	for i := 0; i < maxPages; i++ {
+		var pg page[T]
+		if err := c.doWith(ctx, http.MethodGet, next, nil, &pg, map[string]string{"Skip-Count": "true"}); err != nil {
+			return nil, err
+		}
+		all = append(all, pg.Data...)
+		if !pg.Meta.Pagination.HasMore {
+			return all, nil
+		}
+		u, err := url.Parse(pg.Meta.Pagination.Next)
+		after := ""
+		if err == nil {
+			after = u.Query().Get("after")
+		}
+		if after == "" {
+			return nil, errors.New("paddle: a page that has more entities but no cursor")
+		}
+		sep := "?"
+		if strings.Contains(path, "?") {
+			sep = "&"
+		}
+		next = path + sep + "after=" + url.QueryEscape(after)
+	}
+	return nil, fmt.Errorf("paddle: more than %d pages of %s", maxPages, path)
+}
+
+// existingCustomer finds the id in the 409 customer_already_exists detail ("Customer email conflicts with existing customer ID ctm_...", developer.paddle.com/errors/customers/customer_already_exists, read 2026-11-02).
+var existingCustomer = regexp.MustCompile(`ctm_[a-z0-9]+`)
+
 // SyncCatalogue creates the plan's product when it has none, and a recurring price for each requested key. A price in a currency Paddle
-// cannot bill is skipped, with the reason. Prices are immutable at Paddle, which suits plan versions: a new version is new prices.
+// cannot bill is skipped, with the reason. A new plan version is new prices: the adapter never edits one (Paddle has PATCH /prices/{id}, the adapter does not use it).
 func (c *Client) SyncCatalogue(ctx context.Context, r payments.CatalogueRequest) (payments.CatalogueResult, error) {
 	out := payments.CatalogueResult{ProductRef: r.ProductRef, Prices: map[string]string{}, Skipped: map[string]string{}}
 	caps := Caps()
@@ -38,7 +88,7 @@ func (c *Client) SyncCatalogue(ctx context.Context, r payments.CatalogueRequest)
 		if tax == "" {
 			tax = "saas"
 		}
-		body := map[string]any{"name": r.ProductName, "tax_category": tax, "custom_data": map[string]string{"quotify_plan_code": r.PayrudderPlanCode}}
+		body := map[string]any{"name": r.ProductName, "tax_category": tax, "custom_data": map[string]string{"payrudder_plan_code": r.PayrudderPlanCode}}
 		if r.Description != "" {
 			body["description"] = r.Description
 		}
@@ -88,31 +138,38 @@ func (c *Client) SyncCatalogue(ctx context.Context, r payments.CatalogueRequest)
 	return out, nil
 }
 
-// EnsureCustomer finds the customer by e-mail (GET /customers?email=) or creates it, then an address for the country and a business for the tax id.
-// UNVERIFIED: the address and business bodies (country_code, postal_code, city, first_line; name, tax_identifier) and that a list of
-// addresses can be matched by country. A customer that exists already is reused, and so are its address and business.
+// EnsureCustomer finds the customer by e-mail (GET /customers?email=) or creates it, then an address for the country and a business for the tax id. A customer
+// that exists already is reused, and so are its address and business. The e-mail is unique regardless of case and an archived customer keeps it, which the search
+// (active customers only) does not show: the 409 customer_already_exists names the customer that owns it. An address is created with what the spec has;
+// Paddle requires a postal code for some countries (its list is on the supported-countries page, not in the API reference), and refuses the address otherwise.
 func (c *Client) EnsureCustomer(ctx context.Context, s payments.CustomerSpec) (payments.CustomerRefs, error) {
 	var refs payments.CustomerRefs
 	if s.Email == "" {
 		return refs, errors.New("paddle: a customer needs an e-mail address")
 	}
-	var found reply[[]struct {
+	found, err := listAll[struct {
 		ID string `json:"id"`
-	}]
-	if err := c.do(ctx, http.MethodGet, "/customers?email="+url.QueryEscape(s.Email), nil, &found); err != nil {
+	}](ctx, c, "/customers?email="+url.QueryEscape(s.Email))
+	if err != nil {
 		return refs, err
 	}
-	if len(found.Data) > 0 {
-		refs.CustomerRef = found.Data[0].ID
+	if len(found) > 0 {
+		refs.CustomerRef = found[0].ID
 	} else {
-		body := map[string]any{"email": s.Email, "custom_data": map[string]string{"quotify_customer_id": s.PayrudderCustomerID}}
+		body := map[string]any{"email": s.Email, "custom_data": map[string]string{"payrudder_customer_id": s.PayrudderCustomerID}}
 		if s.Name != "" {
 			body["name"] = s.Name
 		}
 		var created reply[struct {
 			ID string `json:"id"`
 		}]
-		if err := c.do(ctx, http.MethodPost, "/customers", body, &created); err != nil {
+		err := c.do(ctx, http.MethodPost, "/customers", body, &created)
+		var pe *Error
+		switch {
+		case errors.As(err, &pe) && pe.Status == http.StatusConflict && pe.Code == "customer_already_exists":
+			// The search lists active customers only, but an archived one still owns the e-mail address; Paddle names it.
+			created.Data.ID = existingCustomer.FindString(pe.Detail)
+		case err != nil:
 			return refs, err
 		}
 		refs.CustomerRef = created.Data.ID
@@ -122,14 +179,14 @@ func (c *Client) EnsureCustomer(ctx context.Context, s payments.CustomerSpec) (p
 	}
 	base := "/customers/" + url.PathEscape(refs.CustomerRef)
 	if s.Country != "" {
-		var list reply[[]struct {
+		list, err := listAll[struct {
 			ID      string `json:"id"`
 			Country string `json:"country_code"`
-		}]
-		if err := c.do(ctx, http.MethodGet, base+"/addresses", nil, &list); err != nil {
+		}](ctx, c, base+"/addresses?per_page=200")
+		if err != nil {
 			return refs, err
 		}
-		for _, a := range list.Data {
+		for _, a := range list {
 			if a.Country == s.Country {
 				refs.AddressRef = a.ID
 			}
@@ -151,14 +208,14 @@ func (c *Client) EnsureCustomer(ctx context.Context, s payments.CustomerSpec) (p
 		}
 	}
 	if s.TaxID != "" {
-		var list reply[[]struct {
+		list, err := listAll[struct {
 			ID  string `json:"id"`
 			Tax string `json:"tax_identifier"`
-		}]
-		if err := c.do(ctx, http.MethodGet, base+"/businesses", nil, &list); err != nil {
+		}](ctx, c, base+"/businesses?per_page=200")
+		if err != nil {
 			return refs, err
 		}
-		for _, b := range list.Data {
+		for _, b := range list {
 			if b.Tax == s.TaxID {
 				refs.BusinessRef = b.ID
 			}
@@ -180,8 +237,8 @@ func (c *Client) EnsureCustomer(ctx context.Context, s payments.CustomerSpec) (p
 	return refs, nil
 }
 
-// PortalLink creates a customer portal session. UNVERIFIED: the path (POST /customers/{id}/portal-sessions), the subscription_ids
-// field and the location of the link in the response (data.urls.general.overview).
+// PortalLink creates a customer portal session (POST /customers/{id}/portal-sessions, subscription_ids up to 25, the link at data.urls.general.overview). The
+// links are temporary and are not to be stored.
 func (c *Client) PortalLink(ctx context.Context, customerRef string, subscriptionRefs []string) (string, error) {
 	if !strings.HasPrefix(customerRef, "ctm_") {
 		return "", errors.New(`paddle: a customer id ("ctm_...") is needed`)
@@ -254,8 +311,10 @@ func subPath(ref string) (string, error) {
 
 func minorOf(m money) int64 { return minor(m.Amount) }
 
-// PreviewChange asks Paddle what a change would bill (PATCH /subscriptions/{id}/preview). UNVERIFIED: the inner shape of update_summary
-// ({credit, charge, result: {action, amount}}) and of recurring_transaction_details; fields that are absent read as zero.
+// PreviewChange asks Paddle what a change would bill (PATCH /subscriptions/{id}/preview). update_summary is {credit, charge, result: {action, amount}} and
+// recurring_transaction_details.totals.total is the next renewal (developer.paddle.com/api-reference/subscriptions/preview-subscription-update, read 2026-11-02).
+// Paddle's documented example shows the credit as a negative amount ("-4927" against a charge of "83765" and a result of "78838"), so the credit is reported
+// as its size. Fields that are absent read as zero.
 func (c *Client) PreviewChange(ctx context.Context, ref string, ch payments.ProviderChange) (payments.ChangePreview, error) {
 	path, err := subPath(ref)
 	if err != nil {
@@ -287,7 +346,7 @@ func (c *Client) PreviewChange(ctx context.Context, ref string, ch payments.Prov
 	}
 	p := payments.ChangePreview{Currency: out.Data.CurrencyCode}
 	if s := out.Data.UpdateSummary; s != nil {
-		p.CreditMinor, p.ChargeMinor = minorOf(s.Credit), minorOf(s.Charge)
+		p.CreditMinor, p.ChargeMinor = max(minorOf(s.Credit), -minorOf(s.Credit)), minorOf(s.Charge)
 		p.ResultMinor = minor(s.Result.Amount)
 		if s.Result.Action == "credit" {
 			p.ResultMinor = -p.ResultMinor
@@ -346,7 +405,7 @@ func (c *Client) Resume(ctx context.Context, ref string) error {
 }
 
 // PaymentMethodLink returns the checkout where the customer updates the subscription's payment method
-// (GET /subscriptions/{id}/update-payment-method-transaction). UNVERIFIED: the response carries the page at data.checkout.url.
+// (GET /subscriptions/{id}/update-payment-method-transaction, the page at data.checkout.url; automatically-collected subscriptions only).
 func (c *Client) PaymentMethodLink(ctx context.Context, ref string) (string, error) {
 	path, err := subPath(ref)
 	if err != nil {
@@ -406,7 +465,8 @@ func (c *Client) CreateDiscount(ctx context.Context, d payments.DiscountSpec) (p
 	return payments.DiscountRefs{DiscountRef: out.Data.ID, Code: out.Data.Code}, nil
 }
 
-// InvoiceURL returns the PDF of the invoice Paddle issued for a transaction (GET /transactions/{id}/invoice). UNVERIFIED: the link is at data.url.
+// InvoiceURL returns the PDF of the invoice Paddle issued for a transaction (GET /transactions/{id}/invoice, the link at data.url). The link expires after one hour
+// (developer.paddle.com/api-reference/transactions/get-transaction-invoice, read 2026-10-29), so a caller hands it out at once and never stores it.
 func (c *Client) InvoiceURL(ctx context.Context, transactionRef string) (string, error) {
 	if !strings.HasPrefix(transactionRef, "txn_") {
 		return "", errors.New(`paddle: a transaction id ("txn_...") is needed`)
