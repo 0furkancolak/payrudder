@@ -38,3 +38,8 @@ Anything at real scale or across real regions (needs the cloud).
 
 ## Risks
 The largest architectural change in the list: do not start implementation before the ADR is accepted.
+
+## Review addendum (2026-11-01)
+- **Stale:** `tenants.cell`, `region` and `placement_status` exist, `DirectoryService` routes, and `payrudderctl cells move|abort|doctor|retired` moves a tenant with a checksummed copy (`docs/runbooks/cells.md`). Per-cell regions exist in `pkg/cells/config.go`. Cells stay off until every job is converted; two real clusters and a real pooler were not tested.
+- Replace Work 2 and the "move" part of Work 3 with: route requests by `tenants.region` in the gateway, add a residency test, and test the existing move through PgBouncer and across two Postgres containers (`ITEST_CELLS=1` suites are run by hand today; add them to nightly).
+- Tension with plan 22 G17: measure before adding systems. PgBouncer, replicas and partitioning stay behind a measurement.

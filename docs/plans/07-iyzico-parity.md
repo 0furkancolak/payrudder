@@ -37,3 +37,7 @@ All of it against iyzico until credentials exist.
 
 ## Risks
 3-D Secure and the checkout form redirect the customer: the return/callback URLs, CSP and idempotency of the callback need a design review (04).
+
+## Review addendum (2026-11-01)
+- `docs/iyzico-compatibility-matrix.md` exists (8 findings); finding 2 was fixed in #270. Open and not yet listed here: `fraudStatus` is ignored (a success with a fraud status of 0 is booked as paid); the checkout-form notification is rejected; there is no CF-Retrieve call; the health-check BIN is 6 digits against the documented 8; the V3 signature check is not implemented.
+- iyzico has no webhook signature in the current adapter: the "ask iyzico" confirmation is the only trust. Keep it, add V3 verification as an extra check when the account has it enabled.

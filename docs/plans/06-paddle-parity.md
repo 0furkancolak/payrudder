@@ -37,3 +37,8 @@ Everything against the live Paddle service until the owner provides sandbox cred
 
 ## Risks
 Paddle changes the API under us; a scheduled job that compares our matrix with the changelog is worth adding.
+
+## Review addendum (2026-11-01)
+- Research steps 1-2 are partly done: `docs/paddle-compatibility-matrix.md` exists (F1-F9 plus a list of unclear points) and #270 fixed the first findings. Remaining: close F1-F9 and the unclear list with fixtures, read the raw documentation (the matrix was read through fetch summaries), and add pagination helpers.
+- `quotify_*` custom_data keys remain (`pkg/payments/paddle/api.go`): rename to `payrudder_*` while still reading both. Refund is `type:"full"` only; a partial credit note on a Paddle invoice must be refused or routed to an adjustment (documented, tested).
+- Surface `Retry-After` from rate limits. Live behaviour stays UNVERIFIED until a sandbox exists.

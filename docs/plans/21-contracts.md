@@ -68,3 +68,10 @@ Legal sufficiency of any text; that a court or authority accepts the evidence; r
 
 ## Risks
 A wrong default text exposes sellers: banner, disclaimer, no machine-translated legal text. Re-acceptance prompts can block renewals: material/minor flag and a grace window. IP address is personal data: configurable retention and erasure policy documented.
+
+## Review addendum (2026-11-01)
+- **Corrections:** grant tests (SQLSTATE 42501) exist only in ingest-svc and aggregator, so this plan adds its own grants test; the portal does not offer plan change today (only credit purchase and invoice pay); the gate belongs at subscription creation or first payment, **not** at off-session renewals and dunning charges (nobody is present).
+- **Append-only vs erasure:** acceptances are INSERT-only with `UPDATE (ip, user_agent)` granted to the erasure job only; a new grants test is part of the plan.
+- **Boundaries:** tables in plans-svc (migrations public 00005 and tenant 00004), gate in gateway/billing-svc through the shared `paymentGate` (plan 13). The sandbox reset needs a decision about contract rows (`plans-svc/internal/sandbox/steps.go`, "neither listed nor kept" test): default = sandbox acceptances are cleared, live ones never. `promote` copies templates and versions, never acceptances.
+- **Also add:** assets-svc purpose `contract_snapshot` (html, pdf) and quota; mail `contract_accepted` in six languages; hosted i18n; permission names; the webhook checklist from the README.
+- **Defaults (not agreed):** retention 3 years pending verification; starter texts for tr and en marked "template"; the withdrawal flow ships in a second PR.

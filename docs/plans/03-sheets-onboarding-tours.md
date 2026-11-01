@@ -55,3 +55,7 @@ Conflict with the other session working on the same files (#243 area): coordinat
 **Onboarding, read against "nothing is forced" (2026-10-29, by reading the code, not the real stack):** the wizard has three screens (welcome, app, done). "Skip for now" (`onb-skip`) is shown on every screen except the last, which ends with "Finish"; the only required fields (organisation and app name) block "Create", not skipping; a person who skipped resumes from the checklist on the home. Covered by `e2e-mock/onboarding.spec.ts`.
 
 **Scroll (complaint 9):** `e2e-mock/sheet-scroll.spec.ts` opens a sheet on a scrolled customer list and checks the page behind does not move on open or on close. It passes, so the jump is not reproducible on this page in the mock; other lists, nested peeks and a phone are not covered.
+
+## Review addendum (2026-11-01)
+- The bullet that calls items 5, 6 and 13 unverified contradicts the Findings section; the Findings win.
+- **Still open:** payment is not peekable (`related/PaymentRows.vue` falls back to a link); `CustomersPage.vue` `toCredits` does not pass the customer; the scroll lock is per page (`shared/lib/sheets.ts`), not owned by `Sheet`; nested and back/forward behaviour needs mock e2e.

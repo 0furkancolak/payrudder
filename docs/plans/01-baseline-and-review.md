@@ -44,3 +44,9 @@ GitHub-only behaviour (caches, matrix images) until it runs there.
 
 ## Risks
 The review will find real defects in what was merged; that is the point. Some will need a plan reopened (see 02, 06, 08, 12, 15).
+
+## Review addendum (2026-11-01)
+- **Status, not plan:** the lint findings were fixed in #259 (`pricechange.go` uses `errors.Is`); `make ci-local` exists (Makefile); the PHP generator check is `make sdk-php-check` (there is no `make gen-php`). Older text in this plan that says otherwise is stale.
+- **Gap:** `ci-local` runs only the PHP SDK check. Add the Go, Python and TypeScript SDK generate/check, the docs-site test and the `mcp` check, and document `sdk-php-check` in `docs/10-local-dev.md`.
+- **Overlap:** this plan duplicates the open "phase 43" in `docs/phases/ROADMAP.md` (red main, nightly failing); treat them as one item.
+- **Undefined:** "baseline part 2-4" are not defined; they are (2) the review table of #236-#257 (not started), (3) CI parity (`ci-local`), (4) a standing rule that GitHub CI is read after every merge.
