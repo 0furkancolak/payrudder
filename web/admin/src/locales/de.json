@@ -599,7 +599,8 @@
         "invoices": "Rechnungen",
         "subscriptions": "Abonnements",
         "credits": "Guthaben",
-        "details": "Details"
+        "details": "Details",
+        "agreements": "Vereinbarungen"
       },
       "sheet": {
         "copyId": "Kunden-ID {id} kopieren",
@@ -3936,11 +3937,19 @@
           "refused": "Der Anbieter akzeptiert diese Schlüssel nicht mehr. Verbinden Sie ihn mit neuen Schlüsseln erneut.",
           "unreachable": "Der Anbieter war gerade nicht erreichbar. Er wird in Kürze erneut geprüft."
         }
+      },
+      "agreements": {
+        "title": "Vereinbarungen für Ihre Kunden",
+        "advisory": "Empfehlung, nicht erforderlich",
+        "optional": "Optional: nötig, wenn Sie an Verbraucher verkaufen. Sie verlangen derzeit keine.",
+        "ready": "Jede Vereinbarung, die Sie verlangen, ist veröffentlicht.",
+        "template": "Eine verlangte Vereinbarung trägt noch den Mustertext. Lassen Sie ihn rechtlich prüfen.",
+        "missing": "Eine verlangte Vereinbarung hat keinen veröffentlichten Text, Kunden können daher nicht zahlen. Veröffentlichen Sie ihn."
       }
     },
     "promote": {
       "title": "Sandbox-Konfiguration nach Live kopieren",
-      "intro": "Zähler, Tarife und Preise, Steuersätze, Gutscheine, E-Mail-Einstellungen und Webhook-Endpunkte. Niemals Kunden, Nutzung, Rechnungen oder Zahlungen. Es wird nur hinzugefügt: Was in Live schon existiert und abweicht, bleibt unangetastet.",
+      "intro": "Zähler, Tarife und Preise, Steuersätze, Gutscheine, E-Mail-Einstellungen, Webhook-Endpunkte und die Texte Ihrer Vereinbarungen. Niemals Kunden, Nutzung, Rechnungen, Zahlungen oder Zustimmungen. Es wird nur hinzugefügt: Was in Live schon existiert und abweicht, bleibt unangetastet.",
       "preview": "Änderungen ansehen",
       "adminOnly": "Das können nur Inhaber und Administratoren.",
       "previewed": "Vorschau, nichts geschrieben",
@@ -3957,7 +3966,8 @@
         "taxes": "Steuersätze",
         "coupons": "Gutscheine",
         "mail": "E-Mail",
-        "webhooks": "Webhooks"
+        "webhooks": "Webhooks",
+        "contracts": "Verträge"
       },
       "action": {
         "create": "Hinzufügen",
@@ -4359,7 +4369,8 @@
       "platformPlans": "Plattform-Tarife",
       "support": "Hilfe",
       "supportInbox": "Support-Eingang",
-      "connect": "App verbinden"
+      "connect": "App verbinden",
+      "contracts": "Verträge"
     },
     "noApps": "Noch keine Apps",
     "newApp": "Neue App"
@@ -4742,6 +4753,13 @@
         "code": "Wählen Sie Ihre Sprache und fügen Sie den Code ein. Zähler und API-Adresse sind schon darin.",
         "checklistTitle": "Ihre Checkliste",
         "codeTitle": "Der Code"
+      },
+      "contracts": {
+        "intro": "Die Vereinbarungen, die Ihre Kunden vor dem Bezahlen akzeptieren: Fernabsatzvertrag, Vorabinformation, Ihre Bedingungen und Ihre Datenschutzerklärung. Payrudder speichert den Text und den Nachweis.",
+        "agreements": "Veröffentlichen Sie hier eine Version. Eine veröffentlichte Version wird nie bearbeitet: Sie veröffentlichen die nächste, und der Verlauf zeigt, was sich geändert hat.",
+        "agreementsTitle": "Vereinbarungen",
+        "settings": "Wählen Sie, welche Vereinbarungen Kunden akzeptieren müssen und wie lange ihre Adresse und ihr Browser aufbewahrt werden.",
+        "settingsTitle": "Einstellungen"
       }
     }
   },
@@ -5068,6 +5086,211 @@
       "queued": "Warte auf die Antwort Ihres Servers.",
       "delivered": "Ihr Server hat es angenommen ({answer}).",
       "failed": "Ihr Server hat es nicht angenommen: {answer}. Korrigieren Sie Ihren Handler und senden Sie ein weiteres; Payrudder versucht es auch selbst erneut."
+    }
+  },
+  "contracts": {
+    "disclaimer": "Payrudder liefert Vorlagen und den Nachweis, wer was akzeptiert hat, keine Rechtsberatung. Diese Texte sind Ihre Vereinbarung mit Ihren Kunden: Lassen Sie sie für die Länder, in denen Sie verkaufen, von einer Anwältin oder einem Anwalt prüfen, bevor Sie sich darauf verlassen.",
+    "tabsLabel": "Bereiche",
+    "tabs": {
+      "agreements": "Vereinbarungen",
+      "settings": "Einstellungen",
+      "withdrawals": "Widerrufe"
+    },
+    "kinds": {
+      "distance_sales": "Fernabsatzvertrag",
+      "pre_info": "Vorabinformation",
+      "tos": "Nutzungsbedingungen",
+      "privacy": "Datenschutzerklärung"
+    },
+    "audiences": {
+      "consumer": "Verbraucher",
+      "business": "Unternehmen"
+    },
+    "agreements": {
+      "intro": "Das sehen Ihre Kunden, wenn sie bezahlen. Jede Vereinbarung ist eine Reihe von Versionen: Eine veröffentlichte Version wird nie bearbeitet, Sie veröffentlichen die nächste. Unternehmenskunden sehen den Unternehmenstext, sobald Sie einen veröffentlichen, bis dahin den Verbrauchertext.",
+      "columns": {
+        "agreement": "Vereinbarung",
+        "version": "Aktuelle Version",
+        "languages": "Sprachen",
+        "published": "Veröffentlicht"
+      },
+      "required": "Erforderlich",
+      "none": "Nicht veröffentlicht",
+      "fallback": "zeigt den Verbrauchertext",
+      "material": "Wesentlich",
+      "minor": "Geringfügig",
+      "templateBadge": "Mustertext",
+      "templateTitle": "Mustertext: Lassen Sie ihn rechtlich prüfen",
+      "templateBody": "Mindestens ein Text, den Ihre Kunden sehen, trägt noch den Hinweis des Mustertexts. Payrudder liefert Vorlagen, keine Rechtsberatung. Lassen Sie den Text prüfen und an Ihr Geschäft anpassen, und veröffentlichen Sie dann eine Version ohne den Hinweis.",
+      "by": "von {author}",
+      "publishFirst": "Erste Version veröffentlichen",
+      "newVersion": "Neue Version",
+      "history": "Verlauf",
+      "empty": "Es ist noch nichts veröffentlicht. Wählen Sie eine Vereinbarung und veröffentlichen Sie ihre erste Version; Sie können mit dem Mustertext auf Türkisch oder Englisch beginnen."
+    },
+    "editor": {
+      "title": "{kind} ({audience})",
+      "descriptionFirst": "Die erste Version dieser Vereinbarung. Schreiben Sie den Text in jeder Sprache, in der Sie verkaufen; mindestens eine wird gebraucht.",
+      "descriptionNext": "Mit dem Veröffentlichen entsteht Version {n}. Der Text beginnt als Version {current}, die unverändert bleibt.",
+      "formLabel": "Text der Vereinbarung",
+      "languages": "Sprachen",
+      "hasText": "hat einen Text",
+      "textLabel": "Text auf {language}",
+      "format": "Formatierung: # Überschrift, - Aufzählung, 1. nummerierter Punkt, **fett**, eine Leerzeile zwischen Absätzen. HTML wird als einfacher Text angezeigt.",
+      "placeholder": "Schreiben Sie die Vereinbarung hier.",
+      "starter": "Mustertext verwenden",
+      "starterNote": "Der Mustertext beginnt mit einem Hinweis, dass er eine Vorlage ist. Lassen Sie ihn prüfen, füllen Sie die mit [seller: ...] markierten Stellen aus und löschen Sie dann den Hinweis.",
+      "starterOnly": "Einen Mustertext gibt es nur auf Türkisch und Englisch. Schreiben Sie die anderen Sprachen selbst oder lassen Sie sie von einer Anwältin oder einem Anwalt übersetzen.",
+      "starterReplaceTitle": "Den Text auf {language} ersetzen?",
+      "starterReplace": "Was Sie auf {language} geschrieben haben, wird durch den Mustertext ersetzt.",
+      "starterReplaceAction": "Ersetzen",
+      "variables": "Variablen",
+      "variablesHint": "Klicken Sie auf eine, um sie an der Cursorposition einzufügen. Nur diese zwölf gibt es; sie werden beim Anzeigen der Seite aus Verkäufer, Kunde und Bestellung gefüllt.",
+      "insert": "{name} einfügen",
+      "preview": "Vorschau auf {language}",
+      "previewHint": "So sieht es ein Kunde, Beispielwerte sind hervorgehoben.",
+      "previewing": "Text wird geprüft …",
+      "previewEmpty": "Noch nichts zur Vorschau.",
+      "unknown": "{language}: {names} ist keine Variable. Verwenden Sie nur die Variablen oben oder entfernen Sie sie.",
+      "noticeStill": "Der Text auf {language} trägt noch den Hinweis des Mustertexts. Löschen Sie ihn, sobald Sie den Text geprüft haben.",
+      "material": "Wesentliche Änderung",
+      "materialHint": "An: Kunden, die eine frühere Version akzeptiert haben, werden erneut gefragt. Aus: nicht.",
+      "materialFirst": "Die erste Version ist immer wesentlich: Jeder Kunde wird einmal gefragt.",
+      "note": "Notiz (optional)",
+      "noteHint": "Warum es diese Version gibt. Sie wird im Verlauf gespeichert; Kunden sehen sie nicht.",
+      "needText": "Schreiben Sie zum Veröffentlichen einen Text in mindestens einer Sprache.",
+      "publish": "Version {n} veröffentlichen"
+    },
+    "confirm": {
+      "title": "Version {n} von {kind} veröffentlichen?",
+      "description": "Das passiert als Nächstes.",
+      "live": "Sie wird den Kunden dieser Zielgruppe ({audience}) sofort angezeigt. Eine veröffentlichte Version lässt sich nicht bearbeiten; zum Ändern veröffentlichen Sie eine weitere Version.",
+      "first": "Das ist die erste Version: Jeder Kunde wird einmal gebeten, sie zu akzeptieren.",
+      "material": "Es ist eine wesentliche Änderung: Wer eine frühere Version akzeptiert hat, wird beim nächsten Kauf auf einer Zahlungsseite gebeten, diese zu akzeptieren.",
+      "minor": "Es ist eine geringfügige Änderung: Kunden, die schon zugestimmt haben, werden nicht erneut gefragt.",
+      "required": "{kind} ist jetzt erforderlich, Kunden können also erst zahlen, wenn sie zugestimmt haben.",
+      "notRequired": "{kind} ist jetzt nicht erforderlich, also wird niemand danach gefragt, bis Sie es unter Einstellungen verlangen.",
+      "template": "Ein Text trägt noch den Hinweis des Mustertexts. Für das, was Sie veröffentlichen, sind Sie verantwortlich.",
+      "action": "Version {n} veröffentlichen"
+    },
+    "history": {
+      "title": "Verlauf: {kind} ({audience})",
+      "description": "Jede Version, die neueste zuerst. Eine Version wird nie bearbeitet.",
+      "versions": "Versionen",
+      "version": "Version {n}",
+      "current": "Aktuell",
+      "compare": "Zwei Versionen vergleichen",
+      "from": "Von",
+      "to": "Nach",
+      "language": "Sprache",
+      "changes": "Hinzugefügte Zeilen: {added}, entfernte Zeilen: {removed}",
+      "identical": "Diese beiden Texte sind in dieser Sprache gleich.",
+      "added": "Hinzugefügt:",
+      "removed": "Entfernt:",
+      "onlyOne": "Das ist bisher die einzige Version, es gibt nichts zu vergleichen."
+    },
+    "settings": {
+      "requiredTitle": "Erforderliche Vereinbarungen",
+      "requiredHint": "Ein Kunde muss jede erforderliche Vereinbarung akzeptieren, bevor er auf einer Payrudder-Zahlungsseite zahlt oder bevor über die API ein Abonnement für ihn angelegt wird. Verlängerungen und automatische Abbuchungen werden nie aufgehalten.",
+      "kindHints": {
+        "distance_sales": "Der Vertrag selbst, für Verbraucher, die im Fernabsatz kaufen.",
+        "pre_info": "Was das Gesetz Ihnen aufgibt, einem Verbraucher vor der Bestellung mitzuteilen.",
+        "tos": "Ihre Nutzungsbedingungen.",
+        "privacy": "Wie Sie mit den personenbezogenen Daten umgehen."
+      },
+      "unpublished": "Veröffentlichen Sie zuerst eine Version, dann können Sie sie verlangen.",
+      "immediateTitle": "Leistung sofort beginnen",
+      "immediateHint": "Für eine digitale Leistung, die ein Verbraucher sofort nutzen kann. Der Verbraucher wird dann um zwei getrennte Dinge gebeten, nie zusammengefasst mit dem Akzeptieren des Vertrags:",
+      "boxStart": "Ein Verlangen, dass die Leistung jetzt beginnt, noch innerhalb der Widerrufsfrist.",
+      "boxWaiver": "Eine Bestätigung, dass das Widerrufsrecht erlischt, sobald die Leistung vollständig erbracht ist.",
+      "retentionTitle": "Adresse und Browser aufbewahren für",
+      "retentionHint": "Gilt nur für die IP-Adresse und den Browser (User-Agent) einer Zustimmung, die personenbezogene Daten sind; danach werden sie gelöscht. Der Rest des Eintrags bleibt. {min} bis {max} Monate, standardmäßig {default}.",
+      "months": "Monate",
+      "retentionBad": "Geben Sie eine ganze Zahl von Monaten von {min} bis {max} ein.",
+      "save": "Einstellungen speichern",
+      "saved": "Gespeichert."
+    },
+    "withdrawals": {
+      "intro": "Kunden, die von einem Vertrag zurücktreten. Sie entscheiden über jede Anfrage; Payrudder speichert die Erklärung, Ihre Entscheidung, wer sie getroffen hat und wann, und sendet den Webhook contract.withdrawal_requested.",
+      "refundNote": "Die Erstattung ist noch nicht automatisch. Erstatten Sie dem Kunden selbst (oder stellen Sie eine Gutschrift aus) und markieren Sie die Anfrage dann hier als erstattet.",
+      "search": "Widerrufe durchsuchen",
+      "columns": {
+        "customer": "Kunde",
+        "statement": "Erklärung",
+        "received": "Eingegangen",
+        "status": "Status",
+        "decision": "Entscheidung"
+      },
+      "statuses": {
+        "received": "Eingegangen",
+        "accepted": "Angenommen",
+        "rejected": "Abgelehnt",
+        "refunded": "Erstattet"
+      },
+      "actions": {
+        "accepted": "Annehmen",
+        "rejected": "Ablehnen",
+        "refunded": "Als erstattet markieren"
+      },
+      "sources": {
+        "api": "API",
+        "console": "In der Konsole erfasst",
+        "hosted": "Zahlungsseite"
+      },
+      "empty": "Keine Widerrufe.",
+      "note": "Notiz (optional)",
+      "noteHint": "Wird mit der Entscheidung gespeichert, für Ihre Unterlagen.",
+      "decide": {
+        "accepted": {
+          "title": "Diesen Widerruf annehmen?",
+          "body": "Das hält fest, dass Sie den Widerruf des Kunden annehmen. Es lässt sich nicht rückgängig machen; danach können Sie ihn nur noch als erstattet markieren."
+        },
+        "rejected": {
+          "title": "Diesen Widerruf ablehnen?",
+          "body": "Das hält fest, dass Sie ihn nicht annehmen. Eine Entscheidung wird einmal getroffen und lässt sich nicht ändern."
+        },
+        "refunded": {
+          "title": "Als erstattet markieren?",
+          "body": "Tun Sie das, nachdem Sie dem Kunden erstattet haben. Payrudder bewegt kein Geld."
+        }
+      }
+    },
+    "customer": {
+      "log": "Akzeptierte Vereinbarungen",
+      "none": "Dieser Kunde hat noch keine Vereinbarung akzeptiert. Wenn Sie Vereinbarungen verlangen, wird jede Zustimmung hier festgehalten.",
+      "sourceHosted": "Payrudder-Zahlungsseite",
+      "sourceApi": "Von Ihrer API gemeldet",
+      "viewPage": "Seite ansehen",
+      "box": "Kästchen: „{text}“",
+      "servedAs": "{served} (angefragt: {asked})",
+      "consentStart": "Hat verlangt, dass die Leistung jetzt beginnt",
+      "consentWaiver": "Hat den Verlust des Widerrufsrechts bestätigt",
+      "evidence": "Nachweis",
+      "time": "Zeit",
+      "words": "Wortlaut neben den Kästchen",
+      "ip": "IP-Adresse",
+      "userAgent": "Browser",
+      "observed": "Von Payrudder beobachtet",
+      "reported": "Von Ihnen gemeldet",
+      "erased": "Nach der Aufbewahrungsfrist gelöscht",
+      "notReported": "Nicht gemeldet",
+      "snapshotTitle": "Die Seite, die der Kunde akzeptiert hat",
+      "snapshotHint": "Genau so, wie sie bei der Zustimmung gespeichert wurde. Sie wird in einem isolierten Rahmen angezeigt.",
+      "sha256": "SHA-256 der Seite",
+      "withdrawals": "Widerrufe",
+      "record": "Widerruf erfassen",
+      "noWithdrawals": "Keine Widerrufe dieses Kunden.",
+      "decideThere": "Widerrufe unter Verträge entscheiden"
+    },
+    "record": {
+      "title": "Widerruf erfassen",
+      "description": "Halten Sie fest, was {customer} Ihnen gesagt hat: eine Mail, ein Anruf, eine Nachricht. Entscheiden Sie anschließend unter Verträge.",
+      "formLabel": "Widerruf erfassen",
+      "statement": "Was der Kunde gesagt hat",
+      "statementHint": "In seinen Worten, bis zu 2000 Zeichen.",
+      "received": "Wann es Sie erreicht hat (optional)",
+      "receivedHint": "Für jetzt leer lassen.",
+      "submit": "Widerruf erfassen"
     }
   }
 }

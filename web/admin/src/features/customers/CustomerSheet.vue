@@ -3,6 +3,7 @@ import { Ban, Check, CircleCheck, Copy, CreditCard, Coins, Link2, MapPin, Pencil
 import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import { CustomerAgreements } from "@/features/contracts";
 import { useCreditBalance } from "@/features/credits/api";
 import GrantCreditsSheet from "@/features/credits/GrantCreditsSheet.vue";
 import { formatCredits } from "@/features/credits/lib";
@@ -39,7 +40,7 @@ const balance = useCreditBalance(() => props.tenantId, id);
 const invoices = useCustomerInvoices(() => props.tenantId, id);
 const invoiceIds = computed(() => (invoices.data.value?.invoices ?? []).map((i) => i.id ?? ""));
 
-const TABS: CustomerTab[] = ["overview", "payments", "invoices", "subscriptions", "credits", "details"];
+const TABS: CustomerTab[] = ["overview", "payments", "invoices", "subscriptions", "credits", "agreements", "details"];
 const spend = computed(() => (props.summary ? headline(props.summary.spend, props.customer.billing_currency) : undefined));
 const open = computed(() => (props.summary ? headline(props.summary.open, props.customer.billing_currency) : undefined));
 const tenantCurrency = useTenantCurrency(() => props.tenantId);
@@ -192,6 +193,9 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
         </div>
         <GrantCreditsSheet v-model:open="granting" :tenant-id="tenantId" :customer="id" />
         <LedgerCard :tenant-id="tenantId" :customer="id" class="-mx-3 gap-2 border-0 bg-transparent p-0 shadow-none [&>h2]:pt-0" />
+      </TabsContent>
+      <TabsContent value="agreements" class="outline-none">
+        <CustomerAgreements :tenant-id="tenantId" :external-id="id" :readonly="readonly" />
       </TabsContent>
       <TabsContent value="details" class="outline-none">
         <dl class="divide-border/70 m-0 flex flex-col divide-y text-sm" data-testid="customer-details">

@@ -12,6 +12,10 @@ A seller (a tenant) can put agreements in front of its own customers: a **distan
 
 A business customer (`customer_type = business`) gets the business series when the seller published one, else the consumer text. A customer of unknown type is treated as a consumer (the consumer's text gives rights a business does not have, never the other way round).
 
+## In the console
+
+The **Contracts** page (Settings group of the sidebar) publishes and compares versions in six languages with a live preview, sets what is required and for how long the address and browser are kept, and decides withdrawal requests; a customer's sheet has an **Agreements** tab with the log and the page they accepted. The go-live list carries advice about it that is never a blocker. See [the console](13-admin-ui.md#contracts-for-the-sellers-customers-plan-21).
+
 ## Where it applies
 
 `PUT /v1/contracts/settings` sets `required_kinds`. While it is not empty:

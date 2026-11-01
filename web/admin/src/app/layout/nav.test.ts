@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createRoute, type AnyRoute } from "@tanstack/vue-router";
 import { affiliateRoutes } from "@/features/affiliates/routes";
+import { contractRoutes } from "@/features/contracts/routes";
 import { pricingRoutes } from "@/features/pricing/routes";
 import { usageRoutes } from "@/features/usage/routes";
 import { PERSON_PAGES, activeItem, buildNav, type ShellContext } from "./nav";
@@ -41,7 +42,7 @@ describe("buildNav", () => {
     expect(section("usageProducts")).toEqual(["usage", "meters", "packages", "pricing", "coupons"]);
     expect(section("money")).toEqual(["accounting", "reports", "affiliates"]);
     expect(section("developers")).toEqual(["apiKeys", "connect", "webhooks", "sandbox"]);
-    expect(section("settings")).toEqual(["appSettings", "integrations", "mail"]);
+    expect(section("settings")).toEqual(["appSettings", "integrations", "mail", "contracts"]);
   });
 
   it("links the dashboard and the app's own pages under the app and the rest under the tenant, every link carrying the scope", () => {
@@ -191,5 +192,27 @@ describe("Usage and Coupons", () => {
     const keysOf = keys(buildNav(app(), new Set(["customers"])));
     expect(keysOf).not.toContain("usage");
     expect(keysOf).not.toContain("coupons");
+  });
+});
+
+describe("Settings > Contracts", () => {
+  const person = buildNav(app());
+  const parent = createRoute({ getParentRoute: () => ({}) as AnyRoute, path: "/app/t/$id" });
+
+  it("is in the settings group after the e-mail page, for a person and for the operator's tenant", () => {
+    expect(person.find((s) => s.key === "settings")?.items.map((i) => i.key)).toContain("contracts");
+    expect(flat(person).find((i) => i.key === "contracts")?.to).toBe("/app/t/T/contracts");
+    expect(PERSON_PAGES).toContain("contracts");
+    expect(flat(buildNav({ level: "tenant", tenantId: "T" })).find((i) => i.key === "contracts")?.to).toBe("/tenants/T/contracts");
+  });
+
+  it("is current under its own path and has a route at the path the sidebar links to", () => {
+    expect(activeItem(person, "/app/t/T/contracts")?.key).toBe("contracts");
+    expect(activeItem(person, "/app/t/T/mail")?.key).toBe("mail");
+    expect(contractRoutes(parent).map((r) => (r.options as { path?: string }).path)).toEqual(["contracts"]);
+  });
+
+  it("is only listed when its route exists", () => {
+    expect(keys(buildNav(app(), new Set(["customers"])))).not.toContain("contracts");
   });
 });

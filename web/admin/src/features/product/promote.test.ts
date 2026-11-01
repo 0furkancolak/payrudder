@@ -28,6 +28,12 @@ describe("promote summary", () => {
     expect(s.nothing).toBe(false);
   });
 
+  it("keeps the contracts family as its own and files a family it does not know under meters", () => {
+    const rows = promoteSummary({ changes: [{ family: "contracts", key: "tos/consumer", action: "ACTION_CREATE" }, { family: "something_new", key: "x", action: "ACTION_CREATE" }] }).rows;
+    expect(rows.map((r) => r.family)).toEqual(["contracts", "meters"]);
+    expect(rows[0]?.key).toBe("tos/consumer");
+  });
+
   it("says nothing to do for an empty or all-unchanged diff, and keeps a failed row", () => {
     expect(promoteSummary(undefined).nothing).toBe(true);
     expect(promoteSummary({ changes: [{ family: "plans", key: "pro", action: "ACTION_UNCHANGED" }] }).nothing).toBe(true);

@@ -9,6 +9,7 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
+import { GoLiveAgreements } from "@/features/contracts";
 import { useAcceptTerms, useActivateLive, useApp, useGoLive } from "./api";
 import { checklist, nextStep, progress, type GoLiveKey } from "./golive";
 
@@ -105,6 +106,8 @@ function acceptNow() {
         <button v-else-if="!i.done && !compact && target(i.key)" type="button" class="text-primary shrink-0 text-xs font-medium hover:underline" :data-testid="`go-live-go-${i.key}`" @click="scrollTo(i.key)">{{ t("product.goLive.fillIn") }}</button>
       </li>
     </ol>
+    <!-- Advice, not a step: not counted above and never in the way of switching live on. -->
+    <GoLiveAgreements v-if="live && goLive.data.value" :tenant-id="live" :compact="compact" />
 
     <div v-if="compact && goLive.data.value && !active" class="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
       <p class="text-muted-foreground text-xs">{{ t("product.goLive.nothingYet") }}</p>
