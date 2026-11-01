@@ -12,6 +12,8 @@ import { Button } from "@/shared/ui/button";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc } from "@/shared/lib/sortDefs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Input } from "@/shared/ui/input";
 import { Card } from "@/shared/ui/card";
@@ -56,6 +58,7 @@ const expired = (v?: string | null) => (v ? new Date(v).getTime() < Date.now() :
 
 const table = useTableState(members, {
   sheet: { kind: "member", id: (m) => m.user_id }, searchFields: (m) => [m.display_name, m.email],
+  sorts: () => [nameAsc(t, (m) => m.display_name || m.email), nameDesc(t, (m) => m.display_name || m.email)],
   url: true, filters: { role: (m, v) => m.role === v },
 });
 
@@ -103,6 +106,7 @@ const error = computed(() => firstError(revokeInvite, resendInvite, changeRole, 
     <template v-else>
       <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
         <FilterSelect v-model="table.filters.value.role" multiple :label="t('product.members.role')" :options="[{ value: '', label: t('product.members.allRoles') }, ...['owner', 'admin', 'viewer'].map((r) => ({ value: r, label: t(`product.role.${r}`) }))]" />
+        <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
         <HeaderAction v-if="canManage" test-id="invite-open" :label="t('product.members.inviteTitle')" @click="inviting = true" />
       </DataToolbar>
       <Table>

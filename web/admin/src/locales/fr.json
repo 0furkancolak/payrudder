@@ -56,7 +56,10 @@
       "amountLow": "Montant, croissant",
       "nameAsc": "Nom, A à Z",
       "nameDesc": "Nom, Z à A",
-      "lastUsed": "Utilisée récemment"
+      "lastUsed": "Utilisée récemment",
+      "countHigh": "Nombre, décroissant",
+      "countLow": "Nombre, croissant",
+      "expiresSoon": "Expire en premier"
     },
     "bulk": {
       "label": "Actions groupées",

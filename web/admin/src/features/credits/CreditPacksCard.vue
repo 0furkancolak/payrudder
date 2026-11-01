@@ -13,6 +13,8 @@ import { useSeededRef } from "@/shared/lib/seeded";
 import { useFormErrors } from "@/shared/lib/formErrors";
 import { FormField } from "@/shared/ui/form-field";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -51,6 +53,7 @@ const open = ref(false);
 type Pack = NonNullable<NonNullable<typeof packs.data.value>["packs"]>[number];
 const table = useTableState<Pack>(() => packs.data.value?.packs ?? [], {
   searchFields: (p) => [p.name],
+  sorts: () => [newest(t, (p) => time(p.create_time)), oldest(t, (p) => time(p.create_time)), nameAsc(t, (p) => p.name), nameDesc(t, (p) => p.name)],
   filters: { state: (p, v) => (v === "active" ? !!p.active : !p.active) },
 });
 const states = computed(() => [{ value: "", label: t("common.all") }, { value: "active", label: t("billing.credits.packs.onSale") }, { value: "inactive", label: t("billing.credits.packs.withdrawn") }]);
@@ -98,6 +101,7 @@ function submitPack() {
     <h3 class="px-3 pt-2 text-base font-semibold">{{ t("billing.credits.packs.title") }}</h3>
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.credits.packs.state')" :options="states" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <HeaderAction :label="t('billing.credits.packs.new')" @click="open = true" />
     </DataToolbar>
     <ErrorText :error="packs.error.value" class="px-3" />

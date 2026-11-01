@@ -56,7 +56,10 @@
       "amountLow": "Tutar, azdan çoğa",
       "nameAsc": "Ad, A'dan Z'ye",
       "nameDesc": "Ad, Z'den A'ya",
-      "lastUsed": "Son kullanılan"
+      "lastUsed": "Son kullanılan",
+      "countHigh": "Adet, çoktan aza",
+      "countLow": "Adet, azdan çoğa",
+      "expiresSoon": "En yakın bitiş önce"
     },
     "bulk": {
       "label": "Toplu işlemler",

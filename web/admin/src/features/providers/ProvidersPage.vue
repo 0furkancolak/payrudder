@@ -7,6 +7,8 @@ import { ArrowUpRight, Plus, Trash2, X } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { PROVIDERS, ROUTABLE_PROVIDERS } from "@/shared/lib/currencies";
 import { CountrySelect } from "@/shared/ui/location-fields";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -57,6 +59,7 @@ watch(open, (v) => {
 type Account = NonNullable<NonNullable<typeof accounts.data.value>["accounts"]>[number];
 const accountTable = useTableState<Account>(() => accounts.data.value?.accounts ?? [], {
   searchFields: (a) => [a.provider, a.environment],
+  sorts: () => [newest(t, (a) => time(a.updated_at)), oldest(t, (a) => time(a.updated_at)), nameAsc(t, (a) => a.provider), nameDesc(t, (a) => a.provider)],
   filters: { environment: (a, v) => a.environment === v },
 });
 const all = computed(() => ({ value: "", label: t("common.all") }));
@@ -123,6 +126,7 @@ const providerSubs = useProviderSubscriptions(tenantId);
 type ProviderSub = NonNullable<NonNullable<typeof providerSubs.data.value>["subscriptions"]>[number];
 const subTable = useTableState<ProviderSub>(() => providerSubs.data.value?.subscriptions ?? [], {
   searchFields: (s) => [s.provider, s.provider_ref, s.environment],
+  sorts: () => [newest(t, (s) => time(s.updated_at)), oldest(t, (s) => time(s.updated_at)), nameAsc(t, (s) => s.provider), nameDesc(t, (s) => s.provider)],
   filters: { status: (s, v) => s.status === v },
 });
 const subStatus = computed({ get: () => subTable.filters.value.status ?? [], set: (v: string[]) => (subTable.filters.value.status = v) });
@@ -149,6 +153,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     <h2 class="px-3 pt-2 text-base font-semibold">{{ t("billing.providers.accounts") }}</h2>
     <DataToolbar v-model:search="accountTable.search.value" :active="accountTable.active.value" @clear="accountTable.clear()">
       <FilterSelect v-model="accountEnv" multiple :label="t('billing.providers.environment')" :options="environments" />
+      <SortSelect v-if="accountTable.sorts.value.length > 0" v-model="accountTable.sort.value" :options="accountTable.sorts.value" />
       <HeaderAction :label="t('billing.providers.addAccount')" @click="open = true" />
     </DataToolbar>
     <ErrorState :error="accounts.error.value" :retrying="accounts.isFetching.value" compact @retry="accounts.refetch()" />
@@ -216,6 +221,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     <h2 class="px-3 pt-2 text-base font-semibold">{{ t("billing.providers.runByProviders") }}</h2>
     <DataToolbar v-model:search="subTable.search.value" :active="subTable.active.value" @clear="subTable.clear()">
       <FilterSelect v-model="subStatus" multiple :label="t('billing.subscriptions.state')" :options="subStatuses" />
+      <SortSelect v-if="subTable.sorts.value.length > 0" v-model="subTable.sort.value" :options="subTable.sorts.value" />
     </DataToolbar>
     <Table>
       <TableHeader>

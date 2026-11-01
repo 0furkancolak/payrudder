@@ -58,6 +58,7 @@ const endpointsTable = useTableState(list, {
 });
 const deliveriesTable = useTableState(log, {
   sheet: { kind: "delivery", id: (d) => d.id }, searchFields: (d) => [d.event_type, d.last_error, d.last_status],
+  sorts: () => [newest(t, (d) => time(d.create_time)), oldest(t, (d) => time(d.create_time))],
   filters: { state: (d, v) => d.state === v },
 });
 const current = endpointsTable.row;
@@ -227,6 +228,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
         <DataToolbar v-model:search="deliveriesTable.search.value" :active="deliveriesActive" @clear="clearDeliveries()">
           <FilterSelect v-model="deliveriesTable.filters.value.state" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, ...deliveryStates.map((s) => ({ value: s, label: stateWord(s) }))]" />
           <DateRangePicker v-model="range" />
+          <SortSelect v-if="deliveriesTable.sorts.value.length > 0" v-model="deliveriesTable.sort.value" :options="deliveriesTable.sorts.value" />
         </DataToolbar>
         <Table>
           <TableHeader>
