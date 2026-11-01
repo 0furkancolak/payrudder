@@ -24,6 +24,10 @@ DELETE FROM affiliate_attribution_rejections WHERE tenant_id = $1;
 DELETE FROM affiliate_clicks_daily WHERE tenant_id = $1;
 -- name: ResetSubscriptionAdjustments :execrows
 DELETE FROM subscription_adjustments WHERE tenant_id = $1;
+-- name: ResetPriceChangeItems :execrows
+DELETE FROM price_change_items WHERE tenant_id = $1;
+-- name: ResetPriceChanges :execrows
+DELETE FROM price_changes WHERE tenant_id = $1;
 -- name: ResetSubscriptionChanges :execrows
 DELETE FROM subscription_changes WHERE tenant_id = $1;
 -- name: ResetSubscriptionCoupons :execrows

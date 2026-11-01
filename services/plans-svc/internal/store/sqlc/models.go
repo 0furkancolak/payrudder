@@ -409,6 +409,32 @@ type PlanVersionFee struct {
 	Interval      string
 }
 
+type PriceChange struct {
+	TenantID    uuid.UUID
+	ID          uuid.UUID
+	PlanCode    string
+	FromVersion int32
+	ToVersion   int32
+	NoticeDays  int32
+	EffectiveAt time.Time
+	State       string
+	CreatedBy   string
+	CreatedAt   time.Time
+	WithdrawnAt *time.Time
+	WithdrawnBy string
+}
+
+type PriceChangeItem struct {
+	TenantID       uuid.UUID
+	PriceChangeID  uuid.UUID
+	SubscriptionID uuid.UUID
+	ChangeID       *uuid.UUID
+	Reason         string
+	EffectiveAt    *time.Time
+	NotifiedAt     *time.Time
+	UpdatedAt      time.Time
+}
+
 type PromotionCode struct {
 	TenantID          uuid.UUID
 	ID                uuid.UUID

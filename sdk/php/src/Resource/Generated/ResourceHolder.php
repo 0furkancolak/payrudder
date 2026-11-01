@@ -35,6 +35,7 @@ abstract class ResourceHolder
     public readonly PaymentLinksResource $paymentLinks;
     public readonly PaymentsResource $payments;
     public readonly PlansResource $plans;
+    public readonly PriceChangesResource $priceChanges;
     public readonly PromotionCodesResource $promotionCodes;
     public readonly PromotionsResource $promotions;
     public readonly ReportsResource $reports;
@@ -70,6 +71,7 @@ abstract class ResourceHolder
         $this->paymentLinks = new PaymentLinksResource($requester);
         $this->payments = new PaymentsResource($requester);
         $this->plans = new PlansResource($requester);
+        $this->priceChanges = new PriceChangesResource($requester);
         $this->promotionCodes = new PromotionCodesResource($requester);
         $this->promotions = new PromotionsResource($requester);
         $this->reports = new ReportsResource($requester);

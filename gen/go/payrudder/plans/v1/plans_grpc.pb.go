@@ -63,6 +63,10 @@ const (
 	PlansService_PreviewSubscriptionChange_FullMethodName        = "/payrudder.plans.v1.PlansService/PreviewSubscriptionChange"
 	PlansService_ChangeSubscription_FullMethodName               = "/payrudder.plans.v1.PlansService/ChangeSubscription"
 	PlansService_SchedulePriceChange_FullMethodName              = "/payrudder.plans.v1.PlansService/SchedulePriceChange"
+	PlansService_ListPriceChanges_FullMethodName                 = "/payrudder.plans.v1.PlansService/ListPriceChanges"
+	PlansService_GetPriceChange_FullMethodName                   = "/payrudder.plans.v1.PlansService/GetPriceChange"
+	PlansService_RetryPriceChange_FullMethodName                 = "/payrudder.plans.v1.PlansService/RetryPriceChange"
+	PlansService_WithdrawPriceChange_FullMethodName              = "/payrudder.plans.v1.PlansService/WithdrawPriceChange"
 	PlansService_CancelScheduledChange_FullMethodName            = "/payrudder.plans.v1.PlansService/CancelScheduledChange"
 	PlansService_ApplyScheduledChanges_FullMethodName            = "/payrudder.plans.v1.PlansService/ApplyScheduledChanges"
 	PlansService_ListSubscriptionAdjustments_FullMethodName      = "/payrudder.plans.v1.PlansService/ListSubscriptionAdjustments"
@@ -172,8 +176,17 @@ type PlansServiceClient interface {
 	PreviewSubscriptionChange(ctx context.Context, in *PreviewSubscriptionChangeRequest, opts ...grpc.CallOption) (*PreviewSubscriptionChangeResponse, error)
 	ChangeSubscription(ctx context.Context, in *ChangeSubscriptionRequest, opts ...grpc.CallOption) (*ChangeSubscriptionResponse, error)
 	// SchedulePriceChange moves every subscription on one plan version to another at its next renewal, if that renewal is at least notice_days away, and mails
-	// each customer. The others are listed with why they were not scheduled; running it again later picks up the ones whose renewal was too close.
+	// each customer. The others are listed with why they were not scheduled; running it again later continues the same price change: it picks up the ones whose
+	// renewal was too close and does not schedule or mail the others twice.
 	SchedulePriceChange(ctx context.Context, in *SchedulePriceChangeRequest, opts ...grpc.CallOption) (*SchedulePriceChangeResponse, error)
+	// ListPriceChanges lists the price changes made, newest first, with how many subscriptions are in each state.
+	ListPriceChanges(ctx context.Context, in *ListPriceChangesRequest, opts ...grpc.CallOption) (*ListPriceChangesResponse, error)
+	// GetPriceChange returns one price change with its subscriptions.
+	GetPriceChange(ctx context.Context, in *GetPriceChangeRequest, opts ...grpc.CallOption) (*GetPriceChangeResponse, error)
+	// RetryPriceChange tries the subscriptions that were skipped again (and any that joined the version since), with the notice the price change was made with.
+	RetryPriceChange(ctx context.Context, in *RetryPriceChangeRequest, opts ...grpc.CallOption) (*RetryPriceChangeResponse, error)
+	// WithdrawPriceChange closes a price change and cancels every change of it that is still waiting. A change that was applied stays.
+	WithdrawPriceChange(ctx context.Context, in *WithdrawPriceChangeRequest, opts ...grpc.CallOption) (*WithdrawPriceChangeResponse, error)
 	CancelScheduledChange(ctx context.Context, in *CancelScheduledChangeRequest, opts ...grpc.CallOption) (*CancelScheduledChangeResponse, error)
 	// ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
 	ApplyScheduledChanges(ctx context.Context, in *ApplyScheduledChangesRequest, opts ...grpc.CallOption) (*ApplyScheduledChangesResponse, error)
@@ -657,6 +670,46 @@ func (c *plansServiceClient) SchedulePriceChange(ctx context.Context, in *Schedu
 	return out, nil
 }
 
+func (c *plansServiceClient) ListPriceChanges(ctx context.Context, in *ListPriceChangesRequest, opts ...grpc.CallOption) (*ListPriceChangesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPriceChangesResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListPriceChanges_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) GetPriceChange(ctx context.Context, in *GetPriceChangeRequest, opts ...grpc.CallOption) (*GetPriceChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPriceChangeResponse)
+	err := c.cc.Invoke(ctx, PlansService_GetPriceChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) RetryPriceChange(ctx context.Context, in *RetryPriceChangeRequest, opts ...grpc.CallOption) (*RetryPriceChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RetryPriceChangeResponse)
+	err := c.cc.Invoke(ctx, PlansService_RetryPriceChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) WithdrawPriceChange(ctx context.Context, in *WithdrawPriceChangeRequest, opts ...grpc.CallOption) (*WithdrawPriceChangeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WithdrawPriceChangeResponse)
+	err := c.cc.Invoke(ctx, PlansService_WithdrawPriceChange_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *plansServiceClient) CancelScheduledChange(ctx context.Context, in *CancelScheduledChangeRequest, opts ...grpc.CallOption) (*CancelScheduledChangeResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CancelScheduledChangeResponse)
@@ -962,8 +1015,17 @@ type PlansServiceServer interface {
 	PreviewSubscriptionChange(context.Context, *PreviewSubscriptionChangeRequest) (*PreviewSubscriptionChangeResponse, error)
 	ChangeSubscription(context.Context, *ChangeSubscriptionRequest) (*ChangeSubscriptionResponse, error)
 	// SchedulePriceChange moves every subscription on one plan version to another at its next renewal, if that renewal is at least notice_days away, and mails
-	// each customer. The others are listed with why they were not scheduled; running it again later picks up the ones whose renewal was too close.
+	// each customer. The others are listed with why they were not scheduled; running it again later continues the same price change: it picks up the ones whose
+	// renewal was too close and does not schedule or mail the others twice.
 	SchedulePriceChange(context.Context, *SchedulePriceChangeRequest) (*SchedulePriceChangeResponse, error)
+	// ListPriceChanges lists the price changes made, newest first, with how many subscriptions are in each state.
+	ListPriceChanges(context.Context, *ListPriceChangesRequest) (*ListPriceChangesResponse, error)
+	// GetPriceChange returns one price change with its subscriptions.
+	GetPriceChange(context.Context, *GetPriceChangeRequest) (*GetPriceChangeResponse, error)
+	// RetryPriceChange tries the subscriptions that were skipped again (and any that joined the version since), with the notice the price change was made with.
+	RetryPriceChange(context.Context, *RetryPriceChangeRequest) (*RetryPriceChangeResponse, error)
+	// WithdrawPriceChange closes a price change and cancels every change of it that is still waiting. A change that was applied stays.
+	WithdrawPriceChange(context.Context, *WithdrawPriceChangeRequest) (*WithdrawPriceChangeResponse, error)
 	CancelScheduledChange(context.Context, *CancelScheduledChangeRequest) (*CancelScheduledChangeResponse, error)
 	// ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
 	ApplyScheduledChanges(context.Context, *ApplyScheduledChangesRequest) (*ApplyScheduledChangesResponse, error)
@@ -1138,6 +1200,18 @@ func (UnimplementedPlansServiceServer) ChangeSubscription(context.Context, *Chan
 }
 func (UnimplementedPlansServiceServer) SchedulePriceChange(context.Context, *SchedulePriceChangeRequest) (*SchedulePriceChangeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SchedulePriceChange not implemented")
+}
+func (UnimplementedPlansServiceServer) ListPriceChanges(context.Context, *ListPriceChangesRequest) (*ListPriceChangesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPriceChanges not implemented")
+}
+func (UnimplementedPlansServiceServer) GetPriceChange(context.Context, *GetPriceChangeRequest) (*GetPriceChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPriceChange not implemented")
+}
+func (UnimplementedPlansServiceServer) RetryPriceChange(context.Context, *RetryPriceChangeRequest) (*RetryPriceChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RetryPriceChange not implemented")
+}
+func (UnimplementedPlansServiceServer) WithdrawPriceChange(context.Context, *WithdrawPriceChangeRequest) (*WithdrawPriceChangeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method WithdrawPriceChange not implemented")
 }
 func (UnimplementedPlansServiceServer) CancelScheduledChange(context.Context, *CancelScheduledChangeRequest) (*CancelScheduledChangeResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelScheduledChange not implemented")
@@ -2015,6 +2089,78 @@ func _PlansService_SchedulePriceChange_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PlansService_ListPriceChanges_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPriceChangesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListPriceChanges(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListPriceChanges_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListPriceChanges(ctx, req.(*ListPriceChangesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_GetPriceChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPriceChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).GetPriceChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_GetPriceChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).GetPriceChange(ctx, req.(*GetPriceChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_RetryPriceChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RetryPriceChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).RetryPriceChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_RetryPriceChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).RetryPriceChange(ctx, req.(*RetryPriceChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_WithdrawPriceChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WithdrawPriceChangeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).WithdrawPriceChange(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_WithdrawPriceChange_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).WithdrawPriceChange(ctx, req.(*WithdrawPriceChangeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PlansService_CancelScheduledChange_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CancelScheduledChangeRequest)
 	if err := dec(in); err != nil {
@@ -2568,6 +2714,22 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SchedulePriceChange",
 			Handler:    _PlansService_SchedulePriceChange_Handler,
+		},
+		{
+			MethodName: "ListPriceChanges",
+			Handler:    _PlansService_ListPriceChanges_Handler,
+		},
+		{
+			MethodName: "GetPriceChange",
+			Handler:    _PlansService_GetPriceChange_Handler,
+		},
+		{
+			MethodName: "RetryPriceChange",
+			Handler:    _PlansService_RetryPriceChange_Handler,
+		},
+		{
+			MethodName: "WithdrawPriceChange",
+			Handler:    _PlansService_WithdrawPriceChange_Handler,
 		},
 		{
 			MethodName: "CancelScheduledChange",

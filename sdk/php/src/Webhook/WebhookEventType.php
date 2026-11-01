@@ -34,6 +34,7 @@ final class WebhookEventType
     public const CREDITS_LOW = 'credits.low';
     public const CUSTOMER_BLOCKED = 'customer.blocked';
     public const CUSTOMER_UNBLOCKED = 'customer.unblocked';
+    public const PRICE_CHANGE_SCHEDULED = 'price_change.scheduled';
 
     /**
      * Every type an endpoint can subscribe to (all but `ping`).
@@ -67,6 +68,7 @@ final class WebhookEventType
             self::CREDITS_LOW,
             self::CUSTOMER_BLOCKED,
             self::CUSTOMER_UNBLOCKED,
+            self::PRICE_CHANGE_SCHEDULED,
         ];
     }
 }

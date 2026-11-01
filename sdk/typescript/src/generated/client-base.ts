@@ -24,6 +24,7 @@ import {
   PaymentLinksResource,
   PaymentsResource,
   PlansResource,
+  PriceChangesResource,
   PromotionCodesResource,
   PromotionsResource,
   ReportsResource,
@@ -237,6 +238,7 @@ export abstract class PayrudderResources {
   readonly paymentLinks: PaymentLinksResource;
   readonly payments: PaymentsResource;
   readonly plans: PlansResource;
+  readonly priceChanges: PriceChangesResource;
   readonly promotionCodes: PromotionCodesResource;
   readonly promotions: PromotionsResource;
   readonly reports: ReportsResource;
@@ -273,6 +275,7 @@ export abstract class PayrudderResources {
     this.paymentLinks = new PaymentLinksResource(t);
     this.payments = new PaymentsResource(t);
     this.plans = new PlansResource(t);
+    this.priceChanges = new PriceChangesResource(t);
     this.promotionCodes = new PromotionCodesResource(t);
     this.promotions = new PromotionsResource(t);
     this.reports = new ReportsResource(t);

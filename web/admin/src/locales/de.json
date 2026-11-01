@@ -760,6 +760,42 @@
           "run_by_provider": "{n} werden von einem Zahlungsanbieter geführt.",
           "not_changeable": "{n} lassen sich so nicht verschieben (z. B. Gebühr im Nachhinein berechnet).",
           "customer_blocked": "{n} gehören zu einem gesperrten Kunden und wurden übergangen."
+        },
+        "alreadyScheduled": "{n} wurden von dieser Preisänderung schon geplant und nicht erneut informiert.",
+        "history": "Bisherige Preisänderungen",
+        "versions": "v{from} auf v{to}",
+        "state": {
+          "open": "Offen",
+          "withdrawn": "Zurückgezogen"
+        },
+        "madeBy": "{date} von {who}",
+        "takesEffect": "Erste Preisänderung am {date} ({n} Tage Vorlauf)",
+        "counts": "{scheduled} wartend, {applied} umgestellt, {withdrawn} zurückgezogen, {skipped} übersprungen",
+        "details": "Kunden",
+        "hideDetails": "Kunden ausblenden",
+        "retry": "{n} übersprungene erneut versuchen",
+        "retried": "{n} weitere Abonnements geplant; {skipped} bleiben außen vor.",
+        "withdraw": "Alle zurückziehen",
+        "withdrawn": "{n} wartende Änderungen zurückgezogen. Kunden, die schon eine E-Mail bekamen, werden nicht informiert.",
+        "confirmWithdraw": "Die {n} noch wartenden Änderungen abbrechen? Diese Kunden bleiben beim alten Preis. Bereits angewendete Änderungen bleiben, versendete E-Mails werden nicht zurückgenommen.",
+        "columns": {
+          "customer": "Kunde",
+          "state": "Status",
+          "effective": "Neuer Preis ab",
+          "notified": "E-Mail"
+        },
+        "itemState": {
+          "scheduled": "Wartend",
+          "applied": "Umgestellt",
+          "withdrawn": "Zurückgezogen",
+          "skipped": "Übersprungen"
+        },
+        "skipWhy": {
+          "renews_soon": "verlängert zu bald",
+          "has_pending_change": "hat eine andere Änderung wartend",
+          "run_by_provider": "wird vom Zahlungsanbieter geführt",
+          "not_changeable": "so nicht umstellbar",
+          "customer_blocked": "Kunde ist gesperrt"
         }
       }
     },
@@ -2811,6 +2847,10 @@
       "plan": {
         "no_fixed_fee": "Diese Planversion hat für dieses Intervall in dieser Währung keine feste Gebühr.",
         "no_metered_price": "Diese Planversion hat nutzungsabhängige Preise, aber keine in dieser Währung."
+      },
+      "price_change": {
+        "not_found": "Preisänderung nicht gefunden.",
+        "withdrawn": "Diese Preisänderung wurde zurückgezogen. Legen Sie eine neue an."
       },
       "override": {
         "customer_required": "Geben Sie an, für welchen Kunden das Limit gilt.",

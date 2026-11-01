@@ -63,7 +63,8 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 		}
 		resp.Quote = pc.Message()
 		if pc.Quote.Timing == subscription.AtPeriodEnd {
-			return c.schedule(ctx, q, resp, row, pc)
+			_, err := c.schedule(ctx, q, resp, row, pc)
+			return err
 		}
 		return c.applyNow(ctx, q, ti.ID, resp, row, pc)
 	})
@@ -73,18 +74,19 @@ func (c *Commands) Change(ctx context.Context, req *plansv1.ChangeSubscriptionRe
 	return resp, nil
 }
 
-// schedule records a change for the end of the paid period and tells the tenant it is scheduled; the subscription is not changed yet.
-func (c *Commands) schedule(ctx context.Context, q *sqlc.Queries, resp *plansv1.ChangeSubscriptionResponse, row sqlc.GetSubscriptionRow, pc *changesqry.Priced) error {
-	if _, err := q.InsertSubscriptionChange(ctx, sqlc.InsertSubscriptionChangeParams{
-		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, PlanVersionID: pc.NewPV.ID, Interval: string(pc.NewInterval), EffectiveAt: pc.Quote.Effective, Quantity: &pc.NewQuantity}); err != nil {
-		return err
+// schedule records a change for the end of the paid period and tells the tenant it is scheduled; the subscription is not changed yet. It returns the id of the change.
+func (c *Commands) schedule(ctx context.Context, q *sqlc.Queries, resp *plansv1.ChangeSubscriptionResponse, row sqlc.GetSubscriptionRow, pc *changesqry.Priced) (uuid.UUID, error) {
+	ch, err := q.InsertSubscriptionChange(ctx, sqlc.InsertSubscriptionChangeParams{
+		ID: idgen.NewUUIDv7(), SubscriptionID: row.ID, PlanVersionID: pc.NewPV.ID, Interval: string(pc.NewInterval), EffectiveAt: pc.Quote.Effective, Quantity: &pc.NewQuantity})
+	if err != nil {
+		return uuid.Nil, err
 	}
 	resp.Scheduled = true
 	resp.Subscription = convert.SubscriptionOf(row, c.now())
 	if err := subsqry.AttachExtras(ctx, q, resp.Subscription); err != nil {
-		return err
+		return uuid.Nil, err
 	}
-	return webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChangeScheduled, resp.Subscription, map[string]any{"quote": json.RawMessage(quoteJSON(resp.Quote))})
+	return ch.ID, webhookscmd.EmitSubscription(ctx, q, c.now(), webhooksmodel.SubscriptionChangeScheduled, resp.Subscription, map[string]any{"quote": json.RawMessage(quoteJSON(resp.Quote))})
 }
 
 // applyNow replaces the subscription by its successor on the new plan version and interval, records the proration the quote worked out and tells the tenant.
