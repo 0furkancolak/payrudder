@@ -124,7 +124,10 @@
       "amount_mismatch": "Amount differs",
       "duplicate_charge": "Charged more than once",
       "charge_without_paid": "Charged, invoice not paid",
-      "conflicting_outcomes": "Success and failure both recorded"
+      "conflicting_outcomes": "Success and failure both recorded",
+      "settlement_missing": "Paid, not in the provider's settlement",
+      "settlement_mismatch": "Settled amount differs",
+      "fee_mismatch": "Provider fee differs"
     },
     "ledgerKind": {
       "charge": "charge",
@@ -188,6 +191,33 @@
       "mockpsp": "Mock PSP",
       "banktransfer": "Bank transfer",
       "stripe": "Stripe"
+    },
+    "discrepancyStatus": {
+      "open": "Open",
+      "explained": "Explained",
+      "resolved": "Resolved"
+    },
+    "discrepancyEvent": {
+      "detected": "Found",
+      "reopened": "Reopened",
+      "cleared": "Cleared by a later run",
+      "assigned": "Assigned",
+      "explained": "Explained",
+      "resolved": "Resolved"
+    },
+    "resolution": {
+      "ledger_fact": "Ledger fact written",
+      "credit_note": "Credit note issued",
+      "refunded_at_provider": "Refunded at the provider",
+      "corrected_in_billing": "Corrected in billing",
+      "not_an_error": "Not an error",
+      "other": "Other",
+      "cleared": "No longer found"
+    },
+    "settlementState": {
+      "not_reported": "Paid, not reported",
+      "pending_payout": "Reported, awaiting payout",
+      "settled": "Settled"
     }
   },
   "tenants": {
@@ -1982,6 +2012,60 @@
         "limit": "The limit must be a quantity with at most {n} decimals.",
         "thresholds": "Alerts are up to 10 ascending percentages between 1 and 1000."
       }
+    },
+    "reconcile": {
+      "title": "Review queue",
+      "hint": "What the comparison found, kept: who owns it, what was said about it and how it ended. The schedule runs it for every tenant that took a live payment; resolving a difference does not make it go away, and a later run that still finds it reopens it.",
+      "show": "Show",
+      "view": {
+        "review": "Needs review",
+        "resolved": "Resolved",
+        "all": "All"
+      },
+      "period": "Period",
+      "owner": "Owner",
+      "note": "Note",
+      "noteHint": "What you found out and what was done. Required.",
+      "resolution": "Resolution",
+      "settled": "Settled",
+      "firstSeen": "First seen",
+      "lastSeen": "Last seen",
+      "history": "History",
+      "assign": "Assign",
+      "explain": "Explain",
+      "resolve": "Resolve",
+      "resolveSelected": "Resolve selected",
+      "explainHint": "Keep it in the queue with the reason. Use it for a difference that is known and waiting.",
+      "resolveHint": "End it. Nothing is changed at the provider or in an invoice; the resolution says what was done elsewhere.",
+      "factHint": "Writes one successful charge of the invoice's amount to the payment ledger, for the provider and reference you name. Check the payment at the provider first.",
+      "confirmTitle": "Resolve {n} discrepancies?",
+      "confirmBody": "Each is resolved with the same resolution and note and gets its own entry in its history.",
+      "counts": "Discrepancies by status",
+      "ran": "Period {period}: {found} found, {opened} new, {reopened} reopened, {cleared} cleared.",
+      "lastRun": "Last run {when} by the {by} for {period}: {found} found.",
+      "neverRun": "No run yet. Run a period, or wait for the schedule.",
+      "by": {
+        "schedule": "schedule",
+        "operator": "operator"
+      },
+      "nothingToReview": "Nothing to review.",
+      "nothing": "Nothing here.",
+      "more": "Showing the newest {n}. Narrow the view to see the others."
+    },
+    "settlement": {
+      "title": "Paid and settled",
+      "hint": "A payment that succeeded is the ledger's word. The money is the tenant's once the provider settles it, minus its fee. These are the period's payments with what the provider, or an imported report, says about each.",
+      "provider": "Provider (account key)",
+      "providerHint": "For a report with no provider column",
+      "file": "Report (CSV)",
+      "import": "Import report",
+      "imported": "{lines} line(s) read, {changed} new or changed.",
+      "counts": "Payments by settlement state",
+      "paidOn": "Paid",
+      "fee": "Provider fee",
+      "expected": "expected {fee}",
+      "batch": "Payout / batch",
+      "empty": "No successful provider payments in this period."
     }
   },
   "affiliates": {
@@ -2984,7 +3068,15 @@
         "unknown": "This payment provider is not known."
       },
       "reconcile": {
-        "bad_period": "The period must look like 2026-10."
+        "bad_period": "The period must look like 2026-10.",
+        "bad_filter": "A filter value is not one this list knows.",
+        "bad_ledger_fact": "A ledger fact needs the provider and its reference of the payment, and it only resolves a paid invoice the ledger lacks.",
+        "bad_resolution": "Choose one of the listed ways to resolve it.",
+        "not_found": "That discrepancy does not exist.",
+        "note_required": "Say what you found out: a note is required.",
+        "resolved": "It is resolved. A run that finds it again reopens it.",
+        "too_long": "That text is too long.",
+        "too_many": "Choose between 1 and 100 discrepancies."
       },
       "request": {
         "bad_body": "The request body must be valid JSON.",
@@ -3014,6 +3106,12 @@
         "provider_not_configured": "No payment provider is set up for this account.",
         "rejected": "The payment provider rejected the request.",
         "timeout": "The payment provider did not answer in time."
+      },
+      "settlement": {
+        "bad_csv": "The report was not imported: a line is wrong, and nothing was kept.",
+        "bad_fee_rule": "The fee rule is not valid: check the provider, the currency and the rate.",
+        "bad_since": "The start must be in the past and at most 400 days ago.",
+        "fee_rule_not_found": "There is no such fee rule."
       }
     },
     "einvoice": {

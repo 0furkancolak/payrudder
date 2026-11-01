@@ -41,7 +41,7 @@ Details: [06-multi-tenancy.md](06-multi-tenancy.md#row-level-security).
 
 ### Cells: a tenant schema (phase 28, [ADR 0018](adr/0018-tenant-isolation-modes.md))
 
-A tenant placed in a cell (`tenants.cell` not empty) has its tables of a service in schema `t_<32 hex digits of the tenant id>` of that service's database in the cell, which holds nothing else but the (so far empty) `shared` schema and, after a move, schemas set aside as `m_<id>_<unix>`. The tables are the ones this document describes, with the same names, columns, constraints, indexes, **policies** (row-level security stays on as the second guard), grants and functions, so the queries do not change; their definitions are the service's `migrations/tenant` set, applied to each schema with its own `goose_db_version`. A transaction for the tenant runs with `app.tenant_id` set as in pooled mode and `search_path = "t_<id>", shared`, both transaction-local. Rules for a tenant set: only tables with a `tenant_id`; no schema named in any statement; functions are `SET search_path FROM CURRENT`, not `= public`; a change to the public migrations is made in the tenant set too (a test per service compares the two). Converted so far: `ingest_db` (`idempotency_keys` partitioned by month in each schema, `outbox`, `enqueue_outbox`, `maintain_idempotency_partitions`) `assets_db` (`upload_sessions`, `assets`, `storage_usage`) and `payments_db` (all ten tables, plus `shared.charge_keys`, the key-to-tenant index of a cell, filled by a trigger on `payment_attempts`; no row-level security, the schema is the boundary). Nothing is in a cell yet. plans-svc: its tenant schema holds the 36 tables with a `tenant_id` except `api_keys` and `sandbox_resets`, which are looked up without a tenant and stay pooled with the global tables; `current_tenant()` reads the tenant row from the setting `app.tenant_row`.
+A tenant placed in a cell (`tenants.cell` not empty) has its tables of a service in schema `t_<32 hex digits of the tenant id>` of that service's database in the cell, which holds nothing else but the (so far empty) `shared` schema and, after a move, schemas set aside as `m_<id>_<unix>`. The tables are the ones this document describes, with the same names, columns, constraints, indexes, **policies** (row-level security stays on as the second guard), grants and functions, so the queries do not change; their definitions are the service's `migrations/tenant` set, applied to each schema with its own `goose_db_version`. A transaction for the tenant runs with `app.tenant_id` set as in pooled mode and `search_path = "t_<id>", shared`, both transaction-local. Rules for a tenant set: only tables with a `tenant_id`; no schema named in any statement; functions are `SET search_path FROM CURRENT`, not `= public`; a change to the public migrations is made in the tenant set too (a test per service compares the two). Converted so far: `ingest_db` (`idempotency_keys` partitioned by month in each schema, `outbox`, `enqueue_outbox`, `maintain_idempotency_partitions`) `assets_db` (`upload_sessions`, `assets`, `storage_usage`) and `payments_db` (all fifteen tables, plus `shared.charge_keys`, the key-to-tenant index of a cell, filled by a trigger on `payment_attempts`; no row-level security, the schema is the boundary). Nothing is in a cell yet. plans-svc: its tenant schema holds the 36 tables with a `tenant_id` except `api_keys` and `sandbox_resets`, which are looked up without a tenant and stay pooled with the global tables; `current_tenant()` reads the tenant row from the setting `app.tenant_row`.
 
 ---
 
@@ -622,6 +622,30 @@ CREATE INDEX ON payment_attempts (tenant_id, invoice_id);
 -- payment_ledger and manual_receipts (as built, migration 00002 of payments-worker, plan 22 G3) refuse every DELETE (trigger ledger_no_delete, SQLSTATE P0001, hint ledger_row_delete)
 -- unless the transaction names the tenant in payrudder.sandbox_reset (the sandbox reset, after it found no attempt or ledger row of the live environment; a row whose environment
 -- is not 'sandbox' is refused even then) or payrudder.tenant_move (pkg/pgxx Move). payments_system has no UPDATE on them either.
+
+-- Reconciliation as a workflow (plan 22 G7, migration 00003 / tenant 00004; docs/reconciliation.md). No row-level security (payments_db has none).
+CREATE TABLE reconciliation_discrepancies (  -- one per thing that does not agree, per tenant and period; fingerprint = hash(kind, invoice, provider, provider_ref)
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, tenant_id uuid NOT NULL, environment text NOT NULL, period text NOT NULL, fingerprint text NOT NULL, kind text NOT NULL,
+  invoice_id uuid, invoice_number text, provider text, provider_ref text, currency text, billed_minor bigint, ledger_minor bigint, settled_minor bigint, detail text,
+  status text NOT NULL CHECK (status IN ('open','explained','resolved')), owner text, note text, resolution text, first_seen_at timestamptz, last_seen_at timestamptz, resolved_at timestamptz,
+  UNIQUE (tenant_id, period, fingerprint)    -- UPDATE is granted on the columns that change only
+);
+CREATE TABLE reconciliation_events (  -- append-only; DELETE refused except for a sandbox reset or a tenant move (trigger reconciliation_events_no_delete)
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, tenant_id uuid NOT NULL, environment text NOT NULL, discrepancy_id bigint NOT NULL REFERENCES reconciliation_discrepancies (id),
+  action text NOT NULL CHECK (action IN ('detected','reopened','cleared','assigned','explained','resolved')), actor text NOT NULL, from_status text, to_status text, resolution text, note text, created_at timestamptz
+);
+CREATE TABLE reconciliation_runs (    -- one per run, appended when it ends; same delete rule
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, tenant_id uuid NOT NULL, environment text NOT NULL, period text NOT NULL, started_by text NOT NULL CHECK (started_by IN ('schedule','operator')),
+  actor text NOT NULL, result text NOT NULL CHECK (result IN ('ok','truncated','failed')), paid_invoices bigint, charges bigint, found bigint, opened bigint, reopened bigint, cleared bigint, error text, finished_at timestamptz
+);
+CREATE TABLE settlement_lines (       -- what a provider or a bank report says it settled; UNIQUE (tenant_id, provider, line_ref); a later read fills in what was unknown
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, tenant_id uuid NOT NULL, environment text NOT NULL, provider text NOT NULL, line_ref text NOT NULL,
+  kind text NOT NULL CHECK (kind IN ('payment','payout')), payment_ref text, currency text NOT NULL, gross_minor bigint NOT NULL, fee_minor bigint NOT NULL, net_minor bigint NOT NULL,
+  occurred_at timestamptz NOT NULL, available_on timestamptz, settled_at timestamptz, batch text, source text NOT NULL CHECK (source IN ('stripe','csv'))
+);
+CREATE TABLE fee_rules (              -- the expected fee per provider and currency, entered by an operator; configuration, so a sandbox reset keeps it
+  tenant_id uuid NOT NULL, environment text NOT NULL, provider text NOT NULL, currency text NOT NULL, rate_bps integer NOT NULL, fixed_minor bigint NOT NULL, PRIMARY KEY (tenant_id, environment, provider, currency)
+);
 
 -- notifier_db
 CREATE TABLE sent_notifications (

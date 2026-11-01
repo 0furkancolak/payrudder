@@ -124,7 +124,10 @@
       "amount_mismatch": "Tutar farklı",
       "duplicate_charge": "Birden fazla tahsil edildi",
       "charge_without_paid": "Tahsil edildi, fatura ödenmemiş",
-      "conflicting_outcomes": "Hem başarı hem başarısızlık kayıtlı"
+      "conflicting_outcomes": "Hem başarı hem başarısızlık kayıtlı",
+      "settlement_missing": "Ödendi, sağlayıcı mutabakatında yok",
+      "settlement_mismatch": "Mutabık tutar farklı",
+      "fee_mismatch": "Sağlayıcı komisyonu farklı"
     },
     "ledgerKind": {
       "charge": "tahsilat",
@@ -188,6 +191,33 @@
       "mockpsp": "Mock PSP",
       "banktransfer": "Banka havalesi",
       "stripe": "Stripe"
+    },
+    "discrepancyStatus": {
+      "open": "Açık",
+      "explained": "Açıklandı",
+      "resolved": "Çözüldü"
+    },
+    "discrepancyEvent": {
+      "detected": "Bulundu",
+      "reopened": "Yeniden açıldı",
+      "cleared": "Sonraki çalıştırmada temizlendi",
+      "assigned": "Atandı",
+      "explained": "Açıklandı",
+      "resolved": "Çözüldü"
+    },
+    "resolution": {
+      "ledger_fact": "Deftere kayıt yazıldı",
+      "credit_note": "Alacak dekontu düzenlendi",
+      "refunded_at_provider": "Sağlayıcıda iade edildi",
+      "corrected_in_billing": "Faturalamada düzeltildi",
+      "not_an_error": "Hata değil",
+      "other": "Diğer",
+      "cleared": "Artık bulunmuyor"
+    },
+    "settlementState": {
+      "not_reported": "Ödendi, bildirilmedi",
+      "pending_payout": "Bildirildi, ödeme bekliyor",
+      "settled": "Mutabık"
     }
   },
   "tenants": {
@@ -1982,6 +2012,60 @@
         "limit": "Sınır en fazla {n} ondalıklı bir miktar olmalı.",
         "thresholds": "Uyarılar 1 ile 1000 arasında, artan en fazla 10 yüzdedir."
       }
+    },
+    "reconcile": {
+      "title": "İnceleme kuyruğu",
+      "hint": "Karşılaştırmanın bulduğu farklar, saklanmış hâlde: sahibi kim, hakkında ne söylendi, nasıl bitti. Zamanlayıcı canlı ödeme almış her kiracı için çalıştırır; bir farkı çözmek onu yok etmez, hâlâ görüyorsa sonraki çalıştırma yeniden açar.",
+      "show": "Göster",
+      "view": {
+        "review": "İncelenecekler",
+        "resolved": "Çözülenler",
+        "all": "Hepsi"
+      },
+      "period": "Dönem",
+      "owner": "Sahibi",
+      "note": "Not",
+      "noteHint": "Ne öğrendiğiniz ve ne yapıldığı. Zorunlu.",
+      "resolution": "Çözüm",
+      "settled": "Mutabık",
+      "firstSeen": "İlk görülme",
+      "lastSeen": "Son görülme",
+      "history": "Geçmiş",
+      "assign": "Ata",
+      "explain": "Açıkla",
+      "resolve": "Çöz",
+      "resolveSelected": "Seçilenleri çöz",
+      "explainHint": "Gerekçesiyle kuyrukta kalsın. Bilinen ve bekleyen bir fark için kullanın.",
+      "resolveHint": "Bitirir. Sağlayıcıda veya faturada hiçbir şey değişmez; çözüm, başka yerde ne yapıldığını söyler.",
+      "factHint": "Ödeme defterine, yazdığınız sağlayıcı ve referans için faturanın tutarında başarılı bir tahsilat satırı yazar. Önce ödemeyi sağlayıcıda kontrol edin.",
+      "confirmTitle": "{n} fark çözülsün mü?",
+      "confirmBody": "Hepsi aynı çözüm ve notla çözülür; her birinin geçmişine ayrı bir kayıt düşer.",
+      "counts": "Duruma göre farklar",
+      "ran": "{period} dönemi: {found} bulundu, {opened} yeni, {reopened} yeniden açıldı, {cleared} temizlendi.",
+      "lastRun": "Son çalıştırma {when}, {by} tarafından, {period} için: {found} bulundu.",
+      "neverRun": "Henüz çalıştırılmadı. Bir dönemi çalıştırın ya da zamanlayıcıyı bekleyin.",
+      "by": {
+        "schedule": "zamanlayıcı",
+        "operator": "operatör"
+      },
+      "nothingToReview": "İncelenecek bir şey yok.",
+      "nothing": "Burada bir şey yok.",
+      "more": "En yeni {n} gösteriliyor. Diğerlerini görmek için görünümü daraltın."
+    },
+    "settlement": {
+      "title": "Ödenen ve mutabık kalınan",
+      "hint": "Başarılı bir ödeme, defterin sözüdür. Para, sağlayıcı komisyonu düşülerek mutabakata bağlandığında kiracının olur. Bunlar dönemin ödemeleri ve sağlayıcının ya da içe aktarılan raporun her biri için söyledikleri.",
+      "provider": "Sağlayıcı (hesap anahtarı)",
+      "providerHint": "Sağlayıcı sütunu olmayan rapor için",
+      "file": "Rapor (CSV)",
+      "import": "Raporu içe aktar",
+      "imported": "{lines} satır okundu, {changed} yeni veya değişen.",
+      "counts": "Mutabakat durumuna göre ödemeler",
+      "paidOn": "Ödendi",
+      "fee": "Sağlayıcı komisyonu",
+      "expected": "beklenen {fee}",
+      "batch": "Ödeme / parti",
+      "empty": "Bu dönemde sağlayıcıdan başarılı ödeme yok."
     }
   },
   "affiliates": {
@@ -2984,7 +3068,15 @@
         "unknown": "Bu ödeme sağlayıcısı tanınmıyor."
       },
       "reconcile": {
-        "bad_period": "Dönem 2026-10 biçiminde olmalı."
+        "bad_period": "Dönem 2026-10 biçiminde olmalı.",
+        "bad_filter": "Bir süzgeç değeri bu listenin bildiği değerlerden değil.",
+        "bad_ledger_fact": "Defter kaydı için sağlayıcı ve ödemenin referansı gerekir; yalnızca ödenmiş ama defterde olmayan faturayı çözer.",
+        "bad_resolution": "Listelenen çözüm yollarından birini seçin.",
+        "not_found": "Böyle bir fark yok.",
+        "note_required": "Ne öğrendiğinizi yazın: not zorunlu.",
+        "resolved": "Çözüldü. Yeniden bulan bir çalıştırma onu tekrar açar.",
+        "too_long": "Bu metin çok uzun.",
+        "too_many": "1 ile 100 arasında fark seçin."
       },
       "request": {
         "bad_body": "İstek gövdesi geçerli bir JSON olmalı.",
@@ -3014,6 +3106,12 @@
         "provider_not_configured": "Bu hesap için bir ödeme sağlayıcısı kurulu değil.",
         "rejected": "Ödeme sağlayıcısı isteği reddetti.",
         "timeout": "Ödeme sağlayıcısı zamanında yanıt vermedi."
+      },
+      "settlement": {
+        "bad_csv": "Rapor içe aktarılmadı: bir satır hatalı ve hiçbir şey saklanmadı.",
+        "bad_fee_rule": "Komisyon kuralı geçersiz: sağlayıcıyı, para birimini ve oranı kontrol edin.",
+        "bad_since": "Başlangıç geçmişte ve en çok 400 gün önce olmalı.",
+        "fee_rule_not_found": "Böyle bir komisyon kuralı yok."
       }
     },
     "einvoice": {

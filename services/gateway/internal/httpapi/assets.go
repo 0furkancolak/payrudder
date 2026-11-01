@@ -32,13 +32,19 @@ const (
 	formOverhead = 1 << 20
 )
 
-// bodyLimit is the request body limit of a route: 1 MiB, except the form-data upload.
+// settlementImportLimit is the largest settlement report an operator imports (payments-worker's command.MaxCSV).
+const settlementImportLimit = 5 << 20
+
+// bodyLimit is the request body limit of a route: 1 MiB, except the form-data upload, the inbound mail and the settlement report.
 func bodyLimit(method, path string) int64 {
 	if method == http.MethodPost && path == "/v1/assets" {
 		return maxUploadRequest + formOverhead
 	}
 	if method == http.MethodPost && path == "/inbound/invoices" {
 		return inboundBodyLimit
+	}
+	if method == http.MethodPost && path == "/admin/v1/tenants/{tenant_id}/settlement/import" {
+		return settlementImportLimit
 	}
 	return MaxBodyBytes
 }

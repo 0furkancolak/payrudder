@@ -124,7 +124,10 @@
       "amount_mismatch": "Betrag weicht ab",
       "duplicate_charge": "Mehrfach abgebucht",
       "charge_without_paid": "Abgebucht, Rechnung nicht bezahlt",
-      "conflicting_outcomes": "Erfolg und Misserfolg beide erfasst"
+      "conflicting_outcomes": "Erfolg und Misserfolg beide erfasst",
+      "settlement_missing": "Bezahlt, nicht in der Abrechnung des Anbieters",
+      "settlement_mismatch": "Abgerechneter Betrag weicht ab",
+      "fee_mismatch": "Anbietergebühr weicht ab"
     },
     "ledgerKind": {
       "charge": "Abbuchung",
@@ -188,6 +191,33 @@
       "mockpsp": "Mock PSP",
       "banktransfer": "Banküberweisung",
       "stripe": "Stripe"
+    },
+    "discrepancyStatus": {
+      "open": "Offen",
+      "explained": "Erklärt",
+      "resolved": "Gelöst"
+    },
+    "discrepancyEvent": {
+      "detected": "Gefunden",
+      "reopened": "Wieder geöffnet",
+      "cleared": "Von einem späteren Lauf bereinigt",
+      "assigned": "Zugewiesen",
+      "explained": "Erklärt",
+      "resolved": "Gelöst"
+    },
+    "resolution": {
+      "ledger_fact": "Zahlungsbuch-Eintrag geschrieben",
+      "credit_note": "Gutschrift ausgestellt",
+      "refunded_at_provider": "Beim Anbieter erstattet",
+      "corrected_in_billing": "In der Abrechnung korrigiert",
+      "not_an_error": "Kein Fehler",
+      "other": "Sonstiges",
+      "cleared": "Nicht mehr gefunden"
+    },
+    "settlementState": {
+      "not_reported": "Bezahlt, nicht gemeldet",
+      "pending_payout": "Gemeldet, Auszahlung offen",
+      "settled": "Abgerechnet"
     }
   },
   "tenants": {
@@ -1982,6 +2012,60 @@
         "limit": "Das Limit muss eine Menge mit höchstens {n} Nachkommastellen sein.",
         "thresholds": "Warnungen sind bis zu 10 aufsteigende Prozentwerte zwischen 1 und 1000."
       }
+    },
+    "reconcile": {
+      "title": "Prüfwarteschlange",
+      "hint": "Was der Abgleich gefunden hat, aufbewahrt: wer es verantwortet, was dazu gesagt wurde und wie es endete. Der Zeitplan läuft für jeden Mandanten mit einer Live-Zahlung; eine Abweichung zu lösen lässt sie nicht verschwinden, ein späterer Lauf, der sie weiter findet, öffnet sie wieder.",
+      "show": "Anzeigen",
+      "view": {
+        "review": "Zu prüfen",
+        "resolved": "Gelöst",
+        "all": "Alle"
+      },
+      "period": "Zeitraum",
+      "owner": "Verantwortlich",
+      "note": "Notiz",
+      "noteHint": "Was Sie herausgefunden haben und was getan wurde. Pflicht.",
+      "resolution": "Lösung",
+      "settled": "Abgerechnet",
+      "firstSeen": "Zuerst gesehen",
+      "lastSeen": "Zuletzt gesehen",
+      "history": "Verlauf",
+      "assign": "Zuweisen",
+      "explain": "Erklären",
+      "resolve": "Lösen",
+      "resolveSelected": "Auswahl lösen",
+      "explainHint": "Mit Begründung in der Warteschlange lassen. Für eine bekannte, wartende Abweichung.",
+      "resolveHint": "Beendet sie. Beim Anbieter und in Rechnungen ändert sich nichts; die Lösung sagt, was anderswo getan wurde.",
+      "factHint": "Schreibt eine erfolgreiche Abbuchung über den Rechnungsbetrag in das Zahlungsbuch, für den genannten Anbieter und die Referenz. Prüfen Sie die Zahlung zuerst beim Anbieter.",
+      "confirmTitle": "{n} Abweichungen lösen?",
+      "confirmBody": "Alle werden mit derselben Lösung und Notiz gelöst und erhalten je einen eigenen Verlaufseintrag.",
+      "counts": "Abweichungen nach Status",
+      "ran": "Zeitraum {period}: {found} gefunden, {opened} neu, {reopened} wieder geöffnet, {cleared} bereinigt.",
+      "lastRun": "Letzter Lauf {when} durch {by} für {period}: {found} gefunden.",
+      "neverRun": "Noch kein Lauf. Starten Sie einen Zeitraum oder warten Sie auf den Zeitplan.",
+      "by": {
+        "schedule": "Zeitplan",
+        "operator": "Operator"
+      },
+      "nothingToReview": "Nichts zu prüfen.",
+      "nothing": "Hier ist nichts.",
+      "more": "Die neuesten {n} werden gezeigt. Grenzen Sie die Ansicht ein, um die anderen zu sehen."
+    },
+    "settlement": {
+      "title": "Bezahlt und abgerechnet",
+      "hint": "Eine erfolgreiche Zahlung ist das Wort des Zahlungsbuchs. Das Geld gehört dem Mandanten, sobald der Anbieter es abrechnet, abzüglich seiner Gebühr. Hier die Zahlungen des Zeitraums mit dem, was der Anbieter oder ein importierter Bericht zu jeder sagt.",
+      "provider": "Anbieter (Kontoschlüssel)",
+      "providerHint": "Für einen Bericht ohne Anbieterspalte",
+      "file": "Bericht (CSV)",
+      "import": "Bericht importieren",
+      "imported": "{lines} Zeile(n) gelesen, {changed} neu oder geändert.",
+      "counts": "Zahlungen nach Abrechnungsstatus",
+      "paidOn": "Bezahlt",
+      "fee": "Anbietergebühr",
+      "expected": "erwartet {fee}",
+      "batch": "Auszahlung / Charge",
+      "empty": "Keine erfolgreichen Anbieterzahlungen in diesem Zeitraum."
     }
   },
   "affiliates": {
@@ -2984,7 +3068,15 @@
         "unknown": "Dieser Zahlungsanbieter ist nicht bekannt."
       },
       "reconcile": {
-        "bad_period": "Der Zeitraum muss wie 2026-10 aussehen."
+        "bad_period": "Der Zeitraum muss wie 2026-10 aussehen.",
+        "bad_filter": "Ein Filterwert ist dieser Liste nicht bekannt.",
+        "bad_ledger_fact": "Ein Zahlungsbuch-Eintrag braucht den Anbieter und dessen Referenz der Zahlung und löst nur eine bezahlte Rechnung, die im Zahlungsbuch fehlt.",
+        "bad_resolution": "Wählen Sie eine der aufgeführten Lösungen.",
+        "not_found": "Diese Abweichung gibt es nicht.",
+        "note_required": "Schreiben Sie, was Sie herausgefunden haben: Eine Notiz ist Pflicht.",
+        "resolved": "Sie ist gelöst. Ein Lauf, der sie wieder findet, öffnet sie erneut.",
+        "too_long": "Der Text ist zu lang.",
+        "too_many": "Wählen Sie zwischen 1 und 100 Abweichungen."
       },
       "request": {
         "bad_body": "Der Anfragetext muss gültiges JSON sein.",
@@ -3014,6 +3106,12 @@
         "provider_not_configured": "Für dieses Konto ist kein Zahlungsanbieter eingerichtet.",
         "rejected": "Der Zahlungsanbieter hat die Anfrage abgelehnt.",
         "timeout": "Der Zahlungsanbieter hat nicht rechtzeitig geantwortet."
+      },
+      "settlement": {
+        "bad_csv": "Der Bericht wurde nicht importiert: Eine Zeile ist fehlerhaft, nichts wurde gespeichert.",
+        "bad_fee_rule": "Die Gebührenregel ist ungültig: Prüfen Sie Anbieter, Währung und Satz.",
+        "bad_since": "Der Beginn muss in der Vergangenheit liegen, höchstens 400 Tage zurück.",
+        "fee_rule_not_found": "Diese Gebührenregel gibt es nicht."
       }
     },
     "einvoice": {

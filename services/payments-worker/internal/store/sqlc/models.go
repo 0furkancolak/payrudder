@@ -37,6 +37,16 @@ type EinvoiceIssuance struct {
 	UpdatedAt    time.Time
 }
 
+type FeeRule struct {
+	TenantID    uuid.UUID
+	Environment string
+	Provider    string
+	Currency    string
+	RateBps     int32
+	FixedMinor  int64
+	UpdatedAt   time.Time
+}
+
 type ManualReceipt struct {
 	ID            int64
 	TenantID      uuid.UUID
@@ -136,4 +146,82 @@ type ProviderSubscription struct {
 	NextBilledAt            *time.Time
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
+}
+
+type ReconciliationDiscrepancy struct {
+	ID            int64
+	TenantID      uuid.UUID
+	Environment   string
+	Period        string
+	Fingerprint   string
+	Kind          string
+	InvoiceID     *uuid.UUID
+	InvoiceNumber string
+	Provider      string
+	ProviderRef   string
+	Currency      string
+	BilledMinor   int64
+	LedgerMinor   int64
+	SettledMinor  int64
+	Detail        string
+	Status        string
+	Owner         string
+	Note          string
+	Resolution    string
+	FirstSeenAt   time.Time
+	LastSeenAt    time.Time
+	UpdatedAt     time.Time
+	ResolvedAt    *time.Time
+}
+
+type ReconciliationEvent struct {
+	ID            int64
+	TenantID      uuid.UUID
+	Environment   string
+	DiscrepancyID int64
+	Action        string
+	Actor         string
+	FromStatus    string
+	ToStatus      string
+	Resolution    string
+	Note          string
+	CreatedAt     time.Time
+}
+
+type ReconciliationRun struct {
+	ID           int64
+	TenantID     uuid.UUID
+	Environment  string
+	Period       string
+	StartedBy    string
+	Actor        string
+	Result       string
+	PaidInvoices int64
+	Charges      int64
+	Found        int64
+	Opened       int64
+	Reopened     int64
+	Cleared      int64
+	Error        string
+	FinishedAt   time.Time
+}
+
+type SettlementLine struct {
+	ID          int64
+	TenantID    uuid.UUID
+	Environment string
+	Provider    string
+	LineRef     string
+	Kind        string
+	PaymentRef  string
+	Currency    string
+	GrossMinor  int64
+	FeeMinor    int64
+	NetMinor    int64
+	OccurredAt  time.Time
+	AvailableOn *time.Time
+	SettledAt   *time.Time
+	Batch       string
+	Source      string
+	ImportedAt  time.Time
 }

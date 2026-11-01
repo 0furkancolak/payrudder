@@ -49,6 +49,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/migrations"
 	migrationscommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/migrations/command"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation"
+	reconciliationcommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/command"
 	reconciliationquery "github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/query"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/subscriptions"
@@ -76,6 +77,8 @@ type Server struct {
 	AllowMockLive    bool
 	// Billing, when set, lets the reconciliation read the tenant's invoices.
 	Billing BillingAPI
+	// SettlementLag is how long a payment may go unreported by its provider before that is a finding (PAYMENTS_SETTLEMENT_LAG); zero is settlement.DefaultLag.
+	SettlementLag time.Duration
 	// Plans, when set, is told about subscriptions a provider runs, so plans-svc can link them to ours and follow their status, and runs
 	// provider migrations.
 	Plans PlansAPI
@@ -145,7 +148,7 @@ func (s *Server) modules() []RouteRegistrar {
 			Query:   accountsquery.Deps{Registry: s.Registry, Accounts: s.Accounts, Health: &s.accountHealth, Log: s.Log}},
 		&einvoiceaccounts.Handler{Log: s.Log, Deps: einvoicecommand.Deps{Accounts: s.EInvoiceAccounts, Registry: s.EInvoiceRegistry, AllowMockLive: s.AllowMockLive}},
 		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger}, Command: ledgercommand.Deps{Reset: s.Reset}},
-		&reconciliation.Handler{Log: s.Log, Query: reconciliationquery.Deps{Ledger: s.Ledger, Billing: s.Billing}},
+		&reconciliation.Handler{Log: s.Log, Query: s.Reconcile().Query, Command: s.Reconcile()},
 		&invoicepayments.Handler{Log: s.Log, Query: invoiceQuery,
 			Command: invoicepaymentscommand.Deps{Query: invoiceQuery, Resolver: s.Resolver, Ledger: s.Ledger, Attempts: s.Attempts, Log: s.Log}},
 		&migrations.Handler{Log: s.Log, Deps: s.migrationDeps()},
@@ -155,6 +158,18 @@ func (s *Server) modules() []RouteRegistrar {
 			Command: subscriptionscommand.Deps{Query: subscriptionQuery, Syncer: s.Plans, Resolver: s.Resolver, Log: s.Log}},
 	}
 	return append(mods, s.Modules...)
+}
+
+// Reconcile is what the reconciliation endpoints and the schedule use: billing's invoices, the ledger, the kept discrepancies and settlement lines, and the provider
+// accounts whose settlement can be read.
+func (s *Server) Reconcile() reconciliationcommand.Deps {
+	settlements := store.Settlements{DB: s.Ledger.DB}
+	d := reconciliationcommand.Deps{Query: reconciliationquery.Deps{Ledger: s.Ledger, Billing: s.Billing, Settlements: settlements, SettlementLag: s.SettlementLag},
+		Discrepancies: store.Discrepancies{DB: s.Ledger.DB}, Ledger: s.Ledger, Settlements: settlements, Log: s.Log}
+	if s.Resolver != nil {
+		d.Resolver = s.Resolver
+	}
+	return d
 }
 
 func (s *Server) migrationDeps() migrationscommand.Deps {

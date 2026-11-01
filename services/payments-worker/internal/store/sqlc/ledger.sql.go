@@ -249,7 +249,7 @@ func (q *Queries) ListLedger(ctx context.Context, arg ListLedgerParams) ([]ListL
 
 const listSuccessfulCharges = `-- name: ListSuccessfulCharges :many
 SELECT DISTINCT ON (invoice_id, provider, COALESCE(provider_ref, ''))
-  invoice_id::text AS invoice_id, provider, COALESCE(provider_ref, '')::text AS provider_ref, currency, amount_minor
+  invoice_id::text AS invoice_id, provider, COALESCE(provider_ref, '')::text AS provider_ref, currency, amount_minor, occurred_at
 FROM payment_ledger WHERE tenant_id = $1 AND kind = 'charge' AND status = 'succeeded' AND invoice_id IS NOT NULL
 ORDER BY invoice_id, provider, COALESCE(provider_ref, ''), id
 `
@@ -260,6 +260,7 @@ type ListSuccessfulChargesRow struct {
 	ProviderRef string
 	Currency    string
 	AmountMinor int64
+	OccurredAt  time.Time
 }
 
 func (q *Queries) ListSuccessfulCharges(ctx context.Context, tenantID uuid.UUID) ([]ListSuccessfulChargesRow, error) {
@@ -277,6 +278,7 @@ func (q *Queries) ListSuccessfulCharges(ctx context.Context, tenantID uuid.UUID)
 			&i.ProviderRef,
 			&i.Currency,
 			&i.AmountMinor,
+			&i.OccurredAt,
 		); err != nil {
 			return nil, err
 		}
