@@ -33,7 +33,7 @@ flowchart LR
   transaction as the outbox insert. If the key exists, the response is `DUPLICATE` with the **original** `event_id`.
 - `payload_hash` (sha256 over canonical fields) detects a reused key with a different payload →
   `REJECTED / IDEMPOTENCY_KEY_REUSED`. Silently keeping the first payload would hide client bugs.
-- Dedup window ≥ 35 days (max lateness), implemented with monthly partitions ([05-data-model.md](05-data-model.md#ingest_db)).
+- Dedup window ≥ 35 days (max lateness), implemented with monthly partitions ([05-data-model.md](05-data-model.md#ingest_db)). A key is kept at least 45 and less than 76 days after it was first seen (a partition is dropped 45 days after its month ended), which is the 35 days plus 10 days of margin; a test runs the retention at that boundary ([ADR 0014](adr/0014-idempotency-key-retention.md)).
   After the window, an old event is rejected anyway (`EVENT_TOO_OLD`), so dedup can't be bypassed by waiting.
 
 **Downstream dedup** uses `event_id` (assigned once per key), not the idempotency key, because the event ID is the

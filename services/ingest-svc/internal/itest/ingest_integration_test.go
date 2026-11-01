@@ -22,6 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/outbox"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/events/command"
 	"github.com/0furkancolak/payrudder/services/ingest-svc/internal/maintenance"
 )
@@ -43,7 +44,8 @@ func TestIngestSvc(t *testing.T) {
 	t.Run("RoleSeparationAndRLS", testRoleSeparation)
 	t.Run("RelayCrashAfterProduceNeverLosesEvents", testRelayCrash)
 	t.Run("KafkaPausedLosesNothing", testKafkaPaused)
-	t.Run("PartitionMaintenance", testPartitionMaintenance) // last: drops old partitions
+	t.Run("PartitionMaintenance", testPartitionMaintenance) // drops old partitions
+	t.Run("KeyRetentionOutlivesTheLateWindow", testKeyRetentionOutlivesTheLateWindow)
 }
 
 func status1(t *testing.T, r *ingestv1.EventResult, want ingestv1.EventResult_Status, code string) {
@@ -651,6 +653,48 @@ func testPartitionMaintenance(t *testing.T) {
 	for _, n := range names {
 		if n < "idempotency_keys_y2030m01" {
 			t.Fatalf("partition %s should have been dropped (all: %v)", n, names)
+		}
+	}
+}
+
+// A key is remembered as long as an event can still be sent late (ADR 0014): a key first seen in the last second of a month is in that month's bucket, the partition goes
+// 45 days after the month ended, and the latest repeat ingest accepts is 35 days after the first sight (an event older than that is refused). So the partition is there at
+// MaxLateness after the month's end, still there one second before the 45 days, and gone at them.
+func testKeyRetentionOutlivesTheLateWindow(t *testing.T) {
+	if cellsMode() {
+		t.Skip("about the pooled table; the tenant tables use the same function")
+	}
+	infra(t)
+	ctx := context.Background()
+	monthEnd := time.Date(2030, 4, 1, 0, 0, 0, 0, time.UTC) // March's partition holds the keys first seen in March
+	exists := func() bool {
+		t.Helper()
+		var n int
+		if err := shared.system.QueryRow(ctx, `SELECT count(*) FROM pg_inherits i JOIN pg_class c ON c.oid = i.inhrelid WHERE i.inhparent = 'idempotency_keys'::regclass AND c.relname = 'idempotency_keys_y2030m03'`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n == 1
+	}
+	if _, _, err := maintenance.Once(ctx, shared.system, monthEnd.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if !exists() {
+		t.Fatal("the partition of March does not exist before the test starts")
+	}
+	for _, c := range []struct {
+		at   time.Time
+		keep bool
+		name string
+	}{
+		{monthEnd.Add(domain.MaxLateness), true, "the latest repeat of a key first seen in the last second of March"},
+		{monthEnd.Add(45*24*time.Hour - time.Second), true, "one second before the retention is over"},
+		{monthEnd.Add(45 * 24 * time.Hour), false, "the retention is over"},
+	} {
+		if _, _, err := maintenance.Once(ctx, shared.system, c.at); err != nil {
+			t.Fatal(err)
+		}
+		if exists() != c.keep {
+			t.Errorf("%s (%s): the partition of March exists = %t, want %t", c.name, c.at.Format(time.RFC3339), exists(), c.keep)
 		}
 	}
 }

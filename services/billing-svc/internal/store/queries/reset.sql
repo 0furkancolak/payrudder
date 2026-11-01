@@ -48,3 +48,10 @@ DELETE FROM outbox WHERE tenant_id = $1;
 DELETE FROM tenant_event_outbox WHERE tenant_id = $1;
 -- name: ResetExpenses :execrows
 DELETE FROM expenses WHERE tenant_id = $1;
+
+-- The financial tables refuse every DELETE (migration 00003) unless the transaction names the tenant as being reset. ResetLiveInvoiceCount is asked first, before
+-- ResetBegin: the caller's word that a tenant is a sandbox is not the database's, and no invoice of the live environment is ever deleted.
+-- name: ResetLiveInvoiceCount :one
+SELECT count(*) FROM invoices WHERE tenant_id = $1 AND snapshot ->> 'environment' IS DISTINCT FROM 'sandbox';
+-- name: ResetBegin :exec
+SELECT set_config('payrudder.sandbox_reset', $1, true);
