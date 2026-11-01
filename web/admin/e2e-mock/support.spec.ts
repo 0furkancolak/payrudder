@@ -13,6 +13,15 @@ interface Msg {
   internal: boolean;
   create_time: string;
 }
+interface Ev {
+  id: string;
+  kind: "status" | "priority" | "assignee";
+  actor_kind: "customer" | "operator" | "system";
+  actor_name: string;
+  from_value: string;
+  to_value: string;
+  create_time: string;
+}
 interface Ticket {
   id: string;
   number: number;
@@ -36,7 +45,9 @@ interface Ticket {
   sla_breached: boolean;
   solve_time: string | null;
   message_count: number;
+  unread: boolean;
   messages: Msg[];
+  events: Ev[];
 }
 
 const NOW = "2026-10-28T09:00:00Z";
@@ -44,19 +55,20 @@ function ticket(over: Partial<Ticket> = {}): Ticket {
   return {
     id: "c0000000-0000-4000-8000-000000000001", number: 1042, account_id: ACCOUNT, account_name: "Ada Labs", app_id: APP, app_name: "Shop", opened_by: "u1", opened_by_name: "Ada",
     subject: "Paddle webhooks are late", category: "integration", priority: "high", status: "open", assignee: "", create_time: NOW, update_time: NOW, last_message_time: NOW,
-    last_author: "customer", first_response_due: "2026-10-28T13:00:00Z", first_response_time: null, sla_breached: false, solve_time: null, message_count: 1,
+    last_author: "customer", first_response_due: "2026-10-28T13:00:00Z", first_response_time: null, sla_breached: false, solve_time: null, message_count: 1, unread: false, events: [],
     messages: [{ id: "m1", author_kind: "customer", author_name: "Ada", body: "Since this morning.", internal: false, create_time: NOW }],
     ...over,
   };
 }
 
-/** One set of tickets behind both sides. `internal` messages are in the operator's view only. */
+/** One set of tickets behind both sides. `internal` messages are in the operator's view only, and "unread" is the opener's: the operator never has it. */
 function helpDesk(gw: MockGateway, tickets: Ticket[]) {
   const view = (t: Ticket, operator: boolean) => {
     const messages = t.messages.filter((m) => operator || !m.internal);
-    const rest: Omit<Ticket, "messages"> & { messages?: Msg[] } = { ...t };
+    const rest: Omit<Ticket, "messages" | "events"> & { messages?: Msg[]; events?: Ev[] } = { ...t };
     delete rest.messages;
-    return { ticket: { ...rest, message_count: messages.filter((m) => !m.internal).length }, messages };
+    delete rest.events;
+    return { ticket: { ...rest, unread: operator ? false : t.unread, message_count: messages.filter((m) => !m.internal).length }, messages, events: t.events };
   };
   const find = (path: string) => tickets.find((t) => path.includes(t.id));
   gw.on((c) => {
@@ -70,6 +82,8 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
     }
     if (c.path.startsWith("/app/v1/support/tickets/") && c.method === "GET") {
       const t = find(c.path);
+      // Reading it clears the opener's "new" mark (the answer to this call already shows it cleared).
+      if (t) t.unread = false;
       return t ? { body: view(t, false) } : { status: 404, body: { error: { code: "NOT_FOUND", key: "support.ticket.not_found", message: "no" } } };
     }
     if (c.path.endsWith("/replies") && c.path.startsWith("/app/v1/")) {
@@ -97,12 +111,19 @@ function helpDesk(gw: MockGateway, tickets: Ticket[]) {
         t.status = t.status === "open" ? "pending" : t.status;
         t.first_response_time ??= NOW;
         t.last_author = "operator";
+        t.unread = true;
       }
       return { status: 201, body: { ticket: view(t, true).ticket } };
     }
     if (c.path.startsWith("/admin/v1/support/tickets/") && c.method === "PATCH") {
       const t = find(c.path)!;
-      Object.assign(t, Object.fromEntries(Object.entries(c.body ?? {}).filter(([, v]) => v !== undefined)));
+      const patch = Object.fromEntries(Object.entries(c.body ?? {}).filter(([, v]) => v !== undefined));
+      for (const kind of ["status", "priority", "assignee"] as const) {
+        const to = patch[kind];
+        if (typeof to === "string" && to !== t[kind]) t.events.push({ id: `e${t.events.length + 1}`, kind, actor_kind: "operator", actor_name: "user1@example.com", from_value: t[kind], to_value: to, create_time: NOW });
+      }
+      if (patch.status && patch.status !== t.status) t.unread = true;
+      Object.assign(t, patch);
       return { body: { ticket: view(t, true).ticket } };
     }
     return undefined;
@@ -162,6 +183,39 @@ test.describe("support: the organisation's side", () => {
     expect(await page.content()).not.toContain("SECRET-TEAM-NOTE");
   });
 
+  test("an answer the person has not read is marked new until they open the ticket, and the changes are in the thread", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    helpDesk(gw, [ticket({ status: "pending", unread: true, last_author: "operator", events: [
+      { id: "e1", kind: "status", actor_kind: "operator", actor_name: "Sam", from_value: "open", to_value: "pending", create_time: NOW },
+      { id: "e2", kind: "priority", actor_kind: "operator", actor_name: "Sam", from_value: "normal", to_value: "high", create_time: NOW },
+      { id: "e3", kind: "status", actor_kind: "system", actor_name: "", from_value: "pending", to_value: "closed", create_time: "2026-11-04T09:00:00Z" },
+    ] })]);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/support");
+    await expect(page.getByTestId("support-row-1042").getByTestId("support-unread")).toHaveText("New");
+    await page.getByTestId("support-row-1042").click();
+    const detail = page.getByTestId("support-ticket");
+    await expect(detail.getByTestId("support-event-status").first()).toContainText("Sam");
+    await expect(detail.getByTestId("support-event-status").first()).toContainText("Status: Waiting for us → Waiting for you");
+    await expect(detail.getByTestId("support-event-priority")).toContainText("Priority: Normal → High");
+    await expect(detail.getByTestId("support-event-status").last()).toContainText("System");
+    await expect(detail.getByTestId("support-event-status").last()).toContainText("Waiting for you → Closed");
+    // Reading cleared the mark: the list is read again and the row loses it.
+    await expect(page.getByTestId("support-row-1042").getByTestId("support-unread")).toHaveCount(0);
+  });
+
+  test("the new ticket sheet says that the answer times count business hours", async ({ page }) => {
+    const gw = productGateway(new MockGateway()).gw;
+    helpDesk(gw, []);
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto("/app/support");
+    await page.getByTestId("support-new").click();
+    await expect(page.getByTestId("support-new-sheet")).toContainText("Monday to Friday, 09:00 to 18:00");
+    await expect(page.getByTestId("support-priority-select")).toContainText("answer within 1 business hour");
+  });
+
   test("a ticket is in the address and comes back on reload", async ({ page }) => {
     const gw = productGateway(new MockGateway()).gw;
     helpDesk(gw, [ticket()]);
@@ -193,6 +247,10 @@ test.describe("support: the operator's inbox", () => {
     await detail.getByTestId("ticket-assignee").press("Tab");
     await expect.poll(() => tickets[0]?.assignee).toBe("Sam");
     expect(tickets[0]?.priority).toBe("urgent");
+    // The changes land in the thread's history as the operator makes them.
+    await expect(detail.getByTestId("support-event-priority")).toContainText("user1@example.com");
+    await expect(detail.getByTestId("support-event-priority")).toContainText("Priority: High → Urgent");
+    await expect(detail.getByTestId("support-event-assignee")).toContainText("Assignee: Unassigned → Sam");
 
     await detail.getByTestId("inbox-reply").fill("Looks like the Paddle outage.");
     await detail.getByTestId("inbox-internal").click();

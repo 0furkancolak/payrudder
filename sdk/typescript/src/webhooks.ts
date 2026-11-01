@@ -27,6 +27,7 @@ export const WebhookEventTypes = {
   CreditsLow: "credits.low",
   CustomerBlocked: "customer.blocked",
   CustomerUnblocked: "customer.unblocked",
+  PriceChangeScheduled: "price_change.scheduled",
   ContractAccepted: "contract.accepted",
   ContractVersionPublished: "contract.version_published",
   ContractWithdrawalRequested: "contract.withdrawal_requested",
@@ -125,6 +126,34 @@ export interface CustomerBlockEventData {
   blocked_until?: string;
 }
 
+/** A price change in an event: as the API returns it, without the fields at their zero value. Times are RFC 3339. */
+export interface WebhookPriceChange {
+  id: string;
+  plan_code: string;
+  from_version: number;
+  to_version: number;
+  notice_days: number;
+  /** The first date a customer's price changes. */
+  effective_time: string;
+  state: "open" | "withdrawn";
+  created_by?: string;
+  create_time: string;
+  withdraw_time?: string;
+  withdrawn_by?: string;
+  /** The subscriptions waiting, moved, withdrawn and skipped. */
+  scheduled?: number;
+  applied?: number;
+  withdrawn?: number;
+  skipped?: number;
+}
+
+/** `price_change.scheduled`: a run of a price change scheduled at least one subscription. `scheduled` and `skipped` are what that run did. */
+export interface PriceChangeScheduledEventData {
+  price_change: WebhookPriceChange;
+  scheduled: number;
+  skipped: number;
+}
+
 /** `contract.accepted`: a customer accepted one or more agreements together (one event for the group). */
 export interface ContractAcceptedEventData {
   group_id: string;
@@ -210,6 +239,7 @@ export type WebhookEvent =
   | Envelope<"credits.purchased", CreditsPurchasedEventData>
   | Envelope<"credits.low", CreditsLowEventData>
   | Distribute<CustomerTypes, CustomerBlockEventData>
+  | Envelope<"price_change.scheduled", PriceChangeScheduledEventData>
   | Envelope<"contract.accepted", ContractAcceptedEventData>
   | Envelope<"contract.version_published", ContractVersionPublishedEventData>
   | Envelope<"contract.withdrawal_requested", ContractWithdrawalRequestedEventData>

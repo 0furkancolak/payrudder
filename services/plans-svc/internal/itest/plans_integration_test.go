@@ -68,6 +68,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("GoLive", testGoLive)
 	t.Run("OwnerGoLiveSteps", testOwnerGoLiveSteps)
 	t.Run("Support", testSupport)
+	t.Run("SupportDesk", testSupportDesk)
 	t.Run("Contracts", testContracts)
 	t.Run("Promote", testPromote)
 	t.Run("SandboxReset", testSandboxReset)
@@ -145,6 +146,13 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		// Likewise a scheduled change and a billed adjustment, which ChangeSubscription would make by moving the subscription.
 		if _, err = tx.Exec(context.Background(), `INSERT INTO subscription_changes (tenant_id, id, subscription_id, plan_version_id, interval, effective_at, state)
 			SELECT app_tenant_id(), gen_random_uuid(), id, plan_version_id, 'month', now(), 'cancelled' FROM subscriptions LIMIT 1`); err != nil {
+			return err
+		}
+		// A price change with a skipped subscription, without SchedulePriceChange, which would move the fixture's subscription.
+		if _, err = tx.Exec(context.Background(), `WITH pc AS (INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at)
+				VALUES (app_tenant_id(), gen_random_uuid(), 'pro', 1, 2, 30, now()) RETURNING tenant_id, id)
+			INSERT INTO price_change_items (tenant_id, price_change_id, subscription_id, reason)
+			SELECT pc.tenant_id, pc.id, s.id, 'renews_soon' FROM pc, subscriptions s LIMIT 1`); err != nil {
 			return err
 		}
 		_, err = tx.Exec(context.Background(), `INSERT INTO subscription_adjustments (tenant_id, id, subscription_id, old_plan_code, from_at, to_at, credit_minor, charge_minor, billed_at)
@@ -506,10 +514,10 @@ func testEntitlementOutbox(t *testing.T) {
 	relayAll := func() []outbox.Row {
 		sink := &captureSink{}
 		e.relayAll(t, sink)
-		// The database is shared with the other subtests: keep this tenant's rows.
+		// The database is shared with the other subtests: keep this tenant's entitlement rows (the outbox carries other facts too, such as the mail of an acceptance).
 		var mine []outbox.Row
 		for _, r := range sink.rows {
-			if r.TenantID == tenantID {
+			if r.TenantID == tenantID && r.Topic == "plans.entitlements.v1" {
 				mine = append(mine, r)
 			}
 		}

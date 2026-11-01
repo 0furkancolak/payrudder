@@ -87,8 +87,34 @@ func (s *Server) schedulePriceChange(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	req.PlanCode = r.PathValue("code")
+	req.PlanCode, req.Actor = r.PathValue("code"), s.tenantActorOf(r)
 	resp, err := s.d.Plans.SchedulePriceChange(r.Context(), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// listPriceChanges is GET /v1/price-changes: the price changes made, newest first, optionally of one plan (?plan_code=).
+func (s *Server) listPriceChanges(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.ListPriceChanges(r.Context(), &plansv1.ListPriceChangesRequest{PlanCode: r.URL.Query().Get("plan_code")})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// getPriceChange is GET /v1/price-changes/{id}: the price change with its subscriptions, optionally those in one state (?state=).
+func (s *Server) getPriceChange(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.GetPriceChange(r.Context(), &plansv1.GetPriceChangeRequest{Id: r.PathValue("id"), State: r.URL.Query().Get("state")})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// retryPriceChange is POST /v1/price-changes/{id}/retry: the skipped subscriptions are tried again.
+func (s *Server) retryPriceChange(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.RetryPriceChange(r.Context(), &plansv1.RetryPriceChangeRequest{Id: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp.GetResult(), err)
+}
+
+// withdrawPriceChange is POST /v1/price-changes/{id}/withdraw: every change of it that is still waiting is cancelled.
+func (s *Server) withdrawPriceChange(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.WithdrawPriceChange(r.Context(), &plansv1.WithdrawPriceChangeRequest{Id: r.PathValue("id"), Actor: s.tenantActorOf(r)})
 	respond(w, r, http.StatusOK, resp, err)
 }
 

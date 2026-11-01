@@ -50,6 +50,7 @@ class EventType:
     CREDITS_LOW = "credits.low"
     CUSTOMER_BLOCKED = "customer.blocked"
     CUSTOMER_UNBLOCKED = "customer.unblocked"
+    PRICE_CHANGE_SCHEDULED = "price_change.scheduled"
     CONTRACT_ACCEPTED = "contract.accepted"
     CONTRACT_VERSION_PUBLISHED = "contract.version_published"
     CONTRACT_WITHDRAWAL_REQUESTED = "contract.withdrawal_requested"
@@ -182,6 +183,44 @@ class CustomerBlockEventData(_CustomerBlockEventDataRequired, total=False):
     blocked_until: str
 
 
+class _WebhookPriceChangeRequired(TypedDict):
+    id: str
+    plan_code: str
+    from_version: int
+    to_version: int
+    notice_days: int
+    effective_time: str
+    state: str
+    create_time: str
+
+
+class WebhookPriceChange(_WebhookPriceChangeRequired, total=False):
+    """A price change in an event: as the API returns it, without the fields at their zero value. Times are RFC 3339.
+
+    ``effective_time`` is the first date a customer's price changes; ``state`` is ``open`` or ``withdrawn``;
+    ``scheduled``, ``applied``, ``withdrawn`` and ``skipped`` count the subscriptions waiting, moved, withdrawn and left out.
+    """
+
+    created_by: str
+    withdraw_time: str
+    withdrawn_by: str
+    scheduled: int
+    applied: int
+    withdrawn: int
+    skipped: int
+
+
+class PriceChangeScheduledEventData(TypedDict):
+    """``data`` of ``price_change.scheduled``: a run of a price change scheduled at least one subscription.
+
+    ``scheduled`` and ``skipped`` are what that run did.
+    """
+
+    price_change: WebhookPriceChange
+    scheduled: int
+    skipped: int
+
+
 class _ContractAcceptedItem(TypedDict):
     acceptance_id: str
     kind: str
@@ -247,6 +286,8 @@ class WebhookEvent(TypedDict):
     ``*EventData`` class of the type (``invoice.*`` is ``InvoiceEventData``, ``credit_note.*`` is
     ``CreditNoteEventData``, ``subscription.*`` is ``SubscriptionEventData``, ``payment_link.*`` is
     ``PaymentLinkEventData``, ``credits.purchased`` / ``credits.low`` are ``CreditsPurchasedEventData`` /
+    ``CreditsLowEventData``, ``customer.blocked`` / ``customer.unblocked`` are ``CustomerBlockEventData``, ``price_change.scheduled`` is
+    ``PriceChangeScheduledEventData``).
     ``CreditsLowEventData``, ``customer.blocked`` / ``customer.unblocked`` are ``CustomerBlockEventData``; ``contract.accepted`` / ``contract.version_published`` /
     ``contract.withdrawal_requested`` are ``ContractAcceptedEventData`` / ``ContractVersionPublishedEventData`` / ``ContractWithdrawalRequestedEventData``).
     """

@@ -20,6 +20,8 @@ final class SchedulePriceChangeResponse implements Model
      * @param list<PriceChangeSkipped>|null $skipped
      * @param int|null $toVersion
      * @param int|null $noticeDays
+     * @param string|null $priceChangeId
+     * @param int|null $alreadyScheduled
      */
     public function __construct(
         public readonly ?int $scheduled = null,
@@ -27,6 +29,8 @@ final class SchedulePriceChangeResponse implements Model
         public readonly ?array $skipped = null,
         public readonly ?int $toVersion = null,
         public readonly ?int $noticeDays = null,
+        public readonly ?string $priceChangeId = null,
+        public readonly ?int $alreadyScheduled = null,
     ) {}
 
     /**
@@ -40,6 +44,8 @@ final class SchedulePriceChangeResponse implements Model
             skipped: Cast::models(PriceChangeSkipped::class, $data['skipped'] ?? null),
             toVersion: Cast::int($data['to_version'] ?? null),
             noticeDays: Cast::int($data['notice_days'] ?? null),
+            priceChangeId: Cast::string($data['price_change_id'] ?? null),
+            alreadyScheduled: Cast::int($data['already_scheduled'] ?? null),
         );
     }
 
@@ -54,6 +60,8 @@ final class SchedulePriceChangeResponse implements Model
             'skipped' => Cast::wire($this->skipped),
             'to_version' => $this->toVersion,
             'notice_days' => $this->noticeDays,
+            'price_change_id' => $this->priceChangeId,
+            'already_scheduled' => $this->alreadyScheduled,
         ]);
     }
 }

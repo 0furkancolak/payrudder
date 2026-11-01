@@ -18,13 +18,19 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        COALESCE(NULLIF(u.display_name, ''), u.email)::text AS opened_by_name, t.subject, t.category, t.priority, t.status, t.assignee, t.last_author,
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
-       (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count
+       (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
+       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
 JOIN users u ON u.id = t.opened_by
-WHERE t.id = $1
+WHERE t.id = $2
 `
+
+type GetSupportTicketParams struct {
+	Viewer *uuid.UUID
+	ID     uuid.UUID
+}
 
 type GetSupportTicketRow struct {
 	ID               uuid.UUID
@@ -49,12 +55,13 @@ type GetSupportTicketRow struct {
 	UpdatedAt        time.Time
 	SlaBreached      bool
 	MessageCount     int32
+	Unread           bool
 }
 
 // The help desk (SupportService). Run as plans_system from internal/support only.
 // Both ticket selects return the same columns, so one function maps either row.
-func (q *Queries) GetSupportTicket(ctx context.Context, id uuid.UUID) (GetSupportTicketRow, error) {
-	row := q.db.QueryRow(ctx, getSupportTicket, id)
+func (q *Queries) GetSupportTicket(ctx context.Context, arg GetSupportTicketParams) (GetSupportTicketRow, error) {
+	row := q.db.QueryRow(ctx, getSupportTicket, arg.Viewer, arg.ID)
 	var i GetSupportTicketRow
 	err := row.Scan(
 		&i.ID,
@@ -79,8 +86,37 @@ func (q *Queries) GetSupportTicket(ctx context.Context, id uuid.UUID) (GetSuppor
 		&i.UpdatedAt,
 		&i.SlaBreached,
 		&i.MessageCount,
+		&i.Unread,
 	)
 	return i, err
+}
+
+const insertSupportEvent = `-- name: InsertSupportEvent :exec
+INSERT INTO support_events (id, ticket_id, kind, actor_kind, actor_name, from_value, to_value)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertSupportEventParams struct {
+	ID        uuid.UUID
+	TicketID  uuid.UUID
+	Kind      string
+	ActorKind string
+	ActorName string
+	FromValue string
+	ToValue   string
+}
+
+func (q *Queries) InsertSupportEvent(ctx context.Context, arg InsertSupportEventParams) error {
+	_, err := q.db.Exec(ctx, insertSupportEvent,
+		arg.ID,
+		arg.TicketID,
+		arg.Kind,
+		arg.ActorKind,
+		arg.ActorName,
+		arg.FromValue,
+		arg.ToValue,
+	)
+	return err
 }
 
 const insertSupportMessage = `-- name: InsertSupportMessage :exec
@@ -112,8 +148,8 @@ func (q *Queries) InsertSupportMessage(ctx context.Context, arg InsertSupportMes
 }
 
 const insertSupportTicket = `-- name: InsertSupportTicket :exec
-INSERT INTO support_tickets (id, account_id, app_id, opened_by, subject, category, priority, status, last_author, first_response_due)
-VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, 'open', 'customer', $8)
+INSERT INTO support_tickets (id, account_id, app_id, opened_by, subject, category, priority, status, last_author, first_response_due, sla_zone)
+VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, 'open', 'customer', $8, $9)
 `
 
 type InsertSupportTicketParams struct {
@@ -125,6 +161,7 @@ type InsertSupportTicketParams struct {
 	Category         string
 	Priority         string
 	FirstResponseDue time.Time
+	SlaZone          string
 }
 
 func (q *Queries) InsertSupportTicket(ctx context.Context, arg InsertSupportTicketParams) error {
@@ -137,8 +174,51 @@ func (q *Queries) InsertSupportTicket(ctx context.Context, arg InsertSupportTick
 		arg.Category,
 		arg.Priority,
 		arg.FirstResponseDue,
+		arg.SlaZone,
 	)
 	return err
+}
+
+const listSupportEvents = `-- name: ListSupportEvents :many
+SELECT id, kind, actor_kind, actor_name, from_value, to_value, created_at FROM support_events WHERE ticket_id = $1 ORDER BY created_at, id
+`
+
+type ListSupportEventsRow struct {
+	ID        uuid.UUID
+	Kind      string
+	ActorKind string
+	ActorName string
+	FromValue string
+	ToValue   string
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListSupportEvents(ctx context.Context, ticketID uuid.UUID) ([]ListSupportEventsRow, error) {
+	rows, err := q.db.Query(ctx, listSupportEvents, ticketID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSupportEventsRow{}
+	for rows.Next() {
+		var i ListSupportEventsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Kind,
+			&i.ActorKind,
+			&i.ActorName,
+			&i.FromValue,
+			&i.ToValue,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listSupportMessages = `-- name: ListSupportMessages :many
@@ -193,7 +273,8 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        COALESCE(NULLIF(u.display_name, ''), u.email)::text AS opened_by_name, t.subject, t.category, t.priority, t.status, t.assignee, t.last_author,
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
-       (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count
+       (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
+       (COALESCE(t.opened_by = $1::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
@@ -240,6 +321,7 @@ type ListSupportTicketsRow struct {
 	UpdatedAt        time.Time
 	SlaBreached      bool
 	MessageCount     int32
+	Unread           bool
 }
 
 // A person's tickets are those of the accounts they are a (non-affiliate) member of; the operator passes no user and sees all.
@@ -282,6 +364,7 @@ func (q *Queries) ListSupportTickets(ctx context.Context, arg ListSupportTickets
 			&i.UpdatedAt,
 			&i.SlaBreached,
 			&i.MessageCount,
+			&i.Unread,
 		); err != nil {
 			return nil, err
 		}
@@ -294,7 +377,7 @@ func (q *Queries) ListSupportTickets(ctx context.Context, arg ListSupportTickets
 }
 
 const lockSupportTicket = `-- name: LockSupportTicket :one
-SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at
+SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone
 FROM support_tickets WHERE id = $1 FOR UPDATE
 `
 
@@ -308,6 +391,7 @@ type LockSupportTicketRow struct {
 	FirstRespondedAt *time.Time
 	SolvedAt         *time.Time
 	CreatedAt        time.Time
+	SlaZone          string
 }
 
 // Locks the ticket for a change.
@@ -324,8 +408,34 @@ func (q *Queries) LockSupportTicket(ctx context.Context, id uuid.UUID) (LockSupp
 		&i.FirstRespondedAt,
 		&i.SolvedAt,
 		&i.CreatedAt,
+		&i.SlaZone,
 	)
 	return i, err
+}
+
+const markSupportTicketSeen = `-- name: MarkSupportTicketSeen :exec
+UPDATE support_tickets SET opener_seen_at = now() WHERE id = $1 AND opened_by = $2 AND opener_seen_at IS NULL
+`
+
+type MarkSupportTicketSeenParams struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+}
+
+// The opener has read the ticket (or wrote the last word on it): the "new" mark goes. Only the opener's own call clears it.
+func (q *Queries) MarkSupportTicketSeen(ctx context.Context, arg MarkSupportTicketSeenParams) error {
+	_, err := q.db.Exec(ctx, markSupportTicketSeen, arg.ID, arg.UserID)
+	return err
+}
+
+const markSupportTicketUnseen = `-- name: MarkSupportTicketUnseen :exec
+UPDATE support_tickets SET opener_seen_at = NULL WHERE id = $1
+`
+
+// An answer or a status change by the operator that the opener has not read.
+func (q *Queries) MarkSupportTicketUnseen(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markSupportTicketUnseen, id)
+	return err
 }
 
 const saveSupportTicket = `-- name: SaveSupportTicket :exec
@@ -393,6 +503,129 @@ func (q *Queries) SupportAuthorName(ctx context.Context, id uuid.UUID) (string, 
 	return name, err
 }
 
+const supportCloseStale = `-- name: SupportCloseStale :many
+UPDATE support_tickets
+SET status = 'closed', solved_at = COALESCE(solved_at, now()), opener_seen_at = NULL, updated_at = now()
+WHERE id IN (
+  SELECT s.id FROM support_tickets s
+  WHERE s.status = 'pending'
+    AND COALESCE((SELECT max(e.created_at) FROM support_events e WHERE e.ticket_id = s.id AND e.kind = 'status' AND e.to_value = 'pending'), s.last_message_at) < $1::timestamptz
+  ORDER BY s.last_message_at LIMIT $2::int FOR UPDATE SKIP LOCKED
+)
+RETURNING id
+`
+
+type SupportCloseStaleParams struct {
+	Before time.Time
+	Batch  int32
+}
+
+// Closes the tickets that wait for the person and have waited since before the given time (the last time they became "pending", else their last message), at most
+// a batch, and says which. Rows another instance is already closing are skipped.
+func (q *Queries) SupportCloseStale(ctx context.Context, arg SupportCloseStaleParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, supportCloseStale, arg.Before, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const supportLockAccount = `-- name: SupportLockAccount :exec
+SELECT pg_advisory_xact_lock(hashtextextended('support:' || $1::text, 0))
+`
+
+// One open-ticket count at a time per account: a second ticket opened at the same moment waits here, so the limit holds.
+func (q *Queries) SupportLockAccount(ctx context.Context, accountID string) error {
+	_, err := q.db.Exec(ctx, supportLockAccount, accountID)
+	return err
+}
+
+const supportMailTarget = `-- name: SupportMailTarget :one
+SELECT t.number, t.subject, t.priority, t.status, a.name AS account_name, u.email AS opener_email, u.locale AS opener_locale
+FROM support_tickets t JOIN accounts a ON a.id = t.account_id JOIN users u ON u.id = t.opened_by
+WHERE t.id = $1
+`
+
+type SupportMailTargetRow struct {
+	Number       *int64
+	Subject      string
+	Priority     string
+	Status       string
+	AccountName  string
+	OpenerEmail  string
+	OpenerLocale string
+}
+
+// What a mail about a ticket names, and who gets it: the person who opened it.
+func (q *Queries) SupportMailTarget(ctx context.Context, id uuid.UUID) (SupportMailTargetRow, error) {
+	row := q.db.QueryRow(ctx, supportMailTarget, id)
+	var i SupportMailTargetRow
+	err := row.Scan(
+		&i.Number,
+		&i.Subject,
+		&i.Priority,
+		&i.Status,
+		&i.AccountName,
+		&i.OpenerEmail,
+		&i.OpenerLocale,
+	)
+	return i, err
+}
+
+const supportOpenCount = `-- name: SupportOpenCount :one
+SELECT count(*)::int FROM support_tickets WHERE account_id = $1 AND status IN ('open', 'pending')
+`
+
+// Tickets that still need an answer or a decision (open or pending), for the limit per account.
+func (q *Queries) SupportOpenCount(ctx context.Context, accountID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, supportOpenCount, accountID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const supportOperatorLocales = `-- name: SupportOperatorLocales :many
+SELECT lower(email)::text AS email, locale FROM users WHERE lower(email) = ANY($1::text[])
+`
+
+type SupportOperatorLocalesRow struct {
+	Email  string
+	Locale string
+}
+
+// The language an operator's address reads mail in, for the operators who have a user (the others read English).
+func (q *Queries) SupportOperatorLocales(ctx context.Context, emails []string) ([]SupportOperatorLocalesRow, error) {
+	rows, err := q.db.Query(ctx, supportOperatorLocales, emails)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SupportOperatorLocalesRow{}
+	for rows.Next() {
+		var i SupportOperatorLocalesRow
+		if err := rows.Scan(&i.Email, &i.Locale); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const supportRoleOf = `-- name: SupportRoleOf :one
 SELECT role FROM account_members WHERE account_id = $1 AND user_id = $2 AND role <> 'affiliate'
 `
@@ -408,4 +641,25 @@ func (q *Queries) SupportRoleOf(ctx context.Context, arg SupportRoleOfParams) (s
 	var role string
 	err := row.Scan(&role)
 	return role, err
+}
+
+const supportZoneFor = `-- name: SupportZoneFor :one
+SELECT COALESCE((
+  SELECT t.timezone FROM tenants t JOIN apps p ON p.id = t.app_id
+  WHERE t.account_id = $1 AND p.archived_at IS NULL
+  ORDER BY COALESCE(p.id = $2::uuid, false) DESC, p.created_at, t.environment DESC LIMIT 1
+), 'UTC')::text AS zone
+`
+
+type SupportZoneForParams struct {
+	AccountID uuid.UUID
+	AppID     *uuid.UUID
+}
+
+// The time zone the first-answer deadline counts business hours in: the ticket's app, else the account's oldest app, else UTC.
+func (q *Queries) SupportZoneFor(ctx context.Context, arg SupportZoneForParams) (string, error) {
+	row := q.db.QueryRow(ctx, supportZoneFor, arg.AccountID, arg.AppID)
+	var zone string
+	err := row.Scan(&zone)
+	return zone, err
 }

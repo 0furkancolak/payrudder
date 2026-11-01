@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, tenantApi, unwrap, type Plan, type PlanVersion } from "@/shared/api/client";
+import type { components } from "@/shared/api/schema";
 import type { Entitlement } from "@/features/meters/quota";
 import type { Price } from "./usage";
 
@@ -82,7 +83,55 @@ export type PriceChangeResult = {
   skipped: { subscription_id: string; customer_external_id: string; reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable" | "customer_blocked" }[];
   to_version: number;
   notice_days: number;
+  /** The price change this run made or continued; empty for a dry run when none is open. */
+  price_change_id: string;
+  /** Scheduled by that price change before: not scheduled or mailed again. */
+  already_scheduled: number;
 };
+
+export type PriceChange = components["schemas"]["PriceChange"];
+export type PriceChangeItem = components["schemas"]["PriceChangeItem"];
+
+export const priceChangeKeys = {
+  list: (tenantId: string, code: string) => ["tenants", tenantId, "price-changes", code] as const,
+  one: (tenantId: string, id: string) => ["tenants", tenantId, "price-change", id] as const,
+};
+
+/** The price changes made for one package, newest first. */
+export function usePriceChanges(tenantId: MaybeRefOrGetter<string>, code: MaybeRefOrGetter<string>, enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: computed(() => priceChangeKeys.list(toValue(tenantId), toValue(code))),
+    enabled: computed(() => toValue(enabled) && toValue(tenantId) !== "" && toValue(code) !== ""),
+    queryFn: async (): Promise<PriceChange[]> => (await unwrap(tenantApi(toValue(tenantId)).GET("/v1/price-changes", { params: { query: { plan_code: toValue(code) } } }))).price_changes,
+  });
+}
+
+/** One price change with its subscriptions (at most 500), once it is opened. */
+export function usePriceChange(tenantId: MaybeRefOrGetter<string>, id: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => priceChangeKeys.one(toValue(tenantId), toValue(id))),
+    enabled: computed(() => toValue(tenantId) !== "" && toValue(id) !== ""),
+    queryFn: async () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/price-changes/{id}", { params: { path: { id: toValue(id) } } })),
+  });
+}
+
+/** Tries the skipped subscriptions of a price change again. */
+export function useRetryPriceChange(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<PriceChangeResult> => (await unwrap(tenantApi(toValue(tenantId)).POST("/v1/price-changes/{id}/retry", { params: { path: { id } } }))) as PriceChangeResult,
+    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId)] }),
+  });
+}
+
+/** Cancels every change of a price change that is still waiting. */
+export function useWithdrawPriceChange(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => unwrap(tenantApi(toValue(tenantId)).POST("/v1/price-changes/{id}/withdraw", { params: { path: { id } } })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: ["tenants", toValue(tenantId)] }),
+  });
+}
 
 /** Moves the subscriptions on one version of a package to another at their next renewal and mails the customers; `dryRun` only counts. */
 export function useSchedulePriceChange(tenantId: MaybeRefOrGetter<string>) {

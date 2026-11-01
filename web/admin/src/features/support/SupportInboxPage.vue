@@ -59,6 +59,7 @@ const table = useTableState(rows, { searchFields: () => [], sorts, sheet: { kind
 const current = computed(() => table.row.value);
 const thread = useOperatorTicket(() => current.value?.id ?? "");
 const messages = computed(() => thread.data.value?.messages ?? []);
+const events = computed(() => thread.data.value?.events ?? []);
 const shown = computed(() => thread.data.value?.ticket ?? current.value);
 
 const assignee = ref("");
@@ -181,7 +182,7 @@ function send() {
         {{ shown.first_response_time ? t("support.answeredAt", { time: formatDate(shown.first_response_time, locale, "dateTime") }) : t("support.dueBy", { time: formatDate(shown.first_response_due, locale, "dateTime") }) }}
         <TicketBadges :ticket="shown" class="ms-2" />
       </p>
-      <TicketThread :messages="messages" />
+      <TicketThread :messages="messages" :events="events" />
       <form class="grid gap-2" @submit.prevent="send">
         <Textarea v-model="reply" rows="5" maxlength="10000" :aria-label="t('support.fields.reply')" :placeholder="internal ? t('support.fields.note') : t('support.fields.reply')" data-testid="inbox-reply" />
         <ErrorText :error="actions.reply.error.value ?? actions.update.error.value" />

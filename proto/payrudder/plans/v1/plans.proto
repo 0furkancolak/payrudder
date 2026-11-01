@@ -91,8 +91,17 @@ service PlansService {
   rpc PreviewSubscriptionChange(PreviewSubscriptionChangeRequest) returns (PreviewSubscriptionChangeResponse);
   rpc ChangeSubscription(ChangeSubscriptionRequest) returns (ChangeSubscriptionResponse);
   // SchedulePriceChange moves every subscription on one plan version to another at its next renewal, if that renewal is at least notice_days away, and mails
-  // each customer. The others are listed with why they were not scheduled; running it again later picks up the ones whose renewal was too close.
+  // each customer. The others are listed with why they were not scheduled; running it again later continues the same price change: it picks up the ones whose
+  // renewal was too close and does not schedule or mail the others twice.
   rpc SchedulePriceChange(SchedulePriceChangeRequest) returns (SchedulePriceChangeResponse);
+  // ListPriceChanges lists the price changes made, newest first, with how many subscriptions are in each state.
+  rpc ListPriceChanges(ListPriceChangesRequest) returns (ListPriceChangesResponse);
+  // GetPriceChange returns one price change with its subscriptions.
+  rpc GetPriceChange(GetPriceChangeRequest) returns (GetPriceChangeResponse);
+  // RetryPriceChange tries the subscriptions that were skipped again (and any that joined the version since), with the notice the price change was made with.
+  rpc RetryPriceChange(RetryPriceChangeRequest) returns (RetryPriceChangeResponse);
+  // WithdrawPriceChange closes a price change and cancels every change of it that is still waiting. A change that was applied stays.
+  rpc WithdrawPriceChange(WithdrawPriceChangeRequest) returns (WithdrawPriceChangeResponse);
   rpc CancelScheduledChange(CancelScheduledChangeRequest) returns (CancelScheduledChangeResponse);
   // ApplyScheduledChanges applies the changes whose effective time has come. Used by billing-svc's tick.
   rpc ApplyScheduledChanges(ApplyScheduledChangesRequest) returns (ApplyScheduledChangesResponse);
@@ -758,6 +767,8 @@ message SchedulePriceChangeRequest {
   int32 notice_days = 4;
   // Only count, change nothing and mail nobody.
   bool dry_run = 5;
+  // Who asks, kept with the price change. The gateway sets it; a value in the request is overwritten.
+  string actor = 6;
 }
 
 message PriceChangeSkipped {
@@ -773,6 +784,85 @@ message SchedulePriceChangeResponse {
   repeated PriceChangeSkipped skipped = 3;
   int32 to_version = 4;
   int32 notice_days = 5;
+  // The price change this run made or continued. Empty for a dry run when none is open.
+  string price_change_id = 6;
+  // Subscriptions this price change had scheduled already: they are not scheduled or mailed again.
+  int32 already_scheduled = 7;
+}
+
+// A price change: one run of SchedulePriceChange and what became of each subscription in it.
+message PriceChange {
+  string id = 1;
+  string plan_code = 2;
+  int32 from_version = 3;
+  int32 to_version = 4;
+  // The notice of the latest run: the least time before a renewal that the customer is told.
+  int32 notice_days = 5;
+  // The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of the notice).
+  google.protobuf.Timestamp effective_time = 6;
+  // open, or withdrawn (closed: a new run makes a new price change).
+  string state = 7;
+  string created_by = 8;
+  google.protobuf.Timestamp create_time = 9;
+  google.protobuf.Timestamp withdraw_time = 10;
+  string withdrawn_by = 11;
+  // How many subscriptions are waiting for their renewal, were moved, were withdrawn or were skipped.
+  int32 scheduled = 12;
+  int32 applied = 13;
+  int32 withdrawn = 14;
+  int32 skipped = 15;
+}
+
+message PriceChangeItem {
+  string subscription_id = 1;
+  string customer_external_id = 2;
+  // scheduled, applied, withdrawn or skipped.
+  string state = 3;
+  // Why it was skipped (as in PriceChangeSkipped); empty otherwise.
+  string reason = 4;
+  // The renewal the new price starts on; unset for a skipped one.
+  google.protobuf.Timestamp effective_time = 5;
+  // When the customer's mail was queued; unset for a skipped one.
+  google.protobuf.Timestamp notify_time = 6;
+}
+
+message ListPriceChangesRequest {
+  // Optional: only the price changes of this plan.
+  string plan_code = 1;
+}
+message ListPriceChangesResponse {
+  // Newest first, at most 100.
+  repeated PriceChange price_changes = 1;
+}
+
+message GetPriceChangeRequest {
+  string id = 1;
+  // Optional: only the subscriptions in this state (scheduled, applied, withdrawn or skipped).
+  string state = 2;
+}
+message GetPriceChangeResponse {
+  PriceChange price_change = 1;
+  // By customer, at most 500.
+  repeated PriceChangeItem items = 2;
+}
+
+message RetryPriceChangeRequest {
+  string id = 1;
+}
+message RetryPriceChangeResponse {
+  // What the run did, as SchedulePriceChange answers.
+  SchedulePriceChangeResponse result = 1;
+}
+
+message WithdrawPriceChangeRequest {
+  string id = 1;
+  // Who withdraws. The gateway sets it; a value in the request is overwritten.
+  string actor = 2;
+}
+message WithdrawPriceChangeResponse {
+  PriceChange price_change = 1;
+  // How many waiting changes this call cancelled.
+  int32 withdrawn = 2;
 }
 
 message ChangeQuote {

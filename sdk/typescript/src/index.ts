@@ -37,6 +37,7 @@ export type {
   CreditsPurchasedEventData,
   CreditsLowEventData,
   CustomerBlockEventData,
+  PriceChangeScheduledEventData,
 } from "./webhooks";
 export { VERSION } from "./version";
 // Request/response models of the API. WebhookEventType (the delivery's type names) is the hand-written one above.

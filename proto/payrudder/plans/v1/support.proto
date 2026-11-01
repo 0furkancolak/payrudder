@@ -6,7 +6,9 @@ import "google/protobuf/timestamp.proto";
 
 // SupportService is the help desk between the people who run apps on Payrudder and the operator. A person opens a ticket on behalf of their account (and
 // optionally one of its apps), both sides write to a thread, and the operator keeps the ticket's status, priority and assignee, plus notes the person never
-// sees. Every ticket has a first-response deadline that follows its priority.
+// sees. Every ticket has a first-response deadline that follows its priority and counts business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the
+// ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
+// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
 //
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
@@ -58,6 +60,22 @@ message SupportTicket {
   bool sla_breached = 20;
   google.protobuf.Timestamp solve_time = 21;
   int32 message_count = 22;
+  // True for the person who opened the ticket when there is an answer or a status change by the operator they have not read yet. Always false for the operator
+  // and for the other members of the account.
+  bool unread = 23;
+}
+
+// SupportEvent is one change of a ticket's status, priority or assignee, in the order they happened. The history is never edited.
+message SupportEvent {
+  string id = 1;
+  // status, priority or assignee.
+  string kind = 2;
+  // Who changed it: customer, operator or system (the job that closes tickets nobody answered).
+  string actor_kind = 3;
+  string actor_name = 4;
+  string from_value = 5;
+  string to_value = 6;
+  google.protobuf.Timestamp create_time = 7;
 }
 
 message SupportMessage {
@@ -101,6 +119,8 @@ message GetMySupportTicketRequest {
 message GetMySupportTicketResponse {
   SupportTicket ticket = 1;
   repeated SupportMessage messages = 2;
+  // The changes of status, priority and assignee; reading the ticket as the person who opened it clears its "unread" mark.
+  repeated SupportEvent events = 3;
 }
 
 message ReplyMySupportTicketRequest {
@@ -143,6 +163,7 @@ message GetSupportTicketRequest {
 message GetSupportTicketResponse {
   SupportTicket ticket = 1;
   repeated SupportMessage messages = 2;
+  repeated SupportEvent events = 3;
 }
 
 message ReplySupportTicketRequest {
@@ -163,6 +184,8 @@ message UpdateSupportTicketRequest {
   optional string status = 2;
   optional string priority = 3;
   optional string assignee = 4;
+  // Who is changing it, as shown in the ticket's history.
+  string author_name = 5;
 }
 message UpdateSupportTicketResponse {
   SupportTicket ticket = 1;

@@ -32,6 +32,7 @@ enum WebhookEventType: string
     case CreditsLow = 'credits.low';
     case CustomerBlocked = 'customer.blocked';
     case CustomerUnblocked = 'customer.unblocked';
+    case PriceChangeScheduled = 'price_change.scheduled';
     case ContractAccepted = 'contract.accepted';
     case ContractVersionPublished = 'contract.version_published';
     case ContractWithdrawalRequested = 'contract.withdrawal_requested';

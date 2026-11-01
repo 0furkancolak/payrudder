@@ -36,7 +36,9 @@ const (
 //
 // SupportService is the help desk between the people who run apps on Payrudder and the operator. A person opens a ticket on behalf of their account (and
 // optionally one of its apps), both sides write to a thread, and the operator keeps the ticket's status, priority and assignee, plus notes the person never
-// sees. Every ticket has a first-response deadline that follows its priority.
+// sees. Every ticket has a first-response deadline that follows its priority and counts business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the
+// ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
+// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
 //
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.
@@ -160,7 +162,9 @@ func (c *supportServiceClient) UpdateSupportTicket(ctx context.Context, in *Upda
 //
 // SupportService is the help desk between the people who run apps on Payrudder and the operator. A person opens a ticket on behalf of their account (and
 // optionally one of its apps), both sides write to a thread, and the operator keeps the ticket's status, priority and assignee, plus notes the person never
-// sees. Every ticket has a first-response deadline that follows its priority.
+// sees. Every ticket has a first-response deadline that follows its priority and counts business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the
+// ticket's app). Mail goes out on a new ticket (to the operators), on the operator's public answer and on a change of status (to the person who opened it), in the
+// language of the person; a ticket that waited for the person for seven days closes by itself; an account has at most 20 tickets waiting at once.
 //
 // The "My" calls take the signed-in user's id, resolved by the gateway, and see the tickets of every account the user belongs to. The operator calls need the
 // operator context and see all tickets.

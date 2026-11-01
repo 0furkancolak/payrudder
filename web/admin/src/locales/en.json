@@ -761,6 +761,42 @@
           "run_by_provider": "{n} are run by a payment provider.",
           "not_changeable": "{n} cannot be moved this way (for example the fee is invoiced in arrears).",
           "customer_blocked": "{n} belong to a blocked customer and were left alone."
+        },
+        "alreadyScheduled": "{n} were scheduled by this price change before and are not told again.",
+        "history": "Price changes made",
+        "versions": "v{from} to v{to}",
+        "state": {
+          "open": "Open",
+          "withdrawn": "Withdrawn"
+        },
+        "madeBy": "{date} by {who}",
+        "takesEffect": "First price change on {date} ({n} days of notice)",
+        "counts": "{scheduled} waiting, {applied} moved, {withdrawn} withdrawn, {skipped} skipped",
+        "details": "Customers",
+        "hideDetails": "Hide customers",
+        "retry": "Try {n} skipped again",
+        "retried": "{n} more subscriptions scheduled; {skipped} still left out.",
+        "withdraw": "Withdraw all",
+        "withdrawn": "{n} waiting changes withdrawn. Customers who were mailed already are not told.",
+        "confirmWithdraw": "Cancel the {n} changes that are still waiting? Those customers stay on the old price. Changes already applied stay, and the mails already sent are not taken back.",
+        "columns": {
+          "customer": "Customer",
+          "state": "State",
+          "effective": "New price from",
+          "notified": "Mailed"
+        },
+        "itemState": {
+          "scheduled": "Waiting",
+          "applied": "Moved",
+          "withdrawn": "Withdrawn",
+          "skipped": "Skipped"
+        },
+        "skipWhy": {
+          "renews_soon": "renews too soon",
+          "has_pending_change": "has another change waiting",
+          "run_by_provider": "run by a payment provider",
+          "not_changeable": "cannot be moved this way",
+          "customer_blocked": "customer is blocked"
         }
       }
     },
@@ -2813,6 +2849,10 @@
         "no_fixed_fee": "This plan version has no fixed fee for that interval in this currency.",
         "no_metered_price": "This plan version has metered prices but none in this currency."
       },
+      "price_change": {
+        "not_found": "Price change not found.",
+        "withdrawn": "This price change was withdrawn. Make a new one."
+      },
       "override": {
         "customer_required": "Say which customer the limit is for.",
         "not_found": "This customer has no override on that meter."
@@ -3356,6 +3396,9 @@
       "ticket": {
         "closed": "This ticket is closed. Open a new one.",
         "not_found": "That ticket was not found."
+      },
+      "tickets": {
+        "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again."
       }
     }
   },
@@ -4992,10 +5035,10 @@
       "urgent": "Urgent"
     },
     "answerWithin": {
-      "low": "answer within 3 days",
-      "normal": "answer within 1 day",
-      "high": "answer within 4 hours",
-      "urgent": "answer within 1 hour"
+      "low": "answer within 3 business days",
+      "normal": "answer within 1 business day",
+      "high": "answer within 4 business hours",
+      "urgent": "answer within 1 business hour"
     },
     "category": {
       "billing": "Billing",
@@ -5010,7 +5053,9 @@
       "system": "System"
     },
     "sortPriority": "Highest priority first",
-    "sortDue": "Answer due soonest"
+    "sortDue": "Answer due soonest",
+    "unread": "New",
+    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app."
   },
   "connect": {
     "nav": "Connect your app",

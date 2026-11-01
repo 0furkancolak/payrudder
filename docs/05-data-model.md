@@ -103,7 +103,7 @@ CREATE TABLE config_promotions (                      -- phase 45 D: one row per
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Contracts for the seller's customers (plan 21; migrations/00006_contracts.sql, tenant twin 00005), tenant tables with RLS like the neighbours:
+-- Contracts for the seller's customers (plan 21; migrations/00008_contracts.sql, tenant twin 00006), tenant tables with RLS like the neighbours:
 --   contract_versions (tenant_id, id, kind, audience, number, material, bodies jsonb, sha256, note, author, created_at)       immutable: SELECT/INSERT only; the newest number of (kind, audience) is the current one
 --   contract_settings (tenant_id PK, required_kinds text[], immediate_start, retention_months 12..120 default 36, updated_at)
 --   contract_acceptances (tenant_id, id, group_id, customer_id NULL for a guest, version_id, kind, audience, version_number, version_sha256, locale_requested/served, body_sha256,
@@ -234,6 +234,10 @@ CREATE TABLE subscriptions (
   -- quantity integer NOT NULL DEFAULT 1 CHECK (quantity BETWEEN 1 AND 100000) -- seats, a plain multiplier of the fixed fee;
   --   subscription_changes gets the same column, NULL = keep the subscription's own
 );
+
+-- Plan 15: a price change is a record. price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, state 'open'|'withdrawn', created_by, created_at,
+--   withdrawn_at, withdrawn_by) is one run of SchedulePriceChange, one open per plan and pair of versions; price_change_items (price_change_id, subscription_id, change_id -> subscription_changes,
+--   reason, effective_at, notified_at) is what became of each subscription: scheduled (a change_id; its state is the state of that subscription_changes row) or skipped (a reason).
 
 -- Phase 13: customers gain country char(2) and billing_currency char(3), both optional.
 CREATE TABLE plan_version_fees (            -- fixed fee in a currency other than the tenant's

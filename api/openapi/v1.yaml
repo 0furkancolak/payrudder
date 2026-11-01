@@ -688,8 +688,10 @@ paths:
         For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
         (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
         The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
-        `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing. Each scheduled change also sends the
-        `subscription.change_scheduled` webhook event.
+        `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing.
+        Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run sends `price_change.scheduled` once.
+        The run is recorded as a price change (`price_change_id`; see `GET /v1/price-changes`). Running it again for the same plan and versions continues the open one:
+        the skipped subscriptions are tried again, and the ones it scheduled before are counted in `already_scheduled` and neither scheduled nor mailed a second time.
       parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
       requestBody:
         required: true
@@ -697,6 +699,47 @@ paths:
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SchedulePriceChangeResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/price-changes:
+    get:
+      operationId: listPriceChanges
+      summary: The price changes made, newest first
+      description: Each with the number of subscriptions that are waiting for their renewal (`scheduled`), were moved (`applied`), were withdrawn or were skipped. The latest 100.
+      parameters: [{ name: plan_code, in: query, required: false, schema: { type: string }, description: Only the price changes of this plan }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListPriceChangesResponse" } } } }
+  /v1/price-changes/{id}:
+    get:
+      operationId: getPriceChange
+      summary: One price change with its subscriptions and what became of each
+      description: The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: state, in: query, required: false, schema: { type: string, enum: [scheduled, applied, withdrawn, skipped] } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GetPriceChangeResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /v1/price-changes/{id}/retry:
+    post:
+      operationId: retryPriceChange
+      summary: Try the skipped subscriptions of a price change again
+      description: Runs the price change again with the notice it was made with, for the subscriptions that were skipped (a renewal that was too close may be far enough now) and any that joined the version since. What is scheduled already is left alone. Refused with 409 `plans.price_change.withdrawn` once it was withdrawn.
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/SchedulePriceChangeResponse" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/price-changes/{id}/withdraw:
+    post:
+      operationId: withdrawPriceChange
+      summary: Cancel every change of a price change that is still waiting
+      description: |
+        Closes the price change and cancels the scheduled changes that have not taken effect, so those customers stay on the old price. A change that was applied stays, and
+        the mail that was sent is not taken back (tell those customers yourself). Calling it again finishes what an interrupted call left; a new run makes a new price change.
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/WithdrawPriceChangeResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /v1/subscriptions/{id}/change:
     post:
@@ -3793,7 +3836,9 @@ paths:
       operationId: appOpenSupportTicket
       tags: [Support]
       summary: Open a support ticket for an account (and optionally one of its apps)
-      description: The first answer is due by the priority (urgent 1 hour, high 4 hours, normal 24 hours, low 72 hours).
+      description: |
+        The first answer is due by the priority, counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
+        An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`.
       security: [{ sessionToken: [] }]
       requestBody:
         required: true
@@ -3806,11 +3851,12 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /app/v1/support/tickets/{id}:
     get:
       operationId: appSupportTicket
       tags: [Support]
-      summary: A ticket with its thread (the operator's internal notes are not in it)
+      summary: A ticket with its thread and history (the operator's internal notes are not in it). Reading it as the person who opened it clears its unread mark
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -3878,7 +3924,7 @@ paths:
     patch:
       operationId: updateSupportTicket
       tags: [Support]
-      summary: Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer
+      summary: Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -3893,7 +3939,7 @@ paths:
     post:
       operationId: replySupportTicket
       tags: [Support]
-      summary: Answer a ticket (operator). An internal note is never shown to the person and does not count as an answer
+      summary: Answer a ticket (operator). The answer is mailed to the person who opened the ticket. An internal note is never shown to the person, is not mailed and does not count as an answer
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -4867,11 +4913,59 @@ components:
       type: object
       required: [scheduled, scheduled_subscription_ids, skipped, to_version, notice_days]
       properties:
-        scheduled: { type: integer }
+        scheduled: { type: integer, description: "Scheduled by this run" }
         scheduled_subscription_ids: { type: array, items: { type: string, format: uuid } }
         skipped: { type: array, items: { $ref: "#/components/schemas/PriceChangeSkipped" } }
         to_version: { type: integer }
         notice_days: { type: integer }
+        price_change_id: { type: string, description: "The price change this run made or continued; empty for a dry run when none is open" }
+        already_scheduled: { type: integer, description: "Scheduled by this price change before: not scheduled or mailed again" }
+    PriceChange:
+      type: object
+      required: [id, plan_code, from_version, to_version, notice_days, effective_time, state, created_by, create_time, withdraw_time, withdrawn_by, scheduled, applied, withdrawn, skipped]
+      properties:
+        id: { type: string, format: uuid }
+        plan_code: { type: string }
+        from_version: { type: integer }
+        to_version: { type: integer }
+        notice_days: { type: integer, description: "The notice of the latest run" }
+        effective_time: { type: string, format: date-time, description: "The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of the notice)" }
+        state: { type: string, enum: [open, withdrawn] }
+        created_by: { type: string, description: "The signed-in person's address, key:<id> for an API key, or the operator" }
+        create_time: { type: string, format: date-time }
+        withdraw_time: { type: string, format: date-time, nullable: true }
+        withdrawn_by: { type: string }
+        scheduled: { type: integer, description: "Subscriptions waiting for their renewal" }
+        applied: { type: integer, description: "Subscriptions moved to the new price" }
+        withdrawn: { type: integer, description: "Subscriptions whose change was cancelled (by a withdrawal, or because the seller or the customer changed the subscription)" }
+        skipped: { type: integer, description: "Subscriptions left out; retry tries them again" }
+    PriceChangeItem:
+      type: object
+      required: [subscription_id, customer_external_id, state, reason, effective_time, notify_time]
+      properties:
+        subscription_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        state: { type: string, enum: [scheduled, applied, withdrawn, skipped] }
+        reason: { type: string, description: "Why it was skipped (as in PriceChangeSkipped); empty otherwise" }
+        effective_time: { type: string, format: date-time, nullable: true, description: "The renewal the new price starts on; unset for a skipped one" }
+        notify_time: { type: string, format: date-time, nullable: true, description: "When the customer's mail was queued; unset for a skipped one" }
+    ListPriceChangesResponse:
+      type: object
+      required: [price_changes]
+      properties:
+        price_changes: { type: array, items: { $ref: "#/components/schemas/PriceChange" } }
+    GetPriceChangeResponse:
+      type: object
+      required: [price_change, items]
+      properties:
+        price_change: { $ref: "#/components/schemas/PriceChange" }
+        items: { type: array, items: { $ref: "#/components/schemas/PriceChangeItem" } }
+    WithdrawPriceChangeResponse:
+      type: object
+      required: [price_change, withdrawn]
+      properties:
+        price_change: { $ref: "#/components/schemas/PriceChange" }
+        withdrawn: { type: integer, description: "How many waiting changes this call cancelled" }
     BlockCustomerRequest:
       type: object
       properties:
@@ -4900,7 +4994,7 @@ components:
         events: { type: array, items: { $ref: "#/components/schemas/CustomerBlockEvent" } }
     SupportTicket:
       type: object
-      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count]
+      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count, unread]
       properties:
         id: { type: string, format: uuid }
         number: { type: integer, format: int64, description: "The short number shown as #1042" }
@@ -4924,6 +5018,19 @@ components:
         sla_breached: { type: boolean, description: "The first answer is overdue, or was late" }
         solve_time: { type: string, format: date-time, nullable: true }
         message_count: { type: integer }
+        unread: { type: boolean, description: "True for the person who opened the ticket while there is an answer or a status change by the operator they have not read. Always false for the operator and for the other members of the account" }
+    SupportEvent:
+      type: object
+      required: [id, kind, actor_kind, actor_name, from_value, to_value, create_time]
+      description: One change of a ticket's status, priority or assignee. The history is append-only.
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [status, priority, assignee] }
+        actor_kind: { type: string, enum: [customer, operator, system], description: "system is the job that closes a ticket that waited for the person for 7 days" }
+        actor_name: { type: string }
+        from_value: { type: string }
+        to_value: { type: string }
+        create_time: { type: string, format: date-time }
     SupportMessage:
       type: object
       required: [id, author_kind, author_name, body, internal, create_time]
@@ -4946,10 +5053,11 @@ components:
         ticket: { $ref: "#/components/schemas/SupportTicket" }
     SupportTicketThread:
       type: object
-      required: [ticket, messages]
+      required: [ticket, messages, events]
       properties:
         ticket: { $ref: "#/components/schemas/SupportTicket" }
         messages: { type: array, items: { $ref: "#/components/schemas/SupportMessage" } }
+        events: { type: array, items: { $ref: "#/components/schemas/SupportEvent" } }
     OpenSupportTicketRequest:
       type: object
       required: [account_id, subject, category, body]
@@ -7752,6 +7860,44 @@ components:
         created: { type: string, format: date-time }
         tenant_id: { type: string, format: uuid }
         data: { $ref: "#/components/schemas/CustomerUnblockedEventData" }
+    WebhookPriceChange:
+      type: object
+      description: "A price change as the API returns it, without the fields at their zero value (an empty string, 0 and an unset time are left out)"
+      required: [id, plan_code, from_version, to_version, notice_days, effective_time, state, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        plan_code: { type: string }
+        from_version: { type: integer }
+        to_version: { type: integer }
+        notice_days: { type: integer }
+        effective_time: { type: string, format: date-time }
+        state: { type: string, enum: [open, withdrawn] }
+        created_by: { type: string }
+        create_time: { type: string, format: date-time }
+        withdraw_time: { type: string, format: date-time }
+        withdrawn_by: { type: string }
+        scheduled: { type: integer }
+        applied: { type: integer }
+        withdrawn: { type: integer }
+        skipped: { type: integer }
+    PriceChangeScheduledEventData:
+      type: object
+      description: "The data of an event of type price_change.scheduled"
+      required: [price_change, scheduled, skipped]
+      properties:
+        price_change: { $ref: "#/components/schemas/WebhookPriceChange" }
+        scheduled: { type: integer, description: "Scheduled by the run that sent the event" }
+        skipped: { type: integer, description: "Left out by that run" }
+    PriceChangeScheduledEvent:
+      type: object
+      description: "The body of a delivery of type price_change.scheduled"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [price_change.scheduled] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/PriceChangeScheduledEventData" }
     ContractAcceptedEventData:
       type: object
       description: "The data of an event of type contract.accepted: a customer accepted one or more agreements together (one event for the group)"
@@ -8828,6 +8974,7 @@ components:
         - credits.low
         - customer.blocked
         - customer.unblocked
+        - price_change.scheduled
         - contract.accepted
         - contract.version_published
         - contract.withdrawal_requested
@@ -8963,6 +9110,7 @@ components:
         - { $ref: "#/components/schemas/CreditsLowEvent" }
         - { $ref: "#/components/schemas/CustomerBlockedEvent" }
         - { $ref: "#/components/schemas/CustomerUnblockedEvent" }
+        - { $ref: "#/components/schemas/PriceChangeScheduledEvent" }
         - { $ref: "#/components/schemas/ContractAcceptedEvent" }
         - { $ref: "#/components/schemas/ContractVersionPublishedEvent" }
         - { $ref: "#/components/schemas/ContractWithdrawalRequestedEvent" }
@@ -8994,6 +9142,7 @@ components:
           credits.low: "#/components/schemas/CreditsLowEvent"
           customer.blocked: "#/components/schemas/CustomerBlockedEvent"
           customer.unblocked: "#/components/schemas/CustomerUnblockedEvent"
+          price_change.scheduled: "#/components/schemas/PriceChangeScheduledEvent"
           contract.accepted: "#/components/schemas/ContractAcceptedEvent"
           contract.version_published: "#/components/schemas/ContractVersionPublishedEvent"
           contract.withdrawal_requested: "#/components/schemas/ContractWithdrawalRequestedEvent"

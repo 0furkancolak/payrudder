@@ -1495,6 +1495,12 @@ type GetDunningReportSummary struct {
 	TotalMinor Int64  `json:"total_minor"`
 }
 
+// GetPriceChangeResponse is the response of GetPriceChange.
+type GetPriceChangeResponse struct {
+	PriceChange PriceChange       `json:"price_change"`
+	Items       []PriceChangeItem `json:"items"`
+}
+
 // GetRevenueReportResponse is the response of GetRevenueReport.
 type GetRevenueReportResponse struct {
 	Rows []GetRevenueReportRow `json:"rows"`
@@ -1826,6 +1832,11 @@ type ListPlansResponse struct {
 	Plans []Plan `json:"plans"`
 }
 
+// ListPriceChangesResponse is the response of ListPriceChanges.
+type ListPriceChangesResponse struct {
+	PriceChanges []PriceChange `json:"price_changes"`
+}
+
 // ListPromotionCodesResponse is the response of ListPromotionCodes.
 type ListPromotionCodesResponse struct {
 	Codes         []PromotionCode `json:"codes"`
@@ -2032,6 +2043,49 @@ type Price struct {
 	Package   PricePackage `json:"package,omitempty"`
 	// Quantity of every billing period that is free: the model prices only what is above it. Empty or 0 = none
 	Included string `json:"included"`
+}
+
+// PriceChange is an object of the API; see components.schemas.PriceChange in api/openapi/v1.yaml.
+type PriceChange struct {
+	ID          string `json:"id"`
+	PlanCode    string `json:"plan_code"`
+	FromVersion int    `json:"from_version"`
+	ToVersion   int    `json:"to_version"`
+	// The notice of the latest run
+	NoticeDays int `json:"notice_days"`
+	// The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of
+	// the notice)
+	EffectiveTime time.Time `json:"effective_time"`
+	// One of: open, withdrawn.
+	State string `json:"state"`
+	// The signed-in person's address, key:<id> for an API key, or the operator
+	CreatedBy    string     `json:"created_by"`
+	CreateTime   time.Time  `json:"create_time"`
+	WithdrawTime *time.Time `json:"withdraw_time"`
+	WithdrawnBy  string     `json:"withdrawn_by"`
+	// Subscriptions waiting for their renewal
+	Scheduled int `json:"scheduled"`
+	// Subscriptions moved to the new price
+	Applied int `json:"applied"`
+	// Subscriptions whose change was cancelled (by a withdrawal, or because the seller or the customer changed the
+	// subscription)
+	Withdrawn int `json:"withdrawn"`
+	// Subscriptions left out; retry tries them again
+	Skipped int `json:"skipped"`
+}
+
+// PriceChangeItem is an object of the API; see components.schemas.PriceChangeItem in api/openapi/v1.yaml.
+type PriceChangeItem struct {
+	SubscriptionID     string `json:"subscription_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	// One of: scheduled, applied, withdrawn, skipped.
+	State string `json:"state"`
+	// Why it was skipped (as in PriceChangeSkipped); empty otherwise
+	Reason string `json:"reason"`
+	// The renewal the new price starts on; unset for a skipped one
+	EffectiveTime *time.Time `json:"effective_time"`
+	// When the customer's mail was queued; unset for a skipped one
+	NotifyTime *time.Time `json:"notify_time"`
 }
 
 // PriceChangeSkipped is an object of the API; see components.schemas.PriceChangeSkipped in api/openapi/v1.yaml.
@@ -2360,11 +2414,16 @@ type SchedulePriceChangeRequest struct {
 
 // SchedulePriceChangeResponse is the response of SchedulePriceChange.
 type SchedulePriceChangeResponse struct {
+	// Scheduled by this run
 	Scheduled                int                  `json:"scheduled"`
 	ScheduledSubscriptionIds []string             `json:"scheduled_subscription_ids"`
 	Skipped                  []PriceChangeSkipped `json:"skipped"`
 	ToVersion                int                  `json:"to_version"`
 	NoticeDays               int                  `json:"notice_days"`
+	// The price change this run made or continued; empty for a dry run when none is open
+	PriceChangeID string `json:"price_change_id,omitempty"`
+	// Scheduled by this price change before: not scheduled or mailed again
+	AlreadyScheduled int `json:"already_scheduled,omitempty"`
 }
 
 // ScheduledChange is an object of the API; see components.schemas.ScheduledChange in api/openapi/v1.yaml.
@@ -2591,6 +2650,13 @@ type WebhookEndpointInput struct {
 	EventTypes []string `json:"event_types,omitempty"`
 	// A PUT replaces the endpoint: leaving active out deactivates it
 	Active bool `json:"active"`
+}
+
+// WithdrawPriceChangeResponse is the response of WithdrawPriceChange.
+type WithdrawPriceChangeResponse struct {
+	PriceChange PriceChange `json:"price_change"`
+	// How many waiting changes this call cancelled
+	Withdrawn int `json:"withdrawn"`
 }
 
 // ExportAccountingCouponsCsvParams are the query parameters of ExportAccountingCouponsCsv.
@@ -3555,6 +3621,40 @@ func (p *ListPaymentsParams) values() url.Values {
 	}
 	if p.Limit != nil {
 		v.Set("limit", strconv.Itoa(*p.Limit))
+	}
+	return v
+}
+
+// ListPriceChangesParams are the query parameters of ListPriceChanges.
+type ListPriceChangesParams struct {
+	// Only the price changes of this plan
+	PlanCode string
+}
+
+func (p *ListPriceChangesParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.PlanCode != "" {
+		v.Set("plan_code", p.PlanCode)
+	}
+	return v
+}
+
+// GetPriceChangeParams are the query parameters of GetPriceChange.
+type GetPriceChangeParams struct {
+	// One of: scheduled, applied, withdrawn, skipped.
+	State string
+}
+
+func (p *GetPriceChangeParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.State != "" {
+		v.Set("state", p.State)
 	}
 	return v
 }

@@ -17,6 +17,16 @@ var (
 // SupportMaxBody bounds a message.
 const SupportMaxBody = 10000
 
+// SupportMaxOpen is the most tickets an account may have waiting (open or pending) at once; the person who opens one more is told to wait for an answer or close
+// one. A default (plan 12, not agreed).
+const SupportMaxOpen = 20
+
+// The first-answer clock counts business hours only: Monday to Friday, 09:00 to 18:00 in the ticket's time zone (a default, plan 12, not agreed).
+const (
+	supportOpenHour  = 9
+	supportCloseHour = 18
+)
+
 func inList(list []string, v string) bool {
 	for _, x := range list {
 		if x == v {
@@ -26,7 +36,8 @@ func inList(list []string, v string) bool {
 	return false
 }
 
-// SupportFirstResponse is how long the operator has to answer a new ticket first, by priority.
+// SupportFirstResponse is how much business time the operator has to answer a new ticket first, by priority: urgent one hour, high four, normal one business day
+// (nine hours), low three business days.
 func SupportFirstResponse(priority string) time.Duration {
 	switch priority {
 	case "urgent":
@@ -34,9 +45,34 @@ func SupportFirstResponse(priority string) time.Duration {
 	case "high":
 		return 4 * time.Hour
 	case "low":
-		return 72 * time.Hour
+		return 27 * time.Hour
 	default:
-		return 24 * time.Hour
+		return 9 * time.Hour
+	}
+}
+
+// SupportFirstResponseDue is the deadline of a ticket opened at from: the priority's business time after it, counted in the ticket's zone (UTC when the zone is
+// empty or not known). A ticket opened out of hours starts the clock when the next business day opens. Holidays are not known: shortcut, add a calendar when the
+// operator publishes its days off.
+func SupportFirstResponseDue(from time.Time, priority, zone string) time.Time {
+	loc, err := time.LoadLocation(zone)
+	if err != nil {
+		loc = time.UTC
+	}
+	left, t := SupportFirstResponse(priority), from.In(loc)
+	for {
+		y, m, d := t.Date()
+		open, end := time.Date(y, m, d, supportOpenHour, 0, 0, 0, loc), time.Date(y, m, d, supportCloseHour, 0, 0, 0, loc)
+		if wd := t.Weekday(); wd != time.Saturday && wd != time.Sunday && t.Before(end) {
+			if t.Before(open) {
+				t = open
+			}
+			if end.Sub(t) >= left {
+				return t.Add(left)
+			}
+			left -= end.Sub(t)
+		}
+		t = time.Date(y, m, d+1, supportOpenHour, 0, 0, 0, loc)
 	}
 }
 
@@ -88,6 +124,8 @@ type SupportTicketState struct {
 	FirstRespondedAt           *time.Time
 	SolvedAt                   *time.Time
 	CreatedAt                  time.Time
+	// Zone is the time zone the first-answer deadline counts business hours in.
+	Zone string
 }
 
 // SupportCustomerReply is the state after the person writes: a ticket waiting for them, or solved, goes back to the operator. A closed ticket takes no
@@ -148,7 +186,7 @@ func SupportSetPriority(s SupportTicketState, to string) (SupportTicketState, er
 	}
 	s.Priority = to
 	if s.FirstRespondedAt == nil {
-		s.FirstResponseDue = s.CreatedAt.Add(SupportFirstResponse(to))
+		s.FirstResponseDue = SupportFirstResponseDue(s.CreatedAt, to, s.Zone)
 	}
 	return s, nil
 }
