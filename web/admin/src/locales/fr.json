@@ -76,7 +76,8 @@
       "confirmAllTitle": "Appliquer à {n} lignes ?",
       "confirmAll": "Cela s'applique aux {n} lignes sélectionnées, y compris celles des autres pages.",
       "loadFailed": "Le reste de la liste n'a pas pu être chargé : tous les résultats ne sont donc pas sélectionnés."
-    }
+    },
+    "appliedFilters": "Filtres appliqués"
   },
   "enums": {
     "environment": {

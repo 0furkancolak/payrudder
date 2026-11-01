@@ -76,7 +76,8 @@
       "confirmAllTitle": "Apply to {n} rows?",
       "confirmAll": "This acts on all {n} selected rows, including those on other pages.",
       "loadFailed": "The rest of the list could not be loaded, so not all results are selected."
-    }
+    },
+    "appliedFilters": "Applied filters"
   },
   "enums": {
     "environment": {

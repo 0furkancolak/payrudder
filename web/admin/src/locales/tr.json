@@ -76,7 +76,8 @@
       "confirmAllTitle": "{n} satıra uygulansın mı?",
       "confirmAll": "Bu işlem, diğer sayfalardakiler dahil seçili {n} satırın tümüne uygulanır.",
       "loadFailed": "Listenin geri kalanı yüklenemedi; bu yüzden tüm sonuçlar seçilemedi."
-    }
+    },
+    "appliedFilters": "Uygulanan filtreler"
   },
   "enums": {
     "environment": {

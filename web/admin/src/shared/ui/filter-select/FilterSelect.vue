@@ -1,15 +1,19 @@
 <script setup lang="ts" generic="M extends boolean = false">
 import { Check, ChevronDown, X } from "@lucide/vue";
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { cn } from "@/shared/lib/utils";
+import { newFilterId, useAppliedReport } from "./applied";
 
 /**
  * A filter of a table as a chip: its name, and the chosen option once there is one (the chip then turns brand-coloured and has a cross to clear it).
  * It opens a short list. With `multiple` the model is the list of chosen values (several may be on at once: the chip shows the first and how many more,
  * the list stays open to tick more), empty for "no filter"; without it the model is the one chosen value, empty for "no filter". Either way it stands in
  * for a select box wherever one filtered a list. An option whose value is empty is the "any" entry: it carries the words for it and clears the filter.
+ *
+ * While the filter is on it also reports itself to the toolbar around it (see applied.ts), which lists the applied filters as removable chips where the
+ * filters are behind a button (a phone).
  *
  * Choosing in the list changes nothing yet: the choice is a draft, and the list (and the page behind it) follows it only when the person presses "Apply".
  * Closing the list any other way throws the draft away. The cross on the chip clears the filter at once.
@@ -38,6 +42,15 @@ const labelOf = (v: string) => {
 const first = computed(() => (values.value[0] === undefined ? undefined : labelOf(values.value[0])));
 const rest = computed(() => values.value.length - 1);
 const anyLabel = computed(() => props.options.find((x) => x.value === "")?.label ?? "—");
+
+const filterId = newFilterId();
+const applied = useAppliedReport();
+watch(
+  [first, rest, () => props.label],
+  () => applied.report(filterId, first.value === undefined ? null : { label: props.label, text: rest.value > 0 ? `${first.value} +${rest.value}` : first.value, clear }),
+  { immediate: true },
+);
+onBeforeUnmount(() => applied.report(filterId, null));
 
 function pick(value: string) {
   if (value === "") draft.value = [];
