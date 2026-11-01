@@ -5031,7 +5031,29 @@
         "title": "A usage event",
         "todo": "Send one with the code below.",
         "done": "An event has been counted."
+      },
+      "webhook": {
+        "title": "A webhook endpoint",
+        "todo": "Register where Payrudder sends events, to hear about invoices and payments.",
+        "done": "An endpoint is registered.",
+        "link": "Add an endpoint"
       }
+    },
+    "webhookTest": {
+      "title": "Try a webhook",
+      "help": "Sends a signed test event (type ping) to one of your endpoints, so you can see your verification code accept it.",
+      "endpoint": "Endpoint",
+      "send": "Send a test webhook",
+      "none": "You have no endpoint yet. Add one (a public https address) and come back to test it.",
+      "noAnswer": "no answer",
+      "badge": {
+        "queued": "Sent",
+        "delivered": "Delivered",
+        "failed": "Not accepted"
+      },
+      "queued": "Waiting for your server to answer.",
+      "delivered": "Your server accepted it ({answer}).",
+      "failed": "Your server did not accept it: {answer}. Fix your handler, then send another; Payrudder also retries on its own."
     }
   }
 }

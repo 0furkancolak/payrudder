@@ -13,14 +13,16 @@ Licence: see [`LICENSE`](../../LICENSE) at the repository root (Elastic License 
 
 ## Install
 
-Until the package is released, require it from a path or a VCS checkout of this repository:
+Until the package is released, require it from a path or a VCS checkout of this repository (`/path/to/payrudder` is where you cloned it):
 
 ```json
 {
-  "repositories": [{ "type": "path", "url": "../quotify/sdk/php" }],
+  "repositories": [{ "type": "path", "url": "/path/to/payrudder/sdk/php" }],
   "require": { "payrudder/payrudder-php": "*@dev" }
 }
 ```
+
+or, on the command line, `composer config repositories.payrudder path /path/to/payrudder/sdk/php && composer require payrudder/payrudder-php:"*@dev"`.
 
 ## Quickstart
 

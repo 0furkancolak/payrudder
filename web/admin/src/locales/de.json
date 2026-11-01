@@ -5031,7 +5031,29 @@
         "title": "Ein Nutzungsereignis",
         "todo": "Senden Sie eines mit dem Code unten.",
         "done": "Ein Ereignis wurde gezählt."
+      },
+      "webhook": {
+        "title": "Ein Webhook-Endpunkt",
+        "todo": "Legen Sie fest, wohin Payrudder Ereignisse sendet, um von Rechnungen und Zahlungen zu erfahren.",
+        "done": "Ein Endpunkt ist eingetragen.",
+        "link": "Endpunkt hinzufügen"
       }
+    },
+    "webhookTest": {
+      "title": "Webhook ausprobieren",
+      "help": "Sendet ein signiertes Testereignis (Typ ping) an einen Ihrer Endpunkte, damit Sie sehen, dass Ihr Prüfcode es annimmt.",
+      "endpoint": "Endpunkt",
+      "send": "Test-Webhook senden",
+      "none": "Sie haben noch keinen Endpunkt. Legen Sie einen an (eine öffentliche https-Adresse) und kommen Sie zum Testen zurück.",
+      "noAnswer": "keine Antwort",
+      "badge": {
+        "queued": "Gesendet",
+        "delivered": "Zugestellt",
+        "failed": "Nicht angenommen"
+      },
+      "queued": "Warte auf die Antwort Ihres Servers.",
+      "delivered": "Ihr Server hat es angenommen ({answer}).",
+      "failed": "Ihr Server hat es nicht angenommen: {answer}. Korrigieren Sie Ihren Handler und senden Sie ein weiteres; Payrudder versucht es auch selbst erneut."
     }
   }
 }

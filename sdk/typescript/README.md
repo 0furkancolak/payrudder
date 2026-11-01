@@ -15,7 +15,13 @@ Client for the tenant API of Payrudder (`/v1/*`, authenticated with an API key) 
 cd sdk/typescript
 npm ci
 npm run build          # writes dist/ (ESM + CJS + .d.ts)
-npm pack               # optional: a tarball to install in another project
+npm pack               # writes payrudder-sdk-0.0.0.tgz, the tarball to install in your project
+```
+
+then, in your own project (`@payrudder/sdk` is not on npm, so the name alone does not resolve):
+
+```sh
+npm install /path/to/payrudder/sdk/typescript/payrudder-sdk-0.0.0.tgz
 ```
 
 ## Quickstart

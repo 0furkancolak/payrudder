@@ -1,0 +1,72 @@
+import type { AddressInfo } from "node:net";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { createHttpServer } from "./http.js";
+
+const open: { close(): void }[] = [];
+afterEach(() => {
+  while (open.length) open.pop()?.close();
+});
+
+async function start(opts: { allowWrites?: boolean } = {}) {
+  const seen: { path: string; auth: string | null }[] = [];
+  const fakeFetch = (async (input: URL | string, init: RequestInit = {}) => {
+    seen.push({ path: new URL(String(input)).pathname, auth: new Headers(init.headers).get("Authorization") });
+    return new Response(JSON.stringify({ external_id: "cus_1", name: "Ada" }), { status: 200 });
+  }) as typeof fetch;
+  const server = createHttpServer({ baseUrl: "https://api.example", fetch: fakeFetch, ...opts });
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+  open.push({ close: () => server.close() });
+  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/mcp`;
+  const connect = async (key: string) => {
+    const client = new Client({ name: "test", version: "0" });
+    const transport = new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { Authorization: `Bearer ${key}` } } });
+    await client.connect(transport);
+    open.push(client);
+    return client;
+  };
+  return { url, seen, connect };
+}
+
+describe("streamable HTTP", () => {
+  it("serves the tools to a client that sends its API key, and calls the API with that key", async () => {
+    const { connect, seen } = await start();
+    const client = await connect("qk_test_alpha_secret1");
+    expect((await client.listTools()).tools).toHaveLength(9);
+    const r = await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
+    expect(JSON.stringify(r.content)).toContain("<untrusted>Ada</untrusted>");
+    expect(seen).toEqual([{ path: "/v1/customers/cus_1", auth: "Bearer qk_test_alpha_secret1" }]);
+  });
+
+  it("never lets one caller's key reach another caller's call", async () => {
+    const { connect, seen } = await start();
+    const [a, b] = [await connect("qk_test_a_1111"), await connect("qk_live_b_2222")];
+    await Promise.all([a.callTool({ name: "list_meters", arguments: {} }), b.callTool({ name: "list_meters", arguments: {} })]);
+    expect(seen.map((s) => s.auth).sort()).toEqual(["Bearer qk_live_b_2222", "Bearer qk_test_a_1111"]);
+  });
+
+  it("offers the write tools only when the server was started with writes", async () => {
+    expect((await (await (await start()).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(9);
+    expect((await (await (await start({ allowWrites: true })).connect("qk_test_a_1111")).listTools()).tools).toHaveLength(11);
+  });
+
+  it("refuses a request without a key, with something that is not a key, and asks for a bearer token", async () => {
+    const { url, seen } = await start();
+    for (const auth of [undefined, "Bearer ", "Bearer sk_live_nope", "Basic qk_test_a_1", "qk_test_a_1"]) {
+      const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", ...(auth ? { Authorization: auth } : {}) }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) });
+      expect(res.status, String(auth)).toBe(401);
+      expect(res.headers.get("www-authenticate")).toContain("Bearer");
+    }
+    expect(seen).toHaveLength(0);
+  });
+
+  it("answers only POST on /mcp, and a body that is not JSON is a 400", async () => {
+    const { url } = await start();
+    const h = { Authorization: "Bearer qk_test_a_1111", "Content-Type": "application/json", Accept: "application/json, text/event-stream" };
+    expect((await fetch(url, { method: "GET", headers: h })).status).toBe(405);
+    expect((await fetch(url, { method: "DELETE", headers: h })).status).toBe(405);
+    expect((await fetch(url.replace("/mcp", "/other"), { method: "POST", headers: h, body: "{}" })).status).toBe(404);
+    expect((await fetch(url, { method: "POST", headers: h, body: "not json" })).status).toBe(400);
+  });
+});
