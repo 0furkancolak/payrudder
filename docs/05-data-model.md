@@ -80,7 +80,7 @@ CREATE TABLE tenants (                                -- the isolation unit ever
   currency      char(3) NOT NULL,                     -- chosen at creation, immutable (trigger), from the supported list
   timezone      text NOT NULL,                        -- IANA name, chosen at creation, immutable; defines period boundaries
   grace_period  interval NOT NULL CHECK (grace_period BETWEEN '0' AND '7 days'),  -- chosen at creation, mutable, snapshotted per period
-  status        text NOT NULL CHECK (status IN ('inactive','active','suspended')),  -- phase 45: a live tenant starts inactive (no keys, no webhooks, not billed)
+  status        text NOT NULL CHECK (status IN ('inactive','active','suspended','frozen','banned')),  -- phase 45: a live tenant starts inactive (no keys, no webhooks, not billed); plan 14: frozen is read-only, banned is a lasting suspension
   activated_at  timestamptz,                          -- when the go-live checklist was completed (or an operator activated it)
   terms_accepted_at timestamptz, terms_accepted_by uuid REFERENCES users(id),
   -- phase 28, the tenant directory of ADR 0018: where the tenant's data lives. cell '' is the pooled database (RLS, the default and the only value
