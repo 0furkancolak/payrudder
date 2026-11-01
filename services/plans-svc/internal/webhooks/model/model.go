@@ -40,6 +40,7 @@ const (
 	CreditsLow                  = "credits.low"
 	CustomerBlocked             = "customer.blocked"
 	CustomerUnblocked           = "customer.unblocked"
+	PriceChangeScheduled        = "price_change.scheduled"
 )
 
 // Types lists every event type, in the order the documentation gives them.
@@ -51,6 +52,7 @@ var Types = []string{
 	PaymentLinkCreated, PaymentLinkPaid, PaymentLinkExpired,
 	CreditsPurchased, CreditsLow,
 	CustomerBlocked, CustomerUnblocked,
+	PriceChangeScheduled,
 }
 
 // Known reports whether t is an event type (ping is sent only on request and cannot be subscribed to).

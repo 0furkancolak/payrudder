@@ -760,6 +760,42 @@
           "run_by_provider": "{n} are run by a payment provider.",
           "not_changeable": "{n} cannot be moved this way (for example the fee is invoiced in arrears).",
           "customer_blocked": "{n} belong to a blocked customer and were left alone."
+        },
+        "alreadyScheduled": "{n} were scheduled by this price change before and are not told again.",
+        "history": "Price changes made",
+        "versions": "v{from} to v{to}",
+        "state": {
+          "open": "Open",
+          "withdrawn": "Withdrawn"
+        },
+        "madeBy": "{date} by {who}",
+        "takesEffect": "First price change on {date} ({n} days of notice)",
+        "counts": "{scheduled} waiting, {applied} moved, {withdrawn} withdrawn, {skipped} skipped",
+        "details": "Customers",
+        "hideDetails": "Hide customers",
+        "retry": "Try {n} skipped again",
+        "retried": "{n} more subscriptions scheduled; {skipped} still left out.",
+        "withdraw": "Withdraw all",
+        "withdrawn": "{n} waiting changes withdrawn. Customers who were mailed already are not told.",
+        "confirmWithdraw": "Cancel the {n} changes that are still waiting? Those customers stay on the old price. Changes already applied stay, and the mails already sent are not taken back.",
+        "columns": {
+          "customer": "Customer",
+          "state": "State",
+          "effective": "New price from",
+          "notified": "Mailed"
+        },
+        "itemState": {
+          "scheduled": "Waiting",
+          "applied": "Moved",
+          "withdrawn": "Withdrawn",
+          "skipped": "Skipped"
+        },
+        "skipWhy": {
+          "renews_soon": "renews too soon",
+          "has_pending_change": "has another change waiting",
+          "run_by_provider": "run by a payment provider",
+          "not_changeable": "cannot be moved this way",
+          "customer_blocked": "customer is blocked"
         }
       }
     },
@@ -2811,6 +2847,10 @@
       "plan": {
         "no_fixed_fee": "This plan version has no fixed fee for that interval in this currency.",
         "no_metered_price": "This plan version has metered prices but none in this currency."
+      },
+      "price_change": {
+        "not_found": "Price change not found.",
+        "withdrawn": "This price change was withdrawn. Make a new one."
       },
       "override": {
         "customer_required": "Say which customer the limit is for.",

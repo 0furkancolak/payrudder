@@ -50,6 +50,7 @@ const (
 	EventCreditsLow                      = "credits.low"
 	EventCustomerBlocked                 = "customer.blocked"
 	EventCustomerUnblocked               = "customer.unblocked"
+	EventPriceChangeScheduled            = "price_change.scheduled"
 	// EventPing is what POST /v1/webhook-endpoints/{id}/test sends.
 	EventPing = "ping"
 )
@@ -64,6 +65,7 @@ var WebhookEventTypes = []string{
 	EventPaymentLinkCreated, EventPaymentLinkPaid, EventPaymentLinkExpired,
 	EventCreditsPurchased, EventCreditsLow,
 	EventCustomerBlocked, EventCustomerUnblocked,
+	EventPriceChangeScheduled,
 }
 
 // Reasons a delivery is refused. Test with errors.Is.
@@ -274,4 +276,33 @@ type CustomerBlockEventData struct {
 	Reason   string `json:"reason,omitempty"`
 	// BlockedUntil is an RFC 3339 time, set on customer.blocked when the block ends by itself.
 	BlockedUntil string `json:"blocked_until,omitempty"`
+}
+
+// PriceChangeEventData is the data of price_change.scheduled: the price change (a run that scheduled at least one subscription) and what that run did.
+type PriceChangeEventData struct {
+	PriceChange WebhookPriceChange `json:"price_change"`
+	// Scheduled and Skipped are the subscriptions the run that sent the event scheduled and left out.
+	Scheduled int `json:"scheduled"`
+	Skipped   int `json:"skipped"`
+}
+
+// WebhookPriceChange is a price change in an event: as the API returns it, without the fields at their zero value.
+type WebhookPriceChange struct {
+	ID          string `json:"id"`
+	PlanCode    string `json:"plan_code"`
+	FromVersion int    `json:"from_version"`
+	ToVersion   int    `json:"to_version"`
+	NoticeDays  int    `json:"notice_days"`
+	// EffectiveTime and CreateTime are RFC 3339 times: the first date a customer's price changes, and when the price change was made.
+	EffectiveTime string `json:"effective_time"`
+	State         string `json:"state"`
+	CreatedBy     string `json:"created_by,omitempty"`
+	CreateTime    string `json:"create_time"`
+	WithdrawTime  string `json:"withdraw_time,omitempty"`
+	WithdrawnBy   string `json:"withdrawn_by,omitempty"`
+	// The subscriptions waiting, moved, withdrawn and skipped.
+	Scheduled int `json:"scheduled,omitempty"`
+	Applied   int `json:"applied,omitempty"`
+	Withdrawn int `json:"withdrawn,omitempty"`
+	Skipped   int `json:"skipped,omitempty"`
 }

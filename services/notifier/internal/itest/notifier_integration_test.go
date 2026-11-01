@@ -37,6 +37,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/pricechange"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/trials"
 	"github.com/0furkancolak/payrudder/services/notifier/migrations"
@@ -93,10 +94,10 @@ func (s staticProviders) For(_ context.Context, id uuid.UUID) (*delivery.Provide
 	return nil, nil
 }
 
-type fakePlans struct{ email string }
+type fakePlans struct{ email, locale string }
 
 func (f fakePlans) GetCustomer(_ context.Context, in *plansv1.GetCustomerRequest, _ ...grpc.CallOption) (*plansv1.GetCustomerResponse, error) {
-	return &plansv1.GetCustomerResponse{Customer: &plansv1.Customer{Id: in.GetId(), Name: "Ada", Email: f.email}}, nil
+	return &plansv1.GetCustomerResponse{Customer: &plansv1.Customer{Id: in.GetId(), Name: "Ada", Email: f.email, Locale: f.locale}}, nil
 }
 
 type fakeAdmin struct{ env plansv1.Environment }
@@ -398,6 +399,66 @@ func TestNotifier(t *testing.T) {
 		testkit.Eventually(t, 10*time.Second, "offset saved", func() bool {
 			m, _ := offsets.Load(context.Background(), topic, []int32{0})
 			return m[0] == 2
+		})
+	})
+
+	// The facts plans-svc relays from its outbox (subscription.price-change.v1) become one mail in the customer's language, however often a fact is delivered, and a
+	// record that cannot be decoded goes to the DLQ instead of blocking the partition.
+	t.Run("PriceChangeDeliveredTwiceSendsOneEmailInTheCustomersLanguage", func(t *testing.T) {
+		topic, dlq := pricechange.Topic, "subscription.price-change.dlq.v1"
+		admin, _ := kgo.NewClient(kgo.SeedBrokers(brokers))
+		if _, err := kadm.NewClient(admin).CreateTopics(context.Background(), 1, 1, nil, topic, dlq); err != nil {
+			t.Fatal(err)
+		}
+		admin.Close()
+		producer, err := kafkax.NewProducer([]string{brokers})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer producer.Close()
+
+		email := "price-" + uuid.NewString()[:8] + "@example.com"
+		offsets := store.Offsets{DB: pool, Group: "notifier-t-price-change", Topic: topic}
+		pc := &pricechange.Consumer{Mailer: mailer, Plans: fakePlans{email: email, locale: "tr"}, Admin: fakeAdmin{env: plansv1.Environment_ENVIRONMENT_LIVE}, Offsets: offsets,
+			DLQ: kafkax.DLQ{Client: producer, Topic: dlq, Consumer: "notifier-t-price-change"}, Log: log}
+		consumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: []string{brokers}, GroupID: "notifier-t-price-change", Topic: topic, LoadOffsets: offsets.Load,
+			Handler: pc, MaxPollRecords: 10, Backoff: 100 * time.Millisecond, Log: log})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() { _ = consumer.Run(ctx); close(done) }()
+		defer func() { cancel(); <-done; consumer.Close() }()
+
+		ev, _ := proto.Marshal(&eventsv1.PriceChangeScheduled{EventId: uuid.NewString(), TenantId: uuid.NewString(), CustomerId: uuid.NewString(), SubscriptionId: uuid.NewString(),
+			PlanCode: "basic", NewPlanVersion: 2, EffectiveAt: timestamppb.New(time.Date(2026, 12, 5, 12, 0, 0, 0, time.UTC)), NewRenewalMinor: 4000, Currency: "EUR", ScheduledAt: timestamppb.Now()})
+		rec := func(v []byte) *kgo.Record { return &kgo.Record{Topic: topic, Key: []byte("tenant/customer"), Value: v} }
+		// The same fact twice, then bytes that are not a fact.
+		if err := producer.ProduceSync(context.Background(), rec(ev), rec(ev), rec([]byte("not a protobuf"))).FirstErr(); err != nil {
+			t.Fatal(err)
+		}
+		waitMail(t, mp.APIURL, email, 1)
+		time.Sleep(2 * time.Second)
+		got := mailbox(t, mp.APIURL, email)
+		if len(got) != 1 || got[0].Subject != "basic fiyatınız 5 Dec 2026 tarihinde değişiyor" {
+			t.Fatalf("mailbox = %+v, want exactly one notice in Turkish", got)
+		}
+		cl, _ := kgo.NewClient(kgo.SeedBrokers(brokers), kgo.ConsumeTopics(dlq), kgo.ConsumeResetOffset(kgo.NewOffset().AtStart()))
+		defer cl.Close()
+		var dead []*kgo.Record
+		deadline := time.Now().Add(20 * time.Second)
+		for len(dead) == 0 && time.Now().Before(deadline) {
+			pctx, pcancel := context.WithTimeout(context.Background(), time.Second)
+			cl.PollFetches(pctx).EachRecord(func(r *kgo.Record) { dead = append(dead, r) })
+			pcancel()
+		}
+		if len(dead) != 1 || string(dead[0].Value) != "not a protobuf" {
+			t.Fatalf("dead letters = %v", dead)
+		}
+		testkit.Eventually(t, 10*time.Second, "offset saved", func() bool {
+			m, _ := offsets.Load(context.Background(), topic, []int32{0})
+			return m[0] == 3
 		})
 	})
 }

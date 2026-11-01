@@ -760,6 +760,42 @@
           "run_by_provider": "{n} abonelik bir ödeme sağlayıcısı tarafından yürütülüyor.",
           "not_changeable": "{n} abonelik bu yolla taşınamaz (örneğin ücret dönem sonunda faturalanıyor).",
           "customer_blocked": "{n} abonelik engelli bir müşteriye ait olduğu için dokunulmadı."
+        },
+        "alreadyScheduled": "{n} abonelik bu fiyat değişikliğiyle daha önce planlandı; yeniden bilgilendirilmeyecek.",
+        "history": "Yapılan fiyat değişiklikleri",
+        "versions": "v{from} → v{to}",
+        "state": {
+          "open": "Açık",
+          "withdrawn": "Geri çekildi"
+        },
+        "madeBy": "{date} tarihinde {who}",
+        "takesEffect": "İlk fiyat değişikliği {date} ({n} gün önceden bildirim)",
+        "counts": "{scheduled} bekliyor, {applied} geçti, {withdrawn} geri çekildi, {skipped} atlandı",
+        "details": "Müşteriler",
+        "hideDetails": "Müşterileri gizle",
+        "retry": "Atlanan {n} aboneliği yeniden dene",
+        "retried": "{n} abonelik daha planlandı; {skipped} hâlâ dışarıda.",
+        "withdraw": "Tümünü geri çek",
+        "withdrawn": "Bekleyen {n} değişiklik geri çekildi. Daha önce e-posta alan müşterilere haber verilmez.",
+        "confirmWithdraw": "Hâlâ bekleyen {n} değişiklik iptal edilsin mi? Bu müşteriler eski fiyatta kalır. Uygulanmış değişiklikler kalır, gönderilmiş e-postalar geri alınmaz.",
+        "columns": {
+          "customer": "Müşteri",
+          "state": "Durum",
+          "effective": "Yeni fiyat başlangıcı",
+          "notified": "E-posta"
+        },
+        "itemState": {
+          "scheduled": "Bekliyor",
+          "applied": "Geçti",
+          "withdrawn": "Geri çekildi",
+          "skipped": "Atlandı"
+        },
+        "skipWhy": {
+          "renews_soon": "çok yakında yenileniyor",
+          "has_pending_change": "bekleyen başka bir değişikliği var",
+          "run_by_provider": "ödeme sağlayıcısı yönetiyor",
+          "not_changeable": "bu yolla taşınamaz",
+          "customer_blocked": "müşteri engelli"
         }
       }
     },
@@ -2811,6 +2847,10 @@
       "plan": {
         "no_fixed_fee": "Bu plan sürümünün bu para biriminde bu aralık için sabit ücreti yok.",
         "no_metered_price": "Bu plan sürümünün ölçümlü fiyatları var ama bu para biriminde yok."
+      },
+      "price_change": {
+        "not_found": "Fiyat değişikliği bulunamadı.",
+        "withdrawn": "Bu fiyat değişikliği geri çekildi. Yeni bir tane oluşturun."
       },
       "override": {
         "customer_required": "Sınırın hangi müşteri için olduğunu belirtin.",

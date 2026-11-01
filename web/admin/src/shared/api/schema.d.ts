@@ -606,10 +606,93 @@ export interface paths {
          * @description For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
          *     (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
          *     The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
-         *     `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing. Each scheduled change also sends the
-         *     `subscription.change_scheduled` webhook event.
+         *     `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing.
+         *     Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run sends `price_change.scheduled` once.
+         *     The run is recorded as a price change (`price_change_id`; see `GET /v1/price-changes`). Running it again for the same plan and versions continues the open one:
+         *     the skipped subscriptions are tried again, and the ones it scheduled before are counted in `already_scheduled` and neither scheduled nor mailed a second time.
          */
         post: operations["schedulePriceChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/price-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The price changes made, newest first
+         * @description Each with the number of subscriptions that are waiting for their renewal (`scheduled`), were moved (`applied`), were withdrawn or were skipped. The latest 100.
+         */
+        get: operations["listPriceChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/price-changes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One price change with its subscriptions and what became of each
+         * @description The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+         */
+        get: operations["getPriceChange"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/price-changes/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Try the skipped subscriptions of a price change again
+         * @description Runs the price change again with the notice it was made with, for the subscriptions that were skipped (a renewal that was too close may be far enough now) and any that joined the version since. What is scheduled already is left alone. Refused with 409 `plans.price_change.withdrawn` once it was withdrawn.
+         */
+        post: operations["retryPriceChange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/price-changes/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel every change of a price change that is still waiting
+         * @description Closes the price change and cancels the scheduled changes that have not taken effect, so those customers stay on the old price. A change that was applied stays, and
+         *     the mail that was sent is not taken back (tell those customers yourself). Calling it again finishes what an interrupted call left; a new run makes a new price change.
+         */
+        post: operations["withdrawPriceChange"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5181,11 +5264,78 @@ export interface components {
             reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable" | "customer_blocked";
         };
         SchedulePriceChangeResponse: {
+            /** @description Scheduled by this run */
             scheduled: number;
             scheduled_subscription_ids: string[];
             skipped: components["schemas"]["PriceChangeSkipped"][];
             to_version: number;
             notice_days: number;
+            /** @description The price change this run made or continued; empty for a dry run when none is open */
+            price_change_id?: string;
+            /** @description Scheduled by this price change before: not scheduled or mailed again */
+            already_scheduled?: number;
+        };
+        PriceChange: {
+            /** Format: uuid */
+            id: string;
+            plan_code: string;
+            from_version: number;
+            to_version: number;
+            /** @description The notice of the latest run */
+            notice_days: number;
+            /**
+             * Format: date-time
+             * @description The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of the notice)
+             */
+            effective_time: string;
+            /** @enum {string} */
+            state: "open" | "withdrawn";
+            /** @description The signed-in person's address, key:<id> for an API key, or the operator */
+            created_by: string;
+            /** Format: date-time */
+            create_time: string;
+            /** Format: date-time */
+            withdraw_time: string | null;
+            withdrawn_by: string;
+            /** @description Subscriptions waiting for their renewal */
+            scheduled: number;
+            /** @description Subscriptions moved to the new price */
+            applied: number;
+            /** @description Subscriptions whose change was cancelled (by a withdrawal, or because the seller or the customer changed the subscription) */
+            withdrawn: number;
+            /** @description Subscriptions left out; retry tries them again */
+            skipped: number;
+        };
+        PriceChangeItem: {
+            /** Format: uuid */
+            subscription_id: string;
+            customer_external_id: string;
+            /** @enum {string} */
+            state: "scheduled" | "applied" | "withdrawn" | "skipped";
+            /** @description Why it was skipped (as in PriceChangeSkipped); empty otherwise */
+            reason: string;
+            /**
+             * Format: date-time
+             * @description The renewal the new price starts on; unset for a skipped one
+             */
+            effective_time: string | null;
+            /**
+             * Format: date-time
+             * @description When the customer's mail was queued; unset for a skipped one
+             */
+            notify_time: string | null;
+        };
+        ListPriceChangesResponse: {
+            price_changes: components["schemas"]["PriceChange"][];
+        };
+        GetPriceChangeResponse: {
+            price_change: components["schemas"]["PriceChange"];
+            items: components["schemas"]["PriceChangeItem"][];
+        };
+        WithdrawPriceChangeResponse: {
+            price_change: components["schemas"]["PriceChange"];
+            /** @description How many waiting changes this call cancelled */
+            withdrawn: number;
         };
         BlockCustomerRequest: {
             /** @description Your note on why; never shown to the customer. */
@@ -8397,6 +8547,52 @@ export interface components {
             tenant_id: string;
             data: components["schemas"]["CustomerUnblockedEventData"];
         };
+        /** @description A price change as the API returns it, without the fields at their zero value (an empty string, 0 and an unset time are left out) */
+        WebhookPriceChange: {
+            /** Format: uuid */
+            id: string;
+            plan_code: string;
+            from_version: number;
+            to_version: number;
+            notice_days: number;
+            /** Format: date-time */
+            effective_time: string;
+            /** @enum {string} */
+            state: "open" | "withdrawn";
+            created_by?: string;
+            /** Format: date-time */
+            create_time: string;
+            /** Format: date-time */
+            withdraw_time?: string;
+            withdrawn_by?: string;
+            scheduled?: number;
+            applied?: number;
+            withdrawn?: number;
+            skipped?: number;
+        };
+        /** @description The data of an event of type price_change.scheduled */
+        PriceChangeScheduledEventData: {
+            price_change: components["schemas"]["WebhookPriceChange"];
+            /** @description Scheduled by the run that sent the event */
+            scheduled: number;
+            /** @description Left out by that run */
+            skipped: number;
+        };
+        /** @description The body of a delivery of type price_change.scheduled */
+        PriceChangeScheduledEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "price_change.scheduled";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["PriceChangeScheduledEventData"];
+        };
         /** @description The data of an event of type ping */
         PingEventData: {
             /** @enum {string} */
@@ -9799,7 +9995,7 @@ export interface components {
             active: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled";
         PaymentLink: {
             /** Format: uuid */
             id: string;
@@ -9992,7 +10188,7 @@ export interface components {
             delivered_time: string | null;
         };
         /** @description The body of a delivery: the common envelope plus data that depends on type. The signature and headers are described in docs/16-webhooks.md. Billing events (invoice, credit_note, payment_link, credits) send int64 values as strings except the credits and balance counts, which are JSON numbers; subscription events embed the subscription without its zero-valued fields. */
-        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["PingEvent"];
+        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["PriceChangeScheduledEvent"] | components["schemas"]["PingEvent"];
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
             code: string;
@@ -11583,6 +11779,102 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listPriceChanges: {
+        parameters: {
+            query?: {
+                /** @description Only the price changes of this plan */
+                plan_code?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListPriceChangesResponse"];
+                };
+            };
+        };
+    };
+    getPriceChange: {
+        parameters: {
+            query?: {
+                state?: "scheduled" | "applied" | "withdrawn" | "skipped";
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetPriceChangeResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    retryPriceChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SchedulePriceChangeResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    withdrawPriceChange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WithdrawPriceChangeResponse"];
+                };
+            };
             404: components["responses"]["Error"];
         };
     };

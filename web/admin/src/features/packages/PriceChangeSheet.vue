@@ -6,12 +6,14 @@ import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
+import PriceChangeHistory from "./PriceChangeHistory.vue";
 import { useSchedulePriceChange, type PriceChangeResult } from "./api";
 
 /**
  * A price change for the customers of a package: the subscriptions on one version move to another (the latest unless named) at their next renewal, when that is
  * at least the notice away, and each customer is mailed. "Check" counts first and changes nothing; "Schedule and tell customers" does it, after asking. The
- * subscriptions left out are counted by reason: the ones renewing too soon can be done by running it again later.
+ * subscriptions left out are counted by reason: the ones renewing too soon can be done by running it again later. Running it again continues the same price
+ * change (what it scheduled is not scheduled or mailed twice), and the price changes made so far are listed below, each with its retry and withdraw actions.
  */
 const props = defineProps<{ tenantId: string; code: string; latest: number }>();
 const open = defineModel<boolean>("open", { required: true });
@@ -83,16 +85,19 @@ const reasons = (r: PriceChangeResult) => {
 
         <div v-if="checked" class="bg-muted rounded-2xl px-4 py-3 text-sm" data-testid="pc-check">
           <p class="font-medium">{{ t("billing.packages.priceChange.willSchedule", { n: checked.scheduled, version: checked.to_version }) }}</p>
-          <ul v-if="checked.skipped.length > 0" class="text-muted-foreground mt-1 list-disc ps-5 text-xs">
+          <ul v-if="checked.skipped.length > 0 || checked.already_scheduled > 0" class="text-muted-foreground mt-1 list-disc ps-5 text-xs">
+            <li v-if="checked.already_scheduled > 0">{{ t("billing.packages.priceChange.alreadyScheduled", { n: checked.already_scheduled }) }}</li>
             <li v-for="[reason, n] in reasons(checked)" :key="reason">{{ t(`billing.packages.priceChange.reasons.${reason}`, { n }) }}</li>
           </ul>
         </div>
         <div v-if="done" class="bg-success/10 text-success rounded-2xl px-4 py-3 text-sm" role="status" data-testid="pc-done">
           <p class="font-medium">{{ t("billing.packages.priceChange.done", { n: done.scheduled, version: done.to_version }) }}</p>
-          <ul v-if="done.skipped.length > 0" class="mt-1 list-disc ps-5 text-xs">
+          <ul v-if="done.skipped.length > 0 || done.already_scheduled > 0" class="mt-1 list-disc ps-5 text-xs">
+            <li v-if="done.already_scheduled > 0">{{ t("billing.packages.priceChange.alreadyScheduled", { n: done.already_scheduled }) }}</li>
             <li v-for="[reason, n] in reasons(done)" :key="reason">{{ t(`billing.packages.priceChange.reasons.${reason}`, { n }) }}</li>
           </ul>
         </div>
+        <PriceChangeHistory :tenant-id="tenantId" :code="code" :open="open" />
       </SheetBody>
       <SheetFooter>
         <Button variant="ghost" type="button" @click="open = false">{{ t("common.close") }}</Button>
