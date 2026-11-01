@@ -43,7 +43,7 @@ type Delivery struct {
 	Key string
 	// CommandID is the command that asked for the email; nil when no command did (a limit alert).
 	CommandID *uuid.UUID
-	// Kind is what asked for it ("command", "limit" or "trial").
+	// Kind is what asked for it ("command", "limit", "trial" or "price_change").
 	Kind     string
 	Template string
 	// TenantID is the tenant the mail is sent for; uuid.Nil when there is none (no provider lookup then).
