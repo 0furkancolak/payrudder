@@ -500,28 +500,3 @@ tests:
           - exp_labels: { severity: page, service: postgres }
             exp_annotations:
               summary: "no base backup for point-in-time recovery has succeeded for over 26 hours"
-
-  - interval: 1m
-    name: PitrNeverReported warns when neither WAL nor a base backup ever reported, and not when both did
-    input_series:
-      - series: 'up{job="pushgateway"}'
-        values: '1+0x400'
-    alert_rule_test:
-      - eval_time: 3h
-        alertname: PitrNeverReported
-        exp_alerts:
-          - exp_labels: { severity: warn, service: postgres }
-            exp_annotations:
-              summary: "point-in-time recovery never reported WAL or a base backup (is pitr-agent running? ignore where PITR is not used)"
-
-  - interval: 1m
-    name: PitrNeverReported is quiet once both reported
-    input_series:
-      - series: 'payrudder_wal_last_shipped_timestamp_seconds{job="payrudder_wal"}'
-        values: '0+0x400'
-      - series: 'payrudder_pitr_basebackup_last_success_timestamp_seconds{job="payrudder_pitr_basebackup"}'
-        values: '0+0x400'
-    alert_rule_test:
-      - eval_time: 3h
-        alertname: PitrNeverReported
-        exp_alerts: []

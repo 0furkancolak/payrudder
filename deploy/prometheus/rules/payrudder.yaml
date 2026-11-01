@@ -224,12 +224,6 @@ groups:
         labels: { severity: page, service: postgres }
         annotations:
           summary: "no base backup for point-in-time recovery has succeeded for over 26 hours"
-      - alert: PitrNeverReported
-        expr: absent(payrudder_wal_last_shipped_timestamp_seconds) or absent(payrudder_pitr_basebackup_last_success_timestamp_seconds)
-        for: 2h
-        labels: { severity: warn, service: postgres }
-        annotations:
-          summary: "point-in-time recovery never reported WAL or a base backup (is pitr-agent running? ignore where PITR is not used)"
       - alert: PostgresDown
         expr: pg_up == 0
         for: 1m
