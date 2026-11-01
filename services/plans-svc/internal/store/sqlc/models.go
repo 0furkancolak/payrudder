@@ -534,6 +534,17 @@ type SubscriptionTrialNotice struct {
 	NotifiedAt     time.Time
 }
 
+type SupportEvent struct {
+	ID        uuid.UUID
+	TicketID  uuid.UUID
+	Kind      string
+	ActorKind string
+	ActorName string
+	FromValue string
+	ToValue   string
+	CreatedAt time.Time
+}
+
 type SupportMessage struct {
 	ID           uuid.UUID
 	TicketID     uuid.UUID
@@ -563,6 +574,8 @@ type SupportTicket struct {
 	SolvedAt         *time.Time
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	SlaZone          string
+	OpenerSeenAt     *time.Time
 }
 
 type TaxRate struct {

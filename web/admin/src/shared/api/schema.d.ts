@@ -4047,7 +4047,8 @@ export interface paths {
         put?: never;
         /**
          * Open a support ticket for an account (and optionally one of its apps)
-         * @description The first answer is due by the priority (urgent 1 hour, high 4 hours, normal 24 hours, low 72 hours).
+         * @description The first answer is due by the priority, counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
+         *     An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`.
          */
         post: operations["appOpenSupportTicket"];
         delete?: never;
@@ -4063,7 +4064,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** A ticket with its thread (the operator's internal notes are not in it) */
+        /** A ticket with its thread and history (the operator's internal notes are not in it). Reading it as the person who opened it clears its unread mark */
         get: operations["appSupportTicket"];
         put?: never;
         post?: never;
@@ -4138,7 +4139,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer */
+        /** Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket */
         patch: operations["updateSupportTicket"];
         trace?: never;
     };
@@ -4151,7 +4152,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Answer a ticket (operator). An internal note is never shown to the person and does not count as an answer */
+        /** Answer a ticket (operator). The answer is mailed to the person who opened the ticket. An internal note is never shown to the person, is not mailed and does not count as an answer */
         post: operations["replySupportTicket"];
         delete?: never;
         options?: never;
@@ -5265,6 +5266,25 @@ export interface components {
             /** Format: date-time */
             solve_time?: string | null;
             message_count: number;
+            /** @description True for the person who opened the ticket while there is an answer or a status change by the operator they have not read. Always false for the operator and for the other members of the account */
+            unread: boolean;
+        };
+        /** @description One change of a ticket's status, priority or assignee. The history is append-only. */
+        SupportEvent: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "status" | "priority" | "assignee";
+            /**
+             * @description system is the job that closes a ticket that waited for the person for 7 days
+             * @enum {string}
+             */
+            actor_kind: "customer" | "operator" | "system";
+            actor_name: string;
+            from_value: string;
+            to_value: string;
+            /** Format: date-time */
+            create_time: string;
         };
         SupportMessage: {
             /** Format: uuid */
@@ -5287,6 +5307,7 @@ export interface components {
         SupportTicketThread: {
             ticket: components["schemas"]["SupportTicket"];
             messages: components["schemas"]["SupportMessage"][];
+            events: components["schemas"]["SupportEvent"][];
         };
         OpenSupportTicketRequest: {
             /** Format: uuid */
@@ -17593,6 +17614,7 @@ export interface operations {
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
+            429: components["responses"]["Error"];
         };
     };
     appSupportTicket: {

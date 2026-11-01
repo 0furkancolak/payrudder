@@ -14,6 +14,12 @@ SMTP_ADDR: "localhost:42025"
 MAIL_FROM: "Payrudder <no-reply@payrudder.local>"
 # The console's public address: mailed links open <PAYRUDDER_APP_URL>/verify, /reset and /invite.
 PAYRUDDER_APP_URL: "http://localhost:42301"
+# The platform operators (the gateway's setting of the same name): a new support ticket is mailed to each, in their language. Empty: nobody is mailed.
+PAYRUDDER_OPERATOR_EMAILS: ""
+# A support ticket that has waited for the person for this long (status "waiting for you") closes by itself, and the person is mailed. 0 switches it off. The job
+# looks this often.
+PAYRUDDER_SUPPORT_AUTOCLOSE_AFTER: "168h"
+PAYRUDDER_SUPPORT_AUTOCLOSE_EVERY: "1h"
 # A sandbox nobody has touched for this long (no key used, no customer or subscription made, no reset) has its customers' side deleted: usage, invoices, payments.
 # Its configuration stays. 0 switches it off.
 PAYRUDDER_SANDBOX_RETENTION: "2160h"

@@ -3342,6 +3342,9 @@
       "ticket": {
         "closed": "Bu talep kapalı. Yeni bir talep açın.",
         "not_found": "Talep bulunamadı."
+      },
+      "tickets": {
+        "too_many": "Kuruluşunuzun bekleyen 20 talebi var. Bir yanıt bekleyin veya birini çözüldü olarak işaretleyip yeniden deneyin."
       }
     }
   },
@@ -4960,10 +4963,10 @@
       "urgent": "Acil"
     },
     "answerWithin": {
-      "low": "3 gün içinde yanıt",
-      "normal": "1 gün içinde yanıt",
-      "high": "4 saat içinde yanıt",
-      "urgent": "1 saat içinde yanıt"
+      "low": "3 iş günü içinde yanıt",
+      "normal": "1 iş günü içinde yanıt",
+      "high": "4 iş saati içinde yanıt",
+      "urgent": "1 iş saati içinde yanıt"
     },
     "category": {
       "billing": "Faturalama",
@@ -4978,7 +4981,9 @@
       "system": "Sistem"
     },
     "sortPriority": "Önce en yüksek öncelik",
-    "sortDue": "Yanıt süresi en yakın önce"
+    "sortDue": "Yanıt süresi en yakın önce",
+    "unread": "Yeni",
+    "businessHours": "Yanıt süreleri iş saatlerine göre sayılır: pazartesi-cuma, 09:00-18:00, uygulamanızın saat diliminde."
   },
   "connect": {
     "nav": "Uygulamanı bağla",

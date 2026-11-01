@@ -1,6 +1,7 @@
 // Package support is the help desk (SupportService): tickets that the people running apps open with the operator, the thread on each, and the operator's
 // hand on status, priority and assignee. It runs on the system pool; a person reaches only the tickets of the accounts they belong to, and the operator calls
-// need the operator context.
+// need the operator context. A new ticket is mailed to the operators, an answer and a change of status to the person who opened it (usermail, in their language),
+// every change is kept in an append-only history, and a ticket that waited for the person for days closes by itself (AutoClose).
 package support
 
 import (
@@ -18,11 +19,23 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 )
+
+// Config is what the help desk needs besides its database.
+type Config struct {
+	// Mail sends the notices; nil sends none.
+	Mail usermail.Sender
+	// Operators are the lower-case addresses that get a mail for a new ticket (PAYRUDDER_OPERATOR_EMAILS, the list the gateway lets into the operator console).
+	Operators []string
+	// AppURL is the console's address; the links in the notices open the ticket in it.
+	AppURL string
+}
 
 // Service implements plansv1.SupportServiceServer.
 type Service struct {
@@ -30,11 +43,19 @@ type Service struct {
 	pool *pgxpool.Pool
 	log  *slog.Logger
 	now  func() time.Time
+	cfg  Config
 }
 
 // New returns the help desk on the system pool.
-func New(pool *pgxpool.Pool, log *slog.Logger) *Service {
-	return &Service{pool: pool, log: log, now: time.Now}
+func New(pool *pgxpool.Pool, log *slog.Logger, cfg Config) *Service {
+	ops := make([]string, 0, len(cfg.Operators))
+	for _, o := range cfg.Operators {
+		if o = strings.ToLower(strings.TrimSpace(o)); o != "" {
+			ops = append(ops, o)
+		}
+	}
+	cfg.Operators = ops
+	return &Service{pool: pool, log: log, now: time.Now, cfg: cfg}
 }
 
 func notFound() error {
@@ -73,7 +94,7 @@ func ticketOf(r sqlc.GetSupportTicketRow) *plansv1.SupportTicket {
 		Subject: r.Subject, Category: r.Category, Priority: r.Priority, Status: r.Status, Assignee: r.Assignee, LastAuthor: r.LastAuthor,
 		CreateTime: timestamppb.New(r.CreatedAt), UpdateTime: timestamppb.New(r.UpdatedAt), LastMessageTime: timestamppb.New(r.LastMessageAt),
 		FirstResponseDue: timestamppb.New(r.FirstResponseDue), FirstResponseTime: ts(r.FirstRespondedAt), SlaBreached: r.SlaBreached,
-		SolveTime: ts(r.SolvedAt), MessageCount: r.MessageCount,
+		SolveTime: ts(r.SolvedAt), MessageCount: r.MessageCount, Unread: r.Unread,
 	}
 	if r.Number != nil {
 		t.Number = *r.Number
@@ -92,18 +113,42 @@ func messagesOf(rows []sqlc.ListSupportMessagesRow) []*plansv1.SupportMessage {
 	return out
 }
 
+func eventsOf(rows []sqlc.ListSupportEventsRow) []*plansv1.SupportEvent {
+	out := make([]*plansv1.SupportEvent, len(rows))
+	for i, e := range rows {
+		out[i] = &plansv1.SupportEvent{Id: e.ID.String(), Kind: e.Kind, ActorKind: e.ActorKind, ActorName: e.ActorName, FromValue: e.FromValue, ToValue: e.ToValue, CreateTime: timestamppb.New(e.CreatedAt)}
+	}
+	return out
+}
+
 func stateOf(r sqlc.LockSupportTicketRow) domain.SupportTicketState {
-	return domain.SupportTicketState{Status: r.Status, Priority: r.Priority, Assignee: r.Assignee, FirstResponseDue: r.FirstResponseDue, FirstRespondedAt: r.FirstRespondedAt, SolvedAt: r.SolvedAt, CreatedAt: r.CreatedAt}
+	return domain.SupportTicketState{Status: r.Status, Priority: r.Priority, Assignee: r.Assignee, FirstResponseDue: r.FirstResponseDue, FirstRespondedAt: r.FirstRespondedAt, SolvedAt: r.SolvedAt,
+		CreatedAt: r.CreatedAt, Zone: r.SlaZone}
 }
 
-func save(ctx context.Context, q *sqlc.Queries, id uuid.UUID, s domain.SupportTicketState, lastAuthor string, touch bool) error {
-	return q.SaveSupportTicket(ctx, sqlc.SaveSupportTicketParams{ID: id, Status: s.Status, Priority: s.Priority, Assignee: s.Assignee, LastAuthor: lastAuthor, FirstResponseDue: s.FirstResponseDue,
-		FirstRespondedAt: s.FirstRespondedAt, SolvedAt: s.SolvedAt, Touch: touch})
+// actor is who made a change, as the history shows it.
+type actor struct{ kind, name string }
+
+// save writes the new state of a ticket and, for each of status, priority and assignee that differs from prev, a line in the history.
+func save(ctx context.Context, q *sqlc.Queries, id uuid.UUID, prev, next domain.SupportTicketState, lastAuthor string, touch bool, by actor) error {
+	if err := q.SaveSupportTicket(ctx, sqlc.SaveSupportTicketParams{ID: id, Status: next.Status, Priority: next.Priority, Assignee: next.Assignee, LastAuthor: lastAuthor, FirstResponseDue: next.FirstResponseDue,
+		FirstRespondedAt: next.FirstRespondedAt, SolvedAt: next.SolvedAt, Touch: touch}); err != nil {
+		return err
+	}
+	for _, c := range []struct{ kind, from, to string }{{"status", prev.Status, next.Status}, {"priority", prev.Priority, next.Priority}, {"assignee", prev.Assignee, next.Assignee}} {
+		if c.from == c.to {
+			continue
+		}
+		if err := q.InsertSupportEvent(ctx, sqlc.InsertSupportEventParams{ID: idgen.NewUUIDv7(), TicketID: id, Kind: c.kind, ActorKind: by.kind, ActorName: by.name, FromValue: c.from, ToValue: c.to}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-// ticket reads one ticket as the proto message.
-func ticket(ctx context.Context, q *sqlc.Queries, id uuid.UUID) (*plansv1.SupportTicket, error) {
-	r, err := q.GetSupportTicket(ctx, id)
+// ticket reads one ticket as the proto message; viewer is the person looking (their "unread" mark), nil for the operator and for the code that only needs the facts.
+func ticket(ctx context.Context, q *sqlc.Queries, id uuid.UUID, viewer *uuid.UUID) (*plansv1.SupportTicket, error) {
+	r, err := q.GetSupportTicket(ctx, sqlc.GetSupportTicketParams{ID: id, Viewer: viewer})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, notFound()
@@ -157,6 +202,7 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 		appID = &a
 	}
 	var out *plansv1.SupportTicket
+	var mails []usermail.Mail
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		if err := member(ctx, q, user, account); err != nil {
@@ -171,24 +217,42 @@ func (s *Service) OpenMySupportTicket(ctx context.Context, req *plansv1.OpenMySu
 				return errkey.New(codes.NotFound, "support.app.not_found", "app not found")
 			}
 		}
-		id := uuid.New()
-		if err := q.InsertSupportTicket(ctx, sqlc.InsertSupportTicketParams{ID: id, AccountID: account, AppID: appID, OpenedBy: user, Subject: strings.TrimSpace(req.GetSubject()), Category: req.GetCategory(),
-			Priority: priority, FirstResponseDue: s.now().Add(domain.SupportFirstResponse(priority))}); err != nil {
+		// The count and the insert are one step per account: a second ticket opened at the same moment waits for this one.
+		if err := q.SupportLockAccount(ctx, account.String()); err != nil {
 			return err
 		}
-		t, err := ticket(ctx, q, id)
+		if n, err := q.SupportOpenCount(ctx, account); err != nil {
+			return err
+		} else if n >= domain.SupportMaxOpen {
+			return errkey.Newf(codes.ResourceExhausted, "support.tickets.too_many", "an account can have at most %d tickets waiting at once: wait for an answer or mark one solved", domain.SupportMaxOpen)
+		}
+		zone, err := q.SupportZoneFor(ctx, sqlc.SupportZoneForParams{AccountID: account, AppID: appID})
+		if err != nil {
+			return err
+		}
+		id := uuid.New()
+		if err := q.InsertSupportTicket(ctx, sqlc.InsertSupportTicketParams{ID: id, AccountID: account, AppID: appID, OpenedBy: user, Subject: strings.TrimSpace(req.GetSubject()), Category: req.GetCategory(),
+			Priority: priority, FirstResponseDue: domain.SupportFirstResponseDue(s.now(), priority, zone), SlaZone: zone}); err != nil {
+			return err
+		}
+		t, err := ticket(ctx, q, id, &user)
 		if err != nil {
 			return err
 		}
 		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.New(), TicketID: id, AuthorKind: "customer", AuthorUserID: &user, AuthorName: t.GetOpenedByName(), Body: strings.TrimSpace(req.GetBody())}); err != nil {
 			return err
 		}
-		out, err = ticket(ctx, q, id)
+		out, err = ticket(ctx, q, id, &user)
+		if err != nil {
+			return err
+		}
+		mails, err = s.operatorMails(ctx, q, id)
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
+	s.send(ctx, mails)
 	s.log.InfoContext(ctx, "support ticket opened", "ticket", out.GetId(), "number", out.GetNumber(), "account_id", out.GetAccountId(), "priority", out.GetPriority())
 	return &plansv1.OpenMySupportTicketResponse{Ticket: out}, nil
 }
@@ -218,7 +282,7 @@ func (s *Service) GetMySupportTicket(ctx context.Context, req *plansv1.GetMySupp
 		return nil, err
 	}
 	q := sqlc.New(s.pool)
-	t, err := ticket(ctx, q, id)
+	t, err := ticket(ctx, q, id, &user)
 	if err != nil {
 		return nil, err
 	}
@@ -226,11 +290,20 @@ func (s *Service) GetMySupportTicket(ctx context.Context, req *plansv1.GetMySupp
 	if err := member(ctx, q, user, account); err != nil {
 		return nil, err
 	}
+	// Opening the ticket is reading it: the "new" mark of the person who opened it goes (another member's reading leaves it).
+	if err := q.MarkSupportTicketSeen(ctx, sqlc.MarkSupportTicketSeenParams{ID: id, UserID: user}); err != nil {
+		return nil, err
+	}
+	t.Unread = false
 	msgs, err := q.ListSupportMessages(ctx, sqlc.ListSupportMessagesParams{TicketID: id})
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.GetMySupportTicketResponse{Ticket: t, Messages: messagesOf(msgs)}, nil
+	events, err := q.ListSupportEvents(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GetMySupportTicketResponse{Ticket: t, Messages: messagesOf(msgs), Events: eventsOf(events)}, nil
 }
 
 // lockedFor locks the ticket and, for a person, checks they belong to its account.
@@ -269,7 +342,8 @@ func (s *Service) ReplyMySupportTicket(ctx context.Context, req *plansv1.ReplyMy
 		if err != nil {
 			return err
 		}
-		next, ok := domain.SupportCustomerReply(stateOf(row))
+		prev := stateOf(row)
+		next, ok := domain.SupportCustomerReply(prev)
 		if !ok {
 			return errkey.New(codes.FailedPrecondition, "support.ticket.closed", "this ticket is closed; open a new one")
 		}
@@ -280,10 +354,14 @@ func (s *Service) ReplyMySupportTicket(ctx context.Context, req *plansv1.ReplyMy
 		if err := q.InsertSupportMessage(ctx, sqlc.InsertSupportMessageParams{ID: uuid.New(), TicketID: id, AuthorKind: "customer", AuthorUserID: &user, AuthorName: name, Body: strings.TrimSpace(req.GetBody())}); err != nil {
 			return err
 		}
-		if err := save(ctx, q, id, next, "customer", true); err != nil {
+		if err := save(ctx, q, id, prev, next, "customer", true, actor{"customer", name}); err != nil {
 			return err
 		}
-		out, err = ticket(ctx, q, id)
+		// Writing on the ticket is reading it, for the person who opened it.
+		if err := q.MarkSupportTicketSeen(ctx, sqlc.MarkSupportTicketSeenParams{ID: id, UserID: user}); err != nil {
+			return err
+		}
+		out, err = ticket(ctx, q, id, &user)
 		return err
 	})
 	if err != nil {
@@ -308,14 +386,19 @@ func (s *Service) SetMySupportTicketStatus(ctx context.Context, req *plansv1.Set
 		if err != nil {
 			return err
 		}
-		next, err := domain.SupportSetStatus(stateOf(row), req.GetStatus(), false, s.now())
+		prev := stateOf(row)
+		next, err := domain.SupportSetStatus(prev, req.GetStatus(), false, s.now())
 		if err != nil {
 			return err
 		}
-		if err := save(ctx, q, id, next, lastAuthorOf(ctx, q, id), false); err != nil {
+		name, err := q.SupportAuthorName(ctx, user)
+		if err != nil {
 			return err
 		}
-		out, err = ticket(ctx, q, id)
+		if err := save(ctx, q, id, prev, next, lastAuthorOf(ctx, q, id), false, actor{"customer", name}); err != nil {
+			return err
+		}
+		out, err = ticket(ctx, q, id, &user)
 		return err
 	})
 	if err != nil {
@@ -326,7 +409,7 @@ func (s *Service) SetMySupportTicketStatus(ctx context.Context, req *plansv1.Set
 
 // lastAuthorOf keeps the ticket's last author when only its status changes.
 func lastAuthorOf(ctx context.Context, q *sqlc.Queries, id uuid.UUID) string {
-	t, err := ticket(ctx, q, id)
+	t, err := ticket(ctx, q, id, nil)
 	if err != nil || t.GetLastAuthor() == "" {
 		return "customer"
 	}
@@ -359,7 +442,7 @@ func (s *Service) GetSupportTicket(ctx context.Context, req *plansv1.GetSupportT
 		return nil, err
 	}
 	q := sqlc.New(s.pool)
-	t, err := ticket(ctx, q, id)
+	t, err := ticket(ctx, q, id, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +450,11 @@ func (s *Service) GetSupportTicket(ctx context.Context, req *plansv1.GetSupportT
 	if err != nil {
 		return nil, err
 	}
-	return &plansv1.GetSupportTicketResponse{Ticket: t, Messages: messagesOf(msgs)}, nil
+	events, err := q.ListSupportEvents(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GetSupportTicketResponse{Ticket: t, Messages: messagesOf(msgs), Events: eventsOf(events)}, nil
 }
 
 func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupportTicketRequest) (*plansv1.ReplySupportTicketResponse, error) {
@@ -386,6 +473,7 @@ func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupp
 		author = "Payrudder support"
 	}
 	var out *plansv1.SupportTicket
+	var mails []usermail.Mail
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		row, err := lockedFor(ctx, q, id, nil)
@@ -396,17 +484,26 @@ func (s *Service) ReplySupportTicket(ctx context.Context, req *plansv1.ReplySupp
 			return err
 		}
 		if !req.GetInternal() {
-			// Only a public answer is an answer: it stops the SLA clock, hands the ticket to the person and counts as activity.
-			if err := save(ctx, q, id, domain.SupportOperatorReply(stateOf(row), s.now()), "operator", true); err != nil {
+			// Only a public answer is an answer: it stops the SLA clock, hands the ticket to the person, counts as activity, is news to the person who opened the
+			// ticket and is mailed to them.
+			prev := stateOf(row)
+			if err := save(ctx, q, id, prev, domain.SupportOperatorReply(prev, s.now()), "operator", true, actor{"operator", author}); err != nil {
+				return err
+			}
+			if err := q.MarkSupportTicketUnseen(ctx, id); err != nil {
+				return err
+			}
+			if mails, err = s.openerMail(ctx, q, id, usermail.KindTicketReply); err != nil {
 				return err
 			}
 		}
-		out, err = ticket(ctx, q, id)
+		out, err = ticket(ctx, q, id, nil)
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
+	s.send(ctx, mails)
 	return &plansv1.ReplySupportTicketResponse{Ticket: out}, nil
 }
 
@@ -418,14 +515,20 @@ func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSu
 	if err != nil {
 		return nil, err
 	}
+	by := strings.TrimSpace(req.GetAuthorName())
+	if by == "" {
+		by = "Payrudder support"
+	}
 	var out *plansv1.SupportTicket
+	var mails []usermail.Mail
 	err = pgxx.InTx(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
 		row, err := lockedFor(ctx, q, id, nil)
 		if err != nil {
 			return err
 		}
-		next := stateOf(row)
+		prev := stateOf(row)
+		next := prev
 		if req.Status != nil {
 			if next, err = domain.SupportSetStatus(next, req.GetStatus(), true, s.now()); err != nil {
 				return err
@@ -442,14 +545,24 @@ func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSu
 			}
 			next.Assignee = strings.TrimSpace(req.GetAssignee())
 		}
-		if err := save(ctx, q, id, next, lastAuthorOf(ctx, q, id), false); err != nil {
+		if err := save(ctx, q, id, prev, next, lastAuthorOf(ctx, q, id), false, actor{"operator", by}); err != nil {
 			return err
 		}
-		out, err = ticket(ctx, q, id)
+		// A new status is news to the person who opened the ticket; priority and assignee are the operator's own business.
+		if next.Status != prev.Status {
+			if err := q.MarkSupportTicketUnseen(ctx, id); err != nil {
+				return err
+			}
+			if mails, err = s.openerMail(ctx, q, id, usermail.KindTicketStatus); err != nil {
+				return err
+			}
+		}
+		out, err = ticket(ctx, q, id, nil)
 		return err
 	})
 	if err != nil {
 		return nil, err
 	}
+	s.send(ctx, mails)
 	return &plansv1.UpdateSupportTicketResponse{Ticket: out}, nil
 }

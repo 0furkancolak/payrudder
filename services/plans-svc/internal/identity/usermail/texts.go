@@ -10,6 +10,16 @@ var roles = map[string]map[string]string{
 	"ar": {"owner": "مالك", "admin": "مسؤول", "viewer": "مشاهد"},
 }
 
+// ticketWords are the words a ticket mail names a status and a priority with, per language.
+var ticketWords = map[string]map[string]string{
+	"en": {"open": "waiting for support", "pending": "waiting for you", "solved": "solved", "closed": "closed", "low": "low", "normal": "normal", "high": "high", "urgent": "urgent"},
+	"tr": {"open": "destek ekibini bekliyor", "pending": "yanıtınızı bekliyor", "solved": "çözüldü", "closed": "kapatıldı", "low": "düşük", "normal": "normal", "high": "yüksek", "urgent": "acil"},
+	"de": {"open": "wartet auf den Support", "pending": "wartet auf Ihre Antwort", "solved": "gelöst", "closed": "geschlossen", "low": "niedrig", "normal": "normal", "high": "hoch", "urgent": "dringend"},
+	"fr": {"open": "en attente du support", "pending": "en attente de votre réponse", "solved": "résolu", "closed": "fermé", "low": "faible", "normal": "normale", "high": "élevée", "urgent": "urgente"},
+	"es": {"open": "esperando al soporte", "pending": "esperando tu respuesta", "solved": "resuelto", "closed": "cerrado", "low": "baja", "normal": "normal", "high": "alta", "urgent": "urgente"},
+	"ar": {"open": "بانتظار الدعم", "pending": "بانتظار ردّك", "solved": "محلولة", "closed": "مغلقة", "low": "منخفضة", "normal": "عادية", "high": "عالية", "urgent": "عاجلة"},
+}
+
 // texts[locale][kind]. A test checks that every language has every kind and that the placeholders and the number of lines agree.
 var texts = map[string]map[Kind]copyText{
 	"en": {
@@ -43,6 +53,24 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "If you did not ask for this code, ignore this message: nobody can sign in without it.",
 		},
+		KindTicketNew: {
+			Subject: "New support ticket {ticket}: {subject}",
+			Lines:   []string{"{account} opened ticket {ticket} ({priority} priority): {subject}", "Open the ticket in the operator console to answer it."},
+			Button:  "Open the ticket",
+			Ignore:  "You get this because your address is listed as a Payrudder operator.",
+		},
+		KindTicketReply: {
+			Subject: "Payrudder support answered ticket {ticket}",
+			Lines:   []string{"Payrudder support answered your ticket {ticket}: {subject}", "Open the ticket to read the answer and reply."},
+			Button:  "Read the answer",
+			Ignore:  "You get this because you opened the ticket. Replies to this e-mail are not read: write in the ticket.",
+		},
+		KindTicketStatus: {
+			Subject: "Your ticket {ticket} is now: {status}",
+			Lines:   []string{"The status of your ticket {ticket} ({subject}) changed to: {status}.", "Open the ticket to see the details."},
+			Button:  "Open the ticket",
+			Ignore:  "You get this because you opened the ticket. Replies to this e-mail are not read: write in the ticket.",
+		},
 	},
 	"tr": {
 		KindVerify: {
@@ -74,6 +102,24 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Payrudder'a giriş yapmak için bu kodu kullanın: {code}", "Kod yalnızca bir kez çalışır ve 10 dakika sonra geçersiz olur. Kimseyle paylaşmayın."},
 			Button:  "",
 			Ignore:  "Bu kodu siz istemediyseniz iletiyi yok sayın: kod olmadan kimse giriş yapamaz.",
+		},
+		KindTicketNew: {
+			Subject: "Yeni destek talebi {ticket}: {subject}",
+			Lines:   []string{"{account}, {priority} öncelikli {ticket} numaralı talebi açtı: {subject}", "Yanıtlamak için talebi operatör konsolunda açın."},
+			Button:  "Talebi aç",
+			Ignore:  "Adresiniz Payrudder operatörü olarak listelendiği için bu iletiyi alıyorsunuz.",
+		},
+		KindTicketReply: {
+			Subject: "Payrudder destek ekibi {ticket} numaralı talebinizi yanıtladı",
+			Lines:   []string{"Payrudder destek ekibi {ticket} numaralı talebinizi yanıtladı: {subject}", "Yanıtı okumak ve cevap yazmak için talebi açın."},
+			Button:  "Yanıtı oku",
+			Ignore:  "Talebi siz açtığınız için bu iletiyi alıyorsunuz. Bu e-postaya verilen yanıtlar okunmaz: yanıtınızı talebe yazın.",
+		},
+		KindTicketStatus: {
+			Subject: "{ticket} numaralı talebinizin durumu: {status}",
+			Lines:   []string{"{ticket} numaralı talebinizin ({subject}) durumu değişti: {status}.", "Ayrıntıları görmek için talebi açın."},
+			Button:  "Talebi aç",
+			Ignore:  "Talebi siz açtığınız için bu iletiyi alıyorsunuz. Bu e-postaya verilen yanıtlar okunmaz: yanıtınızı talebe yazın.",
 		},
 	},
 	"de": {
@@ -107,6 +153,24 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Wenn Sie diesen Code nicht angefordert haben, ignorieren Sie diese Nachricht: Ohne ihn kann sich niemand anmelden.",
 		},
+		KindTicketNew: {
+			Subject: "Neues Support-Ticket {ticket}: {subject}",
+			Lines:   []string{"{account} hat das Ticket {ticket} eröffnet (Priorität {priority}): {subject}", "Öffnen Sie das Ticket in der Operator-Konsole, um zu antworten."},
+			Button:  "Ticket öffnen",
+			Ignore:  "Sie erhalten diese Nachricht, weil Ihre Adresse als Payrudder-Operator eingetragen ist.",
+		},
+		KindTicketReply: {
+			Subject: "Der Payrudder-Support hat auf Ticket {ticket} geantwortet",
+			Lines:   []string{"Der Payrudder-Support hat auf Ihr Ticket {ticket} geantwortet: {subject}", "Öffnen Sie das Ticket, um die Antwort zu lesen und zu antworten."},
+			Button:  "Antwort lesen",
+			Ignore:  "Sie erhalten diese Nachricht, weil Sie das Ticket eröffnet haben. Antworten auf diese E-Mail werden nicht gelesen: schreiben Sie im Ticket.",
+		},
+		KindTicketStatus: {
+			Subject: "Ihr Ticket {ticket} ist jetzt: {status}",
+			Lines:   []string{"Der Status Ihres Tickets {ticket} ({subject}) hat sich geändert: {status}.", "Öffnen Sie das Ticket, um die Details zu sehen."},
+			Button:  "Ticket öffnen",
+			Ignore:  "Sie erhalten diese Nachricht, weil Sie das Ticket eröffnet haben. Antworten auf diese E-Mail werden nicht gelesen: schreiben Sie im Ticket.",
+		},
 	},
 	"fr": {
 		KindVerify: {
@@ -138,6 +202,24 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"Utilisez ce code pour vous connecter à Payrudder : {code}", "Le code ne fonctionne qu'une fois et expire au bout de 10 minutes. Ne le communiquez à personne."},
 			Button:  "",
 			Ignore:  "Si vous n'avez pas demandé ce code, ignorez ce message : personne ne peut se connecter sans lui.",
+		},
+		KindTicketNew: {
+			Subject: "Nouveau ticket de support {ticket} : {subject}",
+			Lines:   []string{"{account} a ouvert le ticket {ticket} (priorité {priority}) : {subject}", "Ouvrez le ticket dans la console opérateur pour y répondre."},
+			Button:  "Ouvrir le ticket",
+			Ignore:  "Vous recevez ce message parce que votre adresse figure parmi les opérateurs de Payrudder.",
+		},
+		KindTicketReply: {
+			Subject: "Le support Payrudder a répondu au ticket {ticket}",
+			Lines:   []string{"Le support Payrudder a répondu à votre ticket {ticket} : {subject}", "Ouvrez le ticket pour lire la réponse et répondre."},
+			Button:  "Lire la réponse",
+			Ignore:  "Vous recevez ce message parce que vous avez ouvert le ticket. Les réponses à cet e-mail ne sont pas lues : écrivez dans le ticket.",
+		},
+		KindTicketStatus: {
+			Subject: "Votre ticket {ticket} est maintenant : {status}",
+			Lines:   []string{"Le statut de votre ticket {ticket} ({subject}) a changé : {status}.", "Ouvrez le ticket pour voir les détails."},
+			Button:  "Ouvrir le ticket",
+			Ignore:  "Vous recevez ce message parce que vous avez ouvert le ticket. Les réponses à cet e-mail ne sont pas lues : écrivez dans le ticket.",
 		},
 	},
 	"es": {
@@ -171,6 +253,24 @@ var texts = map[string]map[Kind]copyText{
 			Button:  "",
 			Ignore:  "Si no solicitó este código, ignore este mensaje: nadie puede iniciar sesión sin él.",
 		},
+		KindTicketNew: {
+			Subject: "Nuevo ticket de soporte {ticket}: {subject}",
+			Lines:   []string{"{account} abrió el ticket {ticket} (prioridad {priority}): {subject}", "Abre el ticket en la consola de operadores para responder."},
+			Button:  "Abrir el ticket",
+			Ignore:  "Recibes este mensaje porque tu dirección figura como operador de Payrudder.",
+		},
+		KindTicketReply: {
+			Subject: "El soporte de Payrudder respondió al ticket {ticket}",
+			Lines:   []string{"El soporte de Payrudder respondió a tu ticket {ticket}: {subject}", "Abre el ticket para leer la respuesta y contestar."},
+			Button:  "Leer la respuesta",
+			Ignore:  "Recibes este mensaje porque abriste el ticket. Las respuestas a este correo no se leen: escribe en el ticket.",
+		},
+		KindTicketStatus: {
+			Subject: "Tu ticket {ticket} ahora está: {status}",
+			Lines:   []string{"El estado de tu ticket {ticket} ({subject}) cambió: {status}.", "Abre el ticket para ver los detalles."},
+			Button:  "Abrir el ticket",
+			Ignore:  "Recibes este mensaje porque abriste el ticket. Las respuestas a este correo no se leen: escribe en el ticket.",
+		},
 	},
 	"ar": {
 		KindVerify: {
@@ -202,6 +302,24 @@ var texts = map[string]map[Kind]copyText{
 			Lines:   []string{"استخدم هذا الرمز لتسجيل الدخول إلى Payrudder: {code}", "يعمل الرمز مرة واحدة فقط وتنتهي صلاحيته بعد 10 دقائق. لا تشاركه مع أحد."},
 			Button:  "",
 			Ignore:  "إذا لم تطلب هذا الرمز فتجاهل هذه الرسالة: لا يستطيع أحد تسجيل الدخول بدونه.",
+		},
+		KindTicketNew: {
+			Subject: "تذكرة دعم جديدة {ticket}: {subject}",
+			Lines:   []string{"فتحت {account} التذكرة {ticket} (أولوية {priority}): {subject}", "افتح التذكرة في لوحة المشغّلين للرد عليها."},
+			Button:  "فتح التذكرة",
+			Ignore:  "تصلك هذه الرسالة لأن عنوانك مدرج ضمن مشغّلي Payrudder.",
+		},
+		KindTicketReply: {
+			Subject: "ردّ دعم Payrudder على التذكرة {ticket}",
+			Lines:   []string{"ردّ دعم Payrudder على تذكرتك {ticket}: {subject}", "افتح التذكرة لقراءة الردّ والإجابة."},
+			Button:  "قراءة الردّ",
+			Ignore:  "تصلك هذه الرسالة لأنك فتحت التذكرة. لا تُقرأ الردود على هذه الرسالة الإلكترونية: اكتب في التذكرة.",
+		},
+		KindTicketStatus: {
+			Subject: "حالة تذكرتك {ticket} الآن: {status}",
+			Lines:   []string{"تغيّرت حالة تذكرتك {ticket} ({subject}): {status}.", "افتح التذكرة لعرض التفاصيل."},
+			Button:  "فتح التذكرة",
+			Ignore:  "تصلك هذه الرسالة لأنك فتحت التذكرة. لا تُقرأ الردود على هذه الرسالة الإلكترونية: اكتب في التذكرة.",
 		},
 	},
 }

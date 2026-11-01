@@ -3342,6 +3342,9 @@
       "ticket": {
         "closed": "This ticket is closed. Open a new one.",
         "not_found": "That ticket was not found."
+      },
+      "tickets": {
+        "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again."
       }
     }
   },
@@ -4960,10 +4963,10 @@
       "urgent": "Urgent"
     },
     "answerWithin": {
-      "low": "answer within 3 days",
-      "normal": "answer within 1 day",
-      "high": "answer within 4 hours",
-      "urgent": "answer within 1 hour"
+      "low": "answer within 3 business days",
+      "normal": "answer within 1 business day",
+      "high": "answer within 4 business hours",
+      "urgent": "answer within 1 business hour"
     },
     "category": {
       "billing": "Billing",
@@ -4978,7 +4981,9 @@
       "system": "System"
     },
     "sortPriority": "Highest priority first",
-    "sortDue": "Answer due soonest"
+    "sortDue": "Answer due soonest",
+    "unread": "New",
+    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app."
   },
   "connect": {
     "nav": "Connect your app",

@@ -497,3 +497,4 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `support.app.not_found`
 - `support.ticket.closed`
 - `support.ticket.not_found`
+- `support.tickets.too_many`

@@ -3342,6 +3342,9 @@
       "ticket": {
         "closed": "Dieses Ticket ist geschlossen. Eröffnen Sie ein neues.",
         "not_found": "Dieses Ticket wurde nicht gefunden."
+      },
+      "tickets": {
+        "too_many": "Ihre Organisation hat bereits 20 wartende Tickets. Warten Sie auf eine Antwort oder markieren Sie eines als gelöst und versuchen Sie es erneut."
       }
     }
   },
@@ -4960,10 +4963,10 @@
       "urgent": "Dringend"
     },
     "answerWithin": {
-      "low": "Antwort innerhalb von 3 Tagen",
-      "normal": "Antwort innerhalb von 1 Tag",
-      "high": "Antwort innerhalb von 4 Stunden",
-      "urgent": "Antwort innerhalb von 1 Stunde"
+      "low": "Antwort innerhalb von 3 Werktagen",
+      "normal": "Antwort innerhalb von 1 Werktag",
+      "high": "Antwort innerhalb von 4 Geschäftsstunden",
+      "urgent": "Antwort innerhalb von 1 Geschäftsstunde"
     },
     "category": {
       "billing": "Abrechnung",
@@ -4978,7 +4981,9 @@
       "system": "System"
     },
     "sortPriority": "Höchste Priorität zuerst",
-    "sortDue": "Früheste Frist zuerst"
+    "sortDue": "Früheste Frist zuerst",
+    "unread": "Neu",
+    "businessHours": "Antwortzeiten zählen Geschäftszeiten: Montag bis Freitag, 09:00 bis 18:00 Uhr, in der Zeitzone Ihrer App."
   },
   "connect": {
     "nav": "App verbinden",
