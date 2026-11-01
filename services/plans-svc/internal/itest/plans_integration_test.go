@@ -506,10 +506,10 @@ func testEntitlementOutbox(t *testing.T) {
 	relayAll := func() []outbox.Row {
 		sink := &captureSink{}
 		e.relayAll(t, sink)
-		// The database is shared with the other subtests: keep this tenant's rows.
+		// The database is shared with the other subtests: keep this tenant's entitlement rows (the outbox carries other facts too, such as the mail of an acceptance).
 		var mine []outbox.Row
 		for _, r := range sink.rows {
-			if r.TenantID == tenantID {
+			if r.TenantID == tenantID && r.Topic == "plans.entitlements.v1" {
 				mine = append(mine, r)
 			}
 		}
