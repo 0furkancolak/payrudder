@@ -135,8 +135,12 @@ func platformContext(ctx context.Context, p *plansv1.PlatformTenant, timeout tim
 // eventsMeter is the platform-tenant meter the events of an organisation are counted on.
 const eventsMeter = "events"
 
-// fillEvents sets what only limits-svc knows on the events quota of a plan: how many events the organisation has had this month. It is best effort: a plan page
-// without the count is better than none.
+// countedMeters are the quotas whose usage only limits-svc knows: the events ingest accepted and the mails the notifier sent this month. The others are
+// counted in plans-svc.
+var countedMeters = []string{eventsMeter, "mails"}
+
+// fillEvents sets what only limits-svc knows on the events and mails quotas of a plan: how many the organisation has had this month. It is best effort: a plan
+// page without the count is better than none.
 func (s *Server) fillEvents(ctx context.Context, p *plansv1.OrganizationPlan) {
 	if p.GetCustomerId() == "" || p.GetPlatform() == nil {
 		return
@@ -146,17 +150,19 @@ func (s *Server) fillEvents(ctx context.Context, p *plansv1.OrganizationPlan) {
 		return
 	}
 	defer cancel()
-	resp, err := s.d.Limits.CheckEntitlement(pctx, &limitsv1.CheckEntitlementRequest{CustomerId: p.GetCustomerId(), MeterCode: eventsMeter})
-	if err != nil {
-		s.d.Log.WarnContext(ctx, "saas: events usage unavailable", "account_id", p.GetAccountId(), "error", err)
-		return
-	}
-	st := resp.GetStatus()
-	for _, q := range p.GetQuotas() {
-		if q.GetResource() == eventsMeter {
-			q.Used = st.GetUsedUnits()
-			q.OverLimit = !q.GetUnlimited() && q.GetUsed() >= q.GetLimit()
-			q.ResetsTime = st.GetResetsAt()
+	for _, meter := range countedMeters {
+		resp, err := s.d.Limits.CheckEntitlement(pctx, &limitsv1.CheckEntitlementRequest{CustomerId: p.GetCustomerId(), MeterCode: meter})
+		if err != nil {
+			s.d.Log.WarnContext(ctx, "saas: usage unavailable", "account_id", p.GetAccountId(), "meter", meter, "error", err)
+			continue
+		}
+		st := resp.GetStatus()
+		for _, q := range p.GetQuotas() {
+			if q.GetResource() == meter {
+				q.Used = st.GetUsedUnits()
+				q.OverLimit = !q.GetUnlimited() && q.GetUsed() >= q.GetLimit()
+				q.ResetsTime = st.GetResetsAt()
+			}
 		}
 	}
 }

@@ -4935,6 +4935,7 @@
     "trialDays": "Başlangıçta {n} gün ücretsiz",
     "resource": {
       "events": "Olaylar",
+      "mails": "E-postalar",
       "apps": "Uygulamalar",
       "members": "Üyeler",
       "api_keys": "API anahtarları"

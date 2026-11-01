@@ -11,7 +11,7 @@ export type OrganizationRow = S["OrganizationRow"];
 export type PlatformInfo = S["PlatformInfo"];
 
 /** The resources a plan limits, in the order the page shows them. */
-export const RESOURCES = ["events", "apps", "members", "api_keys"] as const;
+export const RESOURCES = ["events", "mails", "apps", "members", "api_keys"] as const;
 export type Resource = (typeof RESOURCES)[number];
 
 /** A limit of 0 means unlimited, as everywhere in Payrudder. */

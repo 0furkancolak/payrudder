@@ -4935,6 +4935,7 @@
     "trialDays": "{n} days free to start",
     "resource": {
       "events": "Events",
+      "mails": "Mails",
       "apps": "Apps",
       "members": "Members",
       "api_keys": "API keys"

@@ -54,6 +54,7 @@ func (f *fakeSaas) GetMyPlan(_ context.Context, req *plansv1.GetMyPlanRequest) (
 	plan := &plansv1.OrganizationPlan{Enabled: true, AccountId: req.GetAccountId(), State: "active", CanManage: req.GetUserId() != viewerUser, Platform: platformRef(), CustomerId: saasCustomer}
 	plan.Plan = &plansv1.PlanOffer{Code: "free", Name: "Free", Version: 1, Currency: "USD", Interval: "month", Current: true}
 	plan.Quotas = append(plan.Quotas, &plansv1.PlanQuota{Resource: "events", Limit: 10000, Mode: "hard"})
+	plan.Quotas = append(plan.Quotas, &plansv1.PlanQuota{Resource: "mails", Limit: 100, Mode: "hard"})
 	plan.Quotas = append(plan.Quotas, &plansv1.PlanQuota{Resource: "apps", Used: 1, Limit: 1, Mode: "hard", OverLimit: true})
 	return &plansv1.GetMyPlanResponse{Plan: plan}, nil
 }
@@ -263,7 +264,11 @@ func TestPlanPageMergesTheEventsUsage(t *testing.T) {
 	if events["resource"] != "events" || events["used"] != float64(123) || events["limit"] != float64(10000) || events["over_limit"] != false || events["resets_time"] != "2026-12-01T00:00:00Z" {
 		t.Errorf("events quota = %v", events)
 	}
-	if apps := quotas[1].(map[string]any); apps["used"] != float64(1) || apps["over_limit"] != true {
+	// The mails are counted by limits-svc too, on their own meter.
+	if mails := quotas[1].(map[string]any); mails["resource"] != "mails" || mails["used"] != float64(123) || mails["limit"] != float64(100) || mails["over_limit"] != true {
+		t.Errorf("mails quota = %v", mails)
+	}
+	if apps := quotas[2].(map[string]any); apps["used"] != float64(1) || apps["over_limit"] != true {
 		t.Errorf("apps quota = %v", apps)
 	}
 	// Limits-svc down: the page still answers, without the count.
