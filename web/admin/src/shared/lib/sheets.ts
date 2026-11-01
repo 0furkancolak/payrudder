@@ -6,6 +6,9 @@ import { computed, nextTick, ref, watch } from "vue";
  * into the address as `?sheet=a,b` in the order they were opened, so a reload or a shared link opens the same sheets, and the browser's own history
  * is not filled with them. Every sheet, named or not, is a tab of the strip at the top of the topmost sheet: tabs can be raised to the front or
  * closed, "back" closes the sheet in front and "forward" opens the one closed last.
+ *
+ * The page behind the sheets does not scroll while any sheet is open (`syncScrollLock`, owned by this stack, not by the page that opened a sheet), and when the
+ * last one closes the page is where it was when the first one opened, whatever moved it meanwhile.
  */
 export interface SheetTab {
   uid: number;
@@ -29,9 +32,45 @@ export const depthOf = (uid: number) => tabs.value.findIndex((t) => t.uid === ui
 
 export function enter(tab: SheetTab) {
   if (!tabs.value.some((t) => t.uid === tab.uid)) tabs.value = [...tabs.value, tab];
+  syncScrollLock(tabs.value.length > 0);
 }
 export function leave(uid: number) {
   tabs.value = tabs.value.filter((t) => t.uid !== uid);
+  syncScrollLock(tabs.value.length > 0);
+}
+
+/** What the scroll lock touches of the page: the root element's style and the scroll position, and the width of a classic scrollbar (0 for an overlay one). */
+export interface ScrollEnv {
+  root: { style: { overflow: string; paddingInlineEnd: string } };
+  y: () => number;
+  to: (y: number) => void;
+  bar: () => number;
+}
+const browserEnv = (): ScrollEnv | null =>
+  typeof document === "undefined"
+    ? null
+    : { root: document.documentElement, y: () => window.scrollY, to: (y) => window.scrollTo(0, y), bar: () => window.innerWidth - document.documentElement.clientWidth };
+
+let locked: { y: number; overflow: string; padding: string } | null = null;
+/**
+ * Locks the page's scroll while a sheet is open (`open`) and gives it back, at the position it had when the first sheet opened, when the last one closes: the
+ * sheets are not modal, so nothing else stops a wheel or a touch on the overlay from scrolling the page behind them. The width of a classic scrollbar that
+ * leaves with the scrolling is kept as padding so the page does not jump sideways.
+ */
+export function syncScrollLock(open: boolean, env: ScrollEnv | null = browserEnv()) {
+  if (!env) return;
+  if (open && locked === null) {
+    locked = { y: env.y(), overflow: env.root.style.overflow, padding: env.root.style.paddingInlineEnd };
+    const bar = env.bar();
+    env.root.style.overflow = "hidden";
+    if (bar > 0) env.root.style.paddingInlineEnd = `${bar}px`;
+  } else if (!open && locked !== null) {
+    const was = locked;
+    locked = null;
+    env.root.style.overflow = was.overflow;
+    env.root.style.paddingInlineEnd = was.padding;
+    if (env.y() !== was.y) env.to(was.y);
+  }
 }
 export function setTitle(uid: number, title: string) {
   const tab = tabs.value.find((t) => t.uid === uid);

@@ -4,7 +4,6 @@ import { peek } from "@/features/related/peek";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
-import { formatMinor } from "@/shared/lib/money";
 import { ErrorState } from "@/shared/ui/error-state";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { SortSelect } from "@/shared/ui/sort-select";
@@ -21,7 +20,8 @@ import { ArrowUpRight, FileText } from "@lucide/vue";
 import { useTableState } from "@/shared/lib/useTableState";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, toneOf } from "@/shared/ui/status-pill";
-import { PaymentContext } from "@/features/related";
+import { PaymentDetail } from "@/features/related";
+import { signedAmount } from "@/features/related/payment";
 import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { label } from "@/shared/lib/labels";
 import { usePayments } from "./billingApi";
@@ -60,7 +60,7 @@ useOpenParam("payment", () => payments.isSuccess.value, (id) => {
     table.openWhere((p) => p.id === id);
   }
 });
-const signed = (p: NonNullable<typeof current.value>) => formatMinor(p.status === "refunded" ? `-${p.amount_minor}` : p.amount_minor, p.currency, locale.value);
+const signed = (p: NonNullable<typeof current.value>) => signedAmount(p, locale.value);
 const when = (v?: string) => fmt.date(v, "dateTime");
 </script>
 
@@ -114,16 +114,6 @@ const when = (v?: string) => fmt.date(v, "dateTime");
   </Card>
 
   <DetailSheet v-model:index="table.detail.value" :total="table.total.value" :title="current ? signed(current) : ''" :description="current ? when(current.occurred_at) : undefined">
-    <dl v-if="current" class="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm" data-testid="payment-detail">
-      <dt class="text-muted-foreground">{{ t("product.billing.payments.kind") }}</dt>
-      <dd>{{ t(`product.billing.payments.kinds.${current.kind}`) }}</dd>
-      <dt class="text-muted-foreground">{{ t("product.payments.status") }}</dt>
-      <dd><StatusPill :tone="toneOf(current.status)">{{ t(`product.status.${current.status}`) }}</StatusPill></dd>
-      <dt class="text-muted-foreground">{{ t("product.payments.provider") }}</dt>
-      <dd class="capitalize">{{ current.provider }}</dd>
-      <dt class="text-muted-foreground">{{ t("product.payments.amount") }}</dt>
-      <dd class="tabular-nums font-medium">{{ signed(current) }}</dd>
-    </dl>
-    <PaymentContext v-if="current?.invoice_id" :key="current.id" :tenant-id="tenantId" :invoice-id="current.invoice_id" class="mt-6" />
+    <PaymentDetail v-if="current" :key="current.id" :tenant-id="tenantId" :payment="current" />
   </DetailSheet>
 </template>

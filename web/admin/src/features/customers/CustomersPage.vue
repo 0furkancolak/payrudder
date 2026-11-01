@@ -5,6 +5,7 @@ import { ArrowUpRight, Ban, CircleCheck, ExternalLink, FileText, Link2, MapPin, 
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
+import { keepEnv } from "@/features/related/link";
 import { useSubscriptionActions } from "@/features/subscriptions/api";
 import CreateSubscriptionForm from "@/features/subscriptions/CreateSubscriptionForm.vue";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
@@ -157,8 +158,9 @@ function paymentLink(externalId?: string) {
   linkFor.value = externalId ?? "";
   linking.value = true;
 }
-function toCredits() {
-  void router.navigate({ to: `${tenantBase()}/$id/credits`, params: { id: tenantId.value } as never });
+/** The credits page of this customer: it picks the customer named in the address, so the sheet's "Manage credits" does not leave the person to choose them again. */
+function toCredits(externalId: string) {
+  void router.navigate({ to: `${tenantBase()}/$id/credits`, params: { id: tenantId.value } as never, search: ((prev: Record<string, unknown>) => keepEnv(prev, "customer", externalId)) as never });
 }
 // --- the customer's own quotas (overrides of its package's limits)
 const quotasOf = ref("");
@@ -224,7 +226,7 @@ function exportSelected() {
       @edit-tax="editingTax = current"
       @new-subscription="newSubscription(current)"
       @payment-link="paymentLink(currentId)"
-      @credits="toCredits"
+      @credits="toCredits(currentId)"
     />
   </DetailSheet>
   <!-- After the customer's sheet: a sheet portals to where it was first rendered, so these open above the one they are opened from. -->

@@ -4487,7 +4487,8 @@
     "none": "Aucun pour l'instant",
     "notFound": "Absent de la liste",
     "open": "Ouvrir",
-    "openCustomerPage": "Ouvrir dans la page des clients pour modifier"
+    "openCustomerPage": "Ouvrir dans la page des clients pour modifier",
+    "paymentNotLoaded": "Ce paiement ne figure pas parmi les derniers paiements chargés par la console."
   },
   "sheets": {
     "back": "Retour",

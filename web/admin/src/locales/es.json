@@ -4487,7 +4487,8 @@
     "none": "Aún no hay",
     "notFound": "No está en la lista",
     "open": "Abrir",
-    "openCustomerPage": "Abrir en la página de clientes para cambiar algo"
+    "openCustomerPage": "Abrir en la página de clientes para cambiar algo",
+    "paymentNotLoaded": "Este pago no está entre los últimos pagos que carga la consola."
   },
   "sheets": {
     "back": "Atrás",

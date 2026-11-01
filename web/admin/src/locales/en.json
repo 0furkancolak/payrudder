@@ -4487,7 +4487,8 @@
     "none": "None yet",
     "notFound": "Not in the list",
     "open": "Open",
-    "openCustomerPage": "Open on the customers page to change something"
+    "openCustomerPage": "Open on the customers page to change something",
+    "paymentNotLoaded": "This payment is not among the latest payments the console loads."
   },
   "sheets": {
     "back": "Back",
