@@ -1,0 +1,77 @@
+-- Price changes (plan 15): the record of a run of SchedulePriceChange and what happened to each subscription. The state of a scheduled item is the state of its
+-- subscription_changes row (pending = scheduled, applied, cancelled = withdrawn), so it is joined, never copied.
+
+-- A run continues the open price change of the same plan and versions, else makes one. effective_at is only the end of the notice until the first renewal is scheduled.
+-- name: UpsertOpenPriceChange :one
+INSERT INTO price_changes (tenant_id, id, plan_code, from_version, to_version, notice_days, effective_at, created_by)
+VALUES (app_tenant_id(), @id, @plan_code, @from_version, @to_version, @notice_days, @effective_at, @created_by)
+ON CONFLICT (tenant_id, plan_code, from_version, to_version) WHERE state = 'open' DO UPDATE SET notice_days = EXCLUDED.notice_days
+RETURNING id;
+
+-- name: GetOpenPriceChangeID :one
+SELECT id FROM price_changes
+WHERE tenant_id = app_tenant_id() AND plan_code = @plan_code AND from_version = @from_version AND to_version = @to_version AND state = 'open';
+
+-- What a run did to one subscription: scheduled (change_id and the date of the renewal) or skipped (reason). A later run replaces a skip.
+-- name: UpsertPriceChangeItem :exec
+INSERT INTO price_change_items (tenant_id, price_change_id, subscription_id, change_id, reason, effective_at, notified_at)
+VALUES (app_tenant_id(), @price_change_id, @subscription_id, sqlc.narg('change_id')::uuid, @reason, sqlc.narg('effective_at')::timestamptz, sqlc.narg('notified_at')::timestamptz)
+ON CONFLICT (tenant_id, price_change_id, subscription_id)
+DO UPDATE SET change_id = EXCLUDED.change_id, reason = EXCLUDED.reason, effective_at = EXCLUDED.effective_at, notified_at = EXCLUDED.notified_at, updated_at = now();
+
+-- The change an item carries and its state ('' when the item is a skip). No row: the price change has not met this subscription.
+-- name: GetPriceChangeItemChange :one
+SELECT i.change_id, COALESCE(c.state, '')::text AS change_state
+FROM price_change_items i
+LEFT JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id
+WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = @price_change_id AND i.subscription_id = @subscription_id;
+
+-- The earliest date a price changes, once there is one.
+-- name: SetPriceChangeEffective :exec
+UPDATE price_changes SET effective_at = COALESCE((SELECT min(i.effective_at) FROM price_change_items i WHERE i.tenant_id = price_changes.tenant_id AND i.price_change_id = price_changes.id), effective_at)
+WHERE tenant_id = app_tenant_id() AND id = @id;
+
+-- Newest first, with the number of subscriptions in each state; one by id, or the ones of a plan.
+-- name: ListPriceChanges :many
+SELECT pc.id, pc.plan_code, pc.from_version, pc.to_version, pc.notice_days, pc.effective_at, pc.state, pc.created_by, pc.created_at, pc.withdrawn_at, pc.withdrawn_by,
+       COALESCE(n.scheduled, 0)::int AS scheduled, COALESCE(n.applied, 0)::int AS applied, COALESCE(n.withdrawn, 0)::int AS withdrawn, COALESCE(n.skipped, 0)::int AS skipped
+FROM price_changes pc
+LEFT JOIN LATERAL (
+  SELECT count(*) FILTER (WHERE c.state = 'pending') AS scheduled, count(*) FILTER (WHERE c.state = 'applied') AS applied,
+         count(*) FILTER (WHERE c.state = 'cancelled') AS withdrawn, count(*) FILTER (WHERE i.change_id IS NULL) AS skipped
+  FROM price_change_items i
+  LEFT JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id
+  WHERE i.tenant_id = pc.tenant_id AND i.price_change_id = pc.id
+) n ON true
+WHERE pc.tenant_id = app_tenant_id() AND (sqlc.narg('id')::uuid IS NULL OR pc.id = sqlc.narg('id')::uuid) AND (@plan_code::text = '' OR pc.plan_code = @plan_code::text)
+ORDER BY pc.created_at DESC, pc.id DESC
+LIMIT 100;
+
+-- The subscriptions of a price change, by customer; state: skipped, scheduled, applied or withdrawn (empty: all). At most 500.
+-- name: ListPriceChangeItems :many
+SELECT * FROM (
+  SELECT i.subscription_id, cu.external_id AS customer_external_id,
+         (CASE WHEN i.change_id IS NULL THEN 'skipped' WHEN c.state = 'pending' THEN 'scheduled' WHEN c.state = 'applied' THEN 'applied' ELSE 'withdrawn' END)::text AS state,
+         i.reason, i.effective_at, i.notified_at
+  FROM price_change_items i
+  JOIN subscriptions s ON s.tenant_id = i.tenant_id AND s.id = i.subscription_id
+  JOIN customers cu ON cu.tenant_id = s.tenant_id AND cu.id = s.customer_id
+  LEFT JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id
+  WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = @price_change_id
+) x
+WHERE @state::text = '' OR x.state = @state::text
+ORDER BY x.customer_external_id, x.subscription_id
+LIMIT 500;
+
+-- Withdrawing closes the price change: it takes no more subscriptions. Withdrawing one that is withdrawn already does nothing.
+-- name: WithdrawPriceChange :execrows
+UPDATE price_changes SET state = 'withdrawn', withdrawn_at = now(), withdrawn_by = @withdrawn_by
+WHERE tenant_id = app_tenant_id() AND id = @id AND state = 'open';
+
+-- The changes of a price change that are still waiting.
+-- name: ListPendingPriceChangeChanges :many
+SELECT i.subscription_id, i.change_id
+FROM price_change_items i
+JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id AND c.state = 'pending'
+WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = @price_change_id
+ORDER BY i.subscription_id;

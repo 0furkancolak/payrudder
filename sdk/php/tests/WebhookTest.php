@@ -10,6 +10,7 @@ use Payrudder\Webhook\Data\CreditsLowEventData;
 use Payrudder\Webhook\Data\CustomerBlockEventData;
 use Payrudder\Webhook\Data\InvoiceEventData;
 use Payrudder\Webhook\Data\PaymentLinkEventData;
+use Payrudder\Webhook\Data\PriceChangeScheduledEventData;
 use Payrudder\Webhook\Webhook;
 use Payrudder\Webhook\WebhookEvent;
 use Payrudder\Webhook\WebhookEventType;
@@ -148,5 +149,11 @@ final class WebhookTest extends TestCase
         self::assertSame('cus_1', $blocked->customerExternalId);
         self::assertSame('fraud', $blocked->category);
         self::assertSame('2027-01-01T00:00:00Z', $blocked->blockedUntil);
+
+        $price = WebhookEvent::fromJson('{"id":"4","type":"price_change.scheduled","data":{"price_change":{"id":"p1","plan_code":"basic","from_version":1,"to_version":2,"scheduled":3},"scheduled":3,"skipped":1}}')
+            ->dataAs(PriceChangeScheduledEventData::class);
+        self::assertSame('basic', $price->priceChange['plan_code']);
+        self::assertSame(3, $price->scheduled);
+        self::assertSame(1, $price->skipped);
     }
 }

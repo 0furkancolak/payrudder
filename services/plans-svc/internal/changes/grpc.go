@@ -34,6 +34,26 @@ func (h *Handler) SchedulePriceChange(ctx context.Context, req *plansv1.Schedule
 	return h.cmd.SchedulePriceChange(ctx, req)
 }
 
+func (h *Handler) ListPriceChanges(ctx context.Context, req *plansv1.ListPriceChangesRequest) (*plansv1.ListPriceChangesResponse, error) {
+	return h.qry.PriceChanges(ctx, req.GetPlanCode())
+}
+
+func (h *Handler) GetPriceChange(ctx context.Context, req *plansv1.GetPriceChangeRequest) (*plansv1.GetPriceChangeResponse, error) {
+	return h.qry.GetPriceChange(ctx, req.GetId(), req.GetState())
+}
+
+func (h *Handler) RetryPriceChange(ctx context.Context, req *plansv1.RetryPriceChangeRequest) (*plansv1.RetryPriceChangeResponse, error) {
+	r, err := h.cmd.RetryPriceChange(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.RetryPriceChangeResponse{Result: r}, nil
+}
+
+func (h *Handler) WithdrawPriceChange(ctx context.Context, req *plansv1.WithdrawPriceChangeRequest) (*plansv1.WithdrawPriceChangeResponse, error) {
+	return h.cmd.WithdrawPriceChange(ctx, req)
+}
+
 func (h *Handler) CancelScheduledChange(ctx context.Context, req *plansv1.CancelScheduledChangeRequest) (*plansv1.CancelScheduledChangeResponse, error) {
 	sub, err := h.cmd.CancelScheduled(ctx, req)
 	if err != nil {

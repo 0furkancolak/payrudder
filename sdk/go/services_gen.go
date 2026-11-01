@@ -65,6 +65,8 @@ type services struct {
 	Payments *PaymentsService
 	// Plans groups the plans operations.
 	Plans *PlansService
+	// PriceChanges groups the price changes operations.
+	PriceChanges *PriceChangesService
 	// PromotionCodes groups the promotion codes operations.
 	PromotionCodes *PromotionCodesService
 	// Promotions groups the promotions operations.
@@ -110,6 +112,7 @@ func (s *services) initServices(c *Client) {
 	s.PaymentLinks = (*PaymentLinksService)(&service{c: c})
 	s.Payments = (*PaymentsService)(&service{c: c})
 	s.Plans = (*PlansService)(&service{c: c})
+	s.PriceChanges = (*PriceChangesService)(&service{c: c})
 	s.PromotionCodes = (*PromotionCodesService)(&service{c: c})
 	s.Promotions = (*PromotionsService)(&service{c: c})
 	s.Reports = (*ReportsService)(&service{c: c})
@@ -1798,7 +1801,11 @@ func (s *PlansService) CreatePlan(ctx context.Context, req *CreatePlanRequest, o
 // The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a
 // change is waiting and is never replaced), `run_by_provider`, `not_changeable` (for example a fee invoiced in
 // arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes
-// nothing. Each scheduled change also sends the `subscription.change_scheduled` webhook event.
+// nothing. Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run
+// sends `price_change.scheduled` once. The run is recorded as a price change (`price_change_id`; see `GET
+// /v1/price-changes`). Running it again for the same plan and versions continues the open one: the skipped
+// subscriptions are tried again, and the ones it scheduled before are counted in `already_scheduled` and
+// neither scheduled nor mailed a second time.
 func (s *PlansService) SchedulePriceChange(ctx context.Context, code string, req *SchedulePriceChangeRequest, opts ...RequestOption) (*SchedulePriceChangeResponse, error) {
 	if req == nil {
 		req = &SchedulePriceChangeRequest{}
@@ -1828,6 +1835,61 @@ func (s *PlansService) PublishPlanVersion(ctx context.Context, code string, req 
 func (s *PlansService) GetPlanVersion(ctx context.Context, code string, version string, opts ...RequestOption) (*PlanVersion, error) {
 	var out PlanVersion
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/plans/" + url.PathEscape(code) + "/versions/" + url.PathEscape(version), query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// PriceChangesService is the price changes namespace of the API.
+type PriceChangesService service
+
+// ListPriceChanges: The price changes made, newest first (GET /v1/price-changes).
+//
+// Each with the number of subscriptions that are waiting for their renewal (`scheduled`), were moved
+// (`applied`), were withdrawn or were skipped. The latest 100.
+func (s *PriceChangesService) ListPriceChanges(ctx context.Context, params *ListPriceChangesParams, opts ...RequestOption) (*ListPriceChangesResponse, error) {
+	var out ListPriceChangesResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/price-changes", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetPriceChange: One price change with its subscriptions and what became of each (GET /v1/price-changes/{id}).
+//
+// The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one
+// follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+func (s *PriceChangesService) GetPriceChange(ctx context.Context, id string, params *GetPriceChangeParams, opts ...RequestOption) (*GetPriceChangeResponse, error) {
+	var out GetPriceChangeResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/price-changes/" + url.PathEscape(id), query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RetryPriceChange: Try the skipped subscriptions of a price change again (POST /v1/price-changes/{id}/retry).
+//
+// Runs the price change again with the notice it was made with, for the subscriptions that were skipped (a
+// renewal that was too close may be far enough now) and any that joined the version since. What is scheduled
+// already is left alone. Refused with 409 `plans.price_change.withdrawn` once it was withdrawn.
+func (s *PriceChangesService) RetryPriceChange(ctx context.Context, id string, opts ...RequestOption) (*SchedulePriceChangeResponse, error) {
+	var out SchedulePriceChangeResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/price-changes/" + url.PathEscape(id) + "/retry", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// WithdrawPriceChange: Cancel every change of a price change that is still waiting (POST
+// /v1/price-changes/{id}/withdraw).
+//
+// Closes the price change and cancels the scheduled changes that have not taken effect, so those customers stay
+// on the old price. A change that was applied stays, and the mail that was sent is not taken back (tell those
+// customers yourself). Calling it again finishes what an interrupted call left; a new run makes a new price
+// change.
+func (s *PriceChangesService) WithdrawPriceChange(ctx context.Context, id string, opts ...RequestOption) (*WithdrawPriceChangeResponse, error) {
+	var out WithdrawPriceChangeResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/price-changes/" + url.PathEscape(id) + "/withdraw", query: nil, body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil

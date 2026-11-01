@@ -1386,6 +1386,15 @@ export interface GetExpenseInboxQuery {
   app_id?: string;
 }
 
+export interface GetPriceChangeQuery {
+  state?: "scheduled" | "applied" | "withdrawn" | "skipped";
+}
+
+export interface GetPriceChangeResponse {
+  price_change: PriceChange;
+  items: Array<PriceChangeItem>;
+}
+
 export interface GetRevenueReportQuery {
   /** First period, YYYY-MM */
   from?: string;
@@ -1817,6 +1826,15 @@ export interface ListPlansResponse {
   plans: Array<Plan>;
 }
 
+export interface ListPriceChangesQuery {
+  /** Only the price changes of this plan */
+  plan_code?: string;
+}
+
+export interface ListPriceChangesResponse {
+  price_changes: Array<PriceChange>;
+}
+
 export interface ListPromotionCodesQuery {
   /** Only the codes of this coupon */
   coupon?: string;
@@ -2012,6 +2030,43 @@ export interface Price {
   };
   /** Quantity of every billing period that is free: the model prices only what is above it. Empty or 0 = none */
   included: string;
+}
+
+export interface PriceChange {
+  id: string;
+  plan_code: string;
+  from_version: number;
+  to_version: number;
+  /** The notice of the latest run */
+  notice_days: number;
+  /** The earliest date a customer's price changes: the first scheduled renewal (until one is scheduled, the end of the notice) */
+  effective_time: string;
+  state: "open" | "withdrawn";
+  /** The signed-in person's address, key:<id> for an API key, or the operator */
+  created_by: string;
+  create_time: string;
+  withdraw_time: string | null;
+  withdrawn_by: string;
+  /** Subscriptions waiting for their renewal */
+  scheduled: number;
+  /** Subscriptions moved to the new price */
+  applied: number;
+  /** Subscriptions whose change was cancelled (by a withdrawal, or because the seller or the customer changed the subscription) */
+  withdrawn: number;
+  /** Subscriptions left out; retry tries them again */
+  skipped: number;
+}
+
+export interface PriceChangeItem {
+  subscription_id: string;
+  customer_external_id: string;
+  state: "scheduled" | "applied" | "withdrawn" | "skipped";
+  /** Why it was skipped (as in PriceChangeSkipped); empty otherwise */
+  reason: string;
+  /** The renewal the new price starts on; unset for a skipped one */
+  effective_time: string | null;
+  /** When the customer's mail was queued; unset for a skipped one */
+  notify_time: string | null;
 }
 
 export interface PriceChangeSkipped {
@@ -2338,11 +2393,16 @@ export interface SchedulePriceChangeRequest {
 }
 
 export interface SchedulePriceChangeResponse {
+  /** Scheduled by this run */
   scheduled: number;
   scheduled_subscription_ids: Array<string>;
   skipped: Array<PriceChangeSkipped>;
   to_version: number;
   notice_days: number;
+  /** The price change this run made or continued; empty for a dry run when none is open */
+  price_change_id?: string;
+  /** Scheduled by this price change before: not scheduled or mailed again */
+  already_scheduled?: number;
 }
 
 export interface SetInvoiceLogoRequest {
@@ -2509,4 +2569,10 @@ export interface WebhookEndpointInput {
   active: boolean;
 }
 
-export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked";
+export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled";
+
+export interface WithdrawPriceChangeResponse {
+  price_change: PriceChange;
+  /** How many waiting changes this call cancelled */
+  withdrawn: number;
+}
