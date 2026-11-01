@@ -4,9 +4,9 @@ Payrudder meters what your customers use, prices it, invoices it and collects th
 
 ## 1. Create an app and a key
 
-Sign in to the console and create an app. Every app has two environments: the **sandbox** (nothing is real: payments run against a simulator) and **live**. Create an API key on the app's **API keys** page. A key starts with `qk_test_` (sandbox) or `qk_live_` (live), is shown **once**, and acts on its own environment only.
+Sign in to the console and create an app. Every app has two environments: the **sandbox** (nothing is real: payments run against a simulator, see [Test mode](test-mode.html)) and **live**. Create an API key on the app's **API keys** page. A key starts with `qk_test_` (sandbox) or `qk_live_` (live), is shown **once**, and acts on its own environment only.
 
-Send it as a bearer token:
+Send it as a bearer token (more on keys, roles and rotation in [Authentication](authentication.html)):
 
 ```sh
 curl https://YOUR-API-ADDRESS/v1/meters -H "Authorization: Bearer $PAYRUDDER_API_KEY"
@@ -26,7 +26,7 @@ curl https://YOUR-API-ADDRESS/v1/events \
   -d '{"events":[{"customer_external_id":"cus_42","meter_code":"api_calls","quantity":"1","event_time":"2026-11-03T10:15:00Z","idempotency_key":"evt-1"}]}'
 ```
 
-Up to 500 events per request. The answer has one result per event, in order: `accepted`, `duplicate` (the same `idempotency_key` again) or `rejected` with an `error_code`. A bad event does not fail the batch. Live keys must send an `idempotency_key` for every event, so a retry never counts twice. `quantity` is an exact decimal: send it as a string.
+Up to 500 events per request (more in [Usage metering](usage-metering.html)). The answer has one result per event, in order: `accepted`, `duplicate` (the same `idempotency_key` again) or `rejected` with an `error_code`. A bad event does not fail the batch. Live keys must send an `idempotency_key` for every event, so a retry never counts twice (see [Idempotency](idempotency.html)). `quantity` is an exact decimal: send it as a string.
 
 ## 4. Package, price, subscribe
 
@@ -38,7 +38,7 @@ Register a webhook endpoint (`POST /v1/webhook-endpoints`) and verify each deliv
 
 ## Errors, retries, limits
 
-Every error has a stable `error.key` (see [Error keys](error-keys.html)): translate the key, not the message. A `429` carries `Retry-After`. The SDKs retry `429` and `5xx` for you, with the same idempotency key.
+Every error has a stable `error.key` (see [Errors](errors.html)): translate the key, not the message. A `429` carries `Retry-After`. The SDKs retry `429` and `5xx` for you, with the same idempotency key.
 
 ## SDKs
 

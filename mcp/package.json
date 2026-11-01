@@ -8,8 +8,12 @@
     "payrudder-mcp": "dist/main.js"
   },
   "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "prebuild": "node scripts/generate.mjs",
     "build": "tsc -p tsconfig.json",
+    "pretypecheck": "node scripts/generate.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "pretest": "node scripts/generate.mjs",
     "test": "vitest run"
   },
   "engines": {
@@ -22,6 +26,7 @@
   "devDependencies": {
     "@types/node": "26.6.6",
     "typescript": "7.0.2",
-    "vitest": "5.0.5"
+    "vitest": "5.0.5",
+    "yaml": "2.9.1"
   }
 }

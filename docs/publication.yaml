@@ -1,0 +1,52 @@
+# Who each document in docs/ is for, and how finished it is (plan 19). It is the one place to review before something is published: the developer site (docs-site/)
+# builds only `public` documents, the MCP server (mcp/) serves only those as resources, and a test (docs-site/build.test.mjs) fails for a document that is not listed,
+# for a published document that is not `public`, and for a `public` document that is not published. A new file under docs/ needs a line here; a file in one of the
+# `directories` below is covered by its directory.
+#
+# audience  public    written for developers who integrate; safe to publish
+#           internal  for the people who build and run Payrudder: design, decisions, operations, provider contracts. Never published.
+# status    stable       describes behaviour that is built and covered by tests in this repository
+#           preview      built, but not yet checked against a real provider account, a live deployment or a person; may still change
+#           pre-release  not published or released (the SDKs, the MCP server): install from a checkout
+#           draft        written, not yet reviewed by the owner
+#           historical   a record of a decision or a phase; the code may have moved on
+#
+# Default (not agreed): everything except the three developer documents below is internal until the owner has read it for publication.
+
+files:
+  README.md: { audience: internal, status: stable }
+  00-vision.md: { audience: internal, status: stable }
+  01-glossary.md: { audience: internal, status: stable }
+  02-architecture.md: { audience: internal, status: stable }
+  04-messaging.md: { audience: internal, status: stable }
+  05-data-model.md: { audience: internal, status: stable }
+  06-multi-tenancy.md: { audience: internal, status: stable }
+  07-correctness.md: { audience: internal, status: stable }
+  08-observability.md: { audience: internal, status: stable }
+  09-testing-strategy.md: { audience: internal, status: stable }
+  10-local-dev.md: { audience: internal, status: stable }
+  11-repo-layout.md: { audience: internal, status: stable }
+  12-kubernetes.md: { audience: internal, status: preview }
+  13-admin-ui.md: { audience: internal, status: stable }
+  14-billing-platform.md: { audience: internal, status: stable }
+  15-billing-lifecycle.md: { audience: internal, status: stable }
+  16-webhooks.md: { audience: public, status: stable }
+  17-platform-direction.md: { audience: internal, status: historical }
+  18-sdks.md: { audience: public, status: pre-release }
+  benchmarks.md: { audience: internal, status: stable }
+  error-keys.md: { audience: public, status: stable }
+  geo-data.md: { audience: internal, status: stable }
+  hosted-pages.md: { audience: internal, status: preview }
+  iyzico-compatibility-matrix.md: { audience: internal, status: preview }
+  paddle-compatibility-matrix.md: { audience: internal, status: preview }
+  stripe-compatibility-matrix.md: { audience: internal, status: preview }
+  roadmap-owner-list.md: { audience: internal, status: historical }
+  ui-test-report.md: { audience: internal, status: historical }
+
+directories:
+  03-services: { audience: internal, status: stable }
+  adr: { audience: internal, status: historical }
+  code-quality: { audience: internal, status: historical }
+  phases: { audience: internal, status: historical }
+  plans: { audience: internal, status: draft }
+  runbooks: { audience: internal, status: preview }

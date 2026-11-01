@@ -5,6 +5,8 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 
 > **Work plans:** the owner's open requests, ordered, each with its gaps, research and acceptance criteria, are in [plans/](plans/README.md). Nothing in them is started until it is agreed.
 
+> **Publication:** [publication.yaml](publication.yaml) says which of these documents are public (the developer site and the MCP server publish only those) and how finished each one is. A new file needs a line there; a test fails until it has one.
+
 ## Core
 
 | Doc | What it answers |

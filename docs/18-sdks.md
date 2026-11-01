@@ -11,6 +11,19 @@ Client libraries for the **tenant API** (`/v1/*`, authenticated with an API key 
 
 **Nothing is published and no version is tagged** until the whole platform is finished: every package says `0.0.0`. Use them from a checkout of this repository.
 
+## Install from a checkout
+
+With `/path/to/payrudder` the folder you cloned the repository into:
+
+| Language | Install |
+|---|---|
+| TypeScript | `cd /path/to/payrudder/sdk/typescript && npm ci && npm run build && npm pack` writes `payrudder-sdk-0.0.0.tgz`; then, in your project, `npm install /path/to/payrudder/sdk/typescript/payrudder-sdk-0.0.0.tgz`. The name `@payrudder/sdk` alone does not resolve: it is not on npm. |
+| Go | `go mod edit -require=github.com/0furkancolak/payrudder/sdk/go@v0.0.0` and `go mod edit -replace=github.com/0furkancolak/payrudder/sdk/go=/path/to/payrudder/sdk/go` |
+| Python | `pip install /path/to/payrudder/sdk/python` |
+| PHP | `composer config repositories.payrudder path /path/to/payrudder/sdk/php`, then `composer require payrudder/payrudder-php:"*@dev"` |
+
+The console's **Connect your app** page shows these lines with the code to send a first event and to verify a webhook, built from your own meter; a test (`web/admin/src/features/connect/snippets.sdk.test.ts`) compiles that code against the SDKs of this checkout.
+
 ## One design, four languages
 
 - **One method per operation.** Every `operationId` of [`api/openapi/v1.yaml`](../api/openapi/v1.yaml) under `/v1/*` is a method, named after the `operationId` in the language's usual case, on a resource namespace taken from the first path segment (`customers`, `invoices`, `creditNotes`, …). Arguments: path parameters, the body, the query, then per-call options (idempotency key, timeout, retries, headers).

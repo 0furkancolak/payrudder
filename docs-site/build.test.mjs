@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, readdir } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { parse } from "yaml";
-import { build, exampleOf, operationsOf } from "./build.mjs";
+import { EVENT_CODES, GUIDES, OPERATOR_AREAS, STATUSES, TABBED, build, errorKeys, exampleOf, loadPublication, meaningsOf, operationsOf, publicationOf } from "./build.mjs";
+import { LANGS } from "../web/admin/src/features/connect/snippets.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const doc = parse(await readFile(resolve(here, "../api/openapi/v1.yaml"), "utf8"));
@@ -87,4 +88,132 @@ test("the search index has a page for every guide and an entry per operation", a
   assert.ok(idx.length >= built.operations + 4);
   assert.ok(idx.some((e) => e.url === "webhooks.html"));
   assert.ok(idx.some((e) => e.title === "POST /v1/events"));
+});
+
+// ---- what is published, and how finished it is (plan 19)
+
+const docsDir = resolve(here, "../docs");
+const pub = await loadPublication();
+
+async function markdownFiles(dir, prefix = "") {
+  const all = [];
+  for (const e of await readdir(dir, { withFileTypes: true })) {
+    if (e.isDirectory()) all.push(...(await markdownFiles(join(dir, e.name), `${prefix}${e.name}/`)));
+    else if (e.name.endsWith(".md")) all.push(`${prefix}${e.name}`);
+  }
+  return all;
+}
+
+test("every document of docs/ is marked public or internal, with a status: a new one fails here until someone decides", async () => {
+  const audiences = new Set(["public", "internal"]);
+  const missing = [];
+  for (const f of await markdownFiles(docsDir)) {
+    const m = publicationOf(pub, f);
+    if (!m) missing.push(f);
+    else {
+      assert.ok(audiences.has(m.audience), `${f}: audience ${m.audience}`);
+      assert.ok(["stable", "preview", "pre-release", "draft", "historical"].includes(m.status), `${f}: status ${m.status}`);
+    }
+  }
+  assert.deepEqual(missing, [], `add a line to docs/publication.yaml for: ${missing.join(", ")}`);
+});
+
+test("docs/publication.yaml lists only what exists", async () => {
+  for (const f of Object.keys(pub.files)) assert.ok(existsSync(join(docsDir, f)), `${f} is listed but missing`);
+  for (const d of Object.keys(pub.directories)) assert.ok((await stat(join(docsDir, d))).isDirectory(), `${d} is not a directory`);
+});
+
+test("what the site publishes from docs/ is public, and every public document is published", async () => {
+  const published = new Set();
+  for (const g of GUIDES) for (const f of [g.src, ...(g.also ?? [])]) if (f.startsWith(`${docsDir}/`)) published.add(f.slice(docsDir.length + 1));
+  for (const f of published) assert.equal(publicationOf(pub, f)?.audience, "public", `${f} is published but not marked public`);
+  const isPublic = [];
+  for (const f of await markdownFiles(docsDir)) if (publicationOf(pub, f)?.audience === "public") isPublic.push(f);
+  for (const f of isPublic) assert.ok(published.has(f), `${f} is marked public but no page publishes it`);
+  assert.ok(isPublic.length >= 3);
+});
+
+test("every page carries a status, and a page of docs/ shows the one the manifest gives it", async () => {
+  for (const f of await pages()) {
+    const h = await readFile(join(out, f), "utf8");
+    const m = h.match(/<p class="status status-([a-z-]+)" data-status="([a-z-]+)">/);
+    assert.ok(m, `${f} has no status`);
+    assert.ok(STATUSES[m[2]], `${f}: status ${m[2]}`);
+  }
+  const sdks = await readFile(join(out, "sdks.html"), "utf8");
+  assert.match(sdks, /data-status="pre-release"/);
+  assert.equal(pub.files["18-sdks.md"].status, "pre-release");
+  assert.match(await readFile(join(out, "webhooks.html"), "utf8"), /data-status="stable"/);
+  assert.match(await readFile(join(out, "authentication.html"), "utf8"), /data-status="draft"/);
+});
+
+// ---- the concept pages
+
+test("the concept pages are built, in the sidebar, and say what the repository documents say", async () => {
+  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "webhooks"]) {
+    const h = await readFile(join(out, `${page}.html`), "utf8");
+    assert.match(h, new RegExp(`href="${page}\\.html"`), `${page} is not in the sidebar`);
+  }
+  const auth = await readFile(join(out, "authentication.html"), "utf8");
+  for (const role of doc.components.schemas.ApiKeyRole.enum) assert.ok(auth.includes(`<code>${role}</code>`), `role ${role} is not explained`);
+  const idem = await readFile(join(out, "idempotency.html"), "utf8");
+  assert.ok(idem.includes("Idempotency-Key"));
+  assert.match(await readFile(join(out, "test-mode.html"), "utf8"), /\/v1\/sandbox\/close-period/);
+});
+
+test("the pages for concepts do not point at a path the API does not have", async () => {
+  const known = new Set(Object.keys(doc.paths));
+  const toPattern = (p) => new RegExp(`^${p.replace(/\{[^}]+\}/g, "[^/]+")}$`);
+  for (const page of ["authentication", "idempotency", "usage-metering", "test-mode", "errors", "getting-started"]) {
+    const md = await readFile(join(here, "content", `${page}.md`), "utf8");
+    for (const m of md.matchAll(/`(?:GET |POST |PUT |PATCH |DELETE )?(\/(?:v1|app\/v1)\/[A-Za-z0-9_\-/{}.]+)`/g)) {
+      const path = m[1].replace(/\/$/, "");
+      assert.ok([...known].some((k) => toPattern(k).test(path) || k === path), `${page}.md names ${path}, which is not in the OpenAPI file`);
+    }
+  }
+});
+
+// ---- the error catalogue
+
+test("the error catalogue has every key of docs/error-keys.md except the operator's, each with a meaning", async () => {
+  const keys = errorKeys(await readFile(join(docsDir, "error-keys.md"), "utf8"));
+  assert.ok(keys.length > 300);
+  const meanings = meaningsOf(JSON.parse(await readFile(resolve(here, "../web/admin/src/locales/en.json"), "utf8")));
+  const html = await readFile(join(out, "errors.html"), "utf8");
+  const without = [];
+  for (const k of keys) {
+    const operator = OPERATOR_AREAS.includes(k.split(".")[0]);
+    assert.equal(html.includes(`id="key-${k}"`), !operator, `${k}: ${operator ? "is the operator's but is listed" : "is missing"}`);
+    if (!operator && !meanings[k]) without.push(k);
+  }
+  assert.deepEqual(without, [], `these keys have no errors.<key> message in web/admin/src/locales/en.json: ${without.join(", ")}`);
+  assert.ok(html.includes("Translate the key, not the message"));
+});
+
+test("every error_code of a rejected usage event is listed and explained", () => {
+  const codes = doc.components.schemas.EventResult.properties.error_code.enum;
+  assert.ok(codes.length >= 10);
+  for (const c of codes) assert.ok(EVENT_CODES[c], `${c} has no meaning in EVENT_CODES`);
+  for (const c of Object.keys(EVENT_CODES)) assert.ok(codes.includes(c), `${c} is explained but the API does not send it`);
+});
+
+// ---- language tabs
+
+test("the operations that send usage and verify a webhook have a tab for every language, made by the console's generator", async () => {
+  const ids = Object.keys(TABBED);
+  assert.deepEqual(ids.sort(), ["createWebhookEndpoint", "ingestEvents"]);
+  const events = await readFile(join(out, "api", "events.html"), "utf8");
+  const hooks = await readFile(join(out, "api", "webhook-endpoints.html"), "utf8");
+  for (const l of LANGS) {
+    assert.ok(events.includes(`role="tabpanel" data-lang="${l}"`), `events: no ${l} tab`);
+    assert.ok(hooks.includes(`role="tabpanel" data-lang="${l}"`), `webhook-endpoints: no ${l} tab`);
+  }
+  assert.ok(events.includes("payrudder.events.ingest("));
+  assert.ok(events.includes("/v1/events"));
+  assert.ok(hooks.includes("constructEvent"));
+  // The install lines are the honest ones.
+  assert.ok(events.includes("payrudder-sdk-0.0.0.tgz"));
+  assert.ok(!events.includes("quotify"));
+  // An operation without tabs keeps its curl.
+  assert.ok((await readFile(join(out, "api", "meters.html"), "utf8")).includes("<summary>curl</summary>"));
 });

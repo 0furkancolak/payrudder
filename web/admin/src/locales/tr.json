@@ -5031,7 +5031,29 @@
         "title": "Bir kullanım olayı",
         "todo": "Aşağıdaki kodla bir tane gönder.",
         "done": "Bir olay sayıldı."
+      },
+      "webhook": {
+        "title": "Bir webhook uç noktası",
+        "todo": "Payrudder'ın olayları nereye göndereceğini kaydet; faturalardan ve ödemelerden haberdar ol.",
+        "done": "Bir uç nokta kayıtlı.",
+        "link": "Uç nokta ekle"
       }
+    },
+    "webhookTest": {
+      "title": "Bir webhook dene",
+      "help": "Uç noktalarından birine imzalı bir test olayı (ping türünde) gönderir; doğrulama kodunun onu kabul ettiğini görürsün.",
+      "endpoint": "Uç nokta",
+      "send": "Test webhook'u gönder",
+      "none": "Henüz bir uç noktan yok. Bir tane ekle (herkese açık bir https adresi) ve denemek için geri dön.",
+      "noAnswer": "yanıt yok",
+      "badge": {
+        "queued": "Gönderildi",
+        "delivered": "Teslim edildi",
+        "failed": "Kabul edilmedi"
+      },
+      "queued": "Sunucunun yanıtı bekleniyor.",
+      "delivered": "Sunucun kabul etti ({answer}).",
+      "failed": "Sunucun kabul etmedi: {answer}. İşleyicini düzelt, sonra bir tane daha gönder; Payrudder da kendisi yeniden dener."
     }
   }
 }

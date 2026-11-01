@@ -40,8 +40,26 @@ describe("snippets", () => {
     const evil = { ...base, customer: 'x"; rm -rf /; echo "', meter: "m\nnext" };
     for (const l of LANGS) {
       const s = snippets(l, evil).send;
-      expect(s, l).not.toContain('x"; rm');
+      // In PHP's single-quoted strings a double quote is only itself; its own hostile value is the single quote, below.
+      if (l !== "php") expect(s, l).not.toContain('x"; rm');
       expect(s, l).not.toContain("m\nnext");
     }
+    const php = snippets("php", { ...base, customer: "x'; system('id'); '" }).send;
+    expect(php).toContain("'x\\'; system(\\'id\\'); \\''");
+    expect(php).not.toContain("'x'; system");
+  });
+
+  it("keeps a quote, a backslash or a dollar of a value inside the PHP string, where only the single quote and the backslash mean something", () => {
+    const s = snippets("php", { ...base, customer: `it's "x" \\ $y` }).send;
+    expect(s).toContain(`'customer_external_id' => 'it\\'s "x" \\\\ $y'`);
+  });
+
+  it("says where each SDK comes from: not an unpublished package name, not the old repository name", () => {
+    for (const l of LANGS) expect(snippets(l, base).install, l).not.toMatch(/quotify|\.\.\/|^npm install @payrudder\/sdk$/m);
+    const ts = snippets("typescript", base).install;
+    expect(ts).toContain("npm pack");
+    expect(ts).toContain("npm install /path/to/payrudder/sdk/typescript/payrudder-sdk-0.0.0.tgz");
+    expect(snippets("php", base).install).toContain("path /path/to/payrudder/sdk/php");
+    for (const l of ["typescript", "python", "go", "php"] as const) expect(snippets(l, base).install, l).toMatch(/^# Not on /);
   });
 });

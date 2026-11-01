@@ -5031,7 +5031,29 @@
         "title": "Un evento de uso",
         "todo": "Envíe uno con el código de abajo.",
         "done": "Se contó un evento."
+      },
+      "webhook": {
+        "title": "Un endpoint de webhook",
+        "todo": "Indique adónde envía Payrudder los eventos, para enterarse de facturas y pagos.",
+        "done": "Hay un endpoint registrado.",
+        "link": "Añadir un endpoint"
       }
+    },
+    "webhookTest": {
+      "title": "Probar un webhook",
+      "help": "Envía un evento de prueba firmado (de tipo ping) a uno de sus endpoints, para que vea cómo su código de verificación lo acepta.",
+      "endpoint": "Endpoint",
+      "send": "Enviar un webhook de prueba",
+      "none": "Aún no tiene ningún endpoint. Añada uno (una dirección https pública) y vuelva para probarlo.",
+      "noAnswer": "sin respuesta",
+      "badge": {
+        "queued": "Enviado",
+        "delivered": "Entregado",
+        "failed": "No aceptado"
+      },
+      "queued": "Esperando la respuesta de su servidor.",
+      "delivered": "Su servidor lo aceptó ({answer}).",
+      "failed": "Su servidor no lo aceptó: {answer}. Corrija su manejador y envíe otro; Payrudder también reintenta por su cuenta."
     }
   }
 }

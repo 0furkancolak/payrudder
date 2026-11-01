@@ -24,12 +24,15 @@ export interface Snippets {
 /** A value put inside a quoted string of the generated code: quotes, backslashes and line breaks are escaped so a customer id can never end the string. */
 const q = (v: string) => v.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ");
 const url = (v: string) => q(v.trim().replace(/\/+$/, ""));
+/** The same for a PHP single-quoted string: only a backslash and a single quote mean anything there (a `$` or a `"` is itself). */
+const php = (v: string) => v.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
 
 export function snippets(lang: Lang, i: Inputs): Snippets {
   const base = url(i.baseUrl);
   const meter = q(i.meter);
   const cust = q(i.customer);
   const key = q(i.keyHint);
+  const [pBase, pMeter, pCust] = [php(i.baseUrl.trim().replace(/\/+$/, "")), php(i.meter), php(i.customer)];
   switch (lang) {
     case "curl": {
       // The JSON sits inside single quotes of the shell: a single quote in a value must close and reopen them, or it would end the string and run what follows.
@@ -47,7 +50,9 @@ export function snippets(lang: Lang, i: Inputs): Snippets {
     }
     case "typescript":
       return {
-        install: "npm install @payrudder/sdk",
+        install: `# Not on npm yet: build the package from a checkout of the repository, then install the tarball it makes.
+(cd /path/to/payrudder/sdk/typescript && npm ci && npm run build && npm pack)   # writes payrudder-sdk-0.0.0.tgz
+npm install /path/to/payrudder/sdk/typescript/payrudder-sdk-0.0.0.tgz`,
         send: `import { Payrudder } from "@payrudder/sdk";
 
 const payrudder = new Payrudder({ apiKey: process.env.PAYRUDDER_API_KEY, baseUrl: "${base}" }); // ${key}...
@@ -63,7 +68,7 @@ console.log(results[0].status); // accepted | duplicate | rejected`,
 // Express: app.post("/webhooks/payrudder", express.raw({ type: "application/json" }), handler)
 async function handler(req, res) {
   try {
-    const event = await constructEvent(req.body, req.header("Payrudder-Signature") ?? "", process.env.PAYRUDDER_WEBHOOK_SECRET);
+    const event = await constructEvent(req.body, req.header("Payrudder-Signature") ?? "", process.env.PAYRUDDER_WEBHOOK_SECRET!);
     console.log(event.id, event.type);
     res.sendStatus(200);
   } catch (err) {
@@ -74,7 +79,7 @@ async function handler(req, res) {
       };
     case "python":
       return {
-        install: "pip install ./sdk/python   # from a checkout of the repository",
+        install: "# Not on PyPI yet: install from a checkout of the repository.\npip install /path/to/payrudder/sdk/python",
         send: `from datetime import datetime, timezone
 from payrudder import Payrudder
 
@@ -100,7 +105,7 @@ def hook():
       };
     case "go":
       return {
-        install: "go mod edit -require=github.com/0furkancolak/payrudder/sdk/go@v0.0.0\ngo mod edit -replace=github.com/0furkancolak/payrudder/sdk/go=/path/to/payrudder/sdk/go",
+        install: "# Not on a module proxy yet: point your module at a checkout of the repository.\ngo mod edit -require=github.com/0furkancolak/payrudder/sdk/go@v0.0.0\ngo mod edit -replace=github.com/0furkancolak/payrudder/sdk/go=/path/to/payrudder/sdk/go",
         send: `package main
 
 import (
@@ -138,18 +143,18 @@ fmt.Println(ev.ID, ev.Type)`,
       };
     case "php":
       return {
-        install: 'composer config repositories.payrudder path ../quotify/sdk/php\ncomposer require payrudder/payrudder-php:"*@dev"',
+        install: '# Not on Packagist yet: use a checkout of the repository as a path repository.\ncomposer config repositories.payrudder path /path/to/payrudder/sdk/php\ncomposer require payrudder/payrudder-php:"*@dev"',
         send: `use Payrudder\\Client;
 
-$client = new Client(apiKey: '${key}...', baseUrl: '${base}');
+$client = new Client(apiKey: '${key}...', baseUrl: '${pBase}');
 
-$client->customers->createCustomer(['external_id' => '${cust}', 'name' => 'First customer', 'email' => 'first@example.com']);
+$client->customers->createCustomer(['external_id' => '${pCust}', 'name' => 'First customer', 'email' => 'first@example.com']);
 
 $result = $client->events->ingest([
-    ['customer_external_id' => '${cust}', 'meter_code' => '${meter}', 'quantity' => '1', 'event_time' => gmdate('c'), 'idempotency_key' => 'first-event-1'],
+    ['customer_external_id' => '${pCust}', 'meter_code' => '${pMeter}', 'quantity' => '1', 'event_time' => gmdate('c'), 'idempotency_key' => 'first-event-1'],
 ]);
 var_dump($result[0]->status);`,
-        webhook: `use Payrudder\\Webhook;
+        webhook: `use Payrudder\\Webhook\\Webhook;
 
 $payload = file_get_contents('php://input');
 try {
