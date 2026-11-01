@@ -27,7 +27,7 @@ func publishContract(t *testing.T, e *env, tenantID, kind, audience string, mate
 	if err != nil {
 		t.Fatal(err)
 	}
-	return v
+	return v.GetVersion()
 }
 
 func accept(t *testing.T, e *env, tenantID string, req *plansv1.RecordContractAcceptanceRequest) (*plansv1.RecordContractAcceptanceResponse, error) {
@@ -71,7 +71,8 @@ func testContracts(t *testing.T) {
 		if v2.GetNumber() != 2 || v2.GetMaterial() {
 			t.Fatalf("second version: %+v", v2)
 		}
-		old, err := c.GetContractVersion(ctx, &plansv1.GetContractVersionRequest{Id: v1.GetId()})
+		oldResp, err := c.GetContractVersion(ctx, &plansv1.GetContractVersionRequest{Id: v1.GetId()})
+		old := oldResp.GetVersion()
 		if err != nil || old.GetCurrent() || old.GetBodies()["en"] != v1.GetBodies()["en"] {
 			t.Fatalf("version 1 after version 2: %+v %v", old, err)
 		}
@@ -120,7 +121,8 @@ func testContracts(t *testing.T) {
 		wantCode(t, "privacy unpublished", err, codes.FailedPrecondition, "plans.contract.kind_unpublished")
 		_, err = c.SetContractSettings(ctx, &plansv1.SetContractSettingsRequest{RequiredKinds: []string{"tos"}, RetentionMonths: 6})
 		wantCode(t, "retention below a year", err, codes.InvalidArgument, "plans.request.invalid")
-		st, err := c.SetContractSettings(ctx, &plansv1.SetContractSettingsRequest{RequiredKinds: []string{"tos", "tos"}})
+		stResp, err := c.SetContractSettings(ctx, &plansv1.SetContractSettingsRequest{RequiredKinds: []string{"tos", "tos"}})
+		st := stResp.GetSettings()
 		if err != nil || len(st.GetRequiredKinds()) != 1 || st.GetRetentionMonths() != 36 || len(st.GetPublishedKinds()) != 1 {
 			t.Fatalf("settings: %v %v", st, err)
 		}
@@ -345,14 +347,15 @@ func testContracts(t *testing.T) {
 		if err != nil || after.GetSha256() != before.GetSha256() {
 			t.Errorf("the snapshot changed with the erasure: %v", err)
 		}
-		st, _ := c.SetContractSettings(ctx, &plansv1.SetContractSettingsRequest{RequiredKinds: []string{"distance_sales", "tos"}, ImmediateStart: true, RetentionMonths: 12})
-		if st.GetRetentionMonths() != 12 {
+		stResp, _ := c.SetContractSettings(ctx, &plansv1.SetContractSettingsRequest{RequiredKinds: []string{"distance_sales", "tos"}, ImmediateStart: true, RetentionMonths: 12})
+		if st := stResp.GetSettings(); st.GetRetentionMonths() != 12 {
 			t.Errorf("retention: %v", st)
 		}
 	})
 
 	t.Run("withdrawal requests are recorded, decided once and announced", func(t *testing.T) {
-		w, err := c.CreateContractWithdrawal(ctx, &plansv1.CreateContractWithdrawalRequest{CustomerExternalId: "grace", Statement: "I changed my mind", Source: "api"})
+		wResp, err := c.CreateContractWithdrawal(ctx, &plansv1.CreateContractWithdrawalRequest{CustomerExternalId: "grace", Statement: "I changed my mind", Source: "api"})
+		w := wResp.GetWithdrawal()
 		if err != nil || w.GetStatus() != "received" || w.GetCustomerExternalId() != "grace" || w.GetDecideTime() != nil {
 			t.Fatalf("withdrawal: %v %v", w, err)
 		}
@@ -362,7 +365,8 @@ func testContracts(t *testing.T) {
 		wantCode(t, "bad invoice id", err, codes.InvalidArgument, "plans.request.invalid")
 		_, err = c.SetContractWithdrawalStatus(ctx, &plansv1.SetContractWithdrawalStatusRequest{Id: w.GetId(), Status: "refunded"})
 		wantCode(t, "refunded before accepted", err, codes.FailedPrecondition, "plans.contract.withdrawal_decided")
-		d, err := c.SetContractWithdrawalStatus(ctx, &plansv1.SetContractWithdrawalStatusRequest{Id: w.GetId(), Status: "accepted", Note: "within 14 days", DecidedBy: "owner@example.com"})
+		dResp, err := c.SetContractWithdrawalStatus(ctx, &plansv1.SetContractWithdrawalStatusRequest{Id: w.GetId(), Status: "accepted", Note: "within 14 days", DecidedBy: "owner@example.com"})
+		d := dResp.GetWithdrawal()
 		if err != nil || d.GetStatus() != "accepted" || d.GetDecideTime() == nil || d.GetDecidedBy() != "owner@example.com" {
 			t.Fatalf("decide: %v %v", d, err)
 		}

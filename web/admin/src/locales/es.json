@@ -3543,6 +3543,7 @@
         "affiliates": "Afiliados",
         "settings": "Ajustes (impuestos, enrutamiento, correo)",
         "assets": "Archivos",
+        "contracts": "Acuerdos (textos y ajustes)",
         "sandbox": "Herramientas de sandbox"
       },
       "permissionCount": "{n} de {total} permisos",

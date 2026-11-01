@@ -34,6 +34,7 @@ export const KEY_RESOURCES: readonly KeyResource[] = [
   { resource: "affiliates", read: "affiliates:read", write: "affiliates:write" },
   { resource: "settings", read: "settings:read", write: "settings:write" },
   { resource: "assets", read: "assets:read", write: "assets:write" },
+  { resource: "contracts", read: "contracts:read", write: "contracts:write" },
   { resource: "sandbox", write: "sandbox:write" },
 ];
 

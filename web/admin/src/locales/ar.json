@@ -3543,6 +3543,7 @@
         "affiliates": "الشركاء التابعون",
         "settings": "الإعدادات (الضرائب والتوجيه والبريد)",
         "assets": "الملفات",
+        "contracts": "الاتفاقيات (النصوص والإعدادات)",
         "sandbox": "أدوات sandbox"
       },
       "permissionCount": "{n} من {total} أذونات",

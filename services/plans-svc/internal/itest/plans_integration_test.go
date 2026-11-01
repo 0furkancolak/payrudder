@@ -177,7 +177,7 @@ func seedContracts(t *testing.T, e *env, tenantID, suffix string) {
 		t.Fatal(err)
 	}
 	if _, err := e.contracts.RecordContractAcceptance(ctx, &plansv1.RecordContractAcceptanceRequest{CustomerExternalId: "cus_" + suffix, Source: "api",
-		Items: []*plansv1.ContractAcceptanceItem{{VersionId: v.GetId(), CheckboxText: "I accept"}}}); err != nil {
+		Items: []*plansv1.ContractAcceptanceItem{{VersionId: v.GetVersion().GetId(), CheckboxText: "I accept"}}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := e.contracts.CreateContractWithdrawal(ctx, &plansv1.CreateContractWithdrawalRequest{CustomerExternalId: "cus_" + suffix, Statement: "seed"}); err != nil {

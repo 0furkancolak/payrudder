@@ -112,3 +112,38 @@ func TestTaxesCouponsMailAndWebhooks(t *testing.T) {
 		t.Errorf("webhooks (inactive) = %v: nothing is added to an inactive environment", h)
 	}
 }
+
+func TestContractsAreCreatedOnlyWhenLiveHasNoSuchSeries(t *testing.T) {
+	v := func(kind, audience, sha string, number int32, current bool) *plansv1.ContractVersion {
+		return &plansv1.ContractVersion{Kind: kind, Audience: audience, Sha256: sha, Number: number, Current: current}
+	}
+	sandbox := []*plansv1.ContractVersion{
+		v("tos", "consumer", "t2", 2, true), v("tos", "consumer", "t1", 1, false), // the sandbox's old version is not promoted
+		v("privacy", "consumer", "p1", 1, true),
+		v("distance_sales", "business", "d1", 1, true),
+		v("pre_info", "consumer", "i1", 1, true),
+	}
+	live := []*plansv1.ContractVersion{
+		v("tos", "consumer", "t2", 5, true),        // the same text as the sandbox's current, as live's version 5
+		v("privacy", "consumer", "other", 3, true), // live's own text: never replaced
+		v("pre_info", "business", "ib", 1, true),   // another series: the consumer one is still missing
+	}
+	got := map[string]plansv1.PromoteChange_Action{}
+	for _, d := range Contracts(sandbox, live) {
+		got[d.Key] = d.Action
+	}
+	want := map[string]plansv1.PromoteChange_Action{
+		"tos/consumer":            plansv1.PromoteChange_ACTION_UNCHANGED,
+		"privacy/consumer":        plansv1.PromoteChange_ACTION_CONFLICT,
+		"distance_sales/business": plansv1.PromoteChange_ACTION_CREATE,
+		"pre_info/consumer":       plansv1.PromoteChange_ACTION_CREATE,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("decisions = %v", got)
+	}
+	for k, a := range want {
+		if got[k] != a {
+			t.Errorf("%s: %v, want %v", k, got[k], a)
+		}
+	}
+}

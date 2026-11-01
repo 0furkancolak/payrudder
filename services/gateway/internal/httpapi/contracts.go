@@ -64,12 +64,12 @@ func (s *Server) publishContractVersion(w http.ResponseWriter, r *http.Request) 
 	}
 	req.Author = contractAuthor(r)
 	resp, err := s.d.Contracts.PublishContractVersion(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp, err)
+	respond(w, r, http.StatusCreated, resp.GetVersion(), err)
 }
 
 func (s *Server) getContractVersion(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Contracts.GetContractVersion(r.Context(), &plansv1.GetContractVersionRequest{Id: r.PathValue("id")})
-	respond(w, r, http.StatusOK, resp, err)
+	respond(w, r, http.StatusOK, resp.GetVersion(), err)
 }
 
 func (s *Server) previewContract(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +90,7 @@ func (s *Server) getContractStarter(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) getContractSettings(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Contracts.GetContractSettings(r.Context(), &plansv1.GetContractSettingsRequest{})
-	respond(w, r, http.StatusOK, resp, err)
+	respond(w, r, http.StatusOK, resp.GetSettings(), err)
 }
 
 func (s *Server) setContractSettings(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +100,7 @@ func (s *Server) setContractSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp, err := s.d.Contracts.SetContractSettings(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
+	respond(w, r, http.StatusOK, resp.GetSettings(), err)
 }
 
 // contractRequirements is GET /v1/customers/{external_id}/contract-requirements: what the customer must accept before a subscription starts, with the text to show
@@ -153,7 +153,7 @@ func (s *Server) createContractWithdrawal(w http.ResponseWriter, r *http.Request
 		req.Source = "api"
 	}
 	resp, err := s.d.Contracts.CreateContractWithdrawal(r.Context(), req)
-	respond(w, r, http.StatusCreated, resp, err)
+	respond(w, r, http.StatusCreated, resp.GetWithdrawal(), err)
 }
 
 func (s *Server) listContractWithdrawals(w http.ResponseWriter, r *http.Request) {
@@ -171,5 +171,5 @@ func (s *Server) setContractWithdrawalStatus(w http.ResponseWriter, r *http.Requ
 	}
 	req.Id, req.DecidedBy = r.PathValue("id"), contractAuthor(r)
 	resp, err := s.d.Contracts.SetContractWithdrawalStatus(r.Context(), req)
-	respond(w, r, http.StatusOK, resp, err)
+	respond(w, r, http.StatusOK, resp.GetWithdrawal(), err)
 }

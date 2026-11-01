@@ -100,7 +100,7 @@ func seriesOf(rows []sqlc.ListContractCurrentRow) []domain.ContractSeries {
 }
 
 // PublishContractVersion adds the next version of (kind, audience).
-func (s *Service) PublishContractVersion(ctx context.Context, req *plansv1.PublishContractVersionRequest) (*plansv1.ContractVersion, error) {
+func (s *Service) PublishContractVersion(ctx context.Context, req *plansv1.PublishContractVersionRequest) (*plansv1.PublishContractVersionResponse, error) {
 	audience := req.GetAudience()
 	if audience == "" {
 		audience = domain.AudienceConsumer
@@ -140,7 +140,10 @@ func (s *Service) PublishContractVersion(ctx context.Context, req *plansv1.Publi
 		_, err = webhookscmd.Emit(ctx, q, v.ID, webhooksmodel.ContractVersionPublished, data, v.CreatedAt)
 		return err
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.PublishContractVersionResponse{Version: out}, nil
 }
 
 func sortedLocales(bodies map[string]string) []string {
@@ -174,7 +177,7 @@ func (s *Service) ListContractVersions(ctx context.Context, req *plansv1.ListCon
 	return &plansv1.ListContractVersionsResponse{Versions: out}, err
 }
 
-func (s *Service) GetContractVersion(ctx context.Context, req *plansv1.GetContractVersionRequest) (*plansv1.ContractVersion, error) {
+func (s *Service) GetContractVersion(ctx context.Context, req *plansv1.GetContractVersionRequest) (*plansv1.GetContractVersionResponse, error) {
 	id, err := uuid.Parse(req.GetId())
 	if err != nil {
 		return nil, versionNotFound()
@@ -195,7 +198,10 @@ func (s *Service) GetContractVersion(ctx context.Context, req *plansv1.GetContra
 		out = versionOf(v, cur[[2]string{v.Kind, v.Audience}])
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GetContractVersionResponse{Version: out}, nil
 }
 
 func versionNotFound() error {
@@ -256,7 +262,7 @@ func publishedKinds(rows []sqlc.ListContractCurrentRow) []string {
 	return orEmpty(out)
 }
 
-func (s *Service) GetContractSettings(ctx context.Context, _ *plansv1.GetContractSettingsRequest) (*plansv1.ContractSettings, error) {
+func (s *Service) GetContractSettings(ctx context.Context, _ *plansv1.GetContractSettingsRequest) (*plansv1.GetContractSettingsResponse, error) {
 	var out *plansv1.ContractSettings
 	err := s.tx(ctx, "contract settings", func(q *sqlc.Queries) error {
 		st, err := loadSettings(ctx, q)
@@ -273,11 +279,14 @@ func (s *Service) GetContractSettings(ctx context.Context, _ *plansv1.GetContrac
 		}
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.GetContractSettingsResponse{Settings: out}, nil
 }
 
 // SetContractSettings changes what is enforced. A kind can be required only once it has a published version, so that no payment is ever refused for a missing text.
-func (s *Service) SetContractSettings(ctx context.Context, req *plansv1.SetContractSettingsRequest) (*plansv1.ContractSettings, error) {
+func (s *Service) SetContractSettings(ctx context.Context, req *plansv1.SetContractSettingsRequest) (*plansv1.SetContractSettingsResponse, error) {
 	var required []string
 	for _, k := range req.GetRequiredKinds() {
 		if !domain.ValidContractKind(k) {
@@ -320,7 +329,10 @@ func (s *Service) SetContractSettings(ctx context.Context, req *plansv1.SetContr
 		out = settingsOf(st, published)
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SetContractSettingsResponse{Settings: out}, nil
 }
 
 // ---- requirements and the gate ----------------------------------------------------------------------------------------------------------------------------
@@ -843,7 +855,7 @@ func optUUID(field, raw string) (*uuid.UUID, error) {
 }
 
 // CreateContractWithdrawal records the statement of a customer who withdraws. Deciding it and refunding stay with the seller (docs/plans/21-contracts.md).
-func (s *Service) CreateContractWithdrawal(ctx context.Context, req *plansv1.CreateContractWithdrawalRequest) (*plansv1.ContractWithdrawal, error) {
+func (s *Service) CreateContractWithdrawal(ctx context.Context, req *plansv1.CreateContractWithdrawalRequest) (*plansv1.CreateContractWithdrawalResponse, error) {
 	source := req.GetSource()
 	if source == "" {
 		source = "api"
@@ -889,7 +901,10 @@ func (s *Service) CreateContractWithdrawal(ctx context.Context, req *plansv1.Cre
 		_, err = webhookscmd.Emit(ctx, q, w.ID, webhooksmodel.ContractWithdrawalRequested, raw, at)
 		return err
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.CreateContractWithdrawalResponse{Withdrawal: out}, nil
 }
 
 func (s *Service) ListContractWithdrawals(ctx context.Context, req *plansv1.ListContractWithdrawalsRequest) (*plansv1.ListContractWithdrawalsResponse, error) {
@@ -922,7 +937,7 @@ func (s *Service) ListContractWithdrawals(ctx context.Context, req *plansv1.List
 // withdrawalMoves are the decisions that can follow a status: received is decided once (accepted or rejected); an accepted one is later marked refunded.
 var withdrawalMoves = map[string][]string{"received": {"accepted", "rejected"}, "accepted": {"refunded"}}
 
-func (s *Service) SetContractWithdrawalStatus(ctx context.Context, req *plansv1.SetContractWithdrawalStatusRequest) (*plansv1.ContractWithdrawal, error) {
+func (s *Service) SetContractWithdrawalStatus(ctx context.Context, req *plansv1.SetContractWithdrawalStatusRequest) (*plansv1.SetContractWithdrawalStatusResponse, error) {
 	id, err := uuid.Parse(req.GetId())
 	if err != nil {
 		return nil, withdrawalNotFound()
@@ -954,7 +969,10 @@ func (s *Service) SetContractWithdrawalStatus(ctx context.Context, req *plansv1.
 		out = withdrawalOf(decided, c.ExternalID)
 		return nil
 	})
-	return out, err
+	if err != nil {
+		return nil, err
+	}
+	return &plansv1.SetContractWithdrawalStatusResponse{Withdrawal: out}, nil
 }
 
 func ptr[T any](v T) *T { return &v }

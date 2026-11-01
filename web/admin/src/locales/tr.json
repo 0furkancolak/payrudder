@@ -3543,6 +3543,7 @@
         "affiliates": "İş ortakları",
         "settings": "Ayarlar (vergi, yönlendirme, e-posta)",
         "assets": "Dosyalar",
+        "contracts": "Sözleşmeler (metinler ve ayarlar)",
         "sandbox": "Sandbox araçları"
       },
       "permissionCount": "{n} / {total} izin",

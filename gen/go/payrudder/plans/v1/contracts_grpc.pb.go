@@ -49,16 +49,16 @@ const (
 // Payrudder supplies templates and evidence, not legal guarantees: nothing here says a text is sufficient in any country.
 type ContractServiceClient interface {
 	// PublishContractVersion adds the next version to the series of (kind, audience). Its texts, one per language, are restricted markdown with {{variables}}.
-	PublishContractVersion(ctx context.Context, in *PublishContractVersionRequest, opts ...grpc.CallOption) (*ContractVersion, error)
+	PublishContractVersion(ctx context.Context, in *PublishContractVersionRequest, opts ...grpc.CallOption) (*PublishContractVersionResponse, error)
 	// ListContractVersions lists versions, newest first; kind and audience narrow it.
 	ListContractVersions(ctx context.Context, in *ListContractVersionsRequest, opts ...grpc.CallOption) (*ListContractVersionsResponse, error)
-	GetContractVersion(ctx context.Context, in *GetContractVersionRequest, opts ...grpc.CallOption) (*ContractVersion, error)
+	GetContractVersion(ctx context.Context, in *GetContractVersionRequest, opts ...grpc.CallOption) (*GetContractVersionResponse, error)
 	// PreviewContract renders a text the way a customer would see it, with sample values for the variables, and reports unknown variables.
 	PreviewContract(ctx context.Context, in *PreviewContractRequest, opts ...grpc.CallOption) (*PreviewContractResponse, error)
 	// GetContractStarter returns the starter text of a kind in a language (Turkish and English only), to be reviewed by a lawyer before use.
 	GetContractStarter(ctx context.Context, in *GetContractStarterRequest, opts ...grpc.CallOption) (*GetContractStarterResponse, error)
-	GetContractSettings(ctx context.Context, in *GetContractSettingsRequest, opts ...grpc.CallOption) (*ContractSettings, error)
-	SetContractSettings(ctx context.Context, in *SetContractSettingsRequest, opts ...grpc.CallOption) (*ContractSettings, error)
+	GetContractSettings(ctx context.Context, in *GetContractSettingsRequest, opts ...grpc.CallOption) (*GetContractSettingsResponse, error)
+	SetContractSettings(ctx context.Context, in *SetContractSettingsRequest, opts ...grpc.CallOption) (*SetContractSettingsResponse, error)
 	// GetContractRequirements says what the customer must accept before something that takes money starts, with the text to show and what was accepted already.
 	GetContractRequirements(ctx context.Context, in *GetContractRequirementsRequest, opts ...grpc.CallOption) (*GetContractRequirementsResponse, error)
 	// RecordContractAcceptance writes the evidence that a customer accepted the given versions together. It checks that the versions are the current ones.
@@ -67,9 +67,9 @@ type ContractServiceClient interface {
 	// GetContractSnapshot returns the page a customer accepted, as it was rendered then, and its sha256 (the same hash the acceptance holds).
 	GetContractSnapshot(ctx context.Context, in *GetContractSnapshotRequest, opts ...grpc.CallOption) (*GetContractSnapshotResponse, error)
 	// CreateContractWithdrawal records that a customer withdrew from a contract (the 14-day right). Deciding and refunding stay with the seller.
-	CreateContractWithdrawal(ctx context.Context, in *CreateContractWithdrawalRequest, opts ...grpc.CallOption) (*ContractWithdrawal, error)
+	CreateContractWithdrawal(ctx context.Context, in *CreateContractWithdrawalRequest, opts ...grpc.CallOption) (*CreateContractWithdrawalResponse, error)
 	ListContractWithdrawals(ctx context.Context, in *ListContractWithdrawalsRequest, opts ...grpc.CallOption) (*ListContractWithdrawalsResponse, error)
-	SetContractWithdrawalStatus(ctx context.Context, in *SetContractWithdrawalStatusRequest, opts ...grpc.CallOption) (*ContractWithdrawal, error)
+	SetContractWithdrawalStatus(ctx context.Context, in *SetContractWithdrawalStatusRequest, opts ...grpc.CallOption) (*SetContractWithdrawalStatusResponse, error)
 }
 
 type contractServiceClient struct {
@@ -80,9 +80,9 @@ func NewContractServiceClient(cc grpc.ClientConnInterface) ContractServiceClient
 	return &contractServiceClient{cc}
 }
 
-func (c *contractServiceClient) PublishContractVersion(ctx context.Context, in *PublishContractVersionRequest, opts ...grpc.CallOption) (*ContractVersion, error) {
+func (c *contractServiceClient) PublishContractVersion(ctx context.Context, in *PublishContractVersionRequest, opts ...grpc.CallOption) (*PublishContractVersionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContractVersion)
+	out := new(PublishContractVersionResponse)
 	err := c.cc.Invoke(ctx, ContractService_PublishContractVersion_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -100,9 +100,9 @@ func (c *contractServiceClient) ListContractVersions(ctx context.Context, in *Li
 	return out, nil
 }
 
-func (c *contractServiceClient) GetContractVersion(ctx context.Context, in *GetContractVersionRequest, opts ...grpc.CallOption) (*ContractVersion, error) {
+func (c *contractServiceClient) GetContractVersion(ctx context.Context, in *GetContractVersionRequest, opts ...grpc.CallOption) (*GetContractVersionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContractVersion)
+	out := new(GetContractVersionResponse)
 	err := c.cc.Invoke(ctx, ContractService_GetContractVersion_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -130,9 +130,9 @@ func (c *contractServiceClient) GetContractStarter(ctx context.Context, in *GetC
 	return out, nil
 }
 
-func (c *contractServiceClient) GetContractSettings(ctx context.Context, in *GetContractSettingsRequest, opts ...grpc.CallOption) (*ContractSettings, error) {
+func (c *contractServiceClient) GetContractSettings(ctx context.Context, in *GetContractSettingsRequest, opts ...grpc.CallOption) (*GetContractSettingsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContractSettings)
+	out := new(GetContractSettingsResponse)
 	err := c.cc.Invoke(ctx, ContractService_GetContractSettings_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -140,9 +140,9 @@ func (c *contractServiceClient) GetContractSettings(ctx context.Context, in *Get
 	return out, nil
 }
 
-func (c *contractServiceClient) SetContractSettings(ctx context.Context, in *SetContractSettingsRequest, opts ...grpc.CallOption) (*ContractSettings, error) {
+func (c *contractServiceClient) SetContractSettings(ctx context.Context, in *SetContractSettingsRequest, opts ...grpc.CallOption) (*SetContractSettingsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContractSettings)
+	out := new(SetContractSettingsResponse)
 	err := c.cc.Invoke(ctx, ContractService_SetContractSettings_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -190,9 +190,9 @@ func (c *contractServiceClient) GetContractSnapshot(ctx context.Context, in *Get
 	return out, nil
 }
 
-func (c *contractServiceClient) CreateContractWithdrawal(ctx context.Context, in *CreateContractWithdrawalRequest, opts ...grpc.CallOption) (*ContractWithdrawal, error) {
+func (c *contractServiceClient) CreateContractWithdrawal(ctx context.Context, in *CreateContractWithdrawalRequest, opts ...grpc.CallOption) (*CreateContractWithdrawalResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContractWithdrawal)
+	out := new(CreateContractWithdrawalResponse)
 	err := c.cc.Invoke(ctx, ContractService_CreateContractWithdrawal_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -210,9 +210,9 @@ func (c *contractServiceClient) ListContractWithdrawals(ctx context.Context, in 
 	return out, nil
 }
 
-func (c *contractServiceClient) SetContractWithdrawalStatus(ctx context.Context, in *SetContractWithdrawalStatusRequest, opts ...grpc.CallOption) (*ContractWithdrawal, error) {
+func (c *contractServiceClient) SetContractWithdrawalStatus(ctx context.Context, in *SetContractWithdrawalStatusRequest, opts ...grpc.CallOption) (*SetContractWithdrawalStatusResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContractWithdrawal)
+	out := new(SetContractWithdrawalStatusResponse)
 	err := c.cc.Invoke(ctx, ContractService_SetContractWithdrawalStatus_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -234,16 +234,16 @@ func (c *contractServiceClient) SetContractWithdrawalStatus(ctx context.Context,
 // Payrudder supplies templates and evidence, not legal guarantees: nothing here says a text is sufficient in any country.
 type ContractServiceServer interface {
 	// PublishContractVersion adds the next version to the series of (kind, audience). Its texts, one per language, are restricted markdown with {{variables}}.
-	PublishContractVersion(context.Context, *PublishContractVersionRequest) (*ContractVersion, error)
+	PublishContractVersion(context.Context, *PublishContractVersionRequest) (*PublishContractVersionResponse, error)
 	// ListContractVersions lists versions, newest first; kind and audience narrow it.
 	ListContractVersions(context.Context, *ListContractVersionsRequest) (*ListContractVersionsResponse, error)
-	GetContractVersion(context.Context, *GetContractVersionRequest) (*ContractVersion, error)
+	GetContractVersion(context.Context, *GetContractVersionRequest) (*GetContractVersionResponse, error)
 	// PreviewContract renders a text the way a customer would see it, with sample values for the variables, and reports unknown variables.
 	PreviewContract(context.Context, *PreviewContractRequest) (*PreviewContractResponse, error)
 	// GetContractStarter returns the starter text of a kind in a language (Turkish and English only), to be reviewed by a lawyer before use.
 	GetContractStarter(context.Context, *GetContractStarterRequest) (*GetContractStarterResponse, error)
-	GetContractSettings(context.Context, *GetContractSettingsRequest) (*ContractSettings, error)
-	SetContractSettings(context.Context, *SetContractSettingsRequest) (*ContractSettings, error)
+	GetContractSettings(context.Context, *GetContractSettingsRequest) (*GetContractSettingsResponse, error)
+	SetContractSettings(context.Context, *SetContractSettingsRequest) (*SetContractSettingsResponse, error)
 	// GetContractRequirements says what the customer must accept before something that takes money starts, with the text to show and what was accepted already.
 	GetContractRequirements(context.Context, *GetContractRequirementsRequest) (*GetContractRequirementsResponse, error)
 	// RecordContractAcceptance writes the evidence that a customer accepted the given versions together. It checks that the versions are the current ones.
@@ -252,9 +252,9 @@ type ContractServiceServer interface {
 	// GetContractSnapshot returns the page a customer accepted, as it was rendered then, and its sha256 (the same hash the acceptance holds).
 	GetContractSnapshot(context.Context, *GetContractSnapshotRequest) (*GetContractSnapshotResponse, error)
 	// CreateContractWithdrawal records that a customer withdrew from a contract (the 14-day right). Deciding and refunding stay with the seller.
-	CreateContractWithdrawal(context.Context, *CreateContractWithdrawalRequest) (*ContractWithdrawal, error)
+	CreateContractWithdrawal(context.Context, *CreateContractWithdrawalRequest) (*CreateContractWithdrawalResponse, error)
 	ListContractWithdrawals(context.Context, *ListContractWithdrawalsRequest) (*ListContractWithdrawalsResponse, error)
-	SetContractWithdrawalStatus(context.Context, *SetContractWithdrawalStatusRequest) (*ContractWithdrawal, error)
+	SetContractWithdrawalStatus(context.Context, *SetContractWithdrawalStatusRequest) (*SetContractWithdrawalStatusResponse, error)
 	mustEmbedUnimplementedContractServiceServer()
 }
 
@@ -265,13 +265,13 @@ type ContractServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedContractServiceServer struct{}
 
-func (UnimplementedContractServiceServer) PublishContractVersion(context.Context, *PublishContractVersionRequest) (*ContractVersion, error) {
+func (UnimplementedContractServiceServer) PublishContractVersion(context.Context, *PublishContractVersionRequest) (*PublishContractVersionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PublishContractVersion not implemented")
 }
 func (UnimplementedContractServiceServer) ListContractVersions(context.Context, *ListContractVersionsRequest) (*ListContractVersionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListContractVersions not implemented")
 }
-func (UnimplementedContractServiceServer) GetContractVersion(context.Context, *GetContractVersionRequest) (*ContractVersion, error) {
+func (UnimplementedContractServiceServer) GetContractVersion(context.Context, *GetContractVersionRequest) (*GetContractVersionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetContractVersion not implemented")
 }
 func (UnimplementedContractServiceServer) PreviewContract(context.Context, *PreviewContractRequest) (*PreviewContractResponse, error) {
@@ -280,10 +280,10 @@ func (UnimplementedContractServiceServer) PreviewContract(context.Context, *Prev
 func (UnimplementedContractServiceServer) GetContractStarter(context.Context, *GetContractStarterRequest) (*GetContractStarterResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetContractStarter not implemented")
 }
-func (UnimplementedContractServiceServer) GetContractSettings(context.Context, *GetContractSettingsRequest) (*ContractSettings, error) {
+func (UnimplementedContractServiceServer) GetContractSettings(context.Context, *GetContractSettingsRequest) (*GetContractSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetContractSettings not implemented")
 }
-func (UnimplementedContractServiceServer) SetContractSettings(context.Context, *SetContractSettingsRequest) (*ContractSettings, error) {
+func (UnimplementedContractServiceServer) SetContractSettings(context.Context, *SetContractSettingsRequest) (*SetContractSettingsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetContractSettings not implemented")
 }
 func (UnimplementedContractServiceServer) GetContractRequirements(context.Context, *GetContractRequirementsRequest) (*GetContractRequirementsResponse, error) {
@@ -298,13 +298,13 @@ func (UnimplementedContractServiceServer) ListContractAcceptances(context.Contex
 func (UnimplementedContractServiceServer) GetContractSnapshot(context.Context, *GetContractSnapshotRequest) (*GetContractSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetContractSnapshot not implemented")
 }
-func (UnimplementedContractServiceServer) CreateContractWithdrawal(context.Context, *CreateContractWithdrawalRequest) (*ContractWithdrawal, error) {
+func (UnimplementedContractServiceServer) CreateContractWithdrawal(context.Context, *CreateContractWithdrawalRequest) (*CreateContractWithdrawalResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateContractWithdrawal not implemented")
 }
 func (UnimplementedContractServiceServer) ListContractWithdrawals(context.Context, *ListContractWithdrawalsRequest) (*ListContractWithdrawalsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListContractWithdrawals not implemented")
 }
-func (UnimplementedContractServiceServer) SetContractWithdrawalStatus(context.Context, *SetContractWithdrawalStatusRequest) (*ContractWithdrawal, error) {
+func (UnimplementedContractServiceServer) SetContractWithdrawalStatus(context.Context, *SetContractWithdrawalStatusRequest) (*SetContractWithdrawalStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetContractWithdrawalStatus not implemented")
 }
 func (UnimplementedContractServiceServer) mustEmbedUnimplementedContractServiceServer() {}

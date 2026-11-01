@@ -90,11 +90,11 @@ func (f *fakeContracts) RecordContractAcceptance(ctx context.Context, req *plans
 	return &plansv1.RecordContractAcceptanceResponse{GroupId: "grp-1", Acceptances: []*plansv1.ContractAcceptance{{Id: "acc-1", Kind: "tos", Source: req.GetSource(), CustomerExternalId: req.GetCustomerExternalId()}}}, nil
 }
 
-func (f *fakeContracts) PublishContractVersion(_ context.Context, req *plansv1.PublishContractVersionRequest) (*plansv1.ContractVersion, error) {
+func (f *fakeContracts) PublishContractVersion(_ context.Context, req *plansv1.PublishContractVersionRequest) (*plansv1.PublishContractVersionResponse, error) {
 	f.mu.Lock()
 	f.published = req
 	f.mu.Unlock()
-	return &plansv1.ContractVersion{Id: "ver-1", Kind: req.GetKind(), Audience: "consumer", Number: 1, Material: true, Bodies: req.GetBodies(), Author: req.GetAuthor(), CreateTime: timestamppb.Now()}, nil
+	return &plansv1.PublishContractVersionResponse{Version: &plansv1.ContractVersion{Id: "ver-1", Kind: req.GetKind(), Audience: "consumer", Number: 1, Material: true, Bodies: req.GetBodies(), Author: req.GetAuthor(), CreateTime: timestamppb.Now()}}, nil
 }
 
 func (f *fakeContracts) GetContractSnapshot(_ context.Context, req *plansv1.GetContractSnapshotRequest) (*plansv1.GetContractSnapshotResponse, error) {
@@ -104,22 +104,22 @@ func (f *fakeContracts) GetContractSnapshot(_ context.Context, req *plansv1.GetC
 	return &plansv1.GetContractSnapshotResponse{Html: "<html><body>the page</body></html>", Sha256: "abc123"}, nil
 }
 
-func (f *fakeContracts) SetContractSettings(_ context.Context, req *plansv1.SetContractSettingsRequest) (*plansv1.ContractSettings, error) {
-	return &plansv1.ContractSettings{RequiredKinds: req.GetRequiredKinds(), ImmediateStart: req.GetImmediateStart(), RetentionMonths: 36, PublishedKinds: []string{}}, nil
+func (f *fakeContracts) SetContractSettings(_ context.Context, req *plansv1.SetContractSettingsRequest) (*plansv1.SetContractSettingsResponse, error) {
+	return &plansv1.SetContractSettingsResponse{Settings: &plansv1.ContractSettings{RequiredKinds: req.GetRequiredKinds(), ImmediateStart: req.GetImmediateStart(), RetentionMonths: 36, PublishedKinds: []string{}}}, nil
 }
 
-func (f *fakeContracts) CreateContractWithdrawal(_ context.Context, req *plansv1.CreateContractWithdrawalRequest) (*plansv1.ContractWithdrawal, error) {
+func (f *fakeContracts) CreateContractWithdrawal(_ context.Context, req *plansv1.CreateContractWithdrawalRequest) (*plansv1.CreateContractWithdrawalResponse, error) {
 	f.mu.Lock()
 	f.withdrawal = req
 	f.mu.Unlock()
-	return &plansv1.ContractWithdrawal{Id: "wd-1", CustomerExternalId: req.GetCustomerExternalId(), Source: req.GetSource(), Status: "received", ReceiveTime: timestamppb.Now()}, nil
+	return &plansv1.CreateContractWithdrawalResponse{Withdrawal: &plansv1.ContractWithdrawal{Id: "wd-1", CustomerExternalId: req.GetCustomerExternalId(), Source: req.GetSource(), Status: "received", ReceiveTime: timestamppb.Now()}}, nil
 }
 
-func (f *fakeContracts) SetContractWithdrawalStatus(_ context.Context, req *plansv1.SetContractWithdrawalStatusRequest) (*plansv1.ContractWithdrawal, error) {
+func (f *fakeContracts) SetContractWithdrawalStatus(_ context.Context, req *plansv1.SetContractWithdrawalStatusRequest) (*plansv1.SetContractWithdrawalStatusResponse, error) {
 	f.mu.Lock()
 	f.decided = req
 	f.mu.Unlock()
-	return &plansv1.ContractWithdrawal{Id: req.GetId(), Status: req.GetStatus(), DecidedBy: req.GetDecidedBy(), ReceiveTime: timestamppb.Now()}, nil
+	return &plansv1.SetContractWithdrawalStatusResponse{Withdrawal: &plansv1.ContractWithdrawal{Id: req.GetId(), Status: req.GetStatus(), DecidedBy: req.GetDecidedBy(), ReceiveTime: timestamppb.Now()}}, nil
 }
 
 func (f *fakeContracts) ListContractVersions(context.Context, *plansv1.ListContractVersionsRequest) (*plansv1.ListContractVersionsResponse, error) {

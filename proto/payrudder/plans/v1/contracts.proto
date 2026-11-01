@@ -14,16 +14,16 @@ import "google/protobuf/timestamp.proto";
 // Payrudder supplies templates and evidence, not legal guarantees: nothing here says a text is sufficient in any country.
 service ContractService {
   // PublishContractVersion adds the next version to the series of (kind, audience). Its texts, one per language, are restricted markdown with {{variables}}.
-  rpc PublishContractVersion(PublishContractVersionRequest) returns (ContractVersion);
+  rpc PublishContractVersion(PublishContractVersionRequest) returns (PublishContractVersionResponse);
   // ListContractVersions lists versions, newest first; kind and audience narrow it.
   rpc ListContractVersions(ListContractVersionsRequest) returns (ListContractVersionsResponse);
-  rpc GetContractVersion(GetContractVersionRequest) returns (ContractVersion);
+  rpc GetContractVersion(GetContractVersionRequest) returns (GetContractVersionResponse);
   // PreviewContract renders a text the way a customer would see it, with sample values for the variables, and reports unknown variables.
   rpc PreviewContract(PreviewContractRequest) returns (PreviewContractResponse);
   // GetContractStarter returns the starter text of a kind in a language (Turkish and English only), to be reviewed by a lawyer before use.
   rpc GetContractStarter(GetContractStarterRequest) returns (GetContractStarterResponse);
-  rpc GetContractSettings(GetContractSettingsRequest) returns (ContractSettings);
-  rpc SetContractSettings(SetContractSettingsRequest) returns (ContractSettings);
+  rpc GetContractSettings(GetContractSettingsRequest) returns (GetContractSettingsResponse);
+  rpc SetContractSettings(SetContractSettingsRequest) returns (SetContractSettingsResponse);
   // GetContractRequirements says what the customer must accept before something that takes money starts, with the text to show and what was accepted already.
   rpc GetContractRequirements(GetContractRequirementsRequest) returns (GetContractRequirementsResponse);
   // RecordContractAcceptance writes the evidence that a customer accepted the given versions together. It checks that the versions are the current ones.
@@ -32,9 +32,9 @@ service ContractService {
   // GetContractSnapshot returns the page a customer accepted, as it was rendered then, and its sha256 (the same hash the acceptance holds).
   rpc GetContractSnapshot(GetContractSnapshotRequest) returns (GetContractSnapshotResponse);
   // CreateContractWithdrawal records that a customer withdrew from a contract (the 14-day right). Deciding and refunding stay with the seller.
-  rpc CreateContractWithdrawal(CreateContractWithdrawalRequest) returns (ContractWithdrawal);
+  rpc CreateContractWithdrawal(CreateContractWithdrawalRequest) returns (CreateContractWithdrawalResponse);
   rpc ListContractWithdrawals(ListContractWithdrawalsRequest) returns (ListContractWithdrawalsResponse);
-  rpc SetContractWithdrawalStatus(SetContractWithdrawalStatusRequest) returns (ContractWithdrawal);
+  rpc SetContractWithdrawalStatus(SetContractWithdrawalStatusRequest) returns (SetContractWithdrawalStatusResponse);
 }
 
 // ContractVersion is one published edition of an agreement, in one or more languages.
@@ -309,4 +309,28 @@ message SetContractWithdrawalStatusRequest {
   string status = 2;
   string note = 3;
   string decided_by = 4;
+}
+
+message PublishContractVersionResponse {
+  ContractVersion version = 1;
+}
+
+message GetContractVersionResponse {
+  ContractVersion version = 1;
+}
+
+message GetContractSettingsResponse {
+  ContractSettings settings = 1;
+}
+
+message SetContractSettingsResponse {
+  ContractSettings settings = 1;
+}
+
+message CreateContractWithdrawalResponse {
+  ContractWithdrawal withdrawal = 1;
+}
+
+message SetContractWithdrawalStatusResponse {
+  ContractWithdrawal withdrawal = 1;
 }
