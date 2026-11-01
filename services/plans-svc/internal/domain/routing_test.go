@@ -90,3 +90,17 @@ func TestValidateRulesAccountKeys(t *testing.T) {
 		}
 	}
 }
+
+// A subscription, a provider migration and a synced provider subscription name the account by its key, so the key's label is a valid part of the name.
+func TestValidProviderNameTakesAnAccountKey(t *testing.T) {
+	for _, ok := range []string{"paddle", "iyzico", "paddle~eu", "iyzico~istanbul", "stripe~eu-west-2"} {
+		if !ValidProviderName(ok) {
+			t.Errorf("%q is a valid account key", ok)
+		}
+	}
+	for _, bad := range []string{"", "~eu", "paddle~", "paddle~EU", "paddle~a~b", "Paddle", "paddle~-x", "paddle eu"} {
+		if ValidProviderName(bad) {
+			t.Errorf("%q is not a valid account key", bad)
+		}
+	}
+}

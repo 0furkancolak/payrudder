@@ -41,6 +41,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("MeterAggregations", testMeterAggregations)
 	t.Run("Subscriptions", testSubscriptions)
 	t.Run("SubscriptionLifecycle", testSubscriptionLifecycle)
+	t.Run("LabelledAccounts", testLabelledAccounts)
 	t.Run("CustomerBlock", testCustomerBlock)
 	t.Run("CustomerBlockDetails", testCustomerBlockDetails)
 	t.Run("TenantStatus", testTenantStatus)
