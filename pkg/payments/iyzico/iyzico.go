@@ -133,7 +133,8 @@ func (c *Client) KeyMode() (live, known bool) {
 // issues the invoice. The currency list is the intersection of iyzico's and Payrudder's.
 func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 
-// Caps are iyzico's capabilities, which do not depend on an account: routing rules are checked against them before any account exists.
+// Caps are iyzico's capabilities, which do not depend on an account: routing rules are checked against them before any account exists. Neither charges nor
+// refunds are idempotent (a repeated refund is a second refund, docs/iyzico-compatibility-matrix.md), so payments-worker guards both itself.
 func Caps() payments.Capabilities {
 	return payments.Capabilities{Name: Name, Refunds: true, HostedCheckout: true, Currencies: []string{"TRY", "USD", "EUR", "GBP", "CHF"}}
 }

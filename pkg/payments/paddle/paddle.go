@@ -132,7 +132,8 @@ func (c *Client) KeyMode() (live, known bool) {
 // Charges are not idempotent by key. Paddle bills in more currencies than Payrudder lists; the intersection is declared.
 func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 
-// Caps are Paddle's capabilities, which do not depend on an account.
+// Caps are Paddle's capabilities, which do not depend on an account. Refunds are not idempotent: the adjustment POST sends no idempotency header (the key is only in the
+// reason text) and the docs read do not promise one (docs/paddle-compatibility-matrix.md), so payments-worker never sends a refund again under a key it has used.
 func Caps() payments.Capabilities {
 	return payments.Capabilities{Name: Name, OwnsRenewal: true, OwnsDunning: true, CalculatesTax: true, HostedCheckout: true, SendsOwnReceipts: true, Refunds: true,
 		Currencies: []string{"USD", "EUR", "GBP", "CHF", "JPY"}}

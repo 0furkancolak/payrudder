@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 var guardContexts = []Ctx{
@@ -15,6 +16,12 @@ var guardContexts = []Ctx{
 	{TotalMinor: 100, Link: true, DunningAttempt: 0, MaxDunning: 3},
 	{TotalMinor: 100, Link: true, DunningAttempt: 3, MaxDunning: 3},
 	{TotalMinor: 0, Link: true, Paid: true, DunningAttempt: 0, MaxDunning: 0},
+	// A "not found" answer at each side of both limits, and with the horizon turned off.
+	{TotalMinor: 100, MaxDunning: 3, NotFoundGrace: 10 * time.Minute, KeyHorizon: 24 * time.Hour},
+	{TotalMinor: 100, MaxDunning: 3, NotFoundGrace: 10 * time.Minute, KeyHorizon: 24 * time.Hour, ChargeAge: 10 * time.Minute},
+	{TotalMinor: 100, MaxDunning: 3, NotFoundGrace: 10 * time.Minute, KeyHorizon: 24 * time.Hour, ChargeAge: 24 * time.Hour},
+	{TotalMinor: 100, MaxDunning: 3, NotFoundGrace: 10 * time.Minute, KeyHorizon: 24 * time.Hour, ChargeAge: 25 * time.Hour},
+	{TotalMinor: 100, MaxDunning: 3, NotFoundGrace: 10 * time.Minute, ChargeAge: 25 * time.Hour},
 }
 
 // Every (state, event) pair either has exactly one row for each guard context or none: guards never overlap and never
@@ -194,5 +201,36 @@ func TestProviderThatMailsItsOwnReceiptSkipsOurs(t *testing.T) {
 	got, _ = Next(Uncollectible, EvContinue, Ctx{ProviderMails: true})
 	if got.To != NotifyRequested {
 		t.Fatalf("uncollectible with a mailing provider: %+v", got)
+	}
+}
+
+// A "not found" status answer is trusted only inside a window of the charge's age: before the grace period the status is asked again later (a provider may not show a
+// charge it has just taken, or committed late after a lost answer), after the key horizon the saga parks instead of charging again with a key the provider may have
+// forgotten (G2 of plan 22). The limits themselves belong to the trusted window.
+func TestNotFoundIsReadByTheAgeOfTheCharge(t *testing.T) {
+	const grace, horizon = 10 * time.Minute, 24 * time.Hour
+	for name, tc := range map[string]struct {
+		age, horizon time.Duration
+		to           State
+		eff          Effect
+	}{
+		"just charged":              {0, horizon, PaymentUnknown, EffRecheck},
+		"a nanosecond before grace": {grace - 1, horizon, PaymentUnknown, EffRecheck},
+		"exactly at the grace":      {grace, horizon, PaymentRequested, EffCharge},
+		"in the middle":             {6 * time.Hour, horizon, PaymentRequested, EffCharge},
+		"exactly at the horizon":    {horizon, horizon, PaymentRequested, EffCharge},
+		"past the horizon":          {horizon + 1, horizon, PaymentUnknown, EffNone},
+		"a week old":                {7 * 24 * time.Hour, horizon, PaymentUnknown, EffNone},
+		"no horizon set":            {7 * 24 * time.Hour, 0, PaymentRequested, EffCharge},
+	} {
+		r, ok := Next(PaymentUnknown, EvStatusNotFound, Ctx{TotalMinor: 500, MaxDunning: 3, NotFoundGrace: grace, KeyHorizon: tc.horizon, ChargeAge: tc.age})
+		if !ok || r.To != tc.to || r.Effect != tc.eff {
+			t.Errorf("%s: Next = %+v %v, want %s/%q", name, r, ok, tc.to, tc.eff)
+		}
+	}
+	// Any other answer is not read by age: a charge that was found is never charged again, however old.
+	old := Ctx{TotalMinor: 500, MaxDunning: 3, NotFoundGrace: grace, KeyHorizon: horizon, ChargeAge: 30 * 24 * time.Hour}
+	if r, ok := Next(PaymentUnknown, EvStatusSucceeded, old); !ok || r.To != Paid || r.Effect != EffNone {
+		t.Errorf("a found charge, old: %+v %v", r, ok)
 	}
 }

@@ -118,9 +118,9 @@ stateDiagram-v2
     PAYMENT_UNKNOWN --> PAYMENT_DECLINED: PaymentDeclined [dunning attempts left] / StatusDeclined [dunning attempts left]
     PAYMENT_UNKNOWN --> UNCOLLECTIBLE: PaymentDeclined [dunning exhausted] / StatusDeclined [dunning exhausted]
     PAYMENT_UNKNOWN --> AWAITING_PAYMENT: PaymentDeclined [customer pays, no dunning] / StatusDeclined [customer pays, no dunning]
-    PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: StatusNotFound
+    PAYMENT_UNKNOWN --> PAYMENT_UNKNOWN: StatusNotFound [not found, charge younger than the grace period] / StatusNotFound [not found, charge older than the key horizon] / Retry / StepExhausted
+    PAYMENT_UNKNOWN --> PAYMENT_REQUESTED: StatusNotFound [not found, charge old enough to be sure]
     PAYMENT_UNKNOWN --> PAYMENT_PENDING: StatusPending
-    PAYMENT_UNKNOWN --> PAYMENT_UNKNOWN: Retry / StepExhausted
     PAYMENT_PENDING --> PAYMENT_PENDING: StatusPending / PollDue / Retry / StepExhausted
     PAYMENT_PENDING --> PAID: StatusSucceeded / OfflineSettlement
     PAYMENT_PENDING --> PAYMENT_REQUESTED: StatusNotFound
@@ -172,7 +172,7 @@ stateDiagram-v2
   dedups by `idempotency_key = invoice_id + ":charge:" + dunning_attempt`.
 - **Timeouts.** A sweeper every 30 s selects `state LIKE '%_REQUESTED' AND step_deadline < now()`
   (`FOR UPDATE SKIP LOCKED`) and re-issues the command with `attempt+1`, up to 3. After that it moves to `*_FAILED` / `PAYMENT_UNKNOWN`.
-- **PAYMENT_UNKNOWN.** Never re-charge blindly. Publish `payment.status` (query PSP by idempotency key) first.
+- **PAYMENT_UNKNOWN.** Never re-charge blindly. Publish `payment.status` (query PSP by idempotency key) first. A "not found" answer is read by the age of the charge under its key (plan 22 G2): younger than `PAYRUDDER_NOTFOUND_GRACE` (10m, sandbox `PAYRUDDER_NOTFOUND_GRACE_SANDBOX` 10s) it is not trusted and the status is asked again when the grace period is over (the step deadline, no command meanwhile); between the grace period and `PAYRUDDER_KEY_HORIZON` (24h) the charge is sent again under the same key; older than the horizon the provider may have forgotten the key, so the saga parks in `PAYMENT_UNKNOWN` with a `last_error` that says so and the operator decides. The three values are default (not agreed); the 24 hours are Stripe's key retention (`docs/stripe-compatibility-matrix.md`), iyzico's is unknown.
   This is the classic "did my timed-out charge go through?" problem.
 - **A payment that settles later** (a bank transfer, phase 29) leaves the saga in `PAYMENT_PENDING`: no command is outstanding, so there is no step deadline and nothing to retry or dead-letter. The first time it is entered the
   customer is mailed the bank details and the payment reference (`invoice_transfer.v1`); then the status is asked again every `PAYRUDDER_TRANSFER_POLL`, and at once when payments-worker nudges the saga (`RetryInvoiceSaga`) after an
@@ -259,7 +259,7 @@ Customers within a run are rated in pages of 500 streamed from aggregator. **Tar
 
 Code: `services/billing-svc` (modules under `internal/`, see [ADR 0020](../adr/0020-modules-cqrs-errors-config.md): the saga is `sagas/{model,command}`, billing runs `billingruns/{model,query,command}`, rating `rating` and `rating/inputs`, wiring `api`), commands in `proto/payrudder/commands/v1`, the RabbitMQ
 topology in `pkg/rabbitx` (exported to `deploy/rabbitmq/definitions.json`, checked by a test). Configuration:
-`PAYRUDDER_SCHEDULER_INTERVAL` (1m), `PAYRUDDER_SWEEP_INTERVAL` (30s), `PAYRUDDER_STEP_TIMEOUT` (2m), `PAYRUDDER_WATERMARK_DELAY` (30s), `PAYRUDDER_TRANSFER_POLL` (6h, phase 29).
+`PAYRUDDER_SCHEDULER_INTERVAL` (1m), `PAYRUDDER_SWEEP_INTERVAL` (30s), `PAYRUDDER_STEP_TIMEOUT` (2m), `PAYRUDDER_WATERMARK_DELAY` (30s), `PAYRUDDER_TRANSFER_POLL` (6h, phase 29), `PAYRUDDER_NOTFOUND_GRACE` (10m), `PAYRUDDER_NOTFOUND_GRACE_SANDBOX` (10s), `PAYRUDDER_KEY_HORIZON` (24h).
 Gateway routes: `GET /v1/invoices[/{id}]`, `POST /v1/sandbox/close-period`, and the operator routes under `/admin/v1`
 (`billing/close-period`, `tenants/{id}/billing-runs/{period}`, `invoices/{id}/retry|void`).
 
@@ -305,7 +305,7 @@ A refund credit note (`refund = true`) needs a card payment to return: an invoic
 
 ## As built: refunds, events and hosted invoices (Phase 23)
 
-- **Credit note refunds:** `credit_notes.disposition = 'refund'` rows carry `refund_state`, `refund_attempt`, `refund_command_id`; the reply consumer matches a `RefundPayment` reply to the note by command id (`runs.SettleRefund`) before it looks for a saga; the scheduler's tick resends unanswered refunds (`SweepRefunds`).
+- **Credit note refunds:** `credit_notes.disposition = 'refund'` rows carry `refund_state`, `refund_attempt`, `refund_command_id`; the reply consumer matches a `RefundPayment` reply to the note by command id (`runs.SettleRefund`) before it looks for a saga; the scheduler's tick resends unanswered refunds (`SweepRefunds`) with a new command id and the same idempotency key. A provider that dedupes by key (Stripe) answers the resend itself; for the others payments-worker does (`Capabilities.IdempotentRefunds`, plan 22 G1): it answers from its ledger and attempts, and a refund that was started before and whose outcome is unknown is not sent again but answered `REFUND_OUTCOME_UNKNOWN`, which fails the note for the operator to check at the provider. A retry after such an answer or a timeout keeps the key; after a refusal it takes a new one.
 - **Tenant events:** `tenant_event_outbox` is written in the transaction of the change (`saga.TenantEvent`) and drained to plans-svc's `RecordTenantEvent` every five seconds (`FlushTenantEvents`).
 - **Dunning settings:** `dunning_settings` (per tenant), read by the saga engine when it loads a saga.
 - **Hosted invoices:** `invoice_links` (token hash only); `HostedInvoiceService` has no tenant, the token is the credential, and answers one error for unknown, expired and revoked tokens.

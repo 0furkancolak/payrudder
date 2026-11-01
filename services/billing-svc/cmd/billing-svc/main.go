@@ -68,6 +68,11 @@ type Config struct {
 	// TransferPoll is how often a pending bank transfer is looked for in the ledger (an operator's receipt does not wait for it).
 	TransferPoll   time.Duration `env:"PAYRUDDER_TRANSFER_POLL"`
 	WatermarkDelay time.Duration `env:"PAYRUDDER_WATERMARK_DELAY"`
+	// When a "not found" status answer may be acted on by charging again (plan 22 G2): not before the grace period after the charge was first sent, not after
+	// the provider has forgotten its idempotency key. Defaults (not agreed): 10m (sandbox 10s) and 24h.
+	NotFoundGrace        time.Duration `env:"PAYRUDDER_NOTFOUND_GRACE"`
+	NotFoundGraceSandbox time.Duration `env:"PAYRUDDER_NOTFOUND_GRACE_SANDBOX"`
+	KeyHorizon           time.Duration `env:"PAYRUDDER_KEY_HORIZON"`
 	// Dunning delays before payment retry 1..3 (ADR 0011: sandbox tenants run on minutes instead of days).
 	DunningLive    []time.Duration `env:"PAYRUDDER_DUNNING_LIVE" envSeparator:","`
 	DunningSandbox []time.Duration `env:"PAYRUDDER_DUNNING_SANDBOX" envSeparator:","`
@@ -173,7 +178,8 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		}
 		return env.FromProto(r.GetTenant().GetEnvironment())
 	}, 0)
-	eng, err := sagacommand.NewEngine(sagacommand.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox, Log: log, Tenants: tenantEnvs})
+	eng, err := sagacommand.NewEngine(sagacommand.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox,
+		NotFoundGrace: cfg.NotFoundGrace, NotFoundGraceSandbox: cfg.NotFoundGraceSandbox, KeyHorizon: cfg.KeyHorizon, Log: log, Tenants: tenantEnvs})
 	if err != nil {
 		return err
 	}

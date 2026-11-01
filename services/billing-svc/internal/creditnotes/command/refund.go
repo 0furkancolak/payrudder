@@ -21,7 +21,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/workercmd"
 )
 
-// Refund resends: the provider dedups on the idempotency key, so a resend never refunds twice.
+// Refund resends carry the same idempotency key. Stripe dedupes on it, so a resend never refunds twice there; iyzico and Paddle do not, so payments-worker answers a
+// resend from its ledger and its attempts and never sends one again whose outcome it does not know (Capabilities.IdempotentRefunds, plan 22 G1).
 const (
 	refundMaxAttempts = 3
 	refundReplyWait   = 5 * time.Minute
@@ -29,10 +30,25 @@ const (
 
 const noAnswer = "no answer from the payment provider"
 
+// The codes of payments-worker's PaymentErrored that leave a refund's outcome unknown (its handler.CodeTimeout and handler.CodeRefundUnknown): the provider may have made
+// the refund.
+const (
+	codeTimeout       = "TIMEOUT"
+	codeRefundUnknown = "REFUND_OUTCOME_UNKNOWN"
+)
+
+// mayHaveHappened reports whether a failed refund's error leaves open that the provider made it. Asking again must then carry the same key: Stripe answers with the
+// first result, and payments-worker refuses to send it again to a provider that does not dedupe, so the note stays failed for the operator to check at the provider.
+// After a refusal the money did not move, and a new key lets it be asked again.
+func mayHaveHappened(refundError string) bool {
+	return strings.HasPrefix(refundError, noAnswer) || strings.HasPrefix(refundError, codeTimeout+":") || strings.HasPrefix(refundError, codeRefundUnknown+":")
+}
+
 var refundNS = uuid.MustParse("5e1f0a64-8c37-5d29-b0a1-3f6c2d9e7b48")
 
 // requestRefund sends (or resends, with a higher attempt) the RefundPayment command of a credit note and marks the note requested. The command id changes
-// with the attempt so the outbox does not swallow a resend; the idempotency key does not, so the provider refunds once.
+// with the attempt so the outbox does not swallow a resend; the idempotency key does not, so a provider that dedupes refunds once and payments-worker guards one that
+// does not.
 func (c *Commands) requestRefund(ctx context.Context, tx pgx.Tx, tenantID uuid.UUID, cn *model.CreditNote, environment string, attempt, runFrom, generation int) error {
 	q := c.q.WithTx(tx)
 	sagaID, err := q.GetSagaIDByInvoice(ctx, sqlc.GetSagaIDByInvoiceParams{TenantID: tenantID, InvoiceID: cn.InvoiceID})
@@ -175,8 +191,7 @@ func (c *Commands) retryRefund(ctx context.Context, tenantID, creditNoteID uuid.
 		cn := &model.CreditNote{ID: creditNoteID, Refund: true, InvoiceID: row.InvoiceID, CustomerID: row.CustomerID, Number: row.Number, Currency: row.Currency,
 			TotalMinor: row.TotalMinor, Reason: row.Reason, CreatedAt: row.CreatedAt}
 		generation := int(row.RefundGeneration)
-		// A refund nobody answered may have gone through: asking again must carry the same key. One the provider rejected did not, and a new key lets it be asked again.
-		if !strings.HasPrefix(row.RefundError, noAnswer) {
+		if !mayHaveHappened(row.RefundError) {
 			generation++
 		}
 		attempt := int(row.RefundAttempt)

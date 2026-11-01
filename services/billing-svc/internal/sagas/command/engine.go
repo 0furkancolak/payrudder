@@ -3,6 +3,7 @@
 package command
 
 import (
+	"fmt"
 	"log/slog"
 	"slices"
 	"time"
@@ -40,10 +41,23 @@ type Config struct {
 	// TransferPoll is how often the status of a payment that settles later (a bank transfer) is asked for (default 6 hours). A receipt an operator confirms
 	// does not wait for it: payments-worker nudges the saga.
 	TransferPoll time.Duration
-	Log          *slog.Logger
+	// NotFoundGrace is how long after a charge was first sent a "not found" status answer is not trusted: the status is asked again instead of charging again
+	// (default 10 minutes, default (not agreed)). NotFoundGraceSandbox is the same for sandbox tenants, on seconds like their dunning (ADR 0011).
+	NotFoundGrace, NotFoundGraceSandbox time.Duration
+	// KeyHorizon is how long a provider is taken to remember an idempotency key: a "not found" answer for a charge older than that parks the saga instead of
+	// charging again under the same key (default 24 hours, Stripe's retention in docs/stripe-compatibility-matrix.md, default (not agreed); iyzico's is UNKNOWN).
+	KeyHorizon time.Duration
+	Log        *slog.Logger
 	// Tenants, when set, is asked for the environment of the saga's tenant before a command goes out (see publishCommand).
 	Tenants *env.Directory
 }
+
+// Defaults of the "not found" window of a charge (Config.NotFoundGrace, NotFoundGraceSandbox, KeyHorizon).
+const (
+	DefaultNotFoundGrace        = 10 * time.Minute
+	DefaultNotFoundGraceSandbox = 10 * time.Second
+	DefaultKeyHorizon           = 24 * time.Hour
+)
 
 // DefaultTransferPoll is how often a pending bank transfer is looked for in the ledger when nobody has nudged the saga.
 const DefaultTransferPoll = 6 * time.Hour
@@ -79,6 +93,18 @@ func NewEngine(cfg Config) (*Engine, error) {
 	if len(cfg.DunningSandbox) == 0 {
 		cfg.DunningSandbox = DefaultDunningSandbox
 	}
+	if cfg.NotFoundGrace <= 0 {
+		cfg.NotFoundGrace = DefaultNotFoundGrace
+	}
+	if cfg.NotFoundGraceSandbox <= 0 {
+		cfg.NotFoundGraceSandbox = DefaultNotFoundGraceSandbox
+	}
+	if cfg.KeyHorizon <= 0 {
+		cfg.KeyHorizon = DefaultKeyHorizon
+	}
+	if max(cfg.NotFoundGrace, cfg.NotFoundGraceSandbox) >= cfg.KeyHorizon {
+		return nil, fmt.Errorf("saga: the not-found grace period (%s, sandbox %s) must be shorter than the key horizon (%s)", cfg.NotFoundGrace, cfg.NotFoundGraceSandbox, cfg.KeyHorizon)
+	}
 	if cfg.Log == nil {
 		cfg.Log = slog.Default()
 	}
@@ -100,6 +126,14 @@ func (e *Engine) DunningDefaults(sandbox bool) []time.Duration {
 		return slices.Clone(e.cfg.DunningSandbox)
 	}
 	return slices.Clone(e.cfg.DunningLive)
+}
+
+// notFoundGrace is the grace period of the saga's tenant: sandbox tenants run it on seconds.
+func (e *Engine) notFoundGrace(s *saga) time.Duration {
+	if s.Snap.Environment == env.Sandbox.String() {
+		return e.cfg.NotFoundGraceSandbox
+	}
+	return e.cfg.NotFoundGrace
 }
 
 // Now exposes the engine's clock (a test clock in tests).

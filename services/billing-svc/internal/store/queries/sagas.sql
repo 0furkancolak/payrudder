@@ -70,3 +70,10 @@ INSERT INTO inbox_replies (message_id) VALUES (@message_id) ON CONFLICT DO NOTHI
 
 -- name: CountSagasByState :many
 SELECT state, count(*) AS sagas FROM invoice_sagas GROUP BY state;
+
+-- name: GetChargeKeyStart :one
+-- When the charge under the saga's current idempotency key was first sent: the latest entry into PAYMENT_REQUESTED that is neither a re-charge after "not found"
+-- (those keep the key) nor the re-issue of a command (from and to are the same state).
+SELECT at FROM saga_events
+WHERE tenant_id = @tenant_id AND saga_id = @saga_id AND to_state = 'PAYMENT_REQUESTED' AND from_state NOT IN ('PAYMENT_REQUESTED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING')
+ORDER BY seq DESC LIMIT 1;

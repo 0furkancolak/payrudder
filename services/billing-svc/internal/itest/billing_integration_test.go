@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -24,6 +25,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
+	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
 )
 
@@ -41,6 +43,7 @@ func TestBilling(t *testing.T) {
 		{"SilentWorkerIsRetriedThenFailsAndOperatorRetryResumes", testSilentWorker},
 		{"PaymentErroredQueriesStatusWithoutASecondCharge", testPaymentUnknown},
 		{"StatusNotFoundRechargesWithTheSameIdempotencyKey", testStatusNotFound},
+		{"StatusNotFoundPastTheKeyHorizonParks", testStatusNotFoundPastTheKeyHorizonParks},
 		{"DunningEndsUncollectible", testDunning},
 		{"TenantDunningSettingsReplaceTheDefaults", testTenantDunningSettings},
 		{"DunningDefaultsAreTheConfiguredOnes", testDunningDefaultsAreTheConfiguredOnes},
@@ -508,7 +511,23 @@ func testStatusNotFound(t *testing.T) {
 		}
 		return stubworker.Action{Reply: stubworker.Succeed}
 	})
-	completeOctober(e)
+	e.addUsage("2026-10", "cus_a", "gb_hours", "1.250", 3)
+	e.addUsage("2026-10", "cus_a", "calls", "150", 0)
+	e.driveRun("2026-10")
+	// The charge was sent a moment ago, so a "not found" is not trusted yet: nothing is charged again, no command is outstanding, and the status is asked again once the
+	// grace period of the key is over (the saga's deadline).
+	testkit.Eventually(t, 30*time.Second, "both sagas to wait out the grace period", func() bool { return e.waitingOutTheGrace("2026-10") == 2 })
+	if got := stub.Count("charge"); got != 2 {
+		t.Fatalf("charge commands = %d, want 2 (a young not-found is not charged again)", got)
+	}
+	e.clk.Advance(sagacommand.DefaultNotFoundGrace + time.Minute)
+	if _, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil {
+		t.Fatal(err)
+	}
+	testkit.Eventually(t, 30*time.Second, "every saga to COMPLETE", func() bool {
+		s := e.sagaStates("2026-10")
+		return len(s) == 2 && s["cus_a"] == "COMPLETED" && s["cus_b"] == "COMPLETED"
+	})
 	keys := map[string]int{}
 	for _, c := range stub.Commands() {
 		if ch := c.GetChargePayment(); ch != nil {
@@ -521,6 +540,54 @@ func testStatusNotFound(t *testing.T) {
 	for k, n := range keys {
 		if n != 2 {
 			t.Errorf("key %s used by %d charge commands, want 2 (the charge and its re-charge share the key)", k, n)
+		}
+	}
+}
+
+// A "not found" for a charge older than the key horizon is not charged again: the provider may have forgotten the key (Stripe keeps it 24 hours), so the same key could
+// be a second bill. The saga parks in PAYMENT_UNKNOWN, says why, and nothing more is sent until an operator decides.
+func testStatusNotFoundPastTheKeyHorizonParks(t *testing.T) {
+	e := newEnv(t, envOpts{})
+	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, _ int) stubworker.Action {
+		switch stubworker.Kind(c) {
+		case "charge":
+			return stubworker.Action{Reply: stubworker.Errored}
+		case "status":
+			return stubworker.Action{Reply: stubworker.StatusNotFound}
+		}
+		return stubworker.Action{Reply: stubworker.Succeed}
+	})
+	e.addUsage("2026-10", "cus_a", "gb_hours", "1.250", 3)
+	e.driveRun("2026-10")
+	testkit.Eventually(t, 30*time.Second, "both sagas to wait out the grace period", func() bool { return e.waitingOutTheGrace("2026-10") == 2 })
+	e.clk.Advance(sagacommand.DefaultKeyHorizon + time.Hour)
+	if _, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil {
+		t.Fatal(err)
+	}
+	testkit.Eventually(t, 30*time.Second, "both sagas to park", func() bool {
+		sagas := e.parkedSagas("2026-10")
+		if len(sagas) != 2 || stub.Count("status") != 4 {
+			return false
+		}
+		for _, sg := range sagas {
+			if sg.deadline != nil || !strings.Contains(sg.lastError, "key horizon") {
+				return false
+			}
+		}
+		return true
+	})
+	// Parked: no deadline, so a later sweep asks nothing, and no charge was repeated.
+	e.clk.Advance(48 * time.Hour)
+	if _, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(2 * time.Second)
+	if charges, statuses := stub.Count("charge"), stub.Count("status"); charges != 2 || statuses != 4 {
+		t.Fatalf("charge commands = %d, status queries = %d; want 2 and 4 (none repeated past the horizon, none asked of a parked saga)", charges, statuses)
+	}
+	for _, st := range e.sagaStates("2026-10") {
+		if st != "PAYMENT_UNKNOWN" {
+			t.Fatalf("saga states = %v, want PAYMENT_UNKNOWN", e.sagaStates("2026-10"))
 		}
 	}
 }

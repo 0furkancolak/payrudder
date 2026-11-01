@@ -37,3 +37,8 @@ WHERE l.tenant_id = @tenant_id AND l.invoice_id = @invoice_id AND l.provider = @
   AND l.detail LIKE 'checkout:%' AND l.occurred_at > @since::timestamptz
   AND NOT EXISTS (SELECT 1 FROM payment_ledger d WHERE d.idempotency_key = l.idempotency_key AND d.status IN ('succeeded', 'declined'))
 ORDER BY l.id DESC LIMIT 1;
+
+-- name: GetRefundFact :one
+SELECT provider_ref FROM payment_ledger
+WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'refund' AND idempotency_key = @idempotency_key AND status = 'succeeded'
+ORDER BY id DESC LIMIT 1;

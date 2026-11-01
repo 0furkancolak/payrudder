@@ -31,7 +31,7 @@ func TestCapabilities(t *testing.T) {
 
 func TestMockPSPCapabilities(t *testing.T) {
 	var p payments.Provider = payments.NewMockPSP("http://x", 0)
-	if c := p.Capabilities(); c.Name != "mockpsp" || !c.Refunds || c.Owner() != payments.OwnerPayrudder {
+	if c := p.Capabilities(); c.Name != "mockpsp" || !c.Refunds || !c.IdempotentRefunds || c.Owner() != payments.OwnerPayrudder {
 		t.Errorf("capabilities = %+v", c)
 	}
 }
