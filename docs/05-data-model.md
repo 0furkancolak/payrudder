@@ -625,9 +625,15 @@ CREATE INDEX ON payment_attempts (tenant_id, invoice_id);
 
 -- notifier_db
 CREATE TABLE sent_notifications (
-  dedup_key text PRIMARY KEY, tenant_id uuid NOT NULL, template text NOT NULL,
-  status text NOT NULL CHECK (status IN ('SENDING','SENT')), smtp_message_id text,
-  created_at timestamptz NOT NULL DEFAULT now(), sent_at timestamptz
+  dedup_key text PRIMARY KEY, command_id uuid, kind text NOT NULL, template text NOT NULL, recipient text NOT NULL,
+  tenant_id uuid,                                                 -- migration 00003: the tenant the mail was sent for (a bounce names only the provider's message id)
+  status text NOT NULL CHECK (status IN ('SENDING','SENT')), claimed_at timestamptz NOT NULL DEFAULT now(), sent_at timestamptz,
+  smtp_message_id text                                            -- the provider's message id for mail sent through a provider
+);
+-- migration 00003 (plan 11): the addresses a tenant must not be mailed (hard bounce, complaint, or the operator's say-so); fed by the notifier's mail-event endpoint
+CREATE TABLE mail_suppressions (
+  tenant_id uuid NOT NULL, address text NOT NULL CHECK (address = lower(address)), reason text NOT NULL CHECK (reason IN ('bounce','complaint','manual')),
+  source text NOT NULL DEFAULT '', detail text NOT NULL DEFAULT '', created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (tenant_id, address)
 );
 ```
 
