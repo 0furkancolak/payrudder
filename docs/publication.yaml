@@ -36,6 +36,7 @@ files:
   19-contracts.md: { audience: public, status: preview }
   benchmarks.md: { audience: internal, status: stable }
   error-keys.md: { audience: public, status: stable }
+  email-template-contract.md: { audience: internal, status: preview }
   geo-data.md: { audience: internal, status: stable }
   hosted-pages.md: { audience: internal, status: preview }
   iyzico-compatibility-matrix.md: { audience: internal, status: preview }
