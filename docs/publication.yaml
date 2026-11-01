@@ -40,6 +40,7 @@ files:
   iyzico-compatibility-matrix.md: { audience: internal, status: preview }
   paddle-compatibility-matrix.md: { audience: internal, status: preview }
   stripe-compatibility-matrix.md: { audience: internal, status: preview }
+  payment-provider-contract.md: { audience: internal, status: preview }
   roadmap-owner-list.md: { audience: internal, status: historical }
   ui-test-report.md: { audience: internal, status: historical }
 
