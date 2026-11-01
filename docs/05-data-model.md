@@ -103,7 +103,7 @@ CREATE TABLE config_promotions (                      -- phase 45 D: one row per
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- Contracts for the seller's customers (plan 21; migrations/00006_contracts.sql, tenant twin 00005), tenant tables with RLS like the neighbours:
+-- Contracts for the seller's customers (plan 21; migrations/00008_contracts.sql, tenant twin 00006), tenant tables with RLS like the neighbours:
 --   contract_versions (tenant_id, id, kind, audience, number, material, bodies jsonb, sha256, note, author, created_at)       immutable: SELECT/INSERT only; the newest number of (kind, audience) is the current one
 --   contract_settings (tenant_id PK, required_kinds text[], immediate_start, retention_months 12..120 default 36, updated_at)
 --   contract_acceptances (tenant_id, id, group_id, customer_id NULL for a guest, version_id, kind, audience, version_number, version_sha256, locale_requested/served, body_sha256,
