@@ -141,6 +141,7 @@ services:
       PAYRUDDER_BILLING_ADDR: dns:///billing-svc:7005
       PAYRUDDER_PAYMENTS_URL: http://payments-worker:8095
       PAYRUDDER_APP_URL: "{{ .Values.auth.appURL }}"
+      PAYRUDDER_OPERATOR_EMAILS: "{{ .Values.auth.operatorEmails }}"
       PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       PAYRUDDER_ALLOWED_ENVIRONMENTS: "{{ .Values.global.allowedEnvironments }}"

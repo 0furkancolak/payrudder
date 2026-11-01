@@ -3674,7 +3674,9 @@ paths:
       operationId: appOpenSupportTicket
       tags: [Support]
       summary: Open a support ticket for an account (and optionally one of its apps)
-      description: The first answer is due by the priority (urgent 1 hour, high 4 hours, normal 24 hours, low 72 hours).
+      description: |
+        The first answer is due by the priority, counted in business hours (Monday to Friday, 09:00 to 18:00 in the time zone of the ticket's app, else of the account's oldest app, else UTC): urgent 1 hour, high 4 hours, normal 1 business day (9 hours), low 3 business days. The operators are mailed about the new ticket.
+        An account can have at most 20 tickets waiting (open or pending) at once: one more is refused with `429 support.tickets.too_many`.
       security: [{ sessionToken: [] }]
       requestBody:
         required: true
@@ -3687,11 +3689,12 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
   /app/v1/support/tickets/{id}:
     get:
       operationId: appSupportTicket
       tags: [Support]
-      summary: A ticket with its thread (the operator's internal notes are not in it)
+      summary: A ticket with its thread and history (the operator's internal notes are not in it). Reading it as the person who opened it clears its unread mark
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -3759,7 +3762,7 @@ paths:
     patch:
       operationId: updateSupportTicket
       tags: [Support]
-      summary: Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer
+      summary: Change a ticket's status, priority or assignee (operator); a priority change moves the first-answer deadline until the first answer. A new status is mailed to the person who opened the ticket
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -3774,7 +3777,7 @@ paths:
     post:
       operationId: replySupportTicket
       tags: [Support]
-      summary: Answer a ticket (operator). An internal note is never shown to the person and does not count as an answer
+      summary: Answer a ticket (operator). The answer is mailed to the person who opened the ticket. An internal note is never shown to the person, is not mailed and does not count as an answer
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
@@ -4829,7 +4832,7 @@ components:
         events: { type: array, items: { $ref: "#/components/schemas/CustomerBlockEvent" } }
     SupportTicket:
       type: object
-      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count]
+      required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count, unread]
       properties:
         id: { type: string, format: uuid }
         number: { type: integer, format: int64, description: "The short number shown as #1042" }
@@ -4853,6 +4856,19 @@ components:
         sla_breached: { type: boolean, description: "The first answer is overdue, or was late" }
         solve_time: { type: string, format: date-time, nullable: true }
         message_count: { type: integer }
+        unread: { type: boolean, description: "True for the person who opened the ticket while there is an answer or a status change by the operator they have not read. Always false for the operator and for the other members of the account" }
+    SupportEvent:
+      type: object
+      required: [id, kind, actor_kind, actor_name, from_value, to_value, create_time]
+      description: One change of a ticket's status, priority or assignee. The history is append-only.
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [status, priority, assignee] }
+        actor_kind: { type: string, enum: [customer, operator, system], description: "system is the job that closes a ticket that waited for the person for 7 days" }
+        actor_name: { type: string }
+        from_value: { type: string }
+        to_value: { type: string }
+        create_time: { type: string, format: date-time }
     SupportMessage:
       type: object
       required: [id, author_kind, author_name, body, internal, create_time]
@@ -4875,10 +4891,11 @@ components:
         ticket: { $ref: "#/components/schemas/SupportTicket" }
     SupportTicketThread:
       type: object
-      required: [ticket, messages]
+      required: [ticket, messages, events]
       properties:
         ticket: { $ref: "#/components/schemas/SupportTicket" }
         messages: { type: array, items: { $ref: "#/components/schemas/SupportMessage" } }
+        events: { type: array, items: { $ref: "#/components/schemas/SupportEvent" } }
     OpenSupportTicketRequest:
       type: object
       required: [account_id, subject, category, body]

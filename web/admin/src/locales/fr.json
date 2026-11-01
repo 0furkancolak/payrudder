@@ -3382,6 +3382,9 @@
       "ticket": {
         "closed": "Ce ticket est clos. Ouvrez-en un nouveau.",
         "not_found": "Ce ticket est introuvable."
+      },
+      "tickets": {
+        "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
       }
     }
   },
@@ -5000,10 +5003,10 @@
       "urgent": "Urgente"
     },
     "answerWithin": {
-      "low": "réponse sous 3 jours",
-      "normal": "réponse sous 1 jour",
-      "high": "réponse sous 4 heures",
-      "urgent": "réponse sous 1 heure"
+      "low": "réponse sous 3 jours ouvrés",
+      "normal": "réponse sous 1 jour ouvré",
+      "high": "réponse sous 4 heures ouvrées",
+      "urgent": "réponse sous 1 heure ouvrée"
     },
     "category": {
       "billing": "Facturation",
@@ -5018,7 +5021,9 @@
       "system": "Système"
     },
     "sortPriority": "Priorité la plus haute d'abord",
-    "sortDue": "Échéance la plus proche d'abord"
+    "sortDue": "Échéance la plus proche d'abord",
+    "unread": "Nouveau",
+    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application."
   },
   "connect": {
     "nav": "Connecter votre app",

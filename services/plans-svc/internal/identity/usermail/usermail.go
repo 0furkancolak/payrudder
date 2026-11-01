@@ -1,6 +1,6 @@
 // Package usermail sends the mail Payrudder itself writes to people (not to a tenant's customers, which is the notifier's job through the tenant's own mail
-// switch): an address to verify, a password to reset, an invitation to join an account, and the warning that somebody tried to sign up with an address that
-// already has an account. Texts exist in the six languages of the console. A mail is sent in the background with a bounded number at a time: the request that
+// switch): an address to verify, a password to reset, an invitation to join an account, the warning that somebody tried to sign up with an address that
+// already has an account, and the help desk's notices (a new ticket for the operators, an answer or a new status for the person). Texts exist in the six languages of the console. A mail is sent in the background with a bounded number at a time: the request that
 // caused it never waits for the SMTP relay, and a lost mail is something the person can ask for again (resend, forgot password).
 package usermail
 
@@ -30,6 +30,12 @@ const (
 	KindTaken Kind = "taken"
 	// KindCode carries a one-time sign-in code (and no link): the person types it into the page that asked for it.
 	KindCode Kind = "code"
+	// KindTicketNew tells an operator that an account opened a support ticket.
+	KindTicketNew Kind = "ticket_new"
+	// KindTicketReply tells the person who opened a ticket that the operator answered it.
+	KindTicketReply Kind = "ticket_reply"
+	// KindTicketStatus tells the person who opened a ticket that its status changed (the operator solved or closed it, or it closed by itself).
+	KindTicketStatus Kind = "ticket_status"
 )
 
 // Mail is one message to compose. Link is the full URL the button opens; the token inside it is the only secret.
@@ -44,6 +50,9 @@ type Mail struct {
 	Role    string
 	// Code is the one-time sign-in code of a KindCode mail.
 	Code string
+	// Ticket is the ticket's number as people write it ("#1042"), Subject its subject, Status and Priority its state (named in the mail's language). The link of a
+	// ticket mail opens the ticket in the console. Account is the organisation that opened it.
+	Ticket, Subject, Status, Priority string
 }
 
 // Locales are the languages mail is written in, as in the console.
@@ -114,12 +123,10 @@ type copyText struct {
 func Render(m Mail) (subject, text, htmlBody string) {
 	loc := Locale(m.Locale)
 	c := texts[loc][m.Kind]
-	fill := func(l string) string {
-		l = strings.ReplaceAll(l, "{account}", oneLine(m.Account))
-		l = strings.ReplaceAll(l, "{inviter}", oneLine(m.Inviter))
-		l = strings.ReplaceAll(l, "{code}", oneLine(m.Code))
-		return strings.ReplaceAll(l, "{role}", roleWord(loc, m.Role))
-	}
+	// One pass, so a name that looks like a placeholder (a ticket subject "{status}") is not filled in again.
+	fillWith := strings.NewReplacer("{account}", oneLine(m.Account), "{inviter}", oneLine(m.Inviter), "{code}", oneLine(m.Code), "{role}", roleWord(loc, m.Role),
+		"{ticket}", oneLine(m.Ticket), "{subject}", oneLine(m.Subject), "{status}", ticketWord(loc, m.Status), "{priority}", ticketWord(loc, m.Priority))
+	fill := fillWith.Replace
 	lines := make([]string, len(c.Lines))
 	for i, l := range c.Lines {
 		lines[i] = fill(l)
@@ -156,8 +163,8 @@ func Render(m Mail) (subject, text, htmlBody string) {
 // oneLine keeps a name from adding lines to a text it is placed in.
 func oneLine(s string) string {
 	s = strings.NewReplacer("\r", " ", "\n", " ").Replace(s)
-	if len(s) > 200 {
-		s = s[:200]
+	if r := []rune(s); len(r) > 200 {
+		s = string(r[:200])
 	}
 	return s
 }
@@ -167,4 +174,12 @@ func roleWord(loc, role string) string {
 		return w
 	}
 	return role
+}
+
+// ticketWord is the word for a ticket status or priority in a language (the value itself when there is none).
+func ticketWord(loc, key string) string {
+	if w, ok := ticketWords[loc][key]; ok {
+		return w
+	}
+	return key
 }

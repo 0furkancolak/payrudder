@@ -97,7 +97,8 @@ func (s *Server) supportUpdate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	req.TicketId = r.PathValue("id")
+	// The signed-in operator's address is who the ticket's history names (the machine token: "Payrudder support").
+	req.TicketId, req.AuthorName = r.PathValue("id"), operatorFrom(r.Context())
 	resp, err := s.d.Support.UpdateSupportTicket(r.Context(), req)
 	respond(w, r, http.StatusOK, resp, err)
 }

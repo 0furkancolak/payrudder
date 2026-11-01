@@ -6,7 +6,8 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        COALESCE(NULLIF(u.display_name, ''), u.email)::text AS opened_by_name, t.subject, t.category, t.priority, t.status, t.assignee, t.last_author,
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
-       (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count
+       (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
+       (COALESCE(t.opened_by = sqlc.narg('viewer')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
@@ -19,7 +20,8 @@ SELECT t.id, t.number, t.account_id, a.name AS account_name, t.app_id, COALESCE(
        COALESCE(NULLIF(u.display_name, ''), u.email)::text AS opened_by_name, t.subject, t.category, t.priority, t.status, t.assignee, t.last_author,
        t.first_response_due, t.first_responded_at, t.last_message_at, t.solved_at, t.created_at, t.updated_at,
        (CASE WHEN t.first_responded_at IS NULL THEN t.status = 'open' AND t.first_response_due < now() ELSE t.first_responded_at > t.first_response_due END)::boolean AS sla_breached,
-       (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count
+       (SELECT count(*) FROM support_messages m WHERE m.ticket_id = t.id AND NOT m.internal)::int AS message_count,
+       (COALESCE(t.opened_by = sqlc.narg('user_id')::uuid, false) AND t.opener_seen_at IS NULL)::boolean AS unread
 FROM support_tickets t
 JOIN accounts a ON a.id = t.account_id
 LEFT JOIN apps p ON p.id = t.app_id
@@ -35,7 +37,7 @@ LIMIT 200;
 
 -- Locks the ticket for a change.
 -- name: LockSupportTicket :one
-SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at
+SELECT id, account_id, status, priority, assignee, first_response_due, first_responded_at, solved_at, created_at, sla_zone
 FROM support_tickets WHERE id = @id FOR UPDATE;
 
 -- The user's role in the account, if any; an affiliate of a program is not a member for the help desk.
@@ -47,8 +49,8 @@ SELECT role FROM account_members WHERE account_id = @account_id AND user_id = @u
 SELECT EXISTS (SELECT 1 FROM apps WHERE id = @id AND account_id = @account_id AND archived_at IS NULL) AS found;
 
 -- name: InsertSupportTicket :exec
-INSERT INTO support_tickets (id, account_id, app_id, opened_by, subject, category, priority, status, last_author, first_response_due)
-VALUES (@id, @account_id, sqlc.narg('app_id')::uuid, @opened_by, @subject, @category, @priority, 'open', 'customer', @first_response_due);
+INSERT INTO support_tickets (id, account_id, app_id, opened_by, subject, category, priority, status, last_author, first_response_due, sla_zone)
+VALUES (@id, @account_id, sqlc.narg('app_id')::uuid, @opened_by, @subject, @category, @priority, 'open', 'customer', @first_response_due, @sla_zone);
 
 -- name: InsertSupportMessage :exec
 INSERT INTO support_messages (id, ticket_id, author_kind, author_user_id, author_name, internal, body)
@@ -70,3 +72,57 @@ ORDER BY created_at, id;
 -- How a person is shown in a thread.
 -- name: SupportAuthorName :one
 SELECT COALESCE(NULLIF(display_name, ''), email)::text AS name FROM users WHERE id = @id;
+
+-- One open-ticket count at a time per account: a second ticket opened at the same moment waits here, so the limit holds.
+-- name: SupportLockAccount :exec
+SELECT pg_advisory_xact_lock(hashtextextended('support:' || @account_id::text, 0));
+
+-- Tickets that still need an answer or a decision (open or pending), for the limit per account.
+-- name: SupportOpenCount :one
+SELECT count(*)::int FROM support_tickets WHERE account_id = @account_id AND status IN ('open', 'pending');
+
+-- The time zone the first-answer deadline counts business hours in: the ticket's app, else the account's oldest app, else UTC.
+-- name: SupportZoneFor :one
+SELECT COALESCE((
+  SELECT t.timezone FROM tenants t JOIN apps p ON p.id = t.app_id
+  WHERE t.account_id = @account_id AND p.archived_at IS NULL
+  ORDER BY COALESCE(p.id = sqlc.narg('app_id')::uuid, false) DESC, p.created_at, t.environment DESC LIMIT 1
+), 'UTC')::text AS zone;
+
+-- name: InsertSupportEvent :exec
+INSERT INTO support_events (id, ticket_id, kind, actor_kind, actor_name, from_value, to_value)
+VALUES (@id, @ticket_id, @kind, @actor_kind, @actor_name, @from_value, @to_value);
+
+-- name: ListSupportEvents :many
+SELECT id, kind, actor_kind, actor_name, from_value, to_value, created_at FROM support_events WHERE ticket_id = @ticket_id ORDER BY created_at, id;
+
+-- The opener has read the ticket (or wrote the last word on it): the "new" mark goes. Only the opener's own call clears it.
+-- name: MarkSupportTicketSeen :exec
+UPDATE support_tickets SET opener_seen_at = now() WHERE id = @id AND opened_by = @user_id AND opener_seen_at IS NULL;
+
+-- An answer or a status change by the operator that the opener has not read.
+-- name: MarkSupportTicketUnseen :exec
+UPDATE support_tickets SET opener_seen_at = NULL WHERE id = @id;
+
+-- What a mail about a ticket names, and who gets it: the person who opened it.
+-- name: SupportMailTarget :one
+SELECT t.number, t.subject, t.priority, t.status, a.name AS account_name, u.email AS opener_email, u.locale AS opener_locale
+FROM support_tickets t JOIN accounts a ON a.id = t.account_id JOIN users u ON u.id = t.opened_by
+WHERE t.id = @id;
+
+-- The language an operator's address reads mail in, for the operators who have a user (the others read English).
+-- name: SupportOperatorLocales :many
+SELECT lower(email)::text AS email, locale FROM users WHERE lower(email) = ANY(@emails::text[]);
+
+-- Closes the tickets that wait for the person and have waited since before the given time (the last time they became "pending", else their last message), at most
+-- a batch, and says which. Rows another instance is already closing are skipped.
+-- name: SupportCloseStale :many
+UPDATE support_tickets
+SET status = 'closed', solved_at = COALESCE(solved_at, now()), opener_seen_at = NULL, updated_at = now()
+WHERE id IN (
+  SELECT s.id FROM support_tickets s
+  WHERE s.status = 'pending'
+    AND COALESCE((SELECT max(e.created_at) FROM support_events e WHERE e.ticket_id = s.id AND e.kind = 'status' AND e.to_value = 'pending'), s.last_message_at) < @before::timestamptz
+  ORDER BY s.last_message_at LIMIT @batch::int FOR UPDATE SKIP LOCKED
+)
+RETURNING id;

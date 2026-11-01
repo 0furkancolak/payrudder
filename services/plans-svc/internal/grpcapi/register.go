@@ -47,12 +47,14 @@ type Deps struct {
 	WebhookAllowPrivate bool
 	// BanApproval makes a ban of a tenant need a second operator (PAYRUDDER_TENANT_BAN_APPROVAL; default off).
 	BanApproval bool
-	Mail        usermail.Sender // sends the verification, reset and invitation mails
+	Mail        usermail.Sender // sends the verification, reset and invitation mails, and the help desk's notices
 	AppURL      string          // the console's base URL, which mailed links point into
 	OTPPepper   string          // keys the hash of one-time sign-in codes
 	Sandbox     *sandboxapi.Handler
 	// Saas is the SaaS mode (PAYRUDDER_SAAS, phase 55): Payrudder's own plans, enforced on every account. The zero value is off.
 	Saas saascmd.Config
+	// OperatorEmails are the platform operators' addresses (PAYRUDDER_OPERATOR_EMAILS, as on the gateway): the help desk mails them when a ticket is opened.
+	OperatorEmails []string
 	// CellsReady says whether a tenant may be placed in a cell (ADR 0018): nil when every cross-tenant job is converted, an error naming what is left otherwise.
 	// nil in the Deps means pkg/tenantdir's inventory; a test passes its own.
 	CellsReady func() error
@@ -75,7 +77,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.BanApproval, d.Log)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
-	plansv1.RegisterSupportServiceServer(srv, support.New(d.SystemPool, d.Log))
+	plansv1.RegisterSupportServiceServer(srv, support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL}))
 	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now).WithPlaces(d.Places)
 	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log)
 	plansv1.RegisterSaasServiceServer(srv, saas.New(saasC, saasQ, d.SystemPool))

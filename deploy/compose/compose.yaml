@@ -436,6 +436,8 @@ services:
       NAFRU_BASE_URL: ${NAFRU_BASE_URL:-}
       NAFRU_API_KEY: ${NAFRU_API_KEY:-}
       PAYRUDDER_APP_URL: ${PAYRUDDER_APP_URL:-http://localhost:42301}
+      # The operators (as on the gateway): a new support ticket is mailed to each.
+      PAYRUDDER_OPERATOR_EMAILS: ${PAYRUDDER_OPERATOR_EMAILS:-user1@example.com}
       # Keys the hash of one-time sign-in codes (a code has only a million values). Local stack only: generate your own with `openssl rand -hex 32`.
       PAYRUDDER_OTP_PEPPER: ${PAYRUDDER_OTP_PEPPER:-local-otp-pepper-change-me-0123456789}
       # The services a sandbox reset empties (phase 45 E).

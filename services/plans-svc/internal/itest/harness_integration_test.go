@@ -89,6 +89,9 @@ func (r *recordingMail) lastToken(kind usermail.Kind, address string) string {
 
 const testAppURL = "http://app.test"
 
+// testOperatorEmail is the one platform operator of these tests: the help desk mails it when a ticket is opened.
+const testOperatorEmail = "ops@example.com"
+
 // testPepper keys the hash of one-time sign-in codes in these tests.
 const testPepper = "test-pepper-not-a-secret"
 
@@ -331,7 +334,7 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	sbx, runner := sandboxapi.Wire(places, remotes.steps(), time.Hour, sandbox.Settings{Retention: time.Hour}, log)
 	saas := grpcapi.Register(srv, grpcapi.Deps{
 		AppDB: appDB, SystemPool: system, Places: places, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, BanApproval: banApproval, Box: box, WebhookAllowPrivate: true,
-		Mail: mail, AppURL: testAppURL, OTPPepper: testPepper, Sandbox: sbx, Saas: saasCfg,
+		Mail: mail, AppURL: testAppURL, OperatorEmails: []string{testOperatorEmail}, OTPPepper: testPepper, Sandbox: sbx, Saas: saasCfg,
 	})
 	lis := bufconn.Listen(1 << 20)
 	go func() { _ = srv.Serve(lis) }()

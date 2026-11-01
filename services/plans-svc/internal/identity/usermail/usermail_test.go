@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -17,11 +18,13 @@ var placeholder = regexp.MustCompile(`\{[a-z]+\}`)
 
 func placeholders(c copyText) string {
 	all := c.Subject + "|" + strings.Join(c.Lines, "|") + "|" + c.Ignore
-	return strings.Join(placeholder.FindAllString(all, -1), ",")
+	found := placeholder.FindAllString(all, -1)
+	sort.Strings(found) // a language may put them in another order
+	return strings.Join(found, ",")
 }
 
 func TestEveryLanguageHasEveryMail(t *testing.T) {
-	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode}
+	kinds := []Kind{KindVerify, KindReset, KindInvite, KindTaken, KindCode, KindTicketNew, KindTicketReply, KindTicketStatus}
 	for _, l := range Locales {
 		for _, k := range kinds {
 			got, ok := texts[l][k]
@@ -33,7 +36,7 @@ func TestEveryLanguageHasEveryMail(t *testing.T) {
 				t.Errorf("%s/%s: %d lines, English has %d", l, k, len(got.Lines), len(en.Lines))
 			}
 			// The same placeholders, in any language: a translation that drops {account} would send a mail naming nothing.
-			if (k == KindInvite || k == KindCode) && placeholders(got) != placeholders(en) {
+			if placeholders(got) != placeholders(en) {
 				t.Errorf("%s/%s: placeholders %q differ from English %q", l, k, placeholders(got), placeholders(en))
 			}
 			if (k == KindTaken || k == KindCode) != (got.Button == "") {
@@ -43,6 +46,11 @@ func TestEveryLanguageHasEveryMail(t *testing.T) {
 		for _, r := range []string{"owner", "admin", "viewer"} {
 			if roles[l][r] == "" {
 				t.Errorf("%s: no word for role %s", l, r)
+			}
+		}
+		for _, w := range []string{"open", "pending", "solved", "closed", "low", "normal", "high", "urgent"} {
+			if ticketWords[l][w] == "" {
+				t.Errorf("%s: no word for ticket %s", l, w)
 			}
 		}
 	}
@@ -65,6 +73,22 @@ func TestRenderEscapesNamesAndKeepsHeadersClean(t *testing.T) {
 	}
 	if !strings.Contains(text, "administrator") {
 		t.Fatalf("the role is spelled out: %s", text)
+	}
+}
+
+func TestTicketMailNamesTheTicketInTheLanguageAndStaysOnOneLine(t *testing.T) {
+	m := Mail{Kind: KindTicketStatus, Locale: "tr", To: "ada@example.com", Link: "https://app.example/app/support?sheet=ticket:1", Ticket: "#1042", Status: "solved",
+		Subject: "Fatura {status}\r\nBcc: x@example.com <b>"}
+	subject, text, body := Render(m)
+	if strings.ContainsAny(subject, "\r\n") || !strings.Contains(subject, "#1042") || !strings.Contains(subject, "çözüldü") {
+		t.Fatalf("subject: %q", subject)
+	}
+	// The subject of the ticket is a person's text: it is not filled in again as a placeholder and it is escaped in the html.
+	if !strings.Contains(text, "Fatura {status}  Bcc: x@example.com <b>") || strings.Contains(body, "<b>") {
+		t.Fatalf("text %q html %q", text, body)
+	}
+	if _, _, en := Render(Mail{Kind: KindTicketNew, Locale: "en", Account: "Ada Labs", Ticket: "#7", Priority: "urgent", Subject: "Webhooks"}); !strings.Contains(en, "Ada Labs opened ticket #7 (urgent priority)") {
+		t.Fatalf("operator mail: %s", en)
 	}
 }
 
