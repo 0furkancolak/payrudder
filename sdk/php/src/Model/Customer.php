@@ -31,6 +31,8 @@ final class Customer implements Model
      * @param string|null $customerType
      * @param string|null $blockTime
      * @param string|null $blockReason
+     * @param string|null $blockCategory
+     * @param string|null $blockedUntil
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -49,6 +51,8 @@ final class Customer implements Model
         public readonly ?string $customerType = null,
         public readonly ?string $blockTime = null,
         public readonly ?string $blockReason = null,
+        public readonly ?string $blockCategory = null,
+        public readonly ?string $blockedUntil = null,
     ) {}
 
     /**
@@ -73,6 +77,8 @@ final class Customer implements Model
             customerType: Cast::string($data['customer_type'] ?? null),
             blockTime: Cast::string($data['block_time'] ?? null),
             blockReason: Cast::string($data['block_reason'] ?? null),
+            blockCategory: Cast::string($data['block_category'] ?? null),
+            blockedUntil: Cast::string($data['blocked_until'] ?? null),
         );
     }
 
@@ -98,6 +104,8 @@ final class Customer implements Model
             'customer_type' => $this->customerType,
             'block_time' => $this->blockTime,
             'block_reason' => $this->blockReason,
+            'block_category' => $this->blockCategory,
+            'blocked_until' => $this->blockedUntil,
         ]);
     }
 }

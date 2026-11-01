@@ -28,6 +28,10 @@ const open = (id?: string) => void router.navigate({ to: "/tenants/$id", params:
 const list = computed(() => tenants.data.value?.tenants ?? []);
 const setStatus = useSetTenantStatus();
 const suspended = (x: { status?: string }) => x.status === "TENANT_STATUS_SUSPENDED";
+/** Out of service: suspended, frozen or banned. A badge says which; reinstating a ban needs a reason, so it is done from the tenant's own page. */
+const HELD: Record<string, string> = { TENANT_STATUS_SUSPENDED: "suspended", TENANT_STATUS_FROZEN: "frozen", TENANT_STATUS_BANNED: "banned" };
+const heldWord = (x: { status?: string }) => HELD[x.status ?? ""] ?? "";
+const reinstatable = (x: { status?: string }) => suspended(x) || x.status === "TENANT_STATUS_FROZEN";
 /** Only an active tenant can be suspended and only a suspended one reinstated (an inactive one is activated from its own page, with a reason). */
 const canSuspend = (x: { status?: string }) => x.status === "TENANT_STATUS_ACTIVE";
 const envOf = (v?: string) => enumWord(v, "ENVIRONMENT_");
@@ -47,7 +51,7 @@ const bulk = useBulk(table, { name: (x) => x.name ?? x.id ?? "", rest: { has: ()
 /** The ticked tenants, or `only` (the row action of one tenant), that can take the change. */
 const change = (status: "active" | "suspended", only?: typeof list.value) =>
   bulk.run((x) => setStatus.mutateAsync({ id: x.id ?? "", status }), {
-    rows: (all) => (only ?? all).filter((x) => (status === "suspended" ? canSuspend(x) : suspended(x))),
+    rows: (all) => (only ?? all).filter((x) => (status === "suspended" ? canSuspend(x) : reinstatable(x))),
     confirm: status === "suspended" ? (rows) => ({ body: t("tenants.suspendConfirm", { n: rows.length }, rows.length) }) : undefined,
   });
 </script>
@@ -86,14 +90,14 @@ const change = (status: "active" | "suspended", only?: typeof list.value) =>
           <TableCell><RowCheck :label="`${t('common.bulk.selectRow')} ${tenant.name}`" :checked="table.isTicked(tenant)" @change="(on) => table.tick(tenant, on)" /></TableCell>
           <TableCell>
             <Link to="/tenants/$id" :params="{ id: tenant.id ?? '' }" class="font-medium hover:underline" @click.stop>{{ tenant.name }}</Link>
-            <Badge v-if="suspended(tenant)" variant="destructive" class="ms-2" data-testid="tenant-suspended">{{ t("tenants.suspended") }}</Badge>
+            <Badge v-if="heldWord(tenant)" variant="destructive" class="ms-2" :data-testid="`tenant-${heldWord(tenant)}`">{{ t(`tenant.status.names.${heldWord(tenant)}`) }}</Badge>
           </TableCell>
           <TableCell><Badge variant="secondary">{{ label(t, te, "environment", enumWord(tenant.environment, "ENVIRONMENT_")) }}</Badge></TableCell>
           <TableCell>{{ label(t, te, "tier", enumWord(tenant.tier, "TENANT_TIER_")) }}</TableCell>
           <TableCell>{{ tenant.currency }}</TableCell>
           <TableCell>{{ tenant.timezone }}</TableCell>
           <TableCell class="mono text-muted-foreground max-w-40 truncate text-xs" :title="tenant.id">{{ tenant.id }}</TableCell>
-          <TableCell><RowActions :actions="[{ key: 'open', label: t('common.view'), onSelect: () => open(tenant.id) }, ...(canSuspend(tenant) ? [{ key: 'suspend', label: t('tenants.suspend'), separatorBefore: true, onSelect: () => change('suspended', [tenant]) }] : []), ...(suspended(tenant) ? [{ key: 'reinstate', label: t('tenants.reinstate'), separatorBefore: true, onSelect: () => change('active', [tenant]) }] : [])]" /></TableCell>
+          <TableCell><RowActions :actions="[{ key: 'open', label: t('common.view'), onSelect: () => open(tenant.id) }, ...(canSuspend(tenant) ? [{ key: 'suspend', label: t('tenants.suspend'), separatorBefore: true, onSelect: () => change('suspended', [tenant]) }] : []), ...(reinstatable(tenant) ? [{ key: 'reinstate', label: t('tenants.reinstate'), separatorBefore: true, onSelect: () => change('active', [tenant]) }] : [])]" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>

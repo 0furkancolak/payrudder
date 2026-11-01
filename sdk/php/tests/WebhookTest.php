@@ -7,6 +7,7 @@ namespace Payrudder\Tests;
 use Payrudder\Exception\WebhookException;
 use Payrudder\Tools\SpecLoader;
 use Payrudder\Webhook\Data\CreditsLowEventData;
+use Payrudder\Webhook\Data\CustomerBlockEventData;
 use Payrudder\Webhook\Data\InvoiceEventData;
 use Payrudder\Webhook\Data\PaymentLinkEventData;
 use Payrudder\Webhook\Webhook;
@@ -141,5 +142,11 @@ final class WebhookTest extends TestCase
             ->dataAs(CreditsLowEventData::class);
         self::assertSame('4.5', $low->balance);
         self::assertNull($low->customerExternalId);
+
+        $blocked = WebhookEvent::fromJson('{"id":"3","type":"customer.blocked","data":{"customer_id":"c1","customer_external_id":"cus_1","category":"fraud","reason":"stolen card","blocked_until":"2027-01-01T00:00:00Z"}}')
+            ->dataAs(CustomerBlockEventData::class);
+        self::assertSame('cus_1', $blocked->customerExternalId);
+        self::assertSame('fraud', $blocked->category);
+        self::assertSame('2027-01-01T00:00:00Z', $blocked->blockedUntil);
     }
 }

@@ -233,7 +233,55 @@
       "rerating": "Trabajo de retarificación"
     },
     "allStatuses": "Todos los estados",
-    "allKinds": "Todos los tipos"
+    "allKinds": "Todos los tipos",
+    "status": {
+      "title": "Estado",
+      "names": {
+        "active": "Activo",
+        "inactive": "Aún no está en vivo",
+        "suspended": "Suspendido",
+        "frozen": "Congelado",
+        "banned": "Vetado"
+      },
+      "effects": {
+        "active": "En servicio: las claves de API, las páginas de pago, los reintentos de cobro, los correos a clientes y los webhooks funcionan.",
+        "inactive": "Aún no está en vivo: no tiene claves ni cobra hasta completar su lista de salida a producción.",
+        "suspended": "Las claves de API se detienen al instante. Las páginas y enlaces de pago no aceptan pagos, los reintentos de cobro no cargan nada, los clientes no reciben correos y los envíos de webhooks esperan.",
+        "frozen": "Solo lectura: las claves de API y la consola siguen leyendo, no se escribe nada. Las páginas y enlaces de pago no aceptan pagos, los reintentos de cobro no cargan nada, los clientes no reciben correos y los envíos de webhooks esperan.",
+        "banned": "Como suspendido, pero pensado para durar: las claves de API se detienen al instante y no se cobra, envía ni notifica nada. Vetar, y levantar el veto, exige un motivo."
+      },
+      "to": "Cambiar a",
+      "category": "Categoría",
+      "categoryNone": "Sin categoría",
+      "categories": {
+        "nonpayment": "Impago",
+        "fraud": "Fraude",
+        "abuse": "Abuso",
+        "legal": "Legal",
+        "request": "Petición propia",
+        "other": "Otro"
+      },
+      "reason": "Motivo",
+      "reasonHint": "Se guarda en el historial, con tu dirección. Hasta 500 caracteres.",
+      "reasonRequired": "Vetar, y levantar el veto, exige un motivo.",
+      "apply": "Poner en «{status}»",
+      "confirm": {
+        "active": "¿Reactivar {name}? Sus claves de API, páginas de pago, correos y webhooks vuelven a funcionar.",
+        "suspended": "¿Suspender {name}? Sus claves de API se detienen al instante y no acepta pagos.",
+        "frozen": "¿Congelar {name}? Sus claves de API y su consola pasan a solo lectura y no acepta pagos.",
+        "banned": "¿Vetar {name}? Sus claves de API se detienen al instante y no se cobra, envía ni notifica nada."
+      },
+      "sandbox": "Un entorno sandbox siempre está activo.",
+      "inactive": "Este entorno aún no está en vivo. Se activa desde su lista de salida a producción.",
+      "history": "Historial",
+      "historyEmpty": "Aún no hay cambios.",
+      "requested": "Se pidió poner «{to}»: a la espera de un segundo operador",
+      "changed": "{from} → {to}",
+      "by": "por {actor}",
+      "approvedBy": "aprobado por {actor}",
+      "choose": "Elige un estado",
+      "applyNone": "Establecer estado"
+    }
   },
   "invoice": {
     "summary": "{kind} · periodo {period} · {customer} · {total} · {status} · saga {saga}",
@@ -572,8 +620,35 @@
         "badge": "Bloqueado",
         "action": "Bloquear",
         "lift": "Quitar el bloqueo",
-        "confirm": "¿Bloquear a {name}? No se podrá crear una nueva suscripción. Las actuales siguen.",
-        "confirmMany": "¿Bloquear a {n} clientes? No se podrá crear una nueva suscripción para ellos. Las actuales siguen."
+        "confirm": "¿Bloquear a {name}? No se puede iniciar una nueva suscripción, un cambio de plan ni una compra para este cliente. Lo que tiene ahora sigue funcionando.",
+        "confirmMany": "¿Bloquear a {n} clientes? No se puede iniciar una nueva suscripción, un cambio de plan ni una compra para ellos. Lo que tienen ahora sigue funcionando.",
+        "title": "Bloquear a {name}",
+        "description": "No se puede iniciar una nueva suscripción, un cambio de plan ni una compra para este cliente. Lo que tiene ahora sigue funcionando.",
+        "category": "Motivo",
+        "categoryNone": "Sin motivo indicado",
+        "categoryHint": "El fraude y la devolución de cargo también le impiden pagar una factura abierta.",
+        "categories": {
+          "fraud": "Fraude",
+          "chargeback": "Devolución de cargo",
+          "abuse": "Abuso",
+          "request": "Petición propia",
+          "other": "Otro"
+        },
+        "note": "Tu nota",
+        "noteHint": "Solo la ves tú, nunca el cliente. Hasta 500 caracteres.",
+        "until": "Termina el",
+        "untilHint": "Déjalo vacío para bloquear hasta que lo levantes. El cliente puede volver a comprar desde ese día.",
+        "submit": "Bloquear cliente",
+        "banner": "Bloqueado desde el {date}",
+        "bannerUntil": "Termina el {date}",
+        "ended": "El bloqueo terminó el {date}. Levántalo para borrarlo.",
+        "history": "Historial de bloqueos",
+        "historyEmpty": "Este cliente nunca ha sido bloqueado.",
+        "actions": {
+          "blocked": "Bloqueado",
+          "unblocked": "Levantado"
+        },
+        "by": "por {actor}"
       }
     },
     "packages": {
@@ -683,7 +758,8 @@
           "renews_soon": "{n} se renuevan demasiado pronto para el aviso: vuelva a ejecutarlo más tarde.",
           "has_pending_change": "{n} ya tienen un cambio pendiente y no se tocaron.",
           "run_by_provider": "{n} las gestiona un proveedor de pagos.",
-          "not_changeable": "{n} no se pueden mover así (por ejemplo, cuota facturada a mes vencido)."
+          "not_changeable": "{n} no se pueden mover así (por ejemplo, cuota facturada a mes vencido).",
+          "customer_blocked": "{n} pertenecen a un cliente bloqueado y se dejaron sin tocar."
         }
       }
     },
@@ -2576,7 +2652,8 @@
         "bad_status": "El estado debe ser pending, issued, failed o cancelled."
       },
       "tenant": {
-        "bad_id": "El identificador de la cuenta no es válido."
+        "bad_id": "El identificador de la cuenta no es válido.",
+        "on_hold": "Este vendedor no puede cobrar pagos ahora mismo."
       },
       "rerating": {
         "bad_job_id": "El identificador del trabajo de retarificación no es válido.",
@@ -2672,7 +2749,7 @@
       "customer": {
         "tax_invalid": "El identificador fiscal o la oficina fiscal del cliente no es válido.",
         "quota_reached": "Se alcanzó el límite de clientes del plan de esta cuenta.",
-        "blocked": "Este cliente está bloqueado: no se puede crear una nueva suscripción para él."
+        "blocked": "Este cliente está bloqueado, así que no se puede iniciar nada nuevo para él."
       },
       "common": {
         "not_found": "No se encontró.",
@@ -2682,10 +2759,12 @@
       },
       "tenant": {
         "settings_immutable": "La moneda, la zona horaria y el entorno de una cuenta no se pueden cambiar.",
-        "bad_status": "El estado debe ser active o suspended.",
+        "bad_status": "El estado debe ser active, suspended, frozen o banned.",
         "bad_transition": "Este cambio de estado no es posible para este entorno.",
-        "reason_required": "Activar un entorno sin completar su lista requiere un motivo.",
-        "unknown": "Esta cuenta no se conoce."
+        "reason_required": "Vetar, levantar un veto o activar un entorno sin su lista exige un motivo.",
+        "unknown": "Esta cuenta no se conoce.",
+        "on_hold": "Esta cuenta está en espera: no se puede iniciar nada nuevo.",
+        "approval_pending": "El veto está registrado. Un segundo operador debe hacer la misma petición para aplicarlo."
       },
       "request": {
         "invalid": "{field} no es válido: {detail}"
@@ -2988,7 +3067,7 @@
         "incomplete": "La lista de salida a producción aún no está completa.",
         "no_live": "Este despliegue no tiene entorno live.",
         "owner_only": "Solo un propietario de la cuenta puede activar el entorno live.",
-        "suspended": "El entorno live está suspendido. Contacta con soporte."
+        "suspended": "El entorno live está en espera (suspendido, congelado o vetado). Contacta con soporte."
       },
       "promote": {
         "stale": "La configuración cambió desde la vista previa. Vuelve a previsualizar la promoción."
@@ -3019,7 +3098,8 @@
       },
       "auth": {
         "tenant_not_active": "Este entorno está suspendido o aún no está activo. Completa la lista de salida a producción o contacta con soporte.",
-        "permission_denied": "Esta clave de API no tiene un permiso que necesita esta solicitud. Usa una clave con el rol o el permiso indicado."
+        "permission_denied": "Esta clave de API no tiene un permiso que necesita esta solicitud. Usa una clave con el rol o el permiso indicado.",
+        "tenant_read_only": "Este entorno es de solo lectura. Contacta con soporte."
       },
       "assets": {
         "bad_invoice_logo": "El logotipo de factura debe ser una subida terminada del tipo logotipo de factura."

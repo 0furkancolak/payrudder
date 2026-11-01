@@ -29,7 +29,8 @@ final class WebhookEvent
     /**
      * The data as the class of its event family: InvoiceEventData for `invoice.*`, CreditNoteEventData for
      * `credit_note.*`, SubscriptionEventData for `subscription.*`, PaymentLinkEventData for `payment_link.*`,
-     * CreditsPurchasedEventData for `credits.purchased` and CreditsLowEventData for `credits.low`.
+     * CreditsPurchasedEventData for `credits.purchased`, CreditsLowEventData for `credits.low` and CustomerBlockEventData for `customer.blocked` and
+     * `customer.unblocked`.
      *
      * @template T of EventData
      *

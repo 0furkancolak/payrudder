@@ -48,6 +48,8 @@ class EventType:
     PAYMENT_LINK_EXPIRED = "payment_link.expired"
     CREDITS_PURCHASED = "credits.purchased"
     CREDITS_LOW = "credits.low"
+    CUSTOMER_BLOCKED = "customer.blocked"
+    CUSTOMER_UNBLOCKED = "customer.unblocked"
     PING = "ping"  # sent by POST /v1/webhook-endpoints/{id}/test
 
 
@@ -160,6 +162,23 @@ class CreditsLowEventData(_CreditsLowEventDataRequired, total=False):
     customer_external_id: str
 
 
+class _CustomerBlockEventDataRequired(TypedDict):
+    customer_id: str
+
+
+class CustomerBlockEventData(_CustomerBlockEventDataRequired, total=False):
+    """``data`` of ``customer.blocked`` and ``customer.unblocked``.
+
+    ``category`` (fraud, chargeback, abuse, request, other, or empty), ``reason`` (the seller's own note) and ``blocked_until`` (an RFC 3339 time, absent when the
+    block lasts until it is lifted) are set on ``customer.blocked`` only.
+    """
+
+    customer_external_id: str
+    category: str
+    reason: str
+    blocked_until: str
+
+
 class WebhookEvent(TypedDict):
     """A delivery's JSON body. ``data`` depends on ``type``; its ``*_minor`` values are ints.
 
@@ -167,7 +186,7 @@ class WebhookEvent(TypedDict):
     ``*EventData`` class of the type (``invoice.*`` is ``InvoiceEventData``, ``credit_note.*`` is
     ``CreditNoteEventData``, ``subscription.*`` is ``SubscriptionEventData``, ``payment_link.*`` is
     ``PaymentLinkEventData``, ``credits.purchased`` / ``credits.low`` are ``CreditsPurchasedEventData`` /
-    ``CreditsLowEventData``).
+    ``CreditsLowEventData``, ``customer.blocked`` / ``customer.unblocked`` are ``CustomerBlockEventData``).
     """
 
     id: str

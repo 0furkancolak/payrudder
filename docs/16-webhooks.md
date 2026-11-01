@@ -31,6 +31,10 @@ A development stack may lift the address rule with `PAYRUDDER_WEBHOOK_ALLOW_PRIV
 | `payment_link.expired` | the link expired unpaid (a single-use link that was paid is used, not expired) | `link_id`, `kind`, `expires_at`; when set: `invoice_id`, `amount_minor`, `currency`, `customer_external_id` |
 | `credits.purchased` | a credit pack was paid and its credits granted (once per paid invoice) | `customer_id`, `customer_external_id`, `credits` (the pack's and the bonus of a coupon, in one lot), `bonus_credits` (the part a coupon added, 0 without one), `quantity`, `balance` (spendable after the grant), `pack_id`, `pack_name`, `link_id`, `invoice_id`, `invoice_number`, `currency`, `amount_minor`, `expires_at` (absent when they never expire) |
 | `credits.low` | a consume took a customer's balance from at least the tenant's threshold (`PUT /v1/credits/settings`, default off) to below it; once per crossing | `customer_id`, `customer_external_id`, `balance`, `threshold` |
+| `customer.blocked` | a customer was blocked (`POST /v1/customers/{id}/block`); blocking one who is blocked already sends nothing | `customer_id`, `customer_external_id`, `category` (`fraud`, `chargeback`, `abuse`, `request`, `other` or empty), `reason` (the seller's own note), and `blocked_until` (RFC 3339) when the block ends by itself |
+| `customer.unblocked` | a block was lifted (`POST /v1/customers/{id}/unblock`), also one that had ended by itself and was still in the row. The end of a block by itself sends no event | `customer_id`, `customer_external_id` |
+
+A tenant the operator has suspended, frozen or banned sends no webhooks: its deliveries wait (without using up an attempt, for up to the 30 days events are kept) and go out when the tenant is reinstated.
 
 A delivery is a JSON `POST`:
 

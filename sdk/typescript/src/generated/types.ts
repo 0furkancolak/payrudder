@@ -328,6 +328,9 @@ export interface BillingRun {
 export interface BlockCustomerRequest {
   /** Your note on why; never shown to the customer. */
   reason?: string;
+  category?: CustomerBlockCategory;
+  /** When the block ends by itself; must be in the future. Absent: until you lift it. */
+  blocked_until?: string;
 }
 
 export interface CancelSubscriptionQuery {
@@ -961,10 +964,29 @@ export interface Customer {
   locale: string;
   /** individual (a person) or business (a taxpayer with a tax id). Empty is unknown. */
   customer_type: string;
-  /** Set while the customer is blocked: no new subscription can be created for them (existing ones run on). */
+  /** Set while the customer is blocked: no new subscription, plan change or purchase (existing subscriptions run on). A block whose blocked_until has passed has ended, whatever this says. */
   block_time?: string | null;
   /** The seller's own note on the block; never shown to the customer. */
   block_reason: string;
+  /** Why: fraud, chargeback, abuse, request or other; empty when none was given. */
+  block_category: string;
+  /** When the block ends by itself; absent: until it is lifted. */
+  blocked_until?: string | null;
+}
+
+/** Why the customer is blocked. fraud and chargeback also refuse paying an invoice that is open. */
+export type CustomerBlockCategory = "fraud" | "chargeback" | "abuse" | "request" | "other";
+
+export interface CustomerBlockEvent {
+  id: string;
+  action: "blocked" | "unblocked";
+  /** Empty when none was given; else a CustomerBlockCategory */
+  category: string;
+  reason: string;
+  blocked_until?: string | null;
+  /** A person's address, key:<api key id>, or operator */
+  actor: string;
+  create_time: string;
 }
 
 export interface CustomerContact {
@@ -1682,6 +1704,10 @@ export interface ListCreditPacksQuery {
   active?: boolean;
 }
 
+export interface ListCustomerBlockEventsResponse {
+  events: Array<CustomerBlockEvent>;
+}
+
 export interface ListCustomerPaymentsQuery {
   /** How many invoices to read; there is no page_token, so a customer with more invoices cannot be listed completely */
   limit?: number;
@@ -1991,7 +2017,7 @@ export interface Price {
 export interface PriceChangeSkipped {
   subscription_id: string;
   customer_external_id: string;
-  reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable";
+  reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable" | "customer_blocked";
 }
 
 export interface PriceInput {
@@ -2483,4 +2509,4 @@ export interface WebhookEndpointInput {
   active: boolean;
 }
 
-export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low";
+export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked";

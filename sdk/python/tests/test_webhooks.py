@@ -128,6 +128,7 @@ def test_event_data_types_cover_each_event_family() -> None:
         CreditNoteEventData,
         CreditsLowEventData,
         CreditsPurchasedEventData,
+        CustomerBlockEventData,
         InvoiceEventData,
         PaymentLinkEventData,
         SubscriptionEventData,
@@ -144,4 +145,6 @@ def test_event_data_types_cover_each_event_family() -> None:
     assert PaymentLinkEventData.__required_keys__ == {"link_id"}
     assert CreditsPurchasedEventData.__required_keys__ == {"customer_id", "credits", "balance"}
     assert CreditsLowEventData.__required_keys__ == {"customer_id", "balance", "threshold"}
+    assert CustomerBlockEventData.__required_keys__ == {"customer_id"}
+    assert {"customer.blocked", "customer.unblocked"} <= set(EVENT_TYPES)
     assert "net_minor" in get_type_hints(InvoiceEventData)
