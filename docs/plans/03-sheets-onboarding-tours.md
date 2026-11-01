@@ -57,5 +57,17 @@ Conflict with the other session working on the same files (#243 area): coordinat
 **Scroll (complaint 9):** `e2e-mock/sheet-scroll.spec.ts` opens a sheet on a scrolled customer list and checks the page behind does not move on open or on close. It passes, so the jump is not reproducible on this page in the mock; other lists, nested peeks and a phone are not covered.
 
 ## Review addendum (2026-11-01)
+- **Status:** the "Still open" items of this addendum (payment peek, `toCredits`, the scroll lock owned by the stack, nested and back/forward e2e) are done; see the status section at the end of this file.
 - The bullet that calls items 5, 6 and 13 unverified contradicts the Findings section; the Findings win.
 - **Still open:** payment is not peekable (`related/PaymentRows.vue` falls back to a link); `CustomersPage.vue` `toCredits` does not pass the customer; the scroll lock is per page (`shared/lib/sheets.ts`), not owned by `Sheet`; nested and back/forward behaviour needs mock e2e.
+
+## Status (2026-11-02, branch `feat/console-lists-peek`)
+
+Done, with tests (`docs/13-admin-ui.md`, "Peeks and the page's scroll"):
+- **Payment is peekable.** `payment` is in `PEEK_KINDS`; `PaymentSheetById` (found among the newest payments the console loads: there is no single-payment call) and `PaymentDetail` (shared with the payments page); `PeekHost` mounts it; `RelatedRow` of kind `payment` opens it instead of linking. `e2e-mock/peek-payment.spec.ts`: an invoice's payment opens over the invoice, the customer it names opens over the payment (three sheets, strip, back), a reload brings them back, an older payment says so.
+- **`CustomersPage.toCredits` passes the customer** (`?customer=<id>`, environment kept), tested in the same spec.
+- **The scroll lock is owned by the stack of sheets**, not the page: `syncScrollLock` in `shared/lib/sheets.ts` (called by `enter` and `leave`): `overflow: hidden` on the root while any sheet is open, the page put back at the position the first sheet found it when the last closes. Unit tests with a fake page (`sheets.test.ts`) and `e2e-mock/sheet-lock.spec.ts`: a wheel on the overlay (up and down) moves nothing, a nested peek and back/forward keep the lock, something that scrolls the page meanwhile is undone on close (within the header's own change of height, 12 px), leaving the page with a sheet open does not leave the next one locked. The test fails without the lock (checked once by disabling it).
+
+Default (not agreed): the lock is `overflow: hidden` on `<html>` with the scrollbar's width kept as padding, not `position: fixed` on the body. iOS Safari ignores some `overflow: hidden` on the root in older versions: **not verified on a phone**.
+
+**Still open:** reproduction of the five complaints against the real stack (needs the compose stack and a person's eyes); Combobox inside every sheet that has one; the three onboarding screens against "nothing is forced" on the real stack; the browser's own back and forward (the address of the sheets is `replace`d, so the browser's history has none of them: "back" and "forward" are the strip's).

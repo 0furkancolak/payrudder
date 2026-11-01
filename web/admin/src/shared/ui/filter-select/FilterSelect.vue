@@ -1,7 +1,7 @@
 <script setup lang="ts" generic="M extends boolean = false">
 import { Check, ChevronDown, X } from "@lucide/vue";
 import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from "reka-ui";
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { cn } from "@/shared/lib/utils";
 import { newFilterId, useAppliedReport } from "./applied";
@@ -45,11 +45,10 @@ const anyLabel = computed(() => props.options.find((x) => x.value === "")?.label
 
 const filterId = newFilterId();
 const applied = useAppliedReport();
-watch(
-  [first, rest, () => props.label],
-  () => applied.report(filterId, first.value === undefined ? null : { label: props.label, text: rest.value > 0 ? `${first.value} +${rest.value}` : first.value, clear }),
-  { immediate: true },
-);
+// Told once mounted and after each change has rendered, so a filter does not change the toolbar's list while the toolbar is still being drawn.
+const report = () => applied.report(filterId, first.value === undefined ? null : { label: props.label, text: rest.value > 0 ? `${first.value} +${rest.value}` : first.value, clear });
+onMounted(report);
+watch([first, rest, () => props.label], report, { flush: "post" });
 onBeforeUnmount(() => applied.report(filterId, null));
 
 function pick(value: string) {
