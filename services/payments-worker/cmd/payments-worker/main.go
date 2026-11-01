@@ -65,9 +65,9 @@ type Config struct {
 	// provider exists. Without it the worker refuses to start with the mock as the live provider, and refuses at run time any live command routed to the mock.
 	AllowMockLive bool `env:"PAYMENTS_ALLOW_MOCK_LIVE"`
 	Prefetch      int  `env:"PAYRUDDER_PREFETCH"`
-	// SecretsKey (base64, 32 bytes) seals the credentials of tenants' provider accounts. Without it provider accounts, and with them
-	// provider webhooks, are disabled.
-	SecretsKey string `env:"PAYRUDDER_SECRETS_KEY"`
+	// Secrets holds the key (base64, 32 bytes) that seals the credentials of tenants' provider accounts and e-invoice accounts, and the previous key while one is
+	// replaced. Without a key provider accounts, and with them provider webhooks, are disabled.
+	Secrets secretbox.Settings
 	// HTTPAddr serves provider webhooks and the operator endpoints for provider accounts and the ledger; the gateway forwards to it.
 	HTTPAddr string `env:"PAYMENTS_HTTP_ADDR"`
 	// PlansAddr is plans-svc, which is told about subscriptions a provider runs. Empty skips that.
@@ -96,10 +96,8 @@ func (c *Config) Validate() error {
 	if c.Enabled() && c.PlansAddr == "" {
 		errs = append(errs, errors.New("PAYRUDDER_CELLS needs PAYRUDDER_PLANS_ADDR: the tenant directory is plans-svc's"))
 	}
-	if c.SecretsKey != "" {
-		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
-			errs = append(errs, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err))
-		}
+	if _, err := c.Secrets.SecretBox(); err != nil {
+		errs = append(errs, err)
 	}
 	if c.TransferWindowDays < 1 || c.TransferWindowDays > banktransfer.MaxPaymentWindowDays {
 		errs = append(errs, fmt.Errorf("PAYMENTS_TRANSFER_WINDOW_DAYS must be 1 to %d", banktransfer.MaxPaymentWindowDays))
@@ -141,6 +139,10 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	defer pool.Close()
+	// A table with a tenant_id and no forced row-level security, that is not listed as exempt, is a deployment that must not serve (docs/plans/22 G11).
+	if err := pgxx.VerifyForcedRLS(ctx, pool, migrations.RLSExempt); err != nil {
+		return fmt.Errorf("row-level security: %w", err)
+	}
 	// Cells mode (ADR 0018): a tenant's statements go where the directory says its data is. Off, the pool is used directly, as ever. payments-worker has the
 	// system role only, so only the system-role router is used.
 	var db store.DB = pool
@@ -171,7 +173,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	paddle.Register(registry)
 	stripe.Register(registry)
 	einvoices := newEInvoiceRegistry(cfg)
-	box, err := newBox(cfg.SecretsKey)
+	box, err := cfg.Secrets.SecretBox()
 	if err != nil {
 		return err
 	}
@@ -195,19 +197,6 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
 	return serve(ctx, cfg, log, hh, w, httpHandler)
-}
-
-// newBox opens the box that seals the stored provider and e-invoice credentials. Without a key (PAYRUDDER_SECRETS_KEY) the features that need it are off,
-// and the box is nil.
-func newBox(secretsKey string) (*secretbox.Box, error) {
-	if secretsKey == "" {
-		return nil, nil
-	}
-	key, err := secretbox.ParseKey(secretsKey)
-	if err != nil {
-		return nil, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err)
-	}
-	return secretbox.New(key)
 }
 
 // tenantDirectory is how the worker learns the environment of a command's tenant, to refuse a command that disagrees (ADR 0023). It asks plans-svc and keeps

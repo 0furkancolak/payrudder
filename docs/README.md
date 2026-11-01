@@ -5,6 +5,8 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 
 > **Work plans:** the owner's open requests, ordered, each with its gaps, research and acceptance criteria, are in [plans/](plans/README.md). Nothing in them is started until it is agreed.
 
+> **Publication:** [publication.yaml](publication.yaml) says which of these documents are public (the developer site and the MCP server publish only those) and how finished each one is. A new file needs a line there; a test fails until it has one.
+
 ## Core
 
 | Doc | What it answers |
@@ -27,6 +29,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [16-webhooks.md](16-webhooks.md) | Signed outbound events, endpoint management, delivery and retries, the hosted invoice page |
 | [15-billing-lifecycle.md](15-billing-lifecycle.md) | Yearly plans, fees in advance, upgrades and downgrades, the Paddle catalogue and API, credit notes, coupons and tax |
 | [14-billing-platform.md](14-billing-platform.md) | Subscriptions, iyzico and Paddle, routing by country and currency, provider migration, reports: the design and what was built |
+| [payment-provider-contract.md](payment-provider-contract.md) | What a payment provider adapter must do, the conformance suite it passes, and the compatibility matrices of [Paddle](paddle-compatibility-matrix.md), [iyzico](iyzico-compatibility-matrix.md) and [Stripe](stripe-compatibility-matrix.md) |
 
 ## Service specifications
 

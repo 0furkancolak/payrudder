@@ -5071,7 +5071,29 @@
         "title": "Un événement d'usage",
         "todo": "Envoyez-en un avec le code ci-dessous.",
         "done": "Un événement a été compté."
+      },
+      "webhook": {
+        "title": "Un point de terminaison webhook",
+        "todo": "Indiquez où Payrudder envoie les événements, pour être informé des factures et des paiements.",
+        "done": "Un point de terminaison est enregistré.",
+        "link": "Ajouter un point de terminaison"
       }
+    },
+    "webhookTest": {
+      "title": "Essayer un webhook",
+      "help": "Envoie un événement de test signé (de type ping) à l'un de vos points de terminaison, pour voir votre code de vérification l'accepter.",
+      "endpoint": "Point de terminaison",
+      "send": "Envoyer un webhook de test",
+      "none": "Vous n'avez pas encore de point de terminaison. Ajoutez-en un (une adresse https publique) puis revenez pour le tester.",
+      "noAnswer": "aucune réponse",
+      "badge": {
+        "queued": "Envoyé",
+        "delivered": "Livré",
+        "failed": "Non accepté"
+      },
+      "queued": "En attente de la réponse de votre serveur.",
+      "delivered": "Votre serveur l'a accepté ({answer}).",
+      "failed": "Votre serveur ne l'a pas accepté : {answer}. Corrigez votre gestionnaire puis envoyez-en un autre ; Payrudder réessaie aussi de lui-même."
     }
   }
 }

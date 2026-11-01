@@ -246,7 +246,8 @@ func (m Move) Copy(ctx context.Context) (CopyReport, error) {
 			}
 		}
 		// Every tenant table is under forced row-level security, the owner's reads and inserts included: the tenant is the one the transaction names.
-		if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true)`, m.TenantID.String()); err != nil {
+		// payrudder.tenant_move is the other half of that: the triggers that refuse a delete on financial tables (billing, payments) let this tenant's rows go.
+		if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true), set_config('payrudder.tenant_move', $1, true)`, m.TenantID.String()); err != nil {
 			return rep, err
 		}
 	}
@@ -399,7 +400,7 @@ func (m Move) deletePooledRows(ctx context.Context, pooled *pgx.Conn, cell Endpo
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
-	if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true)`, m.TenantID.String()); err != nil {
+	if _, err := tx.Exec(ctx, `SELECT set_config('app.tenant_id', $1, true), set_config('payrudder.tenant_move', $1, true)`, m.TenantID.String()); err != nil {
 		return err
 	}
 	for _, t := range slices.Backward(tables) {

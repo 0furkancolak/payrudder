@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, CircleDashed, Copy } from "@lucide/vue";
+import { Check, CircleDashed, Copy, Send } from "@lucide/vue";
 import { Link } from "@tanstack/vue-router";
 import { useQuery } from "@tanstack/vue-query";
 import { computed, ref, watch } from "vue";
@@ -9,12 +9,17 @@ import { useMeters } from "@/features/meters/api";
 import { useCustomers } from "@/features/customers/api";
 import { seriesOptions } from "@/features/usage/api";
 import { useTenants } from "@/features/tenants/api";
+import { answerBody, plainAnswer } from "@/features/webhooks/lib";
+import { useWebhookActions, useWebhookDeliveries, useWebhookEndpoints } from "@/features/webhooks/api";
 import { copyText } from "@/shared/lib/clipboard";
 import { findTenant } from "@/shared/lib/environment";
+import { firstError } from "@/shared/lib/errors";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
 import { isOperator, tenantBase } from "@/shared/lib/session";
+import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
+import { ErrorText } from "@/shared/ui/error-text";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PageHeader } from "@/shared/ui/page-header";
@@ -25,7 +30,7 @@ import { LANGS, keyHintOf, snippets, type Lang } from "./snippets";
  * Connect an app: the steps from "I have an app" to "my first event arrived", with the code to paste. The code is built from the app's own meter and a customer id,
  * for the environment the page is in (a test key shape for the sandbox, a live one for live). The checklist turns green as the things happen: a meter exists, a
  * customer exists, and a usage event has been counted (asked for every few seconds while the page is open). The API address is the deployment's, which the console
- * cannot know, so it is typed once and kept in this browser.
+ * cannot know, so it is typed once and kept in this browser. Under the webhook code, a button sends the endpoint a test event and shows how the endpoint answered.
  */
 const { t } = useI18n();
 const tenantId = useRouteTenantId();
@@ -79,11 +84,40 @@ const arrived = useQuery({
   refetchInterval: (q) => (q.state.data === true ? false : 5000),
 });
 
+// The webhook: the endpoints that exist, the one a test event goes to, and how that test delivery went (looked at every few seconds until it is settled).
+const endpoints = useWebhookEndpoints(tenantId);
+const hooks = computed(() => endpoints.data.value?.endpoints ?? []);
+const hookActions = useWebhookActions(tenantId);
+const endpointId = ref("");
+watch(hooks, (list) => {
+  if (!list.some((e) => e.id === endpointId.value)) endpointId.value = list[0]?.id ?? "";
+}, { immediate: true });
+const sentId = ref("");
+watch(endpointId, () => (sentId.value = ""));
+function sendTestWebhook() {
+  hookActions.test.mutate(endpointId.value, { onSuccess: (d) => (sentId.value = d.id ?? "") });
+}
+const deliveries = useWebhookDeliveries(tenantId, () => (sentId.value ? endpointId.value : ""));
+const delivery = computed(() => (sentId.value ? deliveries.data.value?.deliveries?.find((d) => d.id === sentId.value) : undefined));
+const outcome = computed<"" | "queued" | "delivered" | "failed">(() => {
+  if (!sentId.value) return "";
+  const d = delivery.value;
+  if (d?.state === "WEBHOOK_DELIVERY_STATE_DELIVERED") return "delivered";
+  return d && Number(d.attempts) > 0 ? "failed" : "queued";
+});
+const answer = computed(() => {
+  const d = delivery.value;
+  const text = plainAnswer(answerBody(d?.last_error, d?.last_status)).text;
+  return [Number(d?.last_status) > 0 ? `HTTP ${d?.last_status}` : "", text].filter(Boolean).join(": ") || t("connect.webhookTest.noAnswer");
+});
+const webhookError = computed(() => firstError(hookActions.test));
+
 const steps = computed(() => [
   { key: "key", done: false, optional: true },
   { key: "meter", done: (meters.data.value ?? []).length > 0 },
   { key: "customer", done: (customers.data.value?.customers ?? []).length > 0 },
   { key: "event", done: arrived.data.value === true },
+  { key: "webhook", done: hooks.value.length > 0 },
 ]);
 const copied = ref("");
 async function copy(which: "install" | "send" | "webhook") {
@@ -108,6 +142,7 @@ const base = computed(() => tenantBase());
           <span class="font-medium">{{ t(`connect.steps.${s.key}.title`) }}</span>
           <span class="text-muted-foreground block text-xs">{{ s.done ? t(`connect.steps.${s.key}.done`) : t(`connect.steps.${s.key}.todo`) }}</span>
           <Link v-if="!s.done && s.key === 'meter'" :to="`${base}/${tenantId}/meters`" class="text-primary text-xs hover:underline">{{ t("connect.steps.meter.link") }}</Link>
+          <Link v-if="!s.done && s.key === 'webhook'" :to="`${base}/${tenantId}/webhooks`" class="text-primary text-xs hover:underline">{{ t("connect.steps.webhook.link") }}</Link>
         </span>
       </li>
     </ol>
@@ -139,6 +174,26 @@ const base = computed(() => tenantBase());
       </div>
       <pre class="bg-muted mono overflow-x-auto rounded-2xl p-4 text-xs leading-relaxed" :data-testid="`connect-code-${block}`"><code>{{ code[block] }}</code></pre>
       <p v-if="block === 'webhook'" class="text-muted-foreground mt-2 text-xs">{{ t("connect.webhookHelp") }} <Link :to="`${base}/${tenantId}/webhooks`" class="text-primary hover:underline">{{ t("connect.webhookLink") }}</Link></p>
+      <div v-if="block === 'webhook'" class="bg-muted/40 mt-3 grid gap-3 rounded-2xl p-4" data-testid="connect-webhook-test">
+        <h4 class="text-sm font-semibold">{{ t("connect.webhookTest.title") }}</h4>
+        <p v-if="hooks.length === 0" class="text-muted-foreground text-xs" data-testid="connect-webhook-none">{{ t("connect.webhookTest.none") }}</p>
+        <template v-else>
+          <p class="text-muted-foreground text-xs">{{ t("connect.webhookTest.help") }}</p>
+          <div class="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+            <label class="grid min-w-0 gap-1 text-sm">{{ t("connect.webhookTest.endpoint") }}
+              <NativeSelect v-model="endpointId" data-testid="connect-webhook-endpoint">
+                <option v-for="e in hooks" :key="e.id" :value="e.id">{{ e.url }}</option>
+              </NativeSelect>
+            </label>
+            <Button type="button" variant="outline" :disabled="hookActions.test.isPending.value || endpointId === ''" data-testid="connect-webhook-send" @click="sendTestWebhook"><Send class="size-4" aria-hidden="true" />{{ t("connect.webhookTest.send") }}</Button>
+          </div>
+          <p v-if="outcome" class="flex flex-wrap items-center gap-2 text-sm" role="status" data-testid="connect-webhook-result" :data-outcome="outcome">
+            <Badge :variant="outcome === 'delivered' ? 'success' : outcome === 'failed' ? 'destructive' : 'secondary'">{{ t(`connect.webhookTest.badge.${outcome}`) }}</Badge>
+            <span>{{ t(`connect.webhookTest.${outcome}`, { answer }) }}</span>
+          </p>
+        </template>
+        <ErrorText :error="webhookError" />
+      </div>
     </template>
   </Card>
 </template>

@@ -24,11 +24,24 @@ func testSandboxResetKeepsConfigurationAndOtherTenants(t *testing.T) {
 	sbx, other := uuid.New(), uuid.New()
 	when := time.Date(2026, 10, 5, 10, 0, 0, 0, time.UTC)
 
-	// Two tenants with the same kinds of data.
-	for _, tid := range []uuid.UUID{sbx, other} {
-		paid := seedPaidInvoice(t, tid, "USD", 1000, 0, when, time.Time{})
-		seedPaidInvoice(t, tid, "USD", 700, 0, when, time.Time{})
+	// Two tenants with the same kinds of data: the one that is reset is a sandbox, the other is live.
+	for _, tn := range []struct {
+		tid uuid.UUID
+		env string
+	}{{sbx, "sandbox"}, {other, "live"}} {
+		tid := tn.tid
+		paid := seedPaidInvoiceIn(t, tid, tn.env, "USD", 1000, 100, when, time.Time{})
+		seedPaidInvoiceIn(t, tid, tn.env, "USD", 700, 0, when, time.Time{})
 		seedCreditNote(t, tid, paid, "USD", 100, when)
+		// Credits: a lot and its ledger row (the ledger refuses deletes, a reset names the tenant to the database).
+		lot := uuid.New()
+		if _, err := shared.sql.Exec(ctx, `INSERT INTO credit_lots (tenant_id, id, customer_id, granted, remaining, source) VALUES ($1,$2,$3,10,10,'manual')`, tid, lot, uuid.New()); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := shared.sql.Exec(ctx, `INSERT INTO credit_ledger (tenant_id, id, customer_id, lot_id, kind, amount) SELECT tenant_id, $2, customer_id, id, 'grant', 10 FROM credit_lots WHERE tenant_id = $1 AND id = $3`,
+			tid, uuid.New(), lot); err != nil {
+			t.Fatal(err)
+		}
 		if _, err := shared.sql.Exec(ctx, `INSERT INTO invoice_number_seq (tenant_id, year, next_value) VALUES ($1, 2026, 3)`, tid); err != nil {
 			t.Fatal(err)
 		}
@@ -54,7 +67,7 @@ func testSandboxResetKeepsConfigurationAndOtherTenants(t *testing.T) {
 	}
 	counts := func(tid uuid.UUID) map[string]int {
 		out := map[string]int{}
-		for _, tb := range []string{"invoices", "invoice_sagas", "saga_events", "credit_notes", "invoice_number_seq", "credit_packs", "dunning_settings"} {
+		for _, tb := range []string{"invoices", "invoice_lines", "invoice_sagas", "saga_events", "credit_notes", "credit_ledger", "credit_lots", "invoice_number_seq", "credit_packs", "dunning_settings"} {
 			out[tb] = count(tb, tid)
 		}
 		return out
@@ -73,7 +86,7 @@ func testSandboxResetKeepsConfigurationAndOtherTenants(t *testing.T) {
 		t.Errorf("deleted = %v", deleted)
 	}
 	after := counts(sbx)
-	for _, tb := range []string{"invoices", "invoice_sagas", "saga_events", "credit_notes", "invoice_number_seq"} {
+	for _, tb := range []string{"invoices", "invoice_lines", "invoice_sagas", "saga_events", "credit_notes", "credit_ledger", "credit_lots", "invoice_number_seq"} {
 		if after[tb] != 0 {
 			t.Errorf("%s still has %d rows of the reset tenant", tb, after[tb])
 		}

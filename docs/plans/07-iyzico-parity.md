@@ -1,5 +1,18 @@
 # 07 — iyzico: full compatibility
 
+## Status (2026-11-02)
+
+**The five findings of the review addendum are closed in code; nothing verified against iyzico.** `docs/iyzico-compatibility-matrix.md` has the per-finding table ("Status of the findings"), written from the raw markdown pages re-read on 2026-11-02.
+
+| | |
+|---|---|
+| Closed | `fraudStatus` (1 approved, 0 under review = `PendingError`, -1 rejected = a decline; read from `/payment/auth`, `/payment/detail` and CF-Retrieve), the checkout-form notification (`token` + `iyziPaymentId`, no `paymentId`) parsed and confirmed with the CF-Retrieve call, the V3 signature (both formulas of webhook.md; checked whenever the header is there, `require_webhook_signature` refuses an unsigned notification), the health-check BIN (8 digits; "BIN not found" is healthy; authentication codes are bad credentials), error handling (`errorCode` as a number, 50000 and the documented "try again later" codes transient, authentication/general/validation codes a typed `*iyzico.Error` instead of a decline, the documented issuer groups mapped to Payrudder's decline vocabulary). No new error key was needed (decline codes are free strings). |
+| Still UNCLEAR | `/payment/detail` by conversation id alone, the "no such payment" code, whether it returns checkout-form payments, the `paymentStatus` values of CF-Retrieve, whether `retryable` is sent on payment/auth answers, the HTTP status of the 50000 answer, whether iyzico notifies again after a fraud review, the checkout-form token lifetime, `registerCard` vs `registeredCard`. |
+| Needs an iyzico sandbox merchant | All of the above UNCLEAR, the V3 signature bytes (iyzico must enable the feature first: entegrasyon@iyzico.com), and every flow of "Work" 5. |
+| Open, needs the owner | 3-D Secure, card storage (`cardUserKey`), the iyzico subscription product, per-customer buyer data (needs plan 05), instalments, same-day cancel and per-item refunds. Not started. |
+
+Defaults chosen (not agreed): the response `signature` of iyzico's answers is **not** verified (optional hardening, documented in response-signature-validation.md; TLS and the signed request are the protection); the notification signature is checked when present and required only by `require_webhook_signature`; a payment under fraud review is pending, not declined. Added: the conformance suite run against a fake of iyzico (`docs/payment-provider-contract.md`).
+
 ## The request
 List 1 (8) and list 2 (5): be exactly compatible with **iyzico**.
 
@@ -39,5 +52,5 @@ All of it against iyzico until credentials exist.
 3-D Secure and the checkout form redirect the customer: the return/callback URLs, CSP and idempotency of the callback need a design review (04).
 
 ## Review addendum (2026-11-01)
-- `docs/iyzico-compatibility-matrix.md` exists (8 findings); finding 2 was fixed in #270. Open and not yet listed here: `fraudStatus` is ignored (a success with a fraud status of 0 is booked as paid); the checkout-form notification is rejected; there is no CF-Retrieve call; the health-check BIN is 6 digits against the documented 8; the V3 signature check is not implemented.
+- `docs/iyzico-compatibility-matrix.md` exists (8 findings); finding 2 was fixed in #270. Open and not yet listed here: `fraudStatus` is ignored (a success with a fraud status of 0 is booked as paid); the checkout-form notification is rejected; there is no CF-Retrieve call; the health-check BIN is 6 digits against the documented 8; the V3 signature check is not implemented. **All five closed 2026-11-02** (see Status).
 - iyzico has no webhook signature in the current adapter: the "ask iyzico" confirmation is the only trust. Keep it, add V3 verification as an extra check when the account has it enabled.

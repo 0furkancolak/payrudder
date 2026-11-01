@@ -20,6 +20,12 @@ import (
 // seedPaidInvoice inserts an invoice, its saga and the saga events of its history: paidAt is when it reached PAID, refundedAt (zero for none) when it was refunded.
 func seedPaidInvoice(t *testing.T, tid uuid.UUID, currency string, total, tax int64, paidAt, refundedAt time.Time) uuid.UUID {
 	t.Helper()
+	return seedPaidInvoiceIn(t, tid, "live", currency, total, tax, paidAt, refundedAt)
+}
+
+// seedPaidInvoiceIn is seedPaidInvoice for a tenant of the given environment ("live" or "sandbox"): the invoice's snapshot names it.
+func seedPaidInvoiceIn(t *testing.T, tid uuid.UUID, environment, currency string, total, tax int64, paidAt, refundedAt time.Time) uuid.UUID {
+	t.Helper()
 	ctx := context.Background()
 	id, saga := uuid.New(), uuid.New()
 	status := "paid"
@@ -27,7 +33,7 @@ func seedPaidInvoice(t *testing.T, tid uuid.UUID, currency string, total, tax in
 		status = "void"
 	}
 	if _, err := shared.sql.Exec(ctx, `INSERT INTO invoices (tenant_id, id, customer_id, period_id, kind, plan_version_id, currency, subtotal_minor, total_minor, status, snapshot, provider)
-		VALUES ($1,$2,$3,'2026-09','REGULAR',$4,$5,$6,$7,$8,'{"customer_external_id":"cus_acc","environment":"live"}'::jsonb,'')`, tid, id, uuid.New(), uuid.New(), currency, total-tax, total, status); err != nil {
+		VALUES ($1,$2,$3,'2026-09','REGULAR',$4,$5,$6,$7,$8,jsonb_build_object('customer_external_id', 'cus_acc', 'environment', $9::text),'')`, tid, id, uuid.New(), uuid.New(), currency, total-tax, total, status, environment); err != nil {
 		t.Fatal(err)
 	}
 	if tax > 0 {
@@ -52,8 +58,10 @@ func seedPaidInvoice(t *testing.T, tid uuid.UUID, currency string, total, tax in
 
 func seedCreditNote(t *testing.T, tid, invoice uuid.UUID, currency string, amount int64, at time.Time) {
 	t.Helper()
-	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-		tid, uuid.New(), uuid.New(), invoice, "CN-"+uuid.NewString()[:8], currency, amount, at); err != nil {
+	// A credit note is in the series of its invoice's environment.
+	if _, err := shared.sql.Exec(context.Background(), `INSERT INTO credit_notes (tenant_id, id, customer_id, invoice_id, number, currency, total_minor, created_at)
+		SELECT $1,$2,$3,$4, CASE WHEN snapshot ->> 'environment' = 'sandbox' THEN 'SBX-CN-' ELSE 'CN-' END || $5::text, $6,$7,$8 FROM invoices WHERE tenant_id = $1 AND id = $4`,
+		tid, uuid.New(), uuid.New(), invoice, uuid.NewString()[:8], currency, amount, at); err != nil {
 		t.Fatal(err)
 	}
 }
