@@ -31,6 +31,13 @@ func (f *fakeReal) Status(context.Context, string) (payments.StatusResult, error
 	return payments.StatusResult{State: payments.StateNotFound}, nil
 }
 
+// A provider that declares nothing is a plain one (what mock-psp is): idempotent for charges and refunds, so no guard stands in its way.
+func TestAProviderWithoutCapabilitiesIsIdempotent(t *testing.T) {
+	if c := capabilities(&fakeReal{}); !c.Refunds || !c.IdempotentCharges || !c.IdempotentRefunds {
+		t.Errorf("capabilities = %+v", c)
+	}
+}
+
 func TestDemoModeNeverLeavesTheSandboxProvider(t *testing.T) {
 	sandbox, live := payments.NewMockPSP("http://sandbox", 0), payments.NewMockPSP("http://live", 0)
 	for _, demo := range []bool{false, true} {

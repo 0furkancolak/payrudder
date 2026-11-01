@@ -53,11 +53,13 @@ function numberFormat(locale: string, oneDecimal: boolean): Intl.NumberFormat {
 const RTL_LANGUAGES = new Set(["ar", "he", "fa", "ur"]);
 
 /**
- * A date in a right-to-left language is wrapped in a left-to-right isolate, so it keeps its own order when it sits inside Latin text ("TRY · 27 Oct 2026"
- * in an Arabic page would otherwise be reordered into "272026/10/"). Left-to-right languages get the text unchanged.
+ * A date in a right-to-left language is wrapped in a first-strong isolate, so it keeps its own order when it sits inside Latin text ("TRY · 27 Oct 2026"
+ * in an Arabic page would otherwise be reordered into "272026/10/") and takes its own direction from its content. A left-to-right isolate would be wrong
+ * for Arabic's numeric dates ("02‏/10‏/2026", each slash behind a right-to-left mark): inside it the day and the year change places ("022026/10/").
+ * Left-to-right languages get the text unchanged.
  */
 export function isolateDate(text: string, locale: string): string {
-  return text && RTL_LANGUAGES.has(locale.toLowerCase().split("-")[0]!) ? `\u2066${text}\u2069` : text;
+  return text && RTL_LANGUAGES.has(locale.toLowerCase().split("-")[0]!) ? `\u2068${text}\u2069` : text;
 }
 
 /** An instant (an RFC 3339 text from the API) as text in the reader's time zone; `empty` for nothing or for something that is not a date. */

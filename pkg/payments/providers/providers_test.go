@@ -43,3 +43,14 @@ func TestBankTransferCapabilities(t *testing.T) {
 		t.Errorf("banktransfer = %+v: Payrudder owns renewal and dunning, there is no refund API, no hosted checkout, and the status query reads the ledger", bt)
 	}
 }
+
+// Which providers dedupe a refund by its key decides whether payments-worker may send a resend (G1 of plan 22): only Stripe documents it. Declared per provider, so
+// that a new one has to say.
+func TestOnlyStripeDedupesRefunds(t *testing.T) {
+	for name, want := range map[string]bool{"stripe": true, "iyzico": false, "paddle": false, "banktransfer": false} {
+		c, ok := providers.Lookup(name)
+		if !ok || c.IdempotentRefunds != want {
+			t.Errorf("%s: IdempotentRefunds = %v, want %v", name, c.IdempotentRefunds, want)
+		}
+	}
+}

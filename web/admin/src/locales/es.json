@@ -56,7 +56,10 @@
       "amountLow": "Importe, de menor a mayor",
       "nameAsc": "Nombre, A a Z",
       "nameDesc": "Nombre, Z a A",
-      "lastUsed": "Usado recientemente"
+      "lastUsed": "Usado recientemente",
+      "countHigh": "Cantidad, de mayor a menor",
+      "countLow": "Cantidad, de menor a mayor",
+      "expiresSoon": "Caduca antes"
     },
     "bulk": {
       "label": "Acciones masivas",
@@ -65,8 +68,16 @@
       "selectPage": "Seleccionar todas las filas de esta página",
       "selectRow": "Seleccionar fila",
       "done": "{ok} hechos, {failed} sin cambiar",
-      "notChanged": "Sin cambiar"
-    }
+      "notChanged": "Sin cambiar",
+      "announce": "{n} fila seleccionada. Las acciones masivas están en la barra sobre la tabla. | {n} filas seleccionadas. Las acciones masivas están en la barra sobre la tabla.",
+      "cleared": "Selección borrada",
+      "selectAll": "Seleccionar los {n} resultados",
+      "selectAllMore": "Seleccionar todos los resultados coincidentes",
+      "confirmAllTitle": "¿Aplicar a {n} filas?",
+      "confirmAll": "Esto se aplica a las {n} filas seleccionadas, incluidas las de otras páginas.",
+      "loadFailed": "No se pudo cargar el resto de la lista, así que no están seleccionados todos los resultados."
+    },
+    "appliedFilters": "Filtros aplicados"
   },
   "enums": {
     "environment": {
@@ -4476,7 +4487,8 @@
     "none": "Aún no hay",
     "notFound": "No está en la lista",
     "open": "Abrir",
-    "openCustomerPage": "Abrir en la página de clientes para cambiar algo"
+    "openCustomerPage": "Abrir en la página de clientes para cambiar algo",
+    "paymentNotLoaded": "Este pago no está entre los últimos pagos que carga la consola."
   },
   "sheets": {
     "back": "Atrás",

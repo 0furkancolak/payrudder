@@ -150,16 +150,21 @@ func seedSaga(t *testing.T, tid, invoice uuid.UUID) {
 
 func testCreditNoteRefundToCard(t *testing.T) {
 	e := newEnv(t, envOpts{})
-	// The refund of "failing" is rejected the first time; the one of "silent" is never answered the first two times.
-	var failing, silent uuid.UUID
-	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, _ int) stubworker.Action {
+	// The refund of "failing" is rejected the first time; the one of "silent" is never answered the first two times; the one of "unsure" times out the first time.
+	var failing, silent, unsure uuid.UUID
+	errored := func(code string) func(*commandsv1.CommandEnvelope) *commandsv1.ReplyEnvelope {
+		return stubworker.Fixed(&commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentErrored{PaymentErrored: &commandsv1.PaymentErrored{Code: code, Message: "stub"}}})
+	}
+	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, seen int) stubworker.Action {
 		if stubworker.Kind(c) != "refund" {
 			return stubworker.Action{Reply: stubworker.Succeed}
 		}
 		rf := c.GetRefundPayment()
 		switch {
 		case rf.GetInvoiceId() == failing.String() && !strings.HasSuffix(rf.GetIdempotencyKey(), ":1"):
-			return stubworker.Action{Reply: stubworker.Errored}
+			return stubworker.Action{Reply: errored("REJECTED")}
+		case rf.GetInvoiceId() == unsure.String() && seen == 0:
+			return stubworker.Action{Reply: errored("TIMEOUT")}
 		case rf.GetInvoiceId() == silent.String() && c.GetAttempt() < 3:
 			return stubworker.Action{}
 		}
@@ -246,5 +251,29 @@ func testCreditNoteRefundToCard(t *testing.T) {
 	}
 	if len(keys) != 1 {
 		t.Errorf("a resent refund used %d idempotency keys: %v, want one", len(keys), keys)
+	}
+
+	// A refund whose outcome is unknown (the provider timed out, or payments-worker will not repeat a refund it cannot vouch for) fails the note, and the operator's
+	// retry asks under the same key: the provider may have made it, and a new key would refund twice.
+	maybe := seedOne(t, e.tid, customer, "cus_rf4", "paid", "USD", "INV-2026-000104", 200, "live")
+	unsure = maybe
+	seedSaga(t, e.tid, maybe)
+	ucn, err := refund(maybe, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testkit.Eventually(t, 30*time.Second, "the timed-out refund to fail", func() bool { return state(ucn.GetId()) == billingv1.RefundState_REFUND_STATE_FAILED })
+	if _, err := svc.RetryCreditNoteRefund(op, &billingv1.RetryCreditNoteRefundRequest{TenantId: e.tid.String(), CreditNoteId: ucn.GetId()}); err != nil {
+		t.Fatal(err)
+	}
+	testkit.Eventually(t, 30*time.Second, "the retried refund to go through", func() bool { return state(ucn.GetId()) == billingv1.RefundState_REFUND_STATE_REFUNDED })
+	keys = map[string]int{}
+	for _, c := range stub.Commands() {
+		if rf := c.GetRefundPayment(); rf != nil && rf.GetInvoiceId() == maybe.String() {
+			keys[rf.GetIdempotencyKey()]++
+		}
+	}
+	if len(keys) != 1 {
+		t.Errorf("a refund of unknown outcome was asked for under %d keys: %v, want one", len(keys), keys)
 	}
 }

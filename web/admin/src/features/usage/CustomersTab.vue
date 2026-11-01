@@ -5,6 +5,8 @@ import { useI18n } from "vue-i18n";
 import { useCustomers } from "@/features/customers/api";
 import { maskEmail } from "@/shared/lib/money";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc } from "@/shared/lib/sortDefs";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import type { DateRange } from "@/shared/ui/date-range";
@@ -41,6 +43,7 @@ const top = useTopOfAll(() => props.tenantId, codes, () => props.period, 100);
 const rows = computed(() => mergeCustomers(customers.data.value?.customers ?? [], top.value.by));
 const table = useTableState<UsageRow>(rows, {
   searchFields: (r) => [r.externalId, r.name, r.email],
+  sorts: () => [nameAsc(t, (r) => r.name || r.externalId), nameDesc(t, (r) => r.name || r.externalId)],
   filters: {
     meter: (r, v) => v in r.usage,
     usage: (r, v) => (v === "used" ? Object.keys(r.usage).length > 0 : Object.keys(r.usage).length === 0),
@@ -112,6 +115,7 @@ const error = computed(() => customers.error.value ?? meters.error.value ?? top.
       <FilterSelect v-model="meterFilter" multiple :label="t('billing.usage.customers.meter')" :options="meterOptions" />
       <FilterSelect v-model="usageFilter" multiple :label="t('billing.usage.customers.usage')" :options="usageOptions" />
       <PeriodControls v-model:range="range" v-model:compare="compare" :period="period" :too-long="tooLong" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <Table>
       <TableHeader>

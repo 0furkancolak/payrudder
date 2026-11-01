@@ -56,7 +56,10 @@
       "amountLow": "Amount, low to high",
       "nameAsc": "Name, A to Z",
       "nameDesc": "Name, Z to A",
-      "lastUsed": "Last used"
+      "lastUsed": "Last used",
+      "countHigh": "Count, high to low",
+      "countLow": "Count, low to high",
+      "expiresSoon": "Expires soonest"
     },
     "bulk": {
       "label": "Bulk actions",
@@ -65,8 +68,16 @@
       "selectPage": "Select all rows on this page",
       "selectRow": "Select row",
       "done": "{ok} done, {failed} not changed",
-      "notChanged": "Not changed"
-    }
+      "notChanged": "Not changed",
+      "announce": "{n} row selected. The bulk actions are in the bar above the table. | {n} rows selected. The bulk actions are in the bar above the table.",
+      "cleared": "Selection cleared",
+      "selectAll": "Select all {n} results",
+      "selectAllMore": "Select all matching results",
+      "confirmAllTitle": "Apply to {n} rows?",
+      "confirmAll": "This acts on all {n} selected rows, including those on other pages.",
+      "loadFailed": "The rest of the list could not be loaded, so not all results are selected."
+    },
+    "appliedFilters": "Applied filters"
   },
   "enums": {
     "environment": {
@@ -4476,7 +4487,8 @@
     "none": "None yet",
     "notFound": "Not in the list",
     "open": "Open",
-    "openCustomerPage": "Open on the customers page to change something"
+    "openCustomerPage": "Open on the customers page to change something",
+    "paymentNotLoaded": "This payment is not among the latest payments the console loads."
   },
   "sheets": {
     "back": "Back",

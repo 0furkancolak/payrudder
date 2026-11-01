@@ -552,6 +552,45 @@ func periodBounds(period string) (time.Time, time.Time, error) {
 }
 
 // sagaStates returns the saga state per customer external id for a period.
+// waitingSaga is a saga whose payment outcome is unknown, as the database holds it.
+type waitingSaga struct {
+	state     string
+	deadline  *time.Time
+	lastError string
+}
+
+// parkedSagas lists the sagas of a period that are in PAYMENT_UNKNOWN, with the deadline and the error they carry.
+func (e *env) parkedSagas(period string) []waitingSaga {
+	e.t.Helper()
+	rows, err := shared.sql.Query(context.Background(), `SELECT s.state, s.step_deadline, COALESCE(s.last_error, '') FROM invoices i
+		JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id WHERE i.tenant_id = $1 AND i.period_id = $2 AND s.state = 'PAYMENT_UNKNOWN'`, e.tid, period)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer rows.Close()
+	var out []waitingSaga
+	for rows.Next() {
+		var w waitingSaga
+		if err := rows.Scan(&w.state, &w.deadline, &w.lastError); err != nil {
+			e.t.Fatal(err)
+		}
+		out = append(out, w)
+	}
+	return out
+}
+
+// waitingOutTheGrace counts the sagas of a period in PAYMENT_UNKNOWN whose deadline is the end of the grace period of a "not found" answer, not the deadline of a
+// command in flight.
+func (e *env) waitingOutTheGrace(period string) int {
+	n := 0
+	for _, sg := range e.parkedSagas(period) {
+		if sg.deadline != nil && !sg.deadline.After(e.clk.Now().Add(sagacommand.DefaultNotFoundGrace)) {
+			n++
+		}
+	}
+	return n
+}
+
 func (e *env) sagaStates(period string) map[string]string {
 	e.t.Helper()
 	rows, err := shared.sql.Query(context.Background(), `SELECT i.snapshot->>'customer_external_id', s.state FROM invoices i

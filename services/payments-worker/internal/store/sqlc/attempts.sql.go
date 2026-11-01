@@ -85,6 +85,52 @@ func (q *Queries) GetChargeProvider(ctx context.Context, arg GetChargeProviderPa
 	return provider, err
 }
 
+const listRefundAttemptsByKey = `-- name: ListRefundAttemptsByKey :many
+SELECT command_id, status, reply FROM payment_attempts
+WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'refund' AND idempotency_key = $3 AND command_id <> $4
+ORDER BY created_at
+`
+
+type ListRefundAttemptsByKeyParams struct {
+	TenantID        uuid.UUID
+	InvoiceID       uuid.UUID
+	IdempotencyKey  string
+	ExceptCommandID uuid.UUID
+}
+
+type ListRefundAttemptsByKeyRow struct {
+	CommandID uuid.UUID
+	Status    string
+	Reply     []byte
+}
+
+// The other refund commands started under an idempotency key. Billing resends a refund with a new command id and the same key, so the command id cannot tell a
+// resend from a first try.
+func (q *Queries) ListRefundAttemptsByKey(ctx context.Context, arg ListRefundAttemptsByKeyParams) ([]ListRefundAttemptsByKeyRow, error) {
+	rows, err := q.db.Query(ctx, listRefundAttemptsByKey,
+		arg.TenantID,
+		arg.InvoiceID,
+		arg.IdempotencyKey,
+		arg.ExceptCommandID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRefundAttemptsByKeyRow{}
+	for rows.Next() {
+		var i ListRefundAttemptsByKeyRow
+		if err := rows.Scan(&i.CommandID, &i.Status, &i.Reply); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const startAttempt = `-- name: StartAttempt :execrows
 INSERT INTO payment_attempts (command_id, tenant_id, invoice_id, kind, environment, provider, idempotency_key, request, status)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'STARTED')

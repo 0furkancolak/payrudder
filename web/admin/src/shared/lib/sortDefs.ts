@@ -19,3 +19,6 @@ export const amountHigh = <R>(t: T, by: By<R>): SortDef<R> => ({ key: "amount_de
 export const amountLow = <R>(t: T, by: By<R>): SortDef<R> => ({ key: "amount_asc", label: t("common.sort.amountLow"), by, dir: "asc" });
 export const nameAsc = <R>(t: T, by: By<R>): SortDef<R> => ({ key: "name_asc", label: t("common.sort.nameAsc"), by, dir: "asc" });
 export const nameDesc = <R>(t: T, by: By<R>): SortDef<R> => ({ key: "name_desc", label: t("common.sort.nameDesc"), by, dir: "desc" });
+export const countHigh = <R>(t: T, by: By<R>): SortDef<R> => ({ key: "count_desc", label: t("common.sort.countHigh"), by, dir: "desc" });
+export const countLow = <R>(t: T, by: By<R>): SortDef<R> => ({ key: "count_asc", label: t("common.sort.countLow"), by, dir: "asc" });
+export const expiresSoon = <R>(t: T, by: By<R>): SortDef<R> => ({ key: "expires_asc", label: t("common.sort.expiresSoon"), by, dir: "asc" });

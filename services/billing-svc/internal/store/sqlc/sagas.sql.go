@@ -42,6 +42,26 @@ func (q *Queries) CountSagasByState(ctx context.Context) ([]CountSagasByStateRow
 	return items, nil
 }
 
+const getChargeKeyStart = `-- name: GetChargeKeyStart :one
+SELECT at FROM saga_events
+WHERE tenant_id = $1 AND saga_id = $2 AND to_state = 'PAYMENT_REQUESTED' AND from_state NOT IN ('PAYMENT_REQUESTED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING')
+ORDER BY seq DESC LIMIT 1
+`
+
+type GetChargeKeyStartParams struct {
+	TenantID uuid.UUID
+	SagaID   uuid.UUID
+}
+
+// When the charge under the saga's current idempotency key was first sent: the latest entry into PAYMENT_REQUESTED that is neither a re-charge after "not found"
+// (those keep the key) nor the re-issue of a command (from and to are the same state).
+func (q *Queries) GetChargeKeyStart(ctx context.Context, arg GetChargeKeyStartParams) (time.Time, error) {
+	row := q.db.QueryRow(ctx, getChargeKeyStart, arg.TenantID, arg.SagaID)
+	var at time.Time
+	err := row.Scan(&at)
+	return at, err
+}
+
 const getSaga = `-- name: GetSaga :one
 SELECT id, invoice_id, state, version, attempt, dunning_attempt, last_error FROM invoice_sagas WHERE tenant_id = $1 AND id = $2
 `

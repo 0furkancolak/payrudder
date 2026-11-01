@@ -153,7 +153,7 @@ function actionsOf(k: ApiKey): RowAction[] {
 }
 
 // --- revoking several at once: the ticked keys that are not revoked yet, after one question
-const bulk = useBulk<ApiKey>({ selected: () => table.selectedRows.value, untick: (k) => table.tick(k, false), name: (k) => keyMask(keyEnv(k), k.prefix) });
+const bulk = useBulk<ApiKey>(table, { name: (k) => keyMask(keyEnv(k), k.prefix) });
 const bulkRevoke = () =>
   bulk.run((k) => revoke.mutateAsync(k.id ?? ""), {
     rows: (all) => all.filter((k) => !isRevoked(k)),
@@ -190,7 +190,7 @@ function doRevoke() {
       <FilterSelect v-model="table.filters.value.status" multiple :label="t('product.keys.filterStatus')" :options="[{ value: '', label: t('product.keys.allStatuses') }, { value: 'active', label: t('product.keys.active') }, { value: 'revoked', label: t('product.keys.revoked') }]" />
       <HeaderAction v-if="canManage" :disabled="!!gate" :title="gate ? t(`product.keys.${gate}`) : undefined" :test-id="live ? 'new-live-key' : 'new-sandbox-key'" :label="t(live ? 'product.keys.newLive' : 'product.keys.newSandbox')" @click="making = true" />
     </DataToolbar>
-    <BulkBar v-if="canManage" :count="table.selectedRows.value.length" @clear="table.clearSelection()">
+    <BulkBar v-if="canManage" v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-revoke" @click="bulkRevoke">{{ t("product.keys.bulk.revoke") }}</Button>
     </BulkBar>
     <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>

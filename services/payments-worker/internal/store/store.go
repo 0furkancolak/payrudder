@@ -102,3 +102,26 @@ func (a Attempts) Start(ctx context.Context, commandID, tenantID, invoiceID uuid
 	})
 	return err == nil && n == 0, err
 }
+
+// RefundsUnder returns what the other refund commands of the tenant answered that were started under an idempotency key (the command itself is left out). Billing
+// resends a refund with a new command id and the same key, so only the key tells a resend from a first try. An entry is nil while its command has no answer
+// (STARTED: the provider may have been called and nothing says how it went) or its reply cannot be read: in both the outcome is unknown.
+func (a Attempts) RefundsUnder(ctx context.Context, tenant, invoice uuid.UUID, key string, except uuid.UUID) ([]*commandsv1.ReplyEnvelope, error) {
+	if err := requireTenant(a.DB, tenant); err != nil {
+		return nil, err
+	}
+	rows, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListRefundAttemptsByKeyRow, error) {
+		return q.ListRefundAttemptsByKey(ctx, sqlc.ListRefundAttemptsByKeyParams{TenantID: tenant, InvoiceID: invoice, IdempotencyKey: key, ExceptCommandID: except})
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*commandsv1.ReplyEnvelope, len(rows))
+	for i, r := range rows {
+		var reply commandsv1.ReplyEnvelope
+		if r.Status == "DONE" && proto.Unmarshal(r.Reply, &reply) == nil {
+			out[i] = &reply
+		}
+	}
+	return out, nil
+}

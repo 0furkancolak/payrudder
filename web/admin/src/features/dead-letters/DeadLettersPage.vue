@@ -11,6 +11,8 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { RowActions } from "@/shared/ui/row-actions";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, countHigh, countLow, nameAsc, nameDesc } from "@/shared/lib/sortDefs";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useDeadLetters, useRedrive } from "./api";
 
@@ -20,8 +22,14 @@ const list = useDeadLetters(queue);
 const redrive = useRedrive();
 const queues = computed(() => list.data.value?.queues ?? []);
 const messages = computed(() => list.data.value?.messages ?? []);
-const queuesTable = useTableState(queues, { sheet: { kind: "dl-queue", id: (q) => q.queue }, searchFields: (q) => [q.queue] });
-const messagesTable = useTableState(messages, { sheet: { kind: "dl-message", id: (m) => m.message_id }, searchFields: (m) => [m.message_id, m.reason] });
+const queuesTable = useTableState(queues, {
+  sheet: { kind: "dl-queue", id: (q) => q.queue }, searchFields: (q) => [q.queue],
+  sorts: () => [countHigh(t, (q) => amount(q.messages)), countLow(t, (q) => amount(q.messages)), nameAsc(t, (q) => q.queue), nameDesc(t, (q) => q.queue)],
+});
+const messagesTable = useTableState(messages, {
+  sheet: { kind: "dl-message", id: (m) => m.message_id }, searchFields: (m) => [m.message_id, m.reason],
+  sorts: () => [countHigh(t, (m) => m.delivery_count), countLow(t, (m) => m.delivery_count)],
+});
 watch(queuesTable.detail, () => {
   queue.value = queuesTable.row.value?.queue ?? "";
   messagesTable.clear();
@@ -43,7 +51,9 @@ async function run(name: string, count: number) {
   <p v-if="note" class="text-success bg-success/10 mb-3 rounded-2xl px-4 py-3 text-sm">{{ t("deadLetters.redriven", note) }}</p>
 
   <Card class="mb-6 p-3">
-    <DataToolbar v-model:search="queuesTable.search.value" :active="queuesTable.active.value" @clear="queuesTable.clear()" />
+    <DataToolbar v-model:search="queuesTable.search.value" :active="queuesTable.active.value" @clear="queuesTable.clear()">
+      <SortSelect v-if="queuesTable.sorts.value.length > 0" v-model="queuesTable.sort.value" :options="queuesTable.sorts.value" />
+    </DataToolbar>
     <Table>
       <TableHeader>
         <TableRow class="hover:bg-transparent">
@@ -70,7 +80,9 @@ async function run(name: string, count: number) {
 
   <DetailSheet v-model:index="queuesTable.detail.value" :total="queuesTable.total.value" :title="t('deadLetters.messagesOf', { queue })" wide>
     <div class="-mx-3">
-      <DataToolbar v-model:search="messagesTable.search.value" :active="messagesTable.active.value" @clear="messagesTable.clear()" />
+      <DataToolbar v-model:search="messagesTable.search.value" :active="messagesTable.active.value" @clear="messagesTable.clear()">
+        <SortSelect v-if="messagesTable.sorts.value.length > 0" v-model="messagesTable.sort.value" :options="messagesTable.sorts.value" />
+      </DataToolbar>
       <Table>
         <TableHeader>
           <TableRow class="hover:bg-transparent">

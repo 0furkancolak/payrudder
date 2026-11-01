@@ -53,6 +53,34 @@ Touching every list at once is a wide change: do it list by list in small PRs, n
 - **Bulk:** support inbox, customers, tenants, and (step 3) API keys (revoke) and webhook endpoints (pause, resume, delete) through the shared `useBulk` (`shared/lib/bulk.ts`: one question when it cannot be undone, "n done, m not changed" with the names, failed rows stay ticked). Candidates, by list: invoices (download, remind), subscriptions (cancel at period end, resume), payment links (revoke), keys (revoke), members (remove), webhooks (pause, resume, delete), dead letters (redrive, discard), packages (archive), coupons and codes (deactivate), meters (archive), affiliates (approve, suspend, pay).
 
 ## Review addendum (2026-11-01)
+- **Status:** the items under "Open work with no decision needed" below are done in the status section at the end of this file.
 - **Counts are stale:** 63 `FilterSelect` in 35 files; bulk exists on five lists (customers, tenants, support inbox, `KeysPanel`, `WebhooksPage`); sort on 14 lists.
 - **Decided, owner to confirm:** the server-paged sort question is settled in `docs/13-admin-ui.md` (section on sorting); do not reopen it.
 - **Open work with no decision needed:** `aria-live` and keyboard support in `BulkBar.vue`; select-all-matching in `shared/lib/bulk.ts`; applied-filter chips and the 360px popover; client sort on the remaining client-paged lists; new strings in all six locales, Arabic RTL checked in the mock e2e.
+
+## Status (2026-11-02, branch `feat/console-lists-peek`)
+
+Done in this change, each with a test that fails without it (the contract is in `docs/13-admin-ui.md`, "Lists"):
+
+| Item | What | Tests |
+|---|---|---|
+| Bulk bar for a screen reader and a keyboard | `BulkBar`: an always-present polite live region ("3 rows selected…", "Selection cleared"), Escape clears and returns the focus to the header's tick, nothing happens on an Escape that belongs to a sheet, popover or text box, Tab goes through the actions in order. | `e2e-mock/bulk-lists.spec.ts` (two tests) |
+| Select all N results | `useTableState.selectAll` / `canSelectAll` / `allMatching`; the bar offers it when the page is ticked and more rows match; a narrower filter narrows the selection. Customers and tenants (fetched `PAGE.whole` at a time) fetch the other server pages by `page_token` first (`restOfPages`, `useRestOfCustomers`, `useRestOfTenants`). Any bulk action on more rows than a page holds is confirmed with the count (`bulkQuestion`). Customers, tenants and the support inbox moved from their own copies of the bulk code to `useBulk`; `useBulk` now takes the list's `useTableState` instead of three lambdas. | `bulk.test.ts`, `useTableState.test.ts`, `bulk-lists.spec.ts` (four tests: all matching with the count in the question, a filter that narrows it, the rest of the server pages, a page that cannot be loaded) |
+| Sort on the remaining client-paged lists | 19 more tables (see the list below), 14 before: every list built with `useTableState` now has a `SortSelect`, 33 of 33. | `sort-lists.spec.ts` (credit packs, coupons, the tenant payments ledger, dead-letter queues, meters); the others are wired by the same four-line pattern and type-checked |
+| Applied filters on a phone, RTL | `FilterSelect` reports itself to `DataToolbar` (`filter-select/applied.ts`), which lists the filters that are on as removable chips under the search when the filters are behind the drawer button; the popover fits 360 px inside the drawer and Apply is reachable. The RTL check found two real bugs, both fixed: layers (popover, menu, select) were `dir="ltr"` in Arabic (no `ConfigProvider`), and numeric Arabic dates were reordered (`022026/10/`) by a left-to-right isolate. | `e2e-mock/filters-chips.spec.ts` (4 tests), `format.test.ts` |
+
+**Sort, step 3 (the lists).** Credit packs, a customer's credit lots, the credit ledger, e-invoice accounts, coupons, members, dead-letter queues and messages, the tenant payments ledger and its reconciliation issues, webhook deliveries, providers' accounts and the subscriptions they run, the provider catalogue, the revenue, subscription and dunning reports, the usage customers and meters tabs. Choices per list are in the `sorts` of each file; new labels: "Count, high to low / low to high", "Expires soonest" (six languages). The lists whose state is not in the address (`url`) keep the order in the page: moving each of them to `url` is a separate step because it also moves their filters into the address.
+
+**Lists with no sort, and why** (also in `docs/13-admin-ui.md`): server-paged lists (payment links, app invoices, promotion codes, redemptions, organisations, every affiliate and partner tab) by the rule already decided; the detail tables inside one record's sheet; the all-apps view (no search, filters or paging yet).
+
+**Defaults chosen, not agreed** (the owner said not to ask):
+- "Select all N results" ticks the filtered set in the browser; for the two lists that are fetched in pages it first fetches the rest, without a cap on rows (a repeated token or 500 pages stops with an error). No new endpoint, no `select_all` flag on the API.
+- A bulk action on more rows than one page holds is always confirmed, with the count, even when it could be undone. The threshold is the page size the person chose.
+- The applied-filter chips exist where the filters are hidden (a phone). On a wide screen the filter chips themselves are the applied filters, as before. The date range is not a chip.
+- Escape clears the selection only from inside the table's card; it is not a page-wide shortcut.
+
+**Not done or not verified**
+- Bulk on more lists (invoices, subscriptions, payment links, packages, dead letters, coupons, meters, affiliates): the actions were never agreed. The shared `useBulk` is what they would use.
+- A batch endpoint: one request and one list refetch per row is still the cost of a bulk action (a 340-customer block makes 340 of each).
+- No progress panel and no undo; the note after the run is the report.
+- Screen-reader behaviour (the live region and the bar landmark are asserted in the DOM, not heard), the manual check at 1440, 768 and 360 px in English and Arabic with screenshots on the PR, and every list's own apply/clear and sort test (five lists have one, the rest are covered by the shared contract and the type check).

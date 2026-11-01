@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ahead, back, closeName, enter, forward, idOf, leave, names, openName, openTabs, raise, setKind } from "./sheets";
+import { ahead, back, closeName, enter, forward, idOf, leave, names, openName, openTabs, raise, setKind, syncScrollLock } from "./sheets";
 
 beforeEach(() => {
   names.value = [];
@@ -52,5 +52,48 @@ describe("the stack of sheets", () => {
     ahead.value = ["x"];
     openName("new-thing");
     expect(ahead.value).toEqual([]);
+  });
+});
+
+describe("the scroll lock of the stack", () => {
+  /** A page that is scrolled to `y`, with a classic scrollbar of `bar` px. */
+  const page = (y: number, bar = 0) => {
+    const env = { root: { style: { overflow: "", paddingInlineEnd: "" } }, y: () => scrollAt.y, to: (to: number) => void (scrollAt.y = to), bar: () => bar };
+    const scrollAt = { y };
+    return { env, scrollAt };
+  };
+
+  it("locks the page at the first sheet and gives it back, at the same place, at the last", () => {
+    const { env, scrollAt } = page(480, 15);
+    syncScrollLock(true, env);
+    expect(env.root.style.overflow).toBe("hidden");
+    expect(env.root.style.paddingInlineEnd).toBe("15px");
+    // A second sheet changes nothing, and nothing the page does behind them (a navigation that scrolls to the top) is kept.
+    syncScrollLock(true, env);
+    scrollAt.y = 0;
+    syncScrollLock(false, env);
+    expect(env.root.style.overflow).toBe("");
+    expect(env.root.style.paddingInlineEnd).toBe("");
+    expect(scrollAt.y).toBe(480);
+  });
+
+  it("keeps what the page's style said before, and does not pad for an overlay scrollbar", () => {
+    const { env } = page(0, 0);
+    env.root.style.overflow = "clip";
+    syncScrollLock(true, env);
+    expect(env.root.style.paddingInlineEnd).toBe("");
+    syncScrollLock(false, env);
+    expect(env.root.style.overflow).toBe("clip");
+  });
+
+  it("needs no document to open and close sheets, and unlocking a page that was never locked changes nothing", () => {
+    enter({ uid: 1, title: "A", close: () => undefined });
+    enter({ uid: 2, title: "B", close: () => undefined });
+    leave(1);
+    leave(2);
+    expect(openTabs.value).toHaveLength(0);
+    const { env, scrollAt } = page(90);
+    syncScrollLock(false, env);
+    expect(scrollAt.y).toBe(90);
   });
 });

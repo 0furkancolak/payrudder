@@ -56,7 +56,10 @@
       "amountLow": "Tutar, azdan çoğa",
       "nameAsc": "Ad, A'dan Z'ye",
       "nameDesc": "Ad, Z'den A'ya",
-      "lastUsed": "Son kullanılan"
+      "lastUsed": "Son kullanılan",
+      "countHigh": "Adet, çoktan aza",
+      "countLow": "Adet, azdan çoğa",
+      "expiresSoon": "En yakın bitiş önce"
     },
     "bulk": {
       "label": "Toplu işlemler",
@@ -65,8 +68,16 @@
       "selectPage": "Bu sayfadaki tüm satırları seç",
       "selectRow": "Satırı seç",
       "done": "{ok} tamamlandı, {failed} değişmedi",
-      "notChanged": "Değişmeyenler"
-    }
+      "notChanged": "Değişmeyenler",
+      "announce": "{n} satır seçildi. Toplu işlemler tablonun üstündeki çubuktadır. | {n} satır seçildi. Toplu işlemler tablonun üstündeki çubuktadır.",
+      "cleared": "Seçim temizlendi",
+      "selectAll": "Tüm {n} sonucu seç",
+      "selectAllMore": "Eşleşen tüm sonuçları seç",
+      "confirmAllTitle": "{n} satıra uygulansın mı?",
+      "confirmAll": "Bu işlem, diğer sayfalardakiler dahil seçili {n} satırın tümüne uygulanır.",
+      "loadFailed": "Listenin geri kalanı yüklenemedi; bu yüzden tüm sonuçlar seçilemedi."
+    },
+    "appliedFilters": "Uygulanan filtreler"
   },
   "enums": {
     "environment": {
@@ -4476,7 +4487,8 @@
     "none": "Henüz yok",
     "notFound": "Listede yok",
     "open": "Aç",
-    "openCustomerPage": "Bir şeyi değiştirmek için müşteriler sayfasında aç"
+    "openCustomerPage": "Bir şeyi değiştirmek için müşteriler sayfasında aç",
+    "paymentNotLoaded": "Bu ödeme, konsolun yüklediği en son ödemeler arasında değil."
   },
   "sheets": {
     "back": "Geri",

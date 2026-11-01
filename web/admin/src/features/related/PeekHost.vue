@@ -3,6 +3,7 @@ import { computed } from "vue";
 import OperatorInvoiceSheet from "@/features/invoices/InvoiceSheetById.vue";
 import CustomerSheetById from "@/features/customers/CustomerSheetById.vue";
 import SubscriptionSheetById from "@/features/subscriptions/SubscriptionSheetById.vue";
+import PaymentSheetById from "./PaymentSheetById.vue";
 import PersonInvoiceSheet from "@/features/product/InvoiceSheetById.vue";
 import { names } from "@/shared/lib/sheets";
 import { tenantBase } from "@/shared/lib/session";
@@ -18,5 +19,6 @@ const invoiceSheet = computed(() => (tenantBase() === "/app/t" ? PersonInvoiceSh
     <component :is="invoiceSheet" v-if="p.kind === 'invoice'" :tenant-id="p.tenantId" :invoice-id="p.id" @close="unpeek('invoice', p.tenantId, p.id)" />
     <SubscriptionSheetById v-else-if="p.kind === 'subscription'" :tenant-id="p.tenantId" :subscription-id="p.id" @close="unpeek('subscription', p.tenantId, p.id)" />
     <CustomerSheetById v-else-if="p.kind === 'customer'" :tenant-id="p.tenantId" :external-id="p.id" @close="unpeek('customer', p.tenantId, p.id)" />
+    <PaymentSheetById v-else-if="p.kind === 'payment'" :tenant-id="p.tenantId" :payment-id="p.id" @close="unpeek('payment', p.tenantId, p.id)" />
   </template>
 </template>

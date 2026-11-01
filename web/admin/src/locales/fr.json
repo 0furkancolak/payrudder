@@ -56,7 +56,10 @@
       "amountLow": "Montant, croissant",
       "nameAsc": "Nom, A à Z",
       "nameDesc": "Nom, Z à A",
-      "lastUsed": "Utilisée récemment"
+      "lastUsed": "Utilisée récemment",
+      "countHigh": "Nombre, décroissant",
+      "countLow": "Nombre, croissant",
+      "expiresSoon": "Expire en premier"
     },
     "bulk": {
       "label": "Actions groupées",
@@ -65,8 +68,16 @@
       "selectPage": "Sélectionner toutes les lignes de cette page",
       "selectRow": "Sélectionner la ligne",
       "done": "{ok} faits, {failed} non modifiés",
-      "notChanged": "Non modifiés"
-    }
+      "notChanged": "Non modifiés",
+      "announce": "{n} ligne sélectionnée. Les actions groupées sont dans la barre au-dessus du tableau. | {n} lignes sélectionnées. Les actions groupées sont dans la barre au-dessus du tableau.",
+      "cleared": "Sélection effacée",
+      "selectAll": "Sélectionner les {n} résultats",
+      "selectAllMore": "Sélectionner tous les résultats correspondants",
+      "confirmAllTitle": "Appliquer à {n} lignes ?",
+      "confirmAll": "Cela s'applique aux {n} lignes sélectionnées, y compris celles des autres pages.",
+      "loadFailed": "Le reste de la liste n'a pas pu être chargé : tous les résultats ne sont donc pas sélectionnés."
+    },
+    "appliedFilters": "Filtres appliqués"
   },
   "enums": {
     "environment": {
@@ -4476,7 +4487,8 @@
     "none": "Aucun pour l'instant",
     "notFound": "Absent de la liste",
     "open": "Ouvrir",
-    "openCustomerPage": "Ouvrir dans la page des clients pour modifier"
+    "openCustomerPage": "Ouvrir dans la page des clients pour modifier",
+    "paymentNotLoaded": "Ce paiement ne figure pas parmi les derniers paiements chargés par la console."
   },
   "sheets": {
     "back": "Retour",

@@ -20,3 +20,10 @@ SELECT provider FROM payment_attempts WHERE tenant_id = @tenant_id AND invoice_i
 
 -- name: CountLinkAttempts :one
 SELECT count(*) FROM payment_attempts WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'charge' AND idempotency_key LIKE 'link:%';
+
+-- name: ListRefundAttemptsByKey :many
+-- The other refund commands started under an idempotency key. Billing resends a refund with a new command id and the same key, so the command id cannot tell a
+-- resend from a first try.
+SELECT command_id, status, reply FROM payment_attempts
+WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'refund' AND idempotency_key = @idempotency_key AND command_id <> @except_command_id
+ORDER BY created_at;

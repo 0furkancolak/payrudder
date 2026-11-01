@@ -32,3 +32,150 @@ test("ticked webhook endpoints are paused together, and one that cannot be chang
   // The one that failed (and the one that was not an active endpoint) stay ticked.
   await expect(page.getByText("2 selected")).toBeVisible();
 });
+
+// --- the selection bar for a screen reader and a keyboard (docs/plans/02, "Bulk"): a live region, Escape, Tab
+
+test("the bar is announced politely, its actions follow in Tab order, and Escape clears it and puts the focus back on the header's tick", async ({ page }) => {
+  const endpoints = [ep("e1", "https://a.example/hook"), ep("e2", "https://b.example/hook")];
+  const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/webhook-endpoints" && c.method === "GET" ? { body: { endpoints } } : undefined));
+  await gw.install(page);
+  await openTenantPage(page, "/webhooks");
+  const live = page.getByTestId("bulk-live");
+  await expect(live).toHaveAttribute("aria-live", "polite");
+  await expect(live).toHaveText("");
+
+  // Ticked from the keyboard: the live region says how many, in words that are not the bar's own text.
+  const head = page.getByRole("checkbox", { name: "Select all rows on this page" });
+  await head.focus();
+  await page.keyboard.press("Space");
+  await expect(live).toContainText("2 rows selected");
+  await expect(page.getByRole("region", { name: "Bulk actions" })).toBeVisible();
+
+  // Tab goes through the actions in order and ends on the clear button.
+  await page.getByTestId("bulk-pause").focus();
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("bulk-resume")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("bulk-delete")).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByTestId("bulk-clear")).toBeFocused();
+
+  // Escape in the bar unticks everything, says so, and the focus is not lost with the bar.
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("bulk-bar")).toHaveCount(0);
+  await expect(live).toHaveText("Selection cleared");
+  await expect(head).toBeFocused();
+
+  // Escape from a tick does the same.
+  await page.keyboard.press("Space");
+  await expect(page.getByTestId("bulk-bar")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("bulk-bar")).toHaveCount(0);
+});
+
+test("Escape that closes a popover, or is typed in a text box, does not clear the selection", async ({ page }) => {
+  const endpoints = [ep("e1", "https://a.example/hook"), ep("e2", "https://b.example/hook")];
+  const gw = baseTenant(new MockGateway()).on((c) => (c.path === "/v1/webhook-endpoints" && c.method === "GET" ? { body: { endpoints } } : undefined));
+  await gw.install(page);
+  await openTenantPage(page, "/webhooks");
+  await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+  await expect(page.getByTestId("bulk-bar")).toBeVisible();
+
+  await page.getByRole("button", { name: "Status", exact: true }).click();
+  await expect(page.getByRole("listbox", { name: "Status" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("listbox", { name: "Status" })).toHaveCount(0);
+  await expect(page.getByTestId("bulk-bar")).toBeVisible();
+
+  await page.getByRole("searchbox").fill("a.example");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("bulk-bar")).toBeVisible();
+});
+
+// --- select all N results (docs/13-admin-ui.md, "Selection")
+
+const many = (n: number, from = 1) =>
+  Array.from({ length: n }, (_, i) => ({ id: `id-${from + i}`, external_id: `cus_${String(from + i).padStart(2, "0")}`, name: `Customer ${from + i}`, email: `c${from + i}@example.com`, billing_currency: "TRY", create_time: "2026-10-05T10:00:00Z" }));
+
+test("the page ticked offers every result; the bulk action asks first, with the count, and runs over all of them", async ({ page }) => {
+  const all = many(23);
+  const blocked = new Set<string>();
+  const gw = baseTenant(new MockGateway()).on((c) => {
+    if (c.method === "GET" && c.path === "/v1/customers") return { body: { customers: all.map((x) => (blocked.has(x.external_id) ? { ...x, block_time: "2026-10-28T10:00:00Z" } : x)), next_page_token: "" } };
+    const m = /^\/v1\/customers\/(cus_\d+)\/block$/.exec(c.path);
+    if (m && c.method === "POST") return blocked.add(m[1]!), { body: {} };
+    return undefined;
+  });
+  await gw.install(page);
+  await openTenantPage(page, "/customers");
+  await page.getByTestId("customer-cus_01").waitFor();
+  await expect(page.getByTestId("bulk-bar")).toHaveCount(0);
+  await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+  await expect(page.getByTestId("bulk-count")).toHaveText("10 selected");
+  await page.getByTestId("bulk-select-all").click();
+  await expect(page.getByTestId("bulk-count")).toHaveText("23 selected");
+  await expect(page.getByTestId("bulk-select-all")).toHaveCount(0);
+  await expect(page.getByTestId("bulk-live")).toContainText("23 rows selected");
+
+  await page.getByTestId("bulk-block").click();
+  await expect(page.getByTestId("confirm-dialog")).toContainText("all 23 selected rows");
+  await page.getByTestId("confirm-accept").click();
+  await expect(page.getByTestId("bulk-note")).toContainText("23 done, 0 not changed");
+  expect(gw.called("POST", /\/block$/)).toHaveLength(23);
+});
+
+test("a filter narrows what 'select all' takes, and the bar goes with a selection that fits one page", async ({ page }) => {
+  const all = [...many(14), ...many(3, 50).map((x) => ({ ...x, country: "DE" }))];
+  const gw = baseTenant(new MockGateway()).on((c) => (c.method === "GET" && c.path === "/v1/customers" ? { body: { customers: all, next_page_token: "" } } : undefined));
+  await gw.install(page);
+  await openTenantPage(page, "/customers?country=DE");
+  await page.getByTestId("customer-cus_50").waitFor();
+  await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+  await expect(page.getByTestId("bulk-count")).toHaveText("3 selected");
+  // Three results fit the page: there is nothing more to select.
+  await expect(page.getByTestId("bulk-select-all")).toHaveCount(0);
+});
+
+test("a list the console holds one server page of loads the rest by its page tokens before it selects", async ({ page }) => {
+  const first = many(12);
+  const second = many(9, 13);
+  const blocked = new Set<string>();
+  const gw = baseTenant(new MockGateway()).on((c) => {
+    if (c.method === "GET" && c.path === "/v1/customers") {
+      const token = c.query.get("page_token");
+      const wrap = (rows: typeof first) => rows.map((x) => (blocked.has(x.external_id) ? { ...x, block_time: "2026-10-28T10:00:00Z" } : x));
+      return { body: token === "p2" ? { customers: wrap(second), next_page_token: "" } : { customers: wrap(first), next_page_token: "p2" } };
+    }
+    const m = /^\/v1\/customers\/(cus_\d+)\/block$/.exec(c.path);
+    if (m && c.method === "POST") return blocked.add(m[1]!), { body: {} };
+    return undefined;
+  });
+  await gw.install(page);
+  await openTenantPage(page, "/customers");
+  await page.getByTestId("customer-cus_01").waitFor();
+  await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+  // The server has more than the console holds, so the button cannot give a count yet.
+  await expect(page.getByTestId("bulk-select-all")).toHaveText("Select all matching results");
+  await page.getByTestId("bulk-select-all").click();
+  await expect(page.getByTestId("bulk-count")).toHaveText("21 selected");
+  expect(gw.called("GET", "/v1/customers").map((c) => c.query.get("page_token"))).toEqual([null, "p2"]);
+
+  await page.getByTestId("bulk-block").click();
+  await expect(page.getByTestId("confirm-dialog")).toContainText("21");
+  await page.getByTestId("confirm-accept").click();
+  await expect(page.getByTestId("bulk-note")).toContainText("21 done, 0 not changed");
+});
+
+test("when the rest of the list cannot be loaded nothing more is selected and the person is told", async ({ page }) => {
+  const gw = baseTenant(new MockGateway()).on((c) => {
+    if (c.method === "GET" && c.path === "/v1/customers") return c.query.get("page_token") ? { status: 503, body: { error: { code: "UNAVAILABLE", message: "down" } } } : { body: { customers: many(12), next_page_token: "p2" } };
+    return undefined;
+  });
+  await gw.install(page);
+  await openTenantPage(page, "/customers");
+  await page.getByTestId("customer-cus_01").waitFor();
+  await page.getByRole("checkbox", { name: "Select all rows on this page" }).click();
+  await page.getByTestId("bulk-select-all").click();
+  await expect(page.getByTestId("bulk-note")).toContainText("could not be loaded");
+  await expect(page.getByTestId("bulk-count")).toHaveText("10 selected");
+});

@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -39,8 +40,13 @@ func (e *Engine) Handle(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UU
 }
 
 func (e *Engine) guardCtx(s *saga) model.Ctx {
+	var age time.Duration
+	if !s.ChargeKeyStart.IsZero() {
+		age = e.cfg.Now().Sub(s.ChargeKeyStart)
+	}
 	return model.Ctx{TotalMinor: s.TotalMinor, CreditedMinor: s.CreditedMinor, ByHandMinor: s.ByHandMinor, Paid: s.InvoiceStatus == invmodel.StatusPaid, DunningAttempt: s.DunningAttempt, MaxDunning: len(e.dunningDelays(s)),
-		ProviderMails: s.Snap.ProviderMails || s.Snap.SkipMail, Link: s.Snap.Collection == model.CollectionLink}
+		ProviderMails: s.Snap.ProviderMails || s.Snap.SkipMail, Link: s.Snap.Collection == model.CollectionLink,
+		ChargeAge: age, NotFoundGrace: e.notFoundGrace(s), KeyHorizon: e.cfg.KeyHorizon}
 }
 
 func (e *Engine) handleLoaded(ctx context.Context, tx pgx.Tx, s *saga, ev model.Event, cause string, commandID *uuid.UUID) (Outcome, error) {

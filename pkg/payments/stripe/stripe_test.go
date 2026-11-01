@@ -317,7 +317,7 @@ func TestRegisteredLikeTheOthers(t *testing.T) {
 	if _, ok := r.Parser("stripe~eu"); !ok {
 		t.Error("no webhook parser for a further account")
 	}
-	if c := p.Capabilities(); !c.HostedCheckout || !c.Refunds || !c.IdempotentCharges || c.OwnsRenewal || c.OwnsDunning || !c.CanCharge("USD") {
+	if c := p.Capabilities(); !c.HostedCheckout || !c.Refunds || !c.IdempotentCharges || !c.IdempotentRefunds || c.OwnsRenewal || c.OwnsDunning || !c.CanCharge("USD") {
 		t.Errorf("capabilities: %+v", c)
 	}
 }

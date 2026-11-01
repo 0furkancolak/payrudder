@@ -127,9 +127,10 @@ func (c *Client) Livemode() (live, known bool) {
 func (c *Client) Capabilities() payments.Capabilities { return Caps() }
 
 // Caps are Stripe's capabilities as Payrudder uses it: a card processor with a hosted checkout and refunds, honouring idempotency keys. Payrudder runs renewals,
-// retries and tax. Stripe charges in more currencies than Payrudder lists, so none is declared and Stripe refuses what it cannot take.
+// retries and tax. Stripe charges in more currencies than Payrudder lists, so none is declared and Stripe refuses what it cannot take. Refunds are idempotent too:
+// the refund POST carries the key, which Stripe keeps for at least 24 hours (docs/stripe-compatibility-matrix.md, row 10).
 func Caps() payments.Capabilities {
-	return payments.Capabilities{Name: Name, HostedCheckout: true, Refunds: true, IdempotentCharges: true}
+	return payments.Capabilities{Name: Name, HostedCheckout: true, Refunds: true, IdempotentCharges: true, IdempotentRefunds: true}
 }
 
 // CheckHealth implements payments.HealthChecker: GET /v1/balance needs a valid key and changes nothing.

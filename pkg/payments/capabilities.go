@@ -34,6 +34,10 @@ type Capabilities struct {
 	// IdempotentCharges: the provider returns the first result for a repeated idempotency key instead of charging again. When
 	// false, a charge command that is redelivered after the provider may have been called is answered by asking Status first.
 	IdempotentCharges bool
+	// IdempotentRefunds: the provider returns the first result for a repeated idempotency key instead of refunding again (Stripe documents this for every POST).
+	// When false (iyzico allows repeated refunds, the Paddle adapter sends no key, and neither documents a lookup by key), payments-worker never sends a refund
+	// again under a key it has already used: it answers from the ledger and payment_attempts, and parks a refund whose earlier outcome is unknown.
+	IdempotentRefunds bool
 	// Currencies the provider can charge in. Empty means any.
 	Currencies []string
 }
@@ -67,7 +71,7 @@ type Provider interface {
 
 // Capabilities implements Provider: mock-psp is a plain charge-and-refund provider, so Payrudder drives everything.
 func (m *MockPSP) Capabilities() Capabilities {
-	return Capabilities{Name: m.Name(), Refunds: true, IdempotentCharges: true}
+	return Capabilities{Name: m.Name(), Refunds: true, IdempotentCharges: true, IdempotentRefunds: true}
 }
 
 // Registry maps provider names to constructors, so a worker can build the adapter a tenant's account asks for.
