@@ -39,6 +39,7 @@ func (s *Server) goLiveRoutes() []Route {
 		{"POST", "/app/v1/apps/{id}/api-keys/{key_id}/rotate", AccessSession, ratelimit.ClassWrite, s.appKeyRotate},
 		{"POST", "/app/v1/apps/{id}/promote", AccessSession, ratelimit.ClassWrite, s.appPromote},
 		{"PUT", "/admin/v1/tenants/{id}/status", AccessOperator, "", s.setTenantStatus},
+		{"GET", "/admin/v1/tenants/{id}/status-events", AccessOperator, "", s.tenantStatusEvents},
 	}
 }
 
@@ -319,28 +320,34 @@ func (s *Server) appKeyRotate(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusCreated, resp, err)
 }
 
-// setTenantStatus is the operator's hand on a tenant: suspend, reinstate, or activate without the checklist (a reason is required for that).
+// setTenantStatus is the operator's hand on a tenant: suspend, freeze, ban, reinstate, or activate without the checklist (a reason is required for that, and for a
+// ban). The change is recorded for the signed-in operator.
 func (s *Server) setTenantStatus(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Status string `json:"status"`
-		Reason string `json:"reason"`
+		Status   string `json:"status"`
+		Reason   string `json:"reason"`
+		Category string `json:"category"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, r, err)
 		return
 	}
-	var st plansv1.TenantStatus
-	switch body.Status {
-	case "active":
-		st = plansv1.TenantStatus_TENANT_STATUS_ACTIVE
-	case "suspended":
-		st = plansv1.TenantStatus_TENANT_STATUS_SUSPENDED
-	default:
-		writeError(w, r, errkey.New(codes.InvalidArgument, "plans.tenant.bad_status", "status: active or suspended"))
+	st, ok := map[string]plansv1.TenantStatus{
+		"active": plansv1.TenantStatus_TENANT_STATUS_ACTIVE, "suspended": plansv1.TenantStatus_TENANT_STATUS_SUSPENDED,
+		"frozen": plansv1.TenantStatus_TENANT_STATUS_FROZEN, "banned": plansv1.TenantStatus_TENANT_STATUS_BANNED,
+	}[body.Status]
+	if !ok {
+		writeError(w, r, errkey.New(codes.InvalidArgument, "plans.tenant.bad_status", "status: active, suspended, frozen or banned"))
 		return
 	}
-	resp, err := s.d.Admin.SetTenantStatus(r.Context(), &plansv1.SetTenantStatusRequest{TenantId: r.PathValue("id"), Status: st, Reason: body.Reason})
+	resp, err := s.d.Admin.SetTenantStatus(r.Context(), &plansv1.SetTenantStatusRequest{TenantId: r.PathValue("id"), Status: st, Reason: body.Reason, Category: body.Category, Actor: actorOf(r)})
 	respond(w, r, http.StatusOK, resp.GetTenant(), err)
+}
+
+// tenantStatusEvents is GET /admin/v1/tenants/{id}/status-events: the changes of the tenant's status and the requests waiting for a second operator.
+func (s *Server) tenantStatusEvents(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Admin.ListTenantStatusEvents(r.Context(), &plansv1.ListTenantStatusEventsRequest{TenantId: r.PathValue("id")})
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 // appPromote copies the app's sandbox configuration to its live environment (phase 45 D). With dry_run it only returns the diff; without, it applies it, and

@@ -349,6 +349,61 @@ func (q *Queries) InsertTenant(ctx context.Context, arg InsertTenantParams) (Ten
 	return i, err
 }
 
+const insertTenantStatusEvent = `-- name: InsertTenantStatusEvent :exec
+INSERT INTO tenant_status_events (id, live_tenant_id, kind, from_status, to_status, category, reason, actor, approved_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+`
+
+type InsertTenantStatusEventParams struct {
+	ID           uuid.UUID
+	LiveTenantID uuid.UUID
+	Kind         string
+	FromStatus   string
+	ToStatus     string
+	Category     string
+	Reason       string
+	Actor        string
+	ApprovedBy   string
+}
+
+// The history of a tenant's status: what changed (or was asked for) and why, by whom. Append-only.
+func (q *Queries) InsertTenantStatusEvent(ctx context.Context, arg InsertTenantStatusEventParams) error {
+	_, err := q.db.Exec(ctx, insertTenantStatusEvent,
+		arg.ID,
+		arg.LiveTenantID,
+		arg.Kind,
+		arg.FromStatus,
+		arg.ToStatus,
+		arg.Category,
+		arg.Reason,
+		arg.Actor,
+		arg.ApprovedBy,
+	)
+	return err
+}
+
+const latestTenantStatusEvent = `-- name: LatestTenantStatusEvent :one
+SELECT id, live_tenant_id, kind, from_status, to_status, category, reason, actor, approved_by, created_at FROM tenant_status_events WHERE live_tenant_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1
+`
+
+func (q *Queries) LatestTenantStatusEvent(ctx context.Context, liveTenantID uuid.UUID) (TenantStatusEvent, error) {
+	row := q.db.QueryRow(ctx, latestTenantStatusEvent, liveTenantID)
+	var i TenantStatusEvent
+	err := row.Scan(
+		&i.ID,
+		&i.LiveTenantID,
+		&i.Kind,
+		&i.FromStatus,
+		&i.ToStatus,
+		&i.Category,
+		&i.Reason,
+		&i.Actor,
+		&i.ApprovedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listAccountApps = `-- name: ListAccountApps :many
 SELECT id, account_id, name, slug, created_at, archived_at, archived_by FROM apps WHERE account_id = $1 AND archived_at IS NULL ORDER BY created_at, id
 `
@@ -479,6 +534,46 @@ func (q *Queries) ListTenantApiKeyPrefixes(ctx context.Context, tenantID uuid.UU
 			return nil, err
 		}
 		items = append(items, prefix)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTenantStatusEvents = `-- name: ListTenantStatusEvents :many
+SELECT id, live_tenant_id, kind, from_status, to_status, category, reason, actor, approved_by, created_at FROM tenant_status_events WHERE live_tenant_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2
+`
+
+type ListTenantStatusEventsParams struct {
+	LiveTenantID uuid.UUID
+	PageSize     int32
+}
+
+func (q *Queries) ListTenantStatusEvents(ctx context.Context, arg ListTenantStatusEventsParams) ([]TenantStatusEvent, error) {
+	rows, err := q.db.Query(ctx, listTenantStatusEvents, arg.LiveTenantID, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TenantStatusEvent{}
+	for rows.Next() {
+		var i TenantStatusEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.LiveTenantID,
+			&i.Kind,
+			&i.FromStatus,
+			&i.ToStatus,
+			&i.Category,
+			&i.Reason,
+			&i.Actor,
+			&i.ApprovedBy,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -13,12 +13,17 @@ enum Environment {
 }
 
 // Where a tenant is in its life (phase 45). A sandbox tenant is always ACTIVE. A live tenant is created INACTIVE: it has no API keys and no webhook
-// endpoints until the go-live checklist is complete and it is activated. An operator can SUSPEND an active tenant: its keys stop working.
+// endpoints until the go-live checklist is complete and it is activated. An operator can SUSPEND an active tenant: its keys stop working. FROZEN is read-only:
+// the keys and the console still read, but nothing is written and nothing is charged. BANNED is a suspension that is meant to last: keys stop working, no charge, mail
+// or webhook leaves, and reinstating it needs a reason (and a second operator where PAYRUDDER_TENANT_BAN_APPROVAL is on). In SUSPENDED, FROZEN and BANNED the hosted
+// payment pages and payment links take no payment, dunning makes no charge, customers get no mail and webhook deliveries wait.
 enum TenantStatus {
   TENANT_STATUS_UNSPECIFIED = 0;
   TENANT_STATUS_INACTIVE = 1;
   TENANT_STATUS_ACTIVE = 2;
   TENANT_STATUS_SUSPENDED = 3;
+  TENANT_STATUS_FROZEN = 4;
+  TENANT_STATUS_BANNED = 5;
 }
 
 // Rate-limit and quota tier of a tenant (docs/06-multi-tenancy.md#quotas-and-fairness).
@@ -179,9 +184,14 @@ message Customer {
   string locale = 13;
   // "individual" (a person) or "business" (a taxpayer with a tax id). Empty = unknown.
   string customer_type = 14;
-  // Set while the seller has blocked the customer: no new subscription. The reason is the seller's own note.
+  // Set while the seller has blocked the customer: no new subscription, plan change or purchase (docs/plans/13-customer-ban.md has the path-by-gate table). The
+  // reason is the seller's own note. A block with blocked_until in the past has ended, whatever block_time says: every gate reads blocked_until.
   google.protobuf.Timestamp block_time = 15;
   string block_reason = 16;
+  // Why: fraud, chargeback, abuse, request or other. Empty when none was given.
+  string block_category = 17;
+  // When the block ends by itself; unset: it lasts until it is lifted.
+  google.protobuf.Timestamp blocked_until = 18;
 }
 
 enum Aggregation {

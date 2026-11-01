@@ -5,6 +5,8 @@ PAYRUDDER_RELAY_WORKERS: "1"
 PAYRUDDER_RELAY_BATCH_SIZE: "200"
 PAYRUDDER_WEBHOOK_ALLOW_PRIVATE: "false"
 PAYRUDDER_ALLOWED_ENVIRONMENTS: "sandbox,live"
+# "true": banning a tenant needs a second operator (the first request is recorded, the same request from another operator within a day applies it). Default off.
+PAYRUDDER_TENANT_BAN_APPROVAL: "false"
 # The platform's own mail path, for the mail Payrudder writes to people (e-mail verification, password reset, invitations). The default is the development
 # Mailpit (SMTP port 42025 on the host, UI on http://localhost:42825); a deployment sets SMTP_ADDR to its relay. A tenant's mail to its own customers is
 # the notifier's job and uses the tenant's mail switch.

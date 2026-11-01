@@ -80,3 +80,19 @@ func TestBlockedCustomerStartSaysSo(t *testing.T) {
 		}
 	}
 }
+
+// The payment gate's other refusals read the same to the payer as a blocked start: the payment cannot be made. A seller on hold (suspended, frozen, banned) takes no
+// payment on a link or on an invoice that exists, and a customer blocked for fraud or chargeback pays no invoice either; the page never says why.
+func TestGateRefusalsSayThePaymentCannotBeMade(t *testing.T) {
+	ts := withWorker(t, &fakeWorker{}, false)
+	for _, c := range []struct{ name, path string }{
+		{"start on a link of a seller on hold", "/i/" + tokHeldLink + "/start?lang=tr"},
+		{"pay an invoice of a customer blocked for fraud", "/i/" + tokPayBlocked + "/pay?lang=tr"},
+		{"pay an invoice of a seller on hold", "/i/" + tokPayHeld + "/pay?lang=tr"},
+	} {
+		r, page := send(t, noRedirect(), http.MethodPost, ts.URL+c.path, url.Values{"method": {"card"}}, nil)
+		if r.StatusCode != http.StatusConflict || !strings.Contains(page, "Bu ödeme yapılamıyor") || strings.Contains(page, "kullanıl") {
+			t.Errorf("%s: %d\n%s", c.name, r.StatusCode, page)
+		}
+	}
+}

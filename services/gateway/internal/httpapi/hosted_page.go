@@ -423,8 +423,9 @@ func (s *Server) hostedLinkStart(w http.ResponseWriter, r *http.Request) {
 		s.adhocAgain(w, r, lang, promoInput{Code: code, ErrKey: errkey.Of(err), Status: http.StatusUnprocessableEntity})
 	case goneError(err):
 		hostedNotFound(w, lang)
-	case errkey.Of(err) == "billing.customer.blocked":
-		// The seller has blocked this customer: not "already used", and not a reason to say more than that the payment cannot be made.
+	case gateRefused(err):
+		// The seller has blocked this customer, or the operator has taken the seller out of service: not "already used", and not a reason to say more than that the
+		// payment cannot be made.
 		s.message(w, r, http.StatusConflict, lang, hostedText(lang)["adhoc_title"], hostedText(lang)["pay_blocked"], "")
 	case status.Code(err) == codes.FailedPrecondition:
 		s.message(w, r, http.StatusConflict, lang, hostedText(lang)["adhoc_title"], hostedText(lang)["adhoc_used"], "")
@@ -434,6 +435,13 @@ func (s *Server) hostedLinkStart(w http.ResponseWriter, r *http.Request) {
 		hostedHeaders(w)
 		http.Redirect(w, r, "/i/"+resp.GetInvoiceToken()+langSuffix(r), http.StatusSeeOther)
 	}
+}
+
+// gateRefused says whether billing's payment gate refused the payment: the customer is blocked, or the seller is on hold. The page says only that the payment
+// cannot be made.
+func gateRefused(err error) bool {
+	k := errkey.Of(err)
+	return k == "billing.customer.blocked" || k == "billing.tenant.on_hold"
 }
 
 // formCode is the promotion code a payer typed (one line, at most 40 characters), or "".
@@ -683,6 +691,9 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 	case err == nil:
 	case goneError(err):
 		hostedNotFound(w, lang)
+		return
+	case gateRefused(err):
+		refuse(http.StatusConflict, "pay_blocked")
 		return
 	case status.Code(err) == codes.FailedPrecondition:
 		refuse(http.StatusConflict, "pay_cannot")

@@ -45,10 +45,12 @@ type Deps struct {
 	Box         *secretbox.Box     // seals webhook signing secrets; nil: endpoints cannot be created
 	// WebhookAllowPrivate lets endpoints be http:// and on private addresses (development and tests only).
 	WebhookAllowPrivate bool
-	Mail                usermail.Sender // sends the verification, reset and invitation mails
-	AppURL              string          // the console's base URL, which mailed links point into
-	OTPPepper           string          // keys the hash of one-time sign-in codes
-	Sandbox             *sandboxapi.Handler
+	// BanApproval makes a ban of a tenant need a second operator (PAYRUDDER_TENANT_BAN_APPROVAL; default off).
+	BanApproval bool
+	Mail        usermail.Sender // sends the verification, reset and invitation mails
+	AppURL      string          // the console's base URL, which mailed links point into
+	OTPPepper   string          // keys the hash of one-time sign-in codes
+	Sandbox     *sandboxapi.Handler
 	// Saas is the SaaS mode (PAYRUDDER_SAAS, phase 55): Payrudder's own plans, enforced on every account. The zero value is off.
 	Saas saascmd.Config
 	// CellsReady says whether a tenant may be placed in a cell (ADR 0018): nil when every cross-tenant job is converted, an error naming what is left otherwise.
@@ -70,7 +72,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterAffiliateServiceServer(srv, newAffiliates(plansSrv))
 	plansv1.RegisterAffiliatePublicServiceServer(srv, newAffiliatesPublic(d.SystemPool, resolver, d.Log))
 	plansv1.RegisterAffiliatePortalServiceServer(srv, newAffiliatePortal(plansSrv, d.Places))
-	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.Log)
+	admin := newAdmin(d.SystemPool, d.Evict, d.AllowedEnvs, d.BanApproval, d.Log)
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
 	plansv1.RegisterSupportServiceServer(srv, support.New(d.SystemPool, d.Log))

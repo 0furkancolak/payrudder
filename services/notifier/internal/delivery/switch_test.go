@@ -11,6 +11,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/mailcategory"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 )
 
 // fakeSettings answers GetMailSettings with the categories in off switched off, and counts the calls.
@@ -98,5 +99,38 @@ func TestPermitted(t *testing.T) {
 	failing := &Mailer{Switch: stubSwitch{err: errors.New("down")}}
 	if ok, err := failing.Permitted(context.Background(), tid, "invoice_paid.v1"); err == nil || ok {
 		t.Errorf("a failed lookup must be an error, got ok=%v err=%v", ok, err)
+	}
+}
+
+type stubTenants struct {
+	status plansv1.TenantStatus
+	err    error
+}
+
+func (s stubTenants) Tenant(context.Context, uuid.UUID) (tenantinfo.Settings, error) {
+	return tenantinfo.Settings{Status: s.status}, s.err
+}
+
+// A tenant the operator has suspended, frozen or banned sends its customers no mail, whatever its mail switch says; an unreadable status is retried, not sent.
+func TestPermittedRefusesATenantOnHold(t *testing.T) {
+	tid := uuid.New()
+	for st, want := range map[plansv1.TenantStatus]bool{
+		plansv1.TenantStatus_TENANT_STATUS_ACTIVE: true, plansv1.TenantStatus_TENANT_STATUS_UNSPECIFIED: true,
+		plansv1.TenantStatus_TENANT_STATUS_SUSPENDED: false, plansv1.TenantStatus_TENANT_STATUS_FROZEN: false, plansv1.TenantStatus_TENANT_STATUS_BANNED: false,
+	} {
+		m := &Mailer{Tenants: stubTenants{status: st}, Switch: stubSwitch{}}
+		if got, err := m.Permitted(context.Background(), tid, "invoice_paid.v1"); err != nil || got != want {
+			t.Errorf("Permitted for %v = %v, %v; want %v", st, got, err, want)
+		}
+	}
+	if ok, _ := (&Mailer{Tenants: stubTenants{status: plansv1.TenantStatus_TENANT_STATUS_BANNED}}).Permitted(context.Background(), tid, "invoice_paid.v1"); ok {
+		t.Error("a tenant on hold sends no mail even without a mail switch")
+	}
+	if ok, _ := (&Mailer{Tenants: stubTenants{status: plansv1.TenantStatus_TENANT_STATUS_BANNED}}).Permitted(context.Background(), uuid.Nil, "invoice_paid.v1"); !ok {
+		t.Error("a mail without a tenant id is permitted")
+	}
+	failing := &Mailer{Tenants: stubTenants{err: errors.New("plans-svc down")}}
+	if ok, err := failing.Permitted(context.Background(), tid, "invoice_paid.v1"); err == nil || ok {
+		t.Errorf("an unreadable status must be an error, got ok=%v err=%v", ok, err)
 	}
 }

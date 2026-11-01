@@ -32,6 +32,8 @@ DELETE FROM subscription_coupons WHERE tenant_id = $1;
 DELETE FROM provider_migrations WHERE tenant_id = $1;
 -- name: ResetTrialNotices :execrows
 DELETE FROM subscription_trial_notices WHERE tenant_id = $1;
+-- name: ResetCustomerBlockEvents :execrows
+DELETE FROM customer_block_events WHERE tenant_id = $1;
 -- name: ResetSubscriptions :execrows
 DELETE FROM subscriptions WHERE tenant_id = $1;
 -- name: ResetCustomers :execrows

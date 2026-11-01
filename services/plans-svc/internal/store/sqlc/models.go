@@ -272,6 +272,20 @@ type Customer struct {
 	CustomerType       string
 	BlockedAt          *time.Time
 	BlockReason        string
+	BlockCategory      string
+	BlockedUntil       *time.Time
+}
+
+type CustomerBlockEvent struct {
+	TenantID     uuid.UUID
+	ID           uuid.UUID
+	CustomerID   uuid.UUID
+	Action       string
+	Category     string
+	Reason       string
+	BlockedUntil *time.Time
+	Actor        string
+	CreatedAt    time.Time
 }
 
 type CustomerCoupon struct {
@@ -600,6 +614,19 @@ type TenantMailSetting struct {
 	TenantID  uuid.UUID
 	Disabled  []string
 	UpdatedAt time.Time
+}
+
+type TenantStatusEvent struct {
+	ID           uuid.UUID
+	LiveTenantID uuid.UUID
+	Kind         string
+	FromStatus   string
+	ToStatus     string
+	Category     string
+	Reason       string
+	Actor        string
+	ApprovedBy   string
+	CreatedAt    time.Time
 }
 
 type User struct {

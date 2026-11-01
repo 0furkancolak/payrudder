@@ -18,6 +18,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
@@ -158,8 +159,19 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 		Id: c.ID.String(), ExternalId: c.ExternalID, Name: c.Name, Email: c.Email,
 		PaymentMethod: Str(c.PaymentMethod), CreateTime: ts(c.CreatedAt),
 		Country: Str(c.Country), BillingCurrency: Str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
-		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered, Locale: c.Locale, CustomerType: c.CustomerType, BlockTime: tsPtr(c.BlockedAt), BlockReason: c.BlockReason,
+		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered, Locale: c.Locale, CustomerType: c.CustomerType,
+		BlockTime: tsPtr(c.BlockedAt), BlockReason: c.BlockReason, BlockCategory: c.BlockCategory, BlockedUntil: tsPtr(c.BlockedUntil),
 	}
+}
+
+// CustomerBlockEvent maps a row of a customer's block history.
+func CustomerBlockEvent(e sqlc.CustomerBlockEvent) *plansv1.CustomerBlockEvent {
+	return &plansv1.CustomerBlockEvent{Id: e.ID.String(), Action: e.Action, Category: e.Category, Reason: e.Reason, BlockedUntil: tsPtr(e.BlockedUntil), Actor: e.Actor, CreateTime: ts(e.CreatedAt)}
+}
+
+// BlockOf is the block of a customer row, as the payment gate reads it.
+func BlockOf(c sqlc.Customer) paymentgate.Block {
+	return paymentgate.Block{At: c.BlockedAt, Until: c.BlockedUntil, Category: c.BlockCategory}
 }
 
 // The seller's address, company data and bank transfer details are stored as JSON objects without the empty parts. A message that is nil stores as {}.

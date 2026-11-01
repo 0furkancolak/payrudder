@@ -16,6 +16,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
@@ -92,6 +93,8 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	mailer := &delivery.Mailer{Default: platform, From: cfg.MailFrom, Notes: notes}
 	// A tenant's mail switch (plans-svc) is read before every send.
 	mailer.Switch = &delivery.PlansSwitch{Client: plansv1.NewPlansServiceClient(plansConn), TTL: cfg.MailSwitchTTL}
+	// A tenant the operator has suspended, frozen or banned sends its customers no mail; the status is read through the short cache the usage consumers use.
+	mailer.Tenants = tenantinfo.New(plansv1.NewAdminServiceClient(plansConn), cfg.MailSwitchTTL)
 	// A tenant that connected its own e-mail provider (Nafru Email) is sent through it, live mail only.
 	mailer.Providers = &delivery.PlansProviders{Client: plansv1.NewMailIntegrationServiceClient(plansConn), TTL: cfg.MailSwitchTTL, HTTP: safehttp.NewClient(15*time.Second, cfg.MailAllowPrivate)}
 	if cfg.SandboxSMTP != "" {

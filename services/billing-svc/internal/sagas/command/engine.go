@@ -3,6 +3,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -50,6 +51,9 @@ type Config struct {
 	Log        *slog.Logger
 	// Tenants, when set, is asked for the environment of the saga's tenant before a command goes out (see publishCommand).
 	Tenants *env.Directory
+	// Hold, when set, says whether the operator has taken the tenant out of service (suspended, frozen or banned). The dunning sweep makes no charge for a tenant on hold:
+	// it puts the retry off by DunningHold and looks again. An error is not an answer: the saga is left as it is and the next pass asks again.
+	Hold func(ctx context.Context, tenantID uuid.UUID) (bool, error)
 }
 
 // Defaults of the "not found" window of a charge (Config.NotFoundGrace, NotFoundGraceSandbox, KeyHorizon).
@@ -58,6 +62,9 @@ const (
 	DefaultNotFoundGraceSandbox = 10 * time.Second
 	DefaultKeyHorizon           = 24 * time.Hour
 )
+
+// DunningHold is how long the retry of a tenant on hold is put off.
+const DunningHold = time.Hour
 
 // DefaultTransferPoll is how often a pending bank transfer is looked for in the ledger when nobody has nudged the saga.
 const DefaultTransferPoll = 6 * time.Hour
