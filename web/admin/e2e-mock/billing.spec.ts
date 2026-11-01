@@ -131,11 +131,12 @@ test.describe("packages", () => {
   });
 
   test("a price change is checked first, then scheduled after asking, and the subscriptions left out are explained", async ({ page }) => {
-    const result = (dry: boolean) => ({ scheduled: 3, scheduled_subscription_ids: ["s1", "s2", "s3"], skipped: [{ subscription_id: "s4", customer_external_id: "cus_4", reason: "renews_soon" }, { subscription_id: "s5", customer_external_id: "cus_5", reason: "renews_soon" }, { subscription_id: "s6", customer_external_id: "cus_6", reason: "has_pending_change" }], to_version: 2, notice_days: dry ? 21 : 21 });
+    const result = (dry: boolean) => ({ scheduled: 3, scheduled_subscription_ids: ["s1", "s2", "s3"], skipped: [{ subscription_id: "s4", customer_external_id: "cus_4", reason: "renews_soon" }, { subscription_id: "s5", customer_external_id: "cus_5", reason: "renews_soon" }, { subscription_id: "s6", customer_external_id: "cus_6", reason: "has_pending_change" }], to_version: 2, notice_days: dry ? 21 : 21, price_change_id: dry ? "" : "pc-new", already_scheduled: dry ? 0 : 2 });
     const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
       if (c.path === "/v1/plans") return { body: { plans: [plan] } };
       if (c.path === "/v1/plans/pro/versions/latest") return { body: version };
       if (c.method === "POST" && c.path === "/v1/plans/pro/price-changes") return { body: result(c.body?.dry_run === true) };
+      if (c.method === "GET" && c.path === "/v1/price-changes") return { body: { price_changes: [] } };
       return undefined;
     });
     await gw.install(page);
@@ -159,7 +160,65 @@ test.describe("packages", () => {
     await sheet.getByTestId("pc-schedule").click();
     await confirmDialog(page);
     await expect(sheet.getByTestId("pc-done")).toContainText("3 subscriptions scheduled to move to v2");
+    await expect(sheet.getByTestId("pc-done")).toContainText("2 were scheduled by this price change before and are not told again");
     expect(gw.called("POST", "/v1/plans/pro/price-changes").at(-1)?.body).toEqual({ from_version: 1, notice_days: 30, dry_run: false });
+  });
+
+  test("the price changes made are listed with what became of each subscription; the skipped are tried again and what is waiting is withdrawn after asking", async ({ page }) => {
+    const change = (id: string, extra: Record<string, unknown>): Record<string, unknown> => ({ id, plan_code: "pro", from_version: 1, to_version: 2, notice_days: 30, effective_time: "2026-12-05T10:00:00Z", state: "open", created_by: "boss@example.com",
+      create_time: "2026-11-02T09:00:00Z", withdraw_time: null, withdrawn_by: "", scheduled: 3, applied: 0, withdrawn: 0, skipped: 2, ...extra });
+    let open = change("pc-1", {});
+    const older = change("pc-0", { state: "withdrawn", withdraw_time: "2026-10-20T09:00:00Z", withdrawn_by: "boss@example.com", scheduled: 0, applied: 4, withdrawn: 1, skipped: 0, create_time: "2026-10-01T09:00:00Z" });
+    const items = [
+      { subscription_id: "s1", customer_external_id: "cus_a", state: "scheduled", reason: "", effective_time: "2026-12-05T10:00:00Z", notify_time: "2026-11-02T09:00:01Z" },
+      { subscription_id: "s2", customer_external_id: "cus_b", state: "skipped", reason: "renews_soon", effective_time: null, notify_time: null },
+    ];
+    const gw = baseTenant(new MockGateway()).on(tenantList).on((c) => {
+      if (c.path === "/v1/plans") return { body: { plans: [plan] } };
+      if (c.path === "/v1/plans/pro/versions/latest") return { body: version };
+      if (c.method === "GET" && c.path === "/v1/price-changes") return { body: { price_changes: [open, older] } };
+      if (c.method === "GET" && c.path === "/v1/price-changes/pc-1") return { body: { price_change: open, items } };
+      if (c.method === "POST" && c.path === "/v1/price-changes/pc-1/retry") {
+        open = { ...open, scheduled: 4, skipped: 1 };
+        return { body: { scheduled: 1, scheduled_subscription_ids: ["s2"], skipped: [{ subscription_id: "s9", customer_external_id: "cus_z", reason: "not_changeable" }], to_version: 2, notice_days: 30, price_change_id: "pc-1", already_scheduled: 3 } };
+      }
+      if (c.method === "POST" && c.path === "/v1/price-changes/pc-1/withdraw") {
+        open = { ...open, state: "withdrawn", scheduled: 0, withdrawn: 4, withdraw_time: "2026-11-03T09:00:00Z", withdrawn_by: "boss@example.com" };
+        return { body: { price_change: open, withdrawn: 4 } };
+      }
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/packages");
+    await rowAction(page.getByRole("row", { name: /pro/ }), "Schedule a price change");
+    const sheet = page.getByTestId("price-change-sheet");
+    const row = sheet.getByTestId("pc-row-pc-1");
+    await expect(row).toContainText("v1 to v2");
+    await expect(row).toContainText("Open");
+    await expect(row).toContainText("boss@example.com");
+    await expect(row).toContainText("3 waiting, 0 moved, 0 withdrawn, 2 skipped");
+    await expect(sheet.getByTestId("pc-row-pc-0")).toContainText("Withdrawn");
+    // A withdrawn price change offers neither action.
+    await expect(sheet.getByTestId("pc-retry-pc-0")).toHaveCount(0);
+    await expect(sheet.getByTestId("pc-withdraw-pc-0")).toHaveCount(0);
+    // The customers of a price change, with what became of each.
+    await sheet.getByTestId("pc-details-pc-1").click();
+    const table = sheet.getByTestId("pc-items-pc-1");
+    await expect(table).toContainText("cus_a");
+    await expect(table).toContainText("Waiting");
+    await expect(table).toContainText("renews too soon");
+    // Retry runs the price change again, without a question: it only tells customers what the seller already decided to tell them.
+    await sheet.getByTestId("pc-retry-pc-1").click();
+    await expect(sheet.getByTestId("pc-notice-done")).toContainText("1 more subscriptions scheduled; 1 still left out");
+    expect(gw.called("POST", "/v1/price-changes/pc-1/retry")).toHaveLength(1);
+    // Withdrawing asks first, and says what stays.
+    await sheet.getByTestId("pc-withdraw-pc-1").click();
+    await expect(page.getByTestId("confirm-dialog")).toContainText("Changes already applied stay");
+    await confirmDialog(page);
+    await expect(sheet.getByTestId("pc-notice-done")).toContainText("4 waiting changes withdrawn");
+    await expect(sheet.getByTestId("pc-withdraw-pc-1")).toHaveCount(0);
+    await expect(row).toContainText("Withdrawn");
+    expect(gw.called("POST", "/v1/price-changes/pc-1/withdraw")).toHaveLength(1);
   });
 
   test("a version is published with amounts in minor units, one fee per currency", async ({ page }) => {

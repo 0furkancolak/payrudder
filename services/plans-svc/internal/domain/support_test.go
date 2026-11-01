@@ -3,12 +3,14 @@ package domain
 import (
 	"testing"
 	"time"
+
+	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // zones for the business-hours test, as plans-svc itself carries them
 )
 
 var t0 = time.Date(2026, 10, 28, 9, 0, 0, 0, time.UTC)
 
 func TestSupportFirstResponseFollowsPriority(t *testing.T) {
-	want := map[string]time.Duration{"urgent": time.Hour, "high": 4 * time.Hour, "normal": 24 * time.Hour, "low": 72 * time.Hour}
+	want := map[string]time.Duration{"urgent": time.Hour, "high": 4 * time.Hour, "normal": 9 * time.Hour, "low": 27 * time.Hour}
 	for p, d := range want {
 		if got := SupportFirstResponse(p); got != d {
 			t.Errorf("%s: %v, want %v", p, got, d)
@@ -33,7 +35,7 @@ func TestValidateSupportTicket(t *testing.T) {
 }
 
 func TestSupportLifecycle(t *testing.T) {
-	open := SupportTicketState{Status: "open", Priority: "normal", CreatedAt: t0, FirstResponseDue: t0.Add(24 * time.Hour)}
+	open := SupportTicketState{Status: "open", Priority: "normal", CreatedAt: t0, FirstResponseDue: SupportFirstResponseDue(t0, "normal", "UTC"), Zone: "UTC"}
 
 	// The operator's first public answer stops the clock and hands the ticket to the person.
 	answered := SupportOperatorReply(open, t0.Add(time.Hour))
@@ -73,7 +75,7 @@ func TestSupportLifecycle(t *testing.T) {
 }
 
 func TestSupportPriorityMovesTheDeadlineUntilAnswered(t *testing.T) {
-	open := SupportTicketState{Status: "open", Priority: "normal", CreatedAt: t0, FirstResponseDue: t0.Add(24 * time.Hour)}
+	open := SupportTicketState{Status: "open", Priority: "normal", CreatedAt: t0, FirstResponseDue: SupportFirstResponseDue(t0, "normal", "UTC"), Zone: "UTC"}
 	urgent, err := SupportSetPriority(open, "urgent")
 	if err != nil || !urgent.FirstResponseDue.Equal(t0.Add(time.Hour)) {
 		t.Fatalf("urgent: %v %v", err, urgent.FirstResponseDue)
@@ -85,5 +87,37 @@ func TestSupportPriorityMovesTheDeadlineUntilAnswered(t *testing.T) {
 	}
 	if _, err := SupportSetPriority(open, "asap"); err == nil {
 		t.Error("unknown priority accepted")
+	}
+}
+
+// The clock counts Monday to Friday, 09:00 to 18:00 in the ticket's zone; t0 is a Wednesday.
+func TestSupportDeadlineCountsBusinessHoursInTheZone(t *testing.T) {
+	berlin, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := func(y int, m time.Month, d, h, min int) time.Time { return time.Date(y, m, d, h, min, 0, 0, berlin) }
+	for name, c := range map[string]struct {
+		from     time.Time
+		priority string
+		want     time.Time
+	}{
+		"inside the day":                         {at(2026, 10, 28, 10, 30), "high", at(2026, 10, 28, 14, 30)},
+		"the day ends and the next opens":        {at(2026, 10, 28, 16, 0), "high", at(2026, 10, 29, 11, 0)},
+		"before opening starts at nine":          {at(2026, 10, 28, 6, 15), "urgent", at(2026, 10, 28, 10, 0)},
+		"after closing waits for morning":        {at(2026, 10, 28, 19, 0), "urgent", at(2026, 10, 29, 10, 0)},
+		"friday evening waits for monday":        {at(2026, 10, 30, 17, 30), "high", at(2026, 11, 2, 12, 30)},
+		"a saturday ticket":                      {at(2026, 10, 31, 12, 0), "urgent", at(2026, 11, 2, 10, 0)},
+		"a business day is nine hours":           {at(2026, 10, 28, 9, 0), "normal", at(2026, 10, 28, 18, 0)},
+		"three business days run over a weekend": {at(2026, 10, 29, 9, 0), "low", at(2026, 11, 2, 18, 0)},
+		"the clocks change at night":             {at(2026, 10, 23, 17, 0), "high", at(2026, 10, 26, 12, 0)},
+	} {
+		if got := SupportFirstResponseDue(c.from, c.priority, "Europe/Berlin"); !got.Equal(c.want) {
+			t.Errorf("%s: due %v, want %v", name, got.In(berlin), c.want)
+		}
+	}
+	// An unknown zone counts in UTC instead of failing the ticket.
+	if got := SupportFirstResponseDue(t0, "urgent", "Mars/Olympus"); !got.Equal(t0.Add(time.Hour)) {
+		t.Errorf("unknown zone: %v", got)
 	}
 }

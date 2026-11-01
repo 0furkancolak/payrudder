@@ -42,7 +42,15 @@ const table = useTableState(rows, {
 const current = computed(() => table.row.value);
 const thread = useMyTicket(() => current.value?.id ?? "");
 const messages = computed(() => thread.data.value?.messages ?? []);
+const events = computed(() => thread.data.value?.events ?? []);
 const shown = computed(() => thread.data.value?.ticket ?? current.value);
+// Reading a ticket clears its "new" mark on the server: the list is read again so the row loses it.
+watch(
+  () => thread.data.value,
+  () => {
+    if (current.value?.unread) void tickets.refetch();
+  },
+);
 
 // --- a new ticket
 const creating = ref(false);
@@ -147,6 +155,7 @@ const solved = computed(() => shown.value?.status === "solved");
               </NativeSelect>
             </label>
           </div>
+          <p class="text-muted-foreground text-xs">{{ t("support.businessHours") }}</p>
           <label v-if="appOptions.length > 0" class="grid gap-1 text-sm">{{ t("support.fields.app") }}
             <NativeSelect v-model="appId" data-testid="support-app">
               <option value="">{{ t("support.fields.noApp") }}</option>
@@ -175,7 +184,7 @@ const solved = computed(() => shown.value?.status === "solved");
       <p v-if="!shown.first_response_time && shown.status === 'open'" class="text-muted-foreground text-xs" data-testid="support-due">
         {{ t("support.dueBy", { time: formatDate(shown.first_response_due, locale, "dateTime") }) }}
       </p>
-      <TicketThread :messages="messages" />
+      <TicketThread :messages="messages" :events="events" />
       <p v-if="closed" class="text-muted-foreground bg-muted rounded-2xl px-4 py-3 text-sm" data-testid="support-closed">{{ t("support.closedNote") }}</p>
       <form v-else class="grid gap-2" @submit.prevent="send">
         <Textarea v-model="reply" rows="4" maxlength="10000" :aria-label="t('support.fields.reply')" :placeholder="t('support.fields.reply')" data-testid="support-reply" />

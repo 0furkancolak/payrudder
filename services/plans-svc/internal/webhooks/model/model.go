@@ -40,6 +40,7 @@ const (
 	CreditsLow                  = "credits.low"
 	CustomerBlocked             = "customer.blocked"
 	CustomerUnblocked           = "customer.unblocked"
+	PriceChangeScheduled        = "price_change.scheduled"
 	ContractAccepted            = "contract.accepted"
 	ContractVersionPublished    = "contract.version_published"
 	ContractWithdrawalRequested = "contract.withdrawal_requested"
@@ -54,6 +55,7 @@ var Types = []string{
 	PaymentLinkCreated, PaymentLinkPaid, PaymentLinkExpired,
 	CreditsPurchased, CreditsLow,
 	CustomerBlocked, CustomerUnblocked,
+	PriceChangeScheduled,
 	ContractAccepted, ContractVersionPublished, ContractWithdrawalRequested,
 }
 

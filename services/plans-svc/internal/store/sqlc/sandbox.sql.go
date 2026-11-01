@@ -475,6 +475,30 @@ func (q *Queries) ResetEntitlementOverrides(ctx context.Context, tenantID uuid.U
 	return result.RowsAffected(), nil
 }
 
+const resetPriceChangeItems = `-- name: ResetPriceChangeItems :execrows
+DELETE FROM price_change_items WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetPriceChangeItems(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetPriceChangeItems, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetPriceChanges = `-- name: ResetPriceChanges :execrows
+DELETE FROM price_changes WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetPriceChanges(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetPriceChanges, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetPromotionCodeCounters = `-- name: ResetPromotionCodeCounters :exec
 UPDATE promotion_codes SET redeemed = 0 WHERE tenant_id = $1 AND redeemed <> 0
 `

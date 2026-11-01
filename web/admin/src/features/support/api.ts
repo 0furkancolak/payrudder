@@ -5,6 +5,7 @@ import type { components } from "@/shared/api/schema";
 
 export type SupportTicket = components["schemas"]["SupportTicket"];
 export type SupportMessage = components["schemas"]["SupportMessage"];
+export type SupportEvent = components["schemas"]["SupportEvent"];
 export type SupportCategory = SupportTicket["category"];
 export type SupportPriority = SupportTicket["priority"];
 export type SupportStatus = SupportTicket["status"];

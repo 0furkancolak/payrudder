@@ -95,6 +95,8 @@ import type {
   GetDunningReportResponse,
   GetEntitlementQuery,
   GetExpenseInboxQuery,
+  GetPriceChangeQuery,
+  GetPriceChangeResponse,
   GetRevenueReportQuery,
   GetRevenueReportResponse,
   GetSubscriptionReportQuery,
@@ -153,6 +155,8 @@ import type {
   ListPaymentsQuery,
   ListPaymentsResponse,
   ListPlansResponse,
+  ListPriceChangesQuery,
+  ListPriceChangesResponse,
   ListPromotionCodesQuery,
   ListPromotionCodesResponse,
   ListSubscriptionsQuery,
@@ -213,6 +217,7 @@ import type {
   WebhookDelivery,
   WebhookEndpoint,
   WebhookEndpointInput,
+  WithdrawPriceChangeResponse,
 } from "./types";
 
 export class AccountingResource {
@@ -1621,13 +1626,64 @@ export class PlansResource {
    * For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
    * (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
    * The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
-   * `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing. Each scheduled change also sends the
-   * `subscription.change_scheduled` webhook event.
+   * `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing.
+   * Each scheduled change also sends the `subscription.change_scheduled` webhook event, and the run sends `price_change.scheduled` once.
+   * The run is recorded as a price change (`price_change_id`; see `GET /v1/price-changes`). Running it again for the same plan and versions continues the open one:
+   * the skipped subscriptions are tried again, and the ones it scheduled before are counted in `already_scheduled` and neither scheduled nor mailed a second time.
    *
    * `POST /v1/plans/{code}/price-changes`
    */
   schedulePriceChange(code: string, body: SchedulePriceChangeRequest, options?: RequestOptions): Promise<SchedulePriceChangeResponse> {
     return this.t.request<SchedulePriceChangeResponse>({ method: "POST", path: `/v1/plans/${seg(code)}/price-changes`, body, bodyKind: "json", response: "json" }, options);
+  }
+}
+
+export class PriceChangesResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The price changes made, newest first
+   *
+   * Each with the number of subscriptions that are waiting for their renewal (`scheduled`), were moved (`applied`), were withdrawn or were skipped. The latest 100.
+   *
+   * `GET /v1/price-changes`
+   */
+  listPriceChanges(query?: ListPriceChangesQuery, options?: RequestOptions): Promise<ListPriceChangesResponse> {
+    return this.t.request<ListPriceChangesResponse>({ method: "GET", path: `/v1/price-changes`, query, response: "json" }, options);
+  }
+
+  /**
+   * One price change with its subscriptions and what became of each
+   *
+   * The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+   *
+   * `GET /v1/price-changes/{id}`
+   */
+  getPriceChange(id: string, query?: GetPriceChangeQuery, options?: RequestOptions): Promise<GetPriceChangeResponse> {
+    return this.t.request<GetPriceChangeResponse>({ method: "GET", path: `/v1/price-changes/${seg(id)}`, query, response: "json" }, options);
+  }
+
+  /**
+   * Try the skipped subscriptions of a price change again
+   *
+   * Runs the price change again with the notice it was made with, for the subscriptions that were skipped (a renewal that was too close may be far enough now) and any that joined the version since. What is scheduled already is left alone. Refused with 409 `plans.price_change.withdrawn` once it was withdrawn.
+   *
+   * `POST /v1/price-changes/{id}/retry`
+   */
+  retryPriceChange(id: string, options?: RequestOptions): Promise<SchedulePriceChangeResponse> {
+    return this.t.request<SchedulePriceChangeResponse>({ method: "POST", path: `/v1/price-changes/${seg(id)}/retry`, response: "json" }, options);
+  }
+
+  /**
+   * Cancel every change of a price change that is still waiting
+   *
+   * Closes the price change and cancels the scheduled changes that have not taken effect, so those customers stay on the old price. A change that was applied stays, and
+   * the mail that was sent is not taken back (tell those customers yourself). Calling it again finishes what an interrupted call left; a new run makes a new price change.
+   *
+   * `POST /v1/price-changes/{id}/withdraw`
+   */
+  withdrawPriceChange(id: string, options?: RequestOptions): Promise<WithdrawPriceChangeResponse> {
+    return this.t.request<WithdrawPriceChangeResponse>({ method: "POST", path: `/v1/price-changes/${seg(id)}/withdraw`, response: "json" }, options);
   }
 }
 

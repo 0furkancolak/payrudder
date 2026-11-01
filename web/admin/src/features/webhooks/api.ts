@@ -36,6 +36,7 @@ export const EVENT_TYPES = [
   "credits.low",
   "customer.blocked",
   "customer.unblocked",
+  "price_change.scheduled",
   "contract.accepted",
   "contract.version_published",
   "contract.withdrawal_requested",

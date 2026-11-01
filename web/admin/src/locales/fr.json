@@ -760,6 +760,42 @@
           "run_by_provider": "{n} sont gérés par un prestataire de paiement.",
           "not_changeable": "{n} ne peuvent pas être déplacés ainsi (par exemple frais facturés à terme échu).",
           "customer_blocked": "{n} appartiennent à un client bloqué et ont été laissés de côté."
+        },
+        "alreadyScheduled": "{n} ont déjà été planifiés par cette modification de prix et ne sont pas prévenus de nouveau.",
+        "history": "Modifications de prix effectuées",
+        "versions": "v{from} vers v{to}",
+        "state": {
+          "open": "Ouverte",
+          "withdrawn": "Retirée"
+        },
+        "madeBy": "{date} par {who}",
+        "takesEffect": "Premier changement de prix le {date} ({n} jours de préavis)",
+        "counts": "{scheduled} en attente, {applied} basculés, {withdrawn} retirés, {skipped} ignorés",
+        "details": "Clients",
+        "hideDetails": "Masquer les clients",
+        "retry": "Réessayer les {n} ignorés",
+        "retried": "{n} abonnements de plus planifiés ; {skipped} restent à l'écart.",
+        "withdraw": "Tout retirer",
+        "withdrawn": "{n} changements en attente retirés. Les clients déjà prévenus par e-mail ne sont pas informés.",
+        "confirmWithdraw": "Annuler les {n} changements encore en attente ? Ces clients gardent l'ancien prix. Les changements déjà appliqués restent et les e-mails envoyés ne sont pas repris.",
+        "columns": {
+          "customer": "Client",
+          "state": "État",
+          "effective": "Nouveau prix dès le",
+          "notified": "E-mail"
+        },
+        "itemState": {
+          "scheduled": "En attente",
+          "applied": "Basculé",
+          "withdrawn": "Retiré",
+          "skipped": "Ignoré"
+        },
+        "skipWhy": {
+          "renews_soon": "se renouvelle trop tôt",
+          "has_pending_change": "a un autre changement en attente",
+          "run_by_provider": "géré par un prestataire de paiement",
+          "not_changeable": "ne peut pas être déplacé ainsi",
+          "customer_blocked": "le client est bloqué"
         }
       }
     },
@@ -2812,6 +2848,10 @@
         "no_fixed_fee": "Cette version du plan n'a pas de frais fixes pour cet intervalle dans cette devise.",
         "no_metered_price": "Cette version du plan a des prix à l'usage, mais aucun dans cette devise."
       },
+      "price_change": {
+        "not_found": "Modification de prix introuvable.",
+        "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle."
+      },
       "override": {
         "customer_required": "Indiquez pour quel client est la limite.",
         "not_found": "Ce client n'a pas d'exception sur ce compteur."
@@ -3355,6 +3395,9 @@
       "ticket": {
         "closed": "Ce ticket est clos. Ouvrez-en un nouveau.",
         "not_found": "Ce ticket est introuvable."
+      },
+      "tickets": {
+        "too_many": "Votre organisation a déjà 20 tickets en attente. Attendez une réponse ou marquez-en un comme résolu, puis réessayez."
       }
     }
   },
@@ -4974,10 +5017,10 @@
       "urgent": "Urgente"
     },
     "answerWithin": {
-      "low": "réponse sous 3 jours",
-      "normal": "réponse sous 1 jour",
-      "high": "réponse sous 4 heures",
-      "urgent": "réponse sous 1 heure"
+      "low": "réponse sous 3 jours ouvrés",
+      "normal": "réponse sous 1 jour ouvré",
+      "high": "réponse sous 4 heures ouvrées",
+      "urgent": "réponse sous 1 heure ouvrée"
     },
     "category": {
       "billing": "Facturation",
@@ -4992,7 +5035,9 @@
       "system": "Système"
     },
     "sortPriority": "Priorité la plus haute d'abord",
-    "sortDue": "Échéance la plus proche d'abord"
+    "sortDue": "Échéance la plus proche d'abord",
+    "unread": "Nouveau",
+    "businessHours": "Les délais de réponse comptent les heures ouvrées : du lundi au vendredi, de 9 h à 18 h, dans le fuseau horaire de votre application."
   },
   "connect": {
     "nav": "Connecter votre app",

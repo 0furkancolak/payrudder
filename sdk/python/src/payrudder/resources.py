@@ -588,6 +588,41 @@ class SubscriptionsResource:
         return cast("m.Subscription", self._client._request("DELETE", f"/v1/subscriptions/{_p(id)}/scheduled-change", options=options))
 
 
+class PriceChangesResource:
+    """``/v1/price-changes`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_price_changes(self, *, plan_code: str | None = None, options: RequestOptions | None = None) -> m.ListPriceChangesResponse:
+        """The price changes made, newest first.
+
+        ``GET /v1/price-changes``
+        """
+        return cast("m.ListPriceChangesResponse", self._client._request("GET", "/v1/price-changes", query={"plan_code": plan_code}, options=options))
+
+    def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
+        """One price change with its subscriptions and what became of each.
+
+        ``GET /v1/price-changes/{id}``
+        """
+        return cast("m.GetPriceChangeResponse", self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state}, options=options))
+
+    def retry_price_change(self, id: str, *, options: RequestOptions | None = None) -> m.SchedulePriceChangeResponse:
+        """Try the skipped subscriptions of a price change again.
+
+        ``POST /v1/price-changes/{id}/retry``
+        """
+        return cast("m.SchedulePriceChangeResponse", self._client._request("POST", f"/v1/price-changes/{_p(id)}/retry", options=options))
+
+    def withdraw_price_change(self, id: str, *, options: RequestOptions | None = None) -> m.WithdrawPriceChangeResponse:
+        """Cancel every change of a price change that is still waiting.
+
+        ``POST /v1/price-changes/{id}/withdraw``
+        """
+        return cast("m.WithdrawPriceChangeResponse", self._client._request("POST", f"/v1/price-changes/{_p(id)}/withdraw", options=options))
+
+
 class TaxRatesResource:
     """``/v1/tax-rates`` and related operations."""
 
@@ -1605,6 +1640,7 @@ class Resources:
     meters: MetersResource
     plans: PlansResource
     subscriptions: SubscriptionsResource
+    price_changes: PriceChangesResource
     tax_rates: TaxRatesResource
     dunning_settings: DunningSettingsResource
     credit_packs: CreditPacksResource
@@ -1642,6 +1678,7 @@ class Resources:
         self.meters = MetersResource(client)
         self.plans = PlansResource(client)
         self.subscriptions = SubscriptionsResource(client)
+        self.price_changes = PriceChangesResource(client)
         self.tax_rates = TaxRatesResource(client)
         self.dunning_settings = DunningSettingsResource(client)
         self.credit_packs = CreditPacksResource(client)
@@ -2241,6 +2278,41 @@ class AsyncSubscriptionsResource:
         ``DELETE /v1/subscriptions/{id}/scheduled-change``
         """
         return cast("m.Subscription", await self._client._request("DELETE", f"/v1/subscriptions/{_p(id)}/scheduled-change", options=options))
+
+
+class AsyncPriceChangesResource:
+    """``/v1/price-changes`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_price_changes(self, *, plan_code: str | None = None, options: RequestOptions | None = None) -> m.ListPriceChangesResponse:
+        """The price changes made, newest first.
+
+        ``GET /v1/price-changes``
+        """
+        return cast("m.ListPriceChangesResponse", await self._client._request("GET", "/v1/price-changes", query={"plan_code": plan_code}, options=options))
+
+    async def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
+        """One price change with its subscriptions and what became of each.
+
+        ``GET /v1/price-changes/{id}``
+        """
+        return cast("m.GetPriceChangeResponse", await self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state}, options=options))
+
+    async def retry_price_change(self, id: str, *, options: RequestOptions | None = None) -> m.SchedulePriceChangeResponse:
+        """Try the skipped subscriptions of a price change again.
+
+        ``POST /v1/price-changes/{id}/retry``
+        """
+        return cast("m.SchedulePriceChangeResponse", await self._client._request("POST", f"/v1/price-changes/{_p(id)}/retry", options=options))
+
+    async def withdraw_price_change(self, id: str, *, options: RequestOptions | None = None) -> m.WithdrawPriceChangeResponse:
+        """Cancel every change of a price change that is still waiting.
+
+        ``POST /v1/price-changes/{id}/withdraw``
+        """
+        return cast("m.WithdrawPriceChangeResponse", await self._client._request("POST", f"/v1/price-changes/{_p(id)}/withdraw", options=options))
 
 
 class AsyncTaxRatesResource:
@@ -3273,6 +3345,7 @@ class AsyncResources:
     meters: AsyncMetersResource
     plans: AsyncPlansResource
     subscriptions: AsyncSubscriptionsResource
+    price_changes: AsyncPriceChangesResource
     tax_rates: AsyncTaxRatesResource
     dunning_settings: AsyncDunningSettingsResource
     credit_packs: AsyncCreditPacksResource
@@ -3310,6 +3383,7 @@ class AsyncResources:
         self.meters = AsyncMetersResource(client)
         self.plans = AsyncPlansResource(client)
         self.subscriptions = AsyncSubscriptionsResource(client)
+        self.price_changes = AsyncPriceChangesResource(client)
         self.tax_rates = AsyncTaxRatesResource(client)
         self.dunning_settings = AsyncDunningSettingsResource(client)
         self.credit_packs = AsyncCreditPacksResource(client)

@@ -43,6 +43,7 @@ import (
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/support"
 	trialcmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/trialnotices/command"
 	webhooksworker "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/worker"
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
@@ -81,6 +82,11 @@ type Config struct {
 	NafruAPIKey  string `env:"NAFRU_API_KEY"`
 	// AppURL is the console's public address; the links in those mails point into it.
 	AppURL string `env:"PAYRUDDER_APP_URL"`
+	// OperatorEmails lists the platform operators (the same setting as the gateway's): a new support ticket is mailed to each. Empty: no operator is mailed.
+	OperatorEmails []string `env:"PAYRUDDER_OPERATOR_EMAILS" envSeparator:","`
+	// SupportAutoCloseAfter is how long a ticket may wait for the person before it closes by itself; 0 switches it off. SupportAutoCloseEvery is how often the job looks.
+	SupportAutoCloseAfter time.Duration `env:"PAYRUDDER_SUPPORT_AUTOCLOSE_AFTER"`
+	SupportAutoCloseEvery time.Duration `env:"PAYRUDDER_SUPPORT_AUTOCLOSE_EVERY"`
 	// The services a sandbox reset empties besides plans-svc itself (phase 45 E). An empty address skips that step, so a deployment without the service still resets
 	// the rest. The gRPC ones are the services' usual addresses; payments-worker is HTTP and takes the internal token the gateway also uses.
 	IngestAddr     string `env:"PAYRUDDER_INGEST_ADDR"`
@@ -139,6 +145,12 @@ func (c *Config) Validate() error {
 	}
 	if c.TrialReminderDays < 1 || c.TrialReminderDays > 30 {
 		errs = append(errs, errors.New("PAYRUDDER_TRIAL_REMINDER_DAYS must be between 1 and 30"))
+	}
+	if c.SupportAutoCloseAfter != 0 && c.SupportAutoCloseAfter < time.Hour {
+		errs = append(errs, errors.New("PAYRUDDER_SUPPORT_AUTOCLOSE_AFTER must be at least an hour, or 0 to switch it off"))
+	}
+	if c.SupportAutoCloseEvery < time.Minute {
+		errs = append(errs, errors.New("PAYRUDDER_SUPPORT_AUTOCLOSE_EVERY must be at least a minute"))
 	}
 	if c.TrialReminderEvery < time.Minute {
 		errs = append(errs, errors.New("PAYRUDDER_TRIAL_REMINDER_EVERY must be at least a minute"))
@@ -217,7 +229,8 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	defer closeSbx()
-	srv, grpcHealth, box, saasCmd, err := newGRPCServer(cfg, log, appDB, places, evictor, sbx)
+	mail := usermail.NewSMTP(platformMail(cfg), cfg.MailFrom, log)
+	srv, grpcHealth, box, saasCmd, err := newGRPCServer(cfg, log, appDB, places, evictor, sbx, mail)
 	if err != nil {
 		return err
 	}
@@ -229,7 +242,8 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	if err != nil {
 		return err
 	}
-	w := &workers{cfg: cfg, log: log, pool: systemPool, app: appDB, places: places, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd}
+	w := &workers{cfg: cfg, log: log, pool: systemPool, app: appDB, places: places, relay: relay, box: box, health: hh, srv: srv, grpcHealth: grpcHealth, lis: lis, sandbox: sbxRunner, saas: saasCmd,
+		support: support.New(systemPool, log, support.Config{Mail: mail, Operators: cfg.OperatorEmails, AppURL: cfg.AppURL})}
 	return w.run(ctx)
 }
 
@@ -345,7 +359,7 @@ func newSandbox(cfg *Config, log *slog.Logger, places *placement.Places) (*sandb
 }
 
 // newGRPCServer builds the gRPC server with every service of plans-svc registered.
-func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *placement.Places, evictor apikeyscmd.Evictor, sbx *sandboxapi.Handler) (*grpc.Server, *grpchealth.Server, *secretbox.Box, *saascmd.Commands, error) {
+func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *placement.Places, evictor apikeyscmd.Evictor, sbx *sandboxapi.Handler, mail usermail.Sender) (*grpc.Server, *grpchealth.Server, *secretbox.Box, *saascmd.Commands, error) {
 	srv, grpcHealth := app.NewGRPCServer(log, cfg.Common())
 	box, err := newSecretBox(cfg, log)
 	if err != nil {
@@ -353,7 +367,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *p
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
 		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, BanApproval: cfg.BanApproval, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
-		Mail: usermail.NewSMTP(platformMail(cfg), cfg.MailFrom, log), AppURL: cfg.AppURL, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
+		Mail: mail, AppURL: cfg.AppURL, OperatorEmails: cfg.OperatorEmails, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})
 	return srv, grpcHealth, box, saasCmd, nil
@@ -374,6 +388,7 @@ type workers struct {
 	lis        net.Listener
 	sandbox    *sandbox.Runner   // runs the sandbox resets and the retention sweep
 	saas       *saascmd.Commands // makes every account a customer of the platform tenant (does nothing with SaaS off)
+	support    *support.Service  // the help desk, for the job that closes the tickets nobody answered
 }
 
 // run starts everything and blocks until ctx is cancelled or one of them fails, then drains the gRPC server.
@@ -399,6 +414,11 @@ func (w *workers) run(ctx context.Context) error {
 	g.Go(func() error { return trials.Run(gctx) })
 	if w.saas.Enabled() {
 		g.Go(func() error { return w.saas.Run(gctx) })
+	}
+	if w.cfg.SupportAutoCloseAfter > 0 {
+		g.Go(func() error {
+			return w.support.AutoClose(gctx, w.cfg.SupportAutoCloseAfter, w.cfg.SupportAutoCloseEvery)
+		})
 	}
 	w.log.Info("grpc listening", "addr", w.cfg.GRPCAddr, "metrics", w.cfg.MetricsAddr, "environments", w.cfg.AllowedEnvs)
 	g.ServeGRPC(w.srv, w.grpcHealth, w.lis)
