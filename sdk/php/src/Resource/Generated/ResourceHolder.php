@@ -17,6 +17,9 @@ abstract class ResourceHolder
     public readonly AffiliatesResource $affiliates;
     public readonly AnalyticsResource $analytics;
     public readonly AssetsResource $assets;
+    public readonly ContractAcceptancesResource $contractAcceptances;
+    public readonly ContractWithdrawalsResource $contractWithdrawals;
+    public readonly ContractsResource $contracts;
     public readonly CouponRedemptionsResource $couponRedemptions;
     public readonly CouponsResource $coupons;
     public readonly CreditNotesResource $creditNotes;
@@ -52,6 +55,9 @@ abstract class ResourceHolder
         $this->affiliates = new AffiliatesResource($requester);
         $this->analytics = new AnalyticsResource($requester);
         $this->assets = new AssetsResource($requester);
+        $this->contractAcceptances = new ContractAcceptancesResource($requester);
+        $this->contractWithdrawals = new ContractWithdrawalsResource($requester);
+        $this->contracts = new ContractsResource($requester);
         $this->couponRedemptions = new CouponRedemptionsResource($requester);
         $this->coupons = new CouponsResource($requester);
         $this->creditNotes = new CreditNotesResource($requester);
