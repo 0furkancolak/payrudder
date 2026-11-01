@@ -39,3 +39,7 @@ Production storage, real paging.
 
 ## Risks
 A backup that was never restored is worthless: the game day is the acceptance, not the cron job.
+
+
+## Addendum (2026-11-01)
+The audit in [22](22-platform-audit-and-roadmap.md) adds to this plan: point-in-time recovery with a stated RPO/RTO (G5), a restore drill that checks data and invariants, financial anomaly alerts (G6) and a real alert receiver. Do them here.

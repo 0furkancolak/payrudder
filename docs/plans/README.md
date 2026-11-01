@@ -39,12 +39,16 @@ The first pass went too fast. Twenty-odd changes were merged in a day, each chec
 | 18 | [Quick integration for apps](18-quick-integration.md) | needs real SDKs behaviour confirmed | M | – |
 | 19 | [Documentation site](19-docs-site.md) | after the product settles | M | hosting |
 | 20 | [MCP server](20-mcp.md) | after the API settles | M | hosting model |
+| 21 | [Contracts: distance sales and other agreements for the seller's customers](21-contracts.md) | independent of the payment path except one acceptance gate | L | kinds, template text policy, retention |
+| 22 | [Platform audit and roadmap: financial correctness first](22-platform-audit-and-roadmap.md) | phases 0–1 outrank 09–12, 14, 15, 17–21 | XL | RPO/RTO, backup target, alert receiver |
 
 The mapping of the owner's items to plans is in [the last section](#where-each-of-the-owners-items-went).
 
 ## Where each of the owner's items went
 
 **List 1** (the "kalan eksikler" list): 1 support → 12 · 2 Nafru default mail → 11 · 3 more PSPs and e-invoice integrators → 08, 09 · 4 one integrations page → 10 · 5 skippable onboarding → 03 · 6 the welcome tour that keeps returning → 03 · 7 usage and meters icons → 03 · 8 exact compatibility with Paddle and iyzico → 06, 07 · 9 scroll jumping behind sheets and the multi-select in a sheet → 03 · 10 customer payment pages → 04 · 11 dynamic language, invoices by country and language → 05 · 12 taxpayer or individual → 05 · 13 sheets that navigate instead of opening on top → 03.
+
+**List 3** (2026-11-01): contracts for the seller's customers → 21 · the code-base audit (financial correctness, payment reliability, production readiness, reconciliation, developer experience) → 22.
 
 **List 2** (the "ayrıca" list): 1 MCP → 20 · 2 docs → 19 · 3 quick integration → 18 · 4 Paddle without deprecated features → 06 · 5 iyzico → 07 · 6 filters apply on a button → 02 · 7 one select for sort and order → 02 · 8 price increases and notices → 15 · 9 regions and scaling → 17 · 10 tenant freeze and ban → 14 · 11 customer ban → 13 · 12 bulk actions → 02 · 13 backup and Alertmanager → 16.
 
