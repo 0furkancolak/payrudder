@@ -1,11 +1,22 @@
 # Public settings of this service and their defaults. An environment variable of the same name overrides each; secrets are never listed here.
 PAYRUDDER_MIGRATE_ON_START: "false"
 PAYRUDDER_PLANS_ADDR: "dns:///localhost:42701"
+# The mails an organisation's plan includes are asked of limits-svc before a live send and ingested into the platform tenant after it (ADR 0024). With SaaS off
+# plans-svc answers "not metered" and nothing is limited or counted. Both or neither.
+PAYRUDDER_INGEST_ADDR: "dns:///localhost:42702"
+PAYRUDDER_LIMITS_ADDR: "dns:///localhost:42704"
 SMTP_ADDR: "localhost:42025"
 MAIL_FROM: "Payrudder <billing@payrudder.local>"
 NOTIFIER_SENDING_STALE: "5m"
 # How long a tenant's mail switch (plans-svc) is remembered; a change reaches the notifier within it.
 NOTIFIER_MAIL_SWITCH_TTL: "15s"
+# The most one tenant's live mail the platform's sender sends: this many a minute per replica, after a burst of this many at once. 0 a minute switches it off. A
+# mail over the limit is not lost: it is retried (a command three times in about two and a half minutes, a Kafka consumer until it passes).
+NOTIFIER_MAIL_RATE_PER_MINUTE: "600"
+NOTIFIER_MAIL_RATE_BURST: "200"
+# Where the notifier listens for bounce and complaint notices and suppression-list calls (/v1/mail-events, /v1/mail-suppressions). Empty: not listening. It needs
+# NOTIFIER_MAIL_EVENTS_SECRET (a secret, so it is not listed here), and every request is signed with it.
+NOTIFIER_EVENTS_ADDR: ""
 # A tenant's own e-mail provider must be https:// and public. Development and tests only: allow http:// and private addresses.
 NOTIFIER_MAIL_ALLOW_PRIVATE: "false"
 PAYRUDDER_CONSUMER_GROUP: "notifier"

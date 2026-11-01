@@ -51,5 +51,9 @@ func (h *Handler) Handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (
 	if err != nil {
 		return nil, err
 	}
+	if mid == delivery.Dropped {
+		// The address is suppressed or the plan's allowance is used up: done, and nothing was sent.
+		return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_NotificationSent{NotificationSent: &commandsv1.NotificationSent{Suppressed: true}}}, nil
+	}
 	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_NotificationSent{NotificationSent: &commandsv1.NotificationSent{MessageId: mid}}}, nil
 }

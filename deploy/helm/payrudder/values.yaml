@@ -157,7 +157,7 @@ services:
     replicas: 1
     hpa: { enabled: false, max: 4, cpu: 70 }
     db: { role: ingest, name: ingest_db, app: true, system: true }
-    allowFrom: [gateway, billing-svc, plans-svc]
+    allowFrom: [gateway, billing-svc, plans-svc, notifier]   # notifier: meters the mails it sends into the platform tenant (ADR 0024)
     env:
       PAYRUDDER_GRPC_ADDR: ":7002"
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
@@ -180,7 +180,7 @@ services:
     kind: grpc
     port: 7004
     metricsPort: 9104
-    allowFrom: [gateway]
+    allowFrom: [gateway, notifier]   # notifier: asks a plan's mails allowance
     env:
       PAYRUDDER_GRPC_ADDR: ":7004"
       PAYRUDDER_REDIS_URL: "{{ .Values.global.redisURL }}"
@@ -267,6 +267,8 @@ services:
     env:
       PAYRUDDER_KAFKA_BROKERS: "{{ .Values.global.kafkaBrokers }}"
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
+      PAYRUDDER_LIMITS_ADDR: dns:///limits-svc:7004
       SMTP_ADDR: "{{ .Values.smtp.addr }}"
       NAFRU_BASE_URL: "{{ .Values.nafru.baseURL }}"
       NAFRU_API_KEY: "{{ .Values.nafru.apiKey }}"

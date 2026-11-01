@@ -662,6 +662,8 @@ services:
       PAYRUDDER_RABBITMQ_URL: amqp://payrudder:payrudder_local@rabbitmq:5672/
       PAYRUDDER_KAFKA_BROKERS: redpanda:9092
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
+      PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
+      PAYRUDDER_LIMITS_ADDR: dns:///limits-svc:7004
       SMTP_ADDR: mailpit:1025
       NAFRU_BASE_URL: ${NAFRU_BASE_URL:-}
       NAFRU_API_KEY: ${NAFRU_API_KEY:-}
