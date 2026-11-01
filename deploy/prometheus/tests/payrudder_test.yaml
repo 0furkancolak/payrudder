@@ -248,3 +248,280 @@ tests:
         alertname: RestoreDrillFailed
         exp_alerts: []
 
+
+  # --- money (plan 16 / plan 22 G6) ------------------------------------------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: PaymentDiscrepancy fires when the counter rises and stays quiet when it is flat
+    input_series:
+      - series: 'payment_discrepancies_total{provider="iyzico"}'
+        values: '4 4 4 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5'
+      - series: 'payment_discrepancies_total{provider="paddle"}'
+        values: '2+0x24'
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: PaymentDiscrepancy
+        exp_alerts:
+          - exp_labels: { severity: page, service: payments-worker, provider: iyzico }
+            exp_annotations:
+              summary: "iyzico: a payment's recorded outcomes disagree, or a customer paid twice (reconcile and refund)"
+      - eval_time: 20m
+        alertname: PaymentDiscrepancy
+        exp_alerts: []
+
+  - interval: 1m
+    name: PaymentDiscrepancy sees the first discrepancy a provider ever had (the series is new, increase cannot see it)
+    input_series:
+      - series: 'payment_discrepancies_total{provider="stripe"}'
+        values: '_ _ _ _ _ 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: PaymentDiscrepancy
+        exp_alerts:
+          - exp_labels: { severity: page, service: payments-worker, provider: stripe }
+            exp_annotations:
+              summary: "stripe: a payment's recorded outcomes disagree, or a customer paid twice (reconcile and refund)"
+      - eval_time: 25m
+        alertname: PaymentDiscrepancy
+        exp_alerts: []
+
+  - interval: 1m
+    name: PaymentCommandsErroring pages on errors, not on declines
+    input_series:
+      - series: 'payments_total{result="errored", service="payments-worker"}'
+        values: '0+1x30'
+      - series: 'payments_total{result="succeeded", service="payments-worker"}'
+        values: '0+4x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: PaymentCommandsErroring
+        exp_alerts:
+          - exp_labels: { severity: page, service: payments-worker }
+            exp_annotations:
+              summary: "more than 10% of payment commands end in an error (not a decline): a provider, credentials or code problem"
+
+  - interval: 1m
+    name: PaymentCommandsErroring stays quiet when every failure is a decline
+    input_series:
+      - series: 'payments_total{result="declined", service="payments-worker"}'
+        values: '0+3x30'
+      - series: 'payments_total{result="succeeded", service="payments-worker"}'
+        values: '0+4x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: PaymentCommandsErroring
+        exp_alerts: []
+
+  - interval: 1m
+    name: ChargeFailureRateHigh fires when most charges fail and there are enough of them
+    input_series:
+      - series: 'payments_total{result="declined", service="payments-worker"}'
+        values: '0+3x60'
+      - series: 'payments_total{result="succeeded", service="payments-worker"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: ChargeFailureRateHigh
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker }
+            exp_annotations:
+              summary: "more than half of the charges of the last 30 minutes failed (declines and errors)"
+
+  - interval: 1m
+    name: ChargeFailureRateHigh stays quiet for a few charges that all fail, and for many that mostly succeed
+    input_series:
+      - series: 'payments_total{result="declined", service="payments-worker"}'
+        values: '0+0.2x60'
+      - series: 'payments_total{result="succeeded", service="payments-worker"}'
+        values: '0+0x60'
+      - series: 'payments_total{result="declined", service="other"}'
+        values: '0+1x60'
+      - series: 'payments_total{result="succeeded", service="other"}'
+        values: '0+9x60'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: ChargeFailureRateHigh
+        exp_alerts: []
+
+  - interval: 1m
+    name: RefundSpike fires when refunds are a large share of the successful charges
+    input_series:
+      - series: 'payments_total{result="refunded", service="payments-worker"}'
+        values: '0+1x120'
+      - series: 'payments_total{result="succeeded", service="payments-worker"}'
+        values: '0+2x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: RefundSpike
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker }
+            exp_annotations:
+              summary: "refunds in the last hour are more than a quarter of the successful charges"
+
+  - interval: 1m
+    name: RefundSpike stays quiet when refunds are a small share
+    input_series:
+      - series: 'payments_total{result="refunded", service="payments-worker"}'
+        values: '0+1x120'
+      - series: 'payments_total{result="succeeded", service="payments-worker"}'
+        values: '0+100x120'
+    alert_rule_test:
+      - eval_time: 90m
+        alertname: RefundSpike
+        exp_alerts: []
+
+  - interval: 1m
+    name: ProviderWebhookFailing fires per provider on retries, and not for the healthy one
+    input_series:
+      - series: 'provider_events_total{provider="iyzico", result="retry"}'
+        values: '0+1x60'
+      - series: 'provider_events_total{provider="iyzico", result="processed"}'
+        values: '0+2x60'
+      - series: 'provider_events_total{provider="paddle", result="processed"}'
+        values: '0+5x60'
+      - series: 'provider_events_total{provider="paddle", result="duplicate"}'
+        values: '0+1x60'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: ProviderWebhookFailing
+        exp_alerts:
+          - exp_labels: { severity: warn, service: payments-worker, provider: iyzico }
+            exp_annotations:
+              summary: "iyzico: over 20% of its webhooks are not being accepted (retry, unverified or malformed)"
+
+  - interval: 5m
+    name: DunningQueueGrowing fires when the waiting invoices more than double in six hours
+    input_series:
+      - series: 'saga_state{state="PAYMENT_DECLINED", service="billing-svc"}'
+        values: '10+0x72 40+0x150'
+    alert_rule_test:
+      - eval_time: 9h
+        alertname: DunningQueueGrowing
+        exp_alerts:
+          - exp_labels: { severity: warn, service: billing-svc }
+            exp_annotations:
+              summary: "invoices waiting for a dunning retry doubled in six hours (40 now)"
+      - eval_time: 13h
+        alertname: DunningQueueGrowing
+        exp_alerts: []
+
+  - interval: 5m
+    name: DunningQueueGrowing counts a state that had no rows six hours ago as zero
+    input_series:
+      - series: 'saga_state{state="PAYMENT_DECLINED", service="billing-svc"}'
+        values: '_x84 30+0x150'
+    alert_rule_test:
+      - eval_time: 9h
+        alertname: DunningQueueGrowing
+        exp_alerts:
+          - exp_labels: { severity: warn, service: billing-svc }
+            exp_annotations:
+              summary: "invoices waiting for a dunning retry doubled in six hours (30 now)"
+
+  - interval: 1m
+    name: DLQGrowing fires when a queue gains ten dead letters in a quarter of an hour, and not for a standing backlog
+    input_series:
+      - series: 'rabbitmq_detailed_queue_messages_ready{queue="payment.charge.dlq"}'
+        values: '0+1x60'
+      - series: 'rabbitmq_detailed_queue_messages_ready{queue="notify.mail.dlq"}'
+        values: '7+0x60'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: DLQGrowing
+        exp_alerts:
+          - exp_labels: { severity: page, broker: rabbitmq, queue_or_topic: payment.charge.dlq }
+            exp_annotations:
+              summary: "rabbitmq payment.charge.dlq is filling: 10 or more dead-lettered messages in 15 minutes"
+
+  - interval: 1m
+    name: Watchdog always fires
+    input_series:
+      - series: 'up{job="payrudder", service="gateway"}'
+        values: '1+0x10'
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: Watchdog
+        exp_alerts:
+          - exp_labels: { severity: none }
+            exp_annotations:
+              summary: "always firing: if this heartbeat stops arriving at the receiver, Prometheus, Alertmanager or the path to the receiver is broken and silence means nothing"
+
+  # --- point-in-time recovery (deploy/backup) --------------------------------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: WalArchiveStale pages when no WAL was shipped for 15 minutes, and not before
+    input_series:
+      - series: 'payrudder_wal_last_shipped_timestamp_seconds{job="payrudder_wal"}'
+        values: '0+0x60'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WalArchiveStale
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: WalArchiveStale
+        exp_alerts:
+          - exp_labels: { severity: page, service: postgres }
+            exp_annotations:
+              summary: "no WAL reached the backup storage for over 15 minutes: the RPO is exceeded and point-in-time recovery has a gap"
+
+  - interval: 1m
+    name: WalArchiveStale stays quiet while WAL keeps arriving
+    input_series:
+      - series: 'payrudder_wal_last_shipped_timestamp_seconds{job="payrudder_wal"}'
+        values: '0+60x60'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: WalArchiveStale
+        exp_alerts: []
+
+  - interval: 1m
+    name: WalSpoolBacklog warns when shipped WAL waits more than ten minutes
+    input_series:
+      - series: 'payrudder_wal_oldest_unshipped_age_seconds{job="payrudder_wal"}'
+        values: '700+0x30'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WalSpoolBacklog
+        exp_alerts:
+          - exp_labels: { severity: warn, service: postgres }
+            exp_annotations:
+              summary: "archived WAL waits more than 10 minutes to be shipped (storage unreachable?); a full disk stops Postgres"
+
+  - interval: 1m
+    name: BaseBackupStale pages after 26 hours without a base backup
+    input_series:
+      - series: 'payrudder_pitr_basebackup_last_success_timestamp_seconds{job="payrudder_pitr_basebackup"}'
+        values: '0+0x2000'
+    alert_rule_test:
+      - eval_time: 20h
+        alertname: BaseBackupStale
+        exp_alerts: []
+      - eval_time: 30h
+        alertname: BaseBackupStale
+        exp_alerts:
+          - exp_labels: { severity: page, service: postgres }
+            exp_annotations:
+              summary: "no base backup for point-in-time recovery has succeeded for over 26 hours"
+
+  - interval: 1m
+    name: PitrNeverReported warns when neither WAL nor a base backup ever reported, and not when both did
+    input_series:
+      - series: 'up{job="pushgateway"}'
+        values: '1+0x400'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: PitrNeverReported
+        exp_alerts:
+          - exp_labels: { severity: warn, service: postgres }
+            exp_annotations:
+              summary: "point-in-time recovery never reported WAL or a base backup (is pitr-agent running? ignore where PITR is not used)"
+
+  - interval: 1m
+    name: PitrNeverReported is quiet once both reported
+    input_series:
+      - series: 'payrudder_wal_last_shipped_timestamp_seconds{job="payrudder_wal"}'
+        values: '0+0x400'
+      - series: 'payrudder_pitr_basebackup_last_success_timestamp_seconds{job="payrudder_pitr_basebackup"}'
+        values: '0+0x400'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: PitrNeverReported
+        exp_alerts: []

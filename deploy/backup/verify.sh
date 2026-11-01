@@ -1,7 +1,8 @@
 #!/bin/sh
-# The restore drill: restores the newest dump of each database into a scratch database, checks that it has tables, and drops the scratch database. Run it on a
-# schedule (the compose service does) so a backup that cannot be restored is found before the day it is needed. Exit 1 when any database fails.
-# Environment: PGHOST PGPORT PGUSER PGPASSWORD, BACKUP_DIR (default /backups), PUSHGATEWAY_URL (optional).
+# The restore drill: restores the newest dump of each database into a scratch database, checks that it has tables and that its data is consistent (invariants.sh:
+# invoice totals against their lines, credit lots against their ledger, receipts against the payment ledger), and drops the scratch database. Run it on a schedule
+# (the compose service does) so a backup that cannot be restored is found before the day it is needed. Exit 1 when any database fails.
+# Environment: PGHOST PGPORT PGUSER PGPASSWORD (a role that sees every row: a superuser), BACKUP_DIR (default /backups), PUSHGATEWAY_URL (optional).
 set -eu
 dir="${BACKUP_DIR:-/backups}"
 failed=0
@@ -14,7 +15,12 @@ for latest in $(ls -1t "$dir"/*.dump 2>/dev/null | awk -F/ '{n=$NF; sub(/-[0-9]{
   if "$(dirname "$0")/restore.sh" "$latest" "$scratch" --force >/dev/null 2>&1; then
     tables="$(psql -XAt -d "$scratch" -c "SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema')")"
     if [ "${tables:-0}" -gt 0 ]; then
-      echo "verify: $db ok ($tables tables) from $name"
+      if "$(dirname "$0")/invariants.sh" "$scratch"; then
+        echo "verify: $db ok ($tables tables, invariants hold) from $name"
+      else
+        echo "verify: $db restored but its data is inconsistent ($name)" >&2
+        failed=1
+      fi
     else
       echo "verify: $db restored but empty ($name)" >&2
       failed=1

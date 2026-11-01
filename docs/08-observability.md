@@ -134,3 +134,8 @@ All numbers are **targets** for a laptop-class local/kind setup. They'll be repl
 - `SagaStuck`: `saga_state{state=~".*_FAILED|PAYMENT_UNKNOWN"} > 0` for 15m
 - `FrozenPeriodViolation`: any increase (page)
 - `ReconcileDriftHigh`: corrections > 1% of active keys per cycle
+- Money (plan 16 / 22 G6): `PaymentDiscrepancy` (page), `PaymentCommandsErroring` (page), `ChargeFailureRateHigh`, `RefundSpike`, `ProviderWebhookFailing`, `DunningQueueGrowing` (warn), `DLQGrowing` (page)
+- Data safety: `BackupStale`, `BackupFailed`, `RestoreDrillFailed`, `WalArchiveStale`, `BaseBackupStale` (page), `WalSpoolBacklog`, `RestoreNotVerified`, `PitrNeverReported` (warn)
+- `Watchdog`: always firing, routed to its own receiver, the dead man's switch
+
+What each means and the first response: [backup, restore and alerting runbook](runbooks/backup-restore.md#alerts); every rule has a promtool test (`make test-rules`).
