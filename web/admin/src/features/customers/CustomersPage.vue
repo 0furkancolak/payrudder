@@ -21,7 +21,6 @@ import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Button } from "@/shared/ui/button";
 import { downloadCsv } from "@/shared/lib/csv";
 import { useBulk } from "@/shared/lib/bulk";
-import { askConfirm } from "@/shared/lib/confirm";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 
@@ -37,11 +36,12 @@ import CustomerQuotasSheet from "./CustomerQuotasSheet.vue";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useBlockCustomer, useCustomers, useCustomerSummaries, useRestOfCustomers } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
+import CustomerBlockSheet from "./CustomerBlockSheet.vue";
 import CustomerCreateSheet from "./CustomerCreateSheet.vue";
 import CustomerEditSheets from "./CustomerEditSheets.vue";
 import PaymentLinkSheet from "@/features/paymentlinks/PaymentLinkSheet.vue";
 import CustomerSheet from "./CustomerSheet.vue";
-import { countryName, emptySummary, flagOf, headline, type Customer, type CustomerTab, type SubscriptionStatus } from "./lib";
+import { countryName, emptySummary, flagOf, headline, isBlocked, type Customer, type CustomerTab, type SubscriptionStatus } from "./lib";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 /**
@@ -131,9 +131,10 @@ const editingTax = ref<Customer | null>(null);
 const packages = usePackages(tenantId);
 const act = useSubscriptionActions(tenantId);
 const blocking = useBlockCustomer(tenantId);
+/** The customer whose block form is open: blocking one asks why (and until when) in a sheet; lifting needs no questions. */
+const blockingOf = ref<Customer | null>(null);
 async function setBlocked(c: Customer, on: boolean) {
-  if (on && !(await askConfirm({ body: t("billing.customers.block.confirm", { name: c.name || c.external_id }) }))) return;
-  if (on) await blocking.block.mutateAsync({ externalId: c.external_id ?? "" });
+  if (on) blockingOf.value = c;
   else await blocking.unblock.mutateAsync(c.external_id ?? "");
 }
 // The list is the first page of customers (PAGE.whole); "select all" fetches the others by page token (useRestOfCustomers).
@@ -142,7 +143,7 @@ const bulk = useBulk(table, { name: (c) => c.external_id ?? "", rest: { has: () 
 /** The same change to every ticked customer that does not have it yet; a failure on one does not stop the rest, and the ones not changed are named. */
 const bulkBlock = (on: boolean) =>
   bulk.run((c) => (on ? blocking.block.mutateAsync({ externalId: c.external_id ?? "" }) : blocking.unblock.mutateAsync(c.external_id ?? "")), {
-    rows: (all) => all.filter((c) => (c.block_time ? 1 : 0) !== (on ? 1 : 0)),
+    rows: (all) => all.filter((c) => (isBlocked(c) ? 1 : 0) !== (on ? 1 : 0)),
     confirm: on ? (rows) => ({ body: t("billing.customers.block.confirmMany", { n: rows.length }) }) : undefined,
   });
 const subscribing = ref(false);
@@ -194,7 +195,7 @@ function actionsOf(c: Customer, i: number): RowAction[] {
     { key: "address", label: t("billing.customers.address.edit"), icon: MapPin, onSelect: () => (editingAddress.value = c) },
     { key: "tax", label: t("einvoice.customer.edit"), icon: FileText, onSelect: () => (editingTax.value = c) },
     { key: "quotas", label: t("billing.quotas.action"), icon: SlidersHorizontal, onSelect: () => (quotasOf.value = c.external_id ?? "") },
-    c.block_time
+    isBlocked(c)
       ? { key: "unblock", label: t("billing.customers.block.lift"), icon: CircleCheck, separatorBefore: true, onSelect: () => setBlocked(c, false) }
       : { key: "block", label: t("billing.customers.block.action"), icon: Ban, separatorBefore: true, onSelect: () => setBlocked(c, true) },
   ];
@@ -224,6 +225,8 @@ function exportSelected() {
       @edit-contact="editingContact = current"
       @edit-address="editingAddress = current"
       @edit-tax="editingTax = current"
+      @block="blockingOf = current"
+      @unblock="setBlocked(current, false)"
       @new-subscription="newSubscription(current)"
       @payment-link="paymentLink(currentId)"
       @credits="toCredits(currentId)"
@@ -233,6 +236,7 @@ function exportSelected() {
   <CustomerCreateSheet v-model:open="creating" :tenant-id="tenantId" />
   <PaymentLinkSheet v-model:open="linking" :tenant-id="tenantId" invoice="" :customer="linkFor" />
   <CustomerQuotasSheet v-model:open="quotasOpen" :tenant-id="tenantId" :customer="quotasOf" />
+  <CustomerBlockSheet v-model:customer="blockingOf" :tenant-id="tenantId" />
   <CustomerEditSheets v-model:contact="editingContact" v-model:address="editingAddress" v-model:tax="editingTax" :tenant-id="tenantId" />
   <CreateSubscriptionForm v-model:open="subscribing" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" :for-customer="subscribeFor" />
 
@@ -306,7 +310,7 @@ function exportSelected() {
               <div class="flex min-w-0 items-center gap-3">
                 <CustomerAvatar :customer="c" />
                 <div class="flex min-w-0 flex-col">
-                  <span class="flex min-w-0 items-center gap-2"><span class="truncate font-medium" dir="auto">{{ c.name || c.external_id }}</span><StatusPill v-if="c.block_time" tone="danger" :title="c.block_reason || undefined" data-testid="customer-blocked">{{ t("billing.customers.block.badge") }}</StatusPill></span>
+                  <span class="flex min-w-0 items-center gap-2"><span class="truncate font-medium" dir="auto">{{ c.name || c.external_id }}</span><StatusPill v-if="isBlocked(c)" tone="danger" :title="c.block_reason || undefined" data-testid="customer-blocked">{{ t("billing.customers.block.badge") }}</StatusPill></span>
                   <span class="text-muted-foreground truncate text-xs" dir="auto">{{ maskEmail(c.email) || c.external_id }}</span>
                 </div>
               </div>

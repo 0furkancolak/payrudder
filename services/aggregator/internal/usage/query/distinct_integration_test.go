@@ -294,6 +294,11 @@ func TestUniqueAndLastAreOrderIndependent(t *testing.T) {
 		}
 		events = append(events, e)
 	}
+	// Whatever the date, the fixture holds a value that only a late event carries (the random events above may all be covered by on-time ones on some days, e.g. the
+	// first of a month): a unique value in the previous month, ingested after its period closed.
+	lateOnly := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).Add(-10 * 24 * time.Hour)
+	events = append(events, uev{meter: "unique_m", id: "ev-late-only", at: lateOnly, units: 1, user: "late-only",
+		ingested: time.Date(lateOnly.Year(), lateOnly.Month()+1, 1, 0, 0, 0, 0, time.UTC).Add(7 * 24 * time.Hour)})
 
 	type result struct {
 		unique map[string]string

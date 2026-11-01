@@ -130,7 +130,7 @@ func TestEventTypeList(t *testing.T) {
 		}
 		seen[e] = true
 	}
-	if len(seen) != 22 || !seen["credits.low"] || !seen["subscription.trial_will_end"] {
+	if len(seen) != 24 || !seen["credits.low"] || !seen["customer.blocked"] || !seen["customer.unblocked"] || !seen["subscription.trial_will_end"] {
 		t.Fatalf("%d types", len(seen))
 	}
 }

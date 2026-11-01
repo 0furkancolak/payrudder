@@ -30,4 +30,6 @@ enum WebhookEventType: string
     case PaymentLinkExpired = 'payment_link.expired';
     case CreditsPurchased = 'credits.purchased';
     case CreditsLow = 'credits.low';
+    case CustomerBlocked = 'customer.blocked';
+    case CustomerUnblocked = 'customer.unblocked';
 }

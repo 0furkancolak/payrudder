@@ -231,6 +231,23 @@ func (q *Queries) HasWebhookTargets(ctx context.Context, eventType string) (bool
 	return exists, err
 }
 
+const holdWebhookDelivery = `-- name: HoldWebhookDelivery :exec
+UPDATE webhook_deliveries SET attempts = GREATEST(attempts - 1, 0), next_attempt_at = $1
+WHERE tenant_id = $2 AND id = $3
+`
+
+type HoldWebhookDeliveryParams struct {
+	NextAttemptAt time.Time
+	TenantID      uuid.UUID
+	ID            uuid.UUID
+}
+
+// A delivery of a tenant on hold is not sent and does not count as an attempt (the claim added one): it waits and is looked at again.
+func (q *Queries) HoldWebhookDelivery(ctx context.Context, arg HoldWebhookDeliveryParams) error {
+	_, err := q.db.Exec(ctx, holdWebhookDelivery, arg.NextAttemptAt, arg.TenantID, arg.ID)
+	return err
+}
+
 const insertWebhookEndpoint = `-- name: InsertWebhookEndpoint :one
 INSERT INTO webhook_endpoints (tenant_id, id, url, description, event_types, secret_enc)
 VALUES (app_tenant_id(), $1, $2, $3, $4, $5)

@@ -53,6 +53,26 @@ func TestInactiveAndSuspendedTenantsAreToldApartFromBadKeys(t *testing.T) {
 	}
 }
 
+// A frozen tenant's key still opens the door, read-only; a banned tenant's key stops like a suspended one.
+func TestFrozenTenantKeyIsReadOnlyAndBannedStops(t *testing.T) {
+	k, _, res, a := setup(t, apikey.EnvLive, plansv1.Environment_ENVIRONMENT_LIVE, plansv1.ApiKey_STATUS_ACTIVE)
+	res.keys[k.Prefix].TenantStatus = plansv1.TenantStatus_TENANT_STATUS_FROZEN
+	p, err := a.Authenticate(context.Background(), k.String())
+	if err != nil || !p.ReadOnly {
+		t.Fatalf("frozen: %+v %v, want an admitted read-only principal", p, err)
+	}
+	k, _, res, a = setup(t, apikey.EnvLive, plansv1.Environment_ENVIRONMENT_LIVE, plansv1.ApiKey_STATUS_ACTIVE)
+	res.keys[k.Prefix].TenantStatus = plansv1.TenantStatus_TENANT_STATUS_BANNED
+	if _, err := a.Authenticate(context.Background(), k.String()); !errors.Is(err, ErrSuspended) {
+		t.Errorf("banned: err = %v, want ErrSuspended", err)
+	}
+	k, _, res, a = setup(t, apikey.EnvLive, plansv1.Environment_ENVIRONMENT_LIVE, plansv1.ApiKey_STATUS_ACTIVE)
+	res.keys[k.Prefix].TenantStatus = plansv1.TenantStatus_TENANT_STATUS_ACTIVE
+	if p, err := a.Authenticate(context.Background(), k.String()); err != nil || p.ReadOnly {
+		t.Errorf("active: %+v %v, want a principal that can write", p, err)
+	}
+}
+
 func TestRotatedKeyEndsAtItsExpiry(t *testing.T) {
 	k, _, res, a := setup(t, apikey.EnvTest, plansv1.Environment_ENVIRONMENT_SANDBOX, plansv1.ApiKey_STATUS_ACTIVE)
 	end := time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC)

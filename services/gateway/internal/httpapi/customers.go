@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strings"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
@@ -67,22 +68,42 @@ func (s *Server) setCustomerContact(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
 }
 
-// blockCustomer is POST /v1/customers/{external_id}/block: the body may carry the seller's note.
+// blockCustomer is POST /v1/customers/{external_id}/block: the body may carry the seller's note, a reason category and the time the block ends by itself.
 func (s *Server) blockCustomer(w http.ResponseWriter, r *http.Request) {
 	req := &plansv1.BlockCustomerRequest{}
 	if err := decode(r, req); err != nil {
 		writeError(w, r, err)
 		return
 	}
-	req.ExternalId = r.PathValue("external_id")
+	req.ExternalId, req.Actor = r.PathValue("external_id"), s.tenantActorOf(r)
 	resp, err := s.d.Plans.BlockCustomer(r.Context(), req)
 	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
 }
 
 // unblockCustomer is POST /v1/customers/{external_id}/unblock.
 func (s *Server) unblockCustomer(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.UnblockCustomer(r.Context(), &plansv1.UnblockCustomerRequest{ExternalId: r.PathValue("external_id")})
+	resp, err := s.d.Plans.UnblockCustomer(r.Context(), &plansv1.UnblockCustomerRequest{ExternalId: r.PathValue("external_id"), Actor: s.tenantActorOf(r)})
 	respond(w, r, http.StatusOK, resp.GetCustomer(), err)
+}
+
+// listCustomerBlockEvents is GET /v1/customers/{external_id}/block-events: the customer's blocks and lifts, newest first.
+func (s *Server) listCustomerBlockEvents(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Plans.ListCustomerBlockEvents(r.Context(), &plansv1.ListCustomerBlockEventsRequest{ExternalId: r.PathValue("external_id")})
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// tenantActorOf is who a change on the tenant API is recorded for: a signed-in person is their verified address, an API key is "key:<id>", and the machine token is
+// its X-Payrudder-Actor header or "operator". A client cannot name another person: the actor in a body is overwritten.
+func (s *Server) tenantActorOf(r *http.Request) string {
+	if strings.HasPrefix(bearerToken(r), sessionPrefix) {
+		if sess, err := s.session(r); err == nil {
+			return normalizeEmail(sess.User.GetEmail())
+		}
+	}
+	if id := principalFrom(r.Context()).Tenant.APIKeyID; id != "" {
+		return "key:" + id
+	}
+	return actorOf(r)
 }
 
 // setPaymentScenario is the sandbox spelling of SetPaymentMethod: {"scenario": "declined"} → pm_sandbox_declined.

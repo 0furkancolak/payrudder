@@ -1,17 +1,36 @@
-# Alertmanager for a local stack: every alert is kept in Alertmanager (http://localhost:42993) and sent nowhere. alertmanager.webhook.yml is the same routing with
-# the page and warn receivers posting to the URL in ALERT_WEBHOOK_URL_FILE; select it with ALERTMANAGER_CONFIG (docs/runbooks/backup-restore.md, docs/08-observability.md).
+# Alertmanager for a local stack: every alert is kept in Alertmanager (http://localhost:42993) and mailed to Mailpit (http://localhost:42825, the stack's mail catcher: nothing
+# leaves the laptop). alertmanager.webhook.yml is the same routing with the page and warn receivers posting to the URL in ALERT_WEBHOOK_URL_FILE and the dead man's switch to
+# the one in ALERT_WATCHDOG_URL_FILE; alertmanager.receivers.example.yml shows PagerDuty, Slack and SMTP. Select a file with ALERTMANAGER_CONFIG
+# (docs/runbooks/backup-restore.md, docs/08-observability.md).
 #
 #   page  - wakes someone: the process, the data or the money is at risk
 #   warn  - looked at in working hours
+#   none  - the Watchdog alert, which always fires: a heartbeat, not a problem. Here it goes nowhere; with a real receiver an outside monitor pages when it stops.
 global:
   resolve_timeout: 5m
+  smtp_smarthost: mailpit:1025
+  smtp_from: alertmanager@payrudder.local
+  smtp_require_tls: false
 
 route:
-  receiver: keep
+  receiver: warn   # an alert without a severity is looked at in working hours
   group_by: [alertname, service]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
+  routes:
+    - matchers: [alertname="Watchdog"]
+      receiver: watchdog
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
+    - matchers: [severity="page"]
+      receiver: page
+      group_wait: 10s
+      repeat_interval: 1h
+    - matchers: [severity="warn"]
+      receiver: warn
+      repeat_interval: 12h
 
 # A page for a service silences its warnings: one problem is one message.
 inhibit_rules:
@@ -20,4 +39,27 @@ inhibit_rules:
     equal: [service]
 
 receivers:
-  - name: keep
+  - name: page
+    email_configs:
+      - to: oncall@payrudder.local
+        send_resolved: true
+        headers:
+          Subject: '[{{ .Status | toUpper }}] page: {{ .CommonLabels.alertname }}{{ with .CommonLabels.service }} ({{ . }}){{ end }}'
+        html: ''
+        text: |
+          {{ range .Alerts }}{{ .Status | toUpper }}  {{ .Labels.alertname }}{{ with .Labels.service }}  ({{ . }}){{ end }}
+          {{ .Annotations.summary }}
+          {{ end }}
+  - name: warn
+    email_configs:
+      - to: team@payrudder.local
+        send_resolved: true
+        headers:
+          Subject: '[{{ .Status | toUpper }}] warn: {{ .CommonLabels.alertname }}{{ with .CommonLabels.service }} ({{ . }}){{ end }}'
+        html: ''
+        text: |
+          {{ range .Alerts }}{{ .Status | toUpper }}  {{ .Labels.alertname }}{{ with .Labels.service }}  ({{ . }}){{ end }}
+          {{ .Annotations.summary }}
+          {{ end }}
+  # Kept in Alertmanager only.
+  - name: watchdog

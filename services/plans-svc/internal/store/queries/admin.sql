@@ -13,6 +13,17 @@ UPDATE tenants SET status = @status::text, activated_at = CASE WHEN @status::tex
 WHERE id = @id
 RETURNING *;
 
+-- The history of a tenant's status: what changed (or was asked for) and why, by whom. Append-only.
+-- name: InsertTenantStatusEvent :exec
+INSERT INTO tenant_status_events (id, live_tenant_id, kind, from_status, to_status, category, reason, actor, approved_by)
+VALUES (@id, @live_tenant_id, @kind, @from_status, @to_status, @category, @reason, @actor, @approved_by);
+
+-- name: ListTenantStatusEvents :many
+SELECT * FROM tenant_status_events WHERE live_tenant_id = @live_tenant_id ORDER BY created_at DESC, id DESC LIMIT @page_size;
+
+-- name: LatestTenantStatusEvent :one
+SELECT * FROM tenant_status_events WHERE live_tenant_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1;
+
 -- name: InsertApp :one
 INSERT INTO apps (id, account_id, name, slug) VALUES ($1, $2, $3, $4) RETURNING *;
 

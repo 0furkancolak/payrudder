@@ -27,9 +27,12 @@ service AdminService {
   rpc ResolveApiKey(ResolveApiKeyRequest) returns (ResolveApiKeyResponse);
   // TouchApiKey records that a key was used just now (the gateway calls it at most every few minutes per key and replica).
   rpc TouchApiKey(TouchApiKeyRequest) returns (TouchApiKeyResponse);
-  // SetTenantStatus is the operator's hand on a tenant's life: suspend an active tenant (its keys stop working at once), reinstate a suspended one, or
-  // activate an inactive live tenant without the go-live checklist (a support decision that needs a reason and is logged).
+  // SetTenantStatus is the operator's hand on a tenant's life: suspend, freeze or ban an active tenant, reinstate one that was, or activate an inactive live tenant
+  // without the go-live checklist. Every change is recorded with its reason and who made it. Suspending or banning stops the tenant's keys at once. Where
+  // PAYRUDDER_TENANT_BAN_APPROVAL is on, a ban waits (plans.tenant.approval_pending) until a second operator asks for the same.
   rpc SetTenantStatus(SetTenantStatusRequest) returns (SetTenantStatusResponse);
+  // ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
+  rpc ListTenantStatusEvents(ListTenantStatusEventsRequest) returns (ListTenantStatusEventsResponse);
 }
 
 message CreateAccountRequest {
@@ -167,12 +170,39 @@ message TouchApiKeyResponse {}
 
 message SetTenantStatusRequest {
   string tenant_id = 1;
-  // ACTIVE or SUSPENDED.
+  // ACTIVE, SUSPENDED, FROZEN or BANNED.
   TenantStatus status = 2;
-  // Required when activating an inactive tenant.
+  // Required for every change except reinstating a suspended or frozen tenant. At most 500 characters.
   string reason = 3;
+  // Why: nonpayment, fraud, abuse, legal, request or other. Optional.
+  string category = 4;
+  // Who asks; set by the gateway from the signed-in operator (or the machine token's header).
+  string actor = 5;
 }
 
 message SetTenantStatusResponse {
   Tenant tenant = 1;
+}
+
+message ListTenantStatusEventsRequest {
+  string tenant_id = 1;
+}
+
+message ListTenantStatusEventsResponse {
+  repeated TenantStatusEvent events = 1;
+}
+
+// One change of a tenant's status, or the request of a change that waits for a second operator. Events are never changed or deleted.
+message TenantStatusEvent {
+  string id = 1;
+  // "changed" (it happened) or "requested" (it waits for a second operator).
+  string kind = 2;
+  TenantStatus from_status = 3;
+  TenantStatus to_status = 4;
+  string category = 5;
+  string reason = 6;
+  string actor = 7;
+  // The second operator of a change that needed one.
+  string approved_by = 8;
+  google.protobuf.Timestamp create_time = 9;
 }

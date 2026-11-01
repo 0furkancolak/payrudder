@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/rating/inputs"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
@@ -55,6 +56,26 @@ func NewBackend(cfg BackendConfig) *Backend {
 // Customer is a customer of a tenant as plans-svc knows it; ok is false when there is none.
 func (b *Backend) Customer(ctx context.Context, tenantID uuid.UUID, externalID string) (*plansv1.Customer, bool, error) {
 	return b.in.Customer(ctx, tenantID, externalID)
+}
+
+// Gate implements Directory: the tenant's status and the customer's block, read now from plans-svc, handed to the one payment gate. A customer plans-svc does
+// not know is not blocked (the caller finds out when it needs them).
+func (b *Backend) Gate(ctx context.Context, tenantID uuid.UUID, customerExternalID string, op paymentgate.Op) (paymentgate.Verdict, error) {
+	t, err := b.in.Tenant(ctx, tenantID)
+	if err != nil {
+		return paymentgate.Allowed, err
+	}
+	var blk paymentgate.Block
+	if customerExternalID != "" {
+		cu, found, err := b.in.Customer(ctx, tenantID, customerExternalID)
+		if err != nil {
+			return paymentgate.Allowed, err
+		}
+		if found {
+			blk = paymentgate.BlockOf(cu)
+		}
+	}
+	return paymentgate.Check(op, t.GetStatus(), blk, b.cfg.Now()), nil
 }
 
 // Seller is the tenant as the party that issues a link's invoices.

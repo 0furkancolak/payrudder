@@ -3,6 +3,8 @@ package command
 
 import (
 	"context"
+	"encoding/json"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -18,6 +20,8 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	tenantsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/tenants/query"
+	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
+	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
 )
 
 // Referrer attributes a customer to an affiliate inside the caller's transaction (the affiliate program, phase 47).
@@ -140,7 +144,22 @@ func (c *Commands) SetContact(ctx context.Context, req *plansv1.SetCustomerConta
 	return convert.Customer(out), nil
 }
 
-// Block stops new subscriptions and plan changes for the customer. The reason is the seller's note.
+// BlockCategories are the reasons a block can name. Empty is allowed: none given.
+var BlockCategories = []string{"fraud", "chargeback", "abuse", "request", "other"}
+
+// maxActorRunes bounds the actor of a block or a lift, as the table does.
+const maxActorRunes = 120
+
+func actorOf(a string) string {
+	a = strings.TrimSpace(a)
+	if r := []rune(a); len(r) > maxActorRunes {
+		return string(r[:maxActorRunes])
+	}
+	return a
+}
+
+// Block stops new subscriptions, plan changes and purchases for the customer (pkg/paymentgate says what is refused). The reason is the seller's note. Blocking a
+// customer whose block is in force keeps that block. A new block is recorded in the customer's history and announced as customer.blocked.
 func (c *Commands) Block(ctx context.Context, req *plansv1.BlockCustomerRequest) (*plansv1.Customer, error) {
 	if req.GetExternalId() == "" {
 		return nil, domain.Invalid("external_id", "required")
@@ -148,30 +167,87 @@ func (c *Commands) Block(ctx context.Context, req *plansv1.BlockCustomerRequest)
 	if utf8.RuneCountInString(req.GetReason()) > 500 {
 		return nil, domain.Invalid("reason", "at most 500 characters")
 	}
-	return c.setBlock(ctx, func(q *sqlc.Queries) (sqlc.Customer, error) {
-		return q.BlockCustomer(ctx, sqlc.BlockCustomerParams{ExternalID: req.GetExternalId(), Reason: strings.TrimSpace(req.GetReason())})
-	})
-}
-
-// Unblock lifts the block.
-func (c *Commands) Unblock(ctx context.Context, req *plansv1.UnblockCustomerRequest) (*plansv1.Customer, error) {
-	if req.GetExternalId() == "" {
-		return nil, domain.Invalid("external_id", "required")
+	if cat := req.GetCategory(); cat != "" && !slices.Contains(BlockCategories, cat) {
+		return nil, domain.Invalid("category", "fraud, chargeback, abuse, request or other")
 	}
-	return c.setBlock(ctx, func(q *sqlc.Queries) (sqlc.Customer, error) { return q.UnblockCustomer(ctx, req.GetExternalId()) })
-}
-
-func (c *Commands) setBlock(ctx context.Context, do func(*sqlc.Queries) (sqlc.Customer, error)) (*plansv1.Customer, error) {
+	now := c.now()
+	var until *time.Time
+	if u := req.GetBlockedUntil(); u != nil {
+		t := u.AsTime()
+		if !t.After(now) {
+			return nil, domain.Invalid("blocked_until", "must be in the future")
+		}
+		until = &t
+	}
+	reason := strings.TrimSpace(req.GetReason())
 	var out sqlc.Customer
 	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		var err error
-		out, err = do(q)
-		return err
+		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
+		if err != nil {
+			return err
+		}
+		if convert.BlockOf(cur).InForce(now) {
+			out = cur
+			return nil
+		}
+		if out, err = q.BlockCustomer(ctx, sqlc.BlockCustomerParams{ExternalID: req.GetExternalId(), BlockedAt: &now, Reason: reason, Category: req.GetCategory(), BlockedUntil: until}); err != nil {
+			return err
+		}
+		if err := q.InsertCustomerBlockEvent(ctx, sqlc.InsertCustomerBlockEventParams{ID: idgen.NewUUIDv7(), CustomerID: out.ID, Action: "blocked", Category: req.GetCategory(),
+			Reason: reason, BlockedUntil: until, Actor: actorOf(req.GetActor()), CreatedAt: now}); err != nil {
+			return err
+		}
+		data := map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID, "category": req.GetCategory(), "reason": reason}
+		if until != nil {
+			data["blocked_until"] = until.UTC().Format(time.RFC3339)
+		}
+		return c.emit(ctx, q, webhooksmodel.CustomerBlocked, data, now)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "customer")
 	}
 	return convert.Customer(out), nil
+}
+
+// Unblock lifts the block, also one that has ended by itself (it still sits in the row until somebody lifts it). A customer who was never blocked is returned as
+// it is. A lift is recorded in the customer's history and announced as customer.unblocked.
+func (c *Commands) Unblock(ctx context.Context, req *plansv1.UnblockCustomerRequest) (*plansv1.Customer, error) {
+	if req.GetExternalId() == "" {
+		return nil, domain.Invalid("external_id", "required")
+	}
+	now := c.now()
+	var out sqlc.Customer
+	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
+		if err != nil {
+			return err
+		}
+		if cur.BlockedAt == nil {
+			out = cur
+			return nil
+		}
+		if out, err = q.UnblockCustomer(ctx, req.GetExternalId()); err != nil {
+			return err
+		}
+		if err := q.InsertCustomerBlockEvent(ctx, sqlc.InsertCustomerBlockEventParams{ID: idgen.NewUUIDv7(), CustomerID: out.ID, Action: "unblocked", Actor: actorOf(req.GetActor()), CreatedAt: now}); err != nil {
+			return err
+		}
+		return c.emit(ctx, q, webhooksmodel.CustomerUnblocked, map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID}, now)
+	})
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	return convert.Customer(out), nil
+}
+
+// emit queues a customer event for the tenant's webhook endpoints, in the caller's transaction.
+func (c *Commands) emit(ctx context.Context, q *sqlc.Queries, typ string, data map[string]any, at time.Time) error {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	_, err = webhookscmd.Emit(ctx, q, idgen.NewUUIDv7(), typ, b, at)
+	return err
 }
 
 // SetTax replaces the customer's tax id, tax office and e-fatura registration flag.

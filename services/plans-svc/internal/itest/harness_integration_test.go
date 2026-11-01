@@ -330,7 +330,7 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	remotes := &recordingRemotes{}
 	sbx, runner := sandboxapi.Wire(places, remotes.steps(), time.Hour, sandbox.Settings{Retention: time.Hour}, log)
 	saas := grpcapi.Register(srv, grpcapi.Deps{
-		AppDB: appDB, SystemPool: system, Places: places, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, Box: box, WebhookAllowPrivate: true,
+		AppDB: appDB, SystemPool: system, Places: places, Log: log, Evict: ev, AllowedEnvs: allowedEnvs, BanApproval: banApproval, Box: box, WebhookAllowPrivate: true,
 		Mail: mail, AppURL: testAppURL, OTPPepper: testPepper, Sandbox: sbx, Saas: saasCfg,
 	})
 	lis := bufconn.Listen(1 << 20)
@@ -345,6 +345,9 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	return &env{w: w, saas: saas, saasAPI: plansv1.NewSaasServiceClient(cc), runner: runner, remotes: remotes, db: w.db, app: app, system: system, appDB: appDB, places: places, plans: plansv1.NewPlansServiceClient(cc),
 		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), support: plansv1.NewSupportServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
+
+// banApproval makes the plans-svc a test starts need a second operator for a ban (PAYRUDDER_TENANT_BAN_APPROVAL); only the test of that sets it.
+var banApproval bool
 
 func operator() context.Context {
 	return metadata.AppendToOutgoingContext(context.Background(), tenant.MDOperator, "true")

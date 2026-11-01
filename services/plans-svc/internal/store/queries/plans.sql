@@ -42,16 +42,27 @@ UPDATE customers SET name = @name, email = @email,
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
--- Blocking twice keeps the first time (and its reason is replaced by the new one only when the customer was not blocked).
+-- A customer is locked before a block or a lift decides what it is: whether the block in force stands (see pkg/paymentgate) is read from the locked row.
+-- name: LockCustomerByExternalID :one
+SELECT * FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1 FOR UPDATE;
+
 -- name: BlockCustomer :one
-UPDATE customers SET blocked_at = COALESCE(blocked_at, now()), block_reason = CASE WHEN blocked_at IS NULL THEN @reason ELSE block_reason END
+UPDATE customers SET blocked_at = @blocked_at, block_reason = @reason, block_category = @category, blocked_until = sqlc.narg(blocked_until)
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
 -- name: UnblockCustomer :one
-UPDATE customers SET blocked_at = NULL, block_reason = ''
+UPDATE customers SET blocked_at = NULL, block_reason = '', block_category = '', blocked_until = NULL
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
+
+-- name: InsertCustomerBlockEvent :exec
+INSERT INTO customer_block_events (tenant_id, id, customer_id, action, category, reason, blocked_until, actor, created_at)
+VALUES (app_tenant_id(), @id, @customer_id, @action, @category, @reason, sqlc.narg(blocked_until), @actor, @created_at);
+
+-- name: ListCustomerBlockEvents :many
+SELECT * FROM customer_block_events WHERE tenant_id = app_tenant_id() AND customer_id = @customer_id
+ORDER BY created_at DESC, id DESC LIMIT @page_size;
 
 -- name: SetCustomerTax :one
 UPDATE customers SET tax_id = @tax_id, tax_office = @tax_office, e_invoice_registered = @e_invoice_registered

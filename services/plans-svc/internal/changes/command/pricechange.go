@@ -89,6 +89,15 @@ func (c *Commands) SchedulePriceChange(ctx context.Context, req *plansv1.Schedul
 				reason = "run_by_provider"
 				return nil
 			}
+			// A blocked customer is not offered a new price: the change would be a purchase the block refuses (pkg/paymentgate), and the mail would reach them.
+			cust, err := q.GetCustomerByID(ctx, row.CustomerID)
+			if err != nil {
+				return err
+			}
+			if convert.BlockOf(cust).InForce(c.now()) {
+				reason = "customer_blocked"
+				return nil
+			}
 			if _, err := q.GetPendingChange(ctx, s.id); err == nil {
 				reason = "has_pending_change"
 				return nil

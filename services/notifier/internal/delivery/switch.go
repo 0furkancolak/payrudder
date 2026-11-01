@@ -88,11 +88,25 @@ var droppedTotal = func() metric.Int64Counter {
 	return c
 }()
 
-// Permitted says whether the mail of a template may be sent for the tenant. A mail whose category the tenant switched off is dropped: counted in
-// notifier_mail_dropped_total and reported as not permitted, which the caller treats as done (no error, no retry). Without a Switch every mail is permitted,
-// and so is one without a tenant id. An error means the setting could not be read and the caller retries.
+// Permitted says whether the mail of a template may be sent for the tenant. A mail whose category the tenant switched off is dropped, and so is every customer
+// mail of a tenant the operator has suspended, frozen or banned (category "tenant_on_hold"): counted in notifier_mail_dropped_total and reported as not
+// permitted, which the caller treats as done (no error, no retry). Without a Switch every mail is permitted, and so is one without a tenant id. An error means
+// the setting or the status could not be read and the caller retries.
 func (m *Mailer) Permitted(ctx context.Context, tenantID uuid.UUID, template string) (bool, error) {
-	if m.Switch == nil || tenantID == uuid.Nil {
+	if tenantID == uuid.Nil {
+		return true, nil
+	}
+	if m.Tenants != nil {
+		t, err := m.Tenants.Tenant(ctx, tenantID)
+		if err != nil {
+			return false, err
+		}
+		if t.OnHold() {
+			droppedTotal.Add(ctx, 1, metric.WithAttributes(attribute.String("category", "tenant_on_hold")))
+			return false, nil
+		}
+	}
+	if m.Switch == nil {
 		return true, nil
 	}
 	category := mailcategory.ForTemplate(template)

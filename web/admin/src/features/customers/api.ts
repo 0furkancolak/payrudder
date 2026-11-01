@@ -8,7 +8,7 @@ import { restOfPages } from "@/shared/lib/bulk";
 import type { Address } from "@/shared/lib/address";
 import { usePayments } from "@/features/product/billingApi";
 import { useSubscriptions } from "@/features/subscriptions/api";
-import { summarise } from "./lib";
+import { summarise, type BlockCategory } from "./lib";
 
 export const customerKeys = {
   list: (tenantId: string) => ["tenants", tenantId, "customers"] as const,
@@ -127,14 +127,28 @@ export function useSetCustomerContact(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
-/** Blocks a customer from new subscriptions (what exists runs on), or lifts the block. The note is the seller's own. */
+export interface BlockInput {
+  externalId: string;
+  /** The seller's own note. */
+  reason?: string;
+  category?: BlockCategory;
+  /** When the block ends by itself (an ISO time); absent: until it is lifted. */
+  until?: string;
+}
+
+/** Blocks a customer from new purchases (what exists runs on), or lifts the block. The note is the seller's own. */
 export function useBlockCustomer(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   const done = () => queries.invalidateQueries({ queryKey: customerKeys.list(toValue(tenantId)) });
   return {
     block: useMutation({
-      mutationFn: (v: { externalId: string; reason?: string }) =>
-        unwrap(tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/block", { params: { path: { external_id: v.externalId } }, body: { reason: v.reason ?? "" } })),
+      mutationFn: (v: BlockInput) =>
+        unwrap(
+          tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/block", {
+            params: { path: { external_id: v.externalId } },
+            body: { reason: v.reason ?? "", ...(v.category ? { category: v.category } : {}), ...(v.until ? { blocked_until: v.until } : {}) },
+          }),
+        ),
       onSuccess: done,
     }),
     unblock: useMutation({
@@ -142,6 +156,15 @@ export function useBlockCustomer(tenantId: MaybeRefOrGetter<string>) {
       onSuccess: done,
     }),
   };
+}
+
+/** A customer's blocks and lifts, newest first: who, when, why. */
+export function useCustomerBlockEvents(tenantId: MaybeRefOrGetter<string>, externalId: MaybeRefOrGetter<string>) {
+  return useQuery({
+    queryKey: computed(() => [...customerKeys.list(toValue(tenantId)), "block-events", toValue(externalId)] as const),
+    queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers/{external_id}/block-events", { params: { path: { external_id: toValue(externalId) } } })),
+    enabled: computed(() => toValue(externalId) !== ""),
+  });
 }
 
 export interface CustomerTax {

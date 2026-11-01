@@ -32,6 +32,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/sandboxreset"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
 	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
@@ -182,8 +183,14 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		}
 		return env.FromProto(r.GetTenant().GetEnvironment())
 	}, 0)
+	// A tenant the operator has suspended, frozen or banned is charged nothing by dunning; the status is read through the same short cache the usage consumers use.
+	tenantSettings := tenantinfo.New(adminClient, time.Minute)
+	onHold := func(ctx context.Context, id uuid.UUID) (bool, error) {
+		s, err := tenantSettings.Tenant(ctx, id)
+		return s.OnHold(), err
+	}
 	eng, err := sagacommand.NewEngine(sagacommand.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox,
-		NotFoundGrace: cfg.NotFoundGrace, NotFoundGraceSandbox: cfg.NotFoundGraceSandbox, KeyHorizon: cfg.KeyHorizon, Log: log, Tenants: tenantEnvs})
+		NotFoundGrace: cfg.NotFoundGrace, NotFoundGraceSandbox: cfg.NotFoundGraceSandbox, KeyHorizon: cfg.KeyHorizon, Log: log, Tenants: tenantEnvs, Hold: onHold})
 	if err != nil {
 		return err
 	}

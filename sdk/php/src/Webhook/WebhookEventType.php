@@ -32,6 +32,8 @@ final class WebhookEventType
     public const PAYMENT_LINK_EXPIRED = 'payment_link.expired';
     public const CREDITS_PURCHASED = 'credits.purchased';
     public const CREDITS_LOW = 'credits.low';
+    public const CUSTOMER_BLOCKED = 'customer.blocked';
+    public const CUSTOMER_UNBLOCKED = 'customer.unblocked';
 
     /**
      * Every type an endpoint can subscribe to (all but `ping`).
@@ -63,6 +65,8 @@ final class WebhookEventType
             self::PAYMENT_LINK_EXPIRED,
             self::CREDITS_PURCHASED,
             self::CREDITS_LOW,
+            self::CUSTOMER_BLOCKED,
+            self::CUSTOMER_UNBLOCKED,
         ];
     }
 }

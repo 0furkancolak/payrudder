@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/0furkancolak/payrudder/pkg/mailx"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/store"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/templates"
@@ -29,6 +30,8 @@ type Mailer struct {
 	Notes   store.Notifications
 	// Switch, when set, is asked before a send whether the tenant has the mail's category on (see Permitted).
 	Switch Switch
+	// Tenants, when set, is asked whether the tenant is in service; a tenant on hold (suspended, frozen, banned) sends no customer mail (see Permitted).
+	Tenants tenantinfo.Source
 	// Providers, when set, is asked before a live send whether the tenant connected its own e-mail provider; its mail then goes through it, from its own
 	// address. Sandbox mail never does (ADR 0011).
 	Providers Providers

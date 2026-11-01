@@ -103,7 +103,7 @@ class CustomersResource:
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/contact", body=body, options=options))
 
     def block_customer(self, external_id: str, body: m.BlockCustomerRequest | None = None, *, options: RequestOptions | None = None) -> m.Customer:
-        """Block a customer from new subscriptions.
+        """Block a customer from new purchases.
 
         ``POST /v1/customers/{external_id}/block``
         """
@@ -115,6 +115,13 @@ class CustomersResource:
         ``POST /v1/customers/{external_id}/unblock``
         """
         return cast("m.Customer", self._client._request("POST", f"/v1/customers/{_p(external_id)}/unblock", options=options))
+
+    def list_customer_block_events(self, external_id: str, *, options: RequestOptions | None = None) -> m.ListCustomerBlockEventsResponse:
+        """A customer's blocks and lifts, newest first.
+
+        ``GET /v1/customers/{external_id}/block-events``
+        """
+        return cast("m.ListCustomerBlockEventsResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/block-events", options=options))
 
     def set_customer_tax(self, external_id: str, body: m.CustomerTax, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's tax data used on e-invoices.
@@ -1623,7 +1630,7 @@ class AsyncCustomersResource:
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/contact", body=body, options=options))
 
     async def block_customer(self, external_id: str, body: m.BlockCustomerRequest | None = None, *, options: RequestOptions | None = None) -> m.Customer:
-        """Block a customer from new subscriptions.
+        """Block a customer from new purchases.
 
         ``POST /v1/customers/{external_id}/block``
         """
@@ -1635,6 +1642,13 @@ class AsyncCustomersResource:
         ``POST /v1/customers/{external_id}/unblock``
         """
         return cast("m.Customer", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/unblock", options=options))
+
+    async def list_customer_block_events(self, external_id: str, *, options: RequestOptions | None = None) -> m.ListCustomerBlockEventsResponse:
+        """A customer's blocks and lifts, newest first.
+
+        ``GET /v1/customers/{external_id}/block-events``
+        """
+        return cast("m.ListCustomerBlockEventsResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/block-events", options=options))
 
     async def set_customer_tax(self, external_id: str, body: m.CustomerTax, *, options: RequestOptions | None = None) -> m.Customer:
         """Replace the customer's tax data used on e-invoices.

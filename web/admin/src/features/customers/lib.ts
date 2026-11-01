@@ -158,3 +158,16 @@ export function initialsOf(c: Partial<Pick<Customer, "name" | "email" | "externa
   const letters = (words.length > 1 ? [words[0], words[1]] : [source]).map((w) => [...(w ?? "")][0] ?? "");
   return letters.join("").toLocaleUpperCase(locale) || "?";
 }
+
+/** Why a customer is blocked, as the API names it. */
+export const BLOCK_CATEGORIES = ["fraud", "chargeback", "abuse", "request", "other"] as const;
+export type BlockCategory = (typeof BLOCK_CATEGORIES)[number];
+
+/**
+ * Whether the customer's block is in force: set, and not ended by itself. The server keeps the row of a block that ran out until somebody lifts it, so a badge that
+ * read only `block_time` would call a customer blocked who can buy.
+ */
+export function isBlocked(c: Pick<Customer, "block_time" | "blocked_until">, now = Date.now()): boolean {
+  if (!c.block_time) return false;
+  return !c.blocked_until || Date.parse(c.blocked_until) > now;
+}

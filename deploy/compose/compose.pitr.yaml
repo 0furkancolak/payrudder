@@ -1,0 +1,71 @@
+# Point-in-time recovery for the local stack (plan 16, docs/runbooks/backup-restore.md). Postgres archives its WAL, a sidecar ships it to MinIO (bucket "backups", made by
+# minio-init) and takes a base backup every day, so the database can be restored to a chosen minute. Opt in with `make up-pitr` (this file on top of compose.yaml). It is not
+# the default: archiving fills the disk when nothing ships the WAL, and the data it protects is worth nothing on a laptop. Postgres is recreated by it (archive_mode is a
+# restart setting; the data stays). Objectives (defaults, not agreed): RPO 15 minutes (archive_timeout 5 min + shipping every 30 s), RTO 1 hour (deploy/backup/drill.sh measures it).
+#   Postgres and the sidecar share the volume of the server's socket directory: the postgres user can write the WAL spool there without anyone setting permissions, and the
+#   sidecar reaches the server through the socket, which the default pg_hba.conf trusts for replication, so pg_basebackup needs no password and no pg_hba change.
+x-s3: &s3
+  AWS_ACCESS_KEY_ID: payrudder
+  AWS_SECRET_ACCESS_KEY: payrudder_local
+  AWS_ENDPOINT_URL: http://minio:9000
+  AWS_DEFAULT_REGION: us-east-1
+
+services:
+  postgres:
+    # The flags of compose.yaml (keep in step: a command list replaces, it does not merge) plus archiving.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=128MB
+      - -c
+      - max_connections=200
+      - -c
+      - wal_level=logical
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=sh /scripts/wal-archive.sh %p %f
+      - -c
+      - archive_timeout=300
+    volumes:
+      - ../backup:/scripts:ro
+      - pg-socket:/var/run/postgresql
+
+  pitr-agent:
+    profiles: [ops]
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "2" }
+    image: postgres:17.11-alpine
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        apk add --no-cache curl aws-cli >/dev/null
+        exec sh /scripts/pitr-agent.sh
+    environment:
+      <<: *s3
+      PGHOST: /var/run/postgresql
+      PGUSER: postgres
+      WAL_SPOOL: /var/run/postgresql/wal-spool
+      WAL_S3_URL: s3://backups/pitr
+      WAL_SHIP_INTERVAL: ${WAL_SHIP_INTERVAL:-30}
+      MARKER_INTERVAL: ${MARKER_INTERVAL:-300}
+      BASEBACKUP_INTERVAL: ${BASEBACKUP_INTERVAL:-86400}
+      PUSHGATEWAY_URL: ${PUSHGATEWAY_URL:-http://pushgateway:9091}
+    volumes:
+      - ../backup:/scripts:ro
+      - pg-socket:/var/run/postgresql
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 192m } } }
+
+  # The nightly dumps go to the same storage (and are removed after 30 days by its lifecycle rule), a second kind of copy next to the WAL.
+  backup:
+    environment:
+      <<: *s3
+      BACKUP_S3_URL: s3://backups/dumps
+
+volumes:
+  pg-socket:

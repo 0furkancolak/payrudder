@@ -20,9 +20,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/brand"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/webhooksig"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
@@ -31,6 +33,9 @@ import (
 const (
 	lease     = 2 * time.Minute // a claimed delivery is not claimed again before this, so a crashed dispatcher's work is picked up again
 	retention = 30 * 24 * time.Hour
+
+	// holdWait is how long the delivery of a tenant on hold waits before it is looked at again.
+	holdWait = 10 * time.Minute
 
 	pollEvery = 2 * time.Second // how often the dispatcher looks for due deliveries
 	batchSize = 50              // deliveries claimed per pass
@@ -166,8 +171,18 @@ func (d *Dispatcher) claimCell(ctx context.Context, t pgxx.PlacedTenant, now tim
 }
 
 func (d *Dispatcher) deliver(ctx context.Context, c claimed) error {
+	// A tenant the operator has suspended, frozen or banned sends nothing: its deliveries wait, without using up an attempt, until it is reinstated.
+	tn, err := sqlc.New(d.Pool).GetTenant(ctx, c.tenant)
+	if err != nil {
+		return err
+	}
+	if paymentgate.OnHold(domain.StatusFromDB(tn.Status)) {
+		return d.queries(ctx, c, func(q *sqlc.Queries) error {
+			return q.HoldWebhookDelivery(ctx, sqlc.HoldWebhookDeliveryParams{TenantID: c.tenant, ID: c.id, NextAttemptAt: d.Now().Add(holdWait)})
+		})
+	}
 	var t sqlc.GetWebhookDeliveryTargetRow
-	err := d.queries(ctx, c, func(q *sqlc.Queries) (err error) {
+	err = d.queries(ctx, c, func(q *sqlc.Queries) (err error) {
 		t, err = q.GetWebhookDeliveryTarget(ctx, sqlc.GetWebhookDeliveryTargetParams{TenantID: c.tenant, ID: c.id})
 		return err
 	})

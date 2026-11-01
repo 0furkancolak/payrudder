@@ -51,6 +51,8 @@ type Principal struct {
 	Role string
 	// Permissions are what the key may do, resource:action (pkg/apikey). The gateway checks the permission a route needs against them.
 	Permissions []string
+	// ReadOnly is set for a tenant the operator has frozen: it may read, nothing it sends writes.
+	ReadOnly bool
 }
 
 // Entry is the cached resolution of a key prefix.
@@ -62,7 +64,8 @@ type Entry struct {
 	Tier        string `json:"tier"`
 	Active      bool   `json:"active"`
 	KeyHash     []byte `json:"key_hash"`
-	// Status is the tenant's: "inactive", "active" or "suspended". Empty (an entry written by an older release) is active.
+	// Status is the tenant's: "inactive", "active", "suspended", "frozen" or "banned". Empty (an entry written by an older release) is active. A frozen tenant's
+	// keys work, read-only; the others stop.
 	Status string `json:"status,omitempty"`
 	// Role and Permissions are the key's grant. An entry written by an older release has only Scope ("full", "ingest" or "read"), which counts as the role
 	// of the same meaning.
@@ -187,7 +190,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, plaintext string) (Pri
 	if e.ExpiresAt != 0 && !now.Before(time.Unix(e.ExpiresAt, 0)) {
 		return Principal{}, a.fail(ctx, "expired")
 	}
-	if e.Status != "" && e.Status != "active" {
+	if e.Status != "" && e.Status != "active" && e.Status != "frozen" {
 		a.failures.Add(ctx, 1, metric.WithAttributes(attribute.String("reason", "tenant_"+e.Status)))
 		return Principal{}, ErrSuspended
 	}
@@ -200,7 +203,7 @@ func (a *Authenticator) Authenticate(ctx context.Context, plaintext string) (Pri
 	return Principal{
 		Tenant: tenant.Info{ID: id, Environment: e.Environment, Timezone: e.Timezone, APIKeyID: e.APIKeyID},
 		Tier:   e.Tier,
-		Role:   role, Permissions: perms,
+		Role:   role, Permissions: perms, ReadOnly: e.Status == "frozen",
 	}, nil
 }
 
@@ -280,6 +283,10 @@ func statusName(s plansv1.TenantStatus) string {
 		return "active"
 	case plansv1.TenantStatus_TENANT_STATUS_SUSPENDED:
 		return "suspended"
+	case plansv1.TenantStatus_TENANT_STATUS_FROZEN:
+		return "frozen"
+	case plansv1.TenantStatus_TENANT_STATUS_BANNED:
+		return "banned"
 	case plansv1.TenantStatus_TENANT_STATUS_UNSPECIFIED:
 	}
 	return ""
