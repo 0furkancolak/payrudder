@@ -208,6 +208,8 @@ type invoiceView struct {
 	Bank                                *hostedBank
 	Methods                             []methodView
 	Hint                                string
+	// Contracts is what the seller asks the customer to accept before the payment starts; nil when nothing is.
+	Contracts *contractView
 }
 
 func (v *invoiceView) Title() string { return v.L["invoice"] + " " + v.Number }
@@ -305,6 +307,11 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 	if v.Payable {
 		v.Methods = s.methodViews(ctx, v.L, resp)
 		v.NoMethod = len(v.Methods) == 0
+		// The seller's agreements are asked for next to the pay button. When they cannot be shown, nothing can be paid: a payment never starts without them.
+		var unavailable bool
+		if v.Contracts, unavailable = s.contractsView(r, resp, lang, v.L); unavailable {
+			v.Payable, v.Hint = false, v.L["contract_unavailable"]
+		}
 	}
 	return v
 }
@@ -674,6 +681,9 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	if method == "" || len(method) > maxMethodLen {
 		refuse(http.StatusConflict, "pay_cannot")
+		return
+	}
+	if !s.requireContracts(w, r, sc, lang) {
 		return
 	}
 	refCode, refAt := referral(r)

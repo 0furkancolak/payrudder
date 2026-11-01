@@ -145,10 +145,10 @@ var hostedTexts = func() map[string]map[string]string {
 	out := map[string]map[string]string{}
 	for _, lang := range hostedLangs {
 		merged := map[string]string{}
-		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings} {
+		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings} {
 			maps.Copy(merged, src["en"])
 		}
-		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings} {
+		for _, src := range []map[string]map[string]string{hostedStrings, paymentStrings, creditStrings, promoStrings, affiliateStrings, stateStrings, contractStrings} {
 			maps.Copy(merged, src[lang])
 		}
 		out[lang] = merged
