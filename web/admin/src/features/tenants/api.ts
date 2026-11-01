@@ -10,6 +10,7 @@ import { operatorView } from "@/shared/lib/session";
 export const tenantKeys = {
   list: ["tenants"] as const,
   detail: (id: string) => ["tenants", id] as const,
+  statusEvents: (id: string) => ["tenants", id, "status-events"] as const,
 };
 
 /** The operator's list of tenants. `enabled` lets a caller that may be a person (who has no admin API) switch it off. */
@@ -36,13 +37,34 @@ export function useRestOfTenants() {
   });
 }
 
-/** Suspends an active tenant (its API keys stop working at once) or reinstates a suspended one. The reason is kept in the log. */
+export type TenantStatusWord = "active" | "suspended" | "frozen" | "banned";
+export type StatusCategory = "nonpayment" | "fraud" | "abuse" | "legal" | "request" | "other";
+export const STATUS_CATEGORIES: readonly StatusCategory[] = ["nonpayment", "fraud", "abuse", "legal", "request", "other"];
+
+/**
+ * Suspends, freezes or bans an active tenant, or reinstates one. Suspended and banned stop the API keys at once; frozen leaves them read-only; all three take no payment
+ * and send no mail or webhook. The reason and category are kept in the tenant's history, with who made the change. Where a ban needs a second operator, the first request
+ * answers 409 plans.tenant.approval_pending (it is recorded).
+ */
 export function useSetTenantStatus() {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (v: { id: string; status: "active" | "suspended"; reason?: string }) =>
-      unwrap(api.PUT("/admin/v1/tenants/{id}/status", { params: { path: { id: v.id } }, body: { status: v.status, reason: v.reason ?? "" } })),
-    onSuccess: () => queries.invalidateQueries({ queryKey: tenantKeys.list }),
+    mutationFn: (v: { id: string; status: TenantStatusWord; reason?: string; category?: StatusCategory }) =>
+      unwrap(api.PUT("/admin/v1/tenants/{id}/status", { params: { path: { id: v.id } }, body: { status: v.status, reason: v.reason ?? "", ...(v.category ? { category: v.category } : {}) } })),
+    onSettled: (_data, _err, v) => {
+      void queries.invalidateQueries({ queryKey: tenantKeys.list });
+      void queries.invalidateQueries({ queryKey: tenantKeys.statusEvents(v.id) });
+      void queries.invalidateQueries({ queryKey: tenantKeys.detail(v.id) });
+    },
+  });
+}
+
+/** The changes of a tenant's status (and the bans waiting for a second operator), newest first. */
+export function useTenantStatusEvents(id: MaybeRefOrGetter<string>, enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => tenantKeys.statusEvents(toValue(id))),
+    queryFn: () => unwrap(api.GET("/admin/v1/tenants/{id}/status-events", { params: { path: { id: toValue(id) } } })),
+    enabled: computed(() => toValue(id) !== "" && toValue(enabled)),
   });
 }
 

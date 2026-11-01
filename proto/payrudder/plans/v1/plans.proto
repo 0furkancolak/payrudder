@@ -19,9 +19,12 @@ service PlansService {
   rpc SetCustomerAddress(SetCustomerAddressRequest) returns (SetCustomerAddressResponse);
   // SetCustomerContact replaces the customer's name and e-mail address, which invoices, receipts and dunning mails carry.
   rpc SetCustomerContact(SetCustomerContactRequest) returns (SetCustomerContactResponse);
-  // BlockCustomer stops new subscriptions for a customer (what exists runs on); UnblockCustomer lifts it. Blocking twice keeps the first time.
+  // BlockCustomer stops new subscriptions, plan changes and purchases for a customer (what exists runs on); UnblockCustomer lifts it. Blocking twice keeps the first
+  // block. Both are recorded in the customer's block history, and announced to the tenant's webhooks (customer.blocked, customer.unblocked).
   rpc BlockCustomer(BlockCustomerRequest) returns (BlockCustomerResponse);
   rpc UnblockCustomer(UnblockCustomerRequest) returns (UnblockCustomerResponse);
+  // ListCustomerBlockEvents returns the customer's blocks and lifts, newest first (the latest 100): who, when, why.
+  rpc ListCustomerBlockEvents(ListCustomerBlockEventsRequest) returns (ListCustomerBlockEventsResponse);
   // SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
   rpc SetCustomerTax(SetCustomerTaxRequest) returns (SetCustomerTaxResponse);
 
@@ -211,6 +214,12 @@ message BlockCustomerRequest {
   string external_id = 1;
   // The seller's note, at most 500 characters.
   string reason = 2;
+  // Why: fraud, chargeback, abuse, request or other. Optional. A fraud or chargeback block also refuses paying an open invoice.
+  string category = 3;
+  // When the block ends by itself; it must be in the future. Unset: until it is lifted.
+  google.protobuf.Timestamp blocked_until = 4;
+  // Who blocks; set by the gateway (the person's address, or the key), never by a client.
+  string actor = 5;
 }
 
 message BlockCustomerResponse {
@@ -219,10 +228,33 @@ message BlockCustomerResponse {
 
 message UnblockCustomerRequest {
   string external_id = 1;
+  // Who lifts the block; set by the gateway.
+  string actor = 2;
 }
 
 message UnblockCustomerResponse {
   Customer customer = 1;
+}
+
+message ListCustomerBlockEventsRequest {
+  string external_id = 1;
+}
+
+message ListCustomerBlockEventsResponse {
+  repeated CustomerBlockEvent events = 1;
+}
+
+// One block or lift of a customer. Events are never changed or deleted.
+message CustomerBlockEvent {
+  string id = 1;
+  // "blocked" or "unblocked".
+  string action = 2;
+  string category = 3;
+  string reason = 4;
+  google.protobuf.Timestamp blocked_until = 5;
+  // Who did it: a person's address, "key:<id>" for an API key, or "operator".
+  string actor = 6;
+  google.protobuf.Timestamp create_time = 7;
 }
 
 message SetCustomerTaxRequest {
@@ -731,7 +763,7 @@ message SchedulePriceChangeRequest {
 message PriceChangeSkipped {
   string subscription_id = 1;
   string customer_external_id = 2;
-  // renews_soon, has_pending_change, run_by_provider, not_changeable.
+  // renews_soon, has_pending_change, run_by_provider, not_changeable, customer_blocked.
   string reason = 3;
 }
 

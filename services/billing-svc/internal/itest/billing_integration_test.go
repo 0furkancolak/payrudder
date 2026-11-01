@@ -62,6 +62,8 @@ func TestBilling(t *testing.T) {
 		{"PromotionCodesOnCreditPurchases", testPromotionCodesOnCreditPurchases},
 		{"AVoidedCreditPurchaseGrantsNothing", testAVoidedCreditPurchaseGrantsNothing},
 		{"ABlockedCustomerCannotStartAPurchase", testABlockedCustomerCannotStartAPurchase},
+		{"TheGateRefusesPayments", testTheGateRefusesPayments},
+		{"DunningWaitsForATenantOnHold", testDunningWaitsForATenantOnHold},
 		{"CreditPacksAreBoughtFromThePortal", testCreditPacksAreBoughtFromThePortal},
 		{"CreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold", testCreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold},
 		{"ClosePeriodTwiceMakesOneRunAndOneInvoicePerCustomer", testClosePeriodTwice},
@@ -126,6 +128,10 @@ func TestBilling(t *testing.T) {
 		{"RefundCreditNoteNeedsACardPayment", testRefundCreditNoteNeedsACardPayment},
 		{"NumberSeriesIsEnforcedByTheDatabase", testNumberSeriesIsEnforcedByTheDatabase},
 		{"SandboxResetKeepsConfigurationAndOtherTenants", testSandboxResetKeepsConfigurationAndOtherTenants},
+		{"RowLevelSecurityIsForcedOnEveryTenantTable", testRowLevelSecurityIsForcedOnEveryTenantTable},
+		{"FinancialRowsAreImmutableInTheDatabase", testFinancialRowsAreImmutable},
+		{"CreditLedgerKeyIsUsedOncePerLot", testCreditLedgerKeyIsUsedOncePerLot},
+		{"RepeatedLedgerKeysAreRenamedByTheMigration", testRepeatedLedgerKeysAreRenamedByTheMigration},
 		{"EnvironmentIdsAreNotFoundInTheOtherEnvironment", testEnvironmentIdsAreNotFoundInTheOtherEnvironment},
 	} {
 		t.Run(tc.name, tc.fn)

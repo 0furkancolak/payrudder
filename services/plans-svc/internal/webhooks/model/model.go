@@ -38,6 +38,8 @@ const (
 	PaymentLinkExpired          = "payment_link.expired"
 	CreditsPurchased            = "credits.purchased"
 	CreditsLow                  = "credits.low"
+	CustomerBlocked             = "customer.blocked"
+	CustomerUnblocked           = "customer.unblocked"
 	ContractAccepted            = "contract.accepted"
 	ContractVersionPublished    = "contract.version_published"
 	ContractWithdrawalRequested = "contract.withdrawal_requested"
@@ -51,6 +53,7 @@ var Types = []string{
 	SubscriptionPaused, SubscriptionResumed, SubscriptionMovedToProvider, SubscriptionTrialWillEnd,
 	PaymentLinkCreated, PaymentLinkPaid, PaymentLinkExpired,
 	CreditsPurchased, CreditsLow,
+	CustomerBlocked, CustomerUnblocked,
 	ContractAccepted, ContractVersionPublished, ContractWithdrawalRequested,
 }
 

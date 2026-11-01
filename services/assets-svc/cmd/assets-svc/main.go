@@ -6,6 +6,7 @@ import (
 	"context"
 	_ "embed" // config.default.yaml
 	"errors"
+	"fmt"
 	"net"
 	"time"
 
@@ -84,6 +85,10 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		return err
 	}
 	defer systemPool.Close()
+	// A table with a tenant_id and no forced row-level security is a deployment that must not serve (docs/plans/22 G11); assets-svc exempts none.
+	if err := pgxx.VerifyForcedRLS(ctx, systemPool, nil); err != nil {
+		return fmt.Errorf("row-level security: %w", err)
+	}
 
 	store, err := blob.New(blob.Config{Endpoint: cfg.S3Endpoint, PublicEndpoint: cfg.S3Public, Region: cfg.S3Region, Bucket: cfg.S3Bucket,
 		AccessKey: cfg.S3AccessKey, SecretKey: cfg.S3SecretKey, ForcePathStyle: cfg.S3ForcePath})

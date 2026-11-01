@@ -12,4 +12,5 @@ enum PriceChangeSkippedReason: string
     case HasPendingChange = 'has_pending_change';
     case RunByProvider = 'run_by_provider';
     case NotChangeable = 'not_changeable';
+    case CustomerBlocked = 'customer_blocked';
 }

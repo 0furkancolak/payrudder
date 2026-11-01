@@ -61,14 +61,24 @@ test: ## Unit tests (race detector)
 	@for m in $(MODULES); do (cd $$m && go test -race -count=1 ./...); done
 
 .PHONY: test-backup-scripts
-test-backup-scripts: ## The Helm chart's copies of the backup scripts match deploy/backup
-	@for f in backup restore verify; do diff -q deploy/backup/$$f.sh deploy/helm/payrudder-infra/files/$$f.sh || exit 1; done
+test-backup-scripts: ## The backup, restore and verify scripts against a throwaway Postgres (Docker), and the Helm chart's copies match deploy/backup
+	@for f in backup restore verify invariants; do diff -q deploy/backup/$$f.sh deploy/helm/payrudder-infra/files/$$f.sh || exit 1; done
+	sh deploy/backup/test.sh
+
+.PHONY: backup-drill
+backup-drill: ## Point-in-time recovery drill on a throwaway stack: restore to a chosen minute, check the data, measure the RTO (Docker, about 5 minutes)
+	sh deploy/backup/drill.sh
 
 
 .PHONY: test-rules
-test-rules: ## Prometheus alert rules: promtool check + unit tests (Docker)
+test-rules: ## Prometheus alert rules (promtool check + unit tests) and the Alertmanager configs (amtool check + routes) (Docker)
 	docker run --rm -v "$(CURDIR)/deploy/prometheus:/p:ro" --entrypoint promtool prom/prometheus:v3.15.0 check rules /p/rules/payrudder.yaml
 	docker run --rm -v "$(CURDIR)/deploy/prometheus:/p:ro" --entrypoint promtool prom/prometheus:v3.15.0 test rules /p/tests/payrudder_test.yaml
+	sh deploy/alertmanager/test.sh
+
+.PHONY: alert-test
+alert-test: ## Fire a test page and a test warning at the running Alertmanager (make up first); locally the mail lands in Mailpit, http://localhost:42825
+	sh deploy/alertmanager/fire.sh
 
 .PHONY: test-integration
 test-integration: ## Integration tests (build tag integration; needs Docker)
@@ -260,6 +270,12 @@ up-infra: ## Start the infrastructure containers only (make setup does this and 
 	$(COMPOSE) up -d --wait
 	$(COMPOSE) run --rm minio-init
 	$(MAKE) topics
+
+.PHONY: up-pitr
+up-pitr: ## Point-in-time recovery for the local Postgres: WAL archiving, a sidecar that ships it and a daily base backup to MinIO (recreates the postgres container; docs/runbooks/backup-restore.md)
+	docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.pitr.yaml $(if $(wildcard .env),--env-file .env) up -d --wait postgres minio
+	docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.pitr.yaml $(if $(wildcard .env),--env-file .env) --profile init run --rm minio-init
+	docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.pitr.yaml $(if $(wildcard .env),--env-file .env) --profile obs --profile ops up -d pushgateway pitr-agent
 
 .PHONY: up
 up: ## Start infrastructure + observability + Payrudder services

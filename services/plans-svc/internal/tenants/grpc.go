@@ -68,3 +68,10 @@ func (h *Handler) SetTenantStatus(ctx context.Context, req *plansv1.SetTenantSta
 	}
 	return &plansv1.SetTenantStatusResponse{Tenant: t}, nil
 }
+
+func (h *Handler) ListTenantStatusEvents(ctx context.Context, req *plansv1.ListTenantStatusEventsRequest) (*plansv1.ListTenantStatusEventsResponse, error) {
+	if err := tenant.RequireOperator(ctx); err != nil {
+		return nil, err
+	}
+	return h.cmd.StatusEvents(ctx, req)
+}

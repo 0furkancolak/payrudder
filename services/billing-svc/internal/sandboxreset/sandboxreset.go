@@ -7,7 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/grpc/codes"
 
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/store/sqlc"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/tenantdb"
 )
@@ -70,11 +72,23 @@ type Resetter struct{ db *tenantdb.DB }
 // New returns a Resetter.
 func New(system *tenantdb.DB) *Resetter { return &Resetter{db: system} }
 
-// Reset deletes the tenant's data and returns the rows deleted by table (tables with none are left out).
+// Reset deletes the tenant's data and returns the rows deleted by table (tables with none are left out). The financial tables refuse deletes (migration 00003) unless
+// the transaction names the tenant as being reset; the request said the tenant is a sandbox, and the database is asked too: a tenant with an invoice of the live
+// environment is refused before anything is deleted (and the invoices trigger would refuse it later). A tenant with no invoice at all cannot be told apart here.
 func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]int64, error) {
 	out := map[string]int64{}
 	err := r.db.InTx(ctx, tenantID, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		q := sqlc.New(tx)
+		live, err := q.ResetLiveInvoiceCount(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		if live > 0 {
+			return errkey.New(codes.FailedPrecondition, "admin.sandbox.live_refused", "only a sandbox tenant can be reset")
+		}
+		if err := q.ResetBegin(ctx, tenantID.String()); err != nil {
+			return err
+		}
 		for _, s := range steps(ctx) {
 			n, err := s.run(q, tenantID)
 			if err != nil {

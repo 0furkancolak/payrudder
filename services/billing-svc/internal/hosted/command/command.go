@@ -24,6 +24,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
@@ -75,6 +76,9 @@ type Directory interface {
 	CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (uuid.UUID, error)
 	// QuotePromotion says what the spec's promotion code takes off, claiming nothing.
 	QuotePromotion(ctx context.Context, tenantID uuid.UUID, spec LinkInvoiceSpec) (PromotionQuote, error)
+	// Gate asks the payment gate (pkg/paymentgate) whether op may start for the customer (by the tenant's id for them; "" for none) in the tenant: the tenant's status
+	// and the customer's block, read now.
+	Gate(ctx context.Context, tenantID uuid.UUID, customerExternalID string, op paymentgate.Op) (paymentgate.Verdict, error)
 	// Attribute tells the affiliate program that a customer who is paying carried a partner's referral code (phase 47). It is best effort: a payment never waits for it
 	// to succeed. touched is when the visitor followed the link, the zero time when unknown.
 	Attribute(ctx context.Context, tenantID, customerID uuid.UUID, code string, touched time.Time)
@@ -217,6 +221,14 @@ func (in *CreateInput) checkCreditPackLink() error {
 	return err
 }
 
+// customerForGate is the customer a purchase link is for, if the kind has one: a link to an invoice is gated on the tenant alone.
+func (in *CreateInput) customerForGate() string {
+	if in.Kind == KindInvoice {
+		return ""
+	}
+	return in.CustomerExternalID
+}
+
 func (in *CreateInput) days() int32 {
 	switch {
 	case in.ExpiresInDays > 0:
@@ -246,7 +258,15 @@ func CreateLink(ctx context.Context, d Deps, tenantID uuid.UUID, in CreateInput)
 	if err := in.normalize(); err != nil {
 		return nil, err
 	}
-	// What needs other services is settled before the transaction.
+	// What needs other services is settled before the transaction. A tenant on hold makes no link; nor does one make a link to sell something to a blocked customer.
+	// (A link to an invoice that exists is a way to pay it, which a block lets through except for fraud and chargeback: the customer's own block is not read there.)
+	op := paymentgate.OpPurchase
+	if in.Kind == KindInvoice {
+		op = paymentgate.OpPayInvoice
+	}
+	if err := gate(ctx, d, tenantID, in.customerForGate(), op); err != nil {
+		return nil, err
+	}
 	if in.Kind == KindAdhoc {
 		if in.Currency == "" {
 			c, err := d.Dir.TenantCurrency(ctx, tenantID)
@@ -366,6 +386,27 @@ func fillFromPack(ctx context.Context, q *sqlc.Queries, tenantID uuid.UUID, in C
 	p.CustomerID, p.CustomerExternalID = &customerID, store.NilIfEmpty(in.CustomerExternalID)
 	p.PackID, p.Quantity, p.Credits, p.ValidityDays = &in.PackID, &in.Quantity, &credits, pack.ValidityDays
 	return nil
+}
+
+// refusal is the error of a payment the gate refuses, or nil.
+func refusal(v paymentgate.Verdict) error {
+	switch v {
+	case paymentgate.TenantOnHold:
+		return errkey.New(codes.FailedPrecondition, "billing.tenant.on_hold", "this seller cannot take payments now")
+	case paymentgate.CustomerBlocked:
+		return errkey.New(codes.FailedPrecondition, "billing.customer.blocked", "this customer is blocked: no new purchase")
+	case paymentgate.Allowed:
+	}
+	return nil
+}
+
+// gate asks the directory and turns a refusal into the error. A lookup that fails is Unavailable: nothing is let through on a missing answer.
+func gate(ctx context.Context, d Deps, tenantID uuid.UUID, customerExternalID string, op paymentgate.Op) error {
+	v, err := d.Dir.Gate(ctx, tenantID, customerExternalID, op)
+	if err != nil {
+		return errkey.New(codes.Unavailable, "billing.hosted.tenant_unavailable", "tenant lookup unavailable")
+	}
+	return refusal(v)
 }
 
 // customerOf finds the customer a request names. A lookup that fails is Unavailable; a customer there is none of is NotFound under notFoundKey, the key of the

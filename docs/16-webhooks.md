@@ -34,6 +34,10 @@ A development stack may lift the address rule with `PAYRUDDER_WEBHOOK_ALLOW_PRIV
 | `contract.accepted` | a customer accepted one or more agreements together (a hosted payment page, or the seller's server through `POST /v1/customers/{id}/contract-acceptances`): one event for the group, not for each version | `group_id`, `source` (`hosted`, `api`), `accepted_at`, `snapshot_sha256`, `items` (`acceptance_id`, `kind`, `audience`, `version_id`, `version`, `sha256`, `locale`), `immediate_start_consent`, `withdrawal_waiver_acknowledged`, `context` (`kind`, `ref`); `customer_id` and `customer_external_id` unless it was a guest payment |
 | `contract.version_published` | a new version of an agreement was published (`POST /v1/contracts/versions`) | `version_id`, `kind`, `audience`, `number`, `material`, `sha256`, `locales`, `published_at` |
 | `contract.withdrawal_requested` | a customer's withdrawal statement was recorded (`POST /v1/customers/{id}/contract-withdrawals`) | `withdrawal_id`, `customer_id`, `customer_external_id`, `subscription_id`, `invoice_id` (the last two may be empty), `source`, `received_at` |
+| `customer.blocked` | a customer was blocked (`POST /v1/customers/{id}/block`); blocking one who is blocked already sends nothing | `customer_id`, `customer_external_id`, `category` (`fraud`, `chargeback`, `abuse`, `request`, `other` or empty), `reason` (the seller's own note), and `blocked_until` (RFC 3339) when the block ends by itself |
+| `customer.unblocked` | a block was lifted (`POST /v1/customers/{id}/unblock`), also one that had ended by itself and was still in the row. The end of a block by itself sends no event | `customer_id`, `customer_external_id` |
+
+A tenant the operator has suspended, frozen or banned sends no webhooks: its deliveries wait (without using up an attempt, for up to the 30 days events are kept) and go out when the tenant is reinstated.
 
 A delivery is a JSON `POST`:
 

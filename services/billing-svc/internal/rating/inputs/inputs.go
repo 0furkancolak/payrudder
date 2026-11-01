@@ -17,6 +17,7 @@ import (
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 )
 
@@ -128,15 +129,10 @@ func LogoKey(tenantID uuid.UUID, t *plansv1.Tenant) string {
 	return ""
 }
 
-// Billable reports whether the scheduler may raise invoices for a tenant: a live tenant that is not active yet (the go-live gate) or is suspended is
-// left alone. A status the plans-svc did not send (an older release during a rollout) counts as active.
+// Billable reports whether the scheduler may raise invoices for a tenant: a live tenant that is not active yet (the go-live gate) or is on hold (suspended,
+// frozen or banned) is left alone. A status the plans-svc did not send (an older release during a rollout) counts as active.
 func Billable(t *plansv1.Tenant) bool {
-	switch t.GetStatus() {
-	case plansv1.TenantStatus_TENANT_STATUS_INACTIVE, plansv1.TenantStatus_TENANT_STATUS_SUSPENDED:
-		return false
-	case plansv1.TenantStatus_TENANT_STATUS_UNSPECIFIED, plansv1.TenantStatus_TENANT_STATUS_ACTIVE:
-	}
-	return true
+	return t.GetStatus() != plansv1.TenantStatus_TENANT_STATUS_INACTIVE && !paymentgate.OnHold(t.GetStatus())
 }
 
 // OrDefault returns v, or def when v is empty: a subscription without a currency is in the tenant's.

@@ -114,6 +114,22 @@ func (q *Queries) GetSagaIDByInvoice(ctx context.Context, arg GetSagaIDByInvoice
 	return id, err
 }
 
+const holdSagaDunning = `-- name: HoldSagaDunning :exec
+UPDATE invoice_sagas SET next_attempt_at = $1::timestamptz WHERE tenant_id = $2 AND id = $3 AND state = 'PAYMENT_DECLINED'
+`
+
+type HoldSagaDunningParams struct {
+	Until    time.Time
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+// The retry of a tenant that is on hold is put off, not given up: the saga stays PAYMENT_DECLINED and is due again after the hold.
+func (q *Queries) HoldSagaDunning(ctx context.Context, arg HoldSagaDunningParams) error {
+	_, err := q.db.Exec(ctx, holdSagaDunning, arg.Until, arg.TenantID, arg.ID)
+	return err
+}
+
 const insertInboxReply = `-- name: InsertInboxReply :execrows
 INSERT INTO inbox_replies (message_id) VALUES ($1) ON CONFLICT DO NOTHING
 `

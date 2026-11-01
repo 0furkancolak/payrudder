@@ -64,8 +64,11 @@ type Config struct {
 	RelayWorkers   int      `env:"PAYRUDDER_RELAY_WORKERS"`
 	RelayBatchSize int      `env:"PAYRUDDER_RELAY_BATCH_SIZE"`
 	AllowedEnvs    []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
-	// SecretsKey (32 bytes, base64) seals the webhook signing secrets. Without it tenants cannot register webhook endpoints.
-	SecretsKey string `env:"PAYRUDDER_SECRETS_KEY"`
+	// Secrets holds the key (32 bytes, base64) that seals the webhook signing secrets and the mail integrations' keys, and the previous key while one is replaced.
+	// Without a key tenants cannot register webhook endpoints.
+	Secrets secretbox.Settings
+	// BanApproval makes a ban of a tenant need a second operator: the first request is recorded, the same request from another operator within a day applies it.
+	BanApproval bool `env:"PAYRUDDER_TENANT_BAN_APPROVAL"`
 	// WebhookAllowPrivate lets webhook endpoints be http:// and on private addresses. For development and tests; never in production.
 	WebhookAllowPrivate bool `env:"PAYRUDDER_WEBHOOK_ALLOW_PRIVATE"`
 	// SMTPAddr and MailFrom are the platform's own mail path: the mail Payrudder writes to people (verification, password reset, invitations). A tenant's
@@ -128,10 +131,8 @@ func (c *Config) Validate() error {
 			errs = append(errs, fmt.Errorf("PAYRUDDER_ALLOWED_ENVIRONMENTS: unknown environment %q", e))
 		}
 	}
-	if c.SecretsKey != "" {
-		if _, err := secretbox.ParseKey(c.SecretsKey); err != nil {
-			errs = append(errs, fmt.Errorf("PAYRUDDER_SECRETS_KEY: %w", err))
-		}
+	if _, err := c.Secrets.SecretBox(); err != nil {
+		errs = append(errs, err)
 	}
 	if c.AffiliateApproveEvery < time.Minute {
 		errs = append(errs, errors.New("PAYRUDDER_AFFILIATE_APPROVE_EVERY must be at least a minute"))
@@ -290,12 +291,11 @@ func newRelay(cfg *Config, log *slog.Logger, places *placement.Places, hh *healt
 
 // newSecretBox opens the box that seals webhook signing secrets; without PAYRUDDER_SECRETS_KEY it returns nil.
 func newSecretBox(cfg *Config, log *slog.Logger) (*secretbox.Box, error) {
-	if cfg.SecretsKey == "" {
+	box, err := cfg.Secrets.SecretBox()
+	if box == nil && err == nil {
 		log.Warn("PAYRUDDER_SECRETS_KEY is not set: tenants cannot register webhook endpoints")
-		return nil, nil
 	}
-	key, _ := secretbox.ParseKey(cfg.SecretsKey) // validated
-	return secretbox.New(key)
+	return box, err
 }
 
 // newSandbox builds the sandbox reset module: the steps for the other services, the handler for the two calls, and the runner that executes the jobs. The returned func
@@ -352,7 +352,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *p
 		return nil, nil, nil, nil, err
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
-		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
+		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, BanApproval: cfg.BanApproval, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
 		Mail: usermail.NewSMTP(platformMail(cfg), cfg.MailFrom, log), AppURL: cfg.AppURL, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})

@@ -133,6 +133,7 @@ import type {
   ListCreditNotesQuery,
   ListCreditNotesResponse,
   ListCreditPacksQuery,
+  ListCustomerBlockEventsResponse,
   ListCustomerPaymentsQuery,
   ListCustomerPaymentsResponse,
   ListCustomersQuery,
@@ -916,9 +917,14 @@ export class CustomersResource {
   }
 
   /**
-   * Block a customer from new subscriptions
+   * Block a customer from new purchases
    *
-   * A blocked customer cannot get a new subscription (error key plans.customer.blocked); what exists runs on until you end it. Blocking again keeps the first time and note. The note is yours, up to 500 characters.
+   * A blocked customer cannot get a new subscription or plan change (error key `plans.customer.blocked`), buy through a payment link or the portal, or have a
+   * payment link made for them (`billing.customer.blocked`); what exists runs on until you end it, and an invoice that was issued before stays payable, except after
+   * a `fraud` or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the block that is in force. The note is
+   * yours, up to 500 characters; `category` says why; `blocked_until` ends the block by itself (it must be in the future, and every check reads it, so the block
+   * stops holding at that time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` / `customer.unblocked` webhook events
+   * (the end of a block by itself sends none). Usage ingestion and entitlements are not affected.
    *
    * `POST /v1/customers/{external_id}/block`
    */
@@ -929,10 +935,23 @@ export class CustomersResource {
   /**
    * Lift a customer's block
    *
+   * Also clears a block that has ended by itself. A customer who was not blocked is returned as it is.
+   *
    * `POST /v1/customers/{external_id}/unblock`
    */
   unblockCustomer(externalId: string, options?: RequestOptions): Promise<Customer> {
     return this.t.request<Customer>({ method: "POST", path: `/v1/customers/${seg(externalId)}/unblock`, response: "json" }, options);
+  }
+
+  /**
+   * A customer's blocks and lifts, newest first
+   *
+   * Who blocked or lifted, when, and why (the latest 100). Never changed or deleted.
+   *
+   * `GET /v1/customers/{external_id}/block-events`
+   */
+  listCustomerBlockEvents(externalId: string, options?: RequestOptions): Promise<ListCustomerBlockEventsResponse> {
+    return this.t.request<ListCustomerBlockEventsResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/block-events`, response: "json" }, options);
   }
 
   /**
@@ -1602,7 +1621,7 @@ export class PlansResource {
    * For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
    * (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
    * The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
-   * `run_by_provider` and `not_changeable` (for example a fee invoiced in arrears). `dry_run` counts and changes nothing. Each scheduled change also sends the
+   * `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing. Each scheduled change also sends the
    * `subscription.change_scheduled` webhook event.
    *
    * `POST /v1/plans/{code}/price-changes`

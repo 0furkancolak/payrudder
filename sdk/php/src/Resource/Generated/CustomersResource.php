@@ -36,6 +36,7 @@ use Payrudder\Model\GetCustomerUsageResponse;
 use Payrudder\Model\GrantCustomerCouponRequest;
 use Payrudder\Model\GrantCustomerCouponResponse;
 use Payrudder\Model\ListContractAcceptancesResponse;
+use Payrudder\Model\ListCustomerBlockEventsResponse;
 use Payrudder\Model\ListCustomerPaymentsResponse;
 use Payrudder\Model\ListCustomersResponse;
 use Payrudder\Model\ListEntitlementOverridesResponse;
@@ -170,7 +171,7 @@ final class CustomersResource extends AbstractResource
     }
 
     /**
-     * Block a customer from new subscriptions (POST /v1/customers/{external_id}/block).
+     * Block a customer from new purchases (POST /v1/customers/{external_id}/block).
      *
      * @param string $externalId
      * @param BlockCustomerRequest|array<string,mixed>|null $body
@@ -194,6 +195,19 @@ final class CustomersResource extends AbstractResource
     public function unblockCustomer(string $externalId, ?RequestOptions $options = null): Customer
     {
         return Customer::fromArray($this->call('POST', '/v1/customers/' . rawurlencode($externalId) . '/unblock', [], null, $options));
+    }
+
+    /**
+     * A customer's blocks and lifts, newest first (GET /v1/customers/{external_id}/block-events).
+     *
+     * @param string $externalId
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function listCustomerBlockEvents(string $externalId, ?RequestOptions $options = null): ListCustomerBlockEventsResponse
+    {
+        return ListCustomerBlockEventsResponse::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/block-events', [], null, $options));
     }
 
     /**

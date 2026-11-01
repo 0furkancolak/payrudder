@@ -34,19 +34,27 @@ func (q *Queries) AdvanceSubscriptionFee(ctx context.Context, arg AdvanceSubscri
 }
 
 const blockCustomer = `-- name: BlockCustomer :one
-UPDATE customers SET blocked_at = COALESCE(blocked_at, now()), block_reason = CASE WHEN blocked_at IS NULL THEN $1 ELSE block_reason END
-WHERE tenant_id = app_tenant_id() AND external_id = $2
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason
+UPDATE customers SET blocked_at = $1, block_reason = $2, block_category = $3, blocked_until = $4
+WHERE tenant_id = app_tenant_id() AND external_id = $5
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until
 `
 
 type BlockCustomerParams struct {
-	Reason     string
-	ExternalID string
+	BlockedAt    *time.Time
+	Reason       string
+	Category     string
+	BlockedUntil *time.Time
+	ExternalID   string
 }
 
-// Blocking twice keeps the first time (and its reason is replaced by the new one only when the customer was not blocked).
 func (q *Queries) BlockCustomer(ctx context.Context, arg BlockCustomerParams) (Customer, error) {
-	row := q.db.QueryRow(ctx, blockCustomer, arg.Reason, arg.ExternalID)
+	row := q.db.QueryRow(ctx, blockCustomer,
+		arg.BlockedAt,
+		arg.Reason,
+		arg.Category,
+		arg.BlockedUntil,
+		arg.ExternalID,
+	)
 	var i Customer
 	err := row.Scan(
 		&i.TenantID,
@@ -66,6 +74,8 @@ func (q *Queries) BlockCustomer(ctx context.Context, arg BlockCustomerParams) (C
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }
@@ -104,7 +114,7 @@ func (q *Queries) CountMeterCodes(ctx context.Context) (int64, error) {
 const createCustomer = `-- name: CreateCustomer :one
 INSERT INTO customers (tenant_id, id, external_id, name, email, payment_method, country, billing_currency, address, locale, customer_type)
 VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until
 `
 
 type CreateCustomerParams struct {
@@ -152,6 +162,8 @@ func (q *Queries) CreateCustomer(ctx context.Context, arg CreateCustomerParams) 
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }
@@ -311,7 +323,7 @@ func (q *Queries) GetChangedFromID(ctx context.Context, id uuid.UUID) (*uuid.UUI
 }
 
 const getCustomerByExternalID = `-- name: GetCustomerByExternalID :one
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1
 `
 
 func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string) (Customer, error) {
@@ -335,12 +347,14 @@ func (q *Queries) GetCustomerByExternalID(ctx context.Context, externalID string
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }
 
 const getCustomerByID = `-- name: GetCustomerByID :one
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until FROM customers WHERE tenant_id = app_tenant_id() AND id = $1
 `
 
 func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, error) {
@@ -364,6 +378,8 @@ func (q *Queries) GetCustomerByID(ctx context.Context, id uuid.UUID) (Customer, 
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }
@@ -769,6 +785,36 @@ func (q *Queries) GetSubscriptionIDByProviderRef(ctx context.Context, arg GetSub
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const insertCustomerBlockEvent = `-- name: InsertCustomerBlockEvent :exec
+INSERT INTO customer_block_events (tenant_id, id, customer_id, action, category, reason, blocked_until, actor, created_at)
+VALUES (app_tenant_id(), $1, $2, $3, $4, $5, $6, $7, $8)
+`
+
+type InsertCustomerBlockEventParams struct {
+	ID           uuid.UUID
+	CustomerID   uuid.UUID
+	Action       string
+	Category     string
+	Reason       string
+	BlockedUntil *time.Time
+	Actor        string
+	CreatedAt    time.Time
+}
+
+func (q *Queries) InsertCustomerBlockEvent(ctx context.Context, arg InsertCustomerBlockEventParams) error {
+	_, err := q.db.Exec(ctx, insertCustomerBlockEvent,
+		arg.ID,
+		arg.CustomerID,
+		arg.Action,
+		arg.Category,
+		arg.Reason,
+		arg.BlockedUntil,
+		arg.Actor,
+		arg.CreatedAt,
+	)
+	return err
 }
 
 const insertMeter = `-- name: InsertMeter :one
@@ -1313,8 +1359,48 @@ func (q *Queries) ListCouponCodesFor(ctx context.Context, ids []uuid.UUID) ([]Li
 	return items, nil
 }
 
+const listCustomerBlockEvents = `-- name: ListCustomerBlockEvents :many
+SELECT tenant_id, id, customer_id, action, category, reason, blocked_until, actor, created_at FROM customer_block_events WHERE tenant_id = app_tenant_id() AND customer_id = $1
+ORDER BY created_at DESC, id DESC LIMIT $2
+`
+
+type ListCustomerBlockEventsParams struct {
+	CustomerID uuid.UUID
+	PageSize   int32
+}
+
+func (q *Queries) ListCustomerBlockEvents(ctx context.Context, arg ListCustomerBlockEventsParams) ([]CustomerBlockEvent, error) {
+	rows, err := q.db.Query(ctx, listCustomerBlockEvents, arg.CustomerID, arg.PageSize)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CustomerBlockEvent{}
+	for rows.Next() {
+		var i CustomerBlockEvent
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ID,
+			&i.CustomerID,
+			&i.Action,
+			&i.Category,
+			&i.Reason,
+			&i.BlockedUntil,
+			&i.Actor,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCustomers = `-- name: ListCustomers :many
-SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason FROM customers
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until FROM customers
 WHERE tenant_id = app_tenant_id() AND external_id > $1::text
 ORDER BY external_id
 LIMIT $2
@@ -1352,6 +1438,8 @@ func (q *Queries) ListCustomers(ctx context.Context, arg ListCustomersParams) ([
 			&i.CustomerType,
 			&i.BlockedAt,
 			&i.BlockReason,
+			&i.BlockCategory,
+			&i.BlockedUntil,
 		); err != nil {
 			return nil, err
 		}
@@ -2110,6 +2198,38 @@ func (q *Queries) ListUnendedSubscriptionsOfCustomer(ctx context.Context, arg Li
 	return items, nil
 }
 
+const lockCustomerByExternalID = `-- name: LockCustomerByExternalID :one
+SELECT tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until FROM customers WHERE tenant_id = app_tenant_id() AND external_id = $1 FOR UPDATE
+`
+
+// A customer is locked before a block or a lift decides what it is: whether the block in force stands (see pkg/paymentgate) is read from the locked row.
+func (q *Queries) LockCustomerByExternalID(ctx context.Context, externalID string) (Customer, error) {
+	row := q.db.QueryRow(ctx, lockCustomerByExternalID, externalID)
+	var i Customer
+	err := row.Scan(
+		&i.TenantID,
+		&i.ID,
+		&i.ExternalID,
+		&i.Name,
+		&i.Email,
+		&i.PaymentMethod,
+		&i.CreatedAt,
+		&i.Country,
+		&i.BillingCurrency,
+		&i.Address,
+		&i.TaxID,
+		&i.TaxOffice,
+		&i.EInvoiceRegistered,
+		&i.Locale,
+		&i.CustomerType,
+		&i.BlockedAt,
+		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
+	)
+	return i, err
+}
+
 const markAdjustmentBilled = `-- name: MarkAdjustmentBilled :execrows
 UPDATE subscription_adjustments SET billed_at = now() WHERE tenant_id = app_tenant_id() AND id = $1 AND billed_at IS NULL
 `
@@ -2195,7 +2315,7 @@ func (q *Queries) ReopenSubscription(ctx context.Context, arg ReopenSubscription
 const setCustomerAddress = `-- name: SetCustomerAddress :one
 UPDATE customers SET address = $1::jsonb, country = COALESCE($2::text, country)
 WHERE tenant_id = app_tenant_id() AND external_id = $3
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until
 `
 
 type SetCustomerAddressParams struct {
@@ -2225,6 +2345,8 @@ func (q *Queries) SetCustomerAddress(ctx context.Context, arg SetCustomerAddress
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }
@@ -2234,7 +2356,7 @@ UPDATE customers SET name = $1, email = $2,
   locale = CASE WHEN $3::text = '' THEN locale ELSE $3::text END,
   customer_type = CASE WHEN $4::text = '' THEN customer_type ELSE $4::text END
 WHERE tenant_id = app_tenant_id() AND external_id = $5
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until
 `
 
 type SetCustomerContactParams struct {
@@ -2273,6 +2395,8 @@ func (q *Queries) SetCustomerContact(ctx context.Context, arg SetCustomerContact
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }
@@ -2280,7 +2404,7 @@ func (q *Queries) SetCustomerContact(ctx context.Context, arg SetCustomerContact
 const setCustomerTax = `-- name: SetCustomerTax :one
 UPDATE customers SET tax_id = $1, tax_office = $2, e_invoice_registered = $3
 WHERE tenant_id = app_tenant_id() AND external_id = $4
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until
 `
 
 type SetCustomerTaxParams struct {
@@ -2316,6 +2440,8 @@ func (q *Queries) SetCustomerTax(ctx context.Context, arg SetCustomerTaxParams) 
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }
@@ -2323,7 +2449,7 @@ func (q *Queries) SetCustomerTax(ctx context.Context, arg SetCustomerTaxParams) 
 const setPaymentMethod = `-- name: SetPaymentMethod :one
 UPDATE customers SET payment_method = $2
 WHERE tenant_id = app_tenant_id() AND external_id = $1
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until
 `
 
 type SetPaymentMethodParams struct {
@@ -2352,6 +2478,8 @@ func (q *Queries) SetPaymentMethod(ctx context.Context, arg SetPaymentMethodPara
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }
@@ -2401,9 +2529,9 @@ func (q *Queries) SettleChange(ctx context.Context, arg SettleChangeParams) (int
 }
 
 const unblockCustomer = `-- name: UnblockCustomer :one
-UPDATE customers SET blocked_at = NULL, block_reason = ''
+UPDATE customers SET blocked_at = NULL, block_reason = '', block_category = '', blocked_until = NULL
 WHERE tenant_id = app_tenant_id() AND external_id = $1
-RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason
+RETURNING tenant_id, id, external_id, name, email, payment_method, created_at, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, blocked_at, block_reason, block_category, blocked_until
 `
 
 func (q *Queries) UnblockCustomer(ctx context.Context, externalID string) (Customer, error) {
@@ -2427,6 +2555,8 @@ func (q *Queries) UnblockCustomer(ctx context.Context, externalID string) (Custo
 		&i.CustomerType,
 		&i.BlockedAt,
 		&i.BlockReason,
+		&i.BlockCategory,
+		&i.BlockedUntil,
 	)
 	return i, err
 }

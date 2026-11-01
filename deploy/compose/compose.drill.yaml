@@ -1,0 +1,13 @@
+# Only for deploy/backup/drill.sh: the drill brings up a second stack next to the real one under a project name of its own, so it must not publish the fixed host ports;
+# it ships the WAL every few seconds instead of every 30, and mounts the migrations it builds the schema from.
+services:
+  postgres:
+    ports: !reset []
+    volumes:
+      - ../../services/billing-svc/migrations:/m/billing:ro
+      - ../../services/payments-worker/migrations:/m/payments:ro
+  minio: { ports: !reset [] }
+  pushgateway: { ports: !reset [] }
+  pitr-agent:
+    environment:
+      WAL_SHIP_INTERVAL: "5"

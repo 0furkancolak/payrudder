@@ -66,6 +66,10 @@ func (fakeAuth) Authenticate(_ context.Context, key string) (auth.Principal, err
 		return auth.Principal{Tenant: tenant.Info{ID: sandboxTenant, Environment: "sandbox"}, Tier: "free", Role: apikey.RoleCustom, Permissions: []string{apikey.PermCustomersRead, apikey.PermInvoicesRead}}, nil
 	case "suspended-key":
 		return auth.Principal{}, auth.ErrSuspended
+	case "frozen-key":
+		return auth.Principal{Tenant: tenant.Info{ID: liveTenant, Environment: "live"}, Tier: "free", ReadOnly: true}, nil
+	case "keyed-key":
+		return auth.Principal{Tenant: tenant.Info{ID: liveTenant, Environment: "live", APIKeyID: "key-123"}, Tier: "free"}, nil
 	default:
 		return auth.Principal{}, auth.ErrUnauthenticated
 	}
@@ -96,6 +100,9 @@ type fakePlans struct {
 	lastTenant   tenant.Info
 	lastOperator bool
 	lastPM       string
+	lastBlock    *plansv1.BlockCustomerRequest
+	lastUnblock  *plansv1.UnblockCustomerRequest
+	lastStatus   *plansv1.SetTenantStatusRequest
 }
 
 func (f *fakePlans) CreateCustomer(ctx context.Context, req *plansv1.CreateCustomerRequest) (*plansv1.CreateCustomerResponse, error) {
@@ -122,8 +129,12 @@ func (f *fakePlans) GetTenant(ctx context.Context, req *plansv1.GetTenantRequest
 	if req.GetTenantId() == "00000000-0000-4000-8000-000000000000" {
 		return nil, status.Error(codes.NotFound, "no such tenant")
 	}
+	st := plansv1.TenantStatus_TENANT_STATUS_ACTIVE
+	if req.GetTenantId() == frozenTenantID {
+		st = plansv1.TenantStatus_TENANT_STATUS_FROZEN
+	}
 	return &plansv1.GetTenantResponse{Tenant: &plansv1.Tenant{Id: req.GetTenantId(), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
-		Tier: plansv1.TenantTier_TENANT_TIER_STANDARD, Timezone: "Europe/Istanbul"}}, nil
+		Tier: plansv1.TenantTier_TENANT_TIER_STANDARD, Timezone: "Europe/Istanbul", Status: st}}, nil
 }
 
 func (f *fakePlans) CreateAccount(ctx context.Context, req *plansv1.CreateAccountRequest) (*plansv1.CreateAccountResponse, error) {

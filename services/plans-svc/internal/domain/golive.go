@@ -16,6 +16,9 @@ const (
 	StatusInactive  = "inactive"
 	StatusActive    = "active"
 	StatusSuspended = "suspended"
+	// StatusFrozen is read-only: nothing is written or charged. StatusBanned is a suspension that is meant to last.
+	StatusFrozen = "frozen"
+	StatusBanned = "banned"
 )
 
 // StatusFromDB maps a stored status to the API enum.
@@ -27,6 +30,10 @@ func StatusFromDB(s string) plansv1.TenantStatus {
 		return plansv1.TenantStatus_TENANT_STATUS_ACTIVE
 	case StatusSuspended:
 		return plansv1.TenantStatus_TENANT_STATUS_SUSPENDED
+	case StatusFrozen:
+		return plansv1.TenantStatus_TENANT_STATUS_FROZEN
+	case StatusBanned:
+		return plansv1.TenantStatus_TENANT_STATUS_BANNED
 	default:
 		return plansv1.TenantStatus_TENANT_STATUS_UNSPECIFIED
 	}
@@ -41,6 +48,10 @@ func StatusToDB(s plansv1.TenantStatus) (string, bool) {
 		return StatusActive, true
 	case plansv1.TenantStatus_TENANT_STATUS_SUSPENDED:
 		return StatusSuspended, true
+	case plansv1.TenantStatus_TENANT_STATUS_FROZEN:
+		return StatusFrozen, true
+	case plansv1.TenantStatus_TENANT_STATUS_BANNED:
+		return StatusBanned, true
 	default:
 		return "", false
 	}

@@ -1,26 +1,30 @@
 name: docs
 
-# Builds the developer documentation (docs-site) and checks it: every operation of the tenant API has an entry, only the tenant API is documented, every internal
-# link lands. The site is uploaded as an artifact; publishing it is a separate decision (where it is hosted).
+# Builds the developer documentation (docs-site) and checks it: every operation of the tenant API has an entry, only the tenant API is documented, every internal link
+# lands, every document of docs/ is marked public or internal with a status, the error catalogue is complete. Every run uploads the built site as an artifact (a pull
+# request's is named docs-site-pr-<number>, so a reviewer can open exactly that build).
+#
+# Publishing is a separate switch. On a push to main the site is deployed to GitHub Pages only when the repository variable DOCS_PUBLISH is "true" (Settings > Secrets and
+# variables > Actions > Variables) and Pages is set to the "GitHub Actions" source (Settings > Pages). Until then nothing is deployed. Default (not agreed): GitHub Pages.
 on:
   push:
     branches: [main]
     paths:
       - "docs-site/**"
+      - "docs/**"
       - "api/openapi/v1.yaml"
-      - "docs/16-webhooks.md"
-      - "docs/18-sdks.md"
-      - "docs/error-keys.md"
       - "mcp/README.md"
+      - "web/admin/src/features/connect/snippets.ts"
+      - "web/admin/src/locales/en.json"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "docs-site/**"
+      - "docs/**"
       - "api/openapi/v1.yaml"
-      - "docs/16-webhooks.md"
-      - "docs/18-sdks.md"
-      - "docs/error-keys.md"
       - "mcp/README.md"
+      - "web/admin/src/features/connect/snippets.ts"
+      - "web/admin/src/locales/en.json"
       - ".github/workflows/docs.yml"
 
 permissions:
@@ -38,9 +42,10 @@ jobs:
         working-directory: docs-site
     steps:
       - uses: actions/checkout@v5
+      # Node 22.18 or newer: the build imports the console's snippets.ts, which Node reads by stripping its types.
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: docs-site/package-lock.json
       - run: npm ci
@@ -48,5 +53,25 @@ jobs:
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
-          name: docs-site
+          name: ${{ github.event_name == 'pull_request' && format('docs-site-pr-{0}', github.event.number) || 'docs-site' }}
           path: docs-site/dist
+          retention-days: 14
+      - name: Pages artifact (only when this run will deploy)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DOCS_PUBLISH == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs-site/dist
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DOCS_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -84,7 +84,7 @@ func TestSyncCatalogueCreatesTheProductAndEachPrice(t *testing.T) {
 		t.Fatalf("result = %+v", res)
 	}
 	p := rt.find("POST", "/products")[0].body
-	if p["name"] != "Pro" || p["tax_category"] != "saas" || p["custom_data"].(map[string]any)["quotify_plan_code"] != "pro" {
+	if p["name"] != "Pro" || p["tax_category"] != "saas" || p["custom_data"].(map[string]any)["payrudder_plan_code"] != "pro" {
 		t.Errorf("product = %v", p)
 	}
 	prices := rt.find("POST", "/prices")
@@ -133,7 +133,7 @@ func TestEnsureCustomerFindsOrCreates(t *testing.T) {
 			t.Errorf("search query = %q", q)
 		}
 		cb := rt.find("POST", "/customers")[0].body
-		if cb["email"] != "a+b@example.com" || cb["custom_data"].(map[string]any)["quotify_customer_id"] != "cus_1" {
+		if cb["email"] != "a+b@example.com" || cb["custom_data"].(map[string]any)["payrudder_customer_id"] != "cus_1" {
 			t.Errorf("customer = %v", cb)
 		}
 		if ab := rt.find("POST", "/customers/ctm_01/addresses")[0].body; ab["country_code"] != "DE" || ab["postal_code"] != "10115" {
@@ -302,5 +302,84 @@ func TestCreateDiscount(t *testing.T) {
 	}
 	if rt2.find("POST", "/discounts")[0].body["currency_code"] != "USD" {
 		t.Error("a flat discount carries its currency")
+	}
+}
+
+// Paddle pages its lists by cursor: has_more says there is another page and the after value of next is where it starts. The next URL is never fetched.
+func TestListsFollowThePaginationCursor(t *testing.T) {
+	var afters []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		afters = append(afters, r.URL.Query().Get("after"))
+		if r.Header.Get("Skip-Count") != "true" {
+			t.Errorf("a list call without Skip-Count")
+		}
+		switch r.URL.Query().Get("after") {
+		case "":
+			_, _ = io.WriteString(w, `{"data":[{"id":"add_1","country_code":"FR"}],"meta":{"pagination":{"per_page":1,"next":"https://evil.example/customers/ctm_01/addresses?after=add_1&per_page=200","has_more":true}}}`)
+		default:
+			_, _ = io.WriteString(w, `{"data":[{"id":"add_2","country_code":"DE"}],"meta":{"pagination":{"per_page":1,"next":"https://evil.example/x?after=add_2","has_more":false}}}`)
+		}
+	}))
+	defer srv.Close()
+	c, _ := New(Settings{APIKey: "pdl_key", BaseURL: srv.URL, WebhookSecret: "w", UsageProductID: "pro_u"}, 0)
+	got, err := listAll[struct {
+		ID string `json:"id"`
+	}](context.Background(), c, "/customers/ctm_01/addresses?per_page=200")
+	if err != nil || len(got) != 2 || got[0].ID != "add_1" || got[1].ID != "add_2" || len(afters) != 2 || afters[1] != "add_1" {
+		t.Fatalf("got %+v, %v; cursors %v", got, err, afters)
+	}
+}
+
+func TestListStopsOnAPageThatHasMoreWithoutACursor(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, `{"data":[],"meta":{"pagination":{"next":"","has_more":true}}}`)
+	}))
+	defer srv.Close()
+	c, _ := New(Settings{APIKey: "pdl_key", BaseURL: srv.URL, WebhookSecret: "w", UsageProductID: "pro_u"}, 0)
+	if _, err := listAll[struct{}](context.Background(), c, "/customers"); err == nil {
+		t.Error("an endless list must end in an error")
+	}
+}
+
+func TestEnsureCustomerFindsThePageTheAddressIsOn(t *testing.T) {
+	_, c := newRouter(t, map[string]string{
+		"GET /customers":                   `{"data":[{"id":"ctm_01"}],"meta":{"pagination":{"has_more":false,"next":""}}}`,
+		"GET /customers/ctm_01/addresses":  `{"data":[{"id":"add_9","country_code":"DE"}],"meta":{"pagination":{"has_more":false,"next":""}}}`,
+		"GET /customers/ctm_01/businesses": `{"data":[]}`,
+	})
+	refs, err := c.EnsureCustomer(context.Background(), payments.CustomerSpec{Email: "a@example.com", Country: "DE"})
+	if err != nil || refs.CustomerRef != "ctm_01" || refs.AddressRef != "add_9" {
+		t.Fatalf("refs = %+v, %v", refs, err)
+	}
+}
+
+// An archived customer is not in the search but still owns the e-mail address: Paddle answers 409 customer_already_exists and names it.
+func TestEnsureCustomerReusesTheCustomerThatOwnsTheEmail(t *testing.T) {
+	existing := "ctm_01ghbk4xjn4qdsmstcwzgcgg35"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method + " " + r.URL.Path {
+		case "GET /customers":
+			_, _ = io.WriteString(w, `{"data":[]}`)
+		case "POST /customers":
+			w.WriteHeader(http.StatusConflict)
+			_, _ = io.WriteString(w, `{"error":{"type":"request_error","code":"customer_already_exists","detail":"Customer email conflicts with existing customer ID `+existing+`."}}`)
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+	c, _ := New(Settings{APIKey: "pdl_key", BaseURL: srv.URL, WebhookSecret: "w", UsageProductID: "pro_u"}, 0)
+	refs, err := c.EnsureCustomer(context.Background(), payments.CustomerSpec{Email: "a@example.com"})
+	if err != nil || refs.CustomerRef != existing {
+		t.Fatalf("refs = %+v, %v", refs, err)
+	}
+}
+
+func TestPreviewReportsACreditAsItsSize(t *testing.T) {
+	_, c := newRouter(t, map[string]string{"PATCH /subscriptions/sub_01/preview": `{"data":{"currency_code":"USD","update_summary":{
+		"credit":{"amount":"-4927","currency_code":"USD"},"charge":{"amount":"83765","currency_code":"USD"},"result":{"action":"charge","amount":"78838","currency_code":"USD"}}}}`})
+	p, err := c.PreviewChange(context.Background(), "sub_01", payments.ProviderChange{Items: []payments.ChangeItem{{PriceRef: "pri_9"}}, Timing: "immediately"})
+	if err != nil || p.CreditMinor != 4927 || p.ChargeMinor != 83765 || p.ResultMinor != 78838 {
+		t.Fatalf("preview = %+v, %v; the documented example has a negative credit", p, err)
 	}
 }

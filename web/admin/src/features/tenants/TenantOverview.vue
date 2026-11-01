@@ -7,8 +7,9 @@ import { parseQuery, toSearch, type DashQuery } from "@/features/dashboard/lib";
 import { InvoiceTable } from "@/features/invoices";
 import { Card } from "@/shared/ui/card";
 import JobLookup from "./JobLookup.vue";
+import TenantStatusCard from "./TenantStatusCard.vue";
 
-/** A tenant for the operator: the dashboard of the tenant, its newest invoices and the lookup of replay and re-rating jobs. */
+/** A tenant for the operator: the dashboard of the tenant, its newest invoices, its status (with the history of its changes) and the lookup of replay and re-rating jobs. */
 const { t } = useI18n();
 const params = useParams({ strict: false });
 const search = useSearch({ strict: false });
@@ -29,6 +30,8 @@ function setQuery(q: DashQuery) {
     <h2 class="px-3 pt-2 text-lg font-semibold">{{ t("tenant.invoices") }}</h2>
     <InvoiceTable :tenant-id="id" />
   </Card>
+
+  <TenantStatusCard :tenant-id="id" class="mb-6" />
 
   <Card>
     <div>

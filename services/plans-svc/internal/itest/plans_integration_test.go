@@ -42,6 +42,9 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("Subscriptions", testSubscriptions)
 	t.Run("SubscriptionLifecycle", testSubscriptionLifecycle)
 	t.Run("CustomerBlock", testCustomerBlock)
+	t.Run("CustomerBlockDetails", testCustomerBlockDetails)
+	t.Run("TenantStatus", testTenantStatus)
+	t.Run("TenantStatusApproval", testTenantStatusApproval)
 	t.Run("PriceChange", testPriceChange)
 	t.Run("SubscriptionChanges", testSubscriptionChanges)
 	t.Run("SubscriptionQuantity", testSubscriptionQuantity)
@@ -155,8 +158,13 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 			return err
 		}
 		// An override row without SetEntitlementOverride, which would publish the subscription's entitlements again (testEntitlementOutbox counts them).
-		_, err = tx.Exec(context.Background(), `INSERT INTO customer_entitlement_overrides (tenant_id, customer_id, meter_code, limit_units, quota_window, mode)
-			SELECT app_tenant_id(), id, 'gb_hours', 200000, 'day', 'notify' FROM customers LIMIT 1`)
+		if _, err = tx.Exec(context.Background(), `INSERT INTO customer_entitlement_overrides (tenant_id, customer_id, meter_code, limit_units, quota_window, mode)
+			SELECT app_tenant_id(), id, 'gb_hours', 200000, 'day', 'notify' FROM customers LIMIT 1`); err != nil {
+			return err
+		}
+		// A line of a customer's block history without blocking the fixture's customer, which later steps use.
+		_, err = tx.Exec(context.Background(), `INSERT INTO customer_block_events (tenant_id, id, customer_id, action, actor)
+			SELECT app_tenant_id(), gen_random_uuid(), id, 'blocked', 'seed' FROM customers LIMIT 1`)
 		return err
 	}); err != nil {
 		t.Fatal(err)

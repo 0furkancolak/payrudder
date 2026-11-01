@@ -8,7 +8,9 @@ import (
 	"github.com/google/uuid"
 
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/mailcategory"
+	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 )
@@ -45,5 +47,26 @@ func TestHandleRefusesMalformedTenantID(t *testing.T) {
 	}
 	if _, err := (&Handler{Mailer: m}).Handle(context.Background(), cmd); !errors.Is(err, workerx.ErrPoison) {
 		t.Fatalf("err = %v, want ErrPoison", err)
+	}
+}
+
+type tenantStatus plansv1.TenantStatus
+
+func (s tenantStatus) Tenant(context.Context, uuid.UUID) (tenantinfo.Settings, error) {
+	return tenantinfo.Settings{Status: plansv1.TenantStatus(s)}, nil
+}
+
+// A notification for a tenant the operator has banned is answered as done and suppressed, so the saga goes on, and nothing is sent: the mailer has no store, so
+// reaching Deliver would panic.
+func TestNotificationOfATenantOnHoldIsSuppressed(t *testing.T) {
+	h := &Handler{Mailer: &delivery.Mailer{Tenants: tenantStatus(plansv1.TenantStatus_TENANT_STATUS_BANNED)}}
+	cmd := &commandsv1.CommandEnvelope{CommandId: uuid.NewString(), TenantId: uuid.NewString(), Command: &commandsv1.CommandEnvelope_SendNotification{
+		SendNotification: &commandsv1.SendNotification{To: "customer@example.com", Template: "invoice_paid.v1"}}}
+	reply, err := h.Handle(context.Background(), cmd)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reply.GetNotificationSent().GetSuppressed() {
+		t.Fatalf("reply = %v, want suppressed", reply)
 	}
 }

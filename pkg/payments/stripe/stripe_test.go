@@ -146,10 +146,12 @@ func TestChargeRefusesWhatStripeWouldRound(t *testing.T) {
 	c, _ := New(Settings{APIKey: key, WebhookSecret: secret}, 0)
 	r := payments.ChargeRequest{IdempotencyKey: "k", PaymentMethod: "pm_x"}
 	for name, mod := range map[string]func(*payments.ChargeRequest){
-		"a KWD amount not ending in 0": func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor = "KWD", 1234 },
-		"a zero amount":                func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor = "USD", 0 },
-		"no payment method id":         func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor, r.PaymentMethod = "USD", 100, "card_x" },
-		"no idempotency key":           func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor, r.IdempotencyKey = "USD", 100, "" },
+		"a KWD amount not ending in 0":           func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor = "KWD", 1234 },
+		"a zero amount":                          func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor = "USD", 0 },
+		"ISK, which Stripe counts in hundredths": func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor = "ISK", 500 },
+		"UGX, likewise":                          func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor = "UGX", 500 },
+		"no payment method id":                   func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor, r.PaymentMethod = "USD", 100, "card_x" },
+		"no idempotency key":                     func(r *payments.ChargeRequest) { r.Currency, r.AmountMinor, r.IdempotencyKey = "USD", 100, "" },
 	} {
 		x := r
 		mod(&x)
@@ -330,5 +332,142 @@ func TestRefundStatus(t *testing.T) {
 		if (err != nil) != wantErr {
 			t.Errorf("status %q: err = %v, want error %v", status, err, wantErr)
 		}
+	}
+}
+
+// Every request names the API version, so the account's default moving does not change what the adapter reads.
+func TestEveryRequestPinsTheAPIVersion(t *testing.T) {
+	f := newFake(t, 200, `{"id":"pi_1","status":"succeeded"}`)
+	c := f.client(t)
+	_, _ = c.Charge(context.Background(), payments.ChargeRequest{IdempotencyKey: "k", AmountMinor: 100, Currency: "USD", PaymentMethod: "pm_x"})
+	if got := f.last.Header.Get("Stripe-Version"); got != APIVersion || APIVersion != "2026-09-30.endive" {
+		t.Errorf("Stripe-Version = %q, want %q", got, APIVersion)
+	}
+	_ = c.CheckHealth(context.Background())
+	if got := f.last.Header.Get("Stripe-Version"); got != APIVersion {
+		t.Errorf("on a GET: Stripe-Version = %q", got)
+	}
+	pinned, err := New(Settings{APIKey: key, WebhookSecret: secret, BaseURL: f.srv.URL, APIVersion: "2026-10-28.endive"}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = pinned.CheckHealth(context.Background())
+	if got := f.last.Header.Get("Stripe-Version"); got != "2026-10-28.endive" {
+		t.Errorf("an override: Stripe-Version = %q", got)
+	}
+}
+
+// A payment method attached to a Customer is charged with that Customer.
+func TestChargeWithTheCustomerThePaymentMethodIsAttachedTo(t *testing.T) {
+	f := newFake(t, 200, `{"id":"pi_1","status":"succeeded"}`)
+	req := payments.ChargeRequest{IdempotencyKey: "k", AmountMinor: 100, Currency: "USD"}
+	req.PaymentMethod = "cus_A:pm_B"
+	if _, err := f.client(t).Charge(context.Background(), req); err != nil || f.form.Get("customer") != "cus_A" || f.form.Get("payment_method") != "pm_B" {
+		t.Fatalf("charge with a customer: %v %v", err, f.form)
+	}
+	req.PaymentMethod = "pm_B"
+	if _, err := f.client(t).Charge(context.Background(), req); err != nil || f.form.Has("customer") || f.form.Get("payment_method") != "pm_B" {
+		t.Fatalf("charge without one: %v %v", err, f.form)
+	}
+	for _, bad := range []string{"cus_A:card_B", "acct_A:pm_B", ":pm_B", "cus_A:"} {
+		req.PaymentMethod = bad
+		if _, err := f.client(t).Charge(context.Background(), req); err == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+}
+
+func TestRefusalsAreRetriedAsStripeSays(t *testing.T) {
+	for name, tc := range map[string]struct {
+		status int
+		header map[string]string
+		body   string
+		want   string
+	}{
+		"500":                                  {500, nil, `{}`, "transient"},
+		"a rate limit":                         {429, map[string]string{"Stripe-Rate-Limited-Reason": "endpoint-rate"}, `{"error":{"type":"invalid_request_error","code":"rate_limit"}}`, "transient"},
+		"another request with the key is busy": {409, nil, `{"error":{"type":"invalid_request_error","code":"idempotency_key_in_use"}}`, "transient"},
+		"a dependency outside Stripe failed":   {424, nil, `{"error":{"type":"api_error"}}`, "transient"},
+		"Stripe says retry":                    {400, map[string]string{"Stripe-Should-Retry": "true"}, `{}`, "transient"},
+		"Stripe says do not retry a 500":       {500, map[string]string{"Stripe-Should-Retry": "false"}, `{}`, "refused"},
+		"Stripe says do not retry a 409":       {409, map[string]string{"Stripe-Should-Retry": "false"}, `{}`, "refused"},
+		"a request Stripe refused":             {400, nil, `{"error":{"type":"invalid_request_error","code":"parameter_invalid_integer"}}`, "refused"},
+		"a key used with other parameters":     {400, nil, `{"error":{"type":"idempotency_error","code":"idempotency_key_in_use"}}`, "refused"},
+		"a wrong key":                          {401, nil, `{"error":{"type":"invalid_request_error"}}`, "refused"},
+		"a card error":                         {402, nil, `{"error":{"type":"card_error","code":"card_declined","decline_code":"do_not_honor"}}`, "decline do_not_honor"},
+		"authentication that was not handled":  {402, nil, `{"error":{"type":"card_error","code":"card_declined","decline_code":"authentication_not_handled"}}`, "decline authentication_required"},
+		"authentication required":              {402, nil, `{"error":{"type":"card_error","code":"authentication_required"}}`, "decline authentication_required"},
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			for k, v := range tc.header {
+				w.Header().Set(k, v)
+			}
+			w.WriteHeader(tc.status)
+			_, _ = io.WriteString(w, tc.body)
+		}))
+		c, _ := New(Settings{APIKey: key, WebhookSecret: secret, BaseURL: srv.URL}, 0)
+		_, err := c.Charge(context.Background(), payments.ChargeRequest{IdempotencyKey: "k", AmountMinor: 100, Currency: "USD", PaymentMethod: "pm_x"})
+		srv.Close()
+		var tr *payments.TransientError
+		var d *payments.DeclinedError
+		var e *Error
+		got := "other"
+		switch {
+		case errors.As(err, &tr):
+			got = "transient"
+		case errors.As(err, &d):
+			got = "decline " + d.Code
+		case errors.As(err, &e):
+			got = "refused"
+		}
+		if got != tc.want {
+			t.Errorf("%s: %v = %s, want %s", name, err, got, tc.want)
+		}
+		if tc.header["Stripe-Rate-Limited-Reason"] != "" && !strings.Contains(err.Error(), "endpoint-rate") {
+			t.Errorf("%s: the rate limit reason is lost: %v", name, err)
+		}
+	}
+}
+
+// The balance says which mode the account is in; a key whose prefix says otherwise is refused.
+func TestHealthComparesTheKeyModeWithTheAccountMode(t *testing.T) {
+	for body, wantErr := range map[string]bool{`{"object":"balance","livemode":false}`: false, `{"object":"balance","livemode":true}`: true, `{"object":"balance"}`: false} {
+		f := newFake(t, 200, body)
+		err := f.client(t).CheckHealth(context.Background()) // an sk_test_ key
+		if (err != nil) != wantErr || wantErr && !errors.Is(err, payments.ErrLivemodeMismatch) {
+			t.Errorf("%s: %v, want error %v", body, err, wantErr)
+		}
+	}
+}
+
+// Saving the customer is off unless the account asks, and then it is the documented pair: a Customer is created and the method is kept for off-session use.
+func TestInvoiceCheckoutSavesTheCustomerOnlyWhenAsked(t *testing.T) {
+	req := payments.CheckoutInvoiceRequest{IdempotencyKey: "link:inv-1:1", InvoiceID: "inv-1", AmountMinor: 2000, Currency: "USD", ReturnURL: "https://app.example/c/x"}
+	f := newFake(t, 200, `{"id":"cs_1","url":"https://checkout.stripe.com/c/pay/cs_1"}`)
+	if _, err := f.client(t).CreateInvoiceCheckout(context.Background(), req); err != nil || f.form.Has("customer_creation") || f.form.Has("payment_intent_data[setup_future_usage]") {
+		t.Fatalf("by default: %v %v", err, f.form)
+	}
+	saving, _ := New(Settings{APIKey: key, WebhookSecret: secret, BaseURL: f.srv.URL, SaveCustomer: true}, 0)
+	if _, err := saving.CreateInvoiceCheckout(context.Background(), req); err != nil || f.form.Get("customer_creation") != "always" || f.form.Get("payment_intent_data[setup_future_usage]") != "off_session" {
+		t.Fatalf("with save_customer: %v %v", err, f.form)
+	}
+}
+
+// These events exist at Stripe and are deliberately not acted on (docs/stripe-compatibility-matrix.md, finding 8).
+func TestEventsThatAreDeliberatelyIgnored(t *testing.T) {
+	c, _ := New(Settings{APIKey: key, WebhookSecret: secret}, 0)
+	now := time.Now()
+	c.now = func() time.Time { return now }
+	for _, typ := range []string{"payment_intent.requires_action", "payment_intent.processing", "setup_intent.succeeded", "checkout.session.expired", "charge.dispute.created", "payment_method.attached", "charge.refund.updated"} {
+		body := `{"id":"evt_x","type":"` + typ + `","data":{"object":{"id":"x","status":"succeeded","metadata":{"payrudder_key":"k"}}}}`
+		n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now))
+		if err != nil || n.Kind != payments.KindIgnored {
+			t.Errorf("%s: %+v %v", typ, n, err)
+		}
+	}
+	// A completed session with nothing to pay (a setup, a zero total) settles nothing.
+	body := `{"id":"evt_y","type":"checkout.session.completed","data":{"object":{"payment_status":"no_payment_required","metadata":{"payrudder_key":"k"}}}}`
+	if n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now)); err != nil || n.Kind != payments.KindIgnored {
+		t.Errorf("no_payment_required: %+v %v", n, err)
 	}
 }

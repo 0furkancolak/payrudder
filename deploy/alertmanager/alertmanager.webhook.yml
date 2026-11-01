@@ -2,26 +2,32 @@
 #
 #   page  - wakes someone: the process, the data or the money is at risk
 #   warn  - looked at in working hours
+#   none  - the Watchdog alert, which always fires: the dead man's switch
 #
-# This is the file to use when alerts must reach people: the URL in the file ALERT_WEBHOOK_URL_FILE names is where they are posted as Alertmanager's JSON (a chat bridge, an
-# incident tool, an on-call service; the URL is a secret, so it is read from a file and never written here). Select this file with
-# ALERTMANAGER_CONFIG=../alertmanager/alertmanager.webhook.yml and point ALERT_WEBHOOK_URL_FILE at a file holding the URL. alertmanager.yml keeps alerts in
-# Alertmanager only (http://localhost:42993), which needs no setup.
+# This is the file to use when alerts must reach people: the URL in the file ALERT_WEBHOOK_URL_FILE names is where page and warn alerts are posted as Alertmanager's JSON (a
+# chat bridge, an incident tool, an on-call service), and the URL in ALERT_WATCHDOG_URL_FILE receives the Watchdog heartbeat every minute (a heartbeat monitor that pages when
+# it stops: the one failure no alert inside the stack can report). The URLs are secrets, so they are read from files and never written here. Select this file with
+# ALERTMANAGER_CONFIG=../alertmanager/alertmanager.webhook.yml. alertmanager.yml mails Mailpit and needs no setup. For PagerDuty, Slack or e-mail instead of a webhook, see
+# alertmanager.receivers.example.yml (the receivers section is the only difference).
 global:
   resolve_timeout: 5m
 
 route:
-  receiver: keep
+  receiver: team   # an alert without a severity is looked at in working hours
   group_by: [alertname, service]
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
   routes:
+    - matchers: [alertname="Watchdog"]
+      receiver: watchdog
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
     - matchers: [severity="page"]
       receiver: on-call
       group_wait: 10s
       repeat_interval: 1h
-      continue: false
     - matchers: [severity="warn"]
       receiver: team
       repeat_interval: 12h
@@ -33,8 +39,6 @@ inhibit_rules:
     equal: [service]
 
 receivers:
-  # Alerts only stay in Alertmanager.
-  - name: keep
   - name: on-call
     webhook_configs:
       - url_file: /etc/alertmanager/webhook_url
@@ -45,3 +49,7 @@ receivers:
       - url_file: /etc/alertmanager/webhook_url
         send_resolved: true
         max_alerts: 20
+  - name: watchdog
+    webhook_configs:
+      - url_file: /etc/alertmanager/watchdog_url
+        send_resolved: false

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/jackc/pgx/v5"
@@ -34,11 +35,26 @@ func TenantTables(ctx context.Context, q Querier, allow []string) ([]string, err
 }
 
 // VerifyForcedRLS fails for every table with a tenant_id column that lacks ENABLE + FORCE ROW LEVEL SECURITY or a
-// policy. Tables in allow are skipped (they must be justified in the data-model doc). Every service runs this in CI.
+// policy. Tables in allow are skipped (they must be justified in the data-model doc). Every service runs this in CI, and billing-svc, payments-worker and
+// assets-svc run it at startup too (the tables with Postgres but no verifier before docs/plans/22 G11).
 func VerifyForcedRLS(ctx context.Context, q Querier, allow []string) error {
-	tables, err := TenantTables(ctx, q, allow)
+	problems, err := RLSProblems(ctx, q, allow)
 	if err != nil {
 		return err
+	}
+	var errs []error
+	for _, table := range slices.Sorted(maps.Keys(problems)) {
+		errs = append(errs, fmt.Errorf("table %s: %s", table, problems[table]))
+	}
+	return errors.Join(errs...)
+}
+
+// RLSProblems says, for every table with a tenant_id column that is not in allow, what its row level security lacks (not enabled, not forced, no policy). A table
+// that is fine is not in the answer.
+func RLSProblems(ctx context.Context, q Querier, allow []string) (map[string]string, error) {
+	tables, err := TenantTables(ctx, q, allow)
+	if err != nil {
+		return nil, err
 	}
 	rows, err := q.Query(ctx, `
 		SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity,
@@ -46,7 +62,7 @@ func VerifyForcedRLS(ctx context.Context, q Querier, allow []string) error {
 		FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 		WHERE n.nspname = 'public' AND c.relname = ANY($1)`, tables)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	type state struct {
 		name                  string
@@ -58,18 +74,18 @@ func VerifyForcedRLS(ctx context.Context, q Querier, allow []string) error {
 		return s, err
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var errs []error
+	problems := map[string]string{}
 	for _, s := range states {
 		switch {
 		case !s.enabled:
-			errs = append(errs, fmt.Errorf("table %s: row level security not enabled", s.name))
+			problems[s.name] = "row level security not enabled"
 		case !s.forced:
-			errs = append(errs, fmt.Errorf("table %s: row level security not forced", s.name))
+			problems[s.name] = "row level security not forced"
 		case !s.poly:
-			errs = append(errs, fmt.Errorf("table %s: no RLS policy", s.name))
+			problems[s.name] = "no RLS policy"
 		}
 	}
-	return errors.Join(errs...)
+	return problems, nil
 }

@@ -1,0 +1,53 @@
+name: snippets
+
+# The code that the console's "Connect your app" page hands to a developer (web/admin/src/features/connect/snippets.ts) is compiled against the SDKs in this checkout:
+# TypeScript with tsc, Python imported and its calls looked up, Go vetted in a module that replaces the SDK, PHP linted and its classes looked up, and the curl command run
+# against a local server. No stack is needed. The same test runs in the console's own job where the tools happen to exist; here every tool is required, so a language
+# is never silently skipped.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/admin/src/features/connect/**"
+      - "sdk/**"
+      - ".github/workflows/snippets.yml"
+  pull_request:
+    paths:
+      - "web/admin/src/features/connect/**"
+      - "sdk/**"
+      - ".github/workflows/snippets.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snippets-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/admin/package-lock.json
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: sdk/go/go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+      - run: pip install httpx
+      - run: npm ci --no-audit --no-fund
+        working-directory: web/admin
+      - name: Compile every snippet against the local SDKs
+        working-directory: web/admin
+        env:
+          SNIPPETS_REQUIRE_TOOLS: "1"
+        run: npx vitest run src/features/connect/snippets.sdk.test.ts

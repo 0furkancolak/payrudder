@@ -39,9 +39,11 @@ tools/payrudderctl/payrudderctl
 /docs-site/dist/
 /docs-site/node_modules/
 
-# MCP server
+# MCP server (generated from api/openapi/v1.yaml and the docs by `npm run generate`)
 /mcp/dist/
 /mcp/node_modules/
+/mcp/src/generated/
+/mcp/assets/
 
 
 # Built service binaries (go build in a service directory writes one next to main.go)

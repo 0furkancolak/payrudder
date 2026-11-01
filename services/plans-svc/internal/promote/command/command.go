@@ -24,6 +24,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	couponscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/command"
 	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
@@ -113,8 +114,8 @@ func (c *Commands) Promote(ctx context.Context, req *plansv1.PromoteMyAppRequest
 		return nil, err
 	}
 	liveActive := live.GetStatus() == plansv1.TenantStatus_TENANT_STATUS_ACTIVE
-	if live.GetStatus() == plansv1.TenantStatus_TENANT_STATUS_SUSPENDED {
-		return nil, errkey.New(codes.FailedPrecondition, "identity.go_live.suspended", "this environment is suspended: contact support")
+	if paymentgate.OnHold(live.GetStatus()) {
+		return nil, errkey.New(codes.FailedPrecondition, "identity.go_live.suspended", "this environment is on hold (suspended, frozen or banned): contact support")
 	}
 
 	all, err := c.plan(sctx, lctx, liveActive)

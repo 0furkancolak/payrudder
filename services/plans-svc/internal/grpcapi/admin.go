@@ -43,13 +43,13 @@ type AdminServer struct {
 }
 
 // newAdmin returns AdminService on the system pool. evict drops revoked keys from the gateway cache (nil: they stay valid there until its TTL).
-// allowedEnvs is PAYRUDDER_ALLOWED_ENVIRONMENTS ("sandbox", "live").
-func newAdmin(systemPool *pgxpool.Pool, evict apikeyscmd.Evictor, allowedEnvs []string, log *slog.Logger) *AdminServer {
+// allowedEnvs is PAYRUDDER_ALLOWED_ENVIRONMENTS ("sandbox", "live"); banApproval is PAYRUDDER_TENANT_BAN_APPROVAL.
+func newAdmin(systemPool *pgxpool.Pool, evict apikeyscmd.Evictor, allowedEnvs []string, banApproval bool, log *slog.Logger) *AdminServer {
 	accounts := accountscmd.New(systemPool, allowedEnvs, log)
 	keys := apikeyscmd.New(systemPool, evict, log)
 	return &AdminServer{
 		accountsHandler: accountsapi.New(accounts, accountsqry.New(systemPool)),
-		tenantsHandler:  tenantsapi.New(tenantscmd.New(systemPool, keys, log), tenantsqry.New(systemPool)),
+		tenantsHandler:  tenantsapi.New(tenantscmd.New(systemPool, keys, log).WithBanApproval(banApproval), tenantsqry.New(systemPool)),
 		apiKeysHandler:  apikeysapi.New(keys, apikeysqry.New(systemPool)),
 		accounts:        accounts,
 		keys:            keys,

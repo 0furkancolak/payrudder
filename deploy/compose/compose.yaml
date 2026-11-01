@@ -2,6 +2,7 @@
 #   default (no profile): infrastructure       make up-infra
 #   obs:   otel-collector, prometheus, alertmanager, pushgateway, tempo, loki, vector, grafana, postgres-exporter, redis-exporter
 #   ops:   backup (pg_dump every night, restore drill every week; needs the default profile's postgres)
+#          + with compose.pitr.yaml on top (make up-pitr): pitr-agent, WAL archiving and a base backup a day for point-in-time recovery
 #   app:   Payrudder services                    make up
 #   chaos: toxiproxy                           Phase 09
 #   oidc:  mockoidc, a stand-in for Google    (development only)
@@ -179,6 +180,13 @@ services:
             mc ilm rule add --expire-days 30 --tags 'environment=sandbox' "local/$$b"
           fi
         done
+        # Backups never take the sandbox expiry rule above: their own retention is per prefix (base backups 8 days, the WAL since the oldest of them 9, dumps 30).
+        mc mb --ignore-existing local/backups
+        if [[ $$(mc ilm rule ls --json local/backups 2>/dev/null || true) != *pitr/wal* ]]; then
+          mc ilm rule add --expire-days 9 --prefix pitr/wal/ local/backups
+          mc ilm rule add --expire-days 8 --prefix pitr/base/ local/backups
+          mc ilm rule add --expire-days 30 --prefix dumps/ local/backups
+        fi
         echo buckets ready
     restart: "no"
 
@@ -283,6 +291,7 @@ services:
     volumes:
       - ${ALERTMANAGER_CONFIG:-../alertmanager/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
       - ${ALERT_WEBHOOK_URL_FILE:-../alertmanager/webhook_url.example}:/etc/alertmanager/webhook_url:ro
+      - ${ALERT_WATCHDOG_URL_FILE:-../alertmanager/webhook_url.example}:/etc/alertmanager/watchdog_url:ro
       - alertmanager-data:/alertmanager
     ports: ["42993:9093"]
     healthcheck:
@@ -354,7 +363,7 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
-        apk add --no-cache curl >/dev/null
+        apk add --no-cache curl $${BACKUP_S3_URL:+aws-cli} >/dev/null
         n=0
         while true; do
           sh /scripts/backup.sh || true
@@ -369,6 +378,7 @@ services:
       BACKUP_DIR: /backups
       BACKUP_KEEP: ${BACKUP_KEEP:-7}
       BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_S3_URL: ${BACKUP_S3_URL:-}
       PUSHGATEWAY_URL: ${PUSHGATEWAY_URL:-http://pushgateway:9091}
     volumes:
       - ../backup:/scripts:ro

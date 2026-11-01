@@ -360,7 +360,10 @@ type BillingRun struct {
 // BlockCustomerRequest is the request body of BlockCustomer.
 type BlockCustomerRequest struct {
 	// Your note on why; never shown to the customer.
-	Reason string `json:"reason,omitempty"`
+	Reason   string `json:"reason,omitempty"`
+	Category string `json:"category,omitempty"`
+	// When the block ends by itself; must be in the future. Absent: until you lift it.
+	BlockedUntil *time.Time `json:"blocked_until,omitempty"`
 }
 
 // CancelSubscriptionResponse is the response of CancelSubscription.
@@ -1104,10 +1107,29 @@ type Customer struct {
 	Locale string `json:"locale"`
 	// individual (a person) or business (a taxpayer with a tax id). Empty is unknown.
 	CustomerType string `json:"customer_type"`
-	// Set while the customer is blocked: no new subscription can be created for them (existing ones run on).
+	// Set while the customer is blocked: no new subscription, plan change or purchase (existing subscriptions run
+	// on). A block whose blocked_until has passed has ended, whatever this says.
 	BlockTime *time.Time `json:"block_time,omitempty"`
 	// The seller's own note on the block; never shown to the customer.
 	BlockReason string `json:"block_reason"`
+	// Why: fraud, chargeback, abuse, request or other; empty when none was given.
+	BlockCategory string `json:"block_category"`
+	// When the block ends by itself; absent: until it is lifted.
+	BlockedUntil *time.Time `json:"blocked_until,omitempty"`
+}
+
+// CustomerBlockEvent is an object of the API; see components.schemas.CustomerBlockEvent in api/openapi/v1.yaml.
+type CustomerBlockEvent struct {
+	ID string `json:"id"`
+	// One of: blocked, unblocked.
+	Action string `json:"action"`
+	// Empty when none was given; else a CustomerBlockCategory
+	Category     string     `json:"category"`
+	Reason       string     `json:"reason"`
+	BlockedUntil *time.Time `json:"blocked_until,omitempty"`
+	// A person's address, key:<api key id>, or operator
+	Actor      string    `json:"actor"`
+	CreateTime time.Time `json:"create_time"`
 }
 
 // CustomerContact is an object of the API; see components.schemas.CustomerContact in api/openapi/v1.yaml.
@@ -1744,6 +1766,11 @@ type ListCreditNotesResponse struct {
 	NextPageToken string       `json:"next_page_token"`
 }
 
+// ListCustomerBlockEventsResponse is the response of ListCustomerBlockEvents.
+type ListCustomerBlockEventsResponse struct {
+	Events []CustomerBlockEvent `json:"events"`
+}
+
 // ListCustomerPaymentsResponse is the response of ListCustomerPayments.
 type ListCustomerPaymentsResponse struct {
 	Invoices []Invoice         `json:"invoices"`
@@ -2011,7 +2038,7 @@ type Price struct {
 type PriceChangeSkipped struct {
 	SubscriptionID     string `json:"subscription_id"`
 	CustomerExternalID string `json:"customer_external_id"`
-	// One of: renews_soon, has_pending_change, run_by_provider, not_changeable.
+	// One of: renews_soon, has_pending_change, run_by_provider, not_changeable, customer_blocked.
 	Reason string `json:"reason"`
 }
 

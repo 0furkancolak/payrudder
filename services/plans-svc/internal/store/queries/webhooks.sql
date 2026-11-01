@@ -79,6 +79,11 @@ WHERE d.tenant_id = @tenant_id AND d.id = @id;
 UPDATE webhook_deliveries SET next_attempt_at = @next_attempt_at, last_status = NULLIF(@last_status::int, 0), last_error = @last_error::text
 WHERE tenant_id = @tenant_id AND id = @id;
 
+-- A delivery of a tenant on hold is not sent and does not count as an attempt (the claim added one): it waits and is looked at again.
+-- name: HoldWebhookDelivery :exec
+UPDATE webhook_deliveries SET attempts = GREATEST(attempts - 1, 0), next_attempt_at = @next_attempt_at
+WHERE tenant_id = @tenant_id AND id = @id;
+
 -- name: FinishWebhookDelivery :exec
 UPDATE webhook_deliveries SET state = @state::text, last_status = NULLIF(@last_status::int, 0), last_error = NULLIF(@last_error::text, ''),
   delivered_at = CASE WHEN @state::text = 'delivered' THEN @delivered_at::timestamptz ELSE NULL END

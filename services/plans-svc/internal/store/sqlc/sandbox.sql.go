@@ -411,6 +411,18 @@ func (q *Queries) ResetCouponRedemptions(ctx context.Context, tenantID uuid.UUID
 	return result.RowsAffected(), nil
 }
 
+const resetCustomerBlockEvents = `-- name: ResetCustomerBlockEvents :execrows
+DELETE FROM customer_block_events WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetCustomerBlockEvents(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetCustomerBlockEvents, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetCustomerCoupons = `-- name: ResetCustomerCoupons :execrows
 
 DELETE FROM customer_coupons WHERE tenant_id = $1

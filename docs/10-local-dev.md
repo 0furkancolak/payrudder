@@ -71,7 +71,7 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 | rabbitmq | `rabbitmq:4-management` | 42672, 42673 (UI) | `definitions.json` loaded at boot |
 | redis | `redis:7` | 42379 | `appendonly yes`, `appendfsync everysec` |
 | clickhouse | `clickhouse/clickhouse-server` | 42123 (HTTP), 42900 (native) | |
-| minio | `cgr.dev/chainguard/minio@sha256:…` | 42901 (S3 API), 42902 (console) | S3-compatible store ([ADR 0013](adr/0013-s3-compatible-object-storage.md)). Bucket `invoices` + sandbox lifecycle rule created by an init container (`mc`) |
+| minio | `cgr.dev/chainguard/minio@sha256:…` | 42901 (S3 API), 42902 (console) | S3-compatible store ([ADR 0013](adr/0013-s3-compatible-object-storage.md)). Buckets `invoices`, `assets` (sandbox lifecycle rule) and `backups` (retention per prefix) created by an init container (`mc`) |
 | mailpit | `axllent/mailpit` | 42025 (SMTP), 42825 (UI) | catches tenants' customer mail (notifier) and the mail to people from plans-svc: verification, reset and invitation links |
 | toxiproxy | `ghcr.io/shopify/toxiproxy` | 42474 (API) | `profile: chaos` only |
 
@@ -81,6 +81,8 @@ File: `deploy/compose/compose.yaml`, with profiles so you can start only what yo
 |---|---|
 | otel-collector | 42317 (OTLP gRPC), 42318 (OTLP HTTP) |
 | prometheus | 42990 |
+| alertmanager | 42993 (alerts are mailed to Mailpit, [runbook](runbooks/backup-restore.md#alerts)) |
+| pushgateway | 42991 (the backup, WAL and restore-drill jobs report here) |
 | tempo | 42200 |
 | loki | internal only (Grafana queries it; Vector ships logs to it) |
 | grafana | 42300 (anonymous admin locally, dashboards provisioned) |
@@ -145,6 +147,10 @@ PAYMENTS_ALLOW_MOCK_LIVE=true                  # required with the line above: p
 | `make test-integration` | Integration tests (`-tags integration`, needs Docker) |
 | `make up` / `make down` | Compose `infra` + `obs` + `app` profiles up/down |
 | `make up-infra` | Only infrastructure (run services from your IDE) |
+| `make up-pitr` | Point-in-time recovery for the local Postgres: WAL archiving, a sidecar that ships it to MinIO and a daily base backup (recreates the postgres container, the data stays; [runbook](runbooks/backup-restore.md)) |
+| `make backup-drill` | Restore to a chosen minute on a throwaway stack, check the data, measure the RTO (about 5 minutes, Docker) |
+| `make test-backup-scripts` | The backup, restore and verify scripts against a throwaway Postgres; the Helm copies match |
+| `make alert-test` | Fire a test page and warning at the running Alertmanager; the mail lands in Mailpit |
 | `make migrate` | Run goose migrations for every service DB |
 | `make topics` | Create Kafka topics with the configs from [04-messaging.md](04-messaging.md) (`rpk topic create …`, idempotent). `make up-infra` and `make up` run it. Compose Redpanda has topic auto-creation off, so a missing topic fails loudly |
 | `make dev-seed` | Run the default dev seed again by hand (see [Default dev seed](#default-dev-seed)); idempotent, local stacks only |

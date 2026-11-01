@@ -233,7 +233,55 @@
       "rerating": "Yeniden fiyatlama işi"
     },
     "allStatuses": "Tüm durumlar",
-    "allKinds": "Tüm türler"
+    "allKinds": "Tüm türler",
+    "status": {
+      "title": "Durum",
+      "names": {
+        "active": "Aktif",
+        "inactive": "Henüz canlı değil",
+        "suspended": "Askıda",
+        "frozen": "Dondurulmuş",
+        "banned": "Yasaklı"
+      },
+      "effects": {
+        "active": "Hizmette: API anahtarları, ödeme sayfaları, ödeme takibi, müşteri e-postaları ve webhook'lar çalışır.",
+        "inactive": "Henüz canlı değil: canlıya geçiş listesi tamamlanana kadar anahtarı yoktur ve ödeme almaz.",
+        "suspended": "API anahtarları hemen durur. Ödeme sayfaları ve ödeme bağlantıları ödeme almaz, ödeme takibi tahsilat yapmaz, müşterilere e-posta gitmez ve webhook gönderimleri bekler.",
+        "frozen": "Salt okunur: API anahtarları ve konsol okumaya devam eder, hiçbir şey yazılmaz. Ödeme sayfaları ve ödeme bağlantıları ödeme almaz, ödeme takibi tahsilat yapmaz, müşterilere e-posta gitmez ve webhook gönderimleri bekler.",
+        "banned": "Askıya benzer ama kalıcı olması amaçlanır: API anahtarları hemen durur, hiçbir şey tahsil edilmez, e-posta veya webhook gitmez. Yasak koymak ve kaldırmak için gerekçe gerekir."
+      },
+      "to": "Yeni durum",
+      "category": "Kategori",
+      "categoryNone": "Kategori yok",
+      "categories": {
+        "nonpayment": "Ödememe",
+        "fraud": "Dolandırıcılık",
+        "abuse": "Kötüye kullanım",
+        "legal": "Hukuki",
+        "request": "Kendi talebi",
+        "other": "Diğer"
+      },
+      "reason": "Gerekçe",
+      "reasonHint": "Adresinizle birlikte geçmişte saklanır. En fazla 500 karakter.",
+      "reasonRequired": "Yasak koymak ve yasağı kaldırmak için gerekçe gerekir.",
+      "apply": "{status} olarak ayarla",
+      "confirm": {
+        "active": "{name} yeniden etkinleştirilsin mi? API anahtarları, ödeme sayfaları, e-posta ve webhook'lar yeniden çalışır.",
+        "suspended": "{name} askıya alınsın mı? API anahtarları hemen durur ve ödeme alamaz.",
+        "frozen": "{name} dondurulsun mu? API anahtarları ve konsol salt okunur olur, ödeme alamaz.",
+        "banned": "{name} yasaklansın mı? API anahtarları hemen durur, hiçbir şey tahsil edilmez, e-posta veya webhook gönderilmez."
+      },
+      "sandbox": "Sandbox ortamı her zaman aktiftir.",
+      "inactive": "Bu ortam henüz canlı değil. Canlıya geçiş listesinden etkinleştirilir.",
+      "history": "Geçmiş",
+      "historyEmpty": "Henüz değişiklik yok.",
+      "requested": "{to} olarak ayarlanması istendi: ikinci bir operatör bekleniyor",
+      "changed": "{from} → {to}",
+      "by": "{actor} tarafından",
+      "approvedBy": "{actor} onayladı",
+      "choose": "Bir durum seçin",
+      "applyNone": "Durumu ayarla"
+    }
   },
   "invoice": {
     "summary": "{kind} · dönem {period} · {customer} · {total} · {status} · saga {saga}",
@@ -572,8 +620,35 @@
         "badge": "Engelli",
         "action": "Engelle",
         "lift": "Engeli kaldır",
-        "confirm": "{name} engellensin mi? Onun için yeni abonelik oluşturulamaz. Mevcut abonelikleri sürer.",
-        "confirmMany": "{n} müşteri engellensin mi? Onlar için yeni abonelik oluşturulamaz. Mevcut abonelikleri sürer."
+        "confirm": "{name} engellensin mi? Onun için yeni abonelik, plan değişikliği veya satın alma başlatılamaz. Şu an sahip oldukları çalışmaya devam eder.",
+        "confirmMany": "{n} müşteri engellensin mi? Onlar için yeni abonelik, plan değişikliği veya satın alma başlatılamaz. Şu an sahip oldukları çalışmaya devam eder.",
+        "title": "{name} müşterisini engelle",
+        "description": "Bu müşteri için yeni abonelik, plan değişikliği veya satın alma başlatılamaz. Şu an sahip oldukları çalışmaya devam eder.",
+        "category": "Neden",
+        "categoryNone": "Neden belirtilmedi",
+        "categoryHint": "Dolandırıcılık ve itiraz (chargeback) engeli, açık bir faturanın ödenmesini de durdurur.",
+        "categories": {
+          "fraud": "Dolandırıcılık",
+          "chargeback": "İtiraz (chargeback)",
+          "abuse": "Kötüye kullanım",
+          "request": "Kendi talebi",
+          "other": "Diğer"
+        },
+        "note": "Notunuz",
+        "noteHint": "Yalnızca siz görürsünüz, müşteri asla görmez. En fazla 500 karakter.",
+        "until": "Bitiş tarihi",
+        "untilHint": "Siz kaldırana kadar engellemek için boş bırakın. Müşteri o günden itibaren yeniden satın alabilir.",
+        "submit": "Müşteriyi engelle",
+        "banner": "{date} tarihinden beri engelli",
+        "bannerUntil": "Bitiş: {date}",
+        "ended": "Engel {date} tarihinde sona erdi. Temizlemek için kaldırın.",
+        "history": "Engel geçmişi",
+        "historyEmpty": "Bu müşteri hiç engellenmedi.",
+        "actions": {
+          "blocked": "Engellendi",
+          "unblocked": "Kaldırıldı"
+        },
+        "by": "{actor} tarafından"
       }
     },
     "packages": {
@@ -683,7 +758,8 @@
           "renews_soon": "{n} abonelik bildirim süresini vermek için çok yakın yenileniyor: daha sonra yeniden çalıştırın.",
           "has_pending_change": "{n} aboneliğin zaten bekleyen bir değişikliği var, dokunulmadı.",
           "run_by_provider": "{n} abonelik bir ödeme sağlayıcısı tarafından yürütülüyor.",
-          "not_changeable": "{n} abonelik bu yolla taşınamaz (örneğin ücret dönem sonunda faturalanıyor)."
+          "not_changeable": "{n} abonelik bu yolla taşınamaz (örneğin ücret dönem sonunda faturalanıyor).",
+          "customer_blocked": "{n} abonelik engelli bir müşteriye ait olduğu için dokunulmadı."
         }
       }
     },
@@ -2576,7 +2652,8 @@
         "bad_status": "Durum pending, issued, failed ya da cancelled olmalı."
       },
       "tenant": {
-        "bad_id": "Hesap kimliği geçerli bir kimlik değil."
+        "bad_id": "Hesap kimliği geçerli bir kimlik değil.",
+        "on_hold": "Bu satıcı şu anda ödeme alamıyor."
       },
       "rerating": {
         "bad_job_id": "Yeniden fiyatlama işi kimliği geçerli bir kimlik değil.",
@@ -2672,7 +2749,7 @@
       "customer": {
         "tax_invalid": "Müşterinin vergi numarası veya vergi dairesi geçerli değil.",
         "quota_reached": "Bu hesabın planının müşteri sınırına ulaşıldı.",
-        "blocked": "Bu müşteri engellenmiş: onun için yeni abonelik oluşturulamaz."
+        "blocked": "Bu müşteri engelli, bu yüzden onun için yeni bir şey başlatılamaz."
       },
       "common": {
         "not_found": "Bulunamadı.",
@@ -2682,10 +2759,12 @@
       },
       "tenant": {
         "settings_immutable": "Bir hesabın para birimi, saat dilimi ve ortamı değiştirilemez.",
-        "bad_status": "Durum active veya suspended olmalıdır.",
+        "bad_status": "Durum active, suspended, frozen veya banned olmalıdır.",
         "bad_transition": "Bu durum değişikliği bu ortam için mümkün değil.",
-        "reason_required": "Bir ortamı listesi tamamlanmadan etkinleştirmek için gerekçe gerekir.",
-        "unknown": "Bu hesap tanınmıyor."
+        "reason_required": "Yasak koymak, yasağı kaldırmak veya bir ortamı kontrol listesi olmadan etkinleştirmek için gerekçe gerekir.",
+        "unknown": "Bu hesap tanınmıyor.",
+        "on_hold": "Bu hesap beklemede: yeni bir şey başlatılamaz.",
+        "approval_pending": "Yasak kaydedildi. Uygulanması için ikinci bir operatörün aynı isteği yapması gerekir."
       },
       "request": {
         "invalid": "{field} geçerli değil: {detail}"
@@ -3001,7 +3080,7 @@
         "incomplete": "Canlıya geçiş listesi henüz tamamlanmadı.",
         "no_live": "Bu kurulumda canlı ortam yok.",
         "owner_only": "Canlı ortamı yalnızca hesabın sahibi etkinleştirebilir.",
-        "suspended": "Canlı ortam askıya alınmış. Destekle iletişime geçin."
+        "suspended": "Canlı ortam beklemede (askıya alınmış, dondurulmuş veya yasaklanmış). Destekle iletişime geçin."
       },
       "promote": {
         "stale": "Önizlemeden sonra yapılandırma değişti. Aktarımı yeniden önizleyin."
@@ -3032,7 +3111,8 @@
       },
       "auth": {
         "tenant_not_active": "Bu ortam askıya alınmış ya da henüz etkin değil. Canlıya geçiş listesini tamamlayın veya destekle iletişime geçin.",
-        "permission_denied": "Bu API anahtarında bu isteğin gerektirdiği izin yok. İsteğin belirttiği role veya izne sahip bir anahtar kullanın."
+        "permission_denied": "Bu API anahtarında bu isteğin gerektirdiği izin yok. İsteğin belirttiği role veya izne sahip bir anahtar kullanın.",
+        "tenant_read_only": "Bu ortam salt okunur. Destek ile iletişime geçin."
       },
       "assets": {
         "bad_invoice_logo": "Fatura logosu, fatura logosu türünde tamamlanmış bir yükleme olmalı."
@@ -4965,7 +5045,29 @@
         "title": "Bir kullanım olayı",
         "todo": "Aşağıdaki kodla bir tane gönder.",
         "done": "Bir olay sayıldı."
+      },
+      "webhook": {
+        "title": "Bir webhook uç noktası",
+        "todo": "Payrudder'ın olayları nereye göndereceğini kaydet; faturalardan ve ödemelerden haberdar ol.",
+        "done": "Bir uç nokta kayıtlı.",
+        "link": "Uç nokta ekle"
       }
+    },
+    "webhookTest": {
+      "title": "Bir webhook dene",
+      "help": "Uç noktalarından birine imzalı bir test olayı (ping türünde) gönderir; doğrulama kodunun onu kabul ettiğini görürsün.",
+      "endpoint": "Uç nokta",
+      "send": "Test webhook'u gönder",
+      "none": "Henüz bir uç noktan yok. Bir tane ekle (herkese açık bir https adresi) ve denemek için geri dön.",
+      "noAnswer": "yanıt yok",
+      "badge": {
+        "queued": "Gönderildi",
+        "delivered": "Teslim edildi",
+        "failed": "Kabul edilmedi"
+      },
+      "queued": "Sunucunun yanıtı bekleniyor.",
+      "delivered": "Sunucun kabul etti ({answer}).",
+      "failed": "Sunucun kabul etmedi: {answer}. İşleyicini düzelt, sonra bir tane daha gönder; Payrudder da kendisi yeniden dener."
     }
   }
 }

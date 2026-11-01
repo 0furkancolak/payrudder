@@ -48,6 +48,8 @@ const (
 	EventPaymentLinkExpired              = "payment_link.expired"
 	EventCreditsPurchased                = "credits.purchased"
 	EventCreditsLow                      = "credits.low"
+	EventCustomerBlocked                 = "customer.blocked"
+	EventCustomerUnblocked               = "customer.unblocked"
 	EventContractAccepted                = "contract.accepted"
 	EventContractVersionPublished        = "contract.version_published"
 	EventContractWithdrawalRequested     = "contract.withdrawal_requested"
@@ -64,6 +66,7 @@ var WebhookEventTypes = []string{
 	EventSubscriptionResumed, EventSubscriptionMovedToProvider, EventSubscriptionTrialWillEnd,
 	EventPaymentLinkCreated, EventPaymentLinkPaid, EventPaymentLinkExpired,
 	EventCreditsPurchased, EventCreditsLow,
+	EventCustomerBlocked, EventCustomerUnblocked,
 	EventContractAccepted, EventContractVersionPublished, EventContractWithdrawalRequested,
 }
 
@@ -264,6 +267,17 @@ type CreditsEventData struct {
 	AmountMinor   Int64  `json:"amount_minor,omitempty"`
 	// ExpiresAt is an RFC 3339 time, absent when the credits never expire.
 	ExpiresAt string `json:"expires_at,omitempty"`
+}
+
+// CustomerBlockEventData is the data of customer.blocked and customer.unblocked.
+type CustomerBlockEventData struct {
+	CustomerID         string `json:"customer_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	// Category and Reason are set on customer.blocked: why (fraud, chargeback, abuse, request, other, or empty) and the seller's own note.
+	Category string `json:"category,omitempty"`
+	Reason   string `json:"reason,omitempty"`
+	// BlockedUntil is an RFC 3339 time, set on customer.blocked when the block ends by itself.
+	BlockedUntil string `json:"blocked_until,omitempty"`
 }
 
 // ContractAcceptedEventData is the data of contract.accepted: one event for the versions a customer accepted together.

@@ -183,8 +183,9 @@ func (c *Commands) Activate(ctx context.Context, req *plansv1.ActivateMyAppReque
 		case domain.StatusActive:
 			out, err = query.Checklist(ctx, tx, c.places, convert.Tenant(row), req.GetProviderReady())
 			return err
-		case domain.StatusSuspended:
-			return errkey.New(codes.FailedPrecondition, "identity.go_live.suspended", "this environment is suspended: contact support")
+		case domain.StatusSuspended, domain.StatusFrozen, domain.StatusBanned:
+			// The operator took it out of service: the owner cannot put it back by finishing a checklist.
+			return errkey.New(codes.FailedPrecondition, "identity.go_live.suspended", "this environment is on hold (suspended, frozen or banned): contact support")
 		}
 		if req.GetAcceptTerms() {
 			if row.TermsAcceptedAt == nil {

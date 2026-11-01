@@ -1087,10 +1087,17 @@ func (s *CustomersService) SetCustomerAddress(ctx context.Context, externalID st
 	return &out, nil
 }
 
-// BlockCustomer: Block a customer from new subscriptions (POST /v1/customers/{external_id}/block).
+// BlockCustomer: Block a customer from new purchases (POST /v1/customers/{external_id}/block).
 //
-// A blocked customer cannot get a new subscription (error key plans.customer.blocked); what exists runs on
-// until you end it. Blocking again keeps the first time and note. The note is yours, up to 500 characters.
+// A blocked customer cannot get a new subscription or plan change (error key `plans.customer.blocked`), buy
+// through a payment link or the portal, or have a payment link made for them (`billing.customer.blocked`); what
+// exists runs on until you end it, and an invoice that was issued before stays payable, except after a `fraud`
+// or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the
+// block that is in force. The note is yours, up to 500 characters; `category` says why; `blocked_until` ends
+// the block by itself (it must be in the future, and every check reads it, so the block stops holding at that
+// time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` /
+// `customer.unblocked` webhook events (the end of a block by itself sends none). Usage ingestion and
+// entitlements are not affected.
 func (s *CustomersService) BlockCustomer(ctx context.Context, externalID string, req *BlockCustomerRequest, opts ...RequestOption) (*Customer, error) {
 	var body any
 	if req != nil {
@@ -1098,6 +1105,18 @@ func (s *CustomersService) BlockCustomer(ctx context.Context, externalID string,
 	}
 	var out Customer
 	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/block", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListCustomerBlockEvents: A customer's blocks and lifts, newest first (GET
+// /v1/customers/{external_id}/block-events).
+//
+// Who blocked or lifted, when, and why (the latest 100). Never changed or deleted.
+func (s *CustomersService) ListCustomerBlockEvents(ctx context.Context, externalID string, opts ...RequestOption) (*ListCustomerBlockEventsResponse, error) {
+	var out ListCustomerBlockEventsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/block-events", query: nil, body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -1431,6 +1450,8 @@ func (s *CustomersService) SetCustomerTax(ctx context.Context, externalID string
 }
 
 // UnblockCustomer: Lift a customer's block (POST /v1/customers/{external_id}/unblock).
+//
+// Also clears a block that has ended by itself. A customer who was not blocked is returned as it is.
 func (s *CustomersService) UnblockCustomer(ctx context.Context, externalID string, opts ...RequestOption) (*Customer, error) {
 	var out Customer
 	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/unblock", query: nil, body: nil}, &out, opts); err != nil {
@@ -2000,9 +2021,9 @@ func (s *PlansService) CreatePlan(ctx context.Context, req *CreatePlanRequest, o
 // (default 30, at least 14), a change to `to_version` (default: the latest published) is scheduled for that
 // renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
 // The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a
-// change is waiting and is never replaced), `run_by_provider` and `not_changeable` (for example a fee invoiced
-// in arrears). `dry_run` counts and changes nothing. Each scheduled change also sends the
-// `subscription.change_scheduled` webhook event.
+// change is waiting and is never replaced), `run_by_provider`, `not_changeable` (for example a fee invoiced in
+// arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes
+// nothing. Each scheduled change also sends the `subscription.change_scheduled` webhook event.
 func (s *PlansService) SchedulePriceChange(ctx context.Context, code string, req *SchedulePriceChangeRequest, opts ...RequestOption) (*SchedulePriceChangeResponse, error) {
 	if req == nil {
 		req = &SchedulePriceChangeRequest{}

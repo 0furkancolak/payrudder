@@ -79,7 +79,7 @@ export function useCreatePackage(tenantId: MaybeRefOrGetter<string>) {
 export type PriceChangeResult = {
   scheduled: number;
   scheduled_subscription_ids: string[];
-  skipped: { subscription_id: string; customer_external_id: string; reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable" }[];
+  skipped: { subscription_id: string; customer_external_id: string; reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable" | "customer_blocked" }[];
   to_version: number;
   notice_days: number;
 };

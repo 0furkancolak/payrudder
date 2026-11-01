@@ -178,6 +178,17 @@ type SubscriptionEvent struct {
 	NextBilledAt         *time.Time
 	// PriceRefs are the provider's ids of the prices the subscription is billed for, when the notification says.
 	PriceRefs []string
+	// ScheduledChange is a change the provider will apply later (a cancellation at the end of the period leaves Status "active" until then); nil when there is none.
+	ScheduledChange *ScheduledChange
+}
+
+// ScheduledChange is a pending change to a subscription at the provider.
+type ScheduledChange struct {
+	// Action is the provider's word: cancel, pause or resume.
+	Action      string
+	EffectiveAt time.Time
+	// ResumeAt is when a paused subscription resumes, for a pause.
+	ResumeAt *time.Time
 }
 
 // ManualCollector is a provider whose payments the merchant confirms by hand (a bank transfer): Charge only tells the customer how to pay and returns a

@@ -4,6 +4,7 @@ package hosted
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -11,6 +12,7 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
@@ -220,7 +222,25 @@ func (h *Handler) GetHostedInvoice(ctx context.Context, req *billingv1.GetHosted
 	if err != nil {
 		return nil, err
 	}
+	// The page offers no payment the gate would refuse (a tenant on hold, a customer blocked for fraud or chargeback); pressing the button asks again.
+	if page.Payable && h.refuses(ctx, scope.TenantID, page.Snapshot.CustomerExternalID, paymentgate.OpPayInvoice) {
+		page.Payable = false
+	}
 	return pageProto(scope, page), nil
+}
+
+// refuses says whether the payment gate would refuse op for the customer, so that a page leaves the button out. A lookup that fails leaves the page as it is: the
+// press asks again, and is refused then if need be.
+func (h *Handler) refuses(ctx context.Context, tenantID uuid.UUID, customerExternalID string, op paymentgate.Op) bool {
+	if h.d.Dir == nil {
+		return false
+	}
+	v, err := h.d.Dir.Gate(ctx, tenantID, customerExternalID, op)
+	if err != nil {
+		slog.WarnContext(ctx, "payment gate lookup failed; the page is shown as it is", "tenant_id", tenantID, "error", err)
+		return false
+	}
+	return v != paymentgate.Allowed
 }
 
 // GetHostedInvoicePdfUrl implements billingv1.HostedInvoiceServiceServer.
@@ -294,12 +314,23 @@ func (h *Handler) GetPortal(ctx context.Context, req *billingv1.GetPortalRequest
 		CustomerName: page.CustomerName, CustomerLocale: page.CustomerLocale, SellerName: page.SellerName, LogoAvailable: page.LogoAvailable, Environment: page.Environment,
 		ExpireTime: timestamppb.New(scope.ExpiresAt), TenantId: scope.TenantID.String(), CustomerId: scope.Portal.CustomerID.String(),
 	}
+	payRefused := false
+	for _, i := range page.Invoices {
+		if i.Pay {
+			payRefused = h.refuses(ctx, scope.TenantID, scope.Portal.ExternalID, paymentgate.OpPayInvoice)
+			break
+		}
+	}
 	for _, i := range page.Invoices {
 		r := i.Row
+		i.Pay = i.Pay && !payRefused
 		resp.Invoices = append(resp.Invoices, &billingv1.PortalInvoice{
 			Id: r.ID.String(), Number: r.Number, Status: r.Status, PaymentState: i.State, Payable: i.Pay, TotalMinor: r.TotalMinor, Currency: r.Currency,
 			CurrencyExponent: r.CurrencyExponent, IssueTime: timestamppb.New(r.IssuedAt), Kind: r.Kind, PdfAvailable: r.PdfReady && h.q.PDFs != nil,
 		})
+	}
+	if page.CanBuy && h.refuses(ctx, scope.TenantID, scope.Portal.ExternalID, paymentgate.OpPurchase) {
+		page.CanBuy = false
 	}
 	resp.CreditBalance, resp.CanBuyCredits = page.CreditBalance, page.CanBuy
 	for _, l := range page.CreditLots {

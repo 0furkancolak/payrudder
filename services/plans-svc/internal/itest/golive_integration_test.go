@@ -206,7 +206,17 @@ func testGoLive(t *testing.T) {
 		wantCode(t, "key for a suspended tenant", err, codes.FailedPrecondition, "plans.api_key.tenant_not_active")
 		_, err = e.ident.ActivateMyApp(ctx, &plansv1.ActivateMyAppRequest{UserId: owner.id, AppId: app.GetId(), ProviderReady: true, AcceptTerms: true})
 		wantCode(t, "the owner reactivates a suspended tenant", err, codes.FailedPrecondition, "identity.go_live.suspended")
-		if _, err := e.admin.SetTenantStatus(operator(), &plansv1.SetTenantStatusRequest{TenantId: live.GetId(), Status: plansv1.TenantStatus_TENANT_STATUS_ACTIVE}); err != nil {
+		// A tenant the operator froze or banned is as out of the owner's reach as a suspended one: finishing the checklist does not put it back.
+		for _, st := range []plansv1.TenantStatus{plansv1.TenantStatus_TENANT_STATUS_FROZEN, plansv1.TenantStatus_TENANT_STATUS_BANNED} {
+			if _, err := e.admin.SetTenantStatus(operator(), &plansv1.SetTenantStatusRequest{TenantId: live.GetId(), Status: st, Reason: "review"}); err != nil {
+				t.Fatalf("%v: %v", st, err)
+			}
+			_, err = e.ident.ActivateMyApp(ctx, &plansv1.ActivateMyAppRequest{UserId: owner.id, AppId: app.GetId(), ProviderReady: true, AcceptTerms: true})
+			wantCode(t, "the owner reactivates a "+st.String()+" tenant", err, codes.FailedPrecondition, "identity.go_live.suspended")
+			_, err = e.ident.CreateMyApiKey(ctx, &plansv1.CreateMyApiKeyRequest{UserId: owner.id, AppId: app.GetId(), Environment: plansv1.Environment_ENVIRONMENT_LIVE})
+			wantCode(t, "a key for a "+st.String()+" tenant", err, codes.FailedPrecondition, "plans.api_key.tenant_not_active")
+		}
+		if _, err := e.admin.SetTenantStatus(operator(), &plansv1.SetTenantStatusRequest{TenantId: live.GetId(), Status: plansv1.TenantStatus_TENANT_STATUS_ACTIVE, Reason: "review done"}); err != nil {
 			t.Errorf("an operator reinstates a suspended tenant: %v", err)
 		}
 	})

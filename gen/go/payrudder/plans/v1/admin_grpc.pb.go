@@ -19,17 +19,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AdminService_CreateAccount_FullMethodName        = "/payrudder.plans.v1.AdminService/CreateAccount"
-	AdminService_CreateApp_FullMethodName            = "/payrudder.plans.v1.AdminService/CreateApp"
-	AdminService_ListApps_FullMethodName             = "/payrudder.plans.v1.AdminService/ListApps"
-	AdminService_GetTenant_FullMethodName            = "/payrudder.plans.v1.AdminService/GetTenant"
-	AdminService_ListTenants_FullMethodName          = "/payrudder.plans.v1.AdminService/ListTenants"
-	AdminService_UpdateTenantSettings_FullMethodName = "/payrudder.plans.v1.AdminService/UpdateTenantSettings"
-	AdminService_CreateApiKey_FullMethodName         = "/payrudder.plans.v1.AdminService/CreateApiKey"
-	AdminService_RevokeApiKey_FullMethodName         = "/payrudder.plans.v1.AdminService/RevokeApiKey"
-	AdminService_ResolveApiKey_FullMethodName        = "/payrudder.plans.v1.AdminService/ResolveApiKey"
-	AdminService_TouchApiKey_FullMethodName          = "/payrudder.plans.v1.AdminService/TouchApiKey"
-	AdminService_SetTenantStatus_FullMethodName      = "/payrudder.plans.v1.AdminService/SetTenantStatus"
+	AdminService_CreateAccount_FullMethodName          = "/payrudder.plans.v1.AdminService/CreateAccount"
+	AdminService_CreateApp_FullMethodName              = "/payrudder.plans.v1.AdminService/CreateApp"
+	AdminService_ListApps_FullMethodName               = "/payrudder.plans.v1.AdminService/ListApps"
+	AdminService_GetTenant_FullMethodName              = "/payrudder.plans.v1.AdminService/GetTenant"
+	AdminService_ListTenants_FullMethodName            = "/payrudder.plans.v1.AdminService/ListTenants"
+	AdminService_UpdateTenantSettings_FullMethodName   = "/payrudder.plans.v1.AdminService/UpdateTenantSettings"
+	AdminService_CreateApiKey_FullMethodName           = "/payrudder.plans.v1.AdminService/CreateApiKey"
+	AdminService_RevokeApiKey_FullMethodName           = "/payrudder.plans.v1.AdminService/RevokeApiKey"
+	AdminService_ResolveApiKey_FullMethodName          = "/payrudder.plans.v1.AdminService/ResolveApiKey"
+	AdminService_TouchApiKey_FullMethodName            = "/payrudder.plans.v1.AdminService/TouchApiKey"
+	AdminService_SetTenantStatus_FullMethodName        = "/payrudder.plans.v1.AdminService/SetTenantStatus"
+	AdminService_ListTenantStatusEvents_FullMethodName = "/payrudder.plans.v1.AdminService/ListTenantStatusEvents"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -57,9 +58,12 @@ type AdminServiceClient interface {
 	ResolveApiKey(ctx context.Context, in *ResolveApiKeyRequest, opts ...grpc.CallOption) (*ResolveApiKeyResponse, error)
 	// TouchApiKey records that a key was used just now (the gateway calls it at most every few minutes per key and replica).
 	TouchApiKey(ctx context.Context, in *TouchApiKeyRequest, opts ...grpc.CallOption) (*TouchApiKeyResponse, error)
-	// SetTenantStatus is the operator's hand on a tenant's life: suspend an active tenant (its keys stop working at once), reinstate a suspended one, or
-	// activate an inactive live tenant without the go-live checklist (a support decision that needs a reason and is logged).
+	// SetTenantStatus is the operator's hand on a tenant's life: suspend, freeze or ban an active tenant, reinstate one that was, or activate an inactive live tenant
+	// without the go-live checklist. Every change is recorded with its reason and who made it. Suspending or banning stops the tenant's keys at once. Where
+	// PAYRUDDER_TENANT_BAN_APPROVAL is on, a ban waits (plans.tenant.approval_pending) until a second operator asks for the same.
 	SetTenantStatus(ctx context.Context, in *SetTenantStatusRequest, opts ...grpc.CallOption) (*SetTenantStatusResponse, error)
+	// ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
+	ListTenantStatusEvents(ctx context.Context, in *ListTenantStatusEventsRequest, opts ...grpc.CallOption) (*ListTenantStatusEventsResponse, error)
 }
 
 type adminServiceClient struct {
@@ -180,6 +184,16 @@ func (c *adminServiceClient) SetTenantStatus(ctx context.Context, in *SetTenantS
 	return out, nil
 }
 
+func (c *adminServiceClient) ListTenantStatusEvents(ctx context.Context, in *ListTenantStatusEventsRequest, opts ...grpc.CallOption) (*ListTenantStatusEventsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTenantStatusEventsResponse)
+	err := c.cc.Invoke(ctx, AdminService_ListTenantStatusEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility.
@@ -205,9 +219,12 @@ type AdminServiceServer interface {
 	ResolveApiKey(context.Context, *ResolveApiKeyRequest) (*ResolveApiKeyResponse, error)
 	// TouchApiKey records that a key was used just now (the gateway calls it at most every few minutes per key and replica).
 	TouchApiKey(context.Context, *TouchApiKeyRequest) (*TouchApiKeyResponse, error)
-	// SetTenantStatus is the operator's hand on a tenant's life: suspend an active tenant (its keys stop working at once), reinstate a suspended one, or
-	// activate an inactive live tenant without the go-live checklist (a support decision that needs a reason and is logged).
+	// SetTenantStatus is the operator's hand on a tenant's life: suspend, freeze or ban an active tenant, reinstate one that was, or activate an inactive live tenant
+	// without the go-live checklist. Every change is recorded with its reason and who made it. Suspending or banning stops the tenant's keys at once. Where
+	// PAYRUDDER_TENANT_BAN_APPROVAL is on, a ban waits (plans.tenant.approval_pending) until a second operator asks for the same.
 	SetTenantStatus(context.Context, *SetTenantStatusRequest) (*SetTenantStatusResponse, error)
+	// ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
+	ListTenantStatusEvents(context.Context, *ListTenantStatusEventsRequest) (*ListTenantStatusEventsResponse, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -250,6 +267,9 @@ func (UnimplementedAdminServiceServer) TouchApiKey(context.Context, *TouchApiKey
 }
 func (UnimplementedAdminServiceServer) SetTenantStatus(context.Context, *SetTenantStatusRequest) (*SetTenantStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetTenantStatus not implemented")
+}
+func (UnimplementedAdminServiceServer) ListTenantStatusEvents(context.Context, *ListTenantStatusEventsRequest) (*ListTenantStatusEventsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTenantStatusEvents not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
@@ -470,6 +490,24 @@ func _AdminService_SetTenantStatus_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_ListTenantStatusEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTenantStatusEventsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).ListTenantStatusEvents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_ListTenantStatusEvents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).ListTenantStatusEvents(ctx, req.(*ListTenantStatusEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -520,6 +558,10 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetTenantStatus",
 			Handler:    _AdminService_SetTenantStatus_Handler,
+		},
+		{
+			MethodName: "ListTenantStatusEvents",
+			Handler:    _AdminService_ListTenantStatusEvents_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

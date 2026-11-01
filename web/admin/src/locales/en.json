@@ -233,7 +233,55 @@
       "rerating": "Re-rating job"
     },
     "allStatuses": "All statuses",
-    "allKinds": "All kinds"
+    "allKinds": "All kinds",
+    "status": {
+      "title": "Status",
+      "names": {
+        "active": "Active",
+        "inactive": "Not live yet",
+        "suspended": "Suspended",
+        "frozen": "Frozen",
+        "banned": "Banned"
+      },
+      "effects": {
+        "active": "In service: API keys, payment pages, dunning, customer mail and webhooks all work.",
+        "inactive": "Not live yet: it has no keys and takes no payment until its go-live checklist is complete.",
+        "suspended": "API keys stop at once. Payment pages and payment links take no payment, dunning makes no charge, customers get no mail and webhook deliveries wait.",
+        "frozen": "Read-only: API keys and the console still read, nothing is written. Payment pages and payment links take no payment, dunning makes no charge, customers get no mail and webhook deliveries wait.",
+        "banned": "Like suspended, but meant to last: API keys stop at once and nothing is charged, mailed or sent. A ban, and lifting one, needs a reason."
+      },
+      "to": "Change to",
+      "category": "Category",
+      "categoryNone": "No category",
+      "categories": {
+        "nonpayment": "Non-payment",
+        "fraud": "Fraud",
+        "abuse": "Abuse",
+        "legal": "Legal",
+        "request": "Their request",
+        "other": "Other"
+      },
+      "reason": "Reason",
+      "reasonHint": "Kept in the history, with your address. Up to 500 characters.",
+      "reasonRequired": "A ban, and lifting a ban, needs a reason.",
+      "apply": "Set {status}",
+      "confirm": {
+        "active": "Reinstate {name}? Its API keys, payment pages, mail and webhooks work again.",
+        "suspended": "Suspend {name}? Its API keys stop at once and it takes no payment.",
+        "frozen": "Freeze {name}? Its API keys and console become read-only and it takes no payment.",
+        "banned": "Ban {name}? Its API keys stop at once and nothing is charged, mailed or sent."
+      },
+      "sandbox": "A sandbox environment is always active.",
+      "inactive": "This environment is not live yet. It is activated from its go-live checklist.",
+      "history": "History",
+      "historyEmpty": "No change yet.",
+      "requested": "Asked to set {to}: waiting for a second operator",
+      "changed": "{from} → {to}",
+      "by": "by {actor}",
+      "approvedBy": "approved by {actor}",
+      "choose": "Choose a status",
+      "applyNone": "Set a status"
+    }
   },
   "invoice": {
     "summary": "{kind} · period {period} · {customer} · {total} · {status} · saga {saga}",
@@ -572,8 +620,35 @@
         "badge": "Blocked",
         "action": "Block",
         "lift": "Lift the block",
-        "confirm": "Block {name}? No new subscription can be created for them. What they have now runs on.",
-        "confirmMany": "Block {n} customers? No new subscription can be created for them. What they have now runs on."
+        "confirm": "Block {name}? No new subscription, plan change or purchase can be started for them. What they have now runs on.",
+        "confirmMany": "Block {n} customers? No new subscription, plan change or purchase can be started for them. What they have now runs on.",
+        "title": "Block {name}",
+        "description": "No new subscription, plan change or purchase can be started for them. What they have now runs on.",
+        "category": "Why",
+        "categoryNone": "No reason given",
+        "categoryHint": "Fraud and chargeback also stop them paying an invoice that is open.",
+        "categories": {
+          "fraud": "Fraud",
+          "chargeback": "Chargeback",
+          "abuse": "Abuse",
+          "request": "Their own request",
+          "other": "Other"
+        },
+        "note": "Your note",
+        "noteHint": "Only you see it, never the customer. Up to 500 characters.",
+        "until": "Ends on",
+        "untilHint": "Leave empty to block until you lift it. The customer can buy again from that day.",
+        "submit": "Block customer",
+        "banner": "Blocked since {date}",
+        "bannerUntil": "Ends {date}",
+        "ended": "The block ended {date}. Lift it to clear it.",
+        "history": "Block history",
+        "historyEmpty": "This customer was never blocked.",
+        "actions": {
+          "blocked": "Blocked",
+          "unblocked": "Lifted"
+        },
+        "by": "by {actor}"
       }
     },
     "packages": {
@@ -683,7 +758,8 @@
           "renews_soon": "{n} renew too soon to give the notice: run it again later.",
           "has_pending_change": "{n} already have a change waiting and were left alone.",
           "run_by_provider": "{n} are run by a payment provider.",
-          "not_changeable": "{n} cannot be moved this way (for example the fee is invoiced in arrears)."
+          "not_changeable": "{n} cannot be moved this way (for example the fee is invoiced in arrears).",
+          "customer_blocked": "{n} belong to a blocked customer and were left alone."
         }
       }
     },
@@ -2576,7 +2652,8 @@
         "bad_status": "The status must be pending, issued, failed or cancelled."
       },
       "tenant": {
-        "bad_id": "The account id is not a valid id."
+        "bad_id": "The account id is not a valid id.",
+        "on_hold": "This seller cannot take payments right now."
       },
       "rerating": {
         "bad_job_id": "The re-rating job id is not a valid id.",
@@ -2672,7 +2749,7 @@
       "customer": {
         "tax_invalid": "The customer's tax id or tax office is not valid.",
         "quota_reached": "The customer limit of this account's plan has been reached.",
-        "blocked": "This customer is blocked: no new subscription can be created for them."
+        "blocked": "This customer is blocked, so nothing new can be started for them."
       },
       "common": {
         "not_found": "It was not found.",
@@ -2682,10 +2759,12 @@
       },
       "tenant": {
         "settings_immutable": "The currency, time zone and environment of an account cannot be changed.",
-        "bad_status": "The status must be active or suspended.",
+        "bad_status": "The status must be active, suspended, frozen or banned.",
         "bad_transition": "This change of status is not possible for this environment.",
-        "reason_required": "Activating an environment without its checklist needs a reason.",
-        "unknown": "This account is not known."
+        "reason_required": "A ban, lifting a ban, or activating an environment without its checklist needs a reason.",
+        "unknown": "This account is not known.",
+        "on_hold": "This account is on hold: nothing new can be started.",
+        "approval_pending": "The ban is recorded. A second operator must make the same request to apply it."
       },
       "request": {
         "invalid": "{field} is not valid: {detail}"
@@ -3001,7 +3080,7 @@
         "incomplete": "The go-live checklist is not complete yet.",
         "no_live": "This deployment has no live environment.",
         "owner_only": "Only an owner of the account can activate the live environment.",
-        "suspended": "The live environment is suspended. Contact support."
+        "suspended": "The live environment is on hold (suspended, frozen or banned). Contact support."
       },
       "promote": {
         "stale": "The configuration changed since the preview. Preview the promotion again."
@@ -3032,7 +3111,8 @@
       },
       "auth": {
         "tenant_not_active": "This environment is suspended or not active yet. Finish the go-live checklist, or contact support.",
-        "permission_denied": "This API key lacks a permission this request needs. Use a key with the role or permission it names."
+        "permission_denied": "This API key lacks a permission this request needs. Use a key with the role or permission it names.",
+        "tenant_read_only": "This environment is read-only. Contact support."
       },
       "assets": {
         "bad_invoice_logo": "The invoice logo must be a finished upload of the invoice logo kind."
@@ -4965,7 +5045,29 @@
         "title": "A usage event",
         "todo": "Send one with the code below.",
         "done": "An event has been counted."
+      },
+      "webhook": {
+        "title": "A webhook endpoint",
+        "todo": "Register where Payrudder sends events, to hear about invoices and payments.",
+        "done": "An endpoint is registered.",
+        "link": "Add an endpoint"
       }
+    },
+    "webhookTest": {
+      "title": "Try a webhook",
+      "help": "Sends a signed test event (type ping) to one of your endpoints, so you can see your verification code accept it.",
+      "endpoint": "Endpoint",
+      "send": "Send a test webhook",
+      "none": "You have no endpoint yet. Add one (a public https address) and come back to test it.",
+      "noAnswer": "no answer",
+      "badge": {
+        "queued": "Sent",
+        "delivered": "Delivered",
+        "failed": "Not accepted"
+      },
+      "queued": "Waiting for your server to answer.",
+      "delivered": "Your server accepted it ({answer}).",
+      "failed": "Your server did not accept it: {answer}. Fix your handler, then send another; Payrudder also retries on its own."
     }
   }
 }

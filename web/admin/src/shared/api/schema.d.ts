@@ -130,8 +130,13 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Block a customer from new subscriptions
-         * @description A blocked customer cannot get a new subscription (error key plans.customer.blocked); what exists runs on until you end it. Blocking again keeps the first time and note. The note is yours, up to 500 characters.
+         * Block a customer from new purchases
+         * @description A blocked customer cannot get a new subscription or plan change (error key `plans.customer.blocked`), buy through a payment link or the portal, or have a
+         *     payment link made for them (`billing.customer.blocked`); what exists runs on until you end it, and an invoice that was issued before stays payable, except after
+         *     a `fraud` or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the block that is in force. The note is
+         *     yours, up to 500 characters; `category` says why; `blocked_until` ends the block by itself (it must be in the future, and every check reads it, so the block
+         *     stops holding at that time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` / `customer.unblocked` webhook events
+         *     (the end of a block by itself sends none). Usage ingestion and entitlements are not affected.
          */
         post: operations["blockCustomer"];
         delete?: never;
@@ -149,8 +154,31 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Lift a customer's block */
+        /**
+         * Lift a customer's block
+         * @description Also clears a block that has ended by itself. A customer who was not blocked is returned as it is.
+         */
         post: operations["unblockCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/block-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A customer's blocks and lifts, newest first
+         * @description Who blocked or lifted, when, and why (the latest 100). Never changed or deleted.
+         */
+        get: operations["listCustomerBlockEvents"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -798,7 +826,7 @@ export interface paths {
          * @description For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
          *     (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
          *     The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
-         *     `run_by_provider` and `not_changeable` (for example a fee invoiced in arrears). `dry_run` counts and changes nothing. Each scheduled change also sends the
+         *     `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing. Each scheduled change also sends the
          *     `subscription.change_scheduled` webhook event.
          */
         post: operations["schedulePriceChange"];
@@ -4982,10 +5010,34 @@ export interface paths {
         };
         get?: never;
         /**
-         * Suspend an active live tenant, reinstate a suspended one, or activate an inactive one without its checklist
-         * @description A suspended tenant's API keys stop working at once (403 gateway.auth.tenant_not_active). Activating an inactive tenant needs a reason and is logged.
+         * Suspend, freeze or ban an active live tenant, reinstate one, or activate an inactive one without its checklist
+         * @description `suspended` and `banned` stop the tenant's API keys at once (403 `gateway.auth.tenant_not_active`); a `frozen` tenant's keys and console still read and write nothing
+         *     (403 `gateway.auth.tenant_read_only`). In all three the hosted payment pages and payment links take no payment, dunning makes no charge, customers get no
+         *     mail and webhook deliveries wait until the tenant is reinstated. A ban, lifting a ban and activating an inactive tenant need a `reason`; every change is
+         *     recorded with its category, reason and who made it (`GET .../status-events`). Where `PAYRUDDER_TENANT_BAN_APPROVAL` is on, a ban only records the request
+         *     (409 `plans.tenant.approval_pending`) until a second operator makes the same request within 24 hours.
          */
         put: operations["setTenantStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{id}/status-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The changes of a tenant's status, newest first
+         * @description Each change with its category, reason and who made it, and the ban requests that wait for a second operator (the latest 100). Never changed or deleted.
+         */
+        get: operations["listTenantStatusEvents"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -5346,7 +5398,7 @@ export interface components {
             subscription_id: string;
             customer_external_id: string;
             /** @enum {string} */
-            reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable";
+            reason: "renews_soon" | "has_pending_change" | "run_by_provider" | "not_changeable" | "customer_blocked";
         };
         SchedulePriceChangeResponse: {
             scheduled: number;
@@ -5358,6 +5410,35 @@ export interface components {
         BlockCustomerRequest: {
             /** @description Your note on why; never shown to the customer. */
             reason?: string;
+            category?: components["schemas"]["CustomerBlockCategory"];
+            /**
+             * Format: date-time
+             * @description When the block ends by itself; must be in the future. Absent: until you lift it.
+             */
+            blocked_until?: string;
+        };
+        /**
+         * @description Why the customer is blocked. fraud and chargeback also refuse paying an invoice that is open.
+         * @enum {string}
+         */
+        CustomerBlockCategory: "fraud" | "chargeback" | "abuse" | "request" | "other";
+        CustomerBlockEvent: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            action: "blocked" | "unblocked";
+            /** @description Empty when none was given; else a CustomerBlockCategory */
+            category: string;
+            reason: string;
+            /** Format: date-time */
+            blocked_until?: string | null;
+            /** @description A person's address, key:<api key id>, or operator */
+            actor: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        ListCustomerBlockEventsResponse: {
+            events: components["schemas"]["CustomerBlockEvent"][];
         };
         SupportTicket: {
             /** Format: uuid */
@@ -7650,9 +7731,38 @@ export interface components {
         };
         SetTenantStatusRequest: {
             /** @enum {string} */
-            status: "active" | "suspended";
+            status: "active" | "suspended" | "frozen" | "banned";
             reason?: string;
+            /** @enum {string} */
+            category?: "nonpayment" | "fraud" | "abuse" | "legal" | "request" | "other";
         };
+        TenantStatusEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description requested: a ban waiting for a second operator
+             * @enum {string}
+             */
+            kind: "changed" | "requested";
+            from_status: components["schemas"]["TenantStatus"];
+            to_status: components["schemas"]["TenantStatus"];
+            category: string;
+            reason: string;
+            /** @description The operator's address, or the machine token's X-Payrudder-Actor, or operator */
+            actor: string;
+            /** @description The second operator of a change that needed one */
+            approved_by: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        ListTenantStatusEventsResponse: {
+            events: components["schemas"]["TenantStatusEvent"][];
+        };
+        /**
+         * @description A sandbox tenant is always active. A live tenant starts inactive: no keys, no webhook endpoints, no invoices, until the go-live checklist is complete. Frozen is read-only; suspended and banned stop the keys; all three take no payment.
+         * @enum {string}
+         */
+        TenantStatus: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED" | "TENANT_STATUS_FROZEN" | "TENANT_STATUS_BANNED";
         CreateApiKeyRequest: {
             role?: components["schemas"]["ApiKeyRole"];
             permissions?: components["schemas"]["ApiKeyPermission"][];
@@ -8456,6 +8566,57 @@ export interface components {
             tenant_id: string;
             data: components["schemas"]["CreditsLowEventData"];
         };
+        /** @description The data of an event of type customer.blocked */
+        CustomerBlockedEventData: {
+            /** Format: uuid */
+            customer_id: string;
+            customer_external_id: string;
+            /** @description Empty when none was given; else a CustomerBlockCategory */
+            category: string;
+            /** @description Your own note */
+            reason: string;
+            /**
+             * Format: date-time
+             * @description Absent: until lifted
+             */
+            blocked_until?: string;
+        };
+        /** @description The body of a delivery of type customer.blocked */
+        CustomerBlockedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "customer.blocked";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["CustomerBlockedEventData"];
+        };
+        /** @description The data of an event of type customer.unblocked */
+        CustomerUnblockedEventData: {
+            /** Format: uuid */
+            customer_id: string;
+            customer_external_id: string;
+        };
+        /** @description The body of a delivery of type customer.unblocked */
+        CustomerUnblockedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "customer.unblocked";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["CustomerUnblockedEventData"];
+        };
         /** @description The data of an event of type contract.accepted: a customer accepted one or more agreements together (one event for the group) */
         ContractAcceptedEventData: {
             /** Format: uuid */
@@ -9082,11 +9243,18 @@ export interface components {
             customer_type: string;
             /**
              * Format: date-time
-             * @description Set while the customer is blocked: no new subscription can be created for them (existing ones run on).
+             * @description Set while the customer is blocked: no new subscription, plan change or purchase (existing subscriptions run on). A block whose blocked_until has passed has ended, whatever this says.
              */
             block_time?: string | null;
             /** @description The seller's own note on the block; never shown to the customer. */
             block_reason: string;
+            /** @description Why: fraud, chargeback, abuse, request or other; empty when none was given. */
+            block_category: string;
+            /**
+             * Format: date-time
+             * @description When the block ends by itself; absent: until it is lifted.
+             */
+            blocked_until?: string | null;
         };
         CreateMeterRequest: {
             code: string;
@@ -9963,7 +10131,7 @@ export interface components {
             active: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested";
         PaymentLink: {
             /** Format: uuid */
             id: string;
@@ -10156,7 +10324,7 @@ export interface components {
             delivered_time: string | null;
         };
         /** @description The body of a delivery: the common envelope plus data that depends on type. The signature and headers are described in docs/16-webhooks.md. Billing events (invoice, credit_note, payment_link, credits) send int64 values as strings except the credits and balance counts, which are JSON numbers; subscription events embed the subscription without its zero-valued fields. */
-        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["PingEvent"];
+        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["PingEvent"];
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
             code: string;
@@ -10608,11 +10776,7 @@ export interface components {
             grace_period: string | null;
             /** Format: date-time */
             create_time: string | null;
-            /**
-             * @description A sandbox tenant is always active. A live tenant starts inactive: no keys, no webhook endpoints, no invoices, until the go-live checklist is complete.
-             * @enum {string}
-             */
-            status: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED";
+            status: components["schemas"]["TenantStatus"];
             /** Format: date-time */
             activate_time: string | null;
             /** Format: date-time */
@@ -10646,8 +10810,7 @@ export interface components {
         GoLive: {
             /** Format: uuid */
             tenant_id: string;
-            /** @enum {string} */
-            status: "TENANT_STATUS_INACTIVE" | "TENANT_STATUS_ACTIVE" | "TENANT_STATUS_SUSPENDED";
+            status: components["schemas"]["TenantStatus"];
             /** @description Every item is done. */
             ready: boolean;
             items: {
@@ -11260,6 +11423,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Customer"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listCustomerBlockEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListCustomerBlockEventsResponse"];
                 };
             };
             404: components["responses"]["Error"];
@@ -19689,6 +19875,29 @@ export interface operations {
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    listTenantStatusEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListTenantStatusEventsResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
         };
     };
     createApiKey: {

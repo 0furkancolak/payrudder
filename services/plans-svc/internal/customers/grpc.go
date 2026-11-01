@@ -58,6 +58,10 @@ func (h *Handler) UnblockCustomer(ctx context.Context, req *plansv1.UnblockCusto
 	return &plansv1.UnblockCustomerResponse{Customer: c}, nil
 }
 
+func (h *Handler) ListCustomerBlockEvents(ctx context.Context, req *plansv1.ListCustomerBlockEventsRequest) (*plansv1.ListCustomerBlockEventsResponse, error) {
+	return h.qry.BlockEvents(ctx, req.GetExternalId())
+}
+
 func (h *Handler) SetCustomerTax(ctx context.Context, req *plansv1.SetCustomerTaxRequest) (*plansv1.SetCustomerTaxResponse, error) {
 	c, err := h.cmd.SetTax(ctx, req)
 	if err != nil {

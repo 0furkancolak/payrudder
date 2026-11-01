@@ -1,11 +1,29 @@
 name: mcp
 
+# The read tools and the resources are generated from api/openapi/v1.yaml and the public docs when mcp/ is built, so a change to either runs this job too: a renamed
+# parameter, a removed operation or a new free-text field in an answer must fail here, not in an assistant.
 on:
   push:
     branches: [main]
-    paths: ["mcp/**", ".github/workflows/mcp.yml"]
+    paths:
+      - "mcp/**"
+      - "api/openapi/v1.yaml"
+      - "docs/publication.yaml"
+      - "docs/16-webhooks.md"
+      - "docs/18-sdks.md"
+      - "docs/error-keys.md"
+      - "docs-site/content/**"
+      - ".github/workflows/mcp.yml"
   pull_request:
-    paths: ["mcp/**", ".github/workflows/mcp.yml"]
+    paths:
+      - "mcp/**"
+      - "api/openapi/v1.yaml"
+      - "docs/publication.yaml"
+      - "docs/16-webhooks.md"
+      - "docs/18-sdks.md"
+      - "docs/error-keys.md"
+      - "docs-site/content/**"
+      - ".github/workflows/mcp.yml"
 
 permissions:
   contents: read
@@ -16,7 +34,12 @@ concurrency:
 
 jobs:
   test:
+    name: node ${{ matrix.node }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]   # vitest 5 needs 22.12 or newer; the server itself runs on 20
     defaults:
       run:
         working-directory: mcp
@@ -24,10 +47,11 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: mcp/package-lock.json
       - run: npm ci
+      # Each of these generates src/generated and assets first (npm's pre* scripts). The tests include one that starts the built server over stdio and one over HTTP.
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
