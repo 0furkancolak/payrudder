@@ -21,6 +21,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
+	"github.com/0furkancolak/payrudder/pkg/taxid"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
@@ -161,6 +162,7 @@ func Customer(c sqlc.Customer) *plansv1.Customer {
 		Country: Str(c.Country), BillingCurrency: Str(c.BillingCurrency), Address: AddressFromJSON(c.Address),
 		TaxId: c.TaxID, TaxOffice: c.TaxOffice, EInvoiceRegistered: c.EInvoiceRegistered, Locale: c.Locale, CustomerType: c.CustomerType,
 		BlockTime: tsPtr(c.BlockedAt), BlockReason: c.BlockReason, BlockCategory: c.BlockCategory, BlockedUntil: tsPtr(c.BlockedUntil),
+		Phone: c.Phone, TaxIdValidatedAt: tsPtr(c.TaxIDValidatedAt), TaxIdWarning: string(taxid.Check(c.TaxID, Str(c.Country), c.CustomerType)),
 	}
 }
 

@@ -146,6 +146,33 @@ func testAddresses(t *testing.T) {
 		t.Errorf("unknown customer: %v", err)
 	}
 
+	// The phone: any spelling of an international number is stored as E.164; unset keeps it, empty clears it; a national or malformed number is refused.
+	withPhone, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_p", Name: "Pia", Email: "pia@example.com", Phone: "+90 (532) 123-45-67"})
+	if err != nil || withPhone.GetCustomer().GetPhone() != "+905321234567" {
+		t.Fatalf("a phone typed with spaces and brackets: %v, %v", withPhone, err)
+	}
+	for _, bad := range []string{"05321234567", "+90 532 abc", "+12"} {
+		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_q", Name: "Quin", Email: "quin@example.com", Phone: bad}); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("create with phone %q: %v", bad, err)
+		}
+	}
+	contact := func(phone *string) (*plansv1.SetCustomerContactResponse, error) {
+		return e.plans.SetCustomerContact(ctx, &plansv1.SetCustomerContactRequest{ExternalId: "cus_p", Name: "Pia", Email: "pia@example.com", Phone: phone})
+	}
+	de, none, national := "0049 30 123456", "", "030 123456"
+	if got, err := contact(nil); err != nil || got.GetCustomer().GetPhone() != "+905321234567" {
+		t.Errorf("an unset phone must keep the stored one: %v, %v", got, err)
+	}
+	if got, err := contact(&de); err != nil || got.GetCustomer().GetPhone() != "+4930123456" {
+		t.Errorf("a new phone replaces the old one, normalised: %v, %v", got, err)
+	}
+	if got, err := contact(&none); err != nil || got.GetCustomer().GetPhone() != "" {
+		t.Errorf("an empty phone clears it: %v, %v", got, err)
+	}
+	if _, err := contact(&national); status.Code(err) != codes.InvalidArgument {
+		t.Errorf("a national number on update: %v", err)
+	}
+
 	seller := &plansv1.Address{Line1: "1 Market St", City: "London", Country: "GB"}
 	tn, err := e.admin.UpdateTenantSettings(operator(), &plansv1.UpdateTenantSettingsRequest{TenantId: live.GetId(), Address: seller})
 	if err != nil || tn.GetTenant().GetAddress().GetCity() != "London" {
@@ -165,6 +192,20 @@ func testAddresses(t *testing.T) {
 	}
 	if _, err := e.plans.SetCustomerTax(ctx, &plansv1.SetCustomerTaxRequest{ExternalId: "cus_a", TaxId: "12 3"}); errkey.Of(err) != "plans.customer.tax_invalid" {
 		t.Errorf("a bad tax id: %v", err)
+	}
+	// A wrong id is a warning on the customer, never a refusal. cus_a is a business in Germany: a VKN is not a German VAT id, but it is a number the checksum knows.
+	if c := taxed.GetCustomer(); c.GetTaxIdWarning() != "eu_vat" || c.GetTaxIdValidatedAt() == nil {
+		t.Errorf("a VKN for a German business: warning %q, validated %v; want eu_vat and a time", c.GetTaxIdWarning(), c.GetTaxIdValidatedAt())
+	}
+	if odd, err := e.plans.SetCustomerTax(ctx, &plansv1.SetCustomerTaxRequest{ExternalId: "cus_a", TaxId: "DE12345"}); err != nil || odd.GetCustomer().GetTaxId() != "DE12345" ||
+		odd.GetCustomer().GetTaxIdWarning() != "eu_vat" || odd.GetCustomer().GetTaxIdValidatedAt() != nil {
+		t.Errorf("a malformed VAT id is stored with a warning and no validated time: %v, %v", odd, err)
+	}
+	if good, err := e.plans.SetCustomerTax(ctx, &plansv1.SetCustomerTaxRequest{ExternalId: "cus_a", TaxId: "DE136695976"}); err != nil || good.GetCustomer().GetTaxIdWarning() != "" || good.GetCustomer().GetTaxIdValidatedAt() == nil {
+		t.Errorf("a well-formed VAT id: no warning, validated: %v, %v", good, err)
+	}
+	if got, err := e.plans.GetCustomer(ctx, &plansv1.GetCustomerRequest{ExternalId: "cus_a"}); err != nil || got.GetCustomer().GetTaxIdValidatedAt() == nil || got.GetCustomer().GetTaxIdWarning() != "" {
+		t.Errorf("the validated time and the warning are read back: %v, %v", got, err)
 	}
 	if _, err := e.plans.SetCustomerTax(ctx, &plansv1.SetCustomerTaxRequest{ExternalId: "nobody", TaxId: "1234567890"}); status.Code(err) != codes.NotFound {
 		t.Errorf("unknown customer: %v", err)

@@ -32,14 +32,35 @@ type SnapshotOf struct {
 func (s SnapshotOf) Snapshot() sagamodel.Snapshot {
 	t, cu := s.Tenant, s.Customer
 	snap := sagamodel.Snapshot{
-		CustomerExternalID: s.External, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(), CustomerLocale: cu.GetLocale(), CustomerType: cu.GetCustomerType(),
+		CustomerExternalID: s.External, CustomerName: cu.GetName(), CustomerEmail: cu.GetEmail(),
 		PaymentMethod: s.PaymentMethod, Provider: s.Provider, TenantName: t.GetName(), Environment: Environment(t), CurrencyExponent: s.CurrencyExponent,
 		LogoObjectKey: LogoKey(s.TenantID, t), ProviderMails: ProviderMails(s.Provider),
 		SellerAddress: AddressLines(t.GetAddress()), CustomerAddress: AddressLines(cu.GetAddress()),
 		BankTransfer: BankTransfer(t, s.Provider, s.Currency),
 	}
+	DocumentSnapshot(&snap, t, cu)
 	EInvoiceSnapshot(&snap, t, cu)
 	return snap
+}
+
+// defaultLocales is the language of the countries whose language the invoice PDF can print (docs/plans/05): the fallback when a customer has none of their own. A
+// country that is not listed falls back to English; Arabic-speaking countries are not listed because the PDF library cannot shape Arabic.
+var defaultLocales = map[string]string{"TR": "tr", "DE": "de", "AT": "de", "FR": "fr", "ES": "es"}
+
+// DocumentSnapshot freezes what the printed invoice needs besides the addressees: the customer's language and kind, the language of the seller's country as the
+// fallback, and the tax identity and country of both parties. cu is nil for a guest paying an ad-hoc link, who has none of it.
+func DocumentSnapshot(s *sagamodel.Snapshot, t *plansv1.Tenant, cu *plansv1.Customer) {
+	l := t.GetLegal()
+	s.SellerTaxID, s.SellerTaxOffice, s.SellerCountry = l.GetTaxId(), l.GetTaxOffice(), t.GetAddress().GetCountry()
+	s.DefaultLocale = defaultLocales[s.SellerCountry]
+	if cu == nil {
+		return
+	}
+	s.CustomerLocale, s.CustomerType = cu.GetLocale(), cu.GetCustomerType()
+	s.CustomerTaxID, s.CustomerTaxOffice = cu.GetTaxId(), cu.GetTaxOffice()
+	if s.CustomerCountry = cu.GetAddress().GetCountry(); s.CustomerCountry == "" {
+		s.CustomerCountry = cu.GetCountry()
+	}
 }
 
 // ProviderMails reports whether the named provider mails the customer its own receipt for what it charges (Paddle does as merchant of record; iyzico does

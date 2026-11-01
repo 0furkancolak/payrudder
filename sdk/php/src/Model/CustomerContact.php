@@ -21,12 +21,14 @@ final class CustomerContact implements RequestBody
      * @param string $email
      * @param CustomerContactLocale|string|null $locale
      * @param CustomerContactCustomerType|string|null $customerType
+     * @param string|null $phone
      */
     public function __construct(
         public readonly string $name,
         public readonly string $email,
         public readonly CustomerContactLocale|string|null $locale = null,
         public readonly CustomerContactCustomerType|string|null $customerType = null,
+        public readonly ?string $phone = null,
     ) {}
 
     /**
@@ -39,6 +41,7 @@ final class CustomerContact implements RequestBody
             'email' => $this->email,
             'locale' => Cast::wire($this->locale),
             'customer_type' => Cast::wire($this->customerType),
+            'phone' => $this->phone,
         ]);
     }
 }

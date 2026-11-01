@@ -1,0 +1,47 @@
+RECHNUNG
+Rechnungsnummer: INV-2026-000042
+Zeitraum: Oktober 2026
+Ausgestellt am: 2. November 2026
+Von
+Acme Yazılım A.Ş.
+Atatürk Cd. 1
+34000 İstanbul
+TR
+VKN (türkische Steuernummer): 1234567890
+Finanzamt: Kadıköy
+Rechnung an
+Müller GmbH
+Hauptstr. 5
+10115 Berlin
+DE
+USt-IdNr.: DE136695976
+buchhaltung@mueller.example
+Beschreibung
+Menge
+Betrag
+Base fee
+1.234.567,89 EUR
+Usage — gb_hours
+1.234,500 GB-h
+617,25 EUR
+Launch discount
+-50,00 EUR
+Zwischensumme
+1.235.135,14 EUR
+Gesamtbetrag
+1.235.135,14 EUR
+Zahlung per Banküberweisung
+Bank
+Example Bank
+Kontoinhaber
+Acme Yazılım A.Ş.
+IBAN
+TR33 0006 1005 1978 6457 8413 26
+BIC / SWIFT
+TCZBTR2A
+Verwendungszweck
+INV-2026-000042
+Bitte geben Sie bei der Überweisung den Verwendungszweck an, damit wir die Zahlung dieser Rechnung zuordnen
+können.
+Das rechtlich maßgebliche E-Dokument (e-Fatura oder e-Arşiv-Rechnung) zu dieser Rechnung stellt der
+E-Rechnungs-Anbieter des Verkäufers gesondert aus; es trägt eine eigene Nummer.

@@ -6,7 +6,7 @@ import { confirmDialog, pickFilter, rowAction } from "./ui";
 // invoices, payments and subscriptions the console loads. A row opens the customer's sheet: figures, quick actions and a tab per kind of record.
 
 const customers = [
-  { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", country: "TR", billing_currency: "TRY", create_time: "2026-10-01T10:00:00Z", address: { line1: "Atatürk Cd. 1", city: "İstanbul", country: "TR" }, tax_id: "11111111111" },
+  { id: "id-1", external_id: "cus_1", name: "Ada Lovelace", email: "ada@example.com", country: "TR", billing_currency: "TRY", create_time: "2026-10-01T10:00:00Z", address: { line1: "Atatürk Cd. 1", city: "İstanbul", country: "TR" }, tax_id: "11111111111", tax_id_warning: "tr_any", phone: "+905321234567" },
   { id: "id-2", external_id: "cus_2", name: "Grace Hopper", email: "grace@example.com", country: "DE", billing_currency: "EUR", create_time: "2026-10-02T10:00:00Z" },
   { id: "id-3", external_id: "cus_3", name: "", email: "", create_time: "2026-10-10T10:00:00Z" },
 ];
@@ -256,6 +256,8 @@ test.describe("customer sheet", () => {
     await sheet.getByTestId("customer-tab-details").click();
     await expect(sheet.getByTestId("customer-details")).toContainText("Atatürk Cd. 1, İstanbul, TR");
     await expect(sheet.getByTestId("customer-details")).toContainText("11111111111");
+    await expect(sheet.getByTestId("customer-phone")).toHaveText("+905321234567");
+    await expect(sheet.getByTestId("customer-tax-warning")).toContainText("does not look right");
     await sheet.getByTestId("customer-tab-credits").click();
     await expect(sheet).toContainText("Credit history");
 
@@ -289,9 +291,16 @@ test.describe("customer sheet", () => {
     await contact.getByLabel("E-mail").fill("yeni@example.com");
     await contact.getByLabel("Language").selectOption("tr");
     await contact.getByLabel("Type").selectOption("business");
+    // The number the customer has is there; a national spelling is refused where it is typed, and the save waits.
+    await expect(contact.getByLabel("Mobile number")).toHaveValue("+905321234567");
+    await contact.getByLabel("Mobile number").fill("0532 123 45 67");
+    await expect(contact.locator("#edit-contact-phone-error")).toBeVisible();
+    await expect(contact.getByRole("button", { name: "Save contact" })).toBeDisabled();
+    await contact.getByLabel("Mobile number").fill("+49 (151) 234-5678");
+    await expect(contact.locator("#edit-contact-phone-error")).toHaveCount(0);
     await contact.getByRole("button", { name: "Save contact" }).click();
     await expect.poll(() => gw.called("PUT", "/v1/customers/cus_1/contact").length).toBe(1);
-    expect(gw.called("PUT", "/v1/customers/cus_1/contact")[0]?.body).toEqual({ name: "Yeni Ad", email: "yeni@example.com", locale: "tr", customer_type: "business" });
+    expect(gw.called("PUT", "/v1/customers/cus_1/contact")[0]?.body).toEqual({ name: "Yeni Ad", email: "yeni@example.com", locale: "tr", customer_type: "business", phone: "+491512345678" });
 
     await page.getByTestId("customer-edit").click();
     await page.getByTestId("customer-edit-address").click();

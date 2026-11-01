@@ -138,3 +138,41 @@ func TestDetectAndValid(t *testing.T) {
 		t.Error("an unknown kind is never valid, and a VKN is not a TCKN")
 	}
 }
+
+// The same cases, with the same keys, as taxIdHint in web/admin/src/shared/lib/taxid.test.ts: the server's warning and the form's hint must not disagree.
+func TestCheckIsAHintNeverARefusal(t *testing.T) {
+	for _, c := range []struct {
+		id, country, kind string
+		want              Hint
+	}{
+		{"", "TR", "business", HintNone},
+		{"1234567890", "TR", "business", HintNone},
+		{"10000000146", "TR", "individual", HintNone},
+		{"anything", "US", "business", HintNone},
+		{"anything", "DE", "individual", HintNone},
+		{"whatever", "", "", HintNone},
+		{"10000000146", "TR", "business", HintTRIsTCKN},
+		{"1234567890", "TR", "individual", HintTRIsVKN},
+		{"12345", "TR", "business", HintTRBusiness},
+		{"12345", "TR", "individual", HintTRIndividual},
+		{"12345", "TR", "", HintTRAny},
+		{"1234567890", "TR", "", HintNone},
+		{"10000000146", "tr", "", HintNone},
+		{"DE136695976", "DE", "business", HintNone},
+		{"DE 136 695 976", "de", "business", HintNone},
+		{"DE12", "DE", "business", HintEUVAT},
+		{"GR", "GR", "business", HintEUVAT},
+	} {
+		if got := Check(c.id, c.country, c.kind); got != c.want {
+			t.Errorf("Check(%q, %q, %q) = %q, want %q", c.id, c.country, c.kind, got, c.want)
+		}
+	}
+}
+
+func TestRecognised(t *testing.T) {
+	for id, want := range map[string]bool{"10000000146": true, "1234567890": true, "DE136695976": true, "12345": false, "": false, "12345678901": false} {
+		if got := Recognised(id); got != want {
+			t.Errorf("Recognised(%q) = %v, want %v", id, got, want)
+		}
+	}
+}
