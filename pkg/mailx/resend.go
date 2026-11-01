@@ -25,8 +25,8 @@ func (e *PermanentError) Error() string {
 	return fmt.Sprintf("mail: refused by the provider (%d): %s", e.Status, e.Detail)
 }
 
-// Resend sends through a Resend-compatible HTTP API: POST {BaseURL}/emails with the key as a Bearer token. Nafru Email is one (its official SDK is Resend's with
-// another base URL). The sender is built per tenant from the tenant's own account, so BaseURL is the tenant's choice and Client must be one that refuses private
+// Resend sends through a Resend-compatible HTTP API: POST {BaseURL}/emails with the key as a Bearer token (Resend's public API reference). It is the shape only;
+// what a particular provider adds on top of it is that provider's own type (Nafru, nafru.go). The sender is built per tenant from the tenant's own account, so BaseURL is the tenant's choice and Client must be one that refuses private
 // addresses (safehttp.NewClient).
 type Resend struct {
 	BaseURL string
@@ -49,10 +49,6 @@ type resendTag struct {
 	Value string `json:"value"`
 }
 
-// templateTag is the name of the tag, and the header, that carry which Payrudder mail a message is. Nafru Email shows tags on each message, and an application
-// added there for Payrudder can match on it to apply its own template.
-const templateTag = "payrudder_template"
-
 func (s Resend) endpoint(path string) (string, error) {
 	base, err := url.Parse(strings.TrimRight(s.BaseURL, "/"))
 	if err != nil || base.Host == "" || (base.Scheme != "https" && base.Scheme != "http") {
@@ -71,10 +67,9 @@ func (s Resend) Send(ctx context.Context, m Message) (string, error) {
 	if err != nil {
 		return "", &NotSentError{err}
 	}
-	out := resendBody{From: m.From, To: []string{m.To}, Subject: m.Subject, HTML: m.HTML, Text: m.Text}
-	if validTag(m.Template) {
-		out.Tags = []resendTag{{Name: templateTag, Value: m.Template}}
-		out.Headers = map[string]string{"X-Payrudder-Template": m.Template}
+	out := resendBody{From: m.From, To: []string{m.To}, Subject: m.Subject, HTML: m.HTML, Text: m.Text, Headers: m.Headers}
+	for _, t := range m.Tags {
+		out.Tags = append(out.Tags, resendTag(t))
 	}
 	payload, err := json.Marshal(out)
 	if err != nil {
@@ -175,17 +170,3 @@ func detail(body []byte) string {
 const maxDetail = 200
 
 func truncate(s string) string { return strx.Truncate(s, maxDetail) }
-
-// validTag: a Resend tag value is ASCII letters, digits, underscores and dashes, at most 256 characters; anything else is left out rather than refused.
-func validTag(v string) bool {
-	if v == "" || len(v) > 256 {
-		return false
-	}
-	for _, r := range v {
-		letter := r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z'
-		if !letter && (r < '0' || r > '9') && r != '_' && r != '-' {
-			return false
-		}
-	}
-	return true
-}
