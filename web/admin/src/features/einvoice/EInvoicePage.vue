@@ -16,6 +16,8 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { Input } from "@/shared/ui/input";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import EInvoiceAccountSheet from "./EInvoiceAccountSheet.vue";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -52,6 +54,7 @@ const accountOpen = ref(false);
 const list = computed(() => accounts.data.value ?? []);
 const table = useTableState(list, {
   sheet: { kind: "einvoice", id: (a) => a.environment }, searchFields: (a) => [a.provider, a.environment],
+  sorts: () => [newest(t, (a) => time(a.updated_at)), oldest(t, (a) => time(a.updated_at)), nameAsc(t, (a) => a.provider), nameDesc(t, (a) => a.provider)],
   url: true, filters: { environment: (a, v) => a.environment === v },
 });
 const environmentOptions = computed(() => [
@@ -75,6 +78,7 @@ const when = (v?: string) => fmt.date(v, "day", "—");
     <ErrorState :error="accounts.error.value" :retrying="accounts.isFetching.value" compact @retry="accounts.refetch()" />
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="environmentFilter" multiple :label="t('einvoice.account.environment')" :options="environmentOptions" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <HeaderAction :label="t('einvoice.account.add')" @click="accountOpen = true" />
     </DataToolbar>
     <p v-if="list.length && !table.total.value" class="text-muted-foreground px-3 py-4 text-center text-sm">{{ t("common.noMatches") }}</p>

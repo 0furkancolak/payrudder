@@ -8,6 +8,8 @@ import { useCanWrite } from "@/shared/lib/access";
 import { useFormat } from "@/shared/lib/format";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -40,6 +42,7 @@ const meters = useMeters(() => props.tenantId);
 const list = computed<Meter[]>(() => meters.data.value ?? []);
 const table = useTableState<Meter>(list, {
   searchFields: (m) => [m.code, m.unit_label, m.value_property],
+  sorts: () => [nameAsc(t, (m) => m.code), nameDesc(t, (m) => m.code), newest(t, (m) => time(m.create_time)), oldest(t, (m) => time(m.create_time))],
   filters: { aggregation: (m, v) => m.aggregation === v },
 });
 const aggregation = computed({ get: () => table.filters.value.aggregation ?? [], set: (v: string[]) => (table.filters.value = { ...table.filters.value, aggregation: v }) });
@@ -105,6 +108,7 @@ const actionsOf = (m: Meter, i: number) => [
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.usage.meters.search')" @clear="table.clear()">
       <FilterSelect v-model="aggregation" multiple :label="t('billing.usage.meters.aggregation')" :options="aggregationOptions" />
       <PeriodControls v-model:range="range" v-model:compare="compare" :period="period" :too-long="tooLong" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <HeaderAction test-id="meters-new" :disabled="!canWrite" :label="t('billing.usage.meters.new')" @click="openForm(null)" />
     </DataToolbar>
     <Table>

@@ -7,6 +7,8 @@ import CustomerSelect from "@/features/customers/CustomerSelect.vue";
 import { useFormat } from "@/shared/lib/format";
 import { useTabParam } from "@/shared/lib/useSearchValue";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, amountHigh, amountLow, expiresSoon, newest, time } from "@/shared/lib/sortDefs";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -46,6 +48,7 @@ const view = useTabParam("view", ["lots", "ledger"] as const, "lots");
 type Lot = NonNullable<NonNullable<typeof balance.data.value>["lots"]>[number];
 const lots = useTableState<Lot>(() => balance.data.value?.lots ?? [], {
   searchFields: (l) => [l.source ? t(`billing.credits.source.${l.source}`) : ""],
+  sorts: () => [newest(t, (l) => time(l.create_time)), expiresSoon(t, (l) => time(l.expire_time)), amountHigh(t, (l) => amount(l.remaining)), amountLow(t, (l) => amount(l.remaining))],
   filters: { source: (l, v) => l.source === v },
 });
 const sourceFilter = computed({ get: () => lots.filters.value.source ?? [], set: (v: string[]) => (lots.filters.value.source = v) });
@@ -86,6 +89,7 @@ const TAB_CLASS =
         <TabsContent value="lots" class="min-w-0 outline-none">
           <DataToolbar v-model:search="lots.search.value" :active="lots.active.value" @clear="lots.clear()">
             <FilterSelect v-model="sourceFilter" multiple :label="t('billing.credits.lots.source')" :options="sources" />
+            <SortSelect v-if="lots.sorts.value.length > 0" v-model="lots.sort.value" :options="lots.sorts.value" />
           </DataToolbar>
           <Table>
             <TableHeader>

@@ -56,7 +56,10 @@
       "amountLow": "Betrag, aufsteigend",
       "nameAsc": "Name, A bis Z",
       "nameDesc": "Name, Z bis A",
-      "lastUsed": "Zuletzt benutzt"
+      "lastUsed": "Zuletzt benutzt",
+      "countHigh": "Anzahl, absteigend",
+      "countLow": "Anzahl, aufsteigend",
+      "expiresSoon": "Läuft zuerst ab"
     },
     "bulk": {
       "label": "Sammelaktionen",
@@ -65,8 +68,16 @@
       "selectPage": "Alle Zeilen dieser Seite auswählen",
       "selectRow": "Zeile auswählen",
       "done": "{ok} erledigt, {failed} nicht geändert",
-      "notChanged": "Nicht geändert"
-    }
+      "notChanged": "Nicht geändert",
+      "announce": "{n} Zeile ausgewählt. Die Sammelaktionen stehen in der Leiste über der Tabelle. | {n} Zeilen ausgewählt. Die Sammelaktionen stehen in der Leiste über der Tabelle.",
+      "cleared": "Auswahl aufgehoben",
+      "selectAll": "Alle {n} Ergebnisse auswählen",
+      "selectAllMore": "Alle passenden Ergebnisse auswählen",
+      "confirmAllTitle": "Auf {n} Zeilen anwenden?",
+      "confirmAll": "Das betrifft alle {n} ausgewählten Zeilen, auch die auf anderen Seiten.",
+      "loadFailed": "Der Rest der Liste konnte nicht geladen werden, daher sind nicht alle Ergebnisse ausgewählt."
+    },
+    "appliedFilters": "Angewendete Filter"
   },
   "enums": {
     "environment": {
@@ -4476,7 +4487,8 @@
     "none": "Noch keine",
     "notFound": "Nicht in der Liste",
     "open": "Öffnen",
-    "openCustomerPage": "Auf der Kundenseite öffnen, um etwas zu ändern"
+    "openCustomerPage": "Auf der Kundenseite öffnen, um etwas zu ändern",
+    "paymentNotLoaded": "Diese Zahlung gehört nicht zu den neuesten Zahlungen, die die Konsole lädt."
   },
   "sheets": {
     "back": "Zurück",

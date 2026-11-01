@@ -5,6 +5,8 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useCanWrite } from "@/shared/lib/access";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { countHigh, nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
@@ -33,6 +35,7 @@ const creating = ref(false);
 const list = computed<Coupon[]>(() => coupons.data.value?.coupons ?? []);
 const table = useTableState<Coupon>(list, {
   sheet: { kind: "coupon", id: (c) => c.code }, searchFields: (c) => [c.code, c.name],
+  sorts: () => [newest(t, (c) => time(c.create_time)), oldest(t, (c) => time(c.create_time)), nameAsc(t, (c) => c.code), nameDesc(t, (c) => c.code), countHigh(t, (c) => c.redeemed)],
   filters: {
     state: (c, v) => (v === "active" ? !!c.active : !c.active),
     target: (c, v) => (c.applies_to ?? []).length === 0 || (c.applies_to ?? []).includes(v as never),
@@ -63,6 +66,7 @@ const actionsOf = (c: Coupon, i: number) => [
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('billing.coupons.searchCoupons')" @clear="table.clear()">
       <FilterSelect v-model="stateFilter" multiple :label="t('billing.subscriptions.state')" :options="stateOptions" />
       <FilterSelect v-model="targetFilter" multiple :label="t('billing.pricing.promotions.appliesTo')" :options="targetOptions" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
       <HeaderAction test-id="coupons-new" :disabled="!canWrite" :label="t('billing.coupons.new')" @click="creating = true" />
     </DataToolbar>
     <Table>

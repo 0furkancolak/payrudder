@@ -4,6 +4,8 @@ import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, amountHigh, amountLow, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -26,6 +28,7 @@ type Entry = NonNullable<NonNullable<typeof ledger.data.value>["entries"]>[numbe
 const range = ref<DateRange>(thisMonth());
 const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filter((e) => inRange(e.create_time, range.value)), {
   searchFields: (e) => [e.reason, e.kind ? t(`billing.credits.kind.${e.kind}`) : "", e.source ? t(`billing.credits.source.${e.source}`) : ""],
+  sorts: () => [newest(t, (e) => time(e.create_time)), oldest(t, (e) => time(e.create_time)), amountHigh(t, (e) => amount(e.amount)), amountLow(t, (e) => amount(e.amount))],
   filters: { kind: (e, v) => e.kind === v },
 });
 const kinds = computed(() => [{ value: "", label: t("common.all") }, ...["grant", "consume", "expire"].map((k) => ({ value: k, label: t(`billing.credits.kind.${k}`) }))]);
@@ -44,6 +47,7 @@ const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v
     <DataToolbar v-model:search="table.search.value" :active="active" @clear="clear">
       <FilterSelect v-model="kindFilter" multiple :label="t('billing.credits.ledger.kind')" :options="kinds" />
       <DateRangePicker v-model="range" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <ErrorText :error="ledger.error.value" class="px-3" />
     <Table>

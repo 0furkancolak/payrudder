@@ -5,6 +5,7 @@ import { ArrowUpRight, Ban, CircleCheck, ExternalLink, FileText, Link2, MapPin, 
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePackages } from "@/features/packages";
+import { keepEnv } from "@/features/related/link";
 import { useSubscriptionActions } from "@/features/subscriptions/api";
 import CreateSubscriptionForm from "@/features/subscriptions/CreateSubscriptionForm.vue";
 import { inRange, rangeChanged, thisMonth } from "@/shared/lib/dateRange";
@@ -19,7 +20,7 @@ import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { Button } from "@/shared/ui/button";
 import { downloadCsv } from "@/shared/lib/csv";
-import { runBulk } from "@/shared/lib/bulk";
+import { useBulk } from "@/shared/lib/bulk";
 import { askConfirm } from "@/shared/lib/confirm";
 import { SortSelect } from "@/shared/ui/sort-select";
 import { nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
@@ -34,7 +35,7 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill, type Tone } from "@/shared/ui/status-pill";
 import CustomerQuotasSheet from "./CustomerQuotasSheet.vue";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { useBlockCustomer, useCustomers, useCustomerSummaries } from "./api";
+import { useBlockCustomer, useCustomers, useCustomerSummaries, useRestOfCustomers } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
 import CustomerCreateSheet from "./CustomerCreateSheet.vue";
 import CustomerEditSheets from "./CustomerEditSheets.vue";
@@ -130,21 +131,20 @@ const editingTax = ref<Customer | null>(null);
 const packages = usePackages(tenantId);
 const act = useSubscriptionActions(tenantId);
 const blocking = useBlockCustomer(tenantId);
-const bulkNote = ref("");
 async function setBlocked(c: Customer, on: boolean) {
   if (on && !(await askConfirm({ body: t("billing.customers.block.confirm", { name: c.name || c.external_id }) }))) return;
   if (on) await blocking.block.mutateAsync({ externalId: c.external_id ?? "" });
   else await blocking.unblock.mutateAsync(c.external_id ?? "");
 }
-/** The same change to every ticked customer; a failure on one does not stop the rest, and the ones not changed are named. */
-async function bulkBlock(on: boolean) {
-  const rows = table.selectedRows.value.filter((c) => (c.block_time ? 1 : 0) !== (on ? 1 : 0));
-  if (rows.length === 0) return;
-  if (on && !(await askConfirm({ body: t("billing.customers.block.confirmMany", { n: rows.length }) }))) return;
-  const r = await runBulk(rows, (c) => (on ? blocking.block.mutateAsync({ externalId: c.external_id ?? "" }) : blocking.unblock.mutateAsync(c.external_id ?? "")));
-  for (const c of r.ok) table.tick(c, false);
-  bulkNote.value = t("common.bulk.done", { ok: r.ok.length, failed: r.failed.length }) + (r.failed.length ? ` · ${t("common.bulk.notChanged")}: ${r.failed.map((f) => f.row.external_id).join(", ")}` : "");
-}
+// The list is the first page of customers (PAGE.whole); "select all" fetches the others by page token (useRestOfCustomers).
+const rest = useRestOfCustomers(tenantId);
+const bulk = useBulk(table, { name: (c) => c.external_id ?? "", rest: { has: () => !!customers.data.value?.next_page_token, load: () => rest.mutateAsync() } });
+/** The same change to every ticked customer that does not have it yet; a failure on one does not stop the rest, and the ones not changed are named. */
+const bulkBlock = (on: boolean) =>
+  bulk.run((c) => (on ? blocking.block.mutateAsync({ externalId: c.external_id ?? "" }) : blocking.unblock.mutateAsync(c.external_id ?? "")), {
+    rows: (all) => all.filter((c) => (c.block_time ? 1 : 0) !== (on ? 1 : 0)),
+    confirm: on ? (rows) => ({ body: t("billing.customers.block.confirmMany", { n: rows.length }) }) : undefined,
+  });
 const subscribing = ref(false);
 const subscribeFor = ref("");
 function newSubscription(c: Customer) {
@@ -158,8 +158,9 @@ function paymentLink(externalId?: string) {
   linkFor.value = externalId ?? "";
   linking.value = true;
 }
-function toCredits() {
-  void router.navigate({ to: `${tenantBase()}/$id/credits`, params: { id: tenantId.value } as never });
+/** The credits page of this customer: it picks the customer named in the address, so the sheet's "Manage credits" does not leave the person to choose them again. */
+function toCredits(externalId: string) {
+  void router.navigate({ to: `${tenantBase()}/$id/credits`, params: { id: tenantId.value } as never, search: ((prev: Record<string, unknown>) => keepEnv(prev, "customer", externalId)) as never });
 }
 // --- the customer's own quotas (overrides of its package's limits)
 const quotasOf = ref("");
@@ -225,7 +226,7 @@ function exportSelected() {
       @edit-tax="editingTax = current"
       @new-subscription="newSubscription(current)"
       @payment-link="paymentLink(currentId)"
-      @credits="toCredits"
+      @credits="toCredits(currentId)"
     />
   </DetailSheet>
   <!-- After the customer's sheet: a sheet portals to where it was first rendered, so these open above the one they are opened from. -->
@@ -236,12 +237,12 @@ function exportSelected() {
   <CreateSubscriptionForm v-model:open="subscribing" :tenant-id="tenantId" :packages="packages.data.value ?? []" :act="act" :for-customer="subscribeFor" />
 
   <Card class="gap-0 p-3">
-    <BulkBar :count="table.selectedRows.value.length" @clear="table.clearSelection()">
+    <BulkBar v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" data-testid="bulk-block" @click="bulkBlock(true)">{{ t("billing.customers.block.action") }}</Button>
       <Button type="button" size="sm" variant="outline" data-testid="bulk-unblock" @click="bulkBlock(false)">{{ t("billing.customers.block.lift") }}</Button>
       <Button type="button" size="sm" variant="outline" data-testid="bulk-export" @click="exportSelected">{{ t("billing.customers.exportSelected") }}</Button>
     </BulkBar>
-    <p v-if="bulkNote" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulkNote }}</p>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <h2 class="sr-only">{{ t("shell.items.customers") }}</h2>
     <ErrorState :error="customers.error.value" :retrying="customers.isFetching.value" compact @retry="customers.refetch()" />
     <ErrorText :error="act.create.error.value" class="px-3 pb-2" />

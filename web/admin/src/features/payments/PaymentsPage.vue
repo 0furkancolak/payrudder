@@ -10,6 +10,8 @@ import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { formatMinor } from "@/shared/lib/money";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, amountHigh, amountLow, nameAsc, nameDesc, newest, oldest, time } from "@/shared/lib/sortDefs";
 import { ErrorText } from "@/shared/ui/error-text";
 import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
@@ -49,6 +51,7 @@ type Entry = NonNullable<NonNullable<typeof ledger.data.value>["entries"]>[numbe
 const range = ref<DateRange>(thisMonth());
 const table = useTableState<Entry>(() => (ledger.data.value?.entries ?? []).filter((e) => inRange(e.occurred_at, range.value)), {
   searchFields: (e) => [e.provider, e.provider_ref, e.kind, e.source],
+  sorts: () => [newest(t, (e) => time(e.occurred_at)), oldest(t, (e) => time(e.occurred_at)), amountHigh(t, (e) => amount(e.amount_minor)), amountLow(t, (e) => amount(e.amount_minor))],
   url: true, filters: { status: (e, v) => e.status === v, provider: (e, v) => e.provider === v },
 });
 const statusFilter = computed({ get: () => table.filters.value.status ?? [], set: (v: string[]) => (table.filters.value.status = v) });
@@ -90,6 +93,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
 type Discrepancy = NonNullable<NonNullable<typeof reconcile.data.value>["discrepancies"]>[number];
 const issues = useTableState<Discrepancy>(() => result.value?.discrepancies ?? [], {
   searchFields: (d) => [d.number, d.invoice_id, d.provider, d.provider_ref, d.detail],
+  sorts: () => [amountHigh(t, (d) => amount(d.billed_minor)), amountLow(t, (d) => amount(d.billed_minor)), nameAsc(t, (d) => d.provider), nameDesc(t, (d) => d.provider)],
   filters: { kind: (d, v) => d.kind === v },
 });
 const issueKind = computed({ get: () => issues.filters.value.kind ?? [], set: (v: string[]) => (issues.filters.value.kind = v) });
@@ -103,6 +107,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
       <FilterSelect v-model="statusFilter" multiple :label="t('billing.payments.status')" :options="statuses" />
       <FilterSelect v-model="providerFilter" multiple :label="t('billing.payments.provider')" :options="providers" />
       <DateRangePicker v-model="range" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <Table>
       <TableHeader>
@@ -163,6 +168,7 @@ const issueKinds = computed(() => [all.value, ...kinds.value.map(([k]) => ({ val
       <div v-if="(result.discrepancies ?? []).length > 0" class="-mx-3 border-t pt-3">
         <DataToolbar v-model:search="issues.search.value" :active="issues.active.value" @clear="issues.clear()">
           <FilterSelect v-model="issueKind" multiple :label="t('billing.payments.kind')" :options="issueKinds" />
+          <SortSelect v-if="issues.sorts.value.length > 0" v-model="issues.sort.value" :options="issues.sorts.value" />
         </DataToolbar>
         <Table>
           <TableHeader>

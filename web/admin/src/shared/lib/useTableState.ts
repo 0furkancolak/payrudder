@@ -21,7 +21,8 @@ import { idOf, searchParams, setKind, updateSearch } from "./sheets";
  * With `url` and `sorts` the chosen order is kept in the address too, as `?sort=<key>` (with the same prefix).
  *
  * With `selectId` (or `sheet`, whose id is used) rows can be ticked for a bulk action: `selectedRows` are the ticked rows that the current search and filters
- * still show (a row a filter hides is not acted on, whatever was ticked before), `togglePage` ticks or unticks every row of the page shown, and
+ * still show (a row a filter hides is not acted on, whatever was ticked before), `togglePage` ticks or unticks every row of the page shown, `selectAll` ticks
+ * every row the search and filters show on every page ("Select all N results", offered while `canSelectAll`: the page is ticked and more rows match) and
  * `clearSelection` drops all ticks. Ticks are kept by id, so a refetch does not lose them.
  *
  * With `sheet` ({ kind, id }) the open row is written into the address as `?sheet=<kind>:<id>` and the sheet opens by itself when the address names a
@@ -99,6 +100,8 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
   const pageIds = computed(() => paged.value.items.map(idOfRow).filter((id): id is string => id !== undefined));
   const allOnPage = computed(() => pageIds.value.length > 0 && pageIds.value.every((id) => ticked.value.has(id)));
   const someOnPage = computed(() => pageIds.value.some((id) => ticked.value.has(id)));
+  const matchingIds = computed(() => filtered.value.map(idOfRow).filter((id): id is string => id !== undefined));
+  const allMatching = computed(() => matchingIds.value.length > 0 && matchingIds.value.every((id) => ticked.value.has(id)));
 
   const detail = ref<number | null>(null);
   const row = computed(() => (detail.value === null ? undefined : filtered.value[detail.value]));
@@ -172,6 +175,10 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
     selectedRows,
     allOnPage,
     someOnPage,
+    /** Every row the search and filters show, on every page, is ticked. */
+    allMatching,
+    /** The page shown is ticked, more rows match than it holds, and not all of them are ticked yet. */
+    canSelectAll: computed(() => allOnPage.value && matchingIds.value.length > pageIds.value.length && !allMatching.value),
     isTicked: (r: T) => {
       const id = idOfRow(r);
       return id !== undefined && ticked.value.has(id);
@@ -193,6 +200,10 @@ export function useTableState<T>(rows: MaybeRefOrGetter<readonly T[] | undefined
         else next.delete(id);
       }
       ticked.value = next;
+    },
+    /** Ticks every row the search and filters show, on every page. */
+    selectAll() {
+      ticked.value = new Set([...ticked.value, ...matchingIds.value]);
     },
     clearSelection() {
       ticked.value = new Set();

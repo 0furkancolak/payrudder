@@ -4,6 +4,8 @@ import { useI18n } from "vue-i18n";
 import { PROVIDERS } from "@/shared/lib/currencies";
 import { usePackages } from "@/features/packages";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc } from "@/shared/lib/sortDefs";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Button } from "@/shared/ui/button";
@@ -28,6 +30,7 @@ const summary = computed(() => sync.data.value);
 type Obj = NonNullable<NonNullable<typeof catalogue.data.value>["objects"]>[number];
 const table = useTableState<Obj>(() => catalogue.data.value?.objects ?? [], {
   searchFields: (o) => [o.kind, o.key, o.ref],
+  sorts: () => [nameAsc(t, (o) => o.key), nameDesc(t, (o) => o.key)],
   filters: { kind: (o, v) => o.kind === v },
 });
 const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v: string[]) => (table.filters.value.kind = v) });
@@ -61,6 +64,7 @@ const skipped = computed(() => Object.entries(summary.value?.skipped ?? {}));
     </div>
     <DataToolbar v-if="(catalogue.data.value?.objects ?? []).length > 0" v-model:search="table.search.value" :active="table.active.value" class="px-0" @clear="table.clear()">
       <FilterSelect v-model="kindFilter" multiple :label="t('billing.providers.catalogue.kind')" :options="kinds" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
     <Table v-if="(catalogue.data.value?.objects ?? []).length > 0">
       <TableHeader>

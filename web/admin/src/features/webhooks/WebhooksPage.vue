@@ -58,6 +58,7 @@ const endpointsTable = useTableState(list, {
 });
 const deliveriesTable = useTableState(log, {
   sheet: { kind: "delivery", id: (d) => d.id }, searchFields: (d) => [d.event_type, d.last_error, d.last_status],
+  sorts: () => [newest(t, (d) => time(d.create_time)), oldest(t, (d) => time(d.create_time))],
   filters: { state: (d, v) => d.state === v },
 });
 const current = endpointsTable.row;
@@ -113,7 +114,7 @@ async function remove(id: string | undefined) {
 async function rotate(id: string | undefined) {
   if (id && (await askConfirm({ title: t("billing.webhooks.rotateTitle"), body: t("billing.webhooks.confirmRotate"), confirmLabel: t("billing.webhooks.rotate") }))) act.rotate.mutate(id);
 }
-const bulk = useBulk<Endpoint>({ selected: () => endpointsTable.selectedRows.value, untick: (e) => endpointsTable.tick(e, false), name: (e) => e.url ?? e.id ?? "" });
+const bulk = useBulk<Endpoint>(endpointsTable, { name: (e) => e.url ?? e.id ?? "" });
 const setActive = (e: Endpoint, active: boolean) => act.update.mutateAsync({ id: e.id ?? "", url: e.url ?? "", description: e.description ?? "", event_types: (e.event_types ?? []).filter(isEventType), active });
 const bulkPause = () => bulk.run((e) => setActive(e, false), { rows: (all) => all.filter((e) => e.active) });
 const bulkResume = () => bulk.run((e) => setActive(e, true), { rows: (all) => all.filter((e) => !e.active) });
@@ -174,7 +175,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
       <FilterSelect v-model="endpointsTable.filters.value.status" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, { value: 'active', label: t('billing.webhooks.active') }, { value: 'paused', label: t('billing.webhooks.paused') }]" />
       <HeaderAction test-id="webhooks-new" :label="t('billing.webhooks.add')" @click="creating = true" />
     </DataToolbar>
-    <BulkBar :count="endpointsTable.selectedRows.value.length" @clear="endpointsTable.clearSelection()">
+    <BulkBar v-bind="bulk.bar.value" @clear="endpointsTable.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-pause" @click="bulkPause">{{ t("billing.webhooks.pause") }}</Button>
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-resume" @click="bulkResume">{{ t("billing.webhooks.resume") }}</Button>
       <Button type="button" size="sm" variant="outline" :disabled="bulk.busy.value" data-testid="bulk-delete" @click="bulkDelete">{{ t("billing.webhooks.delete") }}</Button>
@@ -227,6 +228,7 @@ function toggle(e: { id?: string; url?: string; description?: string; event_type
         <DataToolbar v-model:search="deliveriesTable.search.value" :active="deliveriesActive" @clear="clearDeliveries()">
           <FilterSelect v-model="deliveriesTable.filters.value.state" multiple :label="t('billing.webhooks.status')" :options="[{ value: '', label: t('billing.webhooks.allStatuses') }, ...deliveryStates.map((s) => ({ value: s, label: stateWord(s) }))]" />
           <DateRangePicker v-model="range" />
+          <SortSelect v-if="deliveriesTable.sorts.value.length > 0" v-model="deliveriesTable.sort.value" :options="deliveriesTable.sorts.value" />
         </DataToolbar>
         <Table>
           <TableHeader>

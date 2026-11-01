@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { ApiError, api, unwrap, type Tenant } from "@/shared/api/client";
+import type { components } from "@/shared/api/schema";
+import { restOfPages } from "@/shared/lib/bulk";
 import { PAGE } from "@/shared/api/limits";
 import { findTenant } from "@/shared/lib/environment";
 import { operatorView } from "@/shared/lib/session";
@@ -16,6 +18,21 @@ export function useTenants(options: { enabled?: MaybeRefOrGetter<boolean> } = {}
     queryKey: tenantKeys.list,
     queryFn: () => unwrap(api.GET("/admin/v1/tenants", { params: { query: { page_size: PAGE.whole } } })),
     enabled: computed(() => toValue(options.enabled ?? true)),
+  });
+}
+
+/** The tenants after the first page, fetched by page token into the list's cache: "select all N results" must cover every tenant the filters match, not the first page only. */
+export function useRestOfTenants() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const first = queries.getQueryData<components["schemas"]["AdminListTenantsResponse"]>(tenantKeys.list);
+      const rest = await restOfPages(first?.next_page_token ?? "", async (token) => {
+        const page = await unwrap(api.GET("/admin/v1/tenants", { params: { query: { page_size: PAGE.whole, page_token: token } } }));
+        return { rows: page.tenants ?? [], next: page.next_page_token ?? "" };
+      });
+      queries.setQueryData(tenantKeys.list, { tenants: [...(first?.tenants ?? []), ...rest], next_page_token: "" });
+    },
   });
 }
 

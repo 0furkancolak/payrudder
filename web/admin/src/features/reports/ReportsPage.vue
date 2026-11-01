@@ -9,6 +9,8 @@ import { ym } from "@/shared/lib/dates";
 import { useFormat } from "@/shared/lib/format";
 import { label } from "@/shared/lib/labels";
 import { useTableState } from "@/shared/lib/useTableState";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { amount, amountHigh, amountLow, countHigh, newest, oldest } from "@/shared/lib/sortDefs";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
@@ -41,6 +43,8 @@ const revenue = useRevenueReport(tenantId, from, to, split);
 type RevenueRow = NonNullable<NonNullable<typeof revenue.data.value>["rows"]>[number];
 const revenueTable = useTableState<RevenueRow>(() => revenue.data.value?.rows ?? [], {
   searchFields: (r) => [r.period, r.provider, r.country, r.currency],
+  // The period is a column only while the report is split by it.
+  sorts: () => [...(split.value.includes("period") ? [newest<RevenueRow>(t, (r) => r.period), oldest<RevenueRow>(t, (r) => r.period)] : []), amountHigh(t, (r) => amount(r.billed_minor)), amountLow(t, (r) => amount(r.billed_minor))],
   filters: { currency: (r, v) => r.currency === v },
 });
 const revenueCurrency = computed({ get: () => revenueTable.filters.value.currency ?? [], set: (v: string[]) => (revenueTable.filters.value.currency = v) });
@@ -70,6 +74,7 @@ const subs = useSubscriptionReport(tenantId, month, subSplit);
 type SubRow = NonNullable<NonNullable<typeof subs.data.value>["rows"]>[number];
 const subTable = useTableState<SubRow>(() => subs.data.value?.rows ?? [], {
   searchFields: (r) => [r.provider, r.country, r.currency],
+  sorts: () => [amountHigh(t, (r) => amount(r.mrr_minor)), amountLow(t, (r) => amount(r.mrr_minor)), countHigh(t, (r) => amount(r.active))],
   filters: { currency: (r, v) => r.currency === v },
 });
 const subCurrency = computed({ get: () => subTable.filters.value.currency ?? [], set: (v: string[]) => (subTable.filters.value.currency = v) });
@@ -85,6 +90,7 @@ const dunning = useDunningReport(tenantId);
 type DunningRow = NonNullable<NonNullable<typeof dunning.data.value>["invoices"]>[number];
 const dunningTable = useTableState<DunningRow>(() => dunning.data.value?.invoices ?? [], {
   searchFields: (d) => [d.number, d.invoice_id, d.customer_external_id, d.provider, d.period],
+  sorts: () => [amountHigh(t, (d) => amount(d.total_minor)), amountLow(t, (d) => amount(d.total_minor))],
   filters: { state: (d, v) => d.state === v, currency: (d, v) => d.currency === v },
 });
 const dunningState = computed({ get: () => dunningTable.filters.value.state ?? [], set: (v: string[]) => (dunningTable.filters.value.state = v) });
@@ -122,6 +128,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
     <DataToolbar v-model:search="revenueTable.search.value" :active="revenueActive" @clear="clearRevenue">
       <FilterSelect v-model="revenueCurrency" multiple :label="t('billing.reports.currency')" :options="revenueCurrencies" />
       <DateRangePicker v-model="range" />
+      <SortSelect v-if="revenueTable.sorts.value.length > 0" v-model="revenueTable.sort.value" :options="revenueTable.sorts.value" />
       <GroupChips v-model="split" :groups="['period', 'provider', 'country']" :label="t('billing.reports.splitBy')" />
     </DataToolbar>
     <ErrorText :error="revenue.error.value" class="px-3" />
@@ -167,6 +174,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
     <DataToolbar v-model:search="subTable.search.value" :active="subActive" @clear="clearSubs">
       <FilterSelect v-model="month" :label="t('billing.reports.month')" :options="months" />
       <FilterSelect v-model="subCurrency" multiple :label="t('billing.reports.currency')" :options="subCurrencies" />
+<SortSelect v-if="subTable.sorts.value.length > 0" v-model="subTable.sort.value" :options="subTable.sorts.value" />
       <GroupChips v-model="subSplit" :groups="['provider', 'country']" :label="t('billing.reports.splitBy')" />
     </DataToolbar>
     <ErrorText :error="subs.error.value" class="px-3" />
@@ -216,6 +224,7 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
     <DataToolbar v-model:search="dunningTable.search.value" :active="dunningTable.active.value" @clear="dunningTable.clear()">
       <FilterSelect v-model="dunningState" multiple :label="t('billing.reports.state')" :options="dunningStates" />
       <FilterSelect v-model="dunningCurrency" multiple :label="t('billing.reports.currency')" :options="dunningCurrencies" />
+      <SortSelect v-if="dunningTable.sorts.value.length > 0" v-model="dunningTable.sort.value" :options="dunningTable.sorts.value" />
     </DataToolbar>
     <Table>
       <TableHeader>
