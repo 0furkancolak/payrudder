@@ -3401,6 +3401,24 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/go-live/routing/preview:
+    post:
+      operationId: appPreviewLiveRouting
+      tags: [Product]
+      summary: Which live account would take a customer in a country paying in a currency
+      description: The same answer as the tenant API's routing preview, for the console. Nothing is created. Any member asks.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PreviewRoutingRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PreviewRoutingResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/sandbox/providers:
     get:
       operationId: appSandboxProviders
@@ -3461,7 +3479,8 @@ paths:
     get:
       operationId: appGetEInvoiceIntegration
       tags: [Product]
-      summary: The e-invoice integrator of the app's live environment (any member; no credential is in the answer)
+      summary: The e-invoice integrator accounts of the app's live environment, and the default among them (any member; no credential is in the answer)
+      description: An environment can hold several accounts, at one integrator or at several. An account is named by its key, the integrator's name alone or with a label (`nilvera`, `nilvera~tr`). `account` is the default one, the one a document goes to when no routing rule names its buyer's country.
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
@@ -3476,8 +3495,8 @@ paths:
     put:
       operationId: appPutEInvoiceIntegration
       tags: [Product]
-      summary: Connect (or replace) the live environment's e-invoice integrator (the owner only)
-      description: The integrator is nilvera or webhook, never the mock. The credentials are sealed, shown once and never echoed back. The change is recorded for the person.
+      summary: Connect (or replace) a live e-invoice integrator account (the owner only)
+      description: The integrator is nilvera or webhook, never the mock. A label connects a further account at the same integrator; the first account of the environment is the default, and `default` makes this one the default. The credentials are sealed, shown once and never echoed back. The change is recorded for the person.
       security: [{ sessionToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
@@ -3494,14 +3513,21 @@ paths:
     delete:
       operationId: appRemoveEInvoiceIntegration
       tags: [Product]
-      summary: Disconnect the live environment's e-invoice integrator (the owner only)
+      summary: Disconnect a live e-invoice integrator account (the owner only)
+      description: >
+        Name the account with `account`; it may be left out when the environment has just one. The default cannot be removed while other accounts exist
+        (409 einvoice.account.default_in_use): make another the default first. The routing rules that name the account go with it.
       security: [{ sessionToken: [] }]
-      parameters: [{ $ref: "#/components/parameters/ID" }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: account, in: query, schema: { $ref: "#/components/schemas/EInvoiceAccountKey" } }
       responses:
         "204": { description: Removed }
+        "400": { $ref: "#/components/responses/Error" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/integrations/e-invoice/test:
     post:
       operationId: appTestEInvoiceIntegration
@@ -3522,6 +3548,72 @@ paths:
               schema: { $ref: "#/components/schemas/AppTestEInvoiceIntegrationResponse" }
         "401": { $ref: "#/components/responses/Error" }
         "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/e-invoice/default:
+    post:
+      operationId: appSetEInvoiceDefault
+      tags: [Product]
+      summary: Make one of the live e-invoice accounts the default (the owner only)
+      description: The default is the account a document goes to when no routing rule names its buyer's country. The account's settings are not touched, so none is sent. The move is recorded for the person.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AppSetEInvoiceDefaultRequest" }
+      responses:
+        "204": { description: The default has moved }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/e-invoice/routing:
+    get:
+      operationId: appEInvoiceRouting
+      tags: [Product]
+      summary: The rules that send the documents of a buyer's country to an e-invoice account
+      description: Any member reads it. A buyer of a country no rule names goes to the default account.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EInvoiceRoutingRules" } } } }
+        "401": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: appSetEInvoiceRouting
+      tags: [Product]
+      summary: Replace the e-invoice routing rules (the owner only)
+      description: A country is named once and every rule names an account the app has (400 einvoice.routing.unknown_account, einvoice.routing.invalid). Documents already begun keep the account they began with. The change is recorded for the person.
+      security: [{ sessionToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EInvoiceRoutingRules" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/EInvoiceRoutingRules" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /app/v1/apps/{id}/integrations/audit:
+    get:
+      operationId: appIntegrationAudit
+      tags: [Product]
+      summary: Who changed the live payment and e-invoice accounts, newest first
+      description: Connected, replaced, removed, made default, and routing changed, with who did it. Any member reads it. No setting or secret is ever in it. The e-mail provider's changes are not in this trail.
+      security: [{ sessionToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/ID" }
+        - { name: kind, in: query, schema: { type: string, enum: [payment, einvoice] } }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+        - { name: page_token, in: query, schema: { type: string } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListIntegrationAuditResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
   /app/v1/apps/{id}/integrations/mail:
     get:
@@ -6884,27 +6976,79 @@ components:
         provider: { type: string }
         environment: { type: string, enum: [live] }
         default: { type: boolean }
+    EInvoiceAccountKey:
+      type: string
+      pattern: '^[a-z0-9_]+(~[a-z0-9][a-z0-9-]{0,30})?$'
+      description: 'An account: the integrator alone (nilvera) or with a label (nilvera~tr).'
+    EInvoiceIntegrationAccount:
+      type: object
+      required: [account, provider, label, mode, is_default]
+      properties:
+        account: { $ref: "#/components/schemas/EInvoiceAccountKey" }
+        provider: { type: string, enum: [nilvera, webhook] }
+        label: { type: string, description: The part of the key after the tilde; empty for the primary account of an integrator. }
+        mode: { type: string, enum: [test, production] }
+        is_default: { type: boolean }
+        updated_at: { type: string, format: date-time }
     AppGetEInvoiceIntegrationResponse:
       type: object
-      required: [account]
+      required: [account, accounts]
       properties:
         account:
-          type: [object, "null"]
-          required: [provider, mode]
-          properties:
-            provider: { type: string, enum: [nilvera, webhook] }
-            mode: { type: string, enum: [test, production] }
-            updated_at: { type: string, format: date-time }
+          description: The default account, null when none is connected.
+          oneOf:
+            - { $ref: "#/components/schemas/EInvoiceIntegrationAccount" }
+            - { type: "null" }
+        accounts: { type: array, items: { $ref: "#/components/schemas/EInvoiceIntegrationAccount" } }
     AppPutEInvoiceIntegrationRequest:
       type: object
       required: [provider]
       properties:
         provider: { type: string, enum: [nilvera, webhook] }
+        label: { type: string, pattern: '^[a-z0-9][a-z0-9-]{0,30}$', description: Tells a further account at the same integrator from the primary one; empty for the primary. }
+        default: { type: boolean, description: Make this account the default. }
         mode: { type: string, enum: [test, production] }
         credentials: { type: object, additionalProperties: { type: string }, description: "nilvera: api_key[, base_url]; webhook: url, secret." }
+    AppSetEInvoiceDefaultRequest:
+      type: object
+      required: [account]
+      properties:
+        account: { $ref: "#/components/schemas/EInvoiceAccountKey" }
+    EInvoiceRoutingRules:
+      type: object
+      required: [rules]
+      properties:
+        rules:
+          type: array
+          items:
+            type: object
+            required: [country, account]
+            properties:
+              country: { type: string, pattern: "^[A-Z]{2}$", description: ISO 3166-1 alpha-2 country of the buyer. }
+              account: { $ref: "#/components/schemas/EInvoiceAccountKey" }
+    IntegrationAuditEvent:
+      type: object
+      required: [id, kind, account, environment, action, actor, is_default, verified_remote, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        kind: { type: string, enum: [payment, einvoice] }
+        account: { type: string, description: 'The account key (iyzico, paddle~eu, nilvera~tr); empty for a routing change.' }
+        environment: { type: string, enum: [sandbox, live] }
+        action: { type: string, enum: [connected, replaced, removed, default_set, routing_changed] }
+        actor: { type: string, description: '"user:<id>" for a person in the console, "operator" for Payrudder support.' }
+        is_default: { type: boolean }
+        verified_remote: { type: boolean, description: The provider itself accepted the credentials when they were stored. }
+        created_at: { type: string, format: date-time }
+    ListIntegrationAuditResponse:
+      type: object
+      required: [events, next_page_token]
+      properties:
+        events: { type: array, items: { $ref: "#/components/schemas/IntegrationAuditEvent" } }
+        next_page_token: { type: string }
     AppTestEInvoiceIntegrationRequest:
       type: object
       properties:
+        account: { $ref: "#/components/schemas/EInvoiceAccountKey" }
         tax_id: { type: string, description: "The seller's tax id, for an integrator that can look up a registered business" }
     AppTestEInvoiceIntegrationResponse:
       type: object
@@ -8639,6 +8783,9 @@ components:
       required: [environment, provider, mode, has_credentials, updated_at]
       properties:
         environment: { type: string, enum: [sandbox, live] }
+        account: { $ref: "#/components/schemas/EInvoiceAccountKey" }
+        label: { type: string }
+        is_default: { type: boolean }
         provider: { type: string, enum: [mock, nilvera, webhook] }
         mode: { type: string, enum: [test, production] }
         has_credentials: { type: boolean }

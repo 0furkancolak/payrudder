@@ -179,3 +179,23 @@ func (d Deps) health(ctx context.Context, tenant uuid.UUID, a store.AccountInfo)
 	d.Health.put(key, ans)
 	return ans.problem == "", ans.checked, ans.problem
 }
+
+// MaxEvents is the most audit entries one page holds.
+const MaxEvents = 200
+
+// Events is a page of the audit trail of the tenant's provider and e-invoice accounts, newest first: kind is "payment", "einvoice" or "" for both, before the
+// id of the last entry of the previous page (0 for the first). next is the id to ask for the page after this one, 0 when there is none.
+func Events(ctx context.Context, d Deps, tenant uuid.UUID, kind string, before int64, limit int) (events []store.AccountEvent, next int64, err error) {
+	if limit <= 0 || limit > MaxEvents {
+		limit = 50
+	}
+	events, err = d.Accounts.Events(ctx, tenant, kind, before, limit+1)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list the account events: %w", err)
+	}
+	if len(events) > limit {
+		events = events[:limit]
+		next = events[limit-1].ID
+	}
+	return events, next, nil
+}

@@ -3937,6 +3937,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/go-live/routing/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Which live account would take a customer in a country paying in a currency
+         * @description The same answer as the tenant API's routing preview, for the console. Nothing is created. Any member asks.
+         */
+        post: operations["appPreviewLiveRouting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/sandbox/providers": {
         parameters: {
             query?: never;
@@ -3985,15 +4005,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The e-invoice integrator of the app's live environment (any member; no credential is in the answer) */
+        /**
+         * The e-invoice integrator accounts of the app's live environment, and the default among them (any member; no credential is in the answer)
+         * @description An environment can hold several accounts, at one integrator or at several. An account is named by its key, the integrator's name alone or with a label (`nilvera`, `nilvera~tr`). `account` is the default one, the one a document goes to when no routing rule names its buyer's country.
+         */
         get: operations["appGetEInvoiceIntegration"];
         /**
-         * Connect (or replace) the live environment's e-invoice integrator (the owner only)
-         * @description The integrator is nilvera or webhook, never the mock. The credentials are sealed, shown once and never echoed back. The change is recorded for the person.
+         * Connect (or replace) a live e-invoice integrator account (the owner only)
+         * @description The integrator is nilvera or webhook, never the mock. A label connects a further account at the same integrator; the first account of the environment is the default, and `default` makes this one the default. The credentials are sealed, shown once and never echoed back. The change is recorded for the person.
          */
         put: operations["appPutEInvoiceIntegration"];
         post?: never;
-        /** Disconnect the live environment's e-invoice integrator (the owner only) */
+        /**
+         * Disconnect a live e-invoice integrator account (the owner only)
+         * @description Name the account with `account`; it may be left out when the environment has just one. The default cannot be removed while other accounts exist (409 einvoice.account.default_in_use): make another the default first. The routing rules that name the account go with it.
+         */
         delete: operations["appRemoveEInvoiceIntegration"];
         options?: never;
         head?: never;
@@ -4014,6 +4040,70 @@ export interface paths {
          * @description Nothing is issued. A provider problem is ok false with its kind, not an HTTP error.
          */
         post: operations["appTestEInvoiceIntegration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/e-invoice/default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make one of the live e-invoice accounts the default (the owner only)
+         * @description The default is the account a document goes to when no routing rule names its buyer's country. The account's settings are not touched, so none is sent. The move is recorded for the person.
+         */
+        post: operations["appSetEInvoiceDefault"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/e-invoice/routing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The rules that send the documents of a buyer's country to an e-invoice account
+         * @description Any member reads it. A buyer of a country no rule names goes to the default account.
+         */
+        get: operations["appEInvoiceRouting"];
+        /**
+         * Replace the e-invoice routing rules (the owner only)
+         * @description A country is named once and every rule names an account the app has (400 einvoice.routing.unknown_account, einvoice.routing.invalid). Documents already begun keep the account they began with. The change is recorded for the person.
+         */
+        put: operations["appSetEInvoiceRouting"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who changed the live payment and e-invoice accounts, newest first
+         * @description Connected, replaced, removed, made default, and routing changed, with who did it. Any member reads it. No setting or secret is ever in it. The e-mail provider's changes are not in this trail.
+         */
+        get: operations["appIntegrationAudit"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7539,19 +7629,32 @@ export interface components {
             environment: "live";
             default: boolean;
         };
+        /** @description An account: the integrator alone (nilvera) or with a label (nilvera~tr). */
+        EInvoiceAccountKey: string;
+        EInvoiceIntegrationAccount: {
+            account: components["schemas"]["EInvoiceAccountKey"];
+            /** @enum {string} */
+            provider: "nilvera" | "webhook";
+            /** @description The part of the key after the tilde; empty for the primary account of an integrator. */
+            label: string;
+            /** @enum {string} */
+            mode: "test" | "production";
+            is_default: boolean;
+            /** Format: date-time */
+            updated_at?: string;
+        };
         AppGetEInvoiceIntegrationResponse: {
-            account: {
-                /** @enum {string} */
-                provider: "nilvera" | "webhook";
-                /** @enum {string} */
-                mode: "test" | "production";
-                /** Format: date-time */
-                updated_at?: string;
-            } | null;
+            /** @description The default account, null when none is connected. */
+            account: components["schemas"]["EInvoiceIntegrationAccount"] | null;
+            accounts: components["schemas"]["EInvoiceIntegrationAccount"][];
         };
         AppPutEInvoiceIntegrationRequest: {
             /** @enum {string} */
             provider: "nilvera" | "webhook";
+            /** @description Tells a further account at the same integrator from the primary one; empty for the primary. */
+            label?: string;
+            /** @description Make this account the default. */
+            default?: boolean;
             /** @enum {string} */
             mode?: "test" | "production";
             /** @description nilvera: api_key[, base_url]; webhook: url, secret. */
@@ -7559,7 +7662,41 @@ export interface components {
                 [key: string]: string;
             };
         };
+        AppSetEInvoiceDefaultRequest: {
+            account: components["schemas"]["EInvoiceAccountKey"];
+        };
+        EInvoiceRoutingRules: {
+            rules: {
+                /** @description ISO 3166-1 alpha-2 country of the buyer. */
+                country: string;
+                account: components["schemas"]["EInvoiceAccountKey"];
+            }[];
+        };
+        IntegrationAuditEvent: {
+            /** Format: int64 */
+            id: number;
+            /** @enum {string} */
+            kind: "payment" | "einvoice";
+            /** @description The account key (iyzico, paddle~eu, nilvera~tr); empty for a routing change. */
+            account: string;
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            /** @enum {string} */
+            action: "connected" | "replaced" | "removed" | "default_set" | "routing_changed";
+            /** @description "user:<id>" for a person in the console, "operator" for Payrudder support. */
+            actor: string;
+            is_default: boolean;
+            /** @description The provider itself accepted the credentials when they were stored. */
+            verified_remote: boolean;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ListIntegrationAuditResponse: {
+            events: components["schemas"]["IntegrationAuditEvent"][];
+            next_page_token: string;
+        };
         AppTestEInvoiceIntegrationRequest: {
+            account?: components["schemas"]["EInvoiceAccountKey"];
             /** @description The seller's tax id, for an integrator that can look up a registered business */
             tax_id?: string;
         };
@@ -9903,6 +10040,9 @@ export interface components {
         EInvoiceAccount: {
             /** @enum {string} */
             environment: "sandbox" | "live";
+            account?: components["schemas"]["EInvoiceAccountKey"];
+            label?: string;
+            is_default?: boolean;
             /** @enum {string} */
             provider: "mock" | "nilvera" | "webhook";
             /** @enum {string} */
@@ -18105,6 +18245,35 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    appPreviewLiveRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewRoutingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewRoutingResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
     appSandboxProviders: {
         parameters: {
             query?: never;
@@ -18250,7 +18419,9 @@ export interface operations {
     };
     appRemoveEInvoiceIntegration: {
         parameters: {
-            query?: never;
+            query?: {
+                account?: components["schemas"]["EInvoiceAccountKey"];
+            };
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
@@ -18266,9 +18437,11 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["Error"];
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     appTestEInvoiceIntegration: {
@@ -18297,6 +18470,117 @@ export interface operations {
             };
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSetEInvoiceDefault: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AppSetEInvoiceDefaultRequest"];
+            };
+        };
+        responses: {
+            /** @description The default has moved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appEInvoiceRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceRoutingRules"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSetEInvoiceRouting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EInvoiceRoutingRules"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EInvoiceRoutingRules"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appIntegrationAudit: {
+        parameters: {
+            query?: {
+                kind?: "payment" | "einvoice";
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListIntegrationAuditResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

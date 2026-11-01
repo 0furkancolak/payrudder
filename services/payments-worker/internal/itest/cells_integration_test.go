@@ -125,7 +125,7 @@ func sandboxChargeOf(tenant, invoice, command uuid.UUID) *commandsv1.CommandEnve
 
 // tenantTables are the tables whose rows carry a tenant_id.
 var tenantTables = []string{"payment_attempts", "provider_accounts", "payment_ledger", "provider_events", "provider_subscriptions", "provider_objects", "manual_receipts",
-	"einvoice_accounts", "einvoice_issuances", "provider_account_events"}
+	"einvoice_accounts", "einvoice_issuances", "einvoice_routing", "provider_account_events"}
 
 // noForeignRows fails when any tenant schema of any cell holds a row of another tenant, or when the pooled database holds a row of a tenant that lives in a cell.
 func (pl *places) noForeignRows(t *testing.T) {

@@ -2,16 +2,22 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store/sqlc"
 )
 
-// EInvoiceAccounts is the table of a tenant's e-invoice integrator accounts. Settings are sealed; the box is bound to tenant and environment.
+// EInvoiceAccounts is the table of a tenant's e-invoice integrator accounts. Settings are sealed; the box is bound to tenant, environment and account.
+//
+// An account is named by its key, as a payment account is (pkg/payments/accountkey.go): the integrator's name, or its name, a tilde and a label ("nilvera~tr").
+// The key is what the `provider` column holds, what routing names and what an issuance records; only the registry looks through it to the adapter.
 type EInvoiceAccounts struct {
 	DB  DB
 	Box *secretbox.Box
@@ -19,34 +25,135 @@ type EInvoiceAccounts struct {
 
 // EInvoiceAccountInfo is an account without its secrets.
 type EInvoiceAccountInfo struct {
-	Environment    string    `json:"environment"`
+	Environment string `json:"environment"`
+	// Account is the key ("nilvera", "nilvera~tr"); Provider the integrator it belongs to ("nilvera"); Label the part after the tilde, empty for the primary one.
+	Account        string    `json:"account"`
 	Provider       string    `json:"provider"`
+	Label          string    `json:"label"`
 	Mode           string    `json:"mode"`
+	IsDefault      bool      `json:"is_default"`
 	HasCredentials bool      `json:"has_credentials"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
-func einvoiceAAD(tenant uuid.UUID, env string) []byte {
-	return []byte(fmt.Sprintf("%s|einvoice|%s", tenant, env))
+// EInvoiceAccount is a stored account with its settings opened.
+type EInvoiceAccount struct {
+	Key       string
+	Mode      string
+	Settings  []byte
+	IsDefault bool
 }
 
-// Put stores (or replaces) the tenant's account for an environment.
-func (a EInvoiceAccounts) Put(ctx context.Context, tenant uuid.UUID, env, provider, mode string, settings []byte) error {
-	sealed, err := a.Box.Seal(settings, einvoiceAAD(tenant, env))
+// EInvoiceRoute sends the documents of buyers of a country to an account.
+type EInvoiceRoute struct {
+	Country string `json:"country"`
+	Account string `json:"account"`
+}
+
+// ErrDefaultInUse: the account is the default and others exist, so removing it would leave documents with no account to go to.
+var ErrDefaultInUse = errors.New("store: the default e-invoice account cannot be removed while others exist")
+
+// ErrUnknownRouteAccount: a routing rule names an account the tenant does not have.
+var ErrUnknownRouteAccount = errors.New("store: routing names an unknown e-invoice account")
+
+// einvoiceAAD binds a sealed account to its tenant, environment and key. The primary account of an integrator (no label) keeps the form it was sealed in before
+// there could be several, so nothing stored earlier has to be re-sealed; a labelled account adds its key.
+func einvoiceAAD(tenant uuid.UUID, env, key string) []byte {
+	if payments.AccountLabel(key) == "" {
+		return []byte(fmt.Sprintf("%s|einvoice|%s", tenant, env))
+	}
+	return []byte(fmt.Sprintf("%s|einvoice|%s|%s", tenant, env, key))
+}
+
+func einvoiceInfo(env, key, mode string, def bool, updated time.Time) EInvoiceAccountInfo {
+	return EInvoiceAccountInfo{Environment: env, Account: key, Provider: payments.BaseProvider(key), Label: payments.AccountLabel(key), Mode: mode, IsDefault: def,
+		HasCredentials: true, UpdatedAt: updated}
+}
+
+// Put stores (or replaces) the account called key. The first account of an environment is the default; makeDefault makes this one the default, and the previous
+// default stops being one. The change is recorded in the audit trail in the same transaction; no setting is.
+func (a EInvoiceAccounts) Put(ctx context.Context, tenant uuid.UUID, env, key, mode string, settings []byte, makeDefault bool, audit Audit) error {
+	sealed, err := a.Box.Seal(settings, einvoiceAAD(tenant, env, key))
 	if err != nil {
 		return err
 	}
-	return at(ctx, a.DB, tenant, func(q *sqlc.Queries) error {
-		return q.UpsertEInvoiceAccount(ctx, sqlc.UpsertEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: provider, Mode: mode, SettingsEnc: sealed})
+	return tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+		n, err := q.CountEInvoiceAccounts(ctx, sqlc.CountEInvoiceAccountsParams{TenantID: tenant, Environment: env})
+		if err != nil {
+			return err
+		}
+		action, isDefault := "connected", makeDefault || n == 0
+		switch old, err := q.GetEInvoiceAccount(ctx, sqlc.GetEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: key}); {
+		case err == nil:
+			action, isDefault = "replaced", isDefault || old.IsDefault
+		case !errors.Is(err, pgx.ErrNoRows):
+			return err
+		}
+		if isDefault {
+			if err := q.ClearDefaultEInvoiceAccounts(ctx, sqlc.ClearDefaultEInvoiceAccountsParams{TenantID: tenant, Environment: env, Provider: key}); err != nil {
+				return err
+			}
+		}
+		if err := q.UpsertEInvoiceAccount(ctx, sqlc.UpsertEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: key, Mode: mode, SettingsEnc: sealed, IsDefault: isDefault}); err != nil {
+			return err
+		}
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindEInvoice, Provider: key, Environment: env, Action: action,
+			Actor: audit.Actor, IsDefault: isDefault})
 	})
 }
 
-// Delete removes an account. It reports whether there was one.
-func (a EInvoiceAccounts) Delete(ctx context.Context, tenant uuid.UUID, env string) (bool, error) {
-	n, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) (int64, error) {
-		return q.DeleteEInvoiceAccount(ctx, sqlc.DeleteEInvoiceAccountParams{TenantID: tenant, Environment: env})
+// Delete removes the account called key. It reports whether there was one. The default cannot be removed while other accounts exist (ErrDefaultInUse): another is
+// made the default first. The rules that name the account go with it.
+func (a EInvoiceAccounts) Delete(ctx context.Context, tenant uuid.UUID, env, key string, audit Audit) (bool, error) {
+	var deleted bool
+	err := tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+		row, err := q.GetEInvoiceAccount(ctx, sqlc.GetEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: key})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if row.IsDefault {
+			n, err := q.CountEInvoiceAccounts(ctx, sqlc.CountEInvoiceAccountsParams{TenantID: tenant, Environment: env})
+			if err != nil {
+				return err
+			}
+			if n > 1 {
+				return ErrDefaultInUse
+			}
+		}
+		if _, err := q.DeleteEInvoiceAccount(ctx, sqlc.DeleteEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: key}); err != nil {
+			return err
+		}
+		deleted = true
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindEInvoice, Provider: key, Environment: env, Action: "removed", Actor: audit.Actor})
 	})
-	return n == 1, err
+	return deleted, err
+}
+
+// SetDefault makes an existing account the default of the environment without touching its settings. It reports whether there was such an account.
+func (a EInvoiceAccounts) SetDefault(ctx context.Context, tenant uuid.UUID, env, key string, audit Audit) (bool, error) {
+	var found bool
+	err := tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+		if err := q.ClearDefaultEInvoiceAccounts(ctx, sqlc.ClearDefaultEInvoiceAccountsParams{TenantID: tenant, Environment: env, Provider: key}); err != nil {
+			return err
+		}
+		n, err := q.MarkEInvoiceAccountDefault(ctx, sqlc.MarkEInvoiceAccountDefaultParams{TenantID: tenant, Environment: env, Provider: key})
+		if err != nil || n != 1 {
+			if err == nil {
+				err = ErrNoAccount // returning it rolls the clear back: the tenant's default stays where it was
+			}
+			return err
+		}
+		found = true
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindEInvoice, Provider: key, Environment: env, Action: "default_set",
+			Actor: audit.Actor, IsDefault: true})
+	})
+	if errors.Is(err, ErrNoAccount) {
+		return false, nil
+	}
+	return found, err
 }
 
 // List returns a tenant's accounts without secrets.
@@ -59,24 +166,100 @@ func (a EInvoiceAccounts) List(ctx context.Context, tenant uuid.UUID) ([]EInvoic
 	}
 	out := make([]EInvoiceAccountInfo, len(rows))
 	for i, r := range rows {
-		out[i] = EInvoiceAccountInfo{Environment: r.Environment, Provider: r.Provider, Mode: r.Mode, HasCredentials: true, UpdatedAt: r.UpdatedAt}
+		out[i] = einvoiceInfo(r.Environment, r.Provider, r.Mode, r.IsDefault, r.UpdatedAt)
 	}
 	return out, nil
 }
 
-// Settings opens the account of an environment; ErrNoAccount when there is none.
-func (a EInvoiceAccounts) Settings(ctx context.Context, tenant uuid.UUID, env string) (provider string, settings []byte, err error) {
+// Get opens the account called key; ErrNoAccount when there is none.
+func (a EInvoiceAccounts) Get(ctx context.Context, tenant uuid.UUID, env, key string) (EInvoiceAccount, error) {
 	row, ok, err := lookup(ctx, a.DB, tenant, func(q *sqlc.Queries) (sqlc.GetEInvoiceAccountRow, error) {
-		return q.GetEInvoiceAccount(ctx, sqlc.GetEInvoiceAccountParams{TenantID: tenant, Environment: env})
+		return q.GetEInvoiceAccount(ctx, sqlc.GetEInvoiceAccountParams{TenantID: tenant, Environment: env, Provider: key})
 	})
 	if err != nil {
-		return "", nil, err
+		return EInvoiceAccount{}, err
 	}
 	if !ok {
-		return "", nil, ErrNoAccount
+		return EInvoiceAccount{}, ErrNoAccount
 	}
-	settings, err = a.Box.Open(row.SettingsEnc, einvoiceAAD(tenant, env))
-	return row.Provider, settings, err
+	return a.open(tenant, env, row.Provider, row.Mode, row.SettingsEnc, row.IsDefault)
+}
+
+// Resolve opens the account that takes the documents of a buyer of country: the one routing names for it, else the default. ErrNoAccount when neither exists
+// (a tenant with no default has not finished connecting an integrator). country may be empty (an unknown buyer): the default.
+func (a EInvoiceAccounts) Resolve(ctx context.Context, tenant uuid.UUID, env, country string) (EInvoiceAccount, error) {
+	if country != "" {
+		key, ok, err := lookup(ctx, a.DB, tenant, func(q *sqlc.Queries) (string, error) {
+			return q.GetEInvoiceRoute(ctx, sqlc.GetEInvoiceRouteParams{TenantID: tenant, Environment: env, Country: country})
+		})
+		if err != nil {
+			return EInvoiceAccount{}, err
+		}
+		if ok {
+			return a.Get(ctx, tenant, env, key)
+		}
+	}
+	row, ok, err := lookup(ctx, a.DB, tenant, func(q *sqlc.Queries) (sqlc.GetDefaultEInvoiceAccountRow, error) {
+		return q.GetDefaultEInvoiceAccount(ctx, sqlc.GetDefaultEInvoiceAccountParams{TenantID: tenant, Environment: env})
+	})
+	if err != nil {
+		return EInvoiceAccount{}, err
+	}
+	if !ok {
+		return EInvoiceAccount{}, ErrNoAccount
+	}
+	return a.open(tenant, env, row.Provider, row.Mode, row.SettingsEnc, row.IsDefault)
+}
+
+func (a EInvoiceAccounts) open(tenant uuid.UUID, env, key, mode string, sealed []byte, def bool) (EInvoiceAccount, error) {
+	settings, err := a.Box.Open(sealed, einvoiceAAD(tenant, env, key))
+	return EInvoiceAccount{Key: key, Mode: mode, Settings: settings, IsDefault: def}, err
+}
+
+// Routing returns the rules of an environment, by country.
+func (a EInvoiceAccounts) Routing(ctx context.Context, tenant uuid.UUID, env string) ([]EInvoiceRoute, error) {
+	rows, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListEInvoiceRoutingRow, error) {
+		return q.ListEInvoiceRouting(ctx, sqlc.ListEInvoiceRoutingParams{TenantID: tenant, Environment: env})
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]EInvoiceRoute, len(rows))
+	for i, r := range rows {
+		out[i] = EInvoiceRoute{Country: r.Country, Account: r.Account}
+	}
+	return out, nil
+}
+
+// SetRouting replaces the rules of an environment. Every rule must name an account the tenant has (ErrUnknownRouteAccount). The change is one entry of the audit
+// trail; the rules themselves are not in it.
+func (a EInvoiceAccounts) SetRouting(ctx context.Context, tenant uuid.UUID, env string, rules []EInvoiceRoute, audit Audit) error {
+	return tx(ctx, a.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+		rows, err := q.ListEInvoiceAccounts(ctx, tenant)
+		if err != nil {
+			return err
+		}
+		have := map[string]bool{}
+		for _, r := range rows {
+			if r.Environment == env {
+				have[r.Provider] = true
+			}
+		}
+		for _, r := range rules {
+			if !have[r.Account] {
+				return ErrUnknownRouteAccount
+			}
+		}
+		if err := q.DeleteEInvoiceRouting(ctx, sqlc.DeleteEInvoiceRoutingParams{TenantID: tenant, Environment: env}); err != nil {
+			return err
+		}
+		for _, r := range rules {
+			if err := q.InsertEInvoiceRoute(ctx, sqlc.InsertEInvoiceRouteParams{TenantID: tenant, Environment: env, Country: r.Country, Account: r.Account}); err != nil {
+				return err
+			}
+		}
+		return q.InsertProviderAccountEvent(ctx, sqlc.InsertProviderAccountEventParams{TenantID: tenant, Kind: KindEInvoice, Environment: env, Action: "routing_changed", Actor: audit.Actor})
+	})
 }
 
 // EInvoiceIssuances is the idempotency record of issued documents.
