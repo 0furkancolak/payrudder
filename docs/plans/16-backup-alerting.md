@@ -4,7 +4,7 @@
 List 2 (13): we must have **backups** and **Alertmanager**.
 
 ## Where we are
-#254: `deploy/backup` (`backup.sh` pg_dump of every `*_db` with retention and a readable-dump check and optional S3 copy; `restore.sh`; `verify.sh` restore drill), compose `ops` profile and Helm CronJobs (off by default), Pushgateway + Alertmanager in the `obs` profile with page/warn routing and inhibition, eight alert rules with unit tests (`BackupStale`, `BackupFailed`, `RestoreDrillFailed`, `PostgresDown`…), a runbook. Tested against a real Postgres (retention, restore, no overwrite, corrupt dump), promtool, amtool, and a local webhook receiver.
+#254: `deploy/backup` (`backup.sh` pg_dump of every `*_db` with retention and a readable-dump check and optional S3 copy; `restore.sh`; `verify.sh` restore drill), compose `ops` profile and Helm CronJobs (off by default), Pushgateway + Alertmanager in the `obs` profile with page/warn routing and inhibition, eight alert rules with unit tests (`BackupStale`, `BackupFailed`, `RestoreDrillFailed`, `PostgresDown`…), a runbook. The alert rules are unit-tested with promtool in CI; the backup scripts have no committed test (`make test-backup-scripts` only diffs the Helm copies and CI does not run it). Earlier text claimed a real-Postgres test of retention/restore; that was not verified.
 
 ## Gaps
 - **No point-in-time recovery.** A nightly dump loses up to a day. WAL archiving (pgBackRest / wal-g / managed PITR) is not done.
