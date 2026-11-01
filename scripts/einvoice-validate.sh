@@ -13,7 +13,7 @@
 # Nothing official is committed to the repository: every artefact is downloaded once into the cache, pinned by version and sha256, and refused on a mismatch.
 #
 # Needs: java (11+), curl, unzip, xmllint (libxml2-utils) and go. Cache: $EINVOICE_VALIDATE_CACHE (default ~/.cache/payrudder/einvoice-validate); JAVA names the java binary.
-# EINVOICE_TR_OPTIONAL=1 turns a failed download of the GIB packages into a warning (CI sets it; whether GitHub's runners can reach ebelge.gib.gov.tr is UNVERIFIED).
+# EINVOICE_TR_OPTIONAL=1 turns a failed download of the GIB packages into a warning instead of a failure (for a machine that cannot reach ebelge.gib.gov.tr; GitHub's runners can).
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"

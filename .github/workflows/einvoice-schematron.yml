@@ -32,9 +32,6 @@ jobs:
     timeout-minutes: 20
     env:
       EINVOICE_VALIDATE_CACHE: ${{ github.workspace }}/.einvoice-cache
-      # Whether GitHub's runners can reach ebelge.gib.gov.tr (a Turkish authority's site) is UNVERIFIED. If the GIB packages cannot be downloaded the run says so
-      # in a warning annotation and still checks the Peppol documents. Remove this line once a run has shown the download works.
-      EINVOICE_TR_OPTIONAL: "1"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6

@@ -50,7 +50,7 @@ The webhook adapter also failed two checks of the new suite and was fixed: it se
 
 - **Licences (default, not agreed: download at CI time, never commit):** the CEN artefacts are EUPL-1.2 (the release notes and the `.sch` header say so), so committing them would be allowed; the Peppol `.sch` files carry "reproduced with permission from CEN" and the repository has no licence file, so redistribution is unclear; OASIS UBL is under OASIS's IPR policy (free to use, copy with notice); GİB publishes its packages for implementers with no licence text. Pinning by hash gives reproducibility without redistributing any of them.
 - **Tooling:** Saxon-HE needs Java 11+ (GitHub's `ubuntu-latest` has it; the local run used Temurin 21), `xmllint` for the XSD, `curl`, `unzip`. The EN 16931 rules run from CEN's pre-compiled XSLT; the Peppol and UBL-TR schematron are compiled with SchXslt. GİB's schematron is written for the 2010 ISO skeleton (rules outside patterns, the `xs` prefix undeclared, XPath 2 in an unbound query language); `scripts/einvoice-tr-prep.xsl` repairs exactly those three things and changes no assertion. GİB's schematron takes a parameter `type`; e-arşiv documents are checked with `type=earchive`, as GİB's `History.txt` of 2017-04-28 says.
-- **UBL-TR schematron is public** (the question left UNVERIFIED in the review addendum): GİB publishes it in the e-Fatura package and the XSD in the UBL-TR package on `ebelge.gib.gov.tr`. **Whether GitHub's runners can download from that host is UNVERIFIED**; until a CI run shows it, the workflow sets `EINVOICE_TR_OPTIONAL=1`, which turns a failed GİB download into a warning annotation (the Peppol half still runs). Remove that line once it is known.
+- **UBL-TR schematron is public** (the question left UNVERIFIED in the review addendum): GİB publishes it in the e-Fatura package and the XSD in the UBL-TR package on `ebelge.gib.gov.tr`. GitHub's runners **can** download from that host: the first run of the workflow (PR #290, 2026-11-02) fetched both packages and validated all 12 documents. A host that cannot reach it can set `EINVOICE_TR_OPTIONAL=1` to turn that download failure into a warning; CI does not.
 - **The ExtensionContent placeholder:** UBL-TR carries the integrator's e-seal in `ext:ExtensionContent`, which the builder leaves empty; the XSD wants a child, so the script checks a copy with a placeholder. An unsealed document is not XSD-valid by design.
 - **Not run:** the XSD of Peppol documents is OASIS's, not Peppol's own packaging; no Peppol access point or SMP lookup; no GİB test system (`test.efatura.gov.tr`).
 
@@ -86,7 +86,7 @@ Markets and integrators in order; test accounts; **who numbers the documents** (
 - A Peppol document without a participant id is written without an endpoint rather than with a code Peppol rejects; the schematron then says so.
 - UBL-TR: no `PrepaidAmount`, `PayableAmount` equals the total, no line period; TCKN names split at the last space.
 - `UBL-CR-005` (UUID in the document) is accepted.
-- The UBL-TR half of the CI job may be skipped with a warning when GİB's site cannot be reached (`EINVOICE_TR_OPTIONAL`), until a run shows it can.
+- A failed download of the GİB packages fails CI (strict); `EINVOICE_TR_OPTIONAL=1` is the local escape.
 - No adapter without documentation that is complete enough; the webhook adapter is the answer for the rest.
 
 ## Work
@@ -100,7 +100,7 @@ Markets and integrators in order; test accounts; **who numbers the documents** (
 Per integrator: validation in CI, test-environment transcript, credit note and cancel flows, docs. For this plan as a whole: at least one real integrator's transcript, and the three data gaps closed.
 
 ## Not verifiable here
-Acceptance by tax authorities or a Peppol access point; any integrator's test environment (all need accounts); that GitHub's runners reach `ebelge.gib.gov.tr`; the legal treatment of the choices above (prepaid amount, person names, numbering), which a Turkish accountant should read.
+Acceptance by tax authorities or a Peppol access point; any integrator's test environment (all need accounts); that GİB keeps serving the pinned packages at those URLs (the sha256 check fails loudly if they change); the legal treatment of the choices above (prepaid amount, person names, numbering), which a Turkish accountant should read.
 
 ## Risks
 Legal consequences of wrong documents; ship per country only with a reviewer. A green schematron run can be read as "the authority will accept it": it is not.
