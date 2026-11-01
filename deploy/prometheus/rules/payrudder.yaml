@@ -88,6 +88,90 @@ groups:
         annotations:
           summary: "more than 1% of limit counters needed a reconcile correction"
 
+  # Money (plan 16 / plan 22 G6): the payment path's own counters. The first response to each is in docs/runbooks/backup-restore.md#alerts. The thresholds are defaults (not
+  # agreed): tune them with real traffic. payments_total counts the commands payments-worker handled (charge and refund); a payment link settled by webhook is in
+  # provider_events_total and payment_discrepancies_total instead.
+  - name: payrudder-money
+    rules:
+      # A charge whose recorded outcomes disagree, or a customer who paid twice. increase() cannot see the first value of a counter that did not exist before, so a provider's
+      # first discrepancy ever is caught by the second clause (the series is new).
+      - alert: PaymentDiscrepancy
+        expr: |
+          sum by (provider) (increase(payment_discrepancies_total[10m])) > 0
+          or
+          sum by (provider) (payment_discrepancies_total unless payment_discrepancies_total offset 10m)
+        labels: { severity: page, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }}: a payment's recorded outcomes disagree, or a customer paid twice (reconcile and refund)"
+
+      # Errors are not declines: a decline is the customer's card, an error is the provider, the credentials or us.
+      - alert: PaymentCommandsErroring
+        expr: |
+          sum(increase(payments_total{result="errored"}[15m])) >= 3
+          and
+          sum(increase(payments_total{result="errored"}[15m])) > 0.1 * clamp_min(sum(increase(payments_total{result=~"succeeded|declined|errored|refunded"}[15m])), 1)
+        for: 5m
+        labels: { severity: page, service: payments-worker }
+        annotations:
+          summary: "more than 10% of payment commands end in an error (not a decline): a provider, credentials or code problem"
+
+      - alert: ChargeFailureRateHigh
+        expr: |
+          sum(increase(payments_total{result=~"declined|errored"}[30m])) > 0.5 * sum(increase(payments_total{result=~"succeeded|declined|errored"}[30m]))
+          and
+          sum(increase(payments_total{result=~"succeeded|declined|errored"}[30m])) >= 20
+        for: 10m
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "more than half of the charges of the last 30 minutes failed (declines and errors)"
+
+      - alert: RefundSpike
+        expr: |
+          sum(increase(payments_total{result="refunded"}[1h])) >= 5
+          and
+          sum(increase(payments_total{result="refunded"}[1h])) > 0.25 * clamp_min(sum(increase(payments_total{result="succeeded"}[1h])), 1)
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "refunds in the last hour are more than a quarter of the successful charges"
+
+      # retry: we could not confirm the notification and answered 503, so the provider redelivers (a backlog that grows is the lag); unverified: the signature check failed
+      # (a wrong secret, or someone else); malformed: not a notification we understand.
+      - alert: ProviderWebhookFailing
+        expr: |
+          sum by (provider) (increase(provider_events_total{result=~"retry|malformed|unverified"}[15m])) >= 3
+          and
+          sum by (provider) (increase(provider_events_total{result=~"retry|malformed|unverified"}[15m])) > 0.2 * sum by (provider) (increase(provider_events_total[15m]))
+        for: 10m
+        labels: { severity: warn, service: payments-worker }
+        annotations:
+          summary: "{{ $labels.provider }}: over 20% of its webhooks are not being accepted (retry, unverified or malformed)"
+
+      # PAYMENT_DECLINED is the state a dunning retry waits in.
+      - alert: DunningQueueGrowing
+        expr: |
+          sum(saga_state{state="PAYMENT_DECLINED"}) >= 20
+          and
+          sum(saga_state{state="PAYMENT_DECLINED"}) > 2 * (sum(saga_state{state="PAYMENT_DECLINED"} offset 6h) or vector(0))
+        for: 30m
+        labels: { severity: warn, service: billing-svc }
+        annotations:
+          summary: "invoices waiting for a dunning retry doubled in six hours ({{ $value }} now)"
+
+      # DLQNotEmpty says a queue holds something; this says it is filling.
+      - alert: DLQGrowing
+        expr: delta(dlq_messages[15m]) >= 10
+        labels: { severity: page }
+        annotations:
+          summary: "{{ $labels.broker }} {{ $labels.queue_or_topic }} is filling: 10 or more dead-lettered messages in 15 minutes"
+
+      # Dead man's switch: always firing. Alertmanager sends it to its own receiver every minute; a service outside (a heartbeat monitor) pages when it stops arriving,
+      # which no alert inside can do because the thing that would send it is what broke.
+      - alert: Watchdog
+        expr: vector(1)
+        labels: { severity: none }
+        annotations:
+          summary: "always firing: if this heartbeat stops arriving at the receiver, Prometheus, Alertmanager or the path to the receiver is broken and silence means nothing"
+
   # Data safety and the alert pipeline itself.
   - name: payrudder-ops
     rules:
@@ -121,6 +205,25 @@ groups:
         labels: { severity: warn, service: postgres }
         annotations:
           summary: "no restore drill has passed for over a week"
+      # Point-in-time recovery (deploy/backup/pitr-agent.sh): the objective is an RPO of 15 minutes, so 15 minutes without shipped WAL is the objective missed.
+      - alert: WalArchiveStale
+        expr: time() - max(payrudder_wal_last_shipped_timestamp_seconds) > 900
+        for: 1m
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "no WAL reached the backup storage for over 15 minutes: the RPO is exceeded and point-in-time recovery has a gap"
+      - alert: WalSpoolBacklog
+        expr: max(payrudder_wal_oldest_unshipped_age_seconds) > 600
+        for: 5m
+        labels: { severity: warn, service: postgres }
+        annotations:
+          summary: "archived WAL waits more than 10 minutes to be shipped (storage unreachable?); a full disk stops Postgres"
+      - alert: BaseBackupStale
+        expr: time() - max(payrudder_pitr_basebackup_last_success_timestamp_seconds) > 26 * 3600
+        for: 10m
+        labels: { severity: page, service: postgres }
+        annotations:
+          summary: "no base backup for point-in-time recovery has succeeded for over 26 hours"
       - alert: PostgresDown
         expr: pg_up == 0
         for: 1m

@@ -158,6 +158,17 @@ jobs:
           npx playwright install --with-deps chromium
           npm run e2e:mock
 
+  backup:
+    name: backup scripts and point-in-time recovery drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - name: Scripts against a throwaway Postgres (make test-backup-scripts)
+        run: make test-backup-scripts
+      - name: Restore to a chosen minute from WAL in MinIO, check the data, measure the RTO (make backup-drill)
+        run: make backup-drill
+
   helm:
     name: helm charts (lint, kubeconform, render tests)
     runs-on: ubuntu-latest

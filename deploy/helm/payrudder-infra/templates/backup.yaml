@@ -1,5 +1,5 @@
 {{- if and .Values.postgres.enabled .Values.backup.enabled }}
-# Nightly pg_dump of every database, and a weekly restore drill (deploy/backup). The dumps are on their own volume (and in backup.s3Url when set); the result goes to
+# Nightly pg_dump of every database, and a weekly restore drill that also checks the data (deploy/backup; point-in-time recovery is not in this chart). The dumps are on their own volume (and in backup.s3Url when set); the result goes to
 # backup.pushgatewayUrl for the BackupStale / RestoreDrillFailed alerts. Restoring: docs/runbooks/backup-restore.md.
 apiVersion: v1
 kind: ConfigMap
@@ -14,6 +14,8 @@ data:
     {{- .Files.Get "files/restore.sh" | nindent 4 }}
   verify.sh: |
     {{- .Files.Get "files/verify.sh" | nindent 4 }}
+  invariants.sh: |
+    {{- .Files.Get "files/invariants.sh" | nindent 4 }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

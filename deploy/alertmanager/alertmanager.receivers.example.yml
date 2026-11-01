@@ -1,0 +1,53 @@
+# The receivers section of a real deployment, as an example (compose does not use this file; make test-rules validates it with amtool, so every key exists in the Alertmanager
+# version the stack pins). The route is that of alertmanager.webhook.yml: page -> on-call, warn -> team, the Watchdog heartbeat -> a heartbeat monitor. Every secret is a file
+# (a mounted Kubernetes Secret, a Docker secret), never text in this file. Not verified against real PagerDuty, Slack, an SMTP server or a heartbeat monitor.
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: team
+  group_by: [alertname, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [alertname="Watchdog"]
+      receiver: watchdog
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
+    - matchers: [severity="page"]
+      receiver: on-call
+      group_wait: 10s
+      repeat_interval: 1h
+    - matchers: [severity="warn"]
+      receiver: team
+      repeat_interval: 12h
+
+inhibit_rules:
+  - source_matchers: [severity="page"]
+    target_matchers: [severity="warn"]
+    equal: [service]
+
+receivers:
+  - name: on-call
+    pagerduty_configs:
+      - routing_key_file: /etc/alertmanager/secrets/pagerduty_routing_key
+        send_resolved: true
+  - name: team
+    slack_configs:
+      - api_url_file: /etc/alertmanager/secrets/slack_webhook_url
+        channel: "#payrudder-alerts"
+        send_resolved: true
+    email_configs:
+      - to: team@example.com
+        from: alertmanager@example.com
+        smarthost: smtp.example.com:587
+        auth_username: alertmanager@example.com
+        auth_password_file: /etc/alertmanager/secrets/smtp_password
+        require_tls: true
+        send_resolved: true
+  - name: watchdog
+    webhook_configs:
+      - url_file: /etc/alertmanager/secrets/heartbeat_url
+        send_resolved: false
