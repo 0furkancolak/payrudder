@@ -70,6 +70,12 @@ SELECT a.*, c.external_id AS customer_external_id FROM contract_acceptances a LE
 WHERE a.tenant_id = app_tenant_id() AND a.group_id = $1
 ORDER BY a.kind, a.id;
 
+-- name: InsertContractSnapshot :exec
+INSERT INTO contract_snapshots (tenant_id, group_id, html, sha256) VALUES (app_tenant_id(), @group_id, @html, @sha256);
+
+-- name: GetContractSnapshotOfGroup :one
+SELECT * FROM contract_snapshots WHERE tenant_id = app_tenant_id() AND group_id = $1;
+
 -- name: InsertContractWithdrawal :one
 INSERT INTO contract_withdrawals (tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, received_at)
 VALUES (app_tenant_id(), @id, @customer_id, @subscription_id, @invoice_id, @statement, @source, @received_at)

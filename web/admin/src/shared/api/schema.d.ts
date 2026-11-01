@@ -177,6 +177,226 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/contracts/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The versions of the agreements you present to your customers, newest first
+         * @description A version is one edition of an agreement (distance sales, pre-information, terms, privacy) in one or more languages. Needs contracts:read.
+         */
+        get: operations["listContractVersions"];
+        put?: never;
+        /**
+         * Publish the next version of an agreement
+         * @description A version cannot be edited: this adds the next one to the series of (kind, audience), which becomes the one customers see. The texts are restricted markdown (`#` headings, `- ` and `1. ` lists, `**bold**`, blank-line paragraphs; raw HTML is shown as text) with `{{variable}}` placeholders from a fixed list (`seller_name`, `seller_address`, `seller_tax_id`, `seller_tax_office`, `seller_mersis`, `customer_name`, `customer_email`, `customer_address`, `order_description`, `order_total`, `order_currency`, `date`). A `material` version asks customers who accepted an earlier one to accept again; a minor one does not (the first version of a series is always material). Payrudder supplies starter texts for Turkish and English that must be reviewed by a lawyer; it does not say any text is legally sufficient. Error keys plans.contract.unknown_variable, plans.contract.body_required. Needs contracts:write.
+         */
+        post: operations["publishContractVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contracts/versions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One version of an agreement */
+        get: operations["getContractVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contracts/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Render a text the way a customer would see it, with sample values
+         * @description Reports the variables the text uses and any that do not exist. Nothing is stored.
+         */
+        post: operations["previewContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contracts/starter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The starter text of an agreement in Turkish or English
+         * @description A template to start from, with a notice on top that it is not legal advice and must be reviewed by a lawyer before use. There is no starter text in other languages (error key plans.contract.no_starter).
+         */
+        get: operations["getContractStarter"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contracts/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Which agreements are required, whether the service starts at once, and how long evidence is kept */
+        get: operations["getContractSettings"];
+        /**
+         * Change which agreements are required
+         * @description While `required_kinds` is not empty, no subscription is created for a customer who has not accepted the current version of each of them (error key plans.contract.not_accepted), and a hosted payment page asks for them next to the pay button. A kind can be required once a version of it is published (plans.contract.kind_unpublished). Renewals and dunning charges are never held back. With `immediate_start`, a consumer is asked for the request to start at once and the acknowledgement of losing the right of withdrawal as two separate boxes (plans.contract.consent_required). `retention_months` (12 to 120, default 36; 0 keeps the value) is how long the IP address and user agent of an acceptance are kept; the rest of the record stays.
+         */
+        put: operations["setContractSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/contract-requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the customer must accept before a subscription starts, with the text to show
+         * @description For an embedded checkout. `customer_type` overrides the customer's own (a business customer gets the business texts; an unknown type is treated as a consumer). The order fills the variables of the texts.
+         */
+        get: operations["getContractRequirements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/contract-acceptances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the customer accepted, newest first */
+        get: operations["listContractAcceptances"];
+        put?: never;
+        /**
+         * Record that the customer accepted the current versions (an embedded checkout)
+         * @description The evidence of one checkout moment: one row for each version, all in one group. Every version must be the current one of its series (plans.contract.version_stale otherwise) and `checkbox_text` is the words next to the box as the customer saw them. What you report about the customer's IP address, browser and time is your claim, and the record says so (`observed` is false for those fields); Payrudder's own payment pages record what they observed. Acceptances are append-only. The customer is mailed the page they accepted, in their language. Needs customers:write.
+         */
+        post: operations["recordContractAcceptance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contract-acceptances/{id}/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The page the customer accepted, as it was rendered then
+         * @description A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
+         */
+        get: operations["getContractSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/contract-withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record that the customer withdrew from a contract
+         * @description The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. Routing the refund from here is not automatic yet.
+         */
+        post: operations["createContractWithdrawal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contract-withdrawals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Withdrawal requests, newest first (at most 200) */
+        get: operations["listContractWithdrawals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contract-withdrawals/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Decide a withdrawal request, or mark an accepted one refunded
+         * @description received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise).
+         */
+        put: operations["setContractWithdrawalStatus"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/e-invoices": {
         parameters: {
             query?: never;
@@ -2007,7 +2227,7 @@ export interface paths {
         put?: never;
         /**
          * Pay the invoice by one of the methods the page offers
-         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address.
+         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
          */
         post: operations["hostedInvoicePay"];
         delete?: never;
@@ -2169,7 +2389,7 @@ export interface paths {
         put?: never;
         /**
          * Pay one of the customer's open invoices
-         * @description Same as the payment link's pay, scoped to the portal's customer. At most 10 a minute per address.
+         * @description Same as the payment link's pay, scoped to the portal's customer, with the same agreement fields and the same 422. At most 10 a minute per address.
          */
         post: operations["portalInvoicePay"];
         delete?: never;
@@ -8236,6 +8456,118 @@ export interface components {
             tenant_id: string;
             data: components["schemas"]["CreditsLowEventData"];
         };
+        /** @description The data of an event of type contract.accepted: a customer accepted one or more agreements together (one event for the group) */
+        ContractAcceptedEventData: {
+            /** Format: uuid */
+            group_id: string;
+            /** @enum {string} */
+            source: "hosted" | "api";
+            /** Format: date-time */
+            accepted_at: string;
+            /** @description sha256 of the page that was accepted (GET /v1/contract-acceptances/{id}/snapshot) */
+            snapshot_sha256: string;
+            /**
+             * Format: uuid
+             * @description absent for a guest payment
+             */
+            customer_id?: string;
+            /** @description absent for a guest payment */
+            customer_external_id?: string;
+            immediate_start_consent: boolean;
+            withdrawal_waiver_acknowledged: boolean;
+            context: {
+                /** @enum {string} */
+                kind: "hosted_invoice" | "api";
+                ref: string;
+            };
+            items: {
+                /** Format: uuid */
+                acceptance_id: string;
+                kind: components["schemas"]["ContractKind"];
+                audience: components["schemas"]["ContractAudience"];
+                /** Format: uuid */
+                version_id: string;
+                /** @description JSON NUMBER */
+                version: number;
+                sha256: string;
+                locale: string;
+            }[];
+        };
+        /** @description The body of a delivery of type contract.accepted */
+        ContractAcceptedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "contract.accepted";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["ContractAcceptedEventData"];
+        };
+        /** @description The data of an event of type contract.version_published */
+        ContractVersionPublishedEventData: {
+            /** Format: uuid */
+            version_id: string;
+            kind: components["schemas"]["ContractKind"];
+            audience: components["schemas"]["ContractAudience"];
+            /** @description JSON NUMBER */
+            number: number;
+            material: boolean;
+            sha256: string;
+            locales: string[];
+            /** Format: date-time */
+            published_at: string;
+        };
+        /** @description The body of a delivery of type contract.version_published */
+        ContractVersionPublishedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "contract.version_published";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["ContractVersionPublishedEventData"];
+        };
+        /** @description The data of an event of type contract.withdrawal_requested */
+        ContractWithdrawalRequestedEventData: {
+            /** Format: uuid */
+            withdrawal_id: string;
+            /** Format: uuid */
+            customer_id: string;
+            customer_external_id: string;
+            /** @description may be empty */
+            subscription_id: string;
+            /** @description may be empty */
+            invoice_id: string;
+            /** @enum {string} */
+            source: "api" | "console" | "hosted";
+            /** Format: date-time */
+            received_at: string;
+        };
+        /** @description The body of a delivery of type contract.withdrawal_requested */
+        ContractWithdrawalRequestedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "contract.withdrawal_requested";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["ContractWithdrawalRequestedEventData"];
+        };
         /** @description The data of an event of type ping */
         PingEventData: {
             /** @enum {string} */
@@ -9631,7 +9963,7 @@ export interface components {
             active: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested";
         PaymentLink: {
             /** Format: uuid */
             id: string;
@@ -9824,7 +10156,7 @@ export interface components {
             delivered_time: string | null;
         };
         /** @description The body of a delivery: the common envelope plus data that depends on type. The signature and headers are described in docs/16-webhooks.md. Billing events (invoice, credit_note, payment_link, credits) send int64 values as strings except the credits and balance counts, which are JSON numbers; subscription events embed the subscription without its zero-valued fields. */
-        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["PingEvent"];
+        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["PingEvent"];
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
             code: string;
@@ -10372,11 +10704,254 @@ export interface components {
          * @enum {string}
          */
         ApiKeyRole: "admin" | "billing" | "read_only" | "ingest_only" | "custom";
+        /** @enum {string} */
+        ContractKind: "distance_sales" | "pre_info" | "tos" | "privacy";
+        /**
+         * @description A business customer gets the business series when one is published, else the consumer's.
+         * @enum {string}
+         */
+        ContractAudience: "consumer" | "business";
+        ContractVersion: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["ContractKind"];
+            audience: components["schemas"]["ContractAudience"];
+            /** Format: int32 */
+            number: number;
+            /** @description Customers who accepted an earlier version are asked again. */
+            material: boolean;
+            /** @description Language (en, tr, de, fr, es, ar) to the text. */
+            bodies: {
+                [key: string]: string;
+            };
+            /** @description Hex sha256 over the kind, audience and every text. */
+            sha256: string;
+            note: string;
+            author: string;
+            /** Format: date-time */
+            create_time: string;
+            variables: string[];
+            /** @description The newest version of its series. */
+            current: boolean;
+            /** @description A text still carries the starter notice (template, have a lawyer review). */
+            has_template_notice: boolean;
+        };
+        PublishContractVersionRequest: {
+            kind: components["schemas"]["ContractKind"];
+            audience?: components["schemas"]["ContractAudience"];
+            bodies: {
+                [key: string]: string;
+            };
+            material?: boolean;
+            note?: string;
+        };
+        ListContractVersionsResponse: {
+            versions: components["schemas"]["ContractVersion"][];
+        };
+        PreviewContractRequest: {
+            body: string;
+            locale?: string;
+        };
+        PreviewContractResponse: {
+            /** @description Safe HTML; the variables are shown with sample values inside <mark>. */
+            html: string;
+            variables: string[];
+            unknown_variables: string[];
+        };
+        GetContractStarterResponse: {
+            body: string;
+            /** @enum {string} */
+            locale: "tr" | "en";
+        };
+        ContractSettings: {
+            required_kinds: components["schemas"]["ContractKind"][];
+            immediate_start: boolean;
+            /** Format: int32 */
+            retention_months: number;
+            /** @description Kinds that have a published consumer version. */
+            published_kinds: components["schemas"]["ContractKind"][];
+            /** Format: date-time */
+            update_time: string | null;
+        };
+        SetContractSettingsRequest: {
+            required_kinds?: components["schemas"]["ContractKind"][];
+            immediate_start?: boolean;
+            /**
+             * Format: int32
+             * @description 0 keeps the current value.
+             */
+            retention_months?: number;
+        };
+        ContractRequirement: {
+            kind: components["schemas"]["ContractKind"];
+            /** Format: uuid */
+            version_id: string;
+            /** Format: int32 */
+            version_number: number;
+            audience: components["schemas"]["ContractAudience"];
+            /** @description The language of the text served. */
+            locale: string;
+            /** @description The text as safe HTML, variables resolved. */
+            body_html: string;
+            body_sha256: string;
+            accepted: boolean;
+            /** Format: date-time */
+            accept_time: string | null;
+            has_template_notice: boolean;
+        };
+        GetContractRequirementsResponse: {
+            /** @description The seller requires agreements at all. */
+            enforced: boolean;
+            requirements: components["schemas"]["ContractRequirement"][];
+            satisfied: boolean;
+            /** @description A consumer is asked for the request to start at once and the waiver acknowledgement. */
+            immediate_start: boolean;
+            /** @description Required kinds with no published version: a payment is refused. */
+            missing_kinds: components["schemas"]["ContractKind"][];
+            audience: components["schemas"]["ContractAudience"];
+        };
+        ContractAcceptanceItem: {
+            /** Format: uuid */
+            version_id: string;
+            /** @description The words next to the box, as the customer saw them. */
+            checkbox_text: string;
+        };
+        RecordContractAcceptanceRequest: {
+            /** @description The language the page was shown in. */
+            locale?: string;
+            /** @description Your reference for the checkout (an order id). */
+            context_ref?: string;
+            items: components["schemas"]["ContractAcceptanceItem"][];
+            immediate_start_consent?: boolean;
+            immediate_start_text?: string;
+            withdrawal_waiver_acknowledged?: boolean;
+            withdrawal_waiver_text?: string;
+            /** @description Your claim about the customer's address. */
+            ip?: string;
+            /** @description Your claim about the customer's browser. */
+            user_agent?: string;
+            /**
+             * Format: date-time
+             * @description When the customer accepted; empty is now.
+             */
+            accept_time?: string;
+            /** @enum {string} */
+            customer_type?: "individual" | "business";
+            order?: components["schemas"]["ContractOrder"];
+        };
+        ContractOrder: {
+            description?: string;
+            /** @description Formatted for a person, e.g. 12.00. */
+            total?: string;
+            currency?: string;
+        };
+        ContractAcceptance: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * Format: uuid
+             * @description The versions accepted together share it.
+             */
+            group_id: string;
+            /** @description Empty for a guest payment. */
+            customer_id: string;
+            /** Format: uuid */
+            version_id: string;
+            kind: components["schemas"]["ContractKind"];
+            audience: components["schemas"]["ContractAudience"];
+            /** Format: int32 */
+            version_number: number;
+            version_sha256: string;
+            locale_requested: string;
+            locale_served: string;
+            /** @description Hex sha256 of the text served. */
+            body_sha256: string;
+            /** @enum {string} */
+            context_kind: "hosted_invoice" | "api";
+            context_ref: string;
+            /** @enum {string} */
+            source: "hosted" | "api";
+            /** @description ip, user_agent, time, text: true when Payrudder observed it, false when the seller claimed it. */
+            observed: {
+                [key: string]: boolean;
+            };
+            checkbox_text: string;
+            immediate_start_consent: boolean;
+            immediate_start_text: string;
+            withdrawal_waiver_acknowledged: boolean;
+            withdrawal_waiver_text: string;
+            variables: {
+                [key: string]: string;
+            };
+            snapshot_sha256: string;
+            /** @description Blank once the retention period passed. */
+            ip: string;
+            user_agent: string;
+            /** Format: date-time */
+            accept_time: string;
+            customer_external_id: string;
+        };
+        RecordContractAcceptanceResponse: {
+            /** Format: uuid */
+            group_id: string;
+            acceptances: components["schemas"]["ContractAcceptance"][];
+        };
+        ListContractAcceptancesResponse: {
+            acceptances: components["schemas"]["ContractAcceptance"][];
+        };
+        GetContractSnapshotResponse: {
+            html: string;
+            sha256: string;
+            /** Format: uuid */
+            group_id: string;
+        };
+        ContractWithdrawal: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            customer_id: string;
+            customer_external_id: string;
+            subscription_id: string;
+            invoice_id: string;
+            statement: string;
+            /** @enum {string} */
+            source: "api" | "console" | "hosted";
+            /** @enum {string} */
+            status: "received" | "accepted" | "rejected" | "refunded";
+            /** Format: date-time */
+            receive_time: string;
+            /** Format: date-time */
+            decide_time: string | null;
+            decided_by: string;
+            decision_note: string;
+        };
+        CreateContractWithdrawalRequest: {
+            /** Format: uuid */
+            subscription_id?: string;
+            /** Format: uuid */
+            invoice_id?: string;
+            statement?: string;
+            /**
+             * Format: date-time
+             * @description When the statement reached you; empty is now.
+             */
+            receive_time?: string;
+            /** @enum {string} */
+            source?: "api" | "console";
+        };
+        ListContractWithdrawalsResponse: {
+            withdrawals: components["schemas"]["ContractWithdrawal"][];
+        };
+        SetContractWithdrawalStatusRequest: {
+            /** @enum {string} */
+            status: "accepted" | "rejected" | "refunded";
+            note?: string;
+        };
         /**
          * @description resource:action. The route /v1/{resource}... with GET is :read, any other method :write; /v1/events needs events:write and /v1/sandbox/* sandbox:write.
          * @enum {string}
          */
-        ApiKeyPermission: "events:write" | "customers:read" | "customers:write" | "subscriptions:read" | "subscriptions:write" | "catalog:read" | "catalog:write" | "usage:read" | "credits:read" | "credits:write" | "invoices:read" | "invoices:write" | "reports:read" | "accounting:read" | "accounting:write" | "webhooks:read" | "webhooks:write" | "affiliates:read" | "affiliates:write" | "settings:read" | "settings:write" | "assets:read" | "assets:write" | "sandbox:write";
+        ApiKeyPermission: "events:write" | "customers:read" | "customers:write" | "subscriptions:read" | "subscriptions:write" | "catalog:read" | "catalog:write" | "usage:read" | "credits:read" | "credits:write" | "invoices:read" | "invoices:write" | "reports:read" | "accounting:read" | "accounting:write" | "webhooks:read" | "webhooks:write" | "affiliates:read" | "affiliates:write" | "settings:read" | "settings:write" | "assets:read" | "assets:write" | "sandbox:write" | "contracts:read" | "contracts:write";
         /** @description The tenant's own e-mail provider. The key is never returned. */
         MailIntegration: {
             /** @enum {string} */
@@ -10716,6 +11291,358 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    listContractVersions: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["ContractKind"];
+                audience?: components["schemas"]["ContractAudience"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListContractVersionsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    publishContractVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishContractVersionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractVersion"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getContractVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractVersion"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    previewContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewContractRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewContractResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    getContractStarter: {
+        parameters: {
+            query: {
+                kind: components["schemas"]["ContractKind"];
+                locale: "tr" | "en";
+                audience?: components["schemas"]["ContractAudience"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetContractStarterResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getContractSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractSettings"];
+                };
+            };
+        };
+    };
+    setContractSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetContractSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractSettings"];
+                };
+            };
+            400: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getContractRequirements: {
+        parameters: {
+            query?: {
+                locale?: string;
+                customer_type?: "individual" | "business";
+                order_description?: string;
+                order_total?: string;
+                order_currency?: string;
+            };
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetContractRequirementsResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listContractAcceptances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListContractAcceptancesResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    recordContractAcceptance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordContractAcceptanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecordContractAcceptanceResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    getContractSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GetContractSnapshotResponse"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    createContractWithdrawal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CreateContractWithdrawalRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractWithdrawal"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listContractWithdrawals: {
+        parameters: {
+            query?: {
+                customer_external_id?: string;
+                status?: "received" | "accepted" | "rejected" | "refunded";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListContractWithdrawalsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    setContractWithdrawalStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetContractWithdrawalStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractWithdrawal"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
         };
     };
     listEInvoices: {
@@ -13832,6 +14759,16 @@ export interface operations {
             content: {
                 "application/x-www-form-urlencoded": {
                     method: string;
+                    v_distance_sales?: string;
+                    accept_distance_sales?: string;
+                    v_pre_info?: string;
+                    accept_pre_info?: string;
+                    v_tos?: string;
+                    accept_tos?: string;
+                    v_privacy?: string;
+                    accept_privacy?: string;
+                    consent_start?: string;
+                    consent_waiver?: string;
                 };
             };
         };
@@ -13863,6 +14800,15 @@ export interface operations {
             };
             /** @description The invoice cannot be paid now */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description An agreement the seller requires was not accepted: the page is shown again */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14209,6 +15155,15 @@ export interface operations {
             };
             /** @description The invoice cannot be paid now */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description An agreement the seller requires was not accepted: the page is shown again */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -255,6 +255,14 @@ type ContractSetting struct {
 	UpdatedAt       time.Time
 }
 
+type ContractSnapshot struct {
+	TenantID  uuid.UUID
+	GroupID   uuid.UUID
+	Html      string
+	Sha256    string
+	CreatedAt time.Time
+}
+
 type ContractVersion struct {
 	TenantID  uuid.UUID
 	ID        uuid.UUID

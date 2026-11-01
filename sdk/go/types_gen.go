@@ -462,6 +462,126 @@ type CompleteUploadFileRequest struct {
 	Parts []CompleteUploadFilePart `json:"parts"`
 }
 
+// ContractAcceptance is an object of the API; see components.schemas.ContractAcceptance in api/openapi/v1.yaml.
+type ContractAcceptance struct {
+	ID string `json:"id"`
+	// The versions accepted together share it.
+	GroupID string `json:"group_id"`
+	// Empty for a guest payment.
+	CustomerID      string `json:"customer_id"`
+	VersionID       string `json:"version_id"`
+	Kind            string `json:"kind"`
+	Audience        string `json:"audience"`
+	VersionNumber   int    `json:"version_number"`
+	VersionSHA256   string `json:"version_sha256"`
+	LocaleRequested string `json:"locale_requested"`
+	LocaleServed    string `json:"locale_served"`
+	// Hex sha256 of the text served.
+	BodySHA256 string `json:"body_sha256"`
+	// One of: hosted_invoice, api.
+	ContextKind string `json:"context_kind"`
+	ContextRef  string `json:"context_ref"`
+	// One of: hosted, api.
+	Source string `json:"source"`
+	// ip, user_agent, time, text: true when Payrudder observed it, false when the seller claimed it.
+	Observed                     map[string]bool   `json:"observed"`
+	CheckboxText                 string            `json:"checkbox_text"`
+	ImmediateStartConsent        bool              `json:"immediate_start_consent"`
+	ImmediateStartText           string            `json:"immediate_start_text"`
+	WithdrawalWaiverAcknowledged bool              `json:"withdrawal_waiver_acknowledged"`
+	WithdrawalWaiverText         string            `json:"withdrawal_waiver_text"`
+	Variables                    map[string]string `json:"variables"`
+	SnapshotSHA256               string            `json:"snapshot_sha256"`
+	// Blank once the retention period passed.
+	IP                 string    `json:"ip"`
+	UserAgent          string    `json:"user_agent"`
+	AcceptTime         time.Time `json:"accept_time"`
+	CustomerExternalID string    `json:"customer_external_id"`
+}
+
+// ContractAcceptanceItem is an object of the API; see components.schemas.ContractAcceptanceItem in
+// api/openapi/v1.yaml.
+type ContractAcceptanceItem struct {
+	VersionID string `json:"version_id"`
+	// The words next to the box, as the customer saw them.
+	CheckboxText string `json:"checkbox_text"`
+}
+
+// ContractOrder is an object of the API; see components.schemas.ContractOrder in api/openapi/v1.yaml.
+type ContractOrder struct {
+	Description string `json:"description,omitempty"`
+	// Formatted for a person, e.g. 12.00.
+	Total    string `json:"total,omitempty"`
+	Currency string `json:"currency,omitempty"`
+}
+
+// ContractRequirement is an object of the API; see components.schemas.ContractRequirement in
+// api/openapi/v1.yaml.
+type ContractRequirement struct {
+	Kind          string `json:"kind"`
+	VersionID     string `json:"version_id"`
+	VersionNumber int    `json:"version_number"`
+	Audience      string `json:"audience"`
+	// The language of the text served.
+	Locale string `json:"locale"`
+	// The text as safe HTML, variables resolved.
+	BodyHTML          string     `json:"body_html"`
+	BodySHA256        string     `json:"body_sha256"`
+	Accepted          bool       `json:"accepted"`
+	AcceptTime        *time.Time `json:"accept_time"`
+	HasTemplateNotice bool       `json:"has_template_notice"`
+}
+
+// ContractSettings is an object of the API; see components.schemas.ContractSettings in api/openapi/v1.yaml.
+type ContractSettings struct {
+	RequiredKinds   []string `json:"required_kinds"`
+	ImmediateStart  bool     `json:"immediate_start"`
+	RetentionMonths int      `json:"retention_months"`
+	// Kinds that have a published consumer version.
+	PublishedKinds []string   `json:"published_kinds"`
+	UpdateTime     *time.Time `json:"update_time"`
+}
+
+// ContractVersion is an object of the API; see components.schemas.ContractVersion in api/openapi/v1.yaml.
+type ContractVersion struct {
+	ID       string `json:"id"`
+	Kind     string `json:"kind"`
+	Audience string `json:"audience"`
+	Number   int    `json:"number"`
+	// Customers who accepted an earlier version are asked again.
+	Material bool `json:"material"`
+	// Language (en, tr, de, fr, es, ar) to the text.
+	Bodies map[string]string `json:"bodies"`
+	// Hex sha256 over the kind, audience and every text.
+	SHA256     string    `json:"sha256"`
+	Note       string    `json:"note"`
+	Author     string    `json:"author"`
+	CreateTime time.Time `json:"create_time"`
+	Variables  []string  `json:"variables"`
+	// The newest version of its series.
+	Current bool `json:"current"`
+	// A text still carries the starter notice (template, have a lawyer review).
+	HasTemplateNotice bool `json:"has_template_notice"`
+}
+
+// ContractWithdrawal is an object of the API; see components.schemas.ContractWithdrawal in api/openapi/v1.yaml.
+type ContractWithdrawal struct {
+	ID                 string `json:"id"`
+	CustomerID         string `json:"customer_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	SubscriptionID     string `json:"subscription_id"`
+	InvoiceID          string `json:"invoice_id"`
+	Statement          string `json:"statement"`
+	// One of: api, console, hosted.
+	Source string `json:"source"`
+	// One of: received, accepted, rejected, refunded.
+	Status       string     `json:"status"`
+	ReceiveTime  time.Time  `json:"receive_time"`
+	DecideTime   *time.Time `json:"decide_time"`
+	DecidedBy    string     `json:"decided_by"`
+	DecisionNote string     `json:"decision_note"`
+}
+
 // Coupon is an object of the API; see components.schemas.Coupon in api/openapi/v1.yaml.
 type Coupon struct {
 	// 2–40 letters, digits, - or _
@@ -578,6 +698,17 @@ type CreateAffiliateRequest struct {
 	PayoutMethod  string `json:"payout_method,omitempty"`
 	PayoutDetails string `json:"payout_details,omitempty"`
 	Pending       *bool  `json:"pending,omitempty"`
+}
+
+// CreateContractWithdrawalRequest is the request body of CreateContractWithdrawal.
+type CreateContractWithdrawalRequest struct {
+	SubscriptionID string `json:"subscription_id,omitempty"`
+	InvoiceID      string `json:"invoice_id,omitempty"`
+	Statement      string `json:"statement,omitempty"`
+	// When the statement reached you; empty is now.
+	ReceiveTime *time.Time `json:"receive_time,omitempty"`
+	// One of: api, console.
+	Source string `json:"source,omitempty"`
 }
 
 // CreateCustomerRequest is the request body of CreateCustomer.
@@ -1267,6 +1398,33 @@ type GetAnalyticsUsageResponse struct {
 	Points        []GetAnalyticsUsagePoint `json:"points"`
 }
 
+// GetContractRequirementsResponse is the response of GetContractRequirements.
+type GetContractRequirementsResponse struct {
+	// The seller requires agreements at all.
+	Enforced     bool                  `json:"enforced"`
+	Requirements []ContractRequirement `json:"requirements"`
+	Satisfied    bool                  `json:"satisfied"`
+	// A consumer is asked for the request to start at once and the waiver acknowledgement.
+	ImmediateStart bool `json:"immediate_start"`
+	// Required kinds with no published version: a payment is refused.
+	MissingKinds []string `json:"missing_kinds"`
+	Audience     string   `json:"audience"`
+}
+
+// GetContractSnapshotResponse is the response of GetContractSnapshot.
+type GetContractSnapshotResponse struct {
+	HTML    string `json:"html"`
+	SHA256  string `json:"sha256"`
+	GroupID string `json:"group_id"`
+}
+
+// GetContractStarterResponse is the response of GetContractStarter.
+type GetContractStarterResponse struct {
+	Body string `json:"body"`
+	// One of: tr, en.
+	Locale string `json:"locale"`
+}
+
 // GetCustomerUsageResponse is the response of GetCustomerUsage.
 type GetCustomerUsageResponse struct {
 	CustomerExternalID string                  `json:"customer_external_id"`
@@ -1553,6 +1711,21 @@ type ListAssetsResponse struct {
 	NextPageToken string  `json:"next_page_token"`
 }
 
+// ListContractAcceptancesResponse is the response of ListContractAcceptances.
+type ListContractAcceptancesResponse struct {
+	Acceptances []ContractAcceptance `json:"acceptances"`
+}
+
+// ListContractVersionsResponse is the response of ListContractVersions.
+type ListContractVersionsResponse struct {
+	Versions []ContractVersion `json:"versions"`
+}
+
+// ListContractWithdrawalsResponse is the response of ListContractWithdrawals.
+type ListContractWithdrawalsResponse struct {
+	Withdrawals []ContractWithdrawal `json:"withdrawals"`
+}
+
 // ListCouponRedemptionsResponse is the response of ListCouponRedemptions.
 type ListCouponRedemptionsResponse struct {
 	Redemptions   []CouponRedemption `json:"redemptions"`
@@ -1793,6 +1966,20 @@ type PresignedPart struct {
 	URL        string `json:"url"`
 }
 
+// PreviewContractRequest is the request body of PreviewContract.
+type PreviewContractRequest struct {
+	Body   string `json:"body"`
+	Locale string `json:"locale,omitempty"`
+}
+
+// PreviewContractResponse is the response of PreviewContract.
+type PreviewContractResponse struct {
+	// Safe HTML; the variables are shown with sample values inside <mark>.
+	HTML             string   `json:"html"`
+	Variables        []string `json:"variables"`
+	UnknownVariables []string `json:"unknown_variables"`
+}
+
 // PreviewRoutingRequest is the request body of PreviewRouting.
 type PreviewRoutingRequest struct {
 	Country  string `json:"country,omitempty"`
@@ -1977,6 +2164,15 @@ type PromotionQuoteRequest struct {
 	PriorPurchases *bool `json:"prior_purchases,omitempty"`
 }
 
+// PublishContractVersionRequest is the request body of PublishContractVersion.
+type PublishContractVersionRequest struct {
+	Kind     string            `json:"kind"`
+	Audience string            `json:"audience,omitempty"`
+	Bodies   map[string]string `json:"bodies"`
+	Material *bool             `json:"material,omitempty"`
+	Note     string            `json:"note,omitempty"`
+}
+
 // PublishPlanVersionRequest is the request body of PublishPlanVersion.
 type PublishPlanVersionRequest struct {
 	BaseFeeMinor *Int64 `json:"base_fee_minor,omitempty"`
@@ -1987,6 +2183,34 @@ type PublishPlanVersionRequest struct {
 	Entitlements []EntitlementInput `json:"entitlements,omitempty"`
 	// The trial a new subscription to this version gets unless its request says otherwise; 0 is none
 	TrialDays *int `json:"trial_days,omitempty"`
+}
+
+// RecordContractAcceptanceRequest is the request body of RecordContractAcceptance.
+type RecordContractAcceptanceRequest struct {
+	// The language the page was shown in.
+	Locale string `json:"locale,omitempty"`
+	// Your reference for the checkout (an order id).
+	ContextRef                   string                   `json:"context_ref,omitempty"`
+	Items                        []ContractAcceptanceItem `json:"items"`
+	ImmediateStartConsent        *bool                    `json:"immediate_start_consent,omitempty"`
+	ImmediateStartText           string                   `json:"immediate_start_text,omitempty"`
+	WithdrawalWaiverAcknowledged *bool                    `json:"withdrawal_waiver_acknowledged,omitempty"`
+	WithdrawalWaiverText         string                   `json:"withdrawal_waiver_text,omitempty"`
+	// Your claim about the customer's address.
+	IP string `json:"ip,omitempty"`
+	// Your claim about the customer's browser.
+	UserAgent string `json:"user_agent,omitempty"`
+	// When the customer accepted; empty is now.
+	AcceptTime *time.Time `json:"accept_time,omitempty"`
+	// One of: individual, business.
+	CustomerType string         `json:"customer_type,omitempty"`
+	Order        *ContractOrder `json:"order,omitempty"`
+}
+
+// RecordContractAcceptanceResponse is the response of RecordContractAcceptance.
+type RecordContractAcceptanceResponse struct {
+	GroupID     string               `json:"group_id"`
+	Acceptances []ContractAcceptance `json:"acceptances"`
 }
 
 // ResolveInboxItemRequest is the request body of ResolveInboxItem.
@@ -2125,6 +2349,21 @@ type ScheduledChange struct {
 	EffectiveTime *time.Time `json:"effective_time"`
 	// The seats the subscription has from then
 	Quantity int `json:"quantity"`
+}
+
+// SetContractSettingsRequest is the request body of SetContractSettings.
+type SetContractSettingsRequest struct {
+	RequiredKinds  []string `json:"required_kinds,omitempty"`
+	ImmediateStart *bool    `json:"immediate_start,omitempty"`
+	// 0 keeps the current value.
+	RetentionMonths *int `json:"retention_months,omitempty"`
+}
+
+// SetContractWithdrawalStatusRequest is the request body of SetContractWithdrawalStatus.
+type SetContractWithdrawalStatusRequest struct {
+	// One of: accepted, rejected, refunded.
+	Status string `json:"status"`
+	Note   string `json:"note,omitempty"`
 }
 
 // SetInvoiceLogoRequest is the request body of SetInvoiceLogo.
@@ -2765,6 +3004,76 @@ func (p *PresignPartsParams) values() url.Values {
 	return v
 }
 
+// ListContractWithdrawalsParams are the query parameters of ListContractWithdrawals.
+type ListContractWithdrawalsParams struct {
+	CustomerExternalID string
+	// One of: received, accepted, rejected, refunded.
+	Status string
+}
+
+func (p *ListContractWithdrawalsParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.CustomerExternalID != "" {
+		v.Set("customer_external_id", p.CustomerExternalID)
+	}
+	if p.Status != "" {
+		v.Set("status", p.Status)
+	}
+	return v
+}
+
+// GetContractStarterParams are the query parameters of GetContractStarter.
+type GetContractStarterParams struct {
+	// One of: distance_sales, pre_info, tos, privacy.
+	Kind string
+	// One of: tr, en.
+	Locale string
+	// One of: consumer, business.
+	Audience string
+}
+
+func (p *GetContractStarterParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.Kind != "" {
+		v.Set("kind", p.Kind)
+	}
+	if p.Locale != "" {
+		v.Set("locale", p.Locale)
+	}
+	if p.Audience != "" {
+		v.Set("audience", p.Audience)
+	}
+	return v
+}
+
+// ListContractVersionsParams are the query parameters of ListContractVersions.
+type ListContractVersionsParams struct {
+	// One of: distance_sales, pre_info, tos, privacy.
+	Kind string
+	// One of: consumer, business.
+	Audience string
+}
+
+func (p *ListContractVersionsParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.Kind != "" {
+		v.Set("kind", p.Kind)
+	}
+	if p.Audience != "" {
+		v.Set("audience", p.Audience)
+	}
+	return v
+}
+
 // ListCouponRedemptionsParams are the query parameters of ListCouponRedemptions.
 type ListCouponRedemptionsParams struct {
 	Coupon             string
@@ -2859,6 +3168,39 @@ func (p *ListCustomersParams) values() url.Values {
 	}
 	if p.PageToken != "" {
 		v.Set("page_token", p.PageToken)
+	}
+	return v
+}
+
+// GetContractRequirementsParams are the query parameters of GetContractRequirements.
+type GetContractRequirementsParams struct {
+	Locale string
+	// One of: individual, business.
+	CustomerType     string
+	OrderDescription string
+	OrderTotal       string
+	OrderCurrency    string
+}
+
+func (p *GetContractRequirementsParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.Locale != "" {
+		v.Set("locale", p.Locale)
+	}
+	if p.CustomerType != "" {
+		v.Set("customer_type", p.CustomerType)
+	}
+	if p.OrderDescription != "" {
+		v.Set("order_description", p.OrderDescription)
+	}
+	if p.OrderTotal != "" {
+		v.Set("order_total", p.OrderTotal)
+	}
+	if p.OrderCurrency != "" {
+		v.Set("order_currency", p.OrderCurrency)
 	}
 	return v
 }

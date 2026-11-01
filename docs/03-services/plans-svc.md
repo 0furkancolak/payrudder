@@ -80,6 +80,10 @@ Rules:
   `grace_period` may change and applies from the next period (snapshotted by aggregator).
 - A meter's `quantity_scale` is fixed for its code: a new meter version with a different scale is rejected.
 
+## As built: contracts for the seller's customers (plan 21)
+
+`contract_versions` (immutable), `contract_settings`, `contract_acceptances` (append-only, UPDATE of `ip` and `user_agent` only for the erasure job), `contract_snapshots` and `contract_withdrawals` are tenant tables with their twins in `migrations/tenant` (public 00006, tenant 00005). `ContractService` (`internal/contracts`) serves them to the gateway for the tenant API and, with the tenant of the invoice, for the hosted pages; `contracts.Check` is the gate of `CreateSubscription`; the erasure job runs daily on the system role over the pooled schema and each cell. Events: webhooks `contract.accepted`, `contract.version_published`, `contract.withdrawal_requested`, and the outbox fact `contract.accepted.v1` for the customer's mail. See [19-contracts.md](../19-contracts.md).
+
 ## Produced messages
 
 | Topic | When | Key |

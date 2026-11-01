@@ -83,6 +83,34 @@ END $$;
 CREATE TRIGGER contract_acceptances_append_only BEFORE UPDATE OR DELETE ON contract_acceptances
   FOR EACH ROW EXECUTE FUNCTION contract_acceptances_append_only();
 
+-- The page each acceptance group was shown to and accepted, as written then: the evidence is these bytes, not a page written again later (the wording of a label may change
+-- in a release, the page that was hashed must not). One row for a group; never changed, deleted only like the acceptances.
+CREATE TABLE contract_snapshots (
+  tenant_id  uuid NOT NULL,
+  group_id   uuid NOT NULL,
+  html       text NOT NULL,
+  sha256     text NOT NULL CHECK (sha256 ~ '^[0-9a-f]{64}$'),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id, group_id)
+);
+
+-- +goose StatementBegin
+CREATE FUNCTION contract_snapshots_append_only() RETURNS trigger
+LANGUAGE plpgsql SET search_path FROM CURRENT
+AS $$
+DECLARE
+  tr jsonb := NULLIF(current_setting('app.tenant_row', true), '')::jsonb;
+BEGIN
+  IF TG_OP = 'DELETE' AND tr ->> 'environment' = 'sandbox' AND (tr ->> 'id')::uuid = OLD.tenant_id THEN
+    RETURN OLD;
+  END IF;
+  RAISE EXCEPTION 'a contract snapshot is evidence: it is never changed or deleted' USING ERRCODE = 'P0001', HINT = 'contract_snapshot_append_only';
+END $$;
+-- +goose StatementEnd
+CREATE TRIGGER contract_snapshots_append_only BEFORE UPDATE OR DELETE ON contract_snapshots
+  FOR EACH ROW EXECUTE FUNCTION contract_snapshots_append_only();
+
+
 CREATE TABLE contract_withdrawals (
   tenant_id       uuid NOT NULL,
   id              uuid NOT NULL,
@@ -112,16 +140,19 @@ CREATE POLICY tenant_isolation ON contract_settings USING (tenant_id = app_tenan
 ALTER TABLE contract_acceptances ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contract_acceptances FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON contract_acceptances USING (tenant_id = app_tenant_id()) WITH CHECK (tenant_id = app_tenant_id());
+ALTER TABLE contract_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contract_snapshots FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON contract_snapshots USING (tenant_id = app_tenant_id()) WITH CHECK (tenant_id = app_tenant_id());
 ALTER TABLE contract_withdrawals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contract_withdrawals FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON contract_withdrawals USING (tenant_id = app_tenant_id()) WITH CHECK (tenant_id = app_tenant_id());
 
-GRANT SELECT, INSERT ON contract_versions, contract_acceptances TO plans_app;
+GRANT SELECT, INSERT ON contract_versions, contract_acceptances, contract_snapshots TO plans_app;
 GRANT SELECT, INSERT, UPDATE ON contract_settings, contract_withdrawals TO plans_app;
 GRANT SELECT ON contract_versions, contract_settings TO plans_system;
-GRANT SELECT, DELETE ON contract_acceptances, contract_withdrawals TO plans_system;
+GRANT SELECT, DELETE ON contract_acceptances, contract_snapshots, contract_withdrawals TO plans_system;
 GRANT UPDATE (ip, user_agent) ON contract_acceptances TO plans_system;
 
 -- +goose Down
-DROP TABLE contract_withdrawals, contract_acceptances, contract_settings, contract_versions;
-DROP FUNCTION contract_acceptances_append_only();
+DROP TABLE contract_withdrawals, contract_snapshots, contract_acceptances, contract_settings, contract_versions;
+DROP FUNCTION contract_snapshots_append_only(), contract_acceptances_append_only();

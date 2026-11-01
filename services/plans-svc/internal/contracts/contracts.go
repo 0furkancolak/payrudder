@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -689,6 +690,9 @@ func (s *Service) RecordContractAcceptance(ctx context.Context, req *plansv1.Rec
 			}
 			out.Acceptances = append(out.Acceptances, acceptanceOf(row, deref(customerExternalID(w))))
 		}
+		if err := q.InsertContractSnapshot(ctx, sqlc.InsertContractSnapshotParams{GroupID: group, Html: page, Sha256: pageHash}); err != nil {
+			return err
+		}
 		return s.announce(ctx, q, w, group, first, pageHash, at, out.Acceptances, source)
 	})
 	return out, err
@@ -777,7 +781,8 @@ func (s *Service) ListContractAcceptances(ctx context.Context, req *plansv1.List
 	return &plansv1.ListContractAcceptancesResponse{Acceptances: out}, err
 }
 
-// GetContractSnapshot renders again the page that was hashed when the acceptance was made, from the stored rows and the immutable versions.
+// GetContractSnapshot returns the page the acceptance's group was shown to and accepted, as it was written then, with its sha256. The page is checked against the hash the
+// acceptance holds before it is returned: a page that no longer matches is an error, never evidence.
 func (s *Service) GetContractSnapshot(ctx context.Context, req *plansv1.GetContractSnapshotRequest) (*plansv1.GetContractSnapshotResponse, error) {
 	id, err := uuid.Parse(req.GetAcceptanceId())
 	if err != nil {
@@ -792,32 +797,14 @@ func (s *Service) GetContractSnapshot(ctx context.Context, req *plansv1.GetContr
 		if err != nil {
 			return err
 		}
-		rows, err := q.ListContractAcceptanceGroup(ctx, a.GroupID)
+		snap, err := q.GetContractSnapshotOfGroup(ctx, a.GroupID)
 		if err != nil {
 			return err
 		}
-		snap := domain.Snapshot{AcceptedAt: a.AcceptedAt, Locale: a.LocaleServed, Source: a.Source, ImmediateStart: a.ImmediateStartText, WaiverAck: a.WithdrawalWaiverText, Observed: map[string]bool{}}
-		_ = json.Unmarshal(a.Observed, &snap.Observed)
-		vals := map[string]string{}
-		_ = json.Unmarshal(a.Variables, &vals)
-		snap.Values, snap.Seller, snap.Customer, snap.Email = vals, vals["seller_name"], vals["customer_name"], vals["customer_email"]
-		slices.SortFunc(rows, func(x, y sqlc.ListContractAcceptanceGroupRow) int {
-			return slices.Index(domain.ContractKinds, x.Kind) - slices.Index(domain.ContractKinds, y.Kind)
-		})
-		if len(rows) > 0 {
-			snap.Locale = rows[0].LocaleServed
+		if domain.TextHash(snap.Html) != a.SnapshotSha256 || snap.Sha256 != a.SnapshotSha256 {
+			return status.Error(codes.DataLoss, "the stored page does not match its hash")
 		}
-		for _, r := range rows {
-			v, err := q.GetContractVersion(ctx, r.VersionID)
-			if err != nil {
-				return err
-			}
-			body := bodiesOf(v.Bodies)[r.LocaleServed]
-			snap.Items = append(snap.Items, domain.SnapshotItem{Kind: r.Kind, Number: int(r.VersionNumber), LocaleServed: r.LocaleServed, Body: body, BodySHA256: r.BodySha256, VersionSHA256: r.VersionSha256,
-				CheckboxText: r.CheckboxText})
-		}
-		page := domain.RenderSnapshot(snap)
-		out = &plansv1.GetContractSnapshotResponse{Html: page, Sha256: domain.TextHash(page), GroupId: a.GroupID.String()}
+		out = &plansv1.GetContractSnapshotResponse{Html: snap.Html, Sha256: snap.Sha256, GroupId: a.GroupID.String()}
 		return nil
 	})
 	return out, err

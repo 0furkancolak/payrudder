@@ -13,4 +13,6 @@ PAYRUDDER_DLQ_TOPIC: "usage.limit-exceeded.dlq.v1"
 # Where the trial-ending facts (subscription.trial-will-end.v1) that can never be mailed go.
 PAYRUDDER_TRIAL_DLQ_TOPIC: "subscription.trial-will-end.dlq.v1"
 PAYRUDDER_PRICE_CHANGE_DLQ_TOPIC: "subscription.price-change.dlq.v1"
+# Where the contract acceptances (contract.accepted.v1) that can never be mailed go.
+PAYRUDDER_CONTRACT_DLQ_TOPIC: "contract.accepted.dlq.v1"
 PAYRUDDER_CONSUMER_SESSION_TIMEOUT: "10s"

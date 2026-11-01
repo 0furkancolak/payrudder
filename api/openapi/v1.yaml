@@ -286,10 +286,10 @@ paths:
     get:
       operationId: getContractSnapshot
       summary: The page the customer accepted, as it was rendered then
-      description: A self-contained HTML document. Its sha256 is the `snapshot_sha256` of the acceptance and the `X-Payrudder-Snapshot-Sha256` header.
+      description: A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
       parameters: [{ $ref: "#/components/parameters/ID" }]
       responses:
-        "200": { description: The page, content: { text/html: { schema: { type: string } } } }
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/GetContractSnapshotResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
   /v1/customers/{external_id}/contract-withdrawals:
     post:
@@ -7638,6 +7638,88 @@ components:
         created: { type: string, format: date-time }
         tenant_id: { type: string, format: uuid }
         data: { $ref: "#/components/schemas/CreditsLowEventData" }
+    ContractAcceptedEventData:
+      type: object
+      description: "The data of an event of type contract.accepted: a customer accepted one or more agreements together (one event for the group)"
+      required: [group_id, source, accepted_at, snapshot_sha256, items, immediate_start_consent, withdrawal_waiver_acknowledged, context]
+      properties:
+        group_id: { type: string, format: uuid }
+        source: { type: string, enum: [hosted, api] }
+        accepted_at: { type: string, format: date-time }
+        snapshot_sha256: { type: string, description: "sha256 of the page that was accepted (GET /v1/contract-acceptances/{id}/snapshot)" }
+        customer_id: { type: string, format: uuid, description: "absent for a guest payment" }
+        customer_external_id: { type: string, description: "absent for a guest payment" }
+        immediate_start_consent: { type: boolean }
+        withdrawal_waiver_acknowledged: { type: boolean }
+        context: { type: object, required: [kind, ref], properties: { kind: { type: string, enum: [hosted_invoice, api] }, ref: { type: string } } }
+        items:
+          type: array
+          items:
+            type: object
+            required: [acceptance_id, kind, audience, version_id, version, sha256, locale]
+            properties:
+              acceptance_id: { type: string, format: uuid }
+              kind: { $ref: "#/components/schemas/ContractKind" }
+              audience: { $ref: "#/components/schemas/ContractAudience" }
+              version_id: { type: string, format: uuid }
+              version: { type: integer, description: "JSON NUMBER" }
+              sha256: { type: string }
+              locale: { type: string }
+    ContractAcceptedEvent:
+      type: object
+      description: "The body of a delivery of type contract.accepted"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [contract.accepted] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/ContractAcceptedEventData" }
+    ContractVersionPublishedEventData:
+      type: object
+      description: "The data of an event of type contract.version_published"
+      required: [version_id, kind, audience, number, material, sha256, locales, published_at]
+      properties:
+        version_id: { type: string, format: uuid }
+        kind: { $ref: "#/components/schemas/ContractKind" }
+        audience: { $ref: "#/components/schemas/ContractAudience" }
+        number: { type: integer, description: "JSON NUMBER" }
+        material: { type: boolean }
+        sha256: { type: string }
+        locales: { type: array, items: { type: string } }
+        published_at: { type: string, format: date-time }
+    ContractVersionPublishedEvent:
+      type: object
+      description: "The body of a delivery of type contract.version_published"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [contract.version_published] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/ContractVersionPublishedEventData" }
+    ContractWithdrawalRequestedEventData:
+      type: object
+      description: "The data of an event of type contract.withdrawal_requested"
+      required: [withdrawal_id, customer_id, customer_external_id, subscription_id, invoice_id, source, received_at]
+      properties:
+        withdrawal_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        subscription_id: { type: string, description: "may be empty" }
+        invoice_id: { type: string, description: "may be empty" }
+        source: { type: string, enum: [api, console, hosted] }
+        received_at: { type: string, format: date-time }
+    ContractWithdrawalRequestedEvent:
+      type: object
+      description: "The body of a delivery of type contract.withdrawal_requested"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [contract.withdrawal_requested] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/ContractWithdrawalRequestedEventData" }
     PingEventData:
       type: object
       description: "The data of an event of type ping"
@@ -8628,6 +8710,9 @@ components:
         - payment_link.expired
         - credits.purchased
         - credits.low
+        - contract.accepted
+        - contract.version_published
+        - contract.withdrawal_requested
     PaymentLink:
       type: object
       required: [id, kind, status, pack_id, quantity, credits, promotion_code, invoice_id, customer_external_id, single_use, amount_minor, currency, description, create_time, expire_time, revoke_time, paid_count, last_paid_time, use_count, idempotency_key]
@@ -8758,6 +8843,9 @@ components:
         - { $ref: "#/components/schemas/PaymentLinkExpiredEvent" }
         - { $ref: "#/components/schemas/CreditsPurchasedEvent" }
         - { $ref: "#/components/schemas/CreditsLowEvent" }
+        - { $ref: "#/components/schemas/ContractAcceptedEvent" }
+        - { $ref: "#/components/schemas/ContractVersionPublishedEvent" }
+        - { $ref: "#/components/schemas/ContractWithdrawalRequestedEvent" }
         - { $ref: "#/components/schemas/PingEvent" }
       discriminator:
         propertyName: type
@@ -8784,6 +8872,9 @@ components:
           payment_link.expired: "#/components/schemas/PaymentLinkExpiredEvent"
           credits.purchased: "#/components/schemas/CreditsPurchasedEvent"
           credits.low: "#/components/schemas/CreditsLowEvent"
+          contract.accepted: "#/components/schemas/ContractAcceptedEvent"
+          contract.version_published: "#/components/schemas/ContractVersionPublishedEvent"
+          contract.withdrawal_requested: "#/components/schemas/ContractWithdrawalRequestedEvent"
           ping: "#/components/schemas/PingEvent"
     Coupon:
       type: object
@@ -9315,6 +9406,13 @@ components:
       required: [acceptances]
       properties:
         acceptances: { type: array, items: { $ref: "#/components/schemas/ContractAcceptance" } }
+    GetContractSnapshotResponse:
+      type: object
+      required: [html, sha256, group_id]
+      properties:
+        html: { type: string }
+        sha256: { type: string }
+        group_id: { type: string, format: uuid }
     ContractWithdrawal:
       type: object
       required: [id, customer_id, customer_external_id, subscription_id, invoice_id, statement, source, status, receive_time, decide_time, decided_by, decision_note]

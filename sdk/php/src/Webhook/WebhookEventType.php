@@ -32,6 +32,9 @@ final class WebhookEventType
     public const PAYMENT_LINK_EXPIRED = 'payment_link.expired';
     public const CREDITS_PURCHASED = 'credits.purchased';
     public const CREDITS_LOW = 'credits.low';
+    public const CONTRACT_ACCEPTED = 'contract.accepted';
+    public const CONTRACT_VERSION_PUBLISHED = 'contract.version_published';
+    public const CONTRACT_WITHDRAWAL_REQUESTED = 'contract.withdrawal_requested';
 
     /**
      * Every type an endpoint can subscribe to (all but `ping`).
@@ -63,6 +66,9 @@ final class WebhookEventType
             self::PAYMENT_LINK_EXPIRED,
             self::CREDITS_PURCHASED,
             self::CREDITS_LOW,
+            self::CONTRACT_ACCEPTED,
+            self::CONTRACT_VERSION_PUBLISHED,
+            self::CONTRACT_WITHDRAWAL_REQUESTED,
         ];
     }
 }

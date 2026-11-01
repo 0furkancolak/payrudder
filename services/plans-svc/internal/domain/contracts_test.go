@@ -134,7 +134,7 @@ func TestPickContractBody(t *testing.T) {
 
 func TestSnapshotIsDeterministicAndHasNoPersonalData(t *testing.T) {
 	s := Snapshot{Seller: "Acme", Customer: "Ada", Email: "ada@example.com", AcceptedAt: time.Date(2026, 11, 2, 10, 0, 0, 0, time.UTC), Locale: "tr", Values: map[string]string{"seller_name": "Acme"},
-		Items: []SnapshotItem{{Kind: ContractTOS, Number: 2, LocaleServed: "tr", Body: "Merhaba {{seller_name}}", BodySHA256: "aa", VersionSHA256: "bb", CheckboxText: "Okudum"}},
+		Items:          []SnapshotItem{{Kind: ContractTOS, Number: 2, LocaleServed: "tr", Body: "Merhaba {{seller_name}}", BodySHA256: "aa", VersionSHA256: "bb", CheckboxText: "Okudum"}},
 		ImmediateStart: "Hemen başlasın", WaiverAck: "Cayma hakkımı kaybederim", Source: "hosted", Observed: map[string]bool{"ip": true, "time": true}}
 	a, b := RenderSnapshot(s), RenderSnapshot(s)
 	if a != b || TextHash(a) != TextHash(b) {

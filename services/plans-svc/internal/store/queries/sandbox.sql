@@ -128,5 +128,7 @@ SELECT GREATEST(
 -- everywhere but here (the trigger lets a sandbox tenant's rows go).
 -- name: ResetContractAcceptances :execrows
 DELETE FROM contract_acceptances WHERE tenant_id = $1;
+-- name: ResetContractSnapshots :execrows
+DELETE FROM contract_snapshots WHERE tenant_id = $1;
 -- name: ResetContractWithdrawals :execrows
 DELETE FROM contract_withdrawals WHERE tenant_id = $1;

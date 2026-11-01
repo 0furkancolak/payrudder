@@ -427,6 +427,17 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.common.broken_reference`
 - `plans.common.forbidden`
 - `plans.common.not_found`
+- `plans.contract.acceptance_not_found`
+- `plans.contract.body_required`
+- `plans.contract.consent_required`
+- `plans.contract.kind_unpublished`
+- `plans.contract.no_starter`
+- `plans.contract.not_accepted`
+- `plans.contract.unknown_variable`
+- `plans.contract.version_not_found`
+- `plans.contract.version_stale`
+- `plans.contract.withdrawal_decided`
+- `plans.contract.withdrawal_not_found`
 - `plans.coupon.bad_page_token`
 - `plans.coupon.bad_state`
 - `plans.coupon.codes_exhausted`

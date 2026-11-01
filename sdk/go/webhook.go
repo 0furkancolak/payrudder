@@ -48,6 +48,9 @@ const (
 	EventPaymentLinkExpired              = "payment_link.expired"
 	EventCreditsPurchased                = "credits.purchased"
 	EventCreditsLow                      = "credits.low"
+	EventContractAccepted                = "contract.accepted"
+	EventContractVersionPublished        = "contract.version_published"
+	EventContractWithdrawalRequested     = "contract.withdrawal_requested"
 	// EventPing is what POST /v1/webhook-endpoints/{id}/test sends.
 	EventPing = "ping"
 )
@@ -61,6 +64,7 @@ var WebhookEventTypes = []string{
 	EventSubscriptionResumed, EventSubscriptionMovedToProvider, EventSubscriptionTrialWillEnd,
 	EventPaymentLinkCreated, EventPaymentLinkPaid, EventPaymentLinkExpired,
 	EventCreditsPurchased, EventCreditsLow,
+	EventContractAccepted, EventContractVersionPublished, EventContractWithdrawalRequested,
 }
 
 // Reasons a delivery is refused. Test with errors.Is.
@@ -260,4 +264,53 @@ type CreditsEventData struct {
 	AmountMinor   Int64  `json:"amount_minor,omitempty"`
 	// ExpiresAt is an RFC 3339 time, absent when the credits never expire.
 	ExpiresAt string `json:"expires_at,omitempty"`
+}
+
+// ContractAcceptedEventData is the data of contract.accepted: one event for the versions a customer accepted together.
+type ContractAcceptedEventData struct {
+	GroupID        string `json:"group_id"`
+	Source         string `json:"source"`
+	AcceptedAt     string `json:"accepted_at"`
+	SnapshotSHA256 string `json:"snapshot_sha256"`
+	// CustomerID and CustomerExternalID are absent for a guest payment.
+	CustomerID                   string `json:"customer_id,omitempty"`
+	CustomerExternalID           string `json:"customer_external_id,omitempty"`
+	ImmediateStartConsent        bool   `json:"immediate_start_consent"`
+	WithdrawalWaiverAcknowledged bool   `json:"withdrawal_waiver_acknowledged"`
+	Context                      struct {
+		Kind string `json:"kind"`
+		Ref  string `json:"ref"`
+	} `json:"context"`
+	Items []struct {
+		AcceptanceID string `json:"acceptance_id"`
+		Kind         string `json:"kind"`
+		Audience     string `json:"audience"`
+		VersionID    string `json:"version_id"`
+		Version      int    `json:"version"`
+		SHA256       string `json:"sha256"`
+		Locale       string `json:"locale"`
+	} `json:"items"`
+}
+
+// ContractVersionPublishedEventData is the data of contract.version_published.
+type ContractVersionPublishedEventData struct {
+	VersionID   string   `json:"version_id"`
+	Kind        string   `json:"kind"`
+	Audience    string   `json:"audience"`
+	Number      int      `json:"number"`
+	Material    bool     `json:"material"`
+	SHA256      string   `json:"sha256"`
+	Locales     []string `json:"locales"`
+	PublishedAt string   `json:"published_at"`
+}
+
+// ContractWithdrawalRequestedEventData is the data of contract.withdrawal_requested.
+type ContractWithdrawalRequestedEventData struct {
+	WithdrawalID       string `json:"withdrawal_id"`
+	CustomerID         string `json:"customer_id"`
+	CustomerExternalID string `json:"customer_external_id"`
+	SubscriptionID     string `json:"subscription_id"`
+	InvoiceID          string `json:"invoice_id"`
+	Source             string `json:"source"`
+	ReceivedAt         string `json:"received_at"`
 }

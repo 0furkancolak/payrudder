@@ -128,6 +128,206 @@ class CustomerTax(TypedDict, total=False):
     e_invoice_registered: bool
 
 
+ContractKind = Literal["distance_sales", "pre_info", "tos", "privacy"]
+
+
+ContractAudience = Literal["consumer", "business"]
+
+
+class ContractVersion(TypedDict):
+    id: str
+    kind: ContractKind
+    audience: ContractAudience
+    number: int
+    material: bool
+    bodies: dict[str, str]
+    sha256: str
+    note: str
+    author: str
+    create_time: str
+    variables: list[str]
+    current: bool
+    has_template_notice: bool
+
+
+class ListContractVersionsResponse(TypedDict):
+    versions: list[ContractVersion]
+
+
+class _PublishContractVersionRequestRequired(TypedDict):
+    kind: ContractKind
+    bodies: dict[str, str]
+
+
+class PublishContractVersionRequest(_PublishContractVersionRequestRequired, total=False):
+    audience: ContractAudience
+    material: bool
+    note: str
+
+
+class _PreviewContractRequestRequired(TypedDict):
+    body: str
+
+
+class PreviewContractRequest(_PreviewContractRequestRequired, total=False):
+    locale: str
+
+
+class PreviewContractResponse(TypedDict):
+    html: str
+    variables: list[str]
+    unknown_variables: list[str]
+
+
+class GetContractStarterResponse(TypedDict):
+    body: str
+    locale: Literal["tr", "en"]
+
+
+class ContractSettings(TypedDict):
+    required_kinds: list[ContractKind]
+    immediate_start: bool
+    retention_months: int
+    published_kinds: list[ContractKind]
+    update_time: str | None
+
+
+class SetContractSettingsRequest(TypedDict, total=False):
+    required_kinds: list[ContractKind]
+    immediate_start: bool
+    retention_months: int
+
+
+class ContractRequirement(TypedDict):
+    kind: ContractKind
+    version_id: str
+    version_number: int
+    audience: ContractAudience
+    locale: str
+    body_html: str
+    body_sha256: str
+    accepted: bool
+    accept_time: str | None
+    has_template_notice: bool
+
+
+class GetContractRequirementsResponse(TypedDict):
+    enforced: bool
+    requirements: list[ContractRequirement]
+    satisfied: bool
+    immediate_start: bool
+    missing_kinds: list[ContractKind]
+    audience: ContractAudience
+
+
+class ContractAcceptance(TypedDict):
+    id: str
+    group_id: str
+    customer_id: str
+    version_id: str
+    kind: ContractKind
+    audience: ContractAudience
+    version_number: int
+    version_sha256: str
+    locale_requested: str
+    locale_served: str
+    body_sha256: str
+    context_kind: Literal["hosted_invoice", "api"]
+    context_ref: str
+    source: Literal["hosted", "api"]
+    observed: dict[str, bool]
+    checkbox_text: str
+    immediate_start_consent: bool
+    immediate_start_text: str
+    withdrawal_waiver_acknowledged: bool
+    withdrawal_waiver_text: str
+    variables: dict[str, str]
+    snapshot_sha256: str
+    ip: str
+    user_agent: str
+    accept_time: str
+    customer_external_id: str
+
+
+class ListContractAcceptancesResponse(TypedDict):
+    acceptances: list[ContractAcceptance]
+
+
+class ContractAcceptanceItem(TypedDict):
+    version_id: str
+    checkbox_text: str
+
+
+class ContractOrder(TypedDict, total=False):
+    description: str
+    total: str
+    currency: str
+
+
+class _RecordContractAcceptanceRequestRequired(TypedDict):
+    items: list[ContractAcceptanceItem]
+
+
+class RecordContractAcceptanceRequest(_RecordContractAcceptanceRequestRequired, total=False):
+    locale: str
+    context_ref: str
+    immediate_start_consent: bool
+    immediate_start_text: str
+    withdrawal_waiver_acknowledged: bool
+    withdrawal_waiver_text: str
+    ip: str
+    user_agent: str
+    accept_time: str | datetime
+    customer_type: Literal["individual", "business"]
+    order: ContractOrder
+
+
+class RecordContractAcceptanceResponse(TypedDict):
+    group_id: str
+    acceptances: list[ContractAcceptance]
+
+
+class GetContractSnapshotResponse(TypedDict):
+    html: str
+    sha256: str
+    group_id: str
+
+
+class CreateContractWithdrawalRequest(TypedDict, total=False):
+    subscription_id: str
+    invoice_id: str
+    statement: str
+    receive_time: str | datetime
+    source: Literal["api", "console"]
+
+
+class ContractWithdrawal(TypedDict):
+    id: str
+    customer_id: str
+    customer_external_id: str
+    subscription_id: str
+    invoice_id: str
+    statement: str
+    source: Literal["api", "console", "hosted"]
+    status: Literal["received", "accepted", "rejected", "refunded"]
+    receive_time: str
+    decide_time: str | None
+    decided_by: str
+    decision_note: str
+
+
+class ListContractWithdrawalsResponse(TypedDict):
+    withdrawals: list[ContractWithdrawal]
+
+
+class _SetContractWithdrawalStatusRequestRequired(TypedDict):
+    status: Literal["accepted", "rejected", "refunded"]
+
+
+class SetContractWithdrawalStatusRequest(_SetContractWithdrawalStatusRequestRequired, total=False):
+    note: str
+
+
 class EInvoiceDocument(TypedDict):
     id: str
     kind: Literal["invoice", "credit_note"]
@@ -820,7 +1020,7 @@ class ListWebhookEndpointsResponse(TypedDict):
     endpoints: list[WebhookEndpoint]
 
 
-WebhookEventType = Literal["invoice.finalized", "invoice.paid", "invoice.voided", "invoice.uncollectible", "credit_note.created", "credit_note.refunded", "credit_note.refund_failed", "subscription.created", "subscription.changed", "subscription.change_scheduled", "subscription.cancelled", "subscription.cancellation_scheduled", "subscription.cancellation_withdrawn", "subscription.paused", "subscription.resumed", "subscription.moved_to_provider", "subscription.trial_will_end", "payment_link.created", "payment_link.paid", "payment_link.expired", "credits.purchased", "credits.low"]
+WebhookEventType = Literal["invoice.finalized", "invoice.paid", "invoice.voided", "invoice.uncollectible", "credit_note.created", "credit_note.refunded", "credit_note.refund_failed", "subscription.created", "subscription.changed", "subscription.change_scheduled", "subscription.cancelled", "subscription.cancellation_scheduled", "subscription.cancellation_withdrawn", "subscription.paused", "subscription.resumed", "subscription.moved_to_provider", "subscription.trial_will_end", "payment_link.created", "payment_link.paid", "payment_link.expired", "credits.purchased", "credits.low", "contract.accepted", "contract.version_published", "contract.withdrawal_requested"]
 
 
 class _CreateWebhookEndpointRequestRequired(TypedDict):

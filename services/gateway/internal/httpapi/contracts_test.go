@@ -187,19 +187,11 @@ func TestContractAPIPermissionsAndForcedFields(t *testing.T) {
 	}
 }
 
-func TestContractSnapshotIsServedUnderACautiousPolicy(t *testing.T) {
+func TestContractSnapshotIsReturnedWithItsHash(t *testing.T) {
 	ts, _ := newTestServer(t)
-	req, _ := http.NewRequest(http.MethodGet, ts.URL+"/v1/contract-acceptances/acc-1/snapshot", nil)
-	req.Header.Set("Authorization", "Bearer live-key")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-	csp := resp.Header.Get("Content-Security-Policy")
-	if resp.StatusCode != 200 || !strings.HasPrefix(resp.Header.Get("Content-Type"), "text/html") || !strings.Contains(csp, "default-src 'none'") || !strings.Contains(csp, "sandbox") ||
-		resp.Header.Get("X-Payrudder-Snapshot-Sha256") != "abc123" || resp.Header.Get("X-Content-Type-Options") != "nosniff" {
-		t.Errorf("snapshot: %d %v", resp.StatusCode, resp.Header)
+	r, m := do(t, ts, http.MethodGet, "/v1/contract-acceptances/acc-1/snapshot", "live-key", ``)
+	if r.StatusCode != 200 || m["sha256"] != "abc123" || !strings.Contains(m["html"].(string), "the page") || r.Header.Get("Cache-Control") == "" {
+		t.Errorf("snapshot: %d %v %v", r.StatusCode, m, r.Header)
 	}
 	if r, m := do(t, ts, http.MethodGet, "/v1/contract-acceptances/nope/snapshot", "live-key", ``); r.StatusCode != http.StatusNotFound || errCode(m) != "NOT_FOUND" {
 		t.Errorf("an unknown acceptance: %d %v", r.StatusCode, m)

@@ -2758,6 +2758,19 @@
         "bad_resource": "Bu, bir planın sınırladığı bir kaynak değil.",
         "platform_account": "Platformun kendi organizasyonunun planı yoktur.",
         "not_ready": "Planlar henüz hazır değil. Biraz sonra yeniden deneyin."
+      },
+      "contract": {
+        "acceptance_not_found": "Böyle bir kabul kaydı yok.",
+        "body_required": "Önce metni yazın (en az bir dilde).",
+        "consent_required": "Bu satıcı hizmeti hemen başlatıyor: müşteri bunu talep etmeli ve cayma hakkını kaybedeceğini kabul etmeli; her biri ayrı bir kutu olmalı.",
+        "kind_unpublished": "Bu sözleşmeyi zorunlu kılmadan önce bir sürümünü yayımlayın.",
+        "no_starter": "Başlangıç metni yalnızca Türkçe ve İngilizce için var.",
+        "not_accepted": "Müşteri, bu satıcının zorunlu kıldığı sözleşmeleri kabul etmedi.",
+        "unknown_variable": "Metin var olmayan bir değişken kullanıyor. Yalnızca listedeki değişkenleri kullanın.",
+        "version_not_found": "Böyle bir sürüm yok.",
+        "version_stale": "Bu metnin daha yeni bir sürümü yayımlandı. Güncel olanı gösterip yeniden onay alın.",
+        "withdrawal_decided": "Bu cayma talebi o duruma geçemez.",
+        "withdrawal_not_found": "Böyle bir cayma talebi yok."
       }
     },
     "common": {

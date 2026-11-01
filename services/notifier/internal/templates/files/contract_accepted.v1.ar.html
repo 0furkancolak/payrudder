@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — هذا ليس اتفاقًا حقيقيًا.</strong></p>{{end}}
+<h2>نسختك مما وافقت عليه</h2>
+<p>مرحبًا {{index .D "customer_name"}}، في <strong>{{index .D "accepted_at"}}</strong> وافقت على ما يلي لدى <strong>{{index .D "tenant_name"}}</strong>. احتفظ بهذه الرسالة: إنها نسختك.</p>
+<hr>
+{{trusted (index .D "snapshot_html")}}
+<hr>
+<p style="font-size: 12px; color: #666">بصمة هذه الصفحة (sha256): <code>{{index .D "snapshot_sha256"}}</code></p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

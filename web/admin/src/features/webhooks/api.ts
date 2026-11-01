@@ -34,6 +34,9 @@ export const EVENT_TYPES = [
   "payment_link.expired",
   "credits.purchased",
   "credits.low",
+  "contract.accepted",
+  "contract.version_published",
+  "contract.withdrawal_requested",
 ] as const;
 
 export function useWebhookEndpoints(tenantId: MaybeRefOrGetter<string>) {

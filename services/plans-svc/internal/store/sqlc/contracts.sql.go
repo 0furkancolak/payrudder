@@ -168,6 +168,23 @@ func (q *Queries) GetContractSettings(ctx context.Context) (ContractSetting, err
 	return i, err
 }
 
+const getContractSnapshotOfGroup = `-- name: GetContractSnapshotOfGroup :one
+SELECT tenant_id, group_id, html, sha256, created_at FROM contract_snapshots WHERE tenant_id = app_tenant_id() AND group_id = $1
+`
+
+func (q *Queries) GetContractSnapshotOfGroup(ctx context.Context, groupID uuid.UUID) (ContractSnapshot, error) {
+	row := q.db.QueryRow(ctx, getContractSnapshotOfGroup, groupID)
+	var i ContractSnapshot
+	err := row.Scan(
+		&i.TenantID,
+		&i.GroupID,
+		&i.Html,
+		&i.Sha256,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getContractVersion = `-- name: GetContractVersion :one
 SELECT tenant_id, id, kind, audience, number, material, bodies, sha256, note, author, created_at FROM contract_versions WHERE tenant_id = app_tenant_id() AND id = $1
 `
@@ -353,6 +370,21 @@ func (q *Queries) InsertContractAcceptance(ctx context.Context, arg InsertContra
 		&i.AcceptedAt,
 	)
 	return i, err
+}
+
+const insertContractSnapshot = `-- name: InsertContractSnapshot :exec
+INSERT INTO contract_snapshots (tenant_id, group_id, html, sha256) VALUES (app_tenant_id(), $1, $2, $3)
+`
+
+type InsertContractSnapshotParams struct {
+	GroupID uuid.UUID
+	Html    string
+	Sha256  string
+}
+
+func (q *Queries) InsertContractSnapshot(ctx context.Context, arg InsertContractSnapshotParams) error {
+	_, err := q.db.Exec(ctx, insertContractSnapshot, arg.GroupID, arg.Html, arg.Sha256)
+	return err
 }
 
 const insertContractVersion = `-- name: InsertContractVersion :one

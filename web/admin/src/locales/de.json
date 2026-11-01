@@ -2758,6 +2758,19 @@
         "bad_resource": "Das ist keine Ressource, die ein Tarif begrenzt.",
         "platform_account": "Die eigene Organisation der Plattform hat keinen Tarif.",
         "not_ready": "Die Tarife sind noch nicht bereit. Versuchen Sie es gleich noch einmal."
+      },
+      "contract": {
+        "acceptance_not_found": "Diese Zustimmung gibt es nicht.",
+        "body_required": "Schreiben Sie zuerst den Text (mindestens eine Sprache).",
+        "consent_required": "Dieser Verkäufer startet die Leistung sofort: Der Kunde muss das verlangen und den Verlust des Widerrufsrechts bestätigen, jeweils mit einem eigenen Kästchen.",
+        "kind_unpublished": "Veröffentlichen Sie eine Version dieser Vereinbarung, bevor Sie sie verlangen.",
+        "no_starter": "Es gibt einen Mustertext nur auf Türkisch und Englisch.",
+        "not_accepted": "Der Kunde hat die Vereinbarungen, die dieser Verkäufer verlangt, nicht akzeptiert.",
+        "unknown_variable": "Der Text verwendet eine Variable, die es nicht gibt. Verwenden Sie nur die Variablen aus der Liste.",
+        "version_not_found": "Diese Version gibt es nicht.",
+        "version_stale": "Eine neuere Version dieses Textes wurde veröffentlicht. Zeigen Sie die aktuelle an und fragen Sie erneut.",
+        "withdrawal_decided": "Dieser Widerruf kann nicht in diesen Status wechseln.",
+        "withdrawal_not_found": "Diesen Widerruf gibt es nicht."
       }
     },
     "common": {

@@ -4526,9 +4526,9 @@ func (x *AcceptInvitationAsUserResponse) GetAccountId() string {
 
 type PromoteChange struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// meters, plans, taxes, coupons, webhooks, mail.
+	// meters, plans, taxes, coupons, webhooks, mail, contracts.
 	Family string `protobuf:"bytes,1,opt,name=family,proto3" json:"family,omitempty"`
-	// The stable key the object is matched by: meter code, plan code, tax country, coupon code, webhook URL, "settings".
+	// The stable key the object is matched by: meter code, plan code, tax country, coupon code, webhook URL, "settings", or kind/audience for an agreement.
 	Key    string               `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
 	Action PromoteChange_Action `protobuf:"varint,3,opt,name=action,proto3,enum=payrudder.plans.v1.PromoteChange_Action" json:"action,omitempty"`
 	// For a conflict what differs; for a skip why.

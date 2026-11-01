@@ -1,0 +1,40 @@
+# Contracts: agreements and their evidence
+
+A seller (a tenant) can put agreements in front of its own customers: a **distance sales contract**, a **pre-information form**, **terms of service** and a **privacy notice**. Payrudder keeps the texts, shows them where the customer pays, records that a specific text was accepted, and mails the customer a copy. It supplies **templates and evidence, not legal guarantees**: nothing here says that a text is sufficient in any country, and the starter texts must be reviewed by a lawyer before use ([the plan](plans/21-contracts.md) lists what has and has not been checked).
+
+## The model
+
+- **A version** is one edition of an agreement in one or more languages (`en`, `tr`, `de`, `fr`, `es`, `ar`). It is immutable: editing a text publishes the next version of its series (a *kind* and an *audience*, `consumer` or `business`). A version has a `sha256`, an author and a time, and is *material* (customers who accepted an earlier one are asked again) or *minor* (they are not). The first version of a series is always material.
+- **A text** is restricted markdown: `#` headings, `- ` bullets, `1. ` numbered items, `**bold**`, blank lines between paragraphs. Raw HTML is shown as text. `{{variable}}` placeholders come from a fixed list (`seller_name`, `seller_address`, `seller_tax_id`, `seller_tax_office`, `seller_mersis`, `customer_name`, `customer_email`, `customer_address`, `order_description`, `order_total`, `order_currency`, `date`); a text with any other placeholder is refused. Values are escaped when they are printed.
+- **An acceptance** is append-only evidence: for each version accepted, the version and its hash, the hash of the text served and the language it was served in (and the one that was asked for), the words next to the box, the context (a hosted invoice, or the seller's own checkout), the variables as they were resolved, the time, and the IP address and user agent. `observed` says which of these Payrudder saw itself and which the seller reported. The versions accepted together share a `group_id` and one **snapshot**: the page they accepted, stored as it was written, with its sha256. The snapshot holds no IP address and no user agent.
+- **Two consents of their own.** A seller that starts a digital service at once (`immediate_start`) asks a consumer for the *request to start now* and the *acknowledgement of losing the right of withdrawal* as two separate boxes, never merged with the acceptance of the contract. Each is recorded with its words.
+- **A withdrawal request** records a customer's statement (when it reached the seller, who decided, the outcome). Deciding and refunding stay with the seller; routing the refund from the record is not built yet.
+
+A business customer (`customer_type = business`) gets the business series when the seller published one, else the consumer text. A customer of unknown type is treated as a consumer (the consumer's text gives rights a business does not have, never the other way round).
+
+## Where it applies
+
+`PUT /v1/contracts/settings` sets `required_kinds`. While it is not empty:
+
+| Path | What happens |
+|---|---|
+| `POST /v1/subscriptions` | refused with `plans.contract.not_accepted` until the customer has accepted the current version of each required kind (record it with `POST /v1/customers/{id}/contract-acceptances`; `GET .../contract-requirements` returns the texts to show) |
+| Hosted invoice page, payment link and portal invoice (`POST /i/{token}/pay`, `POST /c/{token}/invoices/{id}/pay`) | the page shows each text the customer has not accepted with an unticked box and a button that says it is an order with an obligation to pay; the server checks the boxes (the page needs no script) and starts nothing without them, or for a text replaced since the page was shown |
+| Credit pack purchase, ad-hoc payment link | they end on the same invoice page, so they are covered there; the link's "continue" step takes no money |
+| Renewals, dunning charges | **never held back**: nobody is present to accept |
+
+A guest payment (a payment link with no customer) is covered by the invoice it was accepted for.
+
+The hosted pages fail closed: if the seller's agreements cannot be read, or a kind it requires has no published version, the page offers no way to pay and a pay request is refused.
+
+## After the acceptance
+
+The customer is mailed the page they accepted, in their language (the template `contract_accepted`, which is a system mail the seller's mail switch does not hold back; a guest has no address and gets none). The mail is sent only when the page fetched has the hash the acceptance holds. The sellers' webhook endpoints get `contract.accepted` (one event for the group), `contract.version_published` and `contract.withdrawal_requested` ([webhooks](16-webhooks.md)).
+
+## Keeping the evidence
+
+`retention_months` (12 to 120, default 36) is how long the IP address and user agent of an acceptance are kept; a daily job blanks them afterwards and changes nothing else (it is the only thing that ever changes an acceptance, and the database allows it nothing more). The rest of the record, including the snapshot, stays. A sandbox reset deletes the sandbox's acceptances (they name its customers); live evidence is never deleted. Promoting a sandbox to live copies the agreement texts as live's own first versions and never an acceptance.
+
+## What was checked, and what was not
+
+See [plan 21](plans/21-contracts.md): the Turkish Mesafeli Sözleşmeler Yönetmeliği (consolidated text of mevzuat.gov.tr) and the EU Consumer Rights Directive 2011/83/EU with Directive (EU) 2023/2673 (Publications Office) were read, with article numbers and dates, for the structure of the pages and the starter texts. **Not checked**: that any text is legally sufficient anywhere, whether Payrudder is an intermediary service provider under the Turkish rules, national transpositions of the EU texts, how long an IP address may be kept under KVKK or the GDPR, auto-renewal rules, and the wording of the box sentences in German, French, Spanish and Arabic.

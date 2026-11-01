@@ -132,21 +132,12 @@ func (s *Server) recordContractAcceptance(w http.ResponseWriter, r *http.Request
 	respond(w, r, http.StatusCreated, resp, err)
 }
 
-// contractSnapshot is GET /v1/contract-acceptances/{id}/snapshot: the page the customer accepted, as one self-contained HTML document. It is shown by the browser
-// under a policy that runs and loads nothing.
+// contractSnapshot is GET /v1/contract-acceptances/{id}/snapshot: the page the customer accepted as one self-contained HTML document in `html`, with its sha256. The
+// page is the customer's text and the seller's variables: whoever shows it shows it as untrusted (the console puts it in a sandboxed frame).
 func (s *Server) contractSnapshot(w http.ResponseWriter, r *http.Request) {
 	resp, err := s.d.Contracts.GetContractSnapshot(r.Context(), &plansv1.GetContractSnapshotRequest{AcceptanceId: r.PathValue("id")})
-	if err != nil {
-		writeError(w, r, err)
-		return
-	}
-	h := w.Header()
-	h.Set("Content-Type", "text/html; charset=utf-8")
-	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("X-Payrudder-Snapshot-Sha256", resp.GetSha256())
-	h.Set("Cache-Control", "private, no-store")
-	_, _ = w.Write([]byte(resp.GetHtml()))
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
 }
 
 // createContractWithdrawal is POST /v1/customers/{external_id}/contract-withdrawals: the seller records a withdrawal statement that reached it. The source is the API,

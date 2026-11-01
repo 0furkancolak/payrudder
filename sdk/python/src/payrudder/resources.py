@@ -123,6 +123,34 @@ class CustomersResource:
         """
         return cast("m.Customer", self._client._request("PUT", f"/v1/customers/{_p(external_id)}/tax", body=body, options=options))
 
+    def get_contract_requirements(self, external_id: str, *, locale: str | None = None, customer_type: Literal["individual", "business"] | None = None, order_description: str | None = None, order_total: str | None = None, order_currency: str | None = None, options: RequestOptions | None = None) -> m.GetContractRequirementsResponse:
+        """What the customer must accept before a subscription starts, with the text to show.
+
+        ``GET /v1/customers/{external_id}/contract-requirements``
+        """
+        return cast("m.GetContractRequirementsResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-requirements", query={"locale": locale, "customer_type": customer_type, "order_description": order_description, "order_total": order_total, "order_currency": order_currency}, options=options))
+
+    def list_contract_acceptances(self, external_id: str, *, options: RequestOptions | None = None) -> m.ListContractAcceptancesResponse:
+        """What the customer accepted, newest first.
+
+        ``GET /v1/customers/{external_id}/contract-acceptances``
+        """
+        return cast("m.ListContractAcceptancesResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-acceptances", options=options))
+
+    def record_contract_acceptance(self, external_id: str, body: m.RecordContractAcceptanceRequest, *, options: RequestOptions | None = None) -> m.RecordContractAcceptanceResponse:
+        """Record that the customer accepted the current versions (an embedded checkout).
+
+        ``POST /v1/customers/{external_id}/contract-acceptances``
+        """
+        return cast("m.RecordContractAcceptanceResponse", self._client._request("POST", f"/v1/customers/{_p(external_id)}/contract-acceptances", body=body, options=options))
+
+    def create_contract_withdrawal(self, external_id: str, body: m.CreateContractWithdrawalRequest | None = None, *, options: RequestOptions | None = None) -> m.ContractWithdrawal:
+        """Record that the customer withdrew from a contract.
+
+        ``POST /v1/customers/{external_id}/contract-withdrawals``
+        """
+        return cast("m.ContractWithdrawal", self._client._request("POST", f"/v1/customers/{_p(external_id)}/contract-withdrawals", body=body, options=options))
+
     def get_customer_usage(self, external_id: str, *, period: str | None = None, options: RequestOptions | None = None) -> m.GetCustomerUsageResponse:
         """On-time usage of a customer in a period, per meter.
 
@@ -237,6 +265,97 @@ class CustomersResource:
         ``GET /v1/customers/{external_id}/payments``
         """
         return cast("m.ListCustomerPaymentsResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/payments", query={"limit": limit}, response_wire='ListCustomerPaymentsResponse', options=options))
+
+
+class ContractsResource:
+    """``/v1/contracts`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_contract_versions(self, *, kind: Literal["distance_sales", "pre_info", "tos", "privacy"] | None = None, audience: Literal["consumer", "business"] | None = None, options: RequestOptions | None = None) -> m.ListContractVersionsResponse:
+        """The versions of the agreements you present to your customers, newest first.
+
+        ``GET /v1/contracts/versions``
+        """
+        return cast("m.ListContractVersionsResponse", self._client._request("GET", "/v1/contracts/versions", query={"kind": kind, "audience": audience}, options=options))
+
+    def publish_contract_version(self, body: m.PublishContractVersionRequest, *, options: RequestOptions | None = None) -> m.ContractVersion:
+        """Publish the next version of an agreement.
+
+        ``POST /v1/contracts/versions``
+        """
+        return cast("m.ContractVersion", self._client._request("POST", "/v1/contracts/versions", body=body, options=options))
+
+    def get_contract_version(self, id: str, *, options: RequestOptions | None = None) -> m.ContractVersion:
+        """One version of an agreement.
+
+        ``GET /v1/contracts/versions/{id}``
+        """
+        return cast("m.ContractVersion", self._client._request("GET", f"/v1/contracts/versions/{_p(id)}", options=options))
+
+    def preview_contract(self, body: m.PreviewContractRequest, *, options: RequestOptions | None = None) -> m.PreviewContractResponse:
+        """Render a text the way a customer would see it, with sample values.
+
+        ``POST /v1/contracts/preview``
+        """
+        return cast("m.PreviewContractResponse", self._client._request("POST", "/v1/contracts/preview", body=body, options=options))
+
+    def get_contract_starter(self, *, kind: Literal["distance_sales", "pre_info", "tos", "privacy"], locale: Literal["tr", "en"], audience: Literal["consumer", "business"] | None = None, options: RequestOptions | None = None) -> m.GetContractStarterResponse:
+        """The starter text of an agreement in Turkish or English.
+
+        ``GET /v1/contracts/starter``
+        """
+        return cast("m.GetContractStarterResponse", self._client._request("GET", "/v1/contracts/starter", query={"kind": kind, "locale": locale, "audience": audience}, options=options))
+
+    def get_contract_settings(self, *, options: RequestOptions | None = None) -> m.ContractSettings:
+        """Which agreements are required, whether the service starts at once, and how long evidence is kept.
+
+        ``GET /v1/contracts/settings``
+        """
+        return cast("m.ContractSettings", self._client._request("GET", "/v1/contracts/settings", options=options))
+
+    def set_contract_settings(self, body: m.SetContractSettingsRequest, *, options: RequestOptions | None = None) -> m.ContractSettings:
+        """Change which agreements are required.
+
+        ``PUT /v1/contracts/settings``
+        """
+        return cast("m.ContractSettings", self._client._request("PUT", "/v1/contracts/settings", body=body, options=options))
+
+
+class ContractAcceptancesResource:
+    """``/v1/contract-acceptances`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def get_contract_snapshot(self, id: str, *, options: RequestOptions | None = None) -> m.GetContractSnapshotResponse:
+        """The page the customer accepted, as it was rendered then.
+
+        ``GET /v1/contract-acceptances/{id}/snapshot``
+        """
+        return cast("m.GetContractSnapshotResponse", self._client._request("GET", f"/v1/contract-acceptances/{_p(id)}/snapshot", options=options))
+
+
+class ContractWithdrawalsResource:
+    """``/v1/contract-withdrawals`` and related operations."""
+
+    def __init__(self, client: Payrudder) -> None:
+        self._client = client
+
+    def list_contract_withdrawals(self, *, customer_external_id: str | None = None, status: Literal["received", "accepted", "rejected", "refunded"] | None = None, options: RequestOptions | None = None) -> m.ListContractWithdrawalsResponse:
+        """Withdrawal requests, newest first (at most 200).
+
+        ``GET /v1/contract-withdrawals``
+        """
+        return cast("m.ListContractWithdrawalsResponse", self._client._request("GET", "/v1/contract-withdrawals", query={"customer_external_id": customer_external_id, "status": status}, options=options))
+
+    def set_contract_withdrawal_status(self, id: str, body: m.SetContractWithdrawalStatusRequest, *, options: RequestOptions | None = None) -> m.ContractWithdrawal:
+        """Decide a withdrawal request, or mark an accepted one refunded.
+
+        ``PUT /v1/contract-withdrawals/{id}/status``
+        """
+        return cast("m.ContractWithdrawal", self._client._request("PUT", f"/v1/contract-withdrawals/{_p(id)}/status", body=body, options=options))
 
 
 class EInvoicesResource:
@@ -1472,6 +1591,9 @@ class Resources:
 
     events: EventsResource
     customers: CustomersResource
+    contracts: ContractsResource
+    contract_acceptances: ContractAcceptancesResource
+    contract_withdrawals: ContractWithdrawalsResource
     e_invoices: EInvoicesResource
     meters: MetersResource
     plans: PlansResource
@@ -1506,6 +1628,9 @@ class Resources:
     def _init_resources(self, client: Payrudder) -> None:
         self.events = EventsResource(client)
         self.customers = CustomersResource(client)
+        self.contracts = ContractsResource(client)
+        self.contract_acceptances = ContractAcceptancesResource(client)
+        self.contract_withdrawals = ContractWithdrawalsResource(client)
         self.e_invoices = EInvoicesResource(client)
         self.meters = MetersResource(client)
         self.plans = PlansResource(client)
@@ -1643,6 +1768,34 @@ class AsyncCustomersResource:
         """
         return cast("m.Customer", await self._client._request("PUT", f"/v1/customers/{_p(external_id)}/tax", body=body, options=options))
 
+    async def get_contract_requirements(self, external_id: str, *, locale: str | None = None, customer_type: Literal["individual", "business"] | None = None, order_description: str | None = None, order_total: str | None = None, order_currency: str | None = None, options: RequestOptions | None = None) -> m.GetContractRequirementsResponse:
+        """What the customer must accept before a subscription starts, with the text to show.
+
+        ``GET /v1/customers/{external_id}/contract-requirements``
+        """
+        return cast("m.GetContractRequirementsResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-requirements", query={"locale": locale, "customer_type": customer_type, "order_description": order_description, "order_total": order_total, "order_currency": order_currency}, options=options))
+
+    async def list_contract_acceptances(self, external_id: str, *, options: RequestOptions | None = None) -> m.ListContractAcceptancesResponse:
+        """What the customer accepted, newest first.
+
+        ``GET /v1/customers/{external_id}/contract-acceptances``
+        """
+        return cast("m.ListContractAcceptancesResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-acceptances", options=options))
+
+    async def record_contract_acceptance(self, external_id: str, body: m.RecordContractAcceptanceRequest, *, options: RequestOptions | None = None) -> m.RecordContractAcceptanceResponse:
+        """Record that the customer accepted the current versions (an embedded checkout).
+
+        ``POST /v1/customers/{external_id}/contract-acceptances``
+        """
+        return cast("m.RecordContractAcceptanceResponse", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/contract-acceptances", body=body, options=options))
+
+    async def create_contract_withdrawal(self, external_id: str, body: m.CreateContractWithdrawalRequest | None = None, *, options: RequestOptions | None = None) -> m.ContractWithdrawal:
+        """Record that the customer withdrew from a contract.
+
+        ``POST /v1/customers/{external_id}/contract-withdrawals``
+        """
+        return cast("m.ContractWithdrawal", await self._client._request("POST", f"/v1/customers/{_p(external_id)}/contract-withdrawals", body=body, options=options))
+
     async def get_customer_usage(self, external_id: str, *, period: str | None = None, options: RequestOptions | None = None) -> m.GetCustomerUsageResponse:
         """On-time usage of a customer in a period, per meter.
 
@@ -1758,6 +1911,97 @@ class AsyncCustomersResource:
         ``GET /v1/customers/{external_id}/payments``
         """
         return cast("m.ListCustomerPaymentsResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/payments", query={"limit": limit}, response_wire='ListCustomerPaymentsResponse', options=options))
+
+
+class AsyncContractsResource:
+    """``/v1/contracts`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_contract_versions(self, *, kind: Literal["distance_sales", "pre_info", "tos", "privacy"] | None = None, audience: Literal["consumer", "business"] | None = None, options: RequestOptions | None = None) -> m.ListContractVersionsResponse:
+        """The versions of the agreements you present to your customers, newest first.
+
+        ``GET /v1/contracts/versions``
+        """
+        return cast("m.ListContractVersionsResponse", await self._client._request("GET", "/v1/contracts/versions", query={"kind": kind, "audience": audience}, options=options))
+
+    async def publish_contract_version(self, body: m.PublishContractVersionRequest, *, options: RequestOptions | None = None) -> m.ContractVersion:
+        """Publish the next version of an agreement.
+
+        ``POST /v1/contracts/versions``
+        """
+        return cast("m.ContractVersion", await self._client._request("POST", "/v1/contracts/versions", body=body, options=options))
+
+    async def get_contract_version(self, id: str, *, options: RequestOptions | None = None) -> m.ContractVersion:
+        """One version of an agreement.
+
+        ``GET /v1/contracts/versions/{id}``
+        """
+        return cast("m.ContractVersion", await self._client._request("GET", f"/v1/contracts/versions/{_p(id)}", options=options))
+
+    async def preview_contract(self, body: m.PreviewContractRequest, *, options: RequestOptions | None = None) -> m.PreviewContractResponse:
+        """Render a text the way a customer would see it, with sample values.
+
+        ``POST /v1/contracts/preview``
+        """
+        return cast("m.PreviewContractResponse", await self._client._request("POST", "/v1/contracts/preview", body=body, options=options))
+
+    async def get_contract_starter(self, *, kind: Literal["distance_sales", "pre_info", "tos", "privacy"], locale: Literal["tr", "en"], audience: Literal["consumer", "business"] | None = None, options: RequestOptions | None = None) -> m.GetContractStarterResponse:
+        """The starter text of an agreement in Turkish or English.
+
+        ``GET /v1/contracts/starter``
+        """
+        return cast("m.GetContractStarterResponse", await self._client._request("GET", "/v1/contracts/starter", query={"kind": kind, "locale": locale, "audience": audience}, options=options))
+
+    async def get_contract_settings(self, *, options: RequestOptions | None = None) -> m.ContractSettings:
+        """Which agreements are required, whether the service starts at once, and how long evidence is kept.
+
+        ``GET /v1/contracts/settings``
+        """
+        return cast("m.ContractSettings", await self._client._request("GET", "/v1/contracts/settings", options=options))
+
+    async def set_contract_settings(self, body: m.SetContractSettingsRequest, *, options: RequestOptions | None = None) -> m.ContractSettings:
+        """Change which agreements are required.
+
+        ``PUT /v1/contracts/settings``
+        """
+        return cast("m.ContractSettings", await self._client._request("PUT", "/v1/contracts/settings", body=body, options=options))
+
+
+class AsyncContractAcceptancesResource:
+    """``/v1/contract-acceptances`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def get_contract_snapshot(self, id: str, *, options: RequestOptions | None = None) -> m.GetContractSnapshotResponse:
+        """The page the customer accepted, as it was rendered then.
+
+        ``GET /v1/contract-acceptances/{id}/snapshot``
+        """
+        return cast("m.GetContractSnapshotResponse", await self._client._request("GET", f"/v1/contract-acceptances/{_p(id)}/snapshot", options=options))
+
+
+class AsyncContractWithdrawalsResource:
+    """``/v1/contract-withdrawals`` and related operations."""
+
+    def __init__(self, client: AsyncPayrudder) -> None:
+        self._client = client
+
+    async def list_contract_withdrawals(self, *, customer_external_id: str | None = None, status: Literal["received", "accepted", "rejected", "refunded"] | None = None, options: RequestOptions | None = None) -> m.ListContractWithdrawalsResponse:
+        """Withdrawal requests, newest first (at most 200).
+
+        ``GET /v1/contract-withdrawals``
+        """
+        return cast("m.ListContractWithdrawalsResponse", await self._client._request("GET", "/v1/contract-withdrawals", query={"customer_external_id": customer_external_id, "status": status}, options=options))
+
+    async def set_contract_withdrawal_status(self, id: str, body: m.SetContractWithdrawalStatusRequest, *, options: RequestOptions | None = None) -> m.ContractWithdrawal:
+        """Decide a withdrawal request, or mark an accepted one refunded.
+
+        ``PUT /v1/contract-withdrawals/{id}/status``
+        """
+        return cast("m.ContractWithdrawal", await self._client._request("PUT", f"/v1/contract-withdrawals/{_p(id)}/status", body=body, options=options))
 
 
 class AsyncEInvoicesResource:
@@ -3008,6 +3252,9 @@ class AsyncResources:
 
     events: AsyncEventsResource
     customers: AsyncCustomersResource
+    contracts: AsyncContractsResource
+    contract_acceptances: AsyncContractAcceptancesResource
+    contract_withdrawals: AsyncContractWithdrawalsResource
     e_invoices: AsyncEInvoicesResource
     meters: AsyncMetersResource
     plans: AsyncPlansResource
@@ -3042,6 +3289,9 @@ class AsyncResources:
     def _init_resources(self, client: AsyncPayrudder) -> None:
         self.events = AsyncEventsResource(client)
         self.customers = AsyncCustomersResource(client)
+        self.contracts = AsyncContractsResource(client)
+        self.contract_acceptances = AsyncContractAcceptancesResource(client)
+        self.contract_withdrawals = AsyncContractWithdrawalsResource(client)
         self.e_invoices = AsyncEInvoicesResource(client)
         self.meters = AsyncMetersResource(client)
         self.plans = AsyncPlansResource(client)
