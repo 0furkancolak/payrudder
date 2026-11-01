@@ -40,3 +40,7 @@ Legal sufficiency; real delivery.
 
 ## Risks
 Mass notifications and charges: dry run + approval + rate limiting + a kill switch.
+
+## Review addendum (2026-11-01)
+- The notifier consumer `services/notifier/internal/pricechange` has no test; copy the trial-will-end integration test shape. Re-running a price change reports its own earlier schedules as `has_pending_change`. There is no webhook type and no per-country notice table.
+- Default (not agreed): notice period 30 days (14 minimum, as coded), configurable per country later; a first-class `price_changes` record with `effective_at`, retry of skipped subscriptions and a withdraw-all action.

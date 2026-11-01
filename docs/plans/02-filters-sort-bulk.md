@@ -51,3 +51,8 @@ Touching every list at once is a wide change: do it list by list in small PRs, n
 - **Sort, step 2:** apps, meters, webhook endpoints, API keys, credit notes and packages gained it (14 lists now). Still without: tenant payments ledger, payment issues, members (no time column), usage tabs, deliveries, dead letters, coupons, credit packs/lots/ledger, reports, providers.
 - **Sort in the URL:** done in `useTableState` (`?sort=`) for every list that has `url` and `sorts`.
 - **Bulk:** support inbox, customers, tenants, and (step 3) API keys (revoke) and webhook endpoints (pause, resume, delete) through the shared `useBulk` (`shared/lib/bulk.ts`: one question when it cannot be undone, "n done, m not changed" with the names, failed rows stay ticked). Candidates, by list: invoices (download, remind), subscriptions (cancel at period end, resume), payment links (revoke), keys (revoke), members (remove), webhooks (pause, resume, delete), dead letters (redrive, discard), packages (archive), coupons and codes (deactivate), meters (archive), affiliates (approve, suspend, pay).
+
+## Review addendum (2026-11-01)
+- **Counts are stale:** 63 `FilterSelect` in 35 files; bulk exists on five lists (customers, tenants, support inbox, `KeysPanel`, `WebhooksPage`); sort on 14 lists.
+- **Decided, owner to confirm:** the server-paged sort question is settled in `docs/13-admin-ui.md` (section on sorting); do not reopen it.
+- **Open work with no decision needed:** `aria-live` and keyboard support in `BulkBar.vue`; select-all-matching in `shared/lib/bulk.ts`; applied-filter chips and the 360px popover; client sort on the remaining client-paged lists; new strings in all six locales, Arabic RTL checked in the mock e2e.

@@ -39,3 +39,9 @@ Visual judgement ("modern") is the owner's; real card flows need provider accoun
 
 ## Risks
 Provider scripts (Paddle.js, Stripe.js) bring their own CSP needs; the page's Content-Security-Policy must be designed with them.
+
+## Review addendum (2026-11-01)
+- The portal shows invoices, payments and credits (`docs/hosted-pages.md` is the inventory), not payment methods. #268 added the state table, the 503 page, the void/uncollectible text and `hosted_states_test.go`.
+- Confirmed open: no `prefers-color-scheme` in `hosted_templates.go`; the CSP is a constant; numbers and dates are not localised.
+- **Split the portal item:** (a) a read-only subscription summary needs a billing-svc read RPC and no product decision; (b) customer actions (cancel, change plan, update payment method) are the decision.
+- **Dependency:** plan 21 puts a contract checkbox on the same templates; land 21's server-side gate before restyling them.

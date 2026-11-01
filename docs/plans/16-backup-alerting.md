@@ -43,3 +43,7 @@ A backup that was never restored is worthless: the game day is the acceptance, n
 
 ## Addendum (2026-11-01)
 The audit in [22](22-platform-audit-and-roadmap.md) adds to this plan: point-in-time recovery with a stated RPO/RTO (G5), a restore drill that checks data and invariants, financial anomaly alerts (G6) and a real alert receiver. Do them here.
+
+## Review addendum (2026-11-01)
+- **Owner of the overlap:** this plan owns backup/PITR/alerting; plan 22 G5/G6 are implemented here. The earlier "do them here" and 22's "absorbed" mean the same thing.
+- **Defaults (not agreed):** RPO 15 minutes via WAL archiving to S3-compatible storage (MinIO in compose), RTO 1 hour; local alert receiver = webhook/Mailpit; a dead-man's-switch alert; `verify.sh` also checks invariants (invoice totals vs lines, ledger sums), not only table counts.

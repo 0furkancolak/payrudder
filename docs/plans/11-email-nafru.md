@@ -37,3 +37,8 @@ Everything against Nafru and real inboxes.
 
 ## Risks
 Sending as many tenants' mail from one platform account puts the domain's reputation at risk: per-tenant limits and suppression are not optional.
+
+## Review addendum (2026-11-01)
+- No bounce, complaint or suppression code exists. Tenants already switch mail off by category (`pkg/mailcategory`); the six templates are the template-contract inventory.
+- Replace Work 3 (allowance) with: a **`mails` meter per ADR 0024** (the existing `events`, `apps`, `members`, `api_keys` meters give quota, thresholds and alerts without a new table).
+- Default (not agreed): build against a fake with a Resend-compatible shape; the real Nafru tag and application contract stay UNVERIFIED. Add a suppression list fed by a bounce endpoint from fixtures and a per-tenant send rate limit.

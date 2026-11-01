@@ -37,3 +37,7 @@ Assistant behaviour (needs a person and a client).
 
 ## Risks
 Giving an assistant write access to billing: default to read-only and confirmations.
+
+## Review addendum (2026-11-01)
+- Tests use `InMemoryTransport` only (`mcp/src/server.test.ts`); no stdio spawn test, and `mcp.yml` runs typecheck, test and build. API-key roles already limit tools (`read_only`, `billing`, `ingest_only`, custom, enforced by the gateway); `main.ts` warns when writes are enabled with an admin key.
+- Work: stdio spawn test; tag untrusted fields; generate read tools from OpenAPI with an allow-list and a mapping test; streamable HTTP with bearer API-key auth.

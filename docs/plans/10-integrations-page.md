@@ -40,3 +40,6 @@ Real routing across live providers.
 
 ## Risks
 A data migration on the payment path: needs a rehearsal on a copy and a rollback.
+
+## Review addendum (2026-11-01)
+- Plan 22 (G7, G8) needs a stable `account_id`; record that dependency. Reuse `provider_account_events` for the audit view; add a "who takes this customer" tester using `previewRouting`.

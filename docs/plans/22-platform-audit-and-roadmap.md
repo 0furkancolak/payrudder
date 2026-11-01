@@ -18,7 +18,7 @@ Two read-only passes over `main` (2026-11-01) with file evidence. **Nothing was 
 
 **Top 5 product gaps**
 1. Customer-facing **event correction** (only an operator replay exists).
-2. **No 2FA** for console sign-in (nothing found for TOTP/WebAuthn).
+2. **No 2FA** for console sign-in (nothing found for TOTP/WebAuthn; account lockout exists via `users.failed_logins`/`locked_until`, and email-code and Google sign-in exist, so 2FA must wrap all methods).
 3. **Reconciliation is read-only**: no mismatch workflow, no schedule (UNVERIFIED), no **settlement/payout/fee ingestion** (the `payout` ledger kind exists, nothing writes it).
 4. **Upcoming-invoice / cost preview** for usage (listed missing in `docs/hosted-pages.md`).
 5. **Runtime provider health, circuit breaker and failover** (the registry and per-country routing exist; health is a connect-time credential check).
@@ -31,22 +31,22 @@ Two read-only passes over `main` (2026-11-01) with file evidence. **Nothing was 
 | Payment saga | 19-state table, unknown-outcome state, dunning, step deadlines | Status query before re-charge; same key across re-issues; exhaustive table test | iyzico NotFound window; Stripe 24h key horizon not referenced in code (UNVERIFIED) | High | `billing-svc/internal/sagas/model/table.go`, `command/{sweep,publish}.go` |
 | Provider adapters | Stripe, Paddle, iyzico, mock-psp, bank transfer | Capability registry, status normalisation, multi-account keys | Parity unverified live; Paddle refunds are `full` only; no ask-before-refund | High | `pkg/payments/*`, `docs/*-compatibility-matrix.md` |
 | Webhooks in | Per-provider verification, dedupe `(provider,event_id)`, forget-on-503 | iyzico confirms by lookup instead of trusting the body | A direct duplicate-event test is UNVERIFIED | Low–Med | `payments-worker/.../webhook.go` |
-| Immutability | Grants: INSERT-only on saga events, credit ledger, payment ledger, credit notes (refund cols only) | Corrections are new rows (credit notes, re-rating) | `invoices` updatable, broad DELETE, no triggers | High | `billing 00001_init.sql`, `payments-worker 00001_init.sql` |
+| Immutability | Grants: no UPDATE on saga events, credit ledger, payment ledger, credit notes (refund cols only); DELETE is granted too, for the sandbox reset | Corrections are new rows (credit notes, re-rating) | `invoices` updatable, broad DELETE, no triggers | High | `billing 00001_init.sql`, `payments-worker 00001_init.sql` |
 | Ledgers | Credit ledger (append-only), payment ledger (provider facts) | Concurrency tests for credits | Not double-entry; accounting module is an expense/income summary; `credit_ledger.idempotency_key` index not unique | Med | `reconciliation`, `accounting`, `creditnotes` |
 | Reconciliation | Read-only per-period discrepancy report with 5 kinds + metric | Catches duplicate charge and mismatch | No write/resolve workflow; scheduling UNVERIFIED; no settlement | Med | `reconciliation/query/query.go` |
 | Usage/metering | Ingest validation, idempotency, partitioned keys, inbox, late usage, re-rating, replay | Benchmarks published (5k/s p99 32 ms) | 20k/s p99 2.35 s unprofiled; 45-day key retention vs 35-day late window; documented hole when an on-time event takes a unit from an invoiced late event | Med | `ingest-svc`, `aggregator`, `docs/07-correctness.md`, `docs/benchmarks.md` |
 | Security | Hashed API keys, permissions, Argon2id, PKCE, rate limits, RLS, AES-GCM secrets | Strong isolation design | No 2FA; single secretbox key (no rotation); verifier only in tests; log redaction opt-in; CSRF design UNVERIFIED | Med–High | `pkg/apikey`, `pkg/pgxx/rlscheck.go`, `pkg/secretbox`, `pkg/logx` |
 | Reliability | DLQ with redrive, retry tiers, backups + weekly restore check | Alerts for DLQ, stuck sagas, backup | No PITR; restore check shallow; no circuit breaker/failover | High | `deploy/backup`, `docs/runbooks/backup-restore.md` |
 | Observability | JSON logs, OTel metrics/traces, Grafana, 17 alerts | Trace ids through Kafka/AMQP | No error tracking; no financial anomaly alerts; no real alert receiver | High | `deploy/prometheus/rules/payrudder.yaml` |
-| Developer experience | OpenAPI (116 `/v1` paths), 4 SDKs (generated), sandbox, mock PSP, webhook test+redeliver, playground, MCP | Contract test against OpenAPI | SDKs unpublished (`0.0.0`); no customer CLI; docs site has one page; no local webhook forwarder | Med | `api/openapi`, `sdk/*`, `docs-site/` |
+| Developer experience | OpenAPI (116 `/v1` paths), 4 SDKs (generated), sandbox, mock PSP, webhook test+redeliver, playground, MCP | Contract test against OpenAPI | SDKs unpublished (`0.0.0`); no customer CLI; docs site has five guides and 149 operation pages; no local webhook forwarder | Med | `api/openapi`, `sdk/*`, `docs-site/` |
 | Tests | ~410 Go test files, 140 integration files, chaos A1–A9, k6, mock+real e2e | Financial invariants in chaos | No live provider-sandbox CI; no fuzz; one contract test file; rolled-back-transaction test not found | Med | `tests/*` |
 
 ## C. Gap analysis
 (Format per gap: current state · problem · proposed fix with least change · priority · dependencies · size.)
 
-**G1 Refund redelivery guard (iyzico, Paddle).** Current: charge asks the provider first when it is not idempotent; refund does not. Problem: a redelivered refund command can refund twice. Fix: for non-idempotent providers, look up the existing refund (iyzico/Paddle API) before sending; record the refund reply in `payment_attempts` (nothing sets `DONE` today, UNVERIFIED reading). **Critical.** Needs: provider docs per plans 06/07. **M.**
+**G1 Refund redelivery guard (iyzico, Paddle).** Current: charge asks the provider first when it is not idempotent; refund does not. Problem: a redelivered refund command can refund twice. Fix: for non-idempotent providers, look up the existing refund (iyzico/Paddle API) before sending; record the refund reply in `payment_attempts` (`payment_attempts` is set to DONE by `workerx` after a reply is stored; the real windows are below). **Critical.** The compatibility matrices from #270 and #275 already hold the provider facts. **M.**
 
-**G2 iyzico `NotFound` re-charge window.** Current: a not-found status after a timeout leads to a re-charge. Fix: after a timeout, do not re-charge until a grace period past iyzico's own processing time has passed, then re-query; if still unknown, park for reconciliation, never auto-re-charge. This also applies to any provider with a retention-limited key (Stripe 24 h, UNVERIFIED): refuse to re-charge older than the key horizon. **Critical.** Needs: iyzico docs/sandbox. **M.**
+**G2 iyzico `NotFound` re-charge window.** Current: a not-found status after a timeout leads to a re-charge. Note: iyzico `Status` returns NotFound only if `Settings.NotFoundCodes` lists the error code, and the default is empty, so by default an unknown outcome retries and then parks; the risk exists once an owner or sandbox sets `NotFoundCodes`. Fix: add an age check in `sagas/model/table.go` and `sweep.go`: a NotFound younger than a grace period retries, one older than the provider key horizon parks; keep `NotFoundCodes` empty by default. This also applies to any provider with a retention-limited key (Stripe 24 h, UNVERIFIED): refuse to re-charge older than the key horizon. **Critical.** Needs: iyzico docs/sandbox. **M.**
 
 **G3 Database-level immutability.** Current: grants only. Fix: triggers that reject UPDATE of finalised invoice money columns and DELETE on live financial tables; the sandbox reset uses a dedicated path (a role or `SET LOCAL` flag only the reset holds), with a test that live environment rows cannot be deleted. **Critical.** Needs: map every legitimate update in `invoices.sql`/`links.sql`. **M.**
 
@@ -64,11 +64,11 @@ Two read-only passes over `main` (2026-11-01) with file evidence. **Nothing was 
 
 **G10 Secret key rotation.** Add a key id to `secretbox`, support two active keys, a re-seal job. **Medium.** **S–M.**
 
-**G11 RLS verifier everywhere.** Run `VerifyForcedRLS` at startup (or in a readiness check) for every service and add the missing services (billing, payments-worker, limits) to the tests. **Medium.** **S.**
+**G11 RLS verifier everywhere.** `VerifyForcedRLS` runs only in tests (ingest, plans, aggregator, pkg). Run it at startup or in readiness for the services that have Postgres but no verifier: assets-svc, billing-svc, payments-worker (limits-svc has no Postgres). **Medium.** **S.**
 
 **G12 Event corrections for tenants.** A tenant-facing correction (a compensating event with a reference to the original and a reason) that flows into the same late/frozen-period rules; documented limits. **Medium–High.** Depends: ADR for how corrections interact with frozen periods. **L.**
 
-**G13 Idempotency retention vs late window.** The 35-day late window against 45-day key retention leaves 10 days of margin; confirm with ADR 0014 and the benchmark, and add a test at the boundary. **Medium.** **S.**
+**G13 Idempotency retention vs late window.** ADR 0014 says two to three months while `ingest-svc/internal/maintenance/maintenance.go` and `docs/07-correctness.md` say 45 days; reconcile first, then add a test at the boundary. Also add a unique partial index on `credit_ledger.idempotency_key` after a duplicate check (G19). **Medium.** **S.**
 
 **G14 Upcoming-invoice and cost preview.** Usage × rating without closing the period, via the existing rating package; surface in the API, portal and SDKs. **Medium.** **M.**
 
@@ -119,3 +119,10 @@ Reaching RPO/RTO targets and the backup storage target; alert receiver; whether 
 
 ## Not verifiable here
 Everything about real provider behaviour (repeat refunds, late-committed charges, key retention), restore time, throughput beyond the published benchmarks.
+
+## Review addendum (2026-11-01)
+- **Corrections from review:** (a) legitimate invoice UPDATEs are `SetInvoiceTotals` (draft creation), `SetInvoiceStatus` (sagas/transition), `OpenInvoice` (number, status, finalized_at), `SetInvoicePDFKeyBySaga`, `SetInvoicePromotion` and `SetInvoicePaymentMethod` (snapshot.payment_method only): the G3 trigger must allow exactly those and reject money-column changes on a non-draft invoice; the only DELETE is the sandbox reset (`reset.sql`). Precedents for triggers: `config_promotions_one_way`, `go_live_audit_live_only`. (b) The `payment_discrepancies` counter has no alert using it; `ReconcileDriftHigh` is a limits-svc counter. (c) A duplicate-webhook test exists (`payments-worker/internal/itest/accounts_integration_test.go`). (d) G4 owner: one `audit_events` table per service database with a shared `pkg/audit`; the console fans out reads (default, not agreed). Plans 12-15 and 21 write to it.
+- **Known money-logic findings outside G1-G18** (from `docs/phases/ROADMAP.md` and `docs/code-quality/billing-svc-status.md`, to be re-verified before work): tax of credit notes not reversed, negative total clamped to zero, trial charged the whole fee, UTC year in invoice numbers.
+- **G15 is split:** "fake-provider tests now" (this plan) and "live sandbox later" (needs accounts).
+- **Order:** phases 0 and 1 run before plans 09-12, 14, 15 and 17-21 and in parallel with 02-05 (different files); 13's remaining work and 16 are part of phases 1.
+- **Defaults (not agreed):** RPO 15 min, RTO 1 h; alert receiver webhook/Mailpit locally; the 2FA method is TOTP with recovery codes first.

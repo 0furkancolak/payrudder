@@ -30,3 +30,9 @@ Each state has an enforcement test across API, workers and console, and an audit
 
 ## Risks
 A mistaken ban of a paying tenant: confirmations, audit, fast reinstatement.
+
+## Review addendum (2026-11-01)
+- **Verified:** only the billing scheduler honours suspension (`billing-svc/internal/rating/inputs/inputs.go`). Saga dunning charges, notifier consumers, webhook delivery, hosted pages and payment links do **not** check tenant status, so a suspended tenant's hosted pages keep taking payments. Add `pkg/tenantinfo` status as step 1.
+- `SetStatus` only writes a slog line; the reason is not persisted and `go_live_audit.action` allows two values. Only live tenants have a status; sandbox is always active (`sandbox_is_always_active`).
+- Operators are `PAYRUDDER_OPERATOR_EMAILS` sessions or the machine token, and the acting e-mail is available, so a two-person rule is buildable (default off, on by flag; marked default).
+- Default statuses (not agreed): `active`, `suspended`, `frozen` (read-only, no new charges), `banned`.

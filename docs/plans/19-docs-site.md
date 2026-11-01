@@ -36,3 +36,6 @@ Hosting and real reader feedback.
 
 ## Risks
 Docs describing unfinished features: every page carries a status.
+
+## Review addendum (2026-11-01)
+- Five guide pages and 149 operation pages exist (`docs-site/build.mjs`). Missing: a publish job, a per-page `status`, and a public/internal marker with a test. Default host (not agreed): GitHub Pages, behind a repository variable.

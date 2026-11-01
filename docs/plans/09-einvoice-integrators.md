@@ -35,3 +35,7 @@ Acceptance by tax authorities; integrator test environments need accounts.
 
 ## Risks
 Legal consequences of wrong documents; ship per country only with a reviewer.
+
+## Review addendum (2026-11-01)
+- A Peppol BIS 3 / EN 16931 UBL builder already exists (`pkg/einvoice/ubl/build.go`, `TypePeppol`, testdata). The gap is **transport and validation**, not the document. Default: add a Peppol/EN 16931 schematron validation job to CI and an integrator contract with a mock conformance suite; real integrators wait for accounts. UBL-TR schematron availability is UNVERIFIED.
+- Add the console, six-language strings and error keys per the definition of done in the README.

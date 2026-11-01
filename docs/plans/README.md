@@ -1,6 +1,6 @@
 # Work plans
 
-The owner's two lists of 2026-10-28 (26 items, grouped here into 20 plans), put in the order they should be done, with what each one needs first. **No plan here is started until it has been read and agreed.** The older, shorter record of what was shipped is [`../roadmap-owner-list.md`](../roadmap-owner-list.md).
+The owner's two lists of 2026-10-28 (26 items) and the lists of 2026-11-01 (contracts, code audit), grouped here into 22 plans, put in the order they should be done, with what each one needs first. **On 2026-11-01 the owner authorised the remaining work to run in parallel batches of independent changes (disjoint files, one worktree each, reviewed and merged one by one) and said not to ask: where a plan lists a decision, the implementer picks a sensible default, writes it down as "default (not agreed)" in the plan and the PR, and builds behind it.** The older, shorter record of what was shipped is [`../roadmap-owner-list.md`](../roadmap-owner-list.md).
 
 ## Why these plans exist
 
@@ -13,7 +13,7 @@ The first pass went too fast. Twenty-odd changes were merged in a day, each chec
 3. **Before every merge:** the repository's own lint and tests run locally in the same form CI runs them (`make lint`, `go test`, `golangci-lint`, `php-cs-fixer --dry-run`, `npm run lint && typecheck && test`, the mock e2e of the touched pages), and **GitHub CI is read after the merge** (not assumed). A red check is fixed before anything else is started.
 4. **Say what was not verified.** Anything that needs a real provider account, a real mail, a cluster or a person's eyes is listed as such in the PR and in the plan, never described as done.
 5. **No invented contracts.** A provider's API is read from its current documentation (and the date noted); where the documentation does not settle a behaviour, it is marked UNVERIFIED in the code and in the plan.
-6. **The owner decides** what is a product decision (scope, wording of a policy, which providers, which regions). The plans list those as "Decisions needed" and stop there.
+6. **The owner decides** (since 2026-11-01: the implementer proposes a default and marks it; the owner may overturn it) what is a product decision (scope, wording of a policy, which providers, which regions). The plans list those as "Decisions needed" and stop there.
 
 ## The order
 
@@ -55,3 +55,16 @@ The mapping of the owner's items to plans is in [the last section](#where-each-o
 ## Plan template
 
 Every plan has the same parts: **The request** (the owner's words) · **Where we are** (what exists, honestly, with the PRs) · **Gaps** (what is thinner than it should be) · **Research first** (what to read and what to write down before designing) · **Decisions needed** (the owner's) · **Work**, in order · **Done means** (acceptance and how it is verified) · **Not verifiable here** · **Risks**.
+
+
+## Definition of done for any API change (added after review, 2026-11-01)
+
+1. Change the proto, run `make gen`.
+2. Add the gateway route and the entry in `api/openapi/v1.yaml` (`services/gateway/internal/httpapi/openapi_test.go` checks route against spec).
+3. Regenerate **all four SDKs** (Go, TypeScript, Python, PHP: `make sdk-php-check` plus each SDK's generate/check) and `web/admin/src/shared/api/schema.d.ts` (`npm run gen`). Add the operation to `docs-site` (its test requires one entry per operation).
+4. A new error key: `go test ./pkg/errkey` rewrites `docs/error-keys.md`; then `errors.<key>` must exist in all six console locales (`web/admin/src/locales/{en,tr,de,fr,es,ar}.json`, nested by the dotted key).
+5. A new mail: six-language templates in `services/notifier/internal/templates/files`.
+6. A new webhook event: `plans-svc/internal/webhooks/model/model.go`, the four SDK enums, `web/admin/src/features/webhooks/api.ts`, the locales, `docs/16-webhooks.md`.
+7. A migration is a **new numbered file** (never edit `00001_init.sql`); a tenant-scoped table needs its twin in `migrations/tenant/` (`TestTenantSchemaMatchesPublic`); tables the sandbox reset clears are listed in `payments-worker/internal/sandboxreset/sandboxreset.go`.
+8. One audit mechanism: plans 10, 12, 13, 14, 15 and 21 write to the `audit_events` table of plan 22 (G4) once it exists; until then they follow the `go_live_audit` / `provider_account_events` pattern.
+9. One path-by-gate matrix: plans 13, 21 and 04 share a single table of "every path that starts a payment or grants access" (in [13](13-customer-ban.md)); each gate lands server-side before its UI.

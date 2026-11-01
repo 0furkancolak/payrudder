@@ -33,3 +33,7 @@ Everything against live provider services.
 
 ## Risks
 Each provider is a long tail (disputes, payouts, reconciliation). Scope each to "charge, refund, webhook, reconcile".
+
+## Review addendum (2026-11-01)
+- `docs/stripe-compatibility-matrix.md` (12 findings) exists and #275 closed finding 4. Open: no `Stripe-Version` pin, no `customer`, no 409 / `Stripe-Should-Retry` mapping, nothing reacts to the 24-hour idempotency-key horizon (see plan 22 G2). "Stripe verified" means "matrix closed and a conformance suite passes against the fake", not live.
+- Default scope for "more providers" (not agreed): none beyond Stripe, Paddle, iyzico and bank transfer until a sandbox exists; build the conformance suite in `pkg/payments` that any new adapter must pass.

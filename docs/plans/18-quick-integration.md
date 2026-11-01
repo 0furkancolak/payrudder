@@ -36,3 +36,7 @@ The ten-minute claim without a person.
 
 ## Risks
 Snippets drift from the SDKs: the CI job is the guard.
+
+## Review addendum (2026-11-01)
+- The install lines are wrong: TypeScript names `@payrudder/sdk` (unpublished, does not resolve) and PHP names `../quotify/sdk/php` (the old repo name). Fix both; add a check that compiles/imports every snippet against the local SDKs (no stack needed).
+- Target: integrate in under 10 minutes (plan 22 phase 4 says 30: 10 is the goal, 30 the ceiling).

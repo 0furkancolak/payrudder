@@ -39,3 +39,10 @@ Mail delivery (11), real operator workflow.
 
 ## Risks
 Scope creep: pick (a/b/c) first.
+
+## Review addendum (2026-11-01)
+- **Corrections:** opening a ticket is rate-limited per user (session routes are charged in class write, `gateway/internal/httpapi/server.go`); operators are verified sessions listed in `PAYRUDDER_OPERATOR_EMAILS` or the machine token (`support.go`), not a shared context.
+- **Mail does not wait for Nafru:** plans-svc `usermail` already mails Payrudder users in six languages over SMTP (`services/plans-svc/internal/identity/usermail`). Outbound ticket mail uses it now; Nafru is needed only for inbound mail.
+- Support tables are account-level (global, no `tenant_id` or RLS); assets-svc is tenant-keyed, so attachments need a rule (default: store under the account's first tenant with a ticket purpose; marked default, not agreed).
+- **Work to add:** public migration 00005, `support.*` error keys (`go test ./pkg/errkey`), OpenAPI `/app/v1/support` and `/admin/v1/support`, `make gen`, six locale files, tests for cross-account access and internal notes.
+- **Defaults (not agreed):** SLA business hours Mon-Fri 09-18 in the account's time zone; auto-close after 7 days awaiting the customer; at most 20 open tickets per account.
