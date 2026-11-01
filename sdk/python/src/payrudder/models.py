@@ -67,11 +67,14 @@ class _CustomerRequired(TypedDict):
     customer_type: str
     block_reason: str
     block_category: str
+    phone: str
+    tax_id_warning: str
 
 
 class Customer(_CustomerRequired, total=False):
     block_time: str | None
     blocked_until: str | None
+    tax_id_validated_at: str | None
 
 
 class ListCustomersResponse(TypedDict):
@@ -102,6 +105,7 @@ class CreateCustomerRequest(_CreateCustomerRequestRequired, total=False):
     address: AddressInput
     locale: Literal["en", "tr", "de", "fr", "es", "ar"]
     customer_type: Literal["individual", "business"]
+    phone: str
     referral_code: str
     referral_touch_time: str | datetime
 
@@ -118,6 +122,7 @@ class _CustomerContactRequired(TypedDict):
 class CustomerContact(_CustomerContactRequired, total=False):
     locale: Literal["en", "tr", "de", "fr", "es", "ar"]
     customer_type: Literal["individual", "business"]
+    phone: str
 
 
 CustomerBlockCategory = Literal["fraud", "chargeback", "abuse", "request", "other"]

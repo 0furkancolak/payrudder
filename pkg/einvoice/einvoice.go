@@ -58,6 +58,8 @@ type Party struct {
 	EInvoiceRegistered bool
 	// Alias is the party's e-fatura mailbox label (urn:mail:…) when the integrator needs one.
 	Alias string
+	// CustomerType is "individual" or "business" for a buyer, as the customer is recorded; empty when unknown (and for a seller).
+	CustomerType string
 }
 
 // LineKind says how a line adds to the document.

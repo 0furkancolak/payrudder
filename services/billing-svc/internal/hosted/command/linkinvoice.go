@@ -81,6 +81,9 @@ func (b *Backend) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 		}
 		snap.CustomerExternalID, snap.CustomerName, snap.CustomerEmail, snap.CustomerAddress = cu.GetExternalId(), cu.GetName(), cu.GetEmail(), inputs.AddressLines(cu.GetAddress())
 		country = cu.GetCountry()
+		inputs.DocumentSnapshot(&snap, t, cu)
+	} else {
+		inputs.DocumentSnapshot(&snap, t, nil)
 	}
 	snap.Country = country
 	snap.SkipMail = snap.CustomerEmail == ""

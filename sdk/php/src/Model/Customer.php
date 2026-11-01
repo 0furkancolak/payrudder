@@ -33,6 +33,9 @@ final class Customer implements Model
      * @param string|null $blockReason
      * @param string|null $blockCategory
      * @param string|null $blockedUntil
+     * @param string|null $phone
+     * @param string|null $taxIdValidatedAt
+     * @param string|null $taxIdWarning
      */
     public function __construct(
         public readonly ?string $id = null,
@@ -53,6 +56,9 @@ final class Customer implements Model
         public readonly ?string $blockReason = null,
         public readonly ?string $blockCategory = null,
         public readonly ?string $blockedUntil = null,
+        public readonly ?string $phone = null,
+        public readonly ?string $taxIdValidatedAt = null,
+        public readonly ?string $taxIdWarning = null,
     ) {}
 
     /**
@@ -79,6 +85,9 @@ final class Customer implements Model
             blockReason: Cast::string($data['block_reason'] ?? null),
             blockCategory: Cast::string($data['block_category'] ?? null),
             blockedUntil: Cast::string($data['blocked_until'] ?? null),
+            phone: Cast::string($data['phone'] ?? null),
+            taxIdValidatedAt: Cast::string($data['tax_id_validated_at'] ?? null),
+            taxIdWarning: Cast::string($data['tax_id_warning'] ?? null),
         );
     }
 
@@ -106,6 +115,9 @@ final class Customer implements Model
             'block_reason' => $this->blockReason,
             'block_category' => $this->blockCategory,
             'blocked_until' => $this->blockedUntil,
+            'phone' => $this->phone,
+            'tax_id_validated_at' => $this->taxIdValidatedAt,
+            'tax_id_warning' => $this->taxIdWarning,
         ]);
     }
 }

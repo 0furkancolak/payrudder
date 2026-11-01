@@ -110,7 +110,7 @@ export interface paths {
         get?: never;
         /**
          * Replace the customer's name and e-mail address
-         * @description Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language. Name and e-mail are required, with the limits of customer creation; language and kind are replaced too, so omit them to clear them. The external id cannot change.
+         * @description Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language. Name and e-mail are required, with the limits of customer creation. Language, kind and phone are optional; omit one to keep what the customer has (only the phone can be cleared, with an empty string). The external id cannot change.
          */
         put: operations["setCustomerContact"];
         post?: never;
@@ -195,7 +195,7 @@ export interface paths {
         get?: never;
         /**
          * Replace the customer's tax data used on e-invoices
-         * @description Tax id (VKN/TCKN in Turkey, VAT id in the EU), tax office (Turkey) and whether the customer is registered for e-fatura. Empty values clear them. Error key plans.customer.tax_invalid.
+         * @description Tax id (VKN/TCKN in Turkey, VAT id in the EU), tax office (Turkey) and whether the customer is registered for e-fatura. Empty values clear them. An id that does not look right for the customer's country and kind is stored all the same: the customer comes back with tax_id_warning set, and tax_id_validated_at is set only for an id that passes the local checksum or shape check. Error key plans.customer.tax_invalid (only for an id that is not 5 to 20 letters and digits, or a tax office that is not one line).
          */
         put: operations["setCustomerTax"];
         post?: never;
@@ -9030,6 +9030,8 @@ export interface components {
              * @enum {string}
              */
             customer_type?: "individual" | "business";
+            /** @description The customer's mobile number in international form, e.g. +90 532 123 45 67 or 0090 532 123 45 67; stored as E.164 (+905321234567). A number without the + or 00 prefix is refused: it cannot be read without a country. */
+            phone?: string;
             /** @description The code of the partner whose link or code brought this customer (phase 47). A code that cannot attribute does not fail the creation. */
             referral_code?: string;
             /**
@@ -9140,6 +9142,15 @@ export interface components {
              * @description When the block ends by itself; absent: until it is lifted.
              */
             blocked_until?: string | null;
+            /** @description The customer's mobile number as E.164 (+905321234567); empty when none. */
+            phone: string;
+            /**
+             * Format: date-time
+             * @description When tax_id last passed the local check (a TCKN or VKN checksum, the shape of a European VAT id). Not a registry lookup: no VIES, no GİB query. Absent when the id is empty or not recognised.
+             */
+            tax_id_validated_at?: string | null;
+            /** @description One of tr_individual, tr_business, tr_any, tr_is_tckn, tr_is_vkn, eu_vat, or empty. A hint, never a refusal: the id does not look like the kind of number this customer should have (tr_individual: not a TCKN; tr_business: not a VKN; tr_any: neither; tr_is_tckn: a business was given a TCKN; tr_is_vkn: an individual was given a VKN; eu_vat: a business in the EU has no VAT id of its country's shape). Worked out from the stored id, country and customer_type, so it follows a change of any of them. Empty: nothing to say. */
+            tax_id_warning: string;
         };
         CreateMeterRequest: {
             code: string;
@@ -9476,15 +9487,17 @@ export interface components {
             /** Format: email */
             email: string;
             /**
-             * @description The language of the customer's mails, receipts and payment pages; omit to clear it
+             * @description The language of the customer's mails, receipts and payment pages; omit to keep it
              * @enum {string}
              */
             locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
             /**
-             * @description A person or a taxpayer; omit to clear it
+             * @description A person or a taxpayer; omit to keep it
              * @enum {string}
              */
             customer_type?: "individual" | "business";
+            /** @description The customer's mobile number in international form (+90 532 123 45 67 or 0090 532 123 45 67), stored as E.164. Omit to keep the stored number; send an empty string to clear it. */
+            phone?: string;
         };
         CustomerTax: {
             /** @description VKN/TCKN (Turkey) or VAT id (EU) */

@@ -534,7 +534,10 @@
         "type": "Art",
         "unknown": "Nicht angegeben",
         "individual": "Privatperson",
-        "business": "Unternehmen (steuerpflichtig)"
+        "business": "Unternehmen (steuerpflichtig)",
+        "phone": "Mobilnummer",
+        "phoneHint": "In internationaler Schreibweise, zum Beispiel +49 151 2345678.",
+        "phoneInvalid": "Bitte die internationale Schreibweise verwenden: + und die Landesvorwahl, dann die Nummer."
       },
       "contact": {
         "edit": "Name und E-Mail bearbeiten",
@@ -2452,7 +2455,8 @@
         "tr_is_tckn": "Das ist eine TCKN, die Nummer einer Privatperson, der Kunde ist aber ein Unternehmen (mit einer VKN). Sie können es trotzdem speichern.",
         "tr_is_vkn": "Das ist eine VKN, die Nummer eines Unternehmens, der Kunde ist aber eine Privatperson (mit einer TCKN). Sie können es trotzdem speichern.",
         "eu_vat": "Ein Unternehmen in der EU hat eine USt-IdNr., die mit dem Ländercode beginnt (zum Beispiel DE123456789). Das sieht nicht danach aus; Sie können es trotzdem speichern."
-      }
+      },
+      "warned": "Diese Nummer passt nicht zu diesem Kunden. Öffnen Sie die Steuerdaten, um den Grund zu sehen."
     },
     "errorKeys": {
       "einvoice": {

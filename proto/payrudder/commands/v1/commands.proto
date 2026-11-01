@@ -87,6 +87,20 @@ message InvoiceSnapshot {
   PartySnapshot buyer = 19;
   // The tenant's e_invoice_on when the draft was made: "off", "finalized" or "paid".
   string e_invoice_on = 20;
+  // The language to print in (docs/plans/05): the customer's locale (en, tr, de, fr, es, ar) frozen with the draft, and the language of the seller's country, used when
+  // the customer has none. Both empty = English. Arabic is requested but printed in the English layout (the PDF library cannot shape Arabic); the requested locale is
+  // recorded in the PDF's metadata.
+  string locale = 21;
+  string default_locale = 22;
+  // "individual" or "business" as the customer was when the draft was made; empty = unknown. Unlike seller and buyer it is set whether or not the tenant e-invoices.
+  string customer_type = 23;
+  // The tax identity the document prints, and the countries (ISO 3166-1 alpha-2) that decide its wording. Set whether or not the tenant e-invoices.
+  string seller_tax_id = 24;
+  string seller_tax_office = 25;
+  string seller_country = 26;
+  string customer_tax_id = 27;
+  string customer_tax_office = 28;
+  string customer_country = 29;
 }
 
 // PartySnapshot is a seller or buyer with the legal data an e-invoice needs.

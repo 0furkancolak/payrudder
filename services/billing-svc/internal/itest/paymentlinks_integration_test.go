@@ -234,6 +234,8 @@ func testReusableAdhocLink(t *testing.T) {
 	l := newLinkEnv(t, envOpts{sandbox: true}, false)
 	l.startWorkers(nil)
 	single := false
+	// A customer's language and kind are frozen on the invoice of their payment link too (the PDF and the page read them there).
+	l.w.customers["cus_a"].Locale, l.w.customers["cus_a"].CustomerType = "tr", "business"
 	c := l.create(&billingv1.CreatePaymentLinkRequest{Kind: "adhoc", AmountMinor: 1000, Description: "Donation", CustomerExternalId: "cus_a", SingleUse: &single})
 	if c.GetLink().GetSingleUse() || c.GetLink().GetCustomerExternalId() != "cus_a" {
 		t.Fatalf("link = %v", c.GetLink())
@@ -246,6 +248,9 @@ func testReusableAdhocLink(t *testing.T) {
 	// The invoice is made out to the customer the link names, and their e-mail is on file for the receipt.
 	if a.GetCustomerName() != "Customer cus_a" || a.GetInvoice().GetCustomerExternalId() != "cus_a" || a.GetInvoice().GetCustomerId() != l.customer("cus_a").Id {
 		t.Errorf("customer = %v", a)
+	}
+	if a.GetCustomerLocale() != "tr" || a.GetCustomerType() != "business" {
+		t.Errorf("the invoice froze language %q and kind %q, want tr and business", a.GetCustomerLocale(), a.GetCustomerType())
 	}
 	if _, err := l.svc.RequestHostedPayment(l.visitor, &billingv1.RequestHostedPaymentRequest{Token: first, Method: "mock"}); err != nil {
 		t.Fatal(err)

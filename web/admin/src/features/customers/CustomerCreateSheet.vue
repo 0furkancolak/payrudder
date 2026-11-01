@@ -4,6 +4,7 @@ import { computed, ref, watch } from "vue";
 import AppField from "@/app/layout/AppField.vue";
 import { useI18n } from "vue-i18n";
 import { cleanAddress } from "@/shared/lib/address";
+import { normalizePhone } from "@/shared/lib/phone";
 import { Button } from "@/shared/ui/button";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FormField } from "@/shared/ui/form-field";
@@ -30,6 +31,7 @@ const name = ref("");
 const email = ref("");
 const locale = ref("");
 const kind = ref("");
+const phone = ref("");
 const country = ref("");
 const currency = ref("");
 const address = ref<Address>({});
@@ -41,6 +43,8 @@ const form = useFormErrors(() => ({
   externalId: externalId.value.trim() === "" ? t("common.validation.required") : undefined,
   name: name.value.trim() === "" ? t("common.validation.required") : undefined,
   email: email.value.trim() === "" ? t("common.validation.required") : !EMAIL_RE.test(email.value.trim()) ? t("common.validation.email") : undefined,
+  // The message shows under the field itself (CustomerProfileFields); this only keeps the form from being sent.
+  phone: normalizePhone(phone.value) === null ? t("billing.customers.profile.phoneInvalid") : undefined,
 }));
 /** A customer id that is taken is the id field's problem, so it is shown there and not above the buttons. */
 const duplicate = computed(() => {
@@ -51,10 +55,10 @@ const duplicate = computed(() => {
 });
 const idError = computed(() => form.errors.value.externalId ?? duplicate.value);
 // An error about the old values must not stay beside the new ones.
-watch([externalId, name, email, country, currency, address], () => create.reset(), { deep: true });
+watch([externalId, name, email, phone, country, currency, address], () => create.reset(), { deep: true });
 
 function reset() {
-  externalId.value = name.value = email.value = country.value = currency.value = locale.value = kind.value = "";
+  externalId.value = name.value = email.value = country.value = currency.value = locale.value = kind.value = phone.value = "";
   address.value = {};
 }
 // A sheet that was closed opens clean: the last values and error are not shown again.
@@ -79,6 +83,7 @@ function submit() {
       billing_currency: currency.value || undefined,
       locale: (locale.value || undefined) as ApiLocale | undefined,
       customer_type: (kind.value || undefined) as CustomerKind | undefined,
+      phone: normalizePhone(phone.value) || undefined,
       address: Object.keys(a).length ? { ...a, ...(cc ? { country: cc } : {}) } : undefined,
     },
     {
@@ -113,7 +118,7 @@ function submit() {
           <FormField :label="t('billing.customers.currency')" for="new-customer-currency">
             <CurrencySelect id="new-customer-currency" v-model="currency" :aria-label="t('billing.customers.currency')" :blank="t('billing.customers.tenantCurrency')" />
           </FormField>
-          <CustomerProfileFields v-model:locale="locale" v-model:kind="kind" id-prefix="new-customer" />
+          <CustomerProfileFields v-model:locale="locale" v-model:kind="kind" v-model:phone="phone" id-prefix="new-customer" />
           <fieldset class="grid gap-3">
             <legend class="text-muted-foreground mb-1 text-sm">{{ t("billing.customers.address.title") }}</legend>
             <LocationFields v-model:country="country" v-model:region="address.region" v-model:city="address.city" id-prefix="new-customer" :labels="placeLabels" />

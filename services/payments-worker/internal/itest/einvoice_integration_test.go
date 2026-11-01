@@ -349,6 +349,21 @@ func TestEInvoiceWorker(t *testing.T) {
 		}
 	})
 
+	t.Run("a business buyer without a tax id is refused, named and not retried, and nothing is issued", func(t *testing.T) {
+		before := in.count("issue")
+		noID := &commandsv1.PartySnapshot{Name: "Customer A.S.", Line1: "Barbaros 2", City: "Istanbul", Country: "TR"}
+		snap := snapshot("INV-2026-000005", seller, noID, lines...)
+		snap.CustomerType = "business"
+		r, err := h.Handle(ctx, issueCmd(tenant, plansv1.Environment_ENVIRONMENT_LIVE, uuid.New(), "invoice", snap))
+		res := r.GetEInvoiceResult()
+		if err != nil || res.GetState() != "failed" || res.GetErrorKey() != "einvoice.buyer.incomplete" || res.GetRetryable() || !strings.Contains(res.GetErrorMessage(), "buyer.tax_id") {
+			t.Fatalf("result = %v, %v", r, err)
+		}
+		if in.count("issue") != before {
+			t.Fatalf("the integrator saw %d issues, want %d: a refused document is not sent", in.count("issue"), before)
+		}
+	})
+
 	t.Run("an issued document can be cancelled where the integrator allows it", func(t *testing.T) {
 		cancel := &commandsv1.CommandEnvelope{CommandId: uuid.NewString(), SagaId: invoiceDoc.String(), TenantId: tenant.String(), Environment: plansv1.Environment_ENVIRONMENT_LIVE,
 			Command: &commandsv1.CommandEnvelope_IssueEInvoice{IssueEInvoice: &commandsv1.IssueEInvoice{Action: "cancel", DocumentId: invoiceDoc.String(), Reason: "wrong customer"}}}

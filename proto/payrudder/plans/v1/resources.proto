@@ -192,6 +192,15 @@ message Customer {
   string block_category = 17;
   // When the block ends by itself; unset: it lasts until it is lifted.
   google.protobuf.Timestamp blocked_until = 18;
+  // The customer's mobile number in international form (E.164: "+905321234567"), for providers that need one (a GSM number) and for notices. Empty = none.
+  string phone = 19;
+  // When tax_id last passed the checksum or shape check of pkg/taxid (a TCKN or VKN checksum, the shape of a European VAT id). It is a local check, not a registry
+  // lookup (no VIES, no GİB query); unset when the id is empty or not recognised.
+  google.protobuf.Timestamp tax_id_validated_at = 20;
+  // A hint, never a refusal: the id does not look like the kind of number this customer should have ("tr_individual", "tr_business", "tr_any", "tr_is_tckn",
+  // "tr_is_vkn", "eu_vat"; the same keys as the console's form hint). Worked out from the stored id, country and kind, so it is also right after the country or the
+  // kind changed. Empty = nothing to say.
+  string tax_id_warning = 21;
 }
 
 enum Aggregation {

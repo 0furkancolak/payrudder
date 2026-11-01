@@ -89,6 +89,8 @@ export interface NewCustomer {
   address?: Address;
   locale?: ApiLocale;
   customer_type?: CustomerKind;
+  /** The mobile number in international form (the server stores it as E.164). */
+  phone?: string;
 }
 
 export function useCreateCustomer(tenantId: MaybeRefOrGetter<string>) {
@@ -112,9 +114,11 @@ export function useSetCustomerAddress(tenantId: MaybeRefOrGetter<string>) {
 export interface CustomerContact {
   name: string;
   email: string;
-  /** The language of the customer's mails and pages, and whether it is a person or a business; empty clears them. */
+  /** The language of the customer's mails and pages, and whether it is a person or a business; left out, the server keeps what the customer has. */
   locale?: ApiLocale;
   customer_type?: CustomerKind;
+  /** The mobile number in international form; left out, the server keeps it, an empty string clears it. */
+  phone?: string;
 }
 
 /** Replaces a customer's name and e-mail address. */

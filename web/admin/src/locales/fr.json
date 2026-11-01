@@ -534,7 +534,10 @@
         "type": "Type",
         "unknown": "Non précisé",
         "individual": "Particulier",
-        "business": "Entreprise (assujettie)"
+        "business": "Entreprise (assujettie)",
+        "phone": "Numéro de mobile",
+        "phoneHint": "Au format international, par exemple +33 6 12 34 56 78.",
+        "phoneInvalid": "Utilisez le format international : + et l’indicatif du pays, puis le numéro."
       },
       "contact": {
         "edit": "Modifier le nom et l'e-mail",
@@ -2452,7 +2455,8 @@
         "tr_is_tckn": "C'est un TCKN, le numéro d'un particulier, mais le client est une entreprise (qui a un VKN). Vous pouvez tout de même l'enregistrer.",
         "tr_is_vkn": "C'est un VKN, le numéro d'une entreprise, mais le client est un particulier (qui a un TCKN). Vous pouvez tout de même l'enregistrer.",
         "eu_vat": "Une entreprise de l'UE a un numéro de TVA qui commence par le code de son pays (par exemple DE123456789). Ce n'en est pas un ; vous pouvez tout de même l'enregistrer."
-      }
+      },
+      "warned": "Ce numéro ne semble pas correct pour ce client. Ouvrez les données fiscales pour voir pourquoi."
     },
     "errorKeys": {
       "einvoice": {

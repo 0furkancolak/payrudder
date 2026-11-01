@@ -16,7 +16,17 @@ type Snapshot struct {
 	// CustomerLocale is the language of the customer (en, tr, de, fr, es, ar) and CustomerType "individual" or "business", as the customer had them when the draft was made; empty for none.
 	CustomerLocale string `json:"customer_locale,omitempty"`
 	CustomerType   string `json:"customer_type,omitempty"`
-	PaymentMethod  string `json:"payment_method"`
+	// DefaultLocale is the language of the seller's country, used on the printed document when the customer has no language of their own (docs/plans/05).
+	DefaultLocale string `json:"default_locale,omitempty"`
+	// The tax identity the printed document carries and the countries (ISO 3166-1 alpha-2) that decide its wording, frozen when the draft was made. Unlike Seller and
+	// Buyer they are set whether or not the tenant e-invoices.
+	SellerTaxID       string `json:"seller_tax_id,omitempty"`
+	SellerTaxOffice   string `json:"seller_tax_office,omitempty"`
+	SellerCountry     string `json:"seller_country,omitempty"`
+	CustomerTaxID     string `json:"customer_tax_id,omitempty"`
+	CustomerTaxOffice string `json:"customer_tax_office,omitempty"`
+	CustomerCountry   string `json:"customer_country,omitempty"`
+	PaymentMethod     string `json:"payment_method"`
 	// Provider names the payment provider of the customer's subscription; empty is the tenant's default.
 	Provider         string `json:"provider,omitempty"`
 	TenantName       string `json:"tenant_name"`

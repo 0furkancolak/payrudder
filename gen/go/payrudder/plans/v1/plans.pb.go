@@ -197,8 +197,10 @@ type CreateCustomerRequest struct {
 	// When the visitor followed that link; empty is now.
 	ReferralTouchTime *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=referral_touch_time,json=referralTouchTime,proto3" json:"referral_touch_time,omitempty"`
 	// The language of the customer's mails and pages, and whether it is a person or a business; both optional (see Customer).
-	Locale        string `protobuf:"bytes,10,opt,name=locale,proto3" json:"locale,omitempty"`
-	CustomerType  string `protobuf:"bytes,11,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	Locale       string `protobuf:"bytes,10,opt,name=locale,proto3" json:"locale,omitempty"`
+	CustomerType string `protobuf:"bytes,11,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	// The customer's mobile number; any spelling of an international number is accepted and stored as E.164 (see Customer.phone). Optional.
+	Phone         string `protobuf:"bytes,12,opt,name=phone,proto3" json:"phone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -306,6 +308,13 @@ func (x *CreateCustomerRequest) GetLocale() string {
 func (x *CreateCustomerRequest) GetCustomerType() string {
 	if x != nil {
 		return x.CustomerType
+	}
+	return ""
+}
+
+func (x *CreateCustomerRequest) GetPhone() string {
+	if x != nil {
+		return x.Phone
 	}
 	return ""
 }
@@ -837,12 +846,15 @@ func (x *SetCustomerAddressResponse) GetCustomer() *Customer {
 }
 
 type SetCustomerContactRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	ExternalId    string                 `protobuf:"bytes,1,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Email         string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	Locale        string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
-	CustomerType  string                 `protobuf:"bytes,5,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	ExternalId   string                 `protobuf:"bytes,1,opt,name=external_id,json=externalId,proto3" json:"external_id,omitempty"`
+	Name         string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Email        string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	Locale       string                 `protobuf:"bytes,4,opt,name=locale,proto3" json:"locale,omitempty"`
+	CustomerType string                 `protobuf:"bytes,5,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
+	// Replaces the number (any spelling of an international number; stored as E.164). Unset keeps the one the customer has, like locale and customer_type; an empty
+	// string clears it.
+	Phone         *string `protobuf:"bytes,6,opt,name=phone,proto3,oneof" json:"phone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -908,6 +920,13 @@ func (x *SetCustomerContactRequest) GetLocale() string {
 func (x *SetCustomerContactRequest) GetCustomerType() string {
 	if x != nil {
 		return x.CustomerType
+	}
+	return ""
+}
+
+func (x *SetCustomerContactRequest) GetPhone() string {
+	if x != nil && x.Phone != nil {
+		return *x.Phone
 	}
 	return ""
 }
@@ -8757,7 +8776,7 @@ var File_payrudder_plans_v1_plans_proto protoreflect.FileDescriptor
 
 const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\n" +
-	"\x1epayrudder/plans/v1/plans.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"payrudder/plans/v1/resources.proto\"\xb3\x03\n" +
+	"\x1epayrudder/plans/v1/plans.proto\x12\x12payrudder.plans.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\"payrudder/plans/v1/resources.proto\"\xc9\x03\n" +
 	"\x15CreateCustomerRequest\x12\x1f\n" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
 	"externalId\x12\x12\n" +
@@ -8771,7 +8790,8 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"\x13referral_touch_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\x11referralTouchTime\x12\x16\n" +
 	"\x06locale\x18\n" +
 	" \x01(\tR\x06locale\x12#\n" +
-	"\rcustomer_type\x18\v \x01(\tR\fcustomerType\"R\n" +
+	"\rcustomer_type\x18\v \x01(\tR\fcustomerType\x12\x14\n" +
+	"\x05phone\x18\f \x01(\tR\x05phone\"R\n" +
 	"\x16CreateCustomerResponse\x128\n" +
 	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"E\n" +
 	"\x12GetCustomerRequest\x12\x1f\n" +
@@ -8803,14 +8823,16 @@ const file_payrudder_plans_v1_plans_proto_rawDesc = "" +
 	"externalId\x125\n" +
 	"\aaddress\x18\x02 \x01(\v2\x1b.payrudder.plans.v1.AddressR\aaddress\"V\n" +
 	"\x1aSetCustomerAddressResponse\x128\n" +
-	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"\xa3\x01\n" +
+	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"\xc8\x01\n" +
 	"\x19SetCustomerContactRequest\x12\x1f\n" +
 	"\vexternal_id\x18\x01 \x01(\tR\n" +
 	"externalId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
 	"\x05email\x18\x03 \x01(\tR\x05email\x12\x16\n" +
 	"\x06locale\x18\x04 \x01(\tR\x06locale\x12#\n" +
-	"\rcustomer_type\x18\x05 \x01(\tR\fcustomerType\"V\n" +
+	"\rcustomer_type\x18\x05 \x01(\tR\fcustomerType\x12\x19\n" +
+	"\x05phone\x18\x06 \x01(\tH\x00R\x05phone\x88\x01\x01B\b\n" +
+	"\x06_phone\"V\n" +
 	"\x1aSetCustomerContactResponse\x128\n" +
 	"\bcustomer\x18\x01 \x01(\v2\x1c.payrudder.plans.v1.CustomerR\bcustomer\"\xc2\x01\n" +
 	"\x14BlockCustomerRequest\x12\x1f\n" +
@@ -9923,6 +9945,7 @@ func file_payrudder_plans_v1_plans_proto_init() {
 		return
 	}
 	file_payrudder_plans_v1_resources_proto_init()
+	file_payrudder_plans_v1_plans_proto_msgTypes[12].OneofWrappers = []any{}
 	file_payrudder_plans_v1_plans_proto_msgTypes[43].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
