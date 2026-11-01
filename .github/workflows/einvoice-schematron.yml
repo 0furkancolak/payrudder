@@ -1,0 +1,57 @@
+name: einvoice-schematron
+
+# The UBL that pkg/einvoice builds, checked against the official rules (plan 09): the UBL 2.1 XSD, the EN 16931 and Peppol BIS Billing 3.0 schematron for the Peppol
+# documents, GIB's UBL-TR 1.2.1 XSD and schematron for e-fatura and e-arsiv. The same command runs locally: scripts/einvoice-validate.sh (make test-einvoice-rules).
+# Every artefact is downloaded by that script, pinned by version and sha256; nothing official is committed. Passing says the documents satisfy the published
+# rules, not that a tax authority or a Peppol access point accepts them.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pkg/einvoice/**"
+      - "scripts/einvoice-*"
+      - ".github/workflows/einvoice-schematron.yml"
+  pull_request:
+    paths:
+      - "pkg/einvoice/**"
+      - "scripts/einvoice-*"
+      - ".github/workflows/einvoice-schematron.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: einvoice-schematron-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: UBL against EN 16931, Peppol BIS 3 and UBL-TR
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EINVOICE_VALIDATE_CACHE: ${{ github.workspace }}/.einvoice-cache
+      # Whether GitHub's runners can reach ebelge.gib.gov.tr (a Turkish authority's site) is UNVERIFIED. If the GIB packages cannot be downloaded the run says so
+      # in a warning annotation and still checks the Peppol documents. Remove this line once a run has shown the download works.
+      EINVOICE_TR_OPTIONAL: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+      - name: Tools (java, xmllint)
+        run: |
+          java -version
+          command -v xmllint >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils; }
+          xmllint --version
+      - name: Cache the pinned artefacts
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.einvoice-cache
+          key: einvoice-artefacts-${{ hashFiles('scripts/einvoice-validate.sh') }}
+      - name: Unit tests of the builder and the adapters (conformance suite)
+        run: cd pkg && CGO_ENABLED=0 go test -count=1 ./einvoice/...
+      - name: Validate the documents
+        run: scripts/einvoice-validate.sh

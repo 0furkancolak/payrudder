@@ -1,7 +1,8 @@
 // Package nilvera is the adapter for Nilvera, a Turkish e-fatura / e-arşiv integrator (https://developer.nilvera.com).
 //
-// It was written from Nilvera's public API reference (read 2026-10) and has NEVER been run against a Nilvera account. Everything the reference does not
-// state, or states loosely, is marked UNVERIFIED below. The tests use httptest servers that replay the documented shapes.
+// It was written from Nilvera's public API reference (https://developer.nilvera.com, read 2026-10 and again 2026-11-02, when the endpoints, response fields and error
+// codes below were checked page by page) and has NEVER been run against a Nilvera account. Everything the reference does not state, or states loosely, is marked
+// UNVERIFIED below. The tests use httptest servers that replay the documented shapes.
 //
 // Settings: {"api_key": "…", "mode": "test" | "production", "base_url": "https://… (optional override)"}. The key is sent as "Authorization: Bearer".
 // Test and production keys are separate at Nilvera, so mode picks the host: apitest.nilvera.com or api.nilvera.com.
@@ -105,7 +106,7 @@ func (*Provider) Capabilities() einvoice.Capabilities {
 func family(t einvoice.DocumentType) (string, error) {
 	switch t {
 	case einvoice.TypeEFatura:
-		return "einvoice/Sale", nil // UNVERIFIED: outgoing e-fatura status/pdf live under Sale/{UUID} per the reference
+		return "einvoice/Sale", nil // documented: Sale/{UUID}/Status, /Details, /pdf and /xml
 	case einvoice.TypeEArsiv:
 		return "earchive/Invoices", nil
 	}
@@ -153,7 +154,8 @@ func (p *Provider) do(ctx context.Context, method, path string, query url.Values
 	case c == http.StatusRequestTimeout, c == http.StatusTooManyRequests, c >= 500:
 		return nil, &einvoice.TransientError{Err: fmt.Errorf("nilvera answered %d", c)}
 	default:
-		// 400, 401, 403, 404, 422 and the rest: retrying changes nothing. UNVERIFIED: the error body's shape is not documented, so the text is taken as it comes.
+		// 400, 401, 403, 404, 422 and the rest: retrying changes nothing. The error body is {Message, Errors:[{Code, Description, Detail}]} (developer.nilvera.com/hata-kodlari);
+		// the 409 codes 1001, 1004 and 1015 are the duplicates, 2015 a schema/schematron failure, 2064, 2065, 2100 and 3009 series and numbering problems.
 		return nil, &einvoice.PermanentError{Code: fmt.Sprintf("http_%d", c), Message: p.message(raw, c)}
 	}
 }
@@ -223,7 +225,7 @@ func (p *Provider) Issue(ctx context.Context, r einvoice.IssueRequest) (einvoice
 		if serr != nil {
 			return einvoice.IssueResult{}, serr
 		}
-		// UNVERIFIED: the status endpoints do not return the invoice number, so a repeat after a lost answer has none. The worker must have recorded the first answer.
+		// The status endpoints carry no invoice number; Status asks /Details for it once the document is issued.
 		return einvoice.IssueResult{Ref: ref, LegalNumber: st.LegalNumber, State: st.State}, nil
 	}
 	if err != nil {
@@ -280,7 +282,7 @@ func (p *Provider) Status(ctx context.Context, ref einvoice.Ref) (einvoice.Statu
 		if s.CancelStatus {
 			st = einvoice.StateCancelled
 		}
-		return einvoice.StatusResult{State: st, Detail: p.redact(strx.Deref(s.StatusDetail))}, nil
+		return p.withNumber(ctx, ref, fam, einvoice.StatusResult{State: st, Detail: p.redact(strx.Deref(s.StatusDetail))})
 	}
 	var s efaturaStatus
 	if json.Unmarshal(raw, &s) != nil {
@@ -294,7 +296,27 @@ func (p *Provider) Status(ctx context.Context, ref einvoice.Ref) (einvoice.Statu
 	if detail == "" {
 		detail = strx.Deref(s.InvoiceStatus.Description)
 	}
-	return einvoice.StatusResult{State: st, Detail: p.redact(detail)}, nil
+	return p.withNumber(ctx, ref, fam, einvoice.StatusResult{State: st, Detail: p.redact(detail)})
+}
+
+// withNumber adds the invoice number to the status of an issued document. The status answers have none; GET {family}/{UUID}/Details has InvoiceNumber for both
+// families. UNVERIFIED, as for Issue: that InvoiceNumber is the legal number.
+func (p *Provider) withNumber(ctx context.Context, ref einvoice.Ref, fam string, st einvoice.StatusResult) (einvoice.StatusResult, error) {
+	if st.State != einvoice.StateIssued {
+		return st, nil
+	}
+	raw, err := p.do(ctx, http.MethodGet, fam+"/"+url.PathEscape(ref.UUID)+"/Details", nil, "", nil)
+	if err != nil {
+		return einvoice.StatusResult{}, err
+	}
+	var d struct {
+		InvoiceNumber *string `json:"InvoiceNumber"`
+	}
+	if json.Unmarshal(raw, &d) != nil {
+		return einvoice.StatusResult{}, &einvoice.PermanentError{Code: "bad_response", Message: "unreadable details"}
+	}
+	st.LegalNumber = strx.Deref(d.InvoiceNumber)
+	return st, nil
 }
 
 func mapCode(c string) einvoice.State {
@@ -323,7 +345,7 @@ func (p *Provider) FetchPDF(ctx context.Context, ref einvoice.Ref) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	// UNVERIFIED: the e-fatura reference says "downloads the PDF" without a content type (raw bytes assumed); the e-arşiv path is assumed to mirror it.
+	// Documented for both families: GET {family}/{UUID}/pdf. The reference declares no content type, so the body is taken as the raw PDF (UNVERIFIED).
 	return p.do(ctx, http.MethodGet, fam+"/"+url.PathEscape(ref.UUID)+"/pdf", nil, "", nil)
 }
 
@@ -333,7 +355,7 @@ func (p *Provider) FetchUBL(ctx context.Context, ref einvoice.Ref) ([]byte, erro
 	if err != nil {
 		return nil, err
 	}
-	// UNVERIFIED: the XML download path (/xml) was not read in the reference; it is assumed to mirror /pdf.
+	// Documented for e-fatura: GET einvoice/Sale/{UUID}/xml. For e-arşiv the reference page is titled "html" while its samples call .../Invoices/{UUID}/xml: UNVERIFIED.
 	return p.do(ctx, http.MethodGet, fam+"/"+url.PathEscape(ref.UUID)+"/xml", nil, "", nil)
 }
 

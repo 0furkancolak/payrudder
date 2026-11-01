@@ -7,6 +7,9 @@
 //
 // The URL must be https and public (private addresses are refused). The secret signs every request; it is stored sealed and never returned by the API.
 //
+// Sandbox documents are never sent to the endpoint: the adapter refuses them before any request (the sandbox is the mock provider's), and the "message" of an answer
+// is shown to the operator with the secret replaced, in case the endpoint echoes it.
+//
 // # Requests
 //
 // Every request is a POST to the URL and carries the signature header of pkg/webhooksig, "Payrudder-Signature: t=<unix>,v1=<hex>", where v1 is

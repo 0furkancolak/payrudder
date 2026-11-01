@@ -1,0 +1,1 @@
+tr: Geçersiz cbc:ID elemanı değeri. cbc:ID elemanı 'ABC2009123456789' formatında olmalıdır.
