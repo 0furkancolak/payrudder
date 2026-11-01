@@ -183,6 +183,7 @@ type AccountEvent struct {
 // Events returns the audit trail of a tenant, newest first: at most limit entries older than the entry `before` (0: from the newest), of one kind ("" for both).
 func (a Accounts) Events(ctx context.Context, tenant uuid.UUID, kind string, before int64, limit int) ([]AccountEvent, error) {
 	rows, err := get(ctx, a.DB, tenant, func(q *sqlc.Queries) ([]sqlc.ListProviderAccountEventsRow, error) {
+		//nolint:gosec // limit is bounded by the caller (accounts/query.MaxEvents + 1)
 		return q.ListProviderAccountEvents(ctx, sqlc.ListProviderAccountEventsParams{TenantID: tenant, Kind: kind, Before: before, RowLimit: int32(limit)})
 	})
 	if err != nil {

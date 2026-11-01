@@ -234,6 +234,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `coupon.inactive`
 - `coupon.not_applicable`
 - `coupon.not_found`
+- `einvoice.account.default_in_use`
 - `einvoice.account.invalid`
 - `einvoice.account.missing`
 - `einvoice.account.sandbox_mock_only`
@@ -245,6 +246,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `einvoice.file.not_ready`
 - `einvoice.provider.rejected`
 - `einvoice.provider.unavailable`
+- `einvoice.routing.invalid`
+- `einvoice.routing.unknown_account`
 - `einvoice.seller.incomplete`
 - `einvoice.setting.invalid`
 - `env.request.mismatch`

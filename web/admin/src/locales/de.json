@@ -3018,6 +3018,7 @@
     },
     "einvoice": {
       "account": {
+        "default_in_use": "Das ist das Standard-E-Rechnungs-Konto. Machen Sie zuerst ein anderes Konto zum Standard und entfernen Sie dieses danach.",
         "invalid": "Die Einstellungen des E-Rechnungskontos sind für diesen Anbieter ungültig.",
         "missing": "Dieser Mandant hat für diese Umgebung kein E-Rechnungskonto. Richten Sie zuerst eines ein.",
         "sandbox_mock_only": "Eine Sandbox-Umgebung kann nur den Mock-Anbieter für E-Rechnungen nutzen."
@@ -3039,6 +3040,10 @@
       "provider": {
         "rejected": "Der E-Rechnungsanbieter hat das Dokument abgelehnt.",
         "unavailable": "Der E-Rechnungsanbieter ist gerade nicht erreichbar. Es wird erneut versucht."
+      },
+      "routing": {
+        "invalid": "Die Routing-Regeln sind ungültig: Jedes Land ist ein zweistelliger Code, wird nur einmal gelistet, und jedes Konto ist ein verbundenes Konto.",
+        "unknown_account": "Eine Routing-Regel nennt ein E-Rechnungs-Konto, das nicht verbunden ist."
       },
       "seller": {
         "incomplete": "Die Firmendaten des Verkäufers sind unvollständig: Tragen Sie Firmenname und Steuernummer in den E-Rechnungs-Einstellungen ein."
@@ -4280,7 +4285,6 @@
           "webhook": "Jedes E-Dokument wird signiert an die Adresse Ihres eigenen Integrators gesendet. Geben Sie die Adresse und das Geheimnis zur Signaturprüfung ein."
         },
         "envNote": "Dies verbindet die Live-Umgebung. Die Sandbox nutzt weiter den eingebauten Simulator.",
-        "replaces": "Eine Umgebung hat einen Integrator. Wenn Sie diesen verbinden, ersetzt er den aktuell verbundenen: {current}.",
         "mode": "Modus",
         "modes": {
           "test": "Testmodus",
@@ -4297,7 +4301,9 @@
           "credentials": "Der Integrator akzeptiert diese Zugangsdaten.",
           "configuration": "Die Einstellungen sind gültig. Den Rest beweist nur ein echtes Dokument."
         },
-        "confirmRemove": "{name} trennen? Neue Rechnungen der Live-Umgebung werden nicht mehr als E-Dokumente gesendet."
+        "confirmRemove": "{name} trennen? Neue Rechnungen der Live-Umgebung werden nicht mehr als E-Dokumente gesendet.",
+        "accountsLine": "{count} Konten verbunden.",
+        "accountLabel": "Kontobezeichnung: {label}"
       },
       "mail": {
         "builtInTitle": "Payrudder-Mail",
@@ -4322,6 +4328,59 @@
         "checkAndConnect": "Prüfen und verbinden",
         "confirmRemove": "Ihren eigenen E-Mail-Anbieter trennen? Die Live-E-Mails gehen wieder von Payrudder aus.",
         "templatesNote": "Eigenes Aussehen gewünscht? Fügen Sie in Nafru Email unter Anwendungen Payrudder hinzu und bearbeiten Sie die Vorlagen dort. Jede Mail trägt ihren Namen im Tag payrudder_template, damit die passende Vorlage angewendet wird."
+      },
+      "accounts": {
+        "title": "Konten",
+        "intro": "Alle Konten dieser App in einer Liste: Zahlungen, E-Rechnung und E-Mail. Jede Art kann mehrere Konten haben, eines ist der Standard, und die Regeln darunter bestimmen, welches Konto welche Kunden übernimmt.",
+        "add": "Integration hinzufügen",
+        "addIntro": "Wählen Sie, was Sie verbinden: zuerst die Art, dann den Anbieter. Der nächste Schritt fragt die Zugangsdaten ab.",
+        "mailNote": "Eine App kann neben dem eingebauten Absender von Payrudder einen eigenen E-Mail-Anbieter haben.",
+        "continue": "Weiter",
+        "search": "Konten durchsuchen",
+        "kind": "Art",
+        "status": "Status",
+        "provider": "Anbieter",
+        "kinds": {
+          "payment": "Zahlungen",
+          "einvoice": "E-Rechnung",
+          "mail": "E-Mail"
+        },
+        "inUse": "In Verwendung",
+        "makeDefaultHint": "Dieses Konto zum Standard machen",
+        "remove": "Entfernen",
+        "confirmRemove": "{name} entfernen? Bereits Ausgestelltes oder Eingezogenes ändert sich nicht.",
+        "eRouting": {
+          "title": "Welches E-Rechnungs-Konto welche Belege ausstellt",
+          "intro": "Das Land des Käufers entscheidet: Der Beleg eines Käufers in einem hier gelisteten Land wird über dieses Konto ausgestellt, alle anderen über das Standardkonto. Ein bereits begonnener Beleg behält sein Konto.",
+          "duplicate": "Ein Land kann nur einmal gelistet werden."
+        },
+        "tester": {
+          "title": "Wer übernimmt diesen Kunden?",
+          "intro": "Geben Sie ein Land und eine Währung ein: Sie sehen, welches Zahlungskonto den Kunden belastet, welches E-Rechnungs-Konto seine Belege ausstellt und welcher Absender ihm schreibt. Es wird nichts angelegt.",
+          "run": "Prüfen",
+          "byRule": "{account}, nach Regel {n}",
+          "byDefault": "Das Standardkonto, keine Regel passt.",
+          "byRuleCountry": "{account}, nach der Regel für {country}",
+          "eDefault": "{account}, das Standardkonto",
+          "eNone": "Kein Konto: Es ist kein Standard gesetzt und keine Regel nennt dieses Land.",
+          "mailOwn": "Ihr eigener E-Mail-Anbieter",
+          "mailBuiltIn": "Der eingebaute Absender von Payrudder"
+        },
+        "audit": {
+          "title": "Wer die Konten geändert hat",
+          "intro": "Verbindungen, Standardwechsel und Routing-Änderungen der Zahlungs- und E-Rechnungs-Konten, neueste zuerst. Zugangsdaten werden nie aufgezeichnet.",
+          "empty": "Es hat sich noch nichts geändert.",
+          "more": "Ältere anzeigen",
+          "support": "Payrudder-Support",
+          "verified": "Vom Anbieter akzeptiert",
+          "actions": {
+            "connected": "{actor} hat {account} verbunden",
+            "replaced": "{actor} hat die Zugangsdaten von {account} ersetzt",
+            "removed": "{actor} hat {account} entfernt",
+            "default_set": "{actor} hat {account} zum Standard gemacht",
+            "routing_changed": "{actor} hat die Routing-Regeln geändert"
+          }
+        }
       }
     },
     "envSwitch": {
