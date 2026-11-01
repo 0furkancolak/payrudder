@@ -6,6 +6,7 @@ package model
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 // State of an invoice saga.
@@ -95,6 +96,7 @@ const (
 	EffScheduleDunning Effect = "schedule-dunning" // set next_attempt_at
 	EffSchedulePoll    Effect = "schedule-poll"    // set next_attempt_at to the next status poll
 	EffAwaitTransfer   Effect = "await-transfer"   // SendNotification with the payment instructions, then schedule-poll
+	EffRecheck         Effect = "recheck"          // no command now: the sweeper asks the status again when the not-found grace period of the charge's key is over
 )
 
 // Guard picks between rows with the same (From, Event). Guards are mutually exclusive per pair.
@@ -113,6 +115,10 @@ const (
 	AwaitCustomer Guard = "total > 0, customer pays"
 	// LinkDeclined: a declined payment on a link-collected invoice is the customer's to retry; there is no dunning.
 	LinkDeclined Guard = "customer pays, no dunning"
+	// The three ages at which a "not found" answer is read (see Ctx.ChargeAge): too soon to trust, trustworthy, and past what the provider remembers of the key.
+	NotFoundYoung   Guard = "not found, charge younger than the grace period"
+	NotFoundSettled Guard = "not found, charge old enough to be sure"
+	NotFoundStale   Guard = "not found, charge older than the key horizon"
 )
 
 // Ctx is what guards look at.
@@ -129,6 +135,21 @@ type Ctx struct {
 	ProviderMails bool
 	// Link: the invoice is collected through a payment link (the customer pays), not charged by the saga.
 	Link bool
+	// ChargeAge is how long ago the charge under the current idempotency key was first sent. A "not found" answer is read by it: a provider may not show a charge
+	// it has only just taken (eventual consistency, a response that was lost and committed late), and one that no longer remembers the key (Stripe keeps it for 24
+	// hours) would charge again. NotFoundGrace and KeyHorizon are the two limits; a zero KeyHorizon turns the second check off.
+	ChargeAge, NotFoundGrace, KeyHorizon time.Duration
+}
+
+// notFoundWindow says how far to trust a "not found" answer for a charge of this age.
+func (c Ctx) notFoundWindow() Guard {
+	switch {
+	case c.ChargeAge < c.NotFoundGrace:
+		return NotFoundYoung
+	case c.KeyHorizon > 0 && c.ChargeAge > c.KeyHorizon:
+		return NotFoundStale
+	}
+	return NotFoundSettled
 }
 
 func (c Ctx) cardRefund() int64 {
@@ -167,6 +188,8 @@ func (g Guard) holds(c Ctx) bool {
 		return c.ProviderMails
 	case NothingToRefund:
 		return !c.Paid || c.cardRefund() <= 0
+	case NotFoundYoung, NotFoundSettled, NotFoundStale:
+		return c.notFoundWindow() == g
 	}
 	return false
 }
@@ -205,7 +228,11 @@ var Table = []Row{
 	{PaymentUnknown, EvPaymentDeclined, DunningSpent, Uncollectible, EffNone},
 	{PaymentUnknown, EvPaymentDeclined, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentUnknown, EvStatusSucceeded, Always, Paid, EffNone},
-	{PaymentUnknown, EvStatusNotFound, Always, PaymentRequested, EffCharge},
+	// "Not found" is acted on only inside a window (Ctx.ChargeAge): before it the status is asked again later, after it nobody charges again with a key the provider
+	// may have forgotten, and the saga parks for the operator.
+	{PaymentUnknown, EvStatusNotFound, NotFoundYoung, PaymentUnknown, EffRecheck},
+	{PaymentUnknown, EvStatusNotFound, NotFoundSettled, PaymentRequested, EffCharge},
+	{PaymentUnknown, EvStatusNotFound, NotFoundStale, PaymentUnknown, EffNone},
 	{PaymentUnknown, EvStatusDeclined, DunningLeft, PaymentDeclined, EffScheduleDunning},
 	{PaymentUnknown, EvStatusDeclined, DunningSpent, Uncollectible, EffNone},
 	{PaymentUnknown, EvStatusDeclined, LinkDeclined, AwaitingPayment, EffNone},

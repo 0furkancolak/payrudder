@@ -38,6 +38,11 @@ func (e *Engine) planStep(s *saga, ev model.Event, res model.Result, now time.Ti
 		if res.Effect == model.EffChargeDunning {
 			st.dunning++
 		}
+	case model.EffRecheck:
+		// No command is outstanding while the grace period of the charge's key runs; when it is over the sweeper's first deadline asks the status again.
+		st.stepAttempt = 0
+		d := s.ChargeKeyStart.Add(e.notFoundGrace(s))
+		st.deadline = &d
 	case model.EffScheduleDunning:
 		delays := e.dunningDelays(s)
 		at := now.Add(delays[min(s.DunningAttempt, len(delays)-1)]) // the table only schedules while DunningLeft, so delays is not empty
@@ -50,6 +55,11 @@ func (e *Engine) planStep(s *saga, ev model.Event, res model.Result, now time.Ti
 		}
 		at := now.Add(e.cfg.TransferPoll)
 		st.nextAttemptAt = &at
+	}
+	if ev == model.EvStatusNotFound && res.To == model.PaymentUnknown && res.Effect == model.EffNone {
+		// Parked for the operator: the provider no longer remembers the key, so a second charge under it could be a second bill.
+		st.lastErr = fmt.Sprintf("the provider does not know the charge, but it is older than the key horizon (%s): not charged again, check the payment at the provider", e.cfg.KeyHorizon)
+		st.stepAttempt = s.StepAttempt
 	}
 	if ev == model.EvExhausted {
 		st.lastErr = "step timed out after " + fmt.Sprint(MaxStepAttempts) + " attempts"
@@ -81,7 +91,7 @@ func (e *Engine) transition(ctx context.Context, tx pgx.Tx, s *saga, ev model.Ev
 	if err := e.mirrorInvoiceStatus(ctx, tx, s, from, next); err != nil {
 		return err
 	}
-	if res.Effect != model.EffNone && res.Effect != model.EffScheduleDunning && res.Effect != model.EffSchedulePoll {
+	if res.Effect != model.EffNone && res.Effect != model.EffScheduleDunning && res.Effect != model.EffSchedulePoll && res.Effect != model.EffRecheck {
 		if err := e.issue(ctx, tx, s, res.Effect); err != nil {
 			return err
 		}

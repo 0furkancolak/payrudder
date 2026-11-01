@@ -27,6 +27,9 @@ type saga struct {
 	Snap                                model.Snapshot
 	// RetryHours are the tenant's own dunning delays; nil means the service-wide defaults.
 	RetryHours []int32
+	// ChargeKeyStart is when the charge under the current idempotency key was first sent; read only for a saga whose payment outcome is unknown, where a "not found"
+	// answer is judged by it.
+	ChargeKeyStart time.Time
 	// CreditedMinor is the sum of the invoice's credit notes and ByHandMinor the money recorded by hand, both read when a void asks what is left to refund.
 	CreditedMinor, ByHandMinor int64
 }
@@ -55,6 +58,16 @@ func (e *Engine) load(ctx context.Context, tx pgx.Tx, tenantID, sagaID uuid.UUID
 		return nil, fmt.Errorf("dunning settings: %w", err)
 	default:
 		s.RetryHours = settings.RetryHours
+	}
+	if s.State == model.PaymentUnknown {
+		switch at, err := q.GetChargeKeyStart(ctx, sqlc.GetChargeKeyStartParams{TenantID: tenantID, SagaID: sagaID}); {
+		case errors.Is(err, pgx.ErrNoRows):
+			s.ChargeKeyStart = s.FinalizedAt // no record of the charge: the oldest it can be, which errs on the side of not charging again
+		case err != nil:
+			return nil, fmt.Errorf("charge key start: %w", err)
+		default:
+			s.ChargeKeyStart = at
+		}
 	}
 	return &s, nil
 }

@@ -138,6 +138,25 @@ func (q *Queries) GetChargeFact(ctx context.Context, idempotencyKey *string) (Ge
 	return i, err
 }
 
+const getRefundFact = `-- name: GetRefundFact :one
+SELECT provider_ref FROM payment_ledger
+WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'refund' AND idempotency_key = $3 AND status = 'succeeded'
+ORDER BY id DESC LIMIT 1
+`
+
+type GetRefundFactParams struct {
+	TenantID       uuid.UUID
+	InvoiceID      *uuid.UUID
+	IdempotencyKey *string
+}
+
+func (q *Queries) GetRefundFact(ctx context.Context, arg GetRefundFactParams) (*string, error) {
+	row := q.db.QueryRow(ctx, getRefundFact, arg.TenantID, arg.InvoiceID, arg.IdempotencyKey)
+	var provider_ref *string
+	err := row.Scan(&provider_ref)
+	return provider_ref, err
+}
+
 const listConflictingCharges = `-- name: ListConflictingCharges :many
 SELECT COALESCE(max(invoice_id::text), '')::text AS invoice_id, provider, provider_ref::text AS provider_ref
 FROM payment_ledger WHERE tenant_id = $1 AND kind = 'charge' AND provider_ref IS NOT NULL AND status IN ('succeeded', 'declined')

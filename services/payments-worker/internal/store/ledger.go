@@ -126,6 +126,17 @@ func (l Ledger) ChargeFact(ctx context.Context, tenant uuid.UUID, key string) (F
 	return f, true, nil
 }
 
+// RefundFact returns the provider's reference of the refund the tenant made for an invoice under an idempotency key, if the ledger holds one.
+func (l Ledger) RefundFact(ctx context.Context, tenant, invoice uuid.UUID, key string) (string, bool, error) {
+	ref, ok, err := lookup(ctx, l.DB, tenant, func(q *sqlc.Queries) (*string, error) {
+		return q.GetRefundFact(ctx, sqlc.GetRefundFactParams{TenantID: tenant, InvoiceID: &invoice, IdempotencyKey: &key})
+	})
+	if !ok || ref == nil {
+		return "", ok, err
+	}
+	return *ref, true, nil
+}
+
 // Charge is a successful charge in the ledger.
 type Charge struct {
 	InvoiceID, Provider, ProviderRef, Currency string

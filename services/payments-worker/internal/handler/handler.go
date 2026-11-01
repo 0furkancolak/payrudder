@@ -73,6 +73,9 @@ const (
 	CodeCurrency      = "CURRENCY_NOT_SUPPORTED"
 	// CodePending: the provider accepted the charge and settles it later; billing asks for the status.
 	CodePending = "PENDING"
+	// CodeRefundUnknown: this refund was started before and nothing records how it went. It is not sent again, because a provider that does not dedupe by key
+	// would refund twice. The credit note then shows the refund as failed with this code, and an operator checks the refund at the provider.
+	CodeRefundUnknown = "REFUND_OUTCOME_UNKNOWN"
 )
 
 // providerFor picks the provider of a command. A live tenant with its own provider account is served by it; the others by the
@@ -205,16 +208,32 @@ func capabilities(p payments.PaymentProvider) payments.Capabilities {
 	if cp, ok := p.(payments.Provider); ok {
 		return cp.Capabilities()
 	}
-	return payments.Capabilities{Name: p.Name(), Refunds: true, IdempotentCharges: true}
+	return payments.Capabilities{Name: p.Name(), Refunds: true, IdempotentCharges: true, IdempotentRefunds: true}
 }
 
-// record writes a ledger row. A failure is logged and never fails the command: the provider has already been called, and calling it
-// again for the sake of a bookkeeping error could charge twice. The webhook or the reconciliation writes the row later.
+// ledgerRetries are the pauses before the further attempts to write a ledger row.
+var ledgerRetries = []time.Duration{50 * time.Millisecond, 250 * time.Millisecond}
+
+// record writes a ledger row, trying again after a short pause (Append writes a fact once, so a repeat is harmless). A failure that remains is logged, counted
+// and never fails the command: the provider has already been called, and calling it again for the sake of a bookkeeping error could charge or refund twice. The
+// reply still carries the outcome and is stored in payment_attempts, which guardRefund reads; the webhook or the reconciliation writes the row later.
 func (h *Handler) record(ctx context.Context, e store.LedgerEntry) {
 	if h.Ledger.DB == nil {
 		return
 	}
-	if _, err := h.Ledger.Append(ctx, e); err != nil && h.Log != nil {
+	_, err := h.Ledger.Append(ctx, e)
+	for _, pause := range ledgerRetries {
+		if err == nil || ctx.Err() != nil {
+			break
+		}
+		time.Sleep(pause)
+		_, err = h.Ledger.Append(ctx, e)
+	}
+	if err == nil {
+		return
+	}
+	ledgerFailures.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", e.Provider), attribute.String("kind", e.Kind)))
+	if h.Log != nil {
 		h.Log.ErrorContext(ctx, "ledger write failed", "provider", e.Provider, "kind", e.Kind, "status", e.Status, "ref", e.ProviderRef, "err", err)
 	}
 }
@@ -230,6 +249,8 @@ var codeKeys = map[string]string{
 	CodeRejected:      errkey.Key("payments.charge.rejected"),
 	CodeCurrency:      errkey.Key("payments.charge.currency_not_supported"),
 	CodePending:       errkey.Key("payments.charge.pending"),
+	// An unknown refund outcome is a timeout of sorts. No client shows a refund's error key (the credit note carries the code and the message), so it has no key of its own.
+	CodeRefundUnknown: errkey.Key("payments.charge.timeout"),
 }
 
 func errored(code, msg string) *commandsv1.ReplyEnvelope {
@@ -278,6 +299,16 @@ func (h *Handler) count(ctx context.Context, reply *commandsv1.ReplyEnvelope, er
 var paymentsTotal = func() metric.Int64Counter {
 	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/payments-worker").Int64Counter("payments",
 		metric.WithDescription("Payment commands handled, by result"))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}()
+
+// ledgerFailures counts the ledger rows that could not be written after the provider was called: the money moved and the books do not show it yet.
+var ledgerFailures = func() metric.Int64Counter {
+	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/payments-worker").Int64Counter("ledger_write_failures",
+		metric.WithDescription("Ledger rows not written after the provider was called, by provider and kind"))
 	if err != nil {
 		panic(err)
 	}
@@ -453,21 +484,74 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 	if reply != nil {
 		return reply, nil
 	}
-	if !capabilities(prov).Refunds {
+	caps := capabilities(prov)
+	if !caps.Refunds {
 		// The credit note then shows the refund as failed, with this reason: the money goes back outside Payrudder (for a bank transfer, by a transfer back).
 		return errored(CodeRejected, prov.Name()+" has no refund API; refund the customer outside Payrudder"), nil
 	}
-	if _, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, store.KindRefund, run.env, prov.Name(), rf.GetIdempotencyKey(), rf); err != nil {
+	redelivered, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, store.KindRefund, run.env, prov.Name(), rf.GetIdempotencyKey(), rf)
+	if err != nil {
 		return nil, err
+	}
+	if !caps.IdempotentRefunds {
+		if reply, err := h.guardRefund(ctx, run, prov, invoiceID, rf, redelivered); reply != nil || err != nil {
+			return reply, err
+		}
 	}
 	res, err := prov.Refund(ctx, payments.RefundRequest{IdempotencyKey: rf.GetIdempotencyKey(), InvoiceID: rf.GetInvoiceId(),
 		ChargeID: rf.GetPspChargeId(), AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency()})
 	if err != nil {
 		return providerFailure(err)
 	}
-	h.record(ctx, store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoiceID, Provider: prov.Name(), Environment: run.env, Kind: store.KindRefund, Status: store.StatusSucceeded,
-		AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency(), ProviderRef: res.RefundID, IdempotencyKey: rf.GetIdempotencyKey(), Source: store.SourceCommand})
-	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentRefunded{PaymentRefunded: &commandsv1.PaymentRefunded{PspRefundId: res.RefundID}}}, nil
+	h.record(ctx, refundEntry(run, prov, invoiceID, rf, res.RefundID))
+	return refundedReply(res.RefundID), nil
+}
+
+func refundEntry(run commandRun, prov payments.PaymentProvider, invoice uuid.UUID, rf *commandsv1.RefundPayment, ref string) store.LedgerEntry {
+	return store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoice, Provider: prov.Name(), Environment: run.env, Kind: store.KindRefund, Status: store.StatusSucceeded,
+		AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency(), ProviderRef: ref, IdempotencyKey: rf.GetIdempotencyKey(), Source: store.SourceCommand}
+}
+
+func refundedReply(refundID string) *commandsv1.ReplyEnvelope {
+	return &commandsv1.ReplyEnvelope{Reply: &commandsv1.ReplyEnvelope_PaymentRefunded{PaymentRefunded: &commandsv1.PaymentRefunded{PspRefundId: refundID}}}
+}
+
+// guardRefund handles a refund to a provider that does not dedupe by key (Capabilities.IdempotentRefunds). The provider may already have been asked under this key:
+// billing resends a refund with a new command id and the same key, and a command that failed comes back with its own id. It is never asked blindly again. The ledger
+// and the earlier attempts decide: a refund known to have been made is answered with its result, one the provider refused may be tried again, and one whose outcome
+// is unknown is parked for the operator (CodeRefundUnknown). There is no lookup at the provider: neither compatibility matrix documents one. A nil reply and error
+// mean the refund goes ahead.
+func (h *Handler) guardRefund(ctx context.Context, run commandRun, prov payments.PaymentProvider, invoice uuid.UUID, rf *commandsv1.RefundPayment, redelivered bool) (*commandsv1.ReplyEnvelope, error) {
+	key := rf.GetIdempotencyKey()
+	if h.Ledger.DB != nil {
+		if ref, ok, err := h.Ledger.RefundFact(ctx, run.tenant, invoice, key); err != nil {
+			return nil, err
+		} else if ok {
+			return refundedReply(ref), nil
+		}
+	}
+	earlier, err := h.Attempts.RefundsUnder(ctx, run.tenant, invoice, key, run.id)
+	if err != nil {
+		return nil, err
+	}
+	unknown := redelivered // this command's own earlier delivery asked the provider, or was about to
+	for _, r := range earlier {
+		switch {
+		case r.GetPaymentRefunded() != nil:
+			// The ledger row may be what is missing (its write failed): write it now.
+			ref := r.GetPaymentRefunded().GetPspRefundId()
+			h.record(ctx, refundEntry(run, prov, invoice, rf, ref))
+			return refundedReply(ref), nil
+		case r.GetPaymentErrored().GetCode() == CodeRejected: // the provider said no: nothing moved
+		default: // no answer (STARTED), a timeout, or an answer that cannot be read
+			unknown = true
+		}
+	}
+	if unknown {
+		return errored(CodeRefundUnknown, fmt.Sprintf("%s was asked for this refund before and nothing records how it went, so it is not asked again: %s does not dedupe by key and could refund twice. "+
+			"Check the refund at %s; if the customer was not paid back, refund outside Payrudder", prov.Name(), prov.Name(), prov.Name())), nil
+	}
+	return nil, nil
 }
 
 func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1.QueryPaymentStatus) (*commandsv1.ReplyEnvelope, error) {
