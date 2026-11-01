@@ -78,7 +78,12 @@ type DeclinedError struct{ Code string }
 func (e *DeclinedError) Error() string { return "payment declined: " + e.Code }
 
 // TransientError is a failure that may succeed when retried (5xx, connection reset).
-type TransientError struct{ Err error }
+type TransientError struct {
+	Err error
+	// RetryAfter is how long the provider asked callers to wait before trying again (a Retry-After header); zero when it did not say. Nothing in Payrudder
+	// schedules by it yet: payments-worker's delay queues use their own backoff.
+	RetryAfter time.Duration
+}
 
 func (e *TransientError) Error() string { return "transient payment provider error: " + e.Err.Error() }
 func (e *TransientError) Unwrap() error { return e.Err }
@@ -142,7 +147,7 @@ func (m *MockPSP) do(ctx context.Context, method, path, key string, in, out any,
 		_ = json.Unmarshal(raw, &e)
 		return resp.StatusCode, &DeclinedError{Code: e.Error.Code}
 	}
-	if resp.StatusCode >= 500 {
+	if resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests {
 		return resp.StatusCode, &TransientError{Err: fmt.Errorf("psp answered %d", resp.StatusCode)}
 	}
 	if resp.StatusCode >= 400 && (!allowNotFound || resp.StatusCode != http.StatusNotFound) {

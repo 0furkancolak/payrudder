@@ -318,7 +318,7 @@ func TestProviderAPIThroughTheWorker(t *testing.T) {
 		if code, out := do("POST", "/customers/cus_1/portal", ``); code != 200 || out["url"] != "https://portal.example/p" {
 			t.Errorf("portal = %d %v", code, out)
 		}
-		if b := fake.body("POST /customers", 0); b["email"] != "ada@example.com" || b["custom_data"].(map[string]any)["quotify_customer_id"] != "cccccccc-0000-0000-0000-000000000001" {
+		if b := fake.body("POST /customers", 0); b["email"] != "ada@example.com" || b["custom_data"].(map[string]any)["payrudder_customer_id"] != "cccccccc-0000-0000-0000-000000000001" {
 			t.Errorf("customer body = %v", b)
 		}
 		if code, _ := do("POST", "/customers/nobody/portal", ``); code != 404 {

@@ -11,7 +11,7 @@ import (
 // checkoutResponse is the part of the checkout form answer that Payrudder reads.
 type checkoutResponse struct {
 	Status         string `json:"status"`
-	ErrorCode      string `json:"errorCode"`
+	ErrorCode      text   `json:"errorCode"`
 	ErrorMessage   string `json:"errorMessage"`
 	Token          string `json:"token"`
 	PaymentPageURL string `json:"paymentPageUrl"`
