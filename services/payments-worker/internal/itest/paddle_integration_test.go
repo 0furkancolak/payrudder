@@ -65,6 +65,8 @@ func newFakePaddle(t *testing.T) *fakePaddle {
 			_, _ = io.WriteString(w, `{"data":{}}`)
 		case strings.HasSuffix(r.URL.Path, "/charge"):
 			_, _ = io.WriteString(w, `{"data":{"id":"sub_01"}}`)
+		case r.Method == "GET" && r.URL.Path == "/transactions/txn_01": // a refund of an amount reads the transaction first, to tell a full refund from a partial one
+			_, _ = io.WriteString(w, `{"data":{"id":"txn_01","currency_code":"USD","details":{"totals":{"grand_total":"1116"},"line_items":[{"id":"txnitm_01"}]}}}`)
 		case r.URL.Path == "/adjustments":
 			w.WriteHeader(201)
 			_, _ = io.WriteString(w, `{"data":{"id":"adj_01"}}`)
@@ -369,7 +371,7 @@ func TestPaddleThroughTheWorker(t *testing.T) {
 		if err != nil || r.GetPaymentRefunded().GetPspRefundId() != "adj_01" {
 			t.Fatalf("refund = %v, %v", r, err)
 		}
-		if fake.last["transaction_id"] != "txn_01" || fake.last["action"] != "refund" {
+		if fake.last["transaction_id"] != "txn_01" || fake.last["action"] != "refund" || fake.last["type"] != "full" {
 			t.Errorf("adjustment request = %v", fake.last)
 		}
 		body := event("evt_7", "adjustment.updated", "2027-01-06T10:00:00Z", `{"id":"adj_01","action":"refund","status":"approved","transaction_id":"txn_01","currency_code":"USD","totals":{"total":"1116"}}`)
@@ -526,7 +528,7 @@ func TestProviderMigrationThroughTheWorker(t *testing.T) {
 			t.Fatalf("started = %v; no cutover yet", plans.started)
 		}
 		cd, _ := fakeP.last["custom_data"].(map[string]any)
-		if cd["quotify_migration_id"] != migID {
+		if cd["payrudder_migration_id"] != migID {
 			t.Errorf("the checkout does not carry the migration id: %v", fakeP.last)
 		}
 	})

@@ -127,15 +127,19 @@ func TestCharge(t *testing.T) {
 
 func TestChargeFailures(t *testing.T) {
 	req := payments.ChargeRequest{IdempotencyKey: "k", InvoiceID: "i", AmountMinor: 100, Currency: "TRY", PaymentMethod: "ck:ct"}
-	t.Run("a refusal is a decline carrying the error group", func(t *testing.T) {
-		f, c := newFake(t, nil)
-		f.reply = func(string, map[string]any) (int, string) {
-			return 200, `{"status":"failure","errorCode":"10051","errorMessage":"Not sufficient funds","errorGroup":"NOT_SUFFICIENT_FUNDS"}`
-		}
-		_, err := c.Charge(context.Background(), req)
-		var d *payments.DeclinedError
-		if !errors.As(err, &d) || d.Code != "NOT_SUFFICIENT_FUNDS" {
-			t.Fatalf("err = %v", err)
+	t.Run("a refusal is a decline in Payrudder's vocabulary, or carries the error group when iyzico's group has no equivalent", func(t *testing.T) {
+		for body, want := range map[string]string{
+			`{"status":"failure","errorCode":"10051","errorMessage":"Not sufficient funds","errorGroup":"NOT_SUFFICIENT_FUNDS"}`: "insufficient_funds",
+			`{"status":"failure","errorCode":"10057","errorMessage":"restricted","errorGroup":"NOT_PERMITTED_TO_CARDHOLDER"}`:    "NOT_PERMITTED_TO_CARDHOLDER",
+			`{"status":"failure","errorCode":"10999","errorMessage":"new"}`:                                                      "10999",
+		} {
+			f, c := newFake(t, nil)
+			f.reply = func(string, map[string]any) (int, string) { return 200, body }
+			_, err := c.Charge(context.Background(), req)
+			var d *payments.DeclinedError
+			if !errors.As(err, &d) || d.Code != want {
+				t.Errorf("%s: err = %v, want a decline %q", body, err, want)
+			}
 		}
 	})
 	t.Run("a configured system error code is retried", func(t *testing.T) {
@@ -383,5 +387,232 @@ func TestConfirmAcceptsAPaymentOfAHostedPageKey(t *testing.T) {
 		if _, ok := invoiceOfKey(key); ok {
 			t.Errorf("%q is not a key of a charge", key)
 		}
+	}
+}
+
+func chargeWith(t *testing.T, body string, settings func(*Settings)) error {
+	t.Helper()
+	f, c := newFake(t, settings)
+	f.reply = func(string, map[string]any) (int, string) { return 200, body }
+	_, err := c.Charge(context.Background(), payments.ChargeRequest{IdempotencyKey: "k", InvoiceID: "i", AmountMinor: 100, Currency: "TRY", PaymentMethod: "ck:ct"})
+	return err
+}
+
+// iyzico's fraud filters: "ship only when the value is 1; for 0, wait for notification" (create-payment, retrieve, CF-Retrieve; read 2026-11-02).
+func TestAPaymentUnderFraudReviewIsNotPaid(t *testing.T) {
+	var p *payments.PendingError
+	var d *payments.DeclinedError
+	if err := chargeWith(t, `{"status":"success","paymentId":"9","fraudStatus":0}`, nil); !errors.As(err, &p) || p.Ref != "9" {
+		t.Errorf("fraudStatus 0 = %v; want a pending payment, not a success", err)
+	}
+	if err := chargeWith(t, `{"status":"success","paymentId":"9","fraudStatus":-1}`, nil); !errors.As(err, &d) || d.Code != "fraudulent" {
+		t.Errorf("fraudStatus -1 = %v; want a decline", err)
+	}
+	for _, body := range []string{`{"status":"success","paymentId":"9","fraudStatus":1}`, `{"status":"success","paymentId":"9"}`} {
+		if err := chargeWith(t, body, nil); err != nil {
+			t.Errorf("%s = %v; want a paid charge", body, err)
+		}
+	}
+
+	// A lookup says the same.
+	for body, check := range map[string]func(payments.StatusResult, error) bool{
+		`{"status":"success","paymentId":"1","paymentStatus":"SUCCESS","fraudStatus":0}`: func(_ payments.StatusResult, err error) bool {
+			var p *payments.PendingError
+			return errors.As(err, &p)
+		},
+		`{"status":"success","paymentId":"1","paymentStatus":"SUCCESS","fraudStatus":-1}`: func(r payments.StatusResult, err error) bool {
+			return err == nil && r.State == payments.StateDeclined && r.DeclineCode == "fraudulent"
+		},
+		`{"status":"success","paymentId":"1","paymentStatus":"SUCCESS","fraudStatus":1}`: func(r payments.StatusResult, err error) bool {
+			return err == nil && r.State == payments.StateSucceeded
+		},
+	} {
+		f, c := newFake(t, nil)
+		f.reply = func(string, map[string]any) (int, string) { return 200, body }
+		if got, err := c.Status(context.Background(), "k"); !check(got, err) {
+			t.Errorf("Status %s = %+v, %v", body, got, err)
+		}
+	}
+}
+
+func TestErrorClassification(t *testing.T) {
+	kind := func(body string) string {
+		err := chargeWith(t, body, nil)
+		var tr *payments.TransientError
+		var d *payments.DeclinedError
+		var e *Error
+		switch {
+		case errors.As(err, &tr):
+			return "transient"
+		case errors.As(err, &d):
+			return "decline " + d.Code
+		case errors.As(err, &e):
+			return "request error " + e.Code
+		}
+		return "other"
+	}
+	for body, want := range map[string]string{
+		// the limiter's own example has the code as a number
+		`{"status":"failure","errorCode":50000,"errorMessage":"Request Limit Exceeded","locale":"en"}`: "transient",
+		// the bank could not answer: "please try again later"
+		`{"status":"failure","errorCode":"10214","errorGroup":"COMMUNICATION_OR_SYSTEM_ERROR"}`: "transient",
+		`{"status":"failure","errorCode":"10219","errorGroup":"REQUEST_TIMEOUT"}`:               "transient",
+		`{"status":"failure","errorCode":"1","errorMessage":"System error occurred"}`:           "transient",
+		// the table marks every request error "retry: true", which must not make a wrong signature or a missing field retried as if it were a flaky bank
+		`{"status":"failure","errorCode":"1000","errorMessage":"Invalid signature","retryable":true}`:        "request error 1000",
+		`{"status":"failure","errorCode":"5111","errorMessage":"CardUserKey must be sent","retryable":true}`: "request error 5111",
+		`{"status":"failure","errorCode":"12","errorMessage":"Invalid card number","retryable":true}`:        "request error 12",
+		// the card: the issuer's reasons in Payrudder's words
+		`{"status":"failure","errorCode":"10054","errorGroup":"EXPIRED_CARD"}`:                                "decline expired_card",
+		`{"status":"failure","errorCode":"10217","errorGroup":"DEBIT_CARDS_REQUIRES_3DS"}`:                    "decline authentication_required",
+		`{"status":"failure","errorCode":"6001","errorMessage":"Payment request has not passed Fraud check"}`: "decline fraudulent",
+		// a code nobody documented: retryable decides, else it is a decline as iyzico spells it
+		`{"status":"failure","errorCode":"77777","retryable":true}`: "transient",
+		`{"status":"failure","errorCode":"77777"}`:                  "decline 77777",
+	} {
+		if got := kind(body); got != want {
+			t.Errorf("%s = %s, want %s", body, got, want)
+		}
+	}
+}
+
+func TestHealthCheckAsksForAnEightDigitBINAndReadsTheAnswer(t *testing.T) {
+	check := func(body string) error {
+		f, c := newFake(t, nil)
+		f.reply = func(path string, in map[string]any) (int, string) {
+			if bin, _ := in["binNumber"].(string); len(bin) != 8 {
+				t.Errorf("binNumber = %q; the BIN service takes 8 digits", bin)
+			}
+			return 200, body
+		}
+		return c.CheckHealth(context.Background())
+	}
+	if err := check(`{"status":"success","binNumber":"55287900"}`); err != nil {
+		t.Errorf("a found BIN = %v", err)
+	}
+	// The request was accepted: the BIN just is not known to iyzico. That says nothing against the credentials.
+	for _, code := range []string{"5066", "10213"} {
+		if err := check(`{"status":"failure","errorCode":"` + code + `","errorMessage":"Bin is not found"}`); err != nil {
+			t.Errorf("BIN not found (%s) = %v; the credentials worked", code, err)
+		}
+	}
+	var e *Error
+	if err := check(`{"status":"failure","errorCode":"1000","errorMessage":"Invalid signature"}`); !errors.As(err, &e) || e.Code != "1000" {
+		t.Errorf("a wrong signature = %v", err)
+	}
+	// The BIN service is limited to 50 a minute: over it is "could not be asked", not "bad credentials".
+	f, c := newFake(t, nil)
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"failure","errorCode":50000,"errorMessage":"Request Limit Exceeded"}`
+	}
+	if _, err := payments.Check(context.Background(), c); !errors.Is(err, payments.ErrUnreachable) {
+		t.Errorf("over the limit = %v; want ErrUnreachable", err)
+	}
+	if _, err := payments.Check(context.Background(), func() payments.Provider {
+		f2, c2 := newFake(t, nil)
+		f2.reply = func(string, map[string]any) (int, string) { return 200, `{"status":"failure","errorCode":"1000"}` }
+		return c2
+	}()); !errors.Is(err, payments.ErrBadCredentials) {
+		t.Errorf("a wrong signature = %v; want ErrBadCredentials", err)
+	}
+}
+
+// The checkout form's notification names a token and an iyziPaymentId and has no paymentId.
+const hostedNotification = `{"iyziEventTime":1700000000,"iyziEventType":"CHECKOUT_FORM_AUTH","iyziReferenceCode":"ref-h","iyziPaymentId":987654321,"token":"tok-1","paymentConversationId":"link:inv-1:1","merchantId":"m","status":"SUCCESS"}`
+
+func TestAHostedPageNotificationIsParsedAndConfirmedByToken(t *testing.T) {
+	e, err := ParseWebhook([]byte(hostedNotification))
+	if err != nil || !e.Hosted() || e.Token != "tok-1" || e.ID() != "987654321" || e.Reference != "ref-h" {
+		t.Fatalf("event = %+v, %v", e, err)
+	}
+	ref, err := ParseNotification([]byte(hostedNotification), nil)
+	if err != nil || ref.EventID != "ref-h" || ref.IdempotencyKey != "link:inv-1:1" {
+		t.Fatalf("ref = %+v, %v", ref, err)
+	}
+	if _, err := ParseWebhook([]byte(`{"iyziReferenceCode":"r","status":"SUCCESS"}`)); err == nil {
+		t.Error("neither a paymentId nor a token")
+	}
+
+	f, c := newFake(t, nil)
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","paymentStatus":"SUCCESS","paymentId":"987654321","basketId":"inv-1","token":"tok-1","fraudStatus":1}`
+	}
+	n, err := c.ConfirmNotification(context.Background(), []byte(hostedNotification), nil)
+	if err != nil || n.State != payments.StateSucceeded || n.ProviderRef != "987654321" || n.Ref.IdempotencyKey != "link:inv-1:1" || n.Ref.EventID != "ref-h" {
+		t.Fatalf("ConfirmNotification = %+v, %v", n, err)
+	}
+	if f.paths[0] != "/payment/iyzipos/checkoutform/auth/ecom/detail" || f.last["token"] != "tok-1" || f.last["paymentId"] != nil {
+		t.Errorf("the retrieve call = %s %v; want CF-Retrieve by token", f.paths[0], f.last)
+	}
+
+	// What iyzico answers decides, not the body: a payment of another invoice, or of another token, is not believed.
+	for name, reply := range map[string]string{
+		"another invoice": `{"status":"success","paymentStatus":"SUCCESS","paymentId":"1","basketId":"inv-2","token":"tok-1"}`,
+		"another token":   `{"status":"success","paymentStatus":"SUCCESS","paymentId":"1","basketId":"inv-1","token":"tok-other"}`,
+	} {
+		f.reply = func(string, map[string]any) (int, string) { return 200, reply }
+		if _, err := c.ConfirmNotification(context.Background(), []byte(hostedNotification), nil); !errors.Is(err, payments.ErrUnverified) {
+			t.Errorf("%s: %v, want ErrUnverified", name, err)
+		}
+	}
+	// A hosted payment held for review is not paid yet.
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","paymentStatus":"SUCCESS","paymentId":"1","basketId":"inv-1","token":"tok-1","fraudStatus":0}`
+	}
+	var p *payments.PendingError
+	if _, err := c.ConfirmNotification(context.Background(), []byte(hostedNotification), nil); !errors.As(err, &p) {
+		t.Errorf("fraudStatus 0 on a hosted payment = %v; want pending", err)
+	}
+}
+
+// The signature is the hex HMAC-SHA256, under the secret key, of the secret key + iyziEventType + paymentId + paymentConversationId + status (direct format) or
+// secret key + iyziEventType + iyziPaymentId + token + paymentConversationId + status (hosted format), as docs.iyzico.com/en/advanced/webhook spells it.
+func TestNotificationSignatureV3(t *testing.T) {
+	sign := func(msg string) http.Header {
+		mac := hmac.New(sha256.New, []byte("sec"))
+		mac.Write([]byte(msg))
+		h := http.Header{}
+		h.Set("X-IYZ-SIGNATURE-V3", hex.EncodeToString(mac.Sum(nil)))
+		return h
+	}
+	direct := `{"iyziEventTime":1700000000,"iyziEventType":"API_AUTH","iyziReferenceCode":"ref-1","paymentId":23456,"paymentConversationId":"inv-1:charge:0","status":"SUCCESS"}`
+	f, c := newFake(t, nil)
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","paymentId":"23456","paymentStatus":"SUCCESS","basketId":"inv-1","token":"tok-1"}`
+	}
+	good := map[string]struct {
+		body string
+		h    http.Header
+	}{
+		"direct": {direct, sign("secAPI_AUTH23456inv-1:charge:0SUCCESS")},
+		"hosted": {hostedNotification, sign("secCHECKOUT_FORM_AUTH987654321tok-1link:inv-1:1SUCCESS")},
+	}
+	f.reply = func(string, map[string]any) (int, string) {
+		return 200, `{"status":"success","paymentId":"23456","paymentStatus":"SUCCESS","basketId":"inv-1","token":"tok-1"}`
+	}
+	for name, tc := range good {
+		if _, err := c.ConfirmNotification(context.Background(), []byte(tc.body), tc.h); err != nil {
+			t.Errorf("%s with a valid signature: %v", name, err)
+		}
+		// the same signature over another status is a forged notification
+		tampered := strings.Replace(tc.body, `"SUCCESS"`, `"FAILURE"`, 1)
+		if _, err := c.ConfirmNotification(context.Background(), []byte(tampered), tc.h); !errors.Is(err, payments.ErrUnverified) {
+			t.Errorf("%s with a signature that does not match: %v, want ErrUnverified", name, err)
+		}
+	}
+	// No header: fine while the account has not turned the feature on, refused once it says iyzico signs.
+	if _, err := c.ConfirmNotification(context.Background(), []byte(direct), nil); err != nil {
+		t.Errorf("no header, signature not required: %v", err)
+	}
+	f2, strict := newFake(t, func(s *Settings) { s.RequireWebhookSignature = true })
+	f2.reply = f.reply
+	if _, err := strict.ConfirmNotification(context.Background(), []byte(direct), nil); !errors.Is(err, payments.ErrUnverified) {
+		t.Errorf("no header, signature required: %v, want ErrUnverified", err)
+	}
+	if _, err := strict.ConfirmNotification(context.Background(), []byte(direct), good["direct"].h); err != nil {
+		t.Errorf("signed, signature required: %v", err)
+	}
+	if len(f2.paths) != 1 {
+		t.Errorf("%d lookups; a notification refused for its signature must not reach iyzico", len(f2.paths))
 	}
 }

@@ -115,7 +115,7 @@ func TestChargeErrors(t *testing.T) {
 func TestRefundAndCheckoutAndStatus(t *testing.T) {
 	f, c := newFake(t, nil)
 	f.reply = func() (int, string) { return 201, `{"data":{"id":"adj_01"}}` }
-	res, err := c.Refund(context.Background(), payments.RefundRequest{IdempotencyKey: "r-1", ChargeID: "txn_01", AmountMinor: 1116, Currency: "USD"})
+	res, err := c.Refund(context.Background(), payments.RefundRequest{IdempotencyKey: "r-1", ChargeID: "txn_01", Currency: "USD"})
 	if err != nil || res.RefundID != "adj_01" {
 		t.Fatalf("Refund = %+v, %v", res, err)
 	}
@@ -135,7 +135,7 @@ func TestRefundAndCheckoutAndStatus(t *testing.T) {
 	}
 	item := f.body["items"].([]any)[0].(map[string]any)
 	if f.path != "/transactions" || item["price_id"] != "pri_01" || item["quantity"].(float64) != 2 ||
-		f.body["custom_data"].(map[string]any)["quotify_subscription_id"] != "sub-q-1" || f.body["collection_mode"] != "automatic" {
+		f.body["custom_data"].(map[string]any)["payrudder_subscription_id"] != "sub-q-1" || f.body["collection_mode"] != "automatic" {
 		t.Errorf("checkout request %s %v", f.path, f.body)
 	}
 	f.reply = func() (int, string) { return 201, `{"data":{"id":"txn_03","checkout":null}}` }
@@ -225,8 +225,9 @@ func TestNotifications(t *testing.T) {
 	t.Run("a failed payment is a decline with Paddle's reason", func(t *testing.T) {
 		n := confirm(t, c, `{"event_id":"evt_3","event_type":"transaction.payment_failed","data":{"id":"txn_03","currency_code":"USD",
 			"items":[{"price":{"custom_data":{"payrudder_key":"k"}}}],"details":{"totals":{"grand_total":"500"}},
-			"payments":[{"status":"error","error_code":"declined"},{"status":"error","error_code":"insufficient_funds"}]}}`)
-		if n.State != payments.StateDeclined || n.DeclineCode != "insufficient_funds" || n.Ref.IdempotencyKey != "k" {
+			"payments":[{"status":"error","error_code":"not_enough_balance"},{"status":"error","error_code":"declined"}]}}`)
+		// payments[] is sorted newest first (get-transaction, read 2026-11-02): the reason of this failure is the first, not the last.
+		if n.State != payments.StateDeclined || n.DeclineCode != "not_enough_balance" || n.Ref.IdempotencyKey != "k" {
 			t.Fatalf("notification = %+v", n)
 		}
 	})
@@ -291,7 +292,7 @@ func TestCancelSubscriptionAndMigrationData(t *testing.T) {
 	if _, err := c.CreateCheckout(context.Background(), payments.CheckoutRequest{PriceRef: "pri_01", PayrudderMigrationID: "mig-1"}); err != nil {
 		t.Fatal(err)
 	}
-	if f.body["custom_data"].(map[string]any)["quotify_migration_id"] != "mig-1" {
+	if cd := f.body["custom_data"].(map[string]any); cd["payrudder_migration_id"] != "mig-1" || cd["quotify_migration_id"] != nil {
 		t.Errorf("checkout custom data = %v", f.body["custom_data"])
 	}
 	n := confirm(t, c, `{"event_id":"evt_m","event_type":"subscription.created","data":{"id":"sub_new","status":"active","custom_data":{"quotify_migration_id":"mig-1"}}}`)
@@ -353,5 +354,130 @@ func TestRefusalKeepsFieldsAndRequestID(t *testing.T) {
 	}
 	if msg := err.Error(); !strings.Contains(msg, "items[0].quantity") || !strings.Contains(msg, "req_123") {
 		t.Errorf("the message must carry the fields and the request id: %q", msg)
+	}
+}
+
+func TestRefundAmounts(t *testing.T) {
+	txn := func(currency string, items ...string) string {
+		li := make([]string, len(items))
+		for i, id := range items {
+			li[i] = `{"id":"` + id + `"}`
+		}
+		return `{"data":{"id":"txn_01","currency_code":"` + currency + `","details":{"totals":{"grand_total":"1116"},"line_items":[` + strings.Join(li, ",") + `]}}}`
+	}
+	refund := func(c *Client, amount int64, currency string) (payments.RefundResult, error) {
+		return c.Refund(context.Background(), payments.RefundRequest{IdempotencyKey: "r", ChargeID: "txn_01", AmountMinor: amount, Currency: currency})
+	}
+	t.Run("the whole total is a full adjustment", func(t *testing.T) {
+		rt, c := newRouter(t, map[string]string{"GET /transactions/txn_01": txn("USD", "txnitm_1"), "POST /adjustments": `{"data":{"id":"adj_01"}}`})
+		if _, err := refund(c, 1116, "USD"); err != nil {
+			t.Fatal(err)
+		}
+		if b := rt.find("POST", "/adjustments")[0].body; b["type"] != "full" || b["items"] != nil {
+			t.Errorf("adjustment = %v", b)
+		}
+	})
+	t.Run("less than the total, one line item: a partial adjustment of that item", func(t *testing.T) {
+		rt, c := newRouter(t, map[string]string{"GET /transactions/txn_01": txn("USD", "txnitm_1"), "POST /adjustments": `{"data":{"id":"adj_02"}}`})
+		res, err := refund(c, 400, "USD")
+		if err != nil || res.RefundID != "adj_02" {
+			t.Fatalf("refund = %+v, %v", res, err)
+		}
+		b := rt.find("POST", "/adjustments")[0].body
+		item := b["items"].([]any)[0].(map[string]any)
+		if b["action"] != "refund" || b["type"] != "partial" || b["transaction_id"] != "txn_01" || item["item_id"] != "txnitm_1" || item["type"] != "partial" || item["amount"] != "400" {
+			t.Errorf("adjustment = %v", b)
+		}
+	})
+	t.Run("refused without asking Paddle to refund anything", func(t *testing.T) {
+		for name, tc := range map[string]struct {
+			txn      string
+			amount   int64
+			currency string
+		}{
+			"several line items: the amount cannot be split": {txn("USD", "txnitm_1", "txnitm_2"), 400, "USD"},
+			"more than the transaction":                      {txn("USD", "txnitm_1"), 2000, "USD"},
+			"another currency":                               {txn("EUR", "txnitm_1"), 400, "USD"},
+		} {
+			rt, c := newRouter(t, map[string]string{"GET /transactions/txn_01": tc.txn, "POST /adjustments": `{"data":{"id":"adj_x"}}`})
+			if _, err := refund(c, tc.amount, tc.currency); err == nil {
+				t.Errorf("%s: refunded", name)
+			}
+			if len(rt.find("POST", "/adjustments")) != 0 {
+				t.Errorf("%s: an adjustment was created", name)
+			}
+		}
+		_, c := newRouter(t, map[string]string{"GET /transactions/txn_01": txn("USD", "txnitm_1", "txnitm_2")})
+		if _, err := refund(c, 400, "USD"); !errors.Is(err, payments.ErrUnsupported) {
+			t.Errorf("several line items: %v; want ErrUnsupported", err)
+		}
+	})
+}
+
+func TestRateLimitKeepsRetryAfter(t *testing.T) {
+	f, c := newFake(t, nil)
+	f.reply = func() (int, string) {
+		return 429, `{"error":{"type":"request_error","code":"subscription_immediate_charge_hour_limit_exceeded","detail":"too many"}}`
+	}
+	var tr *payments.TransientError
+	_, err := c.Charge(context.Background(), payments.ChargeRequest{IdempotencyKey: "k", InvoiceID: "i", AmountMinor: 100, Currency: "USD", PaymentMethod: "sub_01"})
+	if !errors.As(err, &tr) || tr.RetryAfter != 0 || !strings.Contains(err.Error(), "subscription_immediate_charge_hour_limit_exceeded") {
+		t.Fatalf("a 429 without Retry-After = %v; want a transient error that names the code", err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Retry-After", "42")
+		w.WriteHeader(429)
+		_, _ = io.WriteString(w, `{"error":{"type":"api_error","code":"too_many_requests"}}`)
+	}))
+	defer srv.Close()
+	limited, err := New(Settings{APIKey: "pdl_key", BaseURL: srv.URL, WebhookSecret: "w", UsageProductID: "pro_u"}, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := limited.CheckHealth(context.Background()); !errors.As(err, &tr) || tr.RetryAfter != 42*time.Second {
+		t.Fatalf("a 429 with Retry-After: 42 = %v (%+v)", err, tr)
+	}
+	for _, h := range []string{"", "soon", "-3", "0"} {
+		if got := retryAfter(http.Header{"Retry-After": {h}}); got != 0 {
+			t.Errorf("Retry-After %q = %s, want not said", h, got)
+		}
+	}
+}
+
+func TestContentTypeOnlyWithABody(t *testing.T) {
+	var got []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = append(got, r.Method+":"+r.Header.Get("Content-Type"))
+		_, _ = io.WriteString(w, `{"data":[]}`)
+	}))
+	defer srv.Close()
+	c, _ := New(Settings{APIKey: "pdl_key", BaseURL: srv.URL, WebhookSecret: "w", UsageProductID: "pro_u"}, 0)
+	_ = c.CheckHealth(context.Background())
+	_ = c.do(context.Background(), http.MethodPost, "/x", map[string]string{"a": "b"}, nil)
+	if len(got) != 2 || got[0] != "GET:" || got[1] != "POST:application/json" {
+		t.Errorf("requests = %v", got)
+	}
+}
+
+func TestSubscriptionNotificationReadsBothCustomDataSpellingsAndAScheduledChange(t *testing.T) {
+	_, c := newFake(t, nil)
+	now := confirm(t, c, `{"event_id":"e1","event_type":"subscription.updated","data":{"id":"sub_1","status":"active",
+		"custom_data":{"payrudder_subscription_id":"new-1","quotify_subscription_id":"old-1","payrudder_migration_id":"m-new"},
+		"scheduled_change":{"action":"cancel","effective_at":"2027-03-01T00:00:00Z","resume_at":null}}}`)
+	if s := now.Subscription; s == nil || s.PayrudderSubscriptionID != "new-1" || s.PayrudderMigrationID != "m-new" {
+		t.Fatalf("the current spelling must win: %+v", now.Subscription)
+	}
+	sc := now.Subscription.ScheduledChange
+	if sc == nil || sc.Action != "cancel" || sc.EffectiveAt.Year() != 2027 || sc.ResumeAt != nil {
+		t.Errorf("a cancellation at the end of the period is still status active: scheduled change = %+v", sc)
+	}
+	old := confirm(t, c, `{"event_id":"e2","event_type":"subscription.created","data":{"id":"sub_2","status":"active","custom_data":{"quotify_subscription_id":"old-2","quotify_migration_id":"m-old"}}}`)
+	if s := old.Subscription; s.PayrudderSubscriptionID != "old-2" || s.PayrudderMigrationID != "m-old" || s.ScheduledChange != nil {
+		t.Errorf("an object from before the rename is still read: %+v", s)
+	}
+	pause := confirm(t, c, `{"event_id":"e3","event_type":"subscription.updated","data":{"id":"sub_3","status":"active",
+		"scheduled_change":{"action":"pause","effective_at":"2027-03-01T00:00:00Z","resume_at":"2027-04-01T00:00:00Z"}}}`)
+	if sc := pause.Subscription.ScheduledChange; sc == nil || sc.Action != "pause" || sc.ResumeAt == nil || sc.ResumeAt.Month() != 4 {
+		t.Errorf("pause = %+v", sc)
 	}
 }

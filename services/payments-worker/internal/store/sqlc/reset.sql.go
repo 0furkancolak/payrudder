@@ -11,6 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
+const resetBegin = `-- name: ResetBegin :exec
+SELECT set_config('payrudder.sandbox_reset', $1, true)
+`
+
+func (q *Queries) ResetBegin(ctx context.Context, setConfig string) error {
+	_, err := q.db.Exec(ctx, resetBegin, setConfig)
+	return err
+}
+
 const resetEInvoiceIssuances = `-- name: ResetEInvoiceIssuances :execrows
 DELETE FROM einvoice_issuances WHERE tenant_id = $1
 `
@@ -21,6 +30,23 @@ func (q *Queries) ResetEInvoiceIssuances(ctx context.Context, tenantID uuid.UUID
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const resetLiveRowCount = `-- name: ResetLiveRowCount :one
+SELECT count(*) FROM (
+  SELECT 1 FROM payment_ledger l WHERE l.tenant_id = $1 AND l.environment <> 'sandbox'
+  UNION ALL
+  SELECT 1 FROM payment_attempts a WHERE a.tenant_id = $1 AND a.environment <> 'sandbox'
+) live
+`
+
+// The ledger and the receipts refuse every DELETE (migration 00002) unless the transaction names the tenant as being reset. ResetLiveRowCount is asked first, before
+// ResetBegin: the caller's word that a tenant is a sandbox is not the database's, and no row of the live environment is ever deleted.
+func (q *Queries) ResetLiveRowCount(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, resetLiveRowCount, tenantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const resetManualReceipts = `-- name: ResetManualReceipts :execrows

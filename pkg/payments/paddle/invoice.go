@@ -11,7 +11,9 @@ import (
 
 // CreateInvoiceCheckout starts a hosted checkout for one invoice: a transaction with a non-catalogue item for the invoice total, tagged with the key
 // of the charge (custom_data.payrudder_key), which ConfirmNotification reads back from transaction.completed.
-// UNVERIFIED: that Paddle accepts a non-catalogue price object in exactly this shape; the reference describes it, no sandbox has run it.
+// The non-catalogue price with its own product object is the documented shape (developer.paddle.com/api-reference/transactions/create-transaction, read
+// 2026-11-02: price.description and unit_price, product.name and tax_category). UNVERIFIED: that the "standard" tax category is enabled on the merchant's Paddle
+// account (the reference says a category must be), and that the account has a default payment link, without which the transaction has no checkout url; no sandbox has run it.
 func (c *Client) CreateInvoiceCheckout(ctx context.Context, r payments.CheckoutInvoiceRequest) (payments.Checkout, error) {
 	if r.IdempotencyKey == "" || r.AmountMinor <= 0 || r.Currency == "" {
 		return payments.Checkout{}, errors.New("paddle: an invoice checkout needs a key, an amount and a currency")

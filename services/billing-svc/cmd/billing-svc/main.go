@@ -138,6 +138,10 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer appPool.Close()
 	defer systemPool.Close()
+	// A table with a tenant_id and no forced row-level security is a deployment that must not serve (docs/plans/22 G11).
+	if err := pgxx.VerifyForcedRLS(ctx, systemPool, migrations.RLSExempt); err != nil {
+		return fmt.Errorf("row-level security: %w", err)
+	}
 
 	be, err := dialBackends(cfg)
 	if err != nil {

@@ -104,3 +104,27 @@ FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 WHERE n.nspname = 'public' AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')
 UNION ALL
 SELECT 'ext ' || extname FROM pg_extension WHERE extname <> 'plpgsql'`
+
+// ForcedRLS checks a migrated database the way a service checks itself at startup (pgxx.VerifyForcedRLS), and that the service's list of exempt tables is exactly the
+// tables with a tenant_id that have no row-level security: a table that gained RLS must leave the list, or the exemption would hide a later loss of it.
+func ForcedRLS(t testing.TB, q pgxx.Querier, exempt []string) {
+	t.Helper()
+	ctx := Ctx(t)
+	if err := pgxx.VerifyForcedRLS(ctx, q, exempt); err != nil {
+		t.Fatalf("a table with a tenant_id lacks forced row-level security (secure it, or exempt it with its reason): %v", err)
+	}
+	problems, err := pgxx.RLSProblems(ctx, q, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, 0, len(problems))
+	for table := range problems {
+		got = append(got, table)
+	}
+	want := slices.Clone(exempt)
+	slices.Sort(got)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Errorf("tables without row-level security = %v, the exempt list says %v", got, want)
+	}
+}

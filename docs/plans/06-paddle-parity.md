@@ -1,5 +1,17 @@
 # 06 — Paddle: full compatibility, nothing deprecated
 
+## Status (2026-11-02)
+
+**Documentation-closable findings closed; nothing verified against Paddle.** `docs/paddle-compatibility-matrix.md` has the per-finding table ("Status of the findings"), written from the raw markdown pages re-read on 2026-11-02. Summary:
+
+| | |
+|---|---|
+| Closed | F3 (a duplicate customer: 409 `customer_already_exists` names the owner), F4 (a 429 keeps its code and `Retry-After`, surfaced as `TransientError.RetryAfter`), F6 (invoice link expires in an hour, documented, never stored), F7 (#270), F8 (`payments[]` is newest first: the decline code was the oldest attempt's), F9 (`scheduled_change` carried on `SubscriptionEvent`); `quotify_*` custom_data keys renamed to `payrudder_*` and still read; a pagination helper for the list calls; a partial refund is a partial adjustment on a one-line-item transaction and refused otherwise (it used to refund the whole transaction whatever the amount); the preview credit sign; unclear points 2, 9, 12, 13, 14. |
+| Still UNVERIFIED (docs do not settle it) | F1 (does the non-catalogue price's `custom_data` reach `transaction.completed`), F5 (no documented way to defer an item change to the period end; the refusal stays), whether a charge works on paused/trialing/canceled subscriptions, whether `ts` is regenerated on a webhook retry, the permission `GET /event-types` needs, which countries need a postal code, idempotency headers. |
+| Needs a Paddle sandbox account | F1, F2 (how long an immediate charge takes), the `standard` tax category on the account, the simulator (scriptable by API, needs a destination and a public URL), the consent change of 2025-09-16, every end-to-end flow of "Work" 2 and 3. |
+
+Defaults chosen (not agreed): a partial refund across several line items is refused, not split; `Retry-After` is surfaced but the worker's delay queues do not read it yet (its handler is out of this change); `ScheduledChange` is surfaced but nothing stores it yet. Added: a skipped `TestSandbox` (health check and a paged list; the package comment had claimed one existed) and the conformance suite (plan 08, `docs/payment-provider-contract.md`) run against a fake of Paddle.
+
 ## The request
 List 1 (8) and list 2 (4): be **exactly compatible with Paddle**, and do **not implement deprecated features**.
 
@@ -7,7 +19,7 @@ List 1 (8) and list 2 (4): be **exactly compatible with Paddle**, and do **not i
 `pkg/payments/paddle` (Paddle Billing, API version `Paddle-Version: 1`): hosted checkout (transactions), subscription charge for usage invoices as non-catalogue prices (`PendingError`, outcome by notification), full-refund adjustments, catalogue sync (products/prices), customer/address/business, portal link, pause/resume/cancel, plan change preview/apply, discounts, invoice PDF URL, `Paddle-Signature` webhook verification (`ts;h1`, tolerance 300 s, several `h1`), mode by key prefix (`pdl_live_`, `pdl_sdbx_`) and host. Written from the public docs and the Go SDK types; tested against fixtures. Several behaviours are marked UNVERIFIED in the code.
 
 ## Gaps
-- **No review against Paddle's current documentation and changelog.** Which endpoints, fields and events the adapter uses were never listed and checked for deprecation or replacement (Paddle Classic is gone; within Billing, fields and events change). The code was never run against a Paddle sandbox (`PADDLE_SANDBOX_API_KEY` test is skipped).
+- **No review against Paddle's current documentation and changelog.** Which endpoints, fields and events the adapter uses were never listed and checked for deprecation or replacement (Paddle Classic is gone; within Billing, fields and events change). The code was never run against a Paddle sandbox (`TestSandbox`, added 2026-11-02, is skipped without `PADDLE_SANDBOX_API_KEY`).
 - Unchecked specifics: non-catalogue price shape on `/subscriptions/{id}/charge` and on `/transactions`; `on_payment_failure` semantics; full vs partial refunds (adjustments of type `partial` with `items`); adjustment approval flow; handling of `transaction.updated`, `transaction.billed`, `transaction.past_due`, `subscription.past_due`, `subscription.canceled` with scheduled changes; idempotency (Paddle has no idempotency key for these calls?); pagination (`per_page`, cursor) when listing; rate limits and `Retry-After`; webhook retry window and ordering; simulating events (Paddle's notification simulator).
 - Tax: Paddle is merchant of record (it calculates and remits), so our own tax lines on a Paddle-sold subscription may conflict; the interplay with 05 is undecided.
 - The adapter returns what it can; capabilities (`OwnsRenewal`, `OwnsDunning`, `SendsOwnReceipts`) drive our behaviour: each claim needs a test against the real flow.
@@ -42,3 +54,4 @@ Paddle changes the API under us; a scheduled job that compares our matrix with t
 - Research steps 1-2 are partly done: `docs/paddle-compatibility-matrix.md` exists (F1-F9 plus a list of unclear points) and #270 fixed the first findings. Remaining: close F1-F9 and the unclear list with fixtures, read the raw documentation (the matrix was read through fetch summaries), and add pagination helpers.
 - `quotify_*` custom_data keys remain (`pkg/payments/paddle/api.go`): rename to `payrudder_*` while still reading both. Refund is `type:"full"` only; a partial credit note on a Paddle invoice must be refused or routed to an adjustment (documented, tested).
 - Surface `Retry-After` from rate limits. Live behaviour stays UNVERIFIED until a sandbox exists.
+- **Done 2026-11-02** (see Status): the first four bullets above except the sandbox-dependent ones, the key rename, pagination, `Retry-After`, partial refunds. Left: the recorded sandbox responses, the sandbox transcript, the nightly sandbox job, the Paddle changelog comparison job (Risks).

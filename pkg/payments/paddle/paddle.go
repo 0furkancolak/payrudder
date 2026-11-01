@@ -6,11 +6,11 @@
 //   - CreateCheckout: a hosted page where the customer subscribes (a transaction for a catalogue price, tied to our subscription by custom data);
 //   - Charge: a one-time charge on the customer's Paddle subscription (Payrudder's usage invoice), as a non-catalogue price. Paddle settles it asynchronously, so
 //     Charge reports payments.PendingError and the outcome arrives as a notification;
-//   - Refund: a full refund adjustment of a transaction;
+//   - Refund: a refund adjustment of a transaction: a full one, or a partial one on a transaction with a single line item (more than one line item is refused);
 //   - ConfirmNotification: verifies the Paddle-Signature of a webhook and turns the event into payments.Notification.
 //
 // It was written from Paddle's public documentation and its Go SDK's types, and tested against fixtures. Behaviour the documentation does
-// not settle is marked UNVERIFIED; the sandbox test is skipped unless PADDLE_SANDBOX_API_KEY is set.
+// not settle is marked UNVERIFIED; the sandbox test (health check and a paged list only, never run) is skipped unless PADDLE_SANDBOX_API_KEY is set.
 package paddle
 
 import (
@@ -163,6 +163,11 @@ type apiError struct {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, in, out any) error {
+	return c.doWith(ctx, method, path, in, out, nil)
+}
+
+// doWith is do with extra request headers (a list call asks Paddle to skip its count query).
+func (c *Client) doWith(ctx context.Context, method, path string, in, out any, header map[string]string) error {
 	var body io.Reader
 	if in != nil {
 		b, err := json.Marshal(in)
@@ -176,8 +181,13 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.s.APIKey)
-	req.Header.Set("Content-Type", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	req.Header.Set("Paddle-Version", "1")
+	for k, v := range header {
+		req.Header.Set(k, v)
+	}
 	resp, err := c.http.Do(req)
 	if err != nil {
 		var ne net.Error
@@ -188,12 +198,18 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	var e apiError
+	if resp.StatusCode >= 400 {
+		_ = json.Unmarshal(raw, &e)
+	}
 	switch {
-	case resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests:
+	case resp.StatusCode == http.StatusTooManyRequests:
+		// too_many_requests carries Retry-After, in seconds (developer.paddle.com/api-reference/about/rate-limiting, read 2026-11-02). The two immediate-charge limits
+		// (subscription_immediate_charge_hour_limit_exceeded, _24_hour_) are 429s too and cannot succeed before the next hour or day; the code is kept in the message.
+		return &payments.TransientError{Err: fmt.Errorf("paddle answered 429 %s", e.Error.Code), RetryAfter: retryAfter(resp.Header)}
+	case resp.StatusCode >= 500:
 		return &payments.TransientError{Err: fmt.Errorf("paddle answered %d", resp.StatusCode)}
 	case resp.StatusCode >= 400:
-		var e apiError
-		_ = json.Unmarshal(raw, &e)
 		out := &Error{Status: resp.StatusCode, Code: e.Error.Code, Detail: e.Error.Detail, RequestID: e.Meta.RequestID}
 		for _, f := range e.Error.Errors {
 			out.Fields = append(out.Fields, f.Field+": "+f.Message)
@@ -206,6 +222,15 @@ func (c *Client) do(ctx context.Context, method, path string, in, out any) error
 		}
 	}
 	return nil
+}
+
+// retryAfter reads Retry-After as the number of seconds Paddle documents; anything else is "not said".
+func retryAfter(h http.Header) time.Duration {
+	n, err := strconv.Atoi(strings.TrimSpace(h.Get("Retry-After")))
+	if err != nil || n <= 0 {
+		return 0
+	}
+	return time.Duration(n) * time.Second
 }
 
 // Error is a request Paddle refused. It is permanent: a request the same will be refused the same.
@@ -270,21 +295,31 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 	return payments.ChargeResult{}, &payments.PendingError{Ref: r.IdempotencyKey}
 }
 
-// Refund refunds the whole transaction (ChargeID is its id, txn_...) with a full adjustment. Paddle may hold a refund for approval; the
-// adjustment's notification reports the outcome. UNVERIFIED: that the amount of a partial refund is not needed by Payrudder: the saga
-// refunds the whole invoice.
+// Refund refunds a transaction (ChargeID is its id, txn_...) with an adjustment; Paddle may hold it for approval and the adjustment's notification reports the
+// outcome. With no amount, or the transaction's grand total, the adjustment is a full one. A smaller amount is a partial adjustment of the transaction's
+// single line item, in the amount given (a partial adjustment's amounts are inclusive of tax by default). A transaction with several line items is refused: an
+// amount cannot be split between them without guessing (developer.paddle.com/api-reference/adjustments/create-adjustment, read 2026-11-02). Before this, any
+// amount refunded the whole transaction.
 func (c *Client) Refund(ctx context.Context, r payments.RefundRequest) (payments.RefundResult, error) {
 	if !strings.HasPrefix(r.ChargeID, "txn_") {
 		return payments.RefundResult{}, errors.New(`paddle: a refund needs the transaction id ("txn_...") as the charge id`)
+	}
+	body := map[string]any{"action": "refund", "type": "full", "transaction_id": r.ChargeID, "reason": "Payrudder refund " + r.IdempotencyKey}
+	if r.AmountMinor > 0 {
+		var txn reply[transactionData]
+		if err := c.do(ctx, http.MethodGet, "/transactions/"+url.PathEscape(r.ChargeID), nil, &txn); err != nil {
+			return payments.RefundResult{}, err
+		}
+		if err := partialRefund(body, txn.Data, r); err != nil {
+			return payments.RefundResult{}, err
+		}
 	}
 	var out struct {
 		Data struct {
 			ID string `json:"id"`
 		} `json:"data"`
 	}
-	err := c.do(ctx, http.MethodPost, "/adjustments", map[string]any{
-		"action": "refund", "type": "full", "transaction_id": r.ChargeID, "reason": "Payrudder refund " + r.IdempotencyKey,
-	}, &out)
+	err := c.do(ctx, http.MethodPost, "/adjustments", body, &out)
 	if err != nil {
 		return payments.RefundResult{}, err
 	}
@@ -292,6 +327,27 @@ func (c *Client) Refund(ctx context.Context, r payments.RefundRequest) (payments
 		return payments.RefundResult{}, errors.New("paddle: an adjustment without an id")
 	}
 	return payments.RefundResult{RefundID: out.Data.ID}, nil
+}
+
+// partialRefund turns body into a partial adjustment when the amount asked for is less than the transaction's grand total.
+func partialRefund(body map[string]any, t transactionData, r payments.RefundRequest) error {
+	if t.CurrencyCode != "" && r.Currency != "" && !strings.EqualFold(t.CurrencyCode, r.Currency) {
+		return fmt.Errorf("paddle: transaction %s is in %s, the refund in %s", r.ChargeID, t.CurrencyCode, r.Currency)
+	}
+	total := minor(t.Details.Totals.GrandTotal)
+	switch {
+	case total <= 0:
+		return fmt.Errorf("paddle: transaction %s has no grand total to refund from", r.ChargeID)
+	case r.AmountMinor > total:
+		return fmt.Errorf("paddle: refund of %d is more than transaction %s (%d)", r.AmountMinor, r.ChargeID, total)
+	case r.AmountMinor == total:
+		return nil
+	case len(t.Details.LineItems) != 1 || t.Details.LineItems[0].ID == "":
+		return fmt.Errorf("%w: a partial refund of transaction %s, which has %d line items, cannot be split between them; refund it in the Paddle dashboard", payments.ErrUnsupported, r.ChargeID, len(t.Details.LineItems))
+	}
+	body["type"] = "partial"
+	body["items"] = []map[string]string{{"item_id": t.Details.LineItems[0].ID, "type": "partial", "amount": strconv.FormatInt(r.AmountMinor, 10)}}
+	return nil
 }
 
 // Status cannot be told from Paddle's API by Payrudder's key (the key lives in custom data of a transaction's price, which cannot be searched).
@@ -317,10 +373,10 @@ func (c *Client) CreateCheckout(ctx context.Context, r payments.CheckoutRequest)
 	}
 	custom := map[string]string{}
 	if r.PayrudderSubscriptionID != "" {
-		custom["quotify_subscription_id"] = r.PayrudderSubscriptionID
+		custom["payrudder_subscription_id"] = r.PayrudderSubscriptionID
 	}
 	if r.PayrudderMigrationID != "" {
-		custom["quotify_migration_id"] = r.PayrudderMigrationID
+		custom["payrudder_migration_id"] = r.PayrudderMigrationID
 	}
 	if len(custom) > 0 {
 		req["custom_data"] = custom
@@ -421,9 +477,15 @@ func ParseNotification(body []byte, _ http.Header) (payments.NotificationRef, er
 
 type customData map[string]any
 
-func (d customData) str(k string) string {
-	s, _ := d[k].(string)
-	return s
+// str is the first of the keys that holds a string. Objects Paddle holds from before the rename to payrudder_* carry the quotify_* spelling (ADR 0022), so a
+// reader names both, the current one first.
+func (d customData) str(keys ...string) string {
+	for _, k := range keys {
+		if s, _ := d[k].(string); s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 type transactionData struct {
@@ -441,7 +503,12 @@ type transactionData struct {
 			GrandTotal string `json:"grand_total"`
 			Total      string `json:"total"`
 		} `json:"totals"`
+		// LineItems carry the ids (txnitm_...) an adjustment of one item names.
+		LineItems []struct {
+			ID string `json:"id"`
+		} `json:"line_items"`
 	} `json:"details"`
+	// Payments are the payment attempts, newest first (developer.paddle.com/api-reference/transactions/get-transaction, read 2026-11-02).
 	Payments []struct {
 		Status    string  `json:"status"`
 		ErrorCode *string `json:"error_code"`
@@ -453,7 +520,13 @@ type subscriptionData struct {
 	Status       string     `json:"status"`
 	CustomData   customData `json:"custom_data"`
 	NextBilledAt *string    `json:"next_billed_at"`
-	Items        []struct {
+	// ScheduledChange is a cancel, pause or resume that takes effect later: a subscription cancelled at the end of its period is still "active" until then.
+	ScheduledChange *struct {
+		Action      string  `json:"action"`
+		EffectiveAt string  `json:"effective_at"`
+		ResumeAt    *string `json:"resume_at"`
+	} `json:"scheduled_change"`
+	Items []struct {
 		Price struct {
 			ID string `json:"id"`
 		} `json:"price"`
@@ -511,9 +584,10 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		} else {
 			n.State = payments.StateDeclined
 			n.DeclineCode = "payment_failed"
-			for _, p := range t.Payments {
+			for _, p := range t.Payments { // newest attempt first: its reason is the one that failed this payment
 				if p.ErrorCode != nil && *p.ErrorCode != "" {
 					n.DeclineCode = *p.ErrorCode
+					break
 				}
 			}
 		}
@@ -522,11 +596,21 @@ func (c *Client) ConfirmNotification(_ context.Context, body []byte, header http
 		if err := json.Unmarshal(e.Data, &s); err != nil {
 			return n, fmt.Errorf("paddle: subscription: %w", err)
 		}
-		ev := &payments.SubscriptionEvent{ProviderRef: s.ID, Status: s.Status, PayrudderSubscriptionID: s.CustomData.str("quotify_subscription_id"),
-			PayrudderMigrationID: s.CustomData.str("quotify_migration_id")}
+		ev := &payments.SubscriptionEvent{ProviderRef: s.ID, Status: s.Status, PayrudderSubscriptionID: s.CustomData.str("payrudder_subscription_id", "quotify_subscription_id"),
+			PayrudderMigrationID: s.CustomData.str("payrudder_migration_id", "quotify_migration_id")}
 		if s.NextBilledAt != nil {
 			if t, err := time.Parse(time.RFC3339, *s.NextBilledAt); err == nil {
 				ev.NextBilledAt = &t
+			}
+		}
+		if sc := s.ScheduledChange; sc != nil {
+			if at, err := time.Parse(time.RFC3339, sc.EffectiveAt); err == nil {
+				ev.ScheduledChange = &payments.ScheduledChange{Action: sc.Action, EffectiveAt: at}
+				if sc.ResumeAt != nil {
+					if rt, err := time.Parse(time.RFC3339, *sc.ResumeAt); err == nil {
+						ev.ScheduledChange.ResumeAt = &rt
+					}
+				}
 			}
 		}
 		for _, it := range s.Items {

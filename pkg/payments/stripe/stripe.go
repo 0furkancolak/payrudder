@@ -39,6 +39,12 @@ const Name = "stripe"
 // LiveURL is Stripe's API host, for live and test keys alike.
 const LiveURL = "https://api.stripe.com"
 
+// APIVersion is the Stripe API version every request is made with (Stripe-Version), so an account whose default version moves does not change what the adapter
+// reads. 2026-09-30.endive is the first version of the Endive release; the versions after it "will include only additive changes"
+// (docs.stripe.com/changelog/endive, read 2026-11-02), so it is as safe as the newer ones and never ahead of what the matrix was read against. The version of the
+// webhook payloads is the webhook endpoint's, not this header's: create the endpoint with this version (docs/stripe-compatibility-matrix.md).
+const APIVersion = "2026-09-30.endive"
+
 // Settings is the JSON a tenant's Stripe account is stored as.
 type Settings struct {
 	// APIKey is a secret or restricted key: sk_live_..., sk_test_..., rk_live_... or rk_test_.... Its prefix says whether the account is live or test.
@@ -49,6 +55,12 @@ type Settings struct {
 	BaseURL string `json:"base_url,omitempty"`
 	// WebhookTolerance is how old a signed webhook may be, in seconds. Default 300, Stripe's own default.
 	WebhookTolerance int `json:"webhook_tolerance_seconds,omitempty"`
+	// APIVersion overrides the Stripe-Version of the requests (default APIVersion). Stripe's own advice is to name the version in code rather than rely on the account's default.
+	APIVersion string `json:"api_version,omitempty"`
+	// SaveCustomer makes an invoice Checkout create a Stripe Customer and save the payment method on it for off-session use (customer_creation=always and
+	// payment_intent_data.setup_future_usage=off_session), which is what a later off-session charge needs. Off by default: saving a card is the customer's agreement
+	// to make, and nothing in Payrudder yet reads the customer and payment method back from the completed session; they are in the Stripe account.
+	SaveCustomer bool `json:"save_customer,omitempty"`
 }
 
 // Client is a Stripe account.
@@ -75,6 +87,9 @@ func New(s Settings, timeout time.Duration) (*Client, error) {
 	s.BaseURL = strings.TrimRight(s.BaseURL, "/")
 	if s.WebhookTolerance <= 0 {
 		s.WebhookTolerance = 300
+	}
+	if s.APIVersion == "" {
+		s.APIVersion = APIVersion
 	}
 	if timeout <= 0 {
 		timeout = 10 * time.Second
@@ -133,9 +148,26 @@ func Caps() payments.Capabilities {
 	return payments.Capabilities{Name: Name, HostedCheckout: true, Refunds: true, IdempotentCharges: true, IdempotentRefunds: true}
 }
 
-// CheckHealth implements payments.HealthChecker: GET /v1/balance needs a valid key and changes nothing.
+// CheckHealth implements payments.HealthChecker: GET /v1/balance needs a valid key and changes nothing. The balance says which mode the key is in (livemode,
+// docs.stripe.com/api/balance/balance_retrieve, read 2026-11-02), which is compared with what the key's prefix claims: a key that does not match its prefix is refused.
 func (c *Client) CheckHealth(ctx context.Context) error {
-	return c.do(ctx, http.MethodGet, "/v1/balance", nil, "", nil)
+	var out struct {
+		Livemode *bool `json:"livemode"`
+	}
+	if err := c.do(ctx, http.MethodGet, "/v1/balance", nil, "", &out); err != nil {
+		return err
+	}
+	if live, known := c.KeyMode(); known && out.Livemode != nil && *out.Livemode != live {
+		return fmt.Errorf("%w: the key's prefix says %s, Stripe says the account is %s", payments.ErrLivemodeMismatch, mode(live), mode(*out.Livemode))
+	}
+	return nil
+}
+
+func mode(live bool) string {
+	if live {
+		return "live"
+	}
+	return "test"
 }
 
 // apiError is Stripe's error body.
@@ -175,6 +207,7 @@ func (c *Client) do(ctx context.Context, method, path string, form url.Values, i
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.s.APIKey)
+	req.Header.Set("Stripe-Version", c.s.APIVersion)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
@@ -191,23 +224,8 @@ func (c *Client) do(ctx context.Context, method, path string, form url.Values, i
 	}
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	switch {
-	case resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests:
-		return &payments.TransientError{Err: fmt.Errorf("stripe answered %d", resp.StatusCode)}
-	case resp.StatusCode >= 400:
-		var e apiError
-		_ = json.Unmarshal(raw, &e)
-		if e.Error.Type == "card_error" {
-			code := e.Error.DeclineCode
-			if code == "" {
-				code = e.Error.Code
-			}
-			if code == "" {
-				code = "card_declined"
-			}
-			return &payments.DeclinedError{Code: code}
-		}
-		return &Error{Status: resp.StatusCode, Type: e.Error.Type, Code: e.Error.Code, Message: e.Error.Message}
+	if resp.StatusCode >= 400 {
+		return c.refusal(resp, raw)
 	}
 	if out != nil && len(raw) > 0 {
 		if err := json.Unmarshal(raw, out); err != nil {
@@ -217,14 +235,61 @@ func (c *Client) do(ctx context.Context, method, path string, form url.Values, i
 	return nil
 }
 
+// refusal maps an HTTP answer of 400 or more to Payrudder's error kinds. A card error is a decline. The rest is retried when Stripe says so
+// (Stripe-Should-Retry: true), never when it says not to (false), and otherwise by status (docs.stripe.com/error-low-level, read 2026-11-02): 5xx and 429 (a rate
+// limit, or a lock timeout), 409 (idempotency_key_in_use: another request with the same key is still running, "wait and retry with that key and the same
+// parameters", which Charge does, the key being the same) and 424 (a dependency outside Stripe failed). A 5xx on a POST made with a key is cached by Stripe, so a
+// retry with the key gets the same answer until Stripe drops it. UNVERIFIED: whether a 424 was executed; the retry carries the same key, so it cannot charge twice.
+func (c *Client) refusal(resp *http.Response, raw []byte) error {
+	var e apiError
+	_ = json.Unmarshal(raw, &e)
+	if e.Error.Type == "card_error" {
+		code := e.Error.DeclineCode
+		if code == "" {
+			code = e.Error.Code
+		}
+		if code == "" {
+			code = "card_declined"
+		}
+		return &payments.DeclinedError{Code: normalizeDecline(code)}
+	}
+	switch retry := resp.Header.Get("Stripe-Should-Retry"); {
+	case retry == "false":
+	case retry == "true", resp.StatusCode >= 500, resp.StatusCode == http.StatusTooManyRequests, resp.StatusCode == http.StatusConflict, resp.StatusCode == http.StatusFailedDependency:
+		msg := fmt.Sprintf("stripe answered %d %s", resp.StatusCode, e.Error.Code)
+		if why := resp.Header.Get("Stripe-Rate-Limited-Reason"); why != "" {
+			msg += " (" + why + ")"
+		}
+		return &payments.TransientError{Err: errors.New(strings.TrimSpace(msg))}
+	}
+	return &Error{Status: resp.StatusCode, Type: e.Error.Type, Code: e.Error.Code, Message: e.Error.Message}
+}
+
+// normalizeDecline gives one code to "the customer must come back and authenticate": authentication_required, and authentication_not_handled, the decline an
+// issuer gives when the customer tried to go on without it (docs.stripe.com/declines/codes, read 2026-11-02). The Stripe-vocabulary codes otherwise pass as they are.
+func normalizeDecline(code string) string {
+	if code == "authentication_not_handled" {
+		return "authentication_required"
+	}
+	return code
+}
+
 // threeDecimal are the currencies Stripe takes with three decimals but only in whole tens of the smallest unit (the last digit must be 0).
 var threeDecimal = map[string]bool{"BHD": true, "JOD": true, "KWD": true, "OMR": true, "TND": true}
+
+// twoDecimalWhole are the currencies Stripe takes as a two-decimal amount whose decimals are always 00, though they have no minor unit (docs.stripe.com/currencies,
+// read 2026-11-02: ISK, UGX). Payrudder's minor unit for them is the whole unit, so they would be charged 100 times too little; they are refused until the
+// conversion is built in both directions (a notification's amount comes back the other way).
+var twoDecimalWhole = map[string]bool{"ISK": true, "UGX": true}
 
 // amount checks and returns the amount as Stripe takes it. Stripe counts in the smallest unit of the currency, like Payrudder, but refuses a three-decimal
 // amount whose last digit is not 0 instead of rounding it, so Payrudder refuses it first and never sends a different amount than the invoice's.
 func amount(minor int64, currency string) (string, error) {
 	if minor <= 0 {
 		return "", errors.New("stripe: nothing to charge")
+	}
+	if twoDecimalWhole[strings.ToUpper(currency)] {
+		return "", fmt.Errorf("stripe: %s is not supported yet: Stripe counts it as a two-decimal amount ending in 00 (5 %s is 500), Payrudder counts it whole, so the amount would be 100 times too small", strings.ToUpper(currency), strings.ToUpper(currency))
 	}
 	if threeDecimal[strings.ToUpper(currency)] && minor%10 != 0 {
 		return "", fmt.Errorf("stripe: %s amounts must end in 0 (the invoice total %d does not)", strings.ToUpper(currency), minor)
@@ -248,34 +313,43 @@ type paymentIntent struct {
 func (p paymentIntent) declineCode() string {
 	if e := p.LastPaymentError; e != nil {
 		if e.DeclineCode != "" {
-			return e.DeclineCode
+			return normalizeDecline(e.DeclineCode)
 		}
 		if e.Code != "" {
-			return e.Code
+			return normalizeDecline(e.Code)
 		}
 	}
 	return "payment_failed"
 }
 
-// Charge confirms a PaymentIntent off session for the customer's saved payment method (r.PaymentMethod, "pm_..."). Stripe's Idempotency-Key makes a retry
-// return the first answer. A payment that needs the customer present (3-D Secure) is a decline, because nobody is there to approve it.
+// Charge confirms a PaymentIntent off session for the customer's saved payment method (r.PaymentMethod). Stripe's Idempotency-Key makes a retry return the first
+// answer. A payment method that is attached to a Stripe Customer must be charged with that customer (docs.stripe.com/api/payment_intents/create, read 2026-11-02:
+// "If the payment method is attached to a Customer, you must also provide the ID of that Customer"), so the method is either "pm_..." or "cus_...:pm_...", the
+// customer first. A payment that needs the customer present (3-D Secure) is a decline, because nobody is there to approve it.
 func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments.ChargeResult, error) {
 	if r.IdempotencyKey == "" {
 		return payments.ChargeResult{}, errors.New("payments: idempotency key is mandatory")
 	}
-	if !strings.HasPrefix(r.PaymentMethod, "pm_") {
-		return payments.ChargeResult{}, errors.New(`stripe: the payment method must be a Stripe PaymentMethod id ("pm_...")`)
+	customer, method, hasCustomer := strings.Cut(r.PaymentMethod, ":")
+	if !hasCustomer {
+		customer, method = "", r.PaymentMethod
+	}
+	if !strings.HasPrefix(method, "pm_") || hasCustomer && !strings.HasPrefix(customer, "cus_") {
+		return payments.ChargeResult{}, errors.New(`stripe: the payment method must be a Stripe PaymentMethod id ("pm_...") or a customer and a payment method ("cus_...:pm_...")`)
 	}
 	amt, err := amount(r.AmountMinor, r.Currency)
 	if err != nil {
 		return payments.ChargeResult{}, err
 	}
 	form := url.Values{
-		"amount": {amt}, "currency": {strings.ToLower(r.Currency)}, "payment_method": {r.PaymentMethod},
+		"amount": {amt}, "currency": {strings.ToLower(r.Currency)}, "payment_method": {method},
 		"confirm": {"true"}, "off_session": {"true"},
 		"description":                    {"Payrudder invoice " + r.InvoiceID},
 		"metadata[payrudder_key]":        {r.IdempotencyKey},
 		"metadata[payrudder_invoice_id]": {r.InvoiceID},
+	}
+	if hasCustomer {
+		form.Set("customer", customer)
 	}
 	var pi paymentIntent
 	if err := c.do(ctx, http.MethodPost, "/v1/payment_intents", form, r.IdempotencyKey, &pi); err != nil {
@@ -324,9 +398,12 @@ func (c *Client) Refund(ctx context.Context, r payments.RefundRequest) (payments
 	return payments.RefundResult{RefundID: out.ID}, nil
 }
 
-// Status finds the PaymentIntent that carries Payrudder's key in its metadata. UNVERIFIED against a real account: Stripe documents the search as eventually
-// consistent (a PaymentIntent can take up to a minute to appear), which is why Charge also relies on Stripe's idempotency: a retried charge returns the first
-// answer whether or not the search has caught up.
+// Status finds the PaymentIntent that carries Payrudder's key in its metadata. Stripe's search is eventually consistent: "Don't use search in read-after-write flows
+// where strict consistency is necessary. Under normal operating conditions, data is searchable in less than a minute. Occasionally, propagation of new or updated
+// data can be up to an hour behind during outages" (docs.stripe.com/api/payment_intents/search, read 2026-11-02). So "not found" is only "not found yet": a caller
+// treats a not-found younger than a minute, and surely one during an outage, as unknown (payments-worker does, PAYRUDDER_NOTFOUND_GRACE), and Charge relies on
+// Stripe's idempotency, not on this: a retried charge returns the first answer whether or not the search has caught up, for at least 24 hours. Search is not
+// available to merchants in India. UNVERIFIED against a real account.
 func (c *Client) Status(ctx context.Context, key string) (payments.StatusResult, error) {
 	var out struct {
 		Data []paymentIntent `json:"data"`
@@ -377,6 +454,10 @@ func (c *Client) CreateInvoiceCheckout(ctx context.Context, r payments.CheckoutI
 	}
 	if r.CustomerEmail != "" {
 		form.Set("customer_email", r.CustomerEmail)
+	}
+	if c.s.SaveCustomer {
+		form.Set("customer_creation", "always")
+		form.Set("payment_intent_data[setup_future_usage]", "off_session")
 	}
 	var out struct {
 		ID  string `json:"id"`

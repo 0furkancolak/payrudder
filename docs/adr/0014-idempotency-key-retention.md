@@ -5,8 +5,10 @@
 
 ## Context
 
-ingest-svc deduplicates events by `(tenant, idempotency_key)` inside a window of at least two and less than three months. The table must
-stay bounded: old keys have to go. Two ways were considered in Phase 02 ([data model](../05-data-model.md#idempotency_keys)):
+ingest-svc deduplicates events by `(tenant, idempotency_key)`. A key is remembered for **at least 45 days and less than 76 days** after it was first seen (corrected
+2026-11-01; this ADR said "at least two and less than three months", which is how far the lookup reaches, not how long keys are kept; see Decision). The 35 days of
+allowed lateness are what the window has to cover: ingest refuses an event whose `event_time` is older than 35 days, so a repeat of an event can only be accepted
+while it is at most 35 days after the event, and therefore at most 35 days after the key was first seen. The table must stay bounded: old keys have to go. Two ways were considered in Phase 02 ([data model](../05-data-model.md#idempotency_keys)):
 monthly range partitions that are dropped when they expire (what the migration does), or one plain table pruned by a
 batched `DELETE` job. The data model note promised a benchmark of both.
 
@@ -34,6 +36,15 @@ Keep monthly partitions and `maintain_idempotency_partitions()`. Dropping a part
 takes no row locks, so retention costs nothing on the hot path; the plain-table variant pays for every expired key twice (a
 delete now, a vacuum later) and slows inserts while it runs. The price of partitioning is the composite primary key
 (`created_at` has to be part of it), which the write path already accounts for by checking the current and the two previous months (35 days of allowed lateness can span three calendar months).
+
+**The two numbers.** A key's `created_at` is the start of the month it was first seen in, and its partition is that month's. `maintain_idempotency_partitions` drops a
+partition when its month ended more than **45 days** ago (`maintenance.go`, `queries/maintenance.sql`). A key first seen in the last second of a month is therefore kept
+45 days, one first seen in the first second of a 31-day month 76 days: that is the window. The lookup reaches back over three buckets (the current month and the two
+before it), which is at least two and less than three months; it never binds, because the partition of the oldest bucket is gone before that. The 45 days are the 35 of
+lateness plus **10 days** of margin (a maintenance run that is late, clock skew between replicas). The margin is the only thing that makes the retention safe, so it is
+tested: `TestIngestSvc/KeyRetentionOutlivesTheLateWindow` runs the maintenance at the boundary and fails if a partition goes before `domain.MaxLateness` after its month's end,
+or stays after 45 days. Raising `MaxLateness` past 45 days, or lowering the retention to it, needs a new decision here. (The comment in `00001_init.sql` that says "at least
+two and less than three months" is the older wording; a baseline migration is not edited.)
 
 ## Consequences
 
