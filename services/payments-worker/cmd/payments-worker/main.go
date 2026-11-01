@@ -38,6 +38,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/workerx"
 	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	accounthealth "github.com/0furkancolak/payrudder/services/payments-worker/internal/health"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/reconciliation/schedule"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/sandboxreset"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
@@ -94,6 +95,13 @@ type Config struct {
 	ReconcileInterval time.Duration `env:"PAYMENTS_RECONCILE_INTERVAL"`
 	// SettlementLag is how long a payment may go unreported by its provider before the reconciliation calls that a discrepancy. Default (not agreed): 7 days.
 	SettlementLag time.Duration `env:"PAYMENTS_SETTLEMENT_LAG"`
+	// The circuit breaker of every provider account (docs/provider-health.md), all default (not agreed): this many outages in a row open it (5), it stays open this long
+	// (30s) and then lets one charge through to see whether the provider is back.
+	BreakerFailures int           `env:"PAYMENTS_BREAKER_FAILURES"`
+	BreakerOpenFor  time.Duration `env:"PAYMENTS_BREAKER_OPEN_FOR"`
+	// HealthInterval is the pause between the checks of every account's health (5m; 0 turns the checks off) and HealthTimeout the limit of one (10s).
+	HealthInterval time.Duration `env:"PAYMENTS_HEALTH_INTERVAL"`
+	HealthTimeout  time.Duration `env:"PAYMENTS_HEALTH_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -110,6 +118,12 @@ func (c *Config) Validate() error {
 	}
 	if c.ReconcileInterval != 0 && c.ReconcileInterval < time.Minute {
 		errs = append(errs, errors.New("PAYMENTS_RECONCILE_INTERVAL must be 0 (off) or at least 1m"))
+	}
+	if c.BreakerFailures < 1 || c.BreakerOpenFor < time.Second {
+		errs = append(errs, errors.New("PAYMENTS_BREAKER_FAILURES must be at least 1 and PAYMENTS_BREAKER_OPEN_FOR at least 1s"))
+	}
+	if c.HealthInterval != 0 && c.HealthInterval < 30*time.Second || c.HealthTimeout < time.Second {
+		errs = append(errs, errors.New("PAYMENTS_HEALTH_INTERVAL must be 0 (off) or at least 30s and PAYMENTS_HEALTH_TIMEOUT at least 1s"))
 	}
 	if c.SettlementLag < 24*time.Hour {
 		errs = append(errs, errors.New("PAYMENTS_SETTLEMENT_LAG must be at least 24h"))
@@ -195,6 +209,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	banktransfer.Register(registry)
 	var httpHandler http.Handler
 	var reconcile *schedule.Job
+	var monitor *accounthealth.Monitor
 	if box != nil {
 		srv, closeConns, err := webhookServer(*cfg, db, box, h, registry, einvoices, log)
 		if err != nil {
@@ -202,6 +217,13 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		}
 		defer closeConns()
 		httpHandler = srv.Handler()
+		// The circuit breakers and the failover are of the tenants' own provider accounts, which need the secrets key like everything else that calls a provider for them.
+		providerHealth := store.ProviderHealth{DB: db}
+		h.Breakers = &accounthealth.Breakers{Settings: payments.BreakerSettings{Failures: cfg.BreakerFailures, OpenFor: cfg.BreakerOpenFor}, Store: providerHealth, Log: log}
+		h.Failovers = providerHealth
+		if cfg.HealthInterval > 0 {
+			monitor = &accounthealth.Monitor{Store: providerHealth, Resolver: h.Resolver, Breakers: h.Breakers, Interval: cfg.HealthInterval, Timeout: cfg.HealthTimeout, Log: log}
+		}
 		if cfg.BillingAddr != "" && cfg.ReconcileInterval > 0 {
 			reconcile = &schedule.Job{Deps: srv.Reconcile(), Interval: cfg.ReconcileInterval, Log: log}
 		}
@@ -213,7 +235,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
-	return serve(ctx, cfg, log, hh, w, httpHandler, reconcile)
+	return serve(ctx, cfg, log, hh, w, httpHandler, reconcile, monitor)
 }
 
 // tenantDirectory is how the worker learns the environment of a command's tenant, to refuse a command that disagrees (ADR 0023). It asks plans-svc and keeps
@@ -255,7 +277,7 @@ func newHandler(cfg *Config, db store.DB, log *slog.Logger) *handler.Handler {
 }
 
 // serve runs the metrics server, the optional webhook/operator HTTP server, the scheduled reconciliation and the queue worker until ctx is cancelled or one of them fails.
-func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler, w *workerx.Worker, httpHandler http.Handler, reconcile *schedule.Job) error {
+func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handler, w *workerx.Worker, httpHandler http.Handler, reconcile *schedule.Job, monitor *accounthealth.Monitor) error {
 	g := app.NewGroup(ctx, log, cfg.MetricsAddr, hh)
 	gctx := g.Context()
 	if httpHandler != nil {
@@ -265,6 +287,9 @@ func serve(ctx context.Context, cfg *Config, log *slog.Logger, hh *health.Handle
 	}
 	if reconcile != nil {
 		g.Go(func() error { return reconcile.Run(gctx) })
+	}
+	if monitor != nil {
+		g.Go(func() error { return monitor.Run(gctx) })
 	}
 	g.Go(func() error {
 		log.Info("payments-worker consuming", "live_provider", cfg.LiveProvider)

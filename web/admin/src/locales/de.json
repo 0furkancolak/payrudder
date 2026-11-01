@@ -3112,6 +3112,10 @@
         "bad_fee_rule": "Die Gebührenregel ist ungültig: Prüfen Sie Anbieter, Währung und Satz.",
         "bad_since": "Der Beginn muss in der Vergangenheit liegen, höchstens 400 Tage zurück.",
         "fee_rule_not_found": "Diese Gebührenregel gibt es nicht."
+      },
+      "failover": {
+        "bad_target": "Ein Failover braucht zwei verschiedene Konten, die es in der Umgebung gibt; eine Banküberweisung kann nicht daran teilnehmen.",
+        "not_found": "Für dieses Konto ist kein Failover eingerichtet."
       }
     },
     "einvoice": {

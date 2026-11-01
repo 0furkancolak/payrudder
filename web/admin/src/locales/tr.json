@@ -3112,6 +3112,10 @@
         "bad_fee_rule": "Komisyon kuralı geçersiz: sağlayıcıyı, para birimini ve oranı kontrol edin.",
         "bad_since": "Başlangıç geçmişte ve en çok 400 gün önce olmalı.",
         "fee_rule_not_found": "Böyle bir komisyon kuralı yok."
+      },
+      "failover": {
+        "bad_target": "Yedekleme için, ortamda bulunan iki farklı hesap gerekir; banka havalesi bunda yer alamaz.",
+        "not_found": "Bu hesap için bir yedekleme tanımlı değil."
       }
     },
     "einvoice": {

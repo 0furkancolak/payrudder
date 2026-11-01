@@ -15,7 +15,7 @@ var FS embed.FS
 // touches it (see the head of 00001_init.sql), so every table with a tenant_id is listed. pgxx.VerifyForcedRLS skips them at startup and in the integration tests, so a
 // new tenant table without RLS is refused until it is added here with its reason.
 var RLSExempt = []string{"einvoice_accounts", "einvoice_issuances", "fee_rules", "manual_receipts", "payment_attempts", "payment_ledger", "provider_account_events", "provider_accounts",
-	"provider_events", "provider_objects", "provider_subscriptions", "reconciliation_discrepancies", "reconciliation_events", "reconciliation_runs", "settlement_lines"}
+	"provider_events", "provider_failover", "provider_account_health", "provider_objects", "provider_subscriptions", "reconciliation_discrepancies", "reconciliation_events", "reconciliation_runs", "settlement_lines"}
 
 //go:embed tenant/*.sql
 var tenantFS embed.FS

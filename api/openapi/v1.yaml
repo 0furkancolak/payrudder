@@ -4639,6 +4639,48 @@ paths:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ReconciliationDiscrepancyResponse" } } } }
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/account-health:
+    get:
+      operationId: listProviderAccountHealth
+      summary: Runtime health of every provider account - the last periodic check, the circuit breaker and the account a charge fails over to
+      description: |
+        Not the go-live check (`getProviderHealth` asks the provider now): this is what the worker last saw. A periodic check of each account (`PAYMENTS_HEALTH_INTERVAL`) keeps
+        `status`; the account's circuit breaker keeps `breaker` and `consecutive_failures` when it changes. The breaker is in each worker's memory, so a worker that has just started
+        shows what the last one left.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListProviderAccountHealthResponse" } } } }
+  /admin/v1/tenants/{tenant_id}/provider-accounts/{provider}/failover:
+    put:
+      operationId: putProviderAccountFailover
+      summary: Set the account a new charge goes to when this one definitely did not process it
+      description: |
+        Only a failure that is proven (the connection to the provider never opened, an adapter or provider that says "not processed", or an open circuit) lets a new charge go to
+        the other account, as a new attempt under a new key. A timeout never does. See docs/provider-health.md. Both accounts must exist in the environment; a bank transfer cannot take part.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, description: "The account key", schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PutProviderAccountFailoverRequest" }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/PutProviderAccountFailoverResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteProviderAccountFailover
+      summary: Remove the failover of an account
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/settlement/payments:
     get:
       operationId: listSettlementPayments
@@ -7552,6 +7594,39 @@ components:
               id: { type: integer, format: int64 }
               result: { type: string, enum: [resolved, unchanged, not_found, failed] }
               error_key: { type: string }
+    ProviderAccountHealth:
+      type: object
+      required: [provider, environment, is_default, status, breaker, consecutive_failures]
+      properties:
+        provider: { type: string, description: The account key }
+        environment: { type: string, enum: [sandbox, live] }
+        is_default: { type: boolean }
+        status: { type: string, enum: [unknown, healthy, bad_credentials, down], description: "unknown - never checked, or the adapter has no call to ask its provider with" }
+        breaker: { type: string, enum: [closed, open, half_open] }
+        consecutive_failures: { type: integer, format: int64, description: Outages in a row the breaker has counted }
+        last_error: { type: string, description: "A class (unreachable, bad_credentials, unusable, circuit_open, no_remote_check), never a message from the provider" }
+        last_checked_at: { type: string, format: date-time }
+        last_ok_at: { type: string, format: date-time }
+        last_failure_at: { type: string, format: date-time }
+        opened_at: { type: string, format: date-time }
+        failover_to: { type: string, description: The account a new charge fails over to when this one definitely did not process it }
+    ListProviderAccountHealthResponse:
+      type: object
+      required: [accounts]
+      properties:
+        accounts: { type: array, items: { $ref: "#/components/schemas/ProviderAccountHealth" } }
+    PutProviderAccountFailoverRequest:
+      type: object
+      required: [failover_to]
+      properties:
+        failover_to: { type: string, description: The account key to fail over to }
+    PutProviderAccountFailoverResponse:
+      type: object
+      required: [provider, environment, failover_to]
+      properties:
+        provider: { type: string }
+        environment: { type: string }
+        failover_to: { type: string }
     SettlementPayment:
       type: object
       required: [invoice_id, provider, provider_ref, currency, amount_minor, paid_at, state]

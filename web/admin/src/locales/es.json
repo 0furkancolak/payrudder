@@ -3112,6 +3112,10 @@
         "bad_fee_rule": "La regla de comisión no es válida: revise el proveedor, la moneda y la tasa.",
         "bad_since": "El inicio debe estar en el pasado y como máximo 400 días atrás.",
         "fee_rule_not_found": "No existe esa regla de comisión."
+      },
+      "failover": {
+        "bad_target": "Una conmutación por error necesita dos cuentas distintas que existan en el entorno; una transferencia bancaria no puede participar.",
+        "not_found": "No hay ninguna conmutación por error definida para esa cuenta."
       }
     },
     "einvoice": {

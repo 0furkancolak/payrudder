@@ -213,6 +213,10 @@ func (s *Server) operatorProviderRoutes() []Route {
 		{"POST", "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies/{id}/assign", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies/{id}/explain", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/reconciliation/discrepancies/{id}/resolve", AccessOperator, "", s.providerAPI()},
+		// Runtime health of the provider accounts and where a charge may go when one is definitely down (plan 22 G8).
+		{"GET", "/admin/v1/tenants/{tenant_id}/account-health", AccessOperator, "", s.providerAPI()},
+		{"PUT", "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}/failover", AccessOperator, "", s.providerAPI()},
+		{"DELETE", "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}/failover", AccessOperator, "", s.providerAPI()},
 		{"GET", "/admin/v1/tenants/{tenant_id}/settlement/payments", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/settlement/import", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/settlement/sync", AccessOperator, "", s.providerAPI()},

@@ -3112,6 +3112,10 @@
         "bad_fee_rule": "The fee rule is not valid: check the provider, the currency and the rate.",
         "bad_since": "The start must be in the past and at most 400 days ago.",
         "fee_rule_not_found": "There is no such fee rule."
+      },
+      "failover": {
+        "bad_target": "A failover needs two different accounts that exist in the environment; a bank transfer cannot take part.",
+        "not_found": "No failover is set for that account."
       }
     },
     "einvoice": {

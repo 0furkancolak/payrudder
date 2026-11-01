@@ -22,6 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/health"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
 
@@ -54,8 +55,18 @@ type Handler struct {
 	Transfers store.Transfers
 	// TransferWindow is how long such a payment waits for its money when the tenant's account does not say (PAYMENTS_TRANSFER_WINDOW_DAYS).
 	TransferWindow time.Duration
+	// Breakers, when set, holds a circuit breaker per provider account: a new charge to an account whose circuit is open is not sent, and the command is retried later
+	// (docs/provider-health.md).
+	Breakers *health.Breakers
+	// Failovers, when set, says where a new charge may go instead when the account it was routed to definitely did not process it. Nil never fails over.
+	Failovers Failovers
 	// Now is the clock; nil is time.Now.
 	Now func() time.Time
+}
+
+// Failovers is the configuration of failover: the account a charge to provider may go to instead, if one is set for the tenant and environment.
+type Failovers interface {
+	Failover(ctx context.Context, tenant uuid.UUID, environment, provider string) (string, bool, error)
 }
 
 func (h *Handler) now() time.Time {
@@ -394,20 +405,42 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 	if !caps.CanCharge(ch.GetCurrency()) {
 		return errored(CodeCurrency, fmt.Sprintf("%s cannot charge in %s", prov.Name(), ch.GetCurrency())), nil
 	}
-	redelivered, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, store.KindCharge, run.env, prov.Name(), ch.GetIdempotencyKey(), ch)
+	ref, hasRef := h.account(prov)
+	name := accountName(prov, ref, hasRef)
+	redelivered, err := h.Attempts.Start(ctx, run.id, run.tenant, invoiceID, store.KindCharge, run.env, name, ch.GetIdempotencyKey(), ch)
 	if err != nil {
 		return nil, err
 	}
-	entry := store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoiceID, Provider: prov.Name(), Environment: run.env, Kind: store.KindCharge,
+	if redelivered && h.Failovers != nil {
+		// A command that failed over goes on at the account it failed over to when it is delivered again, never back to the first: that one may be up again by now.
+		if fo, ok, err := h.Attempts.FailoverAttempt(ctx, run.tenant, invoiceID, payments.FailoverPrefix(ch.GetIdempotencyKey())); err != nil {
+			return nil, err
+		} else if ok {
+			return h.resumeFailover(ctx, run, ch, invoiceID, fo)
+		}
+	}
+	entry := store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoiceID, Provider: name, Environment: run.env, Kind: store.KindCharge,
 		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), IdempotencyKey: ch.GetIdempotencyKey(), Source: store.SourceCommand}
 	_, manual := prov.(payments.ManualCollector)
+	done, err := h.admit(ref, hasRef && !manual)
+	if err != nil {
+		// The provider was not asked. Another account may take a charge that is new (this delivery is the first), never one that may already have been sent.
+		if !redelivered {
+			if reply, ferr, did := h.failOver(ctx, run, ch, invoiceID, ref, hasRef, err); did {
+				return reply, ferr
+			}
+		}
+		return nil, err
+	}
 	if redelivered && !caps.IdempotentCharges && !manual {
 		if reply, err := h.askBeforeCharging(ctx, prov, entry); reply != nil || err != nil {
+			done(err)
 			return reply, err
 		}
 	}
 	res, err := prov.Charge(ctx, payments.ChargeRequest{IdempotencyKey: ch.GetIdempotencyKey(), InvoiceID: ch.GetInvoiceId(),
 		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), PaymentMethod: ch.GetPaymentMethod(), InvoiceNumber: ch.GetInvoiceNumber()})
+	done(err)
 	var pending *payments.PendingError
 	if manual && errors.As(err, &pending) {
 		// The customer has been told how to pay. The row marks when the payment window opened; its reference is the charge's key, so a dunning retry
@@ -415,7 +448,109 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 		entry.Status, entry.ProviderRef, entry.Detail, entry.OccurredAt = store.StatusPending, entry.IdempotencyKey, pending.Ref, h.now()
 		h.record(ctx, entry)
 	}
+	// The one thing that lets a charge go to another account: the provider definitely did not process it, and this is its first delivery. A timeout is not that, and
+	// follows the path it always did (the saga asks the provider by the key before anything is sent again).
+	if err != nil && !redelivered && !manual && payments.NotProcessed(err) {
+		if reply, ferr, did := h.failOver(ctx, run, ch, invoiceID, ref, hasRef, err); did {
+			return reply, ferr
+		}
+	}
 	return h.chargeOutcome(ctx, entry, res, err)
+}
+
+// account is the provider account an adapter was built for, when the resolver built it: the mock and the configured live provider are no one's account.
+func (h *Handler) account(p payments.PaymentProvider) (health.Ref, bool) {
+	if h.Resolver == nil {
+		return health.Ref{}, false
+	}
+	return h.Resolver.Account(p)
+}
+
+// accountName is what a charge is recorded under: the account's key (stripe~eu), so that its status and refunds find the same account again, else the provider's name.
+func accountName(p payments.PaymentProvider, ref health.Ref, ok bool) string {
+	if ok {
+		return ref.Provider
+	}
+	return p.Name()
+}
+
+// admit asks the account's circuit breaker whether the provider may be called. done records how the call went; it does nothing for a charge that has no breaker.
+func (h *Handler) admit(ref health.Ref, guarded bool) (func(error), error) {
+	if h.Breakers == nil || !guarded {
+		return func(error) {}, nil
+	}
+	return h.Breakers.Allow(ref)
+}
+
+// failOver sends a charge that the account it was routed to definitely did not process to the account configured for that, as a new attempt under a new key
+// (payments.FailoverKey). It reports did = false when nothing is configured or the target cannot take the charge, and the caller goes on as before.
+func (h *Handler) failOver(ctx context.Context, run commandRun, ch *commandsv1.ChargePayment, invoice uuid.UUID, from health.Ref, hasFrom bool, cause error) (*commandsv1.ReplyEnvelope, error, bool) {
+	if h.Failovers == nil || h.Resolver == nil || !hasFrom {
+		return nil, nil, false
+	}
+	to, ok, err := h.Failovers.Failover(ctx, run.tenant, run.env, from.Provider)
+	if err != nil || !ok || to == from.Provider {
+		return nil, nil, false
+	}
+	p2, err := h.Resolver.Named(ctx, run.tenant, to, run.env)
+	if err == nil {
+		err = h.guard(run.environment, p2)
+	}
+	_, manual := p2.(payments.ManualCollector)
+	if err != nil || manual || !capabilities(p2).CanCharge(ch.GetCurrency()) {
+		return nil, nil, false
+	}
+	if h.Log != nil {
+		h.Log.WarnContext(ctx, "charge failed over to another account", "tenant", run.tenant, "invoice", invoice, "from", from.Provider, "to", to, "cause", cause)
+	}
+	reply, err := h.chargeAt(ctx, run, ch, invoice, p2, payments.FailoverKey(ch.GetIdempotencyKey(), to), false)
+	return reply, err, true
+}
+
+// resumeFailover goes on with a charge that failed over, at the account it failed over to, under the key it used there.
+func (h *Handler) resumeFailover(ctx context.Context, run commandRun, ch *commandsv1.ChargePayment, invoice uuid.UUID, fo store.FailoverAttempt) (*commandsv1.ReplyEnvelope, error) {
+	prov, reply, err := h.providerForCommand(ctx, run, invoice, true, fo.Provider, ch.GetPaymentMethod())
+	if err != nil || reply != nil {
+		return reply, err
+	}
+	return h.chargeAt(ctx, run, ch, invoice, prov, fo.Key, true)
+}
+
+// chargeAt makes the second attempt of a charge that failed over: its own attempt row (the same row on every delivery), the failover key, and the same asking before
+// charging as any attempt at a provider that does not dedupe by key. It never fails over again.
+func (h *Handler) chargeAt(ctx context.Context, run commandRun, ch *commandsv1.ChargePayment, invoice uuid.UUID, prov payments.PaymentProvider, key string, resumed bool) (*commandsv1.ReplyEnvelope, error) {
+	ref, hasRef := h.account(prov)
+	name := accountName(prov, ref, hasRef)
+	attempt := uuid.NewSHA1(run.id, []byte("failover:"+key))
+	redelivered, err := h.Attempts.Start(ctx, attempt, run.tenant, invoice, store.KindCharge, run.env, name, key, ch)
+	if err != nil {
+		return nil, err
+	}
+	entry := store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoice, Provider: name, Environment: run.env, Kind: store.KindCharge,
+		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), IdempotencyKey: key, Source: store.SourceCommand}
+	done, err := h.admit(ref, hasRef)
+	if err != nil {
+		return nil, err // this account is down too: the command is retried, and goes on here
+	}
+	if (redelivered || resumed) && !capabilities(prov).IdempotentCharges {
+		if reply, err := h.askBeforeCharging(ctx, prov, entry); reply != nil || err != nil {
+			done(err)
+			return h.keepAttempt(ctx, run, attempt, reply, err)
+		}
+	}
+	res, err := prov.Charge(ctx, payments.ChargeRequest{IdempotencyKey: key, InvoiceID: ch.GetInvoiceId(), AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(),
+		PaymentMethod: ch.GetPaymentMethod(), InvoiceNumber: ch.GetInvoiceNumber()})
+	done(err)
+	reply, err := h.chargeOutcome(ctx, entry, res, err)
+	return h.keepAttempt(ctx, run, attempt, reply, err)
+}
+
+// keepAttempt stores the answer on the second attempt's own row (best effort: the command's row holds the answer billing gets).
+func (h *Handler) keepAttempt(ctx context.Context, run commandRun, attempt uuid.UUID, reply *commandsv1.ReplyEnvelope, err error) (*commandsv1.ReplyEnvelope, error) {
+	if reply != nil && err == nil {
+		_ = h.Attempts.StoreFor(ctx, run.tenant, attempt, reply)
+	}
+	return reply, err
 }
 
 // askBeforeCharging handles the redelivery of a charge to a provider that does not dedupe by key: the provider may have been
@@ -572,15 +707,24 @@ func (h *Handler) queryStatus(ctx context.Context, run commandRun, q *commandsv1
 	if mc, ok := prov.(payments.ManualCollector); ok {
 		return h.manualStatus(ctx, run, invoiceID, q.GetIdempotencyKey(), mc)
 	}
+	// A charge that failed over was made at another account under another key: that is the one to ask about (the account is the invoice's last charge provider).
+	key := q.GetIdempotencyKey()
+	if h.Failovers != nil {
+		if fo, ok, err := h.Attempts.FailoverAttempt(ctx, run.tenant, invoiceID, payments.FailoverPrefix(key)); err != nil {
+			return nil, err
+		} else if ok {
+			key = fo.Key
+		}
+	}
 	if !capabilities(prov).IdempotentCharges && h.Ledger.DB != nil {
 		// A provider that settles by notification: the ledger holds the outcome once its notification has been confirmed.
-		if f, ok, err := h.Ledger.ChargeFact(ctx, run.tenant, q.GetIdempotencyKey()); err != nil {
+		if f, ok, err := h.Ledger.ChargeFact(ctx, run.tenant, key); err != nil {
 			return nil, err
 		} else if ok {
 			return statusFromLedger(f), nil
 		}
 	}
-	st, err := prov.Status(ctx, q.GetIdempotencyKey())
+	st, err := prov.Status(ctx, key)
 	if err != nil {
 		return nil, err // a failed query (or "still pending") is retried; billing keeps the saga in PAYMENT_UNKNOWN meanwhile
 	}

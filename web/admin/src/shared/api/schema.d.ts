@@ -5141,6 +5141,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/tenants/{tenant_id}/account-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Runtime health of every provider account - the last periodic check, the circuit breaker and the account a charge fails over to
+         * @description Not the go-live check (`getProviderHealth` asks the provider now): this is what the worker last saw. A periodic check of each account (`PAYMENTS_HEALTH_INTERVAL`) keeps
+         *     `status`; the account's circuit breaker keeps `breaker` and `consecutive_failures` when it changes. The breaker is in each worker's memory, so a worker that has just started
+         *     shows what the last one left.
+         */
+        get: operations["listProviderAccountHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/tenants/{tenant_id}/provider-accounts/{provider}/failover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the account a new charge goes to when this one definitely did not process it
+         * @description Only a failure that is proven (the connection to the provider never opened, an adapter or provider that says "not processed", or an open circuit) lets a new charge go to
+         *     the other account, as a new attempt under a new key. A timeout never does. See docs/provider-health.md. Both accounts must exist in the environment; a bank transfer cannot take part.
+         */
+        put: operations["putProviderAccountFailover"];
+        post?: never;
+        /** Remove the failover of an account */
+        delete: operations["deleteProviderAccountFailover"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{tenant_id}/settlement/payments": {
         parameters: {
             query?: never;
@@ -8223,6 +8267,49 @@ export interface components {
                 result: "resolved" | "unchanged" | "not_found" | "failed";
                 error_key?: string;
             }[];
+        };
+        ProviderAccountHealth: {
+            /** @description The account key */
+            provider: string;
+            /** @enum {string} */
+            environment: "sandbox" | "live";
+            is_default: boolean;
+            /**
+             * @description unknown - never checked, or the adapter has no call to ask its provider with
+             * @enum {string}
+             */
+            status: "unknown" | "healthy" | "bad_credentials" | "down";
+            /** @enum {string} */
+            breaker: "closed" | "open" | "half_open";
+            /**
+             * Format: int64
+             * @description Outages in a row the breaker has counted
+             */
+            consecutive_failures: number;
+            /** @description A class (unreachable, bad_credentials, unusable, circuit_open, no_remote_check), never a message from the provider */
+            last_error?: string;
+            /** Format: date-time */
+            last_checked_at?: string;
+            /** Format: date-time */
+            last_ok_at?: string;
+            /** Format: date-time */
+            last_failure_at?: string;
+            /** Format: date-time */
+            opened_at?: string;
+            /** @description The account a new charge fails over to when this one definitely did not process it */
+            failover_to?: string;
+        };
+        ListProviderAccountHealthResponse: {
+            accounts: components["schemas"]["ProviderAccountHealth"][];
+        };
+        PutProviderAccountFailoverRequest: {
+            /** @description The account key to fail over to */
+            failover_to: string;
+        };
+        PutProviderAccountFailoverResponse: {
+            provider: string;
+            environment: string;
+            failover_to: string;
         };
         SettlementPayment: {
             invoice_id: string;
@@ -20670,6 +20757,84 @@ export interface operations {
                 };
             };
             400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listProviderAccountHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tenant_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListProviderAccountHealthResponse"];
+                };
+            };
+        };
+    };
+    putProviderAccountFailover: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                /** @description The account key */
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutProviderAccountFailoverRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PutProviderAccountFailoverResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    deleteProviderAccountFailover: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             404: components["responses"]["Error"];
         };
     };

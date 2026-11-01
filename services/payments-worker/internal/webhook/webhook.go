@@ -39,6 +39,7 @@ import (
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoiceaccounts"
 	einvoicecommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoiceaccounts/command"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/health"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/httpx"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/invoicepayments"
 	invoicepaymentscommand "github.com/0furkancolak/payrudder/services/payments-worker/internal/invoicepayments/command"
@@ -147,6 +148,7 @@ func (s *Server) modules() []RouteRegistrar {
 			Command: accountscommand.Deps{Registry: s.Registry, Accounts: s.Accounts, Plans: s.Plans, Log: s.Log},
 			Query:   accountsquery.Deps{Registry: s.Registry, Accounts: s.Accounts, Health: &s.accountHealth, Log: s.Log}},
 		&einvoiceaccounts.Handler{Log: s.Log, Deps: einvoicecommand.Deps{Accounts: s.EInvoiceAccounts, Registry: s.EInvoiceRegistry, AllowMockLive: s.AllowMockLive}},
+		&health.Handler{Store: store.ProviderHealth{DB: s.Ledger.DB}, Log: s.Log},
 		&ledger.Handler{Log: s.Log, Query: ledgerquery.Deps{Ledger: s.Ledger}, Command: ledgercommand.Deps{Reset: s.Reset}},
 		&reconciliation.Handler{Log: s.Log, Query: s.Reconcile().Query, Command: s.Reconcile()},
 		&invoicepayments.Handler{Log: s.Log, Query: invoiceQuery,

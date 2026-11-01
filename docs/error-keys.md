@@ -363,6 +363,8 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.checkout.fields_required`
 - `payments.checkout.unsupported`
 - `payments.customer.not_ready`
+- `payments.failover.bad_target`
+- `payments.failover.not_found`
 - `payments.invoice.amount_required`
 - `payments.invoice.bad_id`
 - `payments.invoice.bad_ids`

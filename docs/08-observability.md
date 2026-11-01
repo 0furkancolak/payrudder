@@ -134,6 +134,7 @@ All numbers are **targets** for a laptop-class local/kind setup. They'll be repl
 - `SagaStuck`: `saga_state{state=~".*_FAILED|PAYMENT_UNKNOWN"} > 0` for 15m
 - `FrozenPeriodViolation`: any increase (page)
 - `ReconcileDriftHigh`: corrections > 1% of active keys per cycle
+- Provider health (plan 22 G8, no alert yet): `provider_health_checks{provider,result}`, `provider_breaker_transitions{provider,to}`, `provider_breaker_rejections{provider}` (payments-worker)
 - Reconciliation (plan 22 G7, no alert yet): `reconciliation_runs{started_by,result}`, `reconciliation_discrepancies_opened{kind}`, `reconciliation_discrepancies_resolved{resolution}` (payments-worker)
 - Money (plan 16 / 22 G6): `PaymentDiscrepancy` (page), `PaymentCommandsErroring` (page), `ChargeFailureRateHigh`, `RefundSpike`, `ProviderWebhookFailing`, `DunningQueueGrowing` (warn), `DLQGrowing` (page)
 - Data safety: `BackupStale`, `BackupFailed`, `RestoreDrillFailed`, `WalArchiveStale`, `BaseBackupStale` (page), `WalSpoolBacklog`, `RestoreNotVerified` (warn). A stack that never ran PITR raises no PITR alert (there is no metric to go stale); a stack that should run it watches the `pitr-agent` container itself

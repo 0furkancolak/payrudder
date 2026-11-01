@@ -3112,6 +3112,10 @@
         "bad_fee_rule": "La règle de frais n'est pas valide : vérifiez le fournisseur, la devise et le taux.",
         "bad_since": "Le début doit être dans le passé, au plus 400 jours en arrière.",
         "fee_rule_not_found": "Cette règle de frais n'existe pas."
+      },
+      "failover": {
+        "bad_target": "Un basculement demande deux comptes différents qui existent dans l'environnement ; un virement bancaire ne peut pas y participer.",
+        "not_found": "Aucun basculement n'est défini pour ce compte."
       }
     },
     "einvoice": {

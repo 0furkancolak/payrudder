@@ -115,6 +115,21 @@ type ProviderAccountEvent struct {
 	CreatedAt      time.Time
 }
 
+type ProviderAccountHealth struct {
+	TenantID            uuid.UUID
+	Provider            string
+	Environment         string
+	Status              string
+	Breaker             string
+	ConsecutiveFailures int64
+	LastError           string
+	LastCheckedAt       *time.Time
+	LastOkAt            *time.Time
+	LastFailureAt       *time.Time
+	OpenedAt            *time.Time
+	UpdatedAt           time.Time
+}
+
 type ProviderEvent struct {
 	Provider    string
 	EventID     string
@@ -124,6 +139,15 @@ type ProviderEvent struct {
 	Status      string
 	ProcessedAt *time.Time
 	Error       *string
+}
+
+type ProviderFailover struct {
+	TenantID    uuid.UUID
+	Environment string
+	Provider    string
+	FailoverTo  string
+	UpdatedBy   string
+	UpdatedAt   time.Time
 }
 
 type ProviderObject struct {
