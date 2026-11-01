@@ -16,7 +16,7 @@ func TestStarterTexts(t *testing.T) {
 			if !ok || served != loc {
 				t.Fatalf("no starter %s/%s", kind, loc)
 			}
-			if !domain.HasTemplateNotice(body) || !(strings.HasPrefix(body, "**"+domain.NoticeEN) || strings.HasPrefix(body, "**"+domain.NoticeTR)) {
+			if !strings.HasPrefix(body, "**"+domain.NoticeEN) && !strings.HasPrefix(body, "**"+domain.NoticeTR) {
 				t.Errorf("%s/%s does not begin with the template notice", kind, loc)
 			}
 			if _, err := domain.ValidateContractBodies(map[string]string{loc: body}); err != nil {

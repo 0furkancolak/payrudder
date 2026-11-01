@@ -104,14 +104,12 @@ func (s *Server) requireContracts(w http.ResponseWriter, r *http.Request, sc sco
 	resp, err := s.d.Hosted.GetHostedInvoice(r.Context(), sc.get())
 	switch {
 	case goneError(err):
-		hostedNotFound(w, lang)
-		return false
+		return true // the link is not valid: billing, which resolves the same credential, gives the answer for that (the 404 page, or the reason it refuses)
 	case err != nil:
 		refuse(http.StatusServiceUnavailable, "pay_unavailable")
 		return false
 	case resp.GetInvoice() == nil:
-		hostedNotFound(w, lang)
-		return false
+		return true // an ad-hoc link has no invoice to pay yet; billing refuses a pay on it
 	}
 	if st := resp.GetInvoice().GetStatus(); st == "paid" || st == "void" {
 		return true // nothing can be paid on it, and billing says so; no agreement is asked for a payment that cannot start

@@ -35,7 +35,6 @@ type fakeContracts struct {
 	published  *plansv1.PublishContractVersionRequest
 	withdrawal *plansv1.CreateContractWithdrawalRequest
 	decided    *plansv1.SetContractWithdrawalStatusRequest
-	acceptance *plansv1.RecordContractAcceptanceRequest
 }
 
 var lastContracts *fakeContracts
@@ -71,9 +70,7 @@ func (f *fakeContracts) GetContractRequirements(ctx context.Context, req *plansv
 	if f.satisfied {
 		return out, nil
 	}
-	for _, r := range f.required {
-		out.Requirements = append(out.Requirements, r)
-	}
+	out.Requirements = append(out.Requirements, f.required...)
 	return out, nil
 }
 
