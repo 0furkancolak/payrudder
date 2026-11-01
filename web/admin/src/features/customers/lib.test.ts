@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countryName, flagOf, headline, initialsOf, summarise } from "./lib";
+import { countryName, flagOf, headline, initialsOf, isBlocked, summarise } from "./lib";
 
 describe("summarise", () => {
   const invoices = [
@@ -70,5 +70,19 @@ describe("customer labels", () => {
     expect(initialsOf({ external_id: "cus_1" })).toBe("C1");
     expect(initialsOf({ name: "ırmak", external_id: "x" }, "tr")).toBe("I");
     expect(initialsOf({})).toBe("?");
+  });
+});
+
+describe("isBlocked", () => {
+  const now = Date.parse("2026-11-01T12:00:00Z");
+  it("is blocked from the block time until it is lifted", () => {
+    expect(isBlocked({ block_time: "2026-10-01T00:00:00Z" }, now)).toBe(true);
+    expect(isBlocked({}, now)).toBe(false);
+    expect(isBlocked({ block_time: null }, now)).toBe(false);
+  });
+  it("stops being blocked when the block ends by itself", () => {
+    expect(isBlocked({ block_time: "2026-10-01T00:00:00Z", blocked_until: "2026-12-01T00:00:00Z" }, now)).toBe(true);
+    expect(isBlocked({ block_time: "2026-10-01T00:00:00Z", blocked_until: "2026-10-15T00:00:00Z" }, now)).toBe(false);
+    expect(isBlocked({ block_time: "2026-10-01T00:00:00Z", blocked_until: null }, now)).toBe(true);
   });
 });

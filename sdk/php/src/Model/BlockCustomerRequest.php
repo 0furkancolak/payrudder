@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace Payrudder\Model;
 
 use Payrudder\Contract\RequestBody;
+use Payrudder\Enum\CustomerBlockCategory;
 use Payrudder\Internal\Cast;
 
 /**
@@ -16,9 +17,13 @@ final class BlockCustomerRequest implements RequestBody
 {
     /**
      * @param string|null $reason
+     * @param CustomerBlockCategory|string|null $category
+     * @param string|null $blockedUntil
      */
     public function __construct(
         public readonly ?string $reason = null,
+        public readonly CustomerBlockCategory|string|null $category = null,
+        public readonly ?string $blockedUntil = null,
     ) {}
 
     /**
@@ -28,6 +33,8 @@ final class BlockCustomerRequest implements RequestBody
     {
         return Cast::compact([
             'reason' => $this->reason,
+            'category' => Cast::wire($this->category),
+            'blocked_until' => $this->blockedUntil,
         ]);
     }
 }

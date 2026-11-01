@@ -32,6 +32,9 @@ const (
 	tokVoid        = "tok-void-0123456789abcdefghijklmnopqrstuvw"
 	tokUncollect   = "tok-uncollectible-0123456789abcdefghijklmn"
 	tokBlockedLink = "tok-blocked-0123456789abcdefghijklmnopqrstu"
+	tokHeldLink    = "tok-held-0123456789abcdefghijklmnopqrstuvw"
+	tokPayBlocked  = "tok-payblocked-0123456789abcdefghijklmnopq"
+	tokPayHeld     = "tok-payheld-0123456789abcdefghijklmnopqrst"
 	tokBroken      = "tok-broken-0123456789abcdefghijklmnopqrstu"
 	portalTok      = "portal-0123456789abcdefghijklmnopqrstuvwxyz"
 	liveTenantID   = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e"
@@ -149,6 +152,8 @@ func (fakeBilling) StartLinkPayment(_ context.Context, req *billingv1.StartLinkP
 		return nil, status.Error(codes.FailedPrecondition, "used")
 	case tokBlockedLink:
 		return nil, errkey.New(codes.FailedPrecondition, "billing.customer.blocked", "this customer is blocked: no new purchase")
+	case tokHeldLink:
+		return nil, errkey.New(codes.FailedPrecondition, "billing.tenant.on_hold", "this seller cannot take payments now")
 	}
 	return nil, status.Error(codes.NotFound, "no such link")
 }
@@ -164,6 +169,10 @@ func (fakeBilling) RequestHostedPayment(_ context.Context, req *billingv1.Reques
 		return &billingv1.RequestHostedPaymentResponse{Action: "provider", Payment: openInvoice("live", "open", true).GetPayment()}, nil
 	case req.GetToken() == goodToken:
 		return nil, status.Error(codes.FailedPrecondition, "not payable")
+	case req.GetToken() == tokPayBlocked:
+		return nil, errkey.New(codes.FailedPrecondition, "billing.customer.blocked", "this customer is blocked: no new purchase")
+	case req.GetToken() == tokPayHeld:
+		return nil, errkey.New(codes.FailedPrecondition, "billing.tenant.on_hold", "this seller cannot take payments now")
 	}
 	return nil, status.Error(codes.NotFound, "no such link")
 }

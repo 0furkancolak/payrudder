@@ -12,6 +12,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/money"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/payments/providers"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -94,8 +95,8 @@ func (c *Commands) create(ctx context.Context, q *sqlc.Queries, tenantID uuid.UU
 	if err != nil {
 		return nil, convert.Err(err, "customer")
 	}
-	if cust.BlockedAt != nil {
-		return nil, errkey.New(codes.FailedPrecondition, "plans.customer.blocked", "this customer is blocked: no new subscription")
+	if err := domain.Gate(paymentgate.OpPurchase, t.Status, convert.BlockOf(cust), c.now(), "no new subscription"); err != nil {
+		return nil, err
 	}
 	pv, err := q.GetPlanVersionByCode(ctx, sqlc.GetPlanVersionByCodeParams{PlanCode: req.GetPlanCode(), Version: req.GetPlanVersion()})
 	if err != nil {

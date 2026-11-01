@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
+
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 )
 
 func TestTenantIsCachedAndConcurrentMissesShareOneLoad(t *testing.T) {
@@ -56,5 +59,33 @@ func TestLoadErrorIsReturnedAndNotCached(t *testing.T) {
 	}
 	if s, err := c.Tenant(context.Background(), id); err != nil || s.Timezone != "UTC" {
 		t.Fatalf("retry = %+v %v", s, err)
+	}
+}
+
+func TestSettingsKnowWhenTheTenantIsOnHold(t *testing.T) {
+	for st, want := range map[plansv1.TenantStatus]bool{
+		plansv1.TenantStatus_TENANT_STATUS_UNSPECIFIED: false, plansv1.TenantStatus_TENANT_STATUS_ACTIVE: false, plansv1.TenantStatus_TENANT_STATUS_INACTIVE: false,
+		plansv1.TenantStatus_TENANT_STATUS_SUSPENDED: true, plansv1.TenantStatus_TENANT_STATUS_FROZEN: true, plansv1.TenantStatus_TENANT_STATUS_BANNED: true,
+	} {
+		if got := (Settings{Status: st}).OnHold(); got != want {
+			t.Errorf("OnHold(%v) = %v, want %v", st, got, want)
+		}
+	}
+}
+
+type fakeAdmin struct {
+	plansv1.AdminServiceClient
+	tenant *plansv1.Tenant
+}
+
+func (f fakeAdmin) GetTenant(context.Context, *plansv1.GetTenantRequest, ...grpc.CallOption) (*plansv1.GetTenantResponse, error) {
+	return &plansv1.GetTenantResponse{Tenant: f.tenant}, nil
+}
+
+func TestNewCarriesTheStatusOfTheTenant(t *testing.T) {
+	c := New(fakeAdmin{tenant: &plansv1.Tenant{Timezone: "UTC", Status: plansv1.TenantStatus_TENANT_STATUS_FROZEN}}, time.Minute)
+	s, err := c.Tenant(context.Background(), uuid.New())
+	if err != nil || s.Status != plansv1.TenantStatus_TENANT_STATUS_FROZEN || !s.OnHold() {
+		t.Fatalf("Tenant = %+v %v", s, err)
 	}
 }

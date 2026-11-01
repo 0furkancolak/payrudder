@@ -136,8 +136,14 @@ paths:
   /v1/customers/{external_id}/block:
     post:
       operationId: blockCustomer
-      summary: Block a customer from new subscriptions
-      description: A blocked customer cannot get a new subscription (error key plans.customer.blocked); what exists runs on until you end it. Blocking again keeps the first time and note. The note is yours, up to 500 characters.
+      summary: Block a customer from new purchases
+      description: |
+        A blocked customer cannot get a new subscription or plan change (error key `plans.customer.blocked`), buy through a payment link or the portal, or have a
+        payment link made for them (`billing.customer.blocked`); what exists runs on until you end it, and an invoice that was issued before stays payable, except after
+        a `fraud` or `chargeback` block. A price change you schedule skips them (`customer_blocked`). Blocking again keeps the block that is in force. The note is
+        yours, up to 500 characters; `category` says why; `blocked_until` ends the block by itself (it must be in the future, and every check reads it, so the block
+        stops holding at that time). Every block and lift is kept in the customer's history and sent as the `customer.blocked` / `customer.unblocked` webhook events
+        (the end of a block by itself sends none). Usage ingestion and entitlements are not affected.
       parameters: [{ $ref: "#/components/parameters/ExternalID" }]
       requestBody:
         content: { application/json: { schema: { $ref: "#/components/schemas/BlockCustomerRequest" } } }
@@ -150,9 +156,20 @@ paths:
     post:
       operationId: unblockCustomer
       summary: Lift a customer's block
+      description: Also clears a block that has ended by itself. A customer who was not blocked is returned as it is.
       parameters: [{ $ref: "#/components/parameters/ExternalID" }]
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+
+  /v1/customers/{external_id}/block-events:
+    get:
+      operationId: listCustomerBlockEvents
+      summary: A customer's blocks and lifts, newest first
+      description: Who blocked or lifted, when, and why (the latest 100). Never changed or deleted.
+      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListCustomerBlockEventsResponse" } } } }
         "404": { $ref: "#/components/responses/Error" }
 
   /v1/customers/{external_id}/tax:
@@ -513,7 +530,7 @@ paths:
         For each Payrudder-run subscription on `from_version` whose next renewal is at least `notice_days` away (default 30, at least 14), a change to `to_version`
         (default: the latest published) is scheduled for that renewal and the customer is mailed, in their language, when the new price starts and what each renewal costs.
         The others are listed in `skipped` with why: `renews_soon` (run it again later), `has_pending_change` (a change is waiting and is never replaced),
-        `run_by_provider` and `not_changeable` (for example a fee invoiced in arrears). `dry_run` counts and changes nothing. Each scheduled change also sends the
+        `run_by_provider`, `not_changeable` (for example a fee invoiced in arrears) and `customer_blocked` (a blocked customer is not offered a new price). `dry_run` counts and changes nothing. Each scheduled change also sends the
         `subscription.change_scheduled` webhook event.
       parameters: [{ name: code, in: path, required: true, schema: { type: string } }]
       requestBody:
@@ -4375,8 +4392,13 @@ paths:
   /admin/v1/tenants/{id}/status:
     put:
       operationId: setTenantStatus
-      summary: Suspend an active live tenant, reinstate a suspended one, or activate an inactive one without its checklist
-      description: A suspended tenant's API keys stop working at once (403 gateway.auth.tenant_not_active). Activating an inactive tenant needs a reason and is logged.
+      summary: Suspend, freeze or ban an active live tenant, reinstate one, or activate an inactive one without its checklist
+      description: |
+        `suspended` and `banned` stop the tenant's API keys at once (403 `gateway.auth.tenant_not_active`); a `frozen` tenant's keys and console still read and write nothing
+        (403 `gateway.auth.tenant_read_only`). In all three the hosted payment pages and payment links take no payment, dunning makes no charge, customers get no
+        mail and webhook deliveries wait until the tenant is reinstated. A ban, lifting a ban and activating an inactive tenant need a `reason`; every change is
+        recorded with its category, reason and who made it (`GET .../status-events`). Where `PAYRUDDER_TENANT_BAN_APPROVAL` is on, a ban only records the request
+        (409 `plans.tenant.approval_pending`) until a second operator makes the same request within 24 hours.
       security: [{ operatorToken: [] }]
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
@@ -4389,6 +4411,16 @@ paths:
         "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
         "409": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{id}/status-events:
+    get:
+      operationId: listTenantStatusEvents
+      summary: The changes of a tenant's status, newest first
+      description: Each change with its category, reason and who made it, and the ban requests that wait for a second operator (the latest 100). Never changed or deleted.
+      security: [{ operatorToken: [] }]
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListTenantStatusEventsResponse" } } } }
+        "404": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{id}/api-keys:
     post:
       operationId: createApiKey
@@ -4668,7 +4700,7 @@ components:
       properties:
         subscription_id: { type: string, format: uuid }
         customer_external_id: { type: string }
-        reason: { type: string, enum: [renews_soon, has_pending_change, run_by_provider, not_changeable] }
+        reason: { type: string, enum: [renews_soon, has_pending_change, run_by_provider, not_changeable, customer_blocked] }
     SchedulePriceChangeResponse:
       type: object
       required: [scheduled, scheduled_subscription_ids, skipped, to_version, notice_days]
@@ -4682,6 +4714,28 @@ components:
       type: object
       properties:
         reason: { type: string, maxLength: 500, description: "Your note on why; never shown to the customer." }
+        category: { $ref: "#/components/schemas/CustomerBlockCategory" }
+        blocked_until: { type: string, format: date-time, description: "When the block ends by itself; must be in the future. Absent: until you lift it." }
+    CustomerBlockCategory:
+      type: string
+      enum: [fraud, chargeback, abuse, request, other]
+      description: "Why the customer is blocked. fraud and chargeback also refuse paying an invoice that is open."
+    CustomerBlockEvent:
+      type: object
+      required: [id, action, category, reason, actor, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, enum: [blocked, unblocked] }
+        category: { type: string, description: "Empty when none was given; else a CustomerBlockCategory" }
+        reason: { type: string }
+        blocked_until: { type: string, format: date-time, nullable: true }
+        actor: { type: string, description: "A person's address, key:<api key id>, or operator" }
+        create_time: { type: string, format: date-time }
+    ListCustomerBlockEventsResponse:
+      type: object
+      required: [events]
+      properties:
+        events: { type: array, items: { $ref: "#/components/schemas/CustomerBlockEvent" } }
     SupportTicket:
       type: object
       required: [id, number, account_id, account_name, subject, category, priority, status, assignee, create_time, update_time, last_message_time, last_author, first_response_due, sla_breached, message_count]
@@ -6934,8 +6988,31 @@ components:
       type: object
       required: [status]
       properties:
-        status: { type: string, enum: [active, suspended] }
+        status: { type: string, enum: [active, suspended, frozen, banned] }
+        reason: { type: string, maxLength: 500 }
+        category: { type: string, enum: [nonpayment, fraud, abuse, legal, request, other] }
+    TenantStatusEvent:
+      type: object
+      required: [id, kind, from_status, to_status, category, reason, actor, approved_by, create_time]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [changed, requested], description: "requested: a ban waiting for a second operator" }
+        from_status: { $ref: "#/components/schemas/TenantStatus" }
+        to_status: { $ref: "#/components/schemas/TenantStatus" }
+        category: { type: string }
         reason: { type: string }
+        actor: { type: string, description: "The operator's address, or the machine token's X-Payrudder-Actor, or operator" }
+        approved_by: { type: string, description: "The second operator of a change that needed one" }
+        create_time: { type: string, format: date-time }
+    ListTenantStatusEventsResponse:
+      type: object
+      required: [events]
+      properties:
+        events: { type: array, items: { $ref: "#/components/schemas/TenantStatusEvent" } }
+    TenantStatus:
+      type: string
+      description: "A sandbox tenant is always active. A live tenant starts inactive: no keys, no webhook endpoints, no invoices, until the go-live checklist is complete. Frozen is read-only; suspended and banned stop the keys; all three take no payment."
+      enum: [TENANT_STATUS_INACTIVE, TENANT_STATUS_ACTIVE, TENANT_STATUS_SUSPENDED, TENANT_STATUS_FROZEN, TENANT_STATUS_BANNED]
     CreateApiKeyRequest:
       type: object
       properties:
@@ -7476,6 +7553,43 @@ components:
         created: { type: string, format: date-time }
         tenant_id: { type: string, format: uuid }
         data: { $ref: "#/components/schemas/CreditsLowEventData" }
+    CustomerBlockedEventData:
+      type: object
+      description: "The data of an event of type customer.blocked"
+      required: [customer_id, customer_external_id, category, reason]
+      properties:
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        category: { type: string, description: "Empty when none was given; else a CustomerBlockCategory" }
+        reason: { type: string, description: "Your own note" }
+        blocked_until: { type: string, format: date-time, description: "Absent: until lifted" }
+    CustomerBlockedEvent:
+      type: object
+      description: "The body of a delivery of type customer.blocked"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [customer.blocked] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/CustomerBlockedEventData" }
+    CustomerUnblockedEventData:
+      type: object
+      description: "The data of an event of type customer.unblocked"
+      required: [customer_id, customer_external_id]
+      properties:
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+    CustomerUnblockedEvent:
+      type: object
+      description: "The body of a delivery of type customer.unblocked"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [customer.unblocked] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/CustomerUnblockedEventData" }
     PingEventData:
       type: object
       description: "The data of an event of type ping"
@@ -7814,7 +7928,7 @@ components:
         districts: { type: array, items: { $ref: "#/components/schemas/GeoDistrict" } }
     Customer:
       type: object
-      required: [id, external_id, name, email, payment_method, create_time, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, block_reason]
+      required: [id, external_id, name, email, payment_method, create_time, country, billing_currency, address, tax_id, tax_office, e_invoice_registered, locale, customer_type, block_reason, block_category]
       properties:
         id: { type: string, format: uuid }
         external_id: { type: string }
@@ -7830,8 +7944,10 @@ components:
         e_invoice_registered: { type: boolean }
         locale: { type: string, description: "The language of the customer's mails, receipts and payment pages: en, tr, de, fr, es or ar. Empty is the browser's language (pages) and English (mails)." }
         customer_type: { type: string, description: "individual (a person) or business (a taxpayer with a tax id). Empty is unknown." }
-        block_time: { type: string, format: date-time, nullable: true, description: "Set while the customer is blocked: no new subscription can be created for them (existing ones run on)." }
+        block_time: { type: string, format: date-time, nullable: true, description: "Set while the customer is blocked: no new subscription, plan change or purchase (existing subscriptions run on). A block whose blocked_until has passed has ended, whatever this says." }
         block_reason: { type: string, description: "The seller's own note on the block; never shown to the customer." }
+        block_category: { type: string, description: "Why: fraud, chargeback, abuse, request or other; empty when none was given." }
+        blocked_until: { type: string, format: date-time, nullable: true, description: "When the block ends by itself; absent: until it is lifted." }
     CreateMeterRequest:
       type: object
       required: [code, aggregation, unit_label]
@@ -8466,6 +8582,8 @@ components:
         - payment_link.expired
         - credits.purchased
         - credits.low
+        - customer.blocked
+        - customer.unblocked
     PaymentLink:
       type: object
       required: [id, kind, status, pack_id, quantity, credits, promotion_code, invoice_id, customer_external_id, single_use, amount_minor, currency, description, create_time, expire_time, revoke_time, paid_count, last_paid_time, use_count, idempotency_key]
@@ -8596,6 +8714,8 @@ components:
         - { $ref: "#/components/schemas/PaymentLinkExpiredEvent" }
         - { $ref: "#/components/schemas/CreditsPurchasedEvent" }
         - { $ref: "#/components/schemas/CreditsLowEvent" }
+        - { $ref: "#/components/schemas/CustomerBlockedEvent" }
+        - { $ref: "#/components/schemas/CustomerUnblockedEvent" }
         - { $ref: "#/components/schemas/PingEvent" }
       discriminator:
         propertyName: type
@@ -8622,6 +8742,8 @@ components:
           payment_link.expired: "#/components/schemas/PaymentLinkExpiredEvent"
           credits.purchased: "#/components/schemas/CreditsPurchasedEvent"
           credits.low: "#/components/schemas/CreditsLowEvent"
+          customer.blocked: "#/components/schemas/CustomerBlockedEvent"
+          customer.unblocked: "#/components/schemas/CustomerUnblockedEvent"
           ping: "#/components/schemas/PingEvent"
     Coupon:
       type: object
@@ -8912,7 +9034,7 @@ components:
         timezone: { type: string }
         grace_period: { type: string, nullable: true }
         create_time: { type: string, format: date-time, nullable: true }
-        status: { type: string, enum: [TENANT_STATUS_INACTIVE, TENANT_STATUS_ACTIVE, TENANT_STATUS_SUSPENDED], description: "A sandbox tenant is always active. A live tenant starts inactive: no keys, no webhook endpoints, no invoices, until the go-live checklist is complete." }
+        status: { $ref: "#/components/schemas/TenantStatus" }
         activate_time: { type: string, format: date-time, nullable: true }
         terms_accept_time: { type: string, format: date-time, nullable: true }
         invoice_logo_asset_id: { type: string }
@@ -8941,7 +9063,7 @@ components:
       required: [tenant_id, status, ready, items]
       properties:
         tenant_id: { type: string, format: uuid }
-        status: { type: string, enum: [TENANT_STATUS_INACTIVE, TENANT_STATUS_ACTIVE, TENANT_STATUS_SUSPENDED] }
+        status: { $ref: "#/components/schemas/TenantStatus" }
         ready: { type: boolean, description: Every item is done. }
         items:
           type: array

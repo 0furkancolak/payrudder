@@ -60,6 +60,8 @@ type SweepResult struct {
 	Reissued  int
 	Exhausted int
 	Dunned    int
+	// Held counts the dunning retries put off because the tenant is on hold.
+	Held int
 	// Polled counts the pending payments (bank transfers) whose status was asked for again.
 	Polled int
 }
@@ -173,6 +175,16 @@ func (e *Engine) sweepDunning(ctx context.Context, s tenantdb.Scope, now time.Ti
 			return q.LockSagaDueForDunning(ctx, sqlc.LockSagaDueForDunningParams{TenantID: d.tenantID, ID: d.id, Now: now})
 		},
 		func(tx pgx.Tx, s *saga) error {
+			if e.cfg.Hold != nil {
+				held, err := e.cfg.Hold(ctx, s.TenantID)
+				if err != nil {
+					return fmt.Errorf("is tenant %s on hold: %w", s.TenantID, err)
+				}
+				if held {
+					res.Held++
+					return sqlc.New(tx).HoldSagaDunning(ctx, sqlc.HoldSagaDunningParams{Until: now.Add(DunningHold), TenantID: s.TenantID, ID: s.ID})
+				}
+			}
 			out, err := e.handleLoaded(ctx, tx, s, model.EvDunningDue, "dunning", nil)
 			if out.Applied {
 				res.Dunned++

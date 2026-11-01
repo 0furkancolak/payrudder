@@ -15,6 +15,7 @@ OPERATIONS: dict[str, tuple[str, str, str]] = {
     "setCustomerContact": ("customers", "set_customer_contact", "PUT /v1/customers/{external_id}/contact"),
     "blockCustomer": ("customers", "block_customer", "POST /v1/customers/{external_id}/block"),
     "unblockCustomer": ("customers", "unblock_customer", "POST /v1/customers/{external_id}/unblock"),
+    "listCustomerBlockEvents": ("customers", "list_customer_block_events", "GET /v1/customers/{external_id}/block-events"),
     "setCustomerTax": ("customers", "set_customer_tax", "PUT /v1/customers/{external_id}/tax"),
     "listEInvoices": ("e_invoices", "list_e_invoices", "GET /v1/e-invoices"),
     "getEInvoice": ("e_invoices", "get_e_invoice", "GET /v1/e-invoices/{id}"),

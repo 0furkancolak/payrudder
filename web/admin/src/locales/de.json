@@ -233,7 +233,55 @@
       "rerating": "Neubewertungsjob"
     },
     "allStatuses": "Alle Status",
-    "allKinds": "Alle Arten"
+    "allKinds": "Alle Arten",
+    "status": {
+      "title": "Status",
+      "names": {
+        "active": "Aktiv",
+        "inactive": "Noch nicht live",
+        "suspended": "Gesperrt",
+        "frozen": "Eingefroren",
+        "banned": "Verbannt"
+      },
+      "effects": {
+        "active": "Im Betrieb: API-Schlüssel, Zahlungsseiten, Mahnwesen, Kunden-E-Mails und Webhooks funktionieren.",
+        "inactive": "Noch nicht live: ohne Schlüssel und ohne Zahlungen, bis die Go-live-Checkliste abgeschlossen ist.",
+        "suspended": "API-Schlüssel stoppen sofort. Zahlungsseiten und Zahlungslinks nehmen keine Zahlung an, das Mahnwesen bucht nichts ab, Kunden erhalten keine E-Mails und Webhook-Zustellungen warten.",
+        "frozen": "Nur lesend: API-Schlüssel und Konsole lesen weiter, geschrieben wird nichts. Zahlungsseiten und Zahlungslinks nehmen keine Zahlung an, das Mahnwesen bucht nichts ab, Kunden erhalten keine E-Mails und Webhook-Zustellungen warten.",
+        "banned": "Wie gesperrt, aber auf Dauer gedacht: API-Schlüssel stoppen sofort, es wird nichts abgebucht, gemailt oder gesendet. Für eine Verbannung und deren Aufhebung ist ein Grund nötig."
+      },
+      "to": "Ändern zu",
+      "category": "Kategorie",
+      "categoryNone": "Keine Kategorie",
+      "categories": {
+        "nonpayment": "Nichtzahlung",
+        "fraud": "Betrug",
+        "abuse": "Missbrauch",
+        "legal": "Rechtlich",
+        "request": "Eigener Wunsch",
+        "other": "Sonstiges"
+      },
+      "reason": "Grund",
+      "reasonHint": "Wird mit Ihrer Adresse im Verlauf gespeichert. Bis zu 500 Zeichen.",
+      "reasonRequired": "Für eine Verbannung und deren Aufhebung ist ein Grund nötig.",
+      "apply": "Auf {status} setzen",
+      "confirm": {
+        "active": "{name} wieder freigeben? API-Schlüssel, Zahlungsseiten, E-Mails und Webhooks funktionieren wieder.",
+        "suspended": "{name} sperren? Die API-Schlüssel stoppen sofort und es werden keine Zahlungen angenommen.",
+        "frozen": "{name} einfrieren? API-Schlüssel und Konsole werden schreibgeschützt und es werden keine Zahlungen angenommen.",
+        "banned": "{name} verbannen? Die API-Schlüssel stoppen sofort, es wird nichts abgebucht, gemailt oder gesendet."
+      },
+      "sandbox": "Eine Sandbox-Umgebung ist immer aktiv.",
+      "inactive": "Diese Umgebung ist noch nicht live. Sie wird über ihre Go-live-Checkliste aktiviert.",
+      "history": "Verlauf",
+      "historyEmpty": "Noch keine Änderung.",
+      "requested": "Aufforderung zu {to}: wartet auf einen zweiten Operator",
+      "changed": "{from} → {to}",
+      "by": "von {actor}",
+      "approvedBy": "bestätigt von {actor}",
+      "choose": "Status wählen",
+      "applyNone": "Status setzen"
+    }
   },
   "invoice": {
     "summary": "{kind} · Zeitraum {period} · {customer} · {total} · {status} · Saga {saga}",
@@ -572,8 +620,35 @@
         "badge": "Gesperrt",
         "action": "Sperren",
         "lift": "Sperre aufheben",
-        "confirm": "{name} sperren? Für diesen Kunden kann kein neues Abonnement angelegt werden. Bestehende laufen weiter.",
-        "confirmMany": "{n} Kunden sperren? Für sie kann kein neues Abonnement angelegt werden. Bestehende laufen weiter."
+        "confirm": "{name} sperren? Für diesen Kunden kann kein neues Abonnement, kein Planwechsel und kein Kauf gestartet werden. Was er jetzt hat, läuft weiter.",
+        "confirmMany": "{n} Kunden sperren? Für sie kann kein neues Abonnement, kein Planwechsel und kein Kauf gestartet werden. Was sie jetzt haben, läuft weiter.",
+        "title": "{name} sperren",
+        "description": "Für diesen Kunden kann kein neues Abonnement, kein Planwechsel und kein Kauf gestartet werden. Was er jetzt hat, läuft weiter.",
+        "category": "Grund",
+        "categoryNone": "Kein Grund angegeben",
+        "categoryHint": "Betrug und Rückbuchung verhindern auch die Zahlung einer offenen Rechnung.",
+        "categories": {
+          "fraud": "Betrug",
+          "chargeback": "Rückbuchung",
+          "abuse": "Missbrauch",
+          "request": "Eigener Wunsch",
+          "other": "Sonstiges"
+        },
+        "note": "Ihre Notiz",
+        "noteHint": "Nur Sie sehen sie, nie der Kunde. Bis zu 500 Zeichen.",
+        "until": "Endet am",
+        "untilHint": "Leer lassen, um bis zur Aufhebung zu sperren. Ab diesem Tag kann der Kunde wieder kaufen.",
+        "submit": "Kunden sperren",
+        "banner": "Gesperrt seit {date}",
+        "bannerUntil": "Endet am {date}",
+        "ended": "Die Sperre endete am {date}. Heben Sie sie auf, um sie zu entfernen.",
+        "history": "Sperrverlauf",
+        "historyEmpty": "Dieser Kunde wurde nie gesperrt.",
+        "actions": {
+          "blocked": "Gesperrt",
+          "unblocked": "Aufgehoben"
+        },
+        "by": "von {actor}"
       }
     },
     "packages": {
@@ -683,7 +758,8 @@
           "renews_soon": "{n} verlängern zu bald für den Vorlauf: später erneut ausführen.",
           "has_pending_change": "{n} haben schon eine wartende Änderung und blieben unberührt.",
           "run_by_provider": "{n} werden von einem Zahlungsanbieter geführt.",
-          "not_changeable": "{n} lassen sich so nicht verschieben (z. B. Gebühr im Nachhinein berechnet)."
+          "not_changeable": "{n} lassen sich so nicht verschieben (z. B. Gebühr im Nachhinein berechnet).",
+          "customer_blocked": "{n} gehören zu einem gesperrten Kunden und wurden übergangen."
         }
       }
     },
@@ -2576,7 +2652,8 @@
         "bad_status": "Der Status muss pending, issued, failed oder cancelled sein."
       },
       "tenant": {
-        "bad_id": "Die Konto-ID ist keine gültige ID."
+        "bad_id": "Die Konto-ID ist keine gültige ID.",
+        "on_hold": "Dieser Verkäufer kann gerade keine Zahlungen annehmen."
       },
       "rerating": {
         "bad_job_id": "Die ID des Neubewertungsauftrags ist keine gültige ID.",
@@ -2672,7 +2749,7 @@
       "customer": {
         "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig.",
         "quota_reached": "Das Kundenlimit des Tarifs dieses Kontos ist erreicht.",
-        "blocked": "Dieser Kunde ist gesperrt: Für ihn kann kein neues Abonnement angelegt werden."
+        "blocked": "Dieser Kunde ist gesperrt, daher kann für ihn nichts Neues gestartet werden."
       },
       "common": {
         "not_found": "Der Eintrag wurde nicht gefunden.",
@@ -2682,10 +2759,12 @@
       },
       "tenant": {
         "settings_immutable": "Währung, Zeitzone und Umgebung eines Kontos lassen sich nicht ändern.",
-        "bad_status": "Der Status muss active oder suspended sein.",
+        "bad_status": "Der Status muss active, suspended, frozen oder banned sein.",
         "bad_transition": "Diese Statusänderung ist für diese Umgebung nicht möglich.",
-        "reason_required": "Für die Aktivierung ohne Checkliste ist eine Begründung nötig.",
-        "unknown": "Dieses Konto ist nicht bekannt."
+        "reason_required": "Für eine Verbannung, deren Aufhebung oder die Aktivierung einer Umgebung ohne Checkliste ist ein Grund nötig.",
+        "unknown": "Dieses Konto ist nicht bekannt.",
+        "on_hold": "Dieses Konto ist angehalten: Es kann nichts Neues gestartet werden.",
+        "approval_pending": "Die Verbannung ist vermerkt. Ein zweiter Operator muss dieselbe Anfrage stellen, damit sie wirksam wird."
       },
       "request": {
         "invalid": "{field} ist ungültig: {detail}"
@@ -2988,7 +3067,7 @@
         "incomplete": "Die Go-live-Checkliste ist noch nicht vollständig.",
         "no_live": "Diese Installation hat keine Live-Umgebung.",
         "owner_only": "Nur ein Inhaber des Kontos kann die Live-Umgebung aktivieren.",
-        "suspended": "Die Live-Umgebung ist gesperrt. Wenden Sie sich an den Support."
+        "suspended": "Die Live-Umgebung ist angehalten (gesperrt, eingefroren oder verbannt). Wenden Sie sich an den Support."
       },
       "promote": {
         "stale": "Die Konfiguration hat sich seit der Vorschau geändert. Zeigen Sie die Übernahme erneut in der Vorschau an."
@@ -3019,7 +3098,8 @@
       },
       "auth": {
         "tenant_not_active": "Diese Umgebung ist gesperrt oder noch nicht aktiv. Schließen Sie die Go-live-Checkliste ab oder wenden Sie sich an den Support.",
-        "permission_denied": "Diesem API-Schlüssel fehlt eine Berechtigung, die diese Anfrage braucht. Verwenden Sie einen Schlüssel mit der genannten Rolle oder Berechtigung."
+        "permission_denied": "Diesem API-Schlüssel fehlt eine Berechtigung, die diese Anfrage braucht. Verwenden Sie einen Schlüssel mit der genannten Rolle oder Berechtigung.",
+        "tenant_read_only": "Diese Umgebung ist schreibgeschützt. Wenden Sie sich an den Support."
       },
       "assets": {
         "bad_invoice_logo": "Das Rechnungslogo muss ein abgeschlossener Upload der Art Rechnungslogo sein."

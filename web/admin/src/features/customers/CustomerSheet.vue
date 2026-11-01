@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, Copy, CreditCard, Coins, Link2, MapPin, Pencil, Plus, UserPen } from "@lucide/vue";
+import { Ban, Check, CircleCheck, Copy, CreditCard, Coins, Link2, MapPin, Pencil, Plus, UserPen } from "@lucide/vue";
 import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
@@ -16,10 +16,10 @@ import { Button } from "@/shared/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/shared/ui/tabs";
-import { addressLine } from "./api";
+import { addressLine, useCustomerBlockEvents } from "./api";
 import CustomerAvatar from "./CustomerAvatar.vue";
 import CustomerPaymentPage from "./CustomerPaymentPage.vue";
-import { countryName, flagOf, headline, type Customer, type CustomerSummary, type CustomerTab } from "./lib";
+import { countryName, flagOf, headline, isBlocked, type Customer, type CustomerSummary, type CustomerTab } from "./lib";
 
 /**
  * The body of a customer's sheet, after Stripe's customer page: who they are (avatar, e-mail, id to copy, country, since when), what can be done for
@@ -29,7 +29,7 @@ import { countryName, flagOf, headline, type Customer, type CustomerSummary, typ
 
 /** `readonly`: the sheet opened over another one (a mention of the customer): it shows, it does not offer the forms that live on the customers page. */
 const props = defineProps<{ tenantId: string; customer: Customer; summary?: CustomerSummary; summaryLoading?: boolean; readonly?: boolean }>();
-const emit = defineEmits<{ editContact: []; editAddress: []; editTax: []; newSubscription: []; paymentLink: []; credits: [] }>();
+const emit = defineEmits<{ editContact: []; editAddress: []; editTax: []; block: []; unblock: []; newSubscription: []; paymentLink: []; credits: [] }>();
 const tab = defineModel<CustomerTab>("tab", { default: "overview" });
 const { t, locale } = useI18n();
 const fmt = useFormat();
@@ -46,6 +46,11 @@ const tenantCurrency = useTenantCurrency(() => props.tenantId);
 /** A zero still carries a currency: the customer's, else the one of an amount they have, else the tenant's. */
 const zero = computed(() => formatMinor(0, props.customer.billing_currency || spend.value?.currency || open.value?.currency || tenantCurrency.value, locale.value) || "0");
 const money = (h?: { minor: string; currency: string }) => (h ? formatMinor(h.minor, h.currency, locale.value) : zero.value);
+
+// The block: whether it holds, and the history of blocks and lifts (read when the details are on screen).
+const blocked = computed(() => isBlocked(props.customer));
+const blockEvents = useCustomerBlockEvents(() => props.tenantId, () => (tab.value === "details" ? id.value : ""));
+const categoryText = (c?: string) => (c ? t(`billing.customers.block.categories.${c}`) : "");
 
 const granting = ref(false);
 const copied = ref(false);
@@ -84,11 +89,27 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
       </div>
     </div>
 
+    <!-- Blocked: why, until when, and the way out. A block that ran out by itself is said so until somebody clears it. -->
+    <div
+      v-if="customer.block_time"
+      :class="['flex flex-wrap items-start justify-between gap-3 rounded-2xl px-4 py-3 text-sm', blocked ? 'bg-destructive-soft text-destructive' : 'bg-muted text-muted-foreground']"
+      role="status"
+      data-testid="customer-block-banner"
+    >
+      <div class="flex min-w-0 flex-col gap-0.5">
+        <span class="inline-flex items-center gap-2 font-medium"><Ban class="size-4 shrink-0" aria-hidden="true" />{{ blocked ? t("billing.customers.block.banner", { date: fmt.date(customer.block_time, "day") }) : t("billing.customers.block.ended", { date: fmt.date(customer.blocked_until, "day") }) }}</span>
+        <span v-if="blocked && customer.blocked_until" class="text-xs">{{ t("billing.customers.block.bannerUntil", { date: fmt.date(customer.blocked_until, "day") }) }}</span>
+        <span v-if="customer.block_category || customer.block_reason" class="text-xs break-words" dir="auto">{{ [categoryText(customer.block_category), customer.block_reason].filter(Boolean).join(" · ") }}</span>
+      </div>
+      <Button v-if="!readonly" size="sm" variant="outline" data-testid="customer-unblock" @click="emit('unblock')"><CircleCheck aria-hidden="true" />{{ t("billing.customers.block.lift") }}</Button>
+    </div>
+
     <!-- What can be done -->
     <div v-if="!readonly" class="flex flex-wrap gap-2" role="group" :aria-label="t('billing.customers.sheet.actions')">
       <Button size="sm" data-testid="customer-new-subscription" @click="emit('newSubscription')"><Plus aria-hidden="true" />{{ t("billing.customers.sheet.newSubscription") }}</Button>
       <Button size="sm" variant="outline" @click="emit('paymentLink')"><Link2 aria-hidden="true" />{{ t("billing.paymentLinks.paymentLink") }}</Button>
       <CustomerPaymentPage :tenant-id="tenantId" :customer="id" />
+      <Button v-if="!blocked" size="sm" variant="outline" data-testid="customer-block" @click="emit('block')"><Ban aria-hidden="true" />{{ t("billing.customers.block.action") }}</Button>
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
           <Button size="sm" variant="outline" data-testid="customer-edit"><Pencil aria-hidden="true" />{{ t("billing.customers.sheet.edit") }}</Button>
@@ -220,6 +241,20 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
             <dd class="mono m-0 break-all">{{ customer.payment_method }}</dd>
           </div>
         </dl>
+        <!-- Who blocked or lifted, when and why: kept for good, newest first. -->
+        <section class="mt-6 flex flex-col gap-2" :aria-label="t('billing.customers.block.history')" data-testid="customer-block-history">
+          <h3 class="m-0 text-sm font-semibold">{{ t("billing.customers.block.history") }}</h3>
+          <Skeleton v-if="blockEvents.isPending.value" class="h-5 w-40" />
+          <p v-else-if="(blockEvents.data.value?.events ?? []).length === 0" class="text-muted-foreground m-0 text-sm">{{ t("billing.customers.block.historyEmpty") }}</p>
+          <ul v-else class="divide-border/70 m-0 flex list-none flex-col divide-y p-0 text-sm">
+            <li v-for="e in blockEvents.data.value?.events" :key="e.id" class="flex flex-col gap-0.5 py-2" data-testid="customer-block-event">
+              <span class="font-medium">{{ t(`billing.customers.block.actions.${e.action}`) }}<template v-if="e.category"> · {{ categoryText(e.category) }}</template></span>
+              <span v-if="e.reason" class="text-muted-foreground break-words" dir="auto">{{ e.reason }}</span>
+              <span v-if="e.blocked_until" class="text-muted-foreground text-xs">{{ t("billing.customers.block.bannerUntil", { date: fmt.date(e.blocked_until, "day") }) }}</span>
+              <span class="text-muted-foreground text-xs">{{ fmt.date(e.create_time, "dateTime") }}<template v-if="e.actor"> · {{ t("billing.customers.block.by", { actor: e.actor }) }}</template></span>
+            </li>
+          </ul>
+        </section>
       </TabsContent>
     </Tabs>
   </div>

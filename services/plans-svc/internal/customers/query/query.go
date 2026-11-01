@@ -93,3 +93,30 @@ func (r *Queries) List(ctx context.Context, req *plansv1.ListCustomersRequest) (
 	}
 	return resp, nil
 }
+
+// blockEventsLimit is how many events of a customer's block history are returned: the latest.
+const blockEventsLimit = 100
+
+// BlockEvents returns the customer's blocks and lifts, newest first.
+func (r *Queries) BlockEvents(ctx context.Context, externalID string) (*plansv1.ListCustomerBlockEventsResponse, error) {
+	if externalID == "" {
+		return nil, domain.Invalid("external_id", "required")
+	}
+	var rows []sqlc.CustomerBlockEvent
+	err := r.db.Tx(ctx, func(q *sqlc.Queries) error {
+		c, err := q.GetCustomerByExternalID(ctx, externalID)
+		if err != nil {
+			return err
+		}
+		rows, err = q.ListCustomerBlockEvents(ctx, sqlc.ListCustomerBlockEventsParams{CustomerID: c.ID, PageSize: blockEventsLimit})
+		return err
+	})
+	if err != nil {
+		return nil, convert.Err(err, "customer")
+	}
+	out := &plansv1.ListCustomerBlockEventsResponse{Events: make([]*plansv1.CustomerBlockEvent, 0, len(rows))}
+	for _, e := range rows {
+		out.Events = append(out.Events, convert.CustomerBlockEvent(e))
+	}
+	return out, nil
+}

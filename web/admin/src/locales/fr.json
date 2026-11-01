@@ -233,7 +233,55 @@
       "rerating": "Tâche de retarification"
     },
     "allStatuses": "Tous les statuts",
-    "allKinds": "Tous les types"
+    "allKinds": "Tous les types",
+    "status": {
+      "title": "Statut",
+      "names": {
+        "active": "Actif",
+        "inactive": "Pas encore en production",
+        "suspended": "Suspendu",
+        "frozen": "Gelé",
+        "banned": "Banni"
+      },
+      "effects": {
+        "active": "En service : clés API, pages de paiement, relances, e-mails aux clients et webhooks fonctionnent.",
+        "inactive": "Pas encore en production : sans clé et sans paiement tant que la liste de mise en production n'est pas complète.",
+        "suspended": "Les clés API s'arrêtent aussitôt. Les pages et liens de paiement n'acceptent aucun paiement, les relances ne prélèvent rien, les clients ne reçoivent aucun e-mail et les envois de webhooks attendent.",
+        "frozen": "Lecture seule : les clés API et la console lisent encore, rien n'est écrit. Les pages et liens de paiement n'acceptent aucun paiement, les relances ne prélèvent rien, les clients ne reçoivent aucun e-mail et les envois de webhooks attendent.",
+        "banned": "Comme suspendu, mais fait pour durer : les clés API s'arrêtent aussitôt et rien n'est prélevé, envoyé par e-mail ni par webhook. Un bannissement, et sa levée, demandent un motif."
+      },
+      "to": "Passer à",
+      "category": "Catégorie",
+      "categoryNone": "Aucune catégorie",
+      "categories": {
+        "nonpayment": "Impayé",
+        "fraud": "Fraude",
+        "abuse": "Abus",
+        "legal": "Juridique",
+        "request": "Sa demande",
+        "other": "Autre"
+      },
+      "reason": "Motif",
+      "reasonHint": "Conservé dans l'historique, avec votre adresse. 500 caractères au plus.",
+      "reasonRequired": "Un bannissement, et sa levée, demandent un motif.",
+      "apply": "Passer en « {status} »",
+      "confirm": {
+        "active": "Rétablir {name} ? Ses clés API, pages de paiement, e-mails et webhooks refonctionnent.",
+        "suspended": "Suspendre {name} ? Ses clés API s'arrêtent aussitôt et il n'accepte aucun paiement.",
+        "frozen": "Geler {name} ? Ses clés API et sa console passent en lecture seule et il n'accepte aucun paiement.",
+        "banned": "Bannir {name} ? Ses clés API s'arrêtent aussitôt et rien n'est prélevé, envoyé par e-mail ni par webhook."
+      },
+      "sandbox": "Un environnement sandbox est toujours actif.",
+      "inactive": "Cet environnement n'est pas encore en production. Il est activé par sa liste de mise en production.",
+      "history": "Historique",
+      "historyEmpty": "Aucun changement pour l'instant.",
+      "requested": "Passage en « {to} » demandé : en attente d'un second opérateur",
+      "changed": "{from} → {to}",
+      "by": "par {actor}",
+      "approvedBy": "approuvé par {actor}",
+      "choose": "Choisir un statut",
+      "applyNone": "Définir le statut"
+    }
   },
   "invoice": {
     "summary": "{kind} · période {period} · {customer} · {total} · {status} · saga {saga}",
@@ -572,8 +620,35 @@
         "badge": "Bloqué",
         "action": "Bloquer",
         "lift": "Lever le blocage",
-        "confirm": "Bloquer {name} ? Aucun nouvel abonnement ne pourra être créé. Ceux en cours continuent.",
-        "confirmMany": "Bloquer {n} clients ? Aucun nouvel abonnement ne pourra être créé pour eux. Ceux en cours continuent."
+        "confirm": "Bloquer {name} ? Aucun nouvel abonnement, changement de formule ou achat ne peut être lancé pour ce client. Ce qu'il a déjà continue.",
+        "confirmMany": "Bloquer {n} clients ? Aucun nouvel abonnement, changement de formule ou achat ne peut être lancé pour eux. Ce qu'ils ont déjà continue.",
+        "title": "Bloquer {name}",
+        "description": "Aucun nouvel abonnement, changement de formule ou achat ne peut être lancé pour ce client. Ce qu'il a déjà continue.",
+        "category": "Motif",
+        "categoryNone": "Aucun motif indiqué",
+        "categoryHint": "La fraude et la contestation de paiement l'empêchent aussi de régler une facture ouverte.",
+        "categories": {
+          "fraud": "Fraude",
+          "chargeback": "Contestation de paiement",
+          "abuse": "Abus",
+          "request": "Sa propre demande",
+          "other": "Autre"
+        },
+        "note": "Votre note",
+        "noteHint": "Vous seul la voyez, jamais le client. 500 caractères au plus.",
+        "until": "Se termine le",
+        "untilHint": "Laissez vide pour bloquer jusqu'à ce que vous leviez le blocage. Le client peut acheter à nouveau à partir de ce jour.",
+        "submit": "Bloquer le client",
+        "banner": "Bloqué depuis le {date}",
+        "bannerUntil": "Se termine le {date}",
+        "ended": "Le blocage s'est terminé le {date}. Levez-le pour l'effacer.",
+        "history": "Historique des blocages",
+        "historyEmpty": "Ce client n'a jamais été bloqué.",
+        "actions": {
+          "blocked": "Bloqué",
+          "unblocked": "Levé"
+        },
+        "by": "par {actor}"
       }
     },
     "packages": {
@@ -683,7 +758,8 @@
           "renews_soon": "{n} se renouvellent trop tôt pour le préavis : relancez plus tard.",
           "has_pending_change": "{n} ont déjà un changement en attente et n'ont pas été touchés.",
           "run_by_provider": "{n} sont gérés par un prestataire de paiement.",
-          "not_changeable": "{n} ne peuvent pas être déplacés ainsi (par exemple frais facturés à terme échu)."
+          "not_changeable": "{n} ne peuvent pas être déplacés ainsi (par exemple frais facturés à terme échu).",
+          "customer_blocked": "{n} appartiennent à un client bloqué et ont été laissés de côté."
         }
       }
     },
@@ -2576,7 +2652,8 @@
         "bad_status": "Le statut doit être pending, issued, failed ou cancelled."
       },
       "tenant": {
-        "bad_id": "L'identifiant du compte n'est pas valide."
+        "bad_id": "L'identifiant du compte n'est pas valide.",
+        "on_hold": "Ce vendeur ne peut pas encaisser de paiement pour le moment."
       },
       "rerating": {
         "bad_job_id": "L'identifiant de la tâche de retarification n'est pas valide.",
@@ -2672,7 +2749,7 @@
       "customer": {
         "tax_invalid": "Le numéro fiscal ou le centre des impôts du client n'est pas valide.",
         "quota_reached": "La limite de clients du forfait de ce compte est atteinte.",
-        "blocked": "Ce client est bloqué : aucun nouvel abonnement ne peut être créé pour lui."
+        "blocked": "Ce client est bloqué : rien de nouveau ne peut être lancé pour lui."
       },
       "common": {
         "not_found": "Élément introuvable.",
@@ -2682,10 +2759,12 @@
       },
       "tenant": {
         "settings_immutable": "La devise, le fuseau horaire et l'environnement d'un compte ne peuvent pas être modifiés.",
-        "bad_status": "Le statut doit être active ou suspended.",
+        "bad_status": "Le statut doit être active, suspended, frozen ou banned.",
         "bad_transition": "Ce changement de statut n'est pas possible pour cet environnement.",
-        "reason_required": "Activer un environnement sans sa liste complète exige une raison.",
-        "unknown": "Ce compte est inconnu."
+        "reason_required": "Un bannissement, sa levée ou l'activation d'un environnement sans sa liste demandent un motif.",
+        "unknown": "Ce compte est inconnu.",
+        "on_hold": "Ce compte est en attente : rien de nouveau ne peut être lancé.",
+        "approval_pending": "Le bannissement est enregistré. Un second opérateur doit faire la même demande pour l'appliquer."
       },
       "request": {
         "invalid": "{field} n'est pas valide : {detail}"
@@ -2988,7 +3067,7 @@
         "incomplete": "La liste de mise en production n'est pas encore complète.",
         "no_live": "Ce déploiement n'a pas d'environnement live.",
         "owner_only": "Seul un propriétaire du compte peut activer l'environnement live.",
-        "suspended": "L'environnement live est suspendu. Contactez le support."
+        "suspended": "L'environnement live est en attente (suspendu, gelé ou banni). Contactez le support."
       },
       "promote": {
         "stale": "La configuration a changé depuis l'aperçu. Prévisualisez à nouveau la promotion."
@@ -3019,7 +3098,8 @@
       },
       "auth": {
         "tenant_not_active": "Cet environnement est suspendu ou pas encore actif. Terminez la liste de mise en production ou contactez le support.",
-        "permission_denied": "Cette clé d'API n'a pas une permission que cette requête exige. Utilisez une clé avec le rôle ou la permission indiquée."
+        "permission_denied": "Cette clé d'API n'a pas une permission que cette requête exige. Utilisez une clé avec le rôle ou la permission indiquée.",
+        "tenant_read_only": "Cet environnement est en lecture seule. Contactez le support."
       },
       "assets": {
         "bad_invoice_logo": "Le logo de facture doit être un téléversement terminé de type logo de facture."

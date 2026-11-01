@@ -66,10 +66,12 @@ class _CustomerRequired(TypedDict):
     locale: str
     customer_type: str
     block_reason: str
+    block_category: str
 
 
 class Customer(_CustomerRequired, total=False):
     block_time: str | None
+    blocked_until: str | None
 
 
 class ListCustomersResponse(TypedDict):
@@ -118,8 +120,30 @@ class CustomerContact(_CustomerContactRequired, total=False):
     customer_type: Literal["individual", "business"]
 
 
+CustomerBlockCategory = Literal["fraud", "chargeback", "abuse", "request", "other"]
+
+
 class BlockCustomerRequest(TypedDict, total=False):
     reason: str
+    category: CustomerBlockCategory
+    blocked_until: str | datetime
+
+
+class _CustomerBlockEventRequired(TypedDict):
+    id: str
+    action: Literal["blocked", "unblocked"]
+    category: str
+    reason: str
+    actor: str
+    create_time: str
+
+
+class CustomerBlockEvent(_CustomerBlockEventRequired, total=False):
+    blocked_until: str | None
+
+
+class ListCustomerBlockEventsResponse(TypedDict):
+    events: list[CustomerBlockEvent]
 
 
 class CustomerTax(TypedDict, total=False):
@@ -510,7 +534,7 @@ class SchedulePriceChangeRequest(_SchedulePriceChangeRequestRequired, total=Fals
 class PriceChangeSkipped(TypedDict):
     subscription_id: str
     customer_external_id: str
-    reason: Literal["renews_soon", "has_pending_change", "run_by_provider", "not_changeable"]
+    reason: Literal["renews_soon", "has_pending_change", "run_by_provider", "not_changeable", "customer_blocked"]
 
 
 class SchedulePriceChangeResponse(TypedDict):
@@ -820,7 +844,7 @@ class ListWebhookEndpointsResponse(TypedDict):
     endpoints: list[WebhookEndpoint]
 
 
-WebhookEventType = Literal["invoice.finalized", "invoice.paid", "invoice.voided", "invoice.uncollectible", "credit_note.created", "credit_note.refunded", "credit_note.refund_failed", "subscription.created", "subscription.changed", "subscription.change_scheduled", "subscription.cancelled", "subscription.cancellation_scheduled", "subscription.cancellation_withdrawn", "subscription.paused", "subscription.resumed", "subscription.moved_to_provider", "subscription.trial_will_end", "payment_link.created", "payment_link.paid", "payment_link.expired", "credits.purchased", "credits.low"]
+WebhookEventType = Literal["invoice.finalized", "invoice.paid", "invoice.voided", "invoice.uncollectible", "credit_note.created", "credit_note.refunded", "credit_note.refund_failed", "subscription.created", "subscription.changed", "subscription.change_scheduled", "subscription.cancelled", "subscription.cancellation_scheduled", "subscription.cancellation_withdrawn", "subscription.paused", "subscription.resumed", "subscription.moved_to_provider", "subscription.trial_will_end", "payment_link.created", "payment_link.paid", "payment_link.expired", "credits.purchased", "credits.low", "customer.blocked", "customer.unblocked"]
 
 
 class _CreateWebhookEndpointRequestRequired(TypedDict):

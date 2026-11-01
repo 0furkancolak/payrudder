@@ -37,6 +37,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/oidc"
@@ -245,6 +246,11 @@ func (s *Server) authorizeTenant(w http.ResponseWriter, r *http.Request, rt Rout
 		writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.permission_denied", "this API key lacks the permission "+need+" this request needs"))
 		return nil, false
 	}
+	// A tenant the operator has frozen (or suspended or banned, for a person or operator acting as it in the console) reads and nothing more.
+	if p.ReadOnly && rt.Method != http.MethodGet && rt.Method != http.MethodHead {
+		writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.tenant_read_only", "this environment is read-only: contact support"))
+		return nil, false
+	}
 	if rt.Access == AccessSandbox && p.Tenant.Environment != tenant.EnvSandbox {
 		writeError(w, r, errkey.New(codes.PermissionDenied, "identity.api_key.sandbox_only", "sandbox endpoints require a qk_test_ key"))
 		return nil, false
@@ -368,7 +374,7 @@ func principalOf(t *plansv1.Tenant) (auth.Principal, error) {
 	if t.GetEnvironment() == plansv1.Environment_ENVIRONMENT_SANDBOX {
 		env = tenant.EnvSandbox
 	}
-	return auth.Principal{Tenant: tenant.Info{ID: id, Environment: env, Timezone: t.GetTimezone()}, Tier: auth.TierName(t.GetTier())}, nil
+	return auth.Principal{Tenant: tenant.Info{ID: id, Environment: env, Timezone: t.GetTimezone()}, Tier: auth.TierName(t.GetTier()), ReadOnly: paymentgate.OnHold(t.GetStatus())}, nil
 }
 
 // operatorOK reports whether the request carries the machine operator token (PAYRUDDER_OPERATOR_TOKEN): the credential of the API, payrudderctl, the demo and the

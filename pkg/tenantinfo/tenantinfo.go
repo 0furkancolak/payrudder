@@ -1,5 +1,6 @@
-// Package tenantinfo resolves the period settings of a tenant (time zone, grace) from plans-svc for services that classify
-// usage (aggregator, limits-svc), cached briefly and bounded (pkg/cachex): concurrent misses for one tenant share a load.
+// Package tenantinfo resolves the settings of a tenant (time zone, grace, status) from plans-svc for services that classify usage (aggregator, limits-svc) or must
+// know whether the tenant is in service (notifier, billing-svc), cached briefly and bounded (pkg/cachex): concurrent misses for one tenant share a load. A change
+// of status reaches a worker within the cache's TTL.
 package tenantinfo
 
 import (
@@ -11,6 +12,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/cachex"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // tenant time zones must load in distroless images
 )
@@ -20,7 +22,12 @@ type Settings struct {
 	Timezone string
 	Location *time.Location
 	Grace    time.Duration
+	// Status is where the tenant is in its life. A status plans-svc did not send (an older release) is UNSPECIFIED, which counts as in service.
+	Status plansv1.TenantStatus
 }
+
+// OnHold reports whether the operator has suspended, frozen or banned the tenant: no charge, no customer mail, no webhook leaves for it.
+func (s Settings) OnHold() bool { return paymentgate.OnHold(s.Status) }
 
 // Source resolves tenants.
 type Source interface {
@@ -46,7 +53,7 @@ func New(admin plansv1.AdminServiceClient, ttl time.Duration) *Cache {
 		if err != nil {
 			return Settings{}, fmt.Errorf("tenant %s has unusable time zone %q: %w", id, tn.GetTimezone(), err)
 		}
-		return Settings{Timezone: tn.GetTimezone(), Location: loc, Grace: tn.GetGracePeriod().AsDuration()}, nil
+		return Settings{Timezone: tn.GetTimezone(), Location: loc, Grace: tn.GetGracePeriod().AsDuration(), Status: tn.GetStatus()}, nil
 	}, ttl)
 }
 

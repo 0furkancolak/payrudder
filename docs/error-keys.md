@@ -208,6 +208,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.sandbox.unknown_scenario`
 - `billing.storage.not_configured`
 - `billing.tenant.bad_id`
+- `billing.tenant.on_hold`
 - `common.already_exists`
 - `common.canceled`
 - `common.conflict`
@@ -251,6 +252,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `gateway.assets.bad_invoice_logo`
 - `gateway.auth.permission_denied`
 - `gateway.auth.tenant_not_active`
+- `gateway.auth.tenant_read_only`
 - `gateway.dashboard.bad_period`
 - `gateway.dashboard.limits_unavailable`
 - `gateway.dashboard.payments_unavailable`
@@ -481,8 +483,10 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.subscription.quantity_needs_advance`
 - `plans.subscription.run_by_provider`
 - `plans.subscription.transition_not_allowed`
+- `plans.tenant.approval_pending`
 - `plans.tenant.bad_status`
 - `plans.tenant.bad_transition`
+- `plans.tenant.on_hold`
 - `plans.tenant.reason_required`
 - `plans.tenant.settings_immutable`
 - `plans.tenant.unknown`

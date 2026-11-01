@@ -25,6 +25,8 @@ export const WebhookEventTypes = {
   PaymentLinkExpired: "payment_link.expired",
   CreditsPurchased: "credits.purchased",
   CreditsLow: "credits.low",
+  CustomerBlocked: "customer.blocked",
+  CustomerUnblocked: "customer.unblocked",
   Ping: "ping",
 } as const;
 
@@ -108,6 +110,18 @@ export interface CreditsLowEventData {
   threshold: string;
 }
 
+/** `customer.blocked` and `customer.unblocked`. */
+export interface CustomerBlockEventData {
+  customer_id: string;
+  customer_external_id?: string;
+  /** `customer.blocked`: fraud, chargeback, abuse, request, other, or empty. */
+  category?: string;
+  /** `customer.blocked`: the seller's own note. */
+  reason?: string;
+  /** `customer.blocked`: when the block ends by itself (RFC 3339); absent: until lifted. */
+  blocked_until?: string;
+}
+
 interface Envelope<T extends WebhookEventType, D> {
   id: string;
   type: T;
@@ -131,6 +145,7 @@ type SubscriptionTypes =
   | "subscription.moved_to_provider"
   | "subscription.trial_will_end";
 type PaymentLinkTypes = "payment_link.created" | "payment_link.paid" | "payment_link.expired";
+type CustomerTypes = "customer.blocked" | "customer.unblocked";
 
 type Distribute<T extends WebhookEventType, D> = T extends WebhookEventType ? Envelope<T, D> : never;
 
@@ -145,6 +160,7 @@ export type WebhookEvent =
   | Distribute<PaymentLinkTypes, PaymentLinkEventData>
   | Envelope<"credits.purchased", CreditsPurchasedEventData>
   | Envelope<"credits.low", CreditsLowEventData>
+  | Distribute<CustomerTypes, CustomerBlockEventData>
   | Envelope<"ping", Record<string, unknown>>;
 
 export type WebhookFailureReason = "invalid_header" | "timestamp_outside_tolerance" | "no_matching_signature" | "invalid_payload";

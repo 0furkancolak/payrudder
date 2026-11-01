@@ -65,6 +65,8 @@ type Config struct {
 	AllowedEnvs    []string `env:"PAYRUDDER_ALLOWED_ENVIRONMENTS" envSeparator:","`
 	// SecretsKey (32 bytes, base64) seals the webhook signing secrets. Without it tenants cannot register webhook endpoints.
 	SecretsKey string `env:"PAYRUDDER_SECRETS_KEY"`
+	// BanApproval makes a ban of a tenant need a second operator: the first request is recorded, the same request from another operator within a day applies it.
+	BanApproval bool `env:"PAYRUDDER_TENANT_BAN_APPROVAL"`
 	// WebhookAllowPrivate lets webhook endpoints be http:// and on private addresses. For development and tests; never in production.
 	WebhookAllowPrivate bool `env:"PAYRUDDER_WEBHOOK_ALLOW_PRIVATE"`
 	// SMTPAddr and MailFrom are the platform's own mail path: the mail Payrudder writes to people (verification, password reset, invitations). A tenant's
@@ -351,7 +353,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, appDB pgxx.Beginner, places *p
 		return nil, nil, nil, nil, err
 	}
 	saasCmd := grpcapi.Register(srv, grpcapi.Deps{
-		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
+		AppDB: appDB, SystemPool: places.Pool(), Places: places, Log: log, Evict: evictor, AllowedEnvs: cfg.AllowedEnvs, BanApproval: cfg.BanApproval, Box: box, WebhookAllowPrivate: cfg.WebhookAllowPrivate,
 		Mail: usermail.NewSMTP(platformMail(cfg), cfg.MailFrom, log), AppURL: cfg.AppURL, OTPPepper: cfg.OTPPepper, Sandbox: sbx,
 		Saas: cfg.saasConfig(),
 	})

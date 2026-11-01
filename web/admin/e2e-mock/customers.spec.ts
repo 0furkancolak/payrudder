@@ -167,29 +167,53 @@ test.describe("customer bulk export", () => {
 test.describe("customer block", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("a customer is blocked from a row action after asking, shown as blocked, and unblocked; many at once name the ones that failed", async ({ page }) => {
+  test("a customer is blocked from a form that asks why, shown as blocked with its history, and unblocked; many at once name the ones that failed", async ({ page }) => {
     const gw = customerGateway();
-    const blocked = new Map<string, string>();
+    const blocked = new Map<string, Record<string, unknown>>();
+    const events: Record<string, unknown>[] = [];
     gw.on((c) => {
       const m = /^\/v1\/customers\/(cus_\d)\/(block|unblock)$/.exec(c.path);
       if (!m || c.method !== "POST") return undefined;
       if (m[1] === "cus_2" && m[2] === "block") return { status: 400, body: { error: { code: "INVALID_ARGUMENT", key: "plans.request.invalid", message: "no" } } };
-      if (m[2] === "block") blocked.set(m[1]!, "x");
-      else blocked.delete(m[1]!);
+      if (m[2] === "block") {
+        blocked.set(m[1]!, { block_time: "2026-10-28T10:00:00Z", block_reason: c.body?.reason ?? "", block_category: c.body?.category ?? "", blocked_until: c.body?.blocked_until ?? null });
+        events.unshift({ id: `e${events.length}`, action: "blocked", category: c.body?.category ?? "", reason: c.body?.reason ?? "", actor: "ada@example.com", create_time: "2026-10-28T10:00:00Z" });
+      } else {
+        blocked.delete(m[1]!);
+        events.unshift({ id: `e${events.length}`, action: "unblocked", category: "", reason: "", actor: "ada@example.com", create_time: "2026-10-28T11:00:00Z" });
+      }
       return { body: {} };
     });
+    gw.on((c) => (c.method === "GET" && c.path === "/v1/customers/cus_1/block-events" ? { body: { events } } : undefined));
     // The list answers with the block state the server now holds.
-    gw.on((c) => (c.method === "GET" && c.path === "/v1/customers" ? { body: { customers: customers.map((x) => (blocked.has(x.external_id) ? { ...x, block_time: "2026-10-28T10:00:00Z", block_reason: "chargebacks" } : x)) } } : undefined));
+    gw.on((c) => (c.method === "GET" && c.path === "/v1/customers" ? { body: { customers: customers.map((x) => (blocked.has(x.external_id) ? { ...x, ...blocked.get(x.external_id) } : x)) } } : undefined));
     await gw.install(page);
     await openTenantPage(page, "/customers");
     await expect(page.getByTestId("customer-cus_1")).toBeVisible();
 
     await rowAction(page.getByTestId("customer-cus_1"), "Block");
-    await confirmDialog(page);
+    await page.getByTestId("block-category").selectOption("fraud");
+    await page.getByTestId("block-note").fill("stolen card");
+    await page.getByTestId("block-until").fill("2099-01-01");
+    await page.getByTestId("block-submit").click();
     await expect(page.getByTestId("customer-cus_1").getByTestId("customer-blocked")).toBeVisible();
     expect(gw.called("POST", "/v1/customers/cus_1/block")).toHaveLength(1);
+    expect(gw.called("POST", "/v1/customers/cus_1/block")[0]?.body).toMatchObject({ reason: "stolen card", category: "fraud" });
+    expect(String(gw.called("POST", "/v1/customers/cus_1/block")[0]?.body?.blocked_until)).toMatch(/^2099-01-01T|^2098-12-31T/);
 
-    await rowAction(page.getByTestId("customer-cus_1"), "Lift the block");
+    // The sheet says why and until when, keeps the history, and lifts the block.
+    await page.getByTestId("customer-cus_1").click();
+    const banner = page.getByTestId("customer-block-banner");
+    await expect(banner).toContainText("Blocked since");
+    await expect(banner).toContainText("Fraud");
+    await expect(banner).toContainText("stolen card");
+    await page.getByTestId("customer-tab-details").click();
+    await expect(page.getByTestId("customer-block-event")).toHaveCount(1);
+    await expect(page.getByTestId("customer-block-history")).toContainText("ada@example.com");
+    await page.getByTestId("customer-unblock").click();
+    await expect(banner).toHaveCount(0);
+    await expect(page.getByTestId("customer-block-event")).toHaveCount(2);
+    await page.keyboard.press("Escape");
     await expect(page.getByTestId("customer-cus_1").getByTestId("customer-blocked")).toHaveCount(0);
 
     // Two ticked: one is refused, the other is blocked, and the refused one is named.

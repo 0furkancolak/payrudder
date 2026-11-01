@@ -34,6 +34,8 @@ export const EVENT_TYPES = [
   "payment_link.expired",
   "credits.purchased",
   "credits.low",
+  "customer.blocked",
+  "customer.unblocked",
 ] as const;
 
 export function useWebhookEndpoints(tenantId: MaybeRefOrGetter<string>) {

@@ -13,6 +13,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/apierr"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/query"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
@@ -200,6 +201,10 @@ func RequestPayment(ctx context.Context, d Deps, qd query.Deps, req PaymentReque
 			return &Paid{Started: true, Page: page}, nil // pressed twice: the first payment is on its way
 		}
 		return nil, errkey.New(codes.FailedPrecondition, "billing.payment.invoice_not_payable", "this invoice cannot be paid now")
+	}
+	// An invoice that exists stays payable for a blocked customer (the seller is owed it), except after a fraud or chargeback block; a tenant on hold takes no payment.
+	if err := gate(ctx, d, req.Scope.TenantID, page.Snapshot.CustomerExternalID, paymentgate.OpPayInvoice); err != nil {
+		return nil, err
 	}
 	if req.Method != "mock" {
 		if req.Method == "" {
