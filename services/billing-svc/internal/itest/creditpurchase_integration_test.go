@@ -12,8 +12,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/query"
@@ -403,4 +405,26 @@ func testCreditPackValidityIsValidated(t *testing.T) {
 	if forever.ValidityDays != nil {
 		t.Errorf("a pack with no validity has %v", *forever.ValidityDays)
 	}
+}
+
+// A blocked customer makes no new purchase on a payment link or of a credit pack; lifting the block lets the same link be used, and a refused start does not use it up.
+func testABlockedCustomerCannotStartAPurchase(t *testing.T) {
+	l := newLinkEnv(t, envOpts{sandbox: true}, false)
+	l.startWorkers(nil)
+	p := l.pack("Starter", 1000, 500, "USD", 0)
+	c := l.create(&billingv1.CreatePaymentLinkRequest{PackId: p.GetId(), CustomerExternalId: "cus_a"})
+
+	l.customer("cus_a").BlockTime = timestamppb.Now()
+	_, err := l.svc.StartLinkPayment(l.visitor, &billingv1.StartLinkPaymentRequest{Token: c.GetToken()})
+	if status.Code(err) != codes.FailedPrecondition || errkey.Of(err) != "billing.customer.blocked" {
+		t.Fatalf("start for a blocked customer: %v", err)
+	}
+	var invoices int
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FROM invoices WHERE tenant_id = $1 AND kind = 'LINK'`, l.tid).Scan(&invoices); err != nil || invoices != 0 {
+		t.Fatalf("a refused start made %d invoices (%v)", invoices, err)
+	}
+
+	l.customer("cus_a").BlockTime = nil
+	child := l.start(c.GetToken())
+	l.waitState(child, "open")
 }

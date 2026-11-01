@@ -34,3 +34,9 @@ Fraud efficacy.
 
 ## Risks
 A wrong block loses revenue: unblock is instant, audited, and bulk operations are confirmed.
+
+## Done so far (2026-10-29)
+
+Enforcement of "no new purchase" for a blocked customer now covers: subscription creation (#252), plan change (the review-fixes PR) and **every purchase that goes through a payment link or the portal** (an ad-hoc link with the customer set, a credit pack, a portal pack purchase): `CreateLinkInvoice` refuses with `billing.customer.blocked` (FAILED_PRECONDITION), the hosted page says "This payment cannot be made. Please contact the sender." in six languages (not "already used"), a refused start makes no invoice and does not use the link up, and lifting the block lets the same link be used. What was invoiced before the block stays payable ("what exists runs on").
+
+Still open: usage ingestion and entitlements for a blocked customer (suspend service), cancelling everything, a blocklist across customers, reason categories, an audit trail, a `customer.blocked` webhook, "blocked until", operator-wide blocks. Which of those the owner means by "ban" is the decision this plan asked for.

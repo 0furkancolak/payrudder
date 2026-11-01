@@ -31,6 +31,7 @@ const (
 	tokHostile     = "tok-hostile-0123456789abcdefghijklmnopqrs"
 	tokVoid        = "tok-void-0123456789abcdefghijklmnopqrstuvw"
 	tokUncollect   = "tok-uncollectible-0123456789abcdefghijklmn"
+	tokBlockedLink = "tok-blocked-0123456789abcdefghijklmnopqrstu"
 	tokBroken      = "tok-broken-0123456789abcdefghijklmnopqrstu"
 	portalTok      = "portal-0123456789abcdefghijklmnopqrstuvwxyz"
 	liveTenantID   = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e"
@@ -146,6 +147,8 @@ func (fakeBilling) StartLinkPayment(_ context.Context, req *billingv1.StartLinkP
 		return &billingv1.StartLinkPaymentResponse{InvoiceToken: tokOpenSandbox}, nil
 	case tokAdhocUsed:
 		return nil, status.Error(codes.FailedPrecondition, "used")
+	case tokBlockedLink:
+		return nil, errkey.New(codes.FailedPrecondition, "billing.customer.blocked", "this customer is blocked: no new purchase")
 	}
 	return nil, status.Error(codes.NotFound, "no such link")
 }

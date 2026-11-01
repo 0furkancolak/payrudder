@@ -2611,6 +2611,9 @@
       },
       "sandbox": {
         "unknown_scenario": "Böyle bir ödeme senaryosu yok. Liste için senaryo kataloğuna bakın."
+      },
+      "customer": {
+        "blocked": "Bu müşteri engellenmiş, yeni satın alma başlatılamaz."
       }
     },
     "coupon": {

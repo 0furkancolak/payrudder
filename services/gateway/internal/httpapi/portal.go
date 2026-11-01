@@ -182,6 +182,8 @@ func (s *Server) portalCreditsBuy(w http.ResponseWriter, r *http.Request) {
 		s.message(w, r, http.StatusUnprocessableEntity, lang, l["cr_buy_title"], promoErrorText(l, errkey.Of(err)), back)
 	case status.Code(err) == codes.PermissionDenied || status.Code(err) == codes.InvalidArgument || errkey.Of(err) == "billing.invoice_link.not_found":
 		hostedNotFound(w, lang)
+	case errkey.Of(err) == "billing.customer.blocked":
+		s.message(w, r, http.StatusConflict, lang, l["cr_buy_title"], l["pay_blocked"], back)
 	case status.Code(err) == codes.NotFound || status.Code(err) == codes.FailedPrecondition:
 		s.message(w, r, http.StatusConflict, lang, l["cr_buy_title"], l["cr_unavailable"], back)
 	default:

@@ -129,6 +129,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.credits.pack_not_found`
 - `billing.credits.portal_cannot_buy`
 - `billing.credits.unknown_currency`
+- `billing.customer.blocked`
 - `billing.dead_letter.broker_unavailable`
 - `billing.dead_letter.invalid`
 - `billing.dead_letter.not_configured`

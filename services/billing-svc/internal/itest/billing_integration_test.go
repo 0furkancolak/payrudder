@@ -58,6 +58,7 @@ func TestBilling(t *testing.T) {
 		{"PromotionCodesOnPaymentLinks", testPromotionCodesOnPaymentLinks},
 		{"PromotionCodesOnCreditPurchases", testPromotionCodesOnCreditPurchases},
 		{"AVoidedCreditPurchaseGrantsNothing", testAVoidedCreditPurchaseGrantsNothing},
+		{"ABlockedCustomerCannotStartAPurchase", testABlockedCustomerCannotStartAPurchase},
 		{"CreditPacksAreBoughtFromThePortal", testCreditPacksAreBoughtFromThePortal},
 		{"CreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold", testCreditsLowIsAnnouncedOnceWhenTheBalanceCrossesTheThreshold},
 		{"ClosePeriodTwiceMakesOneRunAndOneInvoicePerCustomer", testClosePeriodTwice},

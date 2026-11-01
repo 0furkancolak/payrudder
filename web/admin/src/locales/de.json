@@ -2611,6 +2611,9 @@
       },
       "sandbox": {
         "unknown_scenario": "Dieses Zahlungsszenario gibt es nicht. Die Liste steht im Szenarienkatalog."
+      },
+      "customer": {
+        "blocked": "Dieser Kunde ist gesperrt, ein neuer Kauf kann nicht gestartet werden."
       }
     },
     "coupon": {

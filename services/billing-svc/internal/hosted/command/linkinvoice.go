@@ -8,8 +8,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/money"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	invoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/command"
@@ -66,6 +68,10 @@ func (b *Backend) CreateLinkInvoice(ctx context.Context, tenantID uuid.UUID, spe
 		}
 		if !found {
 			return uuid.Nil, inputs.Permanent(fmt.Errorf("customer %q does not exist", spec.CustomerExternalID))
+		}
+		// A blocked customer makes no new purchase: not on a payment link, not a credit pack. What was invoiced before the block stays payable.
+		if cu.GetBlockTime() != nil {
+			return uuid.Nil, errkey.New(codes.FailedPrecondition, "billing.customer.blocked", "this customer is blocked: no new purchase")
 		}
 		if customerID, err = uuid.Parse(cu.GetId()); err != nil {
 			return uuid.Nil, err

@@ -2611,6 +2611,9 @@
       },
       "sandbox": {
         "unknown_scenario": "This payment scenario does not exist. See the scenario catalogue for the list."
+      },
+      "customer": {
+        "blocked": "This customer is blocked, so no new purchase can be started."
       }
     },
     "coupon": {

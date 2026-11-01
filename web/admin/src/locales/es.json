@@ -2611,6 +2611,9 @@
       },
       "sandbox": {
         "unknown_scenario": "Este escenario de pago no existe. Consulta el catálogo de escenarios."
+      },
+      "customer": {
+        "blocked": "Este cliente está bloqueado, no se puede iniciar una compra nueva."
       }
     },
     "coupon": {
