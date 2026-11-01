@@ -65,6 +65,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("GoLive", testGoLive)
 	t.Run("OwnerGoLiveSteps", testOwnerGoLiveSteps)
 	t.Run("Support", testSupport)
+	t.Run("Contracts", testContracts)
 	t.Run("Promote", testPromote)
 	t.Run("SandboxReset", testSandboxReset)
 	t.Run("SandboxRetention", testSandboxRetention)
@@ -161,6 +162,27 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 		t.Fatal(err)
 	}
 	seedAffiliates(t, e, tenantID, suffix)
+	seedContracts(t, e, tenantID, suffix)
+}
+
+// seedContracts writes a version, an acceptance, a withdrawal and the settings of the tenant, through the API (nothing is required, so nothing else changes).
+func seedContracts(t *testing.T, e *env, tenantID, suffix string) {
+	t.Helper()
+	ctx := as(tenantID)
+	v, err := e.contracts.PublishContractVersion(ctx, &plansv1.PublishContractVersionRequest{Kind: "tos", Bodies: map[string]string{"en": "Terms " + suffix}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.contracts.SetContractSettings(ctx, &plansv1.SetContractSettingsRequest{RetentionMonths: 24}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.contracts.RecordContractAcceptance(ctx, &plansv1.RecordContractAcceptanceRequest{CustomerExternalId: "cus_" + suffix, Source: "api",
+		Items: []*plansv1.ContractAcceptanceItem{{VersionId: v.GetId(), CheckboxText: "I accept"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.contracts.CreateContractWithdrawal(ctx, &plansv1.CreateContractWithdrawalRequest{CustomerExternalId: "cus_" + suffix, Statement: "seed"}); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func testRLSIsolationEveryTable(t *testing.T) {

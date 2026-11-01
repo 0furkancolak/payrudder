@@ -57,6 +57,8 @@ type Modules struct {
 	MailC    *mailcmd.Commands
 	HooksQ   *hooksqry.Queries
 	HooksC   *hookscmd.Commands
+	// Contracts publishes and lists agreement versions (the contracts module serves both).
+	Contracts plansv1.ContractServiceServer
 }
 
 // Commands promotes configuration.
@@ -326,6 +328,24 @@ func (c *Commands) plan(sctx, lctx context.Context, liveActive bool) ([]*step, e
 		return func(ctx context.Context) (string, error) {
 			made, err := c.m.HooksC.CreateEndpoint(ctx, &plansv1.CreateWebhookEndpointRequest{Url: e.GetUrl(), Description: e.GetDescription(), EventTypes: e.GetEventTypes()})
 			return made.GetSecret(), err
+		}
+	})
+
+	// Agreements: the newest version of each series, never an acceptance.
+	sCon, err := c.m.Contracts.ListContractVersions(sctx, &plansv1.ListContractVersionsRequest{})
+	if err != nil {
+		return nil, err
+	}
+	lCon, err := c.m.Contracts.ListContractVersions(lctx, &plansv1.ListContractVersionsRequest{})
+	if err != nil {
+		return nil, err
+	}
+	add(query.FamilyContracts, query.Contracts(sCon.GetVersions(), lCon.GetVersions()), func(d query.Decision) func(context.Context) (string, error) {
+		v := d.Item.(*plansv1.ContractVersion)
+		return func(ctx context.Context) (string, error) {
+			_, err := c.m.Contracts.PublishContractVersion(ctx, &plansv1.PublishContractVersionRequest{Kind: v.GetKind(), Audience: v.GetAudience(), Bodies: v.GetBodies(), Material: true,
+				Note: "promoted from the sandbox", Author: "promotion"})
+			return "", err
 		}
 	})
 

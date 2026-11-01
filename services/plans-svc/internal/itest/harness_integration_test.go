@@ -100,19 +100,20 @@ type env struct {
 	system *pgxpool.Pool
 	// appDB is what the app role opens a tenant's transaction on: the app pool, or in cells mode its router. places is the system role's view of where a tenant's rows are
 	// (no cells in pooled mode, so it is the system pool). A test that touches a tenant's own tables goes through them, never through app and system directly.
-	appDB    pgxx.Beginner
-	places   *placement.Places
-	plans    plansv1.PlansServiceClient
-	admin    plansv1.AdminServiceClient
-	ident    plansv1.IdentityServiceClient
-	hooks    plansv1.WebhookServiceClient
-	mailprov plansv1.MailIntegrationServiceClient
-	aff      plansv1.AffiliateServiceClient
-	support  plansv1.SupportServiceClient
-	pub      plansv1.AffiliatePublicServiceClient
-	portal   plansv1.AffiliatePortalServiceClient
-	box      *secretbox.Box
-	evicted  *recordingEvictor
+	appDB     pgxx.Beginner
+	places    *placement.Places
+	plans     plansv1.PlansServiceClient
+	admin     plansv1.AdminServiceClient
+	ident     plansv1.IdentityServiceClient
+	hooks     plansv1.WebhookServiceClient
+	mailprov  plansv1.MailIntegrationServiceClient
+	aff       plansv1.AffiliateServiceClient
+	support   plansv1.SupportServiceClient
+	contracts plansv1.ContractServiceClient
+	pub       plansv1.AffiliatePublicServiceClient
+	portal    plansv1.AffiliatePortalServiceClient
+	box       *secretbox.Box
+	evicted   *recordingEvictor
 	// runner runs the sandbox resets (a test calls RunOnce itself, so nothing happens behind its back); remotes records what the other services were asked.
 	runner  *sandbox.Runner
 	remotes *recordingRemotes
@@ -343,7 +344,7 @@ func newEnvIn(t *testing.T, w *world, saasCfg saascmd.Config, allowedEnvs ...str
 	}
 	t.Cleanup(func() { _ = cc.Close() })
 	return &env{w: w, saas: saas, saasAPI: plansv1.NewSaasServiceClient(cc), runner: runner, remotes: remotes, db: w.db, app: app, system: system, appDB: appDB, places: places, plans: plansv1.NewPlansServiceClient(cc),
-		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), support: plansv1.NewSupportServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
+		admin: plansv1.NewAdminServiceClient(cc), ident: plansv1.NewIdentityServiceClient(cc), hooks: plansv1.NewWebhookServiceClient(cc), mailprov: plansv1.NewMailIntegrationServiceClient(cc), aff: plansv1.NewAffiliateServiceClient(cc), support: plansv1.NewSupportServiceClient(cc), contracts: plansv1.NewContractServiceClient(cc), pub: plansv1.NewAffiliatePublicServiceClient(cc), portal: plansv1.NewAffiliatePortalServiceClient(cc), box: box, evicted: ev, mail: mail}
 }
 
 func operator() context.Context {

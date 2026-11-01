@@ -23,6 +23,8 @@ const (
 	FamilyCoupons  = "coupons"
 	FamilyMail     = "mail"
 	FamilyWebhooks = "webhooks"
+	// FamilyContracts is the newest version of each agreement series (docs/plans/21-contracts.md). Acceptances and settings are not configuration and never move.
+	FamilyContracts = "contracts"
 )
 
 // Decision is what promotion does about one object. Item is the sandbox object a create is made from.
@@ -235,6 +237,33 @@ func Mail(sandbox, live []*plansv1.MailCategorySetting) []Decision {
 	default:
 		return []Decision{conflict("settings", fmt.Sprintf("switched off in the sandbox: %v; in live: %v", sb, lv))}
 	}
+}
+
+// Contracts compares the newest version of each series (kind and audience) by content. A series live does not have yet takes the sandbox's text as its first version;
+// one live has, with the same text anywhere in its history, is unchanged; one live has with other text is a conflict: live's own agreements are never replaced by a
+// sandbox's, and publishing the next version there is the seller's decision.
+func Contracts(sandbox, live []*plansv1.ContractVersion) []Decision {
+	series := func(v *plansv1.ContractVersion) string { return v.GetKind() + "/" + v.GetAudience() }
+	liveSeries, liveHashes := map[string]bool{}, map[string]bool{}
+	for _, v := range live {
+		liveSeries[series(v)] = true
+		liveHashes[series(v)+"@"+v.GetSha256()] = true
+	}
+	var out []Decision
+	for _, v := range sortedBy(sandbox, series) {
+		if !v.GetCurrent() {
+			continue
+		}
+		switch {
+		case !liveSeries[series(v)]:
+			out = append(out, create(series(v), v))
+		case liveHashes[series(v)+"@"+v.GetSha256()]:
+			out = append(out, same(series(v)))
+		default:
+			out = append(out, conflict(series(v), "the sandbox's version "+fmt.Sprint(v.GetNumber())+" differs from live's own: publish the next version in live"))
+		}
+	}
+	return out
 }
 
 // Webhooks compares endpoints by URL. A new endpoint gets a new signing secret; nothing of the sandbox's secret is copied. active says whether live may take endpoints

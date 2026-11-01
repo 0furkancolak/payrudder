@@ -1,0 +1,977 @@
+// Package contracts is ContractService: the agreements a seller presents to its own customers (distance sales, pre-information, terms, privacy), the immutable
+// versions of each, the append-only evidence that a customer saw and accepted a specific text, and the customer's withdrawal requests
+// (docs/plans/21-contracts.md). It is tenant-scoped: every call runs in the tenant's transaction on the app role.
+//
+// Payrudder supplies templates and evidence, not legal guarantees. Nothing in this package says a text is sufficient in any country.
+package contracts
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/idgen"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
+	webhookscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/command"
+	webhooksmodel "github.com/0furkancolak/payrudder/services/plans-svc/internal/webhooks/model"
+)
+
+// AcceptedTopic is the Kafka topic of the ContractAccepted fact (docs/04-messaging.md), written to the outbox and relayed like subscription.price-change.v1.
+const AcceptedTopic = "contract.accepted.v1"
+
+// Service implements plansv1.ContractServiceServer.
+type Service struct {
+	plansv1.UnimplementedContractServiceServer
+	db  *store.DB
+	now func() time.Time
+}
+
+// New returns the service on the app pool (or its router when cells are on).
+func New(db *store.DB) *Service { return &Service{db: db, now: time.Now} }
+
+func (s *Service) tx(ctx context.Context, what string, fn func(q *sqlc.Queries) error) error {
+	return convert.Err(s.db.Tx(ctx, fn), what)
+}
+
+func stamp(t time.Time) *timestamppb.Timestamp { return timestamppb.New(t) }
+
+// micro is the precision Postgres keeps; the time a record and its snapshot hash are made from is cut to it, so that the page rendered from the stored row is the page
+// that was hashed.
+func micro(t time.Time) time.Time { return t.UTC().Truncate(time.Microsecond) }
+
+func bodiesOf(raw json.RawMessage) map[string]string {
+	m := map[string]string{}
+	_ = json.Unmarshal(raw, &m)
+	return m
+}
+
+func versionOf(v sqlc.ContractVersion, currentNumber int32) *plansv1.ContractVersion {
+	bodies := bodiesOf(v.Bodies)
+	var used []string
+	for _, b := range bodies {
+		u, _ := domain.ContractVariablesIn(b)
+		for _, name := range u {
+			if !slices.Contains(used, name) {
+				used = append(used, name)
+			}
+		}
+	}
+	slices.Sort(used)
+	return &plansv1.ContractVersion{Id: v.ID.String(), Kind: v.Kind, Audience: v.Audience, Number: v.Number, Material: v.Material, Bodies: bodies, Sha256: v.Sha256, Note: v.Note,
+		Author: v.Author, CreateTime: stamp(v.CreatedAt), Variables: used, Current: v.Number == currentNumber, HasTemplateNotice: domain.AnyTemplateNotice(bodies)}
+}
+
+func currentNumbers(ctx context.Context, q *sqlc.Queries) (map[[2]string]int32, error) {
+	rows, err := q.ListContractCurrent(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := map[[2]string]int32{}
+	for _, r := range rows {
+		out[[2]string{r.Kind, r.Audience}] = r.Number
+	}
+	return out, nil
+}
+
+func seriesOf(rows []sqlc.ListContractCurrentRow) []domain.ContractSeries {
+	out := make([]domain.ContractSeries, len(rows))
+	for i, r := range rows {
+		out[i] = domain.ContractSeries{ID: r.ID.String(), Kind: r.Kind, Audience: r.Audience, Number: int(r.Number), MaterialNumber: int(r.MaterialNumber), Bodies: bodiesOf(r.Bodies), SHA256: r.Sha256}
+	}
+	return out
+}
+
+// PublishContractVersion adds the next version of (kind, audience).
+func (s *Service) PublishContractVersion(ctx context.Context, req *plansv1.PublishContractVersionRequest) (*plansv1.ContractVersion, error) {
+	audience := req.GetAudience()
+	if audience == "" {
+		audience = domain.AudienceConsumer
+	}
+	switch {
+	case !domain.ValidContractKind(req.GetKind()):
+		return nil, domain.Invalid("kind", "one of "+strings.Join(domain.ContractKinds, ", "))
+	case audience != domain.AudienceConsumer && audience != domain.AudienceBusiness:
+		return nil, domain.Invalid("audience", "consumer or business")
+	case len(req.GetNote()) > domain.MaxContractNote:
+		return nil, domain.Invalid("note", "at most 500 characters")
+	}
+	if _, err := domain.ValidateContractBodies(req.GetBodies()); err != nil {
+		return nil, err
+	}
+	var out *plansv1.ContractVersion
+	err := s.tx(ctx, "contract version", func(q *sqlc.Queries) error {
+		n, err := q.NextContractVersionNumber(ctx, sqlc.NextContractVersionNumberParams{Kind: req.GetKind(), Audience: audience})
+		if err != nil {
+			return err
+		}
+		bodies, err := json.Marshal(req.GetBodies())
+		if err != nil {
+			return err
+		}
+		v, err := q.InsertContractVersion(ctx, sqlc.InsertContractVersionParams{ID: idgen.NewUUIDv7(), Kind: req.GetKind(), Audience: audience, Number: n,
+			Material: req.GetMaterial() || n == 1, Bodies: bodies, Sha256: domain.ContractHash(req.GetKind(), audience, req.GetBodies()), Note: req.GetNote(), Author: req.GetAuthor()})
+		if err != nil {
+			return err
+		}
+		out = versionOf(v, v.Number)
+		data, err := json.Marshal(map[string]any{"version_id": v.ID.String(), "kind": v.Kind, "audience": v.Audience, "number": v.Number, "material": v.Material, "sha256": v.Sha256,
+			"locales": sortedLocales(req.GetBodies()), "published_at": v.CreatedAt.UTC().Format(time.RFC3339)})
+		if err != nil {
+			return err
+		}
+		_, err = webhookscmd.Emit(ctx, q, v.ID, webhooksmodel.ContractVersionPublished, data, v.CreatedAt)
+		return err
+	})
+	return out, err
+}
+
+func sortedLocales(bodies map[string]string) []string {
+	out := make([]string, 0, len(bodies))
+	for l := range bodies {
+		out = append(out, l)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func (s *Service) ListContractVersions(ctx context.Context, req *plansv1.ListContractVersionsRequest) (*plansv1.ListContractVersionsResponse, error) {
+	if k := req.GetKind(); k != "" && !domain.ValidContractKind(k) {
+		return nil, domain.Invalid("kind", "one of "+strings.Join(domain.ContractKinds, ", "))
+	}
+	var out []*plansv1.ContractVersion
+	err := s.tx(ctx, "contract version", func(q *sqlc.Queries) error {
+		cur, err := currentNumbers(ctx, q)
+		if err != nil {
+			return err
+		}
+		rows, err := q.ListContractVersions(ctx, sqlc.ListContractVersionsParams{Kind: req.GetKind(), Audience: req.GetAudience()})
+		if err != nil {
+			return err
+		}
+		for _, v := range rows {
+			out = append(out, versionOf(v, cur[[2]string{v.Kind, v.Audience}]))
+		}
+		return nil
+	})
+	return &plansv1.ListContractVersionsResponse{Versions: out}, err
+}
+
+func (s *Service) GetContractVersion(ctx context.Context, req *plansv1.GetContractVersionRequest) (*plansv1.ContractVersion, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, versionNotFound()
+	}
+	var out *plansv1.ContractVersion
+	err = s.tx(ctx, "contract version", func(q *sqlc.Queries) error {
+		v, err := q.GetContractVersion(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return versionNotFound()
+		}
+		if err != nil {
+			return err
+		}
+		cur, err := currentNumbers(ctx, q)
+		if err != nil {
+			return err
+		}
+		out = versionOf(v, cur[[2]string{v.Kind, v.Audience}])
+		return nil
+	})
+	return out, err
+}
+
+func versionNotFound() error {
+	return errkey.New(codes.NotFound, "plans.contract.version_not_found", "no such contract version")
+}
+
+// PreviewContract renders a text the way a customer sees it, with sample values marked as variable.
+func (s *Service) PreviewContract(_ context.Context, req *plansv1.PreviewContractRequest) (*plansv1.PreviewContractResponse, error) {
+	if len(req.GetBody()) > domain.MaxContractBody {
+		return nil, domain.Invalid("body", "too long")
+	}
+	used, unknown := domain.ContractVariablesIn(req.GetBody())
+	return &plansv1.PreviewContractResponse{Html: domain.RenderContractHTML(req.GetBody(), domain.ContractSample, true), Variables: used, UnknownVariables: unknown}, nil
+}
+
+// GetContractStarter returns the starter text of a kind in a language.
+func (s *Service) GetContractStarter(_ context.Context, req *plansv1.GetContractStarterRequest) (*plansv1.GetContractStarterResponse, error) {
+	if !domain.ValidContractKind(req.GetKind()) {
+		return nil, domain.Invalid("kind", "one of "+strings.Join(domain.ContractKinds, ", "))
+	}
+	body, loc, ok := Starter(req.GetKind(), req.GetLocale())
+	if !ok {
+		return nil, errkey.New(codes.NotFound, "plans.contract.no_starter", "there is a starter text in Turkish and English only")
+	}
+	return &plansv1.GetContractStarterResponse{Body: body, Locale: loc}, nil
+}
+
+func settingsOf(st sqlc.ContractSetting, published []string) *plansv1.ContractSettings {
+	return &plansv1.ContractSettings{RequiredKinds: orEmpty(st.RequiredKinds), ImmediateStart: st.ImmediateStart, RetentionMonths: st.RetentionMonths, PublishedKinds: published, UpdateTime: stamp(st.UpdatedAt)}
+}
+
+func orEmpty(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+// loadSettings reads the tenant's settings; a tenant that never saved any has none enforced and the default retention.
+func loadSettings(ctx context.Context, q *sqlc.Queries) (sqlc.ContractSetting, error) {
+	st, err := q.GetContractSettings(ctx)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return sqlc.ContractSetting{RequiredKinds: []string{}, RetentionMonths: domain.DefaultRetention}, nil
+	}
+	return st, err
+}
+
+func publishedKinds(rows []sqlc.ListContractCurrentRow) []string {
+	var out []string
+	for _, k := range domain.ContractKinds {
+		for _, r := range rows {
+			if r.Kind == k && r.Audience == domain.AudienceConsumer {
+				out = append(out, k)
+				break
+			}
+		}
+	}
+	return orEmpty(out)
+}
+
+func (s *Service) GetContractSettings(ctx context.Context, _ *plansv1.GetContractSettingsRequest) (*plansv1.ContractSettings, error) {
+	var out *plansv1.ContractSettings
+	err := s.tx(ctx, "contract settings", func(q *sqlc.Queries) error {
+		st, err := loadSettings(ctx, q)
+		if err != nil {
+			return err
+		}
+		cur, err := q.ListContractCurrent(ctx)
+		if err != nil {
+			return err
+		}
+		out = settingsOf(st, publishedKinds(cur))
+		if st.UpdatedAt.IsZero() {
+			out.UpdateTime = nil
+		}
+		return nil
+	})
+	return out, err
+}
+
+// SetContractSettings changes what is enforced. A kind can be required only once it has a published version, so that no payment is ever refused for a missing text.
+func (s *Service) SetContractSettings(ctx context.Context, req *plansv1.SetContractSettingsRequest) (*plansv1.ContractSettings, error) {
+	var required []string
+	for _, k := range req.GetRequiredKinds() {
+		if !domain.ValidContractKind(k) {
+			return nil, domain.Invalid("required_kinds", "one of "+strings.Join(domain.ContractKinds, ", "))
+		}
+		if !slices.Contains(required, k) {
+			required = append(required, k)
+		}
+	}
+	slices.SortFunc(required, func(a, b string) int {
+		return slices.Index(domain.ContractKinds, a) - slices.Index(domain.ContractKinds, b)
+	})
+	if m := req.GetRetentionMonths(); m != 0 && (m < domain.MinRetentionMths || m > domain.MaxRetentionMths) {
+		return nil, domain.Invalid("retention_months", "between 12 and 120")
+	}
+	var out *plansv1.ContractSettings
+	err := s.tx(ctx, "contract settings", func(q *sqlc.Queries) error {
+		cur, err := q.ListContractCurrent(ctx)
+		if err != nil {
+			return err
+		}
+		published := publishedKinds(cur)
+		for _, k := range required {
+			if !slices.Contains(published, k) {
+				return errkey.Newf(codes.FailedPrecondition, "plans.contract.kind_unpublished", "%s cannot be required before a version of it is published", k)
+			}
+		}
+		old, err := loadSettings(ctx, q)
+		if err != nil {
+			return err
+		}
+		months := old.RetentionMonths
+		if req.GetRetentionMonths() != 0 {
+			months = req.GetRetentionMonths()
+		}
+		st, err := q.UpsertContractSettings(ctx, sqlc.UpsertContractSettingsParams{RequiredKinds: orEmpty(required), ImmediateStart: req.GetImmediateStart(), RetentionMonths: months})
+		if err != nil {
+			return err
+		}
+		out = settingsOf(st, published)
+		return nil
+	})
+	return out, err
+}
+
+// ---- requirements and the gate ----------------------------------------------------------------------------------------------------------------------------
+
+// who is the person the requirements are about: a customer, or a guest known by the invoice they pay.
+type who struct {
+	customer *sqlc.Customer
+	ref      string
+	typ      string
+}
+
+func (s *Service) resolve(ctx context.Context, q *sqlc.Queries, externalID, id, ref, customerType string) (who, error) {
+	var w who
+	switch {
+	case externalID != "":
+		c, err := q.GetCustomerByExternalID(ctx, externalID)
+		if err != nil {
+			return w, convert.Err(err, "customer")
+		}
+		w.customer = &c
+	case id != "":
+		cid, err := domain.ParseID("customer_id", id)
+		if err != nil {
+			return w, err
+		}
+		c, err := q.GetCustomerByID(ctx, cid)
+		if err != nil {
+			return w, convert.Err(err, "customer")
+		}
+		w.customer = &c
+	case ref == "":
+		return w, domain.Invalid("customer_external_id", "a customer, or a context_ref for a guest")
+	}
+	w.ref = ref
+	w.typ = customerType
+	if w.typ == "" && w.customer != nil {
+		w.typ = w.customer.CustomerType
+	}
+	return w, nil
+}
+
+// need is one required kind as the customer stands with it.
+type need struct {
+	series   domain.ContractSeries
+	accepted bool
+	at       time.Time
+}
+
+// state is what the tenant requires of a person and how far they are.
+type state struct {
+	settings sqlc.ContractSetting
+	audience string
+	needs    []need
+	missing  []string
+}
+
+func (st *state) pending() []string {
+	var out []string
+	for _, n := range st.needs {
+		if !n.accepted {
+			out = append(out, n.series.Kind)
+		}
+	}
+	return append(out, st.missing...)
+}
+
+func (st *state) enforced() bool { return len(st.settings.RequiredKinds) > 0 }
+
+func evaluate(ctx context.Context, q *sqlc.Queries, w who) (*state, error) {
+	settings, err := loadSettings(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	st := &state{settings: settings, audience: domain.AudienceOf(w.typ)}
+	if len(settings.RequiredKinds) == 0 {
+		return st, nil
+	}
+	cur, err := q.ListContractCurrent(ctx)
+	if err != nil {
+		return nil, err
+	}
+	series := seriesOf(cur)
+	accepted := map[[2]string]domain.AcceptedNumbers{}
+	if w.customer != nil {
+		rows, err := q.CustomerAcceptedNumbers(ctx, &w.customer.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			accepted[[2]string{r.Kind, r.Audience}] = domain.AcceptedNumbers{Number: int(r.Number), ConsentNumber: int(r.ConsentNumber), At: r.AcceptedAt}
+		}
+	} else {
+		rows, err := q.ReferenceAcceptedNumbers(ctx, w.ref)
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			accepted[[2]string{r.Kind, r.Audience}] = domain.AcceptedNumbers{Number: int(r.Number), ConsentNumber: int(r.ConsentNumber), At: r.AcceptedAt}
+		}
+	}
+	needConsent := settings.ImmediateStart && st.audience == domain.AudienceConsumer
+	for _, kind := range domain.ContractKinds {
+		if !slices.Contains(settings.RequiredKinds, kind) {
+			continue
+		}
+		sr, ok := domain.ChooseSeries(series, kind, st.audience)
+		if !ok {
+			st.missing = append(st.missing, kind)
+			continue
+		}
+		a := accepted[[2]string{sr.Kind, sr.Audience}]
+		st.needs = append(st.needs, need{series: sr, accepted: a.Covers(sr, needConsent), at: a.At})
+	}
+	return st, nil
+}
+
+// Check is the gate of the paths that start something for a customer without a page to ask on (a subscription made through the API): it refuses with
+// plans.contract.not_accepted while a kind the seller requires is not accepted by the customer, in the version that counts. A seller that requires nothing never
+// refuses. Renewals and dunning charges never call it: nobody is there to accept.
+func Check(ctx context.Context, q *sqlc.Queries, c sqlc.Customer) error {
+	st, err := evaluate(ctx, q, who{customer: &c, typ: c.CustomerType})
+	if err != nil {
+		return err
+	}
+	if !st.enforced() {
+		return nil
+	}
+	if p := st.pending(); len(p) > 0 {
+		return errkey.Newf(codes.FailedPrecondition, "plans.contract.not_accepted", "the customer has not accepted: %s (POST /v1/customers/{id}/contract-acceptances)", strings.Join(p, ", "))
+	}
+	return nil
+}
+
+// context resolves the variables of the texts for a person and an order.
+func (s *Service) values(ctx context.Context, q *sqlc.Queries, w who, order *plansv1.ContractOrder, guestName string, at time.Time) (domain.ContractContext, error) {
+	seller, err := q.ContractSeller(ctx)
+	if err != nil {
+		return domain.ContractContext{}, err
+	}
+	c := domain.ContractContext{SellerName: seller.Name, OrderDescription: order.GetDescription(), OrderTotal: order.GetTotal(), OrderCurrency: order.GetCurrency(), At: at}
+	if legal := convert.LegalFromJSON(seller.Legal); legal != nil {
+		if legal.GetLegalName() != "" {
+			c.SellerName = legal.GetLegalName()
+		}
+		c.SellerTaxID, c.SellerTaxOffice, c.SellerMersis = legal.GetTaxId(), legal.GetTaxOffice(), legal.GetMersisNo()
+	}
+	c.SellerAddress = addressText(convert.AddressFromJSON(seller.Address))
+	if w.customer != nil {
+		c.CustomerName, c.CustomerEmail = w.customer.Name, w.customer.Email
+		c.CustomerAddress = addressText(convert.AddressFromJSON(w.customer.Address))
+	} else {
+		c.CustomerName = guestName
+	}
+	return c, nil
+}
+
+func addressText(a *plansv1.Address) string {
+	if a == nil {
+		return ""
+	}
+	var parts []string
+	for _, p := range []string{a.GetLine1(), a.GetLine2(), strings.TrimSpace(a.GetPostalCode() + " " + a.GetCity()), a.GetRegion(), a.GetCountry()} {
+		if strings.TrimSpace(p) != "" {
+			parts = append(parts, strings.TrimSpace(p))
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// GetContractRequirements says what the person must accept, with the text to show.
+func (s *Service) GetContractRequirements(ctx context.Context, req *plansv1.GetContractRequirementsRequest) (*plansv1.GetContractRequirementsResponse, error) {
+	var out *plansv1.GetContractRequirementsResponse
+	err := s.tx(ctx, "contract", func(q *sqlc.Queries) error {
+		w, err := s.resolve(ctx, q, req.GetCustomerExternalId(), req.GetCustomerId(), req.GetContextRef(), req.GetCustomerType())
+		if err != nil {
+			return err
+		}
+		st, err := evaluate(ctx, q, w)
+		if err != nil {
+			return err
+		}
+		out = &plansv1.GetContractRequirementsResponse{Enforced: st.enforced(), Audience: st.audience, Satisfied: len(st.pending()) == 0, MissingKinds: orEmpty(st.missing),
+			ImmediateStart: st.enforced() && st.settings.ImmediateStart && st.audience == domain.AudienceConsumer}
+		if len(st.needs) == 0 {
+			return nil
+		}
+		cc, err := s.values(ctx, q, w, req.GetOrder(), req.GetGuestName(), micro(s.now()))
+		if err != nil {
+			return err
+		}
+		vals := cc.Values()
+		for _, n := range st.needs {
+			body, served := domain.PickContractBody(n.series.Bodies, req.GetLocale())
+			r := &plansv1.ContractRequirement{Kind: n.series.Kind, VersionId: n.series.ID, VersionNumber: int32(n.series.Number), Audience: n.series.Audience, Locale: served, //nolint:gosec // a version number
+				BodyHtml: domain.RenderContractHTML(body, vals, false), BodySha256: domain.TextHash(body), Accepted: n.accepted, HasTemplateNotice: domain.HasTemplateNotice(body)}
+			if n.accepted && !n.at.IsZero() {
+				r.AcceptTime = stamp(n.at)
+			}
+			out.Requirements = append(out.Requirements, r)
+		}
+		return nil
+	})
+	return out, err
+}
+
+// ---- acceptances ------------------------------------------------------------------------------------------------------------------------------------------
+
+func acceptanceOf(a sqlc.ContractAcceptance, externalID string) *plansv1.ContractAcceptance {
+	out := &plansv1.ContractAcceptance{Id: a.ID.String(), GroupId: a.GroupID.String(), VersionId: a.VersionID.String(), Kind: a.Kind, Audience: a.Audience, VersionNumber: a.VersionNumber,
+		VersionSha256: a.VersionSha256, LocaleRequested: a.LocaleRequested, LocaleServed: a.LocaleServed, BodySha256: a.BodySha256, ContextKind: a.ContextKind, ContextRef: a.ContextRef,
+		Source: a.Source, CheckboxText: a.CheckboxText, ImmediateStartConsent: a.ImmediateStartConsent, ImmediateStartText: a.ImmediateStartText,
+		WithdrawalWaiverAcknowledged: a.WithdrawalWaiverAcknowledged, WithdrawalWaiverText: a.WithdrawalWaiverText, SnapshotSha256: a.SnapshotSha256, Ip: a.Ip, UserAgent: a.UserAgent,
+		AcceptTime: stamp(a.AcceptedAt), CustomerExternalId: externalID, Observed: map[string]bool{}, Variables: map[string]string{}}
+	if a.CustomerID != nil {
+		out.CustomerId = a.CustomerID.String()
+	}
+	_ = json.Unmarshal(a.Observed, &out.Observed)
+	_ = json.Unmarshal(a.Variables, &out.Variables)
+	return out
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// RecordContractAcceptance writes the evidence that a person accepted versions together: one row per version, one group, one snapshot page whose hash every row holds.
+func (s *Service) RecordContractAcceptance(ctx context.Context, req *plansv1.RecordContractAcceptanceRequest) (*plansv1.RecordContractAcceptanceResponse, error) {
+	source := req.GetSource()
+	contextKind := map[string]string{"hosted": "hosted_invoice", "api": "api"}[source]
+	switch {
+	case contextKind == "":
+		return nil, domain.Invalid("source", "hosted or api")
+	case req.GetContextKind() != "" && req.GetContextKind() != contextKind:
+		return nil, domain.Invalid("context_kind", contextKind+" for source "+source)
+	case len(req.GetItems()) == 0:
+		return nil, domain.Invalid("items", "at least one version to accept")
+	case len(req.GetItems()) > len(domain.ContractKinds):
+		return nil, domain.Invalid("items", "at most one version of each kind")
+	case len(req.GetContextRef()) > 200:
+		return nil, domain.Invalid("context_ref", "at most 200 characters")
+	case req.GetWithdrawalWaiverAcknowledged() && !req.GetImmediateStartConsent():
+		return nil, domain.Invalid("withdrawal_waiver_acknowledged", "the waiver goes with the request to start at once")
+	case len(req.GetImmediateStartText()) > domain.MaxCheckboxText || len(req.GetWithdrawalWaiverText()) > domain.MaxCheckboxText:
+		return nil, domain.Invalid("immediate_start_text", "at most 1000 characters")
+	}
+	at := micro(s.now())
+	observed := map[string]bool{"ip": source == "hosted", "user_agent": source == "hosted", "time": true, "text": source == "hosted"}
+	if source == "api" && req.GetAcceptTime() != nil {
+		if err := req.GetAcceptTime().CheckValid(); err != nil || req.GetAcceptTime().AsTime().After(at.Add(5*time.Minute)) {
+			return nil, domain.Invalid("accept_time", "a valid time that is not in the future")
+		}
+		at, observed["time"] = micro(req.GetAcceptTime().AsTime()), false
+	}
+	ip, ua := truncate(req.GetIp(), 64), truncate(req.GetUserAgent(), 500)
+	var out *plansv1.RecordContractAcceptanceResponse
+	err := s.tx(ctx, "contract acceptance", func(q *sqlc.Queries) error {
+		w, err := s.resolve(ctx, q, req.GetCustomerExternalId(), req.GetCustomerId(), req.GetContextRef(), req.GetCustomerType())
+		if err != nil {
+			return err
+		}
+		cur, err := q.ListContractCurrent(ctx)
+		if err != nil {
+			return err
+		}
+		settings, err := loadSettings(ctx, q)
+		if err != nil {
+			return err
+		}
+		type picked struct {
+			v         sqlc.ContractVersion
+			bodies    map[string]string
+			body      string
+			served    string
+			checkbox  string
+			sortIndex int
+		}
+		var items []picked
+		seen := map[string]bool{}
+		for i, it := range req.GetItems() {
+			vid, err := uuid.Parse(it.GetVersionId())
+			if err != nil {
+				return versionNotFound()
+			}
+			v, err := q.GetContractVersion(ctx, vid)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return versionNotFound()
+			}
+			if err != nil {
+				return err
+			}
+			if seen[v.Kind] {
+				return domain.Invalid("items", "at most one version of each kind")
+			}
+			seen[v.Kind] = true
+			isCurrent := false
+			for _, c := range cur {
+				if c.Kind == v.Kind && c.Audience == v.Audience && c.Number == v.Number {
+					isCurrent = true
+				}
+			}
+			if !isCurrent {
+				return errkey.New(codes.FailedPrecondition, "plans.contract.version_stale", "a newer version of this text was published: show the current one and ask again")
+			}
+			text := strings.TrimSpace(it.GetCheckboxText())
+			if text == "" || len(text) > domain.MaxCheckboxText {
+				return domain.Invalid("items["+strconv.Itoa(i)+"].checkbox_text", "the words next to the box, up to 1000 characters")
+			}
+			bodies := bodiesOf(v.Bodies)
+			body, served := domain.PickContractBody(bodies, req.GetLocale())
+			items = append(items, picked{v: v, bodies: bodies, body: body, served: served, checkbox: text, sortIndex: slices.Index(domain.ContractKinds, v.Kind)})
+		}
+		slices.SortFunc(items, func(a, b picked) int { return a.sortIndex - b.sortIndex })
+		consumer := false
+		distance := false
+		for _, it := range items {
+			consumer = consumer || it.v.Audience == domain.AudienceConsumer
+			distance = distance || it.v.Kind == domain.ContractDistanceSales
+		}
+		if settings.ImmediateStart && consumer && distance && (!req.GetImmediateStartConsent() || !req.GetWithdrawalWaiverAcknowledged() ||
+			strings.TrimSpace(req.GetImmediateStartText()) == "" || strings.TrimSpace(req.GetWithdrawalWaiverText()) == "") {
+			return errkey.New(codes.FailedPrecondition, "plans.contract.consent_required", "this seller starts the service at once: the request to start now and the acknowledgement of losing the right of withdrawal are required, each with its words")
+		}
+		cc, err := s.values(ctx, q, w, req.GetOrder(), req.GetGuestName(), at)
+		if err != nil {
+			return err
+		}
+		vals := cc.Values()
+		snap := domain.Snapshot{Seller: vals["seller_name"], Customer: vals["customer_name"], Email: vals["customer_email"], AcceptedAt: at, Locale: req.GetLocale(), Values: vals,
+			Source: source, Observed: observed}
+		if req.GetImmediateStartConsent() {
+			snap.ImmediateStart = req.GetImmediateStartText()
+		}
+		if req.GetWithdrawalWaiverAcknowledged() {
+			snap.WaiverAck = req.GetWithdrawalWaiverText()
+		}
+		if loc := items[0].served; loc != "" {
+			snap.Locale = loc
+		}
+		for _, it := range items {
+			snap.Items = append(snap.Items, domain.SnapshotItem{Kind: it.v.Kind, Number: int(it.v.Number), LocaleServed: it.served, Body: it.body, BodySHA256: domain.TextHash(it.body), VersionSHA256: it.v.Sha256, CheckboxText: it.checkbox})
+		}
+		page := domain.RenderSnapshot(snap)
+		pageHash := domain.TextHash(page)
+		observedJSON, _ := json.Marshal(observed)
+		varsJSON, _ := json.Marshal(vals)
+		group := idgen.NewUUIDv7()
+		out = &plansv1.RecordContractAcceptanceResponse{GroupId: group.String()}
+		var customerID *uuid.UUID
+		if w.customer != nil {
+			customerID = &w.customer.ID
+		}
+		var first uuid.UUID
+		for _, it := range items {
+			row, err := q.InsertContractAcceptance(ctx, sqlc.InsertContractAcceptanceParams{ID: idgen.NewUUIDv7(), GroupID: group, CustomerID: customerID, VersionID: it.v.ID, Kind: it.v.Kind,
+				Audience: it.v.Audience, VersionNumber: it.v.Number, VersionSha256: it.v.Sha256, LocaleRequested: req.GetLocale(), LocaleServed: it.served, BodySha256: domain.TextHash(it.body),
+				ContextKind: contextKind, ContextRef: req.GetContextRef(), Source: source, Observed: observedJSON, CheckboxText: it.checkbox, ImmediateStartConsent: req.GetImmediateStartConsent(),
+				ImmediateStartText: snap.ImmediateStart, WithdrawalWaiverAcknowledged: req.GetWithdrawalWaiverAcknowledged(), WithdrawalWaiverText: snap.WaiverAck, Variables: varsJSON,
+				SnapshotSha256: pageHash, Ip: ip, UserAgent: ua, AcceptedAt: at})
+			if err != nil {
+				return err
+			}
+			if first == uuid.Nil {
+				first = row.ID
+			}
+			out.Acceptances = append(out.Acceptances, acceptanceOf(row, deref(customerExternalID(w))))
+		}
+		return s.announce(ctx, q, w, group, first, pageHash, at, out.Acceptances, source)
+	})
+	return out, err
+}
+
+func customerExternalID(w who) *string {
+	if w.customer == nil {
+		return nil
+	}
+	return &w.customer.ExternalID
+}
+
+// announce queues the webhook event and, for a customer, the fact the notifier mails: both in the transaction of the acceptance.
+func (s *Service) announce(ctx context.Context, q *sqlc.Queries, w who, group, first uuid.UUID, pageHash string, at time.Time, rows []*plansv1.ContractAcceptance, source string) error {
+	items := make([]map[string]any, len(rows))
+	for i, r := range rows {
+		items[i] = map[string]any{"acceptance_id": r.GetId(), "kind": r.GetKind(), "audience": r.GetAudience(), "version_id": r.GetVersionId(), "version": r.GetVersionNumber(), "sha256": r.GetVersionSha256(),
+			"locale": r.GetLocaleServed()}
+	}
+	data := map[string]any{"group_id": group.String(), "source": source, "accepted_at": at.Format(time.RFC3339), "snapshot_sha256": pageHash, "items": items,
+		"immediate_start_consent": rows[0].GetImmediateStartConsent(), "withdrawal_waiver_acknowledged": rows[0].GetWithdrawalWaiverAcknowledged(),
+		"context": map[string]any{"kind": rows[0].GetContextKind(), "ref": rows[0].GetContextRef()}}
+	if w.customer != nil {
+		data["customer_id"], data["customer_external_id"] = w.customer.ID.String(), w.customer.ExternalID
+	}
+	raw, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	if _, err := webhookscmd.Emit(ctx, q, group, webhooksmodel.ContractAccepted, raw, at); err != nil {
+		return err
+	}
+	if w.customer == nil || w.customer.Email == "" {
+		return nil
+	}
+	ti, err := tenantOf(ctx)
+	if err != nil {
+		return err
+	}
+	payload, err := proto.Marshal(&eventsv1.ContractAccepted{EventId: group.String(), TenantId: ti.String(), CustomerId: w.customer.ID.String(), AcceptanceId: first.String(), SnapshotSha256: pageHash,
+		AcceptedAt: stamp(at)})
+	if err != nil {
+		return err
+	}
+	if err := q.InsertOutbox(ctx, sqlc.InsertOutboxParams{Topic: AcceptedTopic, PartitionKey: ti.String() + "/" + w.customer.ID.String(), Payload: payload}); err != nil {
+		return err
+	}
+	return q.NotifyOutbox(ctx)
+}
+
+func truncate(s string, n int) string {
+	if len(s) > n {
+		return s[:n]
+	}
+	return s
+}
+
+func tenantOf(ctx context.Context) (uuid.UUID, error) {
+	ti, err := tenant.Require(ctx)
+	return ti.ID, err
+}
+
+func (s *Service) ListContractAcceptances(ctx context.Context, req *plansv1.ListContractAcceptancesRequest) (*plansv1.ListContractAcceptancesResponse, error) {
+	var out []*plansv1.ContractAcceptance
+	err := s.tx(ctx, "contract acceptance", func(q *sqlc.Queries) error {
+		w, err := s.resolve(ctx, q, req.GetCustomerExternalId(), req.GetCustomerId(), "", "")
+		if err != nil {
+			return err
+		}
+		if w.customer == nil {
+			return domain.Invalid("customer_external_id", "required")
+		}
+		rows, err := q.ListCustomerContractAcceptances(ctx, &w.customer.ID)
+		if err != nil {
+			return err
+		}
+		for _, r := range rows {
+			out = append(out, acceptanceOf(sqlc.ContractAcceptance{TenantID: r.TenantID, ID: r.ID, GroupID: r.GroupID, CustomerID: r.CustomerID, VersionID: r.VersionID, Kind: r.Kind,
+				Audience: r.Audience, VersionNumber: r.VersionNumber, VersionSha256: r.VersionSha256, LocaleRequested: r.LocaleRequested, LocaleServed: r.LocaleServed, BodySha256: r.BodySha256,
+				ContextKind: r.ContextKind, ContextRef: r.ContextRef, Source: r.Source, Observed: r.Observed, CheckboxText: r.CheckboxText, ImmediateStartConsent: r.ImmediateStartConsent,
+				ImmediateStartText: r.ImmediateStartText, WithdrawalWaiverAcknowledged: r.WithdrawalWaiverAcknowledged, WithdrawalWaiverText: r.WithdrawalWaiverText, Variables: r.Variables,
+				SnapshotSha256: r.SnapshotSha256, Ip: r.Ip, UserAgent: r.UserAgent, AcceptedAt: r.AcceptedAt}, deref(r.CustomerExternalID)))
+		}
+		return nil
+	})
+	return &plansv1.ListContractAcceptancesResponse{Acceptances: out}, err
+}
+
+// GetContractSnapshot renders again the page that was hashed when the acceptance was made, from the stored rows and the immutable versions.
+func (s *Service) GetContractSnapshot(ctx context.Context, req *plansv1.GetContractSnapshotRequest) (*plansv1.GetContractSnapshotResponse, error) {
+	id, err := uuid.Parse(req.GetAcceptanceId())
+	if err != nil {
+		return nil, acceptanceNotFound()
+	}
+	var out *plansv1.GetContractSnapshotResponse
+	err = s.tx(ctx, "contract acceptance", func(q *sqlc.Queries) error {
+		a, err := q.GetContractAcceptance(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return acceptanceNotFound()
+		}
+		if err != nil {
+			return err
+		}
+		rows, err := q.ListContractAcceptanceGroup(ctx, a.GroupID)
+		if err != nil {
+			return err
+		}
+		snap := domain.Snapshot{AcceptedAt: a.AcceptedAt, Locale: a.LocaleServed, Source: a.Source, ImmediateStart: a.ImmediateStartText, WaiverAck: a.WithdrawalWaiverText, Observed: map[string]bool{}}
+		_ = json.Unmarshal(a.Observed, &snap.Observed)
+		vals := map[string]string{}
+		_ = json.Unmarshal(a.Variables, &vals)
+		snap.Values, snap.Seller, snap.Customer, snap.Email = vals, vals["seller_name"], vals["customer_name"], vals["customer_email"]
+		slices.SortFunc(rows, func(x, y sqlc.ListContractAcceptanceGroupRow) int {
+			return slices.Index(domain.ContractKinds, x.Kind) - slices.Index(domain.ContractKinds, y.Kind)
+		})
+		if len(rows) > 0 {
+			snap.Locale = rows[0].LocaleServed
+		}
+		for _, r := range rows {
+			v, err := q.GetContractVersion(ctx, r.VersionID)
+			if err != nil {
+				return err
+			}
+			body := bodiesOf(v.Bodies)[r.LocaleServed]
+			snap.Items = append(snap.Items, domain.SnapshotItem{Kind: r.Kind, Number: int(r.VersionNumber), LocaleServed: r.LocaleServed, Body: body, BodySHA256: r.BodySha256, VersionSHA256: r.VersionSha256,
+				CheckboxText: r.CheckboxText})
+		}
+		page := domain.RenderSnapshot(snap)
+		out = &plansv1.GetContractSnapshotResponse{Html: page, Sha256: domain.TextHash(page), GroupId: a.GroupID.String()}
+		return nil
+	})
+	return out, err
+}
+
+func acceptanceNotFound() error {
+	return errkey.New(codes.NotFound, "plans.contract.acceptance_not_found", "no such acceptance")
+}
+
+// ---- withdrawals ------------------------------------------------------------------------------------------------------------------------------------------
+
+func withdrawalOf(w sqlc.ContractWithdrawal, externalID string) *plansv1.ContractWithdrawal {
+	out := &plansv1.ContractWithdrawal{Id: w.ID.String(), CustomerId: w.CustomerID.String(), CustomerExternalId: externalID, Statement: w.Statement, Source: w.Source, Status: w.Status,
+		ReceiveTime: stamp(w.ReceivedAt), DecidedBy: w.DecidedBy, DecisionNote: w.DecisionNote}
+	if w.SubscriptionID != nil {
+		out.SubscriptionId = w.SubscriptionID.String()
+	}
+	if w.InvoiceID != nil {
+		out.InvoiceId = w.InvoiceID.String()
+	}
+	if w.DecidedAt != nil {
+		out.DecideTime = stamp(*w.DecidedAt)
+	}
+	return out
+}
+
+func optUUID(field, raw string) (*uuid.UUID, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	id, err := domain.ParseID(field, raw)
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+// CreateContractWithdrawal records the statement of a customer who withdraws. Deciding it and refunding stay with the seller (docs/plans/21-contracts.md).
+func (s *Service) CreateContractWithdrawal(ctx context.Context, req *plansv1.CreateContractWithdrawalRequest) (*plansv1.ContractWithdrawal, error) {
+	source := req.GetSource()
+	if source == "" {
+		source = "api"
+	}
+	if !slices.Contains([]string{"api", "console", "hosted"}, source) {
+		return nil, domain.Invalid("source", "api, console or hosted")
+	}
+	if len(req.GetStatement()) > 2000 {
+		return nil, domain.Invalid("statement", "at most 2000 characters")
+	}
+	sub, err := optUUID("subscription_id", req.GetSubscriptionId())
+	if err != nil {
+		return nil, err
+	}
+	inv, err := optUUID("invoice_id", req.GetInvoiceId())
+	if err != nil {
+		return nil, err
+	}
+	at := micro(s.now())
+	if t := req.GetReceiveTime(); t != nil {
+		if err := t.CheckValid(); err != nil || t.AsTime().After(at.Add(5*time.Minute)) {
+			return nil, domain.Invalid("receive_time", "a valid time that is not in the future")
+		}
+		at = micro(t.AsTime())
+	}
+	var out *plansv1.ContractWithdrawal
+	err = s.tx(ctx, "withdrawal", func(q *sqlc.Queries) error {
+		c, err := q.GetCustomerByExternalID(ctx, req.GetCustomerExternalId())
+		if err != nil {
+			return convert.Err(err, "customer")
+		}
+		w, err := q.InsertContractWithdrawal(ctx, sqlc.InsertContractWithdrawalParams{ID: idgen.NewUUIDv7(), CustomerID: c.ID, SubscriptionID: sub, InvoiceID: inv, Statement: req.GetStatement(),
+			Source: source, ReceivedAt: at})
+		if err != nil {
+			return err
+		}
+		out = withdrawalOf(w, c.ExternalID)
+		raw, err := json.Marshal(map[string]any{"withdrawal_id": w.ID.String(), "customer_id": c.ID.String(), "customer_external_id": c.ExternalID, "subscription_id": out.GetSubscriptionId(),
+			"invoice_id": out.GetInvoiceId(), "source": source, "received_at": at.Format(time.RFC3339)})
+		if err != nil {
+			return err
+		}
+		_, err = webhookscmd.Emit(ctx, q, w.ID, webhooksmodel.ContractWithdrawalRequested, raw, at)
+		return err
+	})
+	return out, err
+}
+
+func (s *Service) ListContractWithdrawals(ctx context.Context, req *plansv1.ListContractWithdrawalsRequest) (*plansv1.ListContractWithdrawalsResponse, error) {
+	if st := req.GetStatus(); st != "" && !slices.Contains([]string{"received", "accepted", "rejected", "refunded"}, st) {
+		return nil, domain.Invalid("status", "received, accepted, rejected or refunded")
+	}
+	var out []*plansv1.ContractWithdrawal
+	err := s.tx(ctx, "withdrawal", func(q *sqlc.Queries) error {
+		p := sqlc.ListContractWithdrawalsParams{Status: req.GetStatus()}
+		if req.GetCustomerExternalId() != "" {
+			c, err := q.GetCustomerByExternalID(ctx, req.GetCustomerExternalId())
+			if err != nil {
+				return convert.Err(err, "customer")
+			}
+			p.CustomerID = c.ID
+		}
+		rows, err := q.ListContractWithdrawals(ctx, p)
+		if err != nil {
+			return err
+		}
+		for _, r := range rows {
+			out = append(out, withdrawalOf(sqlc.ContractWithdrawal{TenantID: r.TenantID, ID: r.ID, CustomerID: r.CustomerID, SubscriptionID: r.SubscriptionID, InvoiceID: r.InvoiceID,
+				Statement: r.Statement, Source: r.Source, Status: r.Status, ReceivedAt: r.ReceivedAt, DecidedAt: r.DecidedAt, DecidedBy: r.DecidedBy, DecisionNote: r.DecisionNote}, r.CustomerExternalID))
+		}
+		return nil
+	})
+	return &plansv1.ListContractWithdrawalsResponse{Withdrawals: out}, err
+}
+
+// withdrawalMoves are the decisions that can follow a status: received is decided once (accepted or rejected); an accepted one is later marked refunded.
+var withdrawalMoves = map[string][]string{"received": {"accepted", "rejected"}, "accepted": {"refunded"}}
+
+func (s *Service) SetContractWithdrawalStatus(ctx context.Context, req *plansv1.SetContractWithdrawalStatusRequest) (*plansv1.ContractWithdrawal, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, withdrawalNotFound()
+	}
+	if len(req.GetNote()) > 1000 {
+		return nil, domain.Invalid("note", "at most 1000 characters")
+	}
+	var out *plansv1.ContractWithdrawal
+	err = s.tx(ctx, "withdrawal", func(q *sqlc.Queries) error {
+		w, err := q.GetContractWithdrawalForUpdate(ctx, id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return withdrawalNotFound()
+		}
+		if err != nil {
+			return err
+		}
+		if !slices.Contains(withdrawalMoves[w.Status], req.GetStatus()) {
+			return errkey.Newf(codes.FailedPrecondition, "plans.contract.withdrawal_decided", "a withdrawal that is %s cannot become %q", w.Status, req.GetStatus())
+		}
+		decided, err := q.DecideContractWithdrawal(ctx, sqlc.DecideContractWithdrawalParams{ID: id, Status: req.GetStatus(), DecidedAt: ptr(micro(s.now())), DecidedBy: truncate(req.GetDecidedBy(), 200),
+			DecisionNote: req.GetNote()})
+		if err != nil {
+			return err
+		}
+		c, err := q.GetCustomerByID(ctx, decided.CustomerID)
+		if err != nil {
+			return err
+		}
+		out = withdrawalOf(decided, c.ExternalID)
+		return nil
+	})
+	return out, err
+}
+
+func ptr[T any](v T) *T { return &v }
+
+func withdrawalNotFound() error {
+	return errkey.New(codes.NotFound, "plans.contract.withdrawal_not_found", "no such withdrawal")
+}

@@ -352,6 +352,32 @@ func (q *Queries) ResetAffiliateReversals(ctx context.Context, tenantID uuid.UUI
 	return result.RowsAffected(), nil
 }
 
+const resetContractAcceptances = `-- name: ResetContractAcceptances :execrows
+DELETE FROM contract_acceptances WHERE tenant_id = $1
+`
+
+// The contract evidence of a sandbox goes with its customers (it names them); versions and settings are configuration and stay. The acceptances are append-only
+// everywhere but here (the trigger lets a sandbox tenant's rows go).
+func (q *Queries) ResetContractAcceptances(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetContractAcceptances, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const resetContractWithdrawals = `-- name: ResetContractWithdrawals :execrows
+DELETE FROM contract_withdrawals WHERE tenant_id = $1
+`
+
+func (q *Queries) ResetContractWithdrawals(ctx context.Context, tenantID uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, resetContractWithdrawals, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const resetCouponCounters = `-- name: ResetCouponCounters :exec
 UPDATE coupons SET redeemed = 0 WHERE tenant_id = $1 AND redeemed <> 0
 `

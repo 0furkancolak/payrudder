@@ -15,6 +15,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments/providers"
 	"github.com/0furkancolak/payrudder/pkg/subscription"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	couponscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
@@ -96,6 +97,10 @@ func (c *Commands) create(ctx context.Context, q *sqlc.Queries, tenantID uuid.UU
 	}
 	if cust.BlockedAt != nil {
 		return nil, errkey.New(codes.FailedPrecondition, "plans.customer.blocked", "this customer is blocked: no new subscription")
+	}
+	// A seller that requires agreements (distance sales, terms...) starts no subscription before the customer accepted them. Renewals do not come here.
+	if err := contracts.Check(ctx, q, cust); err != nil {
+		return nil, err
 	}
 	pv, err := q.GetPlanVersionByCode(ctx, sqlc.GetPlanVersionByCodeParams{PlanCode: req.GetPlanCode(), Version: req.GetPlanVersion()})
 	if err != nil {
