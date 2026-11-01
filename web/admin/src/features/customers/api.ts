@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/vue-query";
 import { computed, toValue, type MaybeRefOrGetter } from "vue";
 import { tenantApi, unwrap } from "@/shared/api/client";
 import { PAGE } from "@/shared/api/limits";
+import type { components } from "@/shared/api/schema";
+import { restOfPages } from "@/shared/lib/bulk";
 import type { Address } from "@/shared/lib/address";
 import { usePayments } from "@/features/product/billingApi";
 import { useSubscriptions } from "@/features/subscriptions/api";
@@ -16,6 +18,22 @@ export function useCustomers(tenantId: MaybeRefOrGetter<string>) {
   return useQuery({
     queryKey: computed(() => customerKeys.list(toValue(tenantId))),
     queryFn: () => unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers", { params: { query: { page_size: PAGE.whole } } })),
+  });
+}
+
+/** The customers after the first page, fetched by page token into the list's cache: "select all N results" must cover every customer the filters match, not the first page only. */
+export function useRestOfCustomers(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const key = customerKeys.list(toValue(tenantId));
+      const first = queries.getQueryData<components["schemas"]["ListCustomersResponse"]>(key);
+      const rest = await restOfPages(first?.next_page_token ?? "", async (token) => {
+        const page = await unwrap(tenantApi(toValue(tenantId)).GET("/v1/customers", { params: { query: { page_size: PAGE.whole, page_token: token } } }));
+        return { rows: page.customers ?? [], next: page.next_page_token ?? "" };
+      });
+      queries.setQueryData(key, { customers: [...(first?.customers ?? []), ...rest], next_page_token: "" });
+    },
   });
 }
 

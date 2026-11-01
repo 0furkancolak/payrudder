@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, useRouter } from "@tanstack/vue-router";
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { enumWord, label } from "@/shared/lib/labels";
 import { ErrorText } from "@/shared/ui/error-text";
@@ -18,9 +18,8 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Table, TableBody, TableCell, TableEmpty, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Button } from "@/shared/ui/button";
 import { BulkBar, RowCheck } from "@/shared/ui/bulk";
-import { runBulk } from "@/shared/lib/bulk";
-import { askConfirm } from "@/shared/lib/confirm";
-import { useSetTenantStatus, useTenants } from "./api";
+import { useBulk } from "@/shared/lib/bulk";
+import { useRestOfTenants, useSetTenantStatus, useTenants } from "./api";
 
 const { t, te } = useI18n();
 const tenants = useTenants();
@@ -31,15 +30,6 @@ const setStatus = useSetTenantStatus();
 const suspended = (x: { status?: string }) => x.status === "TENANT_STATUS_SUSPENDED";
 /** Only an active tenant can be suspended and only a suspended one reinstated (an inactive one is activated from its own page, with a reason). */
 const canSuspend = (x: { status?: string }) => x.status === "TENANT_STATUS_ACTIVE";
-const note = ref("");
-async function change(rows: typeof list.value, status: "active" | "suspended") {
-  const can = rows.filter((x) => (status === "suspended" ? canSuspend(x) : suspended(x)));
-  if (can.length === 0) return;
-  if (status === "suspended" && !(await askConfirm({ body: t("tenants.suspendConfirm", { n: can.length }, can.length) }))) return;
-  const r = await runBulk(can, (x) => setStatus.mutateAsync({ id: x.id ?? "", status }));
-  for (const x of r.ok) table.tick(x, false);
-  note.value = t("common.bulk.done", { ok: r.ok.length, failed: r.failed.length }) + (r.failed.length ? ` · ${t("common.bulk.notChanged")}: ${r.failed.map((f) => f.row.name).join(", ")}` : "");
-}
 const envOf = (v?: string) => enumWord(v, "ENVIRONMENT_");
 const tierOf = (v?: string) => enumWord(v, "TENANT_TIER_");
 const table = useTableState(list, {
@@ -51,6 +41,15 @@ const distinct = (pick: (x: (typeof list.value)[number]) => string | undefined) 
 const envs = distinct((x) => envOf(x.environment));
 const tiers = distinct((x) => tierOf(x.tier));
 const currencies = distinct((x) => x.currency);
+// The list is the first page of tenants the admin API gives (PAGE.whole); "select all" fetches the others by page token (useRestOfTenants).
+const rest = useRestOfTenants();
+const bulk = useBulk(table, { name: (x) => x.name ?? x.id ?? "", rest: { has: () => !!tenants.data.value?.next_page_token, load: () => rest.mutateAsync() } });
+/** The ticked tenants, or `only` (the row action of one tenant), that can take the change. */
+const change = (status: "active" | "suspended", only?: typeof list.value) =>
+  bulk.run((x) => setStatus.mutateAsync({ id: x.id ?? "", status }), {
+    rows: (all) => (only ?? all).filter((x) => (status === "suspended" ? canSuspend(x) : suspended(x))),
+    confirm: status === "suspended" ? (rows) => ({ body: t("tenants.suspendConfirm", { n: rows.length }, rows.length) }) : undefined,
+  });
 </script>
 
 <template>
@@ -58,11 +57,11 @@ const currencies = distinct((x) => x.currency);
   <Skeleton v-if="tenants.isPending.value" class="mb-3 h-6 w-40" aria-busy="true" />
   <ErrorText :error="tenants.error.value" class="mb-3" />
   <Card class="p-3">
-    <BulkBar :count="table.selectedRows.value.length" @clear="table.clearSelection()">
-      <Button type="button" size="sm" variant="outline" data-testid="bulk-suspend" @click="change(table.selectedRows.value, 'suspended')">{{ t("tenants.suspend") }}</Button>
-      <Button type="button" size="sm" variant="outline" data-testid="bulk-reinstate" @click="change(table.selectedRows.value, 'active')">{{ t("tenants.reinstate") }}</Button>
+    <BulkBar v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
+      <Button type="button" size="sm" variant="outline" data-testid="bulk-suspend" @click="change('suspended')">{{ t("tenants.suspend") }}</Button>
+      <Button type="button" size="sm" variant="outline" data-testid="bulk-reinstate" @click="change('active')">{{ t("tenants.reinstate") }}</Button>
     </BulkBar>
-    <p v-if="note" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ note }}</p>
+    <p v-if="bulk.note.value" class="text-muted-foreground px-4 pb-2 text-xs" role="status" data-testid="bulk-note">{{ bulk.note.value }}</p>
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">
       <FilterSelect v-model="table.filters.value.env" multiple :label="t('tenants.columns.environment')" :options="[{ value: '', label: t('tenants.allEnvironments') }, ...envs.map((e) => ({ value: e, label: label(t, te, 'environment', e) }))]" />
       <FilterSelect v-model="table.filters.value.tier" multiple :label="t('tenants.columns.tier')" :options="[{ value: '', label: t('tenants.allTiers') }, ...tiers.map((x) => ({ value: x, label: label(t, te, 'tier', x) }))]" />
@@ -94,7 +93,7 @@ const currencies = distinct((x) => x.currency);
           <TableCell>{{ tenant.currency }}</TableCell>
           <TableCell>{{ tenant.timezone }}</TableCell>
           <TableCell class="mono text-muted-foreground max-w-40 truncate text-xs" :title="tenant.id">{{ tenant.id }}</TableCell>
-          <TableCell><RowActions :actions="[{ key: 'open', label: t('common.view'), onSelect: () => open(tenant.id) }, ...(canSuspend(tenant) ? [{ key: 'suspend', label: t('tenants.suspend'), separatorBefore: true, onSelect: () => change([tenant], 'suspended') }] : []), ...(suspended(tenant) ? [{ key: 'reinstate', label: t('tenants.reinstate'), separatorBefore: true, onSelect: () => change([tenant], 'active') }] : [])]" /></TableCell>
+          <TableCell><RowActions :actions="[{ key: 'open', label: t('common.view'), onSelect: () => open(tenant.id) }, ...(canSuspend(tenant) ? [{ key: 'suspend', label: t('tenants.suspend'), separatorBefore: true, onSelect: () => change('suspended', [tenant]) }] : []), ...(suspended(tenant) ? [{ key: 'reinstate', label: t('tenants.reinstate'), separatorBefore: true, onSelect: () => change('active', [tenant]) }] : [])]" /></TableCell>
         </TableRow>
       </TableBody>
     </Table>

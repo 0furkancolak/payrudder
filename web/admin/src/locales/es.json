@@ -65,7 +65,14 @@
       "selectPage": "Seleccionar todas las filas de esta página",
       "selectRow": "Seleccionar fila",
       "done": "{ok} hechos, {failed} sin cambiar",
-      "notChanged": "Sin cambiar"
+      "notChanged": "Sin cambiar",
+      "announce": "{n} fila seleccionada. Las acciones masivas están en la barra sobre la tabla. | {n} filas seleccionadas. Las acciones masivas están en la barra sobre la tabla.",
+      "cleared": "Selección borrada",
+      "selectAll": "Seleccionar los {n} resultados",
+      "selectAllMore": "Seleccionar todos los resultados coincidentes",
+      "confirmAllTitle": "¿Aplicar a {n} filas?",
+      "confirmAll": "Esto se aplica a las {n} filas seleccionadas, incluidas las de otras páginas.",
+      "loadFailed": "No se pudo cargar el resto de la lista, así que no están seleccionados todos los resultados."
     }
   },
   "enums": {

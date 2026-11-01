@@ -98,3 +98,43 @@ describe("filter values in the address", () => {
     expect(parseValues(writeValues(["a,b", "100%", "c"]))).toEqual(["a,b", "100%", "c"]);
   });
 });
+
+describe("useTableState select all", () => {
+  const make2 = () => useTableState(rows, { searchFields: (r) => [r.name], filters: { parity: (r, v) => (r.id % 2 === 0) === (v === "even") }, size: 10, selectId: (r) => String(r.id) });
+
+  it("offers to take every matching row once the page is ticked and more rows match", () => {
+    const t = make2();
+    expect(t.canSelectAll.value).toBe(false);
+    t.togglePage();
+    expect(t.selectedRows.value).toHaveLength(10);
+    expect(t.canSelectAll.value).toBe(true);
+    t.selectAll();
+    expect(t.selectedRows.value).toHaveLength(25);
+    expect(t.allMatching.value).toBe(true);
+    expect(t.canSelectAll.value).toBe(false);
+  });
+
+  it("takes only the rows the search and filters show, and drops to those when a filter narrows the selection", async () => {
+    const t = make2();
+    t.filters.value = { parity: ["even"] };
+    await nextTick();
+    t.togglePage();
+    t.selectAll();
+    expect(t.selectedRows.value.map((r) => r.id)).toEqual([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24]);
+    t.filters.value = {};
+    await nextTick();
+    // The odd rows were never ticked: the broader filter does not select them.
+    expect(t.selectedRows.value).toHaveLength(13);
+    expect(t.allMatching.value).toBe(false);
+  });
+
+  it("is not offered when everything matching fits on the page, or on a list that cannot be ticked", () => {
+    const own = ref([{ id: 1 }, { id: 2 }]);
+    const t = useTableState(own, { searchFields: (r) => [r.id], selectId: (r) => String(r.id) });
+    t.togglePage();
+    expect(t.canSelectAll.value).toBe(false);
+    const plain = useTableState(rows, { searchFields: (r) => [r.name], size: 10 });
+    plain.selectAll();
+    expect(plain.selectedRows.value).toHaveLength(0);
+  });
+});

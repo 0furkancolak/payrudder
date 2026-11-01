@@ -65,7 +65,14 @@
       "selectPage": "Select all rows on this page",
       "selectRow": "Select row",
       "done": "{ok} done, {failed} not changed",
-      "notChanged": "Not changed"
+      "notChanged": "Not changed",
+      "announce": "{n} row selected. The bulk actions are in the bar above the table. | {n} rows selected. The bulk actions are in the bar above the table.",
+      "cleared": "Selection cleared",
+      "selectAll": "Select all {n} results",
+      "selectAllMore": "Select all matching results",
+      "confirmAllTitle": "Apply to {n} rows?",
+      "confirmAll": "This acts on all {n} selected rows, including those on other pages.",
+      "loadFailed": "The rest of the list could not be loaded, so not all results are selected."
     }
   },
   "enums": {
