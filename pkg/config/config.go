@@ -47,6 +47,8 @@ type Base struct {
 	LogLevel     string      `env:"PAYRUDDER_LOG_LEVEL"`
 	MetricsAddr  string      `env:"PAYRUDDER_METRICS_ADDR"`
 	OTLPEndpoint string      `env:"PAYRUDDER_OTLP_ENDPOINT"` // empty disables trace export
+	// ErrorTrackingURL is the DSN of a Sentry-compatible server (GlitchTip, Sentry) that gets panics and unexpected errors; it holds a key, so it is secret. Empty: nothing is sent (pkg/errtrack).
+	ErrorTrackingURL string `env:"PAYRUDDER_ERROR_TRACKING_URL"`
 	// MigrateOnly makes a service that migrates on start (PAYRUDDER_MIGRATE_ON_START) exit once the migrations are applied.
 	// Kubernetes runs it as a pre-install/pre-upgrade Job with the service's own image.
 	MigrateOnly bool `env:"PAYRUDDER_MIGRATE_ONLY"`

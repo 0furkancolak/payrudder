@@ -38,6 +38,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
@@ -440,7 +441,8 @@ func (s *Server) recoverMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if p := recover(); p != nil {
 				s.d.Log.ErrorContext(r.Context(), "http handler panic", "panic", p, "stack", string(debug.Stack()))
-				writeError(w, r, status.Error(codes.Internal, "internal error"))
+				errtrack.CapturePanic(r.Context(), p, errtrack.Tag("http.method", r.Method), errtrack.Tag("request_id", requestID(r.Context())))
+				writeErrorReporting(w, r, status.Error(codes.Internal, "internal error"), false)
 			}
 		}()
 		next.ServeHTTP(w, r)

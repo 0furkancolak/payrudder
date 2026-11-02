@@ -76,3 +76,21 @@ func TestLevel(t *testing.T) {
 		t.Fatal("ParseLevel accepted an unknown level")
 	}
 }
+
+func TestScrub(t *testing.T) {
+	for in, want := range map[string]string{
+		"key qk_live_ab12cd34_s3cr3tS3cr3tS3cr3t was refused": "key [REDACTED] was refused",
+		"session qs_abcdefghijklmnop":                         "session [REDACTED]",
+		"whsec_abcdefghijklmnopqrstuv failed":                 "[REDACTED] failed",
+		"Authorization: Bearer abcdef1234567890":              "Authorization: [REDACTED]",
+		"dial postgres://payrudder:hunter2@db:5432/x":         "dial postgres://payrudder:[REDACTED]@db:5432/x",
+		`{"password": "hunter2", "ok": 1}`:                    `{"password": "[REDACTED]", "ok": 1}`,
+		"token=abc123&page=2":                                 "token=[REDACTED]&page=2",
+		"customer cus_42 not found":                           "customer cus_42 not found",
+		"task_identifier_something is fine":                   "task_identifier_something is fine",
+	} {
+		if got := logx.Scrub(in); got != want {
+			t.Errorf("Scrub(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
