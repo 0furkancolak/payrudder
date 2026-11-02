@@ -12,6 +12,8 @@ OPERATIONS: dict[str, tuple[str, str, str]] = {
     "createCustomer": ("customers", "create_customer", "POST /v1/customers"),
     "getCustomer": ("customers", "get_customer", "GET /v1/customers/{external_id}"),
     "setPaymentMethod": ("customers", "set_payment_method", "PUT /v1/customers/{external_id}/payment-method"),
+    "listCustomerCards": ("customers", "list_customer_cards", "GET /v1/customers/{external_id}/cards"),
+    "deleteCustomerCard": ("customers", "delete_customer_card", "DELETE /v1/customers/{external_id}/cards/{token}"),
     "setCustomerAddress": ("customers", "set_customer_address", "PUT /v1/customers/{external_id}/address"),
     "setCustomerContact": ("customers", "set_customer_contact", "PUT /v1/customers/{external_id}/contact"),
     "blockCustomer": ("customers", "block_customer", "POST /v1/customers/{external_id}/block"),

@@ -17,6 +17,7 @@ import (
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
@@ -158,7 +159,12 @@ func testDunningWaitsForATenantOnHold(t *testing.T) {
 	})
 	var onHold atomic.Bool
 	eng, err := sagacommand.NewEngine(sagacommand.Config{Now: e.clk.Now, StepTimeout: time.Hour, Log: testkit.Logger(),
-		Hold: func(_ context.Context, id uuid.UUID) (bool, error) { return id == e.tid && onHold.Load(), nil }})
+		Gate: func(_ context.Context, id uuid.UUID, _ string) (paymentgate.Verdict, error) {
+			if id == e.tid && onHold.Load() {
+				return paymentgate.TenantOnHold, nil
+			}
+			return paymentgate.Allowed, nil
+		}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,4 +189,100 @@ func testDunningWaitsForATenantOnHold(t *testing.T) {
 		t.Fatalf("a pass after the tenant is back: %+v, %v; want our 2 retries", res, err)
 	}
 	testkit.Eventually(t, 20*time.Second, "the retries are charged", func() bool { return e.count(stub, "charge") == charges+2 })
+}
+
+// The first charge of an invoice that is finalized while the gate says no (the tenant is on hold, or the customer is blocked for fraud) is held, not sent: the invoice stays
+// open and the saga rests in PAYMENT_HELD with no dunning attempt used; the seller's Retry asks the gate again and leaves it held while the gate says no; the dunning sweep
+// charges it, as the first charge under the key it always had, once the gate lets it through; and a held invoice can be voided.
+func testTheFirstChargeIsHeldByThePaymentGate(t *testing.T) {
+	var verdict atomic.Int32 // a paymentgate.Verdict
+	var tid atomic.Value     // the tenant of the test, known once newEnv has made it
+	e := newEnv(t, envOpts{gate: func(_ context.Context, id uuid.UUID, customer string) (paymentgate.Verdict, error) {
+		if want, _ := tid.Load().(uuid.UUID); id != want || customer != "cus_a" {
+			return paymentgate.Allowed, nil // only cus_a is blocked, and only in this tenant
+		}
+		return paymentgate.Verdict(verdict.Load()), nil
+	}})
+	tid.Store(e.tid)
+	verdict.Store(int32(paymentgate.CustomerBlocked))
+	stub := e.startWorkers(func(c *commandsv1.CommandEnvelope, _ int) stubworker.Action {
+		return stubworker.Action{Reply: stubworker.Succeed}
+	})
+	e.addUsage("2026-10", "cus_a", "gb_hours", "1.000", 3)
+	e.driveRun("2026-10")
+	testkit.Eventually(t, 30*time.Second, "cus_b to be charged and cus_a held", func() bool {
+		s := e.sagaStates("2026-10")
+		return s["cus_a"] == "PAYMENT_HELD" && s["cus_b"] == "COMPLETED"
+	})
+	invoice := func(customer string) string {
+		var id string
+		if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND period_id = '2026-10' AND snapshot->>'customer_external_id' = $2`, e.tid, customer).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	chargesOf := func(inv string) int {
+		n := 0
+		for _, c := range e.mine(stub) {
+			if ch := c.GetChargePayment(); ch != nil && ch.GetInvoiceId() == inv {
+				n++
+			}
+		}
+		return n
+	}
+	var status string
+	var attempts int
+	if err := shared.sql.QueryRow(context.Background(), `SELECT i.status, s.dunning_attempt FROM invoices i JOIN invoice_sagas s ON s.tenant_id = i.tenant_id AND s.invoice_id = i.id WHERE i.tenant_id = $1 AND i.id = $2::uuid`, e.tid, invoice("cus_a")).Scan(&status, &attempts); err != nil {
+		t.Fatal(err)
+	}
+	if status != "open" || attempts != 0 || chargesOf(invoice("cus_a")) != 0 {
+		t.Fatalf("the held invoice is %q with %d dunning attempts and %d charges; want open, 0, 0", status, attempts, chargesOf(invoice("cus_a")))
+	}
+	var deadlines, scheduled int
+	if err := shared.sql.QueryRow(context.Background(), `SELECT count(*) FILTER (WHERE step_deadline IS NOT NULL), count(*) FILTER (WHERE next_attempt_at IS NOT NULL) FROM invoice_sagas WHERE tenant_id = $1 AND state = 'PAYMENT_HELD'`, e.tid).Scan(&deadlines, &scheduled); err != nil || deadlines != 0 || scheduled != 1 {
+		t.Fatalf("held sagas with a step deadline: %d, with a time to look again: %d (%v); want 0 and 1", deadlines, scheduled, err)
+	}
+
+	// The seller's Retry asks the gate again: still no, still held, no charge.
+	admin := e.api()
+	if _, err := admin.RetryInvoiceSaga(opCtx(), &billingv1.RetryInvoiceSagaRequest{TenantId: e.tid.String(), InvoiceId: invoice("cus_a")}); err != nil {
+		t.Fatal(err)
+	}
+	// The sweep, while the gate still says no, charges nothing and does not give up.
+	e.clk.Advance(sagacommand.DunningHold + time.Minute)
+	if _, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(500 * time.Millisecond)
+	if s := e.sagaStates("2026-10"); s["cus_a"] != "PAYMENT_HELD" || chargesOf(invoice("cus_a")) != 0 {
+		t.Fatalf("while the gate says no: %v, %d charges; want PAYMENT_HELD and none", s, chargesOf(invoice("cus_a")))
+	}
+
+	// The block is lifted: the next sweep charges the invoice, as the first charge.
+	verdict.Store(int32(paymentgate.Allowed))
+	e.clk.Advance(sagacommand.DunningHold + time.Minute)
+	if res, err := e.eng.Sweep(context.Background(), shared.system, 100); err != nil || res.Dunned < 1 {
+		t.Fatalf("the sweep after the gate let it through: %+v, %v", res, err)
+	}
+	testkit.Eventually(t, 30*time.Second, "cus_a to be charged and completed", func() bool { return e.sagaStates("2026-10")["cus_a"] == "COMPLETED" })
+	for _, c := range e.mine(stub) {
+		if ch := c.GetChargePayment(); ch != nil && ch.GetInvoiceId() == invoice("cus_a") && (ch.GetDunningAttempt() != 0 || ch.GetIdempotencyKey() != invoice("cus_a")+":charge:0") {
+			t.Errorf("the released charge = attempt %d, key %q; want the first charge (attempt 0, %s:charge:0)", ch.GetDunningAttempt(), ch.GetIdempotencyKey(), invoice("cus_a"))
+		}
+	}
+
+	// A held invoice can be voided and can be released by the seller's Retry once the gate lets it through.
+	verdict.Store(int32(paymentgate.TenantOnHold))
+	e.addUsage("2026-11", "cus_a", "gb_hours", "1.000", 3)
+	e.clk.Advance(30 * 24 * time.Hour)
+	e.driveRun("2026-11")
+	testkit.Eventually(t, 30*time.Second, "the november invoice of cus_a to be held", func() bool { return e.sagaStates("2026-11")["cus_a"] == "PAYMENT_HELD" })
+	var nov string
+	if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND period_id = '2026-11' AND snapshot->>'customer_external_id' = 'cus_a'`, e.tid).Scan(&nov); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.VoidInvoice(opCtx(), &billingv1.VoidInvoiceRequest{TenantId: e.tid.String(), InvoiceId: nov}); err != nil {
+		t.Fatal(err)
+	}
+	testkit.Eventually(t, 20*time.Second, "the held invoice to be voided", func() bool { return e.sagaStates("2026-11")["cus_a"] == "VOIDED" })
 }
