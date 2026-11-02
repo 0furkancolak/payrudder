@@ -6,6 +6,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
@@ -69,11 +70,12 @@ func testPromote(t *testing.T) {
 	hasAction(t, dry, "taxes", "TR", plansv1.PromoteChange_ACTION_CREATE)
 	hasAction(t, dry, "coupons", "SEED", plansv1.PromoteChange_ACTION_CREATE)
 	hasAction(t, dry, "mail", "settings", plansv1.PromoteChange_ACTION_CREATE)
+	hasAction(t, dry, "contracts", "tos/consumer", plansv1.PromoteChange_ACTION_CREATE)
 	skip := hasAction(t, dry, "webhooks", "https://example.com/hook", plansv1.PromoteChange_ACTION_SKIPPED)
 	if skip.GetDetail() == "" {
 		t.Error("a skip says why")
 	}
-	if !dry.GetDryRun() || dry.GetPlanHash() == "" || dry.GetCreated() != 5 || dry.GetSkipped() != 1 {
+	if !dry.GetDryRun() || dry.GetPlanHash() == "" || dry.GetCreated() != 6 || dry.GetSkipped() != 1 {
 		t.Fatalf("dry run = %v", dry)
 	}
 	if !equalFingerprints(before, liveFingerprint()) {
@@ -88,7 +90,7 @@ func testPromote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if done.GetCreated() != 5 || done.GetFailed() != 0 {
+	if done.GetCreated() != 6 || done.GetFailed() != 0 {
 		t.Fatalf("applied = %v", done)
 	}
 	for _, c := range done.GetChanges() {
@@ -119,6 +121,17 @@ func testPromote(t *testing.T) {
 		}
 	}
 
+	// The agreement came over as live's own first version; the evidence that sandbox customers accepted it, and the settings, did not.
+	sv, _ := e.contracts.ListContractVersions(as(sandbox.GetId()), &plansv1.ListContractVersionsRequest{})
+	if lv, err := e.contracts.ListContractVersions(lctx, &plansv1.ListContractVersionsRequest{}); err != nil || len(lv.GetVersions()) != 1 || lv.GetVersions()[0].GetNumber() != 1 || lv.GetVersions()[0].GetSha256() != sv.GetVersions()[0].GetSha256() {
+		t.Errorf("live agreements = %v, %v", lv, err)
+	}
+	var evidence int
+	if err := e.scan(context.Background(), live.GetId(), `SELECT (SELECT count(*) FROM contract_acceptances WHERE tenant_id = $1) + (SELECT count(*) FROM contract_withdrawals WHERE tenant_id = $1) + (SELECT count(*) FROM contract_settings WHERE tenant_id = $1)`,
+		[]any{uuid.MustParse(live.GetId())}, &evidence); err != nil || evidence != 0 {
+		t.Errorf("acceptances, withdrawals or settings reached live: %d %v", evidence, err)
+	}
+
 	// Never customers, subscriptions or webhook endpoints (live is not active).
 	if r, err := e.plans.ListCustomers(lctx, &plansv1.ListCustomersRequest{}); err != nil || len(r.GetCustomers()) != 0 {
 		t.Errorf("customers in live after a promotion: %v, %v", r, err)
@@ -138,7 +151,7 @@ func testPromote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again.GetCreated() != 0 || again.GetFailed() != 0 || again.GetConflicts() != 0 || again.GetUnchanged() != 5 {
+	if again.GetCreated() != 0 || again.GetFailed() != 0 || again.GetConflicts() != 0 || again.GetUnchanged() != 6 {
 		t.Fatalf("second run = %v", again)
 	}
 
@@ -148,6 +161,9 @@ func testPromote(t *testing.T) {
 	}
 	if _, err := e.plans.PublishPlanVersion(as(sandbox.GetId()), &plansv1.PublishPlanVersionRequest{PlanCode: "pro", BaseFeeMinor: 12900,
 		Prices: []*plansv1.Price{{MeterCode: "gb_hours", Model: &plansv1.Price_PerUnit{PerUnit: &plansv1.PerUnitPrice{UnitPrice: "1"}}}}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.contracts.PublishContractVersion(as(sandbox.GetId()), &plansv1.PublishContractVersionRequest{Kind: "tos", Bodies: map[string]string{"en": "Terms, edited in the sandbox"}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := e.plans.CreateMeter(as(sandbox.GetId()), &plansv1.CreateMeterRequest{Code: "api_calls", Aggregation: plansv1.Aggregation_AGGREGATION_COUNT, UnitLabel: "calls"}); err != nil {
@@ -161,6 +177,7 @@ func testPromote(t *testing.T) {
 	hasAction(t, diverged, "taxes", "TR", plansv1.PromoteChange_ACTION_CONFLICT)
 	hasAction(t, diverged, "plans", "pro", plansv1.PromoteChange_ACTION_CONFLICT)
 	hasAction(t, diverged, "meters", "api_calls", plansv1.PromoteChange_ACTION_CREATE)
+	hasAction(t, diverged, "contracts", "tos/consumer", plansv1.PromoteChange_ACTION_CONFLICT)
 	if r, _ := e.plans.GetTaxRates(lctx, &plansv1.GetTaxRatesRequest{}); r.GetRates()[0].GetRateBps() != 2000 {
 		t.Error("a conflicting tax rate was overwritten")
 	}

@@ -130,3 +130,11 @@ SELECT GREATEST(
          COALESCE((SELECT max(c.created_at) FROM customers c WHERE c.tenant_id = @tenant_id), 'epoch'::timestamptz),
          COALESCE((SELECT max(s.created_at) FROM subscriptions s WHERE s.tenant_id = @tenant_id), 'epoch'::timestamptz)
        )::timestamptz AS touched_at;
+-- The contract evidence of a sandbox goes with its customers (it names them); versions and settings are configuration and stay. The acceptances are append-only
+-- everywhere but here (the trigger lets a sandbox tenant's rows go).
+-- name: ResetContractAcceptances :execrows
+DELETE FROM contract_acceptances WHERE tenant_id = $1;
+-- name: ResetContractSnapshots :execrows
+DELETE FROM contract_snapshots WHERE tenant_id = $1;
+-- name: ResetContractWithdrawals :execrows
+DELETE FROM contract_withdrawals WHERE tenant_id = $1;

@@ -7,6 +7,9 @@ import {
   AffiliatesResource,
   AnalyticsResource,
   AssetsResource,
+  ContractAcceptancesResource,
+  ContractWithdrawalsResource,
+  ContractsResource,
   CouponRedemptionsResource,
   CouponsResource,
   CreditNotesResource,
@@ -220,6 +223,9 @@ export abstract class PayrudderResources {
   readonly affiliates: AffiliatesResource;
   readonly analytics: AnalyticsResource;
   readonly assets: AssetsResource;
+  readonly contractAcceptances: ContractAcceptancesResource;
+  readonly contractWithdrawals: ContractWithdrawalsResource;
+  readonly contracts: ContractsResource;
   readonly couponRedemptions: CouponRedemptionsResource;
   readonly coupons: CouponsResource;
   readonly creditNotes: CreditNotesResource;
@@ -257,6 +263,9 @@ export abstract class PayrudderResources {
     this.affiliates = new AffiliatesResource(t);
     this.analytics = new AnalyticsResource(t);
     this.assets = new AssetsResource(t);
+    this.contractAcceptances = new ContractAcceptancesResource(t);
+    this.contractWithdrawals = new ContractWithdrawalsResource(t);
+    this.contracts = new ContractsResource(t);
     this.couponRedemptions = new CouponRedemptionsResource(t);
     this.coupons = new CouponsResource(t);
     this.creditNotes = new CreditNotesResource(t);

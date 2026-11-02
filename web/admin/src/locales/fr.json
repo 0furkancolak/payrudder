@@ -2881,6 +2881,19 @@
         "bad_resource": "Ce n'est pas une ressource qu'une offre limite.",
         "platform_account": "L'organisation propre de la plateforme n'a pas d'offre.",
         "not_ready": "Les offres ne sont pas encore prêtes. Réessayez dans un instant."
+      },
+      "contract": {
+        "acceptance_not_found": "Cet enregistrement d'acceptation n'existe pas.",
+        "body_required": "Rédigez d'abord le texte (au moins une langue).",
+        "consent_required": "Ce vendeur démarre le service immédiatement : le client doit le demander et reconnaître la perte du droit de rétractation, chacun avec sa propre case.",
+        "kind_unpublished": "Publiez une version de cet accord avant de l'exiger.",
+        "no_starter": "Il n'existe de texte de départ qu'en turc et en anglais.",
+        "not_accepted": "Le client n'a pas accepté les accords que ce vendeur exige.",
+        "unknown_variable": "Le texte utilise une variable qui n'existe pas. Utilisez uniquement les variables de la liste.",
+        "version_not_found": "Cette version n'existe pas.",
+        "version_stale": "Une version plus récente de ce texte a été publiée. Affichez la version actuelle et demandez à nouveau.",
+        "withdrawal_decided": "Cette demande de rétractation ne peut pas passer à ce statut.",
+        "withdrawal_not_found": "Cette demande de rétractation n'existe pas."
       }
     },
     "common": {
@@ -3657,6 +3670,7 @@
         "affiliates": "Affiliés",
         "settings": "Réglages (taxes, routage, e-mail)",
         "assets": "Fichiers",
+        "contracts": "Accords (textes et réglages)",
         "sandbox": "Outils sandbox"
       },
       "permissionCount": "{n} permissions sur {total}",

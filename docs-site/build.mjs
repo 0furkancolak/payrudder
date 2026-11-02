@@ -26,6 +26,7 @@ export const GUIDES = [
   { section: "Concepts", src: content("idempotency.md"), page: "idempotency", title: "Idempotency", status: "draft" },
   { section: "Concepts", src: content("test-mode.md"), page: "test-mode", title: "Test mode", status: "draft" },
   { section: "Concepts", src: docs("16-webhooks.md"), page: "webhooks", title: "Webhooks" },
+  { section: "Concepts", src: docs("19-contracts.md"), page: "contracts", title: "Contracts" },
   { section: "Concepts", src: content("errors.md"), also: [docs("error-keys.md")], page: "errors", title: "Errors", generate: errorCatalogue },
   { section: "Libraries", src: docs("18-sdks.md"), page: "sdks", title: "SDKs" },
   { section: "Libraries", src: join(root, "mcp/README.md"), page: "mcp", title: "MCP server", status: "pre-release" },

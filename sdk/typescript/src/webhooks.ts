@@ -28,6 +28,9 @@ export const WebhookEventTypes = {
   CustomerBlocked: "customer.blocked",
   CustomerUnblocked: "customer.unblocked",
   PriceChangeScheduled: "price_change.scheduled",
+  ContractAccepted: "contract.accepted",
+  ContractVersionPublished: "contract.version_published",
+  ContractWithdrawalRequested: "contract.withdrawal_requested",
   Ping: "ping",
 } as const;
 
@@ -151,6 +154,52 @@ export interface PriceChangeScheduledEventData {
   skipped: number;
 }
 
+/** `contract.accepted`: a customer accepted one or more agreements together (one event for the group). */
+export interface ContractAcceptedEventData {
+  group_id: string;
+  source: "hosted" | "api";
+  accepted_at: string;
+  snapshot_sha256: string;
+  /** Absent for a guest payment. */
+  customer_id?: string;
+  customer_external_id?: string;
+  immediate_start_consent: boolean;
+  withdrawal_waiver_acknowledged: boolean;
+  context: { kind: "hosted_invoice" | "api"; ref: string };
+  items: {
+    acceptance_id: string;
+    kind: "distance_sales" | "pre_info" | "tos" | "privacy";
+    audience: "consumer" | "business";
+    version_id: string;
+    version: number;
+    sha256: string;
+    locale: string;
+  }[];
+}
+
+/** `contract.version_published`: a new version of an agreement is the current one. */
+export interface ContractVersionPublishedEventData {
+  version_id: string;
+  kind: "distance_sales" | "pre_info" | "tos" | "privacy";
+  audience: "consumer" | "business";
+  number: number;
+  material: boolean;
+  sha256: string;
+  locales: string[];
+  published_at: string;
+}
+
+/** `contract.withdrawal_requested`: a customer's withdrawal statement was recorded. */
+export interface ContractWithdrawalRequestedEventData {
+  withdrawal_id: string;
+  customer_id: string;
+  customer_external_id: string;
+  subscription_id: string;
+  invoice_id: string;
+  source: "api" | "console" | "hosted";
+  received_at: string;
+}
+
 interface Envelope<T extends WebhookEventType, D> {
   id: string;
   type: T;
@@ -191,6 +240,9 @@ export type WebhookEvent =
   | Envelope<"credits.low", CreditsLowEventData>
   | Distribute<CustomerTypes, CustomerBlockEventData>
   | Envelope<"price_change.scheduled", PriceChangeScheduledEventData>
+  | Envelope<"contract.accepted", ContractAcceptedEventData>
+  | Envelope<"contract.version_published", ContractVersionPublishedEventData>
+  | Envelope<"contract.withdrawal_requested", ContractWithdrawalRequestedEventData>
   | Envelope<"ping", Record<string, unknown>>;
 
 export type WebhookFailureReason = "invalid_header" | "timestamp_outside_tolerance" | "no_matching_signature" | "invalid_payload";

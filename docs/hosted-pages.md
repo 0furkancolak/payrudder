@@ -19,6 +19,7 @@ billing-svc decides the invoice state (`query.State`: paid, void, failed, open, 
 | | processing | "Payment processing", refreshes by itself every 5 s, no buttons |
 | | bank transfer | the bank block under the "open" badge (not a state of its own) |
 | | requires action (3-D Secure) | **no state**: it happens inside the provider's page after the redirect |
+| Invoice with the seller's agreements | open, a seller that requires contracts (`PUT /v1/contracts/settings`) | each text not accepted yet with an unticked box and its words, the two consents of a consumer (request to start at once, waiver), the payment method, and a button that says it is an order with an obligation to pay; the server checks the boxes (422 with the page again when one is missing or a text was replaced); fails closed when the agreements cannot be read ([19-contracts.md](19-contracts.md)) |
 | Ad-hoc link | open, with promotion, refused code, single-use used | amount, code field, "Continue"; the discount; the reason; "already used" |
 | Credit pack | open | what is bought, quantity, price, promotion |
 | Portal | normal, empty | invoices, payments, credits (balance, lots, packs to buy), test-mode banner |

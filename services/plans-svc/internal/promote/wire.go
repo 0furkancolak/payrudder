@@ -8,6 +8,7 @@ import (
 
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
 	couponscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/command"
 	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
 	mailcmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/mailsettings/command"
@@ -35,6 +36,7 @@ func Wire(appDB pgxx.Beginner, systemPool *pgxpool.Pool, box *secretbox.Box, all
 		CouponsQ: couponsqry.New(db), CouponsC: couponscmd.New(db, time.Now),
 		MailQ: mailqry.New(db), MailC: mailcmd.New(db),
 		HooksQ: hooksqry.New(db), HooksC: hookscmd.New(db, time.Now, box, allowPrivate),
+		Contracts: contracts.New(db),
 	}
 	return New(command.New(systemPool, m, log))
 }

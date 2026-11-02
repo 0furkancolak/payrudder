@@ -35,6 +35,9 @@ final class WebhookEventType
     public const CUSTOMER_BLOCKED = 'customer.blocked';
     public const CUSTOMER_UNBLOCKED = 'customer.unblocked';
     public const PRICE_CHANGE_SCHEDULED = 'price_change.scheduled';
+    public const CONTRACT_ACCEPTED = 'contract.accepted';
+    public const CONTRACT_VERSION_PUBLISHED = 'contract.version_published';
+    public const CONTRACT_WITHDRAWAL_REQUESTED = 'contract.withdrawal_requested';
 
     /**
      * Every type an endpoint can subscribe to (all but `ping`).
@@ -69,6 +72,9 @@ final class WebhookEventType
             self::CUSTOMER_BLOCKED,
             self::CUSTOMER_UNBLOCKED,
             self::PRICE_CHANGE_SCHEDULED,
+            self::CONTRACT_ACCEPTED,
+            self::CONTRACT_VERSION_PUBLISHED,
+            self::CONTRACT_WITHDRAWAL_REQUESTED,
         ];
     }
 }

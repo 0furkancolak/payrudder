@@ -1,0 +1,336 @@
+syntax = "proto3";
+
+package payrudder.plans.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ContractService is how a seller (a tenant) puts agreements in front of its own customers and keeps the evidence that a customer saw and accepted a specific text
+// (docs/plans/21-contracts.md). It is tenant-scoped like PlansService. The gateway calls it for the API (the seller's key) and, with the tenant of the invoice, for the
+// hosted payment pages; the same rules hold for both.
+//
+// A version is immutable: editing a text publishes the next version of its series (kind and audience). An acceptance is append-only: nothing changes it, except that
+// the erasure job blanks the IP address and the user agent after the retention period.
+//
+// Payrudder supplies templates and evidence, not legal guarantees: nothing here says a text is sufficient in any country.
+service ContractService {
+  // PublishContractVersion adds the next version to the series of (kind, audience). Its texts, one per language, are restricted markdown with {{variables}}.
+  rpc PublishContractVersion(PublishContractVersionRequest) returns (PublishContractVersionResponse);
+  // ListContractVersions lists versions, newest first; kind and audience narrow it.
+  rpc ListContractVersions(ListContractVersionsRequest) returns (ListContractVersionsResponse);
+  rpc GetContractVersion(GetContractVersionRequest) returns (GetContractVersionResponse);
+  // PreviewContract renders a text the way a customer would see it, with sample values for the variables, and reports unknown variables.
+  rpc PreviewContract(PreviewContractRequest) returns (PreviewContractResponse);
+  // GetContractStarter returns the starter text of a kind in a language (Turkish and English only), to be reviewed by a lawyer before use.
+  rpc GetContractStarter(GetContractStarterRequest) returns (GetContractStarterResponse);
+  rpc GetContractSettings(GetContractSettingsRequest) returns (GetContractSettingsResponse);
+  rpc SetContractSettings(SetContractSettingsRequest) returns (SetContractSettingsResponse);
+  // GetContractRequirements says what the customer must accept before something that takes money starts, with the text to show and what was accepted already.
+  rpc GetContractRequirements(GetContractRequirementsRequest) returns (GetContractRequirementsResponse);
+  // RecordContractAcceptance writes the evidence that a customer accepted the given versions together. It checks that the versions are the current ones.
+  rpc RecordContractAcceptance(RecordContractAcceptanceRequest) returns (RecordContractAcceptanceResponse);
+  rpc ListContractAcceptances(ListContractAcceptancesRequest) returns (ListContractAcceptancesResponse);
+  // GetContractSnapshot returns the page a customer accepted, as it was rendered then, and its sha256 (the same hash the acceptance holds).
+  rpc GetContractSnapshot(GetContractSnapshotRequest) returns (GetContractSnapshotResponse);
+  // CreateContractWithdrawal records that a customer withdrew from a contract (the 14-day right). Deciding and refunding stay with the seller.
+  rpc CreateContractWithdrawal(CreateContractWithdrawalRequest) returns (CreateContractWithdrawalResponse);
+  rpc ListContractWithdrawals(ListContractWithdrawalsRequest) returns (ListContractWithdrawalsResponse);
+  rpc SetContractWithdrawalStatus(SetContractWithdrawalStatusRequest) returns (SetContractWithdrawalStatusResponse);
+}
+
+// ContractVersion is one published edition of an agreement, in one or more languages.
+message ContractVersion {
+  string id = 1;
+  // distance_sales, pre_info, tos or privacy.
+  string kind = 2;
+  // consumer or business. A business customer gets the business series when it has a published version, else the consumer one.
+  string audience = 3;
+  // 1, 2, ... within (kind, audience).
+  int32 number = 4;
+  // A material version asks customers who accepted an earlier one to accept again; a minor one does not.
+  bool material = 5;
+  // Language (en, tr, de, fr, es, ar) to text.
+  map<string, string> bodies = 6;
+  // Hex sha256 over the kind, audience and every language's text, in a fixed order.
+  string sha256 = 7;
+  string note = 8;
+  string author = 9;
+  google.protobuf.Timestamp create_time = 10;
+  // The variables the texts use.
+  repeated string variables = 11;
+  // The newest version of its series.
+  bool current = 12;
+  // A text still carries the starter notice ("template, have a lawyer review").
+  bool has_template_notice = 13;
+}
+
+message PublishContractVersionRequest {
+  string kind = 1;
+  // consumer (default) or business.
+  string audience = 2;
+  map<string, string> bodies = 3;
+  // The first version of a series is always material.
+  bool material = 4;
+  string note = 5;
+  // Set by the gateway from the session; empty for an API key.
+  string author = 6;
+}
+
+message ListContractVersionsRequest {
+  string kind = 1;
+  string audience = 2;
+}
+message ListContractVersionsResponse {
+  repeated ContractVersion versions = 1;
+}
+
+message GetContractVersionRequest {
+  string id = 1;
+}
+
+message PreviewContractRequest {
+  string body = 1;
+  // The language of the text; it only chooses the sample values.
+  string locale = 2;
+}
+message PreviewContractResponse {
+  string html = 1;
+  repeated string variables = 2;
+  repeated string unknown_variables = 3;
+}
+
+message GetContractStarterRequest {
+  string kind = 1;
+  string locale = 2;
+  string audience = 3;
+}
+message GetContractStarterResponse {
+  string body = 1;
+  string locale = 2;
+}
+
+message ContractSettings {
+  // The kinds a customer must have accepted before a subscription starts or a payment is made on a hosted page. Empty: contracts are not enforced.
+  repeated string required_kinds = 1;
+  // The seller starts a digital service at once: consumers are asked for the immediate-start request and the withdrawal-waiver acknowledgement as two separate
+  // boxes (never merged with the acceptance).
+  bool immediate_start = 2;
+  // How long the IP address and the user agent of an acceptance are kept before they are blanked. The rest of the record stays. 12 to 120, default 36.
+  int32 retention_months = 3;
+  // Kinds that have a published version.
+  repeated string published_kinds = 4;
+  google.protobuf.Timestamp update_time = 5;
+}
+message GetContractSettingsRequest {}
+message SetContractSettingsRequest {
+  repeated string required_kinds = 1;
+  bool immediate_start = 2;
+  // 0 keeps the current value.
+  int32 retention_months = 3;
+}
+
+// ContractOrder is what the customer is about to buy, for the variables of the texts.
+message ContractOrder {
+  string description = 1;
+  // Already formatted for a person ("12.00").
+  string total = 2;
+  string currency = 3;
+}
+
+message GetContractRequirementsRequest {
+  // The customer by the seller's id, or by Payrudder's id; both empty is a guest (a payment link without a customer).
+  string customer_external_id = 1;
+  string customer_id = 2;
+  // The language to show the texts in; a language no text exists in falls back to English, then to any.
+  string locale = 3;
+  // individual or business. Empty: the customer's own; unknown counts as consumer.
+  string customer_type = 4;
+  // For a guest: the invoice the acceptance belongs to.
+  string context_ref = 5;
+  ContractOrder order = 6;
+  // For a guest: the name printed on the texts.
+  string guest_name = 7;
+}
+
+message ContractRequirement {
+  string kind = 1;
+  string version_id = 2;
+  int32 version_number = 3;
+  string audience = 4;
+  // The language of the text served.
+  string locale = 5;
+  // The text as safe HTML, variables resolved.
+  string body_html = 6;
+  string body_sha256 = 7;
+  // The customer accepted this version, or a later minor one, already.
+  bool accepted = 8;
+  google.protobuf.Timestamp accept_time = 9;
+  bool has_template_notice = 10;
+}
+
+message GetContractRequirementsResponse {
+  // The seller enforces contracts at all.
+  bool enforced = 1;
+  repeated ContractRequirement requirements = 2;
+  // Every requirement is accepted: nothing more to ask.
+  bool satisfied = 3;
+  // The consumer is asked for the immediate-start request and the waiver acknowledgement too.
+  bool immediate_start = 4;
+  // Required kinds with no published version: the seller's setup is broken and a payment is refused.
+  repeated string missing_kinds = 5;
+  // consumer or business: the audience the texts were chosen for.
+  string audience = 6;
+}
+
+message ContractAcceptanceItem {
+  string version_id = 1;
+  // The words next to the box, as the customer saw them.
+  string checkbox_text = 2;
+}
+
+message RecordContractAcceptanceRequest {
+  string customer_external_id = 1;
+  string customer_id = 2;
+  // hosted (set by the gateway for its pages) or api (the seller's server reports an acceptance it collected itself).
+  string source = 3;
+  // hosted_invoice for a hosted page, api for an embedded checkout.
+  string context_kind = 4;
+  // The invoice id for a hosted page; the seller's own reference for an embedded checkout.
+  string context_ref = 5;
+  // The language the page was asked for.
+  string locale = 6;
+  repeated ContractAcceptanceItem items = 7;
+  bool immediate_start_consent = 8;
+  string immediate_start_text = 9;
+  bool withdrawal_waiver_acknowledged = 10;
+  string withdrawal_waiver_text = 11;
+  // Observed by the gateway on a hosted page; claimed by the seller on the API.
+  string ip = 12;
+  string user_agent = 13;
+  // API only: when the customer accepted. Empty: now.
+  google.protobuf.Timestamp accept_time = 14;
+  string customer_type = 15;
+  ContractOrder order = 16;
+  string guest_name = 17;
+}
+
+message ContractAcceptance {
+  string id = 1;
+  // One checkout moment: the versions accepted together share it.
+  string group_id = 2;
+  string customer_id = 3;
+  string version_id = 4;
+  string kind = 5;
+  string audience = 6;
+  int32 version_number = 7;
+  string version_sha256 = 8;
+  string locale_requested = 9;
+  string locale_served = 10;
+  string body_sha256 = 11;
+  string context_kind = 12;
+  string context_ref = 13;
+  string source = 14;
+  // Which parts of the evidence Payrudder observed itself (ip, user_agent, time, text): false means the seller claimed it.
+  map<string, bool> observed = 15;
+  string checkbox_text = 16;
+  bool immediate_start_consent = 17;
+  string immediate_start_text = 18;
+  bool withdrawal_waiver_acknowledged = 19;
+  string withdrawal_waiver_text = 20;
+  map<string, string> variables = 21;
+  // Hex sha256 of the snapshot page (GetContractSnapshot returns the page).
+  string snapshot_sha256 = 22;
+  // Blank once the retention period passed.
+  string ip = 23;
+  string user_agent = 24;
+  google.protobuf.Timestamp accept_time = 25;
+  // The seller's id of the customer, for readers of a list across customers.
+  string customer_external_id = 26;
+}
+
+message RecordContractAcceptanceResponse {
+  string group_id = 1;
+  repeated ContractAcceptance acceptances = 2;
+}
+
+message ListContractAcceptancesRequest {
+  string customer_external_id = 1;
+  string customer_id = 2;
+}
+message ListContractAcceptancesResponse {
+  repeated ContractAcceptance acceptances = 1;
+}
+
+message GetContractSnapshotRequest {
+  // The acceptance id, or any acceptance of the group (the page covers the whole group).
+  string acceptance_id = 1;
+}
+message GetContractSnapshotResponse {
+  string html = 1;
+  string sha256 = 2;
+  string group_id = 3;
+}
+
+message ContractWithdrawal {
+  string id = 1;
+  string customer_id = 2;
+  string customer_external_id = 3;
+  string subscription_id = 4;
+  string invoice_id = 5;
+  string statement = 6;
+  // api, console or hosted.
+  string source = 7;
+  // received, accepted, rejected or refunded.
+  string status = 8;
+  google.protobuf.Timestamp receive_time = 9;
+  google.protobuf.Timestamp decide_time = 10;
+  string decided_by = 11;
+  string decision_note = 12;
+}
+
+message CreateContractWithdrawalRequest {
+  string customer_external_id = 1;
+  string subscription_id = 2;
+  string invoice_id = 3;
+  string statement = 4;
+  string source = 5;
+  // When the customer's statement reached the seller; empty: now.
+  google.protobuf.Timestamp receive_time = 6;
+}
+message ListContractWithdrawalsRequest {
+  string customer_external_id = 1;
+  string status = 2;
+}
+message ListContractWithdrawalsResponse {
+  repeated ContractWithdrawal withdrawals = 1;
+}
+message SetContractWithdrawalStatusRequest {
+  string id = 1;
+  // accepted, rejected or refunded.
+  string status = 2;
+  string note = 3;
+  string decided_by = 4;
+}
+
+message PublishContractVersionResponse {
+  ContractVersion version = 1;
+}
+
+message GetContractVersionResponse {
+  ContractVersion version = 1;
+}
+
+message GetContractSettingsResponse {
+  ContractSettings settings = 1;
+}
+
+message SetContractSettingsResponse {
+  ContractSettings settings = 1;
+}
+
+message CreateContractWithdrawalResponse {
+  ContractWithdrawal withdrawal = 1;
+}
+
+message SetContractWithdrawalStatusResponse {
+  ContractWithdrawal withdrawal = 1;
+}

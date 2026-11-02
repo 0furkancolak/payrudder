@@ -48,6 +48,12 @@ h2.sec{border-top:0;padding-top:0;margin:44px 0 12px;font-size:.78rem;color:var(
 .pane .meta{padding:18px 20px;border-radius:16px;background:var(--muted);margin:22px 0}
 .pane .hint{border-radius:14px}
 .pane .foot{display:none}
+.agree{display:block}.agree h3{font-size:.78rem;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-foreground);margin:0 0 10px}
+details.contract{border:1px solid var(--border);border-radius:14px;padding:6px 16px;margin:10px 0}details.contract summary{cursor:pointer;font-weight:600;padding:8px 0}
+.contract .text{max-height:300px;overflow:auto;padding:4px 0 10px;font-size:.92rem}.contract .text h3,.contract .text h4,.contract .text h5{font-size:1rem;text-transform:none;letter-spacing:0;color:inherit;margin:14px 0 6px}
+.contract .text ul,.contract .text ol{padding-inline-start:1.3rem;margin:6px 0}
+.check{display:flex;gap:10px;align-items:flex-start;margin:12px 0;cursor:pointer}.check input{margin-top:.3rem;flex:none;width:18px;height:18px}
+.agree fieldset{border:0;padding:0;margin:14px 0}.agree legend{font-size:.78rem;font-weight:650;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-foreground);margin-bottom:4px}
 @media (max-width:860px){.shell{grid-template-columns:1fr}.side{padding:22px 20px;gap:12px}.side .sidetitle{display:none}.side .sideamt{font-size:1.8rem;margin-top:6px}.side .sidefoot{display:none}.side .sidemid{display:flex;flex-direction:column}.pane{max-width:none;padding:28px 20px 40px}}
 @media print{.side{display:none}.shell{display:block}.pane{padding:0;max-width:none}}
 @media print{body{background:#fff;color:#000}.card{border:0;padding:0;box-shadow:none}.noprint,.foot{display:none}}
@@ -74,10 +80,23 @@ const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 {{if .Hint}}<p class="hint">{{.Hint}}</p>{{end}}
 {{with .Bank}}<div class="pay"><b>{{$.L.payBy}}</b><dl><dt>{{$.L.bank}}</dt><dd>{{.Name}}</dd><dt>{{$.L.holder}}</dt><dd>{{.Holder}}</dd><dt>{{$.L.iban}}</dt><dd class="mono">{{.IBAN}}</dd>{{if .BIC}}<dt>{{$.L.bic}}</dt><dd class="mono">{{.BIC}}</dd>{{end}}<dt>{{$.L.bankRef}}</dt><dd class="mono">{{.Reference}}</dd></dl><p class="muted">{{$.L.referenceHint}}</p></div>{{end}}
 {{if .Payable}}<div class="pay"><h2>{{.L.pay_title}}</h2>
-{{range .Methods}}<form method="post" action="{{$.Pay}}"><input type="hidden" name="method" value="{{.ID}}"><button class="btn" type="submit">{{.Label}}</button></form>{{end}}
+{{if and .Contracts .Methods}}{{template "agree" .}}{{else}}{{range .Methods}}<form method="post" action="{{$.Pay}}"><input type="hidden" name="method" value="{{.ID}}"><button class="btn" type="submit">{{.Label}}</button></form>{{end}}{{end}}
 {{if .NoMethod}}<p class="muted">{{.L.pay_none}}</p>{{end}}</div>{{end}}
 <div class="noprint">{{if .HasPDF}}<a class="btn alt" href="{{.PDF}}">{{.L.pdf}}</a>{{end}}{{if .Receipt}}<a class="btn alt" href="{{.Receipt}}">{{.L.receipt_view}}</a>{{end}}{{if .Back}}<a class="btn alt" href="{{.Back}}">{{.L.back}}</a>{{end}}</div>
 {{template "foot" .}}{{end}}`
+
+// The agreements form: each text the customer has not accepted yet (the page needs no script: the browser keeps the form from being sent with a box empty, and the server
+// checks again), the two consents of a consumer, the payment method and the button that says what pressing it means.
+const agreeTmpl = `{{define "agree"}}<form method="post" action="{{.Pay}}" class="agree">
+<h3>{{.L.contract_title}}</h3>
+{{if .Contracts.Error}}<p class="err" role="alert">{{.Contracts.Error}}</p>{{end}}
+{{range .Contracts.Items}}<details class="contract"{{if not .Accepted}} open{{end}}><summary>{{.Label}} · {{$.L.contract_version}} {{.Number}}</summary><div class="text">{{.HTML}}</div></details>
+{{if .Accepted}}<p class="muted">{{$.L.contract_accepted_on}} {{.AcceptedOn}}</p>{{else}}<input type="hidden" name="v_{{.Kind}}" value="{{.VersionID}}"><label class="check"><input type="checkbox" name="accept_{{.Kind}}" value="1" required><span>{{.CheckboxText}}</span></label>{{end}}
+{{end}}{{if .Contracts.Consents}}<label class="check"><input type="checkbox" name="consent_start" value="1" required><span>{{.L.consent_start}}</span></label>
+<label class="check"><input type="checkbox" name="consent_waiver" value="1" required><span>{{.L.consent_waiver}}</span></label>{{end}}
+{{if gt (len .Methods) 1}}<fieldset><legend>{{.L.pay_method}}</legend>{{range $i, $m := .Methods}}<label class="check"><input type="radio" name="method" value="{{$m.ID}}"{{if eq $i 0}} checked{{end}}><span>{{$m.Label}}</span></label>{{end}}</fieldset>{{else}}{{range .Methods}}<input type="hidden" name="method" value="{{.ID}}">{{end}}{{end}}
+<p class="muted">{{.L.contract_pay_note}}</p>
+<button class="btn" type="submit">{{.L.contract_pay}}</button></form>{{end}}`
 
 const adhocTmpl = `{{define "adhoc"}}{{template "head" .}}
 <div class="muted">{{.Seller}}</div><h1>{{.Description}}</h1>
@@ -144,4 +163,4 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{end}}</ul>{{end}}{{end}}
 {{template "foot" .}}{{end}}`
 
-var pageTemplates = template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))
+var pageTemplates = template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + agreeTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + privacyTmpl))

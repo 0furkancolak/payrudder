@@ -579,9 +579,9 @@ message PromoteChange {
     // Cannot be promoted now; detail says why (an inactive live environment takes no webhook endpoints).
     ACTION_SKIPPED = 4;
   }
-  // meters, plans, taxes, coupons, webhooks, mail.
+  // meters, plans, taxes, coupons, webhooks, mail, contracts.
   string family = 1;
-  // The stable key the object is matched by: meter code, plan code, tax country, coupon code, webhook URL, "settings".
+  // The stable key the object is matched by: meter code, plan code, tax country, coupon code, webhook URL, "settings", or kind/audience for an agreement.
   string key = 2;
   Action action = 3;
   // For a conflict what differs; for a skip why.

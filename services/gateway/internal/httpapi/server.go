@@ -65,6 +65,8 @@ type Deps struct {
 	Webhooks        plansv1.WebhookServiceClient
 	MailIntegration plansv1.MailIntegrationServiceClient
 	Support         plansv1.SupportServiceClient
+	// Contracts serves the agreements and their evidence; the hosted payment pages ask it before a payment starts. Nil (tests only) means no agreements are asked for.
+	Contracts       plansv1.ContractServiceClient
 	Affiliates      plansv1.AffiliateServiceClient
 	AffiliatePub    plansv1.AffiliatePublicServiceClient
 	AffiliatePortal plansv1.AffiliatePortalServiceClient

@@ -12,6 +12,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/directory"
 	directorycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/directory/command"
 	directoryqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/directory/query"
@@ -29,6 +30,7 @@ import (
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 	saasqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/query"
 	sandboxapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox/api"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/support"
 )
 
@@ -78,6 +80,7 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterAdminServiceServer(srv, admin)
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
 	plansv1.RegisterSupportServiceServer(srv, support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL}))
+	plansv1.RegisterContractServiceServer(srv, contracts.New(store.New(d.AppDB)))
 	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now).WithPlaces(d.Places)
 	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log)
 	plansv1.RegisterSaasServiceServer(srv, saas.New(saasC, saasQ, d.SystemPool))

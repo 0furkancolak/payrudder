@@ -33,6 +33,8 @@ const (
 	PermAssetsRead         = "assets:read"
 	PermAssetsWrite        = "assets:write"
 	PermSandboxWrite       = "sandbox:write"
+	PermContractsRead      = "contracts:read"
+	PermContractsWrite     = "contracts:write"
 )
 
 // Permissions lists every permission, in the order the console shows them.
@@ -51,6 +53,7 @@ var Permissions = []string{
 	PermSettingsRead, PermSettingsWrite,
 	PermAssetsRead, PermAssetsWrite,
 	PermSandboxWrite,
+	PermContractsRead, PermContractsWrite,
 }
 
 // Key roles. A role other than custom is a fixed set of permissions.
@@ -189,6 +192,7 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 			case "portal-links":
 				return rw("invoices")
 			}
+			// contract-requirements, contract-acceptances and contract-withdrawals are customer records: a checkout's server records them with customers:write.
 		}
 		return rw("customers")
 	case "subscriptions":
@@ -211,6 +215,10 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 		return rw("settings")
 	case "assets":
 		return rw("assets")
+	case "contracts":
+		return rw("contracts") // the texts and the settings: a legal act, not a customer record
+	case "contract-acceptances", "contract-withdrawals":
+		return rw("customers")
 	case "sandbox":
 		return PermSandboxWrite, true // the scenario list is part of the sandbox tools
 	}

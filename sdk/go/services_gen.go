@@ -29,6 +29,12 @@ type services struct {
 	Analytics *AnalyticsService
 	// Assets groups the assets operations.
 	Assets *AssetsService
+	// ContractAcceptances groups the contract acceptances operations.
+	ContractAcceptances *ContractAcceptancesService
+	// ContractWithdrawals groups the contract withdrawals operations.
+	ContractWithdrawals *ContractWithdrawalsService
+	// Contracts groups the contracts operations.
+	Contracts *ContractsService
 	// CouponRedemptions groups the coupon redemptions operations.
 	CouponRedemptions *CouponRedemptionsService
 	// Coupons groups the coupons operations.
@@ -94,6 +100,9 @@ func (s *services) initServices(c *Client) {
 	s.Affiliates = (*AffiliatesService)(&service{c: c})
 	s.Analytics = (*AnalyticsService)(&service{c: c})
 	s.Assets = (*AssetsService)(&service{c: c})
+	s.ContractAcceptances = (*ContractAcceptancesService)(&service{c: c})
+	s.ContractWithdrawals = (*ContractWithdrawalsService)(&service{c: c})
+	s.Contracts = (*ContractsService)(&service{c: c})
 	s.CouponRedemptions = (*CouponRedemptionsService)(&service{c: c})
 	s.Coupons = (*CouponsService)(&service{c: c})
 	s.CreditNotes = (*CreditNotesService)(&service{c: c})
@@ -658,6 +667,161 @@ func (s *AssetsService) DownloadAsset(ctx context.Context, id string, opts ...Re
 	return &out, nil
 }
 
+// ContractAcceptancesService is the contract acceptances namespace of the API.
+type ContractAcceptancesService service
+
+// GetContractSnapshot: The page the customer accepted, as it was rendered then (GET
+// /v1/contract-acceptances/{id}/snapshot).
+//
+// A self-contained HTML document in `html` (no script, no external resource), written again from the stored
+// record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the
+// customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example
+// in a sandboxed frame.
+func (s *ContractAcceptancesService) GetContractSnapshot(ctx context.Context, id string, opts ...RequestOption) (*GetContractSnapshotResponse, error) {
+	var out GetContractSnapshotResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/contract-acceptances/" + url.PathEscape(id) + "/snapshot", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ContractWithdrawalsService is the contract withdrawals namespace of the API.
+type ContractWithdrawalsService service
+
+// ListContractWithdrawals: Withdrawal requests, newest first (at most 200) (GET /v1/contract-withdrawals).
+func (s *ContractWithdrawalsService) ListContractWithdrawals(ctx context.Context, params *ListContractWithdrawalsParams, opts ...RequestOption) (*ListContractWithdrawalsResponse, error) {
+	var out ListContractWithdrawalsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/contract-withdrawals", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// SetContractWithdrawalStatus: Decide a withdrawal request, or mark an accepted one refunded (PUT
+// /v1/contract-withdrawals/{id}/status).
+//
+// received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided
+// otherwise).
+func (s *ContractWithdrawalsService) SetContractWithdrawalStatus(ctx context.Context, id string, req *SetContractWithdrawalStatusRequest, opts ...RequestOption) (*ContractWithdrawal, error) {
+	if req == nil {
+		req = &SetContractWithdrawalStatusRequest{}
+	}
+	var body any = req
+	var out ContractWithdrawal
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPut, path: "/v1/contract-withdrawals/" + url.PathEscape(id) + "/status", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ContractsService is the contracts namespace of the API.
+type ContractsService service
+
+// PreviewContract: Render a text the way a customer would see it, with sample values (POST
+// /v1/contracts/preview).
+//
+// Reports the variables the text uses and any that do not exist. Nothing is stored.
+func (s *ContractsService) PreviewContract(ctx context.Context, req *PreviewContractRequest, opts ...RequestOption) (*PreviewContractResponse, error) {
+	if req == nil {
+		req = &PreviewContractRequest{}
+	}
+	var body any = req
+	var out PreviewContractResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/contracts/preview", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetContractSettings: Which agreements are required, whether the service starts at once, and how long evidence
+// is kept (GET /v1/contracts/settings).
+func (s *ContractsService) GetContractSettings(ctx context.Context, opts ...RequestOption) (*ContractSettings, error) {
+	var out ContractSettings
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/contracts/settings", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// SetContractSettings: Change which agreements are required (PUT /v1/contracts/settings).
+//
+// While `required_kinds` is not empty, no subscription is created for a customer who has not accepted the
+// current version of each of them (error key plans.contract.not_accepted), and a hosted payment page asks for
+// them next to the pay button. A kind can be required once a version of it is published
+// (plans.contract.kind_unpublished). Renewals and dunning charges are never held back. With `immediate_start`,
+// a consumer is asked for the request to start at once and the acknowledgement of losing the right of
+// withdrawal as two separate boxes (plans.contract.consent_required). `retention_months` (12 to 120, default
+// 36; 0 keeps the value) is how long the IP address and user agent of an acceptance are kept; the rest of the
+// record stays.
+func (s *ContractsService) SetContractSettings(ctx context.Context, req *SetContractSettingsRequest, opts ...RequestOption) (*ContractSettings, error) {
+	if req == nil {
+		req = &SetContractSettingsRequest{}
+	}
+	var body any = req
+	var out ContractSettings
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPut, path: "/v1/contracts/settings", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetContractStarter: The starter text of an agreement in Turkish or English (GET /v1/contracts/starter).
+//
+// A template to start from, with a notice on top that it is not legal advice and must be reviewed by a lawyer
+// before use. There is no starter text in other languages (error key plans.contract.no_starter).
+func (s *ContractsService) GetContractStarter(ctx context.Context, params *GetContractStarterParams, opts ...RequestOption) (*GetContractStarterResponse, error) {
+	var out GetContractStarterResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/contracts/starter", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListContractVersions: The versions of the agreements you present to your customers, newest first (GET
+// /v1/contracts/versions).
+//
+// A version is one edition of an agreement (distance sales, pre-information, terms, privacy) in one or more
+// languages. Needs contracts:read.
+func (s *ContractsService) ListContractVersions(ctx context.Context, params *ListContractVersionsParams, opts ...RequestOption) (*ListContractVersionsResponse, error) {
+	var out ListContractVersionsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/contracts/versions", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// PublishContractVersion: Publish the next version of an agreement (POST /v1/contracts/versions).
+//
+// A version cannot be edited: this adds the next one to the series of (kind, audience), which becomes the one
+// customers see. The texts are restricted markdown (`#` headings, `- ` and `1. ` lists, `**bold**`, blank-line
+// paragraphs; raw HTML is shown as text) with `{{variable}}` placeholders from a fixed list (`seller_name`,
+// `seller_address`, `seller_tax_id`, `seller_tax_office`, `seller_mersis`, `customer_name`, `customer_email`,
+// `customer_address`, `order_description`, `order_total`, `order_currency`, `date`). A `material` version asks
+// customers who accepted an earlier one to accept again; a minor one does not (the first version of a series is
+// always material). Payrudder supplies starter texts for Turkish and English that must be reviewed by a lawyer;
+// it does not say any text is legally sufficient. Error keys plans.contract.unknown_variable,
+// plans.contract.body_required. Needs contracts:write.
+func (s *ContractsService) PublishContractVersion(ctx context.Context, req *PublishContractVersionRequest, opts ...RequestOption) (*ContractVersion, error) {
+	if req == nil {
+		req = &PublishContractVersionRequest{}
+	}
+	var body any = req
+	var out ContractVersion
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/contracts/versions", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetContractVersion: One version of an agreement (GET /v1/contracts/versions/{id}).
+func (s *ContractsService) GetContractVersion(ctx context.Context, id string, opts ...RequestOption) (*ContractVersion, error) {
+	var out ContractVersion
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/contracts/versions/" + url.PathEscape(id), query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // CouponRedemptionsService is the coupon redemptions namespace of the API.
 type CouponRedemptionsService service
 
@@ -974,6 +1138,67 @@ func (s *CustomersService) SetCustomerContact(ctx context.Context, externalID st
 	var body any = req
 	var out Customer
 	if err := s.c.do(ctx, requestSpec{method: http.MethodPut, path: "/v1/customers/" + url.PathEscape(externalID) + "/contact", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// ListContractAcceptances: What the customer accepted, newest first (GET
+// /v1/customers/{external_id}/contract-acceptances).
+func (s *CustomersService) ListContractAcceptances(ctx context.Context, externalID string, opts ...RequestOption) (*ListContractAcceptancesResponse, error) {
+	var out ListContractAcceptancesResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/contract-acceptances", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// RecordContractAcceptance: Record that the customer accepted the current versions (an embedded checkout) (POST
+// /v1/customers/{external_id}/contract-acceptances).
+//
+// The evidence of one checkout moment: one row for each version, all in one group. Every version must be the
+// current one of its series (plans.contract.version_stale otherwise) and `checkbox_text` is the words next to
+// the box as the customer saw them. What you report about the customer's IP address, browser and time is your
+// claim, and the record says so (`observed` is false for those fields); Payrudder's own payment pages record
+// what they observed. Acceptances are append-only. The customer is mailed the page they accepted, in their
+// language. Needs customers:write.
+func (s *CustomersService) RecordContractAcceptance(ctx context.Context, externalID string, req *RecordContractAcceptanceRequest, opts ...RequestOption) (*RecordContractAcceptanceResponse, error) {
+	if req == nil {
+		req = &RecordContractAcceptanceRequest{}
+	}
+	var body any = req
+	var out RecordContractAcceptanceResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/contract-acceptances", query: nil, body: body}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// GetContractRequirements: What the customer must accept before a subscription starts, with the text to show
+// (GET /v1/customers/{external_id}/contract-requirements).
+//
+// For an embedded checkout. `customer_type` overrides the customer's own (a business customer gets the business
+// texts; an unknown type is treated as a consumer). The order fills the variables of the texts.
+func (s *CustomersService) GetContractRequirements(ctx context.Context, externalID string, params *GetContractRequirementsParams, opts ...RequestOption) (*GetContractRequirementsResponse, error) {
+	var out GetContractRequirementsResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/contract-requirements", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CreateContractWithdrawal: Record that the customer withdrew from a contract (POST
+// /v1/customers/{external_id}/contract-withdrawals).
+//
+// The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the
+// webhook event contract.withdrawal_requested. Routing the refund from here is not automatic yet.
+func (s *CustomersService) CreateContractWithdrawal(ctx context.Context, externalID string, req *CreateContractWithdrawalRequest, opts ...RequestOption) (*ContractWithdrawal, error) {
+	var body any
+	if req != nil {
+		body = req
+	}
+	var out ContractWithdrawal
+	if err := s.c.do(ctx, requestSpec{method: http.MethodPost, path: "/v1/customers/" + url.PathEscape(externalID) + "/contract-withdrawals", query: nil, body: body}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil

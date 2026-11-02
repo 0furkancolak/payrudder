@@ -24,11 +24,15 @@ import type {
   ChangeSubscriptionResponse,
   ClearInvoiceLogoResponse,
   CompleteUploadFileRequest,
+  ContractSettings,
+  ContractVersion,
+  ContractWithdrawal,
   Coupon,
   CouponInputParams,
   CreateAffiliatePayoutsRequest,
   CreateAffiliatePayoutsResponse,
   CreateAffiliateRequest,
+  CreateContractWithdrawalRequest,
   CreateCustomerRequest,
   CreateInvoiceLinkRequest,
   CreateInvoiceLinkResponse,
@@ -80,6 +84,11 @@ import type {
   GetAffiliateFunnelQuery,
   GetAnalyticsUsageQuery,
   GetAnalyticsUsageResponse,
+  GetContractRequirementsQuery,
+  GetContractRequirementsResponse,
+  GetContractSnapshotResponse,
+  GetContractStarterQuery,
+  GetContractStarterResponse,
   GetCustomerUsageQuery,
   GetCustomerUsageResponse,
   GetDunningReportQuery,
@@ -114,6 +123,11 @@ import type {
   ListAffiliatesResponse,
   ListAssetsQuery,
   ListAssetsResponse,
+  ListContractAcceptancesResponse,
+  ListContractVersionsQuery,
+  ListContractVersionsResponse,
+  ListContractWithdrawalsQuery,
+  ListContractWithdrawalsResponse,
   ListCouponRedemptionsQuery,
   ListCouponRedemptionsResponse,
   ListCouponsResponse,
@@ -159,12 +173,17 @@ import type {
   PlanVersion,
   PresignPartsQuery,
   PresignPartsResponse,
+  PreviewContractRequest,
+  PreviewContractResponse,
   PreviewRoutingRequest,
   PreviewRoutingResponse,
   PromotionCode,
   PromotionQuote,
   PromotionQuoteRequestParams,
+  PublishContractVersionRequest,
   PublishPlanVersionRequestParams,
+  RecordContractAcceptanceRequest,
+  RecordContractAcceptanceResponse,
   ResolveInboxItemRequest,
   ReverseAffiliateCommissionRequestParams,
   ReverseAffiliateCommissionResponse,
@@ -179,6 +198,8 @@ import type {
   SandboxSimulateInvoiceResponse,
   SchedulePriceChangeRequest,
   SchedulePriceChangeResponse,
+  SetContractSettingsRequest,
+  SetContractWithdrawalStatusRequest,
   SetInvoiceLogoRequest,
   SetInvoiceLogoResponse,
   SetPaymentMethodRequest,
@@ -572,6 +593,122 @@ export class AssetsResource {
   }
 }
 
+export class ContractAcceptancesResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The page the customer accepted, as it was rendered then
+   *
+   * A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
+   *
+   * `GET /v1/contract-acceptances/{id}/snapshot`
+   */
+  getContractSnapshot(id: string, options?: RequestOptions): Promise<GetContractSnapshotResponse> {
+    return this.t.request<GetContractSnapshotResponse>({ method: "GET", path: `/v1/contract-acceptances/${seg(id)}/snapshot`, response: "json" }, options);
+  }
+}
+
+export class ContractWithdrawalsResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * Withdrawal requests, newest first (at most 200)
+   *
+   * `GET /v1/contract-withdrawals`
+   */
+  listContractWithdrawals(query?: ListContractWithdrawalsQuery, options?: RequestOptions): Promise<ListContractWithdrawalsResponse> {
+    return this.t.request<ListContractWithdrawalsResponse>({ method: "GET", path: `/v1/contract-withdrawals`, query, response: "json" }, options);
+  }
+
+  /**
+   * Decide a withdrawal request, or mark an accepted one refunded
+   *
+   * received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise).
+   *
+   * `PUT /v1/contract-withdrawals/{id}/status`
+   */
+  setContractWithdrawalStatus(id: string, body: SetContractWithdrawalStatusRequest, options?: RequestOptions): Promise<ContractWithdrawal> {
+    return this.t.request<ContractWithdrawal>({ method: "PUT", path: `/v1/contract-withdrawals/${seg(id)}/status`, body, bodyKind: "json", response: "json" }, options);
+  }
+}
+
+export class ContractsResource {
+  constructor(private readonly t: Transport) {}
+
+  /**
+   * The versions of the agreements you present to your customers, newest first
+   *
+   * A version is one edition of an agreement (distance sales, pre-information, terms, privacy) in one or more languages. Needs contracts:read.
+   *
+   * `GET /v1/contracts/versions`
+   */
+  listContractVersions(query?: ListContractVersionsQuery, options?: RequestOptions): Promise<ListContractVersionsResponse> {
+    return this.t.request<ListContractVersionsResponse>({ method: "GET", path: `/v1/contracts/versions`, query, response: "json" }, options);
+  }
+
+  /**
+   * Publish the next version of an agreement
+   *
+   * A version cannot be edited: this adds the next one to the series of (kind, audience), which becomes the one customers see. The texts are restricted markdown (`#` headings, `- ` and `1. ` lists, `**bold**`, blank-line paragraphs; raw HTML is shown as text) with `{{variable}}` placeholders from a fixed list (`seller_name`, `seller_address`, `seller_tax_id`, `seller_tax_office`, `seller_mersis`, `customer_name`, `customer_email`, `customer_address`, `order_description`, `order_total`, `order_currency`, `date`). A `material` version asks customers who accepted an earlier one to accept again; a minor one does not (the first version of a series is always material). Payrudder supplies starter texts for Turkish and English that must be reviewed by a lawyer; it does not say any text is legally sufficient. Error keys plans.contract.unknown_variable, plans.contract.body_required. Needs contracts:write.
+   *
+   * `POST /v1/contracts/versions`
+   */
+  publishContractVersion(body: PublishContractVersionRequest, options?: RequestOptions): Promise<ContractVersion> {
+    return this.t.request<ContractVersion>({ method: "POST", path: `/v1/contracts/versions`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * One version of an agreement
+   *
+   * `GET /v1/contracts/versions/{id}`
+   */
+  getContractVersion(id: string, options?: RequestOptions): Promise<ContractVersion> {
+    return this.t.request<ContractVersion>({ method: "GET", path: `/v1/contracts/versions/${seg(id)}`, response: "json" }, options);
+  }
+
+  /**
+   * Render a text the way a customer would see it, with sample values
+   *
+   * Reports the variables the text uses and any that do not exist. Nothing is stored.
+   *
+   * `POST /v1/contracts/preview`
+   */
+  previewContract(body: PreviewContractRequest, options?: RequestOptions): Promise<PreviewContractResponse> {
+    return this.t.request<PreviewContractResponse>({ method: "POST", path: `/v1/contracts/preview`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * The starter text of an agreement in Turkish or English
+   *
+   * A template to start from, with a notice on top that it is not legal advice and must be reviewed by a lawyer before use. There is no starter text in other languages (error key plans.contract.no_starter).
+   *
+   * `GET /v1/contracts/starter`
+   */
+  getContractStarter(query: GetContractStarterQuery, options?: RequestOptions): Promise<GetContractStarterResponse> {
+    return this.t.request<GetContractStarterResponse>({ method: "GET", path: `/v1/contracts/starter`, query, response: "json" }, options);
+  }
+
+  /**
+   * Which agreements are required, whether the service starts at once, and how long evidence is kept
+   *
+   * `GET /v1/contracts/settings`
+   */
+  getContractSettings(options?: RequestOptions): Promise<ContractSettings> {
+    return this.t.request<ContractSettings>({ method: "GET", path: `/v1/contracts/settings`, response: "json" }, options);
+  }
+
+  /**
+   * Change which agreements are required
+   *
+   * While `required_kinds` is not empty, no subscription is created for a customer who has not accepted the current version of each of them (error key plans.contract.not_accepted), and a hosted payment page asks for them next to the pay button. A kind can be required once a version of it is published (plans.contract.kind_unpublished). Renewals and dunning charges are never held back. With `immediate_start`, a consumer is asked for the request to start at once and the acknowledgement of losing the right of withdrawal as two separate boxes (plans.contract.consent_required). `retention_months` (12 to 120, default 36; 0 keeps the value) is how long the IP address and user agent of an acceptance are kept; the rest of the record stays.
+   *
+   * `PUT /v1/contracts/settings`
+   */
+  setContractSettings(body: SetContractSettingsRequest, options?: RequestOptions): Promise<ContractSettings> {
+    return this.t.request<ContractSettings>({ method: "PUT", path: `/v1/contracts/settings`, body, bodyKind: "json", response: "json" }, options);
+  }
+}
+
 export class CouponRedemptionsResource {
   constructor(private readonly t: Transport) {}
 
@@ -831,6 +968,48 @@ export class CustomersResource {
    */
   setCustomerTax(externalId: string, body: CustomerTax, options?: RequestOptions): Promise<Customer> {
     return this.t.request<Customer>({ method: "PUT", path: `/v1/customers/${seg(externalId)}/tax`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * What the customer must accept before a subscription starts, with the text to show
+   *
+   * For an embedded checkout. `customer_type` overrides the customer's own (a business customer gets the business texts; an unknown type is treated as a consumer). The order fills the variables of the texts.
+   *
+   * `GET /v1/customers/{external_id}/contract-requirements`
+   */
+  getContractRequirements(externalId: string, query?: GetContractRequirementsQuery, options?: RequestOptions): Promise<GetContractRequirementsResponse> {
+    return this.t.request<GetContractRequirementsResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/contract-requirements`, query, response: "json" }, options);
+  }
+
+  /**
+   * What the customer accepted, newest first
+   *
+   * `GET /v1/customers/{external_id}/contract-acceptances`
+   */
+  listContractAcceptances(externalId: string, options?: RequestOptions): Promise<ListContractAcceptancesResponse> {
+    return this.t.request<ListContractAcceptancesResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/contract-acceptances`, response: "json" }, options);
+  }
+
+  /**
+   * Record that the customer accepted the current versions (an embedded checkout)
+   *
+   * The evidence of one checkout moment: one row for each version, all in one group. Every version must be the current one of its series (plans.contract.version_stale otherwise) and `checkbox_text` is the words next to the box as the customer saw them. What you report about the customer's IP address, browser and time is your claim, and the record says so (`observed` is false for those fields); Payrudder's own payment pages record what they observed. Acceptances are append-only. The customer is mailed the page they accepted, in their language. Needs customers:write.
+   *
+   * `POST /v1/customers/{external_id}/contract-acceptances`
+   */
+  recordContractAcceptance(externalId: string, body: RecordContractAcceptanceRequest, options?: RequestOptions): Promise<RecordContractAcceptanceResponse> {
+    return this.t.request<RecordContractAcceptanceResponse>({ method: "POST", path: `/v1/customers/${seg(externalId)}/contract-acceptances`, body, bodyKind: "json", response: "json" }, options);
+  }
+
+  /**
+   * Record that the customer withdrew from a contract
+   *
+   * The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. Routing the refund from here is not automatic yet.
+   *
+   * `POST /v1/customers/{external_id}/contract-withdrawals`
+   */
+  createContractWithdrawal(externalId: string, body?: CreateContractWithdrawalRequest, options?: RequestOptions): Promise<ContractWithdrawal> {
+    return this.t.request<ContractWithdrawal>({ method: "POST", path: `/v1/customers/${seg(externalId)}/contract-withdrawals`, body, bodyKind: "json", response: "json" }, options);
   }
 
   /**

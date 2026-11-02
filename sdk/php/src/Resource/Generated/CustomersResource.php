@@ -14,6 +14,8 @@ use Payrudder\Model\AddressInput;
 use Payrudder\Model\AttributeCustomerRequest;
 use Payrudder\Model\AttributeCustomerResponse;
 use Payrudder\Model\BlockCustomerRequest;
+use Payrudder\Model\ContractWithdrawal;
+use Payrudder\Model\CreateContractWithdrawalRequest;
 use Payrudder\Model\CreateCustomerRequest;
 use Payrudder\Model\CreatePortalLinkRequest;
 use Payrudder\Model\CreatePortalLinkResponse;
@@ -29,14 +31,18 @@ use Payrudder\Model\CustomerTax;
 use Payrudder\Model\EntitlementOverride;
 use Payrudder\Model\EntitlementStatus;
 use Payrudder\Model\EntitlementTerms;
+use Payrudder\Model\GetContractRequirementsResponse;
 use Payrudder\Model\GetCustomerUsageResponse;
 use Payrudder\Model\GrantCustomerCouponRequest;
 use Payrudder\Model\GrantCustomerCouponResponse;
+use Payrudder\Model\ListContractAcceptancesResponse;
 use Payrudder\Model\ListCustomerBlockEventsResponse;
 use Payrudder\Model\ListCustomerPaymentsResponse;
 use Payrudder\Model\ListCustomersResponse;
 use Payrudder\Model\ListEntitlementOverridesResponse;
 use Payrudder\Model\ListEntitlementsResponse;
+use Payrudder\Model\RecordContractAcceptanceRequest;
+use Payrudder\Model\RecordContractAcceptanceResponse;
 use Payrudder\Model\RevokePortalLinksResponse;
 use Payrudder\Model\SetPaymentMethodRequest;
 use Payrudder\RequestOptions;
@@ -216,6 +222,65 @@ final class CustomersResource extends AbstractResource
     public function setCustomerTax(string $externalId, CustomerTax|array $body, ?RequestOptions $options = null): Customer
     {
         return Customer::fromArray($this->call('PUT', '/v1/customers/' . rawurlencode($externalId) . '/tax', [], Cast::body($body), $options));
+    }
+
+    /**
+     * What the customer must accept before a subscription starts, with the text to show (GET /v1/customers/{external_id}/contract-requirements).
+     *
+     * @param string $externalId
+     * @param string|null $locale
+     * @param string|null $customerType
+     * @param string|null $orderDescription
+     * @param string|null $orderTotal
+     * @param string|null $orderCurrency
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function getContractRequirements(string $externalId, ?string $locale = null, ?string $customerType = null, ?string $orderDescription = null, ?string $orderTotal = null, ?string $orderCurrency = null, ?RequestOptions $options = null): GetContractRequirementsResponse
+    {
+        return GetContractRequirementsResponse::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/contract-requirements', ['locale' => $locale, 'customer_type' => $customerType, 'order_description' => $orderDescription, 'order_total' => $orderTotal, 'order_currency' => $orderCurrency], null, $options));
+    }
+
+    /**
+     * What the customer accepted, newest first (GET /v1/customers/{external_id}/contract-acceptances).
+     *
+     * @param string $externalId
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function listContractAcceptances(string $externalId, ?RequestOptions $options = null): ListContractAcceptancesResponse
+    {
+        return ListContractAcceptancesResponse::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/contract-acceptances', [], null, $options));
+    }
+
+    /**
+     * Record that the customer accepted the current versions (an embedded checkout) (POST /v1/customers/{external_id}/contract-acceptances).
+     *
+     * @param string $externalId
+     * @param RecordContractAcceptanceRequest|array<string,mixed> $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function recordContractAcceptance(string $externalId, RecordContractAcceptanceRequest|array $body, ?RequestOptions $options = null): RecordContractAcceptanceResponse
+    {
+        return RecordContractAcceptanceResponse::fromArray($this->call('POST', '/v1/customers/' . rawurlencode($externalId) . '/contract-acceptances', [], Cast::body($body), $options));
+    }
+
+    /**
+     * Record that the customer withdrew from a contract (POST /v1/customers/{external_id}/contract-withdrawals).
+     *
+     * @param string $externalId
+     * @param CreateContractWithdrawalRequest|array<string,mixed>|null $body
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function createContractWithdrawal(string $externalId, CreateContractWithdrawalRequest|array|null $body = null, ?RequestOptions $options = null): ContractWithdrawal
+    {
+        return ContractWithdrawal::fromArray($this->call('POST', '/v1/customers/' . rawurlencode($externalId) . '/contract-withdrawals', [], $body === null ? null : Cast::body($body), $options));
     }
 
     /**

@@ -36,6 +36,7 @@ var Jobs = []Job{
 	{"plans-svc", "webhook dispatcher", true, "internal/webhooks/worker"},
 	{"plans-svc", "affiliate commission approver", true, "internal/affiliates/command/commissions.go"},
 	{"plans-svc", "trial reminder", true, "internal/trialnotices/command"},
+	{"plans-svc", "contract acceptance erasure", true, "internal/contracts/erasure.go"},
 	{"plans-svc", "sandbox reset runner and retention sweep", true, "internal/sandbox"},
 	{"plans-svc", "SaaS account sweep", true, "internal/saas/command"},
 

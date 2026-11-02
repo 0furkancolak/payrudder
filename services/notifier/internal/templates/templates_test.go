@@ -32,8 +32,8 @@ func Names() []string {
 
 func TestRenderAllTemplates(t *testing.T) {
 	data := map[string]string{"customer_name": "Ada", "amount": "11.16", "currency": "USD", "invoice_number": "INV-2026-000001",
-		"period": "2026-10", "tenant_name": "Acme", "meter_code": "api_calls", "used": "80", "limit": "100", "threshold_pct": "80", "plan_code": "pro", "trial_end": "6 Nov 2026, 21:30 (UTC)", "trial_end_date": "6 Nov 2026", "effective_date": "6 Dec 2026", "new_renewal": "12.00 USD"}
-	if len(Names()) != 6 {
+		"period": "2026-10", "tenant_name": "Acme", "meter_code": "api_calls", "used": "80", "limit": "100", "threshold_pct": "80", "plan_code": "pro", "trial_end": "6 Nov 2026, 21:30 (UTC)", "trial_end_date": "6 Nov 2026", "effective_date": "6 Dec 2026", "new_renewal": "12.00 USD", "accepted_at": "2 Nov 2026, 10:00 UTC", "snapshot_html": "<h2>Terms</h2><p>Acme terms</p>", "snapshot_sha256": "abc123"}
+	if len(Names()) != 7 {
 		t.Fatalf("templates = %v", Names())
 	}
 	for _, n := range Names() {
@@ -126,5 +126,23 @@ func TestRenderInEveryLanguage(t *testing.T) {
 	d["locale"] = "xx"
 	if r, _ := Render("invoice_paid.v1", d, false); r.Subject != english["invoice_paid.v1"] {
 		t.Errorf("an unknown language must be English, got %q", r.Subject)
+	}
+}
+
+// The contract mail prints the snapshot page as it is (plans-svc wrote and escaped it, and the consumer checked its hash), in every language.
+func TestContractAcceptedPrintsTheSnapshotAndNothingElseUnescaped(t *testing.T) {
+	data := map[string]string{"customer_name": "<b>Ada</b>", "tenant_name": "Acme & Sons", "accepted_at": "2 Nov 2026, 10:00 UTC", "snapshot_html": "<h2>Terms</h2><p>Acme terms</p>", "snapshot_sha256": "abc123"}
+	for _, loc := range Locales {
+		data["locale"] = loc
+		r, err := Render("contract_accepted.v1", data, false)
+		if err != nil {
+			t.Fatalf("%s: %v", loc, err)
+		}
+		if !strings.Contains(r.HTML, "<h2>Terms</h2><p>Acme terms</p>") || strings.Contains(r.HTML, "<b>Ada</b>") || !strings.Contains(r.HTML, "&lt;b&gt;Ada&lt;/b&gt;") || !strings.Contains(r.HTML, "abc123") {
+			t.Errorf("%s: the snapshot is printed as it is, the customer's name is escaped:\n%s", loc, r.HTML)
+		}
+		if !strings.Contains(r.Subject, "Acme") {
+			t.Errorf("%s subject = %q", loc, r.Subject)
+		}
 	}
 }

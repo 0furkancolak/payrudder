@@ -2881,6 +2881,19 @@
         "bad_resource": "That is not a resource a plan limits.",
         "platform_account": "The platform's own organisation has no plan.",
         "not_ready": "Plans are not ready yet. Try again in a moment."
+      },
+      "contract": {
+        "acceptance_not_found": "No such acceptance record.",
+        "body_required": "Write the text first (at least one language).",
+        "consent_required": "This seller starts the service at once: the customer must ask for it and acknowledge losing the right of withdrawal, each with its own box.",
+        "kind_unpublished": "Publish a version of this agreement before you require it.",
+        "no_starter": "There is a starter text in Turkish and English only.",
+        "not_accepted": "The customer has not accepted the agreements this seller requires.",
+        "unknown_variable": "The text uses a variable that does not exist. Use only the variables in the list.",
+        "version_not_found": "No such version.",
+        "version_stale": "A newer version of this text was published. Show the current one and ask again.",
+        "withdrawal_decided": "This withdrawal request cannot change to that status.",
+        "withdrawal_not_found": "No such withdrawal request."
       }
     },
     "common": {
@@ -3657,6 +3670,7 @@
         "affiliates": "Affiliates",
         "settings": "Settings (tax, routing, mail)",
         "assets": "Files",
+        "contracts": "Contracts (agreement texts and settings)",
         "sandbox": "Sandbox tools"
       },
       "permissionCount": "{n} of {total} permissions",

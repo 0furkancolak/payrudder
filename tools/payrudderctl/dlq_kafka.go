@@ -21,6 +21,7 @@ var kafkaDLQs = map[string]string{
 	"billing.invoices.dlq.v1":            "billing.invoices.v1",
 	"subscription.trial-will-end.dlq.v1": "subscription.trial-will-end.v1",
 	"subscription.price-change.dlq.v1":   "subscription.price-change.v1",
+	"contract.accepted.dlq.v1":           "contract.accepted.v1",
 }
 
 // redriveGroup records how far a DLQ topic has been redriven. Kafka cannot delete a record, so "pending" is

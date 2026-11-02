@@ -13,9 +13,9 @@ import (
 // Tables are the tables of plans_db a reset deletes from; Kept are the tables with tenant rows it leaves alone on purpose: the sandbox's configuration, its keys and
 // the record of resets themselves.
 var (
-	Tables = []string{"affiliate_reversals", "affiliate_commissions", "affiliate_journal", "affiliate_payouts", "affiliate_attributions", "affiliate_attribution_rejections", "affiliate_clicks_daily", "customer_coupons", "customer_entitlement_overrides", "coupon_redemptions", "subscription_adjustments", "price_change_items", "price_changes", "subscription_changes", "subscription_coupons", "provider_migrations", "subscription_trial_notices",
+	Tables = []string{"contract_acceptances", "contract_snapshots", "contract_withdrawals", "affiliate_reversals", "affiliate_commissions", "affiliate_journal", "affiliate_payouts", "affiliate_attributions", "affiliate_attribution_rejections", "affiliate_clicks_daily", "customer_coupons", "customer_entitlement_overrides", "coupon_redemptions", "subscription_adjustments", "price_change_items", "price_changes", "subscription_changes", "subscription_coupons", "provider_migrations", "subscription_trial_notices",
 		"subscriptions", "customer_block_events", "customers", "webhook_deliveries", "webhook_events", "outbox"}
-	Kept = []string{"meters", "plans", "plan_versions", "plan_prices", "plan_entitlements", "plan_version_fees", "plan_currency_prices", "routing_rules", "tax_rates",
+	Kept = []string{"contract_versions", "contract_settings", "meters", "plans", "plan_versions", "plan_prices", "plan_entitlements", "plan_version_fees", "plan_currency_prices", "routing_rules", "tax_rates",
 		"affiliate_programs", "affiliates", "coupons", "promotion_codes", "webhook_endpoints", "tenant_mail_settings", "tenant_mail_integrations", "api_keys", "sandbox_resets"}
 )
 
@@ -29,7 +29,7 @@ func NewLocal(places *placement.Places) *Local { return &Local{places: places} }
 // Step is the step "plans". It goes first: with its customers and subscriptions gone nothing can bill the tenant while the other services are emptied.
 func (l *Local) Step() Step { return Step{Name: "plans", Run: l.Reset} }
 
-// Reset deletes the tenant's customers, subscriptions and history in one transaction and zeroes the redemption counters of its coupons.
+// Reset deletes the tenant's customers, subscriptions, contract evidence and history in one transaction and zeroes the redemption counters of its coupons.
 func (l *Local) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]int64, error) {
 	out := map[string]int64{}
 	err := l.places.Tx(ctx, tenantID, func(tx pgx.Tx) error {
@@ -38,7 +38,7 @@ func (l *Local) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]int64
 			table string
 			run   func(context.Context, uuid.UUID) (int64, error)
 		}{
-			{"affiliate_reversals", q.ResetAffiliateReversals}, {"affiliate_commissions", q.ResetAffiliateCommissions}, {"affiliate_journal", q.ResetAffiliateJournal},
+			{"contract_acceptances", q.ResetContractAcceptances}, {"contract_snapshots", q.ResetContractSnapshots}, {"contract_withdrawals", q.ResetContractWithdrawals}, {"affiliate_reversals", q.ResetAffiliateReversals}, {"affiliate_commissions", q.ResetAffiliateCommissions}, {"affiliate_journal", q.ResetAffiliateJournal},
 			{"affiliate_payouts", q.ResetAffiliatePayouts}, {"affiliate_attributions", q.ResetAffiliateAttributions},
 			{"affiliate_attribution_rejections", q.ResetAffiliateAttributionRejections}, {"affiliate_clicks_daily", q.ResetAffiliateClicks},
 			{"customer_coupons", q.ResetCustomerCoupons}, {"customer_entitlement_overrides", q.ResetEntitlementOverrides}, {"coupon_redemptions", q.ResetCouponRedemptions}, {"subscription_adjustments", q.ResetSubscriptionAdjustments},

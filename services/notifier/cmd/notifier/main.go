@@ -18,6 +18,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/contractmail"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
@@ -52,8 +53,10 @@ type Config struct {
 	// TrialDLQTopic receives the trial-ending facts that can never be mailed; the Kafka group of that consumer is the group with "-trials" appended.
 	TrialDLQTopic string `env:"PAYRUDDER_TRIAL_DLQ_TOPIC"`
 	// PriceChangeDLQTopic receives the price-change facts that can never be mailed; the Kafka group of that consumer is the group with "-price-change" appended.
-	PriceChangeDLQTopic string        `env:"PAYRUDDER_PRICE_CHANGE_DLQ_TOPIC"`
-	SessionTimeout      time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
+	PriceChangeDLQTopic string `env:"PAYRUDDER_PRICE_CHANGE_DLQ_TOPIC"`
+	// ContractDLQTopic receives the contract acceptances that can never be mailed; the Kafka group of that consumer is the group with "-contracts" appended.
+	ContractDLQTopic string        `env:"PAYRUDDER_CONTRACT_DLQ_TOPIC"`
+	SessionTimeout   time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -140,6 +143,17 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer priceConsumer.Close()
 
+	contractGroup := cfg.Group + "-contracts"
+	contractOffsets := store.Offsets{DB: pool, Group: contractGroup, Topic: contractmail.Topic}
+	cm := &contractmail.Consumer{Mailer: mailer, Plans: plansv1.NewPlansServiceClient(plansConn), Contracts: plansv1.NewContractServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
+		Offsets: contractOffsets, DLQ: kafkax.DLQ{Client: producer, Topic: cfg.ContractDLQTopic, Consumer: contractGroup}, Log: log}
+	contractConsumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: cfg.KafkaBrokers, GroupID: contractGroup, Topic: contractmail.Topic,
+		LoadOffsets: contractOffsets.Load, Handler: cm, MaxPollRecords: 100, Backoff: 2 * time.Second, SessionTimeout: cfg.SessionTimeout, Log: log})
+	if err != nil {
+		return err
+	}
+	defer contractConsumer.Close()
+
 	hh := rt.Health()
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
@@ -153,5 +167,6 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	g.Go(func() error { return consumer.Run(gctx) })
 	g.Go(func() error { return trialConsumer.Run(gctx) })
 	g.Go(func() error { return priceConsumer.Run(gctx) })
+	g.Go(func() error { return contractConsumer.Run(gctx) })
 	return g.Wait()
 }

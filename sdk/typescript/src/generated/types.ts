@@ -419,6 +419,118 @@ export interface CompleteUploadFileRequest {
   parts: Array<CompleteUploadFilePart>;
 }
 
+export interface ContractAcceptance {
+  id: string;
+  /** The versions accepted together share it. */
+  group_id: string;
+  /** Empty for a guest payment. */
+  customer_id: string;
+  version_id: string;
+  kind: ContractKind;
+  audience: ContractAudience;
+  version_number: number;
+  version_sha256: string;
+  locale_requested: string;
+  locale_served: string;
+  /** Hex sha256 of the text served. */
+  body_sha256: string;
+  context_kind: "hosted_invoice" | "api";
+  context_ref: string;
+  source: "hosted" | "api";
+  /** ip, user_agent, time, text: true when Payrudder observed it, false when the seller claimed it. */
+  observed: Record<string, boolean>;
+  checkbox_text: string;
+  immediate_start_consent: boolean;
+  immediate_start_text: string;
+  withdrawal_waiver_acknowledged: boolean;
+  withdrawal_waiver_text: string;
+  variables: Record<string, string>;
+  snapshot_sha256: string;
+  /** Blank once the retention period passed. */
+  ip: string;
+  user_agent: string;
+  accept_time: string;
+  customer_external_id: string;
+}
+
+export interface ContractAcceptanceItem {
+  version_id: string;
+  /** The words next to the box, as the customer saw them. */
+  checkbox_text: string;
+}
+
+/** A business customer gets the business series when one is published, else the consumer's. */
+export type ContractAudience = "consumer" | "business";
+
+export type ContractKind = "distance_sales" | "pre_info" | "tos" | "privacy";
+
+export interface ContractOrder {
+  description?: string;
+  /** Formatted for a person, e.g. 12.00. */
+  total?: string;
+  currency?: string;
+}
+
+export interface ContractRequirement {
+  kind: ContractKind;
+  version_id: string;
+  version_number: number;
+  audience: ContractAudience;
+  /** The language of the text served. */
+  locale: string;
+  /** The text as safe HTML, variables resolved. */
+  body_html: string;
+  body_sha256: string;
+  accepted: boolean;
+  accept_time: string | null;
+  has_template_notice: boolean;
+}
+
+export interface ContractSettings {
+  required_kinds: Array<ContractKind>;
+  immediate_start: boolean;
+  retention_months: number;
+  /** Kinds that have a published consumer version. */
+  published_kinds: Array<ContractKind>;
+  update_time: string | null;
+}
+
+export interface ContractVersion {
+  id: string;
+  kind: ContractKind;
+  audience: ContractAudience;
+  number: number;
+  /** Customers who accepted an earlier version are asked again. */
+  material: boolean;
+  /** Language (en, tr, de, fr, es, ar) to the text. */
+  bodies: Record<string, string>;
+  /** Hex sha256 over the kind, audience and every text. */
+  sha256: string;
+  note: string;
+  author: string;
+  create_time: string;
+  variables: Array<string>;
+  /** The newest version of its series. */
+  current: boolean;
+  /** A text still carries the starter notice (template, have a lawyer review). */
+  has_template_notice: boolean;
+}
+
+export interface ContractWithdrawal {
+  id: string;
+  customer_id: string;
+  customer_external_id: string;
+  subscription_id: string;
+  invoice_id: string;
+  statement: string;
+  source: "api" | "console" | "hosted";
+  status: "received" | "accepted" | "rejected" | "refunded";
+  receive_time: string;
+  decide_time: string | null;
+  decided_by: string;
+  decision_note: string;
+}
+
 export interface Coupon {
   /** 2–40 letters, digits, - or _ */
   code: string;
@@ -552,6 +664,15 @@ export interface CreateAffiliateRequest {
   payout_method?: "manual" | "bank_transfer";
   payout_details?: string;
   pending?: boolean;
+}
+
+export interface CreateContractWithdrawalRequest {
+  subscription_id?: string;
+  invoice_id?: string;
+  statement?: string;
+  /** When the statement reached you; empty is now. */
+  receive_time?: string;
+  source?: "api" | "console";
 }
 
 export interface CreateCustomerRequest {
@@ -1340,6 +1461,43 @@ export interface GetAnalyticsUsageResponse {
   points: Array<GetAnalyticsUsagePoint>;
 }
 
+export interface GetContractRequirementsQuery {
+  locale?: string;
+  customer_type?: "individual" | "business";
+  order_description?: string;
+  order_total?: string;
+  order_currency?: string;
+}
+
+export interface GetContractRequirementsResponse {
+  /** The seller requires agreements at all. */
+  enforced: boolean;
+  requirements: Array<ContractRequirement>;
+  satisfied: boolean;
+  /** A consumer is asked for the request to start at once and the waiver acknowledgement. */
+  immediate_start: boolean;
+  /** Required kinds with no published version: a payment is refused. */
+  missing_kinds: Array<ContractKind>;
+  audience: ContractAudience;
+}
+
+export interface GetContractSnapshotResponse {
+  html: string;
+  sha256: string;
+  group_id: string;
+}
+
+export interface GetContractStarterQuery {
+  kind: ContractKind;
+  locale: "tr" | "en";
+  audience?: ContractAudience;
+}
+
+export interface GetContractStarterResponse {
+  body: string;
+  locale: "tr" | "en";
+}
+
 export interface GetCustomerUsageQuery {
   period?: string;
 }
@@ -1682,6 +1840,28 @@ export interface ListAssetsResponse {
   next_page_token: string;
 }
 
+export interface ListContractAcceptancesResponse {
+  acceptances: Array<ContractAcceptance>;
+}
+
+export interface ListContractVersionsQuery {
+  kind?: ContractKind;
+  audience?: ContractAudience;
+}
+
+export interface ListContractVersionsResponse {
+  versions: Array<ContractVersion>;
+}
+
+export interface ListContractWithdrawalsQuery {
+  customer_external_id?: string;
+  status?: "received" | "accepted" | "rejected" | "refunded";
+}
+
+export interface ListContractWithdrawalsResponse {
+  withdrawals: Array<ContractWithdrawal>;
+}
+
 export interface ListCouponRedemptionsQuery {
   coupon?: string;
   promotion_code?: string;
@@ -2007,6 +2187,18 @@ export interface PresignPartsResponse {
   parts: Array<PresignedPart>;
 }
 
+export interface PreviewContractRequest {
+  body: string;
+  locale?: string;
+}
+
+export interface PreviewContractResponse {
+  /** Safe HTML; the variables are shown with sample values inside <mark>. */
+  html: string;
+  variables: Array<string>;
+  unknown_variables: Array<string>;
+}
+
 export interface PreviewRoutingRequest {
   country?: string;
   currency?: string;
@@ -2256,6 +2448,14 @@ export interface PromotionQuoteRequestParams {
   prior_purchases?: boolean;
 }
 
+export interface PublishContractVersionRequest {
+  kind: ContractKind;
+  audience?: ContractAudience;
+  bodies: Record<string, string>;
+  material?: boolean;
+  note?: string;
+}
+
 export interface PublishPlanVersionRequest {
   base_fee_minor?: Int64;
   /** Fixed fees other than the tenant currency's monthly one (base_fee_minor), per currency and interval; no duplicates. A yearly subscription needs a yearly fee in its currency, including the tenant's */
@@ -2286,6 +2486,31 @@ export type QuotaMode = "QUOTA_MODE_UNSPECIFIED" | "QUOTA_MODE_HARD" | "QUOTA_MO
 
 /** What a limit counts over, in the tenant's time zone. Unspecified is the month (the billing period). A year is the calendar year (twelve billing periods); a lifetime limit never starts again. */
 export type QuotaWindow = "QUOTA_WINDOW_UNSPECIFIED" | "QUOTA_WINDOW_MONTH" | "QUOTA_WINDOW_HOUR" | "QUOTA_WINDOW_DAY" | "QUOTA_WINDOW_WEEK" | "QUOTA_WINDOW_YEAR" | "QUOTA_WINDOW_LIFETIME";
+
+export interface RecordContractAcceptanceRequest {
+  /** The language the page was shown in. */
+  locale?: string;
+  /** Your reference for the checkout (an order id). */
+  context_ref?: string;
+  items: Array<ContractAcceptanceItem>;
+  immediate_start_consent?: boolean;
+  immediate_start_text?: string;
+  withdrawal_waiver_acknowledged?: boolean;
+  withdrawal_waiver_text?: string;
+  /** Your claim about the customer's address. */
+  ip?: string;
+  /** Your claim about the customer's browser. */
+  user_agent?: string;
+  /** When the customer accepted; empty is now. */
+  accept_time?: string;
+  customer_type?: "individual" | "business";
+  order?: ContractOrder;
+}
+
+export interface RecordContractAcceptanceResponse {
+  group_id: string;
+  acceptances: Array<ContractAcceptance>;
+}
 
 export interface ResolveInboxItemRequest {
   status: "accepted" | "dismissed";
@@ -2413,6 +2638,18 @@ export interface SchedulePriceChangeResponse {
   price_change_id?: string;
   /** Scheduled by this price change before: not scheduled or mailed again */
   already_scheduled?: number;
+}
+
+export interface SetContractSettingsRequest {
+  required_kinds?: Array<ContractKind>;
+  immediate_start?: boolean;
+  /** 0 keeps the current value. */
+  retention_months?: number;
+}
+
+export interface SetContractWithdrawalStatusRequest {
+  status: "accepted" | "rejected" | "refunded";
+  note?: string;
 }
 
 export interface SetInvoiceLogoRequest {
@@ -2579,7 +2816,7 @@ export interface WebhookEndpointInput {
   active: boolean;
 }
 
-export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled";
+export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested";
 
 export interface WithdrawPriceChangeResponse {
   price_change: PriceChange;

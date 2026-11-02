@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package payrudder.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ContractAccepted says a customer accepted one or more agreements together, and that the page they accepted is to be mailed to them (a durable medium). plans-svc
+// writes it to its outbox in the transaction that records the acceptance and publishes it on contract.accepted.v1 (key: {tenant_id}/{customer_id}); notifier fetches
+// the snapshot page from plans-svc, checks it against snapshot_sha256 and mails it in the customer's language. A guest payment has no customer and no event.
+//
+// Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
+message ContractAccepted {
+  // The acceptance group id: one checkout moment is one event, so consumers dedup a repeated publish.
+  string event_id = 1;
+  string tenant_id = 2;
+  string customer_id = 3;
+  // Any acceptance of the group, to fetch the snapshot with.
+  string acceptance_id = 4;
+  // Hex sha256 of the snapshot page; the mail is sent only when the fetched page has this hash.
+  string snapshot_sha256 = 5;
+  google.protobuf.Timestamp accepted_at = 6;
+}

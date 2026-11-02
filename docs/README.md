@@ -27,6 +27,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [13-admin-ui.md](13-admin-ui.md) | The operator console: views, the typed API client, tests |
 | [17-platform-direction.md](17-platform-direction.md) | Rename-able product, apps and addresses, isolation modes, licence, demo, dev and edge: the requirements and the phases that build them |
 | [16-webhooks.md](16-webhooks.md) | Signed outbound events, endpoint management, delivery and retries, the hosted invoice page |
+| [19-contracts.md](19-contracts.md) | Agreements for the seller's customers: versions, acceptances with evidence, the hosted boxes and the gate, withdrawal requests, the legal limits |
 | [15-billing-lifecycle.md](15-billing-lifecycle.md) | Yearly plans, fees in advance, upgrades and downgrades, the Paddle catalogue and API, credit notes, coupons and tax |
 | [14-billing-platform.md](14-billing-platform.md) | Subscriptions, iyzico and Paddle, routing by country and currency, provider migration, reports: the design and what was built |
 | [payment-provider-contract.md](payment-provider-contract.md) | What a payment provider adapter must do, the conformance suite it passes, and the compatibility matrices of [Paddle](paddle-compatibility-matrix.md), [iyzico](iyzico-compatibility-matrix.md) and [Stripe](stripe-compatibility-matrix.md) |

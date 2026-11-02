@@ -218,6 +218,80 @@ type ConfigPromotion struct {
 	CreatedAt       time.Time
 }
 
+type ContractAcceptance struct {
+	TenantID                     uuid.UUID
+	ID                           uuid.UUID
+	GroupID                      uuid.UUID
+	CustomerID                   *uuid.UUID
+	VersionID                    uuid.UUID
+	Kind                         string
+	Audience                     string
+	VersionNumber                int32
+	VersionSha256                string
+	LocaleRequested              string
+	LocaleServed                 string
+	BodySha256                   string
+	ContextKind                  string
+	ContextRef                   string
+	Source                       string
+	Observed                     json.RawMessage
+	CheckboxText                 string
+	ImmediateStartConsent        bool
+	ImmediateStartText           string
+	WithdrawalWaiverAcknowledged bool
+	WithdrawalWaiverText         string
+	Variables                    json.RawMessage
+	SnapshotSha256               string
+	Ip                           string
+	UserAgent                    string
+	AcceptedAt                   time.Time
+}
+
+type ContractSetting struct {
+	TenantID        uuid.UUID
+	RequiredKinds   []string
+	ImmediateStart  bool
+	RetentionMonths int32
+	UpdatedAt       time.Time
+}
+
+type ContractSnapshot struct {
+	TenantID  uuid.UUID
+	GroupID   uuid.UUID
+	Html      string
+	Sha256    string
+	CreatedAt time.Time
+}
+
+type ContractVersion struct {
+	TenantID  uuid.UUID
+	ID        uuid.UUID
+	Kind      string
+	Audience  string
+	Number    int32
+	Material  bool
+	Bodies    json.RawMessage
+	Sha256    string
+	Note      string
+	Author    string
+	CreatedAt time.Time
+}
+
+type ContractWithdrawal struct {
+	TenantID       uuid.UUID
+	ID             uuid.UUID
+	CustomerID     uuid.UUID
+	SubscriptionID *uuid.UUID
+	InvoiceID      *uuid.UUID
+	Statement      string
+	Source         string
+	Status         string
+	ReceivedAt     time.Time
+	DecidedAt      *time.Time
+	DecidedBy      string
+	DecisionNote   string
+}
+
 type Coupon struct {
 	TenantID        uuid.UUID
 	Code            string

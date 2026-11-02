@@ -103,6 +103,14 @@ CREATE TABLE config_promotions (                      -- phase 45 D: one row per
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Contracts for the seller's customers (plan 21; migrations/00009_contracts.sql, tenant twin 00007), tenant tables with RLS like the neighbours:
+--   contract_versions (tenant_id, id, kind, audience, number, material, bodies jsonb, sha256, note, author, created_at)       immutable: SELECT/INSERT only; the newest number of (kind, audience) is the current one
+--   contract_settings (tenant_id PK, required_kinds text[], immediate_start, retention_months 12..120 default 36, updated_at)
+--   contract_acceptances (tenant_id, id, group_id, customer_id NULL for a guest, version_id, kind, audience, version_number, version_sha256, locale_requested/served, body_sha256,
+--     context_kind/ref, source, observed jsonb, checkbox_text, immediate_start_*, withdrawal_waiver_*, variables jsonb, snapshot_sha256, ip, user_agent, accepted_at)
+--     append-only by trigger; plans_system has UPDATE (ip, user_agent) for the erasure job and DELETE for a sandbox reset (the trigger lets only a sandbox tenant's rows, or a tenant with a cell, go)
+--   contract_snapshots (tenant_id, group_id PK, html, sha256, created_at)                                                       the page accepted, as written then; same protection
+--   contract_withdrawals (tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note)
 CREATE TABLE go_live_audit (                          -- phase 45 follow-up: what an owner did on the way to going live; append-only, nothing updated or deleted
   id uuid PRIMARY KEY, app_id uuid NOT NULL REFERENCES apps(id), user_id uuid NOT NULL REFERENCES users(id),
   live_tenant_id uuid NOT NULL REFERENCES tenants(id),   -- a trigger: the live tenant of that app

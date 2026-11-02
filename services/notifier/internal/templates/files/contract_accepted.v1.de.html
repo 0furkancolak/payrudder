@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="de" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — dies ist keine echte Vereinbarung.</strong></p>{{end}}
+<h2>Ihre Kopie dessen, was Sie akzeptiert haben</h2>
+<p>Hallo {{index .D "customer_name"}}, am <strong>{{index .D "accepted_at"}}</strong> haben Sie bei <strong>{{index .D "tenant_name"}}</strong> Folgendes akzeptiert. Bewahren Sie diese E-Mail auf: Sie ist Ihre Kopie.</p>
+<hr>
+{{trusted (index .D "snapshot_html")}}
+<hr>
+<p style="font-size: 12px; color: #666">Prüfsumme dieser Seite (sha256): <code>{{index .D "snapshot_sha256"}}</code></p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

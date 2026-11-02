@@ -36,6 +36,7 @@ import (
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
@@ -407,6 +408,8 @@ func (w *workers) run(ctx context.Context) error {
 	g.Go(func() error {
 		return affiliatescmd.NewApprover(w.pool, w.cfg.AffiliateApproveEvery, w.log).WithPlaces(w.places).Run(gctx)
 	})
+	// The IP address and user agent of contract acceptances are blanked after the seller's retention period (docs/plans/21-contracts.md).
+	g.Go(func() error { return contracts.NewEraser(w.places, 0, w.log).Run(gctx) })
 	trials := trialcmd.New(w.pool, w.app, trialcmd.Config{Days: w.cfg.TrialReminderDays, Every: w.cfg.TrialReminderEvery}, w.log).WithPlaces(w.places)
 	g.Go(func() error { return trials.Run(gctx) })
 	if w.saas.Enabled() {

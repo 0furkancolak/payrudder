@@ -2881,6 +2881,19 @@
         "bad_resource": "Ese no es un recurso que limite un plan.",
         "platform_account": "La organización propia de la plataforma no tiene plan.",
         "not_ready": "Los planes todavía no están listos. Inténtalo de nuevo en un momento."
+      },
+      "contract": {
+        "acceptance_not_found": "No existe ese registro de aceptación.",
+        "body_required": "Escriba primero el texto (al menos un idioma).",
+        "consent_required": "Este vendedor inicia el servicio de inmediato: el cliente debe solicitarlo y reconocer que pierde el derecho de desistimiento, cada uno con su propia casilla.",
+        "kind_unpublished": "Publique una versión de este acuerdo antes de exigirlo.",
+        "no_starter": "Solo hay un texto de partida en turco e inglés.",
+        "not_accepted": "El cliente no ha aceptado los acuerdos que exige este vendedor.",
+        "unknown_variable": "El texto usa una variable que no existe. Use solo las variables de la lista.",
+        "version_not_found": "No existe esa versión.",
+        "version_stale": "Se publicó una versión más reciente de este texto. Muestre la actual y vuelva a pedir la aceptación.",
+        "withdrawal_decided": "Esta solicitud de desistimiento no puede pasar a ese estado.",
+        "withdrawal_not_found": "No existe esa solicitud de desistimiento."
       }
     },
     "common": {
@@ -3657,6 +3670,7 @@
         "affiliates": "Afiliados",
         "settings": "Ajustes (impuestos, enrutamiento, correo)",
         "assets": "Archivos",
+        "contracts": "Acuerdos (textos y ajustes)",
         "sandbox": "Herramientas de sandbox"
       },
       "permissionCount": "{n} de {total} permisos",

@@ -51,6 +51,9 @@ class EventType:
     CUSTOMER_BLOCKED = "customer.blocked"
     CUSTOMER_UNBLOCKED = "customer.unblocked"
     PRICE_CHANGE_SCHEDULED = "price_change.scheduled"
+    CONTRACT_ACCEPTED = "contract.accepted"
+    CONTRACT_VERSION_PUBLISHED = "contract.version_published"
+    CONTRACT_WITHDRAWAL_REQUESTED = "contract.withdrawal_requested"
     PING = "ping"  # sent by POST /v1/webhook-endpoints/{id}/test
 
 
@@ -218,6 +221,64 @@ class PriceChangeScheduledEventData(TypedDict):
     skipped: int
 
 
+class _ContractAcceptedItem(TypedDict):
+    acceptance_id: str
+    kind: str
+    audience: str
+    version_id: str
+    version: int
+    sha256: str
+    locale: str
+
+
+class _ContractContext(TypedDict):
+    kind: str
+    ref: str
+
+
+class _ContractAcceptedEventDataRequired(TypedDict):
+    group_id: str
+    source: str
+    accepted_at: str
+    snapshot_sha256: str
+    immediate_start_consent: bool
+    withdrawal_waiver_acknowledged: bool
+    context: _ContractContext
+    items: list[_ContractAcceptedItem]
+
+
+class ContractAcceptedEventData(_ContractAcceptedEventDataRequired, total=False):
+    """``data`` of ``contract.accepted``: one event for the versions a customer accepted together."""
+
+    customer_id: str  # absent for a guest payment
+    customer_external_id: str
+
+
+class ContractVersionPublishedEventData(TypedDict):
+    """``data`` of ``contract.version_published``."""
+
+    version_id: str
+    kind: str
+    audience: str
+    number: int
+    material: bool
+    sha256: str
+    locales: list[str]
+    published_at: str
+
+
+class ContractWithdrawalRequestedEventData(TypedDict):
+    """``data`` of ``contract.withdrawal_requested``."""
+
+    withdrawal_id: str
+    customer_id: str
+    customer_external_id: str
+    subscription_id: str
+    invoice_id: str
+    source: str
+    received_at: str
+
+
 class WebhookEvent(TypedDict):
     """A delivery's JSON body. ``data`` depends on ``type``; its ``*_minor`` values are ints.
 
@@ -227,6 +288,8 @@ class WebhookEvent(TypedDict):
     ``PaymentLinkEventData``, ``credits.purchased`` / ``credits.low`` are ``CreditsPurchasedEventData`` /
     ``CreditsLowEventData``, ``customer.blocked`` / ``customer.unblocked`` are ``CustomerBlockEventData``, ``price_change.scheduled`` is
     ``PriceChangeScheduledEventData``).
+    ``CreditsLowEventData``, ``customer.blocked`` / ``customer.unblocked`` are ``CustomerBlockEventData``; ``contract.accepted`` / ``contract.version_published`` /
+    ``contract.withdrawal_requested`` are ``ContractAcceptedEventData`` / ``ContractVersionPublishedEventData`` / ``ContractWithdrawalRequestedEventData``).
     """
 
     id: str
