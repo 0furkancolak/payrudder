@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { buildReadTools, freeTextFields, repoRoot } from "../scripts/generate.mjs";
-import { READ_TOOLS, STRUCTURAL, UNTRUSTED } from "../scripts/read-tools.config.mjs";
+import { NOT_OFFERED, READ_TOOLS, STRUCTURAL, UNTRUSTED } from "../scripts/read-tools.config.mjs";
 import { READ_TOOL_SPECS } from "./generated/read-tools.js";
 import { TOOLS } from "./tools.js";
 
@@ -32,7 +32,12 @@ function operation(id: string): { path: string; method: string; op: Op; params: 
 describe("the read tools are the allow-listed operations of the OpenAPI file", () => {
   it("has one tool per allow-listed operation, on a GET route of the tenant API, with the names the first tools had", () => {
     expect(READ_TOOL_SPECS.map((t) => t.operationId)).toEqual(Object.keys(READ_TOOLS));
-    expect(READ_TOOL_SPECS.map((t) => t.name).sort()).toEqual(["get_customer", "get_customer_usage", "get_invoice", "list_customers", "list_invoices", "list_meters", "list_payments", "list_plans", "list_subscriptions"]);
+    // Written out on purpose: a tool an assistant can call is a decision, so adding or dropping one must change this list (and the risk table in README.md).
+    expect(READ_TOOL_SPECS.map((t) => t.name).sort()).toEqual([
+      "get_credit_balance", "get_credit_note", "get_customer", "get_customer_usage", "get_dunning_report", "get_entitlement", "get_invoice", "get_meter", "get_plan_version", "get_revenue_report", "get_subscription",
+      "get_subscription_report", "get_tax_rates", "get_upcoming_invoice", "list_coupons", "list_credit_ledger", "list_credit_notes", "list_customer_payments", "list_customers", "list_entitlements",
+      "list_invoices", "list_meters", "list_payments", "list_plans", "list_subscriptions",
+    ]);
     for (const t of READ_TOOL_SPECS) {
       const o = operation(t.operationId);
       expect(o.method, t.name).toBe("get");
@@ -70,6 +75,49 @@ describe("the read tools are the allow-listed operations of the OpenAPI file", (
     expect(TOOLS.filter((t) => t.write).map((t) => t.name)).toEqual(["create_customer", "ingest_usage_events"]);
   });
 
+  it("keeps the first nine tools, under the names and arguments an assistant's saved prompts use", () => {
+    const first = Object.fromEntries(READ_TOOL_SPECS.map((t) => [t.name, t.params.map((p) => p.arg)]));
+    expect(first.get_customer).toEqual(["customer_external_id"]);
+    expect(first.get_customer_usage).toEqual(["customer_external_id", "period"]);
+    expect(first.list_subscriptions).toContain("customer_external_id");
+    expect(first.list_invoices).toContain("customer_external_id");
+    expect(first.get_invoice).toEqual(["invoice_id"]);
+  });
+
+  it("offers none of the reads that were left out on purpose, and each of them is still a GET of the file", () => {
+    for (const [id, why] of Object.entries(NOT_OFFERED)) {
+      expect(Object.keys(READ_TOOLS), id).not.toContain(id);
+      expect(operation(id).method, id).toBe("get");
+      expect(why.length, id).toBeGreaterThan(10);
+    }
+  });
+
+  it("offers no read whose answer is a link, a secret or a raw payload (by the names the API gives such fields)", () => {
+    const risky = (f: string) => f !== "next_page_token" && f.split("_").some((w) => ["secret", "token", "url", "link", "presigned", "plaintext", "payload", "password", "authorization", "iban", "pan", "cvv"].includes(w));
+    for (const t of READ_TOOL_SPECS) {
+      const o = operation(t.operationId) as unknown as { op: { responses: Record<string, unknown> } };
+      const ok = Object.entries(o.op.responses).find(([c]) => c.startsWith("2"))![1] as { content: { "application/json": { schema: unknown } } };
+      const fields = new Set<string>();
+      const seen = new Set<string>();
+      const walk = (n: any): void => {
+        if (!n || typeof n !== "object") return;
+        if (n.$ref) {
+          if (seen.has(n.$ref)) return;
+          seen.add(n.$ref);
+          return walk(n.$ref.slice(2).split("/").reduce((x: any, k: string) => x?.[k], doc));
+        }
+        for (const [k, v] of Object.entries<any>(n.properties ?? {})) {
+          fields.add(k);
+          walk(v);
+        }
+        for (const k of ["items", "additionalProperties"]) walk(n[k]);
+        for (const k of ["allOf", "oneOf", "anyOf"]) for (const x of n[k] ?? []) walk(x);
+      };
+      walk(ok.content["application/json"].schema);
+      expect([...fields].filter(risky), t.name).toEqual([]);
+    }
+  });
+
   it("classifies every free-text field of every answer, as untrusted or as an identifier", () => {
     for (const t of READ_TOOL_SPECS) {
       const o = operation(t.operationId) as unknown as { op: { responses: Record<string, unknown> } };
@@ -99,6 +147,17 @@ describe("the generator refuses what must not become a tool", () => {
   });
   it("refuses a rename of a parameter that is not there", () => {
     expect(() => buildReadTools(spec(), cfg({ getThing: { args: { nope: "x" } } }))).toThrow(/no parameter nope/);
+  });
+  it("renames an allow-listed operation named in a description to its tool, and refuses one that is not a tool", () => {
+    const ok = { "200": { description: "OK", content: { "application/json": { schema: { type: "object", properties: { id: { type: "string" } } } } } } };
+    const withText = (description: string) => {
+      const s = spec({ description }) as { paths: Record<string, unknown> };
+      const other = { get: { operationId: "getOtherThing", parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: ok } };
+      return { ...s, paths: { ...s.paths, "/v1/other/{id}": other } };
+    };
+    expect(buildReadTools(withText("Like `getOtherThing`, but one."), cfg({ getThing: {}, getOtherThing: {} })).tools[0]?.description).toContain("Like `get_other_thing`, but one.");
+    expect(() => buildReadTools(withText("Like `getOtherThing`, but one."), cfg({ getThing: {} }))).toThrow(/names getOtherThing, which is not a tool/);
+    expect(buildReadTools(withText("Counts `quantity` as text."), cfg({ getThing: {} })).tools[0]?.description).toContain("`quantity`");
   });
   it("refuses an answer with a free-text field nobody classified, and accepts it once it is classified", () => {
     expect(() => buildReadTools(spec({}, { comment: { type: "string" } }), cfg({ getThing: {} }))).toThrow(/free-text field "comment"/);

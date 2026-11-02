@@ -40,6 +40,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/period"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
@@ -430,6 +431,7 @@ func (m *Manager) launch(ctx context.Context, j *Job) {
 	go func() {
 		defer m.jobs.Done()
 		defer func() { m.mu.Lock(); delete(m.running, j.ID); m.mu.Unlock() }()
+		defer errtrack.Recover(ctx)
 		m.afterRun(ctx, j, m.run(ctx, j.TenantID, j.ID))
 	}()
 }

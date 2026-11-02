@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/mailx"
 )
 
@@ -108,6 +109,7 @@ func (s *SMTP) Send(reqCtx context.Context, m Mail) {
 	}
 	go func() {
 		defer func() { <-s.slots }()
+		defer errtrack.Recover(reqCtx)
 		subject, text, body := Render(m)
 		// WithoutCancel keeps the request's values (trace, request id) but not its end: the mail outlives the request.
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), 20*time.Second)

@@ -110,7 +110,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 	for _, q := range w.Queues {
 		wg.Add(1)
-		go func() {
+		go func() { // no errtrack: rabbitx.Consume reports the panics of its handlers
 			defer wg.Done()
 			_ = rabbitx.Consume(ctx, w.URL, q, w.Prefetch, func(ctx context.Context, d amqp.Delivery) rabbitx.Outcome {
 				return w.handle(ctx, q, d)

@@ -13,14 +13,14 @@ import (
 	"github.com/0furkancolak/payrudder/services/plans-svc/migrations"
 )
 
-// Migration 00016 gives every tenant that exists the language the fixed map of billing-svc gave it (docs/plans/05): Turkey tr, Germany and Austria de, France fr, Spain es,
+// Migration 00017 gives every tenant that exists the language the fixed map of billing-svc gave it (docs/plans/05): Turkey tr, Germany and Austria de, France fr, Spain es,
 // anything else English (empty), so no tenant's documents change language the day the setting appears.
 func TestDefaultLanguageMigrationKeepsWhatTheCountryMapGave(t *testing.T) {
 	ctx := testkit.Ctx(t)
 	pg := testkit.StartPostgres(t)
 	testkit.MigratedDB(t, pg, "plans", migrations.FS) // creates the roles the cell database is owned by
 	db := testkit.CreateCellDB(t, pg, "plans", "lang")
-	for v := int64(1); v <= 15; v++ {
+	for v := int64(1); v <= 16; v++ {
 		if err := pgxx.MigrateVersion(ctx, db.Migrator, migrations.FS, v, true); err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +53,7 @@ func TestDefaultLanguageMigrationKeepsWhatTheCountryMapGave(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := pgxx.MigrateVersion(ctx, db.Migrator, migrations.FS, 16, true); err != nil {
+	if err := pgxx.MigrateVersion(ctx, db.Migrator, migrations.FS, 17, true); err != nil {
 		t.Fatal(err)
 	}
 	for country, lang := range want {

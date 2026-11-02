@@ -45,6 +45,7 @@ jobs:
         run: python tools/generate.py --check
       - run: ruff check .
       - run: ruff format --check .
+      # [tool.mypy] files includes examples/: they are type-checked (strict) against the installed package
       - run: mypy
       - run: pytest
       - name: Build and install the wheel in a clean environment

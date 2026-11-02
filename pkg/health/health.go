@@ -14,6 +14,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 )
 
 // CheckFunc reports whether one dependency is ready. It must honour ctx.
@@ -83,6 +85,7 @@ func (h *Handler) ready(w http.ResponseWriter, r *http.Request) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(r.Context(), h.timeout)
 			defer cancel()
+			defer errtrack.Recover(ctx)
 			err := checks[name](ctx)
 			if err == nil && ctx.Err() != nil {
 				err = ctx.Err()
@@ -118,7 +121,7 @@ func Serve(ctx context.Context, addr string, h http.Handler) error {
 // ServeServer is Serve for a server that has its own timeouts.
 func ServeServer(ctx context.Context, srv *http.Server) error {
 	errc := make(chan error, 1)
-	go func() { errc <- srv.ListenAndServe() }()
+	go func() { errc <- srv.ListenAndServe() }() // no errtrack: ListenAndServe returns its failures, and net/http recovers a handler's panic
 	select {
 	case err := <-errc:
 		return err
