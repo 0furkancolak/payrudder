@@ -1470,14 +1470,16 @@
         "payment_receipts": "Recibos de pago",
         "payment_failed": "Pago fallido",
         "usage_alerts": "Alertas de uso",
-        "system": "Sistema"
+        "system": "Sistema",
+        "customer_notices": "Avisos a clientes"
       },
       "descriptions": {
         "invoice_issued": "Avisa al cliente de que se emitió una factura nueva.",
         "payment_receipts": "El recibo tras un pago correcto.",
         "payment_failed": "Un pago fallido, un reintento y el aviso de que Payrudder dejó de cobrar.",
         "usage_alerts": "Un cliente superó un límite de uso de su plan.",
-        "system": "Cualquier otro mensaje que envía Payrudder."
+        "system": "Cualquier otro mensaje que envía Payrudder.",
+        "customer_notices": "Avisa a un cliente de que lo bloqueó o de que levantó el bloqueo (nunca el motivo). Desactivado hasta que lo active."
       },
       "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Payrudder.",
       "loadMore": "Mostrar más",

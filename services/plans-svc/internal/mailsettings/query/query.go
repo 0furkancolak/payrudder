@@ -21,13 +21,21 @@ type Queries struct{ db *store.DB }
 // New returns the mail settings queries.
 func New(db *store.DB) *Queries { return &Queries{db: db} }
 
-// Disabled loads the categories the tenant has switched off, in the caller's transaction. A tenant that never saved a setting has none off.
+// Disabled loads the categories that are off for the tenant, in the caller's transaction, in the order of mailcategory.All. A tenant that never saved a setting has
+// only the categories that are off until it switches them on (mailcategory.DefaultOff).
 func Disabled(ctx context.Context, q *sqlc.Queries) ([]string, error) {
-	d, err := q.GetMailDisabled(ctx)
+	r, err := q.GetMailDisabled(ctx)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
+		return mailcategory.DefaultOff(), nil
 	}
-	return d, err
+	if err != nil {
+		return nil, err
+	}
+	off := r.Disabled
+	if !r.CustomerNoticesOn {
+		off = append(off, mailcategory.CustomerNotices)
+	}
+	return off, nil
 }
 
 // Messages lists every category with its state, in the fixed order of mailcategory.All.

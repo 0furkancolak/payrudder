@@ -1,0 +1,9 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real notice.</strong></p>{{end}}
+<h2>Your account has been restricted</h2>
+<p>Hi {{index .D "customer_name"}}, {{if index .D "until"}}{{index .D "tenant_name"}} has restricted your account until <strong>{{index .D "until"}}</strong>.{{else}}{{index .D "tenant_name"}} has restricted your account.{{end}} You cannot start new purchases or change your plan while this holds.</p>
+{{if index .D "service_suspended"}}<p>Your access to the service is suspended as well.</p>{{end}}
+<p>Subscriptions and invoices you already have are not cancelled by this notice. If you think this is a mistake, please contact {{index .D "tenant_name"}}.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="fr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — ceci n’est pas un vrai avis.</strong></p>{{end}}
+<h2>Votre compte a été restreint</h2>
+<p>Bonjour {{index .D "customer_name"}}, {{if index .D "until"}}{{index .D "tenant_name"}} a restreint votre compte jusqu’au <strong>{{index .D "until"}}</strong>.{{else}}{{index .D "tenant_name"}} a restreint votre compte.{{end}} Tant que cela dure, vous ne pouvez pas commencer de nouveaux achats ni changer de formule.</p>
+{{if index .D "service_suspended"}}<p>Votre accès au service est également suspendu.</p>{{end}}
+<p>Les abonnements et les factures que vous avez déjà ne sont pas annulés par cet avis. Si vous pensez qu’il s’agit d’une erreur, veuillez contacter {{index .D "tenant_name"}}.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

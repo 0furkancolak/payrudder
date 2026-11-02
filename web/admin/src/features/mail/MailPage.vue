@@ -6,7 +6,7 @@ import { firstError } from "@/shared/lib/errors";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Card } from "@/shared/ui/card";
 import { Switch } from "@/shared/ui/switch";
-import { MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "./api";
+import { DEFAULT_ON, MAIL_CATEGORIES, useMailSettings, useSetMailCategory, type MailCategory } from "./api";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
 import MailMessagesCard from "./MailMessagesCard.vue";
 import MailSuppressionsCard from "./MailSuppressionsCard.vue";
@@ -17,11 +17,11 @@ const canWrite = useCanWrite();
 const settings = useMailSettings(tenantId);
 const set = useSetMailCategory(tenantId);
 
-/** The state of every category; a category the server did not list counts as on, which is the default. */
+/** The state of every category; a category the server did not list has its default (on, but customer_notices). */
 const enabled = computed(() => {
   const state = new Map<string, boolean>();
-  for (const c of settings.data.value?.categories ?? []) if (c.category) state.set(c.category, c.enabled ?? true);
-  return (category: MailCategory) => state.get(category) ?? true;
+  for (const c of settings.data.value?.categories ?? []) if (c.category) state.set(c.category, c.enabled ?? DEFAULT_ON(c.category));
+  return (category: MailCategory) => state.get(category) ?? DEFAULT_ON(category);
 });
 const failure = computed(() => firstError(settings, set));
 

@@ -4,8 +4,10 @@ import { tenantApi, unwrap } from "@/shared/api/client";
 import type { components } from "@/shared/api/schema";
 
 /** The categories of Payrudder's outgoing e-mail, in the order the API lists them. */
-export const MAIL_CATEGORIES = ["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system"] as const;
+export const MAIL_CATEGORIES = ["invoice_issued", "payment_receipts", "payment_failed", "usage_alerts", "system", "customer_notices"] as const;
 export type MailCategory = (typeof MAIL_CATEGORIES)[number];
+/** What a category is when the server did not list it: on, except the notice to a blocked customer, which is off until the seller switches it on. */
+export const DEFAULT_ON = (category: string): boolean => category !== "customer_notices";
 
 export const mailKeys = {
   settings: (tenantId: string) => ["tenants", tenantId, "mail-settings"] as const,

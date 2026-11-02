@@ -25,6 +25,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/safehttp"
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/blocknotice"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/contractmail"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
@@ -85,9 +86,11 @@ type Config struct {
 	ContractDLQTopic string `env:"PAYRUDDER_CONTRACT_DLQ_TOPIC"`
 	// RenewalDLQTopic and WithdrawalDLQTopic receive the renewal notices and the withdrawal acknowledgements that can never be mailed; the Kafka groups of those consumers
 	// are the group with "-renewals" and "-withdrawals" appended.
-	RenewalDLQTopic    string        `env:"PAYRUDDER_RENEWAL_DLQ_TOPIC"`
-	WithdrawalDLQTopic string        `env:"PAYRUDDER_WITHDRAWAL_DLQ_TOPIC"`
-	SessionTimeout     time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
+	RenewalDLQTopic    string `env:"PAYRUDDER_RENEWAL_DLQ_TOPIC"`
+	WithdrawalDLQTopic string `env:"PAYRUDDER_WITHDRAWAL_DLQ_TOPIC"`
+	// BlockNoticeDLQTopic receives the notices of a blocked or unblocked customer that can never be mailed; the Kafka group of that consumer is the group with "-block-notices" appended.
+	BlockNoticeDLQTopic string        `env:"PAYRUDDER_BLOCK_NOTICE_DLQ_TOPIC"`
+	SessionTimeout      time.Duration `env:"PAYRUDDER_CONSUMER_SESSION_TIMEOUT"`
 }
 
 func (c *Config) Validate() error {
@@ -242,6 +245,17 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	}
 	defer withdrawalConsumer.Close()
 
+	blockGroup := cfg.Group + "-block-notices"
+	blockOffsets := store.Offsets{DB: pool, Group: blockGroup, Topic: blocknotice.Topic}
+	bn := &blocknotice.Consumer{Mailer: mailer, Plans: plansv1.NewPlansServiceClient(plansConn), Admin: plansv1.NewAdminServiceClient(plansConn),
+		Offsets: blockOffsets, DLQ: kafkax.DLQ{Client: producer, Topic: cfg.BlockNoticeDLQTopic, Consumer: blockGroup}, Log: log}
+	blockConsumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: cfg.KafkaBrokers, GroupID: blockGroup, Topic: blocknotice.Topic,
+		LoadOffsets: blockOffsets.Load, Handler: bn, MaxPollRecords: 100, Backoff: 2 * time.Second, SessionTimeout: cfg.SessionTimeout, Log: log})
+	if err != nil {
+		return err
+	}
+	defer blockConsumer.Close()
+
 	hh := rt.Health()
 	hh.AddCheck("postgres", pool.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return w.Ping() })
@@ -258,6 +272,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	g.Go(func() error { return contractConsumer.Run(gctx) })
 	g.Go(func() error { return renewalConsumer.Run(gctx) })
 	g.Go(func() error { return withdrawalConsumer.Run(gctx) })
+	g.Go(func() error { return blockConsumer.Run(gctx) })
 	if cfg.EventsAddr != "" {
 		events := &mailevents.Handler{Secret: cfg.MailEventsSecret, AcceptV1: cfg.MailEventsAcceptV1, Notes: notes, List: suppressions, Messages: notes, PreviewPriceChange: pricechange.Preview, Log: log}
 		g.Go(func() error {

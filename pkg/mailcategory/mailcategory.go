@@ -4,7 +4,7 @@ package mailcategory
 
 import "strings"
 
-// The categories. A tenant's setting is the set of categories it has switched off; none switched off is the default.
+// The categories. A tenant's setting is the set of categories it has switched off; none switched off is the default, except for the ones DefaultOff lists.
 const (
 	// InvoiceIssued is the mail that announces a finalized invoice.
 	InvoiceIssued = "invoice_issued"
@@ -16,9 +16,15 @@ const (
 	UsageAlerts = "usage_alerts"
 	// System is every other mail: anything whose template is not in a category above.
 	System = "system"
+	// CustomerNotices is the notice to a customer that the seller blocked them, or lifted the block (customer_blocked, customer_unblocked). It is the one category that
+	// is off until a tenant switches it on (default, not agreed: telling a person they are blocked is the seller's call, never a surprise).
+	CustomerNotices = "customer_notices"
 )
 
-var all = []string{InvoiceIssued, PaymentReceipts, PaymentFailed, UsageAlerts, System}
+var all = []string{InvoiceIssued, PaymentReceipts, PaymentFailed, UsageAlerts, System, CustomerNotices}
+
+// DefaultOff returns the categories that are off for a tenant that never chose, in the order of All. Every other category is on.
+func DefaultOff() []string { return []string{CustomerNotices} }
 
 // All returns the categories in the order the API and the console list them.
 func All() []string { return append([]string(nil), all...) }
@@ -39,6 +45,9 @@ var templateCategory = map[string]string{
 	"invoice_paid":   PaymentReceipts,
 	"payment_failed": PaymentFailed,
 	"limit_exceeded": UsageAlerts,
+
+	"customer_blocked":   CustomerNotices,
+	"customer_unblocked": CustomerNotices,
 }
 
 // ForTemplate returns the category of a versioned template name such as "invoice_paid.v1". A template that is in no family is System.

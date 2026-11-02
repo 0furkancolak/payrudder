@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -35,6 +36,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/rabbitx"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/notifier/internal/blocknotice"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/delivery"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/handler"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/limits"
@@ -83,6 +85,13 @@ type offSwitch map[string]bool
 
 func (o offSwitch) Enabled(_ context.Context, _ uuid.UUID, category string) (bool, error) {
 	return !o[category], nil
+}
+
+// noticeSwitch is a mail switch with the notice to a blocked customer switched off while off is set.
+type noticeSwitch struct{ off atomic.Bool }
+
+func (n *noticeSwitch) Enabled(_ context.Context, _ uuid.UUID, category string) (bool, error) {
+	return !(n.off.Load() && category == "customer_notices"), nil
 }
 
 // staticProviders gives the tenants in it their own e-mail provider.
@@ -409,6 +418,80 @@ func TestNotifier(t *testing.T) {
 			m, _ := offsets.Load(context.Background(), topic, []int32{0})
 			return m[0] == 2
 		})
+	})
+
+	// The notice to a blocked customer (plan 13) is the one category that is off until a seller switches it on: the consumer reads a fact while it is off and sends nothing (the
+	// offset still moves), and once it is on a fact becomes one mail in the customer's language, however often it is delivered. The mail is recorded under its own kind
+	// (sent_notifications_kind_check lists the kinds: 00006), and the mail never says why.
+	t.Run("TheNoticeToABlockedCustomerIsOffUntilSwitchedOnThenSentOnce", func(t *testing.T) {
+		topic, dlq := "customer.block-notice.v1", "customer.block-notice.dlq.v1"
+		admin, _ := kgo.NewClient(kgo.SeedBrokers(brokers))
+		if _, err := kadm.NewClient(admin).CreateTopics(context.Background(), 1, 1, nil, topic, dlq); err != nil {
+			t.Fatal(err)
+		}
+		admin.Close()
+		producer, err := kafkax.NewProducer([]string{brokers})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer producer.Close()
+
+		email := "notice-" + uuid.NewString()[:8] + "@example.com"
+		sw := &noticeSwitch{}
+		sw.off.Store(true)
+		m := &delivery.Mailer{Default: mailx.SMTP{Addr: mp.SMTPAddr}, From: "q@payrudder.local", Notes: notes, Switch: sw}
+		offsets := store.Offsets{DB: pool, Group: "notifier-t-block-notices", Topic: topic}
+		bn := &blocknotice.Consumer{Mailer: m, Plans: fakePlans{email: email, locale: "tr"}, Admin: fakeAdmin{env: plansv1.Environment_ENVIRONMENT_LIVE}, Offsets: offsets,
+			DLQ: kafkax.DLQ{Client: producer, Topic: dlq, Consumer: "notifier-t-block-notices"}, Log: log}
+		consumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: []string{brokers}, GroupID: "notifier-t-block-notices", Topic: topic, LoadOffsets: offsets.Load,
+			Handler: bn, MaxPollRecords: 10, Backoff: 100 * time.Millisecond, Log: log})
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() { _ = consumer.Run(ctx); close(done) }()
+		defer func() { cancel(); <-done; consumer.Close() }()
+
+		tenantID, customerID := uuid.NewString(), uuid.NewString()
+		fact := func(kind string, suspended bool) []byte {
+			b, _ := proto.Marshal(&eventsv1.CustomerBlockNotice{EventId: uuid.NewString(), TenantId: tenantID, CustomerId: customerID, Kind: kind, ServiceSuspended: suspended,
+				BlockedUntil: timestamppb.New(time.Date(2026, 11, 6, 21, 30, 0, 0, time.UTC)), OccurredAt: timestamppb.Now()})
+			return b
+		}
+		rec := func(v []byte) *kgo.Record {
+			return &kgo.Record{Topic: topic, Key: []byte(tenantID + "/" + customerID), Value: v}
+		}
+		saved := func(n int64) func() bool {
+			return func() bool { m, _ := offsets.Load(context.Background(), topic, []int32{0}); return m[0] == n }
+		}
+
+		if err := producer.ProduceSync(context.Background(), rec(fact("blocked", true))).FirstErr(); err != nil {
+			t.Fatal(err)
+		}
+		testkit.Eventually(t, 10*time.Second, "the fact is read while the category is off", saved(1))
+		time.Sleep(time.Second)
+		if got := mailbox(t, mp.APIURL, email); len(got) != 0 {
+			t.Fatalf("the notices are off by default, but the customer was mailed: %+v", got)
+		}
+
+		sw.off.Store(false)
+		blocked := fact("blocked", true)
+		if err := producer.ProduceSync(context.Background(), rec(blocked), rec(blocked), rec(fact("unblocked", false))).FirstErr(); err != nil { // the block twice, then the lift
+			t.Fatal(err)
+		}
+		waitMail(t, mp.APIURL, email, 2)
+		time.Sleep(2 * time.Second)
+		got := mailbox(t, mp.APIURL, email)
+		subjects := []string{}
+		for _, g := range got {
+			subjects = append(subjects, g.Subject)
+		}
+		slices.Sort(subjects)
+		if len(got) != 2 || subjects[0] != "Acme hesabınız kısıtlandı" || subjects[1] != "Acme hesabınızdaki kısıtlama kaldırıldı" {
+			t.Fatalf("mailbox = %v, want the block once and the lift once, in Turkish", subjects)
+		}
+		testkit.Eventually(t, 10*time.Second, "offset saved", saved(4))
 	})
 
 	// The mail that follows from a customer's agreements is recorded under a kind of its own; the check on sent_notifications allowed four kinds only (00002 was the same

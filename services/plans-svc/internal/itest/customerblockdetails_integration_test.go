@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -157,6 +158,52 @@ func testCustomerBlockDetails(t *testing.T) {
 		}
 		if u == nil || u["customer_external_id"] != "cus_b" {
 			t.Errorf("customer.unblocked data = %v", u)
+		}
+	})
+
+	t.Run("a block and a lift queue the customer's notice, with none of the seller's reasons", func(t *testing.T) {
+		const ext = "cus_notice"
+		created, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: ext, Name: ext, Email: ext + "@example.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		key := live.GetId() + "/" + created.GetCustomer().GetId()
+		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: ext, Reason: "stolen card used twice", Category: "fraud", BlockedUntil: timestamppb.New(until), SuspendService: true}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: ext}); err != nil { // a repeat queues nothing
+			t.Fatal(err)
+		}
+		if _, err := e.plans.UnblockCustomer(ctx, &plansv1.UnblockCustomerRequest{ExternalId: ext}); err != nil {
+			t.Fatal(err)
+		}
+		sink := &captureSink{}
+		e.relayAll(t, sink)
+		var got []*eventsv1.CustomerBlockNotice
+		for _, row := range sink.rows {
+			if row.Topic != "customer.block-notice.v1" || row.PartitionKey != key {
+				continue
+			}
+			for _, secret := range []string{"stolen card used twice", "fraud"} {
+				if strings.Contains(string(row.Payload), secret) {
+					t.Errorf("the notice carries the seller's %q", secret)
+				}
+			}
+			n := &eventsv1.CustomerBlockNotice{}
+			if err := proto.Unmarshal(row.Payload, n); err != nil {
+				t.Fatal(err)
+			}
+			got = append(got, n)
+		}
+		if len(got) != 2 {
+			t.Fatalf("notices = %v; want the block and the lift", got)
+		}
+		b, u := got[0], got[1]
+		if b.GetKind() != "blocked" || !b.GetServiceSuspended() || !b.GetBlockedUntil().AsTime().Equal(until) || b.GetTenantId() != live.GetId() || b.GetCustomerId() != created.GetCustomer().GetId() || b.GetEventId() == "" {
+			t.Errorf("the block's notice = %v", b)
+		}
+		if u.GetKind() != "unblocked" || u.GetServiceSuspended() || u.GetBlockedUntil() != nil || u.GetEventId() == b.GetEventId() {
+			t.Errorf("the lift's notice = %v", u)
 		}
 	})
 

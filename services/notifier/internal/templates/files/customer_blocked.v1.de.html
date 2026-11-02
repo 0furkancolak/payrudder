@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="de" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — dies ist keine echte Mitteilung.</strong></p>{{end}}
+<h2>Ihr Konto wurde eingeschränkt</h2>
+<p>Hallo {{index .D "customer_name"}}, {{if index .D "until"}}{{index .D "tenant_name"}} hat Ihr Konto bis <strong>{{index .D "until"}}</strong> eingeschränkt.{{else}}{{index .D "tenant_name"}} hat Ihr Konto eingeschränkt.{{end}} Solange das gilt, können Sie keine neuen Käufe beginnen und Ihren Tarif nicht ändern.</p>
+{{if index .D "service_suspended"}}<p>Auch Ihr Zugang zum Dienst ist ausgesetzt.</p>{{end}}
+<p>Bestehende Abonnements und Rechnungen werden durch diese Mitteilung nicht storniert. Wenn Sie glauben, dass das ein Irrtum ist, wenden Sie sich bitte an {{index .D "tenant_name"}}.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

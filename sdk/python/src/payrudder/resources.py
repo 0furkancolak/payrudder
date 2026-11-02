@@ -1356,7 +1356,7 @@ class MailSettingsResource:
         self._client = client
 
     def get_mail_settings(self, *, options: RequestOptions | None = None) -> m.MailSettings:
-        """Which kinds of e-mail Payrudder sends for the tenant (all on until switched off).
+        """Which kinds of e-mail Payrudder sends for the tenant (all on until switched off, except customer_notices, which is off until switched on).
 
         ``GET /v1/mail-settings``
         """
@@ -3238,7 +3238,7 @@ class AsyncMailSettingsResource:
         self._client = client
 
     async def get_mail_settings(self, *, options: RequestOptions | None = None) -> m.MailSettings:
-        """Which kinds of e-mail Payrudder sends for the tenant (all on until switched off).
+        """Which kinds of e-mail Payrudder sends for the tenant (all on until switched off, except customer_notices, which is off until switched on).
 
         ``GET /v1/mail-settings``
         """

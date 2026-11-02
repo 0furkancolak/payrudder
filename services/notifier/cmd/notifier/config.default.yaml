@@ -31,4 +31,6 @@ PAYRUDDER_CONTRACT_DLQ_TOPIC: "contract.accepted.dlq.v1"
 # Where the renewal notices (subscription.renewal-notice.v1) and the withdrawal acknowledgements (contract.withdrawal-received.v1) that can never be mailed go.
 PAYRUDDER_RENEWAL_DLQ_TOPIC: "subscription.renewal-notice.dlq.v1"
 PAYRUDDER_WITHDRAWAL_DLQ_TOPIC: "contract.withdrawal-received.dlq.v1"
+# Where the notices to a blocked or unblocked customer (customer.block-notice.v1) that can never be mailed go.
+PAYRUDDER_BLOCK_NOTICE_DLQ_TOPIC: "customer.block-notice.dlq.v1"
 PAYRUDDER_CONSUMER_SESSION_TIMEOUT: "10s"

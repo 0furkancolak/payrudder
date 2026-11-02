@@ -2099,7 +2099,7 @@ type MailSettings struct {
 // MailSettingsCategories is an object of the API; see components.schemas.MailSettingsCategories in
 // api/openapi/v1.yaml.
 type MailSettingsCategories struct {
-	// One of: invoice_issued, payment_receipts, payment_failed, usage_alerts, system.
+	// One of: invoice_issued, payment_receipts, payment_failed, usage_alerts, system, customer_notices.
 	Category string `json:"category"`
 	Enabled  bool   `json:"enabled"`
 }
@@ -2112,7 +2112,7 @@ type MailSettingsInput struct {
 // MailSettingsInputCategories is an object of the API; see components.schemas.MailSettingsInputCategories in
 // api/openapi/v1.yaml.
 type MailSettingsInputCategories struct {
-	// One of: invoice_issued, payment_receipts, payment_failed, usage_alerts, system.
+	// One of: invoice_issued, payment_receipts, payment_failed, usage_alerts, system, customer_notices.
 	Category string `json:"category,omitempty"`
 	Enabled  *bool  `json:"enabled,omitempty"`
 }

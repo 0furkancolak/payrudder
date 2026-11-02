@@ -2234,8 +2234,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Which kinds of e-mail Payrudder sends for the tenant (all on until switched off)
-         * @description Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`. A mail of a category that is off is dropped by the notifier
+         * Which kinds of e-mail Payrudder sends for the tenant (all on until switched off, except customer_notices, which is off until switched on)
+         * @description Categories: `invoice_issued`, `payment_receipts`, `payment_failed`, `usage_alerts`, `system`, `customer_notices`. `customer_notices` is the notice to a customer that the seller blocked them or lifted the block (never with the seller's reason); it is **off** until the tenant switches it on, the other categories are on. A mail of a category that is off is dropped by the notifier
          *     (counted in `notifier_mail_dropped_total`), not retried. Whether a provider sends its own receipts is a separate rule (Paddle does, so Payrudder sends none for its payments).
          */
         get: operations["getMailSettings"];
@@ -13294,14 +13294,14 @@ export interface components {
         MailSettings: {
             categories: {
                 /** @enum {string} */
-                category: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
+                category: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system" | "customer_notices";
                 enabled: boolean;
             }[];
         };
         MailSettingsInput: {
             categories?: {
                 /** @enum {string} */
-                category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system";
+                category?: "invoice_issued" | "payment_receipts" | "payment_failed" | "usage_alerts" | "system" | "customer_notices";
                 enabled?: boolean;
             }[];
         };

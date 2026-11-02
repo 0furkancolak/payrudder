@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="es" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — esto no es un aviso real.</strong></p>{{end}}
+<h2>Su cuenta ha sido restringida</h2>
+<p>Hola {{index .D "customer_name"}}, {{if index .D "until"}}{{index .D "tenant_name"}} ha restringido su cuenta hasta el <strong>{{index .D "until"}}</strong>.{{else}}{{index .D "tenant_name"}} ha restringido su cuenta.{{end}} Mientras dure, no puede iniciar nuevas compras ni cambiar de plan.</p>
+{{if index .D "service_suspended"}}<p>Su acceso al servicio también está suspendido.</p>{{end}}
+<p>Las suscripciones y facturas que ya tiene no se cancelan con este aviso. Si cree que es un error, póngase en contacto con {{index .D "tenant_name"}}.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

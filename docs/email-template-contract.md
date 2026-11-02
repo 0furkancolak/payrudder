@@ -21,9 +21,9 @@ UNVERIFIED: that Nafru shows the tag and lets an application match on it or on t
 
 Every mail also carries `locale` (`en`, `tr`, `de`, `fr`, `es`, `ar`; empty or unknown is English; selects the template file and the subject) among its data. Bank-transfer details, when there are any, ride in the same data (the keys below).
 
-## The ten templates of tenants' customers
+## The twelve templates of tenants' customers
 
-Sent by the notifier for a tenant, to that tenant's customers. A tenant can switch a **category** off (`pkg/mailcategory`, the mail page of the console); a template in no family is `system`. Each exists in all six languages (`services/notifier/internal/templates/files/<name>[.<locale>].html`) with a translated subject. A new wording is a new version (`.v2`), never an edit of a sent one.
+Sent by the notifier for a tenant, to that tenant's customers. A tenant can switch a **category** off (`pkg/mailcategory`, the mail page of the console); a template in no family is `system`. One category is the other way round: `customer_notices` (the notice to a blocked customer) is **off until the tenant switches it on**. Each exists in all six languages (`services/notifier/internal/templates/files/<name>[.<locale>].html`) with a translated subject. A new wording is a new version (`.v2`), never an edit of a sent one.
 
 | Template | Category | Sent when | Variables |
 |---|---|---|---|
@@ -37,6 +37,8 @@ Sent by the notifier for a tenant, to that tenant's customers. A tenant can swit
 | `contract_accepted.v1` | `system` | a customer accepted one of the seller's agreements; the mail is their copy (Kafka `contract.accepted.v1`, plan 21), with a PDF of the same page attached when the page can be drawn | `accepted_at`, `customer_name`, `has_pdf` (set when the PDF is attached, else absent), `snapshot_html`, `snapshot_sha256`, `tenant_name` |
 | `renewal_notice.v1` | `system` | a subscription of a customer who accepted the seller's agreements renews in the seller's notice days (Kafka `subscription.renewal-notice.v1`, plan 21) | `cancel_text`, `customer_name`, `interval`, `plan_code`, `price`, `renewal_date`, `tenant_name` |
 | `contract_withdrawal_received.v1` | `system` | a customer used the withdrawal function of a hosted page; the mail is the acknowledgement of receipt (Kafka `contract.withdrawal-received.v1`, plan 21) | `customer_name`, `received_at`, `statement`, `tenant_name` |
+| `customer_blocked.v1` | `customer_notices` | the seller blocked the customer (Kafka `customer.block-notice.v1`, plan 13); sent only when the tenant switched `customer_notices` on. It never says why: the seller's category and note are not in the fact | `customer_name`, `service_suspended` (set when the block also suspends the service, else absent), `tenant_name`, `until` (the end of the block in the tenant's time zone, absent when the block has none) |
+| `customer_unblocked.v1` | `customer_notices` | the block was lifted by the seller, or ended and the sweep cleared it (the same topic); same switch | `customer_name`, `tenant_name` |
 
 Notes on the variables, all strings:
 
