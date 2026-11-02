@@ -89,3 +89,31 @@ func TestOperatorTwoFactorSetting(t *testing.T) {
 		t.Error("a typo must not leave the requirement on or off by accident")
 	}
 }
+
+// The provider's delivery webhook is off by default; its secret has to be the form Svix signs with (whsec_ and base64), and it needs the notifier to hand the events to.
+func TestMailWebhookSecretSetting(t *testing.T) {
+	load := func(kv ...string) error {
+		env := map[string]string{"PAYRUDDER_SERVICE_NAME": "gateway", "PAYRUDDER_OPERATOR_TOKEN": strings.Repeat("t", 32)}
+		for i := 0; i < len(kv); i += 2 {
+			env[kv[i]] = kv[i+1]
+		}
+		_, err := config.LoadFrom[Config](env, defaults)
+		return err
+	}
+	notifier := []string{"PAYRUDDER_NOTIFIER_EVENTS_URL", "http://notifier:9111", "PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET", strings.Repeat("s", 32)}
+	secret := "whsec_dGhlLXN2aXgtc2VjcmV0LW9mLXRoZS10ZXN0cw=="
+	if err := load(); err != nil {
+		t.Fatalf("off by default: %v", err)
+	}
+	if err := load(append(notifier, "PAYRUDDER_MAIL_WEBHOOK_SECRET", secret)...); err != nil {
+		t.Fatalf("a secret and the notifier: %v", err)
+	}
+	for name, kv := range map[string][]string{
+		"no notifier to hand events to": {"PAYRUDDER_MAIL_WEBHOOK_SECRET", secret},
+		"not a Svix secret":             append(append([]string{}, notifier...), "PAYRUDDER_MAIL_WEBHOOK_SECRET", "just-a-string"),
+	} {
+		if load(kv...) == nil {
+			t.Errorf("%s was accepted", name)
+		}
+	}
+}

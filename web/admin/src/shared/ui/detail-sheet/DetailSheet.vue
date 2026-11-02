@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronDown, ChevronUp } from "@lucide/vue";
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 
@@ -18,6 +18,9 @@ const props = defineProps<{ index: number | null; total: number; title: string; 
 const emit = defineEmits<{ "update:index": [number | null]; edge: ["prev" | "next"] }>();
 const { t } = useI18n();
 const sheet = ref<{ front: boolean } | null>(null);
+const body = ref<{ $el: HTMLElement } | null>(null);
+// Going to another record starts it at its top, not at the place the last one was scrolled to.
+watch(() => props.index, () => body.value && (body.value.$el.scrollTop = 0));
 
 const open = () => props.index !== null;
 const hasPrev = () => props.index !== null && (props.index > 0 || !!props.edge?.prev);
@@ -60,7 +63,7 @@ onBeforeUnmount(() => window.removeEventListener("keydown", key));
         <SheetDescription v-if="description">{{ description }}</SheetDescription>
         <SheetDescription v-else class="sr-only">{{ title }}</SheetDescription>
       </SheetHeader>
-      <SheetBody><slot /></SheetBody>
+      <SheetBody ref="body"><slot /></SheetBody>
       <SheetFooter v-if="$slots.footer"><slot name="footer" /></SheetFooter>
     </SheetContent>
   </Sheet>

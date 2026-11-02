@@ -23,6 +23,7 @@ It talks MCP over stdio, so you do not run it by hand: you add it to your assist
 | `PAYRUDDER_MCP_HTTP_PORT` | serve streamable HTTP on this port instead of stdio, see “Over HTTP” below; unset by default |
 | `PAYRUDDER_MCP_HTTP_HOST` | the address to listen on in that mode; default `127.0.0.1` |
 | `PAYRUDDER_MCP_AUDIT` | `0` stops the audit log (below); on by default |
+| `PAYRUDDER_MCP_RATE_PER_MINUTE` | tool calls a minute for each key (see “Rate limits”); default `60`, `0` for no limit |
 
 **Claude Code:** `claude mcp add payrudder -e PAYRUDDER_API_KEY=qk_test_... -e PAYRUDDER_BASE_URL=https://YOUR-API-ADDRESS -- node /path/to/mcp/dist/main.js`
 
@@ -36,7 +37,7 @@ It talks MCP over stdio, so you do not run it by hand: you add it to your assist
 
 The read tools are **generated from `api/openapi/v1.yaml`** when you build (`npm run generate`, run by `build`, `test` and `typecheck`): the name, the arguments with their limits and the description of each come from the operation, so a tool cannot drift from the API (a description that says "see `getEntitlement`" says `get_entitlement`; one that names an operation that is not a tool fails the build). Which operations become tools is an allow-list, `scripts/read-tools.config.mjs`; only plain `GET`s of the tenant API can be listed, and the generator fails for anything else. A test checks every tool against the OpenAPI file.
 
-Always on, all read-only (25 tools):
+Always on, all read-only (30 tools):
 
 | Tool | What it answers |
 |---|---|
@@ -55,6 +56,9 @@ Always on, all read-only (25 tools):
 | `list_coupons` | the coupons (not their promotion codes) |
 | `get_tax_rates` | the tax added to invoices, by country |
 | `get_revenue_report`, `get_subscription_report`, `get_dunning_report` | invoices summed by period, subscriptions and MRR for a month, invoices whose payment has not gone through (aggregates, no free text except the provider's last error) |
+| `get_accounting_summary` | income and expenses of a period, one block per currency (aggregates) |
+| `get_top_customers` | customers ranked by their usage of a meter in a billing period (external ids and quantities) |
+| `get_dunning_settings`, `get_credit_settings`, `get_routing_rules` | the account's own settings that explain a behaviour: how long a declined payment waits before a retry, the low-balance threshold of credits, which payment provider a new subscription gets |
 
 What is **not** offered, on purpose, is listed with the reason in `NOT_OFFERED` in `scripts/read-tools.config.mjs` and checked by a test: every read that returns a link anyone holding it can open (invoice PDF, downloads, e-document files), a mail attachment, a customer's address and browser for each acceptance, a webhook endpoint's address or a delivery's answer body, the audit log, promotion codes and the files of the accounting export.
 
@@ -87,7 +91,7 @@ For an assistant that is not on your machine, start the server with `PAYRUDDER_M
 - It listens on `127.0.0.1` unless you set `PAYRUDDER_MCP_HTTP_HOST`. There is no TLS here: put a proxy that terminates TLS in front of it before it is reachable from anywhere else, or the keys travel in the clear.
 - `PAYRUDDER_MCP_WRITES=1` applies to every caller of the server; each caller's key still decides what succeeds.
 - Every tool call is written to the audit log (below) with the caller's key prefix, so you can tell who did what when several people share one server.
-- Not built yet: sign-in with OAuth instead of a key, and a limit of the server's own (see "Rate limits"). Until then, hand out keys of the narrowest role (`read_only`).
+- Each key has a limit of its own on the calls it makes through this server (below, "Rate limits"). Not built yet: sign-in with OAuth instead of a key (the design is in `docs/plans/20-mcp.md`). Until then, hand out keys of the narrowest role (`read_only`).
 
 Claude Code: `claude mcp add --transport http payrudder https://YOUR-MCP-ADDRESS/mcp --header "Authorization: Bearer qk_test_..."`.
 
@@ -106,7 +110,12 @@ Every tool call writes one JSON line to **stderr** (stdout carries the protocol 
 
 ## Rate limits
 
-The server has no limit of its own and the API does not limit **per key**: the gateway limits each **tenant** (the sandbox or the live environment of an app) per class of route (reads, writes, ingest, analytics) by the tenant's tier, and every key of that tenant shares the budget, an assistant's and your application's alike. A loop of tool calls therefore spends your application's reads; when the budget is gone the API answers `429` with `Retry-After`, which the assistant gets back as an error (`HTTP 429`). Until a limit per key exists in the gateway (not built; `docs/plans/20-mcp.md`), give an assistant a sandbox key, or an app of its own, and read the audit log for `"ok":false,"status":429`.
+Two limits apply, and they are different things.
+
+- **The API's**, per **tenant** (the sandbox or the live environment of an app): the gateway limits each tenant per class of route (reads, writes, ingest, analytics) by its tier, and every key of that tenant shares the budget, an assistant's and your application's alike. When it is gone the API answers `429` with `Retry-After`, which the assistant gets back as an error (`HTTP 429`).
+- **This server's**, per **key**: each API key may make `PAYRUDDER_MCP_RATE_PER_MINUTE` tool calls a minute through the server (default **60**, with a burst of a sixth of that at once, 10 by default; `0` turns it off). A call over the limit is not sent to the API: the assistant gets an error that starts `mcp.rate_limited` and says how many seconds to wait, and the audit log has the call with `"ok":false,"error":"mcp.rate_limited"`. Over HTTP each caller's key has a bucket of its own, named by a hash of the whole key (not its public prefix, which anyone who has seen a console or a log knows), kept in memory for the life of the process (a restart gives every key a full burst; up to 10 000 keys are remembered). Over stdio there is one key, so one bucket. The prompts and resources are not tool calls and are not counted.
+
+That is the key's share of what the server sends, so a looping assistant stops at 60 calls a minute instead of spending the application's whole read budget (a free tenant's is 20 reads a second). It does **not** limit a caller who calls the API directly with the same key, and it is per server process (two replicas behind a load balancer each allow the limit). A limit per key **in the gateway** would cover both; it needs a limit stored with the key (a migration, the key's API, the SDKs and the console) and is designed, not built, in `docs/plans/20-mcp.md`. Until then, give an assistant a sandbox key, or an app of its own, and read the audit log for `"ok":false,"status":429`.
 
 ## Resources
 
@@ -147,9 +156,12 @@ What holds for **every** tool, so the rows do not repeat it: the key decides wha
 | `get_tax_rates` | the tax added to invoices by country | rate `name` | low | on |
 | `get_revenue_report`, `get_subscription_report` | aggregates per currency: billed, collected, refunded, outstanding, MRR, new and churned | none | the account's financial results are read: medium for a business, nothing about a person | on |
 | `get_dunning_report` | invoices whose payment has not gone through, with the customer's external id and the provider's last error | `last_error` (the payment provider's words) | medium: shows who is behind | on |
+| `get_accounting_summary` | income and expenses of a period per currency: the seller's own financial results, no person | none | the account's financial results are read: medium for a business, nothing about a person | on |
+| `get_top_customers` | which customers use a meter most in a period: external ids and quantities | none (the external id is checked as an id) | who the biggest customers are: medium; no contact data | on |
+| `get_dunning_settings`, `get_credit_settings`, `get_routing_rules` | the account's settings: retry waits, the credits threshold, the provider chosen by country and currency | none | low: configuration the seller wrote, no secret and no person | on |
 | `create_customer` | **writes**: a customer record | the arguments the model chose | junk or misleading customers (a name that reads as an instruction to the next assistant that reads it, tagged on the way back); no delete tool here to undo it | **off** (`PAYRUDDER_MCP_WRITES=1`) |
 | `ingest_usage_events` | **writes**: up to 100 usage events per call | the arguments the model chose | **real money in live**: a misled or looping model inflates a customer's usage and so its next invoice, and an event is not unsent by this server. Live events need an `idempotency_key`, so a retry does not double | **off**; use an `ingest_only` key, and the sandbox first |
-| the four prompts | the text of the prompt and the argument the person typed | the argument, checked against a narrow pattern | a long run of read calls that spends the tenant's shared read budget (see "Rate limits"); nothing is written | on |
+| the four prompts | the text of the prompt and the argument the person typed | the argument, checked against a narrow pattern | a long run of read calls that spends the tenant's shared read budget (see "Rate limits": the per-key limit stops a loop at 60 calls a minute by default); nothing is written | on |
 | resources `payrudder://openapi`, `payrudder://docs/*` | the tenant API's OpenAPI file and the guides marked public (no operator or console route, no internal document) | none | none beyond what the docs site already shows | on |
 
 Open questions for the owner (defaults, not agreed): that personal data of customers may reach the model's provider at all (the default is yes, for whoever holds a key and starts the server; a `read_only` key can read customers, a `custom` key without `customers:read` cannot, and then `list_customers` and `get_customer` fail at the API); whether `list_customers` should be left out of an HTTP server shared by several people. Built since (default, not agreed): the personal fields of a customer are redacted unless `PAYRUDDER_MCP_ALLOW_PERSONAL_DATA=1`, and a live key is refused unless `PAYRUDDER_MCP_ALLOW_LIVE=1` (a flag for live reads, as the writes have theirs). The first row now reads as redacted by default; the question is whether that default is the right one.

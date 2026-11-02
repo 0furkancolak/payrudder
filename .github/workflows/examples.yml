@@ -1,6 +1,6 @@
 name: examples
 
-# The framework templates under examples/ (Express, FastAPI, Go net/http, Next.js, Laravel) are compiled and smoke-tested: each starts next to docs-site/fakeapi.mjs (a stand-in for the API
+# The framework templates under examples/ (Express, FastAPI, Go net/http, Next.js, Laravel, Rails, Django) are compiled and smoke-tested: each starts next to docs-site/fakeapi.mjs (a stand-in for the API
 # made from api/openapi/v1.yaml) and examples/smoke.mjs checks that a delivery signed the documented way is accepted, that a changed body, a wrong secret, an old timestamp and
 # a missing header are refused, and that POST /usage reaches the API as a valid usage event. It proves the template runs and uses the SDK correctly, not that a real
 # gateway accepts anything. The SDKs are installed from this checkout: nothing is published.
@@ -132,3 +132,43 @@ jobs:
         working-directory: examples/laravel
       # The built-in server, not artisan serve: the settings come from the process environment the smoke test sets, as they do in a container.
       - run: node examples/smoke.mjs examples/laravel sh -c 'exec php -S 127.0.0.1:"$PORT" -t public public/index.php'
+
+  rails:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+      - run: npm ci --no-audit --no-fund
+        working-directory: docs-site
+      # No Gemfile.lock is committed (there is no SDK to path-install, but the top level is pinned exactly like the other templates), so this resolves what Rails 8.1.4 allows.
+      - run: bundle install --jobs 4
+        working-directory: examples/rails
+      - run: find app config bin -type f \( -name '*.rb' -o -name rails \) -print0 | xargs -0 -n1 ruby -c
+        working-directory: examples/rails
+      # Puma on the port the smoke test picks, in production mode (eager loading finds a constant that does not autoload).
+      - run: node examples/smoke.mjs examples/rails sh -c 'exec bundle exec puma -b "tcp://127.0.0.1:$PORT" -e production config.ru'
+
+  django:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm ci --no-audit --no-fund
+        working-directory: docs-site
+      - run: pip install -r requirements.txt
+        working-directory: examples/django
+      - run: python -m compileall -q examples/django
+      # The system check loads the settings and the URL conf without the Payrudder settings: the client is made on first use.
+      - run: python manage.py check
+        working-directory: examples/django
+      - run: node examples/smoke.mjs examples/django sh -c 'exec gunicorn payrudder_app.wsgi --bind 127.0.0.1:"$PORT"'

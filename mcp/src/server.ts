@@ -29,6 +29,8 @@ export interface ServerOptions {
   keyHint?: string;
   /** How the server is reached, for the audit record. */
   transport?: "stdio" | "http";
+  /** Charges one tool call to the caller's key and returns the seconds to wait when the key is over its limit, else 0 (ratelimit.ts). No limit without it. */
+  rateLimit?: () => number;
 }
 
 export function createServer(o: ServerOptions): McpServer {
@@ -56,6 +58,12 @@ export function createServer(o: ServerOptions): McpServer {
             /* the log is best effort: a sink that fails must not turn a call into an error or make it run twice */
           }
         };
+        const wait = o.rateLimit?.() ?? 0;
+        if (wait > 0) {
+          const msg = `mcp.rate_limited: this key has called tools faster than this server allows. Wait ${wait} s before the next call, and do not repeat the call in a loop.`;
+          record({ ok: false, chars: msg.length, cut: false, error: "mcp.rate_limited" });
+          return { isError: true, content: [{ type: "text" as const, text: msg }] };
+        }
         try {
           const tagged = tagUntrusted(await t.run(args as Record<string, unknown>, o.api), UNTRUSTED, CHECKED_IDS);
           const { value, count } = o.allowPersonalData ? { value: tagged, count: 0 } : redactPersonal(tagged, PERSONAL);

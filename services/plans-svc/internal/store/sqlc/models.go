@@ -808,6 +808,14 @@ type TenantMailIntegration struct {
 	CheckProblem string
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	IsDefault    bool
+}
+
+type TenantMailRouting struct {
+	TenantID  uuid.UUID
+	Language  string
+	Account   string
+	UpdatedAt time.Time
 }
 
 type TenantMailSetting struct {

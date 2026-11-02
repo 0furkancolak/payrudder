@@ -98,6 +98,7 @@ func TestPlansSvc(t *testing.T) {
 	t.Run("TaxRates", testTaxRates)
 	t.Run("MailSettings", testMailSettings)
 	t.Run("MailProvider", testMailProvider)
+	t.Run("MailAccounts", testMailAccounts)
 	t.Run("CurrencyFeesAndCustomerBilling", testCurrencyFeesAndCustomerBilling)
 	t.Run("ManyCurrenciesAndZones", testManyCurrenciesAndZones)
 	t.Run("DashboardFacts", testDashboardFacts)
@@ -146,6 +147,11 @@ func seed(t *testing.T, e *env, tenantID, suffix string) {
 	if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(tenantID), func(tx pgx.Tx) error {
 		_, err := tx.Exec(context.Background(), `INSERT INTO tenant_mail_integrations (tenant_id, provider, base_url, api_key_enc, key_hint, from_address)
 			VALUES (app_tenant_id(), 'nafru', 'https://mail.example.com', '\x00', 'abcd', 'billing@example.com')`)
+		if err != nil {
+			return err
+		}
+		// The rules that send a language through an account are written by PutMailRouting, which checks the accounts; a row stands in.
+		_, err = tx.Exec(context.Background(), `INSERT INTO tenant_mail_routing (tenant_id, language, account) VALUES (app_tenant_id(), 'de', 'nafru')`)
 		return err
 	}); err != nil {
 		t.Fatal(err)

@@ -3189,7 +3189,9 @@
         "unreachable": "No se pudo contactar al proveedor de correo. Revisa la dirección e inténtalo de nuevo.",
         "not_configured": "Los proveedores de correo no están configurados en este despliegue.",
         "not_connected": "No hay ningún proveedor de correo conectado.",
-        "seal_failed": "No se pudo guardar la clave. Inténtalo de nuevo."
+        "seal_failed": "No se pudo guardar la clave. Inténtalo de nuevo.",
+        "default_in_use": "Esta es la cuenta de correo predeterminada. Convierta primero otra cuenta en la predeterminada y después elimine esta.",
+        "unknown_account": "Una regla nombra una cuenta de correo que no está conectada."
       },
       "saas": {
         "disabled": "Los planes no están activados en esta instalación.",
@@ -4673,14 +4675,53 @@
         },
         "checkAndConnect": "Comprobar y conectar",
         "confirmRemove": "¿Desconectar tu propio proveedor de correo? El correo live vuelve a salir desde Payrudder.",
-        "templatesNote": "¿Quiere su propio estilo? En Nafru Email, añada Payrudder en Aplicaciones y edite allí las plantillas. Cada correo lleva su nombre en la etiqueta payrudder_template para aplicar la plantilla correcta."
+        "templatesNote": "¿Quiere su propio estilo? En Nafru Email, añada Payrudder en Aplicaciones y edite allí las plantillas. Cada correo lleva su nombre en la etiqueta payrudder_template para aplicar la plantilla correcta.",
+        "identity": {
+          "title": "Identidad del remitente",
+          "intro": "Los proveedores de correo juzgan un mensaje por lo que el dominio del remitente publica en el DNS. Esta comprobación busca SPF, DKIM y DMARC de la dirección desde la que se envía su correo.",
+          "selector": "Selector DKIM (opcional)",
+          "selectorHelp": "El nombre bajo el que su proveedor publica la clave DKIM. Déjelo vacío para omitir DKIM.",
+          "check": "Comprobar el DNS",
+          "checking": "Comprobando…",
+          "domain": "Dominio: {domain}",
+          "names": {
+            "spf": "SPF",
+            "dkim": "DKIM",
+            "dmarc": "DMARC"
+          },
+          "status": {
+            "ok": "Publicado",
+            "weak": "Publicado, pero débil",
+            "missing": "No encontrado",
+            "invalid": "No válido",
+            "unchecked": "No comprobado",
+            "error": "No se pudo comprobar"
+          },
+          "detail": {
+            "hard_fail": "Rechaza a otros remitentes (-all)",
+            "soft_fail": "Marca a otros remitentes como sospechosos (~all)",
+            "neutral": "No dice nada de otros remitentes (?all)",
+            "pass_all": "Permite a cualquier remitente (+all)",
+            "no_all": "No tiene regla final",
+            "multiple": "Más de un registro SPF: los receptores lo tratan como un error",
+            "policy_none": "Política none: los fallos solo se notifican",
+            "policy_none_inherited": "Política none, del dominio superior",
+            "quarantine": "Política: quarantine",
+            "quarantine_inherited": "Política: quarantine, del dominio superior",
+            "reject": "Política: reject",
+            "reject_inherited": "Política: reject, del dominio superior",
+            "no_selector": "Introduzca el selector para comprobarlo",
+            "revoked": "La clave fue revocada (p= vacío)"
+          },
+          "note": "Esto solo lee el DNS público. No dice si los registros nombran a su proveedor ni si su proveedor ha verificado el dominio. Un cambio puede tardar horas en propagarse."
+        }
       },
       "accounts": {
         "title": "Cuentas",
         "intro": "Todas las cuentas de esta aplicación en una lista: pagos, factura electrónica y correo. Cada tipo puede tener varias cuentas, una es la predeterminada y las reglas de abajo dicen qué cuenta atiende a qué clientes.",
         "add": "Añadir integración",
         "addIntro": "Elija qué conecta: primero el tipo, luego el proveedor. El siguiente paso pide sus credenciales.",
-        "mailNote": "Una aplicación puede tener su propio proveedor de correo además del remitente integrado de Payrudder.",
+        "mailNote": "Una aplicación puede conectar varias cuentas de correo en Nafru Email además del remitente integrado de Payrudder. La primera es la predeterminada.",
         "continue": "Continuar",
         "search": "Buscar cuentas",
         "kind": "Tipo",
@@ -4702,15 +4743,16 @@
         },
         "tester": {
           "title": "¿Quién atiende a este cliente?",
-          "intro": "Introduzca un país y una moneda para ver qué cuenta de pago cobraría al cliente, qué cuenta de factura electrónica emitiría sus documentos y qué remitente le escribiría. No se crea nada.",
+          "intro": "Introduzca un país, una moneda y el idioma del correo para ver qué cuenta de pago cobraría al cliente, qué cuenta de factura electrónica emitiría sus documentos y qué remitente le escribiría. No se crea nada.",
           "run": "Comprobar",
           "byRule": "{account}, por la regla {n}",
           "byDefault": "La cuenta predeterminada, ninguna regla coincide.",
           "byRuleCountry": "{account}, por la regla de {country}",
           "eDefault": "{account}, la cuenta predeterminada",
           "eNone": "Ninguna cuenta: no hay cuenta predeterminada y ninguna regla nombra este país.",
-          "mailOwn": "Su propio proveedor de correo",
-          "mailBuiltIn": "El remitente integrado de Payrudder"
+          "mailBuiltIn": "El remitente integrado de Payrudder",
+          "mailByRule": "{account}, por la regla de {language}",
+          "mailDefault": "{account}, la cuenta predeterminada"
         },
         "audit": {
           "title": "Quién cambió las cuentas",
@@ -4726,6 +4768,13 @@
             "default_set": "{actor} hizo de {account} la cuenta predeterminada",
             "routing_changed": "{actor} cambió las reglas de enrutamiento"
           }
+        },
+        "mRouting": {
+          "title": "Qué cuenta de correo envía en qué idioma",
+          "intro": "El idioma del correo decide (el del cliente, si no el predeterminado de la aplicación, si no el inglés): los correos en un idioma de esta lista salen por esa cuenta y todos los demás por la cuenta predeterminada. El idioma y no el país, porque es lo único del destinatario que lleva cada correo.",
+          "language": "Idioma",
+          "duplicate": "Un idioma solo puede aparecer una vez.",
+          "mailLanguage": "Idioma del correo"
         }
       },
       "health": {
@@ -6204,7 +6253,9 @@
       },
       "mail_integration": {
         "saved": "Proveedor de correo conectado",
-        "removed": "Proveedor de correo desconectado"
+        "removed": "Proveedor de correo desconectado",
+        "default_set": "Cuenta de correo predeterminada cambiada",
+        "routing_changed": "Enrutamiento del correo cambiado"
       },
       "go_live": {
         "billing_profile_saved": "Perfil de facturación guardado",

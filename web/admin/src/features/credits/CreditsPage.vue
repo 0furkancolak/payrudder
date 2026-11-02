@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
+import { useCanWrite } from "@/shared/lib/access";
 import { idOf } from "@/shared/lib/sheets";
 import { useSearchValue } from "@/shared/lib/useSearchValue";
 import { useSheetTarget } from "@/shared/lib/useSheetTarget";
@@ -17,6 +18,7 @@ import { useRouteTenantId } from "@/shared/lib/routeTenant";
  */
 const { t } = useI18n();
 const tenantId = useRouteTenantId();
+const canWrite = useCanWrite();
 // The customer picked is in the address, so a reload or a shared link shows the same balance.
 const customer = useSearchValue("customer");
 // The grant sheet is in the address with the customer it is for: a reload or a shared link chooses that customer again.
@@ -39,7 +41,8 @@ const linkOpen = computed({
 useSheetTarget("purchase-link", linkOpen, linkPack, {
   id: (p) => p.id,
   find: (id) => {
-    const p = (packs.data.value?.packs ?? []).find((x) => x.id === id && x.active);
+    // A viewer does not make links: an address that names the sheet opens nothing.
+    const p = canWrite.value ? (packs.data.value?.packs ?? []).find((x) => x.id === id && x.active) : undefined;
     return p ? { id, name: p.name ?? "" } : undefined;
   },
 });

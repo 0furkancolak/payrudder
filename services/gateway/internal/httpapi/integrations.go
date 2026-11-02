@@ -2,12 +2,16 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -15,6 +19,7 @@ import (
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -42,6 +47,10 @@ func (s *Server) integrationRoutes() []Route {
 		{"PUT", "/app/v1/apps/{id}/integrations/mail", AccessSession, ratelimit.ClassWrite, s.appMailPut},
 		{"DELETE", "/app/v1/apps/{id}/integrations/mail", AccessSession, ratelimit.ClassWrite, s.appMailDelete},
 		{"POST", "/app/v1/apps/{id}/integrations/mail/test", AccessSession, ratelimit.ClassWrite, s.appMailTest},
+		{"POST", "/app/v1/apps/{id}/integrations/mail/default", AccessSession, ratelimit.ClassWrite, s.appMailDefault},
+		{"GET", "/app/v1/apps/{id}/integrations/mail/routing", AccessSession, ratelimit.ClassRead, s.appMailRoutingGet},
+		{"PUT", "/app/v1/apps/{id}/integrations/mail/routing", AccessSession, ratelimit.ClassWrite, s.appMailRoutingPut},
+		{"GET", "/app/v1/apps/{id}/integrations/mail/identity", AccessSession, ratelimit.ClassWrite, s.appMailIdentity},
 	}
 }
 
@@ -329,7 +338,7 @@ func (s *Server) mailTenant(r *http.Request) (uuid.UUID, error) {
 	return uuid.Parse(id)
 }
 
-// appMailGet is the connection of the live environment (no key in it). Any member reads it.
+// appMailGet is the e-mail accounts of the live environment (no key in them), the default first. Any member reads it.
 func (s *Server) appMailGet(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
 	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
@@ -363,13 +372,19 @@ func (s *Server) appMailPut(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp, err)
 }
 
+// appMailDelete disconnects the account named by ?account= (the default when absent).
 func (s *Server) appMailDelete(w http.ResponseWriter, r *http.Request) {
 	id, err := s.mailTenant(r)
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	if _, err := s.d.MailIntegration.DeleteMailIntegration(tenant.OutgoingFor(r.Context(), id), &plansv1.DeleteMailIntegrationRequest{}); err != nil {
+	account, err := accountParam(r.URL.Query().Get("account"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if _, err := s.d.MailIntegration.DeleteMailIntegration(tenant.OutgoingFor(r.Context(), id), &plansv1.DeleteMailIntegrationRequest{Account: account}); err != nil {
 		writeError(w, r, err)
 		return
 	}
@@ -390,4 +405,105 @@ func (s *Server) appMailTest(w http.ResponseWriter, r *http.Request) {
 	noStore(w)
 	resp, err := s.d.MailIntegration.TestMailIntegration(tenant.OutgoingFor(r.Context(), id), req)
 	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appMailDefault makes one of the live e-mail accounts the default: the one a mail goes through when no rule names its language. The account is not touched, so no
+// key is sent. Only the owner.
+func (s *Server) appMailDefault(w http.ResponseWriter, r *http.Request) {
+	id, err := s.mailTenant(r)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req := &plansv1.SetDefaultMailIntegrationRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStore(w)
+	resp, err := s.d.MailIntegration.SetDefaultMailIntegration(tenant.OutgoingFor(r.Context(), id), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appMailRoutingGet is the rules that send the mail of a language through an account. Any member reads them.
+func (s *Server) appMailRoutingGet(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	id, perr := uuid.Parse(live)
+	if perr != nil {
+		writeError(w, r, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable"))
+		return
+	}
+	resp, err := s.d.MailIntegration.GetMailRouting(tenant.OutgoingFor(r.Context(), id), &plansv1.GetMailRoutingRequest{})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appMailRoutingPut replaces the rules. Only the owner.
+func (s *Server) appMailRoutingPut(w http.ResponseWriter, r *http.Request) {
+	id, err := s.mailTenant(r)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req := &plansv1.PutMailRoutingRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStore(w)
+	resp, err := s.d.MailIntegration.PutMailRouting(tenant.OutgoingFor(r.Context(), id), req)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// appMailIdentity checks what the domain of the live sender publishes in DNS (SPF, DKIM, DMARC), for the address the app's own mail provider sends from. It looks up three
+// names and changes nothing; ?selector= is the DKIM selector the provider publishes its key under (without it DKIM is reported as not checked, not guessed). Any member may
+// ask; it is rate-limited like a write because each call is outbound lookups. The app with no provider of its own sends through Payrudder's sender, which is not its
+// domain's to check: 404 plans.mail_integration.not_connected.
+func (s *Server) appMailIdentity(w http.ResponseWriter, r *http.Request) {
+	sess := sessionFrom(r.Context())
+	live, _, err := s.liveTenantOf(r, sess.UserID, r.PathValue("id"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	id, perr := uuid.Parse(live)
+	if perr != nil {
+		writeError(w, r, errkey.New(codes.Unavailable, "identity.tenant.lookup_unavailable", "tenant lookup unavailable"))
+		return
+	}
+	conn, err := s.d.MailIntegration.GetMailIntegration(tenant.OutgoingFor(r.Context(), id), &plansv1.GetMailIntegrationRequest{})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if !conn.GetConnected() {
+		writeError(w, r, errkey.New(codes.NotFound, "plans.mail_integration.not_connected", "no e-mail provider is connected"))
+		return
+	}
+	lookup := s.d.LookupTXT
+	if lookup == nil {
+		lookup = net.DefaultResolver.LookupTXT
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	defer cancel()
+	res, err := mailx.CheckIdentity(ctx, lookup, conn.GetIntegration().GetFrom(), r.URL.Query().Get("selector"))
+	if errors.Is(err, mailx.ErrIdentityInput) {
+		writeError(w, r, invalid("selector", "a DKIM selector of letters, digits, dots and dashes; the sender must be an address at a domain"))
+		return
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	noStoreJSON(w)
+	writeJSONValue(w, http.StatusOK, struct {
+		mailx.Identity
+		From        string `json:"from"`
+		CheckedTime string `json:"checked_time"`
+	}{res, conn.GetIntegration().GetFrom(), time.Now().UTC().Format(time.RFC3339)})
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/grpcx"
 	"github.com/0furkancolak/payrudder/pkg/health"
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
@@ -92,6 +93,9 @@ type Config struct {
 	// (environment only). Without the secret the endpoint is off.
 	InboundDomain string `env:"PAYRUDDER_INBOUND_DOMAIN"`
 	InboundSecret string `env:"PAYRUDDER_INBOUND_SECRET"`
+	// MailWebhookSecret is the signing secret ("whsec_...", Svix) of the mail provider's webhook of delivery events (bounces, complaints) to /inbound/mail-events, which
+	// the gateway translates and hands to the notifier; it needs PAYRUDDER_NOTIFIER_EVENTS_URL.
+	MailWebhookSecret string `env:"PAYRUDDER_MAIL_WEBHOOK_SECRET"`
 
 	// Saas is Payrudder as a SaaS (phase 55, ADR 0024): on shows organisations their plan and limits their ingest volume, off (the default) does neither.
 	// Set it the same as plans-svc.
@@ -157,6 +161,14 @@ func (c *Config) Validate() error {
 	}
 	if (c.NotifierURL == "") != (c.NotifierSecret == "") {
 		errs = append(errs, errors.New("PAYRUDDER_NOTIFIER_EVENTS_URL and PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET are set together or not at all"))
+	}
+	if c.MailWebhookSecret != "" {
+		if err := mailx.ValidSvixSecret(c.MailWebhookSecret); err != nil {
+			errs = append(errs, fmt.Errorf("PAYRUDDER_MAIL_WEBHOOK_SECRET: %w", err))
+		}
+		if c.NotifierURL == "" {
+			errs = append(errs, errors.New("PAYRUDDER_MAIL_WEBHOOK_SECRET needs PAYRUDDER_NOTIFIER_EVENTS_URL: a delivery event is handed to the notifier"))
+		}
 	}
 	if c.TrustedProxySecret != "" && len(c.TrustedProxySecret) < 32 {
 		errs = append(errs, errors.New("PAYRUDDER_TRUSTED_PROXY_SECRET must be at least 32 characters"))
@@ -320,7 +332,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		BillingAdmin: billingv1.NewBillingAdminServiceClient(up.billing), Hosted: billingv1.NewHostedInvoiceServiceClient(up.billing), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(up.analytics),
 		Assets: assetsv1.NewAssetsServiceClient(up.assets),
 		Auth:   authn, Limiter: limiter, OperatorToken: cfg.OperatorToken, Log: log,
-		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken, Demo: cfg.Demo, InboundDomain: cfg.InboundDomain, InboundSecret: cfg.InboundSecret,
+		PaymentsURL: paymentsURL, PaymentsToken: cfg.PaymentsToken, Demo: cfg.Demo, InboundDomain: cfg.InboundDomain, InboundSecret: cfg.InboundSecret, MailWebhookSecret: cfg.MailWebhookSecret,
 		Identity: plansv1.NewIdentityServiceClient(up.plans), TrustForwardedFor: cfg.TrustForwardedFor,
 		TrustedProxies: proxies, TrustedProxySecret: cfg.TrustedProxySecret,
 	}), nil

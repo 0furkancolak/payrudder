@@ -31,12 +31,39 @@ export const frontUid = computed(() => tabs.value.at(-1)?.uid);
 export const depthOf = (uid: number) => tabs.value.findIndex((t) => t.uid === uid);
 
 export function enter(tab: SheetTab) {
-  if (!tabs.value.some((t) => t.uid === tab.uid)) tabs.value = [...tabs.value, tab];
+  if (!tabs.value.some((t) => t.uid === tab.uid)) {
+    if (tabs.value.length === 0) opener = offered && Date.now() - offered.at < OFFER_MS ? offered.el : null;
+    offered = null;
+    tabs.value = [...tabs.value, tab];
+  }
   syncScrollLock(tabs.value.length > 0);
 }
 export function leave(uid: number) {
   tabs.value = tabs.value.filter((t) => t.uid !== uid);
   syncScrollLock(tabs.value.length > 0);
+}
+
+/**
+ * The control a sheet was opened from when that control is not what the focus returns to by itself: a row's "more actions" menu is gone by the time the sheet
+ * closes, and its trigger gets the focus back only if the sheet did not have it. RowActions registers its trigger here (`rememberOpener`) when an action opens a
+ * sheet; the sheet in front gives the focus back to it when the last sheet closes (`restoreOpener`, from the sheet's close-auto-focus), so a keyboard user is in
+ * the row they left and not at the top of the page.
+ */
+let opener: HTMLElement | null = null;
+/** Offered by RowActions when an action is chosen; the sheet that opens next (a sheet opens a moment later, through the address) takes it, anything else leaves it to expire. */
+let offered: { el: HTMLElement; at: number } | null = null;
+const OFFER_MS = 2000;
+export const rememberOpener = (el: HTMLElement | null) => {
+  offered = el ? { el, at: Date.now() } : null;
+};
+export function restoreOpener(e: Event) {
+  const el = opener;
+  if (tabs.value.length > 0 || !el) return;
+  opener = null;
+  if (el.isConnected) {
+    e.preventDefault();
+    el.focus();
+  }
 }
 
 /** What the scroll lock touches of the page: the root element's style and the scroll position, and the width of a classic scrollbar (0 for an overlay one). */
