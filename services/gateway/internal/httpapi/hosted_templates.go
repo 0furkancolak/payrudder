@@ -88,13 +88,17 @@ const invoiceTmpl = `{{define "invoice"}}{{template "head" .}}
 {{if .Hint}}<p class="hint">{{.Hint}}</p>{{end}}{{if .CheckAgain}}<a class="btn alt" id="check-again" href="{{.Again}}">{{.L.check_again}}</a>{{end}}
 {{with .Bank}}<div class="pay"><b>{{$.L.payBy}}</b><dl><dt>{{$.L.bank}}</dt><dd>{{.Name}}</dd><dt>{{$.L.holder}}</dt><dd>{{.Holder}}</dd><dt>{{$.L.iban}}</dt><dd class="mono">{{.IBAN}}</dd>{{if .BIC}}<dt>{{$.L.bic}}</dt><dd class="mono">{{.BIC}}</dd>{{end}}<dt>{{$.L.bankRef}}</dt><dd class="mono">{{.Reference}}</dd></dl><p class="muted">{{$.L.referenceHint}}</p></div>{{end}}
 {{if .Payable}}<div class="pay"><h2>{{.L.pay_title}}</h2>
-{{if and .Contracts .Methods}}{{template "agree" .}}{{else}}{{range .Methods}}<form method="post" action="{{$.Pay}}"><input type="hidden" name="method" value="{{.ID}}"><button class="btn" type="submit">{{.Label}}</button></form>{{end}}{{end}}
+{{if and .Contracts .Methods}}{{template "agree" .}}{{else}}{{range .Methods}}<form method="post" action="{{$.Pay}}"><input type="hidden" name="method" value="{{.ID}}">{{template "installments" .}}<button class="btn" type="submit">{{.Label}}</button></form>{{end}}{{end}}
 {{if .NoMethod}}<p class="muted">{{.L.pay_none}}</p>{{end}}</div>{{end}}
 <div class="noprint">{{if .HasPDF}}<a class="btn alt" href="{{.PDF}}">{{.L.pdf}}</a>{{end}}{{if .Receipt}}<a class="btn alt" href="{{.Receipt}}">{{.L.receipt_view}}</a>{{end}}{{if .Back}}<a class="btn alt" href="{{.Back}}">{{.L.back}}</a>{{end}}{{if .Withdraw}}<a class="btn alt" href="{{.Withdraw}}">{{.L.withdraw_link}}</a>{{end}}</div>
 {{template "foot" .}}{{end}}`
 
 // The agreements form: each text the customer has not accepted yet (the page needs no script: the browser keeps the form from being sent with a box empty, and the server
 // checks again), the two consents of a consumer, the payment method and the button that says what pressing it means.
+// The instalments of a saved card: a plain radio group in the pay form (the page runs no script), the single payment chosen. Only the stored-card method has one; the server
+// ignores the field for any other method.
+const installmentsTmpl = `{{define "installments"}}{{if .Installments}}<fieldset class="inst" data-installments><legend>{{.InstLegend}}</legend>{{range $i, $o := .Installments}}<label class="check"><input type="radio" name="installments" value="{{$o.Count}}"{{if eq $i 0}} checked{{end}}><span>{{$o.Label}}</span></label>{{end}}<p class="muted">{{.InstHint}}</p></fieldset>{{end}}{{end}}`
+
 const agreeTmpl = `{{define "agree"}}<form method="post" action="{{.Pay}}" class="agree">
 <h3>{{.L.contract_title}}</h3>
 {{if .Contracts.Error}}<p class="err" role="alert">{{.Contracts.Error}}</p>{{end}}
@@ -103,6 +107,7 @@ const agreeTmpl = `{{define "agree"}}<form method="post" action="{{.Pay}}" class
 {{end}}{{if .Contracts.Consents}}<label class="check"><input type="checkbox" name="consent_start" value="1" required><span>{{.L.consent_start}}</span></label>
 <label class="check"><input type="checkbox" name="consent_waiver" value="1" required><span>{{.L.consent_waiver}}</span></label>{{end}}
 {{if gt (len .Methods) 1}}<fieldset><legend>{{.L.pay_method}}</legend>{{range $i, $m := .Methods}}<label class="check"><input type="radio" name="method" value="{{$m.ID}}"{{if eq $i 0}} checked{{end}}><span>{{$m.Label}}</span></label>{{end}}</fieldset>{{else}}{{range .Methods}}<input type="hidden" name="method" value="{{.ID}}">{{end}}{{end}}
+{{range .Methods}}{{template "installments" .}}{{end}}
 <p class="muted">{{.L.contract_pay_note}}</p>
 <button class="btn" type="submit">{{.L.contract_pay}}</button></form>{{end}}`
 
@@ -218,7 +223,7 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 
 // parsePageTemplates parses the templates; the tests parse a second set to run it with stricter options than the one the handlers use.
 func parsePageTemplates() *template.Template {
-	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + agreeTmpl + portalAgreeTmpl + withdrawTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + leavingTmpl + privacyTmpl))
+	return template.Must(template.New("pages").Parse(pageHead + invoiceTmpl + installmentsTmpl + agreeTmpl + portalAgreeTmpl + withdrawTmpl + adhocTmpl + receiptTmpl + instructionsTmpl + messageTmpl + portalTmpl + referralTmpl + leavingTmpl + privacyTmpl))
 }
 
 var pageTemplates = parsePageTemplates()

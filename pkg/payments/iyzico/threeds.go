@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/0furkancolak/payrudder/pkg/payments"
@@ -44,12 +45,23 @@ func (c *Client) StartThreeDS(ctx context.Context, r payments.ThreeDSRequest) (p
 	if err != nil {
 		return payments.ThreeDSStart{}, err
 	}
+	paid, installment := amount, 1
+	if r.Installments > 1 {
+		// What the payer was quoted for this many instalments (the price and the bank's charge for them) is the paidPrice; the price stays the invoice's.
+		if r.PaidMinor < r.AmountMinor || !slices.Contains(installmentCounts, r.Installments) {
+			return payments.ThreeDSStart{}, fmt.Errorf("iyzico: %d instalments of %d (the quote is %d) cannot be started", r.Installments, r.AmountMinor, r.PaidMinor)
+		}
+		if paid, err = price(r.PaidMinor, r.Currency); err != nil {
+			return payments.ThreeDSStart{}, err
+		}
+		installment = r.Installments
+	}
 	buyer, addr, err := c.buyerObjects(r.Buyer, r.InvoiceID)
 	if err != nil {
 		return payments.ThreeDSStart{}, err
 	}
 	out, err := c.do(ctx, threeDSInitPath, map[string]any{
-		"locale": "en", "conversationId": r.IdempotencyKey, "price": amount, "paidPrice": amount, "currency": r.Currency, "installment": 1,
+		"locale": "en", "conversationId": r.IdempotencyKey, "price": amount, "paidPrice": paid, "currency": r.Currency, "installment": installment,
 		"basketId": r.InvoiceID, "paymentChannel": "WEB", "paymentGroup": "PRODUCT", "callbackUrl": r.CallbackURL,
 		"paymentCard": map[string]string{"cardUserKey": userKey, "cardToken": token},
 		"buyer":       buyer, "shippingAddress": addr, "billingAddress": addr,
@@ -87,7 +99,11 @@ func (c *Client) confirmThreeDS(ctx context.Context, r payments.ReturnRequest, p
 	if md := r.Form.Get("mdStatus"); md != "" && md != "1" || strings.EqualFold(r.Form.Get("status"), "failure") {
 		return payments.StatusResult{State: payments.StateDeclined, DeclineCode: "authentication_failed"}, nil
 	}
-	amount, err := price(r.AmountMinor, r.Currency)
+	paidMinor := r.AmountMinor
+	if r.PaidMinor > r.AmountMinor {
+		paidMinor = r.PaidMinor // the attempt was split into instalments: the auth call names what the initialise call did
+	}
+	amount, err := price(paidMinor, r.Currency)
 	if err != nil {
 		return payments.StatusResult{}, err
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/0furkancolak/payrudder/pkg/money"
@@ -39,6 +40,60 @@ type cardList struct {
 		ExpireMonth string `json:"expireMonth"`
 		ExpireYear  string `json:"expireYear"`
 	} `json:"cardDetails"`
+}
+
+// CardUserKey implements payments.CardStore: the user key of a payment method of the form "cardUserKey:cardToken".
+func (c *Client) CardUserKey(pm string) (string, bool) {
+	userKey, _, err := SplitPaymentMethod(pm)
+	return userKey, err == nil
+}
+
+// StoredCardInstallments implements payments.InstallmentOffer: the instalment options of the account's enabled counts (Settings.EnabledInstallments, more than one
+// payment) that iyzico quotes for the customer's stored card and the amount. The card's BIN is read from the card storage list (the token of the payment method
+// picks the card) and handed to the instalment query. Nothing is offered, with no error, when the account enables no instalments, the card is not in the list or its
+// BIN is not the 8 digits the query takes (UNVERIFIED how long the BIN of a stored card is: the page of the list does not say); an error of iyzico is returned so the
+// caller can log it, and the payer then pays once.
+func (c *Client) StoredCardInstallments(ctx context.Context, pm string, amountMinor int64, currency string) ([]payments.InstallmentOption, error) {
+	var enabled []int
+	for _, n := range c.s.EnabledInstallments {
+		if n > 1 {
+			enabled = append(enabled, n)
+		}
+	}
+	if len(enabled) == 0 {
+		return nil, nil
+	}
+	userKey, token, err := SplitPaymentMethod(pm)
+	if err != nil {
+		return nil, err
+	}
+	cards, err := c.ListCards(ctx, userKey)
+	if err != nil {
+		return nil, err
+	}
+	bin := ""
+	for _, k := range cards {
+		if k.Token == token {
+			bin = k.BIN
+		}
+	}
+	if len(bin) != 8 || strings.Trim(bin, "0123456789") != "" {
+		return nil, nil
+	}
+	quoted, err := c.Installments(ctx, amountMinor, currency, bin)
+	if err != nil {
+		return nil, err
+	}
+	// The query named the card's BIN, so the answer is that card's: its first (only) entry.
+	var out []payments.InstallmentOption
+	if len(quoted) > 0 {
+		for _, o := range quoted[0].Options {
+			if slices.Contains(enabled, o.Count) && o.TotalMinor >= amountMinor {
+				out = append(out, o)
+			}
+		}
+	}
+	return out, nil
 }
 
 // ListCards implements payments.CardStore: the cards iyzico holds under a cardUserKey. A cardUserKey iyzico does not know (3005) is an error of the request, not an

@@ -59,6 +59,8 @@ const (
 	StateNotFound  State = "not_found"
 	StateSucceeded State = "succeeded"
 	StateDeclined  State = "declined"
+	// StateActionRequired: the payment waits for the customer to act (Stripe's requires_action, 3-D Secure). Not an outcome: ask again later.
+	StateActionRequired State = "action_required"
 )
 
 // StatusResult answers "did my charge with this idempotency key go through?".
@@ -87,6 +89,8 @@ type DeclinedError struct {
 	// and may count against the merchant with the card networks. Dunning then stops and the customer is asked for another method. False is not "retry": most
 	// declines carry no advice at all.
 	Final bool
+	// Ref is the provider's reference of the payment that was refused, when the refusal carries one (Stripe's error holds the PaymentIntent).
+	Ref string
 }
 
 func (e *DeclinedError) Error() string { return "payment declined: " + e.Code }

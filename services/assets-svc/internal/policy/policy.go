@@ -65,6 +65,7 @@ func New(general []string) Policy {
 		assetsv1.Purpose_PURPOSE_INVOICE_LOGO:       {set("image/png", "image/jpeg"), 2 * MiB},
 		assetsv1.Purpose_PURPOSE_INVOICE_ATTACHMENT: {set("application/pdf"), 25 * MiB},
 		assetsv1.Purpose_PURPOSE_GENERAL:            {set(general...), MaxFileSize},
+		assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT: {set("image/png", "image/jpeg", "application/pdf", "text/plain"), 5 * MiB},
 	}}
 }
 
@@ -77,6 +78,8 @@ func PurposeName(p assetsv1.Purpose) string {
 		return "invoice_attachment"
 	case assetsv1.Purpose_PURPOSE_GENERAL:
 		return "general"
+	case assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT:
+		return "support_attachment"
 	}
 	return ""
 }
@@ -90,6 +93,8 @@ func PurposeOf(s string) assetsv1.Purpose {
 		return assetsv1.Purpose_PURPOSE_INVOICE_ATTACHMENT
 	case "general":
 		return assetsv1.Purpose_PURPOSE_GENERAL
+	case "support_attachment":
+		return assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT
 	}
 	return assetsv1.Purpose_PURPOSE_UNSPECIFIED
 }

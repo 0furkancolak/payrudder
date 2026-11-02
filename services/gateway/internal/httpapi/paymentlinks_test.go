@@ -286,12 +286,14 @@ func (fakeBilling) GetPortalSubscriptions(_ context.Context, req *billingv1.GetP
 
 // fakeWorker is a payments-worker: it records what it is asked and answers from tables.
 type fakeWorker struct {
-	mu       sync.Mutex
-	calls    []string
-	bodies   []map[string]any
-	tokens   []string
-	rows     []map[string]any
-	methods  []map[string]string
+	mu      sync.Mutex
+	calls   []string
+	bodies  []map[string]any
+	tokens  []string
+	rows    []map[string]any
+	methods []map[string]string
+	// splits are the instalments the worker quotes for the stored-card method (it names none for the others).
+	splits   []map[string]any
 	pay      map[string]any
 	payCode  int
 	failList bool
@@ -314,7 +316,17 @@ func (f *fakeWorker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"rows": f.rows})
 	case strings.HasSuffix(r.URL.Path, "/invoice-methods"):
-		_ = json.NewEncoder(w).Encode(map[string]any{"methods": f.methods})
+		out := make([]map[string]any, 0, len(f.methods))
+		for _, m := range f.methods {
+			one := map[string]any{"id": m["id"], "kind": m["kind"], "provider": m["provider"]}
+			if m["kind"] == "stored_card" && f.splits != nil {
+				one["installments"] = f.splits
+			}
+			out = append(out, one)
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"methods": out})
+	case strings.Contains(r.URL.Path, "/customers/") && strings.Contains(r.URL.Path, "/cards"):
+		_ = json.NewEncoder(w).Encode(map[string]any{"provider": "iyzico", "cards": []map[string]any{{"token": "ct1", "last4": "0008", "in_use": true}}, "deleted": true, "was_in_use": true})
 	case strings.HasSuffix(r.URL.Path, "/invoice-payments/return"):
 		_ = json.NewEncoder(w).Encode(map[string]any{"state": "paid"})
 	case strings.HasSuffix(r.URL.Path, "/invoice-payments"):
@@ -586,7 +598,7 @@ func TestLivePaymentMethodsAndCheckout(t *testing.T) {
 		}
 	}
 	calls := f.callList()
-	if !strings.Contains(strings.Join(calls, "|"), "GET /admin/tenants/"+liveTenantID+"/invoice-methods?country=DE&currency=USD&environment=live") {
+	if !strings.Contains(strings.Join(calls, "|"), "GET /admin/tenants/"+liveTenantID+"/invoice-methods?amount_minor=5000&country=DE&currency=USD&environment=live") {
 		t.Errorf("calls = %v", calls)
 	}
 

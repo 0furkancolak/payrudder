@@ -5,6 +5,7 @@ package invoicepayments
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/httpx"
@@ -46,15 +47,16 @@ func (h *Handler) invoiceLink(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"url": url})
 }
 
-// methods is GET /admin/tenants/{tenant}/invoice-methods?environment=live&currency=&country=&provider=&customer=
+// methods is GET /admin/tenants/{tenant}/invoice-methods?environment=live&currency=&country=&provider=&customer=&amount_minor=
 func (h *Handler) methods(w http.ResponseWriter, r *http.Request) {
 	t, ok := httpx.Tenant(w, r)
 	if !ok {
 		return
 	}
 	q := r.URL.Query()
+	amount, _ := strconv.ParseInt(q.Get("amount_minor"), 10, 64)
 	list, err := query.Methods(r.Context(), h.Query, t, query.Filter{Environment: q.Get("environment"), Currency: q.Get("currency"), Country: q.Get("country"), Provider: q.Get("provider"),
-		CustomerExternalID: q.Get("customer")})
+		CustomerExternalID: q.Get("customer"), AmountMinor: amount})
 	if err != nil {
 		httpx.Reply(h.Log, w, r, err)
 		return

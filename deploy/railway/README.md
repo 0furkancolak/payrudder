@@ -86,7 +86,7 @@ each service its health check, restart policy and watch paths. Until then it sti
    | `MINIO_ROOT_PASSWORD` | `minio` | `openssl rand -hex 24` |
    | `CLICKHOUSE_PASSWORD` | `clickhouse` | `openssl rand -hex 24` |
    | `PAYRUDDER_OPERATOR_TOKEN` | `gateway` | `openssl rand -hex 32` (at least 32 characters; the API's machine credential) |
-   | `PAYRUDDER_OTP_PEPPER` | `plans-svc` | `openssl rand -hex 32` (keys the hash of one-time sign-in codes) |
+   | `PAYRUDDER_OTP_PEPPER` | `plans-svc` | `openssl rand -hex 32` (keys the hash of one-time sign-in and recovery codes; plans-svc refuses to start without it, and `PAYRUDDER_ENV=railway` is not a development environment) |
    | `PAYMENTS_INTERNAL_TOKEN` | `payments-worker` | `openssl rand -hex 32` |
 | `NOTIFIER_MAIL_EVENTS_SECRET` | `notifier` | `openssl rand -hex 32` (signs the notifier's mail-events listener; the gateway refers to it) |
    | `PAYRUDDER_SECRETS_KEY` | `payments-worker` | `openssl rand -base64 32` (exactly 32 bytes; seals tenants' provider credentials and webhook secrets) |
@@ -216,6 +216,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PAYRUDDER_AGGREGATOR_ADDR` | `dns:///aggregator.railway.internal:7003` | |
 | `PAYRUDDER_KAFKA_BROKERS` | KAFKA | |
 | `PAYRUDDER_RABBITMQ_URL` | AMQP | |
+| `PAYRUDDER_PUBLIC_URL` | `https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}` | optional: the link in the mail that asks a customer to confirm a payment (3-D Secure); without it the mail has no link |
 | `S3_ENDPOINT` | `http://minio.railway.internal:9000` | |
 | `S3_PUBLIC_ENDPOINT` | `https://${{minio.RAILWAY_PUBLIC_DOMAIN}}` | what a browser opens for a presigned invoice link |
 | `S3_BUCKET` | `invoices` | |
@@ -264,6 +265,7 @@ Full profile only.
 | `PAYRUDDER_PG_MIGRATOR_DSN` | PGDSN(`payments`, migrator) | |
 | `PAYRUDDER_MIGRATE_ON_START` | `true` | |
 | `PAYRUDDER_RABBITMQ_URL` | AMQP | |
+| `PAYRUDDER_REDIS_URL` | `${{Redis.REDIS_URL}}` | optional: the circuit breaker of a provider account is shared by the replicas; without it each replica keeps its own |
 | `PAYRUDDER_PLANS_ADDR` | `dns:///plans-svc.railway.internal:7001` | |
 | `PAYRUDDER_BILLING_ADDR` | `dns:///billing-svc.railway.internal:7005` | |
 | `MOCKPSP_URL` | `http://mockpsp.railway.internal:8090` | sandbox tenants always use the mock provider |

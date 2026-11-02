@@ -33,6 +33,8 @@ const (
 	PaymentStatus_STATE_DECLINED  PaymentStatus_State = 3
 	// The charge was accepted but has not settled (a bank transfer that has not arrived yet). Ask again later.
 	PaymentStatus_STATE_PENDING PaymentStatus_State = 4
+	// The payment waits for the customer to act (Stripe's 3-D Secure): the saga mails the customer a link, once, and goes on asking.
+	PaymentStatus_STATE_ACTION_REQUIRED PaymentStatus_State = 5
 )
 
 // Enum value maps for PaymentStatus_State.
@@ -43,13 +45,15 @@ var (
 		2: "STATE_SUCCEEDED",
 		3: "STATE_DECLINED",
 		4: "STATE_PENDING",
+		5: "STATE_ACTION_REQUIRED",
 	}
 	PaymentStatus_State_value = map[string]int32{
-		"STATE_UNSPECIFIED": 0,
-		"STATE_NOT_FOUND":   1,
-		"STATE_SUCCEEDED":   2,
-		"STATE_DECLINED":    3,
-		"STATE_PENDING":     4,
+		"STATE_UNSPECIFIED":     0,
+		"STATE_NOT_FOUND":       1,
+		"STATE_SUCCEEDED":       2,
+		"STATE_DECLINED":        3,
+		"STATE_PENDING":         4,
+		"STATE_ACTION_REQUIRED": 5,
 	}
 )
 
@@ -77,7 +81,7 @@ func (x PaymentStatus_State) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PaymentStatus_State.Descriptor instead.
 func (PaymentStatus_State) EnumDescriptor() ([]byte, []int) {
-	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{19, 0}
+	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{20, 0}
 }
 
 // CommandEnvelope is a command from billing-svc to a worker, published to the billing.commands exchange.
@@ -299,6 +303,7 @@ type ReplyEnvelope struct {
 	//	*ReplyEnvelope_PaymentStatus
 	//	*ReplyEnvelope_NotificationSent
 	//	*ReplyEnvelope_EInvoiceResult
+	//	*ReplyEnvelope_PaymentActionRequired
 	Reply         isReplyEnvelope_Reply `protobuf_oneof:"reply"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -450,6 +455,15 @@ func (x *ReplyEnvelope) GetEInvoiceResult() *EInvoiceResult {
 	return nil
 }
 
+func (x *ReplyEnvelope) GetPaymentActionRequired() *PaymentActionRequired {
+	if x != nil {
+		if x, ok := x.Reply.(*ReplyEnvelope_PaymentActionRequired); ok {
+			return x.PaymentActionRequired
+		}
+	}
+	return nil
+}
+
 type isReplyEnvelope_Reply interface {
 	isReplyEnvelope_Reply()
 }
@@ -490,6 +504,10 @@ type ReplyEnvelope_EInvoiceResult struct {
 	EInvoiceResult *EInvoiceResult `protobuf:"bytes,18,opt,name=e_invoice_result,json=eInvoiceResult,proto3,oneof"`
 }
 
+type ReplyEnvelope_PaymentActionRequired struct {
+	PaymentActionRequired *PaymentActionRequired `protobuf:"bytes,19,opt,name=payment_action_required,json=paymentActionRequired,proto3,oneof"`
+}
+
 func (*ReplyEnvelope_PdfRendered) isReplyEnvelope_Reply() {}
 
 func (*ReplyEnvelope_PdfFailed) isReplyEnvelope_Reply() {}
@@ -507,6 +525,8 @@ func (*ReplyEnvelope_PaymentStatus) isReplyEnvelope_Reply() {}
 func (*ReplyEnvelope_NotificationSent) isReplyEnvelope_Reply() {}
 
 func (*ReplyEnvelope_EInvoiceResult) isReplyEnvelope_Reply() {}
+
+func (*ReplyEnvelope_PaymentActionRequired) isReplyEnvelope_Reply() {}
 
 // InvoiceLine is one line of the invoice snapshot a command carries, so workers need no access to billing's database.
 type InvoiceLineSnapshot struct {
@@ -1926,6 +1946,53 @@ func (x *PaymentDeclined) GetFinal() bool {
 	return false
 }
 
+// PaymentActionRequired: the provider needs the customer present to go on with the charge (Stripe's 3-D Secure: requires_action, or the decline authentication_required).
+// Nothing was charged and nothing is a decline: the saga mails the customer a link to the invoice page and waits (PAYMENT_ACTION_REQUIRED).
+type PaymentActionRequired struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The provider's reference of the payment that waits (Stripe's PaymentIntent id), which the status query uses instead of a search.
+	PspChargeId   string `protobuf:"bytes,1,opt,name=psp_charge_id,json=pspChargeId,proto3" json:"psp_charge_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PaymentActionRequired) Reset() {
+	*x = PaymentActionRequired{}
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PaymentActionRequired) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PaymentActionRequired) ProtoMessage() {}
+
+func (x *PaymentActionRequired) ProtoReflect() protoreflect.Message {
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PaymentActionRequired.ProtoReflect.Descriptor instead.
+func (*PaymentActionRequired) Descriptor() ([]byte, []int) {
+	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *PaymentActionRequired) GetPspChargeId() string {
+	if x != nil {
+		return x.PspChargeId
+	}
+	return ""
+}
+
 type PaymentErrored struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Retryable bool                   `protobuf:"varint,1,opt,name=retryable,proto3" json:"retryable,omitempty"`
@@ -1939,7 +2006,7 @@ type PaymentErrored struct {
 
 func (x *PaymentErrored) Reset() {
 	*x = PaymentErrored{}
-	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[17]
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1951,7 +2018,7 @@ func (x *PaymentErrored) String() string {
 func (*PaymentErrored) ProtoMessage() {}
 
 func (x *PaymentErrored) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[17]
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1964,7 +2031,7 @@ func (x *PaymentErrored) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentErrored.ProtoReflect.Descriptor instead.
 func (*PaymentErrored) Descriptor() ([]byte, []int) {
-	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{17}
+	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PaymentErrored) GetRetryable() bool {
@@ -2004,7 +2071,7 @@ type PaymentRefunded struct {
 
 func (x *PaymentRefunded) Reset() {
 	*x = PaymentRefunded{}
-	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[18]
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2016,7 +2083,7 @@ func (x *PaymentRefunded) String() string {
 func (*PaymentRefunded) ProtoMessage() {}
 
 func (x *PaymentRefunded) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[18]
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2029,7 +2096,7 @@ func (x *PaymentRefunded) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentRefunded.ProtoReflect.Descriptor instead.
 func (*PaymentRefunded) Descriptor() ([]byte, []int) {
-	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{18}
+	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PaymentRefunded) GetPspRefundId() string {
@@ -2052,7 +2119,7 @@ type PaymentStatus struct {
 
 func (x *PaymentStatus) Reset() {
 	*x = PaymentStatus{}
-	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[19]
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2064,7 +2131,7 @@ func (x *PaymentStatus) String() string {
 func (*PaymentStatus) ProtoMessage() {}
 
 func (x *PaymentStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[19]
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2077,7 +2144,7 @@ func (x *PaymentStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaymentStatus.ProtoReflect.Descriptor instead.
 func (*PaymentStatus) Descriptor() ([]byte, []int) {
-	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{19}
+	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *PaymentStatus) GetState() PaymentStatus_State {
@@ -2120,7 +2187,7 @@ type NotificationSent struct {
 
 func (x *NotificationSent) Reset() {
 	*x = NotificationSent{}
-	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[20]
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2132,7 +2199,7 @@ func (x *NotificationSent) String() string {
 func (*NotificationSent) ProtoMessage() {}
 
 func (x *NotificationSent) ProtoReflect() protoreflect.Message {
-	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[20]
+	mi := &file_payrudder_commands_v1_commands_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2145,7 +2212,7 @@ func (x *NotificationSent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NotificationSent.ProtoReflect.Descriptor instead.
 func (*NotificationSent) Descriptor() ([]byte, []int) {
-	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{20}
+	return file_payrudder_commands_v1_commands_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *NotificationSent) GetMessageId() string {
@@ -2182,7 +2249,7 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\x14query_payment_status\x18\r \x01(\v2).payrudder.commands.v1.QueryPaymentStatusH\x00R\x12queryPaymentStatus\x12V\n" +
 	"\x11send_notification\x18\x0e \x01(\v2'.payrudder.commands.v1.SendNotificationH\x00R\x10sendNotification\x12N\n" +
 	"\x0fissue_e_invoice\x18\x0f \x01(\v2$.payrudder.commands.v1.IssueEInvoiceH\x00R\rissueEInvoiceB\t\n" +
-	"\acommand\"\xe2\x06\n" +
+	"\acommand\"\xca\a\n" +
 	"\rReplyEnvelope\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12\x17\n" +
@@ -2199,7 +2266,8 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\x10payment_refunded\x18\x0f \x01(\v2&.payrudder.commands.v1.PaymentRefundedH\x00R\x0fpaymentRefunded\x12M\n" +
 	"\x0epayment_status\x18\x10 \x01(\v2$.payrudder.commands.v1.PaymentStatusH\x00R\rpaymentStatus\x12V\n" +
 	"\x11notification_sent\x18\x11 \x01(\v2'.payrudder.commands.v1.NotificationSentH\x00R\x10notificationSent\x12Q\n" +
-	"\x10e_invoice_result\x18\x12 \x01(\v2%.payrudder.commands.v1.EInvoiceResultH\x00R\x0eeInvoiceResultB\a\n" +
+	"\x10e_invoice_result\x18\x12 \x01(\v2%.payrudder.commands.v1.EInvoiceResultH\x00R\x0eeInvoiceResult\x12f\n" +
+	"\x17payment_action_required\x18\x13 \x01(\v2,.payrudder.commands.v1.PaymentActionRequiredH\x00R\x15paymentActionRequiredB\a\n" +
 	"\x05reply\"\xc2\x01\n" +
 	"\x13InvoiceLineSnapshot\x12\x17\n" +
 	"\aline_no\x18\x01 \x01(\x05R\x06lineNo\x12\x12\n" +
@@ -2342,25 +2410,28 @@ const file_payrudder_commands_v1_commands_proto_rawDesc = "" +
 	"\rpsp_charge_id\x18\x01 \x01(\tR\vpspChargeId\"J\n" +
 	"\x0fPaymentDeclined\x12!\n" +
 	"\fdecline_code\x18\x01 \x01(\tR\vdeclineCode\x12\x14\n" +
-	"\x05final\x18\x02 \x01(\bR\x05final\"y\n" +
+	"\x05final\x18\x02 \x01(\bR\x05final\";\n" +
+	"\x15PaymentActionRequired\x12\"\n" +
+	"\rpsp_charge_id\x18\x01 \x01(\tR\vpspChargeId\"y\n" +
 	"\x0ePaymentErrored\x12\x1c\n" +
 	"\tretryable\x18\x01 \x01(\bR\tretryable\x12\x12\n" +
 	"\x04code\x18\x02 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1b\n" +
 	"\terror_key\x18\x04 \x01(\tR\berrorKey\"5\n" +
 	"\x0fPaymentRefunded\x12\"\n" +
-	"\rpsp_refund_id\x18\x01 \x01(\tR\vpspRefundId\"\x9f\x02\n" +
+	"\rpsp_refund_id\x18\x01 \x01(\tR\vpspRefundId\"\xbb\x02\n" +
 	"\rPaymentStatus\x12@\n" +
 	"\x05state\x18\x01 \x01(\x0e2*.payrudder.commands.v1.PaymentStatus.StateR\x05state\x12\"\n" +
 	"\rpsp_charge_id\x18\x02 \x01(\tR\vpspChargeId\x12!\n" +
 	"\fdecline_code\x18\x03 \x01(\tR\vdeclineCode\x12\x14\n" +
-	"\x05final\x18\x04 \x01(\bR\x05final\"o\n" +
+	"\x05final\x18\x04 \x01(\bR\x05final\"\x8a\x01\n" +
 	"\x05State\x12\x15\n" +
 	"\x11STATE_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fSTATE_NOT_FOUND\x10\x01\x12\x13\n" +
 	"\x0fSTATE_SUCCEEDED\x10\x02\x12\x12\n" +
 	"\x0eSTATE_DECLINED\x10\x03\x12\x11\n" +
-	"\rSTATE_PENDING\x10\x04\"Q\n" +
+	"\rSTATE_PENDING\x10\x04\x12\x19\n" +
+	"\x15STATE_ACTION_REQUIRED\x10\x05\"Q\n" +
 	"\x10NotificationSent\x12\x1d\n" +
 	"\n" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x1e\n" +
@@ -2382,7 +2453,7 @@ func file_payrudder_commands_v1_commands_proto_rawDescGZIP() []byte {
 }
 
 var file_payrudder_commands_v1_commands_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_payrudder_commands_v1_commands_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_payrudder_commands_v1_commands_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_payrudder_commands_v1_commands_proto_goTypes = []any{
 	(PaymentStatus_State)(0),      // 0: payrudder.commands.v1.PaymentStatus.State
 	(*CommandEnvelope)(nil),       // 1: payrudder.commands.v1.CommandEnvelope
@@ -2402,17 +2473,18 @@ var file_payrudder_commands_v1_commands_proto_goTypes = []any{
 	(*PdfFailed)(nil),             // 15: payrudder.commands.v1.PdfFailed
 	(*PaymentSucceeded)(nil),      // 16: payrudder.commands.v1.PaymentSucceeded
 	(*PaymentDeclined)(nil),       // 17: payrudder.commands.v1.PaymentDeclined
-	(*PaymentErrored)(nil),        // 18: payrudder.commands.v1.PaymentErrored
-	(*PaymentRefunded)(nil),       // 19: payrudder.commands.v1.PaymentRefunded
-	(*PaymentStatus)(nil),         // 20: payrudder.commands.v1.PaymentStatus
-	(*NotificationSent)(nil),      // 21: payrudder.commands.v1.NotificationSent
-	nil,                           // 22: payrudder.commands.v1.SendNotification.DataEntry
-	(*timestamppb.Timestamp)(nil), // 23: google.protobuf.Timestamp
-	(v1.Environment)(0),           // 24: payrudder.plans.v1.Environment
+	(*PaymentActionRequired)(nil), // 18: payrudder.commands.v1.PaymentActionRequired
+	(*PaymentErrored)(nil),        // 19: payrudder.commands.v1.PaymentErrored
+	(*PaymentRefunded)(nil),       // 20: payrudder.commands.v1.PaymentRefunded
+	(*PaymentStatus)(nil),         // 21: payrudder.commands.v1.PaymentStatus
+	(*NotificationSent)(nil),      // 22: payrudder.commands.v1.NotificationSent
+	nil,                           // 23: payrudder.commands.v1.SendNotification.DataEntry
+	(*timestamppb.Timestamp)(nil), // 24: google.protobuf.Timestamp
+	(v1.Environment)(0),           // 25: payrudder.plans.v1.Environment
 }
 var file_payrudder_commands_v1_commands_proto_depIdxs = []int32{
-	23, // 0: payrudder.commands.v1.CommandEnvelope.issued_at:type_name -> google.protobuf.Timestamp
-	24, // 1: payrudder.commands.v1.CommandEnvelope.environment:type_name -> payrudder.plans.v1.Environment
+	24, // 0: payrudder.commands.v1.CommandEnvelope.issued_at:type_name -> google.protobuf.Timestamp
+	25, // 1: payrudder.commands.v1.CommandEnvelope.environment:type_name -> payrudder.plans.v1.Environment
 	9,  // 2: payrudder.commands.v1.CommandEnvelope.render_invoice_pdf:type_name -> payrudder.commands.v1.RenderInvoicePdf
 	10, // 3: payrudder.commands.v1.CommandEnvelope.charge_payment:type_name -> payrudder.commands.v1.ChargePayment
 	11, // 4: payrudder.commands.v1.CommandEnvelope.refund_payment:type_name -> payrudder.commands.v1.RefundPayment
@@ -2423,26 +2495,27 @@ var file_payrudder_commands_v1_commands_proto_depIdxs = []int32{
 	15, // 9: payrudder.commands.v1.ReplyEnvelope.pdf_failed:type_name -> payrudder.commands.v1.PdfFailed
 	16, // 10: payrudder.commands.v1.ReplyEnvelope.payment_succeeded:type_name -> payrudder.commands.v1.PaymentSucceeded
 	17, // 11: payrudder.commands.v1.ReplyEnvelope.payment_declined:type_name -> payrudder.commands.v1.PaymentDeclined
-	18, // 12: payrudder.commands.v1.ReplyEnvelope.payment_errored:type_name -> payrudder.commands.v1.PaymentErrored
-	19, // 13: payrudder.commands.v1.ReplyEnvelope.payment_refunded:type_name -> payrudder.commands.v1.PaymentRefunded
-	20, // 14: payrudder.commands.v1.ReplyEnvelope.payment_status:type_name -> payrudder.commands.v1.PaymentStatus
-	21, // 15: payrudder.commands.v1.ReplyEnvelope.notification_sent:type_name -> payrudder.commands.v1.NotificationSent
+	19, // 12: payrudder.commands.v1.ReplyEnvelope.payment_errored:type_name -> payrudder.commands.v1.PaymentErrored
+	20, // 13: payrudder.commands.v1.ReplyEnvelope.payment_refunded:type_name -> payrudder.commands.v1.PaymentRefunded
+	21, // 14: payrudder.commands.v1.ReplyEnvelope.payment_status:type_name -> payrudder.commands.v1.PaymentStatus
+	22, // 15: payrudder.commands.v1.ReplyEnvelope.notification_sent:type_name -> payrudder.commands.v1.NotificationSent
 	7,  // 16: payrudder.commands.v1.ReplyEnvelope.e_invoice_result:type_name -> payrudder.commands.v1.EInvoiceResult
-	23, // 17: payrudder.commands.v1.InvoiceSnapshot.issued_at:type_name -> google.protobuf.Timestamp
-	3,  // 18: payrudder.commands.v1.InvoiceSnapshot.lines:type_name -> payrudder.commands.v1.InvoiceLineSnapshot
-	8,  // 19: payrudder.commands.v1.InvoiceSnapshot.payment_instructions:type_name -> payrudder.commands.v1.PaymentInstructions
-	5,  // 20: payrudder.commands.v1.InvoiceSnapshot.seller:type_name -> payrudder.commands.v1.PartySnapshot
-	5,  // 21: payrudder.commands.v1.InvoiceSnapshot.buyer:type_name -> payrudder.commands.v1.PartySnapshot
-	4,  // 22: payrudder.commands.v1.IssueEInvoice.document:type_name -> payrudder.commands.v1.InvoiceSnapshot
-	23, // 23: payrudder.commands.v1.IssueEInvoice.original_issued_at:type_name -> google.protobuf.Timestamp
-	4,  // 24: payrudder.commands.v1.RenderInvoicePdf.invoice:type_name -> payrudder.commands.v1.InvoiceSnapshot
-	22, // 25: payrudder.commands.v1.SendNotification.data:type_name -> payrudder.commands.v1.SendNotification.DataEntry
-	0,  // 26: payrudder.commands.v1.PaymentStatus.state:type_name -> payrudder.commands.v1.PaymentStatus.State
-	27, // [27:27] is the sub-list for method output_type
-	27, // [27:27] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	18, // 17: payrudder.commands.v1.ReplyEnvelope.payment_action_required:type_name -> payrudder.commands.v1.PaymentActionRequired
+	24, // 18: payrudder.commands.v1.InvoiceSnapshot.issued_at:type_name -> google.protobuf.Timestamp
+	3,  // 19: payrudder.commands.v1.InvoiceSnapshot.lines:type_name -> payrudder.commands.v1.InvoiceLineSnapshot
+	8,  // 20: payrudder.commands.v1.InvoiceSnapshot.payment_instructions:type_name -> payrudder.commands.v1.PaymentInstructions
+	5,  // 21: payrudder.commands.v1.InvoiceSnapshot.seller:type_name -> payrudder.commands.v1.PartySnapshot
+	5,  // 22: payrudder.commands.v1.InvoiceSnapshot.buyer:type_name -> payrudder.commands.v1.PartySnapshot
+	4,  // 23: payrudder.commands.v1.IssueEInvoice.document:type_name -> payrudder.commands.v1.InvoiceSnapshot
+	24, // 24: payrudder.commands.v1.IssueEInvoice.original_issued_at:type_name -> google.protobuf.Timestamp
+	4,  // 25: payrudder.commands.v1.RenderInvoicePdf.invoice:type_name -> payrudder.commands.v1.InvoiceSnapshot
+	23, // 26: payrudder.commands.v1.SendNotification.data:type_name -> payrudder.commands.v1.SendNotification.DataEntry
+	0,  // 27: payrudder.commands.v1.PaymentStatus.state:type_name -> payrudder.commands.v1.PaymentStatus.State
+	28, // [28:28] is the sub-list for method output_type
+	28, // [28:28] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_payrudder_commands_v1_commands_proto_init() }
@@ -2468,6 +2541,7 @@ func file_payrudder_commands_v1_commands_proto_init() {
 		(*ReplyEnvelope_PaymentStatus)(nil),
 		(*ReplyEnvelope_NotificationSent)(nil),
 		(*ReplyEnvelope_EInvoiceResult)(nil),
+		(*ReplyEnvelope_PaymentActionRequired)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -2475,7 +2549,7 @@ func file_payrudder_commands_v1_commands_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_payrudder_commands_v1_commands_proto_rawDesc), len(file_payrudder_commands_v1_commands_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   22,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
