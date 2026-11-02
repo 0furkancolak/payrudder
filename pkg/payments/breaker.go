@@ -28,9 +28,29 @@ type BreakerSettings struct {
 // DefaultBreaker are the defaults, not agreed.
 var DefaultBreaker = BreakerSettings{Failures: 5, OpenFor: 30 * time.Second}
 
+// SharedBreaker is the part of an account's circuit that the replicas of a worker keep outside their processes (Breaker.Shared), so that an outage one replica found is not
+// found again by each of the others, charge by charge: while one has the circuit open, all refuse. It is one account's: the implementation is built for it. It never fails:
+// when the shared store cannot be reached it answers as if no other replica existed, and the breaker goes on with what this replica knows.
+type SharedBreaker interface {
+	// OpenFor is how long the circuit stays open for every replica, or 0 when none has it open.
+	OpenFor() time.Duration
+	// Opened records that a replica opened the circuit for window (it also frees the probe).
+	Opened(window time.Duration)
+	// Closed records that the provider answered: the circuit is closed for every replica (it also frees the probe).
+	Closed()
+	// Probe takes the lease on the one probe charge of the half-open state for lease, and says false when another replica holds it.
+	Probe(lease time.Duration) bool
+}
+
 // Breaker is the circuit breaker of one provider account. It counts failures in a row (IsOutage); a success, or any answer from the provider that is not an outage
 // (a decline is the provider working), resets the count and closes the circuit. It is safe for concurrent use.
+//
+// shortcut: with a SharedBreaker the open window and the probe lease are shared, the count of failures is not: a replica that was closed when the window ended lets charges
+// through without a probe until its own count, or a probing replica's failure, opens the circuit again. Share the count too if that leak matters.
 type Breaker struct {
+	// Shared, when set before the breaker is used, makes the circuit one for all replicas (nil: this process only).
+	Shared SharedBreaker
+
 	mu       sync.Mutex
 	s        BreakerSettings
 	now      func() time.Time
@@ -75,6 +95,9 @@ func (b *Breaker) Allow() (done func(err error), err error) {
 	switch {
 	case b.state == BreakerClosed:
 		b.mu.Unlock()
+		if wait := b.sharedOpenFor(); wait > 0 { // another replica has it open
+			return nil, &TransientError{Err: ErrCircuitOpen, RetryAfter: wait}
+		}
 		return b.finish(false), nil
 	case b.state == BreakerOpen && b.now().Sub(b.openedAt) < b.s.OpenFor:
 		wait := b.s.OpenFor - b.now().Sub(b.openedAt)
@@ -85,7 +108,18 @@ func (b *Breaker) Allow() (done func(err error), err error) {
 		return nil, &TransientError{Err: ErrCircuitOpen, RetryAfter: time.Second}
 	}
 	// open and cooled down, half-open with no probe out, or a probe that never reported back (a lease of OpenFor, so a lost probe cannot hold the circuit shut):
-	// this caller is the probe
+	// this caller is the probe, unless another replica has opened the circuit again since or holds the lease (asked with the lock held: it happens once a cool-down, and
+	// the calls are bounded)
+	if b.Shared != nil {
+		if wait := b.Shared.OpenFor(); wait > 0 {
+			b.mu.Unlock()
+			return nil, &TransientError{Err: ErrCircuitOpen, RetryAfter: wait}
+		}
+		if !b.Shared.Probe(b.s.OpenFor) {
+			b.mu.Unlock()
+			return nil, &TransientError{Err: ErrCircuitOpen, RetryAfter: time.Second}
+		}
+	}
 	b.state, b.probing, b.probeAt = BreakerHalfOpen, true, b.now()
 	b.mu.Unlock()
 	b.notify(BreakerHalfOpen, b.failures)
@@ -98,8 +132,22 @@ func (b *Breaker) finish(probe bool) func(error) {
 	return func(err error) { once.Do(func() { b.record(err, probe) }) }
 }
 
-// Observe records an outcome that did not come from a charge (a health check): an outage counts as a failure, anything else as the provider answering.
-func (b *Breaker) Observe(err error) { b.record(err, false) }
+// Observe records an outcome that did not come from a charge (a health check): an outage counts as a failure, anything else as the provider answering. An answer also
+// closes the shared circuit, which another replica may have opened.
+func (b *Breaker) Observe(err error) {
+	b.record(err, false)
+	if b.Shared != nil && (err == nil || !IsOutage(err)) {
+		b.Shared.Closed()
+	}
+}
+
+// sharedOpenFor is how long another replica keeps the circuit open, or 0.
+func (b *Breaker) sharedOpenFor() time.Duration {
+	if b.Shared == nil {
+		return 0
+	}
+	return b.Shared.OpenFor()
+}
 
 func (b *Breaker) record(err error, probe bool) {
 	b.mu.Lock()
@@ -126,6 +174,13 @@ func (b *Breaker) record(err error, probe bool) {
 	b.mu.Unlock()
 	if to != "" {
 		b.notify(to, failures)
+		if b.Shared != nil {
+			if to == BreakerOpen {
+				b.Shared.Opened(b.s.OpenFor)
+			} else {
+				b.Shared.Closed()
+			}
+		}
 	}
 }
 

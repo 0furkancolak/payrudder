@@ -210,7 +210,7 @@ pg_vars mockpsp mockpsp app migrator
 note "payments-worker"
 go_service payments-worker services/payments-worker 9100
 pg_vars payments-worker payments system migrator
-vars payments-worker "PAYRUDDER_RABBITMQ_URL=$AMQP" MOCKPSP_URL=http://mockpsp.railway.internal:8090 "PAYRUDDER_DEMO=$DEMO" \
+vars payments-worker "PAYRUDDER_RABBITMQ_URL=$AMQP" 'PAYRUDDER_REDIS_URL=${{Redis.REDIS_URL}}' MOCKPSP_URL=http://mockpsp.railway.internal:8090 "PAYRUDDER_DEMO=$DEMO" \
   "PAYRUDDER_PLANS_ADDR=$(grpc_addr plans-svc 7001)" "PAYRUDDER_BILLING_ADDR=$(grpc_addr billing-svc 7005)"
 
 note "invoice-worker"
