@@ -22,6 +22,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/buyer"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/health"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 )
@@ -60,6 +61,9 @@ type Handler struct {
 	Breakers *health.Breakers
 	// Failovers, when set, says where a new charge may go instead when the account it was routed to definitely did not process it. Nil never fails over.
 	Failovers Failovers
+	// Customers, when set, is asked for the customer of a charge whose provider vets the payer (Capabilities.NeedsBuyer: iyzico), so the charge carries their own name,
+	// phone, tax id and address. Nil sends no buyer, and such a provider falls back to the account's explicit defaults or refuses with the fields named.
+	Customers buyer.Reader
 	// Now is the clock; nil is time.Now.
 	Now func() time.Time
 }
@@ -88,6 +92,12 @@ const (
 	// would refund twice. The credit note then shows the refund as failed with this code, and an operator checks the refund at the provider.
 	CodeRefundUnknown = "REFUND_OUTCOME_UNKNOWN"
 )
+
+// BuyerIncomplete starts the decline code of a charge the provider could not take because the customer record lacks what it needs: "buyer_incomplete:phone,tax_id",
+// the fields of the record after the colon. The provider was not asked, nothing was charged, and the charge is declined (so the retries of dunning run, each one reading
+// the customer again, which the seller has completed by then) rather than answered with an error, which would leave the invoice waiting for a status that never comes.
+// Default (not agreed): the contract (docs/payment-provider-contract.md) calls a refusal of the request a typed error, not a decline; this one is the customer's, not the card's.
+const BuyerIncomplete = "buyer_incomplete"
 
 // providerFor picks the provider of a command. A live tenant with its own provider account is served by it; the others by the
 // configured live provider. Refunds and status queries follow the provider the invoice was charged through.
@@ -432,6 +442,10 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 	}
 	entry := store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoiceID, Provider: name, Environment: run.env, Kind: store.KindCharge,
 		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), IdempotencyKey: ch.GetIdempotencyKey(), Source: store.SourceCommand}
+	req, err := h.chargeRequest(ctx, run, ch, ch.GetIdempotencyKey(), prov)
+	if err != nil {
+		return nil, err
+	}
 	_, manual := prov.(payments.ManualCollector)
 	done, err := h.admit(ref, hasRef && !manual)
 	if err != nil {
@@ -449,8 +463,7 @@ func (h *Handler) charge(ctx context.Context, run commandRun, ch *commandsv1.Cha
 			return reply, err
 		}
 	}
-	res, err := prov.Charge(ctx, payments.ChargeRequest{IdempotencyKey: ch.GetIdempotencyKey(), InvoiceID: ch.GetInvoiceId(),
-		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), PaymentMethod: ch.GetPaymentMethod(), InvoiceNumber: ch.GetInvoiceNumber()})
+	res, err := prov.Charge(ctx, req)
 	done(err)
 	var pending *payments.PendingError
 	if manual && errors.As(err, &pending) {
@@ -539,6 +552,10 @@ func (h *Handler) chargeAt(ctx context.Context, run commandRun, ch *commandsv1.C
 	}
 	entry := store.LedgerEntry{TenantID: run.tenant, InvoiceID: invoice, Provider: name, Environment: run.env, Kind: store.KindCharge,
 		AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(), IdempotencyKey: key, Source: store.SourceCommand}
+	req, err := h.chargeRequest(ctx, run, ch, key, prov)
+	if err != nil {
+		return nil, err
+	}
 	done, err := h.admit(ref, hasRef)
 	if err != nil {
 		return nil, err // this account is down too: the command is retried, and goes on here
@@ -549,11 +566,25 @@ func (h *Handler) chargeAt(ctx context.Context, run commandRun, ch *commandsv1.C
 			return h.keepAttempt(ctx, run, attempt, reply, err)
 		}
 	}
-	res, err := prov.Charge(ctx, payments.ChargeRequest{IdempotencyKey: key, InvoiceID: ch.GetInvoiceId(), AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(),
-		PaymentMethod: ch.GetPaymentMethod(), InvoiceNumber: ch.GetInvoiceNumber()})
+	res, err := prov.Charge(ctx, req)
 	done(err)
 	reply, err := h.chargeOutcome(ctx, entry, res, err)
 	return h.keepAttempt(ctx, run, attempt, reply, err)
+}
+
+// chargeRequest is what the provider is sent for a charge: the command, and for a provider that vets the payer the customer's own details (Capabilities.NeedsBuyer). A
+// customer record that cannot be read is an error and the command is retried: refusing the payment for it would blame the card.
+func (h *Handler) chargeRequest(ctx context.Context, run commandRun, ch *commandsv1.ChargePayment, key string, prov payments.PaymentProvider) (payments.ChargeRequest, error) {
+	r := payments.ChargeRequest{IdempotencyKey: key, InvoiceID: ch.GetInvoiceId(), AmountMinor: ch.GetAmountMinor(), Currency: ch.GetCurrency(),
+		PaymentMethod: ch.GetPaymentMethod(), InvoiceNumber: ch.GetInvoiceNumber()}
+	if capabilities(prov).NeedsBuyer {
+		b, err := buyer.Of(ctx, h.Customers, run.tenant, ch.GetCustomerExternalId(), "")
+		if err != nil {
+			return r, fmt.Errorf("read the customer of the charge: %w", err)
+		}
+		r.Buyer = b
+	}
+	return r, nil
 }
 
 // keepAttempt stores the answer on the second attempt's own row (best effort: the command's row holds the answer billing gets).
@@ -587,6 +618,7 @@ func (h *Handler) askBeforeCharging(ctx context.Context, prov payments.PaymentPr
 func (h *Handler) chargeOutcome(ctx context.Context, entry store.LedgerEntry, res payments.ChargeResult, err error) (*commandsv1.ReplyEnvelope, error) {
 	var declined *payments.DeclinedError
 	var pending *payments.PendingError
+	var incomplete *payments.BuyerIncompleteError
 	switch {
 	case errors.As(err, &pending):
 		// Accepted, not settled: the provider's notification decides. Billing queries the status, which reads the ledger.
@@ -599,6 +631,11 @@ func (h *Handler) chargeOutcome(ctx context.Context, entry store.LedgerEntry, re
 		entry.Status, entry.Detail = store.StatusDeclined, declined.Code
 		h.record(ctx, entry)
 		return declinedReply(declined.Code), nil
+	case errors.As(err, &incomplete):
+		code := BuyerIncomplete + ":" + strings.Join(incomplete.Missing, ",")
+		entry.Status, entry.Detail = store.StatusDeclined, code
+		h.record(ctx, entry)
+		return declinedReply(code), nil
 	default:
 		return providerFailure(err)
 	}
@@ -644,8 +681,7 @@ func (h *Handler) refund(ctx context.Context, run commandRun, rf *commandsv1.Ref
 			return reply, err
 		}
 	}
-	res, err := prov.Refund(ctx, payments.RefundRequest{IdempotencyKey: rf.GetIdempotencyKey(), InvoiceID: rf.GetInvoiceId(),
-		ChargeID: rf.GetPspChargeId(), AmountMinor: rf.GetAmountMinor(), Currency: rf.GetCurrency()})
+	res, err := prov.Refund(ctx, h.refundRequest(ctx, run, invoiceID, rf))
 	if err != nil {
 		return providerFailure(err)
 	}

@@ -16,6 +16,11 @@ type CheckoutInvoiceRequest struct {
 	CustomerName   string
 	// ReturnURL is where the provider sends the customer afterwards. It only shows state: the notification settles the invoice.
 	ReturnURL string
+	// CallbackURL, when set, is where a provider that posts the result of the payment through the payer's browser (iyzico) posts it: a route of Payrudder's that
+	// confirms the payment with the provider (ReturnConfirmer) before it believes it. Empty: the provider has no such step, or ReturnURL is used.
+	CallbackURL string
+	// Buyer is the customer, for a provider that vets the payer. Nil for a guest nothing is known about; CustomerEmail and CustomerName are then all there is.
+	Buyer *Buyer
 }
 
 // InvoiceCheckoutProvider is a provider whose hosted checkout can take a payment for an invoice.

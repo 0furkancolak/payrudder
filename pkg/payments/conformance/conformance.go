@@ -6,6 +6,8 @@
 //   - the idempotency key reaches the provider on every charge and refund, and the Capabilities that claim idempotency are not lying;
 //   - a refund, a partial refund that refunds the amount asked for and not the whole payment, or is refused;
 //   - a duplicate notification is the same notification, a forged one is payments.ErrUnverified;
+//   - the return of a payer from the provider's page is confirmed with the provider: a payment the provider took or refused, and one that is not the attempt's is
+//     payments.ErrUnverified (an adapter with a callback URL);
 //   - the Capabilities match what the adapter implements (a hosted checkout, a renewal the provider owns).
 //
 // It runs against fakes, so a pass says the adapter handles what its provider's documentation says, not that the provider does: the sandbox test of each adapter
@@ -63,6 +65,18 @@ const (
 	WebhookForged WebhookCase = "forged"
 )
 
+// ReturnCase is which return from the provider's page the harness builds.
+type ReturnCase string
+
+const (
+	// ReturnSucceeded: the payer comes back from a payment of the charge ChargeKey that the provider took.
+	ReturnSucceeded ReturnCase = "succeeded"
+	// ReturnDeclined: the payer comes back from a payment the provider refused.
+	ReturnDeclined ReturnCase = "declined"
+	// ReturnForged: what comes back names a payment that is not the attempt's (another payment, or one the provider does not know).
+	ReturnForged ReturnCase = "forged"
+)
+
 // Probe records what the fake provider saw, so the suite can check it. A fake calls Charge and Refund once per request that creates one.
 type Probe struct {
 	mu      sync.Mutex
@@ -113,6 +127,8 @@ type Harness struct {
 	Currency      string
 	PaymentMethod string
 	ChargeRef     string
+	// Buyer is the customer the charge is made for, for an adapter that vets the payer (iyzico); it is sent to every adapter and ignored by the others.
+	Buyer *payments.Buyer
 	// RefundsByInvoice: the provider refunds against the invoice, not a charge id (mock-psp), so a refund without the charge id is not refused.
 	RefundsByInvoice bool
 	// SettlesLater: Charge does not report the outcome but payments.PendingError, and the notification settles it (a merchant of record).
@@ -123,12 +139,15 @@ type Harness struct {
 	Webhook func(t *testing.T, c WebhookCase) (p payments.Provider, body []byte, header http.Header)
 	// Parse is the adapter's payments.ParseNotification, registered for its webhooks. Nil when Webhook is.
 	Parse payments.ParseNotification
+	// Return builds a provider and the return of a payer from the provider's page, for an adapter that is a payments.ReturnConfirmer. Nil for one that is not. The
+	// request is for the attempt ChargeKey of the invoice InvoiceID and the amount Total.
+	Return func(t *testing.T, c ReturnCase) (payments.Provider, payments.ReturnRequest)
 	// Skip says which scenarios the adapter cannot show and why (a provider that settles a charge later cannot decline it in the answer).
 	Skip map[Scenario]string
 }
 
 func (h Harness) request() payments.ChargeRequest {
-	return payments.ChargeRequest{IdempotencyKey: ChargeKey, InvoiceID: InvoiceID, AmountMinor: Total, Currency: h.Currency, PaymentMethod: h.PaymentMethod}
+	return payments.ChargeRequest{IdempotencyKey: ChargeKey, InvoiceID: InvoiceID, AmountMinor: Total, Currency: h.Currency, PaymentMethod: h.PaymentMethod, Buyer: h.Buyer}
 }
 
 func (h Harness) refund(amount int64, key string) payments.RefundRequest {
@@ -171,6 +190,9 @@ func Run(t *testing.T, h Harness) {
 			t.Error("OwnsRenewal, but the adapter cannot cancel the subscription it runs (payments.SubscriptionManager)")
 		}
 		_, isNotifier := p.(payments.Notifier)
+		if _, isReturn := p.(payments.ReturnConfirmer); isReturn != (h.Return != nil) {
+			t.Errorf("ReturnConfirmer = %v, Harness.Return set = %v: an adapter that confirms the return of a payer supplies the cases", isReturn, h.Return != nil)
+		}
 		if isNotifier != (h.Webhook != nil) || (h.Webhook != nil) != (h.Parse != nil) {
 			t.Errorf("Notifier = %v, Harness.Webhook set = %v, Harness.Parse set = %v: an adapter that confirms notifications supplies both", isNotifier, h.Webhook != nil, h.Parse != nil)
 		}
@@ -279,6 +301,32 @@ func Run(t *testing.T, h Harness) {
 			}
 		}
 	})
+
+	if h.Return != nil {
+		t.Run("return of the payer", func(t *testing.T) {
+			for _, c := range []ReturnCase{ReturnSucceeded, ReturnDeclined} {
+				t.Run(string(c), func(t *testing.T) {
+					p, req := h.Return(t, c)
+					st, err := p.(payments.ReturnConfirmer).ConfirmReturn(ctx, req)
+					if err != nil {
+						t.Fatalf("ConfirmReturn: %v", err)
+					}
+					if c == ReturnSucceeded && (st.State != payments.StateSucceeded || st.ChargeID == "") {
+						t.Errorf("ConfirmReturn = %+v; want a succeeded charge with the provider's id", st)
+					}
+					if c == ReturnDeclined && (st.State != payments.StateDeclined || st.DeclineCode == "") {
+						t.Errorf("ConfirmReturn = %+v; want a declined charge with a code", st)
+					}
+				})
+			}
+			t.Run(string(ReturnForged), func(t *testing.T) {
+				p, req := h.Return(t, ReturnForged)
+				if st, err := p.(payments.ReturnConfirmer).ConfirmReturn(ctx, req); !errors.Is(err, payments.ErrUnverified) {
+					t.Fatalf("ConfirmReturn of a return that is not the attempt's = %+v, %v; want payments.ErrUnverified", st, err)
+				}
+			})
+		})
+	}
 
 	if h.Webhook == nil {
 		return

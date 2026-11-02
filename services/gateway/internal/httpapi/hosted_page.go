@@ -36,6 +36,7 @@ func (s *Server) hostedPublicRoutes() []Route {
 		{"POST", "/i/{token}/start", AccessPublic, "", s.hostedLinkStart},
 		{"POST", "/i/{token}/promo", AccessPublic, "", s.hostedLinkPromo},
 		{"POST", "/i/{token}/pay", AccessPublic, "", s.hostedInvoicePay},
+		{"POST", "/i/{token}/return/{key}", AccessPublic, "", s.hostedInvoiceReturn},
 		{"GET", "/c/{token}", AccessPublic, "", s.portalPage},
 		{"GET", "/c/{token}/logo", AccessPublic, "", s.portalLogo},
 		{"POST", "/c/{token}/credits/buy", AccessPublic, "", s.portalCreditsBuy},
@@ -43,6 +44,7 @@ func (s *Server) hostedPublicRoutes() []Route {
 		{"GET", "/c/{token}/invoices/{invoice_id}/pdf", AccessPublic, "", s.portalInvoicePDF},
 		{"GET", "/c/{token}/invoices/{invoice_id}/receipt", AccessPublic, "", s.portalInvoiceReceipt},
 		{"POST", "/c/{token}/invoices/{invoice_id}/pay", AccessPublic, "", s.portalInvoicePay},
+		{"POST", "/c/{token}/invoices/{invoice_id}/return/{key}", AccessPublic, "", s.portalInvoiceReturn},
 	}
 }
 
@@ -92,6 +94,17 @@ func langSuffix(r *http.Request) string {
 	}
 	return ""
 }
+
+// withWait marks a page address "wait for the state to settle": a page in "processing" holds the request on the server (up to startWait) instead of answering at once.
+// The pages have no script and no meta refresh, so this is how the payer lands on "Paid" after paying and "Check again" does not need a second click.
+func withWait(u string) string {
+	if strings.Contains(u, "?") {
+		return u + "&wait=1"
+	}
+	return u + "?wait=1"
+}
+
+func waitRequested(r *http.Request) bool { return r.URL.Query().Get("wait") == "1" }
 
 func htmlPage(w http.ResponseWriter, code int, logo bool, forms string) {
 	hostedHeadersCSP(w, pageCSP(logo, forms))
@@ -278,8 +291,33 @@ func (s *Server) invoiceOrAdhoc(w http.ResponseWriter, r *http.Request, sc scope
 		return
 	}
 	v := s.invoiceView(r.Context(), r, sc, lang, resp)
+	if waitRequested(r) && v.State == "processing" {
+		v = s.waitForSettled(r, sc, lang, v)
+	}
 	s.render(w, r, http.StatusOK, "invoice", v)
 }
+
+// waitForSettled looks at an invoice that is "processing" again every startPoll, for at most startWait, and returns the view once it is not (or the last view).
+func (s *Server) waitForSettled(r *http.Request, sc scope, lang string, v *invoiceView) *invoiceView {
+	ctx, cancel := context.WithTimeout(r.Context(), startWait)
+	defer cancel()
+	for v.State == "processing" {
+		select {
+		case <-ctx.Done():
+			return v
+		case <-time.After(startPoll):
+		}
+		resp, err := s.d.Hosted.GetHostedInvoice(ctx, sc.get())
+		if err != nil || resp.GetInvoice() == nil {
+			return v
+		}
+		v = s.invoiceView(ctx, r, sc, lang, resp)
+	}
+	return v
+}
+
+// Again is the address of the "Check again" link: the same page, held on the server while the payment is still processing.
+func (v *invoiceView) Again() string { return withWait(v.Self) }
 
 func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lang string, resp *billingv1.GetHostedInvoiceResponse) *invoiceView {
 	inv := resp.GetInvoice()
@@ -296,7 +334,8 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 	if in := resp.GetPaymentInstructions(); in.GetIban() != "" {
 		v.Bank = &hostedBank{Name: in.GetBankName(), Holder: in.GetAccountHolder(), IBAN: groupIBAN(in.GetIban()), BIC: in.GetBic(), Reference: in.GetReference()}
 	}
-	v.State = refineState(v.State, s.ledgerRowsOf(ctx, resp), inv.GetId(), s.now())
+	rows := s.ledgerRowsOf(ctx, resp)
+	v.State = refineState(v.State, rows, inv.GetId(), s.now())
 	v.StateLabel = v.L["st_"+v.State]
 	v.SideAmount, v.SideNote = v.Total+" "+v.Currency, v.StateLabel
 	switch v.State {
@@ -307,7 +346,7 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 		if inv.GetStatus() == "uncollectible" {
 			v.Hint = v.L["hint_uncollectible"]
 		} else {
-			v.Hint = v.L["hint_failed"]
+			v.Hint = strings.TrimSpace(declineText(v.L, lastDecline(rows, inv.GetId())) + " " + v.L["hint_failed"])
 		}
 	case "void":
 		v.Hint = v.L["hint_void"]
@@ -338,7 +377,7 @@ func (s *Server) methodViews(ctx context.Context, l map[string]string, resp *bil
 		return []methodView{{ID: "mock", Label: l["pay_mock"]}}
 	}
 	p := resp.GetPayment()
-	methods, err := s.liveMethods(ctx, p.GetTenantId(), p.GetCurrency(), p.GetCountry(), p.GetProvider())
+	methods, err := s.liveMethods(ctx, p.GetTenantId(), p.GetCurrency(), p.GetCountry(), p.GetProvider(), p.GetCustomerExternalId())
 	if err != nil {
 		s.d.Log.WarnContext(ctx, "payment methods unavailable", "error", err)
 		return nil
@@ -346,8 +385,11 @@ func (s *Server) methodViews(ctx context.Context, l map[string]string, resp *bil
 	var out []methodView
 	for _, m := range methods {
 		label := l["pay_checkout"]
-		if m.Kind == "instructions" {
+		switch m.Kind {
+		case "instructions":
 			label = l["pay_instructions"]
+		case "stored_card":
+			label = l["pay_stored_card"]
 		}
 		out = append(out, methodView{ID: m.ID, Label: label})
 	}
@@ -754,11 +796,15 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 	}
 	if resp.GetAction() != "provider" {
 		hostedHeaders(w)
-		http.Redirect(w, r, back, http.StatusSeeOther)
+		// A payment through the saga (sandbox, demo) settles in seconds: the page waits for it.
+		http.Redirect(w, r, withWait(back), http.StatusSeeOther)
 		return
 	}
 	p := resp.GetPayment()
-	out, code, err := s.startProviderPayment(r.Context(), p, method, s.d.PublicURL+back)
+	// The provider posts the result of a payment on its own page (the checkout form, the bank's 3-D Secure page) to this route, through the payer's browser; the route
+	// asks the provider what the payment is and sends the payer back to the invoice page, {key} being the attempt payments-worker opens.
+	callback := s.d.PublicURL + sc.page() + "/return/{key}" + langSuffix(r)
+	out, code, err := s.startProviderPayment(r.Context(), p, method, s.d.PublicURL+back, callback, s.clientAddr(r))
 	switch {
 	case err != nil || code >= 500:
 		if err != nil {
@@ -766,8 +812,16 @@ func (s *Server) invoicePay(w http.ResponseWriter, r *http.Request, sc scope) {
 		}
 		refuse(http.StatusServiceUnavailable, "pay_unavailable")
 		return
+	case code == http.StatusUnprocessableEntity:
+		// The provider needs more about the customer than the seller has on file: the payer can do nothing but tell the seller.
+		refuse(http.StatusUnprocessableEntity, "pay_buyer")
+		return
 	case code/100 != 2:
 		refuse(http.StatusConflict, "pay_cannot")
+		return
+	}
+	if out.Kind == "html" {
+		threeDSPage(w, out.HTML)
 		return
 	}
 	if out.Kind == "redirect" {
@@ -795,15 +849,57 @@ const maxMethodLen = 64
 
 // startProviderPayment asks payments-worker to start paying the invoice billing prepared (p) by the method, returning to returnURL. It returns the worker's
 // answer and its HTTP status; the error is a worker that could not be reached.
-func (s *Server) startProviderPayment(ctx context.Context, p *billingv1.HostedPaymentContext, method, returnURL string) (paymentStart, int, error) {
+func (s *Server) startProviderPayment(ctx context.Context, p *billingv1.HostedPaymentContext, method, returnURL, callbackURL, payerIP string) (paymentStart, int, error) {
 	var out paymentStart
 	code, err := s.paymentsDo(ctx, http.MethodPost, "/admin/tenants/"+url.PathEscape(p.GetTenantId())+"/invoice-payments", nil, map[string]any{
 		"invoice_id": p.GetInvoiceId(), "saga_id": p.GetSagaId(), "number": p.GetNumber(), "amount_minor": p.GetAmountMinor(), "currency": p.GetCurrency(), "method": method,
 		"provider": p.GetProvider(), "country": p.GetCountry(), "customer_email": p.GetCustomerEmail(), "customer_name": p.GetCustomerName(), "description": p.GetDescription(),
-		"return_url": returnURL, "environment": p.GetEnvironment(),
+		"customer_external_id": p.GetCustomerExternalId(), "payer_ip": payerIP, "return_url": returnURL, "callback_url": callbackURL, "environment": p.GetEnvironment(),
 	}, &out)
 	return out, code, err
 }
+
+// threeDSPage serves the page of the payer's bank that starts a 3-D Secure payment: an auto-submitting form, as the provider hands it over. It is not our page, so it is
+// served as a sandboxed document with no origin of its own: its script and its form may run, and nothing it does can reach this site, its cookies or its pages.
+func threeDSPage(w http.ResponseWriter, html string) {
+	hostedHeadersCSP(w, "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src https: data:; form-action https:; base-uri 'none'; frame-ancestors 'none'; sandbox allow-forms allow-scripts")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = io.WriteString(w, html)
+}
+
+func (s *Server) hostedInvoiceReturn(w http.ResponseWriter, r *http.Request) {
+	s.invoiceReturn(w, r, scope{token: r.PathValue("token")})
+}
+
+func (s *Server) portalInvoiceReturn(w http.ResponseWriter, r *http.Request) {
+	s.invoiceReturn(w, r, scope{portal: r.PathValue("token"), invoice: r.PathValue("invoice_id")})
+}
+
+// invoiceReturn is where a provider posts the result of a payment on its own page, through the payer's browser. The form is not believed: payments-worker asks the provider
+// what the payment is and records it, and the payer is sent on to the invoice page, which shows the state from the ledger (paid, processing, or failed with the reason).
+// Whatever happens here, the payer lands on the page: the worker being down is a page that says the payment is processing, not an error screen after a card was charged.
+func (s *Server) invoiceReturn(w http.ResponseWriter, r *http.Request, sc scope) {
+	if !s.hostedAllowed(w, r) {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, returnFormLimit)
+	_ = r.ParseForm() // the provider's fields are in the body; a provider that redirects with a GET puts them in the query
+	form := r.Form
+	form.Del("lang")
+	var out struct {
+		State string `json:"state"`
+	}
+	code, err := s.paymentsDo(r.Context(), http.MethodPost, "/admin/invoice-payments/return", nil, map[string]any{"key": r.PathValue("key"), "form": form}, &out)
+	if err != nil || code/100 != 2 {
+		s.d.Log.WarnContext(r.Context(), "a payer's return was not confirmed", "status", code, "error", err)
+	}
+	hostedHeaders(w)
+	http.Redirect(w, r, sc.page()+langSuffix(r), http.StatusSeeOther)
+}
+
+// returnFormLimit bounds what a provider's return may post: a token, a payment id and a few fields.
+const returnFormLimit = 32 << 10
 
 // exponentOf is the number of decimal places of a currency, for the one page that is rendered from payments-worker's answer; the others use the exponent
 // billing sends.
