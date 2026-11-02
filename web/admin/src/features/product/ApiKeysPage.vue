@@ -20,7 +20,9 @@ const search = useSearch({ strict: false });
 const appId = computed(() => String(params.value.appId ?? ""));
 const app = useApp(appId);
 const account = useAccount();
-const canManage = computed(() => (app.data.value?.role ?? account.data.value?.role) !== "viewer");
+const role = computed(() => app.data.value?.role ?? account.data.value?.role);
+/** Not until the app or the account has said what the person is: a viewer must not see a moment of buttons the server would refuse. */
+const canManage = computed(() => role.value !== undefined && role.value !== "viewer");
 const env = computed<Environment | null>(() => {
   const v = (search.value as { env?: string }).env;
   if (isEnvironment(v)) return v;

@@ -14,6 +14,8 @@ import { DataToolbar } from "@/shared/ui/data-table";
 import { DetailList } from "@/shared/ui/detail-list";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
+import { SortSelect } from "@/shared/ui/sort-select";
+import { nameAsc, nameDesc } from "@/shared/lib/sortDefs";
 import { Input } from "@/shared/ui/input";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { RowActions } from "@/shared/ui/row-actions";
@@ -48,10 +50,11 @@ const entries = computed(() => accountEntries({ payments: payments.data.value?.a
 const nameOf = (id: string) => BRANDS[id as IntegrationId]?.name ?? t(`product.integrations.names.${id}`);
 const entryName = (e: AccountEntry) => (e.kind === "payment" && !BRANDS[e.provider as IntegrationId]?.name ? t(`product.goLive.provider.names.${e.provider}`) : nameOf(e.provider));
 
-// --- the list: search and three filters
+// --- the list: search, three filters and one sort (the order the rows arrive in is the default account first)
 const all = computed(() => ({ value: "", label: t("common.all") }));
 const table = useTableState<AccountEntry>(entries, {
   url: "accounts-", searchFields: (e) => [entryName(e), e.key, e.label, e.provider],
+  sorts: () => [nameAsc(t, entryName), nameDesc(t, entryName)],
   filters: { kind: (e, v) => e.kind === v, state: (e, v) => e.state === v, health: (e, v) => e.kind === "payment" && healthOf(e) === v },
 });
 const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v: string[]) => (table.filters.value.kind = v) });
@@ -254,6 +257,7 @@ function saveE() {
       <FilterSelect v-model="kindFilter" multiple :label="t('product.integrations.accounts.kind')" :options="kindOptions" />
       <FilterSelect v-model="stateFilter" multiple :label="t('product.integrations.accounts.status')" :options="stateOptions" />
       <FilterSelect v-model="healthFilter" multiple :label="t('product.integrations.health.label')" :options="healthOptions" />
+      <SortSelect v-if="table.sorts.value.length > 0" v-model="table.sort.value" :options="table.sorts.value" />
     </DataToolbar>
 
     <p v-if="entries.filter((e) => e.kind !== 'mail').length === 0" class="text-muted-foreground text-sm" data-testid="accounts-empty">{{ t("product.providers.account.empty") }}</p>

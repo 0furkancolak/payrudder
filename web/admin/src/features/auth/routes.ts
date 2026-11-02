@@ -7,8 +7,8 @@ export function authRoutes(parent: AnyRoute) {
     createRoute({
       getParentRoute: () => parent,
       path: "/operator",
-      beforeLoad: () => {
-        requireOperator();
+      beforeLoad: (ctx) => {
+        requireOperator(ctx);
         throw redirect({ to: "/tenants" });
       },
     }),

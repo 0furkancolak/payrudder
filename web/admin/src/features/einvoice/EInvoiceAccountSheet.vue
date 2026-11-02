@@ -68,8 +68,8 @@ function saveAccount() {
       <SheetBody>
         <form id="einvoice-account-form" class="grid gap-3" role="form" :aria-label="t('einvoice.account.formLabel')" @submit.prevent="saveAccount">
           <NativeSelect v-model="environment" :aria-label="t('einvoice.account.environment')">
-            <option value="live">live</option>
-            <option value="sandbox">sandbox</option>
+            <option value="live">{{ t("enums.environment.live") }}</option>
+            <option value="sandbox">{{ t("enums.environment.sandbox") }}</option>
           </NativeSelect>
           <NativeSelect v-model="provider" :aria-label="t('einvoice.account.provider')">
             <option v-for="p in providers" :key="p" :value="p">{{ p }}</option>

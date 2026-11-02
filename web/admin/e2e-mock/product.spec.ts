@@ -111,10 +111,11 @@ test.describe("sign up and sign in", () => {
     await productGateway(new MockGateway()).gw.install(page);
     await page.goto("/app");
     await page.waitForURL("**/signin");
+    // The page asked for comes back after signing in, so the address carries it.
     await page.goto("/tenants");
-    await page.waitForURL("**/signin");
+    await page.waitForURL(/\/signin\?next=%2Ftenants$/);
     await page.goto("/operator");
-    await page.waitForURL("**/signin");
+    await page.waitForURL(/\/signin\?next=%2Foperator$/);
     // There is no token form anywhere: the operator signs in like everybody else.
     await expect(page.getByLabel(/operator token/i)).toHaveCount(0);
     await expect(page.getByText(/operator console/i)).toHaveCount(0);
