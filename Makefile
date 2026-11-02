@@ -165,15 +165,45 @@ sdk-php-check: ## The PHP SDK as sdk-php.yml checks it: code style, PHPStan, tes
 	docker run --rm -v "$(CURDIR)":/work -w /work/sdk/php php:8.4-cli sh -c 'apt-get update -qq && apt-get install -y -qq git unzip >/dev/null && php -r "copy(\"https://getcomposer.org/installer\", \"/tmp/c.php\");" && php /tmp/c.php --quiet --install-dir=/usr/local/bin --filename=composer && composer update -q --no-interaction --prefer-dist && composer validate --strict && composer cs && composer stan && composer test && composer generate'
 	git diff --exit-code sdk/php
 
+.PHONY: sdk-go-check
+sdk-go-check: tools ## The Go SDK as sdk-go.yml checks it: gofmt, build, vet, golangci-lint (SDK and contract module), no dependencies beyond the standard library, tests, contract test, generated code committed
+	cd sdk/go && export GOWORK=off && test -z "$$(gofmt -l .)" && go build ./... && go vet ./... && $(BIN)/golangci-lint run ./... \
+		&& (cd internal/contract && $(BIN)/golangci-lint run ./... && go test -race -count=1 ./...) \
+		&& go mod tidy && git diff --exit-code go.mod && test ! -e go.sum && go test -race -count=1 ./... && go generate ./... && git diff --exit-code .
+
+.PHONY: sdk-ts-check
+sdk-ts-check: ## The TypeScript SDK as sdk-typescript.yml checks it (npm ci, then generate:check, typecheck, lint, test, build, ESM/CJS smoke)
+	cd sdk/typescript && npm ci --no-audit --no-fund && npm run check
+
+# The Python SDK runs in a virtual environment under ./bin so nothing is installed into the machine's Python (CI's matrix is 3.10 and 3.13; this runs the python3 you have).
+.PHONY: sdk-python-check
+sdk-python-check: ## The Python SDK as sdk-python.yml checks it: generated code up to date, ruff, ruff format, mypy, pytest, wheel installs in a clean environment
+	python3 -m venv $(BIN)/sdk-python-venv
+	rm -rf $(BIN)/sdk-python-dist $(BIN)/sdk-python-clean
+	cd sdk/python && $(BIN)/sdk-python-venv/bin/python -m pip install -q -e '.[dev]' build \
+		&& PATH="$(BIN)/sdk-python-venv/bin:$$PATH" sh -c 'python tools/generate.py --check && ruff check . && ruff format --check . && mypy && pytest -q' \
+		&& $(BIN)/sdk-python-venv/bin/python -m build -q -o $(BIN)/sdk-python-dist
+	python3 -m venv $(BIN)/sdk-python-clean
+	$(BIN)/sdk-python-clean/bin/pip install -q $(BIN)/sdk-python-dist/*.whl
+	$(BIN)/sdk-python-clean/bin/python -c "import payrudder; print(payrudder.__version__, payrudder.Payrudder, payrudder.AsyncPayrudder)"
+
+.PHONY: sdk-check
+sdk-check: sdk-go-check sdk-ts-check sdk-python-check sdk-php-check ## All four SDKs as their workflows check them
+
+.PHONY: mcp-check
+mcp-check: ## The MCP server as mcp.yml checks it (npm ci, typecheck, tests including the stdio and HTTP servers, build)
+	cd mcp && npm ci --no-audit --no-fund && npm run typecheck && npm test && npm run build
+
 .PHONY: ci-local
-ci-local: ## The gate before every merge: what CI's static, unit, integration and web jobs run (needs Docker for the integration tests and the alert rules)
+ci-local: ## The gate before every merge: what CI's static, unit, integration, web, SDK, docs and mcp jobs run (needs Docker for the integration tests, the alert rules and the PHP SDK)
 	$(MAKE) lint
 	$(MAKE) gen
 	git diff --exit-code
 	test -z "$$(git status --porcelain)"
 	$(MAKE) test test-rules test-integration
 	$(MAKE) web-check web-e2e-mock
-	$(MAKE) sdk-php-check
+	$(MAKE) sdk-check
+	$(MAKE) test-docs mcp-check
 
 .PHONY: web-e2e
 web-e2e: ## Playwright smoke test of the console against the running stack (make up first)

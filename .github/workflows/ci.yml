@@ -10,7 +10,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push cancels a pull request's older run, but never a run on main: each merge's own result must be readable (plan 01).
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   GOPRIVATE: github.com/0furkancolak/*
