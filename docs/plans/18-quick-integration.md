@@ -9,7 +9,7 @@ List 2 (3): a **fast integration structure for applications**.
 ## Gaps
 - **The snippets were never executed.** They follow the SDK READMEs; no CI job compiles/runs them against a running stack, so they can rot.
 - The SDKs are **pre-release and unpublished** (install lines point at a checkout), so "quick" is not quick: no `npm install @payrudder/sdk`.
-- The page cannot create the key (keys are shown once on another page), cannot create the first meter/customer for the person, and the API address is typed by hand (the console doesn't know the public address).
+- The page cannot create the key (keys are shown once on another page), cannot create the first meter/customer for the person, and the API address is typed by hand (the console doesn't know the public address). *(2026-11-02: the key, the sample meter and customer and a test event are now made from the page; the address is still typed. See Work 2 and 3.)*
 - No framework quick-starts (Next.js, Express, FastAPI, Laravel, Rails…), no usage-event best practices (batching, retries, idempotency keys, clock skew), no test-mode event simulator, no webhook **local tunnel** helper or "send a test webhook" button in the checklist.
 - No "integration health" over time (event rate, rejected events with error codes) beyond the first event.
 - Onboarding (03) and this page overlap; the relationship is not designed.
@@ -23,8 +23,8 @@ Publishing the SDKs (package names, registry accounts) — currently "no release
 
 ## Work
 1. CI job that extracts each snippet and runs it against the compose stack (TypeScript, Python, Go, PHP, curl) so they are always correct.
-2. Key creation inline (shown once, copied, never stored by the page) and a one-click "create sample meter and customer" in sandbox.
-3. "Send a test event" and "send a test webhook" buttons; rejected-event viewer with error codes and fixes.
+2. Key creation inline (shown once, copied, never stored by the page) and a one-click "create sample meter and customer" in sandbox. **Done 2026-11-02 (branch `feat/connect-first-steps`):** on the Connect page a person who has the app can create an **ingest-only** key for the environment on screen (the secret is shown once, held in memory until the person says it is copied, never put in storage or in the code on the page; the "An API key" step turns green from the keys that exist); in the sandbox, one click makes the meter `api_calls` and the customer `cus_1` for whichever of the two is missing (never on top of what exists, never in live). Not done: the API address is still typed by hand. An operator looking at a tenant has no app of their own on that page and is not offered a key (the operator's key route makes a key of full power, which is not what a quick start should hand out).
+3. "Send a test event" and "send a test webhook" buttons; rejected-event viewer with error codes and fixes. **Test event done 2026-11-02 (same branch):** a sandbox-only button sends one event of quantity 1 for the chosen meter and customer, as the signed-in person (`POST /v1/events` through the console session, which the gateway allows for an owner or admin and refuses a viewer), and shows accepted or the rejected `error_code` with the API's own message (English: the 11 codes have no per-language hint yet); the checklist's own poll turns "counted" green. The test webhook was done before (above). The rejected-event viewer is not.
 4. Framework templates (two to start) in a `examples/` directory with their own CI.
 5. Publish SDKs when the owner lifts the no-release rule; then real install lines.
 
