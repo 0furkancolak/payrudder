@@ -17,6 +17,7 @@ import { Card } from "@/shared/ui/card";
 import { DataPagination, DataToolbar } from "@/shared/ui/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { FormField } from "@/shared/ui/form-field";
@@ -164,7 +165,7 @@ const detailRows = computed(() => {
       <li v-for="s in STATUSES" :key="s"><Badge :variant="s === 'open' && counts[s] ? 'destructive' : 'secondary'">{{ label(t, te, "discrepancyStatus", s) }}: {{ counts[s] ?? 0 }}</Badge></li>
     </ul>
 
-    <ErrorText :error="queue.error.value" />
+    <ErrorState :error="queue.error.value" :retrying="queue.isFetching.value" compact class="mx-0" @retry="queue.refetch()" />
     <ErrorText :error="error" />
     <div class="-mx-3 border-t pt-3">
       <DataToolbar v-model:search="table.search.value" :active="table.active.value" @clear="table.clear()">

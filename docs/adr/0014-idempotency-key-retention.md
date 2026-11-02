@@ -8,7 +8,7 @@
 ingest-svc deduplicates events by `(tenant, idempotency_key)`. A key is remembered for **at least 45 days and less than 76 days** after it was first seen (corrected
 2026-11-01; this ADR said "at least two and less than three months", which is how far the lookup reaches, not how long keys are kept; see Decision). The 35 days of
 allowed lateness are what the window has to cover: ingest refuses an event whose `event_time` is older than 35 days, so a repeat of an event can only be accepted
-while it is at most 35 days after the event, and therefore at most 35 days after the key was first seen. The table must stay bounded: old keys have to go. Two ways were considered in Phase 02 ([data model](../05-data-model.md#idempotency_keys)):
+while it is at most 35 days after the event, and therefore at most 35 days after the key was first seen. The table must stay bounded: old keys have to go. Two ways were considered in Phase 02 ([data model](../05-data-model.md#ingest_db)):
 monthly range partitions that are dropped when they expire (what the migration does), or one plain table pruned by a
 batched `DELETE` job. The data model note promised a benchmark of both.
 

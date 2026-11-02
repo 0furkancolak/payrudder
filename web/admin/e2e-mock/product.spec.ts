@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { dashboardFixture } from "./dashboard";
 import { APP, HOME, INVOICE_2, INVOICE_3, LIVE, SESSION, billingGateway, liveGateway, openAllApps, productGateway, signInAsAda, user } from "./product";
-import { pickCurrency, pickTheme } from "./ui";
+import { confirmDialog, pickCurrency, pickTheme } from "./ui";
 
 // The end-user product: sign up and in, the organisation home, an app's dashboard, API keys. The gateway is mocked; SHOTS=<dir> also writes screenshots
 // of the pages (desktop and phone, light and dark) so the look can be reviewed.
@@ -111,10 +111,11 @@ test.describe("sign up and sign in", () => {
     await productGateway(new MockGateway()).gw.install(page);
     await page.goto("/app");
     await page.waitForURL("**/signin");
+    // The page asked for comes back after signing in, so the address carries it.
     await page.goto("/tenants");
-    await page.waitForURL("**/signin");
+    await page.waitForURL(/\/signin\?next=%2Ftenants$/);
     await page.goto("/operator");
-    await page.waitForURL("**/signin");
+    await page.waitForURL(/\/signin\?next=%2Foperator$/);
     // There is no token form anywhere: the operator signs in like everybody else.
     await expect(page.getByLabel(/operator token/i)).toHaveCount(0);
     await expect(page.getByText(/operator console/i)).toHaveCount(0);
@@ -457,6 +458,7 @@ test.describe("members and invitations", () => {
     await expect.poll(() => gw.called("POST", /\/app\/v1\/account\/invitations\/inv-1\/resend$/).length).toBe(1);
     await pending.getByTestId("row-actions").click();
     await page.getByTestId("row-action-cancel").click();
+    await confirmDialog(page);
     await expect(pending).toHaveCount(0);
     expect(gw.called("DELETE", /\/app\/v1\/account\/invitations\/inv-1$/)).toHaveLength(1);
   });

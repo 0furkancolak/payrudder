@@ -3,7 +3,7 @@ import { Link, useRouter } from "@tanstack/vue-router";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { enumWord, label } from "@/shared/lib/labels";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { PageHeader } from "@/shared/ui/page-header";
@@ -61,7 +61,7 @@ const change = (status: "active" | "suspended", only?: typeof list.value) =>
   <PageHeader :title="t('tenants.title')" />
   <PricePauseCard />
   <Skeleton v-if="tenants.isPending.value" class="mb-3 h-6 w-40" aria-busy="true" />
-  <ErrorText :error="tenants.error.value" class="mb-3" />
+  <ErrorState :error="tenants.error.value" :retrying="tenants.isFetching.value" class="mb-3" @retry="tenants.refetch()" />
   <Card class="p-3">
     <BulkBar v-bind="bulk.bar.value" @clear="table.clearSelection()" @select-all="bulk.selectAll()">
       <Button type="button" size="sm" variant="outline" data-testid="bulk-suspend" @click="change('suspended')">{{ t("tenants.suspend") }}</Button>

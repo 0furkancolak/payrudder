@@ -9,6 +9,7 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { DetailSheet } from "@/shared/ui/detail-sheet";
 import { CopyField } from "@/shared/ui/copy-field";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -59,7 +60,7 @@ const claimProblem = computed(() => (claim.error.value && !unverified.value ? cl
       </Button>
     </div>
     <ErrorText :error="claimProblem" />
-    <ErrorText :error="list.error.value" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact class="mx-0" @retry="list.refetch()" />
 
     <Skeleton v-if="list.isPending.value" class="h-40" />
     <Card v-else-if="list.isSuccess.value && !affiliations.length" data-testid="partner-empty">

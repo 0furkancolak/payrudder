@@ -4,6 +4,7 @@ import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toast } from "vue-sonner";
 import { useCanWrite } from "@/shared/lib/access";
+import { askConfirm } from "@/shared/lib/confirm";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { Ban, Banknote, ArrowUpRight } from "@lucide/vue";
@@ -12,6 +13,7 @@ import { FilterSelect } from "@/shared/ui/filter-select";
 import { RowActions } from "@/shared/ui/row-actions";
 import FilterBar from "./FilterBar.vue";
 import { Card } from "@/shared/ui/card";
+import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
@@ -41,6 +43,11 @@ const codeOf = (id: string | undefined) => (options.data.value ?? []).find((a) =
 const create = useCreatePayouts(tenantId);
 const cancel = useCancelPayout(tenantId);
 const result = computed(() => create.data.value);
+
+/** Dropping a payout puts its commissions back into the pool: ask first. */
+async function cancelPayout(p: Payout) {
+  if (await askConfirm({ title: t("affiliates.payouts.confirmTitle"), body: t("affiliates.payouts.confirmBody"), confirmLabel: t("affiliates.payouts.cancel") })) cancel.mutate(p.id ?? "");
+}
 
 const paying = ref<Payout | null>(null);
 const payOpen = ref(false);
@@ -74,7 +81,7 @@ const actionsOf = (p: Payout, i: number) => [
   ...(p.status === "open"
     ? [
         { key: "markPaid", label: t("affiliates.payouts.markPaid"), icon: Banknote, disabled: !canWrite.value, onSelect: () => pay(p) },
-        { key: "cancel", label: t("affiliates.payouts.cancel"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value || cancel.isPending.value, onSelect: () => cancel.mutate(p.id ?? "") },
+        { key: "cancel", label: t("affiliates.payouts.cancel"), icon: Ban, destructive: true, separatorBefore: true, disabled: !canWrite.value || cancel.isPending.value, onSelect: () => cancelPayout(p) },
       ]
     : []),
 ];
@@ -122,7 +129,7 @@ function createAll() {
       <FilterSelect v-model="status" :label="t('affiliates.common.status')" :options="statusOptions" />
       <HeaderAction :disabled="!canWrite || create.isPending.value" :label="t('affiliates.payouts.create')" @click="createAll" />
     </FilterBar>
-    <ErrorText :error="list.error.value" class="px-3" />
+    <ErrorState :error="list.error.value" :retrying="list.isFetching.value" compact @retry="list.refetch()" />
     <Skeleton v-if="list.isPending.value" class="mx-3 h-32" />
     <p v-else-if="list.isSuccess.value && !list.data.value?.items.length" class="text-muted-foreground px-3 py-4 text-sm">{{ t("affiliates.payouts.empty") }}</p>
     <Table v-else-if="list.data.value">

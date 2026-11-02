@@ -8,7 +8,7 @@ import { useErrorText } from "@/shared/lib/errors";
 import { useFormat } from "@/shared/lib/format";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
-import { ErrorText } from "@/shared/ui/error-text";
+import { ErrorState } from "@/shared/ui/error-state";
 import { DateRangePicker, type DateRange } from "@/shared/ui/date-range";
 import FilterBar from "./FilterBar.vue";
 import { Skeleton } from "@/shared/ui/skeleton";
@@ -54,7 +54,7 @@ async function exportCsv() {
     </template>
   </FilterBar>
 
-  <ErrorText :error="journal.error.value" />
+  <ErrorState :error="journal.error.value" :retrying="journal.isFetching.value" compact class="mx-0" @retry="journal.refetch()" />
   <Skeleton v-if="journal.isPending.value" class="h-32" />
   <template v-else-if="journal.data.value">
     <section v-for="c in totals" :key="c.currency" :aria-label="c.currency" :data-balanced="c.balanced">

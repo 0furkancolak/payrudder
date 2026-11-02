@@ -267,3 +267,22 @@ test.describe("the operator is a person", () => {
     expect(gw.called("GET", "/admin/v1/tenants").every((c) => c.headers.authorization === `Bearer ${SESSION}`)).toBe(true);
   });
 });
+
+test.describe("an operator page asked for while signed out", () => {
+  test("sends the visitor to sign in with the page to come back to, and the sign-in brings the operator back to it", async ({ page }) => {
+    const gw = new MockGateway();
+    await gw.install(page);
+    await page.goto("/tenants/0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e/customers?currency=EUR");
+    await expect(page).toHaveURL(/\/signin\?next=%2Ftenants%2F0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e%2Fcustomers/);
+    await page.getByLabel("E-mail").fill(OPERATOR_EMAIL);
+    await page.getByLabel("Password", { exact: true }).fill(OPERATOR_PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/tenants\/0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e\/customers\?currency=EUR/);
+  });
+
+  test("the operator door asks for sign-in too, and keeps its own address as the page to come back to", async ({ page }) => {
+    await new MockGateway().install(page);
+    await page.goto("/operator");
+    await expect(page).toHaveURL(/\/signin\?next=%2Foperator$/);
+  });
+});
