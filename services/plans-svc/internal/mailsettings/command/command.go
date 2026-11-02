@@ -3,12 +3,16 @@ package command
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/mailcategory"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	mailqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/mailsettings/query"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
@@ -28,14 +32,22 @@ func (c *Commands) Set(ctx context.Context, in []*plansv1.MailCategorySetting) (
 			return nil, errkey.Newf(codes.InvalidArgument, "plans.mail.unknown_category", "category %q is not one of %v", s.GetCategory(), mailcategory.All())
 		}
 	}
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var disabled []string
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		current, err := mailqry.Disabled(ctx, q)
 		if err != nil {
 			return err
 		}
 		disabled = apply(current, in)
-		return q.UpsertMailDisabled(ctx, disabled)
+		if err := q.UpsertMailDisabled(ctx, disabled); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "mail_settings.changed", TargetType: "mail_settings", Before: current, After: disabled,
+			Summary: fmt.Sprintf("%d mail categories switched off", len(disabled)), Detail: map[string]any{"disabled": disabled, "previously_disabled": current}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "mail settings")

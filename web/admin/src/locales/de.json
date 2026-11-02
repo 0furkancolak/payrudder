@@ -5978,6 +5978,20 @@
       "invoice": "Rechnungen",
       "provider_account": "Anbieterkonten",
       "tenant": "Mandanteneinstellungen und -status",
+      "price_change": "Preisänderungen",
+      "coupon": "Gutscheine",
+      "promotion_code": "Aktionscodes",
+      "routing_rules": "Zahlungsrouting",
+      "tax_rates": "Steuersätze",
+      "mail_settings": "E-Mail-Einstellungen",
+      "mail_integration": "E-Mail-Anbieter",
+      "go_live": "Livegang",
+      "contract": "Verträge",
+      "support": "Support",
+      "dunning": "Mahnwesen",
+      "invoice_payment": "Manuell erfasste Zahlungen",
+      "bank_transfer": "Banküberweisungen",
+      "user": "Passwörter und Anmeldung",
       "two_factor": "Zwei-Faktor-Anmeldung",
       "sign_in": "Anmeldung",
       "account": "Organisation"
@@ -6025,6 +6039,56 @@
         "status_requested": "Statusänderung angefragt",
         "status_changed": "Status geändert",
         "settings_updated": "Einstellungen geändert"
+      },
+      "price_change": {
+        "scheduled": "Preisänderung geplant",
+        "withdrawn": "Preisänderung zurückgezogen"
+      },
+      "coupon": {
+        "created": "Gutschein erstellt",
+        "deactivated": "Gutschein deaktiviert"
+      },
+      "promotion_code": {
+        "created": "Aktionscodes erstellt",
+        "deactivated": "Aktionscode deaktiviert"
+      },
+      "routing_rules": {
+        "changed": "Zahlungsrouting geändert"
+      },
+      "tax_rates": {
+        "changed": "Steuersätze geändert"
+      },
+      "mail_settings": {
+        "changed": "E-Mail-Einstellungen geändert"
+      },
+      "mail_integration": {
+        "saved": "E-Mail-Anbieter verbunden",
+        "removed": "E-Mail-Anbieter getrennt"
+      },
+      "go_live": {
+        "billing_profile_saved": "Rechnungsprofil gespeichert",
+        "terms_accepted": "Bedingungen akzeptiert",
+        "activated": "Live-Umgebung aktiviert"
+      },
+      "contract": {
+        "version_published": "Vertragsversion veröffentlicht",
+        "settings_changed": "Vertragseinstellungen geändert"
+      },
+      "support": {
+        "status_changed": "Status eines Support-Tickets geändert"
+      },
+      "dunning": {
+        "settings_changed": "Mahneinstellungen geändert"
+      },
+      "invoice_payment": {
+        "recorded": "Zahlung manuell erfasst"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Banküberweisung bestätigt"
+      },
+      "user": {
+        "password_reset": "Passwort zurückgesetzt",
+        "sign_in_locked": "Anmeldung gesperrt"
       },
       "two_factor": {
         "enabled": "Zwei-Faktor-Anmeldung eingeschaltet",

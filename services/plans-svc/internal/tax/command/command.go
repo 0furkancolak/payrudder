@@ -7,7 +7,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store"
@@ -47,8 +51,16 @@ func (c *Commands) SetRates(ctx context.Context, rates []*plansv1.TaxRate) ([]*p
 	if err := v.Err(); err != nil {
 		return nil, err
 	}
+	ti, err := tenant.Require(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var out []*plansv1.TaxRate
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		before, err := q.ListTaxRates(ctx)
+		if err != nil {
+			return err
+		}
 		if err := q.DeleteTaxRates(ctx); err != nil {
 			return err
 		}
@@ -58,8 +70,12 @@ func (c *Commands) SetRates(ctx context.Context, rates []*plansv1.TaxRate) ([]*p
 			}
 		}
 		rows, err := q.ListTaxRates(ctx)
+		if err != nil {
+			return err
+		}
 		out = taxqry.Messages(rows)
-		return err
+		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "tax_rates.changed", TargetType: "tax_rates", Before: before, After: rows,
+			Summary: fmt.Sprintf("set %d tax rates (%d before)", len(rows), len(before)), Detail: map[string]any{"count": len(rows), "previous_count": len(before)}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "tax rate")

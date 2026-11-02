@@ -5978,6 +5978,20 @@
       "invoice": "الفواتير",
       "provider_account": "حسابات المزوّدين",
       "tenant": "إعدادات المستأجر وحالته",
+      "price_change": "تغييرات الأسعار",
+      "coupon": "القسائم",
+      "promotion_code": "رموز الترويج",
+      "routing_rules": "توجيه المدفوعات",
+      "tax_rates": "معدلات الضرائب",
+      "mail_settings": "إعدادات البريد",
+      "mail_integration": "مزوّد البريد",
+      "go_live": "الإطلاق الفعلي",
+      "contract": "العقود",
+      "support": "الدعم",
+      "dunning": "متابعة التحصيل",
+      "invoice_payment": "المدفوعات المسجلة يدويًا",
+      "bank_transfer": "التحويلات المصرفية",
+      "user": "كلمات المرور وتسجيل الدخول",
       "two_factor": "تسجيل الدخول بخطوتين",
       "sign_in": "تسجيل الدخول",
       "account": "المؤسسة"
@@ -6025,6 +6039,56 @@
         "status_requested": "طُلب تغيير الحالة",
         "status_changed": "تغيّرت الحالة",
         "settings_updated": "تغيّرت الإعدادات"
+      },
+      "price_change": {
+        "scheduled": "تمت جدولة تغيير السعر",
+        "withdrawn": "تم سحب تغيير السعر"
+      },
+      "coupon": {
+        "created": "تم إنشاء القسيمة",
+        "deactivated": "تم تعطيل القسيمة"
+      },
+      "promotion_code": {
+        "created": "تم إنشاء رموز الترويج",
+        "deactivated": "تم تعطيل رمز الترويج"
+      },
+      "routing_rules": {
+        "changed": "تم تغيير توجيه المدفوعات"
+      },
+      "tax_rates": {
+        "changed": "تم تغيير معدلات الضرائب"
+      },
+      "mail_settings": {
+        "changed": "تم تغيير إعدادات البريد"
+      },
+      "mail_integration": {
+        "saved": "تم ربط مزوّد البريد",
+        "removed": "تم فصل مزوّد البريد"
+      },
+      "go_live": {
+        "billing_profile_saved": "تم حفظ ملف الفوترة",
+        "terms_accepted": "تم قبول الشروط",
+        "activated": "تم تفعيل بيئة الإنتاج"
+      },
+      "contract": {
+        "version_published": "تم نشر نسخة العقد",
+        "settings_changed": "تم تغيير إعدادات العقود"
+      },
+      "support": {
+        "status_changed": "تم تغيير حالة تذكرة الدعم"
+      },
+      "dunning": {
+        "settings_changed": "تم تغيير إعدادات متابعة التحصيل"
+      },
+      "invoice_payment": {
+        "recorded": "تم تسجيل دفعة يدويًا"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "تم تأكيد التحويل المصرفي"
+      },
+      "user": {
+        "password_reset": "تمت إعادة تعيين كلمة المرور",
+        "sign_in_locked": "تم قفل تسجيل الدخول"
       },
       "two_factor": {
         "enabled": "تم تفعيل تسجيل الدخول بخطوتين",

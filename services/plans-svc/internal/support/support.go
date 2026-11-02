@@ -18,6 +18,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
@@ -547,6 +548,12 @@ func (s *Service) UpdateSupportTicket(ctx context.Context, req *plansv1.UpdateSu
 		}
 		if err := save(ctx, q, id, prev, next, lastAuthorOf(ctx, q, id), false, actor{"operator", by}); err != nil {
 			return err
+		}
+		if next.Status != prev.Status {
+			if err := audit.Record(ctx, tx, audit.Event{AccountID: row.AccountID, Action: "support.status_changed", TargetType: "support_ticket", TargetID: id.String(),
+				Summary: "support moved a ticket from " + prev.Status + " to " + next.Status, Detail: map[string]any{"from": prev.Status, "to": next.Status, "by": by}}); err != nil {
+				return err
+			}
 		}
 		// A new status is news to the person who opened the ticket; priority and assignee are the operator's own business.
 		if next.Status != prev.Status {

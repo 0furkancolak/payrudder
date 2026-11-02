@@ -5978,6 +5978,20 @@
       "invoice": "Invoices",
       "provider_account": "Provider accounts",
       "tenant": "Tenant settings and status",
+      "price_change": "Price changes",
+      "coupon": "Coupons",
+      "promotion_code": "Promotion codes",
+      "routing_rules": "Payment routing",
+      "tax_rates": "Tax rates",
+      "mail_settings": "Mail settings",
+      "mail_integration": "Mail provider",
+      "go_live": "Go live",
+      "contract": "Contracts",
+      "support": "Support",
+      "dunning": "Dunning",
+      "invoice_payment": "Payments recorded by hand",
+      "bank_transfer": "Bank transfers",
+      "user": "Passwords and sign-in",
       "two_factor": "Two-factor sign-in",
       "sign_in": "Sign-in",
       "account": "Organisation"
@@ -6025,6 +6039,56 @@
         "status_requested": "Status change requested",
         "status_changed": "Status changed",
         "settings_updated": "Settings changed"
+      },
+      "price_change": {
+        "scheduled": "Price change scheduled",
+        "withdrawn": "Price change withdrawn"
+      },
+      "coupon": {
+        "created": "Coupon created",
+        "deactivated": "Coupon deactivated"
+      },
+      "promotion_code": {
+        "created": "Promotion codes created",
+        "deactivated": "Promotion code deactivated"
+      },
+      "routing_rules": {
+        "changed": "Payment routing changed"
+      },
+      "tax_rates": {
+        "changed": "Tax rates changed"
+      },
+      "mail_settings": {
+        "changed": "Mail settings changed"
+      },
+      "mail_integration": {
+        "saved": "Mail provider connected",
+        "removed": "Mail provider disconnected"
+      },
+      "go_live": {
+        "billing_profile_saved": "Billing profile saved",
+        "terms_accepted": "Terms accepted",
+        "activated": "Live environment activated"
+      },
+      "contract": {
+        "version_published": "Contract version published",
+        "settings_changed": "Contract settings changed"
+      },
+      "support": {
+        "status_changed": "Support ticket status changed"
+      },
+      "dunning": {
+        "settings_changed": "Dunning settings changed"
+      },
+      "invoice_payment": {
+        "recorded": "Payment recorded by hand"
+      },
+      "bank_transfer": {
+        "receipt_recorded": "Bank transfer confirmed"
+      },
+      "user": {
+        "password_reset": "Password reset",
+        "sign_in_locked": "Sign-in locked"
       },
       "two_factor": {
         "enabled": "Two-factor sign-in turned on",

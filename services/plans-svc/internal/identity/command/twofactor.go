@@ -91,6 +91,15 @@ func who(u sqlc.User) *audit.Actor {
 	return &audit.Actor{Type: audit.ActorUser, ID: u.ID.String(), Email: u.Email}
 }
 
+// lockNote records that repeated failures locked the person's sign-in; step is "password" or "second_factor". The actor is the system and the address is the one the
+// failures came from (the context's): the person did not do this. The sign-in failed anyway and answers as it always did, so a failed write is logged, not returned.
+func (c *Commands) lockNote(ctx context.Context, u sqlc.User, step string) {
+	if err := audit.Record(ctx, c.pool, audit.Event{Action: "user.sign_in_locked", TargetType: "user", TargetID: u.ID.String(),
+		Summary: "sign-in of " + u.Email + " locked after repeated failures", Detail: map[string]any{"step": step, "failures": u.FailedLogins}}); err != nil {
+		c.log.ErrorContext(ctx, "audit entry for a locked sign-in not written", "user_id", u.ID, "error", err)
+	}
+}
+
 // VerifyTwoFactor is the second step of a sign-in. The tries are counted before the code is looked at, in statements of their own, so a failure keeps its count.
 func (c *Commands) VerifyTwoFactor(ctx context.Context, req *plansv1.VerifyTwoFactorRequest) (Opened, error) {
 	if !credential.WellFormed(credential.ChallengePrefix, req.GetChallenge()) || req.GetCode() == "" || len(req.GetCode()) > 64 {
@@ -116,6 +125,7 @@ func (c *Commands) VerifyTwoFactor(ctx context.Context, req *plansv1.VerifyTwoFa
 		if errors.Is(err, errBadCode) {
 			if user.LockedUntil != nil {
 				c.log.WarnContext(ctx, "sign-in locked after repeated failures at the second step", "user_id", user.ID, "failures", user.FailedLogins)
+				c.lockNote(ctx, user, "second_factor")
 			}
 			return Opened{}, invalidSecondFactor()
 		}
