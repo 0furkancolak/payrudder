@@ -57,3 +57,11 @@ Not done: OAuth with the console's sign-in, a rate limit per key, an audit log o
 
 Not verified: nothing here was tried with a real assistant (Claude Desktop, Claude Code) by a person; the HTTP mode was tested with the SDK's own client only; no TLS or proxy setup was tried.
 
+
+## Progress, second part (2026-11-02, branch `feat/sdk-cli-errors`)
+
+Done:
+- **An audit log:** one JSON line per tool call on stderr (the tool, whether it writes, the transport, the public prefix of the key, the arguments, ok or the API's error key and status, milliseconds, characters returned and whether the answer was cut). Arguments that are text about a person (`name`, `email`, `phone`, `address`, notes, `reason`, `description`, `properties`) are replaced, lists are counted, long strings cut; the answer, the error message and the secret part of the key are never logged. On for stdio and HTTP (the HTTP server tells callers apart by key prefix); `PAYRUDDER_MCP_AUDIT=0` stops it; a sink that fails neither fails the call nor runs it twice. Tested in memory, over HTTP with two keys, and through the built binary over a real stdio pipe.
+- **The rate-limit fact, corrected:** the gateway limits per **tenant** and route class (`gw:rl:{tenant}:{class}`, by tier), not per key, so every key of a tenant shares one budget and an assistant spends the application's. The README says so ("Rate limits") and what to do (a sandbox key, an app of its own, the audit log). **A limit per key does not exist and would be a gateway change** (the gap above says "per key": it is a per-tenant limit with no per-key share).
+
+Still open: OAuth with the console's sign-in, a limit per key (gateway), prompts, the operator MCP, the risk table per tool for the owner to sign, any new read tool. Not verified: nothing was tried with a real assistant; shipping the stderr lines to a collector is the deployment's job and was not set up.
