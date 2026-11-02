@@ -90,7 +90,7 @@ func TestBounceSuppressesTheNextMail(t *testing.T) {
 
 	// The operator lifts it, through the signed endpoint, and the address is mailed again (the dropped mail released its claim, so its key is free).
 	req, _ := http.NewRequest(http.MethodDelete, events.URL+"/v1/mail-suppressions/"+tenantA.String()+"/ada@example.com", nil)
-	req.Header.Set(webhooksig.Header(), webhooksig.Sign(time.Now(), nil, "whsec_integration_test"))
+	req.Header.Set(webhooksig.Header(), webhooksig.SignRequest(time.Now(), http.MethodDelete, req.URL, nil, "whsec_integration_test"))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil || resp.StatusCode != http.StatusOK {
 		t.Fatalf("lift: %v %v", resp, err)

@@ -12,6 +12,7 @@ The listener is off until it has an address and a secret:
 |---|---|
 | `NOTIFIER_EVENTS_ADDR` | where the notifier listens (`:9111`); empty is off |
 | `NOTIFIER_MAIL_EVENTS_SECRET` | at least 16 characters; every request is signed with it (`openssl rand -base64 32`). The notifier refuses to start with an address and no secret |
+| `NOTIFIER_MAIL_EVENTS_ACCEPT_V1` | `false` by default. `true` also accepts the old signature (v1: timestamp and body only) **for the length of a rollout** from a gateway or sender that does not sign v2 yet; `notifier_mail_events_v1_signatures_total` counts what it accepted, so you see when the last sender has moved |
 
 Expose the port only to what calls it (the translating layer, an operator's shell); it is not behind the gateway and does not use the console's login. The Helm chart and the compose file do not set these two: add them to the notifier's `env` and a Service for the port when you run the layer.
 
@@ -23,14 +24,17 @@ The message log is `sent_notifications` of the tenant (its `delivery_state` is w
 
 ## The calls
 
-Every request is signed like Payrudder's own webhooks (`pkg/webhooksig`): header `Payrudder-Signature: t=<unix>,v1=<hex>`, where `v1` is HMAC-SHA256 of `<t>.<body>` with the secret, the body being the exact request body (empty for GET and DELETE). A signature more than five minutes old, or a missing one, is `401`.
+Every request is signed with the shared secret (`pkg/webhooksig`, **v2**): header `Payrudder-Signature: t=<unix>,v2=<hex>`, where `v2` is HMAC-SHA256 of `v2\n<t>\n<METHOD>\n<path>\n<query>\n<body>` with the secret: the method in capitals, the path as sent (escaped), the query string as sent (empty when there is none, the line stays), and the exact request body (empty for GET and DELETE). The signature therefore belongs to one request: **a signature captured from a GET of the list is no good for a DELETE of a suppression**, which the old v1 signature (`<t>.<body>`) allowed for five minutes because both bodies are empty. A signature more than five minutes old, a v1-only signature (unless `NOTIFIER_MAIL_EVENTS_ACCEPT_V1`), or a missing one is `401`.
 
 ```sh
 body='{"type":"bounced","message_id":"<the provider id>","bounce_type":"hard"}'
 t=$(date +%s)
-sig=$(printf '%s.%s' "$t" "$body" | openssl dgst -sha256 -hmac "$NOTIFIER_MAIL_EVENTS_SECRET" -hex | sed 's/^.* //')
-curl -sS -X POST "$NOTIFIER/v1/mail-events" -H "Payrudder-Signature: t=$t,v1=$sig" -d "$body"
+sig=$(printf 'v2\n%s\nPOST\n/v1/mail-events\n\n%s' "$t" "$body" | openssl dgst -sha256 -hmac "$NOTIFIER_MAIL_EVENTS_SECRET" -hex | sed 's/^.* //')
+curl -sS -X POST "$NOTIFIER/v1/mail-events" -H "Payrudder-Signature: t=$t,v2=$sig" -d "$body"
+# a GET with a query: printf 'v2\n%s\nGET\n/v1/mail-suppressions\ntenant_id=%s\n' "$t" "$TENANT"  (the query is signed as sent)
 ```
+
+**Rolling out v2 (default, not agreed).** The gateway (`internal/mailadmin`) and `fakenafru` sign v2 only. Upgrade the notifier first with `NOTIFIER_MAIL_EVENTS_ACCEPT_V1=true` (the gateways of the old release keep working), then the gateways, then watch `notifier_mail_events_v1_signatures_total` stop rising and remove the variable. A notifier of the old release behind a gateway of the new one answers `401` (it finds no v1 signature), so the order matters. Anything of yours that signs these calls (a translating layer, a script) has to move to v2 before the variable is removed.
 
 | Call | Does |
 |---|---|

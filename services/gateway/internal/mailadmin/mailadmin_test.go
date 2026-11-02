@@ -17,13 +17,13 @@ import (
 
 const secret = "whsec_0123456789abcdef"
 
-// notifier is a stand-in for the notifier's signed routes: it verifies the signature over the body as the real one does, and answers from fixtures.
+// notifier is a stand-in for the notifier's signed routes: it verifies the v2 signature (method, path, query, time, body) as the real one does, and answers from fixtures.
 func notifier(t *testing.T, answer func(r *http.Request, body []byte) (int, string)) (*Client, *[]string) {
 	t.Helper()
 	var seen []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
-		if webhooksig.Verify(r.Header.Get(webhooksig.Header()), body, secret, time.Now(), 0) != nil {
+		if webhooksig.VerifyRequest(r.Header.Get(webhooksig.Header()), r.Method, r.URL, body, secret, time.Now(), 0, false) != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}

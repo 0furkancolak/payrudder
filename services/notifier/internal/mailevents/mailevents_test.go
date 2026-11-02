@@ -22,7 +22,10 @@ import (
 
 const secret = "whsec_test"
 
-var tenantA = uuid.MustParse("0193c000-0000-7000-8000-00000000000a")
+var (
+	tenantA = uuid.MustParse("0193c000-0000-7000-8000-00000000000a")
+	tenantB = uuid.MustParse("0193c000-0000-7000-8000-00000000000b")
+)
 
 // memory is the notes and the suppression list in memory.
 type memory struct {
@@ -113,7 +116,7 @@ func do(t *testing.T, method, url string, body []byte, sig string) (int, map[str
 	t.Helper()
 	req, _ := http.NewRequest(method, url, strings.NewReader(string(body)))
 	if sig == "" {
-		sig = webhooksig.Sign(time.Now(), body, secret)
+		sig = webhooksig.SignRequest(time.Now(), method, req.URL, body, secret)
 	}
 	req.Header.Set(webhooksig.Header(), sig)
 	resp, err := http.DefaultClient.Do(req)
@@ -210,16 +213,19 @@ func TestBadEventsAndBadSignatures(t *testing.T) {
 		t.Errorf("not json: %d", code)
 	}
 	body := fixture(t, "hard-bounce.json")
+	events, _ := http.NewRequest("POST", srv.URL+"/v1/mail-events", nil)
 	for name, sig := range map[string]string{
-		"wrong secret": webhooksig.Sign(time.Now(), body, "other"),
-		"stale":        webhooksig.Sign(time.Now().Add(-time.Hour), body, secret),
+		"wrong secret": webhooksig.SignRequest(time.Now(), "POST", events.URL, body, "other"),
+		"stale":        webhooksig.SignRequest(time.Now().Add(-time.Hour), "POST", events.URL, body, secret),
+		"v1 only":      webhooksig.Sign(time.Now(), body, secret),
 		"none":         "garbage",
 	} {
 		if code, _ := do(t, "POST", srv.URL+"/v1/mail-events", body, sig); code != 401 {
 			t.Errorf("%s: %d, want 401", name, code)
 		}
 	}
-	if code, _ := do(t, "GET", srv.URL+"/v1/mail-suppressions?tenant_id="+tenantA.String(), nil, webhooksig.Sign(time.Now(), nil, "other")); code != 401 {
+	list, _ := http.NewRequest("GET", srv.URL+"/v1/mail-suppressions?tenant_id="+tenantA.String(), nil)
+	if code, _ := do(t, "GET", list.URL.String(), nil, webhooksig.SignRequest(time.Now(), "GET", list.URL, nil, "other")); code != 401 {
 		t.Errorf("a list with the wrong secret: %d", code)
 	}
 	if len(mem.rows) != 0 {
@@ -230,7 +236,7 @@ func TestBadEventsAndBadSignatures(t *testing.T) {
 	noSecret := httptest.NewServer(h.Routes())
 	defer noSecret.Close()
 	req, _ := http.NewRequest("POST", noSecret.URL+"/v1/mail-events", strings.NewReader(string(body)))
-	req.Header.Set(webhooksig.Header(), webhooksig.Sign(time.Now(), body, ""))
+	req.Header.Set(webhooksig.Header(), webhooksig.SignRequest(time.Now(), "POST", req.URL, body, ""))
 	if resp, err := http.DefaultClient.Do(req); err != nil || resp.StatusCode != 401 {
 		t.Errorf("no secret configured: %v %v", resp, err)
 	}
@@ -360,5 +366,59 @@ func TestPreviewAnswersTheRenderedMail(t *testing.T) {
 	}
 	if code, _ := do(t, "GET", bare.URL+"/v1/mail-messages?tenant_id="+tenantA.String(), nil, ""); code != 501 {
 		t.Errorf("messages without a log: %d", code)
+	}
+}
+
+// The v1 signature of an empty body covers only the time, so a captured GET of the list was a valid DELETE of a suppression (and the reverse) for five minutes. A v2
+// signature covers the method, the path and the query: the same header sent to another route is refused.
+func TestASignatureOfOneRequestIsNoGoodForAnother(t *testing.T) {
+	srv, mem := serve(t)
+	base := srv.URL + "/v1/mail-suppressions"
+	if code, _ := do(t, "PUT", base+"/"+tenantA.String()+"/ada@example.com", nil, ""); code != 200 {
+		t.Fatalf("setup: %d", code)
+	}
+	listURL, _ := url.Parse(base + "?tenant_id=" + tenantA.String())
+	captured := webhooksig.SignRequest(time.Now(), "GET", listURL, nil, secret)
+	if code, _ := do(t, "GET", listURL.String(), nil, captured); code != 200 {
+		t.Fatalf("the request it was signed for: %d", code)
+	}
+	for name, c := range map[string]struct{ method, url string }{
+		"lifting a suppression": {"DELETE", base + "/" + tenantA.String() + "/ada@example.com"},
+		"the other tenant":      {"GET", base + "?tenant_id=" + tenantB.String()},
+		"the message log":       {"GET", srv.URL + "/v1/mail-messages?tenant_id=" + tenantA.String()},
+	} {
+		if code, _ := do(t, c.method, c.url, nil, captured); code != 401 {
+			t.Errorf("%s with a captured signature: %d, want 401", name, code)
+		}
+	}
+	if len(mem.rows) != 1 {
+		t.Errorf("a replayed signature changed the list: %v", mem.rows)
+	}
+	// The same through v1: the signature of an empty body, which the previous release accepted anywhere.
+	v1 := webhooksig.Sign(time.Now(), nil, secret)
+	if code, _ := do(t, "DELETE", base+"/"+tenantA.String()+"/ada@example.com", nil, v1); code != 401 || len(mem.rows) != 1 {
+		t.Errorf("a v1 signature of an empty body lifting a suppression: %d, rows %v", code, mem.rows)
+	}
+}
+
+// During a rollout from a gateway that still signs v1, the notifier can be told to accept it (AcceptV1); it is off by default.
+func TestVersionOneSignaturesAreAcceptedOnlyWhenAsked(t *testing.T) {
+	mem := newMemory()
+	h := &Handler{Secret: secret, Notes: mem, List: mem, AcceptV1: true, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	srv := httptest.NewServer(h.Routes())
+	defer srv.Close()
+	listURL := srv.URL + "/v1/mail-suppressions?tenant_id=" + tenantA.String()
+	if code, _ := do(t, "GET", listURL, nil, webhooksig.Sign(time.Now(), nil, secret)); code != 200 {
+		t.Errorf("v1 during a rollout: %d", code)
+	}
+	if code, _ := do(t, "GET", listURL, nil, webhooksig.Sign(time.Now(), nil, "other")); code != 401 {
+		t.Errorf("v1 with another secret: %d", code)
+	}
+	if code, _ := do(t, "GET", listURL, nil, ""); code != 200 {
+		t.Errorf("v2 still works: %d", code)
+	}
+	off, _ := serve(t)
+	if code, _ := do(t, "GET", off.URL+"/v1/mail-suppressions?tenant_id="+tenantA.String(), nil, webhooksig.Sign(time.Now(), nil, secret)); code != 401 {
+		t.Errorf("v1 by default: %d, want 401", code)
 	}
 }

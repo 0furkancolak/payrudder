@@ -152,7 +152,7 @@ func New(d Deps) *Server {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, errkey.New(codes.NotFound, "gateway.route.not_found", "no such route"))
 	})
-	s.handler = requestIDMiddleware(s.recoverMiddleware(mux))
+	s.handler = requestIDMiddleware(s.recoverMiddleware(moveInboundSecret(mux)))
 	return s
 }
 
