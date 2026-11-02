@@ -402,6 +402,36 @@ func TestNotifier(t *testing.T) {
 		})
 	})
 
+	// The mail that follows from a customer's agreements is recorded under a kind of its own; the check on sent_notifications allowed four kinds only (00002 was the same
+	// mistake for price changes), so the first copy of an accepted agreement, renewal notice and acknowledgement would have failed on insert and been retried for ever.
+	t.Run("EveryKindOfContractMailIsRecordedAndSentOnce", func(t *testing.T) {
+		for _, c := range []struct {
+			kind, template, subject string
+			data                    map[string]string
+		}{
+			{"contract", "contract_accepted.v1", "", map[string]string{"accepted_at": "2 Nov 2026", "snapshot_html": "<p>x</p>", "snapshot_sha256": "h"}},
+			{"renewal", "renewal_notice.v1", "", map[string]string{"plan_code": "basic", "renewal_date": "9 Nov 2026", "price": "30.00 TRY", "interval": "month"}},
+			{"withdrawal", "contract_withdrawal_received.v1", "", map[string]string{"statement": "I withdraw", "received_at": "2 Nov 2026, 10:00 UTC"}},
+		} {
+			to := c.kind + "-" + uuid.NewString()[:8] + "@example.com"
+			key := uuid.NewString()
+			d := map[string]string{"customer_name": "Ada", "tenant_name": "Acme"}
+			for k, v := range c.data {
+				d[k] = v
+			}
+			for i := 0; i < 2; i++ { // delivered twice, sent once
+				if _, err := mailer.Deliver(context.Background(), delivery.Delivery{Key: key, Kind: c.kind, Template: c.template, TenantID: uuid.New(), To: to, Data: d}); err != nil {
+					t.Fatalf("%s: %v", c.kind, err)
+				}
+			}
+			waitMail(t, mp.APIURL, to, 1)
+			time.Sleep(500 * time.Millisecond)
+			if got := mailbox(t, mp.APIURL, to); len(got) != 1 {
+				t.Errorf("%s: mailbox = %+v, want exactly one mail", c.kind, got)
+			}
+		}
+	})
+
 	// The facts plans-svc relays from its outbox (subscription.price-change.v1) become one mail in the customer's language, however often a fact is delivered, and a
 	// record that cannot be decoded goes to the DLQ instead of blocking the partition.
 	t.Run("PriceChangeDeliveredTwiceSendsOneEmailInTheCustomersLanguage", func(t *testing.T) {

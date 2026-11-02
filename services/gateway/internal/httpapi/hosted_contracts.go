@@ -3,6 +3,7 @@ package httpapi
 import (
 	"html/template"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/google/uuid"
@@ -74,7 +75,12 @@ func (s *Server) contractsView(r *http.Request, resp *billingv1.GetHostedInvoice
 	if len(req.GetMissingKinds()) > 0 {
 		return nil, true
 	}
-	v = &contractView{Consents: req.GetImmediateStart()}
+	return contractViewOf(req, lang, l), false
+}
+
+// contractViewOf draws the texts a person has not accepted, with the sentence that records the acceptance next to each box.
+func contractViewOf(req *plansv1.GetContractRequirementsResponse, lang string, l map[string]string) *contractView {
+	v := &contractView{Consents: req.GetImmediateStart()}
 	for _, rq := range req.GetRequirements() {
 		item := contractItemView{Kind: rq.GetKind(), Label: kindLabel(lang, rq.GetKind()), VersionID: rq.GetVersionId(), Number: rq.GetVersionNumber(), HTML: template.HTML(rq.GetBodyHtml()), //nolint:gosec // rendered and escaped by plans-svc
 			CheckboxText: l["accept_"+rq.GetKind()], Accepted: rq.GetAccepted()}
@@ -83,7 +89,7 @@ func (s *Server) contractsView(r *http.Request, resp *billingv1.GetHostedInvoice
 		}
 		v.Items = append(v.Items, item)
 	}
-	return v, false
+	return v
 }
 
 // kindLabel names a kind of agreement in the page's language.
@@ -130,26 +136,7 @@ func (s *Server) requireContracts(w http.ResponseWriter, r *http.Request, sc sco
 		refuse(http.StatusServiceUnavailable, "contract_unavailable")
 		return false
 	}
-	form := r.PostForm
-	var items []*plansv1.ContractAcceptanceItem
-	problem := ""
-	for _, rq := range req.GetRequirements() {
-		if rq.GetAccepted() {
-			continue
-		}
-		switch {
-		case form.Get("v_"+rq.GetKind()) != rq.GetVersionId():
-			problem = "contract_stale" // the text was replaced while the customer read, or the form is not from this page
-		case form.Get("accept_"+rq.GetKind()) != "1":
-			if problem == "" {
-				problem = "contract_missing"
-			}
-		}
-		items = append(items, &plansv1.ContractAcceptanceItem{VersionId: rq.GetVersionId(), CheckboxText: l["accept_"+rq.GetKind()]})
-	}
-	if req.GetImmediateStart() && (form.Get("consent_start") != "1" || form.Get("consent_waiver") != "1") && problem == "" {
-		problem = "contract_missing"
-	}
+	items, problem := agreementItems(req, r.PostForm, l)
 	if problem != "" {
 		s.agreePage(w, r, sc, lang, resp, problem)
 		return false
@@ -177,6 +164,29 @@ func (s *Server) requireContracts(w http.ResponseWriter, r *http.Request, sc sco
 		return false
 	}
 	return true
+}
+
+// agreementItems reads the boxes of a form against the requirements the page was drawn from: the items to record, or the key of the text to show above the boxes when a box is
+// empty, the text was replaced since the page was drawn, or the form is not from this page. The page needs no script, so this is the check.
+func agreementItems(req *plansv1.GetContractRequirementsResponse, form url.Values, l map[string]string) (items []*plansv1.ContractAcceptanceItem, problem string) {
+	for _, rq := range req.GetRequirements() {
+		if rq.GetAccepted() {
+			continue
+		}
+		switch {
+		case form.Get("v_"+rq.GetKind()) != rq.GetVersionId():
+			problem = "contract_stale" // the text was replaced while the customer read, or the form is not from this page
+		case form.Get("accept_"+rq.GetKind()) != "1":
+			if problem == "" {
+				problem = "contract_missing"
+			}
+		}
+		items = append(items, &plansv1.ContractAcceptanceItem{VersionId: rq.GetVersionId(), CheckboxText: l["accept_"+rq.GetKind()]})
+	}
+	if req.GetImmediateStart() && (form.Get("consent_start") != "1" || form.Get("consent_waiver") != "1") && problem == "" {
+		problem = "contract_missing"
+	}
+	return items, problem
 }
 
 // agreePage shows the invoice page again, with the reason the payment did not start above the boxes (422: the form was not complete).

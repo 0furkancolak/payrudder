@@ -569,6 +569,18 @@ type ContractSettings struct {
 	// Kinds that have a published consumer version.
 	PublishedKinds []string   `json:"published_kinds"`
 	UpdateTime     *time.Time `json:"update_time"`
+	// What accepting a withdrawal does about the money. full (the default) asks billing for a refund of the invoice
+	// to the card; none leaves it to the seller. The seller decides the withdrawal either way. One of: full, none.
+	WithdrawalRefund string `json:"withdrawal_refund"`
+	// How many days before a renewal the customer is mailed the renewal notice (price, date, how to cancel). 0 is
+	// off; default 7. Only for a subscription whose fixed fee is invoiced in advance and a customer who accepted an
+	// agreement.
+	RenewalNoticeDays int `json:"renewal_notice_days"`
+	// Language (en, tr, de, fr, es, ar) to the seller's own words on how to cancel, printed in the renewal notice.
+	RenewalCancelTexts map[string]string `json:"renewal_cancel_texts"`
+	// Consumers can withdraw from a contract on the hosted pages and are sent an acknowledgement (Directive
+	// 2011/83/EU art. 11a). Only while agreements are required. Default on.
+	WithdrawalFunction bool `json:"withdrawal_function"`
 }
 
 // ContractVersion is an object of the API; see components.schemas.ContractVersion in api/openapi/v1.yaml.
@@ -609,6 +621,15 @@ type ContractWithdrawal struct {
 	DecideTime   *time.Time `json:"decide_time"`
 	DecidedBy    string     `json:"decided_by"`
 	DecisionNote string     `json:"decision_note"`
+	// The credit note billing made to refund the invoice, once one was requested (GET /v1/credit-notes/{id} says
+	// how the refund went).
+	CreditNoteID string `json:"credit_note_id"`
+	// none: nothing asked of billing; requesting: being asked; requested: a credit note exists; outside: the money
+	// cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: ask again with POST
+	// /v1/contract-withdrawals/{id}/refund. One of: none, requesting, requested, outside, failed.
+	RefundState string     `json:"refund_state"`
+	RefundNote  string     `json:"refund_note"`
+	RefundTime  *time.Time `json:"refund_time"`
 }
 
 // Coupon is an object of the API; see components.schemas.Coupon in api/openapi/v1.yaml.
@@ -2346,6 +2367,12 @@ type RecordContractAcceptanceResponse struct {
 	Acceptances []ContractAcceptance `json:"acceptances"`
 }
 
+// RequestContractWithdrawalRefundRequest is the request body of RequestContractWithdrawalRefund.
+type RequestContractWithdrawalRefundRequest struct {
+	// In minor units; 0 or absent is whatever is left of the invoice.
+	AmountMinor *Int64 `json:"amount_minor,omitempty"`
+}
+
 // ResolveInboxItemRequest is the request body of ResolveInboxItem.
 type ResolveInboxItemRequest struct {
 	// One of: accepted, dismissed.
@@ -2495,6 +2522,14 @@ type SetContractSettingsRequest struct {
 	ImmediateStart *bool    `json:"immediate_start,omitempty"`
 	// 0 keeps the current value.
 	RetentionMonths *int `json:"retention_months,omitempty"`
+	// Empty keeps the current value. One of: full, none.
+	WithdrawalRefund string `json:"withdrawal_refund,omitempty"`
+	// Absent keeps the current value; 0 switches the notice off.
+	RenewalNoticeDays *int `json:"renewal_notice_days,omitempty"`
+	// A language sent with a text sets it, with an empty text removes it; a language not sent keeps its text.
+	RenewalCancelTexts map[string]string `json:"renewal_cancel_texts,omitempty"`
+	// Absent keeps the current value.
+	WithdrawalFunction *bool `json:"withdrawal_function,omitempty"`
 }
 
 // SetContractWithdrawalStatusRequest is the request body of SetContractWithdrawalStatus.
@@ -2502,6 +2537,9 @@ type SetContractWithdrawalStatusRequest struct {
 	// One of: accepted, rejected, refunded.
 	Status string `json:"status"`
 	Note   string `json:"note,omitempty"`
+	// Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is
+	// whatever is left of the invoice.
+	RefundAmountMinor *Int64 `json:"refund_amount_minor,omitempty"`
 }
 
 // SetInvoiceLogoRequest is the request body of SetInvoiceLogo.

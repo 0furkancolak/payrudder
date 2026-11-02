@@ -1,0 +1,10 @@
+<!doctype html>
+<html><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — this is not a real acknowledgement.</strong></p>{{end}}
+<h2>We received your withdrawal</h2>
+<p>Hi {{index .D "customer_name"}}, {{index .D "tenant_name"}} received your withdrawal statement on <strong>{{index .D "received_at"}}</strong>. This e-mail is the acknowledgement of receipt. It is not yet a decision on your withdrawal.</p>
+<h3>What you submitted</h3>
+<blockquote style="white-space: pre-line; margin: 0; padding: 8px 12px; background: #f3f4f6">{{index .D "statement"}}</blockquote>
+<p>Keep this e-mail: it is your proof of when your statement arrived.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

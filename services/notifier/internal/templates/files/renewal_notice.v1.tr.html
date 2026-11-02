@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir bildirim değildir.</strong></p>{{end}}
+<h2>Aboneliğiniz yakında yenileniyor</h2>
+<p>Merhaba {{index .D "customer_name"}}, <strong>{{index .D "tenant_name"}}</strong> ile <strong>{{index .D "plan_code"}}</strong> aboneliğiniz <strong>{{index .D "renewal_date"}}</strong> tarihinde yenileniyor. Bir sonraki ödeme <strong>{{index .D "price"}}</strong> tutarındadır ({{if eq (index .D "interval") "year"}}yıllık{{else}}aylık{{end}}).</p>
+{{if index .D "cancel_text"}}<h3>Nasıl iptal edilir</h3>
+<p style="white-space: pre-line">{{index .D "cancel_text"}}</p>{{else}}<p>Devam etmek istemiyorsanız lütfen bu tarihten önce {{index .D "tenant_name"}} ile iletişime geçin.</p>{{end}}
+<p>Devam etmek için bir şey yapmanız gerekmez.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

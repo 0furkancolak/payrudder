@@ -220,6 +220,8 @@ type invoiceView struct {
 	Hint                                string
 	// Contracts is what the seller asks the customer to accept before the payment starts; nil when nothing is.
 	Contracts *contractView
+	// Withdraw is the link to the withdrawal function (Directive 2011/83/EU art. 11a) on the page of a paid invoice; empty when it is not offered.
+	Withdraw string
 }
 
 func (v *invoiceView) Title() string { return v.L["invoice"] + " " + v.Number }
@@ -311,6 +313,9 @@ func (s *Server) invoiceView(ctx context.Context, r *http.Request, sc scope, lan
 		v.Hint = v.L["hint_void"]
 	case "paid":
 		v.Receipt = sc.page() + "/receipt" + q
+		if subj, ok := subjectOfInvoice(resp, sc.token); ok && sc.portal == "" {
+			v.Withdraw = s.withdrawalLink(ctx, subj, q)
+		}
 	}
 	if v.State == "open" || v.State == "failed" {
 		v.Payable = resp.GetPayable()
@@ -450,8 +455,31 @@ func (s *Server) hostedLinkStart(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		s.message(w, r, http.StatusServiceUnavailable, lang, hostedText(lang)["adhoc_title"], hostedText(lang)["pay_unavailable"], "")
 	default:
+		s.waitUntilPayable(r.Context(), resp.GetInvoiceToken())
 		hostedHeaders(w)
 		http.Redirect(w, r, "/i/"+resp.GetInvoiceToken()+langSuffix(r), http.StatusSeeOther)
+	}
+}
+
+// startWait and startPoll bound how long Continue waits for the new invoice to leave "processing" (its saga makes the PDF and opens it, usually within seconds).
+// The pages carry no script and no meta refresh (a refresh fails WCAG 2.2.1), so waiting here is what lets a payer land on the pay buttons directly; after the
+// wait the page shows "processing" with its "Check again" link.
+var startWait, startPoll = 20 * time.Second, 500 * time.Millisecond
+
+// waitUntilPayable polls the invoice of a just-started ad-hoc link until it is no longer "processing", the request ends, or startWait has passed.
+func (s *Server) waitUntilPayable(ctx context.Context, token string) {
+	ctx, cancel := context.WithTimeout(ctx, startWait)
+	defer cancel()
+	for {
+		resp, err := s.d.Hosted.GetHostedInvoice(ctx, scope{token: token}.get())
+		if err != nil || stateOf(resp) != "processing" {
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(startPoll):
+		}
 	}
 }
 

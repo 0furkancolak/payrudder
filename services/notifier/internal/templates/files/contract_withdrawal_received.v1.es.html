@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="es" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — esto no es un acuse de recibo real.</strong></p>{{end}}
+<h2>Hemos recibido su desistimiento</h2>
+<p>Hola {{index .D "customer_name"}}, {{index .D "tenant_name"}} recibió su declaración de desistimiento el <strong>{{index .D "received_at"}}</strong>. Este correo es el acuse de recibo. Aún no es una decisión sobre su desistimiento.</p>
+<h3>Lo que envió</h3>
+<blockquote style="white-space: pre-line; margin: 0; padding: 8px 12px; background: #f3f4f6">{{index .D "statement"}}</blockquote>
+<p>Conserve este correo: prueba cuándo llegó su declaración.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

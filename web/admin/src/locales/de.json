@@ -2974,6 +2974,7 @@
         "kind_unpublished": "Veröffentlichen Sie eine Version dieser Vereinbarung, bevor Sie sie verlangen.",
         "no_starter": "Es gibt einen Mustertext nur auf Türkisch und Englisch.",
         "not_accepted": "Der Kunde hat die Vereinbarungen, die dieser Verkäufer verlangt, nicht akzeptiert.",
+        "refund_not_possible": "Für diesen Widerruf kann keine Erstattung angefordert werden: Er ist nicht angenommen, nennt keine Rechnung oder eine Erstattung wurde schon angefordert.",
         "unknown_variable": "Der Text verwendet eine Variable, die es nicht gibt. Verwenden Sie nur die Variablen aus der Liste.",
         "version_not_found": "Diese Version gibt es nicht.",
         "version_stale": "Eine neuere Version dieses Textes wurde veröffentlicht. Zeigen Sie die aktuelle an und fragen Sie erneut.",
@@ -5526,18 +5527,31 @@
       "months": "Monate",
       "retentionBad": "Geben Sie eine ganze Zahl von Monaten von {min} bis {max} ein.",
       "save": "Einstellungen speichern",
-      "saved": "Gespeichert."
+      "saved": "Gespeichert.",
+      "withdrawalTitle": "Widerruf",
+      "withdrawalHint": "Was geschieht, wenn ein Kunde von einem Vertrag zurücktritt. Über jeden Antrag entscheiden immer Sie selbst.",
+      "refundTitle": "Erstattung anfordern, wenn ich einen Widerruf annehme",
+      "refundHint": "Die Annahme eines Widerrufs, der eine Rechnung nennt, fordert bei der Abrechnung eine Gutschrift an, die die Rechnung auf die Karte des Kunden zurückbucht. Eine anders bezahlte Zahlung (Überweisung, bar) lässt sich so nicht zurückgeben: Der Widerruf wird zur eigenen Erstattung markiert. Aus: Sie erstatten selbst oder fordern es am Widerruf an.",
+      "functionTitle": "Kunden können auf den Zahlungsseiten widerrufen",
+      "functionHint": "Ein Verbraucher sieht auf einer bezahlten Rechnung und im Portal „Hier vom Vertrag widerrufen“, bestätigt in einem zweiten Schritt und erhält eine Bestätigungs-E-Mail (Richtlinie 2011/83/EU Art. 11a, ab 19. Juni 2026). Nur angeboten, solange Sie Vereinbarungen verlangen.",
+      "noticeTitle": "Verlängerungshinweis",
+      "noticeHint": "Vor jeder Verlängerung eines im Voraus abgerechneten Abonnements erhält ein Kunde, der Ihre Vereinbarungen akzeptiert hat, einmal per E-Mail Preis, Datum und Kündigungshinweis. Standard {default} Tage, höchstens {max}; 0 schaltet ab.",
+      "noticeDays": "Tage vorher",
+      "noticeBad": "Geben Sie eine ganze Zahl von {min} bis {max} Tagen ein.",
+      "cancelTitle": "So kündigt man, in Ihren Worten",
+      "cancelHint": "Wird im Hinweis in der Sprache des Kunden abgedruckt; lassen Sie eine Sprache leer, um dort nichts zu sagen. Reiner Text."
     },
     "withdrawals": {
       "intro": "Kunden, die von einem Vertrag zurücktreten. Sie entscheiden über jede Anfrage; Payrudder speichert die Erklärung, Ihre Entscheidung, wer sie getroffen hat und wann, und sendet den Webhook contract.withdrawal_requested.",
-      "refundNote": "Die Erstattung ist noch nicht automatisch. Erstatten Sie dem Kunden selbst (oder stellen Sie eine Gutschrift aus) und markieren Sie die Anfrage dann hier als erstattet.",
+      "refundNote": "Die Annahme eines Widerrufs, der eine Rechnung nennt, fordert auch die Erstattung auf die Karte an, wenn Ihre Einstellungen es sagen; die Tabelle zeigt, was daraus wurde. Eine anders bezahlte Zahlung wird zur eigenen Erstattung markiert; markieren Sie den Widerruf danach als erstattet.",
       "search": "Widerrufe durchsuchen",
       "columns": {
         "customer": "Kunde",
         "statement": "Erklärung",
         "received": "Eingegangen",
         "status": "Status",
-        "decision": "Entscheidung"
+        "decision": "Entscheidung",
+        "refund": "Erstattung"
       },
       "statuses": {
         "received": "Eingegangen",
@@ -5548,7 +5562,8 @@
       "actions": {
         "accepted": "Annehmen",
         "rejected": "Ablehnen",
-        "refunded": "Als erstattet markieren"
+        "refunded": "Als erstattet markieren",
+        "refund": "Erstattung anfordern"
       },
       "sources": {
         "api": "API",
@@ -5570,7 +5585,24 @@
         "refunded": {
           "title": "Als erstattet markieren?",
           "body": "Tun Sie das, nachdem Sie dem Kunden erstattet haben. Payrudder bewegt kein Geld."
+        },
+        "refund": {
+          "title": "Erstattung anfordern?",
+          "body": "Die Abrechnung erstellt eine Gutschrift, die den Rest der Rechnung auf die Karte des Kunden zurückbucht. Sie erstattet nie mehr als die Rechnung und nie doppelt."
         }
+      },
+      "refundStates": {
+        "none": "Nicht angefordert",
+        "requesting": "Wird angefordert",
+        "requested": "Angefordert",
+        "outside": "Selbst erstatten",
+        "failed": "Fehlgeschlagen"
+      },
+      "creditNote": "Gutschrift {id}",
+      "acceptRefund": {
+        "asked": "Ihre Einstellungen fordern jetzt auch die Erstattung der Rechnung, die dieser Widerruf nennt, auf die Karte des Kunden an. Eine anders bezahlte Zahlung wird zur eigenen Erstattung markiert.",
+        "left": "Ihre Einstellungen überlassen die Erstattung Ihnen: Nutzen Sie danach „Erstattung anfordern“ oder erstatten Sie selbst.",
+        "noInvoice": "Dieser Widerruf nennt keine Rechnung, daher wird keine Erstattung angefordert: Erstatten Sie dem Kunden selbst."
       }
     },
     "customer": {

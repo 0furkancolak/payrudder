@@ -39,6 +39,13 @@ export const VARIABLES = [
 /** How long the IP address and user agent of an acceptance are kept (months); 36 is the default, from the three years of art. 20 of the Turkish regulation. */
 export const RETENTION = { min: 12, max: 120, default: 36 } as const;
 export const retentionValid = (n: number): boolean => Number.isInteger(n) && n >= RETENTION.min && n <= RETENTION.max;
+/** The renewal notice: days before a renewal, 0 is off (the API's limits, services/plans-svc/internal/domain/contracts.go), and the longest words on how to cancel. */
+export const RENEWAL = { min: 0, max: 60, default: 7 } as const;
+export const CANCEL_TEXT_MAX = 1000;
+export const renewalDaysValid = (n: number): boolean => Number.isInteger(n) && n >= RENEWAL.min && n <= RENEWAL.max;
+/** What accepting a withdrawal does about the money: full asks billing for the refund, none leaves it to the seller. */
+export const REFUNDS = ["full", "none"] as const;
+export type Refund = (typeof REFUNDS)[number];
 
 /** A series is a kind for an audience; its id in the address (`publish-agreement:distance_sales~consumer`). */
 export const seriesKey = (kind: Kind, audience: Audience): string => `${kind}~${audience}`;
@@ -149,19 +156,33 @@ export const requirable = (kind: Kind, settings: Pick<ContractSettings, "require
 /** The required kinds after one is switched on or off, in the order of KINDS. */
 export const withRequired = (required: readonly Kind[], kind: Kind, on: boolean): Kind[] => KINDS.filter((k) => (k === kind ? on : required.includes(k)));
 
-/** What the settings form would send; the API replaces required kinds and the immediate-start switch as a whole, so all three go together. */
+/** What the settings form would send. The API replaces the required kinds and the immediate-start switch as a whole, so all of the form goes together; a cancel text sent empty is removed. */
 export interface SettingsDraft {
   required_kinds: Kind[];
   immediate_start: boolean;
   retention_months: number;
+  withdrawal_refund: Refund;
+  renewal_notice_days: number;
+  renewal_cancel_texts: Record<ApiLocale, string>;
+  withdrawal_function: boolean;
 }
 export const settingsDraft = (s: ContractSettings | undefined): SettingsDraft => ({
   required_kinds: KINDS.filter((k) => s?.required_kinds.includes(k)),
   immediate_start: s?.immediate_start ?? false,
   retention_months: s?.retention_months || RETENTION.default,
+  withdrawal_refund: s?.withdrawal_refund === "none" ? "none" : "full",
+  renewal_notice_days: s?.renewal_notice_days ?? RENEWAL.default,
+  renewal_cancel_texts: Object.fromEntries(LANGUAGES.map((l) => [l, s?.renewal_cancel_texts?.[l] ?? ""])) as Record<ApiLocale, string>,
+  withdrawal_function: s?.withdrawal_function ?? true,
 });
 export const settingsChanged = (a: SettingsDraft, b: SettingsDraft): boolean =>
-  a.immediate_start !== b.immediate_start || a.retention_months !== b.retention_months || a.required_kinds.join() !== b.required_kinds.join();
+  a.immediate_start !== b.immediate_start ||
+  a.retention_months !== b.retention_months ||
+  a.required_kinds.join() !== b.required_kinds.join() ||
+  a.withdrawal_refund !== b.withdrawal_refund ||
+  a.renewal_notice_days !== b.renewal_notice_days ||
+  a.withdrawal_function !== b.withdrawal_function ||
+  LANGUAGES.some((l) => a.renewal_cancel_texts[l] !== b.renewal_cancel_texts[l]);
 
 /** What the publish confirmation says will happen, as the keys under `contracts.confirm`, in order. */
 export function publishFacts(v: { first: boolean; material: boolean; required: boolean; template: boolean }): string[] {
@@ -172,6 +193,10 @@ export function publishFacts(v: { first: boolean; material: boolean; required: b
 export function withdrawalMoves(status: WithdrawalStatus): Exclude<WithdrawalStatus, "received">[] {
   return status === "received" ? ["accepted", "rejected"] : status === "accepted" ? ["refunded"] : [];
 }
+
+/** Whether the seller can ask billing to refund an accepted withdrawal now: it names an invoice and no refund was asked for, or the last request failed. */
+export const canRequestRefund = (w: Pick<ContractWithdrawal, "status" | "invoice_id" | "refund_state">): boolean =>
+  w.status === "accepted" && w.invoice_id !== "" && (w.refund_state === "none" || w.refund_state === "failed");
 
 /** How the go-live checklist sees the agreements: nothing is asked of a seller who requires none, and a required kind that is not ready is a warning, never a block. */
 export type Advisory = "optional" | "ready" | "template" | "missing";

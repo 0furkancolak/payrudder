@@ -387,12 +387,18 @@ MODELS: dict[str, dict[str, Any]] = {
         'fees': ('list', ('model', 'CurrencyFeeInput')),
         'prices': ('list', ('model', 'PriceInput')),
     },
+    'RequestContractWithdrawalRefundRequest': {
+        'amount_minor': ('int',),
+    },
     'ReverseAffiliateCommissionRequest': {
         'amount_minor': ('int',),
     },
     'ReverseAffiliateCommissionResponse': {
         'reversed_minor': ('int',),
         'commission': ('model', 'AffiliateCommission'),
+    },
+    'SetContractWithdrawalStatusRequest': {
+        'refund_amount_minor': ('int',),
     },
     'UploadAssetsResponse': {
         'results': ('list', ('model', 'UploadAssetsResult')),

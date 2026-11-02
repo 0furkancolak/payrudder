@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package payrudder.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// ContractWithdrawalReceived says a customer used the withdrawal function of a hosted page, and that the acknowledgement of receipt is to be mailed to them on a durable
+// medium (Directive 2011/83/EU art. 11a(3), Mesafeli Sozlesmeler Yonetmeligi art. 11(2)). plans-svc writes it to its outbox in the transaction that records the withdrawal
+// and publishes it on contract.withdrawal-received.v1 (key: {tenant_id}/{customer_id}).
+//
+// Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
+message ContractWithdrawalReceived {
+  // The withdrawal id: one withdrawal is one event, so consumers dedup a repeated publish.
+  string event_id = 1;
+  string tenant_id = 2;
+  string customer_id = 3;
+  // The invoice the customer withdrew from, when they named one.
+  string invoice_id = 4;
+  // What the customer submitted, as recorded: their name, the contract they named and their own words.
+  string statement = 5;
+  google.protobuf.Timestamp received_at = 6;
+}

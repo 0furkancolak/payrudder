@@ -30,6 +30,10 @@
 | `subscription.price-change.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
 | `contract.accepted.v1` | `{tenant_id}/{customer_id}` | `ContractAccepted` | 6 | `delete`, 90 days | plans-svc (outbox) | notifier (`notifier-contracts`) |
 | `contract.accepted.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
+| `subscription.renewal-notice.v1` | `{tenant_id}/{customer_id}` | `RenewalNotice` | 6 | `delete`, 90 days | plans-svc (outbox) | notifier (`notifier-renewals`) |
+| `subscription.renewal-notice.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
+| `contract.withdrawal-received.v1` | `{tenant_id}/{customer_id}` | `ContractWithdrawalReceived` | 6 | `delete`, 90 days | plans-svc (outbox) | notifier (`notifier-withdrawals`) |
+| `contract.withdrawal-received.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
 | `subscription.trial-will-end.dlq.v1` | `{tenant_id}/{customer_id}` | original bytes | 1 | `delete`, 30 days | notifier | operator |
 | `plans.entitlements.v1` | `{tenant_id}/{customer_id}/{meter_code}` | `EntitlementState` or tombstone | 6 | **`compact`**, `min.compaction.lag.ms=1h`, `delete.retention.ms=1d` | plans-svc (outbox) | limits-svc (per-pod group, reads from earliest) |
 | `billing.invoices.v1` | `tenant_id` | `InvoiceFact` (`oneof`: finalized / paid / voided / corrected) | 6 | `delete`, 400 days | billing-svc (outbox) | analytics-svc (`analytics`) |
@@ -210,6 +214,8 @@ Kafka has no per-message ack, so a poison record would block its partition forev
 | `LimitExceeded` | notifier | `event_id` | email |
 | `LimitExceeded` | analytics-svc | `event_id` | `limit_events` |
 | `TrialWillEnd` | notifier | `event_id` | email |
+| `RenewalNotice` | notifier | `event_id` | email |
+| `ContractWithdrawalReceived` | notifier | `event_id` | email |
 | `EntitlementState` | limits-svc | key (compaction = latest wins) | in-memory map + Redis mirror |
 | `InvoiceFact` | analytics-svc | `(invoice_id, version)` | `invoice_facts` |
 | `RenderInvoicePdf` | invoice-worker | `command_id` + deterministic object key | PDF in S3 object storage (MinIO locally) |

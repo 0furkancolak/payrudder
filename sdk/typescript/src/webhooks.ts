@@ -31,6 +31,7 @@ export const WebhookEventTypes = {
   ContractAccepted: "contract.accepted",
   ContractVersionPublished: "contract.version_published",
   ContractWithdrawalRequested: "contract.withdrawal_requested",
+  ContractWithdrawalDecided: "contract.withdrawal_decided",
   Ping: "ping",
 } as const;
 
@@ -200,6 +201,19 @@ export interface ContractWithdrawalRequestedEventData {
   received_at: string;
 }
 
+/** `contract.withdrawal_decided`: the seller accepted or rejected a withdrawal, or marked an accepted one refunded. */
+export interface ContractWithdrawalDecidedEventData {
+  withdrawal_id: string;
+  customer_id: string;
+  customer_external_id: string;
+  subscription_id: string;
+  invoice_id: string;
+  status: "accepted" | "rejected" | "refunded";
+  decided_by: string;
+  decided_at: string;
+  note: string;
+}
+
 interface Envelope<T extends WebhookEventType, D> {
   id: string;
   type: T;
@@ -243,6 +257,7 @@ export type WebhookEvent =
   | Envelope<"contract.accepted", ContractAcceptedEventData>
   | Envelope<"contract.version_published", ContractVersionPublishedEventData>
   | Envelope<"contract.withdrawal_requested", ContractWithdrawalRequestedEventData>
+  | Envelope<"contract.withdrawal_decided", ContractWithdrawalDecidedEventData>
   | Envelope<"ping", Record<string, unknown>>;
 
 export type WebhookFailureReason = "invalid_header" | "timestamp_outside_tolerance" | "no_matching_signature" | "invalid_payload";

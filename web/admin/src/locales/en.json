@@ -2974,6 +2974,7 @@
         "kind_unpublished": "Publish a version of this agreement before you require it.",
         "no_starter": "There is a starter text in Turkish and English only.",
         "not_accepted": "The customer has not accepted the agreements this seller requires.",
+        "refund_not_possible": "A refund cannot be requested for this withdrawal: it is not accepted, names no invoice, or a refund was asked for already.",
         "unknown_variable": "The text uses a variable that does not exist. Use only the variables in the list.",
         "version_not_found": "No such version.",
         "version_stale": "A newer version of this text was published. Show the current one and ask again.",
@@ -5526,18 +5527,31 @@
       "months": "months",
       "retentionBad": "Enter a whole number of months from {min} to {max}.",
       "save": "Save settings",
-      "saved": "Saved."
+      "saved": "Saved.",
+      "withdrawalTitle": "Withdrawals",
+      "withdrawalHint": "What happens when a customer withdraws from a contract. You always decide each request yourself.",
+      "refundTitle": "Ask for the refund when I accept a withdrawal",
+      "refundHint": "Accepting a withdrawal that names an invoice asks billing for a credit note that returns the invoice to the customer's card. A payment made another way (a bank transfer, cash) cannot be returned like this: the withdrawal is marked for you to refund yourself. Off: you refund, or ask for it from the withdrawal.",
+      "functionTitle": "Let customers withdraw on the payment pages",
+      "functionHint": "A consumer sees “Withdraw from contract here” on a paid invoice and on the portal, confirms in a second step and is sent an acknowledgement e-mail (Directive 2011/83/EU art. 11a, from 19 June 2026). It is offered only while you require agreements.",
+      "noticeTitle": "Renewal notice",
+      "noticeHint": "Before each renewal of a subscription whose fee is invoiced in advance, a customer who accepted your agreements is e-mailed the price, the date and how to cancel, once. {default} days by default, up to {max}; 0 switches it off.",
+      "noticeDays": "days before",
+      "noticeBad": "Enter a whole number of days from {min} to {max}.",
+      "cancelTitle": "How to cancel, in your words",
+      "cancelHint": "Printed in the notice in the customer's language; leave a language empty to say nothing in it. Plain text."
     },
     "withdrawals": {
       "intro": "Customers who withdraw from a contract. You decide each request; Payrudder keeps the statement, your decision, who made it and when, and sends the contract.withdrawal_requested webhook.",
-      "refundNote": "Refunding is not automatic yet. Refund the customer yourself (or issue a credit note), then mark the request refunded here.",
+      "refundNote": "Accepting a withdrawal that names an invoice also asks billing to refund it to the card when your settings say so, and this table shows what became of the request. A payment made another way is marked for you to refund yourself; mark the withdrawal refunded afterwards.",
       "search": "Search withdrawals",
       "columns": {
         "customer": "Customer",
         "statement": "Statement",
         "received": "Received",
         "status": "Status",
-        "decision": "Decision"
+        "decision": "Decision",
+        "refund": "Refund"
       },
       "statuses": {
         "received": "Received",
@@ -5548,7 +5562,8 @@
       "actions": {
         "accepted": "Accept",
         "rejected": "Reject",
-        "refunded": "Mark refunded"
+        "refunded": "Mark refunded",
+        "refund": "Request refund"
       },
       "sources": {
         "api": "API",
@@ -5570,7 +5585,24 @@
         "refunded": {
           "title": "Mark as refunded?",
           "body": "Do this after you have refunded the customer. Payrudder does not move any money."
+        },
+        "refund": {
+          "title": "Request the refund?",
+          "body": "Billing makes a credit note that returns what is left of the invoice to the customer's card. It never refunds more than the invoice, and never twice."
         }
+      },
+      "refundStates": {
+        "none": "Not asked for",
+        "requesting": "Being asked for",
+        "requested": "Requested",
+        "outside": "Refund it yourself",
+        "failed": "Failed"
+      },
+      "creditNote": "Credit note {id}",
+      "acceptRefund": {
+        "asked": "Your settings also ask billing to refund the invoice this withdrawal names to the customer's card, now. A payment made another way is marked for you to refund yourself.",
+        "left": "Your settings leave the refund to you: afterwards use “Request refund”, or refund the customer yourself.",
+        "noInvoice": "This withdrawal names no invoice, so no refund is asked for: refund the customer yourself."
       }
     },
     "customer": {

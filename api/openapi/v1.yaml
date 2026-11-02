@@ -312,7 +312,7 @@ paths:
     post:
       operationId: createContractWithdrawal
       summary: Record that the customer withdrew from a contract
-      description: The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. Routing the refund from here is not automatic yet.
+      description: "The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund."
       parameters: [{ $ref: "#/components/parameters/ExternalID" }]
       requestBody:
         content: { application/json: { schema: { $ref: "#/components/schemas/CreateContractWithdrawalRequest" } } }
@@ -334,11 +334,30 @@ paths:
     put:
       operationId: setContractWithdrawalStatus
       summary: Decide a withdrawal request, or mark an accepted one refunded
-      description: received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise).
+      description: >
+        received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided.
+        Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card,
+        for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes
+        this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded.
       parameters: [{ $ref: "#/components/parameters/ID" }]
       requestBody:
         required: true
         content: { application/json: { schema: { $ref: "#/components/schemas/SetContractWithdrawalStatusRequest" } } }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContractWithdrawal" } } } }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /v1/contract-withdrawals/{id}/refund:
+    post:
+      operationId: requestContractWithdrawalRefund
+      summary: Ask for the refund of an accepted withdrawal
+      description: >
+        For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers
+        plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more
+        than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`.
+      parameters: [{ $ref: "#/components/parameters/ID" }]
+      requestBody:
+        content: { application/json: { schema: { $ref: "#/components/schemas/RequestContractWithdrawalRefundRequest" } } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ContractWithdrawal" } } } }
         "404": { $ref: "#/components/responses/Error" }
@@ -1957,6 +1976,135 @@ paths:
         "404": { description: "Not the customer's invoice, or the link does not exist", content: { text/html: { schema: { type: string } } } }
         "409": { description: "The invoice cannot be paid now", content: { text/html: { schema: { type: string } } } }
         "422": { description: "An agreement the seller requires was not accepted: the page is shown again", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /i/{token}/withdraw:
+    get:
+      operationId: hostedWithdrawPage
+      summary: "The withdrawal function: \"Withdraw from contract here\" (public, the token is the credential)"
+      description: >
+        Directive 2011/83/EU art. 11a. The form asks for the customer's name, shows the paid invoice as the contract and the address the confirmation goes to, and takes their own words. 404 for a link that does not exist, a guest's
+        invoice, an invoice that is not paid, a business customer, a seller that does not require agreements or switched the function off. At most 60 requests a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "The statement form", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The function is not offered here", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+    post:
+      operationId: hostedWithdrawReview
+      summary: Check the withdrawal statement (the first step)
+      description: Form fields `name`, `contract` (the invoice id the page offered) and `words`. Answers the page that shows what will be sent with the confirm button; nothing is recorded yet. 422 with the form again when the name or the contract is missing. At most 10 a minute per address.
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { name: { type: string }, contract: { type: string }, words: { type: string } }, required: [name, contract] }
+      responses:
+        "200": { description: "The page to confirm on", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The function is not offered here", content: { text/html: { schema: { type: string } } } }
+        "422": { description: "The name or the contract is missing: the form is shown again", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /i/{token}/withdraw/confirm:
+    post:
+      operationId: hostedWithdrawConfirm
+      summary: Confirm withdrawal (the second step)
+      description: >
+        Records the statement (source `hosted`, with the time it arrived), sends the webhook event contract.withdrawal_requested and, when the customer has an e-mail address, queues the acknowledgement of receipt on a durable medium
+        with the content of the statement and the date and time (`contract.withdrawal-received.v1`). A second confirmation for the same invoice records nothing and says so. It decides nothing: the seller does. At most 10 a minute per address.
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { name: { type: string }, contract: { type: string }, words: { type: string } }, required: [name, contract] }
+      responses:
+        "200": { description: "The acknowledgement page", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The function is not offered here", content: { text/html: { schema: { type: string } } } }
+        "422": { description: "The name or the contract is missing", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+        "503": { description: "The withdrawal could not be recorded: nothing was sent, try again", content: { text/html: { schema: { type: string } } } }
+  /c/{token}/withdraw:
+    get:
+      operationId: portalWithdrawPage
+      summary: "The withdrawal function: \"Withdraw from contract here\" (public, the token is the credential)"
+      description: >
+        Directive 2011/83/EU art. 11a. The form asks for the customer's name, lets the customer choose which of their paid invoices is the contract and the address the confirmation goes to, and takes their own words. 404 for a link that does not exist, a guest's
+        invoice, an invoice that is not paid, a business customer, a seller that does not require agreements or switched the function off. At most 60 requests a minute per address.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: lang, in: query, schema: { type: string, enum: [en, tr, de, fr, es, ar] } }
+      responses:
+        "200": { description: "The statement form", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The function is not offered here", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+    post:
+      operationId: portalWithdrawReview
+      summary: Check the withdrawal statement (the first step)
+      description: Form fields `name`, `contract` (the invoice id the page offered) and `words`. Answers the page that shows what will be sent with the confirm button; nothing is recorded yet. 422 with the form again when the name or the contract is missing. At most 10 a minute per address.
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { name: { type: string }, contract: { type: string }, words: { type: string } }, required: [name, contract] }
+      responses:
+        "200": { description: "The page to confirm on", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The function is not offered here", content: { text/html: { schema: { type: string } } } }
+        "422": { description: "The name or the contract is missing: the form is shown again", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /c/{token}/withdraw/confirm:
+    post:
+      operationId: portalWithdrawConfirm
+      summary: Confirm withdrawal (the second step)
+      description: >
+        Records the statement (source `hosted`, with the time it arrived), sends the webhook event contract.withdrawal_requested and, when the customer has an e-mail address, queues the acknowledgement of receipt on a durable medium
+        with the content of the statement and the date and time (`contract.withdrawal-received.v1`). A second confirmation for the same invoice records nothing and says so. It decides nothing: the seller does. At most 10 a minute per address.
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { name: { type: string }, contract: { type: string }, words: { type: string } }, required: [name, contract] }
+      responses:
+        "200": { description: "The acknowledgement page", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "The function is not offered here", content: { text/html: { schema: { type: string } } } }
+        "422": { description: "The name or the contract is missing", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+        "503": { description: "The withdrawal could not be recorded: nothing was sent, try again", content: { text/html: { schema: { type: string } } } }
+  /c/{token}/agreements:
+    post:
+      operationId: portalAgree
+      summary: Accept again the agreements the seller changed
+      description: >
+        The portal shows the texts of a material version published since the customer last accepted, when they accepted something before. Form fields as on the pay form: `v_<kind>`, `accept_<kind>=1`, and for a seller that starts the service at once
+        `consent_start=1` and `consent_waiver=1`. Records the acceptance (source `hosted`, context `portal`, with the address and browser observed) and goes back to the portal; 422 shows the portal again with the reason. Nothing is paid here.
+      security: []
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { type: object, properties: { v_distance_sales: { type: string }, accept_distance_sales: { type: string }, v_pre_info: { type: string }, accept_pre_info: { type: string }, v_tos: { type: string }, accept_tos: { type: string }, v_privacy: { type: string }, accept_privacy: { type: string }, consent_start: { type: string }, consent_waiver: { type: string } } }
+      responses:
+        "303": { description: "Back to the portal" }
+        "404": { description: "The link does not exist or has expired", content: { text/html: { schema: { type: string } } } }
+        "422": { description: "A box is empty or a text was replaced: the portal is shown again", content: { text/html: { schema: { type: string } } } }
+        "429": { description: "Too many requests" }
+  /c/{token}/agreements/{id}:
+    get:
+      operationId: portalAgreementPage
+      summary: The page the customer accepted, as it was stored
+      description: The stored snapshot (the evidence, not a page written again), served with a policy that lets it run nothing. Only an acceptance of this portal's customer opens; any other id is a 404.
+      security: []
+      parameters:
+        - { name: token, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { description: "The accepted page", content: { text/html: { schema: { type: string } } } }
+        "404": { description: "Not this customer's acceptance, or the link does not exist", content: { text/html: { schema: { type: string } } } }
         "429": { description: "Too many requests" }
   /v1/payment-links:
     post:
@@ -8868,6 +9016,30 @@ components:
         created: { type: string, format: date-time }
         tenant_id: { type: string, format: uuid }
         data: { $ref: "#/components/schemas/ContractWithdrawalRequestedEventData" }
+    ContractWithdrawalDecidedEventData:
+      type: object
+      description: "The data of an event of type contract.withdrawal_decided"
+      required: [withdrawal_id, customer_id, customer_external_id, subscription_id, invoice_id, status, decided_by, decided_at, note]
+      properties:
+        withdrawal_id: { type: string, format: uuid }
+        customer_id: { type: string, format: uuid }
+        customer_external_id: { type: string }
+        subscription_id: { type: string, description: "may be empty" }
+        invoice_id: { type: string, description: "may be empty" }
+        status: { type: string, enum: [accepted, rejected, refunded] }
+        decided_by: { type: string }
+        decided_at: { type: string, format: date-time }
+        note: { type: string }
+    ContractWithdrawalDecidedEvent:
+      type: object
+      description: "The body of a delivery of type contract.withdrawal_decided"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [contract.withdrawal_decided] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/ContractWithdrawalDecidedEventData" }
     PingEventData:
       type: object
       description: "The data of an event of type ping"
@@ -9874,6 +10046,7 @@ components:
         - contract.accepted
         - contract.version_published
         - contract.withdrawal_requested
+        - contract.withdrawal_decided
     PaymentLink:
       type: object
       required: [id, kind, status, pack_id, quantity, credits, promotion_code, invoice_id, customer_external_id, single_use, amount_minor, currency, description, create_time, expire_time, revoke_time, paid_count, last_paid_time, use_count, idempotency_key]
@@ -10010,6 +10183,7 @@ components:
         - { $ref: "#/components/schemas/ContractAcceptedEvent" }
         - { $ref: "#/components/schemas/ContractVersionPublishedEvent" }
         - { $ref: "#/components/schemas/ContractWithdrawalRequestedEvent" }
+        - { $ref: "#/components/schemas/ContractWithdrawalDecidedEvent" }
         - { $ref: "#/components/schemas/PingEvent" }
       discriminator:
         propertyName: type
@@ -10042,6 +10216,7 @@ components:
           contract.accepted: "#/components/schemas/ContractAcceptedEvent"
           contract.version_published: "#/components/schemas/ContractVersionPublishedEvent"
           contract.withdrawal_requested: "#/components/schemas/ContractWithdrawalRequestedEvent"
+          contract.withdrawal_decided: "#/components/schemas/ContractWithdrawalDecidedEvent"
           ping: "#/components/schemas/PingEvent"
     Coupon:
       type: object
@@ -10467,19 +10642,27 @@ components:
         locale: { type: string, enum: [tr, en] }
     ContractSettings:
       type: object
-      required: [required_kinds, immediate_start, retention_months, published_kinds, update_time]
+      required: [required_kinds, immediate_start, retention_months, published_kinds, update_time, withdrawal_refund, renewal_notice_days, renewal_cancel_texts, withdrawal_function]
       properties:
         required_kinds: { type: array, items: { $ref: "#/components/schemas/ContractKind" } }
         immediate_start: { type: boolean }
         retention_months: { type: integer, format: int32, minimum: 12, maximum: 120 }
         published_kinds: { type: array, items: { $ref: "#/components/schemas/ContractKind" }, description: "Kinds that have a published consumer version." }
         update_time: { type: string, format: date-time, nullable: true }
+        withdrawal_refund: { type: string, enum: [full, none], description: "What accepting a withdrawal does about the money. full (the default) asks billing for a refund of the invoice to the card; none leaves it to the seller. The seller decides the withdrawal either way." }
+        renewal_notice_days: { type: integer, format: int32, minimum: 0, maximum: 60, description: "How many days before a renewal the customer is mailed the renewal notice (price, date, how to cancel). 0 is off; default 7. Only for a subscription whose fixed fee is invoiced in advance and a customer who accepted an agreement." }
+        renewal_cancel_texts: { type: object, additionalProperties: { type: string, maxLength: 1000 }, description: "Language (en, tr, de, fr, es, ar) to the seller's own words on how to cancel, printed in the renewal notice." }
+        withdrawal_function: { type: boolean, description: "Consumers can withdraw from a contract on the hosted pages and are sent an acknowledgement (Directive 2011/83/EU art. 11a). Only while agreements are required. Default on." }
     SetContractSettingsRequest:
       type: object
       properties:
         required_kinds: { type: array, items: { $ref: "#/components/schemas/ContractKind" } }
         immediate_start: { type: boolean }
         retention_months: { type: integer, format: int32, description: "0 keeps the current value." }
+        withdrawal_refund: { type: string, enum: [full, none], description: "Empty keeps the current value." }
+        renewal_notice_days: { type: integer, format: int32, minimum: 0, maximum: 60, description: "Absent keeps the current value; 0 switches the notice off." }
+        renewal_cancel_texts: { type: object, additionalProperties: { type: string, maxLength: 1000 }, description: "A language sent with a text sets it, with an empty text removes it; a language not sent keeps its text." }
+        withdrawal_function: { type: boolean, description: "Absent keeps the current value." }
     ContractRequirement:
       type: object
       required: [kind, version_id, version_number, audience, locale, body_html, body_sha256, accepted, accept_time, has_template_notice]
@@ -10582,7 +10765,7 @@ components:
         group_id: { type: string, format: uuid }
     ContractWithdrawal:
       type: object
-      required: [id, customer_id, customer_external_id, subscription_id, invoice_id, statement, source, status, receive_time, decide_time, decided_by, decision_note]
+      required: [id, customer_id, customer_external_id, subscription_id, invoice_id, statement, source, status, receive_time, decide_time, decided_by, decision_note, credit_note_id, refund_state, refund_note, refund_time]
       properties:
         id: { type: string, format: uuid }
         customer_id: { type: string, format: uuid }
@@ -10596,6 +10779,10 @@ components:
         decide_time: { type: string, format: date-time, nullable: true }
         decided_by: { type: string }
         decision_note: { type: string }
+        credit_note_id: { type: string, description: "The credit note billing made to refund the invoice, once one was requested (GET /v1/credit-notes/{id} says how the refund went)." }
+        refund_state: { type: string, enum: [none, requesting, requested, outside, failed], description: "none: nothing asked of billing; requesting: being asked; requested: a credit note exists; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: ask again with POST /v1/contract-withdrawals/{id}/refund." }
+        refund_note: { type: string }
+        refund_time: { type: string, format: date-time, nullable: true }
     CreateContractWithdrawalRequest:
       type: object
       properties:
@@ -10615,6 +10802,11 @@ components:
       properties:
         status: { type: string, enum: [accepted, rejected, refunded] }
         note: { type: string, maxLength: 1000 }
+        refund_amount_minor: { type: string, format: int64, description: "Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is whatever is left of the invoice." }
+    RequestContractWithdrawalRefundRequest:
+      type: object
+      properties:
+        amount_minor: { type: string, format: int64, description: "In minor units; 0 or absent is whatever is left of the invoice." }
     ApiKeyPermission:
       type: string
       enum: [events:write, customers:read, customers:write, subscriptions:read, subscriptions:write, catalog:read, catalog:write, usage:read, credits:read, credits:write, invoices:read, invoices:write, reports:read, accounting:read, accounting:write, webhooks:read, webhooks:write, affiliates:read, affiliates:write, settings:read, settings:write, assets:read, assets:write, sandbox:write, contracts:read, contracts:write, audit:read]

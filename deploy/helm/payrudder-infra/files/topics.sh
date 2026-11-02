@@ -31,6 +31,10 @@ create subscription.price-change.v1         6 90
 create subscription.price-change.dlq.v1     1 30
 create contract.accepted.v1                  6 90
 create contract.accepted.dlq.v1              1 30
+create subscription.renewal-notice.v1       6 90
+create subscription.renewal-notice.dlq.v1   1 30
+create contract.withdrawal-received.v1      6 90
+create contract.withdrawal-received.dlq.v1  1 30
 create plans.entitlements.v1                6 compact
 create billing.invoices.v1                  6 400
 create billing.invoices.dlq.v1              1 30

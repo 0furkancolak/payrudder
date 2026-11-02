@@ -110,7 +110,10 @@ CREATE TABLE config_promotions (                      -- phase 45 D: one row per
 --     context_kind/ref, source, observed jsonb, checkbox_text, immediate_start_*, withdrawal_waiver_*, variables jsonb, snapshot_sha256, ip, user_agent, accepted_at)
 --     append-only by trigger; plans_system has UPDATE (ip, user_agent) for the erasure job and DELETE for a sandbox reset (the trigger lets only a sandbox tenant's rows, or a tenant with a cell, go)
 --   contract_snapshots (tenant_id, group_id PK, html, sha256, created_at)                                                       the page accepted, as written then; same protection
---   contract_withdrawals (tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note)
+--   contract_withdrawals (tenant_id, id, customer_id, subscription_id, invoice_id, statement, source, status, received_at, decided_at, decided_by, decision_note,
+--                         credit_note_id, refund_state none|requesting|requested|outside|failed, refund_note, refund_at)               refund columns: migrations 00011 / tenant 00009
+--   contract_settings also: withdrawal_refund full|none, renewal_notice_days 0..60 default 7, renewal_cancel_texts jsonb, withdrawal_function default true
+--   contract_renewal_notices (tenant_id, customer_id, renews_at PK, subscription_id, price_minor, currency, cancel_text, notified_at)      one per customer and renewal; what was sent
 CREATE TABLE go_live_audit (                          -- phase 45 follow-up: what an owner did on the way to going live; append-only, nothing updated or deleted
   id uuid PRIMARY KEY, app_id uuid NOT NULL REFERENCES apps(id), user_id uuid NOT NULL REFERENCES users(id),
   live_tenant_id uuid NOT NULL REFERENCES tenants(id),   -- a trigger: the live tenant of that app

@@ -35,6 +35,15 @@ type fakeContracts struct {
 	published  *plansv1.PublishContractVersionRequest
 	withdrawal *plansv1.CreateContractWithdrawalRequest
 	decided    *plansv1.SetContractWithdrawalStatusRequest
+	// the follow-ups (withdrawal refund, the withdrawal function, the portal)
+	settings      *plansv1.ContractSettings
+	accepted      []*plansv1.ContractAcceptance
+	withdrawals   []*plansv1.ContractWithdrawal
+	claimErr      error
+	reclaimed     bool
+	claims        []string
+	refunds       []*plansv1.RecordContractWithdrawalRefundRequest
+	decideInvoice string
 }
 
 var lastContracts *fakeContracts
@@ -116,7 +125,7 @@ func (f *fakeContracts) SetContractWithdrawalStatus(_ context.Context, req *plan
 	f.mu.Lock()
 	f.decided = req
 	f.mu.Unlock()
-	return &plansv1.SetContractWithdrawalStatusResponse{Withdrawal: &plansv1.ContractWithdrawal{Id: req.GetId(), Status: req.GetStatus(), DecidedBy: req.GetDecidedBy(), ReceiveTime: timestamppb.Now()}}, nil
+	return &plansv1.SetContractWithdrawalStatusResponse{Withdrawal: &plansv1.ContractWithdrawal{Id: req.GetId(), Status: req.GetStatus(), DecidedBy: req.GetDecidedBy(), InvoiceId: f.decideInvoice, ReceiveTime: timestamppb.Now()}}, nil
 }
 
 func (f *fakeContracts) ListContractVersions(context.Context, *plansv1.ListContractVersionsRequest) (*plansv1.ListContractVersionsResponse, error) {

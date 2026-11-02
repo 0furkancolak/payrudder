@@ -95,7 +95,7 @@ test.describe("agreements", () => {
   test("a new version starts from the current one, says what it does to customers who accepted, and sends the choice", async ({ page }) => {
     const { gw, contracts } = await open(page, {
       versions: [version("tos", "consumer", 1, { en: "Old text", tr: "Eski metin" })],
-      settings: { required_kinds: ["tos"], immediate_start: false, retention_months: 36 },
+      settings: { required_kinds: ["tos"], immediate_start: false, retention_months: 36, withdrawal_refund: "full", renewal_notice_days: 7, renewal_cancel_texts: {}, withdrawal_function: true },
     });
     await expect(page.getByTestId(`agreement-${TOS}`).getByTestId("agreement-required")).toBeVisible();
     await page.getByTestId(`agreement-publish-${TOS}`).click();
@@ -158,6 +158,9 @@ test.describe("agreements", () => {
   });
 });
 
+// What the settings form sends besides the required kinds, the switch and the retention, while the new settings are at their defaults.
+const saved = { withdrawal_refund: "full", renewal_notice_days: 7, renewal_cancel_texts: { en: "", tr: "", de: "", fr: "", es: "", ar: "" }, withdrawal_function: true };
+
 test.describe("settings", () => {
   test("a kind with no published version is disabled with the reason, and the save sends the required kinds, the switch and the retention together", async ({ page }) => {
     const { gw, contracts } = await open(page, { versions: [version("tos", "consumer", 1, { en: "Terms" })] }, "/contracts?tab=settings");
@@ -172,8 +175,8 @@ test.describe("settings", () => {
     await page.getByTestId("contracts-retention").fill("60");
     await page.getByTestId("contracts-save").click();
     await expect.poll(() => gw.called("PUT", "/v1/contracts/settings").length).toBe(1);
-    expect(gw.called("PUT", "/v1/contracts/settings")[0]?.body).toEqual({ required_kinds: ["tos"], immediate_start: true, retention_months: 60 });
-    expect(contracts.settings).toEqual({ required_kinds: ["tos"], immediate_start: true, retention_months: 60 });
+    expect(gw.called("PUT", "/v1/contracts/settings")[0]?.body).toEqual({ ...saved, required_kinds: ["tos"], immediate_start: true, retention_months: 60 });
+    expect(contracts.settings).toEqual({ required_kinds: ["tos"], immediate_start: true, retention_months: 60, withdrawal_refund: "full", renewal_notice_days: 7, renewal_cancel_texts: {}, withdrawal_function: true });
     await expect(page.getByTestId("contracts-saved")).toBeVisible();
 
     // A retention the API would refuse is caught before it is sent, and a change after the save takes the "saved" away.
@@ -186,7 +189,45 @@ test.describe("settings", () => {
     await page.getByTestId("required-tos").click();
     await page.getByTestId("contracts-save").click();
     await expect.poll(() => gw.called("PUT", "/v1/contracts/settings").length).toBe(2);
-    expect(gw.called("PUT", "/v1/contracts/settings")[1]?.body).toEqual({ required_kinds: [], immediate_start: true, retention_months: 36 });
+    expect(gw.called("PUT", "/v1/contracts/settings")[1]?.body).toEqual({ ...saved, required_kinds: [], immediate_start: true, retention_months: 36 });
+  });
+
+  test("the withdrawal and renewal-notice settings start at the API's defaults and are sent with the rest", async ({ page }) => {
+    const { gw, contracts } = await open(page, { versions: [version("tos", "consumer", 1, { en: "Terms" })] }, "/contracts?tab=settings");
+    await expect(page.getByTestId("contracts-refund")).toBeChecked();
+    await expect(page.getByTestId("contracts-function")).toBeChecked();
+    await expect(page.getByTestId("contracts-notice-days")).toHaveValue("7");
+    await expect(page.getByTestId("contracts-cancel-tr")).toHaveValue("");
+
+    await page.getByTestId("contracts-refund").click();
+    await page.getByTestId("contracts-function").click();
+    await page.getByTestId("contracts-notice-days").fill("10");
+    await page.getByTestId("contracts-cancel-tr").fill("Panelden iptal edin.");
+    await page.getByTestId("contracts-cancel-ar").fill("ألغِ من اللوحة.");
+    await page.getByTestId("contracts-save").click();
+    await expect.poll(() => gw.called("PUT", "/v1/contracts/settings").length).toBe(1);
+    expect(gw.called("PUT", "/v1/contracts/settings")[0]?.body).toEqual({
+      required_kinds: [],
+      immediate_start: false,
+      retention_months: 36,
+      withdrawal_refund: "none",
+      renewal_notice_days: 10,
+      renewal_cancel_texts: { en: "", tr: "Panelden iptal edin.", de: "", fr: "", es: "", ar: "ألغِ من اللوحة." },
+      withdrawal_function: false,
+    });
+    expect(contracts.settings.renewal_cancel_texts).toEqual({ tr: "Panelden iptal edin.", ar: "ألغِ من اللوحة." });
+    await expect(page.getByTestId("contracts-saved")).toBeVisible();
+
+    // A number of days the API would refuse is caught before it is sent; 0 is allowed and switches the notice off.
+    await page.getByTestId("contracts-notice-days").fill("61");
+    await expect(page.getByRole("alert").filter({ hasText: "from 0 to 60" })).toBeVisible();
+    await expect(page.getByTestId("contracts-save")).toBeDisabled();
+    await page.getByTestId("contracts-notice-days").fill("0");
+    await page.getByTestId("contracts-cancel-tr").fill("");
+    await page.getByTestId("contracts-save").click();
+    await expect.poll(() => gw.called("PUT", "/v1/contracts/settings").length).toBe(2);
+    expect(gw.called("PUT", "/v1/contracts/settings")[1]?.body).toMatchObject({ renewal_notice_days: 0, renewal_cancel_texts: { tr: "" } });
+    expect(contracts.settings.renewal_cancel_texts).toEqual({ ar: "ألغِ من اللوحة." });
   });
 });
 
@@ -199,7 +240,7 @@ test.describe("withdrawals", () => {
 
   test("a received request is decided once, an accepted one is marked refunded, and the page says the refund is the seller's", async ({ page }) => {
     const { gw, contracts } = await open(page, { withdrawals: rows() }, "/contracts?tab=withdrawals");
-    await expect(page.getByTestId("withdrawals-note")).toContainText("Refunding is not automatic yet");
+    await expect(page.getByTestId("withdrawals-note")).toContainText("also asks billing to refund it to the card when your settings say so");
     await expect(page.getByTestId("withdrawal-w1").getByTestId("withdrawal-status")).toHaveText("Received");
     // Only the moves that are allowed are offered.
     await expect(page.getByTestId("withdrawal-accepted-w1")).toBeVisible();
@@ -242,6 +283,70 @@ test.describe("withdrawals", () => {
     await expect(page.getByTestId("withdrawal-w3")).toBeVisible();
     await expect(page.getByTestId("withdrawal-w1")).toBeVisible();
     await expect(page.getByTestId("withdrawal-w2")).toHaveCount(0);
+  });
+
+  test("accepting a withdrawal that names an invoice asks billing for the refund, says so first, and shows what became of it", async ({ page }) => {
+    const { gw, contracts } = await open(page, { withdrawals: [withdrawal("wi", "cus_1", "received", "Refund me", { invoice_id: "inv_card" }), withdrawal("wt", "cus_2", "received", "Refund me", { invoice_id: "inv_transfer" }), withdrawal("wn", "cus_3", "received", "No invoice named")] }, "/contracts?tab=withdrawals");
+    await page.getByTestId("withdrawal-accepted-wi").click();
+    await expect(page.getByTestId("withdrawal-refund-effect")).toContainText("also ask billing to refund the invoice this withdrawal names");
+    await page.getByTestId("withdrawal-confirm").click();
+    await expect.poll(() => gw.called("PUT", "/v1/contract-withdrawals/wi/status").length).toBe(1);
+    // The decision is the only thing the console sends: the refund follows from the setting, on the server.
+    expect(gw.called("PUT", "/v1/contract-withdrawals/wi/status")[0]?.body).toEqual({ status: "accepted", note: "" });
+    await expect(page.getByTestId("withdrawal-wi").getByTestId("withdrawal-refund-state")).toHaveText("Requested");
+    await expect(page.getByTestId("withdrawal-wi").getByTestId("withdrawal-credit-note")).toContainText("cn-wi");
+    await expect(page.getByTestId("withdrawal-refund-wi")).toHaveCount(0);
+
+    // A payment made by bank transfer cannot go back through Payrudder: the row says to refund it by hand and says why.
+    await page.getByTestId("withdrawal-accepted-wt").click();
+    await page.getByTestId("withdrawal-confirm").click();
+    await expect(page.getByTestId("withdrawal-wt").getByTestId("withdrawal-refund-state")).toHaveText("Refund it yourself");
+    await expect(page.getByTestId("withdrawal-wt")).toContainText("paid by bank transfer");
+    await expect(page.getByTestId("withdrawal-refund-wt")).toHaveCount(0);
+
+    // No invoice named: nothing is asked of billing, and the dialog says so.
+    await page.getByTestId("withdrawal-accepted-wn").click();
+    await expect(page.getByTestId("withdrawal-refund-effect")).toContainText("names no invoice");
+    await page.getByTestId("withdrawal-confirm").click();
+    await expect(page.getByTestId("withdrawal-wn").getByTestId("withdrawal-refund-state")).toHaveText("Not asked for");
+    await expect(page.getByTestId("withdrawal-refund-wn")).toHaveCount(0);
+    expect(contracts.withdrawals.find((w) => w.id === "wn")?.credit_note_id).toBe("");
+    expect(gw.called("POST", "/v1/contract-withdrawals/wi/refund")).toHaveLength(0);
+  });
+
+  test("with the setting none, accepting asks nothing of billing and the seller asks for the refund when it wants to", async ({ page }) => {
+    const { gw } = await open(
+      page,
+      {
+        withdrawals: [withdrawal("wi", "cus_1", "received", "Refund me", { invoice_id: "inv_card" })],
+        settings: { required_kinds: [], immediate_start: false, retention_months: 36, withdrawal_refund: "none", renewal_notice_days: 7, renewal_cancel_texts: {}, withdrawal_function: true },
+      },
+      "/contracts?tab=withdrawals",
+    );
+    await page.getByTestId("withdrawal-accepted-wi").click();
+    await expect(page.getByTestId("withdrawal-refund-effect")).toContainText("leave the refund to you");
+    await page.getByTestId("withdrawal-confirm").click();
+    await expect(page.getByTestId("withdrawal-wi").getByTestId("withdrawal-refund-state")).toHaveText("Not asked for");
+
+    await page.getByTestId("withdrawal-refund-wi").click();
+    await expect(page.getByTestId("withdrawal-dialog")).toContainText("never refunds more than the invoice");
+    await expect(page.getByTestId("withdrawal-note")).toHaveCount(0);
+    await page.getByTestId("withdrawal-confirm").click();
+    await expect.poll(() => gw.called("POST", "/v1/contract-withdrawals/wi/refund").length).toBe(1);
+    await expect(page.getByTestId("withdrawal-wi").getByTestId("withdrawal-refund-state")).toHaveText("Requested");
+    await expect(page.getByTestId("withdrawal-refund-wi")).toHaveCount(0);
+    // The refund is asked for once: a second request would be refused, and the button is gone.
+    expect(gw.called("POST", "/v1/contract-withdrawals/wi/refund")).toHaveLength(1);
+  });
+
+  test("a refund that failed can be asked for again", async ({ page }) => {
+    const { gw } = await open(page, { withdrawals: [withdrawal("wf", "cus_1", "accepted", "Refund me", { invoice_id: "inv_card", refund_state: "failed", refund_note: "billing did not answer", decide_time: "2026-10-19T09:00:00Z" })] }, "/contracts?tab=withdrawals");
+    await expect(page.getByTestId("withdrawal-wf").getByTestId("withdrawal-refund-state")).toHaveText("Failed");
+    await expect(page.getByTestId("withdrawal-wf")).toContainText("billing did not answer");
+    await page.getByTestId("withdrawal-refund-wf").click();
+    await page.getByTestId("withdrawal-confirm").click();
+    await expect.poll(() => gw.called("POST", "/v1/contract-withdrawals/wf/refund").length).toBe(1);
+    await expect(page.getByTestId("withdrawal-wf").getByTestId("withdrawal-refund-state")).toHaveText("Requested");
   });
 });
 

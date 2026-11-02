@@ -468,6 +468,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.contract.kind_unpublished`
 - `plans.contract.no_starter`
 - `plans.contract.not_accepted`
+- `plans.contract.refund_not_possible`
 - `plans.contract.unknown_variable`
 - `plans.contract.version_not_found`
 - `plans.contract.version_stale`

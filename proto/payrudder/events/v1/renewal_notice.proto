@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package payrudder.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// RenewalNotice says a subscription of a customer who accepted the seller's agreements renews soon, with what it will cost and how to cancel (docs/plans/21-contracts.md).
+// plans-svc writes it to its outbox in the transaction that records the notice (contract_renewal_notices) and publishes it on subscription.renewal-notice.v1 (key:
+// {tenant_id}/{customer_id}); notifier turns it into the customer's e-mail in the customer's language.
+//
+// Evolution rules (ADR 0007): add fields only, never reuse a number, never change a type.
+message RenewalNotice {
+  // uuidv5(tenant|subscription|renews_at): one renewal of one subscription is one event, so consumers dedup a repeated publish.
+  string event_id = 1;
+  string tenant_id = 2;
+  string customer_id = 3;
+  string subscription_id = 4;
+  string plan_code = 5;
+  // The moment the next period starts and its fee falls due.
+  google.protobuf.Timestamp renews_at = 6;
+  // What the next period costs, after the subscription's coupon, in minor units of currency (currency_exponent decimals).
+  int64 price_minor = 7;
+  string currency = 8;
+  int32 currency_exponent = 9;
+  // month or year.
+  string interval = 10;
+  // The seller's own words on how to cancel, in the customer's language (or the closest one the seller wrote); empty when the seller wrote none.
+  string cancel_text = 11;
+  google.protobuf.Timestamp detected_at = 12;
+}

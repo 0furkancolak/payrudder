@@ -27,10 +27,11 @@ FROM (SELECT DISTINCT ON (kind, audience) * FROM contract_versions WHERE tenant_
 SELECT * FROM contract_settings WHERE tenant_id = app_tenant_id();
 
 -- name: UpsertContractSettings :one
-INSERT INTO contract_settings (tenant_id, required_kinds, immediate_start, retention_months, updated_at)
-VALUES (app_tenant_id(), @required_kinds::text[], @immediate_start, @retention_months, now())
+INSERT INTO contract_settings (tenant_id, required_kinds, immediate_start, retention_months, withdrawal_refund, renewal_notice_days, renewal_cancel_texts, withdrawal_function, updated_at)
+VALUES (app_tenant_id(), @required_kinds::text[], @immediate_start, @retention_months, @withdrawal_refund, @renewal_notice_days, @renewal_cancel_texts, @withdrawal_function, now())
 ON CONFLICT (tenant_id) DO UPDATE SET required_kinds = EXCLUDED.required_kinds, immediate_start = EXCLUDED.immediate_start,
-  retention_months = EXCLUDED.retention_months, updated_at = EXCLUDED.updated_at
+  retention_months = EXCLUDED.retention_months, withdrawal_refund = EXCLUDED.withdrawal_refund, renewal_notice_days = EXCLUDED.renewal_notice_days,
+  renewal_cancel_texts = EXCLUDED.renewal_cancel_texts, withdrawal_function = EXCLUDED.withdrawal_function, updated_at = EXCLUDED.updated_at
 RETURNING *;
 
 -- name: InsertContractAcceptance :one
@@ -92,6 +93,11 @@ WHERE tenant_id = app_tenant_id() AND id = @id RETURNING *;
 SELECT w.*, c.external_id AS customer_external_id FROM contract_withdrawals w JOIN customers c ON c.tenant_id = w.tenant_id AND c.id = w.customer_id
 WHERE w.tenant_id = app_tenant_id() AND (@customer_id::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR w.customer_id = @customer_id) AND (@status::text = '' OR w.status = @status)
 ORDER BY w.received_at DESC, w.id DESC LIMIT 200;
+
+-- The refund of an accepted withdrawal (the caller holds the row lock of GetContractWithdrawalForUpdate and has checked the state).
+-- name: SetContractWithdrawalRefund :one
+UPDATE contract_withdrawals SET refund_state = @state, credit_note_id = @credit_note_id, refund_note = @note, refund_at = @now
+WHERE tenant_id = app_tenant_id() AND id = @id RETURNING *;
 
 -- name: GetContractWithdrawalCustomer :one
 SELECT w.*, c.external_id AS customer_external_id FROM contract_withdrawals w JOIN customers c ON c.tenant_id = w.tenant_id AND c.id = w.customer_id

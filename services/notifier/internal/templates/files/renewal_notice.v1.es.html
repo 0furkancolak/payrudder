@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="es" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — esto no es un aviso real.</strong></p>{{end}}
+<h2>Su suscripción se renovará pronto</h2>
+<p>Hola {{index .D "customer_name"}}, su suscripción <strong>{{index .D "plan_code"}}</strong> con <strong>{{index .D "tenant_name"}}</strong> se renueva el <strong>{{index .D "renewal_date"}}</strong>. El próximo pago es de <strong>{{index .D "price"}}</strong> ({{if eq (index .D "interval") "year"}}anual{{else}}mensual{{end}}).</p>
+{{if index .D "cancel_text"}}<h3>Cómo cancelar</h3>
+<p style="white-space: pre-line">{{index .D "cancel_text"}}</p>{{else}}<p>Si no desea continuar, avise a {{index .D "tenant_name"}} antes de esa fecha.</p>{{end}}
+<p>No necesita hacer nada para continuar.</p>
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

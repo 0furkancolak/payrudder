@@ -130,7 +130,7 @@ func TestEventTypeList(t *testing.T) {
 		}
 		seen[e] = true
 	}
-	if len(seen) != 28 || !seen["credits.low"] || !seen["customer.blocked"] || !seen["customer.unblocked"] || !seen["subscription.trial_will_end"] || !seen["price_change.scheduled"] || !seen["contract.accepted"] || !seen["contract.version_published"] || !seen["contract.withdrawal_requested"] {
+	if len(seen) != 29 || !seen["credits.low"] || !seen["customer.blocked"] || !seen["customer.unblocked"] || !seen["subscription.trial_will_end"] || !seen["price_change.scheduled"] || !seen["contract.accepted"] || !seen["contract.version_published"] || !seen["contract.withdrawal_requested"] || !seen["contract.withdrawal_decided"] {
 		t.Fatalf("%d types", len(seen))
 	}
 }
