@@ -682,7 +682,11 @@
           "blocked": "Blocked",
           "unblocked": "Lifted"
         },
-        "by": "by {actor}"
+        "by": "by {actor}",
+        "suspend": "Also suspend their service",
+        "suspendHint": "Entitlement checks for this customer answer “not allowed” on every meter until the block is lifted or ends. Usage you send is still accepted and counted.",
+        "bannerSuspended": "Service suspended: entitlement checks answer “not allowed”.",
+        "suspended": "Service suspended"
       }
     },
     "packages": {

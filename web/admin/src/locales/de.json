@@ -682,7 +682,11 @@
           "blocked": "Gesperrt",
           "unblocked": "Aufgehoben"
         },
-        "by": "von {actor}"
+        "by": "von {actor}",
+        "suspend": "Auch den Dienst aussetzen",
+        "suspendHint": "Die Berechtigungsprüfungen für diesen Kunden antworten bei jedem Zähler mit „nicht erlaubt“, bis die Sperre aufgehoben wird oder endet. Gesendete Nutzung wird weiterhin angenommen und gezählt.",
+        "bannerSuspended": "Dienst ausgesetzt: Berechtigungsprüfungen antworten mit „nicht erlaubt“.",
+        "suspended": "Dienst ausgesetzt"
       }
     },
     "packages": {

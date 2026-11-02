@@ -138,6 +138,8 @@ export interface BlockInput {
   category?: BlockCategory;
   /** When the block ends by itself (an ISO time); absent: until it is lifted. */
   until?: string;
+  /** Also suspend the customer's service: entitlement checks answer "not allowed" on every meter while the block holds. */
+  suspend?: boolean;
 }
 
 /** Blocks a customer from new purchases (what exists runs on), or lifts the block. The note is the seller's own. */
@@ -150,7 +152,7 @@ export function useBlockCustomer(tenantId: MaybeRefOrGetter<string>) {
         unwrap(
           tenantApi(toValue(tenantId)).POST("/v1/customers/{external_id}/block", {
             params: { path: { external_id: v.externalId } },
-            body: { reason: v.reason ?? "", ...(v.category ? { category: v.category } : {}), ...(v.until ? { blocked_until: v.until } : {}) },
+            body: { reason: v.reason ?? "", ...(v.category ? { category: v.category } : {}), ...(v.until ? { blocked_until: v.until } : {}), ...(v.suspend ? { suspend_service: true } : {}) },
           }),
         ),
       onSuccess: done,
