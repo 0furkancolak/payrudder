@@ -48,20 +48,20 @@ VALUES (@tenant_id, @saga_id, @seq, @state, @state, 'timeout:reissue', @at);
 SELECT tenant_id, id FROM invoice_sagas WHERE step_deadline IS NOT NULL AND step_deadline < @now::timestamptz ORDER BY step_deadline LIMIT @row_limit;
 
 -- name: ListSagasDueForDunning :many
-SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_DECLINED' AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
+SELECT tenant_id, id FROM invoice_sagas WHERE state IN ('PAYMENT_DECLINED', 'PAYMENT_HELD') AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
 
 -- name: LockSagaPastDeadline :one
 SELECT id FROM invoice_sagas
 WHERE tenant_id = @tenant_id AND id = @id AND step_deadline IS NOT NULL AND step_deadline < @now::timestamptz
 FOR UPDATE SKIP LOCKED;
 
--- The retry of a tenant that is on hold is put off, not given up: the saga stays PAYMENT_DECLINED and is due again after the hold.
+-- The retry of a payment the gate refuses (a tenant on hold, a customer blocked for fraud) is put off, not given up: the saga stays PAYMENT_DECLINED and is due again after the hold.
 -- name: HoldSagaDunning :exec
 UPDATE invoice_sagas SET next_attempt_at = @until::timestamptz WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_DECLINED';
 
 -- name: LockSagaDueForDunning :one
 SELECT id FROM invoice_sagas
-WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_DECLINED' AND next_attempt_at <= @now::timestamptz
+WHERE tenant_id = @tenant_id AND id = @id AND state IN ('PAYMENT_DECLINED', 'PAYMENT_HELD') AND next_attempt_at <= @now::timestamptz
 FOR UPDATE SKIP LOCKED;
 
 -- name: ListSagasDueForPoll :many

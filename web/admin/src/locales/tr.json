@@ -154,7 +154,8 @@
       "PAYMENT_DECLINED": "reddedildi, yeniden deneniyor",
       "PAYMENT_UNKNOWN": "sonuç bilinmiyor",
       "UNCOLLECTIBLE": "vazgeçildi",
-      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor"
+      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor",
+      "PAYMENT_HELD": "ilk tahsilat bekletiliyor"
     },
     "sagaState": {
       "PAYMENT_PENDING": "havale bekleniyor",
@@ -176,7 +177,8 @@
       "REFUNDED": "iade edildi",
       "VOIDED": "iptal edildi",
       "AWAITING_PAYMENT": "ödeme bekleniyor",
-      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor"
+      "PAYMENT_ACTION_REQUIRED": "müşterinin onayı bekleniyor",
+      "PAYMENT_HELD": "ilk tahsilat bekletiliyor"
     },
     "paymentMethod": {
       "bank_transfer": "Banka havalesi",
