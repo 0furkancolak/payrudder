@@ -68,6 +68,9 @@ func (e *Engine) issue(ctx context.Context, tx pgx.Tx, s *saga, eff model.Effect
 	case model.EffAwaitTransfer:
 		step, route = "notify", rabbitx.QueueNotificationSend
 		env.Command = &commandsv1.CommandEnvelope_SendNotification{SendNotification: e.transferNotification(s)}
+	case model.EffAwaitAction:
+		step, route = "notify", rabbitx.QueueNotificationSend
+		env.Command = &commandsv1.CommandEnvelope_SendNotification{SendNotification: e.actionNotification(ctx, s)}
 	default:
 		return fmt.Errorf("saga: unknown effect %q", eff)
 	}

@@ -1225,6 +1225,13 @@ type CustomerBlockEvent struct {
 	CreateTime time.Time `json:"create_time"`
 }
 
+// CustomerCards is an object of the API; see components.schemas.CustomerCards in api/openapi/v1.yaml.
+type CustomerCards struct {
+	// The provider that holds the cards; empty when the customer has none
+	Provider string       `json:"provider"`
+	Cards    []StoredCard `json:"cards"`
+}
+
 // CustomerContact is an object of the API; see components.schemas.CustomerContact in api/openapi/v1.yaml.
 type CustomerContact struct {
 	Name  string `json:"name"`
@@ -1263,6 +1270,15 @@ type CustomerTax struct {
 	TaxOffice string `json:"tax_office,omitempty"`
 	// The customer is registered for e-fatura
 	EInvoiceRegistered *bool `json:"e_invoice_registered,omitempty"`
+}
+
+// DeletedCustomerCard is an object of the API; see components.schemas.DeletedCustomerCard in
+// api/openapi/v1.yaml.
+type DeletedCustomerCard struct {
+	Provider string `json:"provider"`
+	Deleted  bool   `json:"deleted"`
+	// The deleted card was the one the customer's payment method names: set a new payment method
+	WasInUse bool `json:"was_in_use"`
 }
 
 // DunningSettings is an object of the API; see components.schemas.DunningSettings in api/openapi/v1.yaml.
@@ -1593,7 +1609,8 @@ type GetDunningReportInvoice struct {
 	Provider           string `json:"provider"`
 	Currency           string `json:"currency"`
 	TotalMinor         Int64  `json:"total_minor"`
-	// One of: PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, UNCOLLECTIBLE.
+	// One of: PAYMENT_DECLINED, PAYMENT_UNKNOWN, PAYMENT_PENDING, PAYMENT_ACTION_REQUIRED, PAYMENT_HELD,
+	// UNCOLLECTIBLE.
 	State           string     `json:"state"`
 	DunningAttempt  int        `json:"dunning_attempt"`
 	NextAttemptTime *time.Time `json:"next_attempt_time"`
@@ -2706,6 +2723,26 @@ type SignedUrl struct {
 	URL string `json:"url"`
 	// RFC 3339, UTC
 	ExpiresAt time.Time `json:"expires_at"`
+}
+
+// StoredCard is an object of the API; see components.schemas.StoredCard in api/openapi/v1.yaml.
+type StoredCard struct {
+	// The provider's card token (cardToken): what the delete names
+	Token string `json:"token"`
+	Alias string `json:"alias"`
+	// The first digits of the number (the BIN)
+	Bin   string `json:"bin"`
+	Last4 string `json:"last4"`
+	// CREDIT_CARD, DEBIT_CARD or PREPAID_CARD
+	Type string `json:"type"`
+	// VISA, MASTER_CARD, ...
+	Association string `json:"association"`
+	Family      string `json:"family"`
+	Bank        string `json:"bank"`
+	ExpireMonth string `json:"expire_month"`
+	ExpireYear  string `json:"expire_year"`
+	// The customer's payment method names this card
+	InUse bool `json:"in_use"`
 }
 
 // Subscription is an object of the API; see components.schemas.Subscription in api/openapi/v1.yaml.

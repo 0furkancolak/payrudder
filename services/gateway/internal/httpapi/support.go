@@ -2,12 +2,21 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
 
+	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/encoding/protojson"
+
+	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
@@ -23,6 +32,8 @@ func (s *Server) supportRoutes() []Route {
 		{"GET", "/app/v1/support/tickets/{id}", AccessSession, ratelimit.ClassRead, s.supportMyGet},
 		{"POST", "/app/v1/support/tickets/{id}/replies", AccessSession, ratelimit.ClassWrite, s.supportMyReply},
 		{"PUT", "/app/v1/support/tickets/{id}/status", AccessSession, ratelimit.ClassWrite, s.supportMyStatus},
+		{"POST", "/app/v1/support/tickets/{id}/messages/{message_id}/attachments", AccessSession, ratelimit.ClassWrite, s.supportMyAttach},
+		{"GET", "/app/v1/support/tickets/{id}/attachments/{attachment_id}", AccessSession, ratelimit.ClassRead, s.supportMyDownload},
 
 		{"GET", "/admin/v1/support/tickets", AccessOperator, "", s.supportList},
 		{"GET", "/admin/v1/support/tickets/{id}", AccessOperator, "", s.supportGet},
@@ -34,6 +45,8 @@ func (s *Server) supportRoutes() []Route {
 		{"POST", "/admin/v1/support/canned-replies", AccessOperator, "", s.supportCannedSave},
 		{"PUT", "/admin/v1/support/canned-replies/{id}", AccessOperator, "", s.supportCannedSave},
 		{"DELETE", "/admin/v1/support/canned-replies/{id}", AccessOperator, "", s.supportCannedDelete},
+		{"POST", "/admin/v1/support/tickets/{id}/messages/{message_id}/attachments", AccessOperator, "", s.supportAttach},
+		{"GET", "/admin/v1/support/tickets/{id}/attachments/{attachment_id}", AccessOperator, "", s.supportDownload},
 	}
 }
 
@@ -185,4 +198,113 @@ func (s *Server) supportCannedDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// supportAttachmentLimit is the body of an attachment upload: the file's 5 MiB (assets-svc's rule for the purpose) and the form's framing.
+const supportAttachmentLimit = 5<<20 + formOverhead
+
+func (s *Server) supportMyAttach(w http.ResponseWriter, r *http.Request) {
+	s.supportAttachTo(w, r, sessionFrom(r.Context()).UserID)
+}
+
+func (s *Server) supportAttach(w http.ResponseWriter, r *http.Request) { s.supportAttachTo(w, r, "") }
+
+func (s *Server) supportMyDownload(w http.ResponseWriter, r *http.Request) {
+	s.supportDownloadFor(w, r, sessionFrom(r.Context()).UserID)
+}
+
+func (s *Server) supportDownload(w http.ResponseWriter, r *http.Request) {
+	s.supportDownloadFor(w, r, "")
+}
+
+// storedUnder is ctx as the tenant that holds the file in assets-svc: the help desk keeps a ticket's files under the first tenant of its account.
+func storedUnder(ctx context.Context, t *plansv1.SupportAttachmentTarget) context.Context {
+	id, _ := uuid.Parse(t.GetTenantId())
+	return tenant.NewContext(ctx, tenant.Info{ID: id, Environment: t.GetEnvironment(), Timezone: t.GetTimezone(), Tier: t.GetTier()})
+}
+
+// supportAttachTo is the upload of one file (form field "file") to a message: the help desk says whether it may and where it goes, assets-svc stores it under
+// that tenant with the purpose support_attachment (which checks the type, the size and the content), and the help desk records it. A file whose record fails is
+// deleted again. user is the person's id, empty for the operator.
+func (s *Server) supportAttachTo(w http.ResponseWriter, r *http.Request, user string) {
+	ticketID, messageID := r.PathValue("id"), r.PathValue("message_id")
+	auth, err := s.d.Support.AuthorizeSupportAttachment(r.Context(), &plansv1.AuthorizeSupportAttachmentRequest{UserId: user, TicketId: ticketID, MessageId: messageID})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	mr, err := r.MultipartReader()
+	if err != nil {
+		writeError(w, r, invalid("content-type", "multipart/form-data with a boundary is required"))
+		return
+	}
+	var res uploadResult
+	ctx := storedUnder(r.Context(), auth.GetTarget())
+	for {
+		part, err := mr.NextPart()
+		if errors.Is(err, io.EOF) {
+			writeError(w, r, invalid("file", "no file part"))
+			return
+		}
+		if err != nil {
+			var mbe *http.MaxBytesError
+			if errors.As(err, &mbe) {
+				writeError(w, r, errBodyTooLarge(mbe.Limit))
+				return
+			}
+			writeError(w, r, invalid("body", "malformed multipart body"))
+			return
+		}
+		if part.FormName() != "file" || part.FileName() == "" {
+			_, _ = io.Copy(io.Discard, part)
+			continue
+		}
+		res, _ = s.uploadOne(ctx, part, assetsv1.Purpose_PURPOSE_SUPPORT_ATTACHMENT, &uploadBudget{})
+		break
+	}
+	if res.Status != "created" {
+		writeError(w, r, attachmentRefusal(res.ErrorCode))
+		return
+	}
+	var asset assetsv1.Asset
+	if err := protojson.Unmarshal(res.Asset, &asset); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	added, err := s.d.Support.AddSupportAttachment(r.Context(), &plansv1.AddSupportAttachmentRequest{UserId: user, TicketId: ticketID, MessageId: messageID,
+		TenantId: auth.GetTarget().GetTenantId(), AssetId: asset.GetId(), Filename: asset.GetFilename(), ContentType: asset.GetContentType(), SizeBytes: asset.GetSizeBytes()})
+	if err != nil {
+		// Nothing points at the file: take it back out of the storage (a failure here leaves an orphan that assets-svc's own sweep removes).
+		if _, derr := s.d.Assets.DeleteAsset(ctx, &assetsv1.DeleteAssetRequest{AssetId: asset.GetId()}); derr != nil {
+			s.d.Log.WarnContext(r.Context(), "support: an attachment that was refused could not be removed again", "asset_id", asset.GetId(), "error", derr)
+		}
+		writeError(w, r, err)
+		return
+	}
+	respond(w, r, http.StatusCreated, added, nil)
+}
+
+// attachmentRefusal turns what assets-svc said about a refused file into the help desk's own error key.
+func attachmentRefusal(code string) error {
+	switch code {
+	case "UNSUPPORTED_CONTENT_TYPE", "CONTENT_TYPE_MISMATCH":
+		return errkey.New(codes.InvalidArgument, "support.attachment.bad_type", "only png, jpeg, pdf and plain text files can be attached")
+	case "FILE_TOO_LARGE", "REQUEST_TOO_LARGE":
+		return errkey.New(codes.InvalidArgument, "support.attachment.too_large", "a file can be at most 5 MiB")
+	case "STORAGE_QUOTA_EXCEEDED":
+		return errkey.New(codes.ResourceExhausted, "support.attachment.storage_full", "the storage of the app that holds support files is full")
+	}
+	return errkey.New(codes.InvalidArgument, "support.attachment.rejected", "the file cannot be attached")
+}
+
+// supportDownloadFor answers with a short-lived link to the file. The person gets one only for a file on a public message of a ticket of theirs.
+func (s *Server) supportDownloadFor(w http.ResponseWriter, r *http.Request, user string) {
+	resp, err := s.d.Support.GetSupportAttachment(r.Context(), &plansv1.GetSupportAttachmentRequest{UserId: user, TicketId: r.PathValue("id"), AttachmentId: r.PathValue("attachment_id")})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	dl, err := s.d.Assets.GetDownloadUrl(storedUnder(r.Context(), resp.GetTarget()), &assetsv1.GetDownloadUrlRequest{AssetId: resp.GetTarget().GetAssetId()})
+	noStore(w)
+	respondSignedURL(w, r, dl.GetUrl(), dl.GetExpireTime(), err)
 }

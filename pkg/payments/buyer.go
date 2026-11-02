@@ -55,6 +55,9 @@ type ReturnRequest struct {
 	// another one does not belong to the attempt.
 	ProviderRef string
 	Form        url.Values
+	// PaidMinor is what the payer was quoted to pay in all when the attempt was split into instalments (the price plus the bank's charge for them); 0 for a payment in
+	// one go. The invoice is paid by AmountMinor either way.
+	PaidMinor int64
 }
 
 // ReturnConfirmer is a provider that sends the payer back to a callback URL of ours with a form (iyzico). ConfirmReturn asks the provider what the payment is and
@@ -78,6 +81,10 @@ type ThreeDSRequest struct {
 	// CallbackURL is where the provider posts the result of the authentication, through the payer's browser.
 	CallbackURL string
 	Buyer       *Buyer
+	// Installments is the number of instalments the payer chose (0 or 1: one payment) and PaidMinor what the provider quoted for that many in all, charges included
+	// (0: AmountMinor). The provider's own quote is the only figure that may be passed: the caller takes it from InstallmentOffer, never from the browser.
+	Installments int
+	PaidMinor    int64
 }
 
 // ThreeDSStart is the page the payer must be shown to authenticate.

@@ -4,6 +4,7 @@ import { TabsContent } from "reka-ui";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { CustomerAgreements } from "@/features/contracts";
+import CustomerCards from "./CustomerCards.vue";
 import { useCreditBalance } from "@/features/credits/api";
 import GrantCreditsSheet from "@/features/credits/GrantCreditsSheet.vue";
 import { formatCredits } from "@/features/credits/lib";
@@ -258,6 +259,8 @@ const tax = computed(() => [props.customer.tax_id, props.customer.tax_office].fi
             <dd class="mono m-0 break-all">{{ customer.payment_method }}</dd>
           </div>
         </dl>
+        <!-- The cards the provider holds for the customer: asked only when the customer has a payment method (it names whose cards they are). -->
+        <CustomerCards v-if="customer.payment_method" class="mt-6" :tenant-id="tenantId" :external-id="id" :readonly="readonly" />
         <!-- Who blocked or lifted, when and why: kept for good, newest first. -->
         <section class="mt-6 flex flex-col gap-2" :aria-label="t('billing.customers.block.history')" data-testid="customer-block-history">
           <h3 class="m-0 text-sm font-semibold">{{ t("billing.customers.block.history") }}</h3>
