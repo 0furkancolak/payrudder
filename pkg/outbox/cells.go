@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/backoff"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 )
@@ -62,6 +63,7 @@ func (c *cellRelay) start(ctx context.Context, wg *sync.WaitGroup) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer errtrack.Recover(ctx)
 			retry := backoff.Retry{Base: c.r.cfg.ErrorBackoff}
 			for ctx.Err() == nil {
 				if err := c.listenOnce(ctx, pool); err != nil && ctx.Err() == nil {
@@ -73,6 +75,7 @@ func (c *cellRelay) start(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer errtrack.Recover(ctx)
 		c.work(ctx)
 	}()
 }

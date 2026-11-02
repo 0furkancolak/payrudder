@@ -11,6 +11,8 @@ enum ContractWithdrawalRefundState: string
     case None = 'none';
     case Requesting = 'requesting';
     case Requested = 'requested';
+    case Refunded = 'refunded';
+    case RefundFailed = 'refund_failed';
     case Outside = 'outside';
     case Failed = 'failed';
 }

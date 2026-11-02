@@ -94,6 +94,14 @@ payrudder webhooks trigger ping
 
 sends a signed `ping` to your endpoint (the only endpoint, or the one named with `--endpoint`) and waits for its answer: `Delivered: your endpoint answered HTTP 200.`, or `Not accepted: HTTP 500 …`, which exits 1. `ping` is the only event the API can send on request; every other event happens when the thing it announces happens (an invoice is paid, a subscription is cancelled), and in the sandbox you can make it happen with [Test mode](test-mode.html).
 
+## Send a delivery again
+
+```sh
+payrudder webhooks redeliver 0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e
+```
+
+takes the id of a delivery from `payrudder webhooks deliveries` and asks Payrudder to send it again **from the start**, whatever became of it (a delivery that failed for good, or one that was delivered and that your handler lost). The API queues it and answers at once; the command prints the id of the delivery and the endpoint, and `payrudder webhooks deliveries --endpoint ID --watch` shows how the endpoint answers. The event keeps its id, so a handler that ignores an event it has seen (see [Idempotency](idempotency.html)) ignores this one too: redeliver to retry a failure, not to replay a success.
+
 ## Customers and invoices
 
 ```sh
@@ -101,6 +109,13 @@ payrudder customers list --limit 10
 payrudder invoices list --customer cus_42 --status open
 payrudder invoices list --period 2026-10 --json
 ```
+
+```sh
+payrudder customers create --id cus_42 --name "Ada Lovelace" --email ada@example.com --country TR --locale tr --type individual
+payrudder plans create --code pro --name Pro
+```
+
+`customers create` needs `--id` (your own id for the customer, the `external_id`), `--name` and `--email`; `--country`, `--currency`, `--locale` and `--type` are sent only when given. Creating a customer is not deduplicated by a key: the external id is the natural key, so running the command again answers `409` and exits 1 instead of making a second customer. `plans create` makes the plan itself, a code and a name; its prices and entitlements are a **version**, which is published with `POST /v1/plans/{code}/versions` (see [the API reference](api/plans.html)), not from flags. Both take `--json`.
 
 Tables show the first `--limit` rows (25 by default). Invoice totals are in the currency's **minor units**, as the API sends them.
 
@@ -114,4 +129,4 @@ Tables show the first `--limit` rows (25 by default). Invoice totals are in the 
 
 ## Not in it
 
-Writing anything but events (no creating customers, plans or endpoints from the command line apart from the temporary endpoint of `listen`), the operator and console routes, and a `trigger` for events other than `ping`. This command line is pre-release like the SDKs.
+Publishing a plan version, creating webhook endpoints (apart from the temporary endpoint of `listen`), meters, subscriptions or coupons, the operator and console routes, and a `trigger` for events other than `ping`. This command line is pre-release like the SDKs.

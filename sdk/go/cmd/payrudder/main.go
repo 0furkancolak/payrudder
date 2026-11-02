@@ -1,6 +1,6 @@
 // Command payrudder is the command-line client of the Payrudder tenant API: sign in once, send a usage event, follow a customer's usage, receive and
-// forward webhooks on your own machine, and list customers and invoices. It is the Go SDK (package payrudder) behind a small command set, so it needs
-// nothing but the standard library and talks to the same /v1 routes your code does, with an API key.
+// forward webhooks on your own machine, redeliver a delivery, make customers and plans, and list customers and invoices. It is the Go SDK (package
+// payrudder) behind a small command set, so it needs nothing but the standard library and talks to the same /v1 routes your code does, with an API key.
 //
 //	payrudder login
 //	payrudder events send --customer cus_42 --meter api_calls --quantity 3

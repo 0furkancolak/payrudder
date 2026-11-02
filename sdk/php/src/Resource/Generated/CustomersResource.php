@@ -14,6 +14,7 @@ use Payrudder\Model\AddressInput;
 use Payrudder\Model\AttributeCustomerRequest;
 use Payrudder\Model\AttributeCustomerResponse;
 use Payrudder\Model\BlockCustomerRequest;
+use Payrudder\Model\ContractAcceptance;
 use Payrudder\Model\ContractWithdrawal;
 use Payrudder\Model\CreateContractWithdrawalRequest;
 use Payrudder\Model\CreateCustomerRequest;
@@ -247,13 +248,68 @@ final class CustomersResource extends AbstractResource
      * What the customer accepted, newest first (GET /v1/customers/{external_id}/contract-acceptances).
      *
      * @param string $externalId
+     * @param string|null $kind
+     * @param string|null $source
+     * @param string|null $versionId
+     * @param string|null $from
+     * @param string|null $to
+     * @param int|null $pageSize
+     * @param string|null $pageToken
      * @param RequestOptions|null $options
      *
      * @throws PayrudderException
      */
-    public function listContractAcceptances(string $externalId, ?RequestOptions $options = null): ListContractAcceptancesResponse
+    public function listContractAcceptances(string $externalId, ?string $kind = null, ?string $source = null, ?string $versionId = null, ?string $from = null, ?string $to = null, ?int $pageSize = null, ?string $pageToken = null, ?RequestOptions $options = null): ListContractAcceptancesResponse
     {
-        return ListContractAcceptancesResponse::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/contract-acceptances', [], null, $options));
+        return ListContractAcceptancesResponse::fromArray($this->call('GET', '/v1/customers/' . rawurlencode($externalId) . '/contract-acceptances', ['kind' => $kind, 'source' => $source, 'version_id' => $versionId, 'from' => $from, 'to' => $to, 'page_size' => $pageSize, 'page_token' => $pageToken], null, $options));
+    }
+
+    /**
+     * Walks every page of listContractAcceptances, yielding one response per page. A page token passed in starts the walk there.
+     *
+     * @param string $externalId
+     * @param string|null $kind
+     * @param string|null $source
+     * @param string|null $versionId
+     * @param string|null $from
+     * @param string|null $to
+     * @param int|null $pageSize
+     * @param string|null $pageToken
+     * @param RequestOptions|null $options
+     *
+     * @return Generator<int, ListContractAcceptancesResponse>
+     */
+    public function listContractAcceptancesPages(string $externalId, ?string $kind = null, ?string $source = null, ?string $versionId = null, ?string $from = null, ?string $to = null, ?int $pageSize = null, ?string $pageToken = null, ?RequestOptions $options = null): Generator
+    {
+        do {
+            $page = $this->listContractAcceptances(externalId: $externalId, kind: $kind, source: $source, versionId: $versionId, from: $from, to: $to, pageSize: $pageSize, pageToken: $pageToken, options: $options);
+            yield $page;
+            $pageToken = $page->nextPageToken;
+        } while ($pageToken !== null && $pageToken !== '');
+    }
+
+    /**
+     * Walks every page of listContractAcceptances and yields the items one by one.
+     *
+     * @param string $externalId
+     * @param string|null $kind
+     * @param string|null $source
+     * @param string|null $versionId
+     * @param string|null $from
+     * @param string|null $to
+     * @param int|null $pageSize
+     * @param string|null $pageToken
+     * @param RequestOptions|null $options
+     *
+     * @return Generator<int, ContractAcceptance>
+     */
+    public function listContractAcceptancesIterator(string $externalId, ?string $kind = null, ?string $source = null, ?string $versionId = null, ?string $from = null, ?string $to = null, ?int $pageSize = null, ?string $pageToken = null, ?RequestOptions $options = null): Generator
+    {
+        foreach ($this->listContractAcceptancesPages(externalId: $externalId, kind: $kind, source: $source, versionId: $versionId, from: $from, to: $to, pageSize: $pageSize, pageToken: $pageToken, options: $options) as $page) {
+            foreach ($page->acceptances ?? [] as $item) {
+                yield $item;
+            }
+        }
     }
 
     /**

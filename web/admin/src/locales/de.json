@@ -1469,7 +1469,10 @@
         "revoke": "Auswahl widerrufen",
         "revokeTitle": "{n} Zahlungslink widerrufen? | {n} Zahlungslinks widerrufen?",
         "confirmRevoke": "Widerrufene Links funktionieren sofort nicht mehr und lassen sich nicht wiederherstellen. Daraus entstandene unbezahlte Rechnungen werden storniert."
-      }
+      },
+      "agreements": "Vereinbarungen, denen der Zahler zustimmt",
+      "agreementsHint": "Hier angekreuzt ersetzen sie die auf der Seite Verträge verlangten Vereinbarungen nur für diesen Link. Ohne Häkchen gilt diese Einstellung.",
+      "agreementsSetting": "Wie auf der Seite Verträge eingestellt"
     },
     "mail": {
       "title": "E-Mail",
@@ -2875,7 +2878,8 @@
         "invoice_required": "Ein Zahlungslink der Art Rechnung braucht eine Rechnung.",
         "not_found": "Diesen Zahlungslink gibt es nicht.",
         "customer_required": "Ein Credit-Paket-Link braucht den Kunden, der die Credits erhält.",
-        "pack_required": "Ein Credit-Paket-Link braucht ein Paket."
+        "pack_required": "Ein Credit-Paket-Link braucht ein Paket.",
+        "bad_required_contracts": "Ein Link kann den Fernabsatzvertrag, die vorvertraglichen Informationen, die Nutzungsbedingungen und die Datenschutzerklärung jeweils einmal nennen."
       },
       "portal_link": {
         "customer_not_found": "Diesen Kunden gibt es nicht.",
@@ -5834,14 +5838,24 @@
         "requesting": "Wird angefordert",
         "requested": "Angefordert",
         "outside": "Selbst erstatten",
-        "failed": "Fehlgeschlagen"
+        "failed": "Fehlgeschlagen",
+        "refunded": "Erstattet",
+        "refund_failed": "Kartenerstattung fehlgeschlagen"
       },
       "creditNote": "Gutschrift {id}",
       "acceptRefund": {
         "asked": "Ihre Einstellungen fordern jetzt auch die Erstattung der Rechnung, die dieser Widerruf nennt, auf die Karte des Kunden an. Eine anders bezahlte Zahlung wird zur eigenen Erstattung markiert.",
         "left": "Ihre Einstellungen überlassen die Erstattung Ihnen: Nutzen Sie danach „Erstattung anfordern“ oder erstatten Sie selbst.",
         "noInvoice": "Dieser Widerruf nennt keine Rechnung, daher wird keine Erstattung angefordert: Erstatten Sie dem Kunden selbst."
-      }
+      },
+      "invoiceLine": "Rechnung {number} · {total}",
+      "amount": "Zu erstattender Betrag ({currency}, optional)",
+      "amountHint": "Leer lassen, um alles zu erstatten, was von der Rechnung übrig ist. Geben Sie einen kleineren Betrag an, wenn die Leistung schon erbracht wurde und der Kunde einen Teil schuldet.",
+      "amountErrors": {
+        "amount": "Geben Sie einen Betrag in dieser Währung ein, größer als null.",
+        "tooMuch": "Das ist mehr als die Rechnung."
+      },
+      "refundFailedHint": "Die Gutschrift existiert, aber der Zahlungsanbieter hat das Geld nicht zurückgegeben. Wiederholen Sie die Erstattung dieser Gutschrift unter Gutschriften; fordern Sie keine zweite an."
     },
     "customer": {
       "log": "Akzeptierte Vereinbarungen",
@@ -5868,7 +5882,15 @@
       "withdrawals": "Widerrufe",
       "record": "Widerruf erfassen",
       "noWithdrawals": "Keine Widerrufe dieses Kunden.",
-      "decideThere": "Widerrufe unter Verträge entscheiden"
+      "decideThere": "Widerrufe unter Verträge entscheiden",
+      "filters": {
+        "label": "Zustimmungen filtern",
+        "kind": "Art der Vereinbarung",
+        "allKinds": "Alle Vereinbarungen",
+        "source": "Wo zugestimmt wurde",
+        "allSources": "Überall"
+      },
+      "showMore": "Mehr anzeigen"
     },
     "record": {
       "title": "Widerruf erfassen",
@@ -5878,7 +5900,10 @@
       "statementHint": "In seinen Worten, bis zu 2000 Zeichen.",
       "received": "Wann es Sie erreicht hat (optional)",
       "receivedHint": "Für jetzt leer lassen.",
-      "submit": "Widerruf erfassen"
+      "submit": "Widerruf erfassen",
+      "invoice": "Rechnung (optional)",
+      "invoiceHint": "Die bezahlte Rechnung, von der der Kunde zurücktritt. Mit ihr kann die Annahme des Widerrufs den Kunden erstatten; ohne sie erstatten Sie von Hand.",
+      "noInvoice": "Keine Rechnung"
     }
   },
   "audit": {

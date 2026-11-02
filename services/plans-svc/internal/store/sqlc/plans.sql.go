@@ -2577,6 +2577,53 @@ func (q *Queries) SettleChange(ctx context.Context, arg SettleChangeParams) (int
 	return result.RowsAffected(), nil
 }
 
+const systemListEndedBlocks = `-- name: SystemListEndedBlocks :many
+SELECT tenant_id, id, external_id, blocked_until::timestamptz AS blocked_until
+FROM customers
+WHERE blocked_at IS NOT NULL AND blocked_until IS NOT NULL AND blocked_until <= $1::timestamptz
+ORDER BY blocked_until, id
+LIMIT $2::int
+`
+
+type SystemListEndedBlocksParams struct {
+	Now   time.Time
+	Batch int32
+}
+
+type SystemListEndedBlocksRow struct {
+	TenantID     uuid.UUID
+	ID           uuid.UUID
+	ExternalID   string
+	BlockedUntil time.Time
+}
+
+// system. The customers whose block ran out by itself (blocked_until has passed) and that nobody lifted yet, oldest end first. Across tenants; the sweep locks and
+// re-checks each one in its tenant's transaction before it clears the block.
+func (q *Queries) SystemListEndedBlocks(ctx context.Context, arg SystemListEndedBlocksParams) ([]SystemListEndedBlocksRow, error) {
+	rows, err := q.db.Query(ctx, systemListEndedBlocks, arg.Now, arg.Batch)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SystemListEndedBlocksRow{}
+	for rows.Next() {
+		var i SystemListEndedBlocksRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ID,
+			&i.ExternalID,
+			&i.BlockedUntil,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const unblockCustomer = `-- name: UnblockCustomer :one
 UPDATE customers SET blocked_at = NULL, block_reason = '', block_category = '', blocked_until = NULL, block_suspend_service = false
 WHERE tenant_id = app_tenant_id() AND external_id = $1

@@ -172,6 +172,8 @@ message GetContractRequirementsRequest {
   ContractOrder order = 6;
   // For a guest: the name printed on the texts.
   string guest_name = 7;
+  // The kinds this question is about instead of the seller's setting (a payment link names its own). Empty: the setting.
+  repeated string required_kinds = 8;
 }
 
 message ContractRequirement {
@@ -278,9 +280,20 @@ message RecordContractAcceptanceResponse {
 message ListContractAcceptancesRequest {
   string customer_external_id = 1;
   string customer_id = 2;
+  // Filters, all optional: the kind, the source (api or hosted), one version, and the time the customer accepted (from inclusive, to exclusive).
+  string kind = 3;
+  string source = 4;
+  string version_id = 5;
+  google.protobuf.Timestamp from_time = 6;
+  google.protobuf.Timestamp to_time = 7;
+  // Newest first. 0 means 100; at most 200.
+  int32 page_size = 8;
+  string page_token = 9;
 }
 message ListContractAcceptancesResponse {
   repeated ContractAcceptance acceptances = 1;
+  // Empty on the last page.
+  string next_page_token = 2;
 }
 
 message GetContractSnapshotRequest {
@@ -310,8 +323,9 @@ message ContractWithdrawal {
   string decision_note = 12;
   // The credit note billing made to refund the invoice, once one was requested.
   string credit_note_id = 13;
-  // none (nothing asked of billing), requesting (being asked), requested (a credit note exists; its own refund_state tells whether the card got the money), outside (the money
-  // cannot go back through Payrudder, a bank transfer for instance: the seller refunds it by hand) or failed (billing refused or did not answer: ask again).
+  // none (nothing asked of billing), requesting (being asked), requested (a credit note exists, the provider has not answered yet), refunded (the provider returned the money),
+  // refund_failed (the credit note exists and the provider did not return the money: retry the credit note's refund, do not make another), outside (the money cannot go back
+  // through Payrudder, a bank transfer for instance: the seller refunds it by hand) or failed (billing refused or did not answer: ask again).
   string refund_state = 14;
   string refund_note = 15;
   google.protobuf.Timestamp refund_time = 16;

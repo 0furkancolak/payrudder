@@ -64,10 +64,11 @@ func (f *fakeContracts) GetContractSettings(context.Context, *plansv1.GetContrac
 	return &plansv1.GetContractSettingsResponse{Settings: f.settings}, nil
 }
 
-func (f *fakeContracts) ListContractAcceptances(context.Context, *plansv1.ListContractAcceptancesRequest) (*plansv1.ListContractAcceptancesResponse, error) {
+func (f *fakeContracts) ListContractAcceptances(_ context.Context, req *plansv1.ListContractAcceptancesRequest) (*plansv1.ListContractAcceptancesResponse, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return &plansv1.ListContractAcceptancesResponse{Acceptances: f.accepted}, nil
+	f.listed = req
+	return &plansv1.ListContractAcceptancesResponse{Acceptances: f.accepted, NextPageToken: f.nextPage}, nil
 }
 
 func (f *fakeContracts) ListContractWithdrawals(context.Context, *plansv1.ListContractWithdrawalsRequest) (*plansv1.ListContractWithdrawalsResponse, error) {

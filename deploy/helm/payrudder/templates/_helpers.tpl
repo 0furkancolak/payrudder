@@ -77,6 +77,8 @@ see the schema owner's password while the Job still loads the service's complete
     {{- $_ := include "payrudder.secretsKeys" (dict "root" $root "out" $out) -}}
   {{- end -}}
 {{- end -}}
+{{- /* A DSN holds a key, so it goes in the Secret of every service (not the migration Job's); empty renders nothing and error tracking stays off. */ -}}
+{{- if and $root.Values.errorTracking.url (not .migrate) -}}{{- $_ := set $out "PAYRUDDER_ERROR_TRACKING_URL" $root.Values.errorTracking.url -}}{{- end -}}
 {{- toJson $out -}}
 {{- end -}}
 

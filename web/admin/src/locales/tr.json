@@ -1469,7 +1469,10 @@
         "revoke": "Seçilenleri iptal et",
         "revokeTitle": "{n} ödeme bağlantısı iptal edilsin mi? | {n} ödeme bağlantısı iptal edilsin mi?",
         "confirmRevoke": "İptal edilen bağlantılar hemen çalışmayı bırakır ve geri getirilemez. Onlardan oluşan ödenmemiş faturalar iptal edilir."
-      }
+      },
+      "agreements": "Ödeyenin kabul ettiği sözleşmeler",
+      "agreementsHint": "Burada işaretlenenler, yalnızca bu bağlantı için Sözleşmeler sayfasındaki zorunlu sözleşmelerin yerini alır. Hiçbirini işaretlemezseniz o ayar geçerli olur.",
+      "agreementsSetting": "Sözleşmeler sayfasındaki ayara göre"
     },
     "mail": {
       "title": "E-posta",
@@ -2875,7 +2878,8 @@
         "invoice_required": "Fatura türündeki ödeme bağlantısı için bir fatura gerekir.",
         "not_found": "Böyle bir ödeme bağlantısı yok.",
         "customer_required": "Kredi paketi bağlantısı için kredileri alacak müşteri gerekir.",
-        "pack_required": "Kredi paketi bağlantısı için bir paket gerekir."
+        "pack_required": "Kredi paketi bağlantısı için bir paket gerekir.",
+        "bad_required_contracts": "Bir bağlantı; mesafeli satış sözleşmesini, ön bilgilendirmeyi, kullanım koşullarını ve gizlilik bildirimini en fazla bir kez belirtebilir."
       },
       "portal_link": {
         "customer_not_found": "Böyle bir müşteri yok.",
@@ -5834,14 +5838,24 @@
         "requesting": "İsteniyor",
         "requested": "İstendi",
         "outside": "Kendiniz iade edin",
-        "failed": "Başarısız"
+        "failed": "Başarısız",
+        "refunded": "İade edildi",
+        "refund_failed": "Karta iade başarısız"
       },
       "creditNote": "Alacak dekontu {id}",
       "acceptRefund": {
         "asked": "Ayarlarınız, bu cayma talebinin belirttiği faturanın müşterinin kartına iadesini de şimdi faturalamadan ister. Başka yolla yapılmış ödeme, sizin iade etmeniz için işaretlenir.",
         "left": "Ayarlarınız iadeyi size bırakır: sonra “İade iste”yi kullanın ya da müşteriye kendiniz iade edin.",
         "noInvoice": "Bu cayma talebi fatura belirtmiyor, bu yüzden iade istenmez: müşteriye kendiniz iade edin."
-      }
+      },
+      "invoiceLine": "Fatura {number} · {total}",
+      "amount": "İade tutarı ({currency}, isteğe bağlı)",
+      "amountHint": "Faturadan kalan her şeyi iade etmek için boş bırakın. Hizmet zaten verildiyse ve müşteri bir kısmını borçluysa daha küçük bir tutar yazın.",
+      "amountErrors": {
+        "amount": "Bu para biriminde, sıfırdan büyük bir tutar yazın.",
+        "tooMuch": "Bu, faturadan fazla."
+      },
+      "refundFailedHint": "Alacak dekontu var ama ödeme sağlayıcı parayı iade etmedi. İadeyi Alacak dekontları bölümünden yeniden deneyin; ikincisini istemeyin."
     },
     "customer": {
       "log": "Kabul edilen sözleşmeler",
@@ -5868,7 +5882,15 @@
       "withdrawals": "Cayma talepleri",
       "record": "Cayma kaydet",
       "noWithdrawals": "Bu müşteriden cayma talebi yok.",
-      "decideThere": "Cayma taleplerine Sözleşmeler sayfasından karar verin"
+      "decideThere": "Cayma taleplerine Sözleşmeler sayfasından karar verin",
+      "filters": {
+        "label": "Kabulleri süz",
+        "kind": "Sözleşme türü",
+        "allKinds": "Tüm sözleşmeler",
+        "source": "Nerede kabul edildi",
+        "allSources": "Her yerde"
+      },
+      "showMore": "Daha fazla göster"
     },
     "record": {
       "title": "Cayma kaydet",
@@ -5878,7 +5900,10 @@
       "statementHint": "Kendi sözleriyle, en fazla 2000 karakter.",
       "received": "Size ulaştığı an (isteğe bağlı)",
       "receivedHint": "Şimdi için boş bırakın.",
-      "submit": "Caymayı kaydet"
+      "submit": "Caymayı kaydet",
+      "invoice": "Fatura (isteğe bağlı)",
+      "invoiceHint": "Müşterinin cayma talebinde bulunduğu ödenmiş fatura. Fatura belirtilirse cayma kabul edildiğinde müşteriye iade yapılabilir; belirtilmezse iadeyi kendiniz yaparsınız.",
+      "noInvoice": "Fatura yok"
     }
   },
   "audit": {

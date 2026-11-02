@@ -48,7 +48,7 @@ jobs:
       - name: gofmt
         working-directory: sdk/go
         run: test -z "$(gofmt -l .)"
-      - name: build
+      - name: build (includes examples/, which are main packages of the module)
         working-directory: sdk/go
         run: go build ./...
       - name: vet

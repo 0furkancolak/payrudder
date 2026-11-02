@@ -565,8 +565,8 @@ export interface ContractWithdrawal {
   decision_note: string;
   /** The credit note billing made to refund the invoice, once one was requested (GET /v1/credit-notes/{id} says how the refund went). */
   credit_note_id: string;
-  /** none: nothing asked of billing; requesting: being asked; requested: a credit note exists; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: ask again with POST /v1/contract-withdrawals/{id}/refund. */
-  refund_state: "none" | "requesting" | "requested" | "outside" | "failed";
+  /** none: nothing asked of billing; requesting: being asked; requested: a credit note exists and the provider has not answered; refunded: the provider returned the money; refund_failed: the credit note exists and the provider did not return the money, retry the credit note's refund (a second credit note would credit the invoice twice), refund_note says why; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: billing refused or did not answer, ask again with POST /v1/contract-withdrawals/{id}/refund. refunded and refund_failed are copied from the credit note's own result (credit_note.refunded, credit_note.refund_failed). The withdrawal's status stays the seller's to set. */
+  refund_state: "none" | "requesting" | "requested" | "refunded" | "refund_failed" | "outside" | "failed";
   refund_note: string;
   refund_time: string | null;
 }
@@ -754,6 +754,8 @@ export interface CreatedPaymentLink {
   credits: Int64;
   /** The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
   promotion_code: string;
+  /** The agreements the payer accepts on this link's page instead of the seller's tenant-wide setting (GET /v1/contracts/settings); empty: the setting applies */
+  required_contracts: Array<"distance_sales" | "pre_info" | "tos" | "privacy">;
   /** kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
   invoice_id: string;
   customer_external_id: string;
@@ -831,6 +833,8 @@ export interface CreatePaymentLinkRequest {
   single_use?: boolean;
   /** adhoc and credit_pack, optional: a promotion code the payer gets without typing it (a one-off invoice with a discount). Checked against the link's own amount now (a coupon.* error if it does not work); claimed when the payer continues. An invoice that exists is not changed, so a kind invoice link takes none */
   promotion_code?: string;
+  /** Optional: the agreements the payer must accept on this link's page. The list replaces the seller's tenant-wide required_kinds for this link (it does not add to it); empty or absent: the setting applies. The texts must be published before the link is used, or the page offers no way to pay. An ad-hoc link hands its list to the invoice link the payer continues on. 400 billing.payment_link.bad_required_contracts for an unknown kind or one named twice */
+  required_contracts?: Array<"distance_sales" | "pre_info" | "tos" | "privacy">;
   /** Default 30 for adhoc, 90 for invoice */
   expires_in_days?: number;
   idempotency_key?: string;
@@ -856,6 +860,8 @@ export interface CreatePaymentLinkRequestParams {
   single_use?: boolean;
   /** adhoc and credit_pack, optional: a promotion code the payer gets without typing it (a one-off invoice with a discount). Checked against the link's own amount now (a coupon.* error if it does not work); claimed when the payer continues. An invoice that exists is not changed, so a kind invoice link takes none */
   promotion_code?: string;
+  /** Optional: the agreements the payer must accept on this link's page. The list replaces the seller's tenant-wide required_kinds for this link (it does not add to it); empty or absent: the setting applies. The texts must be published before the link is used, or the page offers no way to pay. An ad-hoc link hands its list to the invoice link the payer continues on. 400 billing.payment_link.bad_required_contracts for an unknown kind or one named twice */
+  required_contracts?: Array<"distance_sales" | "pre_info" | "tos" | "privacy">;
   /** Default 30 for adhoc, 90 for invoice */
   expires_in_days?: number;
   idempotency_key?: string;
@@ -1945,8 +1951,22 @@ export interface ListAuditEventsResponse {
   unavailable_sources: Array<"plans" | "billing" | "payments">;
 }
 
+export interface ListContractAcceptancesQuery {
+  kind?: "distance_sales" | "pre_info" | "tos" | "privacy";
+  source?: "api" | "hosted";
+  version_id?: string;
+  /** Accepted at or after this time */
+  from?: string;
+  /** Accepted before this time */
+  to?: string;
+  page_size?: number;
+  page_token?: string;
+}
+
 export interface ListContractAcceptancesResponse {
   acceptances: Array<ContractAcceptance>;
+  /** Pass it as page_token for the next page; empty on the last page */
+  next_page_token: string;
 }
 
 export interface ListContractVersionsQuery {
@@ -2236,6 +2256,8 @@ export interface PaymentLink {
   credits: Int64;
   /** The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
   promotion_code: string;
+  /** The agreements the payer accepts on this link's page instead of the seller's tenant-wide setting (GET /v1/contracts/settings); empty: the setting applies */
+  required_contracts: Array<"distance_sales" | "pre_info" | "tos" | "privacy">;
   /** kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
   invoice_id: string;
   customer_external_id: string;

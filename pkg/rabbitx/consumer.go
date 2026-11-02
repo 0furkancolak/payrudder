@@ -133,7 +133,7 @@ func consumeOnce(ctx context.Context, url, queue string, prefetch int, h Handler
 	defer hcancel()
 	var inflight sync.WaitGroup
 	defer inflight.Wait()
-	go func() {
+	go func() { // no errtrack: a timer
 		select {
 		case <-ctx.Done():
 			select {
@@ -177,7 +177,7 @@ func consumeOnce(ctx context.Context, url, queue string, prefetch int, h Handler
 			}
 			sem <- struct{}{}
 			inflight.Add(1)
-			go func() {
+			go func() { // no errtrack: settle recovers and reports a handler's panic
 				defer inflight.Done()
 				defer func() { <-sem }()
 				settle(hctx, ctx, d, queue, h, retryPub, log)
