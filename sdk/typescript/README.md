@@ -24,6 +24,8 @@ then, in your own project (`@payrudder/sdk` is not on npm, so the name alone doe
 npm install /path/to/payrudder/sdk/typescript/payrudder-sdk-0.0.0.tgz
 ```
 
+Runnable programs (send a usage event, create a customer, list invoices, verify a webhook) are in [`examples/`](examples/README.md).
+
 ## Quickstart
 
 ```ts

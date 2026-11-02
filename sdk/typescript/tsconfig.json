@@ -14,7 +14,9 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    // The examples import the package by its name, as a user's code does; here that name is the source.
+    "paths": { "@payrudder/sdk": ["./src/index.ts"] }
   },
-  "include": ["src", "test", "*.config.ts"]
+  "include": ["src", "test", "examples", "*.config.ts"]
 }

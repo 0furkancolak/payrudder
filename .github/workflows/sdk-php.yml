@@ -49,6 +49,7 @@ jobs:
       - name: php-cs-fixer
         run: composer cs
       - name: phpstan
+        # phpstan.neon analyses examples/ too, so a renamed method or field in an example fails here
         run: composer stan
       - name: phpunit
         run: composer test
