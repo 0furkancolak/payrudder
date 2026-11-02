@@ -1,15 +1,18 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/mailadmin"
 )
 
@@ -20,7 +23,15 @@ type fakeMail struct {
 	size    int
 	removed string
 	preview mailadmin.PriceChangePreview
+	events  []mailx.Event
 	err     error
+	// eventErr, when set, is what handing over an event answers.
+	eventErr error
+}
+
+func (f *fakeMail) Event(_ context.Context, e mailx.Event) error {
+	f.events = append(f.events, e)
+	return f.eventErr
 }
 
 func (f *fakeMail) Suppressions(_ context.Context, t uuid.UUID, after string, size int) ([]mailadmin.Suppression, string, error) {
@@ -130,5 +141,81 @@ func TestMailViewsWithoutTheNotifierAreEmptyAndSayTheyAreNotConnected(t *testing
 		if resp, m := do(t, ts, "GET", path, "live-key", ""); resp.StatusCode != 200 || m["connected"] != true {
 			t.Errorf("GET %s with the notifier: %d %v, want connected true", path, resp.StatusCode, m)
 		}
+	}
+}
+
+const mailHookSecret = "whsec_" + "dGhlLXN2aXgtc2VjcmV0LW9mLXRoZS10ZXN0cw=="
+
+// post sends a webhook the way the provider does: signed with Svix over the id, the timestamp and the raw body.
+func postMailHook(t *testing.T, base, body, secret string, at time.Time) *http.Response {
+	t.Helper()
+	sig, err := mailx.SvixSign(secret, "msg_1", at, []byte(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	req, _ := http.NewRequest(http.MethodPost, base+"/inbound/mail-events", bytes.NewReader([]byte(body)))
+	req.Header.Set("svix-id", "msg_1")
+	req.Header.Set("svix-timestamp", strconv.FormatInt(at.Unix(), 10))
+	req.Header.Set("svix-signature", sig)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = resp.Body.Close()
+	return resp
+}
+
+// The provider's delivery webhook is the way a bounce or a complaint reaches the suppression list: a request signed with the provider's secret becomes the notifier's
+// neutral events, one for each recipient; one that is not signed, is signed with another secret or is old is refused and reaches nothing; an event that says nothing about
+// delivery is accepted and ignored; a notifier that is down is a 503 so that the provider tries again; and the endpoint does not exist until a secret is set.
+func TestMailDeliveryWebhookIsTranslatedForTheNotifier(t *testing.T) {
+	fm := &fakeMail{}
+	ts, _, _, _ := newTestServerWith(t, func(d *Deps) { d.Mail, d.MailWebhookSecret = fm, mailHookSecret })
+	now := time.Now()
+	bounce := `{"type":"email.bounced","created_at":"2026-11-02T10:00:00Z","data":{"email_id":"em_1","to":["ada@example.com","bob@example.com"],"bounce":{"type":"Permanent","message":"no such user"}}}`
+
+	if resp := postMailHook(t, ts.URL, bounce, mailHookSecret, now); resp.StatusCode != 200 || len(fm.events) != 2 || fm.events[0].Type != mailx.EventBounced || fm.events[0].BounceType != mailx.BounceHard ||
+		fm.events[0].MessageID != "em_1" || fm.events[0].Recipient != "ada@example.com" || fm.events[1].Recipient != "bob@example.com" {
+		t.Fatalf("a signed bounce: %d %+v", resp.StatusCode, fm.events)
+	}
+	fm.events = nil
+	for name, c := range map[string]struct {
+		secret string
+		at     time.Time
+	}{
+		"another secret": {"whsec_" + "YW5vdGhlci1zZWNyZXQtb2YtdGhlLXRlc3Rz", now},
+		"an old request": {mailHookSecret, now.Add(-10 * time.Minute)},
+	} {
+		if resp := postMailHook(t, ts.URL, bounce, c.secret, c.at); resp.StatusCode != 401 || len(fm.events) != 0 {
+			t.Errorf("%s: %d %+v: nothing may reach the notifier", name, resp.StatusCode, fm.events)
+		}
+	}
+	unsigned, _ := http.NewRequest(http.MethodPost, ts.URL+"/inbound/mail-events", strings.NewReader(bounce))
+	if resp, err := http.DefaultClient.Do(unsigned); err != nil || resp.StatusCode != 401 || len(fm.events) != 0 {
+		t.Errorf("a request with no signature: %v %v", resp, err)
+	}
+	if resp := postMailHook(t, ts.URL, `{"type":"email.opened","data":{"email_id":"em_1"}}`, mailHookSecret, now); resp.StatusCode != 200 || len(fm.events) != 0 {
+		t.Errorf("an event that says nothing about delivery: %d %+v", resp.StatusCode, fm.events)
+	}
+	if resp := postMailHook(t, ts.URL, `not json`, mailHookSecret, now); resp.StatusCode != 400 {
+		t.Errorf("a signed body that is not an event: %d", resp.StatusCode)
+	}
+
+	fm.eventErr = mailadmin.BadRequestError{Message: "unknown event"}
+	if resp := postMailHook(t, ts.URL, bounce, mailHookSecret, now); resp.StatusCode != 200 {
+		t.Errorf("an event the notifier refuses for good is not retried: %d", resp.StatusCode)
+	}
+	fm.eventErr = errors.New("dial tcp 10.0.0.7:9111: connection refused")
+	if resp := postMailHook(t, ts.URL, bounce, mailHookSecret, now); resp.StatusCode != 503 {
+		t.Errorf("a notifier that is down: %d, want 503 so that the provider tries again", resp.StatusCode)
+	}
+
+	off, _, _, _ := newTestServerWith(t, func(d *Deps) { d.Mail = fm })
+	if resp := postMailHook(t, off.URL, bounce, mailHookSecret, now); resp.StatusCode != 404 {
+		t.Errorf("without a secret the endpoint does not exist: %d", resp.StatusCode)
+	}
+	noNotifier, _, _, _ := newTestServerWith(t, func(d *Deps) { d.MailWebhookSecret = mailHookSecret })
+	if resp := postMailHook(t, noNotifier.URL, bounce, mailHookSecret, now); resp.StatusCode != 404 {
+		t.Errorf("without a notifier there is nowhere to hand an event: %d", resp.StatusCode)
 	}
 }

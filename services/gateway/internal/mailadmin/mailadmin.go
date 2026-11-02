@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/webhooksig"
 )
 
@@ -196,4 +197,10 @@ func (c *Client) PreviewPriceChange(ctx context.Context, in PriceChangePreview) 
 	var out Rendered
 	err := c.do(ctx, http.MethodPost, "/v1/mail-previews/price-change", nil, in, &out)
 	return out, err
+}
+
+// Event hands the notifier one delivery event (a bounce, a complaint, a delivery), the neutral form of what a provider's webhook said (mailx.Event). The notifier finds the
+// tenant from the provider's message id and puts an address on its list when the event is a permanent bounce or a complaint.
+func (c *Client) Event(ctx context.Context, e mailx.Event) error {
+	return c.do(ctx, http.MethodPost, "/v1/mail-events", nil, e, nil)
 }

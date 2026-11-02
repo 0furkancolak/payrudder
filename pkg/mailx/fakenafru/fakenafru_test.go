@@ -3,7 +3,11 @@ package fakenafru_test
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/0furkancolak/payrudder/pkg/mailx"
 	"github.com/0furkancolak/payrudder/pkg/mailx/fakenafru"
@@ -31,5 +35,31 @@ func TestFakeRecordsWhatNafruSends(t *testing.T) {
 	f.Fail(503)
 	if _, err := s.Send(context.Background(), mailx.Message{From: "a@b.c", To: "x@y.z", Subject: "s", ID: "k2"}); err == nil || errors.As(err, &perm) {
 		t.Errorf("an outage is a retry, not a refusal: %v", err)
+	}
+}
+
+// What the fake posts is what the gateway verifies and the translation reads: a signed Resend-shaped webhook is a valid event for the notifier.
+func TestResendWebhookRoundTrip(t *testing.T) {
+	const secret = "whsec_dGhlLXN2aXgtc2VjcmV0LW9mLXRoZS10ZXN0cw=="
+	var gotBody []byte
+	var gotHeader http.Header
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotBody, _ = io.ReadAll(r.Body)
+		gotHeader = r.Header.Clone()
+	}))
+	defer srv.Close()
+	body := fakenafru.ResendWebhook("email.bounced", "fake-1", "ada@example.com", "Permanent")
+	if status, err := fakenafru.PostSigned(context.Background(), srv.URL, secret, body); err != nil || status != 200 {
+		t.Fatalf("post: %d %v", status, err)
+	}
+	if err := mailx.VerifySvix(gotHeader, gotBody, secret, time.Now(), mailx.SvixTolerance); err != nil {
+		t.Fatalf("what the fake signs does not verify: %v", err)
+	}
+	events, err := mailx.ParseResendWebhook(gotBody)
+	if err != nil || len(events) != 1 || events[0].MessageID != "fake-1" || events[0].Recipient != "ada@example.com" || !events[0].Suppresses() || events[0].Validate() != nil {
+		t.Fatalf("events %+v, %v", events, err)
+	}
+	if events, _ := mailx.ParseResendWebhook(fakenafru.ResendWebhook("email.bounced", "fake-2", "ada@example.com", "Temporary")); len(events) != 1 || events[0].Suppresses() {
+		t.Errorf("a temporary bounce suppressed an address: %+v", events)
 	}
 }
