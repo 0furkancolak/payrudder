@@ -5,7 +5,9 @@ import { affiliatesTour } from "@/features/affiliates/tour";
 import { contractsTour } from "@/features/contracts/tour";
 import { creditsTour } from "@/features/credits/tour";
 import { customersTour } from "@/features/customers/tour";
+import { appsTour } from "@/features/apps/tour";
 import { deadLettersTour } from "@/features/dead-letters/tour";
+import { einvoiceTour } from "@/features/einvoice/tour";
 import { mailTour } from "@/features/mail/tour";
 import { metersTour } from "@/features/meters/tour";
 import { packagesTour } from "@/features/packages/tour";
@@ -16,6 +18,9 @@ import { couponsTour, pricingTour } from "@/features/pricing/tour";
 import { useMe } from "@/features/product/api";
 import { apiKeysTour, appSettingsTour, goLiveTour, homeTour, invoicesTour, membersTour, paymentsTour, sandboxTour, settingsTour } from "@/features/product/tour";
 import { providersTour } from "@/features/providers/tour";
+import { organisationsTour, planTour } from "@/features/saas/tour";
+import { addressTour } from "@/features/seller-address/tour";
+import { supportInboxTour, supportTour } from "@/features/support/tour";
 import { reportsTour } from "@/features/reports/tour";
 import { subscriptionsTour } from "@/features/subscriptions/tour";
 import { tenantsTour } from "@/features/tenants/tour";
@@ -64,6 +69,14 @@ const TOURS: Readonly<Record<string, Tour>> = {
   tenants: tenantsTour,
   playground: playgroundTour,
   deadLetters: deadLettersTour,
+  support: supportTour,
+  supportInbox: supportInboxTour,
+  plan: planTour,
+  organisations: organisationsTour,
+  platformPlans: packagesTour,
+  apps: appsTour,
+  address: addressTour,
+  einvoice: einvoiceTour,
 };
 
 /** The tour of the page whose navigation key this is, if it has one. */

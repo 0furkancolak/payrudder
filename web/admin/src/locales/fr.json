@@ -17,14 +17,9 @@
     }
   },
   "nav": {
-    "tenants": "Locataires",
-    "playground": "Bac à sable",
-    "deadLetters": "Lettres mortes",
     "signOut": "Se déconnecter"
   },
   "common": {
-    "loading": "Chargement…",
-    "unknown": "?",
     "cancel": "Annuler",
     "copied": "Copié",
     "copyFailed": "Votre navigateur n'a pas autorisé la copie. Sélectionnez le texte et copiez-le à la main.",
@@ -36,7 +31,6 @@
     "noMatches": "Aucun résultat pour ces filtres.",
     "moreActions": "Plus d'actions",
     "view": "Afficher",
-    "openFullPage": "Ouvrir en pleine page",
     "all": "Tous",
     "confirm": {
       "title": "Êtes-vous sûr ?",
@@ -254,7 +248,6 @@
     "allCurrencies": "Toutes les devises",
     "suspend": "Suspendre",
     "reinstate": "Réactiver",
-    "suspended": "Suspendu",
     "suspendConfirm": "Suspendre {n} tenant ? Ses clés d'API cessent de fonctionner immédiatement. | Suspendre {n} tenants ? Leurs clés d'API cessent de fonctionner immédiatement.",
     "pricePause": {
       "title": "Changements de prix",
@@ -272,7 +265,6 @@
   },
   "tenant": {
     "fallbackTitle": "Locataire",
-    "grace": "grâce {value}",
     "invoices": "Factures",
     "noInvoices": "Aucune facture.",
     "draft": "(brouillon)",
@@ -360,19 +352,6 @@
     }
   },
   "invoice": {
-    "summary": "{kind} · période {period} · {customer} · {total} · {status} · saga {saga}",
-    "openPdf": "Ouvrir le PDF",
-    "noPdfLink": "aucun lien",
-    "lines": "Lignes",
-    "lineColumns": {
-      "no": "N°",
-      "kind": "Type",
-      "description": "Description",
-      "meter": "Compteur",
-      "quantity": "Quantité",
-      "amount": "Montant",
-      "period": "Période de service"
-    },
     "saga": "Chronologie de la saga",
     "sagaColumns": {
       "seq": "Séq.",
@@ -507,9 +486,7 @@
       "formLabel": "nouveau compte",
       "name": "Nom du compte",
       "currency": "Devise",
-      "currencyPlaceholder": "Devise (non modifiable ensuite)",
       "timezone": "Fuseau horaire",
-      "timezonePlaceholder": "Fuseau IANA, p. ex. Europe/Paris",
       "grace": "Délai de grâce (heures)",
       "gracePlaceholder": "Délai de grâce, heures (0 à 168)",
       "create": "Créer le compte",
@@ -577,23 +554,7 @@
   },
   "billing": {
     "tabs": {
-      "label": "Sections du locataire",
-      "overview": "Aperçu",
-      "customers": "Clients",
-      "packages": "Forfaits",
-      "subscriptions": "Abonnements",
-      "payments": "Paiements",
-      "providers": "Prestataires",
-      "reports": "Rapports",
-      "pricing": "Coupons et taxes",
-      "webhooks": "Webhooks",
-      "einvoice": "Facture électronique",
-      "paymentLinks": "Liens de paiement",
-      "mail": "E-mail",
-      "apps": "Apps",
-      "address": "Adresse du vendeur",
-      "credits": "Crédits",
-      "accounting": "Comptabilité"
+      "subscriptions": "Abonnements"
     },
     "common": {
       "remove": "Retirer"
@@ -705,7 +666,6 @@
         "badge": "Bloqué",
         "action": "Bloquer",
         "lift": "Lever le blocage",
-        "confirm": "Bloquer {name} ? Aucun nouvel abonnement, changement de formule ou achat ne peut être lancé pour ce client. Ce qu'il a déjà continue.",
         "confirmMany": "Bloquer {n} clients ? Aucun nouvel abonnement, changement de formule ou achat ne peut être lancé pour eux. Ce qu'ils ont déjà continue.",
         "title": "Bloquer {name}",
         "description": "Aucun nouvel abonnement, changement de formule ou achat ne peut être lancé pour ce client. Ce qu'il a déjà continue.",
@@ -1052,20 +1012,14 @@
     },
     "payments": {
       "reconcile": "Rapprocher avec le grand livre",
-      "reconcileHint": "Compare les factures que la facturation considère payées sur une période aux débits réussis signalés par les prestataires.",
       "period": "Période (AAAA-MM)",
       "run": "Rapprocher",
-      "reconcileResult": "résultat du rapprochement",
-      "summary": "{paid} facture(s) payée(s) et {charges} débit(s) réussi(s) dans le grand livre.",
-      "agree": "Les factures et le grand livre concordent.",
       "kind": "Type",
       "invoice": "Facture",
       "provider": "Prestataire",
       "billed": "Facturé",
       "ledgerAmount": "Grand livre",
-      "detail": "Détail",
       "truncated": "Seules les premières divergences sont listées ; les totaux ci-dessus sont complets.",
-      "ledger": "Grand livre des paiements",
       "when": "Quand",
       "status": "Statut",
       "amount": "Montant",
@@ -1203,15 +1157,11 @@
     },
     "pricing": {
       "coupons": {
-        "title": "Coupons",
         "hint": "Un coupon retire un pourcentage ou un montant du tarif fixe que Payrudder facture à l'avance : une fois, pendant un nombre de périodes ou aussi longtemps que dure l'abonnement. Un abonnement géré par un fournisseur utilise à la place une remise chez le fournisseur.",
         "formLabel": "nouveau coupon",
         "code": "Code",
         "name": "Nom",
         "kind": "Type",
-        "percent": "Pourcentage",
-        "amount": "Montant",
-        "value": "Valeur (10 ou 12,5 / 4,99)",
         "currency": "Devise",
         "duration": "Durée",
         "once": "Premier tarif seulement",
@@ -1225,8 +1175,6 @@
         "inactive": "Inactif",
         "redeemed": "Utilisé",
         "empty": "Aucun coupon pour l'instant.",
-        "badPercent": "Pas un pourcentage : de 0,01 à 100 avec au plus deux décimales.",
-        "badAmount": "Pas un montant en {currency} : des chiffres seulement, avec au plus les décimales de la devise.",
         "repeatingFor": "{n} premiers tarifs",
         "bulk": {
           "deactivate": "Désactiver la sélection",
@@ -1271,10 +1219,8 @@
           "amount": "Montant de remise",
           "bonus": "Crédits bonus"
         },
-        "valueBonus": "Crédits en plus, % (10 ou 12,5)",
         "bonusValue": "{pct} de crédits en plus",
         "bonusNote": "Les crédits bonus sont ajoutés au même lot que ceux du pack et expirent avec eux. Achats de crédits uniquement.",
-        "badBonus": "Pas un pourcentage de crédits en plus : de 0,01 à 1000 avec au plus deux décimales.",
         "appliesTo": "S'applique à",
         "targets": {
           "subscription": "Abonnement",
@@ -1282,11 +1228,7 @@
           "payment": "Lien de paiement ou facture",
           "legacy": "Avant le registre"
         },
-        "noTarget": "Choisissez où le coupon s'applique.",
-        "withoutDefaultCode": "Ne pas créer de promotion au nom du coupon",
         "codeCount": "Codes",
-        "manageCodes": "Codes",
-        "hideCodes": "Fermer",
         "codes": {
           "title": "Codes promotionnels de {coupon}",
           "hint": "Nommez les codes ou générez-en au hasard. Chaque code reçoit la limite, l'expiration et les règles ci-dessous.",
@@ -1303,8 +1245,6 @@
           "minAmount": "Montant minimum (facultatif)",
           "minCurrency": "Devise du minimum",
           "allowedCurrencies": "Seulement dans ces devises (USD, EUR)",
-          "allowedPlans": "Seulement sur ces plans (codes de plan)",
-          "allowedPacks": "Seulement sur ces packs de crédits (identifiants)",
           "firstPurchase": "Premier achat uniquement",
           "onePerCustomer": "Une fois par client",
           "restore": "Rendre l'utilisation si l'achat est annulé ou remboursé",
@@ -1316,7 +1256,6 @@
           "download": "Télécharger le CSV",
           "search": "Rechercher des codes",
           "stateAll": "Tout état",
-          "total": "{n} codes",
           "used": "Utilisé",
           "expiresCol": "Expire",
           "rules": "Règles",
@@ -1339,11 +1278,8 @@
           }
         },
         "redemptions": {
-          "title": "Utilisations",
-          "hint": "Chaque utilisation d'un coupon. Une annulation ou un remboursement total l'annule ; le compteur ne revient que pour les codes qui le prévoient.",
           "coupon": "Coupon",
           "allCoupons": "Tous les coupons",
-          "total": "{n} utilisations",
           "customer": "Client",
           "usedOn": "Utilisé sur",
           "discount": "Remise",
@@ -1398,7 +1334,6 @@
       }
     },
     "webhooks": {
-      "title": "Webhooks",
       "hint": "Payrudder envoie un POST JSON signé à ces points de terminaison HTTPS quand il se passe quelque chose dans le compte : une facture est payée, un avoir est émis, un abonnement change. Vérifiez l'en-tête Payrudder-Signature avec le secret du point de terminaison ; les livraisons échouées sont retentées pendant environ un jour et demi.",
       "formLabel": "nouveau point de terminaison webhook",
       "url": "URL du point de terminaison",
@@ -1441,9 +1376,6 @@
         "live": "Cette URL utilise http : les événements contenant des données clients et factures circuleraient en clair. Utilisez une URL https."
       },
       "bulk": {
-        "pause": "Suspendre la sélection",
-        "resume": "Reprendre la sélection",
-        "delete": "Supprimer la sélection",
         "deleteTitle": "Supprimer les points de terminaison sélectionnés ?",
         "confirmDelete": "Les points de terminaison sélectionnés sont supprimés et ne reçoivent plus d'événements. Leurs secrets ne peuvent pas être récupérés."
       }
@@ -1474,7 +1406,6 @@
       "url": "Lien de paiement",
       "copy": "Copier",
       "replayed": "Cette demande a déjà été traitée : le lien existe, mais son adresse n'est affichée qu'une fois.",
-      "list": "Liens",
       "anyKind": "Tout type",
       "anyStatus": "Tout statut",
       "status": "Statut",
@@ -1491,9 +1422,6 @@
       "revoke": "Révoquer",
       "confirmRevoke": "Révoquer ce lien ? Les factures impayées qui en sont issues sont annulées.",
       "empty": "Aucun lien de paiement pour l'instant.",
-      "previous": "Précédent",
-      "next": "Suivant",
-      "links": "Liens",
       "paymentLink": "Lien de paiement",
       "errors": {
         "invoice": "Saisissez l'ID de la facture.",
@@ -1678,7 +1606,6 @@
         "title": "Lien d'achat",
         "hint": "Un lien que le client ouvre pour acheter ce pack. Une fois le paiement confirmé, les crédits sont ajoutés une seule fois. Le prix est toujours celui du pack.",
         "formLabel": "Créer un lien d'achat",
-        "pack": "Pack",
         "customer": "Client",
         "pickCustomer": "Choisir un client",
         "quantity": "Quantité",
@@ -1706,7 +1633,6 @@
       }
     },
     "accounting": {
-      "title": "Revenus et dépenses",
       "intro": "Ce que le locataire a gagné avec les factures payées et ce qu'il a dépensé, chaque devise séparément.",
       "export": "Exporter en CSV",
       "addExpense": "Ajouter une dépense",
@@ -2334,10 +2260,7 @@
       "close": "Fermer",
       "save": "Enregistrer",
       "yes": "Oui",
-      "no": "Non",
-      "prev": "Précédent",
-      "next": "Suivant",
-      "total": "{count} au total"
+      "no": "Non"
     },
     "status": {
       "program": {
@@ -2510,7 +2433,6 @@
       }
     },
     "commissions": {
-      "title": "Commissions",
       "intro": "Une commission par facture payée d'un client amené par un partenaire, sur le montant net hors taxes. Elle attend la fin du délai de rétention, est ensuite approuvée, puis payée par un versement.",
       "allPartners": "Tous les partenaires",
       "allStatuses": "Tous les statuts",
@@ -2555,7 +2477,6 @@
       "nothing": "Plus rien à reprendre : cette annulation a déjà été faite."
     },
     "payouts": {
-      "title": "Versements",
       "intro": "Un versement regroupe les commissions approuvées d'un partenaire dans une devise. Payrudder ne déplace pas d'argent : payez à la main ou par virement, puis marquez le versement comme payé.",
       "create": "Créer les versements",
       "result": "Versements créés",
@@ -2590,7 +2511,6 @@
       "done": "Versement marqué comme payé."
     },
     "journal": {
-      "title": "Journal",
       "intro": "Ce que les versements payés ont inscrit dans votre comptabilité : la charge de commission contre la dette, et la dette contre la trésorerie.",
       "download": "Télécharger le CSV",
       "balanced": "Équilibré",
@@ -2855,14 +2775,11 @@
     "slug": "Code",
     "slugPlaceholder": "Code (facultatif, ex. web-shop)",
     "currency": "Devise",
-    "currencyPlaceholder": "Devise (non modifiable)",
     "timezone": "Fuseau horaire",
-    "timezonePlaceholder": "Fuseau IANA, ex. Europe/Istanbul",
     "grace": "Délai de grâce (heures)",
     "gracePlaceholder": "Délai de grâce, heures (0 à 168)",
     "create": "Créer l'app",
     "badSlug": "Le code ne peut contenir que des minuscules, des chiffres et des tirets simples, au plus 60 caractères.",
-    "title": "Apps de ce compte",
     "immutable": "Renommer et supprimer une app n'est pas encore possible dans l'API ; la devise, le fuseau horaire et le délai de grâce d'une app ne peuvent pas changer.",
     "environments": "Environnements",
     "created": "Créée",
@@ -3850,7 +3767,6 @@
       "orgCreate": "Créer l'organisation"
     },
     "nav": {
-      "home": "Accueil",
       "settings": "Réglages",
       "security": "Sécurité"
     },
@@ -3870,25 +3786,8 @@
       "unknown": "Aucune donnée"
     },
     "unavailable": "Indisponible pour le moment.",
-    "degraded": "Certaines parties n'ont pas répondu ({sections}). Le reste est à jour.",
-    "sections": {
-      "payments": "paiements",
-      "invoices": "factures",
-      "customers": "clients",
-      "subscriptions": "abonnements",
-      "webhooks": "webhooks"
-    },
     "kpi": {
-      "revenue": "Revenus",
-      "revenueDays": "Revenus, {days} derniers jours",
-      "payments": "Paiements",
-      "failedCount": "Échoués : {n}",
-      "openInvoices": "Factures ouvertes",
-      "outstanding": "{amount} en attente",
-      "paidInvoices": "Factures payées : {n}",
-      "customers": "Clients",
-      "mrr": "{amount} par mois",
-      "noMrr": "Pas encore de revenu récurrent"
+      "revenue": "Revenus"
     },
     "card": {
       "revenue": "Revenus, {days} derniers jours",
@@ -3986,22 +3885,7 @@
       "sandboxNote": "Sandbox : données de test et faux prestataire de paiement. Rien ici n'est de l'argent réel.",
       "banner": "Sandbox : données de test et faux prestataire de paiement. Rien ici n'est de l'argent réel."
     },
-    "donut": {
-      "title": "Paiements par statut",
-      "label": "{n} paiements par statut",
-      "center": "paiements"
-    },
-    "currency": {
-      "title": "Revenus par devise",
-      "empty": "Pas encore de factures.",
-      "billed": "Facturé {amount}",
-      "collected": "Encaissé {amount}",
-      "outstanding": "En attente {amount}",
-      "collectedOf": "{collected} encaissés sur {billed}"
-    },
     "payments": {
-      "title": "Paiements récents",
-      "empty": "Aucun paiement ces 30 derniers jours.",
       "truncated": "1000 dernières écritures",
       "when": "Quand",
       "status": "Statut",
@@ -4009,11 +3893,6 @@
       "amount": "Montant",
       "allStatuses": "Tous les statuts",
       "allKinds": "Tous les types"
-    },
-    "invoices": {
-      "title": "Factures récentes",
-      "empty": "Pas encore de factures.",
-      "draft": "Brouillon"
     },
     "invoiceStatus": {
       "draft": "Brouillon",
@@ -4136,17 +4015,6 @@
       }
     },
     "links": {
-      "title": "Aller plus loin",
-      "intro": "Les pages de travail de l'environnement {env}.",
-      "customers": "Clients",
-      "paymentLinks": "Liens de paiement",
-      "credits": "Crédits",
-      "webhooks": "Webhooks",
-      "invoices": "Factures",
-      "payments": "Paiements",
-      "packages": "Forfaits",
-      "pricing": "Taxes et relances",
-      "reports": "Rapports",
       "readOnly": "Votre rôle est lecteur : vous pouvez tout lire ici, mais pas modifier."
     },
     "settings": {
@@ -4209,7 +4077,6 @@
       "roleOf": "Rôle de {name}",
       "leave": "Quitter",
       "remove": "Retirer",
-      "removeNamed": "Retirer {name}",
       "inviteTitle": "Inviter quelqu'un",
       "role": "Rôle",
       "invite": "Envoyer l'invitation",
@@ -4219,9 +4086,7 @@
       "expiredOn": "Expirée le {date}",
       "expired": "Expirée",
       "resend": "Renvoyer",
-      "resendNamed": "Renvoyer l'invitation à {email}",
       "cancel": "Annuler",
-      "cancelNamed": "Annuler l'invitation à {email}",
       "leaveTitle": "Quitter ce compte ?",
       "leaveBody": "Vous perdez aussitôt l'accès à ses applications et à ses données. Un propriétaire peut vous réinviter.",
       "removeTitle": "Retirer ce membre ?",
@@ -4258,7 +4123,6 @@
     "billing": {
       "invoices": {
         "title": "Factures",
-        "intro": "Ce que cet environnement a facturé. Ouvrez une facture pour voir ses lignes et télécharger le PDF.",
         "status": "Statut",
         "all": "Tous les statuts",
         "number": "Numéro",
@@ -4267,8 +4131,7 @@
         "created": "Créée",
         "total": "Total",
         "empty": "Pas encore de factures. Elles apparaissent à la clôture d'une période de facturation.",
-        "draft": "Brouillon",
-        "loadMore": "Charger plus"
+        "draft": "Brouillon"
       },
       "invoice": {
         "issued": "Émise",
@@ -4283,14 +4146,12 @@
       },
       "payments": {
         "title": "Paiements",
-        "intro": "Paiements et remboursements, du plus récent au plus ancien. Chaque paiement indique l'issue à laquelle il a abouti.",
         "empty": "Pas encore de paiements.",
         "kind": "Type",
         "kinds": {
           "charge": "Paiement",
           "refund": "Remboursement"
         },
-        "invoice": "Facture",
         "viewInvoice": "Voir la facture"
       }
     },
@@ -4382,8 +4243,6 @@
         "connected": "Prestataires connectés",
         "connectedNow": "{provider} est connecté.",
         "connectTitle": "Connecter un prestataire",
-        "provider": "Prestataire",
-        "choose": "Choisissez un prestataire",
         "secretsOnce": "Les clés secrètes ne sont plus affichées après l'enregistrement. Utilisez des clés réelles, pas des clés de test.",
         "optional": "facultatif",
         "checkAndConnect": "Vérifier et connecter",
@@ -4527,13 +4386,7 @@
     "providers": {
       "connect": "Connecter",
       "manage": "Gérer",
-      "simulator": "Simulateur intégré",
       "sandboxNote": "Le sandbox fonctionne sur un simulateur intégré et ne débite jamais une vraie carte. Pour essayer le paiement propre à un prestataire, connectez iyzico ou Paddle en mode test ; les moyens de paiement nommés pm_sandbox_ restent sur le simulateur.",
-      "state": {
-        "none": "Non connecté",
-        "working": "Connecté et fonctionnel",
-        "problem": "Problème"
-      },
       "defaultAccount": "Connecté et utilisé pour les paiements live.",
       "connectedLine": "Connecté.",
       "notConnectedLine": "Non connecté en mode live.",
@@ -4543,15 +4396,8 @@
       "doneAll": "{provider} connecté sur {count} app(s).",
       "donePartial": "{provider} : {ok} app(s) connectée(s), {failed} en échec.",
       "appsTitle": "Apps",
-      "appsIntro": "Cliquez sur un état pour connecter, remplacer ou retirer un prestataire pour cette app seule.",
       "app": "App",
       "noLive": "Pas d'environnement live",
-      "about": {
-        "iyzico": "Cartes turques et moyens locaux",
-        "paddle": "Cartes dans le monde entier, abonnements gérés par le prestataire",
-        "banktransfer": "Paiement par virement sur votre propre compte bancaire",
-        "stripe": "Cartes dans le monde entier, débitées par Payrudder sur votre compte Stripe"
-      },
       "scope": {
         "title": "Où connecter",
         "app": "Cette app seulement",
@@ -4627,9 +4473,6 @@
       },
       "confirmDisconnectSandbox": "Retirer le compte sandbox chez {provider} ? Le sandbox repasse sur le simulateur intégré.",
       "account": {
-        "title": "Comptes de paiement",
-        "intro": "Connectez plusieurs comptes chez un même fournisseur (un compte Paddle par région, un compte iyzico par société), choisissez le compte par défaut et indiquez quel compte encaisse les clients de quel pays.",
-        "add": "Ajouter un compte {provider}",
         "empty": "Aucun compte de paiement n'est encore connecté. Connectez-en un ci-dessus.",
         "default": "Par défaut",
         "makeDefault": "Définir par défaut",
@@ -5044,14 +4887,11 @@
       "audit": "Journal d'audit",
       "auditLog": "Journal d'audit"
     },
-    "noApps": "Aucune application",
     "newApp": "Nouvelle application"
   },
   "privacy": {
     "hide": "Masquer les montants",
-    "show": "Afficher les montants",
-    "hidden": "Masqué",
-    "banner": "Le mode discret est activé : les montants sont masqués."
+    "show": "Afficher les montants"
   },
   "picker": {
     "currency": "Devise",
@@ -5233,8 +5073,7 @@
     "next": "Suivant",
     "page": "Page {page} sur {pages}",
     "pageOnly": "Page {page}",
-    "goTo": "Aller à la page",
-    "go": "Aller"
+    "goTo": "Aller à la page"
   },
   "dateRange": {
     "any": "Toute période",
@@ -5262,8 +5101,6 @@
     "subscriptions": "Abonnements",
     "creditNotes": "Avoirs",
     "none": "Aucun pour l'instant",
-    "notFound": "Absent de la liste",
-    "open": "Ouvrir",
     "openCustomerPage": "Ouvrir dans la page des clients pour modifier",
     "paymentNotLoaded": "Ce paiement ne figure pas parmi les derniers paiements chargés par la console."
   },
@@ -5435,6 +5272,36 @@
       },
       "audit": {
         "intro": "Chaque modification des clés, membres, prix, webhooks, clients, remboursements et comptes de prestataires est enregistrée ici. Les entrées ne peuvent être ni modifiées ni supprimées."
+      },
+      "support": {
+        "intro": "Demandez de l'aide à Payrudder. Tout le monde dans votre organisation voit ces tickets, et les réponses arrivent ici.",
+        "create": "Ouvrez un ticket : dites ce que vous avez fait, ce que vous attendiez et ce qui s'est passé. Nous répondons dans le délai de la priorité choisie."
+      },
+      "supportInbox": {
+        "intro": "Chaque ticket de chaque organisation, l'activité la plus récente d'abord. Répondez publiquement ou laissez une note interne que le client ne voit jamais.",
+        "list": "Ouvrez un ticket pour lire la conversation et régler son statut, sa priorité, son responsable et ses étiquettes. Cochez-en plusieurs pour les changer ensemble."
+      },
+      "plan": {
+        "intro": "L'offre de votre organisation : ce qu'elle comprend, ce que vous en utilisez et comment la changer.",
+        "usageTitle": "Utilisation et limites",
+        "usage": "Ce que l'organisation a utilisé de chaque limite. À la limite, en créer davantage est refusé tant que vous n'avez pas pris une offre plus grande."
+      },
+      "organisations": {
+        "intro": "Chaque organisation de ce déploiement, avec son offre. Trouvez-en une par son nom ou son e-mail et passez-la à une autre offre.",
+        "list": "Gérer ouvre l'offre d'une organisation et ses réglages de sécurité."
+      },
+      "apps": {
+        "intro": "Les applications du compte de ce locataire, chacune avec son sandbox et son environnement de production. Créez ici les clés API, par environnement.",
+        "create": "Créez une application : un nom, une devise et un fuseau horaire. Ses locataires sandbox et production sont créés avec elle."
+      },
+      "address": {
+        "intro": "L'adresse imprimée comme vendeur sur chaque facture. Commencez par le pays : les autres champs suivent ce que ce pays demande.",
+        "previewTitle": "Aperçu",
+        "preview": "Le bloc vendeur exactement tel que la facture l'imprime."
+      },
+      "einvoice": {
+        "intro": "Connectez l'intégrateur qui signe et envoie vos factures électroniques, et réglez la façon dont les documents sont établis.",
+        "list": "Les comptes connectés pour ce locataire, un par environnement. Un compte de production envoie de vrais documents ; celui du sandbox ne fait que simuler."
       }
     }
   },
@@ -5747,7 +5614,6 @@
     }
   },
   "connect": {
-    "nav": "Connecter votre app",
     "title": "Connecter votre app",
     "intro": "D'une app à son premier événement d'usage : le code à coller et une liste qui passe au vert au fur et à mesure.",
     "checklist": "Où vous en êtes",
