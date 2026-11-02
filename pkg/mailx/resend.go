@@ -3,6 +3,7 @@ package mailx
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -42,6 +43,13 @@ type resendBody struct {
 	Text    string            `json:"text,omitempty"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Tags    []resendTag       `json:"tags,omitempty"`
+	// Attachments: Resend's `attachments` (filename and content, a base64 string); the type is left to the provider, which derives it from the file name.
+	Attachments []resendAttachment `json:"attachments,omitempty"`
+}
+
+type resendAttachment struct {
+	Filename string `json:"filename"`
+	Content  string `json:"content"`
 }
 
 type resendTag struct {
@@ -70,6 +78,9 @@ func (s Resend) Send(ctx context.Context, m Message) (string, error) {
 	out := resendBody{From: m.From, To: []string{m.To}, Subject: m.Subject, HTML: m.HTML, Text: m.Text, Headers: m.Headers}
 	for _, t := range m.Tags {
 		out.Tags = append(out.Tags, resendTag(t))
+	}
+	for _, a := range m.Attachments {
+		out.Attachments = append(out.Attachments, resendAttachment{Filename: a.Filename, Content: base64.StdEncoding.EncodeToString(a.Data)})
 	}
 	payload, err := json.Marshal(out)
 	if err != nil {

@@ -18,11 +18,15 @@ final class GetContractSnapshotResponse implements Model
      * @param string|null $html
      * @param string|null $sha256
      * @param string|null $groupId
+     * @param string|null $pdf
+     * @param bool|null $pdfUnavailable
      */
     public function __construct(
         public readonly ?string $html = null,
         public readonly ?string $sha256 = null,
         public readonly ?string $groupId = null,
+        public readonly ?string $pdf = null,
+        public readonly ?bool $pdfUnavailable = null,
     ) {}
 
     /**
@@ -34,6 +38,8 @@ final class GetContractSnapshotResponse implements Model
             html: Cast::string($data['html'] ?? null),
             sha256: Cast::string($data['sha256'] ?? null),
             groupId: Cast::string($data['group_id'] ?? null),
+            pdf: Cast::string($data['pdf'] ?? null),
+            pdfUnavailable: Cast::bool($data['pdf_unavailable'] ?? null),
         );
     }
 
@@ -46,6 +52,8 @@ final class GetContractSnapshotResponse implements Model
             'html' => $this->html,
             'sha256' => $this->sha256,
             'group_id' => $this->groupId,
+            'pdf' => $this->pdf,
+            'pdf_unavailable' => $this->pdfUnavailable,
         ]);
     }
 }
