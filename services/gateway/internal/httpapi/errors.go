@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 )
 
 // ErrorBody is the single error envelope of the public API:
@@ -59,8 +60,14 @@ func statusOf(c codes.Code) int {
 	return http.StatusInternalServerError
 }
 
-// writeError renders err (a gRPC status or anything else) as the error envelope.
+// writeError renders err (a gRPC status or anything else) as the error envelope. An internal error (the caller's request was fine, something behind
+// the gateway was not) also goes to the error tracker, which is off unless PAYRUDDER_ERROR_TRACKING_URL is set.
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
+	writeErrorReporting(w, r, err, true)
+}
+
+// writeErrorReporting is writeError; report false keeps an internal error from being sent to the tracker (the panic middleware has sent it already).
+func writeErrorReporting(w http.ResponseWriter, r *http.Request, err error, report bool) {
 	var tooLarge tooLargeError
 	if errors.As(err, &tooLarge) {
 		writeJSONValue(w, http.StatusRequestEntityTooLarge, ErrorBody{Error: ErrorInfo{
@@ -72,6 +79,9 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	switch st.Code() {
 	case codes.Internal, codes.Unknown, codes.DataLoss:
 		body.Error.Message = "internal error" // never leak upstream internals
+		if report {
+			errtrack.Capture(r.Context(), err, errtrack.Tag("http.method", r.Method), errtrack.Tag("request_id", requestID(r.Context())))
+		}
 	}
 	for _, d := range st.Details() {
 		if ei, ok := d.(*errdetails.ErrorInfo); ok && ei.GetDomain() == errkey.Domain && ei.GetMetadata()[errkey.MetaKey] != "" {

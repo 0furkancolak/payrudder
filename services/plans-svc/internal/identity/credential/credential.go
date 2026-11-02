@@ -103,6 +103,8 @@ const (
 	VerifyPrefix = "qv_"
 	ResetPrefix  = "qr_"
 	InvitePrefix = "qi_"
+	// ChallengePrefix starts the token of a sign-in that waits for its second factor.
+	ChallengePrefix = "qc_"
 )
 
 // NewPrefixedToken returns a fresh token that starts with prefix (256 random bits, URL-safe) and the hash to store.
@@ -186,3 +188,15 @@ func HashCode(pepper, salt []byte, email, code string) []byte {
 
 // EqualHash compares two code hashes in constant time.
 func EqualHash(a, b []byte) bool { return subtle.ConstantTimeCompare(a, b) == 1 }
+
+// HashRecovery is what the database stores for a recovery code: HMAC-SHA256 keyed with the server's pepper over the user and the normalised code. A code has about 50
+// bits, which a plain hash of a leaked table would not protect for ever; the pepper lives in the service's environment, not in the database.
+func HashRecovery(pepper []byte, userID, code string) []byte {
+	m := hmac.New(sha256.New, pepper)
+	m.Write([]byte("recovery"))
+	m.Write([]byte{0})
+	m.Write([]byte(userID))
+	m.Write([]byte{0})
+	m.Write([]byte(code))
+	return m.Sum(nil)
+}

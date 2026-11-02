@@ -19,6 +19,7 @@ import { supportRoutes } from "@/features/support/routes";
 import { lazyPage } from "@/shared/lib/lazy";
 import { isPerson } from "@/shared/lib/session";
 import { partnerRoutes } from "@/features/partner/routes";
+import { auditRoutes } from "@/features/audit/routes";
 import { returnTo, safeNext } from "./lib";
 import { OAUTH_ERRORS } from "./lib";
 
@@ -95,6 +96,8 @@ export function personRoutes(parent: AnyRoute) {
   const orgProviders = createRoute({ getParentRoute: () => signedIn, path: "/app/providers", beforeLoad: () => { throw redirect({ to: "/app/integrations", replace: true }); } });
   const members = createRoute({ getParentRoute: () => signedIn, path: "/app/members", component: lazyPage(() => import("./MembersPage.vue")) });
   const settings = createRoute({ getParentRoute: () => signedIn, path: "/app/settings", component: lazyPage(() => import("./SettingsPage.vue")) });
+  // The person's own security (two-factor sign-in): not per app, and the one page a person who must set it up can use.
+  const security = createRoute({ getParentRoute: () => signedIn, path: "/app/security", component: lazyPage(() => import("./SecurityPage.vue")) });
   const plan = createRoute({ getParentRoute: () => signedIn, path: "/app/settings/plan", component: lazyPage(() => import("@/features/saas/PlanPage.vue")) });
   const tenant = createRoute({ getParentRoute: () => signedIn, path: "/app/t/$id", component: lazyPage(() => import("./ProductTenantLayout.vue")) });
   // Invoices and payments are pages of the product: the console's versions speak operator-only routes (saga, transfers, the raw ledger).
@@ -113,6 +116,7 @@ export function personRoutes(parent: AnyRoute) {
     orgProviders,
     members,
     settings,
+    security,
     plan,
     ...partnerRoutes(signedIn),
     ...supportRoutes(signedIn),
@@ -135,6 +139,7 @@ export function personRoutes(parent: AnyRoute) {
       ...connectRoutes(tenant),
       ...mailRoutes(tenant),
       ...contractRoutes(tenant),
+      ...auditRoutes(tenant),
     ]),
   ]);
 }

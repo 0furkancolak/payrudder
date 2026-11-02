@@ -326,6 +326,17 @@ var ledgerFailures = func() metric.Int64Counter {
 	return c
 }()
 
+// refundUnknown counts the refund commands answered REFUND_OUTCOME_UNKNOWN: the provider was asked before and nothing records how it went, so the refund is parked for an
+// operator to check at the provider (docs/plans/22 G1, G6). A resend of the same refund counts again.
+var refundUnknown = func() metric.Int64Counter {
+	c, err := otel.Meter("github.com/0furkancolak/payrudder/services/payments-worker").Int64Counter("refund_outcome_unknown",
+		metric.WithDescription("Refunds answered REFUND_OUTCOME_UNKNOWN (parked for an operator), by provider"))
+	if err != nil {
+		panic(err)
+	}
+	return c
+}()
+
 func (h *Handler) handle(ctx context.Context, cmd *commandsv1.CommandEnvelope) (*commandsv1.ReplyEnvelope, error) {
 	if cmd.GetIssueEInvoice() != nil && h.EInvoice != nil {
 		return h.EInvoice.Handle(ctx, cmd)
@@ -683,6 +694,7 @@ func (h *Handler) guardRefund(ctx context.Context, run commandRun, prov payments
 		}
 	}
 	if unknown {
+		refundUnknown.Add(ctx, 1, metric.WithAttributes(attribute.String("provider", prov.Name())))
 		return errored(CodeRefundUnknown, fmt.Sprintf("%s was asked for this refund before and nothing records how it went, so it is not asked again: %s does not dedupe by key and could refund twice. "+
 			"Check the refund at %s; if the customer was not paid back, refund outside Payrudder", prov.Name(), prov.Name(), prov.Name())), nil
 	}

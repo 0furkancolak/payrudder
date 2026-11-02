@@ -10,10 +10,13 @@ import { toApiLocale } from "@/shared/lib/locale";
 import { activeAccount, personToken, setActiveAccount, setOperatorFlag, setPersonToken } from "@/shared/lib/session";
 import type { KeyPermission, KeyRole } from "./apiKeys";
 import { AFFILIATE_ROLE, ownMemberships } from "./lib";
+import { isChallenge } from "./twoFactor";
 
 // The product API (/auth, /app/v1): what a signed-in person sees in their accounts. Types come from the OpenAPI file.
 
 type S = components["schemas"];
+type SessionOpened = S["SessionOpened"];
+type SecondFactorRequired = S["SecondFactorRequired"];
 export type MyAccount = S["MyAccount"];
 export type App = S["App"];
 export type AppOverview = S["AppOverview"];
@@ -34,19 +37,25 @@ export const productKeys = {
 };
 
 /** A new session starts from nothing cached (another person's data must not show) and keeps the token of this tab. */
-function startSession(queries: QueryClient, s: { token?: string; operator?: boolean }): void {
+export function startSession(queries: QueryClient, s: { token?: string; operator?: boolean }): void {
   queries.clear();
   setPersonToken(s.token ?? null, s.operator === true);
 }
 
-/** Signs in and keeps the session token of this tab. */
+/**
+ * A sign-in answers a session, or, for a person with two-factor sign-in on, a challenge for the second step (see TwoFactorStep): there is no token then, so
+ * no session starts and the page is handed the challenge.
+ */
+function startUnlessChallenge(queries: QueryClient, s: SessionOpened | SecondFactorRequired): void {
+  if (!isChallenge(s)) startSession(queries, s);
+}
+
+/** Signs in and keeps the session token of this tab (or hands the page the challenge of the second step). */
 export function useSignIn() {
   const queries = useQueryClient();
   return useMutation({
     mutationFn: (body: { email: string; password: string }) => unwrap(api.POST("/auth/signin", { body })),
-    onSuccess: (s) => {
-      startSession(queries, s);
-    },
+    onSuccess: (s) => startUnlessChallenge(queries, s),
   });
 }
 
@@ -63,8 +72,8 @@ export function useSignUp() {
       await unwrap(api.POST("/auth/signup", { body: { ...body, locale: toApiLocale(locale.value) } }));
       try {
         const s = await unwrap(api.POST("/auth/signin", { body: { email: body.email, password: body.password } }));
-        startSession(queries, s);
-        return { signedIn: true };
+        startUnlessChallenge(queries, s);
+        return { signedIn: !isChallenge(s) };
       } catch {
         return { signedIn: false };
       }
@@ -163,9 +172,7 @@ export function useVerifyCode() {
   return useMutation({
     mutationFn: (v: { email: string; code: string; display_name?: string; account_name?: string }) =>
       unwrap(api.POST("/auth/otp/verify", { body: { ...v, locale: toApiLocale(locale.value) } })),
-    onSuccess: (s) => {
-      startSession(queries, s);
-    },
+    onSuccess: (s) => startUnlessChallenge(queries, s),
   });
 }
 
@@ -449,6 +456,15 @@ export function useRenameAccount() {
   const queries = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => unwrap(api.PATCH("/app/v1/account", { body: { name } })),
+    onSuccess: () => refreshAccount(queries),
+  });
+}
+
+/** Requires (or stops requiring) two-factor sign-in of the account's owners. Owners only; the server checks. */
+export function useSetAccountSecurity() {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (require_two_factor_for_owners: boolean) => unwrap(api.PATCH("/app/v1/account/security", { body: { require_two_factor_for_owners } })),
     onSuccess: () => refreshAccount(queries),
   });
 }

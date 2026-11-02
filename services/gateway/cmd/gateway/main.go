@@ -20,6 +20,7 @@ import (
 	aggregatorv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/aggregator/v1"
 	analyticsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/analytics/v1"
 	assetsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/assets/v1"
+	auditv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/audit/v1"
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	limitsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/limits/v1"
@@ -277,7 +278,7 @@ func newAPI(cfg *Config, log *slog.Logger, rdb *redis.Client, up *upstreams) (*h
 		Region:         region,
 		Saas:           saas,
 		OperatorEmails: httpapi.NormalizeOperatorEmails(cfg.OperatorEmails), Google: google, AppURL: appURL,
-		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), MailIntegration: plansv1.NewMailIntegrationServiceClient(up.plans), Support: plansv1.NewSupportServiceClient(up.plans), Contracts: plansv1.NewContractServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
+		Plans: plansv1.NewPlansServiceClient(up.plans), Admin: adminClient, Webhooks: plansv1.NewWebhookServiceClient(up.plans), MailIntegration: plansv1.NewMailIntegrationServiceClient(up.plans), Support: plansv1.NewSupportServiceClient(up.plans), AuditPlans: auditv1.NewAuditServiceClient(up.plans), AuditBilling: auditv1.NewAuditServiceClient(up.billing), Contracts: plansv1.NewContractServiceClient(up.plans), Affiliates: plansv1.NewAffiliateServiceClient(up.plans), AffiliatePub: plansv1.NewAffiliatePublicServiceClient(up.plans), AffiliatePortal: plansv1.NewAffiliatePortalServiceClient(up.plans), Ingest: ingestv1.NewIngestServiceClient(up.ingest),
 		Usage: aggregatorv1.NewUsageQueryServiceClient(up.aggregator), Replay: aggregatorv1.NewReplayServiceClient(up.aggregator), Limits: limitsv1.NewLimitsServiceClient(up.limits),
 		Billing: billingv1.NewBillingServiceClient(up.billing), Sandbox: billingv1.NewSandboxServiceClient(up.billing),
 		BillingAdmin: billingv1.NewBillingAdminServiceClient(up.billing), Hosted: billingv1.NewHostedInvoiceServiceClient(up.billing), PublicURL: strings.TrimRight(cfg.PublicURL, "/"), Analytics: analyticsv1.NewAnalyticsServiceClient(up.analytics),

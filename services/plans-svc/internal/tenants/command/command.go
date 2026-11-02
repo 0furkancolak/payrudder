@@ -17,9 +17,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
@@ -67,11 +69,33 @@ func (c *Commands) UpdateSettings(ctx context.Context, req *plansv1.UpdateTenant
 			return nil, err
 		}
 	}
-	t, err := sqlc.New(c.pool).UpdateTenantSettings(ctx, params)
+	var t sqlc.Tenant
+	err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		var err error
+		if t, err = sqlc.New(tx).UpdateTenantSettings(ctx, params); err != nil {
+			return err
+		}
+		fields := changedFields(req)
+		return audit.Record(ctx, tx, audit.Event{TenantID: id, Action: "tenant.settings_updated", TargetType: "tenant", TargetID: id.String(),
+			Summary: "changed the tenant settings: " + strings.Join(fields, ", "), Detail: map[string]any{"fields": fields}})
+	})
 	if err != nil {
 		return nil, convert.Err(err, "tenant")
 	}
 	return convert.Tenant(t), nil
+}
+
+// changedFields names the settings a request carries; their values (seller identity, bank details) stay out of the audit log.
+func changedFields(req *plansv1.UpdateTenantSettingsRequest) []string {
+	var names []string
+	req.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, _ protoreflect.Value) bool {
+		if fd.Name() != "tenant_id" {
+			names = append(names, string(fd.Name()))
+		}
+		return true
+	})
+	slices.Sort(names)
+	return names
 }
 
 func setGrace(req *plansv1.UpdateTenantSettingsRequest, p *sqlc.UpdateTenantSettingsParams) error {
@@ -231,15 +255,23 @@ func (c *Commands) SetStatus(ctx context.Context, req *plansv1.SetTenantStatusRe
 				return err
 			}
 			if pending {
-				return q.InsertTenantStatusEvent(ctx, sqlc.InsertTenantStatusEventParams{ID: idgen.NewUUIDv7(), LiveTenantID: id, Kind: "requested", FromStatus: cur.Status, ToStatus: want,
-					Category: req.GetCategory(), Reason: reason, Actor: actor})
+				if err := q.InsertTenantStatusEvent(ctx, sqlc.InsertTenantStatusEventParams{ID: idgen.NewUUIDv7(), LiveTenantID: id, Kind: "requested", FromStatus: cur.Status, ToStatus: want,
+					Category: req.GetCategory(), Reason: reason, Actor: actor}); err != nil {
+					return err
+				}
+				return audit.Record(ctx, tx, audit.Event{TenantID: id, Action: "tenant.status_requested", TargetType: "tenant", TargetID: id.String(),
+					Summary: "asked for the status " + want + " (waits for a second operator)", Detail: map[string]any{"from": cur.Status, "to": want, "category": req.GetCategory(), "reason": reason}})
 			}
 		}
 		if out, err = q.SetTenantStatus(ctx, sqlc.SetTenantStatusParams{ID: id, Status: want}); err != nil {
 			return err
 		}
-		return q.InsertTenantStatusEvent(ctx, sqlc.InsertTenantStatusEventParams{ID: idgen.NewUUIDv7(), LiveTenantID: id, Kind: "changed", FromStatus: cur.Status, ToStatus: want,
-			Category: req.GetCategory(), Reason: reason, Actor: actor, ApprovedBy: approver})
+		if err := q.InsertTenantStatusEvent(ctx, sqlc.InsertTenantStatusEventParams{ID: idgen.NewUUIDv7(), LiveTenantID: id, Kind: "changed", FromStatus: cur.Status, ToStatus: want,
+			Category: req.GetCategory(), Reason: reason, Actor: actor, ApprovedBy: approver}); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: id, Action: "tenant.status_changed", TargetType: "tenant", TargetID: id.String(),
+			Summary: "changed the status from " + cur.Status + " to " + want, Detail: map[string]any{"from": cur.Status, "to": want, "category": req.GetCategory(), "reason": reason}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "tenant")
