@@ -37,6 +37,7 @@ import (
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
+	customerscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/customers/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/grpcapi"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/identity/usermail"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/placement"
@@ -414,6 +415,8 @@ func (w *workers) run(ctx context.Context) error {
 	g.Go(func() error { return contracts.NewRenewer(w.places, w.app, w.log).Run(gctx) })
 	trials := trialcmd.New(w.pool, w.app, trialcmd.Config{Days: w.cfg.TrialReminderDays, Every: w.cfg.TrialReminderEvery}, w.log).WithPlaces(w.places)
 	g.Go(func() error { return trials.Run(gctx) })
+	// A block that ran out by itself is cleared, and customer.unblocked is sent (docs/plans/13-customer-ban.md).
+	g.Go(func() error { return customerscmd.NewSweeper(w.pool, w.app, w.places, 0, w.log).Run(gctx) })
 	if w.saas.Enabled() {
 		g.Go(func() error { return w.saas.Run(gctx) })
 	}

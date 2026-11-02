@@ -29,6 +29,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
+	customerscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/customers/command"
 	saascmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/saas/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/sandbox"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
@@ -68,6 +69,7 @@ func TestCellsJobs(t *testing.T) {
 			t.Run("WebhookDispatcher", j.dispatcher)
 			t.Run("AffiliateCommissionApprover", j.approver)
 			t.Run("TrialReminder", j.trials)
+			t.Run("BlockSweep", j.blockSweep)
 			t.Run("SandboxResetAndRetention", j.sandboxes)
 			t.Run("SaasAccountSweep", j.saasSweep)
 			t.Run("TheSharedPartOfARequestPath", j.requests)
@@ -458,6 +460,72 @@ func (j *jobWorld) trials(t *testing.T) {
 	for i, tn := range ts {
 		if n := j.count(t, tn.GetId(), "subscription_trial_notices"); n != 1 {
 			t.Errorf("tenant %d has %d notices in all, want 1", i, n)
+		}
+	}
+}
+
+// blockSweep: the sweep of blocks that ran out visits every serving tenant in a cell once per pass and clears each block once; a tenant that is moving is left alone.
+func (j *jobWorld) blockSweep(t *testing.T) {
+	e := j.e
+	ts := j.live(t, "Block sweep", 3)
+	for i, tn := range ts {
+		ctx := as(tn.GetId())
+		if _, err := e.plans.CreateCustomer(ctx, &plansv1.CreateCustomerRequest{ExternalId: "cus_sweep", Name: "N", Email: "n@example.com"}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := e.plans.BlockCustomer(ctx, &plansv1.BlockCustomerRequest{ExternalId: "cus_sweep", BlockedUntil: timestamppb.New(time.Now().Add(time.Hour))}); err != nil {
+			t.Fatal(err)
+		}
+		// Time is moved in the row, as the clock of a test cannot reach the database's now().
+		if err := pgxx.InTenantTx(context.Background(), e.appDB, uuid.MustParse(tn.GetId()), func(tx pgx.Tx) error {
+			_, err := tx.Exec(context.Background(), `UPDATE customers SET blocked_at = now() - interval '2 hours', blocked_until = now() - interval '1 hour' WHERE external_id = 'cus_sweep'`)
+			return err
+		}); err != nil {
+			t.Fatalf("tenant %d: %v", i, err)
+		}
+	}
+	fenced := j.moving(t, ts[2].GetId())
+	visits := map[uuid.UUID]int{}
+	var mu sync.Mutex
+	sweep := customerscmd.NewSweeper(e.system, e.appDB, e.places, 0, slog.New(slog.NewTextHandler(io.Discard, nil))).
+		WithVisits(func(id uuid.UUID) { mu.Lock(); visits[id]++; mu.Unlock() })
+	want := len(ts)
+	if fenced {
+		want--
+	}
+	lifted := func() int {
+		n := 0
+		for _, tn := range ts {
+			c, err := e.plans.GetCustomer(as(tn.GetId()), &plansv1.GetCustomerRequest{ExternalId: "cus_sweep"})
+			if err == nil && c.GetCustomer().GetBlockTime() == nil {
+				n++
+			}
+		}
+		return n
+	}
+	if _, _, err := sweep.Once(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := lifted(); got != want {
+		t.Fatalf("blocks cleared = %d, want %d", got, want)
+	}
+	for id, n := range visits {
+		if n != 1 {
+			t.Errorf("tenant %s was visited %d times in one pass", id, n)
+		}
+	}
+	if fenced {
+		j.release(ts[2].GetId())
+		if _, _, err := sweep.Once(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		if lifted() != len(ts) {
+			t.Fatal("after the move the block was not cleared")
+		}
+	}
+	for i, tn := range ts {
+		if n := j.count(t, tn.GetId(), "customer_block_events"); n != 2 {
+			t.Errorf("tenant %d has %d history rows, want the block and one lift", i, n)
 		}
 	}
 }

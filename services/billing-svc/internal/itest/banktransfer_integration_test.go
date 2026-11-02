@@ -255,6 +255,8 @@ func testOfflinePaymentsSettleAnInvoice(t *testing.T) {
 		return s["cus_a"] == "PAYMENT_DECLINED" && s["cus_b"] == "PAYMENT_DECLINED"
 	})
 	svc := e.api()
+	// The customer is blocked for fraud: the seller's own record of money received is not a purchase and is not gated (docs/plans/13, row 12).
+	e.customer("cus_b").BlockTime, e.customer("cus_b").BlockCategory = timestamppb.Now(), "fraud"
 	var id string
 	if err := shared.sql.QueryRow(context.Background(), `SELECT id::text FROM invoices WHERE tenant_id = $1 AND snapshot->>'customer_external_id' = 'cus_b'`, e.tid).Scan(&id); err != nil {
 		t.Fatal(err)
