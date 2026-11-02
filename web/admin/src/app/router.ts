@@ -3,13 +3,16 @@ import { createRootRoute, createRoute, createRouter, retainSearchParams } from "
 import { authRoutes } from "@/features/auth/routes";
 import { requireOperator } from "@/features/auth";
 import { deadLetterRoutes } from "@/features/dead-letters/routes";
+import { auditOperatorRoutes } from "@/features/audit/routes";
 import { supportInboxRoutes } from "@/features/support/routes";
 import { playgroundRoutes } from "@/features/playground/routes";
+import { productKeys } from "@/features/product/api";
 import { personRoutes, publicProductRoutes } from "@/features/product/routes";
+import { setupRedirect } from "@/features/product/twoFactor";
 import { saasOperatorRoutes } from "@/features/saas/routes";
 import { tenantRoutes } from "@/features/tenants/routes";
 import { queryClient } from "./query";
-import { onSessionLost } from "@/shared/lib/session";
+import { onSessionLost, onSetupRequired } from "@/shared/lib/session";
 import NotFound from "./errors/NotFound.vue";
 import RouteError from "./errors/RouteError.vue";
 import RootLayout from "./layout/RootLayout.vue";
@@ -26,7 +29,7 @@ const routeTree = root.addChildren([
   ...publicProductRoutes(root),
   ...authRoutes(root),
   personRoutes(root),
-  operator.addChildren([...tenantRoutes(operator), ...playgroundRoutes(operator), ...deadLetterRoutes(operator), ...supportInboxRoutes(operator), ...saasOperatorRoutes(operator)]),
+  operator.addChildren([...tenantRoutes(operator), ...playgroundRoutes(operator), ...deadLetterRoutes(operator), ...supportInboxRoutes(operator), ...auditOperatorRoutes(operator), ...saasOperatorRoutes(operator)]),
 ]);
 
 // The router is deliberately not registered with `declare module "@tanstack/vue-router"`: registering it makes every page's types depend on the
@@ -39,4 +42,13 @@ onSessionLost(() => {
   queryClient.clear();
   const next = returnTo(router.state.location.href);
   void router.navigate({ to: "/signin", search: { expired: "1", app: undefined, ...(next ? { next } : {}) } as never });
+});
+
+// An organisation the person owns requires two-factor sign-in and they have none, and the gateway refused a request for it: the profile is read again (its
+// flag keeps them on the security page, see RootLayout) and the security page opens now.
+onSetupRequired(() => {
+  void queryClient.invalidateQueries({ queryKey: productKeys.me });
+  // Not from the security page itself, nor from the pages a mailed link opens.
+  const to = setupRedirect(router.state.location.pathname, true);
+  if (to) void router.navigate({ to, replace: true } as never);
 });

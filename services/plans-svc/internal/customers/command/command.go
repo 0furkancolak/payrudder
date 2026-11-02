@@ -9,13 +9,16 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc/codes"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
 	"github.com/0furkancolak/payrudder/pkg/phone"
 	"github.com/0furkancolak/payrudder/pkg/taxid"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
@@ -189,7 +192,7 @@ func (c *Commands) Block(ctx context.Context, req *plansv1.BlockCustomerRequest)
 	}
 	reason := strings.TrimSpace(req.GetReason())
 	var out sqlc.Customer
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err := c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
 		if err != nil {
 			return err
@@ -203,6 +206,11 @@ func (c *Commands) Block(ctx context.Context, req *plansv1.BlockCustomerRequest)
 		}
 		if err := q.InsertCustomerBlockEvent(ctx, sqlc.InsertCustomerBlockEventParams{ID: idgen.NewUUIDv7(), CustomerID: out.ID, Action: "blocked", Category: req.GetCategory(),
 			Reason: reason, BlockedUntil: until, Actor: actorOf(req.GetActor()), CreatedAt: now}); err != nil {
+			return err
+		}
+		ti, _ := tenant.FromContext(ctx)
+		if err := audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "customer.blocked", TargetType: "customer", TargetID: out.ID.String(),
+			Summary: "blocked the customer " + out.ExternalID, Detail: map[string]any{"external_id": out.ExternalID, "category": req.GetCategory(), "reason": reason}}); err != nil {
 			return err
 		}
 		data := map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID, "category": req.GetCategory(), "reason": reason}
@@ -225,7 +233,7 @@ func (c *Commands) Unblock(ctx context.Context, req *plansv1.UnblockCustomerRequ
 	}
 	now := c.now()
 	var out sqlc.Customer
-	err := c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err := c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		cur, err := q.LockCustomerByExternalID(ctx, req.GetExternalId())
 		if err != nil {
 			return err
@@ -238,6 +246,11 @@ func (c *Commands) Unblock(ctx context.Context, req *plansv1.UnblockCustomerRequ
 			return err
 		}
 		if err := q.InsertCustomerBlockEvent(ctx, sqlc.InsertCustomerBlockEventParams{ID: idgen.NewUUIDv7(), CustomerID: out.ID, Action: "unblocked", Actor: actorOf(req.GetActor()), CreatedAt: now}); err != nil {
+			return err
+		}
+		ti, _ := tenant.FromContext(ctx)
+		if err := audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "customer.unblocked", TargetType: "customer", TargetID: out.ID.String(),
+			Summary: "lifted the block on the customer " + out.ExternalID, Detail: map[string]any{"external_id": out.ExternalID}}); err != nil {
 			return err
 		}
 		return c.emit(ctx, q, webhooksmodel.CustomerUnblocked, map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID}, now)

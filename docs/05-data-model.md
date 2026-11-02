@@ -122,6 +122,29 @@ CREATE TABLE go_live_audit (                          -- phase 45 follow-up: wha
   created_at timestamptz NOT NULL DEFAULT now()
 );   -- the provider connection is audited in payments_db (provider_account_events); a sandbox tenant's test-mode account is a provider_accounts row there with environment = 'sandbox' (phase 54, no new table)
 
+CREATE TABLE audit_events (                           -- plan 22 G4, in plans_db, billing_db and payments_db (and the tenant schemas): the audit log, written by pkg/audit in the transaction of the change; INSERT and SELECT only, a trigger refuses UPDATE and DELETE (the one DELETE is a tenant move)
+  id uuid PRIMARY KEY, tenant_id uuid, account_id uuid,   -- NULL tenant: an entry that belongs to no tenant; account_id: an account's own entry (its members)
+  actor_type text NOT NULL CHECK (actor_type IN ('user','api_key','operator','system')), actor_id text NOT NULL, actor_email text NOT NULL,
+  action text NOT NULL,                                  -- <area>.<what>: api_key.created, member.role_changed, two_factor.enabled ...
+  target_type text NOT NULL, target_id text NOT NULL,
+  summary text NOT NULL CHECK (length(summary) <= 500),  -- masked: no key, token or secret
+  detail jsonb NOT NULL DEFAULT '{}', before_hash text NOT NULL, after_hash text NOT NULL,   -- a small non-secret JSON object; SHA-256 of the states either side
+  source_ip text NOT NULL, request_id text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+);   -- RLS on tenant_id in plans_db and billing_db; payments_db has none (see its head). Indexes: (created_at DESC, id DESC), by tenant, by account, by action
+
+CREATE TABLE user_totp (                               -- plan 22 G9: the authenticator app of a user; confirmed_at NULL until the first code was proven
+  user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, secret_enc bytea NOT NULL,   -- sealed with pkg/secretbox, bound to the user
+  confirmed_at timestamptz, last_step bigint NOT NULL DEFAULT 0, created_at timestamptz NOT NULL DEFAULT now()   -- last_step: the last 30-second step a code was accepted for
+);
+CREATE TABLE user_recovery_codes (                     -- ten per user, keyed hashes, used_at set when spent
+  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, code_hash bytea NOT NULL, used_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(), UNIQUE (user_id, code_hash)
+);
+CREATE TABLE login_challenges (                        -- a sign-in whose first step passed: token as a hash, five tries, five minutes
+  id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE, token_hash bytea NOT NULL UNIQUE,
+  attempts int NOT NULL DEFAULT 0, expires_at timestamptz NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+);   -- accounts.require_two_factor boolean NOT NULL DEFAULT false: the owners of the account must have it (default off)
+
 CREATE TABLE api_keys (
   id          uuid PRIMARY KEY,
   tenant_id   uuid NOT NULL REFERENCES tenants(id),

@@ -38,6 +38,22 @@ service IdentityService {
   // SignInWithIdentity opens a session for a person an identity provider has authenticated (the gateway verified the provider's ID token; this service only
   // trusts the gateway). It finds the user by (provider, subject), else links to the user with the same verified address, else creates user and account.
   rpc SignInWithIdentity(SignInWithIdentityRequest) returns (SignInWithIdentityResponse);
+  // VerifyTwoFactor is the second step of a sign-in for a person who has two-factor sign-in on: it takes the challenge SignIn, VerifyLoginCode or SignInWithIdentity
+  // returned and a code of the authenticator app (RFC 6238) or an unused recovery code, and opens the session. A try counts against the lock of the account like a
+  // wrong password; a challenge allows five. Every failure is the same error.
+  rpc VerifyTwoFactor(VerifyTwoFactorRequest) returns (VerifyTwoFactorResponse);
+  // GetTwoFactor says whether the user has two-factor sign-in on.
+  rpc GetTwoFactor(GetTwoFactorRequest) returns (GetTwoFactorResponse);
+  // SetupTwoFactor makes a secret and returns it with the otpauth address for a QR code. Two-factor sign-in stays off until ConfirmTwoFactor proves a code.
+  rpc SetupTwoFactor(SetupTwoFactorRequest) returns (SetupTwoFactorResponse);
+  // ConfirmTwoFactor turns two-factor sign-in on with the first code and returns ten single-use recovery codes, once.
+  rpc ConfirmTwoFactor(ConfirmTwoFactorRequest) returns (ConfirmTwoFactorResponse);
+  // DisableTwoFactor turns it off; it needs a code, and is refused while an account the user owns requires it.
+  rpc DisableTwoFactor(DisableTwoFactorRequest) returns (DisableTwoFactorResponse);
+  // RegenerateRecoveryCodes replaces the recovery codes; it needs a code.
+  rpc RegenerateRecoveryCodes(RegenerateRecoveryCodesRequest) returns (RegenerateRecoveryCodesResponse);
+  // SetAccountSecurity turns on or off the requirement that the owners of an account sign in with a second factor. An owner only; to turn it on the owner must have it.
+  rpc SetAccountSecurity(SetAccountSecurityRequest) returns (SetAccountSecurityResponse);
 
   rpc GetMyAccount(GetMyAccountRequest) returns (GetMyAccountResponse);
   // CreateMyAccount makes another account (organisation) that the caller owns, beside the ones they already belong to.
@@ -114,6 +130,10 @@ message User {
   google.protobuf.Timestamp create_time = 4;
   // True once the person has opened a mailed link for this address (or reset the password through one).
   bool email_verified = 5;
+  // Two-factor sign-in is on (an authenticator app, confirmed). Filled by GetSession; false in the answers that open a session.
+  bool two_factor_enabled = 6;
+  // An account the person owns requires two-factor sign-in and they have not set it up. Filled by GetSession.
+  bool two_factor_setup_required = 7;
 }
 
 // Membership is a user's role in an account: "owner", "admin" or "viewer".
@@ -150,6 +170,10 @@ message SignInResponse {
   repeated Membership memberships = 2;
   string token = 3;
   google.protobuf.Timestamp expire_time = 4;
+  // Set instead of user, memberships, token and expire_time when the person has two-factor sign-in on: the proof of the first step, to be sent to VerifyTwoFactor
+  // with a code. Valid five minutes, five tries.
+  string challenge = 5;
+  google.protobuf.Timestamp challenge_expire_time = 6;
 }
 
 message RequestLoginCodeRequest {
@@ -175,6 +199,10 @@ message VerifyLoginCodeResponse {
   repeated Membership memberships = 2;
   string token = 3;
   google.protobuf.Timestamp expire_time = 4;
+  // Set instead of user, memberships, token and expire_time when the person has two-factor sign-in on: the proof of the first step, to be sent to VerifyTwoFactor
+  // with a code. Valid five minutes, five tries.
+  string challenge = 5;
+  google.protobuf.Timestamp challenge_expire_time = 6;
 }
 
 message SignInWithIdentityRequest {
@@ -195,6 +223,10 @@ message SignInWithIdentityResponse {
   repeated Membership memberships = 2;
   string token = 3;
   google.protobuf.Timestamp expire_time = 4;
+  // Set instead of user, memberships, token and expire_time when the person has two-factor sign-in on: the proof of the first step, to be sent to VerifyTwoFactor
+  // with a code. Valid five minutes, five tries.
+  string challenge = 5;
+  google.protobuf.Timestamp challenge_expire_time = 6;
 }
 
 message SignOutRequest {
@@ -233,6 +265,8 @@ message GetMyAccountResponse {
   string role = 3;
   repeated AccountMember members = 4;
   google.protobuf.Timestamp create_time = 5;
+  // The owners of the account must sign in with a second factor (default off).
+  bool require_two_factor_for_owners = 6;
 }
 
 message CreateMyAppRequest {
@@ -696,4 +730,74 @@ message UpdateMyOnboardingRequest {
 
 message UpdateMyOnboardingResponse {
   Onboarding onboarding = 1;
+}
+
+message VerifyTwoFactorRequest {
+  string challenge = 1;
+  // Six digits of the authenticator app, or a recovery code.
+  string code = 2;
+}
+
+message VerifyTwoFactorResponse {
+  User user = 1;
+  repeated Membership memberships = 2;
+  string token = 3;
+  google.protobuf.Timestamp expire_time = 4;
+}
+
+message GetTwoFactorRequest {
+  string user_id = 1;
+}
+
+message GetTwoFactorResponse {
+  bool enabled = 1;
+  google.protobuf.Timestamp enable_time = 2;
+  int32 recovery_codes_remaining = 3;
+  bool setup_required = 4;
+  bool required_by_organisation = 5;
+}
+
+message SetupTwoFactorRequest {
+  string user_id = 1;
+}
+
+message SetupTwoFactorResponse {
+  // The secret in base32.
+  string secret = 1;
+  string otpauth_uri = 2;
+}
+
+message ConfirmTwoFactorRequest {
+  string user_id = 1;
+  string code = 2;
+}
+
+message ConfirmTwoFactorResponse {
+  repeated string recovery_codes = 1;
+}
+
+message DisableTwoFactorRequest {
+  string user_id = 1;
+  string code = 2;
+}
+
+message DisableTwoFactorResponse {}
+
+message RegenerateRecoveryCodesRequest {
+  string user_id = 1;
+  string code = 2;
+}
+
+message RegenerateRecoveryCodesResponse {
+  repeated string recovery_codes = 1;
+}
+
+message SetAccountSecurityRequest {
+  string user_id = 1;
+  string account_id = 2;
+  bool require_two_factor_for_owners = 3;
+}
+
+message SetAccountSecurityResponse {
+  bool require_two_factor_for_owners = 1;
 }

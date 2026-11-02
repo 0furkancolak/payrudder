@@ -2757,6 +2757,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The audit log of the tenant, newest first
+         * @description Who did what and when, for the actions that change money or access: API keys created, rotated and revoked; members invited, changed and removed; plan versions published; webhook endpoints created, changed, deleted and their secrets rolled; customers blocked and unblocked; credit notes and refunds; the operator's invoice actions; payment provider accounts connected, replaced, removed and made the default; the tenant's status and settings. Each entry has the actor (a person, an API key, the operator or the system), the target, a one-line summary with no secret in it, a small `detail` object, the address and the request id. The log is append-only: the database refuses any change to an entry. It is read from several services and merged; when one does not answer, `incomplete` is true and `unavailable_sources` names it. Needs the permission `audit:read` (an admin key has it; the `read_only` role does not). A person who is a viewer of the account may not read it.
+         */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audit-events/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The audit log as CSV (the newest 5000 entries of the filter)
+         * @description The same filter as `listAuditEvents`, one line per entry with the columns id, create_time, tenant_id, account_id, actor_type, actor_id, actor_email, action, target_type, target_id, summary, detail (JSON), before_hash, after_hash, source_ip, request_id. A cell that starts with `=`, `+`, `-` or `@` gets a leading `'`, so a spreadsheet does not run it. An export that cannot read every service fails with `503 audit.unavailable` rather than leave entries out. Needs `audit:read`.
+         */
+        get: operations["exportAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payments": {
         parameters: {
             query?: never;
@@ -3325,6 +3365,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/2fa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether the person has two-factor sign-in, and whether they must */
+        get: operations["getTwoFactor"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/2fa/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start setting up an authenticator app
+         * @description Makes a new secret and returns it with the `otpauth://` address an authenticator app takes (the console draws the QR code from it itself; nothing is sent to a third party). Two-factor sign-in is **not** on until `confirmTwoFactor` has proven a code. Asking again before that replaces the secret. `409 identity.two_factor.already_enabled` when it is on already; `503 identity.two_factor.not_configured` when this deployment has no secrets key (`PAYRUDDER_SECRETS_KEY`). The answer is `Cache-Control: no-store`.
+         */
+        post: operations["setupTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/2fa/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn two-factor sign-in on with the first code of the authenticator app
+         * @description The six-digit code (RFC 6238, SHA-1, 30 seconds) proves the app holds the secret. It turns two-factor sign-in on and returns ten single-use recovery codes, **once**: they are stored only as keyed hashes. Rate limited per client address (10 a minute); wrong codes count against the account's lock (five in a row lock sign-in for fifteen minutes). The answer is `Cache-Control: no-store`.
+         */
+        post: operations["confirmTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/2fa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Turn two-factor sign-in off
+         * @description Needs a current code of the authenticator app or an unused recovery code. Not allowed (`403 identity.two_factor.required_by_organisation`) while an organisation the person owns requires two-factor sign-in. Recorded in the audit log.
+         */
+        post: operations["disableTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/2fa/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make ten new recovery codes (the old ones stop working)
+         * @description Needs a current code of the authenticator app or an unused recovery code. The codes are returned once. The answer is `Cache-Control: no-store`.
+         */
+        post: operations["regenerateRecoveryCodes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/2fa/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The second step of a sign-in
+         * @description A person who has two-factor sign-in on gets no session from `/auth/signin`, `/auth/otp/verify` or `/auth/google/callback`: they get a `challenge` (valid 5 minutes, five tries). This route takes the challenge and a six-digit code of the authenticator app, or a recovery code (used once), and opens the session. Every wrong try counts against the account's lock like a wrong password. A wrong or expired challenge, a wrong code and a locked account are all `401 identity.two_factor.invalid`. Public; rate limited per client address (10 a minute).
+         */
+        post: operations["verifyTwoFactor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/me/onboarding": {
         parameters: {
             query?: never;
@@ -3385,6 +3542,26 @@ export interface paths {
         head?: never;
         /** Rename the account (owners only) */
         patch: operations["appRenameAccount"];
+        trace?: never;
+    };
+    "/app/v1/account/security": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Require two-factor sign-in of the owners of the account (owners only)
+         * @description Default off. When on, an owner of the account who has not set up two-factor sign-in can sign in but nothing else: every route except `/auth/*` answers `403 identity.two_factor.setup_required` until they have. An owner who has it cannot turn it off while it is required. Recorded in the audit log.
+         */
+        patch: operations["appSetAccountSecurity"];
         trace?: never;
     };
     "/app/v1/account/plan": {
@@ -5251,6 +5428,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/audit-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The audit log across tenants, newest first
+         * @description The same entries and filters as `listAuditEvents`, for every tenant of the pooled databases and the entries that belong to no tenant (sign-in security events). `tenant_id` narrows to one tenant (also one placed in a cell); `account_id` to the entries of one account that belong to no tenant (its members).
+         */
+        get: operations["adminListAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/audit-events/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The audit log across tenants as CSV (the newest 5000 entries of the filter) */
+        get: operations["adminExportAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{tenant_id}/reconciliation/runs": {
         parameters: {
             query?: never;
@@ -6581,6 +6795,9 @@ export interface components {
             create_time: string | null;
             /** @description True once the person opened a mailed link for this address. Until then live API keys cannot be created. */
             email_verified: boolean;
+            two_factor_enabled: boolean;
+            /** @description An account the person owns requires two-factor sign-in and they have not set it up: the console sends them to set it up, every other route is refused. */
+            two_factor_setup_required: boolean;
         };
         Payment: {
             /** @description The ledger row that carries the outcome */
@@ -6830,6 +7047,8 @@ export interface components {
              * @enum {string}
              */
             role: "owner" | "admin" | "viewer";
+            /** @description The owners of the account must sign in with a second factor (default off) */
+            require_two_factor_for_owners: boolean;
             /** Format: date-time */
             create_time: string | null;
             members: {
@@ -7781,6 +8000,83 @@ export interface components {
             display_name?: string;
             /** @enum {string} */
             locale?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+        };
+        /** @description The answer of a sign-in for a person who has two-factor sign-in on. No session yet; send the challenge and a code to `/auth/2fa/verify`. */
+        SecondFactorRequired: {
+            /** @enum {boolean} */
+            second_factor_required: true;
+            /** @description qc_..., valid 5 minutes, five tries; shown once */
+            challenge: string;
+            /** Format: date-time */
+            challenge_expire_time: string | null;
+        };
+        VerifyTwoFactorRequest: {
+            challenge: string;
+            /** @description Six digits of the authenticator app, or a recovery code (letters and digits, dashes optional) */
+            code: string;
+        };
+        TwoFactorCodeRequest: {
+            /** @description Six digits of the authenticator app, or a recovery code */
+            code: string;
+        };
+        TwoFactorStatus: {
+            enabled: boolean;
+            /** Format: date-time */
+            enable_time: string | null;
+            recovery_codes_remaining: number;
+            /** @description An account the person owns requires two-factor sign-in and the person has not set it up: every route but /auth/* is refused until they have. */
+            setup_required: boolean;
+            /** @description An account the person owns requires it, so it cannot be turned off. */
+            required_by_organisation?: boolean;
+        };
+        TwoFactorSetup: {
+            /** @description The shared secret in base32, to type into an app that cannot scan */
+            secret: string;
+            /** @description otpauth://totp/... for a QR code */
+            otpauth_uri: string;
+        };
+        TwoFactorRecoveryCodes: {
+            /** @description Ten single-use codes, shown once */
+            recovery_codes: string[];
+        };
+        AccountSecurity: {
+            require_two_factor_for_owners: boolean;
+        };
+        AuditEvent: {
+            /** Format: uuid */
+            id: string;
+            /** @description Empty for an entry that belongs to no tenant */
+            tenant_id: string;
+            /** @description Set for an entry that is an account's and no tenant's (its members) */
+            account_id: string;
+            /** @enum {string} */
+            actor_type: "user" | "api_key" | "operator" | "system";
+            actor_id: string;
+            actor_email: string;
+            /**
+             * @description <area>.<what>, for example api_key.created
+             * @example api_key.created
+             */
+            action: string;
+            target_type: string;
+            target_id: string;
+            /** @description One line for a person; secrets are masked */
+            summary: string;
+            /** @description A small JSON object of what changed, as text; it holds no secret */
+            detail_json: string;
+            before_hash: string;
+            after_hash: string;
+            source_ip: string;
+            request_id: string;
+            /** Format: date-time */
+            create_time: string | null;
+        };
+        ListAuditEventsResponse: {
+            events: components["schemas"]["AuditEvent"][];
+            next_page_token: string;
+            /** @description A service that keeps part of the log did not answer: the page may lack its entries */
+            incomplete: boolean;
+            unavailable_sources: ("plans" | "billing" | "payments")[];
         };
         SignInRequest: {
             /** Format: email */
@@ -12233,7 +12529,7 @@ export interface components {
          * @description resource:action. The route /v1/{resource}... with GET is :read, any other method :write; /v1/events needs events:write and /v1/sandbox/* sandbox:write.
          * @enum {string}
          */
-        ApiKeyPermission: "events:write" | "customers:read" | "customers:write" | "subscriptions:read" | "subscriptions:write" | "catalog:read" | "catalog:write" | "usage:read" | "credits:read" | "credits:write" | "invoices:read" | "invoices:write" | "reports:read" | "accounting:read" | "accounting:write" | "webhooks:read" | "webhooks:write" | "affiliates:read" | "affiliates:write" | "settings:read" | "settings:write" | "assets:read" | "assets:write" | "sandbox:write" | "contracts:read" | "contracts:write";
+        ApiKeyPermission: "events:write" | "customers:read" | "customers:write" | "subscriptions:read" | "subscriptions:write" | "catalog:read" | "catalog:write" | "usage:read" | "credits:read" | "credits:write" | "invoices:read" | "invoices:write" | "reports:read" | "accounting:read" | "accounting:write" | "webhooks:read" | "webhooks:write" | "affiliates:read" | "affiliates:write" | "settings:read" | "settings:write" | "assets:read" | "assets:write" | "sandbox:write" | "contracts:read" | "contracts:write" | "audit:read";
         /** @description The tenant's own e-mail provider. The key is never returned. */
         MailIntegration: {
             /** @enum {string} */
@@ -17242,6 +17538,75 @@ export interface operations {
             409: components["responses"]["Error"];
         };
     };
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                /** @description Action names such as api_key.created, or an area such as api_key.*, separated by commas */
+                action?: string;
+                /** @description An actor id (user id, API key id) or an e-mail address */
+                actor?: string;
+                target_type?: string;
+                target_id?: string;
+                /** @description Inclusive, RFC 3339 */
+                from?: string;
+                /** @description Exclusive, RFC 3339 */
+                to?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListAuditEventsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+        };
+    };
+    exportAuditEvents: {
+        parameters: {
+            query?: {
+                /** @description Action names such as api_key.created, or an area such as api_key.*, separated by commas */
+                action?: string;
+                /** @description An actor id (user id, API key id) or an e-mail address */
+                actor?: string;
+                target_type?: string;
+                target_id?: string;
+                /** @description Inclusive, RFC 3339 */
+                from?: string;
+                /** @description Exclusive, RFC 3339 */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
+                };
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
     listPayments: {
         parameters: {
             query?: {
@@ -17792,13 +18157,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description OK: a session, or (two-factor sign-in on) a challenge for POST /auth/2fa/verify */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionOpened"];
+                    "application/json": components["schemas"]["SessionOpened"] | components["schemas"]["SecondFactorRequired"];
                 };
             };
             400: components["responses"]["Error"];
@@ -18014,13 +18379,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
+            /** @description OK: a session, or (two-factor sign-in on) a challenge for POST /auth/2fa/verify */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SessionOpened"];
+                    "application/json": components["schemas"]["SessionOpened"] | components["schemas"]["SecondFactorRequired"];
                 };
             };
             400: components["responses"]["Error"];
@@ -18066,6 +18431,157 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+        };
+    };
+    getTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorStatus"];
+                };
+            };
+            401: components["responses"]["Error"];
+        };
+    };
+    setupTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorSetup"];
+                };
+            };
+            401: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    confirmTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorRecoveryCodes"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    disableTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Turned off */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    regenerateRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TwoFactorCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TwoFactorRecoveryCodes"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    verifyTwoFactor: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyTwoFactorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOpened"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            429: components["responses"]["Error"];
         };
     };
     getMyOnboarding: {
@@ -18188,6 +18704,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AppRenameAccountResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appSetAccountSecurity: {
+        parameters: {
+            query?: {
+                account_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountSecurity"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountSecurity"];
                 };
             };
             400: components["responses"]["Error"];
@@ -21515,6 +22061,77 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReconcilePaymentsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    adminListAuditEvents: {
+        parameters: {
+            query?: {
+                tenant_id?: string;
+                account_id?: string;
+                /** @description Action names such as api_key.created, or an area such as api_key.*, separated by commas */
+                action?: string;
+                /** @description An actor id (user id, API key id) or an e-mail address */
+                actor?: string;
+                target_type?: string;
+                target_id?: string;
+                /** @description Inclusive, RFC 3339 */
+                from?: string;
+                /** @description Exclusive, RFC 3339 */
+                to?: string;
+                page_size?: number;
+                page_token?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListAuditEventsResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    adminExportAuditEvents: {
+        parameters: {
+            query?: {
+                tenant_id?: string;
+                account_id?: string;
+                /** @description Action names such as api_key.created, or an area such as api_key.*, separated by commas */
+                action?: string;
+                /** @description An actor id (user id, API key id) or an e-mail address */
+                actor?: string;
+                target_type?: string;
+                target_id?: string;
+                /** @description Inclusive, RFC 3339 */
+                from?: string;
+                /** @description Exclusive, RFC 3339 */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/csv": string;
                 };
             };
             400: components["responses"]["Error"];

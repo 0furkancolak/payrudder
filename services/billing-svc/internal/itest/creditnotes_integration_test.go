@@ -15,9 +15,11 @@ import (
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	commandsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/commands/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/stubworker"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/auditlog"
 )
 
 var seededInvoices int
@@ -90,6 +92,19 @@ func testCreditNotes(t *testing.T) {
 	}
 	if n != 2 || sum != 1000 || cur != "USD" {
 		t.Errorf("credit balances = %d × %d %s; want two summing to 1000 USD", n, sum, cur)
+	}
+
+	// Each note left an entry in the audit log, written in its transaction, with the actor of the request and no more than the note's own facts.
+	logged, err := auditlog.Source{DB: shared.system}.Tenant(context.Background(), audit.Filter{TenantID: e.tid, Actions: []string{"credit_note.*"}})
+	if err != nil || len(logged) != 2 {
+		t.Fatalf("audit entries of the two notes = %d, %v", len(logged), err)
+	}
+	if ev := logged[1]; ev.Action != "credit_note.issued" || ev.TargetID != first.GetId() || ev.TenantID == nil || *ev.TenantID != e.tid || ev.ActorType != audit.ActorSystem ||
+		!strings.Contains(ev.Summary, first.GetNumber()) || !strings.Contains(string(ev.Detail), `"amount_minor": 300`) || !strings.Contains(string(ev.Detail), `"refund": false`) {
+		t.Errorf("the first note's entry = %+v (detail %s)", ev, ev.Detail)
+	}
+	if _, err := shared.sql.Exec(context.Background(), `DELETE FROM audit_events`); err == nil {
+		t.Error("audit entries can be deleted")
 	}
 
 	// Reads: one note, the list (newest first, paged), by invoice.

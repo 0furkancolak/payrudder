@@ -155,6 +155,8 @@ OPERATIONS: dict[str, tuple[str, str, str]] = {
     "revokePortalLinks": ("customers", "revoke_portal_links", "DELETE /v1/customers/{external_id}/portal-links"),
     "listCustomerPayments": ("customers", "list_customer_payments", "GET /v1/customers/{external_id}/payments"),
     "getInvoicePdf": ("invoices", "get_invoice_pdf", "GET /v1/invoices/{id}/pdf"),
+    "listAuditEvents": ("audit_events", "list_audit_events", "GET /v1/audit-events"),
+    "exportAuditEvents": ("audit_events", "export_audit_events", "GET /v1/audit-events/export"),
     "listPayments": ("payments", "list_payments", "GET /v1/payments"),
     "createUploadSession": ("assets", "create_upload_session", "POST /v1/assets/uploads"),
     "abortUploadSession": ("assets", "abort_upload_session", "DELETE /v1/assets/uploads/{session}"),

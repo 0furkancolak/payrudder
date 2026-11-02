@@ -15,11 +15,13 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/payments"
 	"github.com/0furkancolak/payrudder/pkg/payments/banktransfer"
 	"github.com/0furkancolak/payrudder/pkg/payments/iyzico"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	"github.com/0furkancolak/payrudder/pkg/testkit"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/auditlog"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/store"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/webhook"
@@ -40,8 +42,8 @@ func TestOwnerProviderConnection(t *testing.T) {
 	accounts := store.Accounts{DB: pool, Box: box}
 	resolver := &handler.Resolver{Registry: registry, Accounts: accounts}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	api := httptest.NewServer((&webhook.Server{Registry: registry, Resolver: resolver, Accounts: accounts, Events: store.Events{DB: pool}, Attempts: store.Attempts{DB: pool},
-		Ledger: store.Ledger{DB: pool}, Log: log, Token: "internal"}).Handler())
+	api := httptest.NewServer(audit.Middleware((&webhook.Server{Registry: registry, Resolver: resolver, Accounts: accounts, Events: store.Events{DB: pool}, Attempts: store.Attempts{DB: pool},
+		Ledger: store.Ledger{DB: pool}, Log: log, Token: "internal", Modules: []webhook.RouteRegistrar{&auditlog.Handler{DB: pool, Log: log}}}).Handler()))
 	defer api.Close()
 
 	do := func(method, path, body, actor string) (int, string) {
@@ -50,6 +52,12 @@ func TestOwnerProviderConnection(t *testing.T) {
 		req.Header.Set("X-Internal-Token", "internal")
 		if actor != "" {
 			req.Header.Set("X-Payrudder-Actor", actor)
+			// What the gateway adds for a person: who, from where, under which request.
+			req.Header.Set("X-Payrudder-Audit-Actor-Type", "user")
+			req.Header.Set("X-Payrudder-Audit-Actor-Id", strings.TrimPrefix(actor, "user:"))
+			req.Header.Set("X-Payrudder-Audit-Actor-Email", "ada@example.com")
+			req.Header.Set("X-Payrudder-Audit-Ip", "203.0.113.9")
+			req.Header.Set("X-Request-Id", "req-payments-1")
 		}
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -140,6 +148,38 @@ func TestOwnerProviderConnection(t *testing.T) {
 		secretsInAudit, err := cdb.CountAll(ctx, `SELECT count(*) FROM provider_account_events WHERE actor LIKE '%Ada%' OR provider LIKE '%DE89%'`)
 		if err != nil || secretsInAudit != 0 {
 			t.Errorf("settings leaked into the audit trail: %d %v", secretsInAudit, err)
+		}
+
+		// The same changes are in the platform's audit log (pkg/audit), with the person, the address and the request, and nothing of the settings. The operator reads them
+		// by tenant (the gateway asks this way for a tenant's page) or across tenants.
+		code, body = do("GET", "/admin/tenants/"+tenant.String()+"/audit-events?action=provider_account.*&page_size=10", "", "")
+		var page struct {
+			Events []struct {
+				Action     string `json:"action"`
+				ActorType  string `json:"actor_type"`
+				ActorEmail string `json:"actor_email"`
+				SourceIP   string `json:"source_ip"`
+				RequestID  string `json:"request_id"`
+				TargetID   string `json:"target_id"`
+			} `json:"events"`
+		}
+		if err := json.Unmarshal([]byte(body), &page); err != nil || code != 200 || len(page.Events) != 3 {
+			t.Fatalf("audit-events: %d %s %v", code, body, err)
+		}
+		if ev := page.Events[0]; ev.Action != "provider_account.removed" || ev.ActorType != "user" || ev.ActorEmail != "ada@example.com" || ev.SourceIP != "203.0.113.9" || ev.RequestID != "req-payments-1" || ev.TargetID != "banktransfer/live" {
+			t.Errorf("newest entry = %+v", ev)
+		}
+		if page.Events[1].Action != "provider_account.replaced" || page.Events[2].Action != "provider_account.connected" {
+			t.Errorf("entries = %v", page.Events)
+		}
+		if strings.Contains(body, "DE89") || strings.Contains(body, "Ada Labs") {
+			t.Errorf("settings leaked into the audit log: %s", body)
+		}
+		if code, body := do("GET", "/admin/audit-events?actor=ada@example.com", "", ""); code != 200 || !strings.Contains(body, "provider_account.removed") {
+			t.Errorf("operator view: %d %s", code, body)
+		}
+		if code, _ := do("GET", "/admin/tenants/"+tenant.String()+"/audit-events?page_size=0x", "", ""); code != 400 {
+			t.Errorf("a bad filter: %d", code)
 		}
 	})
 

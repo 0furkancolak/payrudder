@@ -20,6 +20,7 @@ import (
 	ingestv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/ingest/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
+	"github.com/0furkancolak/payrudder/pkg/audit/auditgrpc"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/env"
@@ -35,6 +36,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenantinfo"
 	_ "github.com/0furkancolak/payrudder/pkg/tzdata" // IANA zones for time.LoadLocation in distroless images
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/api"
+	"github.com/0furkancolak/payrudder/services/billing-svc/internal/auditlog"
 	runcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/billingruns/command"
 	creditcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
@@ -324,6 +326,7 @@ func newGRPCServer(cfg *Config, log *slog.Logger, deps api.Deps) (*grpc.Server, 
 	billingv1.RegisterHostedInvoiceServiceServer(srv, svc)
 	billingv1.RegisterBillingAdminServiceServer(srv, svc)
 	adminv1.RegisterSandboxResetServiceServer(srv, sandboxreset.New(billingreset.New(deps.System).Reset))
+	auditgrpc.Register(srv, auditlog.Source{DB: deps.System})
 	return srv, grpcHealth, nil
 }
 

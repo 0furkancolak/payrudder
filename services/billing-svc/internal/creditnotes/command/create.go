@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/creditnotes/model"
 	invmodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/invoices/model"
 	sagamodel "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/model"
@@ -89,6 +90,15 @@ func (c *Commands) create(ctx context.Context, tenantID, invoiceID uuid.UUID, am
 			return err
 		}
 		out = cn
+		how := "added to the customer's credit"
+		if refund {
+			how = "refunded to the card"
+		}
+		if err := audit.Record(ctx, tx, audit.Event{TenantID: tenantID, Action: "credit_note.issued", TargetType: "credit_note", TargetID: cn.ID.String(),
+			Summary: fmt.Sprintf("issued the credit note %s for invoice %s (%d %s, %s)", cn.Number, cn.InvoiceNumber, amount, cn.Currency, how),
+			Detail:  map[string]any{"number": cn.Number, "invoice_id": invoiceID.String(), "amount_minor": amount, "currency": cn.Currency, "refund": refund, "reason": reason}}); err != nil {
+			return err
+		}
 		return creditNoteEvent(ctx, tx, tenantID, tenantevents.EventCreditNoteCreated, cn.ID.String(), now, cn)
 	})
 	return out, err

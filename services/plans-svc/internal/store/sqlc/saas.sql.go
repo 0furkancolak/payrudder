@@ -258,7 +258,7 @@ func (q *Queries) SaasEntitlements(ctx context.Context, arg SaasEntitlementsPara
 }
 
 const saasGetAccount = `-- name: SaasGetAccount :one
-SELECT id, name, created_at, platform FROM accounts WHERE id = $1
+SELECT id, name, created_at, platform, require_two_factor FROM accounts WHERE id = $1
 `
 
 func (q *Queries) SaasGetAccount(ctx context.Context, id uuid.UUID) (Account, error) {
@@ -269,6 +269,7 @@ func (q *Queries) SaasGetAccount(ctx context.Context, id uuid.UUID) (Account, er
 		&i.Name,
 		&i.CreatedAt,
 		&i.Platform,
+		&i.RequireTwoFactor,
 	)
 	return i, err
 }
@@ -297,7 +298,7 @@ func (q *Queries) SaasGetCustomer(ctx context.Context, arg SaasGetCustomerParams
 }
 
 const saasGetPlatformAccount = `-- name: SaasGetPlatformAccount :one
-SELECT id, name, created_at, platform FROM accounts WHERE platform
+SELECT id, name, created_at, platform, require_two_factor FROM accounts WHERE platform
 `
 
 func (q *Queries) SaasGetPlatformAccount(ctx context.Context) (Account, error) {
@@ -308,6 +309,7 @@ func (q *Queries) SaasGetPlatformAccount(ctx context.Context) (Account, error) {
 		&i.Name,
 		&i.CreatedAt,
 		&i.Platform,
+		&i.RequireTwoFactor,
 	)
 	return i, err
 }
@@ -366,7 +368,7 @@ func (q *Queries) SaasHadTrial(ctx context.Context, arg SaasHadTrialParams) (boo
 }
 
 const saasInsertPlatformAccount = `-- name: SaasInsertPlatformAccount :one
-INSERT INTO accounts (id, name, platform) VALUES ($1, $2, true) RETURNING id, name, created_at, platform
+INSERT INTO accounts (id, name, platform) VALUES ($1, $2, true) RETURNING id, name, created_at, platform, require_two_factor
 `
 
 type SaasInsertPlatformAccountParams struct {
@@ -382,6 +384,7 @@ func (q *Queries) SaasInsertPlatformAccount(ctx context.Context, arg SaasInsertP
 		&i.Name,
 		&i.CreatedAt,
 		&i.Platform,
+		&i.RequireTwoFactor,
 	)
 	return i, err
 }

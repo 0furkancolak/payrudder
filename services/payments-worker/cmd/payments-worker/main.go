@@ -16,6 +16,7 @@ import (
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/app"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/blob"
 	"github.com/0furkancolak/payrudder/pkg/config"
 	"github.com/0furkancolak/payrudder/pkg/einvoice"
@@ -36,6 +37,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/pkg/tenantdir"
 	"github.com/0furkancolak/payrudder/pkg/workerx"
+	"github.com/0furkancolak/payrudder/services/payments-worker/internal/auditlog"
 	einvoiceworker "github.com/0furkancolak/payrudder/services/payments-worker/internal/einvoice"
 	"github.com/0furkancolak/payrudder/services/payments-worker/internal/handler"
 	accounthealth "github.com/0furkancolak/payrudder/services/payments-worker/internal/health"
@@ -216,7 +218,8 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 			return err
 		}
 		defer closeConns()
-		httpHandler = srv.Handler()
+		// audit.Middleware reads who the gateway says is acting (pkg/audit); the gateway sets those headers itself and removes the caller's own.
+		httpHandler = audit.Middleware(srv.Handler())
 		// The circuit breakers and the failover are of the tenants' own provider accounts, which need the secrets key like everything else that calls a provider for them.
 		providerHealth := store.ProviderHealth{DB: db}
 		h.Breakers = &accounthealth.Breakers{Settings: payments.BreakerSettings{Failures: cfg.BreakerFailures, OpenFor: cfg.BreakerOpenFor}, Store: providerHealth, Log: log}
@@ -341,7 +344,7 @@ func webhookServer(cfg Config, db store.DB, box *secretbox.Box, h *handler.Handl
 		Attempts: h.Attempts, Ledger: h.Ledger, Subscriptions: store.Subscriptions{DB: db}, Objects: store.Objects{DB: db}, Log: log, Token: cfg.InternalToken,
 		EInvoiceAccounts: store.EInvoiceAccounts{DB: db, Box: box}, EInvoiceRegistry: einvoices, AllowMockLive: cfg.Demo,
 		Reset:   sandboxreset.New(db).Reset,
-		Modules: []webhook.RouteRegistrar{transferHandler}}, closeConns, nil
+		Modules: []webhook.RouteRegistrar{transferHandler, &auditlog.Handler{DB: db, Log: log}}}, closeConns, nil
 }
 
 // serveHTTP runs the webhook and operator server until ctx ends.

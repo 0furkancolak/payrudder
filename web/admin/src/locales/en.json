@@ -3083,7 +3083,8 @@
         "bad_body": "The request body must be valid JSON.",
         "bad_environment": "The environment must be sandbox or live.",
         "bad_tenant": "The account id is not a valid id.",
-        "too_large": "The request is too large."
+        "too_large": "The request is too large.",
+        "bad_audit_filter": "The audit log filter is not valid."
       },
       "subscription": {
         "cannot_cancel": "This provider cannot cancel a subscription from here.",
@@ -3246,6 +3247,16 @@
         "country_required": "Choose the country of the business.",
         "address_required": "Enter the street address and the city.",
         "tax_id_required": "A tax id is required for invoices in this country."
+      },
+      "two_factor": {
+        "invalid": "Wrong or expired code.",
+        "bad_code": "Wrong code. Type the six digits the authenticator app shows now, or a recovery code.",
+        "already_enabled": "Two-factor sign-in is already on.",
+        "not_enabled": "Two-factor sign-in is not on.",
+        "no_setup": "Start the setup first: scan the code, then confirm it.",
+        "not_configured": "This deployment cannot offer two-factor sign-in yet: it has no secrets key.",
+        "required_by_organisation": "An organisation you own requires two-factor sign-in, so you cannot turn it off.",
+        "setup_required": "An organisation you own requires two-factor sign-in. Set it up on the security page first."
       }
     },
     "gateway": {
@@ -3515,6 +3526,18 @@
       "tickets": {
         "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again."
       }
+    },
+    "audit": {
+      "unavailable": "The audit log could not be read from every service. Try again.",
+      "page_token": {
+        "invalid": "That page of the log is no longer valid. Reload the list."
+      },
+      "filter": {
+        "bad_tenant": "The tenant id is not valid.",
+        "bad_account": "The account id is not valid.",
+        "bad_time": "The dates are not valid, or the start is after the end.",
+        "bad_page_size": "The page size must be between 1 and 200."
+      }
     }
   },
   "product": {
@@ -3528,7 +3551,8 @@
     },
     "nav": {
       "home": "Home",
-      "settings": "Settings"
+      "settings": "Settings",
+      "security": "Security"
     },
     "hero": {
       "title": "See every payment of every app in one calm place."
@@ -3783,7 +3807,8 @@
         "settings": "Settings (tax, routing, mail)",
         "assets": "Files",
         "contracts": "Contracts (agreement texts and settings)",
-        "sandbox": "Sandbox tools"
+        "sandbox": "Sandbox tools",
+        "audit": "Audit log"
       },
       "permissionCount": "{n} of {total} permissions",
       "customNeedsOne": "Choose at least one permission.",
@@ -3908,7 +3933,9 @@
       "rename": "Account name",
       "save": "Save name",
       "noneTitle": "You are not in any account",
-      "noneBody": "You left your last account or were removed from it. Ask an owner to invite you again, or sign up with another address."
+      "noneBody": "You left your last account or were removed from it. Ask an owner to invite you again, or sign up with another address.",
+      "requireTwoFactor": "Require two-factor sign-in for owners",
+      "requireTwoFactorHint": "Owners who have not set up two-factor sign-in are held on the security page until they do. Off by default."
     },
     "invite": {
       "title": "You are invited",
@@ -4513,6 +4540,78 @@
         "sandbox": "Switch to sandbox",
         "live": "Switch to live"
       }
+    },
+    "security": {
+      "title": "Security",
+      "intro": "How you sign in, and how to protect it.",
+      "setupRequired": "An organisation you own requires two-factor sign-in. Set it up below: until you do, nothing else in the console is available."
+    },
+    "twoFactor": {
+      "title": "Two-factor sign-in",
+      "on": "On",
+      "off": "Off",
+      "offBody": "After your password, e-mail code or Google, sign-in also asks for a six-digit code from an authenticator app. Someone who learns your password still cannot get in.",
+      "onBody": "Signing in asks for a six-digit code from your authenticator app after your password, e-mail code or Google.",
+      "since": "Turned on",
+      "codesLeft": "Recovery codes left",
+      "codesLow": "Only {n} recovery codes left. Generate new ones before they run out: if you lose your phone they are the only way back in.",
+      "turnOn": "Turn on",
+      "turnOff": "Turn off",
+      "regenerate": "Generate new recovery codes",
+      "requiredNote": "An organisation you own requires two-factor sign-in, so it cannot be turned off.",
+      "disableTitle": "Turn off two-factor sign-in?",
+      "disableBody": "Enter a current code from your authenticator app, or a recovery code. Your account will then be protected by your sign-in method alone.",
+      "regenerateTitle": "Generate new recovery codes?",
+      "regenerateBody": "Enter a current code from your authenticator app, or a recovery code. The old recovery codes stop working.",
+      "regeneratedBody": "These replace your old recovery codes. They are shown only now.",
+      "prompt": {
+        "label": "Code",
+        "hint": "Six digits from the app, or a recovery code."
+      },
+      "setup": {
+        "scan": {
+          "title": "Scan the code",
+          "body": "Open an authenticator app on your phone and scan this code."
+        },
+        "code": {
+          "title": "Enter the code",
+          "body": "Type the six digits the app shows now, to prove it is set up."
+        },
+        "codes": {
+          "title": "Save your recovery codes",
+          "body": "Two-factor sign-in is now on."
+        },
+        "qrLabel": "QR code for your authenticator app",
+        "cantScan": "Cannot scan? Type this key into the app instead.",
+        "secretLabel": "Secret key",
+        "copySecret": "Copy",
+        "next": "Next",
+        "back": "Back",
+        "turnOn": "Turn on"
+      },
+      "codes": {
+        "body": "Each code works once. If you lose your phone, a recovery code is the only way to sign in. They are shown only now.",
+        "list": "Recovery codes",
+        "download": "Download as .txt",
+        "copy": "Copy",
+        "saved": "I have saved these codes",
+        "done": "Done"
+      },
+      "file": {
+        "title": "Payrudder recovery codes for {email}, {date}",
+        "note": "Each code works once. Keep this file somewhere safe and private."
+      },
+      "step": {
+        "title": "Two-step verification",
+        "intro": "Open your authenticator app and enter the six-digit code it shows.",
+        "recoveryIntro": "Enter one of your recovery codes. Each works once.",
+        "submit": "Verify",
+        "recoveryLabel": "Recovery code",
+        "recoveryHint": "Letters and digits, dashes optional.",
+        "useRecovery": "Use a recovery code",
+        "useApp": "Use the authenticator app",
+        "restart": "Start again"
+      }
     }
   },
   "shell": {
@@ -4582,7 +4681,9 @@
       "support": "Help",
       "supportInbox": "Support inbox",
       "connect": "Connect your app",
-      "contracts": "Contracts"
+      "contracts": "Contracts",
+      "audit": "Audit log",
+      "auditLog": "Audit log"
     },
     "noApps": "No apps yet",
     "newApp": "New app"
@@ -4972,6 +5073,9 @@
         "agreementsTitle": "Agreements",
         "settings": "Choose which agreements customers must accept, and how long their address and browser are kept.",
         "settingsTitle": "Settings"
+      },
+      "audit": {
+        "intro": "Every change to keys, members, prices, webhooks, customers, refunds and provider accounts is recorded here. Entries cannot be changed or removed."
       }
     }
   },
@@ -5537,6 +5641,118 @@
       "received": "When it reached you (optional)",
       "receivedHint": "Leave empty for now.",
       "submit": "Record withdrawal"
+    }
+  },
+  "audit": {
+    "title": "Audit log",
+    "intro": "Who did what and when: keys, members, prices, webhooks, customers, refunds and provider accounts. Entries cannot be changed or removed.",
+    "adminIntro": "The audit log of every tenant, newest first. Filter by tenant to look at one.",
+    "empty": "Nothing has been recorded yet.",
+    "export": "Export CSV",
+    "loadMore": "Load more",
+    "incomplete": "Some entries may be missing. These parts of the log did not answer: {sources}. Try again in a moment.",
+    "sources": {
+      "plans": "keys, members, plans, customers and webhooks",
+      "billing": "invoices and credit notes",
+      "payments": "payment provider accounts"
+    },
+    "filters": {
+      "area": "Area",
+      "anyArea": "Any area",
+      "actor": "Actor: e-mail or id",
+      "tenant": "Tenant id"
+    },
+    "columns": {
+      "time": "Time",
+      "actor": "Actor",
+      "action": "Action",
+      "summary": "Summary",
+      "target": "Target"
+    },
+    "fields": {
+      "summary": "Summary",
+      "time": "Time",
+      "actor": "Actor",
+      "actorId": "Actor id",
+      "target": "Target",
+      "targetId": "Target id",
+      "ip": "Source IP",
+      "request": "Request id",
+      "tenant": "Tenant id",
+      "account": "Account id",
+      "before": "Hash before",
+      "after": "Hash after",
+      "detail": "Detail"
+    },
+    "actorTypes": {
+      "user": "Person",
+      "api_key": "API key",
+      "operator": "Operator",
+      "system": "System"
+    },
+    "areas": {
+      "api_key": "API keys",
+      "member": "Members",
+      "plan": "Plans",
+      "webhook_endpoint": "Webhook endpoints",
+      "customer": "Customers",
+      "credit_note": "Credit notes",
+      "invoice": "Invoices",
+      "provider_account": "Provider accounts",
+      "tenant": "Tenant settings and status",
+      "two_factor": "Two-factor sign-in",
+      "sign_in": "Sign-in",
+      "account": "Organisation"
+    },
+    "actions": {
+      "api_key": {
+        "created": "API key created",
+        "rotated": "API key rotated",
+        "revoked": "API key revoked",
+        "expiring": "API key about to end"
+      },
+      "member": {
+        "invited": "Member invited",
+        "joined": "Member joined",
+        "role_changed": "Member role changed",
+        "removed": "Member removed"
+      },
+      "plan": {
+        "created": "Plan created",
+        "version_published": "Plan version published"
+      },
+      "webhook_endpoint": {
+        "created": "Webhook endpoint created",
+        "updated": "Webhook endpoint changed",
+        "deleted": "Webhook endpoint deleted",
+        "secret_rotated": "Webhook secret rolled"
+      },
+      "customer": {
+        "blocked": "Customer blocked",
+        "unblocked": "Customer unblocked"
+      },
+      "credit_note": {
+        "issued": "Credit note issued",
+        "refunded": "Credit note refunded",
+        "refund_failed": "Refund failed",
+        "refund_retried": "Refund retried"
+      },
+      "provider_account": {
+        "connected": "Provider account connected",
+        "replaced": "Provider account replaced",
+        "removed": "Provider account removed",
+        "default_changed": "Default provider changed"
+      },
+      "tenant": {
+        "status_requested": "Status change requested",
+        "status_changed": "Status changed",
+        "settings_updated": "Settings changed"
+      },
+      "two_factor": {
+        "enabled": "Two-factor sign-in turned on",
+        "disabled": "Two-factor sign-in turned off",
+        "recovery_codes_regenerated": "Recovery codes regenerated"
+      }
     }
   }
 }
