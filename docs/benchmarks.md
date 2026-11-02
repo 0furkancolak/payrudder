@@ -51,8 +51,7 @@ workload paced to 100 events/s so that faults land during it), 10 tenants x 20 c
 | A5 invoice totals, A6 one successful charge per invoice | pass in `TestMonthCloseSurvivesBrokerRestart` (60 customers, RabbitMQ restarted mid-close) |
 | A7 frozen-period violations | skipped here (no Prometheus in the chaos stack); `PAYRUDDER_PROMETHEUS_URL` enables it |
 
-Artifact: [chaos_20k_local.json](benchmarks/chaos_20k_local.json). **Not yet done:** the 1M-event run and three consecutive green nightlies (the acceptance
-criteria of Phase 09) need the nightly workflow to run on a CI runner; `.github/workflows/nightly.yml` is in place and has not run. The fault counts of a
+Artifact: [chaos_20k_local.json](benchmarks/chaos_20k_local.json). The 1M-event run is the `chaos-1m` job of `.github/workflows/nightly.yml`: GitHub shows it succeeding (35 to 45 minutes) on the nights of 2026-10-30, 10-31, 11-01 and 11-02, and the whole nightly workflow was green on 10-29, 10-30, 10-31 and 11-01 (three consecutive green nightlies, the Phase 09 criterion); **its reports are artifacts of those runs and their numbers (kills, faults, durations) have not been copied here**, and the other jobs of the nightly (`cells`) were red on 11-02. The fault counts of a
 20k-event run are small by construction (it lasts four minutes): the nightly requires at least 30 kills and 10 faults and fails otherwise.
 
 ## Memory budgets
