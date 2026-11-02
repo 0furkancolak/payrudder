@@ -57,10 +57,12 @@ type Attempt struct {
 	Provider    string
 	AmountMinor int64
 	Currency    string
+	// PaidMinor is what the payer was quoted in all when the attempt was split into instalments (the invoice price and the bank's charge for them); 0 for one payment.
+	PaidMinor int64
 }
 
 func attemptOf(r sqlc.GetChargeAttemptByKeyRow) Attempt {
-	return Attempt{TenantID: r.TenantID, InvoiceID: r.InvoiceID, Environment: r.Environment, Provider: r.Provider, AmountMinor: r.AmountMinor, Currency: r.Currency}
+	return Attempt{TenantID: r.TenantID, InvoiceID: r.InvoiceID, Environment: r.Environment, Provider: r.Provider, AmountMinor: r.AmountMinor, Currency: r.Currency, PaidMinor: r.PaidMinor}
 }
 
 // ChargeByKey finds the most recent charge attempt made under an idempotency key (the provider's conversation id), whoever's it is: the way to the tenant of a

@@ -158,10 +158,19 @@ type paymentMethod struct {
 	ID       string `json:"id"`
 	Kind     string `json:"kind"`
 	Provider string `json:"provider"`
+	// Installments are the splits the provider quotes for a stored card and the invoice's amount (more than one payment); empty for every other method, and when the
+	// account enables none or the provider does not answer.
+	Installments []paymentInstallment `json:"installments"`
 }
 
-func (s *Server) liveMethods(ctx context.Context, tenantID, currency, country, provider, customer string) ([]paymentMethod, error) {
-	q := url.Values{"environment": {env.Live.String()}, "currency": {currency}}
+type paymentInstallment struct {
+	Count      int   `json:"count"`
+	EachMinor  int64 `json:"each_minor"`
+	TotalMinor int64 `json:"total_minor"`
+}
+
+func (s *Server) liveMethods(ctx context.Context, tenantID, currency, country, provider, customer string, amountMinor int64) ([]paymentMethod, error) {
+	q := url.Values{"environment": {env.Live.String()}, "currency": {currency}, "amount_minor": {itoa(amountMinor)}}
 	if country != "" {
 		q.Set("country", country)
 	}

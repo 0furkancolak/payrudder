@@ -732,7 +732,20 @@
         "note": "Une estimation au {when}, calculée comme la vraie facture. Elle bouge à chaque événement jusqu'à la clôture de la période, et un changement de forfait, un coupon ou un taux de taxe défini plus tard peut la modifier.",
         "creditSurplus": "{amount} serait ajouté au solde créditeur du client : les lignes totalisent moins que zéro."
       },
-      "taxNotSaved": "Le client a été créé, mais ses données fiscales n'ont pas été enregistrées. Fermez ce panneau, ouvrez le client et utilisez Modifier, Données fiscales pour réessayer."
+      "taxNotSaved": "Le client a été créé, mais ses données fiscales n'ont pas été enregistrées. Fermez ce panneau, ouvrez le client et utilisez Modifier, Données fiscales pour réessayer.",
+      "cards": {
+        "title": "Cartes enregistrées",
+        "card": "Carte",
+        "none": "Le prestataire de paiement ne détient aucune carte pour ce client.",
+        "inUse": "Débitée pour les factures",
+        "delete": "Supprimer la carte",
+        "deleteAria": "Supprimer la carte finissant par {last4}",
+        "deleteTitle": "Supprimer la carte finissant par {last4} ?",
+        "deleteBody": "La carte est supprimée chez le prestataire de paiement et ne peut plus être débitée. C'est irréversible : le client devrait la saisir à nouveau là où les cartes sont enregistrées.",
+        "deleteInUse": "C'est la carte avec laquelle les factures du client sont débitées. Une fois supprimée, le prochain prélèvement échoue tant qu'un nouveau moyen de paiement n'est pas défini pour le client. Elle est supprimée chez le prestataire de paiement, c'est irréversible.",
+        "deletedInUse": "La carte a été supprimée. C'était celle des prélèvements des factures du client : définissez un nouveau moyen de paiement pour le client.",
+        "hint": "Payrudder ne conserve aucun numéro de carte : une carte est enregistrée là où le payeur la saisit, et le moyen de paiement du client la désigne. Ici, vous voyez les cartes et pouvez en supprimer une."
+      }
     },
     "packages": {
       "new": "Nouveau forfait",
@@ -3294,7 +3307,8 @@
         "not_live": "Seules les factures en production sont payées via un prestataire.",
         "payment_in_progress": "Un paiement pour cette facture est en cours de démarrage. Réessayez dans un instant.",
         "return_url_required": "Une adresse de retour est requise pour un paiement en ligne.",
-        "unknown_method": "Ce mode de paiement est inconnu."
+        "unknown_method": "Ce mode de paiement est inconnu.",
+        "installment_unavailable": "Ce nombre de fois n'est pas proposé pour cette carte et ce montant. Payez en une fois ou choisissez l'une des options de la page."
       },
       "ledger": {
         "bad_limit": "La limite doit être comprise entre 1 et 1000.",
@@ -3362,6 +3376,9 @@
       "failover": {
         "bad_target": "Un basculement demande deux comptes différents qui existent dans l'environnement ; un virement bancaire ne peut pas y participer.",
         "not_found": "Aucun basculement n'est défini pour ce compte."
+      },
+      "card": {
+        "not_found": "Le client n'a pas cette carte enregistrée."
       }
     },
     "einvoice": {
@@ -4368,7 +4385,8 @@
           "buyer_country": "Pays de l'acheteur",
           "buyer_zip_code": "Code postal de l'acheteur",
           "buyer_ip": "Adresse IP publique de votre entreprise",
-          "buyer_gsm_number": "Téléphone de l'acheteur"
+          "buyer_gsm_number": "Téléphone de l'acheteur",
+          "enabled_installments": "Versements que le payeur peut choisir"
         },
         "problems": {
           "required": "Obligatoire.",
@@ -4556,7 +4574,8 @@
           "api_key": "Dans le panneau marchand iyzico : Paramètres, Paramètres de l'entreprise, Clés API. Utilisez la paire live.",
           "secret_key": "Affichée à côté de la clé API au même endroit. Elle n'y est montrée qu'une fois ; copiez-la maintenant.",
           "buyer_identity_number": "Le numéro fiscal (TCKN ou VKN) de la personne ou de l'entreprise qui figure comme acheteur. Votre profil de facturation le remplit.",
-          "buyer_ip": "L'adresse IP publique fixe d'où votre entreprise envoie ses requêtes ; iyzico y lie les clés."
+          "buyer_ip": "L'adresse IP publique fixe d'où votre entreprise envoie ses requêtes ; iyzico y lie les clés.",
+          "enabled_installments": "Nombres parmi 1, 2, 3, 6, 9 et 12, séparés par des virgules, par exemple 1, 3, 6. Ils sont proposés sur le formulaire de paiement d'iyzico et, pour une carte enregistrée, sur la page de la facture ; les intérêts sont ceux réglés dans votre panneau iyzico, le payeur peut donc payer plus que la facture et la facture est tout de même payée en totalité. Laissez vide pour un paiement unique. Saisissez-le à nouveau quand vous remplacez les clés."
         },
         "paddle": {
           "api_key": "Dans Paddle, sous Developer tools, Authentication, créez une clé API live.",

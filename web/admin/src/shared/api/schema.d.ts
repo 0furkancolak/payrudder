@@ -113,6 +113,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The cards the payment provider holds for the customer
+         * @description The cards of the provider's card storage (iyzico) under the user key the customer's payment method names, never a number: the bank, the first digits (BIN), the last four, the expiry. The card the customer's invoices are charged with is `in_use`. A customer with no stored card has an empty list and no provider. Payrudder cannot put a card in storage (it holds no card numbers): whoever holds the number puts it there and sets the payment method with `PUT /v1/customers/{external_id}/payment-method`. The sandbox has none.
+         */
+        get: operations["listCustomerCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/cards/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete one of the customer's stored cards at the provider
+         * @description The card must be one of the customer's own (a token of another customer is `404 payments.card.not_found`, and nothing is sent to the provider). The customer's payment method is not changed: when the card was `in_use` the answer says so, and the next charge fails until a new payment method is set.
+         */
+        delete: operations["deleteCustomerCard"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/address": {
         parameters: {
             query?: never;
@@ -2506,7 +2546,7 @@ export interface paths {
         put?: never;
         /**
          * Pay the invoice by one of the methods the page offers
-         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page), `stored_card` (the customer's saved card, authenticated at their bank: the answer is the bank's 3-D Secure page, served as a sandboxed document) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
+         * @description Form field `method`: `mock` (sandbox and demo only), `checkout` (a redirect to the provider's page), `stored_card` (the customer's saved card, authenticated at their bank: the answer is the bank's 3-D Secure page, served as a sandboxed document) or an `instructions:<provider>` method (the page shows the payment details and a reference). Paying never marks the invoice paid by itself: the provider's confirmed notification does. At most 10 a minute per address. Form field `installments` (only with `stored_card`, 2 to 12): the saved card is paid in that many instalments. The page offers the choice only when the seller's iyzico account enables instalments (`enabled_installments`) and iyzico quotes them for the saved card and the amount; the count is checked against a fresh quote before anything starts (`409` when it is not offered), and the total of the quote, which can be more than the invoice when the bank charges for instalments, is what the payer is charged. The invoice is paid in full at its own price either way. Left out, or 1, is one payment. When the seller requires agreements (`PUT /v1/contracts/settings`), the form carries, for each text the page showed: `v_<kind>` (the version id shown) and `accept_<kind>=1`, and for a consumer of a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. The server checks them: a request without every box, or for a text replaced since the page was shown, starts nothing and answers the page again with `422`. The acceptance is recorded with the address and browser the server observed.
          */
         post: operations["hostedInvoicePay"];
         delete?: never;
@@ -8078,6 +8118,35 @@ export interface components {
             customers: components["schemas"]["Customer"][];
             next_page_token: string;
         };
+        StoredCard: {
+            /** @description The provider's card token (cardToken): what the delete names */
+            token: string;
+            alias: string;
+            /** @description The first digits of the number (the BIN) */
+            bin: string;
+            last4: string;
+            /** @description CREDIT_CARD, DEBIT_CARD or PREPAID_CARD */
+            type: string;
+            /** @description VISA, MASTER_CARD, ... */
+            association: string;
+            family: string;
+            bank: string;
+            expire_month: string;
+            expire_year: string;
+            /** @description The customer's payment method names this card */
+            in_use: boolean;
+        };
+        CustomerCards: {
+            /** @description The provider that holds the cards; empty when the customer has none */
+            provider: string;
+            cards: components["schemas"]["StoredCard"][];
+        };
+        DeletedCustomerCard: {
+            provider: string;
+            deleted: boolean;
+            /** @description The deleted card was the one the customer's payment method names: set a new payment method */
+            was_in_use: boolean;
+        };
         SetPaymentMethodRequest: {
             payment_method: string;
         };
@@ -13518,6 +13587,55 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    listCustomerCards: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerCards"];
+                };
+            };
+            404: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
+    deleteCustomerCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: components["parameters"]["ExternalID"];
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletedCustomerCard"];
+                };
+            };
+            404: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+        };
+    };
     setCustomerAddress: {
         parameters: {
             query?: never;
@@ -17402,6 +17520,7 @@ export interface operations {
             content: {
                 "application/x-www-form-urlencoded": {
                     method: string;
+                    installments?: number;
                     v_distance_sales?: string;
                     accept_distance_sales?: string;
                     v_pre_info?: string;

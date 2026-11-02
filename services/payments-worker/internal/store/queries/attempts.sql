@@ -12,7 +12,8 @@ ON CONFLICT (command_id) DO NOTHING;
 -- name: GetChargeAttemptByKey :one
 SELECT tenant_id, invoice_id, environment, provider,
   COALESCE((request->>'amount_minor')::bigint, (request->>'amountMinor')::bigint, 0)::bigint AS amount_minor,
-  COALESCE(request->>'currency', '')::text AS currency
+  COALESCE(request->>'currency', '')::text AS currency,
+  COALESCE((request->>'paid_minor')::bigint, 0)::bigint AS paid_minor
 FROM payment_attempts WHERE kind = 'charge' AND idempotency_key = @idempotency_key ORDER BY created_at DESC LIMIT 1;
 
 -- name: GetChargeProvider :one

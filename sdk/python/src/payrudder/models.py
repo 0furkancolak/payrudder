@@ -131,6 +131,31 @@ class SetPaymentMethodRequest(TypedDict):
     payment_method: str
 
 
+class StoredCard(TypedDict):
+    token: str
+    alias: str
+    bin: str
+    last4: str
+    type: str
+    association: str
+    family: str
+    bank: str
+    expire_month: str
+    expire_year: str
+    in_use: bool
+
+
+class CustomerCards(TypedDict):
+    provider: str
+    cards: list[StoredCard]
+
+
+class DeletedCustomerCard(TypedDict):
+    provider: str
+    deleted: bool
+    was_in_use: bool
+
+
 class _CustomerContactRequired(TypedDict):
     name: str
     email: str

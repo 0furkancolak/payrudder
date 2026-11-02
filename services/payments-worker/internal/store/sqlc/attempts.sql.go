@@ -42,7 +42,8 @@ func (q *Queries) GetAttemptReply(ctx context.Context, commandID uuid.UUID) ([]b
 const getChargeAttemptByKey = `-- name: GetChargeAttemptByKey :one
 SELECT tenant_id, invoice_id, environment, provider,
   COALESCE((request->>'amount_minor')::bigint, (request->>'amountMinor')::bigint, 0)::bigint AS amount_minor,
-  COALESCE(request->>'currency', '')::text AS currency
+  COALESCE(request->>'currency', '')::text AS currency,
+  COALESCE((request->>'paid_minor')::bigint, 0)::bigint AS paid_minor
 FROM payment_attempts WHERE kind = 'charge' AND idempotency_key = $1 ORDER BY created_at DESC LIMIT 1
 `
 
@@ -53,6 +54,7 @@ type GetChargeAttemptByKeyRow struct {
 	Provider    string
 	AmountMinor int64
 	Currency    string
+	PaidMinor   int64
 }
 
 func (q *Queries) GetChargeAttemptByKey(ctx context.Context, idempotencyKey string) (GetChargeAttemptByKeyRow, error) {
@@ -65,6 +67,7 @@ func (q *Queries) GetChargeAttemptByKey(ctx context.Context, idempotencyKey stri
 		&i.Provider,
 		&i.AmountMinor,
 		&i.Currency,
+		&i.PaidMinor,
 	)
 	return i, err
 }
