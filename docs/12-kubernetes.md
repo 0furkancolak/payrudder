@@ -31,11 +31,13 @@ The kind node maps the host ports 42800 (gateway), 42890 (mock-psp), 42825 (Mail
 ## Install on your own cluster
 
 ```bash
-cp deploy/helm/payrudder/values-secrets.example.yaml my-secrets.yaml      # change EVERY value; keep the file out of git
+cp deploy/helm/payrudder/values-secrets.example.yaml my-secrets.yaml      # change EVERY value (plans-svc will not start on a published pepper); keep the file out of git
 make k8s-install REGISTRY=ghcr.io/you/ TAG=dev SECRETS=my-secrets.yaml
 kubectl -n payrudder port-forward svc/gateway 8000:8000                   # or put an Ingress in front of the gateway Service
 make k8s-uninstall                                                      # the volumes stay until you delete the namespace
 ```
+
+`values-small.yaml` sets `global.environment: production` (`PAYRUDDER_ENV`: `local`, `ci` and `kind` are development environments, where a secret may be left unset or at the public local value; `production` and `railway` are not). The chart ships **no** `auth.otpPepper` (it keys the hash of the sign-in and recovery codes): in a development environment it hands plans-svc the public local value, anywhere else `helm template` fails with "auth.otpPepper is required" until your secrets file sets one (`openssl rand -hex 32`), and plans-svc itself refuses to start without one of 32 characters or more that is not a value from this repository. With `secrets.existingSecrets` the Secret you made must hold `PAYRUDDER_OTP_PEPPER`.
 
 `k8s-install` applies `payrudder-infra` (single replica of everything, or add `-f deploy/helm/payrudder-infra/values-ha.yaml` through `HELM_ARGS` for three Redpanda and RabbitMQ nodes) and then `payrudder` with `values-small.yaml`: one replica, 128 MiB limits, the gateway as a ClusterIP Service,
 no mock provider. The cluster is the one `kubectl` points at (`kubectl config use-context`). Build and push the images first (`docker compose --profile app build`, then tag `payrudder/<service>` with your registry and push); a managed Postgres, Redis, Kafka, RabbitMQ or S3 replaces its part of `payrudder-infra` through values (see below).

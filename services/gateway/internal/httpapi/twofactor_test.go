@@ -187,3 +187,54 @@ func TestOperatorResetsATwoFactor(t *testing.T) {
 		t.Errorf("no reason: %d %v", resp.StatusCode, m)
 	}
 }
+
+// The platform operator is the most powerful role there is, and it is a person with a session like any other. An operator who owns an account that requires two-factor sign-in
+// and has not set it up gets the same answer as any owner: nothing but the page that sets it up, /admin/v1/* included.
+func TestAnOperatorWhoMustSetUpTwoFactorReachesNoOperatorRoute(t *testing.T) {
+	p := newProduct(t, nil, withOperators("boss@example.com"))
+	if resp, m := p.call(t, "POST", "/admin/v1/accounts", tokOperatorNeedsSetup, "", `{"name":"Acme"}`); resp.StatusCode != 403 || errKeyOf(m) != "identity.two_factor.setup_required" {
+		t.Errorf("operator route: %d %v, want 403 identity.two_factor.setup_required", resp.StatusCode, m)
+	}
+	if resp, m := p.call(t, "POST", "/v1/customers", tokOperatorNeedsSetup, bobLive, `{"external_id":"cus_1","name":"Ada","email":"a@x.io"}`); resp.StatusCode != 403 || errKeyOf(m) != "identity.two_factor.setup_required" {
+		t.Errorf("acting as a tenant: %d %v", resp.StatusCode, m)
+	}
+	if resp, _ := p.call(t, "GET", "/auth/2fa", tokOperatorNeedsSetup, "", ""); resp.StatusCode != 200 {
+		t.Errorf("the page that sets it up: %d", resp.StatusCode)
+	}
+	// The machine token is no person and has no second factor.
+	if resp, _ := p.call(t, "POST", "/admin/v1/accounts", operatorToken, "", `{"name":"Acme"}`); resp.StatusCode != 201 {
+		t.Errorf("the machine token: %d", resp.StatusCode)
+	}
+	// A person who is no operator still hears that, not a hint about two-factor.
+	if resp, m := p.call(t, "POST", "/admin/v1/accounts", tokNeedsSetup, "", `{"name":"Acme"}`); resp.StatusCode != 403 || errKeyOf(m) != "identity.operator.forbidden" {
+		t.Errorf("a non-operator: %d %v", resp.StatusCode, m)
+	}
+}
+
+// PAYRUDDER_OPERATOR_REQUIRE_2FA makes every operator session need two-factor sign-in, whether or not an account obliges them to.
+func TestTheDeploymentCanRequireTwoFactorOfEveryOperator(t *testing.T) {
+	p := newProduct(t, nil, func(d *Deps) { withOperators("boss@example.com")(d); d.OperatorRequireTwoFactor = true })
+	if resp, m := p.call(t, "POST", "/admin/v1/accounts", tokOperator, "", `{"name":"Acme"}`); resp.StatusCode != 403 || errKeyOf(m) != "identity.two_factor.setup_required" {
+		t.Errorf("an operator without it: %d %v", resp.StatusCode, m)
+	}
+	if resp, m := p.call(t, "POST", "/v1/customers", tokOperator, bobLive, `{"external_id":"cus_1","name":"Ada","email":"a@x.io"}`); resp.StatusCode != 403 || errKeyOf(m) != "identity.two_factor.setup_required" {
+		t.Errorf("an operator without it acting as a tenant: %d %v", resp.StatusCode, m)
+	}
+	// What the console needs to send them to the page: /auth/me says setup is required, and /auth/2fa works.
+	if resp, m := p.call(t, "GET", "/auth/me", tokOperator, "", ""); resp.StatusCode != 200 || m["user"].(map[string]any)["two_factor_setup_required"] != true {
+		t.Errorf("me: %d %v", resp.StatusCode, m)
+	}
+	if resp, _ := p.call(t, "GET", "/auth/2fa", tokOperator, "", ""); resp.StatusCode != 200 {
+		t.Errorf("the page that sets it up: %d", resp.StatusCode)
+	}
+	if resp, m := p.call(t, "POST", "/admin/v1/accounts", tokOperatorTwoFactor, "", `{"name":"Acme"}`); resp.StatusCode != 201 {
+		t.Errorf("an operator with it: %d %v", resp.StatusCode, m)
+	}
+	if resp, _ := p.call(t, "POST", "/admin/v1/accounts", operatorToken, "", `{"name":"Acme"}`); resp.StatusCode != 201 {
+		t.Errorf("the machine token: %d", resp.StatusCode)
+	}
+	// It is about operators only: Ada, who has no second factor and is no operator, signs in and works as before.
+	if resp, _ := p.call(t, "GET", "/app/v1/apps", tokAda, "", ""); resp.StatusCode != 200 {
+		t.Errorf("a person who is no operator: %d", resp.StatusCode)
+	}
+}

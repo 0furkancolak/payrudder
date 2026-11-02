@@ -181,7 +181,18 @@ type apiError struct {
 		DeclineCode string `json:"decline_code"`
 		AdviceCode  string `json:"advice_code"`
 		Message     string `json:"message"`
+		// PaymentIntent is "the PaymentIntent object for errors returned on a request involving a PaymentIntent" (docs.stripe.com/api/errors, read 2026-11-02).
+		PaymentIntent *struct {
+			ID string `json:"id"`
+		} `json:"payment_intent"`
 	} `json:"error"`
+}
+
+func (e apiError) intentID() string {
+	if e.Error.PaymentIntent != nil {
+		return e.Error.PaymentIntent.ID
+	}
+	return ""
 }
 
 // Error is a request Stripe refused. It is permanent: the same request is refused the same.
@@ -255,7 +266,10 @@ func (c *Client) refusal(resp *http.Response, raw []byte) error {
 		if code == "" {
 			code = "card_declined"
 		}
-		return &payments.DeclinedError{Code: normalizeDecline(code), Final: doNotRetry(e.Error.AdviceCode)}
+		if code = normalizeDecline(code); code == authRequired {
+			return &payments.ActionRequiredError{Ref: e.intentID()}
+		}
+		return &payments.DeclinedError{Code: code, Final: doNotRetry(e.Error.AdviceCode), Ref: e.intentID()}
 	}
 	switch retry := resp.Header.Get("Stripe-Should-Retry"); {
 	case retry == "false":
@@ -280,10 +294,14 @@ func doNotRetry(advice string) bool { return advice == "do_not_try_again" }
 // issuer gives when the customer tried to go on without it (docs.stripe.com/declines/codes, read 2026-11-02). The Stripe-vocabulary codes otherwise pass as they are.
 func normalizeDecline(code string) string {
 	if code == "authentication_not_handled" {
-		return "authentication_required"
+		return authRequired
 	}
 	return code
 }
+
+// authRequired is the decline of a payment that needs the customer to authenticate (3-D Secure): not a refusal of the card, so Charge reports it as
+// payments.ActionRequiredError and the saga asks the customer to come back instead of retrying.
+const authRequired = "authentication_required"
 
 // threeDecimal are the currencies Stripe takes with three decimals but only in whole tens of the smallest unit (the last digit must be 0).
 var threeDecimal = map[string]bool{"BHD": true, "JOD": true, "KWD": true, "OMR": true, "TND": true}
@@ -342,7 +360,10 @@ func (p paymentIntent) declineCode() string {
 // Charge confirms a PaymentIntent off session for the customer's saved payment method (r.PaymentMethod). Stripe's Idempotency-Key makes a retry return the first
 // answer. A payment method that is attached to a Stripe Customer must be charged with that customer (docs.stripe.com/api/payment_intents/create, read 2026-11-02:
 // "If the payment method is attached to a Customer, you must also provide the ID of that Customer"), so the method is either "pm_..." or "cus_...:pm_...", the
-// customer first. A payment that needs the customer present (3-D Secure) is a decline, because nobody is there to approve it.
+// customer first. A payment that needs the customer present (3-D Secure) is not a decline but a payments.ActionRequiredError: nobody is there to approve it, and the
+// saga asks the customer to come back (docs/plans/08). Stripe documents no hosted page for authenticating an off-session card payment: next_action.use_stripe_sdk "is
+// only intended to be used by Stripe.js" and redirect_to_url belongs to redirect methods (docs.stripe.com/api/payment_intents/object, read 2026-11-02), so the customer
+// is sent to Payrudder's own invoice page, whose Pay button starts Stripe's hosted Checkout.
 func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments.ChargeResult, error) {
 	if r.IdempotencyKey == "" {
 		return payments.ChargeResult{}, errors.New("payments: idempotency key is mandatory")
@@ -378,9 +399,12 @@ func (c *Client) Charge(ctx context.Context, r payments.ChargeRequest) (payments
 	case "processing":
 		return payments.ChargeResult{}, &payments.PendingError{Ref: pi.ID}
 	case "requires_action":
-		return payments.ChargeResult{}, &payments.DeclinedError{Code: "authentication_required"}
+		return payments.ChargeResult{}, &payments.ActionRequiredError{Ref: pi.ID}
 	default: // requires_payment_method, requires_confirmation, canceled
-		return payments.ChargeResult{}, &payments.DeclinedError{Code: pi.declineCode(), Final: pi.final()}
+		if code := pi.declineCode(); code != authRequired {
+			return payments.ChargeResult{}, &payments.DeclinedError{Code: code, Final: pi.final(), Ref: pi.ID}
+		}
+		return payments.ChargeResult{}, &payments.ActionRequiredError{Ref: pi.ID}
 	}
 }
 
@@ -432,14 +456,42 @@ func (c *Client) Status(ctx context.Context, key string) (payments.StatusResult,
 	if len(out.Data) == 0 {
 		return payments.StatusResult{State: payments.StateNotFound}, nil
 	}
-	pi := out.Data[0]
+	return out.Data[0].result()
+}
+
+// StatusByRef implements payments.RefStatuser: it retrieves the PaymentIntent by the id the first response of the charge gave (GET /v1/payment_intents/{id}, docs.stripe.com/api/payment_intents/retrieve),
+// which is read-after-write consistent, unlike the search Status falls back to. The intent must carry the charge's key in its metadata: a reference that belongs to another
+// charge is an error, never an answer.
+func (c *Client) StatusByRef(ctx context.Context, ref, key string) (payments.StatusResult, error) {
+	if !strings.HasPrefix(ref, "pi_") {
+		return payments.StatusResult{}, fmt.Errorf("stripe: %q is not a PaymentIntent id", ref)
+	}
+	var pi paymentIntent
+	if err := c.do(ctx, http.MethodGet, "/v1/payment_intents/"+url.PathEscape(ref), nil, "", &pi); err != nil {
+		var e *Error
+		if errors.As(err, &e) && e.Status == http.StatusNotFound {
+			return payments.StatusResult{State: payments.StateNotFound}, nil
+		}
+		return payments.StatusResult{}, err
+	}
+	if pi.Metadata["payrudder_key"] != key {
+		return payments.StatusResult{}, fmt.Errorf("stripe: PaymentIntent %s does not belong to the charge %q", ref, key)
+	}
+	return pi.result()
+}
+
+// result is what a PaymentIntent says about its charge: processing is not an answer yet (an error the caller retries), requires_action is waiting for the customer.
+func (pi paymentIntent) result() (payments.StatusResult, error) {
 	switch pi.Status {
 	case "succeeded":
 		return payments.StatusResult{State: payments.StateSucceeded, ChargeID: pi.ID}, nil
 	case "requires_payment_method", "canceled":
+		if code := pi.declineCode(); code == authRequired {
+			return payments.StatusResult{State: payments.StateActionRequired, ChargeID: pi.ID}, nil // the customer has not come back to authenticate yet
+		}
 		return payments.StatusResult{State: payments.StateDeclined, ChargeID: pi.ID, DeclineCode: pi.declineCode(), Final: pi.final()}, nil
 	case "requires_action":
-		return payments.StatusResult{State: payments.StateDeclined, ChargeID: pi.ID, DeclineCode: "authentication_required"}, nil
+		return payments.StatusResult{State: payments.StateActionRequired, ChargeID: pi.ID}, nil
 	}
 	return payments.StatusResult{}, &payments.PendingError{Ref: pi.ID}
 }

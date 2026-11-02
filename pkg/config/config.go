@@ -37,7 +37,14 @@ const (
 	EnvKind  Environment = "kind"
 	// EnvRailway is a deployment on Railway (deploy/railway).
 	EnvRailway Environment = "railway"
+	// EnvProduction is any other real deployment (a Helm install on a cluster you run). Like EnvRailway it only labels traces and keeps gRPC reflection off, and it is not
+	// a development environment: the secrets that a development one may leave at a public default are required (see Development).
+	EnvProduction Environment = "production"
 )
+
+// Development says whether the environment is one where a secret may be left unset or at the public value this repository ships (the compose stack, CI, a kind cluster).
+// Every other environment must set its own.
+func (e Environment) Development() bool { return e == EnvLocal || e == EnvCI || e == EnvKind }
 
 // Base holds settings shared by every Payrudder process.
 type Base struct {
@@ -65,7 +72,7 @@ func (b *Base) Common() *Base { return b }
 func (b Base) Validate() error {
 	var errs []error
 	switch b.Env {
-	case EnvLocal, EnvCI, EnvKind, EnvRailway:
+	case EnvLocal, EnvCI, EnvKind, EnvRailway, EnvProduction:
 	default:
 		errs = append(errs, fmt.Errorf("PAYRUDDER_ENV: unknown environment %q", b.Env))
 	}

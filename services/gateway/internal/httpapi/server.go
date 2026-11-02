@@ -116,6 +116,9 @@ type Deps struct {
 	// OperatorEmails lists the addresses of the people who are platform operators (PAYRUDDER_OPERATOR_EMAILS), lower case. A session of a user with one of these
 	// addresses, proven by verification, may use the operator routes; OperatorToken stays as the machine credential of the API, payrudderctl and the tests.
 	OperatorEmails []string
+	// OperatorRequireTwoFactor (PAYRUDDER_OPERATOR_REQUIRE_2FA) makes an operator's session need two-factor sign-in: an operator without it is treated like an owner whose account
+	// requires it and has not set it up (identity.two_factor.setup_required on every route but /auth/*). The machine token is no person and is not asked.
+	OperatorRequireTwoFactor bool
 	// Google is the "Continue with Google" client; nil or unconfigured hides the button and answers 404 on its routes.
 	Google *oidc.Client
 	// AppURL is the console's public address (https://app.example.com), where the browser is sent after a provider login. The OAuth redirect address
@@ -262,7 +265,7 @@ func (s *Server) authorizeTenant(w http.ResponseWriter, r *http.Request, rt Rout
 		return nil, false
 	}
 	if need, ok := permitted(p, rt.Method, rt.Path); !ok {
-		writeError(w, r, errkey.New(codes.PermissionDenied, "gateway.auth.permission_denied", "this API key lacks the permission "+need+" this request needs"))
+		writeError(w, r, permissionDenied(need))
 		return nil, false
 	}
 	// A tenant the operator has frozen (or suspended or banned, for a person or operator acting as it in the console) reads and nothing more.
@@ -369,6 +372,17 @@ func permitted(p auth.Principal, method, path string) (need string, ok bool) {
 	return need, apikey.Allows(p.Permissions, need)
 }
 
+func permissionDenied(need string) error {
+	return errkey.New(codes.PermissionDenied, "gateway.auth.permission_denied", "this API key lacks the permission "+need+" this request needs")
+}
+
+// keyHolds says whether the caller of a tenant route holds perm, for a handler whose need depends on the body or a setting. Like permitted, only an API key is
+// limited: a person or an operator acting as the tenant carries no role.
+func keyHolds(ctx context.Context, perm string) bool {
+	p := principalFrom(ctx)
+	return p.Role == "" || apikey.Allows(p.Permissions, perm)
+}
+
 // actAs resolves the tenant an operator acts as.
 func (s *Server) actAs(ctx context.Context, id string) (auth.Principal, error) {
 	tid, err := uuid.Parse(id)
@@ -434,6 +448,11 @@ func (s *Server) operatorAllowed(r *http.Request) (ok bool, person string, err e
 	case !s.isOperator(sess.User):
 		// A valid session that is not an operator's: signed in, but not allowed (403), so the page does not mistake it for an expired session.
 		return false, "", errkey.New(codes.PermissionDenied, "identity.operator.forbidden", "this area is for platform operators")
+	}
+	// The same rule as for every route of a session: an operator who owes two-factor sign-in (an account they own requires it, or the deployment asks it of operators) has
+	// not earned the platform yet.
+	if err := requireSecondFactorSetup(sess.User, r.URL.Path); err != nil {
+		return false, "", err
 	}
 	return true, normalizeEmail(sess.User.GetEmail()), nil
 }

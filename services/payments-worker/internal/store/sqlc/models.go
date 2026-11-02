@@ -102,6 +102,7 @@ type PaymentAttempt struct {
 	Status         string
 	CreatedAt      time.Time
 	FinishedAt     *time.Time
+	ProviderRef    *string
 }
 
 type PaymentLedger struct {

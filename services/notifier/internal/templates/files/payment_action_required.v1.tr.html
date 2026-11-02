@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="tr" dir="ltr"><body style="font-family: sans-serif">
+{{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir fatura değildir.</strong></p>{{end}}
+<h2>{{index .D "invoice_number"}} numaralı fatura için ödemenizi onaylayın</h2>
+<p>Merhaba {{index .D "customer_name"}}, bankanız <strong>{{index .D "invoice_number"}}</strong> numaralı fatura (dönem {{index .D "period"}}) için <strong>{{index .D "amount"}} {{index .D "currency"}}</strong> tutarındaki ödemeyi onaylamanızı istiyor. Henüz tahsilat yapılmadı.</p>
+{{if index .D "pay_url"}}<p><a href="{{index .D "pay_url"}}">Ödemeyi onayla</a></p>
+<p>Bağlantı açılmazsa bu adresi tarayıcınıza kopyalayın: {{index .D "pay_url"}}</p>{{else}}<p>Bu faturanın ödeme sayfasını daha önce gönderdiğimiz bağlantıdan açın veya {{index .D "tenant_name"}} firmasından yenisini isteyin.</p>{{end}}
+<p>— {{index .D "tenant_name"}}</p>
+</body></html>

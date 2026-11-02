@@ -15,9 +15,10 @@ WHERE session_id = @session_id::uuid AND status IN ('PENDING','UPLOADING')
   AND (sqlc.narg('asset_id')::uuid IS NULL OR id = sqlc.narg('asset_id'))
 FOR UPDATE;
 
+-- Support attachments belong to the help desk: they are listed only when asked for by name, never among "all purposes".
 -- name: ListReadyAssets :many
 SELECT * FROM assets
-WHERE status = 'READY' AND (@purpose::text = '' OR purpose = @purpose) AND id > @after
+WHERE status = 'READY' AND ((@purpose::text = '' AND purpose <> 'support_attachment') OR purpose = @purpose) AND id > @after
 ORDER BY id
 LIMIT @page_size;
 
