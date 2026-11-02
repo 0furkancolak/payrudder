@@ -1025,6 +1025,13 @@
       "runByProviders": "اشتراكات يديرها المزوّدون",
       "reference": "المرجع",
       "nextBilled": "الفوترة التالية",
+      "scheduled": "ما أعلنه المزوّد",
+      "scheduledCancel": "سيُلغى في {date}",
+      "scheduledPause": "سيُوقَف مؤقتًا في {date}",
+      "scheduledPauseUntil": "سيُوقَف مؤقتًا في {date} ويُستأنف في {resume}",
+      "scheduledResume": "سيُستأنف في {date}",
+      "scheduledOther": "{action} في {date}",
+      "scheduledNone": "لا شيء معلن",
       "noProviderSubscriptions": "لا يوجد اشتراك يديره مزوّد بعد.",
       "catalogue": {
         "title": "الكتالوج لدى المزوّد",

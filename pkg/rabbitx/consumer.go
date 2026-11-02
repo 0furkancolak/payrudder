@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -33,6 +34,20 @@ const (
 
 // Handler processes one delivery.
 type Handler func(ctx context.Context, d amqp.Delivery) Outcome
+
+// retryHint carries what a handler learned about how long the retry of its delivery should wait.
+type retryHint struct{ after atomic.Int64 }
+
+type hintKey struct{}
+
+// AskRetryAfter tells the consumer that the retry of the delivery ctx belongs to should wait at least d, which a provider asked for (a Retry-After). It only matters
+// when the handler then returns Retry, and the wait is bounded by RetryCeiling and rounded up to a delay queue (RetryRoutingKeyAfter). Without a consumer around
+// ctx, or for d <= 0, it does nothing.
+func AskRetryAfter(ctx context.Context, d time.Duration) {
+	if h, ok := ctx.Value(hintKey{}).(*retryHint); ok && d > 0 {
+		h.after.Store(int64(d))
+	}
+}
 
 // AttemptHeader counts the retries of a command.
 const AttemptHeader = "x-attempt"
@@ -198,7 +213,8 @@ func settle(ctx, stop context.Context, d amqp.Delivery, queue string, h Handler,
 			requeue(stop, d)
 		}
 	}()
-	outcome := h(ctx, d)
+	hint := &retryHint{}
+	outcome := h(context.WithValue(ctx, hintKey{}, hint), d)
 	span.SetAttributes(attribute.Int("payrudder.outcome", int(outcome)))
 	switch outcome {
 	case Ack:
@@ -220,7 +236,7 @@ func settle(ctx, stop context.Context, d amqp.Delivery, queue string, h Handler,
 		}
 		hdr[AttemptHeader] = int32(attempt + 1) //nolint:gosec // bounded by MaxAttempts
 		err := retryPub.Publish(ctx, Message{
-			Exchange: ExchangeRetry, RoutingKey: RetryRoutingKey(queue, attempt+1),
+			Exchange: ExchangeRetry, RoutingKey: RetryRoutingKeyAfter(queue, attempt+1, time.Duration(hint.after.Load())),
 			Publishing: amqp.Publishing{ContentType: d.ContentType, Body: d.Body, Headers: hdr, MessageId: d.MessageId, Type: d.Type},
 		})
 		if err != nil {

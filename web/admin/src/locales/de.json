@@ -1025,6 +1025,13 @@
       "runByProviders": "Von Anbietern geführte Abonnements",
       "reference": "Referenz",
       "nextBilled": "Nächste Abrechnung",
+      "scheduled": "Vom Anbieter angekündigt",
+      "scheduledCancel": "Wird am {date} gekündigt",
+      "scheduledPause": "Wird am {date} pausiert",
+      "scheduledPauseUntil": "Wird am {date} pausiert, setzt am {resume} fort",
+      "scheduledResume": "Setzt am {date} fort",
+      "scheduledOther": "{action} am {date}",
+      "scheduledNone": "Nichts angekündigt",
       "noProviderSubscriptions": "Noch kein Abonnement wird von einem Anbieter geführt.",
       "catalogue": {
         "title": "Katalog beim Anbieter",

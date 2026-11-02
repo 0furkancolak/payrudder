@@ -1025,6 +1025,13 @@
       "runByProviders": "Sağlayıcıların yönettiği abonelikler",
       "reference": "Referans",
       "nextBilled": "Sonraki faturalama",
+      "scheduled": "Sağlayıcının duyurduğu değişiklik",
+      "scheduledCancel": "{date} tarihinde iptal edilecek",
+      "scheduledPause": "{date} tarihinde duraklatılacak",
+      "scheduledPauseUntil": "{date} tarihinde duraklatılacak, {resume} tarihinde devam edecek",
+      "scheduledResume": "{date} tarihinde devam edecek",
+      "scheduledOther": "{action}: {date}",
+      "scheduledNone": "Duyurulan bir şey yok",
       "noProviderSubscriptions": "Henüz bir sağlayıcının yönettiği abonelik yok.",
       "catalogue": {
         "title": "Sağlayıcıdaki katalog",

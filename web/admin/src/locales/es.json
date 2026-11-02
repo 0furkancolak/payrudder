@@ -1025,6 +1025,13 @@
       "runByProviders": "Suscripciones que gestionan los proveedores",
       "reference": "Referencia",
       "nextBilled": "Próximo cobro",
+      "scheduled": "Anunciado por el proveedor",
+      "scheduledCancel": "Se cancelará el {date}",
+      "scheduledPause": "Se pausará el {date}",
+      "scheduledPauseUntil": "Se pausará el {date} y se reanudará el {resume}",
+      "scheduledResume": "Se reanuda el {date}",
+      "scheduledOther": "{action} el {date}",
+      "scheduledNone": "Nada anunciado",
       "noProviderSubscriptions": "Aún ninguna suscripción la gestiona un proveedor.",
       "catalogue": {
         "title": "Catálogo en el proveedor",

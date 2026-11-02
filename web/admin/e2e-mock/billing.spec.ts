@@ -859,6 +859,34 @@ test.describe("providers", () => {
     await expect(page.getByRole("row", { name: /v1\|month\|USD/ })).toContainText("pri_1");
   });
 
+  test("a cancellation the provider has announced shows beside the status and in the sheet, read-only", async ({ page }) => {
+    const gw = baseTenant(new MockGateway())
+      .on(quiet)
+      .on((c) => {
+        if (c.path === `/admin/v1/tenants/${TENANT}/provider-subscriptions`) {
+          return {
+            body: {
+              subscriptions: [
+                { provider: "paddle", environment: "live", provider_ref: "sub_end", status: "active", updated_at: "2026-10-20T10:00:00Z", scheduled_change: { action: "cancel", effective_at: "2026-12-01T00:00:00Z" } },
+                { provider: "paddle", environment: "live", provider_ref: "sub_plain", status: "active", updated_at: "2026-10-19T10:00:00Z" },
+              ],
+            },
+          };
+        }
+        return undefined;
+      });
+    await gw.install(page);
+    await openTenantPage(page, "/providers");
+    await expect(page.getByRole("row", { name: /sub_end/ })).toContainText("Cancels on");
+    await expect(page.getByRole("row", { name: /sub_plain/ })).not.toContainText("Cancels on");
+    await page.getByRole("row", { name: /sub_end/ }).click();
+    await expect(page.getByRole("dialog")).toContainText("Announced by the provider");
+    await expect(page.getByRole("dialog")).toContainText("Cancels on");
+    await page.keyboard.press("Escape");
+    await page.getByRole("row", { name: /sub_plain/ }).click();
+    await expect(page.getByRole("dialog")).toContainText("Nothing announced");
+  });
+
   test("an account's settings are validated as JSON, sent with the environment, and never shown again", async ({ page }) => {
     const gw = baseTenant(new MockGateway())
       .on(quiet)

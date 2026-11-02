@@ -513,7 +513,7 @@ func (s *Server) completeMigration(ctx context.Context, e subscriptionEvent, lin
 	if id, err := uuid.Parse(done.GetSubscription().GetId()); err == nil {
 		linked = &id
 	}
-	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.occurred); err != nil {
+	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.sub.ScheduledChange, e.occurred); err != nil {
 		return err
 	}
 	return migrationscommand.ReleaseSource(ctx, s.migrationDeps(), e.tenant, e.env, done)
@@ -521,7 +521,7 @@ func (s *Server) completeMigration(ctx context.Context, e subscriptionEvent, lin
 
 // followSubscription stores the provider's view of a subscription and tells plans-svc, which links it to ours and follows its status.
 func (s *Server) followSubscription(ctx context.Context, e subscriptionEvent, linked *uuid.UUID, owner string) error {
-	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.occurred); err != nil {
+	if err := s.Subscriptions.Upsert(ctx, e.tenant, e.provider, e.env, e.sub.ProviderRef, linked, e.sub.Status, e.sub.NextBilledAt, e.sub.ScheduledChange, e.occurred); err != nil {
 		return err
 	}
 	if s.Plans == nil {

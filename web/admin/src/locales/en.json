@@ -1025,6 +1025,13 @@
       "runByProviders": "Subscriptions the providers run",
       "reference": "Reference",
       "nextBilled": "Next billed",
+      "scheduled": "Announced by the provider",
+      "scheduledCancel": "Cancels on {date}",
+      "scheduledPause": "Pauses on {date}",
+      "scheduledPauseUntil": "Pauses on {date}, resumes on {resume}",
+      "scheduledResume": "Resumes on {date}",
+      "scheduledOther": "{action} on {date}",
+      "scheduledNone": "Nothing announced",
       "noProviderSubscriptions": "No subscription is run by a provider yet.",
       "catalogue": {
         "title": "Catalogue at the provider",

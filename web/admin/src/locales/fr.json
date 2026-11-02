@@ -1025,6 +1025,13 @@
       "runByProviders": "Abonnements gérés par les prestataires",
       "reference": "Référence",
       "nextBilled": "Prochaine facturation",
+      "scheduled": "Annoncé par le prestataire",
+      "scheduledCancel": "Sera résilié le {date}",
+      "scheduledPause": "Sera mis en pause le {date}",
+      "scheduledPauseUntil": "Sera mis en pause le {date}, reprend le {resume}",
+      "scheduledResume": "Reprend le {date}",
+      "scheduledOther": "{action} le {date}",
+      "scheduledNone": "Rien d'annoncé",
       "noProviderSubscriptions": "Aucun abonnement n'est encore géré par un prestataire.",
       "catalogue": {
         "title": "Catalogue chez le fournisseur",

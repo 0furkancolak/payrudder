@@ -86,13 +86,17 @@ func (e *DeclinedError) Error() string { return "payment declined: " + e.Code }
 // TransientError is a failure that may succeed when retried (5xx, connection reset).
 type TransientError struct {
 	Err error
-	// RetryAfter is how long the provider asked callers to wait before trying again (a Retry-After header); zero when it did not say. Nothing in Payrudder
-	// schedules by it yet: payments-worker's delay queues use their own backoff.
+	// RetryAfter is how long the provider asked callers to wait before trying again (a Retry-After header); zero when it did not say. The circuit breaker reads it,
+	// and so do payments-worker's delay queues (through RetryDelay): a command that failed with it is retried after the longer of its tier's delay and this, at most
+	// rabbitx.RetryCeiling.
 	RetryAfter time.Duration
 }
 
 func (e *TransientError) Error() string { return "transient payment provider error: " + e.Err.Error() }
 func (e *TransientError) Unwrap() error { return e.Err }
+
+// RetryDelay is RetryAfter, named for pkg/workerx, which asks any error for it without importing this package.
+func (e *TransientError) RetryDelay() time.Duration { return e.RetryAfter }
 
 // ErrTimeout means the provider did not answer in time: the charge may or may not have happened. Callers must not
 // retry blindly; they ask Status.
