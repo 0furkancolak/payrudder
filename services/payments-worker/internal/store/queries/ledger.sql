@@ -56,3 +56,9 @@ ORDER BY l.id DESC LIMIT 1;
 SELECT provider_ref FROM payment_ledger
 WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND kind = 'refund' AND idempotency_key = @idempotency_key AND status = 'succeeded'
 ORDER BY id DESC LIMIT 1;
+
+-- name: ListInvoiceCharges :many
+-- The successful charges of an invoice at one provider account, one per provider reference (the command's answer and the notification of the same charge are one row).
+SELECT DISTINCT ON (provider_ref) provider_ref::text AS provider_ref, amount_minor FROM payment_ledger
+WHERE tenant_id = @tenant_id AND invoice_id = @invoice_id AND provider = @provider AND kind = 'charge' AND status = 'succeeded' AND provider_ref IS NOT NULL
+ORDER BY provider_ref, id;

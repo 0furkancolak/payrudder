@@ -423,6 +423,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `payments.reconcile.resolved`
 - `payments.reconcile.too_long`
 - `payments.reconcile.too_many`
+- `payments.refund.charge_unclear`
 - `payments.request.bad_audit_filter`
 - `payments.request.bad_body`
 - `payments.request.bad_environment`

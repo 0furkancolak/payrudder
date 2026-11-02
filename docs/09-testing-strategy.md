@@ -27,6 +27,10 @@
 one customer per `pm_sandbox_*` token → fractional and integer events → `ClosePeriodNow` → assert each saga's terminal state,
 `SBX-` numbering, PDF in MinIO, `[SANDBOX]` emails in Mailpit, and zero calls to the live provider.
 
+## Provider sandboxes (nightly)
+
+The adapters' fakes cannot show how a provider really answers, and the compatibility matrices mark those points UNVERIFIED. `TestSandbox` in `pkg/payments/{stripe,paddle,iyzico}` is the one test per adapter that talks to the provider's own sandbox (Stripe: one read-only `GET /v1/balance` with a test-mode key; Paddle: the health check and a cursor-paged list; iyzico: a status query of an unknown key). Without credentials each skips itself with the reason, so `go test` stays green and says nothing about the provider. `.github/workflows/nightly-providers.yml` (a schedule and `workflow_dispatch`) runs them through `scripts/provider-sandbox.sh`, one matrix job per provider: **without the repository secrets the job prints `skipped: no secrets` and succeeds**; with them a failing test fails the job, and so does a test that skipped itself with the secrets set. Secrets: `STRIPE_SANDBOX_API_KEY` (a live key fails the test on purpose), `PADDLE_SANDBOX_API_KEY`, `IYZICO_SANDBOX_API_KEY`, `IYZICO_SANDBOX_SECRET_KEY`, `IYZICO_SANDBOX_CARD`. **None of it has run against a real sandbox: no account exists.** What a green run would and would not prove is the matrices' business; it proves the credentials work and the calls above are accepted, not that a charge, a refund or a webhook behaves as the matrices assume.
+
 ## Integration tests (per service)
 
 Each service has `internal/.../*_integration_test.go` behind the build tag `integration`. Containers are shared per package
