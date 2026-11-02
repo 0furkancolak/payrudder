@@ -4946,6 +4946,31 @@ paths:
         "501": { $ref: "#/components/responses/Error" }
         "502": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}/payment-method-setup:
+    post:
+      operationId: createProviderPaymentMethodSetup
+      summary: A page where the customer saves a payment method for later charges, with nothing charged now (Stripe's Checkout in setup mode)
+      description: >
+        The page is made on the provider's customer for this customer (made once and remembered), in the tenant's currency; the customer comes back to `return_url`.
+        Nothing is set by this call: when the provider's notification says the method was saved (`checkout.session.completed` of the setup, then its SetupIntent),
+        it becomes the customer's payment method (`cus_...:pm_...`), the one their invoices are charged with. The seller's terms for saving and later charging a card
+        (the customer's agreement to be charged when they are not present) are shown by the page the customer comes from, not here. 409 `payments.provider.not_supported`
+        for a provider that has no such page.
+      parameters:
+        - { name: tenant_id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: provider, in: path, required: true, schema: { type: string, enum: [iyzico, paddle, stripe] } }
+        - { name: external_id, in: path, required: true, schema: { type: string } }
+        - { name: environment, in: query, required: true, schema: { type: string, enum: [sandbox, live] } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateProviderPaymentMethodSetupRequest" } } }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/CreateProviderPaymentMethodSetupResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "502": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change-preview:
     post:
       operationId: previewProviderSubscriptionChange
@@ -8080,6 +8105,17 @@ components:
       type: object
     TenantProviderWebhookRequest:
       type: object
+    CreateProviderPaymentMethodSetupRequest:
+      type: object
+      required: [return_url]
+      properties:
+        return_url: { type: string, format: uri, description: Where the customer comes back to (https only). }
+    CreateProviderPaymentMethodSetupResponse:
+      type: object
+      required: [url, ref]
+      properties:
+        url: { type: string, description: The provider's page; send the customer there. }
+        ref: { type: string, description: "The provider's id of the page (cs_... at Stripe)." }
     ProviderWebhookEndpoint:
       type: object
       required: [endpoint_id]

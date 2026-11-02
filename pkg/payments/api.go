@@ -147,6 +147,33 @@ type DocumentLinker interface {
 	InvoiceURL(ctx context.Context, transactionRef string) (string, error)
 }
 
+// SetupRequest asks a provider for a page where a customer saves a payment method for later charges, with nothing charged now (Stripe's Checkout in setup mode).
+type SetupRequest struct {
+	// CustomerRef is the provider's customer when it is known; empty, the provider makes one.
+	CustomerRef string
+	// PayrudderCustomerID keys what Payrudder remembers at the provider; ExternalID is the tenant's own id for the customer, which the saved method is set on afterwards.
+	// Both come back in the notification that says the method was saved.
+	PayrudderCustomerID, ExternalID string
+	Email, Name                     string
+	// Currency is the tenant's, in upper case; a provider that asks for one in setup mode (Stripe) takes it from here.
+	Currency  string
+	ReturnURL string
+	// IdempotencyKey makes a repeated request answer the same page.
+	IdempotencyKey string
+}
+
+// SetupCheckout is the page, and the provider's customer the method will be saved on.
+type SetupCheckout struct {
+	URL, Ref, CustomerRef string
+}
+
+// SetupProvider is a provider that can have a customer save a payment method on its own page, so that Payrudder charges it later without the customer present. The
+// method is learned from the notification (KindPaymentMethod), never from the return of the customer's browser.
+type SetupProvider interface {
+	Provider
+	CreateSetupCheckout(ctx context.Context, r SetupRequest) (SetupCheckout, error)
+}
+
 // WebhookRegistration asks a provider to start sending its notifications to URL.
 type WebhookRegistration struct {
 	URL string

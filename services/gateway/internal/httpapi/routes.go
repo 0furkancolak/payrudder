@@ -237,6 +237,7 @@ func (s *Server) operatorProviderRoutes() []Route {
 		{"GET", "/admin/v1/tenants/{tenant_id}/providers/{provider}/catalogue", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}/portal", AccessOperator, "", s.providerAPI()},
+		{"POST", "/admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}/payment-method-setup", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change-preview", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change", AccessOperator, "", s.providerAPI()},
 		{"POST", "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/pause", AccessOperator, "", s.providerAPI()},

@@ -5,6 +5,8 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -18,6 +20,8 @@ import (
 // Plans is what the commands ask of plans-svc, as the tenant.
 type Plans interface {
 	GetCustomer(ctx context.Context, tenant uuid.UUID, externalID string) (*plansv1.Customer, error)
+	// TenantCurrency is the currency of the tenant, which a provider that asks for one when a customer saves a payment method takes.
+	TenantCurrency(ctx context.Context, tenant uuid.UUID) (string, error)
 }
 
 // Deps is what the commands need. Plans nil means plans-svc is not configured, and customers cannot be looked up.
@@ -49,6 +53,42 @@ func Ensure(ctx context.Context, d Deps, tg target.Target, api payments.Customer
 		}
 	}
 	return refs, nil
+}
+
+// SetupPaymentMethod opens the provider's page where the customer saves a payment method for later charges, returning to returnURL. The provider's customer is the
+// one Payrudder remembers for this customer (the object `cus:{customer id}`, as for a provider that holds customers) or one the provider makes, and is remembered at
+// once. Nothing is set on the customer here: the method is set when the provider's notification says it was saved (webhook.recordPaymentMethod).
+func SetupPaymentMethod(ctx context.Context, d Deps, tg target.Target, api payments.SetupProvider, externalID, returnURL string) (payments.SetupCheckout, error) {
+	if d.Plans == nil {
+		return payments.SetupCheckout{}, refuse.New(http.StatusServiceUnavailable, "payments.customer.not_ready", "plans-svc is not configured")
+	}
+	c, err := d.Plans.GetCustomer(ctx, tg.Tenant, externalID)
+	if err != nil {
+		return payments.SetupCheckout{}, refuse.New(http.StatusNotFound, "payments.customer.not_ready", "no such customer")
+	}
+	currency, err := d.Plans.TenantCurrency(ctx, tg.Tenant)
+	if err != nil {
+		return payments.SetupCheckout{}, &refuse.Plans{Err: err}
+	}
+	if u, err := url.Parse(returnURL); err != nil || u.Scheme != "https" || u.Host == "" {
+		return payments.SetupCheckout{}, refuse.New(http.StatusBadRequest, "payments.checkout.fields_required", "return_url must be an https:// address")
+	}
+	key := "cus:" + c.GetId()
+	ref, _, err := d.Objects.Get(ctx, tg.Tenant, tg.Provider, tg.Env, "customer", key)
+	if err != nil {
+		return payments.SetupCheckout{}, err
+	}
+	co, err := api.CreateSetupCheckout(ctx, payments.SetupRequest{CustomerRef: ref, PayrudderCustomerID: c.GetId(), ExternalID: c.GetExternalId(), Email: c.GetEmail(), Name: c.GetName(),
+		Currency: strings.ToUpper(currency), ReturnURL: returnURL, IdempotencyKey: "setup-" + uuid.NewString()})
+	if err != nil {
+		return payments.SetupCheckout{}, &refuse.Provider{What: "saving a payment method", Err: err}
+	}
+	if co.CustomerRef != "" && co.CustomerRef != ref {
+		if err := d.Objects.Put(ctx, tg.Tenant, tg.Provider, tg.Env, "customer", key, co.CustomerRef); err != nil {
+			d.Log.ErrorContext(ctx, "could not remember a customer created at the provider", "provider", tg.Provider, "ref", co.CustomerRef, "err", err)
+		}
+	}
+	return co, nil
 }
 
 // PortalLink returns the provider's page where the customer manages payment methods and sees invoices. The customer is made known to the provider first.

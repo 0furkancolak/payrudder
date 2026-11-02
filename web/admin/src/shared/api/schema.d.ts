@@ -5470,6 +5470,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/tenants/{tenant_id}/providers/{provider}/customers/{external_id}/payment-method-setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A page where the customer saves a payment method for later charges, with nothing charged now (Stripe's Checkout in setup mode)
+         * @description The page is made on the provider's customer for this customer (made once and remembered), in the tenant's currency; the customer comes back to `return_url`. Nothing is set by this call: when the provider's notification says the method was saved (`checkout.session.completed` of the setup, then its SetupIntent), it becomes the customer's payment method (`cus_...:pm_...`), the one their invoices are charged with. The seller's terms for saving and later charging a card (the customer's agreement to be charged when they are not present) are shown by the page the customer comes from, not here. 409 `payments.provider.not_supported` for a provider that has no such page.
+         */
+        post: operations["createProviderPaymentMethodSetup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{tenant_id}/providers/{provider}/subscriptions/{id}/change-preview": {
         parameters: {
             query?: never;
@@ -8798,6 +8818,19 @@ export interface components {
         };
         ProviderWebhookRequest: Record<string, never>;
         TenantProviderWebhookRequest: Record<string, never>;
+        CreateProviderPaymentMethodSetupRequest: {
+            /**
+             * Format: uri
+             * @description Where the customer comes back to (https only).
+             */
+            return_url: string;
+        };
+        CreateProviderPaymentMethodSetupResponse: {
+            /** @description The provider's page; send the customer there. */
+            url: string;
+            /** @description The provider's id of the page (cs_... at Stripe). */
+            ref: string;
+        };
         ProviderWebhookEndpoint: {
             /** @description The provider's id of the endpoint it created (we_... at Stripe). The signing secret is stored, never returned. */
             endpoint_id: string;
@@ -22327,6 +22360,41 @@ export interface operations {
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
             501: components["responses"]["Error"];
+            502: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    createProviderPaymentMethodSetup: {
+        parameters: {
+            query: {
+                environment: "sandbox" | "live";
+            };
+            header?: never;
+            path: {
+                tenant_id: string;
+                provider: "iyzico" | "paddle" | "stripe";
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateProviderPaymentMethodSetupRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateProviderPaymentMethodSetupResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
             502: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
