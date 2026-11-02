@@ -13,6 +13,35 @@ import (
 	"github.com/google/uuid"
 )
 
+const countEarlierChargeAttempts = `-- name: CountEarlierChargeAttempts :one
+SELECT count(*) FROM payment_attempts
+WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'charge' AND command_id <> $3
+  AND (idempotency_key = $4 OR starts_with(idempotency_key, $5::text))
+`
+
+type CountEarlierChargeAttemptsParams struct {
+	TenantID        uuid.UUID
+	InvoiceID       uuid.UUID
+	ExceptCommandID uuid.UUID
+	IdempotencyKey  string
+	FailoverPrefix  string
+}
+
+// The other charge commands started for an invoice under an idempotency key, or under a failover key made from it (the attempt at another account). Billing re-issues a
+// charge nobody answered with a new command id and the same key, so the command id cannot tell a repeat from a first try.
+func (q *Queries) CountEarlierChargeAttempts(ctx context.Context, arg CountEarlierChargeAttemptsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countEarlierChargeAttempts,
+		arg.TenantID,
+		arg.InvoiceID,
+		arg.ExceptCommandID,
+		arg.IdempotencyKey,
+		arg.FailoverPrefix,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countLinkAttempts = `-- name: CountLinkAttempts :one
 SELECT count(*) FROM payment_attempts WHERE tenant_id = $1 AND invoice_id = $2 AND kind = 'charge' AND idempotency_key LIKE 'link:%'
 `

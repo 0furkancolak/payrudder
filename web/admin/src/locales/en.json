@@ -3321,6 +3321,9 @@
       },
       "card": {
         "not_found": "The customer has no such stored card."
+      },
+      "refund": {
+        "charge_unclear": "The invoice has several successful charges and the refund does not single out one of them. Refund the customer at the payment provider, then record it on the credit note."
       }
     },
     "einvoice": {

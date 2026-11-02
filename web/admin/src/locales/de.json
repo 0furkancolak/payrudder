@@ -3321,6 +3321,9 @@
       },
       "card": {
         "not_found": "Der Kunde hat keine solche gespeicherte Karte."
+      },
+      "refund": {
+        "charge_unclear": "Die Rechnung hat mehrere erfolgreiche Abbuchungen, und die Erstattung bestimmt keine davon eindeutig. Erstatten Sie den Kunden beim Zahlungsanbieter und erfassen Sie es dann auf der Gutschrift."
       }
     },
     "einvoice": {
