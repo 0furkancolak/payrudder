@@ -351,6 +351,7 @@ type PaymentLink struct {
 	Credits            *int64
 	ValidityDays       *int32
 	PromotionCode      *string
+	RequiredContracts  []string
 }
 
 type PortalLink struct {

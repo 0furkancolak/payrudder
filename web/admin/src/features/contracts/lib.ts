@@ -1,5 +1,7 @@
+import { dayStart } from "@/features/audit/lib";
 import type { components } from "@/shared/api/schema";
 import { API_LOCALES, type ApiLocale } from "@/shared/lib/locale";
+import { parseMajor } from "@/shared/lib/money";
 
 export type Kind = components["schemas"]["ContractKind"];
 export type Audience = components["schemas"]["ContractAudience"];
@@ -197,6 +199,34 @@ export function withdrawalMoves(status: WithdrawalStatus): Exclude<WithdrawalSta
 /** Whether the seller can ask billing to refund an accepted withdrawal now: it names an invoice and no refund was asked for, or the last request failed. */
 export const canRequestRefund = (w: Pick<ContractWithdrawal, "status" | "invoice_id" | "refund_state">): boolean =>
   w.status === "accepted" && w.invoice_id !== "" && (w.refund_state === "none" || w.refund_state === "failed");
+
+/**
+ * The refund amount a person typed when accepting a withdrawal or asking again, as the API takes it: empty is "0", the whole of what is left of the invoice. A typed amount
+ * must be a positive amount in the invoice's currency, no more than the invoice's total (billing refuses more than what is left of it, which the console cannot know).
+ */
+export function refundAmount(input: string, currency: string, totalMinor: string): { minor: string } | { error: "amount" | "tooMuch" } {
+  if (input.trim() === "") return { minor: "0" };
+  const minor = parseMajor(input, currency);
+  if (minor === null || minor === "0") return { error: "amount" };
+  return BigInt(minor) > BigInt(/^\d+$/.test(totalMinor) ? totalMinor : "0") ? { error: "tooMuch" } : { minor };
+}
+
+/** What narrows a customer's acceptance log; empty parts narrow nothing. */
+export interface AcceptanceFilter {
+  kind: "" | Kind;
+  source: "" | "api" | "hosted";
+  /** Days as YYYY-MM-DD, both inclusive. */
+  range: { from: string; to: string };
+}
+export const emptyAcceptanceFilter = (): AcceptanceFilter => ({ kind: "", source: "", range: { from: "", to: "" } });
+export const isAcceptanceFiltered = (f: AcceptanceFilter): boolean => f.kind !== "" || f.source !== "" || f.range.from !== "" || f.range.to !== "";
+
+/** The query of the filter: the API keeps an acceptance from `from` on and before `to`, so the last day of the range is sent as the start of the day after it. */
+export function acceptanceQuery(f: AcceptanceFilter): { kind?: Kind; source?: "api" | "hosted"; from?: string; to?: string } {
+  const from = dayStart(f.range.from);
+  const to = dayStart(f.range.to, 1);
+  return { ...(f.kind !== "" ? { kind: f.kind } : {}), ...(f.source !== "" ? { source: f.source } : {}), ...(from !== "" ? { from } : {}), ...(to !== "" ? { to } : {}) };
+}
 
 /** How the go-live checklist sees the agreements: nothing is asked of a seller who requires none, and a required kind that is not ready is a warning, never a block. */
 export type Advisory = "optional" | "ready" | "template" | "missing";

@@ -499,3 +499,50 @@ func TestSecretsKeyRotationValuesReachPaymentsWorkerAndPlansSvc(t *testing.T) {
 		}
 	}
 }
+
+// The error tracking DSN holds a key: it reaches every service through its Secret and no container's plain environment, and a chart without it renders nothing, so
+// error tracking stays off (docs/08-observability.md).
+func TestErrorTrackingURLReachesEveryServiceThroughItsSecret(t *testing.T) {
+	const dsn = "https://publickey@errors.example.com/7"
+	secrets := func(docs []obj) []obj {
+		var out []obj
+		for _, d := range docs {
+			if d.kind() == "Secret" && strings.HasSuffix(d.name(), "-env") {
+				out = append(out, d)
+			}
+		}
+		return out
+	}
+	without := secrets(render(t, "payrudder"))
+	if len(without) == 0 {
+		t.Fatal("no service Secret rendered")
+	}
+	for _, s := range without {
+		if m, _ := s.get("stringData").(map[string]any); m["PAYRUDDER_ERROR_TRACKING_URL"] != nil {
+			t.Errorf("%s has an error tracking URL that nobody set", s.name())
+		}
+	}
+	docs := render(t, "payrudder", "--set", "errorTracking.url="+dsn)
+	with := secrets(docs)
+	if len(with) < len(without) {
+		t.Fatalf("%d service Secrets with the URL, %d without: some service lost its Secret", len(with), len(without))
+	}
+	for _, s := range with {
+		m, _ := s.get("stringData").(map[string]any)
+		if m["PAYRUDDER_ERROR_TRACKING_URL"] != dsn {
+			t.Errorf("%s: PAYRUDDER_ERROR_TRACKING_URL = %v, want the DSN", s.name(), m["PAYRUDDER_ERROR_TRACKING_URL"])
+		}
+	}
+	for _, c := range containers(docs) {
+		if _, ok := envOf(c)["PAYRUDDER_ERROR_TRACKING_URL"]; ok {
+			t.Errorf("the DSN is a plain environment variable of container %s; it belongs in the Secret", c.str("name"))
+		}
+	}
+	for _, d := range docs {
+		if d.kind() == "Secret" && strings.HasSuffix(d.name(), "-migrate") {
+			if m, _ := d.get("stringData").(map[string]any); m["PAYRUDDER_ERROR_TRACKING_URL"] != nil {
+				t.Errorf("the migration Job's Secret %s holds the DSN; it does not need it", d.name())
+			}
+		}
+	}
+}

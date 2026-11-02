@@ -11,6 +11,7 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 
 	"github.com/0furkancolak/payrudder/pkg/backoff"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 )
 
 // PartitionHandler applies the records of one partition, in order. Implementations persist the next offset in the same
@@ -176,6 +177,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
+				defer errtrack.Recover(ctx)
 				c.apply(ctx, p)
 			}()
 		})

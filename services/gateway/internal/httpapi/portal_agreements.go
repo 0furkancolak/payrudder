@@ -36,7 +36,7 @@ func (s *Server) portalAgreements(ctx context.Context, v *portalView, resp *bill
 	ctx, cancel := context.WithTimeout(ctx, subscriptionsWait)
 	defer cancel()
 	octx := tenant.OutgoingFor(ctx, tid)
-	list, err := s.d.Contracts.ListContractAcceptances(octx, &plansv1.ListContractAcceptancesRequest{CustomerId: resp.GetCustomerId()})
+	list, err := s.d.Contracts.ListContractAcceptances(octx, &plansv1.ListContractAcceptancesRequest{CustomerId: resp.GetCustomerId(), PageSize: 200})
 	if err != nil {
 		s.d.Log.WarnContext(ctx, "portal agreements unavailable", "error", err)
 		return
@@ -139,7 +139,7 @@ func (s *Server) portalAgreementPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	octx := tenant.OutgoingFor(r.Context(), tid)
-	list, err := s.d.Contracts.ListContractAcceptances(octx, &plansv1.ListContractAcceptancesRequest{CustomerId: resp.GetCustomerId()})
+	list, err := s.d.Contracts.ListContractAcceptances(octx, &plansv1.ListContractAcceptancesRequest{CustomerId: resp.GetCustomerId(), PageSize: 200})
 	if err != nil {
 		hostedTrouble(w, lang)
 		return

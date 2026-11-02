@@ -38,6 +38,8 @@ Her bulgu bir `dosya:satır` konumu, açıklama, önem derecesi (Yüksek / Orta 
 | [tests-tools-deploy.md](tests-tools-deploy.md) | tests/, tools/, deploy/, Dockerfile, Makefile | 2 | 19 | 31 | 52 |
 | **Toplam** | | **67** | **402** | **445** | **914** |
 
+Sonraki inceleme (2026-11-02, İngilizce): [review-236-257.md](review-236-257.md) — #236–#257 numaralı PR'ların tablosu ve #258–#330 için kısa liste.
+
 ## Önce düzeltilmesi gerekenler
 
 Aşağıdakiler kalite değil, doğruluk sorunu. Çoğunda para ya da veri kaybı var.

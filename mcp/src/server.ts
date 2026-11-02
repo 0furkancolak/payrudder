@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ApiError, type Api } from "./api.js";
 import { describeArgs, type Audit } from "./audit.js";
 import { UNTRUSTED_KEYS } from "./generated/read-tools.js";
+import { registerPrompts } from "./prompts.js";
 import { registerResources } from "./resources.js";
 import { TOOLS } from "./tools.js";
 import { tagUntrusted } from "./untrusted.js";
@@ -63,6 +64,7 @@ export function createServer(o: ServerOptions): McpServer {
       },
     );
   }
+  registerPrompts(server);
   registerResources(server, o.assetsDir);
   return server;
 }

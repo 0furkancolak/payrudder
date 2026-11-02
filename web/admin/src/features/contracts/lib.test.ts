@@ -22,7 +22,11 @@ import {
   requirable,
   retentionValid,
   renewalDaysValid,
+  acceptanceQuery,
   canRequestRefund,
+  emptyAcceptanceFilter,
+  isAcceptanceFiltered,
+  refundAmount,
   CANCEL_TEXT_MAX,
   REFUNDS,
   RENEWAL,
@@ -327,8 +331,41 @@ describe("asking for the refund of an accepted withdrawal", () => {
   it("is offered for an accepted withdrawal that names an invoice and has no refund, or a failed one, and for nothing else", () => {
     expect(canRequestRefund(w({}))).toBe(true);
     expect(canRequestRefund(w({ refund_state: "failed" }))).toBe(true);
-    for (const state of ["requesting", "requested", "outside"] as const) expect(canRequestRefund(w({ refund_state: state })), state).toBe(false);
+    // A credit note that exists, whatever became of its refund, is never asked for twice: a failed card refund is retried on the credit note.
+    for (const state of ["requesting", "requested", "refunded", "refund_failed", "outside"] as const) expect(canRequestRefund(w({ refund_state: state })), state).toBe(false);
     expect(canRequestRefund(w({ invoice_id: "" }))).toBe(false);
     for (const status of ["received", "rejected", "refunded"] as const) expect(canRequestRefund(w({ status })), status).toBe(false);
+  });
+});
+
+describe("the amount of a refund", () => {
+  it("is the whole of what is left when nothing is typed, and a typed amount in the invoice's currency otherwise", () => {
+    expect(refundAmount("", "USD", "4900")).toEqual({ minor: "0" });
+    expect(refundAmount("  ", "USD", "4900")).toEqual({ minor: "0" });
+    expect(refundAmount("12.5", "USD", "4900")).toEqual({ minor: "1250" });
+    expect(refundAmount("12,50", "USD", "4900")).toEqual({ minor: "1250" });
+    expect(refundAmount("500", "JPY", "4900")).toEqual({ minor: "500" });
+    expect(refundAmount("49", "USD", "4900")).toEqual({ minor: "4900" });
+  });
+  it("refuses zero, text, too many decimals for the currency, and more than the invoice", () => {
+    for (const bad of ["0", "0.00", "abc", "-5", "1.234"]) expect(refundAmount(bad, "USD", "4900"), bad).toEqual({ error: "amount" });
+    expect(refundAmount("0.5", "JPY", "4900")).toEqual({ error: "amount" });
+    expect(refundAmount("49.01", "USD", "4900")).toEqual({ error: "tooMuch" });
+    expect(refundAmount("1", "USD", "not a number")).toEqual({ error: "tooMuch" });
+  });
+});
+
+describe("the filter of a customer's acceptance log", () => {
+  it("narrows nothing when empty", () => {
+    expect(isAcceptanceFiltered(emptyAcceptanceFilter())).toBe(false);
+    expect(acceptanceQuery(emptyAcceptanceFilter())).toEqual({});
+  });
+  it("sends the kind and the source, and the last day of the range as the start of the day after it", () => {
+    const q = acceptanceQuery({ kind: "tos", source: "hosted", range: { from: "2026-10-01", to: "2026-10-31" } });
+    expect(q.kind).toBe("tos");
+    expect(q.source).toBe("hosted");
+    expect(Date.parse(q.from ?? "")).toBe(new Date(2026, 9, 1).getTime());
+    expect(Date.parse(q.to ?? "")).toBe(new Date(2026, 10, 1).getTime());
+    expect(isAcceptanceFiltered({ kind: "", source: "api", range: { from: "", to: "" } })).toBe(true);
   });
 });
