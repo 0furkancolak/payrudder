@@ -25,7 +25,7 @@ risk of real charges.
 - payments-worker routes `SANDBOX` commands to mock-psp, **hard-coded** and not configurable.
 - Sandbox customers carry `pm_sandbox_*` scenario tokens (success, declined, decline-once, error-then-success,
   timeout-committed, timeout-not-committed). Each one drives a specific saga path ([workers.md](../03-services/workers.md#payments-worker)).
-- `POST /v1/sandbox/periods/{period}/close` closes the current period early (aggregator `ClosePeriodEarly`, recorded cutoff),
+- `POST /v1/sandbox/close-period` closes the current period early (aggregator `ClosePeriodEarly`, recorded cutoff),
   then the normal billing run and saga execute. Dunning delays are compressed to minutes.
 - Sandbox invoices use their own number series (`SBX-`), carry a PDF watermark, and emails get a `[SANDBOX]` prefix and go
   only to the sandbox SMTP sink.

@@ -59,4 +59,4 @@ The [command line](cli.html) prints an API error as `payrudder: 404 customer.not
 
 ## The catalogue
 
-The list below is generated from the code (`docs/error-keys.md`, written by the test of `pkg/errkey`) and so is always complete. It leaves out the keys of the operator's and the console's own routes (`admin`, `identity`, `support`), which an integration of the tenant API never receives.
+The list below is generated from the code (`docs/error-keys.md`, written by the test of `pkg/errkey` when `UPDATE_ERROR_KEYS=1` is set, and checked by it otherwise) and so is always complete. It leaves out the keys of the operator's and the console's own routes (`admin`, `identity`, `support`), which an integration of the tenant API never receives.

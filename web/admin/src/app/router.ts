@@ -4,6 +4,7 @@ import { authRoutes } from "@/features/auth/routes";
 import { requireOperator } from "@/features/auth";
 import { deadLetterRoutes } from "@/features/dead-letters/routes";
 import { auditOperatorRoutes } from "@/features/audit/routes";
+import { blocklistOperatorRoutes } from "@/features/blocklist/routes";
 import { supportInboxRoutes } from "@/features/support/routes";
 import { playgroundRoutes } from "@/features/playground/routes";
 import { productKeys } from "@/features/product/api";
@@ -29,7 +30,7 @@ const routeTree = root.addChildren([
   ...publicProductRoutes(root),
   ...authRoutes(root),
   personRoutes(root),
-  operator.addChildren([...tenantRoutes(operator), ...playgroundRoutes(operator), ...deadLetterRoutes(operator), ...supportInboxRoutes(operator), ...auditOperatorRoutes(operator), ...saasOperatorRoutes(operator)]),
+  operator.addChildren([...tenantRoutes(operator), ...playgroundRoutes(operator), ...deadLetterRoutes(operator), ...supportInboxRoutes(operator), ...auditOperatorRoutes(operator), ...blocklistOperatorRoutes(operator), ...saasOperatorRoutes(operator)]),
 ]);
 
 // The router is deliberately not registered with `declare module "@tanstack/vue-router"`: registering it makes every page's types depend on the

@@ -632,6 +632,7 @@ func TestMailEventsListenerIsWiredBetweenTheGatewayAndTheNotifier(t *testing.T) 
 // development environment (local, ci, kind) only, and refuses to render a production profile without one.
 func TestOTPPepperIsTheOperatorsOutsideDevelopment(t *testing.T) {
 	const public, own = "local-otp-pepper-change-me-0123456789", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	url := []string{"--set", "global.publicURL=" + publicURL} // the other thing a non-development environment must set (TestPublicURLIsRequiredOutsideDevelopment)
 	pepper := func(docs []obj) string {
 		s := find(docs, "Secret", "x-plans-svc-env")
 		if s == nil {
@@ -649,30 +650,133 @@ func TestOTPPepperIsTheOperatorsOutsideDevelopment(t *testing.T) {
 			t.Errorf("%s gets %q, want the local value", e, v)
 		}
 	}
-	if v := pepper(render(t, "payrudder", "--set", "global.environment=production", "--set", "auth.otpPepper="+own)); v != own {
+	if v := pepper(render(t, "payrudder", append(url, "--set", "global.environment=production", "--set", "auth.otpPepper="+own)...)); v != own {
 		t.Errorf("production with a pepper of its own gets %q", v)
 	}
-	if v := pepper(render(t, "payrudder", "-f", values(t, "payrudder", "values-small.yaml"), "--set", "auth.otpPepper="+own)); v != own {
+	if v := pepper(render(t, "payrudder", append(url, "-f", values(t, "payrudder", "values-small.yaml"), "--set", "auth.otpPepper="+own)...)); v != own {
 		t.Errorf("values-small with a pepper of its own gets %q", v)
 	}
 	// The pepper is never plain environment of a container.
-	for _, c := range containers(render(t, "payrudder", "--set", "global.environment=production", "--set", "auth.otpPepper="+own)) {
+	for _, c := range containers(render(t, "payrudder", append(url, "--set", "global.environment=production", "--set", "auth.otpPepper="+own)...)) {
 		if _, ok := envOf(c)["PAYRUDDER_OTP_PEPPER"]; ok {
 			t.Errorf("the pepper is a plain environment variable of container %s", c.str("name"))
 		}
 	}
 	// A production environment without one does not render (existing Secrets are the operator's own: nothing is rendered for them).
 	for name, args := range map[string][]string{
-		"production":   {"--set", "global.environment=production"},
-		"values-small": {"-f", values(t, "payrudder", "values-small.yaml")},
-		"railway":      {"--set", "global.environment=railway"},
+		"production":   append(url, "--set", "global.environment=production"),
+		"values-small": append(url, "-f", values(t, "payrudder", "values-small.yaml")),
+		"railway":      append(url, "--set", "global.environment=railway"),
 	} {
 		if out, err := tryRender("payrudder", args...); err == nil || !strings.Contains(out, "auth.otpPepper is required") {
 			t.Errorf("%s without a pepper rendered or failed for another reason: %v\n%s", name, err, out)
 		}
 	}
-	if out, err := tryRender("payrudder", "--set", "global.environment=production", "--set", "secrets.existingSecrets=true"); err != nil {
+	if out, err := tryRender("payrudder", append(url, "--set", "global.environment=production", "--set", "secrets.existingSecrets=true")...); err != nil {
 		t.Errorf("production with existingSecrets must render (the Secrets hold the pepper): %v\n%s", err, out)
+	}
+}
+
+// With secrets.existingSecrets the pepper is in the operator's own Secret, but the migration Job's hook Secret is always rendered from the values and holds none. The Job
+// runs in a non-development environment, so it must say it migrates and exits: plans-svc then skips the pepper check (TestMigrateOnlyRunNeedsNoPepper in plans-svc), and
+// does not crash-loop to the Job's deadline. A serving pod, on the other hand, gets the operator's Secret and is checked.
+func TestExistingSecretsInstallMigratesWithoutThePepper(t *testing.T) {
+	docs := render(t, "payrudder", "--set", "global.environment=production", "--set", "global.publicURL="+publicURL, "--set", "secrets.existingSecrets=true")
+	job := find(docs, "Job", "x-plans-svc-migrate")
+	if job == nil {
+		t.Fatal("no migration Job for plans-svc")
+	}
+	env := envOf(containers([]obj{job})[0])
+	if env["PAYRUDDER_ENV"] != "production" || env["PAYRUDDER_MIGRATE_ONLY"] != "true" {
+		t.Errorf("the plans-svc migration Job runs with %v: it must be a non-development environment that migrates and exits", env)
+	}
+	hook := find(docs, "Secret", "x-plans-svc-migrate")
+	if hook == nil {
+		t.Fatal("no hook Secret for the plans-svc migration Job")
+	}
+	if v, _ := hook.get("stringData").(map[string]any)["PAYRUDDER_OTP_PEPPER"].(string); v != "" {
+		t.Errorf("the hook Secret holds a pepper (%q): with existingSecrets it is the operator's, and the Job needs none", v)
+	}
+	if find(docs, "Secret", "x-plans-svc-env") != nil {
+		t.Error("existingSecrets still renders the runtime Secret of plans-svc")
+	}
+	if v := envOf(findContainer(t, docs, "plans-svc"))["PAYRUDDER_MIGRATE_ONLY"]; v == "true" {
+		t.Error("the plans-svc Deployment is migrate-only: it would exit without serving, and its pepper would never be checked")
+	}
+}
+
+// publicURL is the address customers reach the gateway at.
+const publicURL = "https://api.example.com"
+
+// The link in the mail that asks a customer to confirm a payment (3-D Secure) and the hosted invoice links start with global.publicURL; billing-svc sends the mail without a
+// link, and says nothing, when it is empty. So a chart outside a development environment (local, ci, kind) does not render without one, and the value reaches the gateway
+// and billing-svc.
+func TestPublicURLIsRequiredOutsideDevelopment(t *testing.T) {
+	const pepper = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+	urlOf := func(docs []obj, service string) string {
+		return envOf(findContainer(t, docs, service))["PAYRUDDER_PUBLIC_URL"]
+	}
+	for _, e := range []string{"local", "ci", "kind"} {
+		docs := render(t, "payrudder", "--set", "global.environment="+e)
+		for _, svc := range []string{"gateway", "billing-svc"} {
+			if got := urlOf(docs, svc); got != "" {
+				t.Errorf("%s: %s gets %q, want none (relative links)", e, svc, got)
+			}
+		}
+	}
+	for name, args := range map[string][]string{
+		"production":   {"--set", "global.environment=production"},
+		"values-small": {"-f", values(t, "payrudder", "values-small.yaml")},
+		"railway":      {"--set", "global.environment=railway"},
+	} {
+		args = append(args, "--set", "auth.otpPepper="+pepper)
+		if out, err := tryRender("payrudder", args...); err == nil || !strings.Contains(out, "global.publicURL is required") {
+			t.Errorf("%s without a public URL rendered or failed for another reason: %v\n%s", name, err, out)
+		}
+		docs := render(t, "payrudder", append(args, "--set", "global.publicURL="+publicURL)...)
+		for _, svc := range []string{"gateway", "billing-svc"} {
+			if got := urlOf(docs, svc); got != publicURL {
+				t.Errorf("%s: %s gets %q, want %q", name, svc, got, publicURL)
+			}
+		}
+	}
+}
+
+// The provider's delivery webhook (bounces and complaints into the suppression list) is the gateway's PAYRUDDER_MAIL_WEBHOOK_SECRET: a secret, so it lives in the gateway's
+// Secret and nowhere else, off when empty, and it needs the notifier's listener (the gateway refuses to start with the one and not the other).
+func TestMailWebhookSecretReachesTheGatewaySecretOnly(t *testing.T) {
+	const whsec = "whsec_dGhlLXN2aXgtc2VjcmV0LW9mLXRoZS10ZXN0cw=="
+	holders := func(docs []obj) (out []string) {
+		for _, d := range docs {
+			if d.kind() == "Secret" {
+				if _, ok := d.get("stringData").(map[string]any)["PAYRUDDER_MAIL_WEBHOOK_SECRET"]; ok {
+					out = append(out, d.name())
+				}
+			}
+		}
+		return out
+	}
+	if got := holders(render(t, "payrudder")); len(got) != 0 {
+		t.Errorf("by default %v hold a mail webhook secret", got)
+	}
+	docs := render(t, "payrudder", "--set", "mail.webhookSecret="+whsec)
+	if got := holders(docs); len(got) != 1 || got[0] != "x-gateway-env" {
+		t.Errorf("the secret is in %v, want the gateway's Secret only", got)
+	}
+	if v, _ := find(docs, "Secret", "x-gateway-env").get("stringData").(map[string]any)["PAYRUDDER_MAIL_WEBHOOK_SECRET"].(string); v != whsec {
+		t.Errorf("the gateway's Secret holds %q, want the value given", v)
+	}
+	for _, c := range containers(docs) {
+		if v, ok := envOf(c)["PAYRUDDER_MAIL_WEBHOOK_SECRET"]; ok {
+			t.Errorf("the secret is plain environment (%q) of container %s; it belongs in the Secret", v, c.str("name"))
+		}
+	}
+	if out, err := tryRender("payrudder", "--set", "mail.webhookSecret="+whsec, "--set", "mail.eventsSecret="); err == nil || !strings.Contains(out, "mail.webhookSecret needs mail.eventsSecret") {
+		t.Errorf("a webhook secret without the notifier's listener rendered or failed for another reason: %v\n%s", err, out)
+	}
+	// Your own Secrets: nothing is rendered for them, so the value is not either.
+	if got := holders(render(t, "payrudder", "--set", "mail.webhookSecret="+whsec, "--set", "secrets.existingSecrets=true")); len(got) != 0 {
+		t.Errorf("with existingSecrets %v still hold the secret", got)
 	}
 }
 

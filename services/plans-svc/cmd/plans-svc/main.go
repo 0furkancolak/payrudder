@@ -141,9 +141,10 @@ func (c *Config) saasConfig() saascmd.Config {
 var publicPeppers = []string{"local-otp-pepper-change-me-0123456789", "CHANGE-ME-32-characters-or-more-xxxxxxxxx"}
 
 // checkPepper refuses a missing, short or published pepper unless this is a development environment. The codes it keys have a million (sign-in) and about 2^50
-// (recovery) values, so a hash of them under a key everybody knows is no protection once the table leaks.
+// (recovery) values, so a hash of them under a key everybody knows is no protection once the table leaks. A migrate-only run (the Helm migration Job, which exits before it
+// issues a code) needs none: with secrets.existingSecrets the pepper is in the operator's own Secret, not in the hook Secret the Job reads.
 func (c *Config) checkPepper() error {
-	if c.Env.Development() {
+	if c.Env.Development() || c.MigrateOnly {
 		return nil
 	}
 	const how = ": generate one with `openssl rand -hex 32` (it keys the hash of the sign-in and recovery codes; a development environment, PAYRUDDER_ENV local, ci or kind, may go without)"

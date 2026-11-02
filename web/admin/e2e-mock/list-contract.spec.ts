@@ -143,6 +143,21 @@ const CASES: ListCase[] = [
     url: "f_",
   },
   {
+    name: "blocklist",
+    path: "/blocklist",
+    mock: get("/v1/blocklist", {
+      entries: [
+        { id: "0192f0b4-0000-7c3a-9a3e-000000000003", kind: "external_id", value: "cus_gone", note: "", created_by: "ada@example.com", create_time: "2026-11-03T09:00:00Z" },
+        { id: "0192f0b4-0000-7c3a-9a3e-000000000002", kind: "tax_id", value: "TR1234567890", note: "", created_by: "ada@example.com", create_time: "2026-11-02T09:00:00Z" },
+        { id: "0192f0b4-0000-7c3a-9a3e-000000000001", kind: "email", value: "fraud@example.com", note: "", created_by: "ada@example.com", create_time: "2026-11-01T09:00:00Z" },
+      ],
+    }),
+    rows: ["cus_gone", "TR1234567890", "fraud@example.com"],
+    sort: { value: "oldest", order: ["fraud@example.com", "TR1234567890", "cus_gone"] },
+    filter: { chip: "Kind", option: "Tax id", keep: ["TR1234567890"] },
+    url: "",
+  },
+  {
     name: "meters",
     path: "/meters",
     mock: get("/v1/meters", { meters: METERS }),

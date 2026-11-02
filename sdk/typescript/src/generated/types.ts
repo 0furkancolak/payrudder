@@ -68,6 +68,12 @@ export interface AccountingSummary {
   currencies: Array<AccountingCurrency>;
 }
 
+export interface AddBlocklistEntryRequest {
+  kind: "email" | "tax_id" | "external_id";
+  value: string;
+  note?: string;
+}
+
 export interface AddDisputeNoteRequest {
   note: string;
 }
@@ -139,7 +145,7 @@ export interface AffiliateCommission {
   net_minor: Int64;
   /** The commission; negative on a reversal row */
   amount_minor: Int64;
-  /** How much of the commission has been taken back */
+  /** How much of the commission has been taken back, format: int64 */
   reversed_minor: Int64;
   status: "pending" | "approved" | "paid" | "reversed";
   parent_id: string;
@@ -154,9 +160,9 @@ export interface AffiliateFunnel {
   from_date: string;
   to_date: string;
   clicks: Int64;
-  /** Customers attributed in the period */
+  /** Customers attributed in the period, format: int64 */
   referrals: Int64;
-  /** Customers with a commission earned in the period */
+  /** Customers with a commission earned in the period, format: int64 */
   paying_customers: Int64;
   commissions: Array<{
     currency: string;
@@ -363,6 +369,18 @@ export interface BlockCustomerRequest {
   suspend_service?: boolean;
 }
 
+export interface BlocklistEntry {
+  id: string;
+  kind: "email" | "tax_id" | "external_id";
+  /** The normalised value */
+  value: string;
+  /** The owner's own note; never shown to the person the entry is about */
+  note: string;
+  /** A person's address, key:<api key id>, or operator */
+  created_by: string;
+  create_time: string;
+}
+
 export interface CancelSubscriptionQuery {
   end_time?: string;
   credit_unused?: boolean;
@@ -398,7 +416,7 @@ export interface ChangeQuote {
   period_end: string | null;
   /** The unused, prepaid part of the old fee */
   credit_minor: Int64;
-  /** What the new plan costs from the change */
+  /** What the new plan costs from the change, format: int64 */
   charge_minor: Int64;
   /** charge - credit: positive is invoiced, negative becomes a credit balance */
   net_minor: Int64;
@@ -684,8 +702,8 @@ export interface CouponRedemption {
   bonus_credits: Int64;
   currency: string;
   create_time: string | null;
-  /** Set when a void or a full refund reversed it */
-  reverse_time: string | null;
+  /** Set when a void or a full refund reversed it, nullable: true */
+  reverse_time: string;
 }
 
 export interface CreateAffiliatePayoutsRequest {
@@ -1367,9 +1385,9 @@ export interface EntitlementStatus {
   customer_external_id: string;
   meter_code: string;
   period_id: string;
-  /** Exact decimal with the meter's scale */
+  /** Exact decimal with the meter's scale, examples: ["10.500"] */
   used: string;
-  /** Exact decimal; null when unlimited */
+  /** Exact decimal; null when unlimited, examples: ["10.500"] */
   limit: string | null;
   unlimited: boolean;
   /** (unlimited, used < limit, or a soft or notify limit) and not suspended */
@@ -1758,17 +1776,17 @@ export interface GetRevenueReportRow {
   country: string;
   currency: string;
   invoices: Int64;
-  /** Finalized invoices that are not void */
+  /** Finalized invoices that are not void, format: int64 */
   billed_minor: Int64;
-  /** Paid */
+  /** Paid, format: int64 */
   collected_minor: Int64;
-  /** Invoices that were refunded */
+  /** Invoices that were refunded, format: int64 */
   refunded_minor: Int64;
-  /** Open */
+  /** Open, format: int64 */
   outstanding_minor: Int64;
   uncollectible_minor: Int64;
   void_minor: Int64;
-  /** Credit notes issued against these invoices */
+  /** Credit notes issued against these invoices, format: int64 */
   credited_minor: Int64;
 }
 
@@ -1792,11 +1810,11 @@ export interface GetSubscriptionReportRow {
   trialing: Int64;
   paused: Int64;
   past_due: Int64;
-  /** Fixed fees per month of active and past due subscriptions */
+  /** Fixed fees per month of active and past due subscriptions, format: int64 */
   mrr_minor: Int64;
   new_subscriptions: Int64;
   new_mrr_minor: Int64;
-  /** Ended with no successor; a plan change or provider migration is not churn */
+  /** Ended with no successor; a plan change or provider migration is not churn, format: int64 */
   churned: Int64;
   churned_mrr_minor: Int64;
   plan_code: string;
@@ -1903,8 +1921,8 @@ export interface InvoiceLine {
   quantity: string;
   amount_minor: Int64;
   description: string;
-  /** The service period the line covers */
-  service_from: string | null;
+  /** The service period the line covers, nullable: true */
+  service_from: string;
   service_to: string | null;
 }
 
@@ -2049,6 +2067,10 @@ export interface ListAuditEventsResponse {
   /** A service that keeps part of the log did not answer: the page may lack its entries */
   incomplete: boolean;
   unavailable_sources: Array<"plans" | "billing" | "payments">;
+}
+
+export interface ListBlocklistResponse {
+  entries: Array<BlocklistEntry>;
 }
 
 export interface ListContractAcceptancesQuery {
@@ -2753,7 +2775,7 @@ export interface PromotionQuoteRequest {
   /** Needed by codes that are first-purchase-only or one per customer */
   customer_external_id?: string;
   target: "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
-  /** The price before the discount */
+  /** The price before the discount, format: int64 */
   amount_minor?: Int64;
   currency: string;
   /** The credit pack id, for codes restricted to some packs */
@@ -2769,7 +2791,7 @@ export interface PromotionQuoteRequestParams {
   /** Needed by codes that are first-purchase-only or one per customer */
   customer_external_id?: string;
   target: "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
-  /** The price before the discount */
+  /** The price before the discount, format: int64 */
   amount_minor?: Int64Input;
   currency: string;
   /** The credit pack id, for codes restricted to some packs */

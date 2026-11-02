@@ -3,6 +3,7 @@ api/affiliates.html
 api/analytics.html
 api/assets.html
 api/audit-events.html
+api/blocklist.html
 api/contract-acceptances.html
 api/contract-withdrawals.html
 api/contracts.html

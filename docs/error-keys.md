@@ -1,6 +1,6 @@
 # Error keys
 
-Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in `error.key` of every API error; translate keys, not messages.
+Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0020); without the variable the test fails when this file is out of date. The key is in `error.key` of every API error; translate keys, not messages.
 
 - `admin.sandbox.bad_tenant`
 - `admin.sandbox.live_refused`
@@ -473,6 +473,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.appeal.exists`
 - `plans.appeal.not_held`
 - `plans.appeal.not_open`
+- `plans.blocklist.full`
 - `plans.change.bad_proration`
 - `plans.change.billed_in_arrears`
 - `plans.change.fee_not_invoiced`
@@ -504,6 +505,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.coupon.none_on_subscription`
 - `plans.coupon.subscription_ended`
 - `plans.customer.blocked`
+- `plans.customer.blocklisted`
 - `plans.customer.quota_reached`
 - `plans.customer.tax_invalid`
 - `plans.fee.invalid_period`

@@ -36,9 +36,9 @@ W3C Trace Context (`traceparent`, `tracestate`) everywhere, via `otel.GetTextMap
 |---|---|---|
 | HTTP → gateway | HTTP headers | `otelhttp` |
 | gRPC | gRPC metadata | `otelgrpc` stats handlers (client + server) |
-| ingest → outbox → Kafka | `outbox.headers` jsonb → Kafka record headers | `pkg/otelx/kafka.go`: `TextMapCarrier` over `[]kgo.RecordHeader` |
+| ingest → outbox → Kafka | `outbox.headers` jsonb → Kafka record headers | `pkg/otelx/carriers.go`: `KafkaHeadersCarrier`, a `TextMapCarrier` over `[]kgo.RecordHeader` |
 | Kafka → consumer | record headers | consumer span per record batch with **span links** to each record's producer context (a batch has many parents). Per-record child spans are sampled 1% |
-| billing → outbox → RabbitMQ | `outbox.headers` → AMQP `Table` headers | `pkg/otelx/amqp.go`: `TextMapCarrier` over `amqp.Table` |
+| billing → outbox → RabbitMQ | `outbox.headers` → AMQP `Table` headers | `pkg/otelx/carriers.go`: `AMQPTableCarrier`, a `TextMapCarrier` over `amqp.Table` |
 | RabbitMQ → worker → reply | AMQP headers | consumer span is a child of the command's context. The reply carries the worker's context |
 
 The outbox is the subtle part: the trace context of the *originating request* is stored with the row, so the relay's

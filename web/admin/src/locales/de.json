@@ -3206,7 +3206,8 @@
       "customer": {
         "tax_invalid": "Die Steuernummer oder das Finanzamt des Kunden ist ungültig.",
         "quota_reached": "Das Kundenlimit des Tarifs dieses Kontos ist erreicht.",
-        "blocked": "Dieser Kunde ist gesperrt, daher kann für ihn nichts Neues gestartet werden."
+        "blocked": "Dieser Kunde ist gesperrt, daher kann für ihn nichts Neues gestartet werden.",
+        "blocklisted": "Dieser Kunde steht auf einer Sperrliste und kann so nicht angelegt oder geändert werden."
       },
       "common": {
         "not_found": "Der Eintrag wurde nicht gefunden.",
@@ -3316,6 +3317,9 @@
         "version_stale": "Eine neuere Version dieses Textes wurde veröffentlicht. Zeigen Sie die aktuelle an und fragen Sie erneut.",
         "withdrawal_decided": "Dieser Widerruf kann nicht in diesen Status wechseln.",
         "withdrawal_not_found": "Diesen Widerruf gibt es nicht."
+      },
+      "blocklist": {
+        "full": "Eine Sperrliste enthält höchstens 1000 Einträge. Entfernen Sie einige, bevor Sie weitere hinzufügen."
       },
       "appeal": {
         "not_held": "Nur gegen eine App, die der Betreiber ausgesetzt, eingefroren oder gesperrt hat, kann Einspruch eingelegt werden.",
@@ -5098,7 +5102,9 @@
       "connect": "App verbinden",
       "contracts": "Verträge",
       "audit": "Audit-Protokoll",
-      "auditLog": "Audit-Protokoll"
+      "auditLog": "Audit-Protokoll",
+      "blocklist": "Sperrliste",
+      "platformBlocklist": "Plattform-Sperrliste"
     },
     "newApp": "Neue App"
   },
@@ -5515,6 +5521,12 @@
       "einvoice": {
         "intro": "Verbinden Sie den Dienstleister, der Ihre E-Rechnungen signiert und sendet, und legen Sie fest, wie die Belege entstehen.",
         "list": "Die für diesen Mandanten verbundenen Konten, eines je Umgebung. Ein Live-Konto sendet echte Belege; das Sandbox-Konto simuliert nur."
+      },
+      "blocklist": {
+        "intro": "Die E-Mail-Adressen, Steuernummern und Kunden-IDs, die Sie abgewiesen haben. Ein passender neuer Kunde wird abgelehnt, damit niemand unter einer anderen ID zurückkommt."
+      },
+      "platformBlocklist": {
+        "intro": "Die Sperrliste des Betreibers, die für jede App gilt. Einer App wird nie gesagt, welche Liste einen Kunden abgelehnt hat."
       }
     }
   },
@@ -6533,6 +6545,44 @@
         "handled": "Als erledigt markiert",
         "unhandled": "Erledigt-Markierung aufgehoben"
       }
+    }
+  },
+  "blocklist": {
+    "new": "Zur Sperrliste hinzufügen",
+    "hint": "Ein neuer Kunde oder die neue E-Mail-Adresse oder Steuernummer eines Kunden, die zu einem Eintrag passt, wird abgelehnt. Bestehende Kunden bleiben unberührt: sperren Sie sie in der Kundenliste. Der Betreiber führt eine eigene Liste für alle Apps; sie wird hier nicht angezeigt.",
+    "hintPlatform": "Gilt für jede App: Ein neuer Kunde oder die neue E-Mail-Adresse oder Steuernummer eines Kunden, die zu einem Eintrag passt, wird abgelehnt, und die App erfährt nicht, welche Liste ablehnte. Die eigenen Kunden der Plattform (die Organisationen) unterliegen dem nicht.",
+    "search": "Liste durchsuchen",
+    "empty": "Die Sperrliste ist leer",
+    "emptyHint": "Fügen Sie die E-Mail-Adresse, Steuernummer oder Kunden-ID von jemandem hinzu, den Sie abgewiesen haben, damit er nicht unter einer anderen ID zurückkommt.",
+    "emptyHintPlatform": "Fügen Sie hinzu, was der Betreiber in jeder App ablehnen will.",
+    "kinds": {
+      "email": "E-Mail-Adresse",
+      "tax_id": "Steuernummer",
+      "external_id": "Kunden-ID"
+    },
+    "columns": {
+      "value": "Wert",
+      "kind": "Art",
+      "note": "Notiz",
+      "addedBy": "Hinzugefügt von",
+      "added": "Hinzugefügt"
+    },
+    "remove": "Entfernen",
+    "removeConfirm": "{value} von der Sperrliste entfernen? Ein neuer Kunde damit kann dann wieder angelegt werden.",
+    "add": {
+      "title": "Zur Sperrliste hinzufügen",
+      "description": "Ein passender neuer Kunde oder ein Kunde, der zu einer passenden E-Mail-Adresse oder Steuernummer wechselt, wird abgelehnt. Bestehende Kunden bleiben unberührt.",
+      "descriptionPlatform": "Gilt für jede App. Im Prüfprotokoll wird er ohne den Wert festgehalten.",
+      "kind": "Was es ist",
+      "value": "Wert",
+      "valueHint": {
+        "email": "Wird in Kleinbuchstaben verglichen.",
+        "tax_id": "Leerzeichen und Bindestriche werden ignoriert.",
+        "external_id": "Wird exakt verglichen, Großbuchstaben inklusive."
+      },
+      "note": "Ihre Notiz",
+      "noteHint": "Nur für Sie; der Person wird sie nie gezeigt.",
+      "submit": "Hinzufügen"
     }
   }
 }

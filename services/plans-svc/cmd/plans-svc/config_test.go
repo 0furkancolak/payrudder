@@ -46,3 +46,26 @@ func TestOTPPepperIsRequiredOutsideDevelopment(t *testing.T) {
 		}
 	}
 }
+
+// The Helm migration Job runs the service's image with PAYRUDDER_MIGRATE_ONLY and exits before it issues a code. With secrets.existingSecrets the pepper is in the
+// operator's own Secret, which the Job does not read, so a migrate-only run must start without one even where a serving pod needs it.
+func TestMigrateOnlyRunNeedsNoPepper(t *testing.T) {
+	environ := func(migrateOnly string) map[string]string {
+		m := map[string]string{"PAYRUDDER_SERVICE_NAME": "plans-svc", "PAYRUDDER_ENV": "production", "PAYRUDDER_PG_APP_DSN": "postgres://a", "PAYRUDDER_PG_SYSTEM_DSN": "postgres://s",
+			"PAYRUDDER_PG_MIGRATOR_DSN": "postgres://m", "PAYRUDDER_MIGRATE_ON_START": "true"}
+		if migrateOnly != "" {
+			m["PAYRUDDER_MIGRATE_ONLY"] = migrateOnly
+		}
+		return m
+	}
+	for _, pepper := range []string{"", "short", publicPeppers[0]} {
+		with := environ("true")
+		with["PAYRUDDER_OTP_PEPPER"] = pepper
+		if _, err := config.LoadFrom[Config](with, defaults); err != nil {
+			t.Errorf("migrate-only with pepper %q: %v", pepper, err)
+		}
+	}
+	if _, err := config.LoadFrom[Config](environ(""), defaults); err == nil || !strings.Contains(err.Error(), "PAYRUDDER_OTP_PEPPER") {
+		t.Errorf("a serving pod without a pepper started: %v", err)
+	}
+}

@@ -281,6 +281,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/blocklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your blocklist, newest first
+         * @description The e-mail addresses, tax ids and external customer ids that a new customer, or a customer's new e-mail address or tax id, may not match (error key `plans.customer.blocklisted`, on creating a customer and on changing the contact details or the tax data). At most 1000 entries, so the list is not paged. Customers that exist when an entry is added are not touched: block them from the customer list. The operator keeps a platform-wide list of its own that holds the same gates for every app; it is not shown here and a refusal does not say which list it was. Needs customers:read.
+         */
+        get: operations["listBlocklist"];
+        put?: never;
+        /**
+         * Put an e-mail address, a tax id or an external customer id on your blocklist
+         * @description The value is normalised: an e-mail address in lower case, a tax id without spaces and dashes in capitals, an external id as it is. An entry that is there is returned as it is. The note is yours and is never shown to the person the entry is about. Recorded in the audit log without the value. Error key `plans.blocklist.full` at 1000 entries. Needs customers:write.
+         */
+        post: operations["addBlocklistEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/blocklist/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Take an entry off your blocklist
+         * @description Needs customers:write.
+         */
+        delete: operations["removeBlocklistEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{external_id}/tax": {
         parameters: {
             query?: never;
@@ -6750,6 +6794,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/blocklist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The operator's platform-wide blocklist, newest first
+         * @description The same kinds of entry as an app's own list (plan 13), held against every app except the platform's own (the SaaS customers). At most 1000 entries. An app is never told which list refused a customer.
+         */
+        get: operations["listPlatformBlocklist"];
+        put?: never;
+        /**
+         * Put a value on the platform-wide blocklist
+         * @description Normalised as an app's entry is. Recorded in the audit log without the value (the kind only). Error key `plans.blocklist.full` at 1000 entries.
+         */
+        post: operations["addPlatformBlocklistEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/v1/blocklist/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take an entry off the platform-wide blocklist */
+        delete: operations["removePlatformBlocklistEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{id}/lifecycle": {
         parameters: {
             query?: never;
@@ -7472,6 +7557,29 @@ export interface components {
             /** Format: date-time */
             create_time: string;
         };
+        BlocklistEntry: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "email" | "tax_id" | "external_id";
+            /** @description The normalised value */
+            value: string;
+            /** @description The owner's own note; never shown to the person the entry is about */
+            note: string;
+            /** @description A person's address, key:<api key id>, or operator */
+            created_by: string;
+            /** Format: date-time */
+            create_time: string;
+        };
+        ListBlocklistResponse: {
+            entries: components["schemas"]["BlocklistEntry"][];
+        };
+        AddBlocklistEntryRequest: {
+            /** @enum {string} */
+            kind: "email" | "tax_id" | "external_id";
+            value: string;
+            note?: string;
+        };
         ListCustomerBlockEventsResponse: {
             events: components["schemas"]["CustomerBlockEvent"][];
         };
@@ -7955,9 +8063,9 @@ export interface components {
             description: string;
             /**
              * Format: date-time
-             * @description The service period the line covers
+             * @description The service period the line covers, nullable: true
              */
-            service_from: string | null;
+            service_from: string;
             /** Format: date-time */
             service_to: string | null;
         };
@@ -8061,10 +8169,7 @@ export interface components {
         RecordInvoicePaymentResult: {
             payment: components["schemas"]["InvoicePayment"] | null;
             duplicate: boolean;
-            /**
-             * Format: int64
-             * @description The sum of the payments recorded by hand
-             */
+            /** @description The sum of the payments recorded by hand, format: int64 */
             paid_minor: string;
             /** Format: int64 */
             outstanding_minor: string;
@@ -8081,10 +8186,7 @@ export interface components {
             reference: string;
         };
         TransferReceipt: {
-            /**
-             * Format: int64
-             * @description The ledger row
-             */
+            /** @description The ledger row, format: int64 */
             id: number;
             /** Format: int64 */
             amount_minor: number;
@@ -8138,15 +8240,9 @@ export interface components {
             meter_code: string;
             /** @example 2026-11 */
             period_id: string;
-            /**
-             * @description Exact decimal with the meter's scale
-             * @example 10.500
-             */
+            /** @description Exact decimal with the meter's scale, examples: ["10.500"] */
             used: string;
-            /**
-             * @description Exact decimal; null when unlimited
-             * @example 10.500
-             */
+            /** @description Exact decimal; null when unlimited, examples: ["10.500"] */
             limit: string | null;
             unlimited: boolean;
             /** @description (unlimited, used < limit, or a soft or notify limit) and not suspended */
@@ -8269,9 +8365,9 @@ export interface components {
             create_time: string | null;
             /**
              * Format: date-time
-             * @description When the mail last went out
+             * @description When the mail last went out, nullable: true
              */
-            send_time: string | null;
+            send_time: string;
             /** Format: date-time */
             expire_time: string | null;
         };
@@ -9191,34 +9287,19 @@ export interface components {
             currency: string;
             /** Format: int64 */
             invoices: string;
-            /**
-             * Format: int64
-             * @description Finalized invoices that are not void
-             */
+            /** @description Finalized invoices that are not void, format: int64 */
             billed_minor: string;
-            /**
-             * Format: int64
-             * @description Paid
-             */
+            /** @description Paid, format: int64 */
             collected_minor: string;
-            /**
-             * Format: int64
-             * @description Invoices that were refunded
-             */
+            /** @description Invoices that were refunded, format: int64 */
             refunded_minor: string;
-            /**
-             * Format: int64
-             * @description Open
-             */
+            /** @description Open, format: int64 */
             outstanding_minor: string;
             /** Format: int64 */
             uncollectible_minor: string;
             /** Format: int64 */
             void_minor: string;
-            /**
-             * Format: int64
-             * @description Credit notes issued against these invoices
-             */
+            /** @description Credit notes issued against these invoices, format: int64 */
             credited_minor: string;
         };
         GetDunningReportResponse: {
@@ -9267,19 +9348,13 @@ export interface components {
             paused: string;
             /** Format: int64 */
             past_due: string;
-            /**
-             * Format: int64
-             * @description Fixed fees per month of active and past due subscriptions
-             */
+            /** @description Fixed fees per month of active and past due subscriptions, format: int64 */
             mrr_minor: string;
             /** Format: int64 */
             new_subscriptions: string;
             /** Format: int64 */
             new_mrr_minor: string;
-            /**
-             * Format: int64
-             * @description Ended with no successor; a plan change or provider migration is not churn
-             */
+            /** @description Ended with no successor; a plan change or provider migration is not churn, format: int64 */
             churned: string;
             /** Format: int64 */
             churned_mrr_minor: string;
@@ -10011,7 +10086,7 @@ export interface components {
             connected: boolean;
             /** @description The default account. */
             integration: components["schemas"]["MailIntegration"] | null;
-            /** @description Every account */
+            /** @description Every account, the default first. */
             accounts: components["schemas"]["MailIntegration"][];
         };
         AppPutMailIntegrationRequest: {
@@ -10043,7 +10118,7 @@ export interface components {
             status: "ok" | "weak" | "missing" | "invalid" | "unchecked" | "error";
             /** @description hard_fail, soft_fail, neutral, pass_all, no_all, multiple, policy_none, policy_none_inherited, quarantine, quarantine_inherited, reject, reject_inherited, no_selector or revoked */
             detail?: string;
-            /** @description The record that was found */
+            /** @description The record that was found, clipped. */
             record?: string;
             selector?: string;
         };
@@ -10248,10 +10323,7 @@ export interface components {
         CreateProviderCheckoutRequest: {
             /** @example paddle */
             provider: string;
-            /**
-             * @description The provider's id of what is sold
-             * @example pri_01
-             */
+            /** @description The provider's id of what is sold, examples: [pri_01] */
             price_ref: string;
             quantity?: number;
             /**
@@ -12084,10 +12156,7 @@ export interface components {
              * @description The commission; negative on a reversal row
              */
             amount_minor: string;
-            /**
-             * Format: int64
-             * @description How much of the commission has been taken back
-             */
+            /** @description How much of the commission has been taken back, format: int64 */
             reversed_minor: string;
             /** @enum {string} */
             status: "pending" | "approved" | "paid" | "reversed";
@@ -12124,15 +12193,9 @@ export interface components {
             to_date: string;
             /** Format: int64 */
             clicks: string;
-            /**
-             * Format: int64
-             * @description Customers attributed in the period
-             */
+            /** @description Customers attributed in the period, format: int64 */
             referrals: string;
-            /**
-             * Format: int64
-             * @description Customers with a commission earned in the period
-             */
+            /** @description Customers with a commission earned in the period, format: int64 */
             paying_customers: string;
             commissions: {
                 currency: string;
@@ -13722,9 +13785,9 @@ export interface components {
             create_time: string | null;
             /**
              * Format: date-time
-             * @description Set when a void or a full refund reversed it
+             * @description Set when a void or a full refund reversed it, nullable: true
              */
-            reverse_time: string | null;
+            reverse_time: string;
         };
         PromotionQuoteRequest: {
             code?: string;
@@ -13732,10 +13795,7 @@ export interface components {
             customer_external_id?: string;
             /** @enum {string} */
             target: "COUPON_TARGET_CREDIT_PURCHASE" | "COUPON_TARGET_PAYMENT";
-            /**
-             * Format: int64
-             * @description The price before the discount
-             */
+            /** @description The price before the discount, format: int64 */
             amount_minor?: string;
             currency: string;
             /** @description The credit pack id, for codes restricted to some packs */
@@ -13806,10 +13866,7 @@ export interface components {
              * @description The unused, prepaid part of the old fee
              */
             credit_minor: string;
-            /**
-             * Format: int64
-             * @description What the new plan costs from the change
-             */
+            /** @description What the new plan costs from the change, format: int64 */
             charge_minor: string;
             /**
              * Format: int64
@@ -13845,10 +13902,7 @@ export interface components {
              * @description The unused, prepaid part of the old fee
              */
             credit_minor?: string;
-            /**
-             * Format: int64
-             * @description What the new plan costs from the change
-             */
+            /** @description What the new plan costs from the change, format: int64 */
             charge_minor?: string;
             /**
              * Format: int64
@@ -13876,10 +13930,7 @@ export interface components {
              * @description The unused, prepaid part of the old fee
              */
             credit_minor: string;
-            /**
-             * Format: int64
-             * @description What the new plan costs from the change
-             */
+            /** @description What the new plan costs from the change, format: int64 */
             charge_minor: string;
             /**
              * Format: int64
@@ -14082,9 +14133,9 @@ export interface components {
             create_time: string | null;
             /**
              * Format: date-time
-             * @description Set once the app was deleted (archived); only the operator API lists such an app.
+             * @description Set once the app was deleted (archived); only the operator API lists such an app., nullable: true
              */
-            archive_time: string | null;
+            archive_time: string;
         };
         /**
          * @description admin: every permission. billing: customers, subscriptions, credits and invoices, with events, the catalogue and usage to read. read_only: every :read. ingest_only: events:write. custom: the permissions chosen.
@@ -14419,9 +14470,9 @@ export interface components {
             update_time: string | null;
             /**
              * Format: date-time
-             * @description When the provider last accepted the key
+             * @description When the provider last accepted the key, nullable: true
              */
-            checked_time: string | null;
+            checked_time: string;
             /** @enum {string} */
             check_problem: "" | "unreachable" | "refused";
         };
@@ -14449,14 +14500,14 @@ export interface components {
             permissions: components["schemas"]["ApiKeyPermission"][];
             /**
              * Format: date-time
-             * @description Kept to within a few minutes.
+             * @description Kept to within a few minutes., nullable: true
              */
-            last_used_time: string | null;
+            last_used_time: string;
             /**
              * Format: date-time
-             * @description The key stops working at this time although it is not revoked (the old key of a rotation).
+             * @description The key stops working at this time although it is not revoked (the old key of a rotation)., nullable: true
              */
-            expire_time: string | null;
+            expire_time: string;
         };
     };
     responses: {
@@ -14847,6 +14898,73 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ListCustomerBlockEventsResponse"];
                 };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listBlocklist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListBlocklistResponse"];
+                };
+            };
+        };
+    };
+    addBlocklistEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddBlocklistEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlocklistEntry"];
+                };
+            };
+            400: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+        };
+    };
+    removeBlocklistEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: components["responses"]["Error"];
         };
@@ -25990,6 +26108,72 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ListTenantStatusEventsResponse"];
                 };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listPlatformBlocklist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListBlocklistResponse"];
+                };
+            };
+        };
+    };
+    addPlatformBlocklistEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddBlocklistEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlocklistEntry"];
+                };
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    removePlatformBlocklistEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             404: components["responses"]["Error"];
         };

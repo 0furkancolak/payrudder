@@ -208,6 +208,28 @@ class ListCustomerBlockEventsResponse(TypedDict):
     events: list[CustomerBlockEvent]
 
 
+class BlocklistEntry(TypedDict):
+    id: str
+    kind: Literal["email", "tax_id", "external_id"]
+    value: str
+    note: str
+    created_by: str
+    create_time: str
+
+
+class ListBlocklistResponse(TypedDict):
+    entries: list[BlocklistEntry]
+
+
+class _AddBlocklistEntryRequestRequired(TypedDict):
+    kind: Literal["email", "tax_id", "external_id"]
+    value: str
+
+
+class AddBlocklistEntryRequest(_AddBlocklistEntryRequestRequired, total=False):
+    note: str
+
+
 class CustomerTax(TypedDict, total=False):
     tax_id: str
     tax_office: str
@@ -529,7 +551,7 @@ class InvoiceLine(TypedDict):
     quantity: str
     amount_minor: int
     description: str
-    service_from: str | None
+    service_from: str
     service_to: str | None
 
 
@@ -1374,7 +1396,7 @@ class CouponRedemption(TypedDict):
     bonus_credits: int
     currency: str
     create_time: str | None
-    reverse_time: str | None
+    reverse_time: str
 
 
 class ListCouponRedemptionsResponse(TypedDict):
@@ -1577,8 +1599,8 @@ class AffiliateFunnel(TypedDict):
     from_date: str
     to_date: str
     clicks: int
-    referrals: int
-    paying_customers: int
+    referrals: str
+    paying_customers: str
     commissions: list[AffiliateFunnelCommissionsItem]
 
 
@@ -1734,7 +1756,7 @@ class GetSubscriptionReportRow(TypedDict):
     mrr_minor: int
     new_subscriptions: int
     new_mrr_minor: int
-    churned: int
+    churned: str
     churned_mrr_minor: int
     plan_code: str
 

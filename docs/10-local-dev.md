@@ -144,6 +144,7 @@ NOTIFIER_EVENTS_ADDR=:9111                     # notifier
 NOTIFIER_MAIL_EVENTS_SECRET=…                  # notifier; the compose file defaults it, override in .env
 PAYRUDDER_NOTIFIER_EVENTS_URL=http://notifier:9111          # gateway
 PAYRUDDER_NOTIFIER_MAIL_EVENTS_SECRET=…        # gateway, the same value
+PAYRUDDER_MAIL_WEBHOOK_SECRET=whsec_…          # gateway, optional: the signing secret of the mail provider's webhook of bounces and complaints (/inbound/mail-events); empty: the route is off
 
 # every service: panics and unexpected errors to a Sentry-compatible server (off when empty; docs/08-observability.md)
 PAYRUDDER_ERROR_TRACKING_URL=https://<public key>@glitchtip.example.com/1

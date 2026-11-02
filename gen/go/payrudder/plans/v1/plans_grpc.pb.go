@@ -29,6 +29,9 @@ const (
 	PlansService_BlockCustomer_FullMethodName                    = "/payrudder.plans.v1.PlansService/BlockCustomer"
 	PlansService_UnblockCustomer_FullMethodName                  = "/payrudder.plans.v1.PlansService/UnblockCustomer"
 	PlansService_ListCustomerBlockEvents_FullMethodName          = "/payrudder.plans.v1.PlansService/ListCustomerBlockEvents"
+	PlansService_ListBlocklist_FullMethodName                    = "/payrudder.plans.v1.PlansService/ListBlocklist"
+	PlansService_AddBlocklistEntry_FullMethodName                = "/payrudder.plans.v1.PlansService/AddBlocklistEntry"
+	PlansService_RemoveBlocklistEntry_FullMethodName             = "/payrudder.plans.v1.PlansService/RemoveBlocklistEntry"
 	PlansService_SetCustomerTax_FullMethodName                   = "/payrudder.plans.v1.PlansService/SetCustomerTax"
 	PlansService_CreateMeter_FullMethodName                      = "/payrudder.plans.v1.PlansService/CreateMeter"
 	PlansService_GetMeter_FullMethodName                         = "/payrudder.plans.v1.PlansService/GetMeter"
@@ -114,6 +117,14 @@ type PlansServiceClient interface {
 	UnblockCustomer(ctx context.Context, in *UnblockCustomerRequest, opts ...grpc.CallOption) (*UnblockCustomerResponse, error)
 	// ListCustomerBlockEvents returns the customer's blocks and lifts, newest first (the latest 100): who, when, why.
 	ListCustomerBlockEvents(ctx context.Context, in *ListCustomerBlockEventsRequest, opts ...grpc.CallOption) (*ListCustomerBlockEventsResponse, error)
+	// ListBlocklist returns the app's blocklist, newest first (at most 1000 entries): an e-mail address, a tax id or an external customer id that a new customer, or a
+	// customer's new address or tax id, may not match (plans.customer.blocklisted). The operator's platform-wide list holds the same gates and is not shown here.
+	ListBlocklist(ctx context.Context, in *ListBlocklistRequest, opts ...grpc.CallOption) (*ListBlocklistResponse, error)
+	// AddBlocklistEntry adds an entry (adding one that is there returns it). The value is normalised: an e-mail address in lower case, a tax id without spaces and
+	// dashes in capitals. Customers that exist already are not touched.
+	AddBlocklistEntry(ctx context.Context, in *AddBlocklistEntryRequest, opts ...grpc.CallOption) (*AddBlocklistEntryResponse, error)
+	// RemoveBlocklistEntry removes an entry. An entry that is not there is NOT_FOUND.
+	RemoveBlocklistEntry(ctx context.Context, in *RemoveBlocklistEntryRequest, opts ...grpc.CallOption) (*RemoveBlocklistEntryResponse, error)
 	// SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
 	SetCustomerTax(ctx context.Context, in *SetCustomerTaxRequest, opts ...grpc.CallOption) (*SetCustomerTaxResponse, error)
 	// CreateMeter creates version 1 of a code, or the next version of an existing code.
@@ -324,6 +335,36 @@ func (c *plansServiceClient) ListCustomerBlockEvents(ctx context.Context, in *Li
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListCustomerBlockEventsResponse)
 	err := c.cc.Invoke(ctx, PlansService_ListCustomerBlockEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) ListBlocklist(ctx context.Context, in *ListBlocklistRequest, opts ...grpc.CallOption) (*ListBlocklistResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBlocklistResponse)
+	err := c.cc.Invoke(ctx, PlansService_ListBlocklist_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) AddBlocklistEntry(ctx context.Context, in *AddBlocklistEntryRequest, opts ...grpc.CallOption) (*AddBlocklistEntryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddBlocklistEntryResponse)
+	err := c.cc.Invoke(ctx, PlansService_AddBlocklistEntry_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *plansServiceClient) RemoveBlocklistEntry(ctx context.Context, in *RemoveBlocklistEntryRequest, opts ...grpc.CallOption) (*RemoveBlocklistEntryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveBlocklistEntryResponse)
+	err := c.cc.Invoke(ctx, PlansService_RemoveBlocklistEntry_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -953,6 +994,14 @@ type PlansServiceServer interface {
 	UnblockCustomer(context.Context, *UnblockCustomerRequest) (*UnblockCustomerResponse, error)
 	// ListCustomerBlockEvents returns the customer's blocks and lifts, newest first (the latest 100): who, when, why.
 	ListCustomerBlockEvents(context.Context, *ListCustomerBlockEventsRequest) (*ListCustomerBlockEventsResponse, error)
+	// ListBlocklist returns the app's blocklist, newest first (at most 1000 entries): an e-mail address, a tax id or an external customer id that a new customer, or a
+	// customer's new address or tax id, may not match (plans.customer.blocklisted). The operator's platform-wide list holds the same gates and is not shown here.
+	ListBlocklist(context.Context, *ListBlocklistRequest) (*ListBlocklistResponse, error)
+	// AddBlocklistEntry adds an entry (adding one that is there returns it). The value is normalised: an e-mail address in lower case, a tax id without spaces and
+	// dashes in capitals. Customers that exist already are not touched.
+	AddBlocklistEntry(context.Context, *AddBlocklistEntryRequest) (*AddBlocklistEntryResponse, error)
+	// RemoveBlocklistEntry removes an entry. An entry that is not there is NOT_FOUND.
+	RemoveBlocklistEntry(context.Context, *RemoveBlocklistEntryRequest) (*RemoveBlocklistEntryResponse, error)
 	// SetCustomerTax replaces the customer's tax id, tax office and e-fatura registration flag (used on e-invoices).
 	SetCustomerTax(context.Context, *SetCustomerTaxRequest) (*SetCustomerTaxResponse, error)
 	// CreateMeter creates version 1 of a code, or the next version of an existing code.
@@ -1098,6 +1147,15 @@ func (UnimplementedPlansServiceServer) UnblockCustomer(context.Context, *Unblock
 }
 func (UnimplementedPlansServiceServer) ListCustomerBlockEvents(context.Context, *ListCustomerBlockEventsRequest) (*ListCustomerBlockEventsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCustomerBlockEvents not implemented")
+}
+func (UnimplementedPlansServiceServer) ListBlocklist(context.Context, *ListBlocklistRequest) (*ListBlocklistResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBlocklist not implemented")
+}
+func (UnimplementedPlansServiceServer) AddBlocklistEntry(context.Context, *AddBlocklistEntryRequest) (*AddBlocklistEntryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddBlocklistEntry not implemented")
+}
+func (UnimplementedPlansServiceServer) RemoveBlocklistEntry(context.Context, *RemoveBlocklistEntryRequest) (*RemoveBlocklistEntryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveBlocklistEntry not implemented")
 }
 func (UnimplementedPlansServiceServer) SetCustomerTax(context.Context, *SetCustomerTaxRequest) (*SetCustomerTaxResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetCustomerTax not implemented")
@@ -1473,6 +1531,60 @@ func _PlansService_ListCustomerBlockEvents_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PlansServiceServer).ListCustomerBlockEvents(ctx, req.(*ListCustomerBlockEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_ListBlocklist_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBlocklistRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).ListBlocklist(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_ListBlocklist_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).ListBlocklist(ctx, req.(*ListBlocklistRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_AddBlocklistEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddBlocklistEntryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).AddBlocklistEntry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_AddBlocklistEntry_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).AddBlocklistEntry(ctx, req.(*AddBlocklistEntryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PlansService_RemoveBlocklistEntry_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveBlocklistEntryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PlansServiceServer).RemoveBlocklistEntry(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PlansService_RemoveBlocklistEntry_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PlansServiceServer).RemoveBlocklistEntry(ctx, req.(*RemoveBlocklistEntryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2578,6 +2690,18 @@ var PlansService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListCustomerBlockEvents",
 			Handler:    _PlansService_ListCustomerBlockEvents_Handler,
+		},
+		{
+			MethodName: "ListBlocklist",
+			Handler:    _PlansService_ListBlocklist_Handler,
+		},
+		{
+			MethodName: "AddBlocklistEntry",
+			Handler:    _PlansService_AddBlocklistEntry_Handler,
+		},
+		{
+			MethodName: "RemoveBlocklistEntry",
+			Handler:    _PlansService_RemoveBlocklistEntry_Handler,
 		},
 		{
 			MethodName: "SetCustomerTax",
