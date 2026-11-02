@@ -82,6 +82,9 @@ POST /v1/assets            Content-Type: multipart/form-data; boundary=…
 | `invoice_logo` | `image/png`, `image/jpeg` (no SVG: script risk in PDFs and browsers) | 2 MiB |
 | `invoice_attachment` | `application/pdf` | 25 MiB |
 | `general` | allowlist in config (`pdf`, `png`, `jpeg`, `csv`, `json`, `zip`) | 5 GiB |
+| `support_attachment` | `image/png`, `image/jpeg`, `application/pdf`, `text/plain` | 5 MiB |
+
+`support_attachment` belongs to the help desk (plan 12), not to the tenant it is stored under: `ListAssets` without a purpose leaves it out, and the gateway's `/v1/assets` routes cannot name it (their purpose list is the other three). plans-svc keeps the record that ties a file to a ticket message ([plans-svc.md, "the help desk"](plans-svc.md)).
 
 Malware scanning is out of scope. The state machine has a `SCANNING` slot so a scanner can be plugged in later.
 

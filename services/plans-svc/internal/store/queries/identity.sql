@@ -279,10 +279,13 @@ DELETE FROM user_totp WHERE user_id = $1;
 DELETE FROM user_recovery_codes WHERE user_id = $1;
 
 -- name: InsertRecoveryCode :exec
-INSERT INTO user_recovery_codes (id, user_id, code_hash) VALUES ($1, $2, $3);
+INSERT INTO user_recovery_codes (id, user_id, code_hash, hash_version) VALUES (@id, @user_id, @code_hash, @hash_version);
 
+-- A code is looked up by the hash of the version its row carries: a row of version 1 opens only with the old derivation, one of version 2 only with the new.
 -- name: UseRecoveryCode :execrows
-UPDATE user_recovery_codes SET used_at = now() WHERE user_id = @user_id AND code_hash = @code_hash AND used_at IS NULL;
+UPDATE user_recovery_codes SET used_at = now()
+WHERE user_id = @user_id AND used_at IS NULL
+  AND ((hash_version = 1 AND code_hash = @hash_v1) OR (hash_version = 2 AND code_hash = @hash_v2));
 
 -- name: CountRecoveryCodes :one
 SELECT count(*) FROM user_recovery_codes WHERE user_id = $1 AND used_at IS NULL;

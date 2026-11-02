@@ -130,7 +130,8 @@
       "conflicting_outcomes": "Success and failure both recorded",
       "settlement_missing": "Paid, not in the provider's settlement",
       "settlement_mismatch": "Settled amount differs",
-      "fee_mismatch": "Provider fee differs"
+      "fee_mismatch": "Provider fee differs",
+      "payment_disputed": "Payment disputed, undecided"
     },
     "ledgerKind": {
       "charge": "charge",
@@ -153,7 +154,9 @@
     "dunningState": {
       "PAYMENT_DECLINED": "declined, retrying",
       "PAYMENT_UNKNOWN": "outcome unknown",
-      "UNCOLLECTIBLE": "given up"
+      "UNCOLLECTIBLE": "given up",
+      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm",
+      "PAYMENT_HELD": "first charge held"
     },
     "sagaState": {
       "PAYMENT_PENDING": "waiting for transfer",
@@ -174,7 +177,9 @@
       "REFUND_FAILED": "refund failed",
       "REFUNDED": "refunded",
       "VOIDED": "voided",
-      "AWAITING_PAYMENT": "awaiting payment"
+      "AWAITING_PAYMENT": "awaiting payment",
+      "PAYMENT_ACTION_REQUIRED": "waiting for the customer to confirm",
+      "PAYMENT_HELD": "first charge held"
     },
     "paymentMethod": {
       "bank_transfer": "Bank transfer",
@@ -221,6 +226,16 @@
       "not_reported": "Paid, not reported",
       "pending_payout": "Reported, awaiting payout",
       "settled": "Settled"
+    },
+    "disputeReason": {
+      "fraudulent": "Fraud claimed",
+      "general": "General",
+      "product_not_received": "Product not received",
+      "product_unacceptable": "Product unacceptable",
+      "subscription_canceled": "Subscription canceled",
+      "duplicate": "Duplicate payment",
+      "unrecognized": "Not recognised",
+      "credit_not_processed": "Credit not processed"
     }
   },
   "tenants": {
@@ -732,7 +747,20 @@
         "note": "An estimate as of {when}, worked out the way the real invoice is. It moves with every event until the period closes, and a plan change, coupon or tax rate set later can change it.",
         "creditSurplus": "{amount} would be added to the customer's credit balance: the lines come to less than nothing."
       },
-      "taxNotSaved": "The customer was created, but its tax data was not saved. Close this sheet, open the customer and use Edit, Tax data to try again."
+      "taxNotSaved": "The customer was created, but its tax data was not saved. Close this sheet, open the customer and use Edit, Tax data to try again.",
+      "cards": {
+        "title": "Stored cards",
+        "card": "Card",
+        "none": "The payment provider holds no card for this customer.",
+        "inUse": "Charged for invoices",
+        "delete": "Delete card",
+        "deleteAria": "Delete the card ending {last4}",
+        "deleteTitle": "Delete the card ending {last4}?",
+        "deleteBody": "The card is deleted at the payment provider and cannot be charged any more. This cannot be undone: the customer would have to enter it again where the card is saved.",
+        "deleteInUse": "This is the card the customer's invoices are charged with. After it is deleted the next charge fails until a new payment method is set for the customer. It is deleted at the payment provider and this cannot be undone.",
+        "deletedInUse": "The card was deleted. It was the one the customer's invoices are charged with: set a new payment method for the customer.",
+        "hint": "Payrudder holds no card numbers: a card is saved where the payer types it, and the customer's payment method names it. Here you can see the cards and delete one."
+      }
     },
     "packages": {
       "new": "New package",
@@ -1223,16 +1251,18 @@
         "badRate": "Not a percentage: 0 to 100 with at most two decimals."
       },
       "dunning": {
-        "title": "Payment retries",
+        "title": "Payment retries and chargebacks",
         "hint": "When a charge is declined, Payrudder tries again after each delay below, then gives the invoice up as uncollectible. Delays are in hours (minutes in a sandbox account).",
         "defaults": "You have not set any: the standard delays are shown.",
         "retry": "Retry {n}",
         "delay": "Hours before retry {n}",
         "add": "Add a retry",
-        "save": "Save retries",
-        "saved": "Retries saved.",
+        "save": "Save settings",
+        "saved": "Settings saved.",
         "none": "No retries: a declined charge is given up at once.",
-        "bad": "Each delay is a whole number from 1 to 720."
+        "bad": "Each delay is a whole number from 1 to 720.",
+        "blockOnChargeback": "Block the customer when a chargeback opens",
+        "blockOnChargebackHint": "Blocks them with the category chargeback: no new purchases, and an open invoice can no longer be paid. It never lifts by itself; you lift it on the customer. An inquiry does not block."
       },
       "promotions": {
         "title": "Promotions",
@@ -3302,7 +3332,8 @@
         "not_live": "Only live invoices are paid through a provider.",
         "payment_in_progress": "A payment for this invoice is being started. Try again in a moment.",
         "return_url_required": "A return address is required for a checkout payment.",
-        "unknown_method": "This payment method is not known."
+        "unknown_method": "This payment method is not known.",
+        "installment_unavailable": "That number of instalments is not offered for this card and amount. Pay once, or choose one of the options on the page."
       },
       "ledger": {
         "bad_limit": "The limit must be between 1 and 1000.",
@@ -3370,6 +3401,9 @@
       "failover": {
         "bad_target": "A failover needs two different accounts that exist in the environment; a bank transfer cannot take part.",
         "not_found": "No failover is set for that account."
+      },
+      "card": {
+        "not_found": "The customer has no such stored card."
       }
     },
     "einvoice": {
@@ -3788,6 +3822,16 @@
       },
       "canned_reply": {
         "not_found": "That canned reply is not there any more."
+      },
+      "attachment": {
+        "account_full": "Your organisation has reached the limit of 50 MB of support files.",
+        "bad_type": "Only png, jpeg, pdf and plain text files can be attached.",
+        "no_app": "Files are stored with an app: create an app first, then attach the file.",
+        "not_found": "That file is not there.",
+        "rejected": "The file cannot be attached.",
+        "storage_full": "The storage that holds support files is full. Free some space in your app's files, or write to us without the file.",
+        "too_large": "A file can be at most 5 MB.",
+        "too_many": "A ticket can hold at most 10 files."
       }
     },
     "audit": {
@@ -4383,7 +4427,8 @@
           "buyer_country": "Buyer country",
           "buyer_zip_code": "Buyer postal code",
           "buyer_ip": "Public IP address of your business",
-          "buyer_gsm_number": "Buyer phone number"
+          "buyer_gsm_number": "Buyer phone number",
+          "enabled_installments": "Instalments the payer may choose"
         },
         "problems": {
           "required": "Required.",
@@ -4571,7 +4616,8 @@
           "api_key": "In the iyzico merchant panel under Settings, Company Settings, API keys. Use the live pair.",
           "secret_key": "Shown next to the API key in the same place. It is shown once there; copy it now.",
           "buyer_identity_number": "The tax id (TCKN or VKN) of the person or company that appears as the buyer on charges. Your billing profile fills it in.",
-          "buyer_ip": "The fixed public IP address your business sends requests from; iyzico ties the keys to it."
+          "buyer_ip": "The fixed public IP address your business sends requests from; iyzico ties the keys to it.",
+          "enabled_installments": "Counts from 1, 2, 3, 6, 9 and 12, separated by commas, for example 1, 3, 6. They are offered on iyzico's payment form and, for a saved card, on the invoice page; the interest is the one set in your iyzico panel, so the payer can pay more than the invoice and the invoice is still paid in full. Leave it empty for single payments. Type it again when you replace the keys."
         },
         "paddle": {
           "api_key": "In Paddle under Developer tools, Authentication, create a live API key.",
@@ -5704,7 +5750,15 @@
     },
     "confirmCloseTitle": "Close ticket #{number}?",
     "confirmCloseMany": "Close {n} ticket? | Close {n} tickets?",
-    "confirmCloseBody": "Nobody can answer a closed ticket any more; the person has to open a new one."
+    "confirmCloseBody": "Nobody can answer a closed ticket any more; the person has to open a new one.",
+    "attach": {
+      "add": "Attach files",
+      "hint": "png, jpeg, pdf or text; up to 5 MB each, 10 per ticket.",
+      "remove": "Remove {name}",
+      "failed": "These files were not attached:",
+      "openedButFailed": "Your ticket was opened, but some files were not attached. You can attach them to a reply.",
+      "download": "Download {name}"
+    }
   },
   "connect": {
     "nav": "Connect your app",
@@ -6269,5 +6323,43 @@
         "reset_by_operator": "Two-factor sign-in reset by support"
       }
     }
+  },
+  "disputes": {
+    "tab": "Disputes",
+    "tabsLabel": "Payments and disputes",
+    "tabs": {
+      "payments": "Payments",
+      "disputes": "Disputes"
+    },
+    "title": "Disputes",
+    "hint": "Cases the customer opened with their bank about this payment. Answer them at your payment provider; Payrudder shows where each one stands.",
+    "empty": "No disputes. A case appears here when a customer questions a payment with their bank.",
+    "outcomeLabel": "Outcome",
+    "allOutcomes": "All outcomes",
+    "kindLabel": "Type",
+    "allKinds": "All types",
+    "outcome": {
+      "open": "Open",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "kind": {
+      "chargeback": "Chargeback",
+      "inquiry": "Inquiry"
+    },
+    "means": {
+      "openChargeback": "The customer's bank has reversed this payment: the provider has taken the money back until it decides. Send your evidence before the date below.",
+      "openInquiry": "The customer's bank is asking about this payment. No money has been taken back; answer the provider's request so that it does not become a chargeback.",
+      "wonChargeback": "Decided in your favour: the money is back with you.",
+      "wonInquiry": "Closed without becoming a chargeback: nothing was lost.",
+      "lost": "The cardholder won: the money stays with them."
+    },
+    "provider": "Provider",
+    "reason": "Reason",
+    "evidenceDue": "Evidence due",
+    "opened": "Opened",
+    "closed": "Closed",
+    "reference": "Case",
+    "case": "Case"
   }
 }

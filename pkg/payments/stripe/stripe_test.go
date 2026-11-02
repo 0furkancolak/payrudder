@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -121,8 +122,16 @@ func TestChargeOutcomes(t *testing.T) {
 	if err := charge(402, `{"error":{"type":"card_error","code":"card_declined","decline_code":"insufficient_funds"}}`); !errors.As(err, &declined) || declined.Code != "insufficient_funds" {
 		t.Errorf("card error: %v", err)
 	}
-	if err := charge(200, `{"id":"pi_2","status":"requires_action"}`); !errors.As(err, &declined) || declined.Code != "authentication_required" {
-		t.Errorf("3-D Secure: %v", err)
+	var action *payments.ActionRequiredError
+	if err := charge(200, `{"id":"pi_2","status":"requires_action"}`); !errors.As(err, &action) || action.Ref != "pi_2" || errors.As(err, &declined) {
+		t.Errorf("3-D Secure: %v, want the customer to be asked to act, not a decline", err)
+	}
+	// Off session Stripe answers 402 with the PaymentIntent in the error (docs.stripe.com/api/errors): a decline keeps its reference, authentication is no decline.
+	if err := charge(402, `{"error":{"type":"card_error","code":"authentication_required","payment_intent":{"id":"pi_5","status":"requires_payment_method"}}}`); !errors.As(err, &action) || action.Ref != "pi_5" {
+		t.Errorf("authentication_required: %v", err)
+	}
+	if err := charge(402, `{"error":{"type":"card_error","code":"card_declined","decline_code":"insufficient_funds","payment_intent":{"id":"pi_6"}}}`); !errors.As(err, &declined) || declined.Ref != "pi_6" {
+		t.Errorf("a decline keeps the PaymentIntent: %v", err)
 	}
 	if err := charge(200, `{"id":"pi_3","status":"requires_payment_method","last_payment_error":{"decline_code":"expired_card"}}`); !errors.As(err, &declined) || declined.Code != "expired_card" {
 		t.Errorf("requires a payment method: %v", err)
@@ -180,6 +189,44 @@ func TestStatusFindsTheIntentByTheKey(t *testing.T) {
 	f.body = `{"data":[{"id":"pi_7","status":"processing"}]}`
 	var pending *payments.PendingError
 	if _, err := f.client(t).Status(context.Background(), "k"); !errors.As(err, &pending) {
+		t.Errorf("processing: %v", err)
+	}
+	// A payment that waits for the customer is waiting, not declined: the saga must not start dunning for it.
+	for _, body := range []string{`{"data":[{"id":"pi_6","status":"requires_action"}]}`, `{"data":[{"id":"pi_6","status":"requires_payment_method","last_payment_error":{"code":"authentication_required"}}]}`} {
+		f.body = body
+		if st, err := f.client(t).Status(context.Background(), "k"); err != nil || st.State != payments.StateActionRequired || st.ChargeID != "pi_6" {
+			t.Errorf("%s: %+v %v", body, st, err)
+		}
+	}
+}
+
+// With the reference of the first response the PaymentIntent is fetched by its id, with no search; a reference that is not the charge's is refused.
+func TestStatusByRefRetrievesTheIntent(t *testing.T) {
+	f := newFake(t, 200, `{"id":"pi_9","status":"succeeded","metadata":{"payrudder_key":"inv-1:charge:0"}}`)
+	st, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-1:charge:0")
+	if err != nil || st.State != payments.StateSucceeded || st.ChargeID != "pi_9" {
+		t.Fatalf("status: %+v %v", st, err)
+	}
+	if f.last.Method != http.MethodGet || f.last.URL.Path != "/v1/payment_intents/pi_9" || f.last.URL.RawQuery != "" {
+		t.Errorf("request: %s %s?%s, want a GET of the intent and no search", f.last.Method, f.last.URL.Path, f.last.URL.RawQuery)
+	}
+	if _, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-2:charge:0"); err == nil {
+		t.Error("an intent of another charge was taken for this one")
+	}
+	if _, err := f.client(t).StatusByRef(context.Background(), "ch_9", "inv-1:charge:0"); err == nil {
+		t.Error("a reference that is not a PaymentIntent was accepted")
+	}
+	f.body = `{"id":"pi_9","status":"requires_action","metadata":{"payrudder_key":"inv-1:charge:0"}}`
+	if st, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-1:charge:0"); err != nil || st.State != payments.StateActionRequired {
+		t.Errorf("requires_action: %+v %v", st, err)
+	}
+	f.body = `{"id":"pi_9","status":"requires_payment_method","last_payment_error":{"decline_code":"expired_card","advice_code":"do_not_try_again"},"metadata":{"payrudder_key":"inv-1:charge:0"}}`
+	if st, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-1:charge:0"); err != nil || st.State != payments.StateDeclined || st.DeclineCode != "expired_card" || !st.Final {
+		t.Errorf("declined: %+v %v", st, err)
+	}
+	f.body = `{"id":"pi_9","status":"processing","metadata":{"payrudder_key":"inv-1:charge:0"}}`
+	var pending *payments.PendingError
+	if _, err := f.client(t).StatusByRef(context.Background(), "pi_9", "inv-1:charge:0"); !errors.As(err, &pending) {
 		t.Errorf("processing: %v", err)
 	}
 }
@@ -394,8 +441,8 @@ func TestRefusalsAreRetriedAsStripeSays(t *testing.T) {
 		"a key used with other parameters":     {400, nil, `{"error":{"type":"idempotency_error","code":"idempotency_key_in_use"}}`, "refused"},
 		"a wrong key":                          {401, nil, `{"error":{"type":"invalid_request_error"}}`, "refused"},
 		"a card error":                         {402, nil, `{"error":{"type":"card_error","code":"card_declined","decline_code":"do_not_honor"}}`, "decline do_not_honor"},
-		"authentication that was not handled":  {402, nil, `{"error":{"type":"card_error","code":"card_declined","decline_code":"authentication_not_handled"}}`, "decline authentication_required"},
-		"authentication required":              {402, nil, `{"error":{"type":"card_error","code":"authentication_required"}}`, "decline authentication_required"},
+		"authentication that was not handled":  {402, nil, `{"error":{"type":"card_error","code":"card_declined","decline_code":"authentication_not_handled"}}`, "action required"},
+		"authentication required":              {402, nil, `{"error":{"type":"card_error","code":"authentication_required"}}`, "action required"},
 	} {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			for k, v := range tc.header {
@@ -409,11 +456,14 @@ func TestRefusalsAreRetriedAsStripeSays(t *testing.T) {
 		srv.Close()
 		var tr *payments.TransientError
 		var d *payments.DeclinedError
+		var a *payments.ActionRequiredError
 		var e *Error
 		got := "other"
 		switch {
 		case errors.As(err, &tr):
 			got = "transient"
+		case errors.As(err, &a):
+			got = "action required"
 		case errors.As(err, &d):
 			got = "decline " + d.Code
 		case errors.As(err, &e):
@@ -457,7 +507,7 @@ func TestEventsThatAreDeliberatelyIgnored(t *testing.T) {
 	c, _ := New(Settings{APIKey: key, WebhookSecret: secret}, 0)
 	now := time.Now()
 	c.now = func() time.Time { return now }
-	for _, typ := range []string{"payment_intent.requires_action", "payment_intent.processing", "setup_intent.succeeded", "checkout.session.expired", "charge.dispute.created", "payment_method.attached", "charge.refund.updated"} {
+	for _, typ := range []string{"payment_intent.requires_action", "payment_intent.processing", "setup_intent.succeeded", "checkout.session.expired", "payment_method.attached", "charge.refund.updated"} {
 		body := `{"id":"evt_x","type":"` + typ + `","data":{"object":{"id":"x","status":"succeeded","metadata":{"payrudder_key":"k"}}}}`
 		n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now))
 		if err != nil || n.Kind != payments.KindIgnored {
@@ -529,7 +579,7 @@ func TestRegisterWebhookCreatesTheEndpointAndReturnsTheSecret(t *testing.T) {
 	}
 	var sent []string
 	for i := range WebhookEvents {
-		sent = append(sent, f.form.Get("enabled_events["+string(rune('0'+i))+"]"))
+		sent = append(sent, f.form.Get("enabled_events["+strconv.Itoa(i)+"]"))
 	}
 	if strings.Join(sent, ",") != strings.Join(WebhookEvents, ",") || f.form.Get("connect") != "" {
 		t.Errorf("events sent %v, want exactly %v and no connect endpoint", sent, WebhookEvents)
@@ -691,5 +741,63 @@ func TestASavedCardIsLearnedFromTheSetupSession(t *testing.T) {
 	if _, err := chargeAPI.client(t).Charge(context.Background(), payments.ChargeRequest{IdempotencyKey: "k", InvoiceID: "i", AmountMinor: 500, Currency: "EUR", PaymentMethod: "cus_1:pm_9"}); err != nil ||
 		chargeAPI.form.Get("customer") != "cus_1" || chargeAPI.form.Get("payment_method") != "pm_9" {
 		t.Errorf("charge with the saved token: %v %v", err, chargeAPI.form)
+	}
+}
+
+// The five dispute events become one notification about the case as the object says it now: the payment is the PaymentIntent (retrieved from the Charge when the dispute
+// has none), inquiries are not chargebacks, and a status nobody knows is ignored rather than guessed at.
+func TestDisputesAreNotifiedAsOneCase(t *testing.T) {
+	f := newFake(t, 200, `{"id":"ch_1","payment_intent":"pi_from_charge"}`)
+	c := f.client(t)
+	now := time.Now()
+	c.now = func() time.Time { return now }
+	confirm := func(typ, object string) payments.Notification {
+		t.Helper()
+		body := `{"id":"evt_d","type":"` + typ + `","created":1782000000,"data":{"object":` + object + `}}`
+		n, err := c.ConfirmNotification(context.Background(), []byte(body), signed(c, body, now))
+		if err != nil {
+			t.Fatalf("%s: %v", typ, err)
+		}
+		return n
+	}
+	for _, typ := range WebhookEvents[len(WebhookEvents)-5:] {
+		if !strings.HasPrefix(typ, "charge.dispute.") {
+			t.Fatalf("the events the endpoint is created for do not end with the five dispute events: %v", WebhookEvents)
+		}
+	}
+	opened := confirm("charge.dispute.created", `{"id":"du_1","object":"dispute","amount":1250,"currency":"eur","charge":"ch_1","payment_intent":"pi_1","reason":"fraudulent","status":"needs_response","evidence_details":{"due_by":1782864000}}`)
+	d := opened.Dispute
+	if opened.Kind != payments.KindDispute || opened.ProviderRef != "pi_1" || opened.AmountMinor != 1250 || opened.Currency != "EUR" || d == nil || d.ID != "du_1" ||
+		d.Outcome != payments.DisputeOpen || !d.Formal || d.Reason != "fraudulent" || d.EvidenceDue.Unix() != 1782864000 || d.Status != "needs_response" {
+		t.Fatalf("created = %+v %+v", opened, d)
+	}
+	if f.last != nil && strings.HasPrefix(f.last.URL.Path, "/v1/charges") {
+		t.Error("the charge was retrieved though the dispute named the PaymentIntent")
+	}
+	// payment_intent is null: the Charge says which payment it is.
+	viaCharge := confirm("charge.dispute.updated", `{"id":"du_2","amount":500,"currency":"usd","charge":"ch_1","payment_intent":null,"reason":"general","status":"under_review"}`)
+	if viaCharge.ProviderRef != "pi_from_charge" || f.last.URL.Path != "/v1/charges/ch_1" || viaCharge.Dispute.Outcome != payments.DisputeOpen {
+		t.Errorf("via the charge = %+v (asked %s)", viaCharge, f.last.URL.Path)
+	}
+	for status, want := range map[string]struct {
+		outcome payments.DisputeOutcome
+		formal  bool
+	}{
+		"needs_response": {payments.DisputeOpen, true}, "under_review": {payments.DisputeOpen, true}, "appeal_needs_response": {payments.DisputeOpen, true}, "appeal_under_review": {payments.DisputeOpen, true},
+		"warning_needs_response": {payments.DisputeOpen, false}, "warning_under_review": {payments.DisputeOpen, false},
+		"won": {payments.DisputeWon, true}, "lost": {payments.DisputeLost, true}, "warning_closed": {payments.DisputeWon, false}, "prevented": {payments.DisputeWon, false},
+	} {
+		n := confirm("charge.dispute.closed", `{"id":"du_3","amount":1,"currency":"usd","payment_intent":"pi_3","status":"`+status+`"}`)
+		if n.Dispute == nil || n.Dispute.Outcome != want.outcome || n.Dispute.Formal != want.formal {
+			t.Errorf("%s: %+v, want %s (formal %v)", status, n.Dispute, want.outcome, want.formal)
+		}
+	}
+	for _, typ := range []string{"charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated"} {
+		if n := confirm(typ, `{"id":"du_4","amount":1,"currency":"usd","payment_intent":"pi_4","status":"won"}`); n.Kind != payments.KindDispute || n.Dispute.Outcome != payments.DisputeWon {
+			t.Errorf("%s: %+v", typ, n)
+		}
+	}
+	if n := confirm("charge.dispute.updated", `{"id":"du_5","amount":1,"currency":"usd","payment_intent":"pi_5","status":"something_new"}`); n.Kind != payments.KindIgnored {
+		t.Errorf("an unknown status: %+v", n)
 	}
 }

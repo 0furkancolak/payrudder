@@ -40,6 +40,10 @@ service BillingService {
   rpc RevokePortalLinks(RevokePortalLinksRequest) returns (RevokePortalLinksResponse);
   // SettleInvoicePayment is called by payments-worker when a provider confirmed a payment made on a hosted page. It moves the invoice's saga to paid.
   rpc SettleInvoicePayment(SettleInvoicePaymentRequest) returns (SettleInvoicePaymentResponse);
+  // RecordPaymentDispute is called by payments-worker when a provider says a customer questioned a payment with their bank, or the case moved on or ended. It announces that
+  // step of the case once (the webhook payment.disputed, one audit entry) and, when the seller asked for it (dunning settings), blocks the customer for a chargeback when a
+  // formal dispute opens. Idempotent per (provider, dispute_ref, outcome).
+  rpc RecordPaymentDispute(RecordPaymentDisputeRequest) returns (RecordPaymentDisputeResponse);
   // GetDunningSettings returns the tenant's retry delays; defaults_in_use is true when none were set.
   rpc GetDunningSettings(GetDunningSettingsRequest) returns (GetDunningSettingsResponse);
   // SetDunningSettings replaces the delays between a declined charge and each retry (0 to 6 entries; none means a declined charge is given up at once).
@@ -552,7 +556,7 @@ message DunningInvoice {
   string provider = 5;
   string currency = 6;
   int64 total_minor = 7;
-  // The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), UNCOLLECTIBLE (given up).
+  // The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), PAYMENT_ACTION_REQUIRED (waiting for the customer to confirm the payment, 3-D Secure), PAYMENT_HELD (the first charge is held: the tenant is on hold or the customer is blocked for fraud or a chargeback), UNCOLLECTIBLE (given up).
   string state = 8;
   // Retries done so far (0 = only the first charge).
   int32 dunning_attempt = 9;
@@ -685,10 +689,16 @@ message DunningSettings {
   // True when the tenant has set nothing and the service-wide defaults apply.
   bool defaults_in_use = 2;
   google.protobuf.Timestamp update_time = 3;
+  // Block the customer (category chargeback) when a formal dispute of one of their payments opens. Off unless the seller turns it on.
+  bool block_on_chargeback = 4;
 }
 message GetDunningSettingsRequest {}
 message GetDunningSettingsResponse { DunningSettings settings = 1; }
-message SetDunningSettingsRequest { repeated int32 retry_hours = 1; }
+message SetDunningSettingsRequest {
+  repeated int32 retry_hours = 1;
+  // Absent: kept as it is.
+  optional bool block_on_chargeback = 2;
+}
 message SetDunningSettingsResponse { DunningSettings settings = 1; }
 
 message CreateInvoiceLinkRequest {
@@ -1153,6 +1163,31 @@ message SettleInvoicePaymentRequest {
   string provider_ref = 3;
   int64 amount_minor = 4;
   string currency = 5;
+}
+message RecordPaymentDisputeRequest {
+  string invoice_id = 1;
+  string provider = 2;
+  // The provider's reference of the case (Stripe's du_..., Paddle's cb_ and the transaction).
+  string dispute_ref = 3;
+  // The payment that is disputed, as the ledger holds it.
+  string payment_ref = 4;
+  int64 amount_minor = 5;
+  string currency = 6;
+  // open, won or lost.
+  string outcome = 7;
+  // A chargeback proper (money taken back), not an inquiry or a warning.
+  bool formal = 8;
+  string reason = 9;
+  // The provider's own word for the state of the case.
+  string provider_status = 10;
+  google.protobuf.Timestamp evidence_due_time = 11;
+  google.protobuf.Timestamp occurred_time = 12;
+}
+message RecordPaymentDisputeResponse {
+  // False when this step of the case was announced before.
+  bool announced = 1;
+  // This call blocked the customer (category chargeback).
+  bool customer_blocked = 2;
 }
 message SettleInvoicePaymentResponse {
   // False when the invoice was already paid or is not waiting for a payment.

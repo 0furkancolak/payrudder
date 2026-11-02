@@ -231,3 +231,19 @@ func TestTheEndpointHandsTheFormToTheCompletion(t *testing.T) {
 		t.Errorf("= %d %s, form %v", resp.StatusCode, body, p.req.Form)
 	}
 }
+
+// An attempt that was split into instalments carries the total the payer was quoted; the provider is asked to confirm with it, and the ledger still books the invoice's price.
+func TestAReturnOfAnAttemptInInstalmentsCarriesTheQuotedTotalAndBooksThePrice(t *testing.T) {
+	p := &provider{st: payments.StatusResult{State: payments.StateSucceeded, ChargeID: "77"}}
+	d, m, _ := setup(p)
+	m.attempt.PaidMinor = 1267
+	if _, err := Complete(context.Background(), d, key, url.Values{"token": {"tok-1"}}); err != nil {
+		t.Fatal(err)
+	}
+	if p.req.AmountMinor != 1116 || p.req.PaidMinor != 1267 {
+		t.Errorf("the provider was asked %+v: the price of the invoice and the quoted total", p.req)
+	}
+	if len(m.rows) != 1 || m.rows[0].AmountMinor != 1116 {
+		t.Errorf("ledger = %+v: the invoice is booked at its own price", m.rows)
+	}
+}

@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import { buildReadTools, freeTextFields, repoRoot } from "../scripts/generate.mjs";
-import { NOT_OFFERED, PERSONAL, READ_TOOLS, STRUCTURAL, UNTRUSTED } from "../scripts/read-tools.config.mjs";
-import { PERSONAL_KEYS, READ_TOOL_SPECS, UNTRUSTED_KEYS } from "./generated/read-tools.js";
+import { CHECKED_IDS, NOT_OFFERED, PERSONAL, READ_TOOLS, STRUCTURAL, UNTRUSTED } from "../scripts/read-tools.config.mjs";
+import { CHECKED_ID_KEYS, PERSONAL_KEYS, READ_TOOL_SPECS, UNTRUSTED_KEYS } from "./generated/read-tools.js";
 import { REDACTED, redactPersonal } from "./privacy.js";
 import { TOOLS } from "./tools.js";
 
@@ -128,6 +128,14 @@ describe("the read tools are the allow-listed operations of the OpenAPI file", (
   });
 });
 
+describe("ids that are checked", () => {
+  it("are structural keys, and the generated list is the configured one", () => {
+    for (const k of CHECKED_IDS) expect(STRUCTURAL, k).toContain(k);
+    expect(CHECKED_ID_KEYS).toEqual(CHECKED_IDS);
+    expect(CHECKED_IDS).toEqual(expect.arrayContaining(["external_id", "customer_external_id"]));
+  });
+});
+
 describe("personal data", () => {
   it("is classified: every personal key is an untrusted key, and the generated list is the configured one", () => {
     for (const k of PERSONAL) expect(UNTRUSTED, k).toContain(k);
@@ -170,6 +178,10 @@ describe("the generator refuses what must not become a tool", () => {
   it("refuses a personal key that is not an untrusted key", () => {
     expect(() => buildReadTools(spec(), { ...cfg({ getThing: {} }), PERSONAL: ["email"] })).toThrow(/email is personal data but not an untrusted key/);
     expect(buildReadTools(spec(), { ...cfg({ getThing: {} }), PERSONAL: ["note"] }).personal).toEqual(["note"]);
+  });
+  it("refuses a checked id that is not a structural key", () => {
+    expect(() => buildReadTools(spec(), { ...cfg({ getThing: {} }), CHECKED_IDS: ["note"] })).toThrow(/note is checked as an id but is not a structural key/);
+    expect(buildReadTools(spec(), { ...cfg({ getThing: {} }), CHECKED_IDS: ["id"] }).checkedIds).toEqual(["id"]);
   });
   it("accepts a plain GET of the tenant API", () => {
     expect(buildReadTools(spec(), cfg({ getThing: {} })).tools[0]).toMatchObject({ name: "get_thing", path: "/v1/things/{id}" });

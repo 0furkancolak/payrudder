@@ -16,6 +16,7 @@ import { StatusPill, toneOf } from "@/shared/ui/status-pill";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import EInvoiceStatus from "@/features/einvoice/EInvoiceStatus.vue";
 import CreditNotesCard from "@/features/creditnotes/CreditNotesCard.vue";
+import { DisputeCard } from "@/features/disputes";
 import { InvoiceRelated } from "@/features/related";
 import { Input } from "@/shared/ui/input";
 import { useInvoice, useInvoiceLinks, useInvoiceSaga, useOpenPdf } from "./api";
@@ -83,6 +84,7 @@ function askReject(outcome: "rejected" | "expired") {
 
     <TransferCard v-if="transfer && transfer.state !== 'none'" :transfer="transfer" @confirm="recordOpen = true" @reject="askReject" />
     <ManualPaymentsCard v-if="(inv.payments ?? []).length > 0" :payments="inv.payments ?? []" :currency="inv.currency ?? ''" />
+    <DisputeCard :tenant-id="tenantId" :invoice-id="invoiceId" />
 
     <InvoiceLines :inv="inv" />
 

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
@@ -83,9 +84,11 @@ func writeErrorReporting(w http.ResponseWriter, r *http.Request, err error, repo
 			errtrack.Capture(r.Context(), err, errtrack.Tag("http.method", r.Method), errtrack.Tag("request_id", requestID(r.Context())))
 		}
 	}
+	authored := false
 	for _, d := range st.Details() {
 		if ei, ok := d.(*errdetails.ErrorInfo); ok && ei.GetDomain() == errkey.Domain && ei.GetMetadata()[errkey.MetaKey] != "" {
 			body.Error.Key = ei.GetMetadata()[errkey.MetaKey]
+			authored = true
 		}
 		if ei, ok := d.(*errdetails.ErrorInfo); ok && ei.GetReason() != "" {
 			body.Error.Code = ei.GetReason() // an application error code such as STORAGE_QUOTA_EXCEEDED
@@ -96,7 +99,32 @@ func writeErrorReporting(w http.ResponseWriter, r *http.Request, err error, repo
 			}
 		}
 	}
+	if !authored {
+		if msg, generic := retryableMessage(st.Code(), body.Error.RequestID); generic {
+			// The text is the client library's or a database's, not written for the caller: it names internal hosts, ports and tables. The caller keeps the code, the key
+			// and the request id to quote; the text is in the log under the same id.
+			slog.WarnContext(r.Context(), "upstream error", "code", st.Code().String(), "error", st.Message(), "request_id", body.Error.RequestID)
+			body.Error.Message = msg
+		}
+	}
 	writeJSONValue(w, statusOf(st.Code()), body)
+}
+
+// retryableMessage is the plain sentence for a raw error of a code that comes from the transport or a database and means "try again". generic is false for any other
+// code, which keeps the message it has.
+func retryableMessage(c codes.Code, id string) (msg string, generic bool) {
+	quote := " (request id " + id + ")"
+	switch c {
+	case codes.Unavailable:
+		return "the service is temporarily unavailable: try again shortly" + quote, true
+	case codes.DeadlineExceeded:
+		return "the request took too long: try again" + quote, true
+	case codes.ResourceExhausted:
+		return "a limit was reached: try again later" + quote, true
+	case codes.Aborted:
+		return "the request conflicted with another one: try again" + quote, true
+	}
+	return "", false
 }
 
 // codeNames renders codes as UPPER_SNAKE (codes.String gives "InvalidArgument").

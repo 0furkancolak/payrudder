@@ -25,6 +25,7 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 	const base = "/admin/tenants/{tenant}"
 	mux.HandleFunc("GET "+base+"/ledger", guard(h.list))
 	mux.HandleFunc("POST "+base+"/ledger/lookup", guard(h.lookup))
+	mux.HandleFunc("GET "+base+"/disputes", guard(h.disputes))
 	mux.HandleFunc("POST "+base+"/sandbox-reset", guard(h.sandboxReset))
 }
 
@@ -44,6 +45,26 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"entries": rows})
+}
+
+// disputes is GET /admin/tenants/{tenant}/disputes?invoice_id=&outcome=&limit=: the cases customers opened with their banks, newest first.
+func (h *Handler) disputes(w http.ResponseWriter, r *http.Request) {
+	t, ok := httpx.Tenant(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	limit, err := query.Limit(q.Get("limit"))
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	rows, err := query.Disputes(r.Context(), h.Query, t, q.Get("invoice_id"), q.Get("outcome"), limit)
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"disputes": rows})
 }
 
 // lookup is POST /admin/tenants/{tenant}/ledger/lookup {"invoice_ids":[...]}.

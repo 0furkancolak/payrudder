@@ -204,7 +204,7 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 		return PermCatalogRead, true // a quote only reads
 	case "plans", "price-changes", "coupons", "coupon-redemptions", "promotion-codes", "credit-packs", "meters":
 		return rw("catalog")
-	case "invoices", "credit-notes", "e-invoices", "payment-links", "payments":
+	case "invoices", "credit-notes", "e-invoices", "payment-links", "payments", "disputes":
 		return rw("invoices")
 	case "reports", "analytics":
 		return PermReportsRead, true
@@ -222,7 +222,14 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 		return rw("assets")
 	case "contracts":
 		return rw("contracts") // the texts and the settings: a legal act, not a customer record
-	case "contract-acceptances", "contract-withdrawals":
+	case "contract-acceptances":
+		return rw("customers")
+	case "contract-withdrawals":
+		// Deciding a withdrawal is a customer record; asking for the refund makes a credit note that returns money to a card, which needs what creates one anywhere else.
+		// Accepting a withdrawal that refunds is checked in the handler (the body and the seller's setting decide it).
+		if len(segs) >= 3 && segs[2] == "refund" {
+			return PermInvoicesWrite, true
+		}
 		return rw("customers")
 	case "sandbox":
 		return PermSandboxWrite, true // the scenario list is part of the sandbox tools

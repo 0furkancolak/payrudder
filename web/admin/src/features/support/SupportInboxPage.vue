@@ -23,7 +23,9 @@ import { BulkBar, RowCheck } from "@/shared/ui/bulk";
 import { useBulk } from "@/shared/lib/bulk";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Textarea } from "@/shared/ui/textarea";
-import { PRIORITIES, STATUSES, useCannedReplies, useOperatorSupportActions, useOperatorTicket, useQueue, useSupportOperators, type QueueFilter, type SupportPriority, type SupportStatus } from "./api";
+import { attachFiles, PRIORITIES, STATUSES, useCannedReplies, useOperatorSupportActions, useOperatorTicket, useQueue, useSupportOperators, type QueueFilter, type SupportPriority, type SupportStatus } from "./api";
+import AttachFailures from "./AttachFailures.vue";
+import AttachPicker from "./AttachPicker.vue";
 import CannedRepliesDialog from "./CannedRepliesDialog.vue";
 import SupportReportCard from "./SupportReportCard.vue";
 import TicketBadges from "./TicketBadges.vue";
@@ -78,12 +80,16 @@ const assignable = computed(() => {
   return have && !list.some((o) => o.value === have) ? [...list, { value: have, label: have }] : list;
 });
 const internal = ref(false);
+const replyFiles = ref<File[]>([]);
+const replyFailures = ref<Awaited<ReturnType<typeof attachFiles>>>([]);
 watch(
   () => shown.value?.id,
   () => {
     newTag.value = "";
     reply.value = "";
     internal.value = false;
+    replyFiles.value = [];
+    replyFailures.value = [];
     actions.reply.reset();
     actions.update.reset();
   },
@@ -133,10 +139,20 @@ function paste(id: string) {
   const text = canned.data.value?.find((c) => c.id === id)?.body;
   if (text) reply.value = reply.value.trim() === "" ? text : `${reply.value.trimEnd()}\n\n${text}`;
 }
-function send() {
+async function send() {
   const id = shown.value?.id;
   if (!id || reply.value.trim() === "") return;
-  actions.reply.mutate({ id, body: reply.value.trim(), internal: internal.value }, { onSuccess: () => ((reply.value = ""), (internal.value = false)) });
+  try {
+    const made = await actions.reply.mutateAsync({ id, body: reply.value.trim(), internal: internal.value });
+    reply.value = "";
+    internal.value = false;
+    const sent = replyFiles.value;
+    replyFiles.value = [];
+    replyFailures.value = made.message && sent.length > 0 ? await attachFiles("operator", id, made.message.id, sent) : [];
+    if (sent.length > 0) await thread.refetch();
+  } catch {
+    // The mutation's error is shown under the form.
+  }
 }
 </script>
 
@@ -244,10 +260,12 @@ function send() {
         {{ shown.first_response_time ? t("support.answeredAt", { time: formatDate(shown.first_response_time, locale, "dateTime") }) : t("support.dueBy", { time: formatDate(shown.first_response_due, locale, "dateTime") }) }}
         <TicketBadges :ticket="shown" class="ms-2" />
       </p>
-      <TicketThread :messages="messages" :events="events" />
+      <TicketThread :messages="messages" :events="events" :ticket-id="shown.id" side="operator" />
       <form class="grid gap-2" @submit.prevent="send">
         <Textarea v-model="reply" rows="5" maxlength="10000" :aria-label="t('support.fields.reply')" :placeholder="internal ? t('support.fields.note') : t('support.fields.reply')" data-testid="inbox-reply" />
+        <AttachPicker v-model="replyFiles" />
         <ErrorText :error="actions.reply.error.value ?? actions.update.error.value" />
+        <AttachFailures :failures="replyFailures" />
         <div class="flex flex-wrap items-center gap-2">
           <NativeSelect :model-value="''" :aria-label="t('support.canned.insert')" data-testid="inbox-canned" @change="(e: Event) => { paste((e.target as HTMLSelectElement).value); (e.target as HTMLSelectElement).value = ''; }">
             <option value="">{{ t("support.canned.insert") }}</option>

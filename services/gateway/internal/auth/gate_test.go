@@ -3,6 +3,9 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -176,5 +179,115 @@ func TestRejectedKeysAreNotUses(t *testing.T) {
 	case <-tc.done:
 		t.Error("a suspended tenant's key was recorded as used")
 	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+// A key that comes back with no role, no permissions and no scope holds nothing. It used to be read as the scope "" of a key from before roles, which means full: any
+// half-filled answer (an older plans-svc, a bug) made an admin.
+func TestAKeyWithNeitherRoleNorScopeHoldsNothing(t *testing.T) {
+	k, shared, res, a := setup(t, apikey.EnvTest, plansv1.Environment_ENVIRONMENT_SANDBOX, plansv1.ApiKey_STATUS_ACTIVE)
+	p, err := a.Authenticate(context.Background(), k.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Role == apikey.RoleAdmin || p.Role == "" || len(p.Permissions) != 0 {
+		t.Fatalf("a key with no grant became %q with %d permissions, want a role that holds nothing", p.Role, len(p.Permissions))
+	}
+	// The same through a cache entry (Redis) that has neither.
+	cache := &memCache{m: map[string]Entry{k.Prefix: {APIKeyID: "k", TenantID: "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e", Environment: "sandbox", Active: true, KeyHash: k.Hash()}}}
+	a2, _ := New(cache, res, []string{"sandbox", "live"}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if p, err := a2.Authenticate(context.Background(), k.String()); err != nil || p.Role == apikey.RoleAdmin || len(p.Permissions) != 0 {
+		t.Errorf("cache entry with no grant: %+v %v", p, err)
+	}
+	// Permissions without a role are a custom key with those permissions.
+	res.keys[k.Prefix].Permissions = []string{apikey.PermCustomersRead}
+	delete(shared.m, k.Prefix)
+	if p, err := a.Authenticate(context.Background(), k.String()); err != nil || p.Role != apikey.RoleCustom || len(p.Permissions) != 1 {
+		t.Errorf("permissions without a role: %+v %v", p, err)
+	}
+}
+
+// Mixed versions: plans-svc from before roles answers with the scope only. The gateway has to carry it: it used to drop it and read the empty scope as full, so an
+// ingest-only key became an admin.
+func TestTheScopeOfAnOlderPlansSvcIsCarried(t *testing.T) {
+	for name, tc := range map[string]struct {
+		scope     plansv1.ApiKey_Scope
+		wantRole  string
+		wantCount int
+	}{
+		"full":   {plansv1.ApiKey_SCOPE_FULL, apikey.RoleAdmin, len(apikey.Permissions)},
+		"ingest": {plansv1.ApiKey_SCOPE_INGEST, apikey.RoleIngestOnly, 1},
+		"read":   {plansv1.ApiKey_SCOPE_READ, apikey.RoleReadOnly, -1},
+	} {
+		k, _, res, a := setup(t, apikey.EnvTest, plansv1.Environment_ENVIRONMENT_SANDBOX, plansv1.ApiKey_STATUS_ACTIVE)
+		res.keys[k.Prefix].Scope = tc.scope
+		p, err := a.Authenticate(context.Background(), k.String())
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if p.Role != tc.wantRole || (tc.wantCount >= 0 && len(p.Permissions) != tc.wantCount) || (tc.wantCount < 0 && (len(p.Permissions) == 0 || apikey.Allows(p.Permissions, apikey.PermEventsWrite))) {
+			t.Errorf("%s: principal %q with %d permissions, want %q", name, p.Role, len(p.Permissions), tc.wantRole)
+		}
+	}
+}
+
+// Random well-formed keys miss every cache. A prefix plans-svc does not know, or a key it revoked, is remembered for a short while so the same guess does not cost
+// plans-svc a call each time; the memory is bounded.
+func TestAnUnknownOrRevokedKeyIsAskedOnceAWhile(t *testing.T) {
+	k, _, res, a := setup(t, apikey.EnvLive, plansv1.Environment_ENVIRONMENT_LIVE, plansv1.ApiKey_STATUS_ACTIVE)
+	now := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	a.now = func() time.Time { return now }
+	a.neg.SetClock(func() time.Time { return now })
+	ghost := apikey.Key{Env: apikey.EnvLive, Prefix: "ZZZZZZZZ", Secret: k.Secret}
+	for range 5 {
+		if _, err := a.Authenticate(context.Background(), ghost.String()); !errors.Is(err, ErrUnauthenticated) {
+			t.Fatal(err)
+		}
+	}
+	if res.calls != 1 {
+		t.Fatalf("plans-svc was asked %d times about one unknown prefix, want 1", res.calls)
+	}
+	// Another secret behind the same prefix is the same question.
+	other := ghost
+	other.Secret = k.Secret[1:] + "x"
+	_, _ = a.Authenticate(context.Background(), other.String())
+	if res.calls != 1 {
+		t.Errorf("another secret behind the same prefix asked again: %d calls", res.calls)
+	}
+	// It is forgotten after a while (a key made meanwhile must be able to work).
+	now = now.Add(NegativeTTL + time.Second)
+	_, _ = a.Authenticate(context.Background(), ghost.String())
+	if res.calls != 2 {
+		t.Errorf("after the time is up plans-svc was asked %d times in all, want 2", res.calls)
+	}
+	// The real key is not affected by the unknown ones.
+	if _, err := a.Authenticate(context.Background(), k.String()); err != nil {
+		t.Errorf("the genuine key: %v", err)
+	}
+
+	// A revoked key: found once, then refused without asking, even if the shared cache is down.
+	rk, cache, rres, ra := setup(t, apikey.EnvLive, plansv1.Environment_ENVIRONMENT_LIVE, plansv1.ApiKey_STATUS_REVOKED)
+	cache.err = errors.New("redis down")
+	for range 4 {
+		if _, err := ra.Authenticate(context.Background(), rk.String()); !errors.Is(err, ErrUnauthenticated) {
+			t.Fatal(err)
+		}
+	}
+	if rres.calls != 1 {
+		t.Errorf("a revoked key cost %d calls with the cache down, want 1", rres.calls)
+	}
+}
+
+func TestTheUnknownKeyMemoryIsBounded(t *testing.T) {
+	k, _, res, a := setup(t, apikey.EnvLive, plansv1.Environment_ENVIRONMENT_LIVE, plansv1.ApiKey_STATUS_ACTIVE)
+	for i := range NegativeMax + 500 {
+		ghost := apikey.Key{Env: apikey.EnvLive, Prefix: fmt.Sprintf("%08d", i), Secret: k.Secret}
+		_, _ = a.Authenticate(context.Background(), ghost.String())
+	}
+	if n := a.neg.Len(); n > NegativeMax {
+		t.Errorf("the memory holds %d guesses, want at most %d", n, NegativeMax)
+	}
+	if res.calls != NegativeMax+500 {
+		t.Errorf("calls = %d", res.calls)
 	}
 }

@@ -49,6 +49,8 @@ type services struct {
 	Credits *CreditsService
 	// Customers groups the customers operations.
 	Customers *CustomersService
+	// Disputes groups the disputes operations.
+	Disputes *DisputesService
 	// DunningSettings groups the dunning settings operations.
 	DunningSettings *DunningSettingsService
 	// EInvoices groups the einvoices operations.
@@ -118,6 +120,7 @@ func (s *services) initServices(c *Client) {
 	s.CreditPacks = (*CreditPacksService)(&service{c: c})
 	s.Credits = (*CreditsService)(&service{c: c})
 	s.Customers = (*CustomersService)(&service{c: c})
+	s.Disputes = (*DisputesService)(&service{c: c})
 	s.DunningSettings = (*DunningSettingsService)(&service{c: c})
 	s.EInvoices = (*EInvoicesService)(&service{c: c})
 	s.Events = (*EventsService)(&service{c: c})
@@ -775,7 +778,7 @@ func (s *ContractWithdrawalsService) ListContractWithdrawals(ctx context.Context
 // plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0
 // is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than
 // what is left of it, only a payment a provider can return). The answer is the withdrawal with its
-// `refund_state`.
+// `refund_state`. Needs invoices:write, not only customers:write: it returns money to a card.
 func (s *ContractWithdrawalsService) RequestContractWithdrawalRefund(ctx context.Context, id string, req *RequestContractWithdrawalRefundRequest, opts ...RequestOption) (*ContractWithdrawal, error) {
 	var body any
 	if req != nil {
@@ -798,7 +801,10 @@ func (s *ContractWithdrawalsService) RequestContractWithdrawalRefund(ctx context
 // decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`,
 // `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash
 // cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks
-// the withdrawal refunded.
+// the withdrawal refunded. Needs customers:write. A key that does not also hold invoices:write cannot accept a
+// withdrawal while the settings say `withdrawal_refund: full` (403 gateway.auth.permission_denied, nothing is
+// decided): the refund is a credit note, and creating one needs invoices:write everywhere. Rejecting, or
+// accepting while the setting is `none`, needs customers:write only.
 func (s *ContractWithdrawalsService) SetContractWithdrawalStatus(ctx context.Context, id string, req *SetContractWithdrawalStatusRequest, opts ...RequestOption) (*ContractWithdrawal, error) {
 	if req == nil {
 		req = &SetContractWithdrawalStatusRequest{}
@@ -1226,6 +1232,36 @@ func (s *CustomersService) ListCustomerBlockEvents(ctx context.Context, external
 	return &out, nil
 }
 
+// ListCustomerCards: The cards the payment provider holds for the customer (GET
+// /v1/customers/{external_id}/cards).
+//
+// The cards of the provider's card storage (iyzico) under the user key the customer's payment method names,
+// never a number: the bank, the first digits (BIN), the last four, the expiry. The card the customer's invoices
+// are charged with is `in_use`. A customer with no stored card has an empty list and no provider. Payrudder
+// cannot put a card in storage (it holds no card numbers): whoever holds the number puts it there and sets the
+// payment method with `PUT /v1/customers/{external_id}/payment-method`. The sandbox has none.
+func (s *CustomersService) ListCustomerCards(ctx context.Context, externalID string, opts ...RequestOption) (*CustomerCards, error) {
+	var out CustomerCards
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/cards", query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DeleteCustomerCard: Delete one of the customer's stored cards at the provider (DELETE
+// /v1/customers/{external_id}/cards/{token}).
+//
+// The card must be one of the customer's own (a token of another customer is `404 payments.card.not_found`, and
+// nothing is sent to the provider). The customer's payment method is not changed: when the card was `in_use`
+// the answer says so, and the next charge fails until a new payment method is set.
+func (s *CustomersService) DeleteCustomerCard(ctx context.Context, externalID string, token string, opts ...RequestOption) (*DeletedCustomerCard, error) {
+	var out DeletedCustomerCard
+	if err := s.c.do(ctx, requestSpec{method: http.MethodDelete, path: "/v1/customers/" + url.PathEscape(externalID) + "/cards/" + url.PathEscape(token), query: nil, body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
 // SetCustomerContact: Replace the customer's name and e-mail address (PUT /v1/customers/{external_id}/contact).
 //
 // Invoices, receipts and dunning mails carry the name and go to the e-mail address, in the customer's language.
@@ -1315,7 +1351,7 @@ func (s *CustomersService) GetContractRequirements(ctx context.Context, external
 //
 // The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the
 // webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement:
-// see setContractWithdrawalStatus and requestContractWithdrawalRefund.
+// see setContractWithdrawalStatus and requestContractWithdrawalRefund. Needs customers:write.
 func (s *CustomersService) CreateContractWithdrawal(ctx context.Context, externalID string, req *CreateContractWithdrawalRequest, opts ...RequestOption) (*ContractWithdrawal, error) {
 	var body any
 	if req != nil {
@@ -1618,6 +1654,25 @@ func (s *CustomersService) GetUpcomingInvoice(ctx context.Context, externalID st
 func (s *CustomersService) GetCustomerUsage(ctx context.Context, externalID string, params *GetCustomerUsageParams, opts ...RequestOption) (*GetCustomerUsageResponse, error) {
 	var out GetCustomerUsageResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/usage", query: params.values(), body: nil}, &out, opts); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// DisputesService is the disputes namespace of the API.
+type DisputesService service
+
+// ListDisputes: The cases customers opened with their banks about a payment, newest first (GET /v1/disputes).
+//
+// A dispute (a chargeback, or an inquiry that may become one) is kept as the provider last reported it:
+// `outcome` is `open` while it is undecided (for a chargeback the provider has taken the money back until it
+// decides), `won` when it ended in your favour or never became a chargeback, `lost` when the cardholder won.
+// Each step is also sent as the `payment.disputed` webhook event. A dispute of a payment Payrudder did not make
+// has no `invoice_id`. Stripe's and Paddle's own words are in `provider_status`; UNVERIFIED against a live
+// account. `503` when the payment service does not answer.
+func (s *DisputesService) ListDisputes(ctx context.Context, params *ListDisputesParams, opts ...RequestOption) (*ListDisputesResponse, error) {
+	var out ListDisputesResponse
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/disputes", query: params.values(), body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil

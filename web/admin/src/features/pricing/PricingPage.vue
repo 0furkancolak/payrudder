@@ -5,11 +5,13 @@ import { useI18n } from "vue-i18n";
 import { CountrySelect } from "@/shared/ui/location-fields";
 import { ErrorState } from "@/shared/ui/error-state";
 import { ErrorText } from "@/shared/ui/error-text";
+import { FormField } from "@/shared/ui/form-field";
 import { useCanWrite } from "@/shared/lib/access";
 import { RETRY_HOURS } from "@/shared/lib/rules";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
+import { Switch } from "@/shared/ui/switch";
 import { localizePercent, parsePercent, useDunningSettings, useSetDunningSettings, useSetTaxRates, useTaxRates, type Rate } from "./api";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
@@ -45,10 +47,14 @@ function saveRates() {
 const dunningStored = useDunningSettings(tenantId);
 const setDunning = useSetDunningSettings(tenantId);
 const retryHours = ref<string[]>([]);
+const blockOnChargeback = ref(false);
 const dunningError = ref("");
 watch(
   () => dunningStored.data.value,
-  (v) => (retryHours.value = (v?.retry_hours ?? []).map(String)),
+  (v) => {
+    retryHours.value = (v?.retry_hours ?? []).map(String);
+    blockOnChargeback.value = v?.block_on_chargeback === true;
+  },
   { immediate: true },
 );
 function saveDunning() {
@@ -58,7 +64,8 @@ function saveDunning() {
     dunningError.value = t("billing.pricing.dunning.bad");
     return;
   }
-  setDunning.mutate(out);
+  const changed = blockOnChargeback.value !== (dunningStored.data.value?.block_on_chargeback === true);
+  setDunning.mutate({ retry_hours: out, ...(changed ? { block_on_chargeback: blockOnChargeback.value } : {}) });
 }
 </script>
 
@@ -75,8 +82,13 @@ function saveDunning() {
         <Button type="button" variant="ghost" size="icon" :aria-label="t('billing.common.remove')" @click="retryHours.splice(i, 1)"><X class="size-4" /></Button>
       </div>
       <p v-if="retryHours.length === 0 && !dunningStored.isPending.value" class="text-muted-foreground text-sm">{{ t("billing.pricing.dunning.none") }}</p>
-      <div class="flex flex-wrap gap-2">
+      <div>
         <Button type="button" variant="outline" :disabled="retryHours.length >= 6" @click="retryHours.push('24')"><Plus class="size-4" />{{ t("billing.pricing.dunning.add") }}</Button>
+      </div>
+      <FormField :label="t('billing.pricing.dunning.blockOnChargeback')" for="block-on-chargeback" :hint="t('billing.pricing.dunning.blockOnChargebackHint')">
+        <Switch id="block-on-chargeback" v-model="blockOnChargeback" data-testid="block-on-chargeback" />
+      </FormField>
+      <div>
         <Button type="button" :disabled="setDunning.isPending.value" @click="saveDunning">{{ t("billing.pricing.dunning.save") }}</Button>
       </div>
       <ErrorText :message="dunningError" />

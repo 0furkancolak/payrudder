@@ -777,6 +777,7 @@ services:
       S3_ACCESS_KEY: payrudder
       S3_SECRET_KEY: payrudder_local
       S3_FORCE_PATH_STYLE: "true"
+      PAYRUDDER_PUBLIC_URL: ${PAYRUDDER_PUBLIC_URL:-http://localhost:42800}   # the link in the mail that asks a customer to confirm a payment (3-D Secure)
       PAYRUDDER_SCHEDULER_INTERVAL: ${PAYRUDDER_SCHEDULER_INTERVAL:-1m}
       PAYRUDDER_SWEEP_INTERVAL: ${PAYRUDDER_SWEEP_INTERVAL:-30s}
       PAYRUDDER_STEP_TIMEOUT: ${PAYRUDDER_STEP_TIMEOUT:-2m}
