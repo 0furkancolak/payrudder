@@ -3,7 +3,7 @@
 -- (address, request id) and when. The app role and the system role may only add rows; a trigger refuses UPDATE and DELETE for everybody, the owner included. The
 -- one DELETE it lets through is the copy of a tenant between the pooled database and a cell (payrudder.tenant_move, as for the financial tables).
 -- tenant_id is NULL for an event that belongs to no tenant (a sign-in, a member of an account); account_id is set for an event that is an account's, not a tenant's.
--- The twin of ../00011_audit_events.sql for the tables that have a tenant_id.
+-- The twin of ../00012_audit_events.sql for the tables that have a tenant_id.
 
 -- +goose Up
 CREATE TABLE audit_events (
