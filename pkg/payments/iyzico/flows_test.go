@@ -167,16 +167,16 @@ func TestTheCheckoutFormReturnIsConfirmedWithIyzico(t *testing.T) {
 	cf := func(extra string) string {
 		return `{"status":"success","paymentStatus":"SUCCESS","paymentId":"77","basketId":"inv-1","token":"tok-1","price":11.16000000,"currency":"TRY","fraudStatus":1` + extra + `}`
 	}
-	run := func(t *testing.T, form url.Values, ref, answer string) (payments.StatusResult, error, *fake) {
+	run := func(t *testing.T, form url.Values, ref, answer string) (payments.StatusResult, *fake, error) {
 		f, c := newFake(t, nil)
 		f.reply = func(string, map[string]any) (int, string) { return 200, answer }
 		r := returnRequest(form)
 		r.ProviderRef = ref
 		st, err := c.ConfirmReturn(context.Background(), r)
-		return st, err, f
+		return st, f, err
 	}
 	t.Run("a paid payment of the attempt", func(t *testing.T) {
-		st, err, f := run(t, url.Values{"token": {"tok-1"}}, "tok-1", cf(""))
+		st, f, err := run(t, url.Values{"token": {"tok-1"}}, "tok-1", cf(""))
 		if err != nil || st.State != payments.StateSucceeded || st.ChargeID != "77" {
 			t.Fatalf("= %+v, %v", st, err)
 		}
@@ -185,7 +185,7 @@ func TestTheCheckoutFormReturnIsConfirmedWithIyzico(t *testing.T) {
 		}
 	})
 	t.Run("a token that is not the attempt's is not asked about", func(t *testing.T) {
-		_, err, f := run(t, url.Values{"token": {"other"}}, "tok-1", cf(""))
+		_, f, err := run(t, url.Values{"token": {"other"}}, "tok-1", cf(""))
 		if !errors.Is(err, payments.ErrUnverified) || len(f.paths) != 0 {
 			t.Errorf("err = %v, calls %v", err, f.paths)
 		}
@@ -197,35 +197,35 @@ func TestTheCheckoutFormReturnIsConfirmedWithIyzico(t *testing.T) {
 			strings.Replace(cf(""), `"TRY"`, `"EUR"`, 1),
 			strings.Replace(cf(""), `"tok-1"`, `"tok-2"`, 1),
 		} {
-			if _, err, _ := run(t, url.Values{"token": {"tok-1"}}, "tok-1", answer); !errors.Is(err, payments.ErrUnverified) {
+			if _, _, err := run(t, url.Values{"token": {"tok-1"}}, "tok-1", answer); !errors.Is(err, payments.ErrUnverified) {
 				t.Errorf("%s: err = %v, want ErrUnverified", answer, err)
 			}
 		}
 	})
 	t.Run("a payment under fraud review is pending, one the filters rejected a decline", func(t *testing.T) {
-		_, err, _ := run(t, url.Values{"token": {"tok-1"}}, "tok-1", strings.Replace(cf(""), `"fraudStatus":1`, `"fraudStatus":0`, 1))
+		_, _, err := run(t, url.Values{"token": {"tok-1"}}, "tok-1", strings.Replace(cf(""), `"fraudStatus":1`, `"fraudStatus":0`, 1))
 		var pending *payments.PendingError
 		if !errors.As(err, &pending) {
 			t.Errorf("err = %v, want pending", err)
 		}
-		st, err, _ := run(t, url.Values{"token": {"tok-1"}}, "tok-1", strings.Replace(cf(""), `"fraudStatus":1`, `"fraudStatus":-1`, 1))
+		st, _, err := run(t, url.Values{"token": {"tok-1"}}, "tok-1", strings.Replace(cf(""), `"fraudStatus":1`, `"fraudStatus":-1`, 1))
 		if err != nil || st.State != payments.StateDeclined || st.DeclineCode != "fraudulent" {
 			t.Errorf("= %+v, %v", st, err)
 		}
 	})
 	t.Run("a bank's refusal is the payer's decline, a system failure is not", func(t *testing.T) {
-		st, err, _ := run(t, url.Values{"token": {"tok-1"}}, "tok-1", `{"status":"failure","errorCode":"10051","errorGroup":"NOT_SUFFICIENT_FUNDS"}`)
+		st, _, err := run(t, url.Values{"token": {"tok-1"}}, "tok-1", `{"status":"failure","errorCode":"10051","errorGroup":"NOT_SUFFICIENT_FUNDS"}`)
 		if err != nil || st.State != payments.StateDeclined || st.DeclineCode != "insufficient_funds" {
 			t.Errorf("= %+v, %v", st, err)
 		}
-		_, err, _ = run(t, url.Values{"token": {"tok-1"}}, "tok-1", `{"status":"failure","errorCode":"10214","errorGroup":"COMMUNICATION_OR_SYSTEM_ERROR"}`)
+		_, _, err = run(t, url.Values{"token": {"tok-1"}}, "tok-1", `{"status":"failure","errorCode":"10214","errorGroup":"COMMUNICATION_OR_SYSTEM_ERROR"}`)
 		var transient *payments.TransientError
 		if !errors.As(err, &transient) {
 			t.Errorf("err = %v, want transient", err)
 		}
 	})
 	t.Run("a return with neither a token nor a payment id", func(t *testing.T) {
-		if _, err, _ := run(t, url.Values{}, "", cf("")); !errors.Is(err, payments.ErrUnverified) {
+		if _, _, err := run(t, url.Values{}, "", cf("")); !errors.Is(err, payments.ErrUnverified) {
 			t.Errorf("err = %v", err)
 		}
 	})
@@ -271,17 +271,17 @@ func TestThreeDSStartsWithTheStoredCardAndReturnsTheBanksPage(t *testing.T) {
 
 func TestThreeDSIsFinalisedOnceAfterTheBankApproved(t *testing.T) {
 	auth := `{"status":"success","paymentId":"88","basketId":"inv-1","price":11.16000000,"paidPrice":11.16000000,"currency":"TRY","fraudStatus":1,"mdStatus":1}`
-	run := func(form url.Values, reply func(path string) (int, string)) (payments.StatusResult, error, *fake) {
+	run := func(form url.Values, reply func(path string) (int, string)) (payments.StatusResult, *fake, error) {
 		f, c := newFake(t, nil)
 		f.reply = func(path string, _ map[string]any) (int, string) { return reply(path) }
 		r := returnRequest(form)
 		r.ProviderRef = "88"
 		st, err := c.ConfirmReturn(context.Background(), r)
-		return st, err, f
+		return st, f, err
 	}
 	ok := url.Values{"status": {"success"}, "paymentId": {"88"}, "mdStatus": {"1"}, "conversationData": {"cd"}, "conversationId": {"link:inv-1:1"}}
 	t.Run("the auth call carries what the initialisation did", func(t *testing.T) {
-		st, err, f := run(ok, func(string) (int, string) { return 200, auth })
+		st, f, err := run(ok, func(string) (int, string) { return 200, auth })
 		if err != nil || st.State != payments.StateSucceeded || st.ChargeID != "88" {
 			t.Fatalf("= %+v, %v", st, err)
 		}
@@ -296,7 +296,7 @@ func TestThreeDSIsFinalisedOnceAfterTheBankApproved(t *testing.T) {
 	t.Run("an authentication the bank refused is a decline and no auth call is made", func(t *testing.T) {
 		for _, md := range []string{"0", "2", "4", "7", "8"} {
 			form := url.Values{"status": {"failure"}, "paymentId": {"88"}, "mdStatus": {md}}
-			st, err, f := run(form, func(string) (int, string) { return 200, auth })
+			st, f, err := run(form, func(string) (int, string) { return 200, auth })
 			if err != nil || st.State != payments.StateDeclined || st.DeclineCode != "authentication_failed" || len(f.paths) != 0 {
 				t.Errorf("mdStatus %s: %+v, %v, calls %v", md, st, err, f.paths)
 			}
@@ -304,7 +304,7 @@ func TestThreeDSIsFinalisedOnceAfterTheBankApproved(t *testing.T) {
 	})
 	t.Run("a payment id that is not the attempt's", func(t *testing.T) {
 		form := url.Values{"paymentId": {"99"}, "mdStatus": {"1"}}
-		_, err, f := run(form, func(string) (int, string) { return 200, auth })
+		_, f, err := run(form, func(string) (int, string) { return 200, auth })
 		if !errors.Is(err, payments.ErrUnverified) || len(f.paths) != 0 {
 			t.Errorf("err = %v, calls %v", err, f.paths)
 		}
@@ -315,13 +315,13 @@ func TestThreeDSIsFinalisedOnceAfterTheBankApproved(t *testing.T) {
 			strings.Replace(auth, `"paymentId":"88"`, `"paymentId":"89"`, 1),
 			strings.Replace(auth, `11.16000000`, `0.16000000`, 1),
 		} {
-			if _, err, _ := run(ok, func(string) (int, string) { return 200, answer }); !errors.Is(err, payments.ErrUnverified) {
+			if _, _, err := run(ok, func(string) (int, string) { return 200, answer }); !errors.Is(err, payments.ErrUnverified) {
 				t.Errorf("%s: err = %v", answer, err)
 			}
 		}
 	})
 	t.Run("a refusal of the auth call is the bank's decline", func(t *testing.T) {
-		st, err, f := run(ok, func(path string) (int, string) {
+		st, f, err := run(ok, func(path string) (int, string) {
 			if path == "/payment/detail" {
 				return 200, `{"status":"success","paymentStatus":"FAILURE","paymentId":"88","basketId":"inv-1"}`
 			}
@@ -332,7 +332,7 @@ func TestThreeDSIsFinalisedOnceAfterTheBankApproved(t *testing.T) {
 		}
 	})
 	t.Run("a repeated return finds the payment already done", func(t *testing.T) {
-		st, err, _ := run(ok, func(path string) (int, string) {
+		st, _, err := run(ok, func(path string) (int, string) {
 			if path == "/payment/detail" {
 				return 200, `{"status":"success","paymentStatus":"SUCCESS","paymentId":"88","basketId":"inv-1","fraudStatus":1}`
 			}
@@ -343,7 +343,7 @@ func TestThreeDSIsFinalisedOnceAfterTheBankApproved(t *testing.T) {
 		}
 	})
 	t.Run("no answer to the auth call is looked up, never repeated", func(t *testing.T) {
-		st, err, f := run(ok, func(path string) (int, string) {
+		st, f, err := run(ok, func(path string) (int, string) {
 			if path == "/payment/detail" {
 				return 200, `{"status":"success","paymentStatus":"SUCCESS","paymentId":"88","basketId":"inv-1","fraudStatus":1}`
 			}
@@ -355,7 +355,7 @@ func TestThreeDSIsFinalisedOnceAfterTheBankApproved(t *testing.T) {
 		if n := strings.Count(strings.Join(f.paths, " "), "3dsecure/auth"); n != 1 {
 			t.Errorf("the auth call was made %d times: %v", n, f.paths)
 		}
-		_, err, f = run(ok, func(path string) (int, string) {
+		_, f, err = run(ok, func(path string) (int, string) {
 			if path == "/payment/detail" {
 				return 200, `{"status":"success","paymentStatus":"CALLBACK_THREEDS","paymentId":"88","basketId":"inv-1"}`
 			}
@@ -367,7 +367,7 @@ func TestThreeDSIsFinalisedOnceAfterTheBankApproved(t *testing.T) {
 		}
 	})
 	t.Run("a payment under fraud review is pending", func(t *testing.T) {
-		_, err, _ := run(ok, func(string) (int, string) { return 200, strings.Replace(auth, `"fraudStatus":1`, `"fraudStatus":0`, 1) })
+		_, _, err := run(ok, func(string) (int, string) { return 200, strings.Replace(auth, `"fraudStatus":1`, `"fraudStatus":0`, 1) })
 		var pending *payments.PendingError
 		if !errors.As(err, &pending) {
 			t.Errorf("err = %v", err)
@@ -451,12 +451,12 @@ func TestAPaymentIsCancelledTheDayItWasTakenAndRefundedAfter(t *testing.T) {
 	req := func(chargedAt time.Time, charge, refund int64) payments.RefundRequest {
 		return payments.RefundRequest{IdempotencyKey: "inv-1:refund", InvoiceID: "inv-1", ChargeID: "77", AmountMinor: refund, ChargeAmountMinor: charge, ChargedAt: chargedAt, Currency: "TRY"}
 	}
-	run := func(r payments.RefundRequest, reply func(path string) (int, string)) (payments.RefundResult, error, []string) {
+	run := func(r payments.RefundRequest, reply func(path string) (int, string)) (payments.RefundResult, []string, error) {
 		f, c := newFake(t, nil)
 		c.now = func() time.Time { return now }
 		f.reply = func(path string, _ map[string]any) (int, string) { return reply(path) }
 		res, err := c.Refund(context.Background(), r)
-		return res, err, f.paths
+		return res, f.paths, err
 	}
 	cancelled := func(path string) (int, string) {
 		if path == "/payment/cancel" {
@@ -466,24 +466,24 @@ func TestAPaymentIsCancelledTheDayItWasTakenAndRefundedAfter(t *testing.T) {
 	}
 	today := time.Date(2026, 11, 2, 21, 5, 0, 0, time.UTC) // 00:05 on the 3rd in Turkey: the same Turkish day as now
 
-	res, err, paths := run(req(today, 1116, 1116), cancelled)
+	res, paths, err := run(req(today, 1116, 1116), cancelled)
 	if err != nil || res.RefundID != "cx-1" || !slices.Equal(paths, []string{"/payment/cancel"}) {
 		t.Errorf("whole and the same day: %+v, %v, %v", res, err, paths)
 	}
 	// Yesterday in Turkey, though the same day in UTC, is not the same day.
-	res, err, paths = run(req(time.Date(2026, 11, 2, 20, 59, 0, 0, time.UTC), 1116, 1116), cancelled)
+	res, paths, err = run(req(time.Date(2026, 11, 2, 20, 59, 0, 0, time.UTC), 1116, 1116), cancelled)
 	if err != nil || res.RefundID != "rf-1" || !slices.Equal(paths, []string{"/v2/payment/refund"}) {
 		t.Errorf("another day: %+v, %v, %v", res, err, paths)
 	}
 	// A part of the payment cannot be cancelled; and a payment of unknown age and size is refunded as before.
-	if _, _, paths = run(req(today, 1116, 400), cancelled); !slices.Equal(paths, []string{"/v2/payment/refund"}) {
+	if _, paths, _ = run(req(today, 1116, 400), cancelled); !slices.Equal(paths, []string{"/v2/payment/refund"}) {
 		t.Errorf("a part: %v", paths)
 	}
-	if _, _, paths = run(req(time.Time{}, 0, 1116), cancelled); !slices.Equal(paths, []string{"/v2/payment/refund"}) {
+	if _, paths, _ = run(req(time.Time{}, 0, 1116), cancelled); !slices.Equal(paths, []string{"/v2/payment/refund"}) {
 		t.Errorf("unknown payment: %v", paths)
 	}
 	// The bank refused the cancel (its day is over, or the test card that cannot be cancelled): nothing moved, the payment is refunded.
-	res, err, paths = run(req(today, 1116, 1116), func(path string) (int, string) {
+	res, paths, err = run(req(today, 1116, 1116), func(path string) (int, string) {
 		if path == "/payment/cancel" {
 			return 200, `{"status":"failure","errorCode":"10223","errorGroup":"REQUIRES_DAY_END","errorMessage":"End of day required"}`
 		}
@@ -499,7 +499,7 @@ func TestAPaymentIsCancelledTheDayItWasTakenAndRefundedAfter(t *testing.T) {
 			return 200, `{"status":"failure","errorCode":"2","errorMessage":"System error occurred"}`
 		},
 	} {
-		_, err, paths = run(req(today, 1116, 1116), reply)
+		_, paths, err = run(req(today, 1116, 1116), reply)
 		var transient *payments.TransientError
 		if !errors.As(err, &transient) || !slices.Equal(paths, []string{"/payment/cancel"}) {
 			t.Errorf("%s: %v, %v", name, err, paths)

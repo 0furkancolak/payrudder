@@ -59,6 +59,8 @@ All of it against iyzico until credentials exist.
 ## Risks
 3-D Secure and the checkout form redirect the customer: the return/callback URLs, CSP and idempotency of the callback need a design review (04).
 
+**Built 2026-11-02, the design the review asked for** (04): the callback is `POST /i/{token}/return/{key}` (portal twin), public and rate-limited; the form is never believed (payments-worker asks iyzico, binds the token or payment id, the basket, the amount and the currency to the attempt); the answer is a redirect to the invoice page whatever happens; a repeat is answered from the ledger; the bank's page is a sandboxed document with its own CSP. **Known limit:** the 3-D Secure auth call is made once. If it fails with a system error, or its answer is lost and `/payment/detail` cannot say, the payment is left unfinished, the payer is told it is processing, and the invoice offers payment again after 30 minutes; no other code can finish it, since iyzico posts to the callback once. Whether iyzico repeats a callback is UNVERIFIED.
+
 ## Review addendum (2026-11-01)
 - `docs/iyzico-compatibility-matrix.md` exists (8 findings); finding 2 was fixed in #270. Open and not yet listed here: `fraudStatus` is ignored (a success with a fraud status of 0 is booked as paid); the checkout-form notification is rejected; there is no CF-Retrieve call; the health-check BIN is 6 digits against the documented 8; the V3 signature check is not implemented. **All five closed 2026-11-02** (see Status).
 - iyzico has no webhook signature in the current adapter: the "ask iyzico" confirmation is the only trust. Keep it, add V3 verification as an extra check when the account has it enabled.
