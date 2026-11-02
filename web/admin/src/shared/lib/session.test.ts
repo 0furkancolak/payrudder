@@ -68,3 +68,14 @@ describe("the session of this tab", () => {
     expect((await import("./session")).tenantBase()).toBe("/tenants");
   });
 });
+
+describe("the operator's paths", () => {
+  it("include the audit log across tenants, and nothing that only starts with the same letters or sits under /app", async () => {
+    fakeWindow();
+    const { OPERATOR_PATHS } = await import("./session");
+    expect(OPERATOR_PATHS.test("/audit")).toBe(true);
+    expect(OPERATOR_PATHS.test("/audit/x")).toBe(true);
+    expect(OPERATOR_PATHS.test("/auditing")).toBe(false);
+    expect(OPERATOR_PATHS.test("/app/t/abc/audit")).toBe(false);
+  });
+});

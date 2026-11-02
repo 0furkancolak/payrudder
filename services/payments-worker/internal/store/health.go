@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -116,7 +117,7 @@ func (p ProviderHealth) Failover(ctx context.Context, tenant uuid.UUID, environm
 
 // SetFailover sets the failover account of provider, and fails (ErrNoAccount) when either account does not exist in the environment.
 func (p ProviderHealth) SetFailover(ctx context.Context, tenant uuid.UUID, environment, provider, to, by string) error {
-	return tx(ctx, p.DB, tenant, func(_ pgx.Tx, q *sqlc.Queries) error {
+	return tx(ctx, p.DB, tenant, func(t pgx.Tx, q *sqlc.Queries) error {
 		for _, name := range []string{provider, to} {
 			if _, err := q.GetProviderAccountSettings(ctx, sqlc.GetProviderAccountSettingsParams{TenantID: tenant, Provider: name, Environment: environment}); err != nil {
 				if notFound(err) == nil {
@@ -125,16 +126,27 @@ func (p ProviderHealth) SetFailover(ctx context.Context, tenant uuid.UUID, envir
 				return err
 			}
 		}
-		return q.PutFailover(ctx, sqlc.PutFailoverParams{TenantID: tenant, Environment: environment, Provider: provider, FailoverTo: to, UpdatedBy: by})
+		if err := q.PutFailover(ctx, sqlc.PutFailoverParams{TenantID: tenant, Environment: environment, Provider: provider, FailoverTo: to, UpdatedBy: by}); err != nil {
+			return err
+		}
+		return accountEntry(ctx, t, tenant, "provider_account.failover_set", provider, environment, fmt.Sprintf("charges that definitely did not process at %s may go to %s (%s)", provider, to, environment),
+			map[string]any{"provider": provider, "environment": environment, "to": to})
 	})
 }
 
 // ClearFailover removes the failover of provider and reports whether there was one.
 func (p ProviderHealth) ClearFailover(ctx context.Context, tenant uuid.UUID, environment, provider string) (bool, error) {
-	n, err := get(ctx, p.DB, tenant, func(q *sqlc.Queries) (int64, error) {
-		return q.DeleteFailover(ctx, sqlc.DeleteFailoverParams{TenantID: tenant, Environment: environment, Provider: provider})
+	var cleared bool
+	err := tx(ctx, p.DB, tenant, func(t pgx.Tx, q *sqlc.Queries) error {
+		n, err := q.DeleteFailover(ctx, sqlc.DeleteFailoverParams{TenantID: tenant, Environment: environment, Provider: provider})
+		if err != nil || n != 1 {
+			return err
+		}
+		cleared = true
+		return accountEntry(ctx, t, tenant, "provider_account.failover_cleared", provider, environment, fmt.Sprintf("removed the failover of %s (%s)", provider, environment),
+			map[string]any{"provider": provider, "environment": environment})
 	})
-	return n == 1, err
+	return cleared, err
 }
 
 // FailoverAttempt is a charge attempt that was made at another account after the account the charge was routed to definitely did not process it.

@@ -487,4 +487,10 @@ func TestTheMonitorKeepsHealthAndTheAPIKeepsTheFailover(t *testing.T) {
 	if code, m := r.call("DELETE", "/provider-accounts/fault/failover?environment=live", ""); code != 404 || errorKey(m) != "payments.failover.not_found" {
 		t.Errorf("delete again: %d %v", code, m)
 	}
+	// Setting and removing the failover is in the audit log (pkg/audit), once each: the refused and the second delete are not.
+	logged, err := r.world.CountAll(ctx, `SELECT count(*) FROM audit_events WHERE tenant_id = $1 AND action IN ('provider_account.failover_set', 'provider_account.failover_cleared')
+		AND target_id = 'fault/live'`, r.tenant)
+	if err != nil || logged != 2 {
+		t.Errorf("failover entries in the audit log = %d, %v; want 2", logged, err)
+	}
 }

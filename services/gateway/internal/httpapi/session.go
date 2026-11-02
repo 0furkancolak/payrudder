@@ -14,7 +14,9 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/auth"
 )
 
@@ -73,12 +75,17 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 		return auth.Principal{}, errkey.New(codes.Unauthenticated, "identity.session.act_as_required", "a session token needs "+ActAsHeader+": the tenant to act on")
 	}
 	sess, err := s.session(r)
+	if err == nil {
+		err = requireSecondFactorSetup(sess.User, r.URL.Path)
+	}
 	if err != nil {
 		return auth.Principal{}, err
 	}
 	// An operator's session acts as any tenant, like the machine token does (the console shows a tenant's data through the tenant API).
 	if s.isOperator(sess.User) {
-		return s.actAs(r.Context(), id)
+		p, err := s.actAs(r.Context(), id)
+		p.Actor = audit.Actor{Type: audit.ActorOperator, ID: sess.User.GetEmail(), Email: sess.User.GetEmail()}
+		return p, err
 	}
 	resp, err := s.d.Identity.ResolveMyTenant(r.Context(), &plansv1.ResolveMyTenantRequest{UserId: sess.UserID, TenantId: id})
 	switch status.Code(err) {
@@ -93,7 +100,9 @@ func (s *Server) sessionActAs(r *http.Request) (auth.Principal, error) {
 	if resp.GetRole() == "viewer" && r.Method != http.MethodGet && r.Method != http.MethodHead {
 		return auth.Principal{}, errkey.New(codes.PermissionDenied, "identity.account.forbidden", "your role in this account is read-only")
 	}
-	return principalOf(resp.GetTenant())
+	p, err := principalOf(resp.GetTenant())
+	p.Actor, p.MemberRole = audit.Actor{Type: audit.ActorUser, ID: sess.UserID, Email: sess.User.GetEmail()}, resp.GetRole()
+	return p, err
 }
 
 // EdgeAuthHeader carries the shared secret (PAYRUDDER_TRUSTED_PROXY_SECRET) that an edge proxy such as the console's Worker adds to prove it is the one
@@ -202,7 +211,7 @@ func (s *Server) signIn(w http.ResponseWriter, r *http.Request) {
 	}
 	noStore(w)
 	resp, err := s.d.Identity.SignIn(r.Context(), &plansv1.SignInRequest{Email: body.Email, Password: body.Password})
-	s.respondSignedIn(w, r, resp, err)
+	s.signedInOrChallenge(w, r, resp, err)
 }
 
 func (s *Server) signOut(w http.ResponseWriter, r *http.Request) {
@@ -218,4 +227,23 @@ func (s *Server) me(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
 	noStore(w)
 	s.writeWithOperator(w, r, http.StatusOK, sess.User, &plansv1.GetSessionResponse{User: sess.User, Memberships: sess.Memberships, ExpireTime: timestamppb.New(sess.Expire)})
+}
+
+// auditActor is who makes a request, for the audit log (pkg/audit): the API key, the signed-in person (or the operator behind a session that acts as a tenant), the
+// operator's address or the machine token's X-Payrudder-Actor, and for every request the client address and the request id. A public route has no actor: its command
+// names the person it found (a sign-in).
+func (s *Server) auditActor(ctx context.Context, r *http.Request) audit.Actor {
+	a := principalFrom(ctx).Actor
+	switch who := operatorFrom(ctx); {
+	case a.Type != "":
+	case who != "":
+		a = audit.Actor{Type: audit.ActorOperator, ID: who, Email: who}
+	case tenant.IsOperator(ctx):
+		a = audit.Actor{Type: audit.ActorOperator, ID: actorOf(r.WithContext(ctx))}
+	case sessionFrom(ctx).UserID != "":
+		sess := sessionFrom(ctx)
+		a = audit.Actor{Type: audit.ActorUser, ID: sess.UserID, Email: sess.User.GetEmail()}
+	}
+	a.IP, a.RequestID = s.clientAddr(r), requestID(r.Context())
+	return a
 }

@@ -5,16 +5,19 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/env"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/idgen"
@@ -72,8 +75,16 @@ func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, p
 		if err != nil {
 			return nil, "", status.Error(codes.Internal, "key generation failed")
 		}
-		row, err := c.q().InsertApiKey(ctx, sqlc.InsertApiKeyParams{
-			ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(keyEnv), Role: role, Permissions: permissions,
+		var row sqlc.ApiKey
+		err = pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+			var err error
+			if row, err = sqlc.New(tx).InsertApiKey(ctx, sqlc.InsertApiKeyParams{
+				ID: idgen.NewUUIDv7(), TenantID: t.ID, Prefix: key.Prefix, KeyHash: key.Hash(), Env: string(keyEnv), Role: role, Permissions: permissions,
+			}); err != nil {
+				return err
+			}
+			return audit.Record(ctx, tx, audit.Event{TenantID: t.ID, Action: "api_key.created", TargetType: "api_key", TargetID: row.ID.String(),
+				Summary: fmt.Sprintf("created the %s key %s with the role %s", keyEnv, key.Prefix, role), Detail: map[string]any{"prefix": key.Prefix, "role": role, "permissions": permissions}})
 		})
 		if pgxx.ErrCode(err) == pgxx.CodeUniqueViolation {
 			continue // prefix collision: draw again
@@ -89,7 +100,15 @@ func (c *Commands) Issue(ctx context.Context, tenantID uuid.UUID, role string, p
 
 // Revoke revokes the key and evicts it from the gateway cache.
 func (c *Commands) Revoke(ctx context.Context, id uuid.UUID) (*plansv1.ApiKey, error) {
-	row, err := c.q().RevokeApiKey(ctx, id)
+	var row sqlc.ApiKey
+	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		var err error
+		if row, err = sqlc.New(tx).RevokeApiKey(ctx, id); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: row.TenantID, Action: "api_key.revoked", TargetType: "api_key", TargetID: id.String(), Summary: "revoked the key " + row.Prefix,
+			Detail: map[string]any{"prefix": row.Prefix}})
+	})
 	if err != nil {
 		return nil, convert.Err(err, "api key")
 	}
@@ -102,7 +121,15 @@ func (c *Commands) Revoke(ctx context.Context, id uuid.UUID) (*plansv1.ApiKey, e
 // Expire makes an active key stop working at until without revoking it: the old key of a rotation. It never extends a key that already ends sooner.
 // The gateway checks the time itself on every request, so the cache entry only has to be dropped to carry the new end time.
 func (c *Commands) Expire(ctx context.Context, id uuid.UUID, until time.Time) (*plansv1.ApiKey, error) {
-	row, err := c.q().ExpireApiKey(ctx, sqlc.ExpireApiKeyParams{ID: id, ExpiresAt: until})
+	var row sqlc.ApiKey
+	err := pgxx.InTx(ctx, c.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		var err error
+		if row, err = sqlc.New(tx).ExpireApiKey(ctx, sqlc.ExpireApiKeyParams{ID: id, ExpiresAt: until}); err != nil {
+			return err
+		}
+		return audit.Record(ctx, tx, audit.Event{TenantID: row.TenantID, Action: "api_key.expiring", TargetType: "api_key", TargetID: id.String(),
+			Summary: fmt.Sprintf("the key %s ends at %s (rotated)", row.Prefix, until.UTC().Format(time.RFC3339)), Detail: map[string]any{"prefix": row.Prefix, "ends_at": until.UTC()}})
+	})
 	if err != nil {
 		return nil, convert.Err(err, "api key")
 	}

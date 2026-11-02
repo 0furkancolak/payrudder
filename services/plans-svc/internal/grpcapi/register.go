@@ -8,10 +8,12 @@ import (
 	"google.golang.org/grpc"
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/audit/auditgrpc"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
 	affiliatescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/affiliates/command"
 	apikeyscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/apikeys/command"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/auditlog"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/directory"
 	directorycmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/directory/command"
@@ -81,10 +83,11 @@ func Register(srv grpc.ServiceRegistrar, d Deps) *saascmd.Commands {
 	plansv1.RegisterDirectoryServiceServer(srv, directory.New(directoryqry.New(d.SystemPool), directorycmd.New(d.SystemPool, d.CellsReady, d.Log)))
 	plansv1.RegisterSupportServiceServer(srv, support.New(d.SystemPool, d.Log, support.Config{Mail: d.Mail, Operators: d.OperatorEmails, AppURL: d.AppURL}))
 	plansv1.RegisterContractServiceServer(srv, contracts.New(store.New(d.AppDB)))
+	auditgrpc.Register(srv, auditlog.Source{Places: d.Places})
 	saasQ := saasqry.New(d.SystemPool, d.Saas.TrialDays, time.Now).WithPlaces(d.Places)
 	saasC := saascmd.New(d.Saas, d.SystemPool, plansSrv, saasQ, d.Log)
 	plansv1.RegisterSaasServiceServer(srv, saas.New(saasC, saasQ, d.SystemPool))
-	cmd := identitycmd.New(d.SystemPool, admin.accounts, admin.keys, d.Mail, d.AppURL, d.Log).WithPepper(d.OTPPepper)
+	cmd := identitycmd.New(d.SystemPool, admin.accounts, admin.keys, d.Mail, d.AppURL, d.Log).WithPepper(d.OTPPepper).WithBox(d.Box)
 	if saasC.Enabled() {
 		cmd.WithGuard(saasC) // an interface holding a nil pointer is not nil: the guard is only set when the mode is on
 	}
