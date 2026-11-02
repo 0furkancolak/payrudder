@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { baseTenant, MockGateway, openTenantPage, TENANT } from "./gateway";
-import { confirmDialog } from "./ui";
+import { confirmDialog, pickFilter, pickFilters } from "./ui";
 
 // The operator's hand on a tenant: freeze with a category and a reason, read the history, lift it; a ban needs a reason, and where it needs a second operator the first
 // request says it is waiting.
@@ -73,4 +73,38 @@ test("a ban needs a reason, and where it needs a second operator the first reque
   await expect(card).toContainText("A second operator must make the same request");
   await expect(card.getByTestId("tenant-status-current")).toHaveText("Active");
   await expect(card.getByTestId("tenant-status-event")).toContainText("waiting for a second operator");
+});
+
+test("the history is filtered by where the tenant went, the category and the kind, each on its button", async ({ page }) => {
+  const gw = gateway();
+  const row = (id: string, kind: string, from: string, to: string, category: string, reason: string) => ({ id, kind, from_status: from, to_status: to, category, reason, actor: "operator@example.com", approved_by: "", create_time: "2026-10-21T10:00:00Z" });
+  const A = "TENANT_STATUS_ACTIVE", S = "TENANT_STATUS_SUSPENDED", F = "TENANT_STATUS_FROZEN", B = "TENANT_STATUS_BANNED";
+  gw.on((c) =>
+    c.method === "GET" && c.path === `/admin/v1/tenants/${TENANT}/status-events`
+      ? { body: { events: [row("e4", "changed", B, A, "other", "appeal accepted"), row("e3", "requested", F, B, "fraud", "card testing"), row("e2", "changed", S, F, "nonpayment", "unpaid invoice"), row("e1", "changed", A, S, "abuse", "spam")] } }
+      : undefined,
+  );
+  await gw.install(page);
+  await openTenantPage(page, "");
+  const history = page.getByTestId("tenant-status-history");
+  const lines = history.getByTestId("tenant-status-event");
+  await expect(lines).toHaveCount(4);
+  await expect(history.getByTestId("tenant-status-count")).toHaveCount(0);
+
+  await pickFilter(page, "Changed to", "Suspended");
+  await expect(lines).toHaveCount(1);
+  await expect(lines).toContainText("spam");
+  await expect(history.getByTestId("tenant-status-count")).toHaveText("1 of 4 changes");
+
+  await pickFilter(page, "Kind", "Waiting for a second operator");
+  await expect(history.getByTestId("tenant-status-nomatch")).toBeVisible();
+  await expect(lines).toHaveCount(0);
+  // The cross of a chip clears that filter at once: the waiting request alone is left once the status is cleared.
+  await page.getByRole("button", { name: "Changed to: ×" }).click();
+  await expect(lines).toHaveCount(1);
+  await expect(lines).toContainText("card testing");
+  await page.getByRole("button", { name: "Kind: ×" }).click();
+  await pickFilters(page, "Category", "Non-payment", "Abuse");
+  await expect(lines).toHaveCount(2);
+  await expect(history.getByTestId("tenant-status-count")).toHaveText("2 of 4 changes");
 });

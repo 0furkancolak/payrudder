@@ -183,6 +183,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `billing.payment_link.bad_kind`
 - `billing.payment_link.bad_page`
 - `billing.payment_link.bad_promotion_code`
+- `billing.payment_link.bad_required_contracts`
 - `billing.payment_link.bad_status`
 - `billing.payment_link.consumed`
 - `billing.payment_link.customer_not_found`
@@ -510,6 +511,7 @@ Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in 
 - `plans.plan.no_fixed_fee`
 - `plans.plan.no_metered_price`
 - `plans.price_change.not_found`
+- `plans.price_change.paused`
 - `plans.price_change.withdrawn`
 - `plans.request.invalid`
 - `plans.saas.bad_resource`

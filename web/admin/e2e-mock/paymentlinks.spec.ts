@@ -61,6 +61,35 @@ test.describe("payment links", () => {
     await expect(page.getByRole("row", { name: /Workshop/ })).toContainText("Revoked");
   });
 
+  test("a link can name the agreements its payer accepts, among the ones the seller has published, and none means the setting applies", async ({ page }) => {
+    const gw = baseTenant(new MockGateway()).on((c) => {
+      if (c.path === "/v1/contracts/settings" && c.method === "GET") return { body: { required_kinds: [], immediate_start: false, retention_months: 36, published_kinds: ["tos", "privacy"], update_time: null } };
+      if (c.path === "/v1/payment-links" && c.method === "POST") return { status: 201, body: { ...link("l9"), required_contracts: c.body?.required_contracts ?? [], token: "tok", url: "https://api.example.com/i/tok", replayed: false } };
+      if (c.path === "/v1/payment-links" && c.method === "GET") return { body: { links: [link("l1", { required_contracts: ["tos"] }), link("l2", { required_contracts: [] })] } };
+      return undefined;
+    });
+    await gw.install(page);
+    await openTenantPage(page, "/payment-links");
+    await page.getByRole("button", { name: "Create link" }).click();
+    const form = page.getByRole("dialog");
+    // Only the published kinds are offered.
+    await expect(page.getByTestId("pl-contract-tos")).toBeVisible();
+    await expect(page.getByTestId("pl-contract-privacy")).toBeVisible();
+    await expect(page.getByTestId("pl-contract-distance_sales")).toHaveCount(0);
+    await form.getByLabel("Amount").fill("10");
+    await form.getByLabel("What it is for").fill("Workshop");
+    await page.getByTestId("pl-contract-tos").check();
+    await form.getByRole("button", { name: "Create link" }).click();
+    await expect.poll(() => gw.called("POST", "/v1/payment-links").length).toBe(1);
+    expect(gw.called("POST", "/v1/payment-links")[0]?.body).toMatchObject({ kind: "adhoc", required_contracts: ["tos"] });
+    await page.keyboard.press("Escape");
+
+    // A link that names none sends none (the Contracts page decides), and the detail says which it is.
+    await page.getByRole("row", { name: /Setup fee/ }).first().click();
+    await expect(page.getByRole("dialog")).toContainText("Agreements");
+    await expect(page.getByRole("dialog")).toContainText("Terms of service");
+  });
+
   test("the invoice sheet opens the payment link form for that invoice over itself", async ({ page }) => {
     const gw = baseTenant(new MockGateway()).on((c) => {
       if (c.method === "GET" && c.path === "/v1/payment-links") return { body: { links: [] } };

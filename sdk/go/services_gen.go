@@ -1234,12 +1234,34 @@ func (s *CustomersService) SetCustomerContact(ctx context.Context, externalID st
 
 // ListContractAcceptances: What the customer accepted, newest first (GET
 // /v1/customers/{external_id}/contract-acceptances).
-func (s *CustomersService) ListContractAcceptances(ctx context.Context, externalID string, opts ...RequestOption) (*ListContractAcceptancesResponse, error) {
+//
+// The customer's acceptance log, a page at a time (`page_size`, default 100, at most 200; the next page is
+// `next_page_token`, empty on the last). The filters narrow it and combine: `kind`, `source` (api, hosted),
+// `version_id` (one version of a text) and the time the customer accepted, `from` (inclusive) to `to`
+// (exclusive), as RFC 3339 times.
+func (s *CustomersService) ListContractAcceptances(ctx context.Context, externalID string, params *ListContractAcceptancesParams, opts ...RequestOption) (*ListContractAcceptancesResponse, error) {
 	var out ListContractAcceptancesResponse
-	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/contract-acceptances", query: nil, body: nil}, &out, opts); err != nil {
+	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/customers/" + url.PathEscape(externalID) + "/contract-acceptances", query: params.values(), body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil
+}
+
+// ListContractAcceptancesAll walks every page of ListContractAcceptances and yields the items one by one. It
+// stops at the first error, which is yielded once.
+func (s *CustomersService) ListContractAcceptancesAll(ctx context.Context, externalID string, params *ListContractAcceptancesParams, opts ...RequestOption) iter.Seq2[ContractAcceptance, error] {
+	return paginate(func(token string) ([]ContractAcceptance, string, error) {
+		var p ListContractAcceptancesParams
+		if params != nil {
+			p = *params
+		}
+		p.PageToken = token
+		page, err := s.ListContractAcceptances(ctx, externalID, &p, opts...)
+		if err != nil {
+			return nil, "", err
+		}
+		return page.Acceptances, page.NextPageToken, nil
+	})
 }
 
 // RecordContractAcceptance: Record that the customer accepted the current versions (an embedded checkout) (POST
@@ -2226,14 +2248,32 @@ func (s *PriceChangesService) ListPriceChanges(ctx context.Context, params *List
 
 // GetPriceChange: One price change with its subscriptions and what became of each (GET /v1/price-changes/{id}).
 //
-// The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one
-// follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+// The subscriptions by customer, a page at a time (`page_size` 1 to 500, default 500; `next_page_token` is
+// empty on the last page), optionally only those in one state. The state of a scheduled one follows its change
+// - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
 func (s *PriceChangesService) GetPriceChange(ctx context.Context, id string, params *GetPriceChangeParams, opts ...RequestOption) (*GetPriceChangeResponse, error) {
 	var out GetPriceChangeResponse
 	if err := s.c.do(ctx, requestSpec{method: http.MethodGet, path: "/v1/price-changes/" + url.PathEscape(id), query: params.values(), body: nil}, &out, opts); err != nil {
 		return nil, err
 	}
 	return &out, nil
+}
+
+// GetPriceChangeAll walks every page of GetPriceChange and yields the items one by one. It stops at the first
+// error, which is yielded once.
+func (s *PriceChangesService) GetPriceChangeAll(ctx context.Context, id string, params *GetPriceChangeParams, opts ...RequestOption) iter.Seq2[PriceChangeItem, error] {
+	return paginate(func(token string) ([]PriceChangeItem, string, error) {
+		var p GetPriceChangeParams
+		if params != nil {
+			p = *params
+		}
+		p.PageToken = token
+		page, err := s.GetPriceChange(ctx, id, &p, opts...)
+		if err != nil {
+			return nil, "", err
+		}
+		return page.Items, page.NextPageToken, nil
+	})
 }
 
 // RetryPriceChange: Try the skipped subscriptions of a price change again (POST /v1/price-changes/{id}/retry).

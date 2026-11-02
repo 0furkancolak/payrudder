@@ -57,6 +57,15 @@ UPDATE customers SET blocked_at = NULL, block_reason = '', block_category = '', 
 WHERE tenant_id = app_tenant_id() AND external_id = @external_id
 RETURNING *;
 
+-- name: SystemListEndedBlocks :many
+-- system. The customers whose block ran out by itself (blocked_until has passed) and that nobody lifted yet, oldest end first. Across tenants; the sweep locks and
+-- re-checks each one in its tenant's transaction before it clears the block.
+SELECT tenant_id, id, external_id, blocked_until::timestamptz AS blocked_until
+FROM customers
+WHERE blocked_at IS NOT NULL AND blocked_until IS NOT NULL AND blocked_until <= @now::timestamptz
+ORDER BY blocked_until, id
+LIMIT @batch::int;
+
 -- name: InsertCustomerBlockEvent :exec
 INSERT INTO customer_block_events (tenant_id, id, customer_id, action, category, reason, blocked_until, suspend_service, actor, created_at)
 VALUES (app_tenant_id(), @id, @customer_id, @action, @category, @reason, sqlc.narg(blocked_until), @suspend_service, @actor, @created_at);

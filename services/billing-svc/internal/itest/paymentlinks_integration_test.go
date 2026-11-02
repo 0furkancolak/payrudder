@@ -631,3 +631,50 @@ func testSettleInvoicePayment(t *testing.T) {
 		t.Errorf("demo charges = %d", n)
 	}
 }
+
+// testPaymentLinksNameTheirOwnAgreements covers the per-link required_contracts of docs/plans/21-contracts.md: the list is stored in the order of the kinds, shown to the page
+// that opens the link, handed on to the invoice link an ad-hoc link makes when the payer continues, part of the idempotency fingerprint, and refused when it names a kind that
+// does not exist or one twice.
+func testPaymentLinksNameTheirOwnAgreements(t *testing.T) {
+	l := newLinkEnv(t, envOpts{sandbox: true}, false)
+
+	made := l.create(&billingv1.CreatePaymentLinkRequest{Kind: "adhoc", AmountMinor: 4900, Description: "Workshop", IdempotencyKey: "agree-1", RequiredContracts: []string{"privacy", "distance_sales"}})
+	if got := made.GetLink().GetRequiredContracts(); len(got) != 2 || got[0] != "distance_sales" || got[1] != "privacy" {
+		t.Fatalf("the list is kept in the order of the kinds: %v", got)
+	}
+	if got := l.link(made.GetLink().GetId()).GetRequiredContracts(); len(got) != 2 {
+		t.Errorf("GetPaymentLink: %v", got)
+	}
+	landing, err := l.page(made.GetToken())
+	if err != nil || len(landing.GetRequiredContracts()) != 2 || landing.GetRequiredContracts()[0] != "distance_sales" {
+		t.Fatalf("the page of the link carries the list: %v %v", landing.GetRequiredContracts(), err)
+	}
+	// The invoice link the payer continues on carries it too: that is the page that has the pay button.
+	invoicePage, err := l.page(l.start(made.GetToken()))
+	if err != nil || len(invoicePage.GetRequiredContracts()) != 2 || invoicePage.GetInvoice() == nil {
+		t.Fatalf("the invoice link of an ad-hoc link: %v %v", invoicePage, err)
+	}
+
+	// The same key with another list is a different request, not a repeat; the same list is a repeat.
+	_, err = l.svc.CreatePaymentLink(l.mine, &billingv1.CreatePaymentLinkRequest{Kind: "adhoc", AmountMinor: 4900, Description: "Workshop", IdempotencyKey: "agree-1", RequiredContracts: []string{"tos"}})
+	keyOf(t, err, codes.AlreadyExists, "billing.payment_link.idempotency_conflict")
+	if again := l.create(&billingv1.CreatePaymentLinkRequest{Kind: "adhoc", AmountMinor: 4900, Description: "Workshop", IdempotencyKey: "agree-1", RequiredContracts: []string{"distance_sales", "privacy"}}); !again.GetReplayed() {
+		t.Error("the same list under the same key is a repeat")
+	}
+
+	// A link that names none leaves the page with none (the setting applies); a link to an invoice that exists may name some too.
+	plain := l.create(&billingv1.CreatePaymentLinkRequest{Kind: "adhoc", AmountMinor: 100, Description: "Plain"})
+	if got := l.link(plain.GetLink().GetId()).GetRequiredContracts(); len(got) != 0 {
+		t.Errorf("no list: %v", got)
+	}
+	if p, err := l.page(plain.GetToken()); err != nil || len(p.GetRequiredContracts()) != 0 {
+		t.Errorf("the page of a link with no list: %v %v", p.GetRequiredContracts(), err)
+	}
+
+	for name, kinds := range map[string][]string{"unknown": {"nda"}, "twice": {"tos", "tos"}, "empty name": {""}} {
+		_, err := l.svc.CreatePaymentLink(l.mine, &billingv1.CreatePaymentLinkRequest{Kind: "adhoc", AmountMinor: 100, Description: "x", RequiredContracts: kinds})
+		if status.Code(err) != codes.InvalidArgument || errkey.Of(err) != "billing.payment_link.bad_required_contracts" {
+			t.Errorf("%s: %v (key %q)", name, err, errkey.Of(err))
+		}
+	}
+}

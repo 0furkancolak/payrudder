@@ -230,7 +230,7 @@ func (c *Commands) Block(ctx context.Context, req *plansv1.BlockCustomerRequest)
 		if until != nil {
 			data["blocked_until"] = until.UTC().Format(time.RFC3339)
 		}
-		return c.emit(ctx, q, webhooksmodel.CustomerBlocked, data, now)
+		return emit(ctx, q, webhooksmodel.CustomerBlocked, data, now)
 	})
 	if err != nil {
 		return nil, convert.Err(err, "customer")
@@ -255,23 +255,8 @@ func (c *Commands) Unblock(ctx context.Context, req *plansv1.UnblockCustomerRequ
 			out = cur
 			return nil
 		}
-		if out, err = q.UnblockCustomer(ctx, req.GetExternalId()); err != nil {
-			return err
-		}
-		if err := q.InsertCustomerBlockEvent(ctx, sqlc.InsertCustomerBlockEventParams{ID: idgen.NewUUIDv7(), CustomerID: out.ID, Action: "unblocked", Actor: actorOf(req.GetActor()), CreatedAt: now}); err != nil {
-			return err
-		}
-		if cur.BlockSuspendService {
-			if err := entitlementscmd.Unsuspend(ctx, q, out.TenantID, out.ID); err != nil {
-				return err
-			}
-		}
-		ti, _ := tenant.FromContext(ctx)
-		if err := audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "customer.unblocked", TargetType: "customer", TargetID: out.ID.String(),
-			Summary: "lifted the block on the customer " + out.ExternalID, Detail: map[string]any{"external_id": out.ExternalID}}); err != nil {
-			return err
-		}
-		return c.emit(ctx, q, webhooksmodel.CustomerUnblocked, map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID}, now)
+		out, err = liftBlock(ctx, q, tx, cur, now, actorOf(req.GetActor()), "lifted the block on the customer ")
+		return err
 	})
 	if err != nil {
 		return nil, convert.Err(err, "customer")
@@ -279,8 +264,30 @@ func (c *Commands) Unblock(ctx context.Context, req *plansv1.UnblockCustomerRequ
 	return convert.Customer(out), nil
 }
 
+// liftBlock clears the block the locked row cur carries and records it: the history row, the end of a suspension, the audit entry and customer.unblocked, in the
+// caller's transaction. The sweep of blocks that ran out uses it too, with the actor "system".
+func liftBlock(ctx context.Context, q *sqlc.Queries, tx pgx.Tx, cur sqlc.Customer, now time.Time, actor, summary string) (sqlc.Customer, error) {
+	out, err := q.UnblockCustomer(ctx, cur.ExternalID)
+	if err != nil {
+		return out, err
+	}
+	if err := q.InsertCustomerBlockEvent(ctx, sqlc.InsertCustomerBlockEventParams{ID: idgen.NewUUIDv7(), CustomerID: out.ID, Action: "unblocked", Actor: actor, CreatedAt: now}); err != nil {
+		return out, err
+	}
+	if cur.BlockSuspendService {
+		if err := entitlementscmd.Unsuspend(ctx, q, out.TenantID, out.ID); err != nil {
+			return out, err
+		}
+	}
+	if err := audit.Record(ctx, tx, audit.Event{TenantID: out.TenantID, Action: "customer.unblocked", TargetType: "customer", TargetID: out.ID.String(),
+		Summary: summary + out.ExternalID, Detail: map[string]any{"external_id": out.ExternalID}}); err != nil {
+		return out, err
+	}
+	return out, emit(ctx, q, webhooksmodel.CustomerUnblocked, map[string]any{"customer_id": out.ID.String(), "customer_external_id": out.ExternalID}, now)
+}
+
 // emit queues a customer event for the tenant's webhook endpoints, in the caller's transaction.
-func (c *Commands) emit(ctx context.Context, q *sqlc.Queries, typ string, data map[string]any, at time.Time) error {
+func emit(ctx context.Context, q *sqlc.Queries, typ string, data map[string]any, at time.Time) error {
 	b, err := json.Marshal(data)
 	if err != nil {
 		return err

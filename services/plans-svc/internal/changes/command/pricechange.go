@@ -38,6 +38,30 @@ const (
 	DefaultNoticeDays = 30
 )
 
+// pauseCheckEvery is how many subscriptions a run handles between two looks at the kill switch: a pause stops a run within a hundred subscriptions.
+const pauseCheckEvery = 100
+
+// errPaused is the answer while the operator has paused every price change (plan 15). A run that was stopped by it has scheduled what it reached; the price change
+// is open, and Retry continues it once price changes are resumed.
+func errPaused() error {
+	return errkey.New(codes.FailedPrecondition, "plans.price_change.paused", "price changes are paused by the operator")
+}
+
+// checkNotPaused answers errPaused while the kill switch is on.
+func (c *Commands) checkNotPaused(ctx context.Context) error {
+	if c.pause == nil {
+		return nil
+	}
+	paused, err := c.pause(ctx)
+	if err != nil {
+		return convert.Err(err, "price change")
+	}
+	if paused {
+		return errPaused()
+	}
+	return nil
+}
+
 // maxActorRunes bounds the actor kept with a price change, as the table does.
 const maxActorRunes = 120
 
@@ -171,6 +195,12 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 	if err != nil {
 		return nil, err
 	}
+	// A dry run changes nothing and mails nobody, so it still counts while the switch is on.
+	if !a.dry {
+		if err := c.checkNotPaused(ctx); err != nil {
+			return nil, err
+		}
+	}
 	resp := &plansv1.SchedulePriceChangeResponse{NoticeDays: int32(a.notice)} //nolint:gosec // bounded by the callers
 	var ids []skippable
 	var toVersion int32
@@ -217,7 +247,12 @@ func (c *Commands) runPriceChange(ctx context.Context, a priceRun) (*plansv1.Sch
 		resp.PriceChangeId = pcID.String()
 	}
 	earliest := c.now().Add(time.Duration(a.notice) * 24 * time.Hour)
-	for _, s := range ids {
+	for i, s := range ids {
+		if i > 0 && i%pauseCheckEvery == 0 && !a.dry {
+			if err := c.checkNotPaused(ctx); err != nil {
+				return nil, err
+			}
+		}
 		var o outcome
 		err := c.db.Tx(ctx, func(q *sqlc.Queries) (err error) {
 			o, err = c.priceOne(ctx, q, a, ti.ID, pcID, s.id, toVersion, earliest)

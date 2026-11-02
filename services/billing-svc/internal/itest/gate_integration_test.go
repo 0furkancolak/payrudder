@@ -111,6 +111,17 @@ func testTheGateRefusesPayments(t *testing.T) {
 		lift()
 	})
 
+	t.Run("the seller's own call for a blocked customer still works: grant credits (row 12; recording a payment is pinned in the offline payments test)", func(t *testing.T) {
+		block("fraud")
+		defer lift()
+		if _, err := l.svc.GrantCredits(l.mine, &billingv1.GrantCreditsRequest{CustomerId: l.customer("cus_a").Id, Credits: 40, Source: "manual"}); err != nil {
+			t.Errorf("granting credits to a customer blocked for fraud: %v", err)
+		}
+		if b, err := l.svc.GetCreditBalance(l.mine, &billingv1.GetCreditBalanceRequest{CustomerId: l.customer("cus_a").Id}); err != nil || b.GetBalance() != 40 {
+			t.Errorf("balance after the grant = %v, %v; want 40", b, err)
+		}
+	})
+
 	t.Run("a block that has run out, or is for another reason, still lets an issued invoice be paid", func(t *testing.T) {
 		// The block ended an hour ago: it holds no more, whatever its category says.
 		l.customer("cus_a").BlockTime, l.customer("cus_a").BlockCategory = timestamppb.New(time.Now().Add(-2*time.Hour)), "fraud"

@@ -62,6 +62,7 @@ func TestBilling(t *testing.T) {
 		{"CreditPackValidityIsValidated", testCreditPackValidityIsValidated},
 		{"CreditPackIsBoughtThroughAPaymentLink", testCreditPackIsBoughtThroughAPaymentLink},
 		{"PromotionCodesOnPaymentLinks", testPromotionCodesOnPaymentLinks},
+		{"PaymentLinksNameTheirOwnAgreements", testPaymentLinksNameTheirOwnAgreements},
 		{"PromotionCodesOnCreditPurchases", testPromotionCodesOnCreditPurchases},
 		{"AVoidedCreditPurchaseGrantsNothing", testAVoidedCreditPurchaseGrantsNothing},
 		{"ABlockedCustomerCannotStartAPurchase", testABlockedCustomerCannotStartAPurchase},

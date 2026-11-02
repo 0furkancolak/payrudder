@@ -44,6 +44,8 @@ import type {
   CreditLedgerPage,
   EInvoiceList,
   ExpensePage,
+  GetPriceChangeQuery,
+  GetPriceChangeResponse,
   ListAffiliateCommissionsQuery,
   ListAffiliateCommissionsResponse,
   ListAffiliateJournalQuery,
@@ -58,6 +60,8 @@ import type {
   ListAssetsResponse,
   ListAuditEventsQuery,
   ListAuditEventsResponse,
+  ListContractAcceptancesQuery,
+  ListContractAcceptancesResponse,
   ListCouponRedemptionsQuery,
   ListCouponRedemptionsResponse,
   ListCreditLedgerQuery,
@@ -91,6 +95,14 @@ export class Paginators {
     );
   }
 
+  listContractAcceptances(externalId: string, query?: ListContractAcceptancesQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListContractAcceptancesResponse["acceptances"]>[number], void, undefined> {
+    return paginate(
+      (q) => this.r.customers.listContractAcceptances(externalId, q, options),
+      (page) => page.acceptances,
+      query,
+    );
+  }
+
   listEInvoices(query?: ListEInvoicesQuery, options?: RequestOptions): AsyncGenerator<NonNullable<EInvoiceList["documents"]>[number], void, undefined> {
     return paginate(
       (q) => this.r.eInvoices.listEInvoices(q, options),
@@ -103,6 +115,14 @@ export class Paginators {
     return paginate(
       (q) => this.r.subscriptions.listSubscriptions(q, options),
       (page) => page.subscriptions,
+      query,
+    );
+  }
+
+  getPriceChange(id: string, query?: GetPriceChangeQuery, options?: RequestOptions): AsyncGenerator<NonNullable<GetPriceChangeResponse["items"]>[number], void, undefined> {
+    return paginate(
+      (q) => this.r.priceChanges.getPriceChange(id, q, options),
+      (page) => page.items,
       query,
     );
   }

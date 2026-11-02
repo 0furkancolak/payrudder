@@ -303,4 +303,98 @@ func testPriceChange(t *testing.T) {
 			t.Errorf("withdrawn items: %v", w)
 		}
 	})
+
+	t.Run("the subscriptions of a price change come a page at a time, in the same order as in one piece", func(t *testing.T) {
+		pcID := changes()[0].GetId()
+		all, err := e.plans.GetPriceChange(ctx, &plansv1.GetPriceChangeRequest{Id: pcID})
+		if err != nil || len(all.GetItems()) < 4 || all.GetNextPageToken() != "" {
+			t.Fatalf("in one piece: %v, %v", all, err)
+		}
+		var paged []string
+		token, pages := "", 0
+		for {
+			g, err := e.plans.GetPriceChange(ctx, &plansv1.GetPriceChangeRequest{Id: pcID, PageSize: 2, PageToken: token})
+			if err != nil {
+				t.Fatal(err)
+			}
+			pages++
+			if len(g.GetItems()) > 2 {
+				t.Fatalf("a page of %d items for a page size of 2", len(g.GetItems()))
+			}
+			for _, it := range g.GetItems() {
+				paged = append(paged, it.GetSubscriptionId())
+			}
+			if token = g.GetNextPageToken(); token == "" {
+				break
+			}
+			if pages > len(all.GetItems()) {
+				t.Fatal("the pages do not end")
+			}
+		}
+		var want []string
+		for _, it := range all.GetItems() {
+			want = append(want, it.GetSubscriptionId())
+		}
+		if len(paged) != len(want) || pages != (len(want)+1)/2 {
+			t.Fatalf("paged %d items in %d pages, want %d in %d", len(paged), pages, len(want), (len(want)+1)/2)
+		}
+		for i := range want {
+			if paged[i] != want[i] {
+				t.Fatalf("item %d is %s paged and %s in one piece", i, paged[i], want[i])
+			}
+		}
+		// The state filter pages too, and a token or a size that is not valid is refused.
+		if g, err := e.plans.GetPriceChange(ctx, &plansv1.GetPriceChangeRequest{Id: pcID, State: "skipped", PageSize: 1}); err != nil || len(g.GetItems()) != 1 || g.GetNextPageToken() == "" {
+			t.Errorf("first skipped item: %v, %v", g, err)
+		}
+		_, err = e.plans.GetPriceChange(ctx, &plansv1.GetPriceChangeRequest{Id: pcID, PageToken: "garbage"})
+		wantCode(t, "a token this list did not give", err, codes.InvalidArgument, "plans.request.invalid")
+		_, err = e.plans.GetPriceChange(ctx, &plansv1.GetPriceChangeRequest{Id: pcID, PageSize: 501})
+		wantCode(t, "a page of 501", err, codes.InvalidArgument, "plans.request.invalid")
+	})
+
+	t.Run("the kill switch stops every run and retry, still lets a dry run count and a withdrawal close, and a resume lets it go on", func(t *testing.T) {
+		pcID := changes()[0].GetId()
+		pause := func(paused bool, reason string) *plansv1.PriceChangePause {
+			t.Helper()
+			r, err := e.admin.SetPriceChangePause(operator(), &plansv1.SetPriceChangePauseRequest{Paused: paused, Reason: reason, Actor: "ops@example.com"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return r.GetPause()
+		}
+		defer pause(false, "") // the switch is the platform's: the tests that follow share it
+		if g, err := e.admin.GetPriceChangePause(operator(), &plansv1.GetPriceChangePauseRequest{}); err != nil || g.GetPause().GetPaused() {
+			t.Fatalf("before anybody touched it: %v, %v", g, err)
+		}
+		late2 := subscribe("cus_late2", 1, plansv1.FeeTiming_FEE_TIMING_ADVANCE)
+		before := facts()
+		if p := pause(true, "wrong target version"); !p.GetPaused() || p.GetReason() != "wrong target version" || p.GetUpdatedBy() != "ops@example.com" || p.GetUpdateTime() == nil {
+			t.Fatalf("paused: %v", p)
+		}
+		_, err := e.plans.SchedulePriceChange(ctx, &plansv1.SchedulePriceChangeRequest{PlanCode: "basic", FromVersion: 1, NoticeDays: 14})
+		wantCode(t, "a run while paused", err, codes.FailedPrecondition, "plans.price_change.paused")
+		_, err = e.plans.RetryPriceChange(ctx, &plansv1.RetryPriceChangeRequest{Id: pcID})
+		wantCode(t, "a retry while paused", err, codes.FailedPrecondition, "plans.price_change.paused")
+		if dry := run(14, true); dry.GetScheduled() == 0 {
+			t.Errorf("a dry run while paused counts nothing: %v", dry)
+		}
+		if facts() != before || items(pcID, "scheduled")[late2] != nil {
+			t.Errorf("a refused run scheduled or mailed: facts %d, was %d", facts(), before)
+		}
+		// Only the operator reaches the switch.
+		_, err = e.admin.SetPriceChangePause(ctx, &plansv1.SetPriceChangePauseRequest{Paused: false})
+		wantCode(t, "a tenant resuming", err, codes.PermissionDenied, "")
+		_, err = e.admin.SetPriceChangePause(operator(), &plansv1.SetPriceChangePauseRequest{Paused: true, Reason: string(make([]byte, 501))})
+		wantCode(t, "a reason of 501 characters", err, codes.InvalidArgument, "plans.request.invalid")
+		if p := pause(false, "fixed"); p.GetPaused() {
+			t.Fatalf("resumed: %v", p)
+		}
+		if r, err := e.plans.RetryPriceChange(ctx, &plansv1.RetryPriceChangeRequest{Id: pcID}); err != nil || r.GetResult().GetScheduled() != 1 {
+			t.Fatalf("a retry after the resume: %v, %v", r, err)
+		}
+		if facts() != before+1 {
+			t.Errorf("facts after the resume = %d, want %d", facts(), before+1)
+		}
+	})
 }

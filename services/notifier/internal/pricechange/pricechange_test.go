@@ -1,13 +1,18 @@
 package pricechange
 
 import (
+	"context"
+	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	eventsv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/events/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/services/notifier/internal/templates"
 )
 
@@ -57,4 +62,62 @@ func TestMailDataWritesTheDateAndTheAmountInTheMailsLanguage(t *testing.T) {
 			t.Errorf("%q: effective_date %q, new_renewal %q; want %q", locale, d["effective_date"], d["new_renewal"], want)
 		}
 	}
+}
+
+// fakePause answers the kill switch: paused for the first `pausedFor` looks, then not, or never, or with an error.
+type fakePause struct {
+	Admin
+	looks     atomic.Int32
+	pausedFor int32
+	err       error
+}
+
+func (f *fakePause) GetPriceChangePause(context.Context, *plansv1.GetPriceChangePauseRequest, ...grpc.CallOption) (*plansv1.GetPriceChangePauseResponse, error) {
+	n := f.looks.Add(1)
+	return &plansv1.GetPriceChangePauseResponse{Pause: &plansv1.PriceChangePause{Paused: n <= f.pausedFor}}, f.err
+}
+
+// While the operator's kill switch is on no notice goes out: the consumer waits and goes on once it is released, hands the batch back when the wait is long, and
+// does not guess when it cannot tell. A batch asks once, not once per notice.
+func TestPausedPriceChangesHoldTheMail(t *testing.T) {
+	ctx := context.Background()
+	t.Run("released while waiting", func(t *testing.T) {
+		f := &fakePause{pausedFor: 2}
+		c := &Consumer{Admin: f, PauseLook: 5 * time.Millisecond, HeldFor: time.Second}
+		if err := c.holdWhilePaused(ctx); err != nil || f.looks.Load() != 3 {
+			t.Fatalf("err %v after %d looks, want nil after 3", err, f.looks.Load())
+		}
+	})
+	t.Run("still paused: the batch is handed back", func(t *testing.T) {
+		c := &Consumer{Admin: &fakePause{pausedFor: 1 << 20}, PauseLook: 5 * time.Millisecond, HeldFor: 40 * time.Millisecond}
+		if err := c.holdWhilePaused(ctx); !errors.Is(err, errHeld) {
+			t.Fatalf("err = %v, want errHeld", err)
+		}
+	})
+	t.Run("an answer is kept for a look, so a thousand notices ask once", func(t *testing.T) {
+		f := &fakePause{}
+		c := &Consumer{Admin: f, PauseLook: time.Minute}
+		for range 1000 {
+			if err := c.holdWhilePaused(ctx); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if f.looks.Load() != 1 {
+			t.Fatalf("looks = %d, want 1", f.looks.Load())
+		}
+	})
+	t.Run("no answer is no guess", func(t *testing.T) {
+		c := &Consumer{Admin: &fakePause{err: errors.New("plans-svc is down")}}
+		if err := c.holdWhilePaused(ctx); err == nil || !strings.Contains(err.Error(), "plans-svc is down") {
+			t.Fatalf("err = %v", err)
+		}
+	})
+	t.Run("a cancelled consumer stops waiting", func(t *testing.T) {
+		cctx, cancel := context.WithCancel(ctx)
+		cancel()
+		c := &Consumer{Admin: &fakePause{pausedFor: 1 << 20}, PauseLook: time.Hour, HeldFor: 2 * time.Hour}
+		if err := c.holdWhilePaused(cctx); !errors.Is(err, context.Canceled) {
+			t.Fatalf("err = %v", err)
+		}
+	})
 }

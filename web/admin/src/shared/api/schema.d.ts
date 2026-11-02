@@ -370,7 +370,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** What the customer accepted, newest first */
+        /**
+         * What the customer accepted, newest first
+         * @description The customer's acceptance log, a page at a time (`page_size`, default 100, at most 200; the next page is `next_page_token`, empty on the last). The filters narrow it and combine: `kind`, `source` (api, hosted), `version_id` (one version of a text) and the time the customer accepted, `from` (inclusive) to `to` (exclusive), as RFC 3339 times.
+         */
         get: operations["listContractAcceptances"];
         put?: never;
         /**
@@ -947,7 +950,7 @@ export interface paths {
         };
         /**
          * One price change with its subscriptions and what became of each
-         * @description The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+         * @description The subscriptions by customer, a page at a time (`page_size` 1 to 500, default 500; `next_page_token` is empty on the last page), optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
          */
         get: operations["getPriceChange"];
         put?: never;
@@ -6033,6 +6036,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/v1/price-change-pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Whether every price change of the platform is paused
+         * @description The kill switch of price changes (plan 15). Never touched, it says `paused: false` with no time.
+         */
+        get: operations["getPriceChangePause"];
+        /**
+         * Pause or resume every price change of the platform
+         * @description While paused, no run or retry (`POST /v1/plans/{code}/price-changes`, `POST /v1/price-changes/{id}/retry`) schedules a subscription: they answer 409
+         *     `plans.price_change.paused` (a dry run still counts, and withdrawing a price change still works), a run in progress stops within a hundred subscriptions, and
+         *     the notifier holds the mail of the price changes already scheduled until the switch is released. A change that is already scheduled is still applied at its
+         *     renewal; withdraw the price change to stop it. Each call is recorded in the audit log with its reason and the signed-in operator.
+         */
+        put: operations["setPriceChangePause"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/v1/tenants/{id}/api-keys": {
         parameters: {
             query?: never;
@@ -6473,9 +6503,22 @@ export interface components {
         ListPriceChangesResponse: {
             price_changes: components["schemas"]["PriceChange"][];
         };
+        SetPriceChangePauseRequest: {
+            paused: boolean;
+            /** @description Why; kept with the setting and shown to the next operator. */
+            reason?: string;
+        };
+        PriceChangePause: {
+            paused: boolean;
+            reason: string;
+            updated_by: string;
+            /** Format: date-time */
+            update_time: string | null;
+        };
         GetPriceChangeResponse: {
             price_change: components["schemas"]["PriceChange"];
             items: components["schemas"]["PriceChangeItem"][];
+            next_page_token: string;
         };
         WithdrawPriceChangeResponse: {
             price_change: components["schemas"]["PriceChange"];
@@ -11877,6 +11920,8 @@ export interface components {
             credits: string;
             /** @description The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
             promotion_code: string;
+            /** @description The agreements the payer accepts on this link's page instead of the seller's tenant-wide setting (GET /v1/contracts/settings); empty: the setting applies */
+            required_contracts: ("distance_sales" | "pre_info" | "tos" | "privacy")[];
             /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
             invoice_id: string;
             customer_external_id: string;
@@ -11932,6 +11977,8 @@ export interface components {
             single_use?: boolean;
             /** @description adhoc and credit_pack, optional: a promotion code the payer gets without typing it (a one-off invoice with a discount). Checked against the link's own amount now (a coupon.* error if it does not work); claimed when the payer continues. An invoice that exists is not changed, so a kind invoice link takes none */
             promotion_code?: string;
+            /** @description Optional: the agreements the payer must accept on this link's page. The list replaces the seller's tenant-wide required_kinds for this link (it does not add to it); empty or absent: the setting applies. The texts must be published before the link is used, or the page offers no way to pay. An ad-hoc link hands its list to the invoice link the payer continues on. 400 billing.payment_link.bad_required_contracts for an unknown kind or one named twice */
+            required_contracts?: ("distance_sales" | "pre_info" | "tos" | "privacy")[];
             /** @description Default 30 for adhoc, 90 for invoice */
             expires_in_days?: number;
             idempotency_key?: string;
@@ -11957,6 +12004,8 @@ export interface components {
             credits: string;
             /** @description The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another */
             promotion_code: string;
+            /** @description The agreements the payer accepts on this link's page instead of the seller's tenant-wide setting (GET /v1/contracts/settings); empty: the setting applies */
+            required_contracts: ("distance_sales" | "pre_info" | "tos" | "privacy")[];
             /** @description kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use) */
             invoice_id: string;
             customer_external_id: string;
@@ -12822,6 +12871,8 @@ export interface components {
         };
         ListContractAcceptancesResponse: {
             acceptances: components["schemas"]["ContractAcceptance"][];
+            /** @description Pass it as page_token for the next page; empty on the last page */
+            next_page_token: string;
         };
         GetContractSnapshotResponse: {
             html: string;
@@ -12851,10 +12902,10 @@ export interface components {
             /** @description The credit note billing made to refund the invoice, once one was requested (GET /v1/credit-notes/{id} says how the refund went). */
             credit_note_id: string;
             /**
-             * @description none: nothing asked of billing; requesting: being asked; requested: a credit note exists; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: ask again with POST /v1/contract-withdrawals/{id}/refund.
+             * @description none: nothing asked of billing; requesting: being asked; requested: a credit note exists and the provider has not answered; refunded: the provider returned the money; refund_failed: the credit note exists and the provider did not return the money, retry the credit note's refund (a second credit note would credit the invoice twice), refund_note says why; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: billing refused or did not answer, ask again with POST /v1/contract-withdrawals/{id}/refund. refunded and refund_failed are copied from the credit note's own result (credit_note.refunded, credit_note.refund_failed). The withdrawal's status stays the seller's to set.
              * @enum {string}
              */
-            refund_state: "none" | "requesting" | "requested" | "outside" | "failed";
+            refund_state: "none" | "requesting" | "requested" | "refunded" | "refund_failed" | "outside" | "failed";
             refund_note: string;
             /** Format: date-time */
             refund_time: string | null;
@@ -13489,7 +13540,17 @@ export interface operations {
     };
     listContractAcceptances: {
         parameters: {
-            query?: never;
+            query?: {
+                kind?: "distance_sales" | "pre_info" | "tos" | "privacy";
+                source?: "api" | "hosted";
+                version_id?: string;
+                /** @description Accepted at or after this time */
+                from?: string;
+                /** @description Accepted before this time */
+                to?: string;
+                page_size?: number;
+                page_token?: string;
+            };
             header?: never;
             path: {
                 external_id: components["parameters"]["ExternalID"];
@@ -13507,6 +13568,7 @@ export interface operations {
                     "application/json": components["schemas"]["ListContractAcceptancesResponse"];
                 };
             };
+            400: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };
@@ -14403,6 +14465,8 @@ export interface operations {
         parameters: {
             query?: {
                 state?: "scheduled" | "applied" | "withdrawn" | "skipped";
+                page_size?: number;
+                page_token?: string;
             };
             header?: never;
             path: {
@@ -23427,6 +23491,51 @@ export interface operations {
                 };
             };
             404: components["responses"]["Error"];
+        };
+    };
+    getPriceChangePause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceChangePause"];
+                };
+            };
+        };
+    };
+    setPriceChangePause: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPriceChangePauseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceChangePause"];
+                };
+            };
+            400: components["responses"]["Error"];
         };
     };
     createApiKey: {

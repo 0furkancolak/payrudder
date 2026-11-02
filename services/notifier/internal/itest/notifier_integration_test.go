@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -100,7 +101,15 @@ func (f fakePlans) GetCustomer(_ context.Context, in *plansv1.GetCustomerRequest
 	return &plansv1.GetCustomerResponse{Customer: &plansv1.Customer{Id: in.GetId(), Name: "Ada", Email: f.email, Locale: f.locale}}, nil
 }
 
-type fakeAdmin struct{ env plansv1.Environment }
+type fakeAdmin struct {
+	env plansv1.Environment
+	// paused is the operator's kill switch of price changes; nil is never paused.
+	paused *atomic.Bool
+}
+
+func (f fakeAdmin) GetPriceChangePause(context.Context, *plansv1.GetPriceChangePauseRequest, ...grpc.CallOption) (*plansv1.GetPriceChangePauseResponse, error) {
+	return &plansv1.GetPriceChangePauseResponse{Pause: &plansv1.PriceChangePause{Paused: f.paused != nil && f.paused.Load()}}, nil
+}
 
 func (f fakeAdmin) GetTenant(_ context.Context, in *plansv1.GetTenantRequest, _ ...grpc.CallOption) (*plansv1.GetTenantResponse, error) {
 	return &plansv1.GetTenantResponse{Tenant: &plansv1.Tenant{Id: in.GetTenantId(), Name: "Acme", Environment: f.env}}, nil
@@ -449,8 +458,11 @@ func TestNotifier(t *testing.T) {
 
 		email := "price-" + uuid.NewString()[:8] + "@example.com"
 		offsets := store.Offsets{DB: pool, Group: "notifier-t-price-change", Topic: topic}
-		pc := &pricechange.Consumer{Mailer: mailer, Plans: fakePlans{email: email, locale: "tr"}, Admin: fakeAdmin{env: plansv1.Environment_ENVIRONMENT_LIVE}, Offsets: offsets,
-			DLQ: kafkax.DLQ{Client: producer, Topic: dlq, Consumer: "notifier-t-price-change"}, Log: log}
+		// The operator's kill switch is on while the facts arrive: nothing is sent until it is released.
+		var paused atomic.Bool
+		paused.Store(true)
+		pc := &pricechange.Consumer{Mailer: mailer, Plans: fakePlans{email: email, locale: "tr"}, Admin: fakeAdmin{env: plansv1.Environment_ENVIRONMENT_LIVE, paused: &paused}, Offsets: offsets,
+			DLQ: kafkax.DLQ{Client: producer, Topic: dlq, Consumer: "notifier-t-price-change"}, Log: log, PauseLook: 100 * time.Millisecond, HeldFor: time.Second}
 		consumer, err := kafkax.NewConsumer(kafkax.ConsumerConfig{Brokers: []string{brokers}, GroupID: "notifier-t-price-change", Topic: topic, LoadOffsets: offsets.Load,
 			Handler: pc, MaxPollRecords: 10, Backoff: 100 * time.Millisecond, Log: log})
 		if err != nil {
@@ -468,6 +480,11 @@ func TestNotifier(t *testing.T) {
 		if err := producer.ProduceSync(context.Background(), rec(ev), rec(ev), rec([]byte("not a protobuf"))).FirstErr(); err != nil {
 			t.Fatal(err)
 		}
+		time.Sleep(3 * time.Second)
+		if held := mailbox(t, mp.APIURL, email); len(held) != 0 {
+			t.Fatalf("mail went out while price changes were paused: %+v", held)
+		}
+		paused.Store(false)
 		waitMail(t, mp.APIURL, email, 1)
 		time.Sleep(2 * time.Second)
 		got := mailbox(t, mp.APIURL, email)

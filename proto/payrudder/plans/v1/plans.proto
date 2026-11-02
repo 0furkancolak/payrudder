@@ -851,11 +851,16 @@ message GetPriceChangeRequest {
   string id = 1;
   // Optional: only the subscriptions in this state (scheduled, applied, withdrawn or skipped).
   string state = 2;
+  // 1 to 500, default 500.
+  int32 page_size = 3;
+  string page_token = 4;
 }
 message GetPriceChangeResponse {
   PriceChange price_change = 1;
-  // By customer, at most 500.
+  // By customer, a page of at most page_size.
   repeated PriceChangeItem items = 2;
+  // Empty on the last page.
+  string next_page_token = 3;
 }
 
 message RetryPriceChangeRequest {

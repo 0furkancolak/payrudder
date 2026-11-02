@@ -144,12 +144,22 @@ class CustomersResource:
         """
         return cast("m.GetContractRequirementsResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-requirements", query={"locale": locale, "customer_type": customer_type, "order_description": order_description, "order_total": order_total, "order_currency": order_currency}, options=options))
 
-    def list_contract_acceptances(self, external_id: str, *, options: RequestOptions | None = None) -> m.ListContractAcceptancesResponse:
+    def list_contract_acceptances(self, external_id: str, *, kind: Literal["distance_sales", "pre_info", "tos", "privacy"] | None = None, source: Literal["api", "hosted"] | None = None, version_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListContractAcceptancesResponse:
         """What the customer accepted, newest first.
 
         ``GET /v1/customers/{external_id}/contract-acceptances``
         """
-        return cast("m.ListContractAcceptancesResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-acceptances", options=options))
+        return cast("m.ListContractAcceptancesResponse", self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-acceptances", query={"kind": kind, "source": source, "version_id": version_id, "from": from_, "to": to, "page_size": page_size, "page_token": page_token}, options=options))
+
+    def iter_contract_acceptances(self, external_id: str, *, kind: Literal["distance_sales", "pre_info", "tos", "privacy"] | None = None, source: Literal["api", "hosted"] | None = None, version_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.ContractAcceptance]:
+        """Every item of ``list_contract_acceptances``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = self.list_contract_acceptances(external_id, kind=kind, source=source, version_id=version_id, from_=from_, to=to, page_size=page_size, options=options, page_token=token)
+            yield from page.get("acceptances", [])
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
 
     def record_contract_acceptance(self, external_id: str, body: m.RecordContractAcceptanceRequest, *, options: RequestOptions | None = None) -> m.RecordContractAcceptanceResponse:
         """Record that the customer accepted the current versions (an embedded checkout).
@@ -622,12 +632,22 @@ class PriceChangesResource:
         """
         return cast("m.ListPriceChangesResponse", self._client._request("GET", "/v1/price-changes", query={"plan_code": plan_code}, options=options))
 
-    def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
+    def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
         """One price change with its subscriptions and what became of each.
 
         ``GET /v1/price-changes/{id}``
         """
-        return cast("m.GetPriceChangeResponse", self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state}, options=options))
+        return cast("m.GetPriceChangeResponse", self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state, "page_size": page_size, "page_token": page_token}, options=options))
+
+    def iter_get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> Iterator[m.PriceChangeItem]:
+        """Every item of ``get_price_change``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = self.get_price_change(id, state=state, page_size=page_size, options=options, page_token=token)
+            yield from page.get("items", [])
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
 
     def retry_price_change(self, id: str, *, options: RequestOptions | None = None) -> m.SchedulePriceChangeResponse:
         """Try the skipped subscriptions of a price change again.
@@ -1887,12 +1907,23 @@ class AsyncCustomersResource:
         """
         return cast("m.GetContractRequirementsResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-requirements", query={"locale": locale, "customer_type": customer_type, "order_description": order_description, "order_total": order_total, "order_currency": order_currency}, options=options))
 
-    async def list_contract_acceptances(self, external_id: str, *, options: RequestOptions | None = None) -> m.ListContractAcceptancesResponse:
+    async def list_contract_acceptances(self, external_id: str, *, kind: Literal["distance_sales", "pre_info", "tos", "privacy"] | None = None, source: Literal["api", "hosted"] | None = None, version_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.ListContractAcceptancesResponse:
         """What the customer accepted, newest first.
 
         ``GET /v1/customers/{external_id}/contract-acceptances``
         """
-        return cast("m.ListContractAcceptancesResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-acceptances", options=options))
+        return cast("m.ListContractAcceptancesResponse", await self._client._request("GET", f"/v1/customers/{_p(external_id)}/contract-acceptances", query={"kind": kind, "source": source, "version_id": version_id, "from": from_, "to": to, "page_size": page_size, "page_token": page_token}, options=options))
+
+    async def iter_contract_acceptances(self, external_id: str, *, kind: Literal["distance_sales", "pre_info", "tos", "privacy"] | None = None, source: Literal["api", "hosted"] | None = None, version_id: str | None = None, from_: str | datetime | None = None, to: str | datetime | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.ContractAcceptance]:
+        """Every item of ``list_contract_acceptances``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = await self.list_contract_acceptances(external_id, kind=kind, source=source, version_id=version_id, from_=from_, to=to, page_size=page_size, options=options, page_token=token)
+            for item in page.get("acceptances", []):
+                yield item
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
 
     async def record_contract_acceptance(self, external_id: str, body: m.RecordContractAcceptanceRequest, *, options: RequestOptions | None = None) -> m.RecordContractAcceptanceResponse:
         """Record that the customer accepted the current versions (an embedded checkout).
@@ -2368,12 +2399,23 @@ class AsyncPriceChangesResource:
         """
         return cast("m.ListPriceChangesResponse", await self._client._request("GET", "/v1/price-changes", query={"plan_code": plan_code}, options=options))
 
-    async def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
+    async def get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, page_size: int | None = None, page_token: str | None = None, options: RequestOptions | None = None) -> m.GetPriceChangeResponse:
         """One price change with its subscriptions and what became of each.
 
         ``GET /v1/price-changes/{id}``
         """
-        return cast("m.GetPriceChangeResponse", await self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state}, options=options))
+        return cast("m.GetPriceChangeResponse", await self._client._request("GET", f"/v1/price-changes/{_p(id)}", query={"state": state, "page_size": page_size, "page_token": page_token}, options=options))
+
+    async def iter_get_price_change(self, id: str, *, state: Literal["scheduled", "applied", "withdrawn", "skipped"] | None = None, page_size: int | None = None, options: RequestOptions | None = None) -> AsyncIterator[m.PriceChangeItem]:
+        """Every item of ``get_price_change``, following ``next_page_token`` until the last page."""
+        token: str | None = None
+        while True:
+            page = await self.get_price_change(id, state=state, page_size=page_size, options=options, page_token=token)
+            for item in page.get("items", []):
+                yield item
+            token = page.get("next_page_token") or None
+            if token is None:
+                return
 
     async def retry_price_change(self, id: str, *, options: RequestOptions | None = None) -> m.SchedulePriceChangeResponse:
         """Try the skipped subscriptions of a price change again.

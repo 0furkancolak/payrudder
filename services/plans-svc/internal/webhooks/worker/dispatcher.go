@@ -20,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/0furkancolak/payrudder/pkg/brand"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/paymentgate"
 	"github.com/0furkancolak/payrudder/pkg/pgxx"
 	"github.com/0furkancolak/payrudder/pkg/secretbox"
@@ -131,6 +132,7 @@ func (d *Dispatcher) Once(ctx context.Context) (int, error) {
 		wg.Add(1)
 		go func() {
 			defer func() { <-sem; wg.Done() }()
+			defer errtrack.Recover(ctx)
 			if err := d.deliver(ctx, c); err != nil && ctx.Err() == nil {
 				d.Log.WarnContext(ctx, "webhook delivery not recorded", "delivery", c.id, "error", err)
 			}

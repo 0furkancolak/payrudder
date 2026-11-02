@@ -237,7 +237,20 @@
     "suspend": "Dondur",
     "reinstate": "Yeniden etkinleştir",
     "suspended": "Donduruldu",
-    "suspendConfirm": "{n} tenant dondurulsun mu? API anahtarları hemen çalışmaz. | {n} tenant dondurulsun mu? API anahtarları hemen çalışmaz."
+    "suspendConfirm": "{n} tenant dondurulsun mu? API anahtarları hemen çalışmaz. | {n} tenant dondurulsun mu? API anahtarları hemen çalışmaz.",
+    "pricePause": {
+      "title": "Fiyat değişiklikleri",
+      "running": "Çalışıyor",
+      "paused": "Duraklatıldı",
+      "hint": "Tüm satıcılar için acil durdurma anahtarı: duraklatıldığında hiçbir fiyat değişikliği abonelik planlamaz (deneme çalıştırması yine sayar), süren bir çalıştırma durur ve sıradaki bildirimler bekler. Zaten planlanmış değişiklikler yenilemelerinde yine uygulanır; birini durdurmak için satıcı fiyat değişikliğini geri çeker.",
+      "by": "{date} tarihinde {who} tarafından duraklatıldı.",
+      "reason": "Gerekçe",
+      "reasonHint": "Ayarla birlikte ve denetim günlüğünde saklanır. En fazla 500 karakter.",
+      "pause": "Tüm fiyat değişikliklerini duraklat",
+      "resume": "Fiyat değişikliklerini sürdür",
+      "confirmPause": "Platformdaki tüm fiyat değişiklikleri duraklatılsın mı? Siz sürdürene kadar hiçbir satıcı yenisini planlayamaz veya yeniden deneyemez ve sıradaki bildirimler bekler.",
+      "confirmResume": "Fiyat değişiklikleri sürdürülsün mü? Satıcılar yeniden planlayıp deneyebilir ve bekleyen bildirimler gönderilir."
+    }
   },
   "tenant": {
     "fallbackTitle": "Kiracı",
@@ -310,7 +323,22 @@
       "by": "{actor} tarafından",
       "approvedBy": "{actor} onayladı",
       "choose": "Bir durum seçin",
-      "applyNone": "Durumu ayarla"
+      "applyNone": "Durumu ayarla",
+      "filters": "Geçmişi filtrele",
+      "filterTo": "Yeni durum",
+      "filterKind": "Tür",
+      "kinds": {
+        "changed": "Değişiklikler",
+        "requested": "İkinci operatör bekleniyor"
+      },
+      "shown": "{total} değişiklikten {shown} tanesi",
+      "noMatch": "Bu filtrelere uyan değişiklik yok."
+    },
+    "hold": {
+      "suspended": "{app} askıya alındı: API anahtarları durdu, ödeme sayfaları ve ödeme bağlantıları ödeme almıyor, hiçbir tahsilat yapılmıyor ve müşterilerine e-posta gitmiyor. Verileriniz saklanır.",
+      "frozen": "{app} donduruldu: her şeyi okuyabilirsiniz ama hiçbir şey değiştirilemez. Yazan API çağrıları reddedilir, hiçbir tahsilat yapılmaz ve müşterilerine e-posta gitmez. Verileriniz saklanır.",
+      "banned": "{app} yasaklandı: API anahtarları durdu ve hiçbir şey tahsil edilmez, e-postalanmaz veya gönderilmez. Yasağı yalnızca bir operatör kaldırabilir.",
+      "write": "Destek ekibine yazın"
     }
   },
   "invoice": {
@@ -847,7 +875,8 @@
           "run_by_provider": "ödeme sağlayıcısı yönetiyor",
           "not_changeable": "bu yolla taşınamaz",
           "customer_blocked": "müşteri engelli"
-        }
+        },
+        "loadMore": "Daha fazla abonelik göster"
       },
       "prorateAfterTrial": "İlk dönemi denemenin bitiminden itibaren ücretlendir",
       "prorateAfterTrialHelp": "Deneme bir faturalama döneminin ortasında bittiğinde, o dönemin sabit ücreti yalnızca denemenin bitiminden dönem sonuna kadar alınır. Kapalıyken dönemin ücretinin tamamı alınır; bu seçenekten önce yayımlanan paketler böyle çalışır.",
@@ -1454,7 +1483,10 @@
         "revoke": "Seçilenleri iptal et",
         "revokeTitle": "{n} ödeme bağlantısı iptal edilsin mi? | {n} ödeme bağlantısı iptal edilsin mi?",
         "confirmRevoke": "İptal edilen bağlantılar hemen çalışmayı bırakır ve geri getirilemez. Onlardan oluşan ödenmemiş faturalar iptal edilir."
-      }
+      },
+      "agreements": "Ödeyenin kabul ettiği sözleşmeler",
+      "agreementsHint": "Burada işaretlenenler, yalnızca bu bağlantı için Sözleşmeler sayfasındaki zorunlu sözleşmelerin yerini alır. Hiçbirini işaretlemezseniz o ayar geçerli olur.",
+      "agreementsSetting": "Sözleşmeler sayfasındaki ayara göre"
     },
     "mail": {
       "title": "E-posta",
@@ -2860,7 +2892,8 @@
         "invoice_required": "Fatura türündeki ödeme bağlantısı için bir fatura gerekir.",
         "not_found": "Böyle bir ödeme bağlantısı yok.",
         "customer_required": "Kredi paketi bağlantısı için kredileri alacak müşteri gerekir.",
-        "pack_required": "Kredi paketi bağlantısı için bir paket gerekir."
+        "pack_required": "Kredi paketi bağlantısı için bir paket gerekir.",
+        "bad_required_contracts": "Bir bağlantı; mesafeli satış sözleşmesini, ön bilgilendirmeyi, kullanım koşullarını ve gizlilik bildirimini en fazla bir kez belirtebilir."
       },
       "portal_link": {
         "customer_not_found": "Böyle bir müşteri yok.",
@@ -3081,7 +3114,8 @@
       },
       "price_change": {
         "not_found": "Fiyat değişikliği bulunamadı.",
-        "withdrawn": "Bu fiyat değişikliği geri çekildi. Yeni bir tane oluşturun."
+        "withdrawn": "Bu fiyat değişikliği geri çekildi. Yeni bir tane oluşturun.",
+        "paused": "Fiyat değişiklikleri operatör tarafından duraklatıldı. Daha sonra tekrar deneyin."
       },
       "override": {
         "customer_required": "Sınırın hangi müşteri için olduğunu belirtin.",
@@ -4164,9 +4198,9 @@
       "pageIntro": "Canlı ortam kapalı başlar: canlı anahtar, canlı webhook ve gerçek tahsilat yoktur. Listeyi tamamlayın, sonra açın.",
       "intro": "Canlı ortamınız henüz etkin değil. Açmak için şu adımları tamamlayın.",
       "liveNow": "Canlı ortamınız etkin.",
-      "suspended": "Canlı ortamınız askıya alındı. Yeniden açtırmak için destekle iletişime geçin.",
+      "suspended": "Canlı ortamınız durduruldu (askıya alındı, donduruldu veya yasaklandı). Yeniden açtırmak için destekle iletişime geçin.",
       "stateActive": "Etkin",
-      "stateSuspended": "Askıda",
+      "stateSuspended": "Durduruldu",
       "count": "{done} / {total} tamam",
       "noLive": "Bu kurulumda canlı ortam yok.",
       "done": "tamam",
@@ -5819,14 +5853,24 @@
         "requesting": "İsteniyor",
         "requested": "İstendi",
         "outside": "Kendiniz iade edin",
-        "failed": "Başarısız"
+        "failed": "Başarısız",
+        "refunded": "İade edildi",
+        "refund_failed": "Karta iade başarısız"
       },
       "creditNote": "Alacak dekontu {id}",
       "acceptRefund": {
         "asked": "Ayarlarınız, bu cayma talebinin belirttiği faturanın müşterinin kartına iadesini de şimdi faturalamadan ister. Başka yolla yapılmış ödeme, sizin iade etmeniz için işaretlenir.",
         "left": "Ayarlarınız iadeyi size bırakır: sonra “İade iste”yi kullanın ya da müşteriye kendiniz iade edin.",
         "noInvoice": "Bu cayma talebi fatura belirtmiyor, bu yüzden iade istenmez: müşteriye kendiniz iade edin."
-      }
+      },
+      "invoiceLine": "Fatura {number} · {total}",
+      "amount": "İade tutarı ({currency}, isteğe bağlı)",
+      "amountHint": "Faturadan kalan her şeyi iade etmek için boş bırakın. Hizmet zaten verildiyse ve müşteri bir kısmını borçluysa daha küçük bir tutar yazın.",
+      "amountErrors": {
+        "amount": "Bu para biriminde, sıfırdan büyük bir tutar yazın.",
+        "tooMuch": "Bu, faturadan fazla."
+      },
+      "refundFailedHint": "Alacak dekontu var ama ödeme sağlayıcı parayı iade etmedi. İadeyi Alacak dekontları bölümünden yeniden deneyin; ikincisini istemeyin."
     },
     "customer": {
       "log": "Kabul edilen sözleşmeler",
@@ -5853,7 +5897,15 @@
       "withdrawals": "Cayma talepleri",
       "record": "Cayma kaydet",
       "noWithdrawals": "Bu müşteriden cayma talebi yok.",
-      "decideThere": "Cayma taleplerine Sözleşmeler sayfasından karar verin"
+      "decideThere": "Cayma taleplerine Sözleşmeler sayfasından karar verin",
+      "filters": {
+        "label": "Kabulleri süz",
+        "kind": "Sözleşme türü",
+        "allKinds": "Tüm sözleşmeler",
+        "source": "Nerede kabul edildi",
+        "allSources": "Her yerde"
+      },
+      "showMore": "Daha fazla göster"
     },
     "record": {
       "title": "Cayma kaydet",
@@ -5863,7 +5915,10 @@
       "statementHint": "Kendi sözleriyle, en fazla 2000 karakter.",
       "received": "Size ulaştığı an (isteğe bağlı)",
       "receivedHint": "Şimdi için boş bırakın.",
-      "submit": "Caymayı kaydet"
+      "submit": "Caymayı kaydet",
+      "invoice": "Fatura (isteğe bağlı)",
+      "invoiceHint": "Müşterinin cayma talebinde bulunduğu ödenmiş fatura. Fatura belirtilirse cayma kabul edildiğinde müşteriye iade yapılabilir; belirtilmezse iadeyi kendiniz yaparsınız.",
+      "noInvoice": "Fatura yok"
     }
   },
   "audit": {

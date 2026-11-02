@@ -10,6 +10,7 @@ import { ErrorText } from "@/shared/ui/error-text";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { GoLiveAgreements } from "@/features/contracts";
+import { holdOf } from "@/features/tenants/hold";
 import { useAcceptTerms, useActivateLive, useApp, useGoLive } from "./api";
 import { checklist, nextStep, progress, type GoLiveKey } from "./golive";
 
@@ -32,7 +33,8 @@ const items = computed(() => checklist(goLive.data.value));
 const count = computed(() => progress(goLive.data.value));
 const next = computed(() => nextStep(goLive.data.value));
 const active = computed(() => goLive.data.value?.status === "TENANT_STATUS_ACTIVE");
-const suspended = computed(() => goLive.data.value?.status === "TENANT_STATUS_SUSPENDED");
+/** Suspended, frozen or banned: the operator has the environment on hold, and its owner cannot activate it (identity.go_live.suspended). */
+const suspended = computed(() => holdOf(goLive.data.value?.status) !== undefined);
 const isOwner = computed(() => app.data.value?.role === "owner");
 const termsDone = computed(() => items.value.find((i) => i.key === "terms_accepted")?.done === true);
 const allDone = computed(() => items.value.every((i) => i.done));

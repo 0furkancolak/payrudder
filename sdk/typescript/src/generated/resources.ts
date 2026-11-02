@@ -127,6 +127,7 @@ import type {
   ListAssetsResponse,
   ListAuditEventsQuery,
   ListAuditEventsResponse,
+  ListContractAcceptancesQuery,
   ListContractAcceptancesResponse,
   ListContractVersionsQuery,
   ListContractVersionsResponse,
@@ -1030,10 +1031,12 @@ export class CustomersResource {
   /**
    * What the customer accepted, newest first
    *
+   * The customer's acceptance log, a page at a time (`page_size`, default 100, at most 200; the next page is `next_page_token`, empty on the last). The filters narrow it and combine: `kind`, `source` (api, hosted), `version_id` (one version of a text) and the time the customer accepted, `from` (inclusive) to `to` (exclusive), as RFC 3339 times.
+   *
    * `GET /v1/customers/{external_id}/contract-acceptances`
    */
-  listContractAcceptances(externalId: string, options?: RequestOptions): Promise<ListContractAcceptancesResponse> {
-    return this.t.request<ListContractAcceptancesResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/contract-acceptances`, response: "json" }, options);
+  listContractAcceptances(externalId: string, query?: ListContractAcceptancesQuery, options?: RequestOptions): Promise<ListContractAcceptancesResponse> {
+    return this.t.request<ListContractAcceptancesResponse>({ method: "GET", path: `/v1/customers/${seg(externalId)}/contract-acceptances`, query, response: "json" }, options);
   }
 
   /**
@@ -1740,7 +1743,7 @@ export class PriceChangesResource {
   /**
    * One price change with its subscriptions and what became of each
    *
-   * The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+   * The subscriptions by customer, a page at a time (`page_size` 1 to 500, default 500; `next_page_token` is empty on the last page), optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
    *
    * `GET /v1/price-changes/{id}`
    */

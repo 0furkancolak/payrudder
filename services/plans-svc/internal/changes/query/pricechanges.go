@@ -2,6 +2,8 @@ package query
 
 import (
 	"context"
+	"encoding/base64"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -10,6 +12,7 @@ import (
 
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/page"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/convert"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/domain"
 	"github.com/0furkancolak/payrudder/services/plans-svc/internal/store/sqlc"
@@ -56,14 +59,44 @@ func (q *Queries) PriceChanges(ctx context.Context, planCode string) (*plansv1.L
 	return out, convert.Err(err, "price change")
 }
 
-// GetPriceChange reads one price change and its subscriptions, in one state or all (at most 500: shortcut, no paging until a price change has more).
-func (q *Queries) GetPriceChange(ctx context.Context, rawID, state string) (*plansv1.GetPriceChangeResponse, error) {
+// itemPageSize is the default and the most a page of subscriptions holds.
+const itemPageSize = 500
+
+// itemToken is the position after the last subscription of a page: the customer's external id and the subscription, as an opaque string.
+func itemToken(customer string, sub uuid.UUID) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(sub.String() + "|" + customer))
+}
+
+func parseItemToken(tok string) (customer string, sub uuid.UUID, err error) {
+	b, err := base64.RawURLEncoding.DecodeString(tok)
+	id, rest, ok := strings.Cut(string(b), "|")
+	if err != nil || !ok || rest == "" {
+		return "", uuid.Nil, domain.Invalid("page_token", "not a token this list gave")
+	}
+	if sub, err = uuid.Parse(id); err != nil {
+		return "", uuid.Nil, domain.Invalid("page_token", "not a token this list gave")
+	}
+	return rest, sub, nil
+}
+
+// GetPriceChange reads one price change and a page of its subscriptions by customer, in one state or all (page_size 1 to 500, default 500).
+func (q *Queries) GetPriceChange(ctx context.Context, rawID, state string, pageSize int32, pageToken string) (*plansv1.GetPriceChangeResponse, error) {
 	id, err := domain.ParseID("id", rawID)
 	if err != nil {
 		return nil, PriceChangeNotFound()
 	}
 	if state != "" && state != "scheduled" && state != "applied" && state != "withdrawn" && state != "skipped" {
 		return nil, domain.Invalid("state", "scheduled, applied, withdrawn or skipped")
+	}
+	size, ok := page.Size(pageSize, itemPageSize, itemPageSize)
+	if !ok {
+		return nil, domain.Invalid("page_size", "between 1 and 500")
+	}
+	params := sqlc.ListPriceChangeItemsParams{PriceChangeID: id, State: state, PageSize: size + 1} // one more, to know whether there is a next page
+	if pageToken != "" {
+		if params.AfterCustomer, params.AfterSubscription, err = parseItemToken(pageToken); err != nil {
+			return nil, err
+		}
 	}
 	out := &plansv1.GetPriceChangeResponse{Items: []*plansv1.PriceChangeItem{}}
 	err = q.db.Tx(ctx, func(s *sqlc.Queries) error {
@@ -72,12 +105,20 @@ func (q *Queries) GetPriceChange(ctx context.Context, rawID, state string) (*pla
 			return err
 		}
 		out.PriceChange = pc
-		rows, err := s.ListPriceChangeItems(ctx, sqlc.ListPriceChangeItemsParams{PriceChangeID: id, State: state})
+		rows, err := s.ListPriceChangeItems(ctx, params)
+		if err != nil {
+			return err
+		}
+		rows, more := page.Trim(rows, int(size))
 		for _, r := range rows {
 			out.Items = append(out.Items, &plansv1.PriceChangeItem{SubscriptionId: r.SubscriptionID.String(), CustomerExternalId: r.CustomerExternalID, State: r.State, Reason: r.Reason,
 				EffectiveTime: optTime(r.EffectiveAt), NotifyTime: optTime(r.NotifiedAt)})
 		}
-		return err
+		if more {
+			last := rows[len(rows)-1]
+			out.NextPageToken = itemToken(last.CustomerExternalID, last.SubscriptionID)
+		}
+		return nil
 	})
 	return out, convert.Err(err, "price change")
 }
