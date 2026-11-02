@@ -44,25 +44,6 @@ jobs:
           echo "$files"
           printf '%s\n' "$files" | sh .github/scripts/changes.sh | tee -a "$GITHUB_OUTPUT"
 
-  static: ${{ steps.c.outputs.static }}
-      go: ${{ steps.c.outputs.go }}
-      web: ${{ steps.c.outputs.web }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-      # A base git does not know (a force push, the first push) lists nothing, and an empty list runs every job.
-      - id: c
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE_REF: ${{ github.base_ref }}
-          BEFORE: ${{ github.event.before }}
-        run: |
-          if [ "$EVENT" = "pull_request" ]; then range="origin/$BASE_REF...HEAD"; else range="$BEFORE HEAD"; fi
-          files=$(git diff --name-only $range 2>/dev/null) || files=""
-          echo "$files"
-          printf '%s\n' "$files" | sh .github/scripts/changes.sh | tee -a "$GITHUB_OUTPUT"
-
   static:
     name: lint, buf, generated code
     runs-on: ubuntu-latest
