@@ -397,6 +397,7 @@ export interface paths {
         /**
          * The page the customer accepted, as it was rendered then
          * @description A self-contained HTML document in `html` (no script, no external resource), written again from the stored record. Its `sha256` is the `snapshot_sha256` of the acceptance, and the page that was mailed to the customer. It holds the seller's texts and the customer's name, so show it as untrusted content, for example in a sandboxed frame.
+         *     With `pdf=true` the same page is also drawn as a PDF, the customer's copy (text only, in Noto Sans, ending with the sha256 of the page it was drawn from): base64 in `pdf`. A page with a character the font cannot draw (an Arabic text, a name in Chinese) has no PDF: `pdf_unavailable` is true and the HTML page is the only copy.
          */
         get: operations["getContractSnapshot"];
         put?: never;
@@ -2837,6 +2838,26 @@ export interface paths {
          * @description The stored snapshot (the evidence, not a page written again), served with a policy that lets it run nothing. Only an acceptance of this portal's customer opens; any other id is a 404.
          */
         get: operations["portalAgreementPage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/agreements/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The page the customer accepted, as a PDF to keep
+         * @description The same stored snapshot drawn as a PDF (text only, ending with the sha256 of the page), as a download. Only an acceptance of this portal's customer opens; any other id is a 404. A text the PDF font cannot draw (Arabic, a name in Chinese) has no PDF; the answer is a 404 page that points to the HTML page.
+         */
+        get: operations["portalAgreementPdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -13245,6 +13266,13 @@ export interface components {
             sha256: string;
             /** Format: uuid */
             group_id: string;
+            /**
+             * Format: byte
+             * @description The page as a PDF, base64; only with pdf=true and when the page can be drawn
+             */
+            pdf?: string;
+            /** @description true when pdf=true was asked and the page cannot be drawn in the PDF font */
+            pdf_unavailable?: boolean;
         };
         ContractWithdrawal: {
             /** Format: uuid */
@@ -13969,7 +13997,10 @@ export interface operations {
     };
     getContractSnapshot: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Also draw the page as a PDF */
+                pdf?: boolean;
+            };
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
@@ -18323,6 +18354,45 @@ export interface operations {
                 };
             };
             /** @description Not this customer's acceptance, or the link does not exist */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalAgreementPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/pdf": string;
+                };
+            };
+            /** @description Not this customer's acceptance, the link does not exist, or the text has no PDF */
             404: {
                 headers: {
                     [name: string]: unknown;

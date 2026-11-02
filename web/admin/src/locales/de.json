@@ -6052,7 +6052,17 @@
         "source": "Wo zugestimmt wurde",
         "allSources": "Überall"
       },
-      "showMore": "Mehr anzeigen"
+      "showMore": "Mehr anzeigen",
+      "requirements": "Was der Kunde akzeptieren muss",
+      "reqOff": "Sie verlangen keine Vereinbarungen: von diesem Kunden wird nichts verlangt.",
+      "reqSatisfied": "Alles Verlangte ist akzeptiert",
+      "reqOpen": "Noch zu akzeptieren: {n}",
+      "reqAccepted": "Akzeptiert {time}",
+      "reqToAccept": "Zu akzeptieren",
+      "reqConsents": "Verbraucher werden zusätzlich gebeten, den sofortigen Beginn der Leistung zu verlangen und den Verlust des Widerrufsrechts zu bestätigen.",
+      "reqMissing": "Kein Text veröffentlicht für: {kinds}. Eine Zahlung wird abgelehnt, bis einer veröffentlicht ist.",
+      "downloadPdf": "PDF herunterladen",
+      "pdfUnavailable": "Von dieser Seite kann kein PDF erstellt werden: Ihr Text enthält Zeichen, die die PDF-Schrift nicht darstellen kann. Zeigen Sie stattdessen die Seite an."
     },
     "record": {
       "title": "Widerruf erfassen",

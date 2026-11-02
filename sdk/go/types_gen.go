@@ -1555,6 +1555,10 @@ type GetContractSnapshotResponse struct {
 	HTML    string `json:"html"`
 	SHA256  string `json:"sha256"`
 	GroupID string `json:"group_id"`
+	// The page as a PDF, base64; only with pdf=true and when the page can be drawn
+	PDF string `json:"pdf,omitempty"`
+	// true when pdf=true was asked and the page cannot be drawn in the PDF font
+	PDFUnavailable bool `json:"pdf_unavailable,omitempty"`
 }
 
 // GetContractStarterResponse is the response of GetContractStarter.
@@ -3431,6 +3435,23 @@ func (p *ExportAuditEventsParams) values() url.Values {
 	}
 	if p.To != nil {
 		v.Set("to", p.To.UTC().Format(time.RFC3339Nano))
+	}
+	return v
+}
+
+// GetContractSnapshotParams are the query parameters of GetContractSnapshot.
+type GetContractSnapshotParams struct {
+	// Also draw the page as a PDF
+	PDF *bool
+}
+
+func (p *GetContractSnapshotParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.PDF != nil {
+		v.Set("pdf", strconv.FormatBool(*p.PDF))
 	}
 	return v
 }

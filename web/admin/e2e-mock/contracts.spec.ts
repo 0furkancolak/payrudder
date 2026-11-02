@@ -1,5 +1,6 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { acceptance, contractsGateway, invoice, SNAPSHOT_HTML, STARTER_EN, version, withdrawal } from "./contracts";
+import { acceptance, contractsGateway, invoice, PDF_TEXT, SNAPSHOT_HTML, STARTER_EN, version, withdrawal } from "./contracts";
 import { baseTenant, MockGateway, openTenantPage } from "./gateway";
 import { appWithLive, APP, liveGateway, LIVE, productGateway, signInAsAda } from "./product";
 import { pickFilters } from "./ui";
@@ -490,6 +491,49 @@ test.describe("a customer's sheet", () => {
     await expect(page.frameLocator('[data-testid="snapshot-dialog"] iframe').getByRole("heading", { name: "Accepted page" })).toBeVisible();
     await expect(dialog.getByRole("heading", { name: "Accepted page" })).toHaveCount(0);
     expect(await page.evaluate(() => (window as unknown as { __pwned?: number }).__pwned)).toBeUndefined();
+  });
+
+  test("shows what the customer still has to accept, and says so when the seller requires nothing", async ({ page }) => {
+    await openSheet(page);
+    await expect(page.getByTestId("requirements-off")).toContainText("nothing is asked of this customer");
+  });
+
+  test("lists the required texts with what the customer has accepted of them, and names a required kind nobody published", async ({ page }) => {
+    await openSheet(page, {
+      requirements: {
+        enforced: true, satisfied: false, immediate_start: true, missing_kinds: ["privacy"], audience: "consumer",
+        requirements: [
+          { kind: "distance_sales", version_number: 3, accepted: true, accept_time: "2026-10-15T10:00:00Z" },
+          { kind: "tos", version_number: 2, accepted: false, accept_time: null },
+        ],
+      },
+    });
+    const box = page.getByTestId("customer-requirements");
+    await expect(box.getByTestId("requirements-state")).toHaveText("Still to accept: 1");
+    const rows = box.getByTestId("requirement");
+    await expect(rows).toHaveCount(2);
+    await expect(rows.nth(0)).toContainText("Distance sales contract · Version 3");
+    await expect(rows.nth(0)).toContainText("Accepted");
+    await expect(rows.nth(1)).toContainText("Terms of service · Version 2");
+    await expect(rows.nth(1)).toContainText("To accept");
+    await expect(box).toContainText("acknowledge losing the right of withdrawal");
+    await expect(box.getByTestId("requirements-missing")).toContainText("Privacy notice");
+  });
+
+  test("the PDF copy of what a customer accepted is downloaded from the sheet, and a text with none says so", async ({ page }) => {
+    const { gw } = await openSheet(page, { noPdf: ["a3"] });
+    const newest = page.getByTestId("acceptance-group").nth(0);
+    const download = page.waitForEvent("download");
+    await newest.getByTestId("acceptance-pdf").click();
+    const file = await download;
+    expect(file.suggestedFilename()).toBe(`agreement-${"cafe".repeat(3)}.pdf`);
+    const path = await file.path();
+    expect(readFileSync(path, "utf8")).toBe(PDF_TEXT);
+    expect(gw.called("GET", /\/v1\/contract-acceptances\/a1\/snapshot/).at(-1)?.query.get("pdf")).toBe("true");
+    // The older moment is one whose text the PDF font cannot draw: nothing is saved, and the sheet says why.
+    const older = page.getByTestId("acceptance-group").nth(1);
+    await older.getByTestId("acceptance-pdf").click();
+    await expect(older.getByTestId("acceptance-pdf-missing")).toContainText("No PDF can be made of this page");
   });
 
   test("a withdrawal that reached the seller by mail is recorded from the console, with its words and when it arrived", async ({ page }) => {

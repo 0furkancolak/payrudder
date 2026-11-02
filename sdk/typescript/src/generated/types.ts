@@ -1567,10 +1567,19 @@ export interface GetContractRequirementsResponse {
   audience: ContractAudience;
 }
 
+export interface GetContractSnapshotQuery {
+  /** Also draw the page as a PDF */
+  pdf?: boolean;
+}
+
 export interface GetContractSnapshotResponse {
   html: string;
   sha256: string;
   group_id: string;
+  /** The page as a PDF, base64; only with pdf=true and when the page can be drawn */
+  pdf?: string;
+  /** true when pdf=true was asked and the page cannot be drawn in the PDF font */
+  pdf_unavailable?: boolean;
 }
 
 export interface GetContractStarterQuery {

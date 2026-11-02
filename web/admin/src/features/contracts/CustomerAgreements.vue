@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
-import { Eraser, FilePlus, Loader2 } from "@lucide/vue";
+import { Download, Eraser, FilePlus, Loader2 } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
@@ -8,10 +8,11 @@ import { tenantBase } from "@/shared/lib/session";
 import { Button } from "@/shared/ui/button";
 import { DateRangePicker } from "@/shared/ui/date-range";
 import { ErrorState } from "@/shared/ui/error-state";
+import { ErrorText } from "@/shared/ui/error-text";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
-import { useContractAcceptances, useContractWithdrawals } from "./api";
+import { downloadSnapshotPdf, useContractAcceptances, useContractRequirements, useContractWithdrawals } from "./api";
 import { KINDS, LANGUAGE_NAMES, emptyAcceptanceFilter, evidenceValue, groupAcceptances, isAcceptanceFiltered, witnessOf, type AcceptanceGroup, type ContractAcceptance, type WithdrawalStatus } from "./lib";
 import RecordWithdrawalSheet from "./RecordWithdrawalSheet.vue";
 import SnapshotDialog from "./SnapshotDialog.vue";
@@ -30,6 +31,24 @@ const filter = ref(emptyAcceptanceFilter());
 const filtered = computed(() => isAcceptanceFiltered(filter.value));
 const acceptances = useContractAcceptances(() => props.tenantId, () => props.externalId, filter);
 const withdrawals = useContractWithdrawals(() => props.tenantId, () => props.externalId);
+const requirements = useContractRequirements(() => props.tenantId, () => props.externalId);
+const outstanding = computed(() => (requirements.data.value?.requirements ?? []).filter((r) => !r.accepted));
+// The PDF copy of one moment: a text the PDF font cannot draw (Arabic) has none, and nothing is offered for it.
+const pdfBusy = ref("");
+const pdfError = ref<unknown>();
+const pdfMissing = ref("");
+async function savePdf(g: AcceptanceGroup) {
+  pdfBusy.value = g.id;
+  pdfError.value = undefined;
+  pdfMissing.value = "";
+  try {
+    if ((await downloadSnapshotPdf(props.tenantId, g.anchor.id)) === "unavailable") pdfMissing.value = g.id;
+  } catch (e) {
+    pdfError.value = e;
+  } finally {
+    pdfBusy.value = "";
+  }
+}
 const groups = computed(() => groupAcceptances(acceptances.data.value?.pages.flatMap((p) => p.acceptances ?? [])));
 const viewing = ref("");
 const recording = ref(false);
@@ -45,6 +64,31 @@ const first = (g: AcceptanceGroup): ContractAcceptance => g.anchor;
 
 <template>
   <div class="flex flex-col gap-6" data-testid="customer-agreements">
+    <section class="flex flex-col gap-3" :aria-label="t('contracts.customer.requirements')" data-testid="customer-requirements">
+      <h3 class="m-0 text-sm font-semibold">{{ t("contracts.customer.requirements") }}</h3>
+      <ErrorState :error="requirements.error.value" :retrying="requirements.isFetching.value" compact @retry="requirements.refetch()" />
+      <Skeleton v-if="requirements.isPending.value" class="h-12 rounded-2xl" />
+      <template v-else-if="requirements.data.value">
+        <p v-if="!requirements.data.value.enforced" class="text-muted-foreground m-0 text-sm" data-testid="requirements-off">{{ t("contracts.customer.reqOff") }}</p>
+        <template v-else>
+          <div class="flex flex-wrap items-center gap-2">
+            <StatusPill :tone="requirements.data.value.satisfied ? 'success' : 'warning'" data-testid="requirements-state">{{ t(requirements.data.value.satisfied ? "contracts.customer.reqSatisfied" : "contracts.customer.reqOpen", { n: outstanding.length }) }}</StatusPill>
+            <span class="text-muted-foreground text-xs">{{ t(`contracts.audiences.${requirements.data.value.audience}`) }}</span>
+          </div>
+          <ul class="m-0 flex list-none flex-col gap-1.5 p-0 text-sm">
+            <li v-for="r in requirements.data.value.requirements" :key="r.kind" class="flex flex-wrap items-center gap-2" data-testid="requirement">
+              <span class="font-medium">{{ t(`contracts.kinds.${r.kind}`) }} · {{ t("contracts.history.version", { n: r.version_number }) }}</span>
+              <StatusPill :tone="r.accepted ? 'success' : 'warning'">{{ r.accepted ? t("contracts.customer.reqAccepted", { time: fmt.date(r.accept_time, "dateTime") }) : t("contracts.customer.reqToAccept") }}</StatusPill>
+            </li>
+          </ul>
+          <p v-if="requirements.data.value.immediate_start" class="text-muted-foreground m-0 text-xs">{{ t("contracts.customer.reqConsents") }}</p>
+          <p v-if="requirements.data.value.missing_kinds.length > 0" class="text-destructive m-0 text-sm" role="alert" data-testid="requirements-missing">
+            {{ t("contracts.customer.reqMissing", { kinds: requirements.data.value.missing_kinds.map((k) => t(`contracts.kinds.${k}`)).join(", ") }) }}
+          </p>
+        </template>
+      </template>
+    </section>
+
     <section class="flex flex-col gap-3" :aria-label="t('contracts.customer.log')">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h3 class="m-0 text-sm font-semibold">{{ t("contracts.customer.log") }}</h3>
@@ -72,8 +116,15 @@ const first = (g: AcceptanceGroup): ContractAcceptance => g.anchor;
               <span class="font-medium">{{ fmt.date(g.time, "dateTime") }}</span>
               <StatusPill :tone="g.source === 'hosted' ? 'success' : 'info'" data-testid="acceptance-source">{{ g.source === "hosted" ? t("contracts.customer.sourceHosted") : t("contracts.customer.sourceApi") }}</StatusPill>
             </div>
-            <Button size="sm" variant="outline" data-testid="acceptance-view" @click="viewing = g.anchor.id">{{ t("contracts.customer.viewPage") }}</Button>
+            <div class="flex flex-wrap gap-2">
+              <Button v-if="g.anchor.locale_served !== 'ar'" size="sm" variant="outline" :disabled="pdfBusy === g.id" data-testid="acceptance-pdf" @click="savePdf(g)">
+                <Loader2 v-if="pdfBusy === g.id" class="animate-spin" aria-hidden="true" /><Download v-else aria-hidden="true" />{{ t("contracts.customer.downloadPdf") }}
+              </Button>
+              <Button size="sm" variant="outline" data-testid="acceptance-view" @click="viewing = g.anchor.id">{{ t("contracts.customer.viewPage") }}</Button>
+            </div>
           </div>
+          <p v-if="pdfMissing === g.id" class="text-muted-foreground m-0 text-xs" role="status" data-testid="acceptance-pdf-missing">{{ t("contracts.customer.pdfUnavailable") }}</p>
+          <ErrorText v-if="pdfError && pdfBusy === ''" :error="pdfError" class="text-xs" />
 
           <ul class="m-0 flex list-none flex-col gap-2 p-0 text-sm">
             <li v-for="a in g.items" :key="a.id" class="flex flex-col gap-0.5" data-testid="acceptance-item">

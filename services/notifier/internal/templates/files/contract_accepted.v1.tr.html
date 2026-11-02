@@ -3,6 +3,7 @@
 {{if .Sandbox}}<p><strong>SANDBOX — bu gerçek bir sözleşme değildir.</strong></p>{{end}}
 <h2>Kabul ettiklerinizin sizdeki nüshası</h2>
 <p>Merhaba {{index .D "customer_name"}}, <strong>{{index .D "accepted_at"}}</strong> tarihinde <strong>{{index .D "tenant_name"}}</strong> ile aşağıdakileri kabul ettiniz. Bu e-postayı saklayın: nüshanız budur.</p>
+{{if index .D "has_pdf"}}<p style="font-size: 12px; color: #666">Bu sayfanın PDF kopyası ekte.</p>{{end}}
 <hr>
 {{trusted (index .D "snapshot_html")}}
 <hr>

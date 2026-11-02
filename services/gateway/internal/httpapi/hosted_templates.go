@@ -196,7 +196,7 @@ const portalTmpl = `{{define "portal"}}{{template "head" .}}
 {{end}}</tbody></table></div>{{else}}<p class="muted">{{.L.portal_none_pay}}</p>{{end}}
 {{if .Agreements}}<h2 class="sec">{{.L.agreements_list}}</h2>
 <div class="wrap" tabindex="0"><table class="nw"><thead><tr><th>{{.L.contract_title}}</th><th>{{.L.contract_version}}</th><th>{{.L.contract_accepted_on}}</th><th><span class="sr">{{.L.action}}</span></th></tr></thead><tbody>
-{{range .Agreements}}<tr><td>{{.Label}}</td><td>{{.Number}}</td><td>{{.Date}}</td><td><a href="{{.Href}}">{{$.L.agreements_view}}</a></td></tr>
+{{range .Agreements}}<tr><td>{{.Label}}</td><td>{{.Number}}</td><td>{{.Date}}</td><td><a href="{{.Href}}">{{$.L.agreements_view}}</a>{{if .PdfHref}} · <a href="{{.PdfHref}}">{{$.L.agreements_pdf}}</a>{{end}}</td></tr>
 {{end}}</tbody></table></div>{{end}}
 {{if .Withdraw}}<div class="noprint"><a class="btn alt" href="{{.Withdraw}}">{{.L.withdraw_link}}</a></div>{{end}}
 {{if .ShowCredits}}<h2 class="sec">{{.L.cr_title}}</h2>

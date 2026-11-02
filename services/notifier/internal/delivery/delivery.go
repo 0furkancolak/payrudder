@@ -93,6 +93,8 @@ type Delivery struct {
 	Data     map[string]string
 	// Sandbox sends through the sandbox sink, with a marked subject.
 	Sandbox bool
+	// Attachments are sent with the mail (the PDF copy of an accepted agreement).
+	Attachments []mailx.Attachment
 }
 
 // Deliver sends one rendered email under its dedup key. The returned id is the provider's message id (also for an email that
@@ -136,7 +138,7 @@ func (m *Mailer) Deliver(ctx context.Context, d Delivery) (string, error) {
 			return Dropped, err
 		}
 	}
-	mid, err := sender.Send(ctx, mailx.Message{From: from, To: d.To, Subject: msg.Subject, HTML: msg.HTML, Text: msg.Text, ID: d.Key, Template: d.Template})
+	mid, err := sender.Send(ctx, mailx.Message{From: from, To: d.To, Subject: msg.Subject, HTML: msg.HTML, Text: msg.Text, ID: d.Key, Template: d.Template, Attachments: d.Attachments})
 	if err != nil {
 		var perm *mailx.PermanentError
 		if errors.As(err, &perm) {
