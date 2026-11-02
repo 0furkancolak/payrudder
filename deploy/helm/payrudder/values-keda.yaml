@@ -1,0 +1,13 @@
+# The consumers scale on their backlog (docs/runbooks/scaling.md): KEDA ScaledObjects for the Kafka consumers (lag) and the RabbitMQ workers (queue length).
+# KEDA must be installed in the cluster first (https://keda.sh/docs/deploy/). Layer it over any other profile:
+#   helm upgrade --install payrudder deploy/helm/payrudder -f deploy/helm/payrudder/values-small.yaml -f deploy/helm/payrudder/values-keda.yaml
+# The thresholds are first guesses and were not measured on a cluster: watch consumer_lag_seconds and the queue depths for a week, then change them.
+services:
+  aggregator:
+    keda: { enabled: true }
+  limits-svc:
+    keda: { enabled: true }
+  invoice-worker:
+    keda: { enabled: true }
+  payments-worker:
+    keda: { enabled: true }

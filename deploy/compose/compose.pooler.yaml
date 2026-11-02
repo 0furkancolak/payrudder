@@ -1,0 +1,29 @@
+# Puts the services' app role behind PgBouncer in transaction mode (make up-pooler; docs/runbooks/scaling.md). Layer it over compose.yaml with the pooler profile:
+#   docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.pooler.yaml --profile pooler --profile app up -d
+# Only the app DSN moves: the system role (LISTEN, session advisory locks) and the migrator (search_path, goose's session lock) keep postgres:5432.
+services:
+  plans-svc:
+    environment:
+      PAYRUDDER_PG_APP_DSN: postgres://plans_app:plans_app_local@pgbouncer:6432/plans_db
+    depends_on:
+      pgbouncer: { condition: service_healthy }
+  ingest-svc:
+    environment:
+      PAYRUDDER_PG_APP_DSN: postgres://ingest_app:ingest_app_local@pgbouncer:6432/ingest_db
+    depends_on:
+      pgbouncer: { condition: service_healthy }
+  aggregator:
+    environment:
+      PAYRUDDER_PG_APP_DSN: postgres://aggregator_app:aggregator_app_local@pgbouncer:6432/aggregator_db
+    depends_on:
+      pgbouncer: { condition: service_healthy }
+  billing-svc:
+    environment:
+      PAYRUDDER_PG_APP_DSN: postgres://billing_app:billing_app_local@pgbouncer:6432/billing_db
+    depends_on:
+      pgbouncer: { condition: service_healthy }
+  assets-svc:
+    environment:
+      PAYRUDDER_PG_APP_DSN: postgres://assets_app:assets_app_local@pgbouncer:6432/assets_db
+    depends_on:
+      pgbouncer: { condition: service_healthy }

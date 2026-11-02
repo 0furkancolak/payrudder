@@ -222,12 +222,12 @@ helm-uninstall: $(BIN)/helm ## Remove both releases
 	-$(BIN)/helm uninstall payrudder-infra -n $(HELM_NS) --kube-context kind-payrudder
 
 .PHONY: helm-lint
-helm-lint: $(BIN)/helm $(BIN)/kubeconform ## helm lint + kubeconform for every values file
+helm-lint: $(BIN)/helm $(BIN)/kubeconform ## helm lint + kubeconform for every values file (a KEDA ScaledObject has no schema in kubeconform: tests/helm checks it)
 	@set -e; for c in payrudder payrudder-infra; do \
 	  for v in deploy/helm/$$c/values*.yaml; do \
 	    echo "== $$c $$v"; \
 	    $(BIN)/helm lint deploy/helm/$$c -f $$v; \
-	    $(BIN)/helm template x deploy/helm/$$c -n payrudder -f $$v | $(BIN)/kubeconform -strict -summary -kubernetes-version 1.33.0 -; \
+	    $(BIN)/helm template x deploy/helm/$$c -n payrudder -f $$v | $(BIN)/kubeconform -strict -summary -kubernetes-version 1.33.0 -skip ScaledObject -; \
 	  done; \
 	done
 
@@ -280,6 +280,11 @@ up-pitr: ## Point-in-time recovery for the local Postgres: WAL archiving, a side
 	docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.pitr.yaml $(if $(wildcard .env),--env-file .env) up -d --wait postgres minio
 	docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.pitr.yaml $(if $(wildcard .env),--env-file .env) --profile init run --rm minio-init
 	docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.pitr.yaml $(if $(wildcard .env),--env-file .env) --profile obs --profile ops up -d pushgateway pitr-agent
+
+.PHONY: up-pooler
+up-pooler: ## Like make up, with the services' app role behind PgBouncer in transaction mode on :42433 (compose.pooler.yaml; docs/runbooks/scaling.md)
+	$(MAKE) up-infra
+	docker compose -f deploy/compose/compose.yaml -f deploy/compose/compose.pooler.yaml $(if $(wildcard .env),--env-file .env) --profile obs --profile app --profile pooler up -d --build --wait
 
 .PHONY: up
 up: ## Start infrastructure + observability + Payrudder services
