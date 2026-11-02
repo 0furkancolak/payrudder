@@ -282,7 +282,7 @@ func (c *Commands) Apply(ctx context.Context, req *plansv1.ApplyCouponRequest) (
 		return nil, domain.Invalid("code", "required")
 	}
 	var out *plansv1.Subscription
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
 		row, err := subsqry.Lock(ctx, q, id)
 		if err != nil {
 			return err
@@ -294,7 +294,13 @@ func (c *Commands) Apply(ctx context.Context, req *plansv1.ApplyCouponRequest) (
 			return err
 		}
 		out = convert.SubscriptionOf(row, c.now())
-		return subsqry.AttachExtras(ctx, q, out)
+		if err := subsqry.AttachExtras(ctx, q, out); err != nil {
+			return err
+		}
+		// A coupon is money off every invoice of the subscription: who put it there is in the log. The code is named (it is the seller's own, shown on invoices).
+		ti, _ := tenant.FromContext(ctx)
+		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "subscription.coupon_applied", TargetType: "subscription", TargetID: id.String(),
+			Summary: "put the coupon " + req.GetCode() + " on the subscription " + id.String(), Detail: map[string]any{"coupon": req.GetCode(), "customer_id": row.CustomerID.String()}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")
@@ -309,8 +315,13 @@ func (c *Commands) Remove(ctx context.Context, req *plansv1.RemoveCouponRequest)
 		return nil, err
 	}
 	var out *plansv1.Subscription
-	err = c.db.Tx(ctx, func(q *sqlc.Queries) error {
-		if _, err := q.GetSubscriptionForUpdate(ctx, id); err != nil {
+	err = c.db.TxWith(ctx, func(q *sqlc.Queries, tx pgx.Tx) error {
+		locked, err := q.GetSubscriptionForUpdate(ctx, id)
+		if err != nil {
+			return err
+		}
+		on, err := q.GetSubscriptionCoupon(ctx, id)
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
 		if rid, err := q.GetSubscriptionRedemptionID(ctx, id); err == nil && rid != nil {
@@ -333,7 +344,12 @@ func (c *Commands) Remove(ctx context.Context, req *plansv1.RemoveCouponRequest)
 			return err
 		}
 		out = convert.SubscriptionOf(r, c.now())
-		return subsqry.AttachExtras(ctx, q, out)
+		if err := subsqry.AttachExtras(ctx, q, out); err != nil {
+			return err
+		}
+		ti, _ := tenant.FromContext(ctx)
+		return audit.Record(ctx, tx, audit.Event{TenantID: ti.ID, Action: "subscription.coupon_removed", TargetType: "subscription", TargetID: id.String(),
+			Summary: "took the coupon " + on.CouponCode + " off the subscription " + id.String(), Detail: map[string]any{"coupon": on.CouponCode, "customer_id": locked.CustomerID.String()}})
 	})
 	if err != nil {
 		return nil, convert.Err(err, "subscription")

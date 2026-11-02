@@ -6085,7 +6085,10 @@
       "user": "كلمات المرور وتسجيل الدخول",
       "two_factor": "تسجيل الدخول بخطوتين",
       "sign_in": "تسجيل الدخول",
-      "account": "المؤسسة"
+      "account": "المؤسسة",
+      "subscription": "الاشتراكات",
+      "reconciliation": "المطابقة",
+      "audit": "الاحتفاظ بالسجل"
     },
     "actions": {
       "api_key": {
@@ -6112,7 +6115,11 @@
       },
       "customer": {
         "blocked": "تم حظر عميل",
-        "unblocked": "تم رفع الحظر عن عميل"
+        "unblocked": "تم رفع الحظر عن عميل",
+        "contact_changed": "تم تغيير بيانات الاتصال بالعميل",
+        "address_changed": "تم تغيير عنوان العميل",
+        "tax_changed": "تم تغيير البيانات الضريبية للعميل",
+        "payment_method_changed": "تم تغيير طريقة دفع العميل"
       },
       "credit_note": {
         "issued": "تم إصدار إشعار دائن",
@@ -6187,6 +6194,18 @@
         "recovery_codes_replaced": "أُعيد إنشاء رموز الاسترداد",
         "recovery_code_used": "تم استخدام رمز استرداد",
         "reset_by_operator": "أعاد الدعم تعيين تسجيل الدخول بخطوتين"
+      },
+      "subscription": {
+        "coupon_applied": "تم تطبيق قسيمة على اشتراك",
+        "coupon_removed": "تمت إزالة قسيمة من اشتراك"
+      },
+      "reconciliation": {
+        "discrepancy_explained": "تم توضيح فرق في المطابقة",
+        "discrepancy_resolved": "تم حل فرق في المطابقة",
+        "discrepancy_assigned": "تم تعيين فرق في المطابقة"
+      },
+      "audit": {
+        "pruned": "تم حذف أقدم إدخالات السجل"
       }
     }
   },

@@ -6085,7 +6085,10 @@
       "user": "Passwörter und Anmeldung",
       "two_factor": "Zwei-Faktor-Anmeldung",
       "sign_in": "Anmeldung",
-      "account": "Organisation"
+      "account": "Organisation",
+      "subscription": "Abonnements",
+      "reconciliation": "Abstimmung",
+      "audit": "Aufbewahrung des Protokolls"
     },
     "actions": {
       "api_key": {
@@ -6112,7 +6115,11 @@
       },
       "customer": {
         "blocked": "Kunde gesperrt",
-        "unblocked": "Kunde entsperrt"
+        "unblocked": "Kunde entsperrt",
+        "contact_changed": "Kontaktdaten des Kunden geändert",
+        "address_changed": "Adresse des Kunden geändert",
+        "tax_changed": "Steuerangaben des Kunden geändert",
+        "payment_method_changed": "Zahlungsmethode des Kunden geändert"
       },
       "credit_note": {
         "issued": "Gutschrift ausgestellt",
@@ -6187,6 +6194,18 @@
         "recovery_codes_replaced": "Wiederherstellungscodes neu erzeugt",
         "recovery_code_used": "Wiederherstellungscode verwendet",
         "reset_by_operator": "Zwei-Faktor-Anmeldung vom Support zurückgesetzt"
+      },
+      "subscription": {
+        "coupon_applied": "Gutschein auf Abonnement angewendet",
+        "coupon_removed": "Gutschein vom Abonnement entfernt"
+      },
+      "reconciliation": {
+        "discrepancy_explained": "Abstimmungsdifferenz erklärt",
+        "discrepancy_resolved": "Abstimmungsdifferenz gelöst",
+        "discrepancy_assigned": "Abstimmungsdifferenz zugewiesen"
+      },
+      "audit": {
+        "pruned": "Älteste Protokolleinträge gelöscht"
       }
     }
   },

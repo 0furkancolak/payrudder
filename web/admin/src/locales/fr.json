@@ -6085,7 +6085,10 @@
       "user": "Mots de passe et connexion",
       "two_factor": "Connexion en deux étapes",
       "sign_in": "Connexion",
-      "account": "Organisation"
+      "account": "Organisation",
+      "subscription": "Abonnements",
+      "reconciliation": "Rapprochement",
+      "audit": "Conservation du journal"
     },
     "actions": {
       "api_key": {
@@ -6112,7 +6115,11 @@
       },
       "customer": {
         "blocked": "Client bloqué",
-        "unblocked": "Client débloqué"
+        "unblocked": "Client débloqué",
+        "contact_changed": "Coordonnées du client modifiées",
+        "address_changed": "Adresse du client modifiée",
+        "tax_changed": "Informations fiscales du client modifiées",
+        "payment_method_changed": "Moyen de paiement du client modifié"
       },
       "credit_note": {
         "issued": "Avoir émis",
@@ -6187,6 +6194,18 @@
         "recovery_codes_replaced": "Codes de récupération régénérés",
         "recovery_code_used": "Code de récupération utilisé",
         "reset_by_operator": "Connexion en deux étapes réinitialisée par le support"
+      },
+      "subscription": {
+        "coupon_applied": "Coupon appliqué à un abonnement",
+        "coupon_removed": "Coupon retiré d'un abonnement"
+      },
+      "reconciliation": {
+        "discrepancy_explained": "Écart de rapprochement expliqué",
+        "discrepancy_resolved": "Écart de rapprochement résolu",
+        "discrepancy_assigned": "Écart de rapprochement attribué"
+      },
+      "audit": {
+        "pruned": "Plus anciennes entrées du journal supprimées"
       }
     }
   },

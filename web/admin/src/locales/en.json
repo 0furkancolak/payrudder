@@ -6085,7 +6085,10 @@
       "user": "Passwords and sign-in",
       "two_factor": "Two-factor sign-in",
       "sign_in": "Sign-in",
-      "account": "Organisation"
+      "account": "Organisation",
+      "subscription": "Subscriptions",
+      "reconciliation": "Reconciliation",
+      "audit": "Log retention"
     },
     "actions": {
       "api_key": {
@@ -6112,7 +6115,11 @@
       },
       "customer": {
         "blocked": "Customer blocked",
-        "unblocked": "Customer unblocked"
+        "unblocked": "Customer unblocked",
+        "contact_changed": "Customer contact details changed",
+        "address_changed": "Customer address changed",
+        "tax_changed": "Customer tax details changed",
+        "payment_method_changed": "Customer payment method changed"
       },
       "credit_note": {
         "issued": "Credit note issued",
@@ -6187,6 +6194,18 @@
         "recovery_codes_replaced": "Recovery codes regenerated",
         "recovery_code_used": "Recovery code used",
         "reset_by_operator": "Two-factor sign-in reset by support"
+      },
+      "subscription": {
+        "coupon_applied": "Coupon put on a subscription",
+        "coupon_removed": "Coupon taken off a subscription"
+      },
+      "reconciliation": {
+        "discrepancy_explained": "Reconciliation difference explained",
+        "discrepancy_resolved": "Reconciliation difference resolved",
+        "discrepancy_assigned": "Reconciliation difference assigned"
+      },
+      "audit": {
+        "pruned": "Oldest log entries deleted"
       }
     }
   },
