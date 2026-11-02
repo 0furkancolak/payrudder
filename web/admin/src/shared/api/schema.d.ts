@@ -379,7 +379,7 @@ export interface paths {
         put?: never;
         /**
          * Record that the customer withdrew from a contract
-         * @description The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. Routing the refund from here is not automatic yet.
+         * @description The seller decides and refunds; this keeps the statement, when it arrived and who decided what. Sends the webhook event contract.withdrawal_requested. The refund follows the seller's decision, never the statement: see setContractWithdrawalStatus and requestContractWithdrawalRefund.
          */
         post: operations["createContractWithdrawal"];
         delete?: never;
@@ -415,10 +415,30 @@ export interface paths {
         get?: never;
         /**
          * Decide a withdrawal request, or mark an accepted one refunded
-         * @description received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise).
+         * @description received becomes accepted or rejected, once; accepted becomes refunded (plans.contract.withdrawal_decided otherwise). Sends the webhook event contract.withdrawal_decided. Accepting a withdrawal that names an invoice also asks billing for the refund when the settings say `withdrawal_refund: full` (the default): a credit note that returns the amount to the card, for `refund_amount_minor` or whatever is left of the invoice. The decision is recorded first; what happened to the refund is on the returned withdrawal (`refund_state`, `credit_note_id`, `refund_note`) and never makes this call fail. An invoice paid by bank transfer or cash cannot go back through Payrudder: `refund_state` is `outside` and the seller refunds it by hand, then marks the withdrawal refunded.
          */
         put: operations["setContractWithdrawalStatus"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/contract-withdrawals/{id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for the refund of an accepted withdrawal
+         * @description For a withdrawal whose settings say `withdrawal_refund: none`, or whose first request failed. Only an accepted withdrawal that names an invoice, once: a request under way or made already answers plans.contract.refund_not_possible. The refund is a credit note with `refund_to_card` for `amount_minor` (0 is whatever is left of the invoice), made by billing under its own rules (a paid invoice, never more than what is left of it, only a payment a provider can return). The answer is the withdrawal with its `refund_state`.
+         */
+        post: operations["requestContractWithdrawalRefund"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2503,6 +2523,134 @@ export interface paths {
          * @description Same as the payment link's pay, scoped to the portal's customer, with the same agreement fields and the same 422. At most 10 a minute per address.
          */
         post: operations["portalInvoicePay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The withdrawal function: "Withdraw from contract here" (public, the token is the credential)
+         * @description Directive 2011/83/EU art. 11a. The form asks for the customer's name, shows the paid invoice as the contract and the address the confirmation goes to, and takes their own words. 404 for a link that does not exist, a guest's invoice, an invoice that is not paid, a business customer, a seller that does not require agreements or switched the function off. At most 60 requests a minute per address.
+         */
+        get: operations["hostedWithdrawPage"];
+        put?: never;
+        /**
+         * Check the withdrawal statement (the first step)
+         * @description Form fields `name`, `contract` (the invoice id the page offered) and `words`. Answers the page that shows what will be sent with the confirm button; nothing is recorded yet. 422 with the form again when the name or the contract is missing. At most 10 a minute per address.
+         */
+        post: operations["hostedWithdrawReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/i/{token}/withdraw/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm withdrawal (the second step)
+         * @description Records the statement (source `hosted`, with the time it arrived), sends the webhook event contract.withdrawal_requested and, when the customer has an e-mail address, queues the acknowledgement of receipt on a durable medium with the content of the statement and the date and time (`contract.withdrawal-received.v1`). A second confirmation for the same invoice records nothing and says so. It decides nothing: the seller does. At most 10 a minute per address.
+         */
+        post: operations["hostedWithdrawConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The withdrawal function: "Withdraw from contract here" (public, the token is the credential)
+         * @description Directive 2011/83/EU art. 11a. The form asks for the customer's name, lets the customer choose which of their paid invoices is the contract and the address the confirmation goes to, and takes their own words. 404 for a link that does not exist, a guest's invoice, an invoice that is not paid, a business customer, a seller that does not require agreements or switched the function off. At most 60 requests a minute per address.
+         */
+        get: operations["portalWithdrawPage"];
+        put?: never;
+        /**
+         * Check the withdrawal statement (the first step)
+         * @description Form fields `name`, `contract` (the invoice id the page offered) and `words`. Answers the page that shows what will be sent with the confirm button; nothing is recorded yet. 422 with the form again when the name or the contract is missing. At most 10 a minute per address.
+         */
+        post: operations["portalWithdrawReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/withdraw/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm withdrawal (the second step)
+         * @description Records the statement (source `hosted`, with the time it arrived), sends the webhook event contract.withdrawal_requested and, when the customer has an e-mail address, queues the acknowledgement of receipt on a durable medium with the content of the statement and the date and time (`contract.withdrawal-received.v1`). A second confirmation for the same invoice records nothing and says so. It decides nothing: the seller does. At most 10 a minute per address.
+         */
+        post: operations["portalWithdrawConfirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/agreements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept again the agreements the seller changed
+         * @description The portal shows the texts of a material version published since the customer last accepted, when they accepted something before. Form fields as on the pay form: `v_<kind>`, `accept_<kind>=1`, and for a seller that starts the service at once `consent_start=1` and `consent_waiver=1`. Records the acceptance (source `hosted`, context `portal`, with the address and browser observed) and goes back to the portal; 422 shows the portal again with the reason. Nothing is paid here.
+         */
+        post: operations["portalAgree"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/c/{token}/agreements/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The page the customer accepted, as it was stored
+         * @description The stored snapshot (the evidence, not a page written again), served with a policy that lets it run nothing. Only an acceptance of this portal's customer opens; any other id is a 404.
+         */
+        get: operations["portalAgreementPage"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -9597,6 +9745,39 @@ export interface components {
             tenant_id: string;
             data: components["schemas"]["ContractWithdrawalRequestedEventData"];
         };
+        /** @description The data of an event of type contract.withdrawal_decided */
+        ContractWithdrawalDecidedEventData: {
+            /** Format: uuid */
+            withdrawal_id: string;
+            /** Format: uuid */
+            customer_id: string;
+            customer_external_id: string;
+            /** @description may be empty */
+            subscription_id: string;
+            /** @description may be empty */
+            invoice_id: string;
+            /** @enum {string} */
+            status: "accepted" | "rejected" | "refunded";
+            decided_by: string;
+            /** Format: date-time */
+            decided_at: string;
+            note: string;
+        };
+        /** @description The body of a delivery of type contract.withdrawal_decided */
+        ContractWithdrawalDecidedEvent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "contract.withdrawal_decided";
+            /** Format: date-time */
+            created: string;
+            /** Format: uuid */
+            tenant_id: string;
+            data: components["schemas"]["ContractWithdrawalDecidedEventData"];
+        };
         /** @description The data of an event of type ping */
         PingEventData: {
             /** @enum {string} */
@@ -11015,7 +11196,7 @@ export interface components {
             active: boolean;
         };
         /** @enum {string} */
-        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested";
+        WebhookEventType: "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested" | "contract.withdrawal_decided";
         PaymentLink: {
             /** Format: uuid */
             id: string;
@@ -11208,7 +11389,7 @@ export interface components {
             delivered_time: string | null;
         };
         /** @description The body of a delivery: the common envelope plus data that depends on type. The signature and headers are described in docs/16-webhooks.md. Billing events (invoice, credit_note, payment_link, credits) send int64 values as strings except the credits and balance counts, which are JSON numbers; subscription events embed the subscription without its zero-valued fields. */
-        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["PriceChangeScheduledEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["PingEvent"];
+        WebhookEvent: components["schemas"]["InvoiceFinalizedEvent"] | components["schemas"]["InvoicePaidEvent"] | components["schemas"]["InvoiceVoidedEvent"] | components["schemas"]["InvoiceUncollectibleEvent"] | components["schemas"]["CreditNoteCreatedEvent"] | components["schemas"]["CreditNoteRefundedEvent"] | components["schemas"]["CreditNoteRefundFailedEvent"] | components["schemas"]["SubscriptionCreatedEvent"] | components["schemas"]["SubscriptionChangedEvent"] | components["schemas"]["SubscriptionChangeScheduledEvent"] | components["schemas"]["SubscriptionCancelledEvent"] | components["schemas"]["SubscriptionCancellationScheduledEvent"] | components["schemas"]["SubscriptionCancellationWithdrawnEvent"] | components["schemas"]["SubscriptionPausedEvent"] | components["schemas"]["SubscriptionResumedEvent"] | components["schemas"]["SubscriptionMovedToProviderEvent"] | components["schemas"]["SubscriptionTrialWillEndEvent"] | components["schemas"]["PaymentLinkCreatedEvent"] | components["schemas"]["PaymentLinkPaidEvent"] | components["schemas"]["PaymentLinkExpiredEvent"] | components["schemas"]["CreditsPurchasedEvent"] | components["schemas"]["CreditsLowEvent"] | components["schemas"]["CustomerBlockedEvent"] | components["schemas"]["CustomerUnblockedEvent"] | components["schemas"]["PriceChangeScheduledEvent"] | components["schemas"]["ContractAcceptedEvent"] | components["schemas"]["ContractVersionPublishedEvent"] | components["schemas"]["ContractWithdrawalRequestedEvent"] | components["schemas"]["ContractWithdrawalDecidedEvent"] | components["schemas"]["PingEvent"];
         Coupon: {
             /** @description 2–40 letters, digits, - or _ */
             code: string;
@@ -11819,6 +12000,22 @@ export interface components {
             published_kinds: components["schemas"]["ContractKind"][];
             /** Format: date-time */
             update_time: string | null;
+            /**
+             * @description What accepting a withdrawal does about the money. full (the default) asks billing for a refund of the invoice to the card; none leaves it to the seller. The seller decides the withdrawal either way.
+             * @enum {string}
+             */
+            withdrawal_refund: "full" | "none";
+            /**
+             * Format: int32
+             * @description How many days before a renewal the customer is mailed the renewal notice (price, date, how to cancel). 0 is off; default 7. Only for a subscription whose fixed fee is invoiced in advance and a customer who accepted an agreement.
+             */
+            renewal_notice_days: number;
+            /** @description Language (en, tr, de, fr, es, ar) to the seller's own words on how to cancel, printed in the renewal notice. */
+            renewal_cancel_texts: {
+                [key: string]: string;
+            };
+            /** @description Consumers can withdraw from a contract on the hosted pages and are sent an acknowledgement (Directive 2011/83/EU art. 11a). Only while agreements are required. Default on. */
+            withdrawal_function: boolean;
         };
         SetContractSettingsRequest: {
             required_kinds?: components["schemas"]["ContractKind"][];
@@ -11828,6 +12025,22 @@ export interface components {
              * @description 0 keeps the current value.
              */
             retention_months?: number;
+            /**
+             * @description Empty keeps the current value.
+             * @enum {string}
+             */
+            withdrawal_refund?: "full" | "none";
+            /**
+             * Format: int32
+             * @description Absent keeps the current value; 0 switches the notice off.
+             */
+            renewal_notice_days?: number;
+            /** @description A language sent with a text sets it, with an empty text removes it; a language not sent keeps its text. */
+            renewal_cancel_texts?: {
+                [key: string]: string;
+            };
+            /** @description Absent keeps the current value. */
+            withdrawal_function?: boolean;
         };
         ContractRequirement: {
             kind: components["schemas"]["ContractKind"];
@@ -11971,6 +12184,16 @@ export interface components {
             decide_time: string | null;
             decided_by: string;
             decision_note: string;
+            /** @description The credit note billing made to refund the invoice, once one was requested (GET /v1/credit-notes/{id} says how the refund went). */
+            credit_note_id: string;
+            /**
+             * @description none: nothing asked of billing; requesting: being asked; requested: a credit note exists; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: ask again with POST /v1/contract-withdrawals/{id}/refund.
+             * @enum {string}
+             */
+            refund_state: "none" | "requesting" | "requested" | "outside" | "failed";
+            refund_note: string;
+            /** Format: date-time */
+            refund_time: string | null;
         };
         CreateContractWithdrawalRequest: {
             /** Format: uuid */
@@ -11993,6 +12216,18 @@ export interface components {
             /** @enum {string} */
             status: "accepted" | "rejected" | "refunded";
             note?: string;
+            /**
+             * Format: int64
+             * @description Accepting only: the amount to refund when the settings ask for a refund, in minor units; 0 or absent is whatever is left of the invoice.
+             */
+            refund_amount_minor?: string;
+        };
+        RequestContractWithdrawalRefundRequest: {
+            /**
+             * Format: int64
+             * @description In minor units; 0 or absent is whatever is left of the invoice.
+             */
+            amount_minor?: string;
         };
         /**
          * @description resource:action. The route /v1/{resource}... with GET is :read, any other method :write; /v1/events needs events:write and /v1/sandbox/* sandbox:write.
@@ -12699,6 +12934,34 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SetContractWithdrawalStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractWithdrawal"];
+                };
+            };
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+        };
+    };
+    requestContractWithdrawalRefund: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RequestContractWithdrawalRefundRequest"];
             };
         };
         responses: {
@@ -16330,6 +16593,423 @@ export interface operations {
             };
             /** @description An agreement the seller requires was not accepted: the page is shown again */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedWithdrawPage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The statement form */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The function is not offered here */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedWithdrawReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    name: string;
+                    contract: string;
+                    words?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The page to confirm on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The function is not offered here */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The name or the contract is missing: the form is shown again */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    hostedWithdrawConfirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    name: string;
+                    contract: string;
+                    words?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The acknowledgement page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The function is not offered here */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The name or the contract is missing */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The withdrawal could not be recorded: nothing was sent, try again */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    portalWithdrawPage: {
+        parameters: {
+            query?: {
+                lang?: "en" | "tr" | "de" | "fr" | "es" | "ar";
+            };
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The statement form */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The function is not offered here */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalWithdrawReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    name: string;
+                    contract: string;
+                    words?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The page to confirm on */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The function is not offered here */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The name or the contract is missing: the form is shown again */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalWithdrawConfirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    name: string;
+                    contract: string;
+                    words?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The acknowledgement page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The function is not offered here */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description The name or the contract is missing */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The withdrawal could not be recorded: nothing was sent, try again */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+        };
+    };
+    portalAgree: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/x-www-form-urlencoded": {
+                    v_distance_sales?: string;
+                    accept_distance_sales?: string;
+                    v_pre_info?: string;
+                    accept_pre_info?: string;
+                    v_tos?: string;
+                    accept_tos?: string;
+                    v_privacy?: string;
+                    accept_privacy?: string;
+                    consent_start?: string;
+                    consent_waiver?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Back to the portal */
+            303: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The link does not exist or has expired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description A box is empty or a text was replaced: the portal is shown again */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Too many requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    portalAgreementPage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The accepted page */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/html": string;
+                };
+            };
+            /** @description Not this customer's acceptance, or the link does not exist */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

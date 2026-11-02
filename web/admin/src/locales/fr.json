@@ -2974,6 +2974,7 @@
         "kind_unpublished": "Publiez une version de cet accord avant de l'exiger.",
         "no_starter": "Il n'existe de texte de départ qu'en turc et en anglais.",
         "not_accepted": "Le client n'a pas accepté les accords que ce vendeur exige.",
+        "refund_not_possible": "Aucun remboursement ne peut être demandé pour cette rétractation : elle n'est pas acceptée, ne désigne aucune facture, ou un remboursement a déjà été demandé.",
         "unknown_variable": "Le texte utilise une variable qui n'existe pas. Utilisez uniquement les variables de la liste.",
         "version_not_found": "Cette version n'existe pas.",
         "version_stale": "Une version plus récente de ce texte a été publiée. Affichez la version actuelle et demandez à nouveau.",
@@ -5422,18 +5423,31 @@
       "months": "mois",
       "retentionBad": "Saisissez un nombre entier de mois de {min} à {max}.",
       "save": "Enregistrer les réglages",
-      "saved": "Enregistré."
+      "saved": "Enregistré.",
+      "withdrawalTitle": "Rétractation",
+      "withdrawalHint": "Ce qui se passe quand un client se rétracte d'un contrat. Vous décidez toujours vous-même de chaque demande.",
+      "refundTitle": "Demander le remboursement quand j'accepte une rétractation",
+      "refundHint": "Accepter une rétractation qui désigne une facture demande à la facturation un avoir qui rend la facture à la carte du client. Un paiement fait autrement (virement, espèces) ne peut pas être rendu ainsi : la rétractation est marquée pour que vous remboursiez vous-même. Désactivé : vous remboursez, ou vous le demandez depuis la rétractation.",
+      "functionTitle": "Laisser les clients se rétracter sur les pages de paiement",
+      "functionHint": "Un consommateur voit « Se rétracter du contrat ici » sur une facture payée et sur le portail, confirme en deuxième étape et reçoit un e-mail d'accusé de réception (directive 2011/83/UE art. 11a, à partir du 19 juin 2026). Proposé seulement tant que vous exigez des accords.",
+      "noticeTitle": "Avis de renouvellement",
+      "noticeHint": "Avant chaque renouvellement d'un abonnement facturé d'avance, un client qui a accepté vos accords reçoit une fois par e-mail le prix, la date et la façon de résilier. {default} jours par défaut, jusqu'à {max} ; 0 le désactive.",
+      "noticeDays": "jours avant",
+      "noticeBad": "Saisissez un nombre entier de jours de {min} à {max}.",
+      "cancelTitle": "Comment résilier, avec vos mots",
+      "cancelHint": "Imprimé dans l'avis dans la langue du client ; laissez une langue vide pour n'y rien dire. Texte brut."
     },
     "withdrawals": {
       "intro": "Les clients qui se rétractent d'un contrat. Vous décidez de chaque demande ; Payrudder conserve la déclaration, votre décision, qui l'a prise et quand, et envoie le webhook contract.withdrawal_requested.",
-      "refundNote": "Le remboursement n'est pas encore automatique. Remboursez le client vous-même (ou émettez un avoir), puis marquez la demande comme remboursée ici.",
+      "refundNote": "Accepter une rétractation qui désigne une facture demande aussi son remboursement sur la carte quand vos paramètres le disent, et ce tableau montre ce qu'est devenue la demande. Un paiement fait autrement est marqué pour que vous remboursiez vous-même ; marquez ensuite la rétractation comme remboursée.",
       "search": "Rechercher des rétractations",
       "columns": {
         "customer": "Client",
         "statement": "Déclaration",
         "received": "Reçue",
         "status": "Statut",
-        "decision": "Décision"
+        "decision": "Décision",
+        "refund": "Remboursement"
       },
       "statuses": {
         "received": "Reçue",
@@ -5444,7 +5458,8 @@
       "actions": {
         "accepted": "Accepter",
         "rejected": "Refuser",
-        "refunded": "Marquer comme remboursée"
+        "refunded": "Marquer comme remboursée",
+        "refund": "Demander le remboursement"
       },
       "sources": {
         "api": "API",
@@ -5466,7 +5481,24 @@
         "refunded": {
           "title": "Marquer comme remboursée ?",
           "body": "Faites-le après avoir remboursé le client. Payrudder ne déplace aucun argent."
+        },
+        "refund": {
+          "title": "Demander le remboursement ?",
+          "body": "La facturation fait un avoir qui rend le reste de la facture à la carte du client. Elle ne rembourse jamais plus que la facture, ni deux fois."
         }
+      },
+      "refundStates": {
+        "none": "Non demandé",
+        "requesting": "En cours de demande",
+        "requested": "Demandé",
+        "outside": "À rembourser vous-même",
+        "failed": "Échec"
+      },
+      "creditNote": "Avoir {id}",
+      "acceptRefund": {
+        "asked": "Vos paramètres demandent aussi, maintenant, le remboursement de la facture désignée par cette rétractation sur la carte du client. Un paiement fait autrement est marqué pour que vous remboursiez vous-même.",
+        "left": "Vos paramètres vous laissent le remboursement : utilisez ensuite « Demander le remboursement », ou remboursez le client vous-même.",
+        "noInvoice": "Cette rétractation ne désigne aucune facture, donc aucun remboursement n'est demandé : remboursez le client vous-même."
       }
     },
     "customer": {

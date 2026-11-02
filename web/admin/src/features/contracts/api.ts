@@ -85,6 +85,15 @@ export function useDecideWithdrawal(tenantId: MaybeRefOrGetter<string>) {
   });
 }
 
+/** Asks billing to refund an accepted withdrawal (a credit note that returns the amount to the card). The answer says what happened: `refund_state` and the credit note. */
+export function useRequestRefund(tenantId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => unwrap(tenantApi(toValue(tenantId)).POST("/v1/contract-withdrawals/{id}/refund", { params: { path: { id } }, body: {} })),
+    onSuccess: () => queries.invalidateQueries({ queryKey: contractKeys.withdrawals(toValue(tenantId)) }),
+  });
+}
+
 /** Records a statement a customer made outside the pages (a mail, a call) as a withdrawal request, from the console. */
 export function useRecordWithdrawal(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
