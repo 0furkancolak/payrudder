@@ -846,11 +846,12 @@ type UserOnboarding struct {
 }
 
 type UserRecoveryCode struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	CodeHash  []byte
-	UsedAt    *time.Time
-	CreatedAt time.Time
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	CodeHash    []byte
+	UsedAt      *time.Time
+	CreatedAt   time.Time
+	HashVersion int16
 }
 
 type UserSession struct {
