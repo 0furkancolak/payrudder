@@ -37,7 +37,7 @@ describe("the built server over stdio", () => {
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_test_stdio_secret" }) }));
     try {
       const { tools } = await client.listTools();
-      expect(tools).toHaveLength(9);
+      expect(tools).toHaveLength(25);
       expect(tools.every((t) => t.annotations?.readOnlyHint === true)).toBe(true);
       const r = await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
       const text = (r.content as { text: string }[])[0]?.text ?? "";
@@ -45,6 +45,8 @@ describe("the built server over stdio", () => {
       expect(calls.at(-1)).toEqual({ path: "/v1/customers/cus_1", auth: "Bearer qk_test_stdio_secret" });
       // The resources are read from assets/ next to dist/, which only a real run of the build finds.
       expect((await client.listResources()).resources.map((r) => r.uri)).toContain("payrudder://openapi");
+      const prompt = await client.getPrompt({ name: "summarise_customer_billing", arguments: { customer_external_id: "cus_1" } });
+      expect(prompt.messages[0]?.content).toMatchObject({ type: "text", text: expect.stringContaining("customer_external_id = cus_1") });
     } finally {
       await client.close();
     }
