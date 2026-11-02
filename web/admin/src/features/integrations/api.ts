@@ -12,6 +12,7 @@ export const integrationKeys = {
   eInvoiceRouting: (appId: string) => ["app", "apps", appId, "integrations", "e-invoice", "routing"] as const,
   mail: (appId: string) => ["app", "apps", appId, "integrations", "mail"] as const,
   audit: (appId: string, kind: string) => ["app", "apps", appId, "integrations", "audit", kind] as const,
+  health: (appId: string) => ["app", "apps", appId, "integrations", "payment-accounts", "health"] as const,
 };
 
 /** The integrators a person connects: not the mock, which is the sandbox's. */
@@ -107,5 +108,34 @@ export function useMailActions(appId: MaybeRefOrGetter<string>) {
     remove: useMutation({ mutationFn: () => unwrap(api.DELETE("/app/v1/apps/{id}/integrations/mail", path())), onSuccess: done }),
     // A test records what it found (the status shows it), so the connection is read again after it.
     test: useMutation({ mutationFn: (to: string) => unwrap(api.POST("/app/v1/apps/{id}/integrations/mail/test", { ...path(), body: { to } })), onSettled: done }),
+  };
+}
+
+/**
+ * What the worker last saw of each live payment account (the periodic check, the circuit breaker) and the account a charge fails over to (docs/provider-health.md).
+ * Not a check now: the go-live check of an account is `useLiveProviders`.
+ */
+export function useAccountHealth(appId: MaybeRefOrGetter<string>, on: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({
+    queryKey: computed(() => integrationKeys.health(toValue(appId))),
+    queryFn: async () => (await unwrap(api.GET("/app/v1/apps/{id}/integrations/payment-accounts/health", { params: { path: { id: toValue(appId) } } }))).accounts ?? [],
+    enabled: computed(() => toValue(appId) !== "" && toValue(on)),
+  });
+}
+
+/** Sets or removes the account a new charge goes to when `account` definitely did not process it. Only the owner; one hop; a timeout never fails over. */
+export function useFailoverActions(appId: MaybeRefOrGetter<string>) {
+  const queries = useQueryClient();
+  const done = () => queries.invalidateQueries({ queryKey: integrationKeys.health(toValue(appId)) });
+  return {
+    set: useMutation({
+      mutationFn: (v: { account: string; to: string }) =>
+        unwrap(api.PUT("/app/v1/apps/{id}/integrations/payment-accounts/{account}/failover", { params: { path: { id: toValue(appId), account: v.account } }, body: { failover_to: v.to } })),
+      onSuccess: done,
+    }),
+    clear: useMutation({
+      mutationFn: (account: string) => unwrap(api.DELETE("/app/v1/apps/{id}/integrations/payment-accounts/{account}/failover", { params: { path: { id: toValue(appId), account } } })),
+      onSuccess: done,
+    }),
   };
 }

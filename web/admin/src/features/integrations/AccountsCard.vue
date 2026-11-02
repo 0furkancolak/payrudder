@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Plus, Trash2, FlaskConical, Star } from "@lucide/vue";
+import { ArrowRightLeft, Plus, Trash2, FlaskConical, Star } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { askConfirm } from "@/shared/lib/confirm";
+import { useFormat } from "@/shared/lib/format";
 import { useLiveProviders } from "@/features/product/api";
 import type { LiveProviderName } from "@/features/product/liveProvider";
 import { useDisconnectProvider, useLiveRouting, useMakeDefaultAccount, useSetLiveRouting, type RoutingRule } from "@/features/providers/connectApi";
@@ -10,6 +11,7 @@ import { splitAccountKey, type AppRow } from "@/features/providers/connections";
 import ProviderSheet from "@/features/providers/ProviderSheet.vue";
 import { Button } from "@/shared/ui/button";
 import { DataToolbar } from "@/shared/ui/data-table";
+import { DetailList } from "@/shared/ui/detail-list";
 import { ErrorText } from "@/shared/ui/error-text";
 import { FilterSelect } from "@/shared/ui/filter-select";
 import { Input } from "@/shared/ui/input";
@@ -18,8 +20,8 @@ import { RowActions } from "@/shared/ui/row-actions";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useTableState } from "@/shared/lib/useTableState";
-import { ACCOUNT_KINDS, accountEntries, eInvoiceAccounts, type AccountEntry, type AccountKind } from "./accounts";
-import { useEInvoiceActions, useEInvoiceIntegration, useEInvoiceRouting, useMailActions, useMailIntegration, useSetEInvoiceRouting, type EInvoiceProvider } from "./api";
+import { ACCOUNT_KINDS, HEALTH_STATES, accountEntries, canFailover, eInvoiceAccounts, failoverTargets, healthState, healthTone, type AccountEntry, type AccountKind } from "./accounts";
+import { useAccountHealth, useEInvoiceActions, useEInvoiceIntegration, useEInvoiceRouting, useFailoverActions, useMailActions, useMailIntegration, useSetEInvoiceRouting, type EInvoiceProvider } from "./api";
 import { BRANDS, type IntegrationId } from "./brands";
 import { stateTone } from "./status";
 
@@ -31,9 +33,13 @@ import { stateTone } from "./status";
  */
 const props = defineProps<{ appId: string; apps: readonly AppRow[]; isOwner: boolean }>();
 const emit = defineEmits<{ einvoice: [provider: EInvoiceProvider, account: string]; mail: [kind: "payrudderMail" | "nafru"] }>();
-const { t } = useI18n();
+const { t, te } = useI18n();
+const fmt = useFormat();
 
 const payments = useLiveProviders(() => props.appId);
+const health = useAccountHealth(() => props.appId);
+const healthByKey = computed(() => new Map((health.data.value ?? []).map((h) => [h.provider, h])));
+const healthOf = (e: AccountEntry) => (e.kind === "payment" ? healthState(healthByKey.value.get(e.key)) : "unknown");
 const eInvoice = useEInvoiceIntegration(() => props.appId);
 const mail = useMailIntegration(() => props.appId);
 const eAccounts = computed(() => eInvoiceAccounts(eInvoice.data.value));
@@ -42,16 +48,18 @@ const entries = computed(() => accountEntries({ payments: payments.data.value?.a
 const nameOf = (id: string) => BRANDS[id as IntegrationId]?.name ?? t(`product.integrations.names.${id}`);
 const entryName = (e: AccountEntry) => (e.kind === "payment" && !BRANDS[e.provider as IntegrationId]?.name ? t(`product.goLive.provider.names.${e.provider}`) : nameOf(e.provider));
 
-// --- the list: search and two filters
+// --- the list: search and three filters
 const all = computed(() => ({ value: "", label: t("common.all") }));
 const table = useTableState<AccountEntry>(entries, {
   searchFields: (e) => [entryName(e), e.key, e.label, e.provider],
-  filters: { kind: (e, v) => e.kind === v, state: (e, v) => e.state === v },
+  filters: { kind: (e, v) => e.kind === v, state: (e, v) => e.state === v, health: (e, v) => e.kind === "payment" && healthOf(e) === v },
 });
 const kindFilter = computed({ get: () => table.filters.value.kind ?? [], set: (v: string[]) => (table.filters.value.kind = v) });
 const stateFilter = computed({ get: () => table.filters.value.state ?? [], set: (v: string[]) => (table.filters.value.state = v) });
+const healthFilter = computed({ get: () => table.filters.value.health ?? [], set: (v: string[]) => (table.filters.value.health = v) });
 const kindOptions = computed(() => [all.value, ...ACCOUNT_KINDS.map((k) => ({ value: k, label: t(`product.integrations.accounts.kinds.${k}`) }))]);
 const stateOptions = computed(() => [all.value, ...(["working", "problem", "always", "unused"] as const).map((s) => ({ value: s, label: t(`product.integrations.state.${s}`) }))]);
+const healthOptions = computed(() => [all.value, ...HEALTH_STATES.map((s) => ({ value: s, label: t(`product.integrations.health.states.${s}`) }))]);
 
 // --- a row's own actions
 const makeDefaultPayment = useMakeDefaultAccount(() => props.appId);
@@ -91,10 +99,54 @@ const label = (e: AccountEntry) => (e.label ? `${entryName(e)} (${e.label})` : e
 const actionsOf = (e: AccountEntry) => {
   const out = [];
   if (e.kind === "einvoice") out.push({ key: "test", label: t("product.integrations.test"), icon: FlaskConical, onSelect: () => testNow(e) });
+  if (props.isOwner && canFailover(e)) out.push({ key: "failover", label: t("product.integrations.health.failover.action"), icon: ArrowRightLeft, onSelect: () => openFailover(e) });
   if (props.isOwner && (e.kind !== "mail" || e.provider === "nafru")) out.push({ key: "remove", label: t("product.integrations.accounts.remove"), icon: Trash2, destructive: true, onSelect: () => void remove(e) });
   return out;
 };
 const canMakeDefault = (e: AccountEntry) => props.isOwner && !e.isDefault && (e.kind === "payment" || e.kind === "einvoice") && e.state !== "none";
+
+// --- failover: the account a new charge goes to when this one definitely did not process it (docs/provider-health.md). A sheet names the account, says what it is
+// doing now, and takes the target; the row says where it fails over to.
+const failover = useFailoverActions(() => props.appId);
+const foOpen = ref(false);
+const foFor = ref<AccountEntry | null>(null);
+const foTarget = ref("");
+const foTargets = computed(() => (foFor.value ? failoverTargets(entries.value, foFor.value.key) : []));
+const foHealth = computed(() => (foFor.value ? healthByKey.value.get(foFor.value.key) : undefined));
+const foError = computed(() => failover.set.error.value ?? failover.clear.error.value);
+const failoverOf = (e: AccountEntry) => healthByKey.value.get(e.key)?.failover_to ?? "";
+/** An account key as the app knows it ("Stripe (eu)"), or the key itself when the account is gone from the list. */
+const accountName = (key: string) => {
+  const e = entries.value.find((x) => x.kind === "payment" && x.key === key);
+  return e ? label(e) : key;
+};
+const when = (v?: string) => (v ? fmt.date(v, "dateTime") : t("product.integrations.health.never"));
+const foRows = computed(() => {
+  const h = foHealth.value;
+  const state = healthState(h);
+  return [
+    { key: "state", label: t("product.integrations.health.detail.state"), value: t(`product.integrations.health.states.${state}`) },
+    { key: "breaker", label: t("product.integrations.health.detail.breaker"), value: t(`product.integrations.health.breaker.${h?.breaker === "open" || h?.breaker === "half_open" ? h.breaker : "closed"}`) },
+    { key: "failures", label: t("product.integrations.health.detail.failures"), value: String(h?.consecutive_failures ?? 0) },
+    { key: "checked", label: t("product.integrations.health.detail.checked"), value: when(h?.last_checked_at) },
+    { key: "ok", label: t("product.integrations.health.detail.ok"), value: when(h?.last_ok_at) },
+    ...(h?.last_error ? [{ key: "error", label: t("product.integrations.health.detail.error"), value: te(`product.integrations.health.errors.${h.last_error}`) ? t(`product.integrations.health.errors.${h.last_error}`) : h.last_error }] : []),
+  ];
+});
+function openFailover(e: AccountEntry) {
+  foFor.value = e;
+  foTarget.value = failoverOf(e);
+  failover.set.reset();
+  failover.clear.reset();
+  foOpen.value = true;
+}
+function saveFailover() {
+  if (!foFor.value || foTarget.value === "") return;
+  failover.set.mutate({ account: foFor.value.key, to: foTarget.value }, { onSuccess: () => (foOpen.value = false) });
+}
+function removeFailover() {
+  if (foFor.value) failover.clear.mutate(foFor.value.key, { onSuccess: () => (foOpen.value = false) });
+}
 
 // --- the payments sheet: a further account is added or managed through the provider's own form
 const sheetOpen = ref(false);
@@ -201,6 +253,7 @@ function saveE() {
     <DataToolbar v-model:search="table.search.value" :active="table.active.value" :placeholder="t('product.integrations.accounts.search')" @clear="table.clear()">
       <FilterSelect v-model="kindFilter" multiple :label="t('product.integrations.accounts.kind')" :options="kindOptions" />
       <FilterSelect v-model="stateFilter" multiple :label="t('product.integrations.accounts.status')" :options="stateOptions" />
+      <FilterSelect v-model="healthFilter" multiple :label="t('product.integrations.health.label')" :options="healthOptions" />
     </DataToolbar>
 
     <p v-if="entries.filter((e) => e.kind !== 'mail').length === 0" class="text-muted-foreground text-sm" data-testid="accounts-empty">{{ t("product.providers.account.empty") }}</p>
@@ -212,6 +265,8 @@ function saveE() {
           <span v-if="e.label" class="mono bg-muted rounded-md px-1.5 py-0.5 text-xs">{{ e.label }}</span>
           <span v-if="e.mode" class="text-muted-foreground text-xs">{{ t(`product.integrations.einvoice.modes.${e.mode}`) }}</span>
           <StatusPill :tone="stateTone(stateOf(e))" :data-testid="`account-state-${e.id}`">{{ t(`product.integrations.state.${stateOf(e)}`) }}</StatusPill>
+          <StatusPill v-if="e.kind === 'payment' && healthOf(e) !== 'unknown'" :tone="healthTone(healthOf(e))" :data-testid="`account-health-${e.id}`">{{ t(`product.integrations.health.states.${healthOf(e)}`) }}</StatusPill>
+          <span v-if="failoverOf(e)" class="text-muted-foreground text-xs" :data-testid="`account-failover-${e.id}`">{{ t("product.integrations.health.failsOver", { name: accountName(failoverOf(e)) }) }}</span>
           <StatusPill v-if="e.isDefault" tone="info" :data-testid="`account-default-${e.id}`">{{ e.kind === 'mail' ? t("product.integrations.accounts.inUse") : t("product.providers.account.default") }}</StatusPill>
         </div>
         <div class="flex items-center gap-2">
@@ -307,6 +362,33 @@ function saveE() {
         <SheetFooter>
           <Button variant="ghost" type="button" @click="addOpen = false">{{ t("common.cancel") }}</Button>
           <Button type="submit" form="add-integration-form" :disabled="addProvider === ''" data-testid="add-continue">{{ t("product.integrations.accounts.continue") }}</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+
+    <Sheet v-model:open="foOpen" name="failover">
+      <SheetContent class="sm:max-w-md" data-testid="failover-sheet">
+        <SheetHeader>
+          <SheetTitle>{{ t("product.integrations.health.failover.title", { name: foFor ? label(foFor) : "" }) }}</SheetTitle>
+          <SheetDescription>{{ t("product.integrations.health.failover.intro") }}</SheetDescription>
+        </SheetHeader>
+        <SheetBody>
+          <DetailList :rows="foRows" class="mb-5" />
+          <form id="failover-form" class="grid gap-3" @submit.prevent="saveFailover">
+            <p v-if="foTargets.length === 0" class="text-muted-foreground text-sm" data-testid="failover-none">{{ t("product.integrations.health.failover.noTargets") }}</p>
+            <label v-else class="grid gap-1 text-sm">{{ t("product.integrations.health.failover.target") }}
+              <NativeSelect v-model="foTarget" data-testid="failover-target">
+                <option value="" disabled>{{ t("product.integrations.health.failover.choose") }}</option>
+                <option v-for="o in foTargets" :key="o.key" :value="o.key">{{ label(o) }}</option>
+              </NativeSelect>
+            </label>
+            <ErrorText :error="foError" />
+          </form>
+        </SheetBody>
+        <SheetFooter>
+          <Button v-if="foFor && failoverOf(foFor)" variant="ghost" type="button" class="text-destructive me-auto" :disabled="failover.clear.isPending.value" data-testid="failover-remove" @click="removeFailover">{{ t("product.integrations.health.failover.remove") }}</Button>
+          <Button variant="ghost" type="button" @click="foOpen = false">{{ t("common.cancel") }}</Button>
+          <Button type="submit" form="failover-form" :disabled="foTarget === '' || foTarget === (foFor ? failoverOf(foFor) : '') || failover.set.isPending.value" data-testid="failover-save">{{ t("product.integrations.health.failover.save") }}</Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

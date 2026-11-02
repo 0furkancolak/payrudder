@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accountEntries, auditActor, eInvoiceAccounts, eInvoiceTaker } from "./accounts";
+import { accountEntries, auditActor, canFailover, eInvoiceAccounts, eInvoiceTaker, failoverTargets, healthState, healthTone } from "./accounts";
 
 const nilvera = { account: "nilvera", provider: "nilvera", label: "", mode: "production", is_default: true };
 const nilveraTr = { account: "nilvera~tr", provider: "nilvera", label: "tr", mode: "test", is_default: false };
@@ -52,5 +52,42 @@ describe("who an audit entry names", () => {
     expect(auditActor("user:u-1", names, "Support")).toBe("Ada");
     expect(auditActor("operator", names, "Support")).toBe("Support");
     expect(auditActor("user:0f8fad5b-d9cb-469f-a165-70867728950e", names, "Support")).toBe("0f8fad5b…");
+  });
+});
+
+describe("how a payment account is doing", () => {
+  it("is what the last check found, unless the circuit breaker says more", () => {
+    expect(healthState({ status: "healthy", breaker: "closed" })).toBe("healthy");
+    expect(healthState({ status: "down", breaker: "closed" })).toBe("down");
+    expect(healthState({ status: "bad_credentials", breaker: "closed" })).toBe("bad_credentials");
+    expect(healthState({ status: "healthy", breaker: "open" })).toBe("circuit_open"); // charges are being refused whatever the last check was
+    expect(healthState({ status: "down", breaker: "half_open" })).toBe("recovering");
+  });
+  it("is unknown when nothing was checked, there is no row or the status is one the console does not know", () => {
+    expect(healthState(undefined)).toBe("unknown");
+    expect(healthState({ status: "unknown", breaker: "closed" })).toBe("unknown");
+    expect(healthState({ status: "something_new" })).toBe("unknown");
+  });
+  it("is painted by how much it matters", () => {
+    expect(healthTone("healthy")).toBe("success");
+    expect(healthTone("recovering")).toBe("warning");
+    expect(healthTone("unknown")).toBe("neutral");
+    for (const s of ["down", "bad_credentials", "circuit_open"] as const) expect(healthTone(s)).toBe("danger");
+  });
+});
+
+describe("failover", () => {
+  const entries = accountEntries({
+    payments: [{ provider: "stripe", working: true, default: true }, { provider: "stripe~eu", working: true, default: false }, { provider: "banktransfer", working: true, default: false }, { provider: "paddle", working: true, default: false }],
+    eInvoice: [nilvera],
+    mail: { connected: false },
+  });
+  it("is for payment accounts that are charged, not a bank transfer and not an e-invoice or mail row", () => {
+    expect(entries.filter(canFailover).map((e) => e.key)).toEqual(["paddle", "stripe", "stripe~eu"]);
+  });
+  it("offers the app's other charged accounts and never the account itself", () => {
+    expect(failoverTargets(entries, "stripe").map((e) => e.key)).toEqual(["paddle", "stripe~eu"]);
+    expect(failoverTargets(entries, "paddle").map((e) => e.key)).toEqual(["stripe", "stripe~eu"]);
+    expect(failoverTargets(accountEntries({ payments: [{ provider: "stripe", working: true, default: true }], eInvoice: [], mail: { connected: false } }), "stripe")).toEqual([]);
   });
 });

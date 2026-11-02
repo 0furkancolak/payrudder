@@ -26,6 +26,7 @@ import { useOpenParam } from "@/shared/lib/useOpenParam";
 import { useLedger } from "./api";
 import ReconcileQueue from "./ReconcileQueue.vue";
 import SettlementCard from "./SettlementCard.vue";
+import FeeRulesCard from "./FeeRulesCard.vue";
 import { useRouteTenantId } from "@/shared/lib/routeTenant";
 
 const { t, te, locale } = useI18n();
@@ -133,6 +134,8 @@ const rowActions = (i: number) => [{ key: "view", label: t("common.view"), icon:
   <ReconcileQueue :tenant-id="tenantId" />
 
   <SettlementCard :tenant-id="tenantId" />
+
+  <FeeRulesCard :tenant-id="tenantId" />
 
   <CreditNotesCard :tenant-id="tenantId" />
 </template>

@@ -53,9 +53,9 @@ A note is required for every explanation and resolution. The actor is the gatewa
 | `GET settlement/payments?period=` | the period's successful payments with their settlement state |
 | `POST settlement/import?environment=&provider=` (CSV) | import a report |
 | `POST settlement/sync?environment=` `{provider, since}` | read a provider's own settlement (Stripe) |
-| `GET/PUT/DELETE settlement/fee-rules` | the expected fee per provider and currency |
+| `GET/PUT/DELETE settlement/fee-rules` | the expected fee per provider and currency (the console's fee rules card) |
 
-The console's Payments page (operator) has the queue (filters, sort, search, bulk resolve that asks first, a sheet with the history) and the "Paid and settled" card (docs/13-admin-ui.md).
+The console's Payments page (operator) has the queue (filters, sort, search, bulk resolve that asks first, a sheet with the history), the "Paid and settled" card and the **fee rules** card (list, filters, a detail sheet, add, edit, remove; docs/13-admin-ui.md).
 
 ### The schedule
 
