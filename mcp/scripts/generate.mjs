@@ -6,7 +6,7 @@ import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
-import { READ_TOOLS, STRUCTURAL, UNTRUSTED } from "./read-tools.config.mjs";
+import { PERSONAL, READ_TOOLS, STRUCTURAL, UNTRUSTED } from "./read-tools.config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const pkgRoot = resolve(here, "..");
@@ -51,11 +51,12 @@ export function freeTextFields(doc, schema) {
  * description). Throws, naming everything wrong, when the allow-list asks for something that is not a plain GET of the tenant API or an answer has an unclassified
  * free-text field.
  */
-export function buildReadTools(doc, config = { READ_TOOLS, STRUCTURAL, UNTRUSTED }) {
+export function buildReadTools(doc, config = { READ_TOOLS, STRUCTURAL, UNTRUSTED, PERSONAL }) {
   const ops = getOperations(doc);
   const problems = [];
   const tools = [];
   const classified = new Set([...config.STRUCTURAL, ...config.UNTRUSTED]);
+  for (const k of config.PERSONAL ?? []) if (!config.UNTRUSTED.includes(k)) problems.push(`${k} is personal data but not an untrusted key`);
   for (const both of config.STRUCTURAL) if (config.UNTRUSTED.includes(both)) problems.push(`${both} is both structural and untrusted`);
   for (const [operationId, over] of Object.entries(config.READ_TOOLS)) {
     const o = ops.get(operationId);
@@ -122,7 +123,7 @@ export function buildReadTools(doc, config = { READ_TOOLS, STRUCTURAL, UNTRUSTED
     });
   }
   if (problems.length) throw new Error(`read tools: ${problems.join("; ")}`);
-  return { tools, untrusted: [...config.UNTRUSTED] };
+  return { tools, untrusted: [...config.UNTRUSTED], personal: [...(config.PERSONAL ?? [])] };
 }
 
 /** The tenant API as its own OpenAPI document: the /v1 operations and exactly the components they reach, with the API-key scheme and no operator or console route. */
@@ -188,7 +189,7 @@ async function generateAssets(doc) {
 }
 
 async function generateTools(doc) {
-  const { tools, untrusted } = buildReadTools(doc);
+  const { tools, untrusted, personal } = buildReadTools(doc);
   const file = join(pkgRoot, "src/generated/read-tools.ts");
   await mkdir(dirname(file), { recursive: true });
   await writeFile(
@@ -199,6 +200,8 @@ import type { ReadToolSpec } from "../readTools.js";
 export const READ_TOOL_SPECS: ReadToolSpec[] = ${JSON.stringify(tools, null, 2)};
 
 export const UNTRUSTED_KEYS: string[] = ${JSON.stringify(untrusted)};
+
+export const PERSONAL_KEYS: string[] = ${JSON.stringify(personal)};
 `,
   );
   return tools.length;

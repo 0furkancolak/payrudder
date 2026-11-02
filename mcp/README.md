@@ -15,9 +15,11 @@ It talks MCP over stdio, so you do not run it by hand: you add it to your assist
 
 | Variable | |
 |---|---|
-| `PAYRUDDER_API_KEY` | required. `qk_test_…` for the sandbox, `qk_live_…` for live |
+| `PAYRUDDER_API_KEY` | required. `qk_test_…` for the sandbox; a `qk_live_…` key is refused unless `PAYRUDDER_MCP_ALLOW_LIVE=1` |
 | `PAYRUDDER_BASE_URL` | the API address; default `http://localhost:42800` |
 | `PAYRUDDER_MCP_WRITES` | `1` also offers the tools that write; off by default |
+| `PAYRUDDER_MCP_ALLOW_PERSONAL_DATA` | `1` lets customers' names, e-mail addresses, phone numbers, tax ids and addresses reach the model; off by default, they are redacted (see “Safety”) |
+| `PAYRUDDER_MCP_ALLOW_LIVE` | `1` accepts a live key (`qk_live_…`); off by default, a live key is refused at start (stdio) or with a `403` (HTTP), so an assistant can only touch the sandbox |
 | `PAYRUDDER_MCP_HTTP_PORT` | serve streamable HTTP on this port instead of stdio, see “Over HTTP” below; unset by default |
 | `PAYRUDDER_MCP_HTTP_HOST` | the address to listen on in that mode; default `127.0.0.1` |
 | `PAYRUDDER_MCP_AUDIT` | `0` stops the audit log (below); on by default |
@@ -113,6 +115,8 @@ Besides tools, the server offers what an assistant needs to read before it calls
 ## Safety
 
 - **The key is the limit.** Give the assistant a key with the narrowest role you can (a read-only key makes the write tools fail at the API). Use a sandbox key until you trust what it does.
+- **Live is off unless you turn it on.** A `qk_live_…` key is refused by default: in stdio the server exits at start with the reason on stderr, over HTTP the request gets a `403` and the API is not called. The shape of a key is the gateway's (`qk_{live|test}_…`). Set `PAYRUDDER_MCP_ALLOW_LIVE=1` to let an assistant act on live data; it applies to every caller of an HTTP server alike.
+- **Personal data is redacted unless you turn it on.** In every answer of every tool (reads, and the customer a write returns) a customer's name, e-mail address, phone number, tax id and tax office and the lines, city, region and postal code of an address are replaced by `[redacted: personal data]`, an answer in which something was redacted ends with a second text that says so, and the server's instructions tell the model it will see the marker; external ids, countries, currencies, plans, meters and every number stay, so an assistant can still reason about who is over a limit or behind on a payment, by external id. `name` is hidden only on a customer (beside an `email` or an `external_id`), not on a plan, meter, coupon or tax rate. Set `PAYRUDDER_MCP_ALLOW_PERSONAL_DATA=1` to hand them to the model (then they come tagged `<untrusted>`, as below). What is **not** redacted: the staff's own text (a block's reason, a credit note's reason, a payment's note and reference, an invoice line's description), because the seller wrote it and an assistant needs it to explain a block or a refund; and the external ids, which the account's own app chooses and which may be an e-mail address (an app that uses addresses as ids puts them in the model's context and in the arguments of every call). The keys that are personal are `PERSONAL` in `scripts/read-tools.config.mjs`, each must also be an untrusted key, and a test fails when a text of a customer that people wrote is neither redacted nor listed as staff's.
 - Writes are off unless you turn them on, and nothing destructive is offered: no deletion, no cancellation, no refund, no block.
 - Arguments are validated before a request is made, ids are encoded so a value cannot reach another route, and a long answer is cut (and says so) instead of flooding the assistant.
 - The key is never part of an answer or an error.
@@ -130,7 +134,7 @@ What holds for **every** tool, so the rows do not repeat it: the key decides wha
 | Tool | Can expose | Free text in the answer | Worst case if the model is misled | Default |
 |---|---|---|---|---|
 | `list_meters`, `get_meter` | what the account counts: codes, aggregation, filter values | `values`, `unit_label`, `category` (staff) | the account's product structure is read: low | on |
-| `list_customers`, `get_customer` | **personal data of every customer**: name, e-mail, phone, address, tax id and office, locale, block state and reason | name, e-mail, phone, address lines, tax id, block reason (customers and staff) | the whole customer list ends up in the model's context and in anything it writes: the largest personal-data exposure of the reads. This server has no tool that sends anything out, but the assistant may have others (mail, browser) | on |
+| `list_customers`, `get_customer` | **personal data of every customer**: name, e-mail, phone, address, tax id and office, locale, block state and reason | name, e-mail, phone, address lines, tax id, block reason (customers and staff) | the whole customer list ends up in the model's context and in anything it writes: the largest personal-data exposure of the reads. This server has no tool that sends anything out, but the assistant may have others (mail, browser) | on, **personal fields redacted** (`PAYRUDDER_MCP_ALLOW_PERSONAL_DATA=1` shows them) |
 | `get_customer_usage`, `list_entitlements`, `get_entitlement` | a customer's quantities per meter, limits and whether they are over | none | low | on |
 | `list_plans`, `get_plan_version` | the price list: fees, unit prices, tiers, included quantities, limits | plan `name` (staff) | commercial terms are read: low (the account's own list) | on |
 | `list_subscriptions`, `get_subscription` | who is on which plan, state, provider's reference, scheduled change, coupon | `coupon_code` (staff) | low to medium: which customers pay and for what | on |
@@ -148,7 +152,7 @@ What holds for **every** tool, so the rows do not repeat it: the key decides wha
 | the four prompts | the text of the prompt and the argument the person typed | the argument, checked against a narrow pattern | a long run of read calls that spends the tenant's shared read budget (see "Rate limits"); nothing is written | on |
 | resources `payrudder://openapi`, `payrudder://docs/*` | the tenant API's OpenAPI file and the guides marked public (no operator or console route, no internal document) | none | none beyond what the docs site already shows | on |
 
-Open questions for the owner (defaults, not agreed): that personal data of customers may reach the model's provider at all (the default is yes, for whoever holds a key and starts the server; a `read_only` key can read customers, a `custom` key without `customers:read` cannot, and then `list_customers` and `get_customer` fail at the API); whether `list_customers` should be left out of an HTTP server shared by several people; whether reads of the live environment should need a flag of their own like the writes. None of these is built.
+Open questions for the owner (defaults, not agreed): that personal data of customers may reach the model's provider at all (the default is yes, for whoever holds a key and starts the server; a `read_only` key can read customers, a `custom` key without `customers:read` cannot, and then `list_customers` and `get_customer` fail at the API); whether `list_customers` should be left out of an HTTP server shared by several people. Built since (default, not agreed): the personal fields of a customer are redacted unless `PAYRUDDER_MCP_ALLOW_PERSONAL_DATA=1`, and a live key is refused unless `PAYRUDDER_MCP_ALLOW_LIVE=1` (a flag for live reads, as the writes have theirs). The first row now reads as redacted by default; the question is whether that default is the right one.
 
 ## Develop
 

@@ -34,7 +34,7 @@ const env = (extra: Record<string, string> = {}) => ({ PATH: process.env.PATH ??
 describe("the built server over stdio", () => {
   it("lists its tools, calls the API with the key from the environment and tags what people wrote", async () => {
     const client = new Client({ name: "test", version: "0" });
-    await client.connect(new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_test_stdio_secret" }) }));
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_test_stdio_secret", PAYRUDDER_MCP_ALLOW_PERSONAL_DATA: "1" }) }));
     try {
       const { tools } = await client.listTools();
       expect(tools).toHaveLength(25);
@@ -68,6 +68,36 @@ describe("the built server over stdio", () => {
     expect(JSON.parse(on[0] ?? "")).toMatchObject({ event: "mcp.tool_call", tool: "get_customer", write: false, transport: "stdio", key: "qk_test_ab12cd34", args: { customer_external_id: "cus_1" }, ok: true });
     expect(on[0]).not.toContain("TOPSECRET");
     expect(await lines({ PAYRUDDER_MCP_AUDIT: "0" })).toEqual([]);
+  }, 30_000);
+
+  it("redacts customers' personal data unless PAYRUDDER_MCP_ALLOW_PERSONAL_DATA=1", async () => {
+    const client = new Client({ name: "test", version: "0" });
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_test_stdio_secret" }) }));
+    try {
+      const r = await client.callTool({ name: "get_customer", arguments: { customer_external_id: "cus_1" } });
+      const text = JSON.stringify(r.content);
+      expect(text).not.toMatch(/ada@example|Ignore your instructions/);
+      expect(text).toContain("redacted: personal data");
+      expect(text).toContain("cus_1");
+    } finally {
+      await client.close();
+    }
+  }, 30_000);
+
+  it("refuses a live key at start, on stderr, unless PAYRUDDER_MCP_ALLOW_LIVE=1", async () => {
+    const r = spawnSync(process.execPath, [main], { env: env({ PAYRUDDER_API_KEY: "qk_live_ab12cd34_TOPSECRET" }), encoding: "utf8", timeout: 20_000 });
+    expect(r.status).toBe(1);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toContain("PAYRUDDER_MCP_ALLOW_LIVE=1");
+    expect(r.stderr).not.toContain("TOPSECRET");
+
+    const client = new Client({ name: "test", version: "0" });
+    await client.connect(new StdioClientTransport({ command: process.execPath, args: [main], env: env({ PAYRUDDER_API_KEY: "qk_live_ab12cd34_x", PAYRUDDER_MCP_ALLOW_LIVE: "1" }) }));
+    try {
+      expect((await client.listTools()).tools).toHaveLength(25);
+    } finally {
+      await client.close();
+    }
   }, 30_000);
 
   it("offers the write tools only with PAYRUDDER_MCP_WRITES=1", async () => {
