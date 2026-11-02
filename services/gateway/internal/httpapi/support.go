@@ -1,6 +1,9 @@
 package httpapi
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -16,6 +19,7 @@ func (s *Server) supportRoutes() []Route {
 	return []Route{
 		{"GET", "/app/v1/support/tickets", AccessSession, ratelimit.ClassRead, s.supportMyList},
 		{"POST", "/app/v1/support/tickets", AccessSession, ratelimit.ClassWrite, s.supportMyOpen},
+		{"GET", "/app/v1/support/unread", AccessSession, ratelimit.ClassRead, s.supportMyUnread},
 		{"GET", "/app/v1/support/tickets/{id}", AccessSession, ratelimit.ClassRead, s.supportMyGet},
 		{"POST", "/app/v1/support/tickets/{id}/replies", AccessSession, ratelimit.ClassWrite, s.supportMyReply},
 		{"PUT", "/app/v1/support/tickets/{id}/status", AccessSession, ratelimit.ClassWrite, s.supportMyStatus},
@@ -24,6 +28,12 @@ func (s *Server) supportRoutes() []Route {
 		{"GET", "/admin/v1/support/tickets/{id}", AccessOperator, "", s.supportGet},
 		{"PATCH", "/admin/v1/support/tickets/{id}", AccessOperator, "", s.supportUpdate},
 		{"POST", "/admin/v1/support/tickets/{id}/replies", AccessOperator, "", s.supportReply},
+		{"GET", "/admin/v1/support/report", AccessOperator, "", s.supportReport},
+		{"GET", "/admin/v1/support/operators", AccessOperator, "", s.supportOperators},
+		{"GET", "/admin/v1/support/canned-replies", AccessOperator, "", s.supportCannedList},
+		{"POST", "/admin/v1/support/canned-replies", AccessOperator, "", s.supportCannedSave},
+		{"PUT", "/admin/v1/support/canned-replies/{id}", AccessOperator, "", s.supportCannedSave},
+		{"DELETE", "/admin/v1/support/canned-replies/{id}", AccessOperator, "", s.supportCannedDelete},
 	}
 }
 
@@ -80,7 +90,7 @@ func (s *Server) supportMyStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) supportList(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	breached, _ := strconv.ParseBool(q.Get("sla_breached"))
-	resp, err := s.d.Support.ListSupportTickets(r.Context(), &plansv1.ListSupportTicketsRequest{Status: q.Get("status"), Priority: q.Get("priority"), Assignee: q.Get("assignee"), Search: q.Get("search"), SlaBreached: breached})
+	resp, err := s.d.Support.ListSupportTickets(r.Context(), &plansv1.ListSupportTicketsRequest{Status: q.Get("status"), Priority: q.Get("priority"), Assignee: q.Get("assignee"), Search: q.Get("search"), SlaBreached: breached, Tag: q.Get("tag")})
 	noStore(w)
 	respond(w, r, http.StatusOK, resp, err)
 }
@@ -93,10 +103,20 @@ func (s *Server) supportGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) supportUpdate(w http.ResponseWriter, r *http.Request) {
 	req := &plansv1.UpdateSupportTicketRequest{}
+	raw, err := readBody(r)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(raw))
 	if err := decode(r, req); err != nil {
 		writeError(w, r, err)
 		return
 	}
+	// Tags are changed when the body has the key (an empty list clears them); the proto's own flag is not part of the REST body.
+	var keys map[string]json.RawMessage
+	_ = json.Unmarshal(raw, &keys)
+	_, req.SetTags = keys["tags"]
 	// The signed-in operator's address is who the ticket's history names (the machine token: "Payrudder support").
 	req.TicketId, req.AuthorName = r.PathValue("id"), operatorFrom(r.Context())
 	resp, err := s.d.Support.UpdateSupportTicket(r.Context(), req)
@@ -113,4 +133,56 @@ func (s *Server) supportReply(w http.ResponseWriter, r *http.Request) {
 	req.TicketId, req.AuthorName = r.PathValue("id"), operatorFrom(r.Context())
 	resp, err := s.d.Support.ReplySupportTicket(r.Context(), req)
 	respond(w, r, http.StatusCreated, resp, err)
+}
+
+// supportMyUnread is the number of the person's tickets with an answer or a status change they have not read (the badge on the help page's link).
+func (s *Server) supportMyUnread(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Support.CountMySupportUnread(r.Context(), &plansv1.CountMySupportUnreadRequest{UserId: sessionFrom(r.Context()).UserID})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// supportReport is the operator's report: the queue and the first-answer times of the last 30 days (also what the inbox's badge counts).
+func (s *Server) supportReport(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Support.GetSupportReport(r.Context(), &plansv1.GetSupportReportRequest{})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// supportOperators lists the addresses a ticket can be assigned to.
+func (s *Server) supportOperators(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Support.ListSupportOperators(r.Context(), &plansv1.ListSupportOperatorsRequest{})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+func (s *Server) supportCannedList(w http.ResponseWriter, r *http.Request) {
+	resp, err := s.d.Support.ListSupportCannedReplies(r.Context(), &plansv1.ListSupportCannedRepliesRequest{})
+	noStore(w)
+	respond(w, r, http.StatusOK, resp, err)
+}
+
+// supportCannedSave makes a canned reply (POST) or changes one (PUT /{id}), as the signed-in operator.
+func (s *Server) supportCannedSave(w http.ResponseWriter, r *http.Request) {
+	req := &plansv1.SaveSupportCannedReplyRequest{}
+	if err := decode(r, req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	req.Id, req.AuthorName = r.PathValue("id"), operatorFrom(r.Context())
+	resp, err := s.d.Support.SaveSupportCannedReply(r.Context(), req)
+	code := http.StatusCreated
+	if req.Id != "" {
+		code = http.StatusOK
+	}
+	respond(w, r, code, resp, err)
+}
+
+func (s *Server) supportCannedDelete(w http.ResponseWriter, r *http.Request) {
+	_, err := s.d.Support.DeleteSupportCannedReply(r.Context(), &plansv1.DeleteSupportCannedReplyRequest{Id: r.PathValue("id")})
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

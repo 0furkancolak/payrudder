@@ -143,6 +143,7 @@ All numbers are **targets** for a laptop-class local/kind setup. They'll be repl
 - `ConsumerLagHigh`: `consumer_lag_seconds > 30` for 5m (per group)
 - `TenantLagOutlier`: one tenant's lag > 5× the median for 10m
 - `DLQNotEmpty`: `dlq_messages > 0` for 5m
+- `SupportFirstAnswerOverdue` (plan 12, warn): `sum(support_sla_breached_tickets) > 0` for 10m; the gauges `support_waiting_tickets` and `support_sla_breached_tickets{priority}` are read from plans-svc's database at each scrape (at most every 15 s; a priority with none reads 0), and the deadline they count past is the business-hours one
 - `BillingRunStuck`: run in `WAITING_WATERMARK` > 1h after cutoff
 - `SagaStuck`: `saga_state{state=~".*_FAILED|PAYMENT_UNKNOWN"} > 0` for 15m
 - `FrozenPeriodViolation`: any increase (page)

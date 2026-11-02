@@ -3755,6 +3755,9 @@
       },
       "tickets": {
         "too_many": "Your organisation already has 20 tickets waiting. Wait for an answer or mark one as solved, then try again."
+      },
+      "canned_reply": {
+        "not_found": "That canned reply is not there any more."
       }
     },
     "audit": {
@@ -5626,7 +5629,43 @@
     "sortPriority": "Highest priority first",
     "sortDue": "Answer due soonest",
     "unread": "New",
-    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app."
+    "businessHours": "Answer times count business hours: Monday to Friday, 09:00 to 18:00, in the time zone of your app.",
+    "tags": {
+      "title": "Tags",
+      "filter": "Tag",
+      "add": "Add a tag",
+      "remove": "Remove the tag {tag}",
+      "hint": "Only the team sees tags. Up to 5, lower case letters, digits and hyphens."
+    },
+    "canned": {
+      "title": "Canned replies",
+      "hint": "Texts the whole team can paste into an answer. A change is everyone's.",
+      "manage": "Canned replies…",
+      "insert": "Insert a canned reply",
+      "empty": "There are none yet.",
+      "fieldTitle": "Title",
+      "fieldBody": "Text",
+      "add": "Add",
+      "save": "Save",
+      "edit": "Edit",
+      "delete": "Delete",
+      "confirmDelete": "Delete the canned reply “{title}”?"
+    },
+    "report": {
+      "title": "The queue",
+      "waiting": "Waiting for us",
+      "late": "Late",
+      "median": "First answer, median of {days} days",
+      "average": "average {time}",
+      "onTime": "Answered in time",
+      "answeredOf": "{answered} answered of {opened} opened",
+      "byStatus": "Every ticket, by status",
+      "byPriority": "Still waiting, by priority"
+    },
+    "badge": {
+      "unread": "Tickets with news: {n}",
+      "waiting": "Waiting for us: {n}"
+    }
   },
   "connect": {
     "nav": "Connect your app",
