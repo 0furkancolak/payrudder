@@ -89,3 +89,17 @@ Done in `web/admin` (no Go code). The five complaints of the request are each a 
 ## Status (2026-11-02, branch `fix/console-review-3`): the pages that had no tour
 
 `docs/13-admin-ui.md` said every page of the sidebar has a tour; seven did not: the person's Help, Plan and billing, and the operator's Support inbox, Organisations, a tenant's Apps, Business address and E-invoice (and the platform plans, which are the packages page). Each has a short tour now (the page's title, then the one control it is about; sixteen strings in six languages), `app/tours.test.ts` builds every sidebar (a person's, the platform's, a tenant's) and fails for a page with none (the two doors, the operator console's and "My apps", excepted), and `tours.spec.ts` walks the new ones. **Not looked at on a phone or in Arabic.**
+
+## Status (2026-11-02), branch `feat/leftovers-4-dx-console`: focus, the browser's history, the next record
+
+The cases the earlier statuses listed as open or never wrote down, each in `e2e-mock/sheet-focus-history.spec.ts` (plus unit tests of the opener in `sheets.test.ts`); the behaviour is in `docs/13-admin-ui.md` ("Focus, the browser's history and the next record").
+
+| Case | Found | Held by |
+|---|---|---|
+| Focus when a sheet opens from a row's "more actions" menu, and when it closes | **A bug.** The menu gave the focus back to its button as it closed, pulling it out of the sheet its "View" had just opened; the sheet then closed to the page (`<main>`), not to the row. Fixed: `RowActions` keeps the menu from taking the focus back when its action opened a sheet and offers its button to the stack (`rememberOpener`); the last sheet to close gives the focus to it (`restoreOpener`). A sheet opened by clicking a row behaves as before (the focus goes into the sheet; closing returns it to the page). | the spec's first test fails without the change |
+| The browser's Back and Forward with a sheet open | nothing wrong, and written down: the sheet belongs to the history entry of the page it was opened on (`replace`), Back leaves that page and does not leave the page before it locked, Forward comes back to the entry and its sheet. The strip's back and forward are separate and were already tested. | the spec's second test (it passes before and after: it records behaviour) |
+| The next record of a sheet (the arrows) | **A bug.** The sheet's body kept the scroll position of the record before: going down a list landed in the middle of the next customer. Fixed in `DetailSheet` (the body scrolls to its top when the index changes). | the third test fails without the change |
+
+Defaults (not agreed): the browser's Back does **not** close a sheet (it would need a history entry per sheet, which the address design avoids on purpose: opening and closing sheets does not fill the history). If the owner wants Back to close the sheet on a phone, that is a decision with a cost (every open adds an entry, a reload with a sheet in the address has a Back that leaves the sheet's page).
+
+**Still open:** the iOS Safari handling of `overflow: hidden` on the root, a screen reader's reading of the wizard, the tour and the sheet's focus (the focus moves were asserted in the DOM, not heard), Combobox inside a sheet on a real phone keyboard. Not verified: the new focus hand-over in Safari and Firefox (Chrome only); `focus()` on a button after a close animation is the browser's to honour.

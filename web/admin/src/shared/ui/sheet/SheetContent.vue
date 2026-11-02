@@ -6,7 +6,7 @@ import { reactiveOmit } from "@vueuse/core";
 import { DialogClose, DialogContent, DialogPortal, Presence, useForwardPropsEmits } from "reka-ui";
 import { computed, inject } from "vue";
 import { useI18n } from "vue-i18n";
-import { closeFront, depthOf, openTabs } from "@/shared/lib/sheets";
+import { closeFront, depthOf, openTabs, restoreOpener } from "@/shared/lib/sheets";
 import { cn } from "@/shared/lib/utils";
 import SheetStrip from "./SheetStrip.vue";
 import { SHEET_CONTEXT } from "./context";
@@ -74,6 +74,7 @@ const z = computed(() => Math.min(31 + depth.value * 3, 48));
       @escape-key-down.prevent="closeFront()"
       @interact-outside.prevent
       @open-auto-focus="focusFirstField"
+      @close-auto-focus="restoreOpener"
     >
       <SheetStrip v-if="depth === openTabs.length - 1" />
       <slot />

@@ -40,8 +40,8 @@ profit -39.77. A voided expense is out of every number. All correct.
 
 - **Revenue is gross of refunds** on the dashboard ("Revenue, last 30 days" 198.00 while 30.00 was refunded); the accounting tab shows the net. Payments
   "count" includes the refund row and every declined attempt (a declined invoice that dunning retries shows several failed rows). Not changed; worth a product decision.
-- Credits page: the placeholder "Valid for (days, optional)" is cut in its input at 1280 px.
-- Accounting chart legend overlaps the axis dates at 375 px (operator console).
+- ~~Credits page: the placeholder "Valid for (days, optional)" is cut in its input at 1280 px.~~ Gone: the pack form has a label for the field, not a placeholder (looked at again 2026-11-02, plan 04).
+- ~~Accounting chart legend overlaps the axis dates at 375 px (operator console).~~ Fixed (the legend is under the dates) and held by `e2e-mock/phone-tablet.spec.ts`.
 - Hosted payment page right after "Continue": "Your payment is being processed" without any button until the invoice's saga reaches `AWAITING_PAYMENT`
   (a few seconds); the page refreshes by itself, so it works, but a first-time payer sees no hint.
 - The customer portal's "View" / "Pay this invoice" links use the browser's default link colour (server-rendered page, not the console's look).

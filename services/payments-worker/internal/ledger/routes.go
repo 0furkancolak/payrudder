@@ -30,6 +30,7 @@ func (h *Handler) Register(mux *http.ServeMux, guard func(http.HandlerFunc) http
 	mux.HandleFunc("GET "+base+"/disputes/{dispute}/history", guard(h.disputeHistory))
 	mux.HandleFunc("POST "+base+"/disputes/{dispute}/notes", guard(h.addDisputeNote))
 	mux.HandleFunc("PUT "+base+"/disputes/{dispute}/handled", guard(h.setDisputeHandled))
+	mux.HandleFunc("GET "+base+"/invoices/{invoice}/charge-window", guard(h.chargeWindow))
 	mux.HandleFunc("POST "+base+"/sandbox-reset", guard(h.sandboxReset))
 }
 
@@ -136,6 +137,21 @@ func (h *Handler) setDisputeHandled(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	httpx.Reply(h.Log, w, r, err)
+}
+
+// chargeWindow is GET /admin/tenants/{tenant}/invoices/{invoice}/charge-window: when the invoice's newest charge was first tried and when a payment that waits for the
+// customer to confirm it counts as declined.
+func (h *Handler) chargeWindow(w http.ResponseWriter, r *http.Request) {
+	t, ok := httpx.Tenant(w, r)
+	if !ok {
+		return
+	}
+	win, err := query.Window(r.Context(), h.Query, t, r.PathValue("invoice"))
+	if err != nil {
+		httpx.Reply(h.Log, w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, win)
 }
 
 // lookup is POST /admin/tenants/{tenant}/ledger/lookup {"invoice_ids":[...]}.

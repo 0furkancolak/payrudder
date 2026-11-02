@@ -1914,6 +1914,16 @@ export interface InvoicePayment {
   recorded_at: string | null;
 }
 
+export interface InvoiceSaga {
+  id: string;
+  invoice_id: string;
+  state: string;
+  attempt: number;
+  dunning_attempt: number;
+  last_error: string;
+  version: number;
+}
+
 export interface LinkAffiliatePromotionCodeRequest {
   promotion_code: string;
 }
@@ -2417,6 +2427,19 @@ export interface PaymentLink {
   /** Invoices the link created (ad hoc) */
   use_count: number;
   idempotency_key: string;
+}
+
+export interface PaymentWait {
+  /** The invoice's saga state (`Invoice.saga_state`). Everything below is set only for PAYMENT_HELD and PAYMENT_ACTION_REQUIRED */
+  state: string;
+  /** When the payment began to wait. For PAYMENT_ACTION_REQUIRED, the moment the mail asking the customer to confirm it was asked for (not proof that it was delivered) */
+  since_time?: string;
+  /** When Payrudder looks again (the next pass over held charges, or the next question to the provider) */
+  next_check_time?: string;
+  /** PAYMENT_HELD only, asked of the payment gate now. `customer_blocked`: the customer is blocked for fraud or a chargeback. `tenant_on_hold`: the operator has suspended, frozen or banned the environment. `none`: nothing holds it now, the next pass charges it. Absent when the gate could not be asked */
+  hold_reason?: "customer_blocked" | "tenant_on_hold" | "none";
+  /** PAYMENT_ACTION_REQUIRED only: when the payment counts as declined if the customer has not confirmed it. Absent when the payment service did not answer */
+  window_ends_time?: string;
 }
 
 export interface Plan {

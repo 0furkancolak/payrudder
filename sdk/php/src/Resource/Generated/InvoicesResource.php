@@ -13,7 +13,9 @@ use Payrudder\Internal\Cast;
 use Payrudder\Model\CreateInvoiceLinkRequest;
 use Payrudder\Model\CreateInvoiceLinkResponse;
 use Payrudder\Model\Invoice;
+use Payrudder\Model\InvoiceSaga;
 use Payrudder\Model\ListInvoicesResponse;
+use Payrudder\Model\PaymentWait;
 use Payrudder\Model\RevokeInvoiceLinksResponse;
 use Payrudder\Model\SignedUrl;
 use Payrudder\RequestOptions;
@@ -133,5 +135,44 @@ final class InvoicesResource extends AbstractResource
     public function getInvoicePdf(string $id, ?RequestOptions $options = null): SignedUrl
     {
         return SignedUrl::fromArray($this->call('GET', '/v1/invoices/' . rawurlencode($id) . '/pdf', [], null, $options));
+    }
+
+    /**
+     * What an invoice's payment is waiting for (a first charge that is held, a customer who has to confirm it) (GET /v1/invoices/{id}/payment-wait).
+     *
+     * @param string $id
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function getInvoicePaymentWait(string $id, ?RequestOptions $options = null): PaymentWait
+    {
+        return PaymentWait::fromArray($this->call('GET', '/v1/invoices/' . rawurlencode($id) . '/payment-wait', [], null, $options));
+    }
+
+    /**
+     * Ask again for an invoice whose first charge is held, and charge it if nothing holds it any more (POST /v1/invoices/{id}/release).
+     *
+     * @param string $id
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function releaseHeldInvoice(string $id, ?RequestOptions $options = null): InvoiceSaga
+    {
+        return InvoiceSaga::fromArray($this->call('POST', '/v1/invoices/' . rawurlencode($id) . '/release', [], null, $options));
+    }
+
+    /**
+     * Void an invoice whose first charge is held (POST /v1/invoices/{id}/void).
+     *
+     * @param string $id
+     * @param RequestOptions|null $options
+     *
+     * @throws PayrudderException
+     */
+    public function voidHeldInvoice(string $id, ?RequestOptions $options = null): InvoiceSaga
+    {
+        return InvoiceSaga::fromArray($this->call('POST', '/v1/invoices/' . rawurlencode($id) . '/void', [], null, $options));
     }
 }

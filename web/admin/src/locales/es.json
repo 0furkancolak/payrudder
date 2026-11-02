@@ -452,6 +452,43 @@
       "coupon": "Cupón {code}",
       "usage": "Uso — {meter} — {rest}",
       "late": "Uso tardío — {meter} — {origin} ({rest})"
+    },
+    "wait": {
+      "heldTitle": "Primer cobro retenido",
+      "heldPill": "Retenido",
+      "heldHint": "Esta factura estaba lista para cobrarse, pero Payrudder no envió el cobro al proveedor de pagos.",
+      "reason": {
+        "customer_blocked": "El cliente está bloqueado por fraude o contracargo. La factura sigue abierta y se cobrará en cuanto se levante el bloqueo.",
+        "tenant_on_hold": "Payrudder ha puesto este entorno en espera (suspendido, congelado o vetado); mientras dure, no se cobra nada. La factura se cobrará cuando el entorno vuelva; escriba a soporte desde la página de ayuda.",
+        "none": "Nada retiene ya esta factura. Se cobrará en la próxima comprobación, o puede liberarla ahora.",
+        "unknown": "Payrudder no pudo comprobar ahora por qué está retenida. Inténtelo de nuevo en un momento."
+      },
+      "since": "Retenido desde",
+      "next": "Próxima comprobación",
+      "release": "Liberar el cobro",
+      "void": "Anular factura",
+      "viewerNote": "Solo un propietario o un administrador puede liberarla o anularla.",
+      "confirmRelease": {
+        "title": "¿Liberar el cobro de {number}?",
+        "body": "Payrudder vuelve a comprobar si se pueden cobrar {amount} a {customer}. Si el cliente sigue bloqueado, la factura sigue retenida y no se cobra nada.",
+        "accept": "Liberar"
+      },
+      "confirmVoid": {
+        "title": "¿Anular {number}?",
+        "body": "No se cobrarán {amount}. La factura queda anulada y ya no se puede pagar. Esta acción no se puede deshacer.",
+        "accept": "Anular factura"
+      },
+      "released": "Liberado: el cobro de {amount} se envió al proveedor de pagos.",
+      "stillHeld": "Sigue retenida: el cliente continúa bloqueado o el entorno está en espera. No se cobró nada.",
+      "voided": "La factura está anulada.",
+      "actionTitle": "Esperando a que el cliente confirme el pago",
+      "actionPill": "El cliente debe confirmar",
+      "actionHint": "El banco del cliente le pide que confirme este pago (3-D Secure), así que no se puede cobrar sin él.",
+      "mailedHint": "Payrudder pidió que se enviara al cliente un correo con un enlace a la página de la factura. La página Correo indica si llegó.",
+      "mailed": "Cliente avisado por correo",
+      "nextAsk": "Próxima consulta al proveedor",
+      "windowEnds": "Se dará por rechazado el",
+      "windowHint": "Si el cliente no lo ha confirmado para entonces, el pago se da por rechazado y empiezan los reintentos."
     }
   },
   "deadLetters": {
@@ -2875,7 +2912,8 @@
         "bad_page_size": "El tamaño de página debe estar entre 1 y 500.",
         "bad_page_token": "El token de página no es válido. Empieza la lista de nuevo.",
         "pdf_sign_failed": "No se pudo crear el enlace de descarga del PDF. Inténtalo de nuevo en un momento.",
-        "pdf_failed": "No se pudo generar el PDF de la factura. Revisa los datos de la factura."
+        "pdf_failed": "No se pudo generar el PDF de la factura. Revisa los datos de la factura.",
+        "not_held": "El primer cobro de esta factura no está retenido, así que no hay nada que liberar o anular aquí."
       },
       "invoice_link": {
         "bad_expiry": "El enlace debe caducar entre 1 y 365 días.",

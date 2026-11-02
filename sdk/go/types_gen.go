@@ -1899,6 +1899,17 @@ type InvoicePayment struct {
 	RecordedAt  *time.Time `json:"recorded_at"`
 }
 
+// InvoiceSaga is an object of the API; see components.schemas.InvoiceSaga in api/openapi/v1.yaml.
+type InvoiceSaga struct {
+	ID             string `json:"id"`
+	InvoiceID      string `json:"invoice_id"`
+	State          string `json:"state"`
+	Attempt        int    `json:"attempt"`
+	DunningAttempt int    `json:"dunning_attempt"`
+	LastError      string `json:"last_error"`
+	Version        int    `json:"version"`
+}
+
 // LinkAffiliatePromotionCodeRequest is the request body of LinkAffiliatePromotionCode.
 type LinkAffiliatePromotionCodeRequest struct {
 	PromotionCode string `json:"promotion_code"`
@@ -2247,6 +2258,26 @@ type PaymentLink struct {
 	// Invoices the link created (ad hoc)
 	UseCount       int    `json:"use_count"`
 	IdempotencyKey string `json:"idempotency_key"`
+}
+
+// PaymentWait is an object of the API; see components.schemas.PaymentWait in api/openapi/v1.yaml.
+type PaymentWait struct {
+	// The invoice's saga state (`Invoice.saga_state`). Everything below is set only for PAYMENT_HELD and
+	// PAYMENT_ACTION_REQUIRED
+	State string `json:"state"`
+	// When the payment began to wait. For PAYMENT_ACTION_REQUIRED, the moment the mail asking the customer to
+	// confirm it was asked for (not proof that it was delivered)
+	SinceTime time.Time `json:"since_time,omitempty"`
+	// When Payrudder looks again (the next pass over held charges, or the next question to the provider)
+	NextCheckTime time.Time `json:"next_check_time,omitempty"`
+	// PAYMENT_HELD only, asked of the payment gate now. `customer_blocked`: the customer is blocked for fraud or a
+	// chargeback. `tenant_on_hold`: the operator has suspended, frozen or banned the environment. `none`: nothing
+	// holds it now, the next pass charges it. Absent when the gate could not be asked. One of: customer_blocked,
+	// tenant_on_hold, none.
+	HoldReason string `json:"hold_reason,omitempty"`
+	// PAYMENT_ACTION_REQUIRED only: when the payment counts as declined if the customer has not confirmed it.
+	// Absent when the payment service did not answer
+	WindowEndsTime time.Time `json:"window_ends_time,omitempty"`
 }
 
 // Plan is an object of the API; see components.schemas.Plan in api/openapi/v1.yaml.
