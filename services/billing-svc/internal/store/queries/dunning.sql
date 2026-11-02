@@ -1,12 +1,14 @@
 -- Dunning settings (tenant-scoped, billing_app) and the dunning report.
 
 -- name: GetDunningSettings :one
-SELECT retry_hours, updated_at FROM dunning_settings WHERE tenant_id = @tenant_id;
+SELECT retry_hours, updated_at, block_on_chargeback FROM dunning_settings WHERE tenant_id = @tenant_id;
 
 -- name: UpsertDunningSettings :one
-INSERT INTO dunning_settings (tenant_id, retry_hours) VALUES (@tenant_id, @retry_hours)
-ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now()
-RETURNING updated_at;
+-- block_on_chargeback is kept when the request does not name it.
+INSERT INTO dunning_settings (tenant_id, retry_hours, block_on_chargeback) VALUES (@tenant_id, @retry_hours, COALESCE(sqlc.narg('block_on_chargeback')::boolean, false))
+ON CONFLICT (tenant_id) DO UPDATE SET retry_hours = EXCLUDED.retry_hours, updated_at = now(),
+  block_on_chargeback = COALESCE(sqlc.narg('block_on_chargeback')::boolean, dunning_settings.block_on_chargeback)
+RETURNING updated_at, block_on_chargeback;
 
 -- name: DunningSummary :many
 SELECT sg.state, i.provider, i.currency, count(*) AS invoices, COALESCE(sum(i.total_minor), 0)::bigint AS total_minor

@@ -926,14 +926,19 @@ class TaxRatesInput(TypedDict, total=False):
     rates: list[TaxRatesInputRatesItem]
 
 
-class DunningSettings(TypedDict):
+class _DunningSettingsRequired(TypedDict):
     retry_hours: list[int]
     defaults_in_use: bool
     update_time: str | None
 
 
+class DunningSettings(_DunningSettingsRequired, total=False):
+    block_on_chargeback: bool
+
+
 class DunningSettingsInput(TypedDict, total=False):
     retry_hours: list[int]
+    block_on_chargeback: bool
 
 
 class CreditPack(TypedDict):
@@ -1195,7 +1200,7 @@ class ListWebhookEndpointsResponse(TypedDict):
     endpoints: list[WebhookEndpoint]
 
 
-WebhookEventType = Literal["invoice.finalized", "invoice.paid", "invoice.voided", "invoice.uncollectible", "credit_note.created", "credit_note.refunded", "credit_note.refund_failed", "subscription.created", "subscription.changed", "subscription.change_scheduled", "subscription.cancelled", "subscription.cancellation_scheduled", "subscription.cancellation_withdrawn", "subscription.paused", "subscription.resumed", "subscription.moved_to_provider", "subscription.trial_will_end", "payment_link.created", "payment_link.paid", "payment_link.expired", "credits.purchased", "credits.low", "customer.blocked", "customer.unblocked", "price_change.scheduled", "contract.accepted", "contract.version_published", "contract.withdrawal_requested", "contract.withdrawal_decided"]
+WebhookEventType = Literal["invoice.finalized", "invoice.paid", "invoice.voided", "invoice.uncollectible", "credit_note.created", "credit_note.refunded", "credit_note.refund_failed", "subscription.created", "subscription.changed", "subscription.change_scheduled", "subscription.cancelled", "subscription.cancellation_scheduled", "subscription.cancellation_withdrawn", "subscription.paused", "subscription.resumed", "subscription.moved_to_provider", "subscription.trial_will_end", "payment_link.created", "payment_link.paid", "payment_link.expired", "payment.disputed", "credits.purchased", "credits.low", "customer.blocked", "customer.unblocked", "price_change.scheduled", "contract.accepted", "contract.version_published", "contract.withdrawal_requested", "contract.withdrawal_decided"]
 
 
 class _CreateWebhookEndpointRequestRequired(TypedDict):
@@ -2039,6 +2044,30 @@ class Payment(TypedDict):
 class ListPaymentsResponse(TypedDict):
     payments: list[Payment]
     truncated: bool
+
+
+class _DisputeRequired(TypedDict):
+    id: str
+    provider: str
+    dispute_id: str
+    payment_ref: str
+    amount_minor: int
+    currency: str
+    outcome: Literal["open", "won", "lost"]
+    formal: bool
+    provider_status: str
+    opened_time: str
+
+
+class Dispute(_DisputeRequired, total=False):
+    invoice_id: str
+    reason: str
+    evidence_due_time: str
+    closed_time: str
+
+
+class ListDisputesResponse(TypedDict):
+    disputes: list[Dispute]
 
 
 class _CreateUploadSessionFileRequired(TypedDict):

@@ -15,7 +15,7 @@ import (
 
 // Tables are the tables a reset deletes from; Kept are the tables with tenant rows it leaves alone on purpose.
 var (
-	Tables = []string{"manual_receipts", "payment_ledger", "payment_attempts", "provider_subscriptions", "provider_events", "einvoice_issuances",
+	Tables = []string{"manual_receipts", "payment_ledger", "payment_disputes", "payment_attempts", "provider_subscriptions", "provider_events", "einvoice_issuances",
 		"reconciliation_events", "reconciliation_runs", "reconciliation_discrepancies", "settlement_lines"}
 	Kept = []string{"audit_events", "provider_accounts", "provider_account_events", "provider_objects", "einvoice_accounts", "einvoice_routing", "fee_rules", "provider_account_health", "provider_failover"}
 )
@@ -48,7 +48,7 @@ func (r *Resetter) Reset(ctx context.Context, tenantID uuid.UUID) (map[string]in
 			table string
 			run   func(context.Context, uuid.UUID) (int64, error)
 		}{
-			{"manual_receipts", q.ResetManualReceipts}, {"payment_ledger", q.ResetPaymentLedger}, {"payment_attempts", q.ResetPaymentAttempts},
+			{"manual_receipts", q.ResetManualReceipts}, {"payment_ledger", q.ResetPaymentLedger}, {"payment_disputes", q.ResetPaymentDisputes}, {"payment_attempts", q.ResetPaymentAttempts},
 			{"provider_subscriptions", q.ResetProviderSubscriptions}, {"provider_events", func(ctx context.Context, id uuid.UUID) (int64, error) { return q.ResetProviderEvents(ctx, &id) }}, {"einvoice_issuances", q.ResetEInvoiceIssuances},
 			// the events and runs go before the discrepancies they point at
 			{"reconciliation_events", q.ResetReconciliationEvents}, {"reconciliation_runs", q.ResetReconciliationRuns},

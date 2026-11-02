@@ -204,7 +204,7 @@ func RequiredPermission(method, path string) (perm string, ok bool) {
 		return PermCatalogRead, true // a quote only reads
 	case "plans", "price-changes", "coupons", "coupon-redemptions", "promotion-codes", "credit-packs", "meters":
 		return rw("catalog")
-	case "invoices", "credit-notes", "e-invoices", "payment-links", "payments":
+	case "invoices", "credit-notes", "e-invoices", "payment-links", "payments", "disputes":
 		return rw("invoices")
 	case "reports", "analytics":
 		return PermReportsRead, true

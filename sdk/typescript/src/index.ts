@@ -36,6 +36,7 @@ export type {
   PaymentLinkEventData,
   CreditsPurchasedEventData,
   CreditsLowEventData,
+  PaymentDisputedEventData,
   CustomerBlockEventData,
   PriceChangeScheduledEventData,
 } from "./webhooks";

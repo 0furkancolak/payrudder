@@ -46,6 +46,7 @@ class EventType:
     PAYMENT_LINK_CREATED = "payment_link.created"
     PAYMENT_LINK_PAID = "payment_link.paid"
     PAYMENT_LINK_EXPIRED = "payment_link.expired"
+    PAYMENT_DISPUTED = "payment.disputed"
     CREDITS_PURCHASED = "credits.purchased"
     CREDITS_LOW = "credits.low"
     CUSTOMER_BLOCKED = "customer.blocked"
@@ -165,6 +166,33 @@ class CreditsLowEventData(_CreditsLowEventDataRequired, total=False):
     """``data`` of ``credits.low``."""
 
     customer_external_id: str
+
+
+class _PaymentDisputedEventDataRequired(TypedDict):
+    invoice_id: str
+    invoice_number: str
+    customer_external_id: str
+    provider: str
+    dispute_id: str
+    payment_ref: str
+    amount_minor: int
+    currency: str
+    outcome: str
+    formal: bool
+    reason: str
+    provider_status: str
+
+
+class PaymentDisputedEventData(_PaymentDisputedEventDataRequired, total=False):
+    """``data`` of ``payment.disputed``: one step of a case a customer opened with their bank about a payment.
+
+    ``dispute_id`` is the provider's reference of the case, the same in every event about it; ``outcome`` is where it
+    stands (``open``, ``won`` or ``lost``); ``formal`` is true for a chargeback, which takes the money back, and false
+    for an inquiry or a warning ahead of one; ``reason`` is the cardholder's, in the provider's words, and may be empty.
+    ``evidence_due_time`` (RFC 3339) is set when the provider gives a date.
+    """
+
+    evidence_due_time: str
 
 
 class _CustomerBlockEventDataRequired(TypedDict):
@@ -304,7 +332,8 @@ class WebhookEvent(TypedDict):
     ``data`` stays a plain dict so one handler can take every type; narrow it with ``typing.cast`` to the
     ``*EventData`` class of the type (``invoice.*`` is ``InvoiceEventData``, ``credit_note.*`` is
     ``CreditNoteEventData``, ``subscription.*`` is ``SubscriptionEventData``, ``payment_link.*`` is
-    ``PaymentLinkEventData``, ``credits.purchased`` / ``credits.low`` are ``CreditsPurchasedEventData`` /
+    ``PaymentLinkEventData``, ``payment.disputed`` is ``PaymentDisputedEventData``, ``credits.purchased`` /
+    ``credits.low`` are ``CreditsPurchasedEventData`` /
     ``CreditsLowEventData``, ``customer.blocked`` / ``customer.unblocked`` are ``CustomerBlockEventData``,
     ``price_change.scheduled`` is
     ``PriceChangeScheduledEventData``).

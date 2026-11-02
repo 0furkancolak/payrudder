@@ -5,6 +5,8 @@ const (
 	// KindCharge and KindRefund are the kinds of ledger row and of payment attempt that move money.
 	KindCharge = "charge"
 	KindRefund = "refund"
+	// KindDispute is a customer's dispute of a payment, written as the case moves: the status of its row is the outcome in the ledger's words (DisputeStatus).
+	KindDispute = "dispute"
 
 	// Statuses of a ledger row.
 	StatusSucceeded = "succeeded"
@@ -26,3 +28,15 @@ const (
 	IssuanceIssued    = "issued"
 	IssuanceCancelled = "cancelled"
 )
+
+// DisputeStatus is the status of the ledger row of a step of a dispute: pending while the case is open, succeeded when it ended in the seller's favour (or never became a
+// chargeback), declined when the cardholder won and the money stays with them.
+func DisputeStatus(outcome string) string {
+	switch outcome {
+	case "won":
+		return StatusSucceeded
+	case "lost":
+		return StatusDeclined
+	}
+	return StatusPending
+}

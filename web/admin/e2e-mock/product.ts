@@ -517,7 +517,7 @@ export async function openAllApps(page: Page): Promise<void> {
 export const INVOICE_1 = "d0000000-0000-4000-8000-000000000001";
 export const INVOICE_2 = "d0000000-0000-4000-8000-000000000002";
 export const INVOICE_3 = "d0000000-0000-4000-8000-000000000003";
-const invoice = (id: string, number: string, status: string, total: string, customer: string, extra: Record<string, unknown> = {}) => ({
+export const invoice = (id: string, number: string, status: string, total: string, customer: string, extra: Record<string, unknown> = {}) => ({
   id, number, status, currency: "USD", total_minor: total, subtotal_minor: total, customer_external_id: customer, period_id: "2026-09", kind: "REGULAR",
   create_time: "2026-10-01T09:00:00Z", finalize_time: "2026-10-01T09:05:00Z", saga_state: "COMPLETED", ...extra,
 });
@@ -525,6 +525,26 @@ export const invoiceLines = [
   { line_no: 1, kind: "BASE_FEE", description: "Pro plan, September", service_from: "2026-09-01T00:00:00Z", service_to: "2026-09-30T00:00:00Z", quantity: "1", amount_minor: "4000" },
   { line_no: 2, kind: "USAGE", description: "API calls", meter_code: "api_calls", quantity: "9000", amount_minor: "900" },
 ];
+
+const dispute = (id: string, invoice: string, extra: { amount_minor: string; outcome: string } & Record<string, unknown>) => ({
+  id, provider: "stripe", dispute_id: `du_${id}`, payment_ref: `pi_${id}`, invoice_id: invoice, currency: "USD", formal: true, provider_status: "needs_response", ...extra,
+});
+/** An open chargeback with its evidence due, a lost one, and a closed inquiry: one per invoice of the billing mocks, newest first. */
+export const DISPUTES = [
+  dispute("1", INVOICE_1, { amount_minor: "4900", outcome: "open", reason: "fraudulent", evidence_due_time: "2026-10-28T09:00:00Z", opened_time: "2026-10-20T08:00:00Z" }),
+  dispute("2", INVOICE_2, { provider: "paddle", amount_minor: "29900", outcome: "lost", provider_status: "lost", reason: "subscription_canceled", evidence_due_time: "2026-10-12T09:00:00Z", opened_time: "2026-10-10T08:00:00Z", closed_time: "2026-10-15T10:00:00Z" }),
+  dispute("3", INVOICE_3, { amount_minor: "1500", outcome: "won", formal: false, provider_status: "warning_closed", reason: "product_not_received", opened_time: "2026-10-05T08:00:00Z", closed_time: "2026-10-07T10:00:00Z" }),
+];
+
+/** Answers GET /v1/disputes with DISPUTES (the invoice and outcome filters applied as the API does); put it after billingGateway, whose answer is none. */
+export function disputesGateway(gw: MockGateway): MockGateway {
+  return gw.on((c) => {
+    if (c.method !== "GET" || c.path !== "/v1/disputes") return undefined;
+    const invoice = c.query.get("invoice_id");
+    const outcome = c.query.get("outcome");
+    return { body: { disputes: DISPUTES.filter((d) => (!invoice || d.invoice_id === invoice) && (!outcome || d.outcome === outcome)) } };
+  });
+}
 
 /** What the billing pages of the product app read: /v1/invoices, /v1/payments, packages and pricing, reports. Nothing here is an /admin route. */
 export function billingGateway(gw: MockGateway): MockGateway {
@@ -561,6 +581,7 @@ export function billingGateway(gw: MockGateway): MockGateway {
     if (c.path === "/v1/reports/subscriptions") return { body: { rows: [{ currency: "USD", active: 4, trialing: 0, past_due: 1, mrr_minor: "490000" }] } };
     if (c.path === "/v1/reports/dunning") return { body: { rows: [] } };
     if (c.path === "/v1/customers") return { body: { customers: [] } };
+    if (c.path === "/v1/disputes") return { body: { disputes: [] } };
     if (c.path === "/v1/promotion-codes") return { body: { codes: [], total: 0 } };
     return usageReads(c);
   });

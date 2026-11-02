@@ -33,6 +33,8 @@ type Billing interface {
 type Deps struct {
 	Ledger  store.Ledger
 	Billing Billing
+	// Disputes, when its DB is set, adds the payments a customer has questioned with their bank and that are still undecided.
+	Disputes store.Disputes
 	// Settlements, when its DB is set, adds the comparison of the ledger with the settlement lines kept (and the fee rules). Without it only billing and the ledger are compared.
 	Settlements store.Settlements
 	// SettlementLag is how long a payment may go unreported before that is a finding; zero is settlement.DefaultLag.
@@ -62,10 +64,14 @@ const (
 	SettlementMissing  = settlement.KindMissing  // paid long ago, inside the period the provider's lines cover, and no line names it
 	SettlementMismatch = settlement.KindMismatch // the settled gross is not the amount paid
 	FeeMismatch        = settlement.KindFee      // the provider kept another fee than the fee rule expects
+
+	// PaymentDisputed: a customer questioned the payment of an invoice with their bank and the case is undecided (a chargeback has taken the money back until it is, an
+	// inquiry has not). It is raised in the period the case was opened in, and clears when it ends.
+	PaymentDisputed = "payment_disputed"
 )
 
 // Kinds are all the kinds of discrepancy, in the order a queue lists them.
-var Kinds = []string{PaidWithoutCharge, AmountMismatch, DuplicateCharge, ChargeWithoutPaid, ConflictingOutcomes, SettlementMissing, SettlementMismatch, FeeMismatch}
+var Kinds = []string{PaidWithoutCharge, AmountMismatch, DuplicateCharge, ChargeWithoutPaid, ConflictingOutcomes, SettlementMissing, SettlementMismatch, FeeMismatch, PaymentDisputed}
 
 // Discrepancy is one thing that does not agree.
 type Discrepancy struct {
@@ -149,7 +155,37 @@ func Get(ctx context.Context, d Deps, t uuid.UUID, pid string) (*Reconciliation,
 	if err := rec.settle(ctx, d, t, paid, byInvoice); err != nil {
 		return nil, fmt.Errorf("compare with the settlement: %w", err)
 	}
+	if err := rec.disputes(ctx, d, t, pid, paid); err != nil {
+		return nil, fmt.Errorf("list the open disputes: %w", err)
+	}
 	return rec, nil
+}
+
+// disputes raises the cases opened in the period that are still undecided.
+func (rec *Reconciliation) disputes(ctx context.Context, d Deps, t uuid.UUID, pid string, paid map[string]*billingv1.Invoice) error {
+	if d.Disputes.DB == nil {
+		return nil
+	}
+	open, err := d.Disputes.Open(ctx, t)
+	if err != nil {
+		return err
+	}
+	for _, o := range open {
+		if period.PeriodOf(o.OpenedAt, time.UTC) != pid {
+			continue
+		}
+		what := "inquiry"
+		if o.Formal {
+			what = "chargeback"
+		}
+		detail := fmt.Sprintf("%s, %s", what, o.Status)
+		if o.Reason != "" {
+			detail += ", " + o.Reason
+		}
+		id := o.InvoiceID.String()
+		rec.add(Discrepancy{Kind: PaymentDisputed, InvoiceID: id, Number: paid[id].GetNumber(), Provider: o.Provider, ProviderRef: o.Ref, Currency: o.Currency, LedgerMinor: o.AmountMinor, Detail: detail})
+	}
+	return nil
 }
 
 // settle puts the successful payments of the period's paid invoices beside the settlement lines kept for the tenant. A payment settled by hand (a bank transfer) is not

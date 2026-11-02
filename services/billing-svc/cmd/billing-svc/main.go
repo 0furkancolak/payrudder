@@ -261,7 +261,7 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 	hh.AddCheck("kafka", producer.Ping)
 	hh.AddCheck("rabbitmq", func(context.Context) error { return pub.Ping() })
 
-	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appDB, System: db, Runs: mgr, Engine: eng, CreditNotes: mods.creditNotes, Rerating: mods.rerating, Inputs: mods.inputs, Hosted: mods.hosted})
+	srv, grpcHealth, err := newGRPCServer(cfg, log, api.Deps{App: appDB, System: db, Runs: mgr, Engine: eng, CreditNotes: mods.creditNotes, Rerating: mods.rerating, Inputs: mods.inputs, Hosted: mods.hosted, Blocker: plansv1.NewPlansServiceClient(be.plans)})
 	if err != nil {
 		return err
 	}

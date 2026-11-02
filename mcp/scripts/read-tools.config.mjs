@@ -96,3 +96,10 @@ export const STRUCTURAL = [
   // Decimals of a plan and of usage (sent as text), the window an entitlement counts in, an invoice's number and the group key or month of a report: made by the API.
   "included", "limit", "package_size", "unit_price", "up_to", "used", "window_id", "invoice_number", "period", "month", "state",
 ];
+
+/**
+ * Of the STRUCTURAL keys, the ids that an app chooses and so may be made of text: an app may use a customer's address, a name or a sentence as an external id. Such an id
+ * is left alone when it looks like an id, so it can be copied into the next call as it is, and wrapped in <untrusted>...</untrusted> like any text people wrote when it
+ * does not: a space, a longer run than 64 characters or a character other than letters, digits and _ . : @ - (src/untrusted.ts, PLAIN_ID). Each must be a STRUCTURAL key.
+ */
+export const CHECKED_IDS = ["customer_external_id", "external_id"];

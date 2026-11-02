@@ -174,6 +174,8 @@ export function baseTenant(gw: MockGateway, overrides: Record<string, unknown> =
     if (c.method === "GET" && c.path === "/v1/expense-inbox") return { body: { token: "abcdefghijklmnopqrstuvwxyz234567", address: "invoices+abcdefghijklmnopqrstuvwxyz234567@in.example.test" } };
     if (c.method === "GET" && c.path === "/v1/expense-inbox/items") return { body: { items: [] } };
     if (c.method === "GET" && c.path === "/v1/expense-rules") return { body: { rules: [] } };
+    // An invoice's sheet reads the disputes of the invoice; there are none unless a test says otherwise.
+    if (c.method === "GET" && c.path === "/v1/disputes") return { body: { disputes: [] } };
     return undefined;
   });
 }

@@ -130,7 +130,8 @@
       "conflicting_outcomes": "Succès et échec enregistrés",
       "settlement_missing": "Payé, absent du règlement du fournisseur",
       "settlement_mismatch": "Le montant réglé diffère",
-      "fee_mismatch": "Les frais du fournisseur diffèrent"
+      "fee_mismatch": "Les frais du fournisseur diffèrent",
+      "payment_disputed": "Paiement contesté, non tranché"
     },
     "ledgerKind": {
       "charge": "débit",
@@ -225,6 +226,16 @@
       "not_reported": "Payé, non déclaré",
       "pending_payout": "Déclaré, virement en attente",
       "settled": "Réglé"
+    },
+    "disputeReason": {
+      "fraudulent": "Fraude invoquée",
+      "general": "Général",
+      "product_not_received": "Produit non reçu",
+      "product_unacceptable": "Produit non conforme",
+      "subscription_canceled": "Abonnement résilié",
+      "duplicate": "Paiement en double",
+      "unrecognized": "Non reconnu",
+      "credit_not_processed": "Avoir non traité"
     }
   },
   "tenants": {
@@ -1239,16 +1250,18 @@
         "badRate": "Pas un pourcentage : de 0 à 100 avec au plus deux décimales."
       },
       "dunning": {
-        "title": "Nouvelles tentatives de paiement",
+        "title": "Nouvelles tentatives de paiement et rétrofacturations",
         "hint": "Quand un prélèvement est refusé, Payrudder réessaie après chaque délai ci-dessous, puis déclare la facture irrécouvrable. Les délais sont en heures (en minutes dans un compte sandbox).",
         "defaults": "Rien n'est défini : les délais standard sont affichés.",
         "retry": "Tentative {n}",
         "delay": "Heures avant la tentative {n}",
         "add": "Ajouter une tentative",
-        "save": "Enregistrer les tentatives",
-        "saved": "Tentatives enregistrées.",
+        "save": "Enregistrer les réglages",
+        "saved": "Réglages enregistrés.",
         "none": "Aucune nouvelle tentative : un prélèvement refusé est abandonné aussitôt.",
-        "bad": "Chaque délai est un entier de 1 à 720."
+        "bad": "Chaque délai est un entier de 1 à 720.",
+        "blockOnChargeback": "Bloquer le client à l'ouverture d'une rétrofacturation",
+        "blockOnChargebackHint": "Le bloque avec la catégorie rétrofacturation : plus d'achat, et une facture ouverte ne peut plus être payée. Le blocage ne se lève jamais seul ; vous le levez sur le client. Une demande d'information ne bloque pas."
       },
       "promotions": {
         "title": "Promotions",
@@ -6296,5 +6309,43 @@
         "reset_by_operator": "Connexion en deux étapes réinitialisée par le support"
       }
     }
+  },
+  "disputes": {
+    "tab": "Litiges",
+    "tabsLabel": "Paiements et litiges",
+    "tabs": {
+      "payments": "Paiements",
+      "disputes": "Litiges"
+    },
+    "title": "Litiges",
+    "hint": "Dossiers ouverts par le client auprès de sa banque au sujet de ce paiement. Répondez-y chez votre prestataire de paiement ; Payrudder montre où en est chacun.",
+    "empty": "Aucun litige. Un dossier apparaît ici lorsqu'un client conteste un paiement auprès de sa banque.",
+    "outcomeLabel": "Issue",
+    "allOutcomes": "Toutes les issues",
+    "kindLabel": "Type",
+    "allKinds": "Tous les types",
+    "outcome": {
+      "open": "En cours",
+      "won": "Gagné",
+      "lost": "Perdu"
+    },
+    "kind": {
+      "chargeback": "Rétrofacturation",
+      "inquiry": "Demande d'information"
+    },
+    "means": {
+      "openChargeback": "La banque du client a annulé ce paiement : le prestataire a repris l'argent en attendant sa décision. Envoyez vos preuves avant la date ci-dessous.",
+      "openInquiry": "La banque du client s'interroge sur ce paiement. Aucun argent n'a été repris ; répondez à la demande du prestataire pour qu'elle ne devienne pas une rétrofacturation.",
+      "wonChargeback": "Décidé en votre faveur : l'argent vous est revenu.",
+      "wonInquiry": "Clos sans devenir une rétrofacturation : rien n'a été perdu.",
+      "lost": "Le titulaire de la carte a gagné : l'argent reste chez lui."
+    },
+    "provider": "Prestataire",
+    "reason": "Motif",
+    "evidenceDue": "Preuves à fournir avant le",
+    "opened": "Ouvert le",
+    "closed": "Clos le",
+    "reference": "Dossier",
+    "case": "Dossier"
   }
 }

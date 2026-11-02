@@ -2481,6 +2481,27 @@ paths:
               schema: { $ref: "#/components/schemas/ListPaymentsResponse" }
         "400": { $ref: "#/components/responses/Error" }
         "503": { $ref: "#/components/responses/Error" }
+  /v1/disputes:
+    get:
+      operationId: listDisputes
+      summary: The cases customers opened with their banks about a payment, newest first
+      description: >
+        A dispute (a chargeback, or an inquiry that may become one) is kept as the provider last reported it: `outcome` is `open` while it is undecided (for a chargeback the provider
+        has taken the money back until it decides), `won` when it ended in your favour or never became a chargeback, `lost` when the cardholder won. Each step is also sent as the
+        `payment.disputed` webhook event. A dispute of a payment Payrudder did not make has no `invoice_id`. Stripe's and Paddle's own words are in `provider_status`; UNVERIFIED
+        against a live account. `503` when the payment service does not answer.
+      parameters:
+        - { name: invoice_id, in: query, schema: { type: string, format: uuid }, description: Only the disputes of this invoice }
+        - { name: outcome, in: query, schema: { type: string, enum: [open, won, lost] } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListDisputesResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "503": { $ref: "#/components/responses/Error" }
   /v1/assets/uploads:
     post:
       operationId: createUploadSession
@@ -7826,6 +7847,29 @@ components:
       properties:
         payments: { type: array, items: { $ref: "#/components/schemas/Payment" } }
         truncated: { type: boolean }
+    Dispute:
+      type: object
+      required: [id, provider, dispute_id, payment_ref, amount_minor, currency, outcome, formal, provider_status, opened_time]
+      properties:
+        id: { type: string, description: "Payrudder's id of the case" }
+        provider: { type: string, examples: [stripe] }
+        dispute_id: { type: string, description: "The provider's reference of the case (Stripe's du_..., Paddle's cb_ or cbw_ and the transaction)" }
+        payment_ref: { type: string, description: "The payment that is disputed, as the provider calls it (a Stripe PaymentIntent id, a Paddle transaction id)" }
+        invoice_id: { type: string, format: uuid, description: "The invoice of that payment; absent for a payment Payrudder did not make" }
+        amount_minor: { type: string, format: int64, description: The disputed amount }
+        currency: { type: string }
+        outcome: { type: string, enum: [open, won, lost] }
+        formal: { type: boolean, description: "A chargeback proper, which takes the money back; false is an inquiry or a warning ahead of one" }
+        provider_status: { type: string, description: "The provider's own word (Stripe's needs_response, under_review, won, lost, warning_closed ...)" }
+        reason: { type: string, description: "The cardholder's reason in the provider's words (Stripe's fraudulent, product_not_received ...); absent when the provider does not say" }
+        evidence_due_time: { type: string, format: date-time, description: When your evidence is due; absent when the provider does not say }
+        opened_time: { type: string, format: date-time }
+        closed_time: { type: string, format: date-time, description: Absent while the case is open }
+    ListDisputesResponse:
+      type: object
+      required: [disputes]
+      properties:
+        disputes: { type: array, items: { $ref: "#/components/schemas/Dispute" } }
     CreateUploadSessionRequest:
       type: object
       required: [files]
@@ -8783,7 +8827,7 @@ components:
         discrepancy_counts:
           type: object
           additionalProperties: { type: integer }
-          description: By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, and with settlement lines settlement_missing, settlement_mismatch, fee_mismatch
+          description: By kind - paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, payment_disputed (a dispute of a payment is undecided), and with settlement lines settlement_missing, settlement_mismatch, fee_mismatch
         discrepancies:
           type: array
           items: { $ref: "#/components/schemas/ReconcilePaymentsDiscrepancy" }
@@ -8830,7 +8874,7 @@ components:
         period: { type: string }
         kind:
           type: string
-          description: paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, settlement_missing, settlement_mismatch or fee_mismatch
+          description: paid_without_charge, amount_mismatch, duplicate_charge, charge_without_paid, conflicting_outcomes, payment_disputed, settlement_missing, settlement_mismatch or fee_mismatch
         invoice_id: { type: string }
         number: { type: string }
         provider: { type: string }
@@ -9628,6 +9672,34 @@ components:
         pack_id: { type: string, format: uuid, description: "only when the link has a pack" }
         pack_name: { type: string, description: "only together with pack_id; may be empty" }
         expires_at: { type: string, format: date-time, description: "only when the lot expires" }
+    PaymentDisputedEventData:
+      type: object
+      description: "The data of an event of type payment.disputed: a customer questioned a payment with their bank, or the case moved on or ended (one event per step; outcome says where it stands)"
+      required: [invoice_id, invoice_number, customer_external_id, provider, dispute_id, payment_ref, amount_minor, currency, outcome, formal, reason, provider_status]
+      properties:
+        invoice_id: { type: string, format: uuid }
+        invoice_number: { type: string }
+        customer_external_id: { type: string, description: "may be empty" }
+        provider: { type: string }
+        dispute_id: { type: string, description: "The provider's reference of the case; the same in every event about it" }
+        payment_ref: { type: string }
+        amount_minor: { type: string, format: int64, description: "string" }
+        currency: { type: string }
+        outcome: { type: string, enum: [open, won, lost] }
+        formal: { type: boolean, description: "A chargeback proper (money taken back); false is an inquiry or a warning" }
+        reason: { type: string, description: "may be empty" }
+        provider_status: { type: string, description: "The provider's own word for the state of the case" }
+        evidence_due_time: { type: string, format: date-time, description: "Only when the provider gives a date" }
+    PaymentDisputedEvent:
+      type: object
+      description: "The body of a delivery of type payment.disputed"
+      required: [id, type, created, tenant_id, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [payment.disputed] }
+        created: { type: string, format: date-time }
+        tenant_id: { type: string, format: uuid }
+        data: { $ref: "#/components/schemas/PaymentDisputedEventData" }
     CreditsPurchasedEvent:
       type: object
       description: "The body of a delivery of type credits.purchased"
@@ -10549,6 +10621,7 @@ components:
           items: { type: integer, minimum: 1, maximum: 720 }
         defaults_in_use: { type: boolean, readOnly: true, description: "True when nothing was set and the service-wide delays apply" }
         update_time: { type: string, format: date-time, readOnly: true, nullable: true }
+        block_on_chargeback: { type: boolean, description: "A formal dispute (a chargeback) of a customer's payment blocks the customer, category chargeback. Off unless you turn it on; it blocks only when the dispute opens and never lifts the block by itself." }
     DunningSettingsInput:
       type: object
       properties:
@@ -10556,6 +10629,7 @@ components:
           type: array
           maxItems: 6
           items: { type: integer, minimum: 1, maximum: 720 }
+        block_on_chargeback: { type: boolean, description: "Absent: kept as it is. retry_hours is replaced as before (absent is none)." }
     CreditPackInput:
       type: object
       required: [name, credits, price_minor, currency]
@@ -10840,6 +10914,7 @@ components:
         - payment_link.created
         - payment_link.paid
         - payment_link.expired
+        - payment.disputed
         - credits.purchased
         - credits.low
         - customer.blocked
@@ -10980,6 +11055,7 @@ components:
         - { $ref: "#/components/schemas/PaymentLinkCreatedEvent" }
         - { $ref: "#/components/schemas/PaymentLinkPaidEvent" }
         - { $ref: "#/components/schemas/PaymentLinkExpiredEvent" }
+        - { $ref: "#/components/schemas/PaymentDisputedEvent" }
         - { $ref: "#/components/schemas/CreditsPurchasedEvent" }
         - { $ref: "#/components/schemas/CreditsLowEvent" }
         - { $ref: "#/components/schemas/CustomerBlockedEvent" }
@@ -11013,6 +11089,7 @@ components:
           payment_link.created: "#/components/schemas/PaymentLinkCreatedEvent"
           payment_link.paid: "#/components/schemas/PaymentLinkPaidEvent"
           payment_link.expired: "#/components/schemas/PaymentLinkExpiredEvent"
+          payment.disputed: "#/components/schemas/PaymentDisputedEvent"
           credits.purchased: "#/components/schemas/CreditsPurchasedEvent"
           credits.low: "#/components/schemas/CreditsLowEvent"
           customer.blocked: "#/components/schemas/CustomerBlockedEvent"

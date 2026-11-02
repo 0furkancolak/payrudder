@@ -40,7 +40,7 @@ The page named **Tax and retries** holds two settings.
 
 **Tax**: **Payrudder adds these rates on top of the price to the invoices it raises, by the customer's country (the rate without a country covers all others). You set the rates and are responsible for them; an invoice a provider issues is taxed by the provider.** Add a rate per country (and **Every other country**) with a name and a percentage, then **Save rates**. Payrudder is not a tax engine: see [Tax and e-invoices](tax-and-einvoices.html). The same is `PUT /v1/tax-rates`.
 
-**Payment retries**: **When a charge is declined, Payrudder tries again after each delay below, then gives the invoice up as uncollectible. Delays are in hours (minutes in a sandbox account).** Up to six retries, each a whole number of hours from 1 to 720. With none set, the standard delays are shown. The same is `/v1/dunning-settings`.
+**Payment retries and chargebacks**: **When a charge is declined, Payrudder tries again after each delay below, then gives the invoice up as uncollectible. Delays are in hours (minutes in a sandbox account).** Up to six retries, each a whole number of hours from 1 to 720. With none set, the standard delays are shown. Switch on **Block the customer when a chargeback opens** to block a customer, with the category chargeback, as soon as their bank opens a dispute (no new purchases, open invoices can no longer be paid); it never lifts by itself, you lift it on the customer, and an inquiry does not block. Then **Save settings**. The same is `/v1/dunning-settings`.
 
 ## Coupons and promotion codes
 

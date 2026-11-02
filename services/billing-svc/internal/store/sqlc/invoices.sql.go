@@ -152,6 +152,37 @@ func (q *Queries) GetInvoice(ctx context.Context, id uuid.UUID) (GetInvoiceRow, 
 	return i, err
 }
 
+const getInvoiceBrief = `-- name: GetInvoiceBrief :one
+SELECT COALESCE(number, '')::text AS number, COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id, status, total_minor, currency
+FROM invoices WHERE tenant_id = $1 AND id = $2
+`
+
+type GetInvoiceBriefParams struct {
+	TenantID uuid.UUID
+	ID       uuid.UUID
+}
+
+type GetInvoiceBriefRow struct {
+	Number             string
+	CustomerExternalID string
+	Status             string
+	TotalMinor         int64
+	Currency           string
+}
+
+func (q *Queries) GetInvoiceBrief(ctx context.Context, arg GetInvoiceBriefParams) (GetInvoiceBriefRow, error) {
+	row := q.db.QueryRow(ctx, getInvoiceBrief, arg.TenantID, arg.ID)
+	var i GetInvoiceBriefRow
+	err := row.Scan(
+		&i.Number,
+		&i.CustomerExternalID,
+		&i.Status,
+		&i.TotalMinor,
+		&i.Currency,
+	)
+	return i, err
+}
+
 const getInvoiceCustomerExternalID = `-- name: GetInvoiceCustomerExternalID :one
 SELECT COALESCE(snapshot->>'customer_external_id', '')::text AS customer_external_id FROM invoices WHERE tenant_id = $1 AND id = $2
 `
