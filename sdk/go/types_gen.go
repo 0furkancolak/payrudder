@@ -628,9 +628,14 @@ type ContractWithdrawal struct {
 	// The credit note billing made to refund the invoice, once one was requested (GET /v1/credit-notes/{id} says
 	// how the refund went).
 	CreditNoteID string `json:"credit_note_id"`
-	// none: nothing asked of billing; requesting: being asked; requested: a credit note exists; outside: the money
-	// cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: ask again with POST
-	// /v1/contract-withdrawals/{id}/refund. One of: none, requesting, requested, outside, failed.
+	// none: nothing asked of billing; requesting: being asked; requested: a credit note exists and the provider has
+	// not answered; refunded: the provider returned the money; refund_failed: the credit note exists and the
+	// provider did not return the money, retry the credit note's refund (a second credit note would credit the
+	// invoice twice), refund_note says why; outside: the money cannot go back through Payrudder (a bank transfer,
+	// cash), refund it by hand; failed: billing refused or did not answer, ask again with POST
+	// /v1/contract-withdrawals/{id}/refund. refunded and refund_failed are copied from the credit note's own result
+	// (credit_note.refunded, credit_note.refund_failed). The withdrawal's status stays the seller's to set. One of:
+	// none, requesting, requested, refunded, refund_failed, outside, failed.
 	RefundState string     `json:"refund_state"`
 	RefundNote  string     `json:"refund_note"`
 	RefundTime  *time.Time `json:"refund_time"`
@@ -861,6 +866,12 @@ type CreatePaymentLinkRequest struct {
 	// discount). Checked against the link's own amount now (a coupon.* error if it does not work); claimed when the
 	// payer continues. An invoice that exists is not changed, so a kind invoice link takes none
 	PromotionCode string `json:"promotion_code,omitempty"`
+	// Optional: the agreements the payer must accept on this link's page. The list replaces the seller's
+	// tenant-wide required_kinds for this link (it does not add to it); empty or absent: the setting applies. The
+	// texts must be published before the link is used, or the page offers no way to pay. An ad-hoc link hands its
+	// list to the invoice link the payer continues on. 400 billing.payment_link.bad_required_contracts for an
+	// unknown kind or one named twice
+	RequiredContracts []string `json:"required_contracts,omitempty"`
 	// Default 30 for adhoc, 90 for invoice
 	ExpiresInDays  *int   `json:"expires_in_days,omitempty"`
 	IdempotencyKey string `json:"idempotency_key,omitempty"`
@@ -970,6 +981,9 @@ type CreatedPaymentLink struct {
 	// The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the
 	// payer types another
 	PromotionCode string `json:"promotion_code"`
+	// The agreements the payer accepts on this link's page instead of the seller's tenant-wide setting (GET
+	// /v1/contracts/settings); empty: the setting applies
+	RequiredContracts []string `json:"required_contracts"`
 	// kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)
 	InvoiceID          string `json:"invoice_id"`
 	CustomerExternalID string `json:"customer_external_id"`
@@ -1859,6 +1873,8 @@ type ListAuditEventsResponse struct {
 // ListContractAcceptancesResponse is the response of ListContractAcceptances.
 type ListContractAcceptancesResponse struct {
 	Acceptances []ContractAcceptance `json:"acceptances"`
+	// Pass it as page_token for the next page; empty on the last page
+	NextPageToken string `json:"next_page_token"`
 }
 
 // ListContractVersionsResponse is the response of ListContractVersions.
@@ -2066,6 +2082,9 @@ type PaymentLink struct {
 	// The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the
 	// payer types another
 	PromotionCode string `json:"promotion_code"`
+	// The agreements the payer accepts on this link's page instead of the seller's tenant-wide setting (GET
+	// /v1/contracts/settings); empty: the setting applies
+	RequiredContracts []string `json:"required_contracts"`
 	// kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)
 	InvoiceID          string `json:"invoice_id"`
 	CustomerExternalID string `json:"customer_external_id"`
@@ -3513,6 +3532,50 @@ func (p *ListCustomersParams) values() url.Values {
 	v := url.Values{}
 	if p == nil {
 		return v
+	}
+	if p.PageSize != nil {
+		v.Set("page_size", strconv.Itoa(*p.PageSize))
+	}
+	if p.PageToken != "" {
+		v.Set("page_token", p.PageToken)
+	}
+	return v
+}
+
+// ListContractAcceptancesParams are the query parameters of ListContractAcceptances.
+type ListContractAcceptancesParams struct {
+	// One of: distance_sales, pre_info, tos, privacy.
+	Kind string
+	// One of: api, hosted.
+	Source    string
+	VersionID string
+	// Accepted at or after this time
+	From *time.Time
+	// Accepted before this time
+	To        *time.Time
+	PageSize  *int
+	PageToken string
+}
+
+func (p *ListContractAcceptancesParams) values() url.Values {
+	v := url.Values{}
+	if p == nil {
+		return v
+	}
+	if p.Kind != "" {
+		v.Set("kind", p.Kind)
+	}
+	if p.Source != "" {
+		v.Set("source", p.Source)
+	}
+	if p.VersionID != "" {
+		v.Set("version_id", p.VersionID)
+	}
+	if p.From != nil {
+		v.Set("from", p.From.UTC().Format(time.RFC3339Nano))
+	}
+	if p.To != nil {
+		v.Set("to", p.To.UTC().Format(time.RFC3339Nano))
 	}
 	if p.PageSize != nil {
 		v.Set("page_size", strconv.Itoa(*p.PageSize))

@@ -1,31 +1,36 @@
 <script setup lang="ts">
 import { Link } from "@tanstack/vue-router";
-import { Eraser, FilePlus } from "@lucide/vue";
+import { Eraser, FilePlus, Loader2 } from "@lucide/vue";
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useFormat } from "@/shared/lib/format";
 import { tenantBase } from "@/shared/lib/session";
 import { Button } from "@/shared/ui/button";
+import { DateRangePicker } from "@/shared/ui/date-range";
 import { ErrorState } from "@/shared/ui/error-state";
+import { NativeSelect } from "@/shared/ui/native-select";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { StatusPill } from "@/shared/ui/status-pill";
 import { useContractAcceptances, useContractWithdrawals } from "./api";
-import { LANGUAGE_NAMES, evidenceValue, groupAcceptances, witnessOf, type AcceptanceGroup, type ContractAcceptance, type WithdrawalStatus } from "./lib";
+import { KINDS, LANGUAGE_NAMES, emptyAcceptanceFilter, evidenceValue, groupAcceptances, isAcceptanceFiltered, witnessOf, type AcceptanceGroup, type ContractAcceptance, type WithdrawalStatus } from "./lib";
 import RecordWithdrawalSheet from "./RecordWithdrawalSheet.vue";
 import SnapshotDialog from "./SnapshotDialog.vue";
 
 /**
  * What a customer agreed to, for their sheet: every moment they accepted agreements (the versions together, in the language they were shown, where it
  * happened), what Payrudder saw itself and what the seller reported, the two separate consents when the service starts at once, the address and browser
- * (blank once the retention ran out), and the page they accepted, opened in a sandboxed frame. Below it, their withdrawal requests, and a way to record one.
+ * (blank once the retention ran out), and the page they accepted, opened in a sandboxed frame. The log is read a page at a time ("Show more") and can be narrowed by
+ * kind, by where it was accepted (the hosted page or the seller's own server) and by day. Below it, their withdrawal requests, and a way to record one.
  * `readonly` (the sheet opened over another one) shows all of it and offers no form.
  */
 const props = defineProps<{ tenantId: string; externalId: string; readonly?: boolean }>();
 const { t } = useI18n();
 const fmt = useFormat();
-const acceptances = useContractAcceptances(() => props.tenantId, () => props.externalId);
+const filter = ref(emptyAcceptanceFilter());
+const filtered = computed(() => isAcceptanceFiltered(filter.value));
+const acceptances = useContractAcceptances(() => props.tenantId, () => props.externalId, filter);
 const withdrawals = useContractWithdrawals(() => props.tenantId, () => props.externalId);
-const groups = computed(() => groupAcceptances(acceptances.data.value));
+const groups = computed(() => groupAcceptances(acceptances.data.value?.pages.flatMap((p) => p.acceptances ?? [])));
 const viewing = ref("");
 const recording = ref(false);
 const TONES = { received: "warning", accepted: "info", rejected: "neutral", refunded: "success" } as const satisfies Record<WithdrawalStatus, string>;
@@ -44,9 +49,22 @@ const first = (g: AcceptanceGroup): ContractAcceptance => g.anchor;
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h3 class="m-0 text-sm font-semibold">{{ t("contracts.customer.log") }}</h3>
       </div>
+      <div class="flex flex-wrap items-center gap-2" role="group" :aria-label="t('contracts.customer.filters.label')">
+        <NativeSelect v-model="filter.kind" :aria-label="t('contracts.customer.filters.kind')" class="min-w-0" data-testid="acceptance-filter-kind">
+          <option value="">{{ t("contracts.customer.filters.allKinds") }}</option>
+          <option v-for="k in KINDS" :key="k" :value="k">{{ t(`contracts.kinds.${k}`) }}</option>
+        </NativeSelect>
+        <NativeSelect v-model="filter.source" :aria-label="t('contracts.customer.filters.source')" class="min-w-0" data-testid="acceptance-filter-source">
+          <option value="">{{ t("contracts.customer.filters.allSources") }}</option>
+          <option value="hosted">{{ t("contracts.customer.sourceHosted") }}</option>
+          <option value="api">{{ t("contracts.customer.sourceApi") }}</option>
+        </NativeSelect>
+        <DateRangePicker v-model="filter.range" />
+        <Button v-if="filtered" type="button" size="sm" variant="ghost" data-testid="acceptance-filter-clear" @click="filter = emptyAcceptanceFilter()">{{ t("common.clearFilters") }}</Button>
+      </div>
       <ErrorState :error="acceptances.error.value" :retrying="acceptances.isFetching.value" compact @retry="acceptances.refetch()" />
       <Skeleton v-if="acceptances.isPending.value" class="h-24 rounded-2xl" />
-      <p v-else-if="groups.length === 0 && !acceptances.error.value" class="text-muted-foreground m-0 text-sm" data-testid="acceptances-empty">{{ t("contracts.customer.none") }}</p>
+      <p v-else-if="groups.length === 0 && !acceptances.error.value" class="text-muted-foreground m-0 text-sm" data-testid="acceptances-empty">{{ t(filtered ? "common.noMatches" : "contracts.customer.none") }}</p>
       <ol v-else class="m-0 flex list-none flex-col gap-3 p-0">
         <li v-for="g in groups" :key="g.id" class="border-border/70 flex flex-col gap-3 rounded-2xl border p-4" data-testid="acceptance-group" :data-group="g.id">
           <div class="flex flex-wrap items-start justify-between gap-2">
@@ -86,6 +104,11 @@ const first = (g: AcceptanceGroup): ContractAcceptance => g.anchor;
           </dl>
         </li>
       </ol>
+      <div v-if="acceptances.hasNextPage.value" class="flex justify-center">
+        <Button type="button" variant="outline" size="sm" :disabled="acceptances.isFetchingNextPage.value" data-testid="acceptance-more" @click="acceptances.fetchNextPage()">
+          <Loader2 v-if="acceptances.isFetchingNextPage.value" class="animate-spin" aria-hidden="true" />{{ t("contracts.customer.showMore") }}
+        </Button>
+      </div>
     </section>
 
     <section class="flex flex-col gap-3" :aria-label="t('contracts.customer.withdrawals')">

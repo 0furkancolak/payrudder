@@ -130,6 +130,7 @@ const detailRows = computed(() => {
     { key: "description", label: t("billing.paymentLinks.description"), value: l.description },
     { key: "promotion", label: t("billing.paymentLinks.promotionCode"), value: l.promotion_code, mono: true },
     { key: "customer", label: t("billing.paymentLinks.customer"), value: l.customer_external_id },
+    { key: "agreements", label: t("billing.paymentLinks.agreements"), value: (l.required_contracts ?? []).map((k) => t(`contracts.kinds.${k}`)).join(", ") || t("billing.paymentLinks.agreementsSetting") },
     { key: "uses", label: t("billing.paymentLinks.uses"), value: usesOf(l) },
     { key: "expires", label: t("billing.paymentLinks.expires"), value: when(l.expire_time) },
     { key: "created", label: t("billing.paymentLinks.createdAt"), value: when(l.create_time) },

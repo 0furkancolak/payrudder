@@ -1,6 +1,6 @@
 # 14 — Tenant management: freeze, ban
 
-**Status (2026-11-02): built, with the defaults below (not agreed), including a mail to the account owners on every change. Open: the first charge of an invoice finalized before the hold (documented in [13](13-customer-ban.md#the-first-charge-of-an-invoice-finalized-before-a-hold-plan-14-not-built)), appeals, retention before deletion, an account or person ban, operator roles, scheduled suspension.**
+**Status (2026-11-02): built, with the defaults below (not agreed), including a mail to the account owners on every change, a banner for the owners in the console and filters on the operator's history. Open: the first charge of an invoice finalized before the hold (documented in [13](13-customer-ban.md#the-first-charge-of-an-invoice-finalized-before-a-hold-plan-14-not-built)), appeals, retention before deletion, an account or person ban, operator roles, scheduled suspension.**
 
 ## The request
 List 2 (10): tenant management with **ban, freeze** and similar operations.
@@ -87,3 +87,11 @@ Defaults the implementer chose (**default, not agreed**):
 
 - **Retention before deletion and an account or person ban** are not simple: a ban of an account or a person needs a status on `accounts` or `users`, a check in sign-in and in every session and key path (the gateway today reads the *tenant's* status), a rule for what happens to the account's other apps, and a retention period and a deletion job, none of which has an owner's decision. Documented, not started.
 - **Not verified here:** the mail in a real mailbox or relay (the tests record what is sent; the texts were not read by a native speaker of each language), and the order of rollout (an older plans-svc simply sends no mail).
+
+## Leftovers built (2026-11-02, branch `feat/product-leftovers-2-p14`)
+
+Defaults the implementer chose (**default, not agreed**):
+
+1. **An owner-visible banner.** Every page of an app in the console (not the organisation's own pages) shows, to every member of the account (owner, administrator and viewer: it is a fact about their app, not a permission), one line per app whose **live** environment is suspended, frozen or banned: what stops, that the data is kept (not for a ban: "only an operator can lift a ban"), and a link to the help page, which is also the appeal. It is shown on the sandbox page of such an app too. **The reason and the category are never shown** (default: none, as in the mail). Six languages (`tenant.hold.*`). The banner reads the status the app list already carries; no API change. The go-live card used to treat a frozen or banned environment as "not active yet, finish these steps" (only suspended said it was held); it now says "On hold" for the three (`product.goLive.suspended`, `stateSuspended` reworded in six languages). Tests: `hold.test.ts` (which statuses count, the scope, the live tenant only, no prototype lookup), mock e2e `tenant-hold.spec.ts` (each of the three, the sandbox page, an active app has none). Looked at in a real Chrome at 375 and 1280 px (English only; Arabic right-to-left not looked at).
+2. **Filters on the operator's status history** (the operator's tenant page): where the tenant went, the category and the kind (a change, or a ban waiting for the second operator), several values each, applied on their button like every filter of the console, with a count and a line for "nothing matches". They narrow the latest 100 changes in the browser: the API takes no filter (a tenant has few status changes; paging and server filters are added when one has hundreds). Test: mock e2e `tenant-status.spec.ts`.
+3. **Not built, unchanged:** appeals as a form (the help page is the appeal), retention before deletion, account or person bans, operator roles, scheduled suspension, per-environment status.

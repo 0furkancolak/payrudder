@@ -316,9 +316,21 @@ paths:
     get:
       operationId: listContractAcceptances
       summary: What the customer accepted, newest first
-      parameters: [{ $ref: "#/components/parameters/ExternalID" }]
+      description: >
+        The customer's acceptance log, a page at a time (`page_size`, default 100, at most 200; the next page is `next_page_token`, empty on the last). The filters narrow it and combine:
+        `kind`, `source` (api, hosted), `version_id` (one version of a text) and the time the customer accepted, `from` (inclusive) to `to` (exclusive), as RFC 3339 times.
+      parameters:
+        - { $ref: "#/components/parameters/ExternalID" }
+        - { name: kind, in: query, schema: { type: string, enum: [distance_sales, pre_info, tos, privacy] } }
+        - { name: source, in: query, schema: { type: string, enum: [api, hosted] } }
+        - { name: version_id, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: string, format: date-time }, description: "Accepted at or after this time" }
+        - { name: to, in: query, schema: { type: string, format: date-time }, description: "Accepted before this time" }
+        - { name: page_size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 100 } }
+        - { name: page_token, in: query, schema: { type: string } }
       responses:
         "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/ListContractAcceptancesResponse" } } } }
+        "400": { $ref: "#/components/responses/Error" }
         "404": { $ref: "#/components/responses/Error" }
     post:
       operationId: recordContractAcceptance
@@ -10398,7 +10410,7 @@ components:
         - contract.withdrawal_decided
     PaymentLink:
       type: object
-      required: [id, kind, status, pack_id, quantity, credits, promotion_code, invoice_id, customer_external_id, single_use, amount_minor, currency, description, create_time, expire_time, revoke_time, paid_count, last_paid_time, use_count, idempotency_key]
+      required: [id, kind, status, pack_id, quantity, credits, promotion_code, required_contracts, invoice_id, customer_external_id, single_use, amount_minor, currency, description, create_time, expire_time, revoke_time, paid_count, last_paid_time, use_count, idempotency_key]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, enum: [invoice, adhoc, credit_pack] }
@@ -10407,6 +10419,7 @@ components:
         quantity: { type: integer, description: "kind credit_pack: how many packs one use buys" }
         credits: { type: string, description: "kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string", format: int64 }
         promotion_code: { type: string, description: "The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another" }
+        required_contracts: { type: array, items: { type: string, enum: [distance_sales, pre_info, tos, privacy] }, description: "The agreements the payer accepts on this link's page instead of the seller's tenant-wide setting (GET /v1/contracts/settings); empty: the setting applies" }
         invoice_id: { type: string, description: "kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)" }
         customer_external_id: { type: string }
         single_use: { type: boolean }
@@ -10433,11 +10446,12 @@ components:
         customer_external_id: { type: string, description: "adhoc: make the invoice out to this customer. credit_pack: required, the customer who receives the credits" }
         single_use: { type: boolean, description: "Default true for adhoc, false for invoice" }
         promotion_code: { type: string, description: "adhoc and credit_pack, optional: a promotion code the payer gets without typing it (a one-off invoice with a discount). Checked against the link's own amount now (a coupon.* error if it does not work); claimed when the payer continues. An invoice that exists is not changed, so a kind invoice link takes none" }
+        required_contracts: { type: array, uniqueItems: true, items: { type: string, enum: [distance_sales, pre_info, tos, privacy] }, description: "Optional: the agreements the payer must accept on this link's page. The list replaces the seller's tenant-wide required_kinds for this link (it does not add to it); empty or absent: the setting applies. The texts must be published before the link is used, or the page offers no way to pay. An ad-hoc link hands its list to the invoice link the payer continues on. 400 billing.payment_link.bad_required_contracts for an unknown kind or one named twice" }
         expires_in_days: { type: integer, minimum: 1, maximum: 365, description: "Default 30 for adhoc, 90 for invoice" }
         idempotency_key: { type: string, maxLength: 200 }
     CreatedPaymentLink:
       type: object
-      required: [id, kind, status, pack_id, quantity, credits, promotion_code, invoice_id, customer_external_id, single_use, amount_minor, currency, description, create_time, expire_time, revoke_time, paid_count, last_paid_time, use_count, idempotency_key, token, url, replayed]
+      required: [id, kind, status, pack_id, quantity, credits, promotion_code, required_contracts, invoice_id, customer_external_id, single_use, amount_minor, currency, description, create_time, expire_time, revoke_time, paid_count, last_paid_time, use_count, idempotency_key, token, url, replayed]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, enum: [invoice, adhoc, credit_pack] }
@@ -10446,6 +10460,7 @@ components:
         quantity: { type: integer, description: "kind credit_pack: how many packs one use buys" }
         credits: { type: string, description: "kind credit_pack: the credits one paid use grants (the pack's credits times the quantity, frozen when the link was made); int64 as a string", format: int64 }
         promotion_code: { type: string, description: "The code the seller chose for the link (adhoc and credit_pack): applied when the payer continues, unless the payer types another" }
+        required_contracts: { type: array, items: { type: string, enum: [distance_sales, pre_info, tos, privacy] }, description: "The agreements the payer accepts on this link's page instead of the seller's tenant-wide setting (GET /v1/contracts/settings); empty: the setting applies" }
         invoice_id: { type: string, description: "kind invoice: the invoice; empty for an ad-hoc link (its invoices are made on use)" }
         customer_external_id: { type: string }
         single_use: { type: boolean }
@@ -11103,9 +11118,10 @@ components:
         acceptances: { type: array, items: { $ref: "#/components/schemas/ContractAcceptance" } }
     ListContractAcceptancesResponse:
       type: object
-      required: [acceptances]
+      required: [acceptances, next_page_token]
       properties:
         acceptances: { type: array, items: { $ref: "#/components/schemas/ContractAcceptance" } }
+        next_page_token: { type: string, description: "Pass it as page_token for the next page; empty on the last page" }
     GetContractSnapshotResponse:
       type: object
       required: [html, sha256, group_id]
@@ -11130,7 +11146,7 @@ components:
         decided_by: { type: string }
         decision_note: { type: string }
         credit_note_id: { type: string, description: "The credit note billing made to refund the invoice, once one was requested (GET /v1/credit-notes/{id} says how the refund went)." }
-        refund_state: { type: string, enum: [none, requesting, requested, outside, failed], description: "none: nothing asked of billing; requesting: being asked; requested: a credit note exists; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: ask again with POST /v1/contract-withdrawals/{id}/refund." }
+        refund_state: { type: string, enum: [none, requesting, requested, refunded, refund_failed, outside, failed], description: "none: nothing asked of billing; requesting: being asked; requested: a credit note exists and the provider has not answered; refunded: the provider returned the money; refund_failed: the credit note exists and the provider did not return the money, retry the credit note's refund (a second credit note would credit the invoice twice), refund_note says why; outside: the money cannot go back through Payrudder (a bank transfer, cash), refund it by hand; failed: billing refused or did not answer, ask again with POST /v1/contract-withdrawals/{id}/refund. refunded and refund_failed are copied from the credit note's own result (credit_note.refunded, credit_note.refund_failed). The withdrawal's status stays the seller's to set." }
         refund_note: { type: string }
         refund_time: { type: string, format: date-time, nullable: true }
     CreateContractWithdrawalRequest:

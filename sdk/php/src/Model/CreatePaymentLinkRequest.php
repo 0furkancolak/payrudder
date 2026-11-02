@@ -8,6 +8,7 @@ namespace Payrudder\Model;
 
 use Payrudder\Contract\RequestBody;
 use Payrudder\Enum\CreatePaymentLinkRequestKind;
+use Payrudder\Enum\CreatePaymentLinkRequestRequiredContractsItem;
 use Payrudder\Internal\Cast;
 
 /**
@@ -26,6 +27,7 @@ final class CreatePaymentLinkRequest implements RequestBody
      * @param string|null $customerExternalId
      * @param bool|null $singleUse
      * @param string|null $promotionCode
+     * @param list<CreatePaymentLinkRequestRequiredContractsItem|string>|null $requiredContracts
      * @param int|null $expiresInDays
      * @param string|null $idempotencyKey
      */
@@ -40,6 +42,7 @@ final class CreatePaymentLinkRequest implements RequestBody
         public readonly ?string $customerExternalId = null,
         public readonly ?bool $singleUse = null,
         public readonly ?string $promotionCode = null,
+        public readonly ?array $requiredContracts = null,
         public readonly ?int $expiresInDays = null,
         public readonly ?string $idempotencyKey = null,
     ) {}
@@ -60,6 +63,7 @@ final class CreatePaymentLinkRequest implements RequestBody
             'customer_external_id' => $this->customerExternalId,
             'single_use' => $this->singleUse,
             'promotion_code' => $this->promotionCode,
+            'required_contracts' => Cast::wire($this->requiredContracts),
             'expires_in_days' => $this->expiresInDays,
             'idempotency_key' => $this->idempotencyKey,
         ]);

@@ -1,6 +1,6 @@
 # 13 — Customer block and ban
 
-**Status (2026-11-02): built, with the defaults below (not agreed), including "suspend service" (entitlement checks deny). Open: a block that ends by itself sending an event, notices to the customer, a blocklist and a platform-wide list; ingestion is deliberately not refused.**
+**Status (2026-11-02): built, with the defaults below (not agreed), including "suspend service" (entitlement checks deny) and a sweep that clears a block that ran out and sends `customer.unblocked`. Open: notices to the customer, a blocklist and a platform-wide list; ingestion is deliberately not refused.**
 
 ## The request
 List 2 (11): customers can be **banned** and similar.
@@ -78,14 +78,14 @@ Every path that starts a payment or grants access, the gate it asks, and the tes
 | 10 | The scheduler raising invoices | tenant only | runs on | skipped | `rating/inputs.Billable` | `TestBillableFollowsTheTenantStatus` |
 | 11 | Usage ingestion | none | **allowed** (default, not agreed: the events are facts the seller is owed for; see "Suspend service" below) | the API key is refused or read-only (plan 14) | gateway | gateway auth tests |
 | 11b | Entitlement checks (`CheckEntitlement`, `GetLimitStatus`) | none | **allowed**, or **not allowed on every meter** when the block was made with `suspend_service` | the API key is refused or read-only (plan 14) | limits-svc `status/query` | `TestSuspension`, limits `SuspensionComesFromTheTopic`, `ASuspendedCustomerIsAllowedNothing` |
-| 12 | The seller's own calls for a customer (grant credits, record a payment, create a coupon redemption by hand) | none | allowed: the seller blocked the customer and can still act for them | gateway read-only | – | – |
+| 12 | The seller's own calls for a customer (grant credits, record a payment, create a coupon redemption by hand) | none | allowed: the seller blocked the customer and can still act for them | gateway read-only | – | billing `TheGateRefusesPayments` (grant credits to a customer blocked for fraud), `OfflinePaymentsSettleAnInvoice` (the customer is blocked for fraud while a payment is recorded), plans-svc `CustomerBlockSweep` (a coupon applied by hand to a customer blocked for fraud with the service suspended) |
 
 Not in the table because it is not a path: the `pkg/paymentgate` table test (`TestCheck`) holds every cell of the first two columns.
 
 ### Not built, and what it needs
 
 - **Refusing usage ingestion for a suspended customer**: not built, on purpose (see below).
-- **A sweep for blocks that ended**: it would clear the row and send `customer.unblocked`. Skipped because nothing depends on it (every check reads the end) and the job needs the cells-aware shape of `trialnotices`.
+- ~~**A sweep for blocks that ended**~~: built, see "Leftovers" below.
 - **Not verified here:** fraud efficacy; the portal and hosted pages in a browser (the Go tests call the handlers and the gateway; no provider checkout was started).
 
 ## Done (2026-11-02, branch `feat/suspend-alerts-health-ui`): suspend service
@@ -103,3 +103,13 @@ Defaults the implementer chose (**default, not agreed**):
 ### The first charge of an invoice finalized before a hold (plan 14), not built
 
 `PdfRendered --Continue--> PaymentRequested` (effect `charge`) cannot hold today without a new place to wait. Holding it in the table needs a state or a guard (`PAYMENT_HELD` with a retry date, or the existing `PAYMENT_DECLINED` + dunning, which would count the held charge as a dunning attempt and show a decline that never happened), the engine asking `Hold` when it fires the charge, the retry sweep to learn the state, the diagram in `billing-svc.md` and the exhaustive table tests, the console's state labels, and a decision about an invoice held for long (void? dunning?). That is a change to the payment saga, which this plan keeps out of the same PR as the customer switch; **default (not agreed):** a tenant frozen between a finalize and its charge is charged once, as plan 14 already says.
+
+## Leftovers built (2026-11-02, branch `feat/product-leftovers-2`)
+
+Defaults the implementer chose (**default, not agreed**):
+
+1. **A sweep clears a block that ran out.** `customers/command.Sweeper` (plans-svc, every 5 minutes, one batch of 200 per list, again at once while a batch fills) lists the customers whose `blocked_until` has passed on the system pool, and for each, in the tenant's own transaction (cells-aware, as the trial reminder is), locks the row, reads it again and lifts it with the same function as `POST /v1/customers/{id}/unblock`: the row is cleared, the history gets an `unblocked` row with the actor `system`, a suspension that block published ends (the tombstone), the audit entry is written and `customer.unblocked` is queued (same data as a lift by hand, no new field). A block that was lifted, replaced or extended since the list was read is left alone; a second pass, or a second replica, finds nothing. Nothing depended on it before (every check reads the end), so it is only the event and a row that says what is true. `docs/16-webhooks.md` says the event can come minutes after the end.
+2. **Row 12 has tests.** The seller's own calls are not gated, and now a test holds that: billing `TheGateRefusesPayments` (credits granted to a customer blocked for fraud), `OfflinePaymentsSettleAnInvoice` (a payment recorded while the customer is blocked for fraud) and plans-svc `CustomerBlockSweep` (a coupon applied by hand). They are pin tests: the cells were already allowed by absence of a check, and a future gate would break them.
+3. **The first charge of an invoice finalized before a freeze stays as the plan says** (documented above, **default, not agreed**): it needs a hold outcome in the payment saga's transition table, which is not small. Not built.
+
+Tests: plans-svc integration `TestPlansSvc/CustomerBlockSweep` (ended block cleared, running and unending blocks left, history by `system`, one tombstone, one webhook, second pass nothing, coupon by hand), `TestCellsJobs/{pooled,cells,mixed}/BlockSweep` (every serving tenant visited once, a moving tenant left until it is released); billing `TestBilling/TheGateRefusesPayments`, `OfflinePaymentsSettleAnInvoice`. **Not verified here:** the sweep against a production-size customer table; its list reads a partial index (migration 00018, tenant 00014) that holds only blocked customers with an end.

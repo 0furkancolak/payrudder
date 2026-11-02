@@ -27,22 +27,24 @@ const (
 	tokAdhocUsed   = "tok-adhoc-used-0123456789abcdefghijklmnopq"
 	tokOpenSandbox = "tok-open-sandbox-0123456789abcdefghijklmn"
 	tokOpenLive    = "tok-open-live-0123456789abcdefghijklmnopq"
-	tokPack        = "tok-pack-0123456789abcdefghijklmnopqrstuvw"
-	tokProcessing  = "tok-processing-0123456789abcdefghijklmnop"
-	tokAdhocSlow   = "tok-adhoc-slow-0123456789abcdefghijklmnopq"
-	tokAdhocStuck  = "tok-adhoc-stuck-0123456789abcdefghijklmnopq"
-	tokSlowInvoice = "tok-slow-invoice-0123456789abcdefghijklmno"
-	tokSettling    = "tok-settling-0123456789abcdefghijklmnopqrs"
-	tokHostile     = "tok-hostile-0123456789abcdefghijklmnopqrs"
-	tokVoid        = "tok-void-0123456789abcdefghijklmnopqrstuvw"
-	tokUncollect   = "tok-uncollectible-0123456789abcdefghijklmn"
-	tokBlockedLink = "tok-blocked-0123456789abcdefghijklmnopqrstu"
-	tokHeldLink    = "tok-held-0123456789abcdefghijklmnopqrstuvw"
-	tokPayBlocked  = "tok-payblocked-0123456789abcdefghijklmnopq"
-	tokPayHeld     = "tok-payheld-0123456789abcdefghijklmnopqrst"
-	tokBroken      = "tok-broken-0123456789abcdefghijklmnopqrstu"
-	portalTok      = "portal-0123456789abcdefghijklmnopqrstuvwxyz"
-	portalZoneTok  = "portalzone-123456789abcdefghijklmnopqrstuvwxyz"
+	// tokLinkAgreements is the link of an open invoice whose payment link names its own agreements (privacy only).
+	tokLinkAgreements = "tok-link-agreements-0123456789abcdefghijk"
+	tokPack           = "tok-pack-0123456789abcdefghijklmnopqrstuvw"
+	tokProcessing     = "tok-processing-0123456789abcdefghijklmnop"
+	tokAdhocSlow      = "tok-adhoc-slow-0123456789abcdefghijklmnopq"
+	tokAdhocStuck     = "tok-adhoc-stuck-0123456789abcdefghijklmnopq"
+	tokSlowInvoice    = "tok-slow-invoice-0123456789abcdefghijklmno"
+	tokSettling       = "tok-settling-0123456789abcdefghijklmnopqrs"
+	tokHostile        = "tok-hostile-0123456789abcdefghijklmnopqrs"
+	tokVoid           = "tok-void-0123456789abcdefghijklmnopqrstuvw"
+	tokUncollect      = "tok-uncollectible-0123456789abcdefghijklmn"
+	tokBlockedLink    = "tok-blocked-0123456789abcdefghijklmnopqrstu"
+	tokHeldLink       = "tok-held-0123456789abcdefghijklmnopqrstuvw"
+	tokPayBlocked     = "tok-payblocked-0123456789abcdefghijklmnopq"
+	tokPayHeld        = "tok-payheld-0123456789abcdefghijklmnopqrst"
+	tokBroken         = "tok-broken-0123456789abcdefghijklmnopqrstu"
+	portalTok         = "portal-0123456789abcdefghijklmnopqrstuvwxyz"
+	portalZoneTok     = "portalzone-123456789abcdefghijklmnopqrstuvwxyz"
 	// tokPaidCustomer is the link to a paid invoice of a customer, tokPaidGuest to a paid invoice of a payment link with no customer.
 	tokPaidCustomer = "tok-paid-customer-0123456789abcdefghijklm"
 	tokPaidGuest    = "tok-paid-guest-0123456789abcdefghijklmnop"
@@ -72,6 +74,10 @@ func scenarioInvoice(req *billingv1.GetHostedInvoiceRequest) (*billingv1.GetHost
 		return openInvoice("sandbox", "open", true), true
 	case req.GetToken() == tokOpenLive:
 		return openInvoice("live", "open", true), true
+	case req.GetToken() == tokLinkAgreements:
+		r := openInvoice("sandbox", "open", true)
+		r.RequiredContracts = []string{"privacy"}
+		return r, true
 	case req.GetToken() == tokPaidCustomer:
 		r := openInvoice("live", "paid", false)
 		r.Invoice.Status, r.Invoice.CustomerId, r.CustomerType, r.CustomerLocale = "paid", "cust-uuid", "individual", "en"

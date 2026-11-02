@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"sort"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
+	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -49,6 +51,20 @@ func (s *Server) createPaymentLink(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.IdempotencyKey == "" {
 		req.IdempotencyKey = r.Header.Get("Idempotency-Key")
+	}
+	// A link may name agreements only once the text exists, as the setting may (plans.contract.kind_unpublished): a payer must never meet a page that cannot be paid.
+	if len(req.GetRequiredContracts()) > 0 && s.d.Contracts != nil {
+		st, err := s.d.Contracts.GetContractSettings(r.Context(), &plansv1.GetContractSettingsRequest{})
+		if err != nil {
+			writeError(w, r, err)
+			return
+		}
+		for _, k := range req.GetRequiredContracts() {
+			if !slices.Contains(st.GetSettings().GetPublishedKinds(), k) {
+				writeError(w, r, errkey.Newf(codes.FailedPrecondition, "plans.contract.kind_unpublished", "%s cannot be required before a version of it is published", k))
+				return
+			}
+		}
 	}
 	resp, err := s.d.Billing.CreatePaymentLink(r.Context(), req)
 	if err != nil {

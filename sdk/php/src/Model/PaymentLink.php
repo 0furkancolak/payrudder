@@ -8,6 +8,7 @@ namespace Payrudder\Model;
 
 use Payrudder\Contract\Model;
 use Payrudder\Enum\PaymentLinkKind;
+use Payrudder\Enum\PaymentLinkRequiredContractsItem;
 use Payrudder\Enum\PaymentLinkStatus;
 use Payrudder\Internal\Cast;
 
@@ -24,6 +25,7 @@ final class PaymentLink implements Model
      * @param int|null $quantity
      * @param int|null $credits
      * @param string|null $promotionCode
+     * @param list<PaymentLinkRequiredContractsItem|string>|null $requiredContracts
      * @param string|null $invoiceId
      * @param string|null $customerExternalId
      * @param bool|null $singleUse
@@ -46,6 +48,7 @@ final class PaymentLink implements Model
         public readonly ?int $quantity = null,
         public readonly ?int $credits = null,
         public readonly ?string $promotionCode = null,
+        public readonly ?array $requiredContracts = null,
         public readonly ?string $invoiceId = null,
         public readonly ?string $customerExternalId = null,
         public readonly ?bool $singleUse = null,
@@ -74,6 +77,7 @@ final class PaymentLink implements Model
             quantity: Cast::int($data['quantity'] ?? null),
             credits: Cast::int($data['credits'] ?? null),
             promotionCode: Cast::string($data['promotion_code'] ?? null),
+            requiredContracts: Cast::enums(PaymentLinkRequiredContractsItem::class, $data['required_contracts'] ?? null),
             invoiceId: Cast::string($data['invoice_id'] ?? null),
             customerExternalId: Cast::string($data['customer_external_id'] ?? null),
             singleUse: Cast::bool($data['single_use'] ?? null),
@@ -103,6 +107,7 @@ final class PaymentLink implements Model
             'quantity' => $this->quantity,
             'credits' => Cast::int64($this->credits),
             'promotion_code' => $this->promotionCode,
+            'required_contracts' => Cast::wire($this->requiredContracts),
             'invoice_id' => $this->invoiceId,
             'customer_external_id' => $this->customerExternalId,
             'single_use' => $this->singleUse,

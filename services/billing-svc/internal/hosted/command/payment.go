@@ -165,7 +165,7 @@ func startLink(ctx context.Context, d Deps, r sqlc.FindActiveInvoiceLinkRow, pro
 		}
 		parent := r.ID
 		return q.InsertPaymentLink(ctx, sqlc.InsertPaymentLinkParams{TenantID: r.TenantID, ID: uuid.New(), Kind: KindInvoice, ParentID: &parent, InvoiceID: &invoiceID,
-			TokenHash: query.TokenHash(child), ExpiresAt: expires, CustomerExternalID: r.CustomerExternalID})
+			TokenHash: query.TokenHash(child), ExpiresAt: expires, CustomerExternalID: r.CustomerExternalID, RequiredContracts: append([]string{}, r.RequiredContracts...)})
 	})
 	if err != nil {
 		return "", apierr.Wrap(ctx, err)

@@ -70,6 +70,12 @@ auth:
     clientSecret: ""
     redirectURL: ""                # empty: <appURL>/gw/auth/google/callback
 
+# Error tracking (docs/08-observability.md): the DSN of a Sentry-compatible server (GlitchTip, Sentry), https://<public key>@host/<project id>. It holds a key, so it is
+# rendered into each service's Secret, never into plain environment. Empty: off, nothing is sent. With secrets.existingSecrets add PAYRUDDER_ERROR_TRACKING_URL to
+# each service's Secret yourself. Not verified against a real server.
+errorTracking:
+  url: ""
+
 secrets:
   # Use your own Secrets instead of the ones rendered from the values above. The Secret named here must hold, per service,
   # the keys listed in templates/secrets.yaml, under the name "<release>-<service>-env".

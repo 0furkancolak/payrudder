@@ -23,6 +23,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 
 	"github.com/0furkancolak/payrudder/pkg/backoff"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 )
 
 // The relay's statements. The table is fixed: every service names its outbox "outbox".
@@ -134,12 +135,14 @@ func (r *Relay) Run(ctx context.Context) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer errtrack.Recover(ctx)
 		r.listen(ctx, wake)
 	}()
 	for i := 0; i < r.cfg.Workers; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
+			defer errtrack.Recover(ctx)
 			r.work(ctx, id, wake)
 		}(i)
 	}

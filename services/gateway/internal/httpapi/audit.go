@@ -17,6 +17,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/audit/auditgrpc"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
 )
 
@@ -139,6 +140,7 @@ func (s *Server) collectAudit(ctx context.Context, req *auditv1.ListAuditEventsR
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer errtrack.Recover(ctx)
 			events, err := src.read()
 			mu.Lock()
 			defer mu.Unlock()

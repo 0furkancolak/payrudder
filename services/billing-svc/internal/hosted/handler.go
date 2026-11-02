@@ -104,7 +104,7 @@ func (h *Handler) CreatePaymentLink(ctx context.Context, req *billingv1.CreatePa
 	in := command.CreateInput{
 		Kind: req.GetKind(), AmountMinor: req.GetAmountMinor(), Currency: req.GetCurrency(), Description: req.GetDescription(), CustomerExternalID: req.GetCustomerExternalId(),
 		SingleUse: req.SingleUse, ExpiresInDays: req.GetExpiresInDays(), IdempotencyKey: req.GetIdempotencyKey(), RequireOpen: true, Quantity: req.GetQuantity(),
-		PromotionCode: req.GetPromotionCode(),
+		PromotionCode: req.GetPromotionCode(), RequiredContracts: req.GetRequiredContracts(),
 	}
 	if req.GetPackId() != "" {
 		if in.PackID, err = errkey.ParseUUID("billing.request.bad_id", "pack_id", req.GetPackId()); err != nil {
@@ -418,6 +418,9 @@ func pageProto(scope *query.Scope, p *query.Page) *billingv1.GetHostedInvoiceRes
 	resp := &billingv1.GetHostedInvoiceResponse{
 		CustomerLocale: p.CustomerLocale, CustomerType: p.CustomerType, TimeZone: p.TimeZone, Kind: p.Kind, ExpireTime: timestamppb.New(p.ExpiresAt), SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment,
 	}
+	if scope.Link != nil {
+		resp.RequiredContracts = scope.Link.Row.RequiredContracts
+	}
 	if p.Adhoc != nil {
 		resp.Adhoc = &billingv1.HostedAdhoc{Description: p.Adhoc.Description, AmountMinor: p.Adhoc.AmountMinor, Currency: p.Adhoc.Currency,
 			CurrencyExponent: p.Adhoc.CurrencyExponent, Consumed: p.Adhoc.Consumed, SellerName: p.SellerName, LogoAvailable: p.LogoAvailable, Environment: p.Environment,
@@ -477,6 +480,7 @@ func linkProto(l sqlc.GetPaymentLinkRowRow) *billingv1.PaymentLink {
 	if l.PromotionCode != nil {
 		out.PromotionCode = *l.PromotionCode
 	}
+	out.RequiredContracts = l.RequiredContracts
 	if l.RevokedAt != nil {
 		out.RevokeTime = timestamppb.New(*l.RevokedAt)
 	}

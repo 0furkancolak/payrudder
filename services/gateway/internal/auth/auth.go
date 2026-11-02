@@ -25,6 +25,7 @@ import (
 	"github.com/0furkancolak/payrudder/pkg/apikey"
 	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/env"
+	"github.com/0furkancolak/payrudder/pkg/errtrack"
 	"github.com/0furkancolak/payrudder/pkg/otelx"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -151,6 +152,7 @@ func (a *Authenticator) touch(keyID string) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 		defer cancel()
+		defer errtrack.Recover(ctx)
 		if err := a.toucher.Touch(ctx, keyID); err != nil {
 			a.log.WarnContext(ctx, "api key use not recorded", "api_key_id", keyID, "error", err)
 		}

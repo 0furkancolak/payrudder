@@ -60,6 +60,8 @@ import type {
   ListAssetsResponse,
   ListAuditEventsQuery,
   ListAuditEventsResponse,
+  ListContractAcceptancesQuery,
+  ListContractAcceptancesResponse,
   ListCouponRedemptionsQuery,
   ListCouponRedemptionsResponse,
   ListCreditLedgerQuery,
@@ -89,6 +91,14 @@ export class Paginators {
     return paginate(
       (q) => this.r.customers.listCustomers(q, options),
       (page) => page.customers,
+      query,
+    );
+  }
+
+  listContractAcceptances(externalId: string, query?: ListContractAcceptancesQuery, options?: RequestOptions): AsyncGenerator<NonNullable<ListContractAcceptancesResponse["acceptances"]>[number], void, undefined> {
+    return paginate(
+      (q) => this.r.customers.listContractAcceptances(externalId, q, options),
+      (page) => page.acceptances,
       query,
     );
   }

@@ -24,7 +24,7 @@ export const invitation = (id: string, email: string, role: string, expire_time 
   id, email, role, invited_by_email: user.email, invited_by_name: user.display_name, create_time: "2026-10-20T09:00:00Z", send_time: "2026-10-20T09:00:00Z", expire_time,
 });
 
-export const tenant = (id: string, environment: "LIVE" | "SANDBOX", currency = "USD", status: "ACTIVE" | "INACTIVE" | "SUSPENDED" = "ACTIVE") => ({
+export const tenant = (id: string, environment: "LIVE" | "SANDBOX", currency = "USD", status: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "FROZEN" | "BANNED" = "ACTIVE") => ({
   id,
   account_id: ACCOUNT,
   app_id: APP,
@@ -373,11 +373,11 @@ function twoFactorRoutes(gw: MockGateway, s: ProductState, who: () => Record<str
 }
 
 /** The app of the fixture with its live environment in the given status (inactive: just created, nothing set up yet). */
-export const appWithLive = (status: "ACTIVE" | "INACTIVE" | "SUSPENDED") => ({ ...app, tenants: [tenant(LIVE, "LIVE", "USD", status), tenant(SANDBOX, "SANDBOX")] });
+export const appWithLive = (status: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "FROZEN" | "BANNED") => ({ ...app, tenants: [tenant(LIVE, "LIVE", "USD", status), tenant(SANDBOX, "SANDBOX")] });
 
 export interface LiveState {
   done: Record<string, boolean>;
-  status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+  status: "ACTIVE" | "INACTIVE" | "SUSPENDED" | "FROZEN" | "BANNED";
   /** The reset job the gateway reports (null: never reset), and what the promote preview shows. */
   reset: Record<string, unknown> | null;
   changes: { family: string; key: string; action: string; detail?: string; secret?: string }[];

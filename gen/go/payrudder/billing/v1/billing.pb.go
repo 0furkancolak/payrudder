@@ -4769,9 +4769,11 @@ type GetHostedInvoiceResponse struct {
 	CustomerLocale string `protobuf:"bytes,17,opt,name=customer_locale,json=customerLocale,proto3" json:"customer_locale,omitempty"`
 	CustomerType   string `protobuf:"bytes,18,opt,name=customer_type,json=customerType,proto3" json:"customer_type,omitempty"`
 	// The seller's IANA time zone as frozen with the invoice: the calendar the page's days are written in. Empty for an invoice made before it was frozen: UTC.
-	TimeZone      string `protobuf:"bytes,19,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TimeZone string `protobuf:"bytes,19,opt,name=time_zone,json=timeZone,proto3" json:"time_zone,omitempty"`
+	// The agreements the link names for its page (PaymentLink.required_contracts); empty for a link that names none and for a customer portal.
+	RequiredContracts []string `protobuf:"bytes,20,rep,name=required_contracts,json=requiredContracts,proto3" json:"required_contracts,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetHostedInvoiceResponse) Reset() {
@@ -4935,6 +4937,13 @@ func (x *GetHostedInvoiceResponse) GetTimeZone() string {
 		return x.TimeZone
 	}
 	return ""
+}
+
+func (x *GetHostedInvoiceResponse) GetRequiredContracts() []string {
+	if x != nil {
+		return x.RequiredContracts
+	}
+	return nil
 }
 
 // BankTransferInstructions are the tenant's bank details and the reference the customer puts on the transfer.
@@ -7601,8 +7610,10 @@ type PaymentLink struct {
 	Credits  int64  `protobuf:"varint,19,opt,name=credits,proto3" json:"credits,omitempty"`
 	// The promotion code an operator chose for the link (kinds adhoc and credit_pack): applied when the payer continues, unless the payer types another.
 	PromotionCode string `protobuf:"bytes,20,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The agreements (distance_sales, pre_info, tos, privacy) the payer must accept on this link's page; they replace the seller's setting for this link. Empty: the setting.
+	RequiredContracts []string `protobuf:"bytes,21,rep,name=required_contracts,json=requiredContracts,proto3" json:"required_contracts,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *PaymentLink) Reset() {
@@ -7775,6 +7786,13 @@ func (x *PaymentLink) GetPromotionCode() string {
 	return ""
 }
 
+func (x *PaymentLink) GetRequiredContracts() []string {
+	if x != nil {
+		return x.RequiredContracts
+	}
+	return nil
+}
+
 type CreatePaymentLinkRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// "invoice", "adhoc" or "credit_pack"; empty means "invoice" when invoice_id is set, else "adhoc".
@@ -7800,8 +7818,10 @@ type CreatePaymentLinkRequest struct {
 	// kinds adhoc and credit_pack, optional: a promotion code applied when the payer continues (the payer may type another). Checked when the link is made against
 	// the link's own amount; a code that does not work for it is refused (coupon.* key).
 	PromotionCode string `protobuf:"bytes,12,opt,name=promotion_code,json=promotionCode,proto3" json:"promotion_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Agreements the payer must accept on this link's page instead of the seller's tenant-wide setting (distance_sales, pre_info, tos, privacy; at most one of each). Empty: the setting.
+	RequiredContracts []string `protobuf:"bytes,13,rep,name=required_contracts,json=requiredContracts,proto3" json:"required_contracts,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CreatePaymentLinkRequest) Reset() {
@@ -7916,6 +7936,13 @@ func (x *CreatePaymentLinkRequest) GetPromotionCode() string {
 		return x.PromotionCode
 	}
 	return ""
+}
+
+func (x *CreatePaymentLinkRequest) GetRequiredContracts() []string {
+	if x != nil {
+		return x.RequiredContracts
+	}
+	return nil
 }
 
 type CreatePaymentLinkResponse struct {
@@ -13045,7 +13072,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12!\n" +
 	"\fportal_token\x18\x02 \x01(\tR\vportalToken\x12\x1d\n" +
 	"\n" +
-	"invoice_id\x18\x03 \x01(\tR\tinvoiceId\"\xf9\x06\n" +
+	"invoice_id\x18\x03 \x01(\tR\tinvoiceId\"\xa8\a\n" +
 	"\x18GetHostedInvoiceResponse\x127\n" +
 	"\ainvoice\x18\x01 \x01(\v2\x1d.payrudder.billing.v1.InvoiceR\ainvoice\x12\x1f\n" +
 	"\vseller_name\x18\x02 \x01(\tR\n" +
@@ -13068,7 +13095,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\x14payment_instructions\x18\x10 \x01(\v2..payrudder.billing.v1.BankTransferInstructionsR\x13paymentInstructions\x12'\n" +
 	"\x0fcustomer_locale\x18\x11 \x01(\tR\x0ecustomerLocale\x12#\n" +
 	"\rcustomer_type\x18\x12 \x01(\tR\fcustomerType\x12\x1b\n" +
-	"\ttime_zone\x18\x13 \x01(\tR\btimeZone\"\xa2\x01\n" +
+	"\ttime_zone\x18\x13 \x01(\tR\btimeZone\x12-\n" +
+	"\x12required_contracts\x18\x14 \x03(\tR\x11requiredContracts\"\xa2\x01\n" +
 	"\x18BankTransferInstructions\x12\x1b\n" +
 	"\tbank_name\x18\x01 \x01(\tR\bbankName\x12%\n" +
 	"\x0eaccount_holder\x18\x02 \x01(\tR\raccountHolder\x12\x12\n" +
@@ -13300,7 +13328,7 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\rreferral_code\x18\x05 \x01(\tR\freferralCode\x12J\n" +
 	"\x13referral_touch_time\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\x11referralTouchTime\"B\n" +
 	"\x1bStartPortalPurchaseResponse\x12#\n" +
-	"\rinvoice_token\x18\x01 \x01(\tR\finvoiceToken\"\xee\x05\n" +
+	"\rinvoice_token\x18\x01 \x01(\tR\finvoiceToken\"\x9d\x06\n" +
 	"\vPaymentLink\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x16\n" +
@@ -13328,7 +13356,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\apack_id\x18\x11 \x01(\tR\x06packId\x12\x1a\n" +
 	"\bquantity\x18\x12 \x01(\x05R\bquantity\x12\x18\n" +
 	"\acredits\x18\x13 \x01(\x03R\acredits\x12%\n" +
-	"\x0epromotion_code\x18\x14 \x01(\tR\rpromotionCode\"\xc0\x03\n" +
+	"\x0epromotion_code\x18\x14 \x01(\tR\rpromotionCode\x12-\n" +
+	"\x12required_contracts\x18\x15 \x03(\tR\x11requiredContracts\"\xef\x03\n" +
 	"\x18CreatePaymentLinkRequest\x12\x12\n" +
 	"\x04kind\x18\x01 \x01(\tR\x04kind\x12\x1d\n" +
 	"\n" +
@@ -13344,7 +13373,8 @@ const file_payrudder_billing_v1_billing_proto_rawDesc = "" +
 	"\apack_id\x18\n" +
 	" \x01(\tR\x06packId\x12\x1a\n" +
 	"\bquantity\x18\v \x01(\x05R\bquantity\x12%\n" +
-	"\x0epromotion_code\x18\f \x01(\tR\rpromotionCodeB\r\n" +
+	"\x0epromotion_code\x18\f \x01(\tR\rpromotionCode\x12-\n" +
+	"\x12required_contracts\x18\r \x03(\tR\x11requiredContractsB\r\n" +
 	"\v_single_use\"\x84\x01\n" +
 	"\x19CreatePaymentLinkResponse\x125\n" +
 	"\x04link\x18\x01 \x01(\v2!.payrudder.billing.v1.PaymentLinkR\x04link\x12\x14\n" +

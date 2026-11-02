@@ -22,6 +22,7 @@ import (
 	changesapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes"
 	changescmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/command"
 	changesqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/changes/query"
+	"github.com/0furkancolak/payrudder/services/plans-svc/internal/contracts"
 	couponsapi "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons"
 	couponscmd "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/command"
 	couponsqry "github.com/0furkancolak/payrudder/services/plans-svc/internal/coupons/query"
@@ -151,7 +152,7 @@ func pricePause(pool *pgxpool.Pool) changescmd.PauseSource {
 // newWebhooks returns the webhook service on the same database as s. box seals the signing secrets (nil: endpoints cannot be created).
 // allowPrivate lets endpoints be http:// and private addresses (development and tests only).
 func newWebhooks(s *Server, box *secretbox.Box, allowPrivate bool) *webhookendpointsapi.Handler {
-	return webhookendpointsapi.New(webhookendpointscmd.New(s.db, s.now, box, allowPrivate).WithEventHook(affiliatescmd.OnTenantEvent), webhookendpointsqry.New(s.db))
+	return webhookendpointsapi.New(webhookendpointscmd.New(s.db, s.now, box, allowPrivate).WithEventHook(affiliatescmd.OnTenantEvent).WithEventHook(contracts.OnTenantEvent), webhookendpointsqry.New(s.db))
 }
 
 // newMailIntegration returns the service for a tenant's own e-mail provider on the same database as s. box seals the key (nil: none can be connected).

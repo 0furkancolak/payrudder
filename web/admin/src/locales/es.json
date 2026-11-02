@@ -323,7 +323,22 @@
       "by": "por {actor}",
       "approvedBy": "aprobado por {actor}",
       "choose": "Elige un estado",
-      "applyNone": "Establecer estado"
+      "applyNone": "Establecer estado",
+      "filters": "Filtrar el historial",
+      "filterTo": "Cambiado a",
+      "filterKind": "Tipo",
+      "kinds": {
+        "changed": "Cambios",
+        "requested": "En espera de un segundo operador"
+      },
+      "shown": "{shown} de {total} cambios",
+      "noMatch": "Ningún cambio coincide con estos filtros."
+    },
+    "hold": {
+      "suspended": "{app} está suspendida: sus claves de API se han detenido, las páginas y enlaces de pago no aceptan pagos, no se cobra nada y sus clientes no reciben correos. Sus datos se conservan.",
+      "frozen": "{app} está congelada: puede leer todo, pero no se puede cambiar nada. Las llamadas de API que escriben se rechazan, no se cobra nada y sus clientes no reciben correos. Sus datos se conservan.",
+      "banned": "{app} está vetada: sus claves de API se han detenido y no se cobra, envía ni transmite nada. Solo un operador puede levantar un veto.",
+      "write": "Escribir a soporte"
     }
   },
   "invoice": {
@@ -1468,7 +1483,10 @@
         "revoke": "Revocar los seleccionados",
         "revokeTitle": "¿Revocar {n} enlace de pago? | ¿Revocar {n} enlaces de pago?",
         "confirmRevoke": "Los enlaces revocados dejan de funcionar de inmediato y no se pueden recuperar. Las facturas sin pagar creadas con ellos se anulan."
-      }
+      },
+      "agreements": "Acuerdos que acepta quien paga",
+      "agreementsHint": "Si los marca aquí, sustituyen a los acuerdos exigidos en la página Contratos solo para este enlace. No marque ninguno para usar ese ajuste.",
+      "agreementsSetting": "Según la página Contratos"
     },
     "mail": {
       "title": "Correo electrónico",
@@ -2874,7 +2892,8 @@
         "invoice_required": "Un enlace de pago de tipo factura necesita una factura.",
         "not_found": "No existe ese enlace de pago.",
         "customer_required": "Un enlace de paquete de créditos necesita el cliente que recibe los créditos.",
-        "pack_required": "Un enlace de paquete de créditos necesita un paquete."
+        "pack_required": "Un enlace de paquete de créditos necesita un paquete.",
+        "bad_required_contracts": "Un enlace puede nombrar una sola vez el contrato de venta a distancia, la información precontractual, las condiciones de uso y el aviso de privacidad."
       },
       "portal_link": {
         "customer_not_found": "No existe ese cliente.",
@@ -4179,9 +4198,9 @@
       "pageIntro": "El entorno live empieza apagado: sin claves live, sin webhooks live, sin cobros reales. Completa la lista y luego enciéndelo.",
       "intro": "Tu entorno live aún no está activo. Completa estos pasos para encenderlo.",
       "liveNow": "Tu entorno live está activo.",
-      "suspended": "Tu entorno live está suspendido. Contacta con soporte para restablecerlo.",
+      "suspended": "Tu entorno live está detenido (suspendido, congelado o vetado). Contacta con soporte para restablecerlo.",
       "stateActive": "Activo",
-      "stateSuspended": "Suspendido",
+      "stateSuspended": "Detenido",
       "count": "{done} de {total} hechos",
       "noLive": "Esta instalación no tiene entorno live.",
       "done": "hecho",
@@ -5834,14 +5853,24 @@
         "requesting": "Solicitándose",
         "requested": "Solicitado",
         "outside": "Reembolse usted",
-        "failed": "Falló"
+        "failed": "Falló",
+        "refunded": "Reembolsado",
+        "refund_failed": "Reembolso a la tarjeta fallido"
       },
       "creditNote": "Nota de crédito {id}",
       "acceptRefund": {
         "asked": "Sus ajustes también piden ahora el reembolso de la factura que indica este desistimiento a la tarjeta del cliente. Un pago hecho de otra forma se marca para que usted reembolse.",
         "left": "Sus ajustes le dejan el reembolso: después use «Pedir reembolso» o reembolse usted al cliente.",
         "noInvoice": "Este desistimiento no indica factura, así que no se pide reembolso: reembolse usted al cliente."
-      }
+      },
+      "invoiceLine": "Factura {number} · {total}",
+      "amount": "Importe a reembolsar ({currency}, opcional)",
+      "amountHint": "Déjelo vacío para reembolsar todo lo que queda de la factura. Indique un importe menor si el servicio ya se prestó y el cliente debe una parte.",
+      "amountErrors": {
+        "amount": "Escriba un importe en esta moneda, mayor que cero.",
+        "tooMuch": "Es más que la factura."
+      },
+      "refundFailedHint": "La nota de crédito existe pero el proveedor no devolvió el dinero. Reintente el reembolso de esa nota en Notas de crédito; no pida una segunda."
     },
     "customer": {
       "log": "Acuerdos aceptados",
@@ -5868,7 +5897,15 @@
       "withdrawals": "Desistimientos",
       "record": "Registrar un desistimiento",
       "noWithdrawals": "No hay solicitudes de desistimiento de este cliente.",
-      "decideThere": "Decidir los desistimientos en Contratos"
+      "decideThere": "Decidir los desistimientos en Contratos",
+      "filters": {
+        "label": "Filtrar las aceptaciones",
+        "kind": "Tipo de acuerdo",
+        "allKinds": "Todos los acuerdos",
+        "source": "Dónde se aceptó",
+        "allSources": "En cualquier lugar"
+      },
+      "showMore": "Mostrar más"
     },
     "record": {
       "title": "Registrar un desistimiento",
@@ -5878,7 +5915,10 @@
       "statementHint": "Con sus palabras, hasta 2000 caracteres.",
       "received": "Cuándo le llegó (opcional)",
       "receivedHint": "Déjelo vacío para ahora.",
-      "submit": "Registrar desistimiento"
+      "submit": "Registrar desistimiento",
+      "invoice": "Factura (opcional)",
+      "invoiceHint": "La factura pagada de la que el cliente desiste. Con ella, aceptar el desistimiento puede reembolsar al cliente; sin ella, reembolsa usted a mano.",
+      "noInvoice": "Ninguna factura"
     }
   },
   "audit": {

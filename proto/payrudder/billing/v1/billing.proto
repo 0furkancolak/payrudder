@@ -741,6 +741,8 @@ message GetHostedInvoiceResponse {
   string customer_type = 18;
   // The seller's IANA time zone as frozen with the invoice: the calendar the page's days are written in. Empty for an invoice made before it was frozen: UTC.
   string time_zone = 19;
+  // The agreements the link names for its page (PaymentLink.required_contracts); empty for a link that names none and for a customer portal.
+  repeated string required_contracts = 20;
 }
 
 // BankTransferInstructions are the tenant's bank details and the reference the customer puts on the transfer.
@@ -1074,6 +1076,8 @@ message PaymentLink {
   int64 credits = 19;
   // The promotion code an operator chose for the link (kinds adhoc and credit_pack): applied when the payer continues, unless the payer types another.
   string promotion_code = 20;
+  // The agreements (distance_sales, pre_info, tos, privacy) the payer must accept on this link's page; they replace the seller's setting for this link. Empty: the setting.
+  repeated string required_contracts = 21;
 }
 
 message CreatePaymentLinkRequest {
@@ -1100,6 +1104,8 @@ message CreatePaymentLinkRequest {
   // kinds adhoc and credit_pack, optional: a promotion code applied when the payer continues (the payer may type another). Checked when the link is made against
   // the link's own amount; a code that does not work for it is refused (coupon.* key).
   string promotion_code = 12;
+  // Agreements the payer must accept on this link's page instead of the seller's tenant-wide setting (distance_sales, pre_info, tos, privacy; at most one of each). Empty: the setting.
+  repeated string required_contracts = 13;
 }
 message CreatePaymentLinkResponse {
   PaymentLink link = 1;

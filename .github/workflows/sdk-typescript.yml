@@ -43,6 +43,7 @@ jobs:
       - run: npm ci
       - name: Generated code is up to date
         run: npm run generate:check
+      # tsconfig.json includes examples/, so this also type-checks them against src/ (and the next step lints them)
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
