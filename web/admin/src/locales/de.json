@@ -2066,6 +2066,38 @@
       "expected": "erwartet {fee}",
       "batch": "Auszahlung / Charge",
       "empty": "Keine erfolgreichen Anbieterzahlungen in diesem Zeitraum."
+    },
+    "feeRules": {
+      "title": "Erwartete Anbietergebühren",
+      "hint": "Was jeder Anbieter von einer Zahlung je Währung einbehalten soll: ein Prozentsatz und ein fester Betrag. Payrudder kennt die Preise keines Anbieters, deshalb trägt ein Operator sie ein. Eine Gebühr, die im Bericht des Anbieters um mehr als eine kleinste Einheit abweicht, wird zu einer Abweichung in der Prüfwarteschlange.",
+      "add": "Regel hinzufügen",
+      "provider": "Anbieter",
+      "account": "Anbieter oder Kontoschlüssel",
+      "accountHint": "Ein Anbieter wie stripe oder ein einzelnes Konto wie stripe~eu. Die Regel gilt für Zahlungen, die genau über diesen Schlüssel eingegangen sind.",
+      "currency": "Währung",
+      "currencyHint": "Drei Buchstaben, etwa USD. Eine Regel gilt für eine Währung.",
+      "rate": "Satz",
+      "rateInput": "Satz (%)",
+      "rateHint": "Der Anteil der Zahlung, den der Anbieter einbehält, mit bis zu zwei Dezimalstellen: 2.9 für 2,9 %.",
+      "fixed": "Feste Gebühr",
+      "fixedInput": "Feste Gebühr",
+      "fixedHint": "Wird jeder Zahlung hinzugefügt, in der Währung der Regel, etwa 0.30. Leer lassen, wenn es keine gibt.",
+      "environment": "Umgebung",
+      "updated": "Aktualisiert",
+      "empty": "Keine Gebührenregeln. Ohne Regel werden die Gebühren eines Anbieters angezeigt, aber nicht verglichen.",
+      "detailHint": "Die Gebühr, die ein Anbieter von einer Zahlung einbehalten soll.",
+      "editTitle": "Regel für {provider} in {currency} bearbeiten",
+      "formHint": "Wer einen Anbieter und eine Währung speichert, die schon eine Regel haben, ersetzt diese.",
+      "confirmRemove": "Gebührenregel für {provider} in {currency} entfernen? Die Gebühren dieser Zahlungen werden dann nicht mehr verglichen.",
+      "edit": "Bearbeiten",
+      "remove": "Entfernen",
+      "save": "Speichern",
+      "errors": {
+        "provider": "Verwenden Sie einen Anbieter oder Kontoschlüssel in Kleinbuchstaben, etwa stripe oder stripe~eu.",
+        "currency": "Die Währung besteht aus drei Buchstaben, etwa USD.",
+        "rate": "Der Satz liegt zwischen 0 und 100 mit höchstens zwei Dezimalstellen.",
+        "fixed": "Die feste Gebühr ist ein Betrag mit höchstens so vielen Dezimalstellen, wie die Währung hat."
+      }
     }
   },
   "affiliates": {
@@ -4486,6 +4518,49 @@
             "default_set": "{actor} hat {account} zum Standard gemacht",
             "routing_changed": "{actor} hat die Routing-Regeln geändert"
           }
+        }
+      },
+      "health": {
+        "label": "Zustand",
+        "never": "Nie",
+        "failsOver": "Weicht bei Ausfall auf {name} aus",
+        "states": {
+          "healthy": "Erreichbar",
+          "down": "Nicht erreichbar",
+          "bad_credentials": "Zugangsdaten abgelehnt",
+          "circuit_open": "Schutzschalter offen",
+          "recovering": "Erholt sich",
+          "unknown": "Nicht geprüft"
+        },
+        "breaker": {
+          "closed": "Geschlossen (Abbuchungen laufen)",
+          "open": "Offen (Abbuchungen werden ohne Aufruf abgelehnt)",
+          "half_open": "Halb offen (eine Abbuchung nach der anderen prüft)"
+        },
+        "detail": {
+          "state": "Letzte Prüfung",
+          "breaker": "Schutzschalter",
+          "failures": "Ausfälle in Folge",
+          "checked": "Geprüft",
+          "ok": "Zuletzt geantwortet",
+          "error": "Letztes Problem"
+        },
+        "errors": {
+          "unreachable": "Der Anbieter war nicht erreichbar",
+          "bad_credentials": "Der Anbieter hat die Zugangsdaten abgelehnt",
+          "unusable": "Die gespeicherten Einstellungen sind nicht verwendbar",
+          "circuit_open": "Der Schutzschalter war offen",
+          "no_remote_check": "Dieser Anbieter hat keine Zustandsprüfung"
+        },
+        "failover": {
+          "action": "Ausfallumschaltung…",
+          "title": "Ausfallumschaltung für {name}",
+          "intro": "Wenn dieses Konto eine neue Abbuchung ganz sicher nicht verarbeitet hat (die Verbindung wurde nie geöffnet oder der Schutzschalter ist offen), geht die Abbuchung als neuer Versuch an das gewählte Konto. Bei einer Zeitüberschreitung wird nie umgeschaltet: Das Ergebnis wird zuerst bei diesem Konto erfragt, damit kein Kunde doppelt belastet wird.",
+          "target": "Umschalten auf",
+          "choose": "Konto wählen",
+          "save": "Ausfallumschaltung speichern",
+          "remove": "Ausfallumschaltung entfernen",
+          "noTargets": "Fügen Sie ein zweites Zahlungskonto hinzu, um zu wählen, wohin Abbuchungen ausweichen können."
         }
       }
     },

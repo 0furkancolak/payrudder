@@ -2066,6 +2066,38 @@
       "expected": "expected {fee}",
       "batch": "Payout / batch",
       "empty": "No successful provider payments in this period."
+    },
+    "feeRules": {
+      "title": "Expected provider fees",
+      "hint": "What each provider is expected to keep of a payment, per currency: a percentage and a fixed amount. Payrudder knows no provider's prices, so an operator enters them. A fee that a provider's report shows different by more than one minor unit becomes a discrepancy in the review queue.",
+      "add": "Add rule",
+      "provider": "Provider",
+      "account": "Provider or account key",
+      "accountHint": "A provider such as stripe, or one account such as stripe~eu. The rule applies to payments taken through exactly that key.",
+      "currency": "Currency",
+      "currencyHint": "Three letters, such as USD. A rule is for one currency.",
+      "rate": "Rate",
+      "rateInput": "Rate (%)",
+      "rateHint": "The share of the payment the provider keeps, with up to two decimals: 2.9 for 2.9 %.",
+      "fixed": "Fixed fee",
+      "fixedInput": "Fixed fee",
+      "fixedHint": "Added to every payment, in the rule's currency, such as 0.30. Leave empty for none.",
+      "environment": "Environment",
+      "updated": "Updated",
+      "empty": "No fee rules. Without one, a provider's fees are shown but not compared.",
+      "detailHint": "The fee a provider is expected to keep of a payment.",
+      "editTitle": "Edit the rule for {provider} in {currency}",
+      "formHint": "Saving a provider and currency that already have a rule replaces it.",
+      "confirmRemove": "Remove the fee rule for {provider} in {currency}? The fees of those payments are no longer compared.",
+      "edit": "Edit",
+      "remove": "Remove",
+      "save": "Save",
+      "errors": {
+        "provider": "Use a provider or account key in lower case, such as stripe or stripe~eu.",
+        "currency": "The currency is three letters, such as USD.",
+        "rate": "The rate is 0 to 100 with at most two decimals.",
+        "fixed": "The fixed fee is an amount with no more decimals than the currency has."
+      }
     }
   },
   "affiliates": {
@@ -4486,6 +4518,49 @@
             "default_set": "{actor} made {account} the default",
             "routing_changed": "{actor} changed the routing rules"
           }
+        }
+      },
+      "health": {
+        "label": "Health",
+        "never": "Never",
+        "failsOver": "Fails over to {name}",
+        "states": {
+          "healthy": "Reachable",
+          "down": "Not reachable",
+          "bad_credentials": "Credentials refused",
+          "circuit_open": "Circuit open",
+          "recovering": "Recovering",
+          "unknown": "Not checked"
+        },
+        "breaker": {
+          "closed": "Closed (charges go through)",
+          "open": "Open (charges are refused without a call)",
+          "half_open": "Half open (one charge at a time probes)"
+        },
+        "detail": {
+          "state": "Last check",
+          "breaker": "Circuit breaker",
+          "failures": "Outages in a row",
+          "checked": "Checked",
+          "ok": "Last answered",
+          "error": "Last problem"
+        },
+        "errors": {
+          "unreachable": "The provider could not be reached",
+          "bad_credentials": "The provider refused the credentials",
+          "unusable": "The stored settings cannot be used",
+          "circuit_open": "The circuit was open",
+          "no_remote_check": "This provider has no health check"
+        },
+        "failover": {
+          "action": "Failover…",
+          "title": "Failover for {name}",
+          "intro": "When this account definitely did not process a new charge (the connection never opened, or its circuit is open), the charge goes to the account you choose, as a new attempt. A timeout never fails over: the outcome is asked of this account first, so a customer is not charged twice.",
+          "target": "Fail over to",
+          "choose": "Choose an account",
+          "save": "Save failover",
+          "remove": "Remove failover",
+          "noTargets": "Add a second payment account to choose where charges can fail over to."
         }
       }
     },

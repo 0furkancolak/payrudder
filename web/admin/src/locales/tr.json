@@ -2066,6 +2066,38 @@
       "expected": "beklenen {fee}",
       "batch": "Ödeme / parti",
       "empty": "Bu dönemde sağlayıcıdan başarılı ödeme yok."
+    },
+    "feeRules": {
+      "title": "Beklenen sağlayıcı komisyonları",
+      "hint": "Her sağlayıcının bir ödemeden para birimi başına ne kadar kesmesi beklendiği: bir yüzde ve sabit bir tutar. Payrudder hiçbir sağlayıcının fiyatını bilmez, bu yüzden bir operatör girer. Sağlayıcının raporunda bir alt birimden fazla farklı görünen komisyon, inceleme kuyruğunda bir uyuşmazlık olur.",
+      "add": "Kural ekle",
+      "provider": "Sağlayıcı",
+      "account": "Sağlayıcı veya hesap anahtarı",
+      "accountHint": "stripe gibi bir sağlayıcı veya stripe~eu gibi tek bir hesap. Kural, tam olarak bu anahtarla alınan ödemelere uygulanır.",
+      "currency": "Para birimi",
+      "currencyHint": "USD gibi üç harf. Bir kural tek bir para birimi içindir.",
+      "rate": "Oran",
+      "rateInput": "Oran (%)",
+      "rateHint": "Sağlayıcının ödemeden kestiği pay, en fazla iki ondalıkla: %2,9 için 2.9.",
+      "fixed": "Sabit komisyon",
+      "fixedInput": "Sabit komisyon",
+      "fixedHint": "Her ödemeye eklenir, kuralın para biriminde, örneğin 0.30. Yoksa boş bırakın.",
+      "environment": "Ortam",
+      "updated": "Güncellendi",
+      "empty": "Komisyon kuralı yok. Kural olmadan sağlayıcının komisyonları gösterilir ama karşılaştırılmaz.",
+      "detailHint": "Bir sağlayıcının ödemeden kesmesi beklenen komisyon.",
+      "editTitle": "{provider} için {currency} kuralını düzenle",
+      "formHint": "Zaten kuralı olan bir sağlayıcı ve para birimini kaydetmek o kuralın yerini alır.",
+      "confirmRemove": "{provider} için {currency} komisyon kuralı kaldırılsın mı? Bu ödemelerin komisyonları artık karşılaştırılmaz.",
+      "edit": "Düzenle",
+      "remove": "Kaldır",
+      "save": "Kaydet",
+      "errors": {
+        "provider": "stripe veya stripe~eu gibi, küçük harfli bir sağlayıcı ya da hesap anahtarı kullanın.",
+        "currency": "Para birimi USD gibi üç harftir.",
+        "rate": "Oran, en fazla iki ondalıkla 0 ile 100 arasındadır.",
+        "fixed": "Sabit komisyon, para biriminin sahip olduğundan fazla ondalığı olmayan bir tutardır."
+      }
     }
   },
   "affiliates": {
@@ -4486,6 +4518,49 @@
             "default_set": "{actor}, {account} hesabını varsayılan yaptı",
             "routing_changed": "{actor} yönlendirme kurallarını değiştirdi"
           }
+        }
+      },
+      "health": {
+        "label": "Sağlık",
+        "never": "Hiç",
+        "failsOver": "Arıza durumunda {name} hesabına geçer",
+        "states": {
+          "healthy": "Erişilebilir",
+          "down": "Erişilemiyor",
+          "bad_credentials": "Kimlik bilgileri reddedildi",
+          "circuit_open": "Devre açık",
+          "recovering": "Toparlanıyor",
+          "unknown": "Denetlenmedi"
+        },
+        "breaker": {
+          "closed": "Kapalı (tahsilatlar geçer)",
+          "open": "Açık (tahsilatlar çağrı yapılmadan reddedilir)",
+          "half_open": "Yarı açık (tahsilatlardan biri yoklar)"
+        },
+        "detail": {
+          "state": "Son denetim",
+          "breaker": "Devre kesici",
+          "failures": "Üst üste kesinti",
+          "checked": "Denetlendi",
+          "ok": "Son yanıt",
+          "error": "Son sorun"
+        },
+        "errors": {
+          "unreachable": "Sağlayıcıya ulaşılamadı",
+          "bad_credentials": "Sağlayıcı kimlik bilgilerini reddetti",
+          "unusable": "Kayıtlı ayarlar kullanılamıyor",
+          "circuit_open": "Devre açıktı",
+          "no_remote_check": "Bu sağlayıcının sağlık denetimi yok"
+        },
+        "failover": {
+          "action": "Yedek hesaba geçiş…",
+          "title": "{name} için yedek hesaba geçiş",
+          "intro": "Bu hesap yeni bir tahsilatı kesinlikle işlemediğinde (bağlantı hiç açılmadığında ya da devresi açık olduğunda) tahsilat, yeni bir deneme olarak seçtiğiniz hesaba gider. Zaman aşımında yedeğe geçilmez: sonuç önce bu hesaba sorulur, böylece müşteri iki kez ücretlendirilmez.",
+          "target": "Geçilecek hesap",
+          "choose": "Bir hesap seçin",
+          "save": "Yedek geçişi kaydet",
+          "remove": "Yedek geçişi kaldır",
+          "noTargets": "Tahsilatların nereye geçebileceğini seçmek için ikinci bir ödeme hesabı ekleyin."
         }
       }
     },

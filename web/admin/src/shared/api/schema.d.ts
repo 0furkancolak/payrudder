@@ -4258,6 +4258,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/app/v1/apps/{id}/integrations/payment-accounts/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How each live payment account is doing - the last periodic check, the circuit breaker and the account a charge fails over to
+         * @description What payments-worker last saw, not a check now: a periodic check keeps `status`, the circuit breaker keeps `breaker` and `consecutive_failures`. The breaker is in each worker's
+         *     memory, so a worker that has just started shows what the last one left. Any member reads it. See docs/provider-health.md.
+         */
+        get: operations["appPaymentAccountHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/v1/apps/{id}/integrations/payment-accounts/{account}/failover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the account a new charge goes to when this one definitely did not process it (the owner only)
+         * @description Only a failure that is proven (the connection never opened, an adapter or provider that says "not processed", or an open circuit) lets a new charge go to the other account,
+         *     as a new attempt under a new key. A timeout never does. One account, one hop, the live environment; both accounts must exist and a bank transfer cannot take part
+         *     (400 `payments.failover.bad_target`, 404 `payments.account.not_found`). Recorded for the person.
+         */
+        put: operations["appPutPaymentAccountFailover"];
+        post?: never;
+        /** Remove the failover of a live payment account (the owner only) */
+        delete: operations["appDeletePaymentAccountFailover"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/v1/apps/{id}/integrations/mail": {
         parameters: {
             query?: never;
@@ -19775,6 +19819,86 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appPaymentAccountHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListProviderAccountHealthResponse"];
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appPutPaymentAccountFailover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                /** @description The account key, such as stripe or stripe~eu */
+                account: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutProviderAccountFailoverRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PutProviderAccountFailoverResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    appDeletePaymentAccountFailover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+                account: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
             404: components["responses"]["Error"];
         };
     };

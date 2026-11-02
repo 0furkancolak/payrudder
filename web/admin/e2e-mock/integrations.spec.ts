@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { MockGateway } from "./gateway";
 import { APP, app, appWithLive, liveGateway, productGateway, sandboxProvidersGateway, signInAsAda, tenant } from "./product";
-import { confirmDialog, pickCurrency } from "./ui";
+import { confirmDialog, pickCurrency, pickFilter, rowAction } from "./ui";
 
 // The integrations screen (it replaced "Payment providers"): three groups, payments, e-invoice and e-mail, with a card per integration, a side sheet that connects it (for one app or for every app of the organisation), a test and a
 // disconnect. The gateway is mocked; the real keys are never typed anywhere but the sheet and never shown again.
@@ -536,6 +536,84 @@ test.describe("one list of accounts: payments, e-invoice and e-mail", () => {
     await card.getByRole("searchbox").fill("tr");
     await expect(card.getByTestId("account-nilvera~tr")).toBeVisible();
     await expect(card.getByTestId("account-paddle")).toHaveCount(0);
+  });
+
+  test("each payment account shows how it is doing; the owner sets and removes the account a charge fails over to, and the health filter applies on its button", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")] });
+    liveGateway(gw, { accounts: [{ provider: "stripe", default: true, working: true, checked: true }, { provider: "stripe~eu", default: false, working: true, checked: true }, { provider: "paddle", default: false, working: true, checked: true }] });
+    extras(gw, {});
+    const health = [
+      { provider: "stripe", environment: "live", is_default: true, status: "down", breaker: "open", consecutive_failures: 5, last_error: "circuit_open", last_checked_at: "2026-11-02T10:00:00Z", failover_to: "" },
+      { provider: "stripe~eu", environment: "live", is_default: false, status: "healthy", breaker: "closed", consecutive_failures: 0, last_checked_at: "2026-11-02T10:00:00Z", last_ok_at: "2026-11-02T10:00:00Z" },
+      { provider: "paddle", environment: "live", is_default: false, status: "unknown", breaker: "closed", consecutive_failures: 0 },
+    ];
+    const base = `/app/v1/apps/${APP}/integrations/payment-accounts`;
+    gw.on((c) => {
+      if (c.path === `${base}/health` && c.method === "GET") return { body: { accounts: health } };
+      const m = /^\/app\/v1\/apps\/[^/]+\/integrations\/payment-accounts\/([^/]+)\/failover$/.exec(c.path);
+      if (!m) return undefined;
+      const row = health.find((h) => h.provider === decodeURIComponent(m[1] ?? ""));
+      if (!row) return { status: 404, body: { error: { code: "NOT_FOUND", key: "payments.account.not_found", message: "no" } } };
+      if (c.method === "PUT") {
+        row.failover_to = String(c.body?.failover_to);
+        return { body: { provider: row.provider, environment: "live", failover_to: row.failover_to } };
+      }
+      row.failover_to = "";
+      return { status: 204, body: {} };
+    });
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const card = page.getByTestId("accounts-card");
+
+    // What the worker last saw: an open circuit is the news whatever the last check said; an account never checked says nothing.
+    await expect(card.getByTestId("account-health-stripe")).toHaveText("Circuit open");
+    await expect(card.getByTestId("account-health-stripe~eu")).toHaveText("Reachable");
+    await expect(card.getByTestId("account-health-paddle")).toHaveCount(0);
+
+    // The filter applies on its button.
+    await pickFilter(page, "Health", "Circuit open");
+    await expect(card.getByTestId("account-stripe")).toBeVisible();
+    await expect(card.getByTestId("account-stripe~eu")).toHaveCount(0);
+    await expect(card.getByTestId("account-paddle")).toHaveCount(0);
+    await card.getByRole("button", { name: "Clear" }).first().click();
+    await expect(card.getByTestId("account-stripe~eu")).toBeVisible();
+
+    // The owner chooses where a charge goes when this account definitely did not process it: another account, never itself.
+    await rowAction(card.getByTestId("account-stripe"), "Failover…");
+    const sheet = page.getByTestId("failover-sheet");
+    await expect(sheet).toContainText("Circuit open");
+    await expect(sheet).toContainText("Open (charges are refused without a call)");
+    await expect(sheet).toContainText("5");
+    await expect(sheet.getByTestId("failover-save")).toBeDisabled();
+    await expect(sheet.getByTestId("failover-target").locator("option")).toHaveCount(3); // the prompt, Paddle, Stripe (eu)
+    await sheet.getByTestId("failover-target").selectOption("stripe~eu");
+    await sheet.getByTestId("failover-save").click();
+    await expect(sheet).toBeHidden();
+    const put = gw.called("PUT", `${base}/stripe/failover`)[0];
+    expect(put?.body).toEqual({ failover_to: "stripe~eu" });
+    await expect(card.getByTestId("account-failover-stripe")).toContainText("Fails over to Stripe (eu)");
+
+    // It can be taken away again.
+    await rowAction(card.getByTestId("account-stripe"), "Failover…");
+    await sheet.getByTestId("failover-remove").click();
+    await expect(sheet).toBeHidden();
+    expect(gw.called("DELETE", `${base}/stripe/failover`)).toHaveLength(1);
+    await expect(card.getByTestId("account-failover-stripe")).toHaveCount(0);
+  });
+
+  test("a viewer sees how an account is doing but is not offered a failover", async ({ page }) => {
+    const { gw } = productGateway(new MockGateway(), { apps: [appWithLive("ACTIVE")], role: "viewer" });
+    liveGateway(gw, { accounts: [{ provider: "stripe", default: true, working: true, checked: true }] });
+    extras(gw, {});
+    gw.on((c) => (c.path === `/app/v1/apps/${APP}/integrations/payment-accounts/health` ? { body: { accounts: [{ provider: "stripe", environment: "live", is_default: true, status: "healthy", breaker: "closed", consecutive_failures: 0 }] } } : undefined));
+    await gw.install(page);
+    await signInAsAda(page);
+    await page.goto(`/app/apps/${APP}/integrations?env=live`);
+    const card = page.getByTestId("accounts-card");
+    await expect(card.getByTestId("account-health-stripe")).toHaveText("Reachable");
+    // Not an owner: no menu with a failover in it.
+    await expect(card.getByTestId("account-stripe").getByTestId("row-actions")).toHaveCount(0);
   });
 
   test("a second e-invoice account is added under a label, made the default, routed by the buyer's country and removed; the credentials never come back", async ({ page }) => {

@@ -87,3 +87,34 @@ export function auditActor(actor: string, names: ReadonlyMap<string, string>, su
   const id = actor.startsWith("user:") ? actor.slice(5) : actor;
   return names.get(id) ?? (id.length > 8 ? `${id.slice(0, 8)}…` : id);
 }
+
+/** How a payment account is doing, for its pill and its filter: what the last periodic check found, unless the circuit breaker says more. */
+export const HEALTH_STATES = ["healthy", "down", "bad_credentials", "circuit_open", "recovering", "unknown"] as const;
+export type HealthState = (typeof HEALTH_STATES)[number];
+
+export interface HealthView {
+  provider?: string;
+  status?: string;
+  breaker?: string;
+  consecutive_failures?: number;
+  last_error?: string;
+  last_checked_at?: string;
+  last_ok_at?: string;
+  failover_to?: string;
+}
+
+/** An open circuit is the news whatever the last check said (charges are being refused); one letting a probe through is recovering; no row, or a status we do not know, is unknown. */
+export function healthState(h: HealthView | undefined): HealthState {
+  if (!h) return "unknown";
+  if (h.breaker === "open") return "circuit_open";
+  if (h.breaker === "half_open") return "recovering";
+  return h.status === "healthy" || h.status === "down" || h.status === "bad_credentials" ? h.status : "unknown";
+}
+
+export const healthTone = (s: HealthState): "success" | "danger" | "warning" | "neutral" => (s === "healthy" ? "success" : s === "recovering" ? "warning" : s === "unknown" ? "neutral" : "danger");
+
+/** A bank transfer is confirmed by hand: it has no charge to fail over and cannot take one over. */
+export const canFailover = (e: Pick<AccountEntry, "kind" | "provider">): boolean => e.kind === "payment" && e.provider !== "banktransfer";
+
+/** The accounts a failover from `key` may go to: the app's other payment accounts that can take part. */
+export const failoverTargets = (entries: readonly AccountEntry[], key: string): AccountEntry[] => entries.filter((e) => canFailover(e) && e.key !== key);
