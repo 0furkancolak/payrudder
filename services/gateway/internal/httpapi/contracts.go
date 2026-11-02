@@ -3,13 +3,14 @@ package httpapi
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	billingv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/billing/v1"
 	plansv1 "github.com/0furkancolak/payrudder/gen/go/payrudder/plans/v1"
+	"github.com/0furkancolak/payrudder/pkg/apikey"
+	"github.com/0furkancolak/payrudder/pkg/audit"
 	"github.com/0furkancolak/payrudder/pkg/errkey"
 	"github.com/0furkancolak/payrudder/pkg/tenant"
 	"github.com/0furkancolak/payrudder/services/gateway/internal/ratelimit"
@@ -17,7 +18,8 @@ import (
 
 // The agreements a seller presents to its own customers, the evidence that a customer accepted a specific text, and the withdrawal requests (ContractService,
 // docs/plans/21-contracts.md). Managing the texts and settings needs contracts:read / contracts:write; recording an acceptance or a withdrawal is a customer record
-// (customers:write), so a server that only runs a checkout can do it without being able to change a text.
+// (customers:write), so a server that only runs a checkout can do it without being able to change a text. What returns money to a card (accepting a withdrawal that
+// refunds, and the refund route) is a credit-note act and needs invoices:write too.
 
 func (s *Server) contractRoutes() []Route {
 	return []Route{
@@ -39,13 +41,19 @@ func (s *Server) contractRoutes() []Route {
 	}
 }
 
-// contractAuthor is who is recorded as the author of a version or the decider of a withdrawal: the person the console says (X-Payrudder-Actor), else the key.
+// contractAuthor is who is recorded as the author of a version or the decider of a withdrawal, from who the gateway authenticated and never from what the client says:
+// a tenant's API key is "api-key:<id>" (whatever X-Payrudder-Actor it sends: anybody holding a key could put another person's name there), a signed-in person is their
+// verified address, a signed-in operator theirs, and the machine token the actor it declares in X-Payrudder-Actor (a shared credential: a script says who it is) or
+// "operator" (authenticate and sessionActAs decide it, in the principal's Actor).
 func contractAuthor(r *http.Request) string {
-	if a := strings.TrimSpace(r.Header.Get("X-Payrudder-Actor")); a != "" {
-		return truncateRunes(a, 200)
-	}
-	if ti, ok := tenant.FromContext(r.Context()); ok && ti.APIKeyID != "" {
-		return "key " + ti.APIKeyID
+	a := principalFrom(r.Context()).Actor
+	switch a.Type {
+	case audit.ActorAPIKey:
+		return "api-key:" + a.ID
+	case audit.ActorUser:
+		return truncateRunes(normalizeEmail(a.Email), 200)
+	case audit.ActorOperator:
+		return truncateRunes(a.ID, 200)
 	}
 	return ""
 }
@@ -198,21 +206,30 @@ func (s *Server) setContractWithdrawalStatus(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	req.Id, req.DecidedBy = r.PathValue("id"), contractAuthor(r)
+	// Accepting is the seller's decision to give the money back; the setting says whether Payrudder then asks for the refund too. A key that cannot create a credit note
+	// (invoices:write) must not be able to start one this way: when the refund would follow, it is refused before anything is decided; when it would not, it may decide.
+	accepting, refunds := req.GetStatus() == "accepted", false
+	if accepting {
+		st, err := s.d.Contracts.GetContractSettings(r.Context(), &plansv1.GetContractSettingsRequest{})
+		refunds = err == nil && st.GetSettings().GetWithdrawalRefund() == "full"
+		// Not knowing the setting counts as a refund: fail closed.
+		if (err != nil || refunds) && !keyHolds(r.Context(), apikey.PermInvoicesWrite) {
+			writeError(w, r, permissionDenied(apikey.PermInvoicesWrite))
+			return
+		}
+	}
 	resp, err := s.d.Contracts.SetContractWithdrawalStatus(r.Context(), req)
 	if err != nil {
 		respond(w, r, http.StatusOK, resp.GetWithdrawal(), err)
 		return
 	}
 	out := resp.GetWithdrawal()
-	// Accepting a withdrawal is the seller's decision to give the money back; the setting says whether Payrudder then asks for the refund too. The decision is already
-	// recorded: whatever happens to the refund is written on the withdrawal, never an error that would make the seller decide again.
-	if req.GetStatus() == "accepted" && out.GetInvoiceId() != "" {
-		if st, err := s.d.Contracts.GetContractSettings(r.Context(), &plansv1.GetContractSettingsRequest{}); err == nil && st.GetSettings().GetWithdrawalRefund() == "full" {
-			if refunded, err := s.refundWithdrawal(r, out.GetId(), req.GetRefundAmountMinor()); err == nil {
-				out = refunded
-			} else {
-				s.d.Log.WarnContext(r.Context(), "withdrawal accepted, refund not asked for", "withdrawal", out.GetId(), "error", err)
-			}
+	// The decision is already recorded: whatever happens to the refund is written on the withdrawal, never an error that would make the seller decide again.
+	if refunds && out.GetInvoiceId() != "" {
+		if refunded, err := s.refundWithdrawal(r, out.GetId(), req.GetRefundAmountMinor()); err == nil {
+			out = refunded
+		} else {
+			s.d.Log.WarnContext(r.Context(), "withdrawal accepted, refund not asked for", "withdrawal", out.GetId(), "error", err)
 		}
 	}
 	respond(w, r, http.StatusOK, out, nil)

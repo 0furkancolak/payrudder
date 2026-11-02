@@ -130,7 +130,8 @@
       "conflicting_outcomes": "Éxito y fallo registrados a la vez",
       "settlement_missing": "Pagado, no está en la liquidación del proveedor",
       "settlement_mismatch": "El importe liquidado difiere",
-      "fee_mismatch": "La comisión del proveedor difiere"
+      "fee_mismatch": "La comisión del proveedor difiere",
+      "payment_disputed": "Pago disputado, sin resolver"
     },
     "ledgerKind": {
       "charge": "cobro",
@@ -153,7 +154,9 @@
     "dunningState": {
       "PAYMENT_DECLINED": "rechazado, reintentando",
       "PAYMENT_UNKNOWN": "resultado desconocido",
-      "UNCOLLECTIBLE": "abandonado"
+      "UNCOLLECTIBLE": "abandonado",
+      "PAYMENT_ACTION_REQUIRED": "esperando la confirmación del cliente",
+      "PAYMENT_HELD": "primer cobro retenido"
     },
     "sagaState": {
       "PAYMENT_PENDING": "esperando la transferencia",
@@ -174,7 +177,9 @@
       "REFUND_FAILED": "reembolso fallido",
       "REFUNDED": "reembolsada",
       "VOIDED": "anulada",
-      "AWAITING_PAYMENT": "pendiente de pago"
+      "AWAITING_PAYMENT": "pendiente de pago",
+      "PAYMENT_ACTION_REQUIRED": "esperando la confirmación del cliente",
+      "PAYMENT_HELD": "primer cobro retenido"
     },
     "paymentMethod": {
       "bank_transfer": "Transferencia bancaria",
@@ -221,6 +226,16 @@
       "not_reported": "Pagado, no informado",
       "pending_payout": "Informado, pendiente de pago",
       "settled": "Liquidado"
+    },
+    "disputeReason": {
+      "fraudulent": "Fraude alegado",
+      "general": "General",
+      "product_not_received": "Producto no recibido",
+      "product_unacceptable": "Producto inaceptable",
+      "subscription_canceled": "Suscripción cancelada",
+      "duplicate": "Pago duplicado",
+      "unrecognized": "No reconocido",
+      "credit_not_processed": "Abono no procesado"
     }
   },
   "tenants": {
@@ -732,7 +747,20 @@
         "note": "Una estimación a {when}, calculada igual que la factura real. Cambia con cada evento hasta que se cierra el periodo, y un cambio de plan, un cupón o un tipo de impuesto fijado más tarde puede modificarla.",
         "creditSurplus": "Se añadirían {amount} al saldo a favor del cliente: las líneas suman menos de cero."
       },
-      "taxNotSaved": "El cliente se creó, pero sus datos fiscales no se guardaron. Cierra este panel, abre el cliente y usa Editar, Datos fiscales para intentarlo de nuevo."
+      "taxNotSaved": "El cliente se creó, pero sus datos fiscales no se guardaron. Cierra este panel, abre el cliente y usa Editar, Datos fiscales para intentarlo de nuevo.",
+      "cards": {
+        "title": "Tarjetas guardadas",
+        "card": "Tarjeta",
+        "none": "El proveedor de pagos no tiene ninguna tarjeta de este cliente.",
+        "inUse": "Se cobra a esta tarjeta",
+        "delete": "Eliminar tarjeta",
+        "deleteAria": "Eliminar la tarjeta que termina en {last4}",
+        "deleteTitle": "¿Eliminar la tarjeta que termina en {last4}?",
+        "deleteBody": "La tarjeta se elimina en el proveedor de pagos y ya no se puede cobrar. No se puede deshacer: el cliente tendría que introducirla de nuevo donde se guardan las tarjetas.",
+        "deleteInUse": "Es la tarjeta con la que se cobran las facturas del cliente. Tras eliminarla, el próximo cobro falla hasta que se defina un nuevo método de pago para el cliente. Se elimina en el proveedor de pagos y no se puede deshacer.",
+        "deletedInUse": "La tarjeta se eliminó. Era la que se usa para cobrar las facturas del cliente: define un nuevo método de pago para el cliente.",
+        "hint": "Payrudder no guarda números de tarjeta: una tarjeta se guarda donde el pagador la escribe, y el método de pago del cliente la nombra. Aquí ves las tarjetas y puedes eliminar una."
+      }
     },
     "packages": {
       "new": "Nuevo paquete",
@@ -1222,16 +1250,18 @@
         "badRate": "No es un porcentaje: de 0 a 100 con como mucho dos decimales."
       },
       "dunning": {
-        "title": "Reintentos de pago",
+        "title": "Reintentos de pago y contracargos",
         "hint": "Cuando se rechaza un cobro, Payrudder lo reintenta tras cada espera de abajo y después da la factura por incobrable. Las esperas son en horas (en minutos en una cuenta sandbox).",
         "defaults": "No has configurado nada: se muestran las esperas estándar.",
         "retry": "Reintento {n}",
         "delay": "Horas antes del reintento {n}",
         "add": "Añadir un reintento",
-        "save": "Guardar reintentos",
-        "saved": "Reintentos guardados.",
+        "save": "Guardar ajustes",
+        "saved": "Ajustes guardados.",
         "none": "Sin reintentos: un cobro rechazado se abandona de inmediato.",
-        "bad": "Cada espera es un número entero de 1 a 720."
+        "bad": "Cada espera es un número entero de 1 a 720.",
+        "blockOnChargeback": "Bloquear al cliente cuando se abre un contracargo",
+        "blockOnChargebackHint": "Lo bloquea con la categoría contracargo: no podrá hacer compras nuevas y ya no podrá pagar una factura abierta. El bloqueo nunca se levanta solo; usted lo levanta en el cliente. Una consulta no bloquea."
       },
       "promotions": {
         "title": "Promociones",
@@ -3295,7 +3325,8 @@
         "not_live": "Solo las facturas en producción se pagan a través de un proveedor.",
         "payment_in_progress": "Se está iniciando un pago para esta factura. Inténtalo de nuevo en un momento.",
         "return_url_required": "Se requiere una dirección de retorno para un pago de checkout.",
-        "unknown_method": "Este método de pago no se conoce."
+        "unknown_method": "Este método de pago no se conoce.",
+        "installment_unavailable": "Ese número de cuotas no se ofrece para esta tarjeta e importe. Paga de una vez o elige una de las opciones de la página."
       },
       "ledger": {
         "bad_limit": "El límite debe estar entre 1 y 1000.",
@@ -3363,6 +3394,9 @@
       "failover": {
         "bad_target": "Una conmutación por error necesita dos cuentas distintas que existan en el entorno; una transferencia bancaria no puede participar.",
         "not_found": "No hay ninguna conmutación por error definida para esa cuenta."
+      },
+      "card": {
+        "not_found": "El cliente no tiene esa tarjeta guardada."
       }
     },
     "einvoice": {
@@ -3781,6 +3815,16 @@
       },
       "canned_reply": {
         "not_found": "Esa respuesta predefinida ya no existe."
+      },
+      "attachment": {
+        "account_full": "Tu organización alcanzó el límite de 50 MB de archivos de soporte.",
+        "bad_type": "Solo se pueden adjuntar archivos png, jpeg, pdf y de texto sin formato.",
+        "no_app": "Los archivos se guardan con una app: crea una primero y luego adjunta el archivo.",
+        "not_found": "Ese archivo no existe.",
+        "rejected": "No se puede adjuntar el archivo.",
+        "storage_full": "El almacenamiento de los archivos de soporte está lleno. Libera espacio en los archivos de tu app o escríbenos sin el archivo.",
+        "too_large": "Un archivo puede pesar como máximo 5 MB.",
+        "too_many": "Un ticket puede tener como máximo 10 archivos."
       }
     },
     "audit": {
@@ -4372,7 +4416,8 @@
           "buyer_country": "País del comprador",
           "buyer_zip_code": "Código postal del comprador",
           "buyer_ip": "Dirección IP pública de su empresa",
-          "buyer_gsm_number": "Teléfono del comprador"
+          "buyer_gsm_number": "Teléfono del comprador",
+          "enabled_installments": "Cuotas que el pagador puede elegir"
         },
         "problems": {
           "required": "Obligatorio.",
@@ -4560,7 +4605,8 @@
           "api_key": "En el panel de comercio de iyzico: Ajustes, Ajustes de la empresa, Claves API. Usa el par live.",
           "secret_key": "Aparece junto a la clave API en el mismo sitio. Allí se muestra una sola vez; cópiala ahora.",
           "buyer_identity_number": "El número fiscal (TCKN o VKN) de la persona o empresa que figura como comprador. Tu perfil de facturación lo rellena.",
-          "buyer_ip": "La dirección IP pública fija desde la que tu negocio envía solicitudes; iyzico vincula las claves a ella."
+          "buyer_ip": "La dirección IP pública fija desde la que tu negocio envía solicitudes; iyzico vincula las claves a ella.",
+          "enabled_installments": "Números entre 1, 2, 3, 6, 9 y 12, separados por comas, por ejemplo 1, 3, 6. Se ofrecen en el formulario de pago de iyzico y, para una tarjeta guardada, en la página de la factura; el interés es el definido en tu panel de iyzico, así que el pagador puede pagar más que la factura y la factura se da igualmente por pagada en su totalidad. Déjalo vacío para pagos únicos. Vuelve a escribirlo cuando cambies las claves."
         },
         "paddle": {
           "api_key": "En Paddle, en Developer tools, Authentication, crea una clave API live.",
@@ -5690,6 +5736,14 @@
     "badge": {
       "unread": "Tickets con novedades: {n}",
       "waiting": "Esperando a que respondamos: {n}"
+    },
+    "attach": {
+      "add": "Adjuntar archivos",
+      "hint": "png, jpeg, pdf o texto; hasta 5 MB cada uno, 10 por ticket.",
+      "remove": "Quitar {name}",
+      "failed": "Estos archivos no se adjuntaron:",
+      "openedButFailed": "Tu ticket se abrió, pero algunos archivos no se adjuntaron. Puedes adjuntarlos a una respuesta.",
+      "download": "Descargar {name}"
     }
   },
   "connect": {
@@ -6274,5 +6328,43 @@
         "pruned": "Entradas más antiguas del registro eliminadas"
       }
     }
+  },
+  "disputes": {
+    "tab": "Disputas",
+    "tabsLabel": "Pagos y disputas",
+    "tabs": {
+      "payments": "Pagos",
+      "disputes": "Disputas"
+    },
+    "title": "Disputas",
+    "hint": "Casos que el cliente abrió en su banco sobre este pago. Respóndalos en su proveedor de pagos; Payrudder muestra en qué punto está cada uno.",
+    "empty": "No hay disputas. Un caso aparece aquí cuando un cliente cuestiona un pago en su banco.",
+    "outcomeLabel": "Resultado",
+    "allOutcomes": "Todos los resultados",
+    "kindLabel": "Tipo",
+    "allKinds": "Todos los tipos",
+    "outcome": {
+      "open": "Abierta",
+      "won": "Ganada",
+      "lost": "Perdida"
+    },
+    "kind": {
+      "chargeback": "Contracargo",
+      "inquiry": "Consulta"
+    },
+    "means": {
+      "openChargeback": "El banco del cliente revirtió este pago: el proveedor retiró el dinero hasta que decida. Envíe sus pruebas antes de la fecha indicada abajo.",
+      "openInquiry": "El banco del cliente pregunta por este pago. No se ha retirado dinero; responda a la solicitud del proveedor para que no se convierta en un contracargo.",
+      "wonChargeback": "Resuelta a su favor: el dinero ha vuelto a usted.",
+      "wonInquiry": "Cerrada sin convertirse en contracargo: no se perdió nada.",
+      "lost": "Ganó el titular de la tarjeta: el dinero se queda con él."
+    },
+    "provider": "Proveedor",
+    "reason": "Motivo",
+    "evidenceDue": "Pruebas hasta",
+    "opened": "Abierta",
+    "closed": "Cerrada",
+    "reference": "Caso",
+    "case": "Caso"
   }
 }

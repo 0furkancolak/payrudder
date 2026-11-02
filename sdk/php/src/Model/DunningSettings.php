@@ -18,11 +18,13 @@ final class DunningSettings implements Model
      * @param list<int>|null $retryHours
      * @param bool|null $defaultsInUse
      * @param string|null $updateTime
+     * @param bool|null $blockOnChargeback
      */
     public function __construct(
         public readonly ?array $retryHours = null,
         public readonly ?bool $defaultsInUse = null,
         public readonly ?string $updateTime = null,
+        public readonly ?bool $blockOnChargeback = null,
     ) {}
 
     /**
@@ -34,6 +36,7 @@ final class DunningSettings implements Model
             retryHours: Cast::ints($data['retry_hours'] ?? null),
             defaultsInUse: Cast::bool($data['defaults_in_use'] ?? null),
             updateTime: Cast::string($data['update_time'] ?? null),
+            blockOnChargeback: Cast::bool($data['block_on_chargeback'] ?? null),
         );
     }
 
@@ -46,6 +49,7 @@ final class DunningSettings implements Model
             'retry_hours' => Cast::wire($this->retryHours),
             'defaults_in_use' => $this->defaultsInUse,
             'update_time' => $this->updateTime,
+            'block_on_chargeback' => $this->blockOnChargeback,
         ]);
     }
 }

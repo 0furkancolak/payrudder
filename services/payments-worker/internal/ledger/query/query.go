@@ -23,6 +23,8 @@ const (
 // Deps is what the queries read.
 type Deps struct {
 	Ledger store.Ledger
+	// Disputes lists the cases a customer opened with their bank.
+	Disputes store.Disputes
 }
 
 // Limit reads the ?limit= of a listing: 1 to 1000, 100 when absent.
@@ -62,6 +64,27 @@ func Lookup(ctx context.Context, d Deps, tenant uuid.UUID, invoiceIDs []string) 
 	rows, err := d.Ledger.LookupInvoices(ctx, tenant, ids)
 	if err != nil {
 		return nil, fmt.Errorf("look up the ledger of invoices: %w", err)
+	}
+	return rows, nil
+}
+
+// Disputes lists the tenant's cases, newest first: of one invoice when invoice is not empty, of one outcome (open, won or lost) when that is not empty.
+func Disputes(ctx context.Context, d Deps, tenant uuid.UUID, invoice, outcome string, limit int) ([]store.Dispute, error) {
+	var inv uuid.UUID
+	if invoice != "" {
+		var err error
+		if inv, err = uuid.Parse(invoice); err != nil {
+			return nil, refuse.New(http.StatusBadRequest, "payments.invoice.bad_ids", "invoice_id must be a UUID")
+		}
+	}
+	switch outcome {
+	case "", "open", "won", "lost":
+	default:
+		return nil, refuse.New(http.StatusBadRequest, "common.invalid_argument", "outcome must be open, won or lost")
+	}
+	rows, err := d.Disputes.List(ctx, tenant, inv, outcome, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list the disputes: %w", err)
 	}
 	return rows, nil
 }

@@ -212,7 +212,7 @@ export interface AffiliateProgram {
   /** Coupon a referred customer gets on their next checkout */
   referred_coupon_code: string;
   daily_click_cap: number;
-  /** Where /r/<code> sends the visitor; empty shows a plain page */
+  /** Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
   landing_url: string;
   /** A partner who applies is active at once */
   auto_approve: boolean;
@@ -239,7 +239,7 @@ export interface AffiliateProgramInput {
   /** Coupon a referred customer gets on their next checkout */
   referred_coupon_code?: string;
   daily_click_cap?: number;
-  /** Where /r/<code> sends the visitor; empty shows a plain page */
+  /** Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
   landing_url?: string;
   /** A partner who applies is active at once */
   auto_approve?: boolean;
@@ -266,7 +266,7 @@ export interface AffiliateProgramInputParams {
   /** Coupon a referred customer gets on their next checkout */
   referred_coupon_code?: string;
   daily_click_cap?: number;
-  /** Where /r/<code> sends the visitor; empty shows a plain page */
+  /** Where /r/<code> sends the visitor; empty shows a plain page. A public http(s) address: a host name (not an IP address, localhost or a name without a dot), no user name or password */
   landing_url?: string;
   /** A partner who applies is active at once */
   auto_approve?: boolean;
@@ -1174,6 +1174,12 @@ export interface CustomerBlockEvent {
   create_time: string;
 }
 
+export interface CustomerCards {
+  /** The provider that holds the cards; empty when the customer has none */
+  provider: string;
+  cards: Array<StoredCard>;
+}
+
 export interface CustomerContact {
   name: string;
   email: string;
@@ -1206,15 +1212,53 @@ export interface CustomerTax {
   e_invoice_registered?: boolean;
 }
 
+export interface DeletedCustomerCard {
+  provider: string;
+  deleted: boolean;
+  /** The deleted card was the one the customer's payment method names: set a new payment method */
+  was_in_use: boolean;
+}
+
+export interface Dispute {
+  /** Payrudder's id of the case */
+  id: string;
+  provider: string;
+  /** The provider's reference of the case (Stripe's du_..., Paddle's cb_ or cbw_ and the transaction) */
+  dispute_id: string;
+  /** The payment that is disputed, as the provider calls it (a Stripe PaymentIntent id, a Paddle transaction id) */
+  payment_ref: string;
+  /** The invoice of that payment; absent for a payment Payrudder did not make */
+  invoice_id?: string;
+  /** The disputed amount */
+  amount_minor: Int64;
+  currency: string;
+  outcome: "open" | "won" | "lost";
+  /** A chargeback proper, which takes the money back; false is an inquiry or a warning ahead of one */
+  formal: boolean;
+  /** The provider's own word (Stripe's needs_response, under_review, won, lost, warning_closed ...) */
+  provider_status: string;
+  /** The cardholder's reason in the provider's words (Stripe's fraudulent, product_not_received ...); absent when the provider does not say */
+  reason?: string;
+  /** When your evidence is due; absent when the provider does not say */
+  evidence_due_time?: string;
+  opened_time: string;
+  /** Absent while the case is open */
+  closed_time?: string;
+}
+
 export interface DunningSettings {
   retry_hours: Array<number>;
   /** True when nothing was set and the service-wide delays apply */
   defaults_in_use: boolean;
   update_time: string | null;
+  /** A formal dispute (a chargeback) of a customer's payment blocks the customer, category chargeback. Off unless you turn it on; it blocks only when the dispute opens and never lifts the block by itself. */
+  block_on_chargeback?: boolean;
 }
 
 export interface DunningSettingsInput {
   retry_hours?: Array<number>;
+  /** Absent: kept as it is. retry_hours is replaced as before (absent is none). */
+  block_on_chargeback?: boolean;
 }
 
 export interface EInvoiceDocument {
@@ -1617,7 +1661,7 @@ export interface GetDunningReportInvoice {
   provider: string;
   currency: string;
   total_minor: Int64;
-  state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "UNCOLLECTIBLE";
+  state: "PAYMENT_DECLINED" | "PAYMENT_UNKNOWN" | "PAYMENT_PENDING" | "PAYMENT_ACTION_REQUIRED" | "PAYMENT_HELD" | "UNCOLLECTIBLE";
   dunning_attempt: number;
   next_attempt_time: string | null;
   last_error: string;
@@ -2062,6 +2106,17 @@ export interface ListCustomersQuery {
 export interface ListCustomersResponse {
   customers: Array<Customer>;
   next_page_token: string;
+}
+
+export interface ListDisputesQuery {
+  /** Only the disputes of this invoice */
+  invoice_id?: string;
+  outcome?: "open" | "won" | "lost";
+  limit?: number;
+}
+
+export interface ListDisputesResponse {
+  disputes: Array<Dispute>;
 }
 
 export interface ListEInvoicesQuery {
@@ -2919,6 +2974,25 @@ export interface SignedUrl {
   expires_at: string;
 }
 
+export interface StoredCard {
+  /** The provider's card token (cardToken): what the delete names */
+  token: string;
+  alias: string;
+  /** The first digits of the number (the BIN) */
+  bin: string;
+  last4: string;
+  /** CREDIT_CARD, DEBIT_CARD or PREPAID_CARD */
+  type: string;
+  /** VISA, MASTER_CARD, ... */
+  association: string;
+  family: string;
+  bank: string;
+  expire_month: string;
+  expire_year: string;
+  /** The customer's payment method names this card */
+  in_use: boolean;
+}
+
 export interface Subscription {
   id: string;
   customer_id: string;
@@ -3086,7 +3160,7 @@ export interface WebhookEndpointInput {
   active: boolean;
 }
 
-export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested" | "contract.withdrawal_decided";
+export type WebhookEventType = "invoice.finalized" | "invoice.paid" | "invoice.voided" | "invoice.uncollectible" | "credit_note.created" | "credit_note.refunded" | "credit_note.refund_failed" | "subscription.created" | "subscription.changed" | "subscription.change_scheduled" | "subscription.cancelled" | "subscription.cancellation_scheduled" | "subscription.cancellation_withdrawn" | "subscription.paused" | "subscription.resumed" | "subscription.moved_to_provider" | "subscription.trial_will_end" | "payment_link.created" | "payment_link.paid" | "payment_link.expired" | "payment.disputed" | "credits.purchased" | "credits.low" | "customer.blocked" | "customer.unblocked" | "price_change.scheduled" | "contract.accepted" | "contract.version_published" | "contract.withdrawal_requested" | "contract.withdrawal_decided";
 
 export interface WithdrawPriceChangeResponse {
   price_change: PriceChange;

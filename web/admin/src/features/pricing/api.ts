@@ -226,7 +226,8 @@ export function useDunningSettings(tenantId: MaybeRefOrGetter<string>) {
 export function useSetDunningSettings(tenantId: MaybeRefOrGetter<string>) {
   const queries = useQueryClient();
   return useMutation({
-    mutationFn: (retry_hours: number[]) => unwrap(tenantApi(toValue(tenantId)).PUT("/v1/dunning-settings", { body: { retry_hours } })),
+    // block_on_chargeback is sent only when it changed: the server keeps the setting when the request does not name it.
+    mutationFn: (body: { retry_hours: number[]; block_on_chargeback?: boolean }) => unwrap(tenantApi(toValue(tenantId)).PUT("/v1/dunning-settings", { body })),
     onSuccess: () => queries.invalidateQueries({ queryKey: pricingKeys.dunning(toValue(tenantId)) }),
   });
 }

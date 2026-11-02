@@ -16,9 +16,11 @@ final class DunningSettingsInput implements RequestBody
 {
     /**
      * @param list<int>|null $retryHours
+     * @param bool|null $blockOnChargeback
      */
     public function __construct(
         public readonly ?array $retryHours = null,
+        public readonly ?bool $blockOnChargeback = null,
     ) {}
 
     /**
@@ -28,6 +30,7 @@ final class DunningSettingsInput implements RequestBody
     {
         return Cast::compact([
             'retry_hours' => Cast::wire($this->retryHours),
+            'block_on_chargeback' => $this->blockOnChargeback,
         ]);
     }
 }
