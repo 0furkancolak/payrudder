@@ -99,9 +99,15 @@ func (s *Server) listPriceChanges(w http.ResponseWriter, r *http.Request) {
 	respond(w, r, http.StatusOK, resp, err)
 }
 
-// getPriceChange is GET /v1/price-changes/{id}: the price change with its subscriptions, optionally those in one state (?state=).
+// getPriceChange is GET /v1/price-changes/{id}: the price change with a page of its subscriptions, optionally those in one state (?state=), with page_size and page_token.
 func (s *Server) getPriceChange(w http.ResponseWriter, r *http.Request) {
-	resp, err := s.d.Plans.GetPriceChange(r.Context(), &plansv1.GetPriceChangeRequest{Id: r.PathValue("id"), State: r.URL.Query().Get("state")})
+	q := r.URL.Query()
+	size, err := intParam(q, "page_size")
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	resp, err := s.d.Plans.GetPriceChange(r.Context(), &plansv1.GetPriceChangeRequest{Id: r.PathValue("id"), State: q.Get("state"), PageSize: size, PageToken: q.Get("page_token")})
 	noStore(w)
 	respond(w, r, http.StatusOK, resp, err)
 }

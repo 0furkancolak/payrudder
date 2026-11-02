@@ -1740,7 +1740,7 @@ export class PriceChangesResource {
   /**
    * One price change with its subscriptions and what became of each
    *
-   * The subscriptions by customer, at most 500, optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
+   * The subscriptions by customer, a page at a time (`page_size` 1 to 500, default 500; `next_page_token` is empty on the last page), optionally only those in one state. The state of a scheduled one follows its change - waiting (`scheduled`), `applied` at the renewal, or `withdrawn`.
    *
    * `GET /v1/price-changes/{id}`
    */

@@ -47,7 +47,8 @@ WHERE pc.tenant_id = app_tenant_id() AND (sqlc.narg('id')::uuid IS NULL OR pc.id
 ORDER BY pc.created_at DESC, pc.id DESC
 LIMIT 100;
 
--- The subscriptions of a price change, by customer; state: skipped, scheduled, applied or withdrawn (empty: all). At most 500.
+-- The subscriptions of a price change, by customer, a page at a time (the keyset is the customer's external id and the subscription); state: skipped, scheduled,
+-- applied or withdrawn (empty: all). The caller asks for one row more than the page, to know whether there is a next page.
 -- name: ListPriceChangeItems :many
 SELECT * FROM (
   SELECT i.subscription_id, cu.external_id AS customer_external_id,
@@ -59,9 +60,10 @@ SELECT * FROM (
   LEFT JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id
   WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = @price_change_id
 ) x
-WHERE @state::text = '' OR x.state = @state::text
+WHERE (@state::text = '' OR x.state = @state::text)
+  AND (@after_customer::text = '' OR (x.customer_external_id, x.subscription_id) > (@after_customer::text, @after_subscription::uuid))
 ORDER BY x.customer_external_id, x.subscription_id
-LIMIT 500;
+LIMIT @page_size::int;
 
 -- Withdrawing closes the price change: it takes no more subscriptions. Withdrawing one that is withdrawn already does nothing.
 -- name: WithdrawPriceChange :execrows
@@ -75,3 +77,10 @@ FROM price_change_items i
 JOIN subscription_changes c ON c.tenant_id = i.tenant_id AND c.id = i.change_id AND c.state = 'pending'
 WHERE i.tenant_id = app_tenant_id() AND i.price_change_id = @price_change_id
 ORDER BY i.subscription_id;
+
+-- The kill switch of price changes: one row for the platform (migration 00019). Read by every run, written by the operator.
+-- name: GetPriceChangePause :one
+SELECT paused, reason, updated_by, updated_at FROM price_change_pause;
+
+-- name: SetPriceChangePause :one
+UPDATE price_change_pause SET paused = @paused, reason = @reason, updated_by = @updated_by, updated_at = now() RETURNING paused, reason, updated_by, updated_at;

@@ -31,6 +31,20 @@ func (f *fakePlans) SetTenantStatus(_ context.Context, req *plansv1.SetTenantSta
 	return &plansv1.SetTenantStatusResponse{Tenant: &plansv1.Tenant{Id: req.GetTenantId(), Status: req.GetStatus()}}, nil
 }
 
+func (f *fakePlans) SetPriceChangePause(_ context.Context, req *plansv1.SetPriceChangePauseRequest) (*plansv1.SetPriceChangePauseResponse, error) {
+	f.lastPause = req
+	return &plansv1.SetPriceChangePauseResponse{Pause: &plansv1.PriceChangePause{Paused: req.GetPaused(), Reason: req.GetReason(), UpdatedBy: req.GetActor()}}, nil
+}
+
+func (f *fakePlans) GetPriceChangePause(context.Context, *plansv1.GetPriceChangePauseRequest) (*plansv1.GetPriceChangePauseResponse, error) {
+	return &plansv1.GetPriceChangePauseResponse{Pause: &plansv1.PriceChangePause{}}, nil
+}
+
+func (f *fakePlans) GetPriceChange(_ context.Context, req *plansv1.GetPriceChangeRequest) (*plansv1.GetPriceChangeResponse, error) {
+	f.lastItems = req
+	return &plansv1.GetPriceChangeResponse{PriceChange: &plansv1.PriceChange{Id: req.GetId()}, NextPageToken: "next"}, nil
+}
+
 func (f *fakePlans) ListTenantStatusEvents(context.Context, *plansv1.ListTenantStatusEventsRequest) (*plansv1.ListTenantStatusEventsResponse, error) {
 	return &plansv1.ListTenantStatusEventsResponse{Events: []*plansv1.TenantStatusEvent{{Id: "t1", Kind: "changed", FromStatus: plansv1.TenantStatus_TENANT_STATUS_ACTIVE,
 		ToStatus: plansv1.TenantStatus_TENANT_STATUS_FROZEN, Reason: "unpaid", Actor: "boss@example.com"}}}, nil
@@ -108,5 +122,32 @@ func TestOperatorSetsTenantStatusAndReadsItsHistory(t *testing.T) {
 	}
 	if r, body := do(t, ts, http.MethodGet, "/admin/v1/tenants/"+id+"/status-events", operatorToken, ""); r.StatusCode != http.StatusOK || body["events"] == nil {
 		t.Errorf("status events: %d %v", r.StatusCode, body)
+	}
+}
+
+// The kill switch of price changes is the operator's alone, needs its flag in the body, and is recorded for the person the gateway knows; the items of a price change
+// are asked a page at a time.
+func TestOperatorPausesPriceChangesAndTenantsPageThem(t *testing.T) {
+	ts, f := newTestServer(t)
+	if r, body := do(t, ts, http.MethodPut, "/admin/v1/price-change-pause", operatorToken, `{"paused":true,"reason":"wrong version"}`); r.StatusCode != http.StatusOK ||
+		f.lastPause.GetPaused() != true || f.lastPause.GetReason() != "wrong version" || f.lastPause.GetActor() != "operator" || body["paused"] != true {
+		t.Errorf("pause: %d %v %v", r.StatusCode, body, f.lastPause)
+	}
+	if r, body := do(t, ts, http.MethodPut, "/admin/v1/price-change-pause", operatorToken, `{"reason":"no flag"}`); r.StatusCode != http.StatusBadRequest {
+		t.Errorf("a body without paused: %d %v", r.StatusCode, body)
+	}
+	if r, _ := do(t, ts, http.MethodGet, "/admin/v1/price-change-pause", operatorToken, ""); r.StatusCode != http.StatusOK {
+		t.Errorf("read: %d", r.StatusCode)
+	}
+	if r, _ := do(t, ts, http.MethodPut, "/admin/v1/price-change-pause", "live-key", `{"paused":false}`); r.StatusCode == http.StatusOK {
+		t.Errorf("a tenant key reached the kill switch")
+	}
+	const id = "0192f0b4-6f6e-7c3a-9a3e-6a1f2b3c4d5e"
+	if r, body := do(t, ts, http.MethodGet, "/v1/price-changes/"+id+"?state=skipped&page_size=50&page_token=abc", "live-key", ""); r.StatusCode != http.StatusOK ||
+		f.lastItems.GetState() != "skipped" || f.lastItems.GetPageSize() != 50 || f.lastItems.GetPageToken() != "abc" || body["next_page_token"] != "next" {
+		t.Errorf("a page of items: %d %v %v", r.StatusCode, body, f.lastItems)
+	}
+	if r, _ := do(t, ts, http.MethodGet, "/v1/price-changes/"+id+"?page_size=many", "live-key", ""); r.StatusCode != http.StatusBadRequest {
+		t.Errorf("a page size that is no number: %d", r.StatusCode)
 	}
 }

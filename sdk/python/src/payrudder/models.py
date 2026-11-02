@@ -857,6 +857,7 @@ class PriceChangeItem(TypedDict):
 class GetPriceChangeResponse(TypedDict):
     price_change: PriceChange
     items: list[PriceChangeItem]
+    next_page_token: str
 
 
 class WithdrawPriceChangeResponse(TypedDict):

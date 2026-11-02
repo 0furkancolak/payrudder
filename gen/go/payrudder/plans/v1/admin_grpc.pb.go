@@ -31,6 +31,8 @@ const (
 	AdminService_TouchApiKey_FullMethodName            = "/payrudder.plans.v1.AdminService/TouchApiKey"
 	AdminService_SetTenantStatus_FullMethodName        = "/payrudder.plans.v1.AdminService/SetTenantStatus"
 	AdminService_ListTenantStatusEvents_FullMethodName = "/payrudder.plans.v1.AdminService/ListTenantStatusEvents"
+	AdminService_GetPriceChangePause_FullMethodName    = "/payrudder.plans.v1.AdminService/GetPriceChangePause"
+	AdminService_SetPriceChangePause_FullMethodName    = "/payrudder.plans.v1.AdminService/SetPriceChangePause"
 )
 
 // AdminServiceClient is the client API for AdminService service.
@@ -64,6 +66,12 @@ type AdminServiceClient interface {
 	SetTenantStatus(ctx context.Context, in *SetTenantStatusRequest, opts ...grpc.CallOption) (*SetTenantStatusResponse, error)
 	// ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
 	ListTenantStatusEvents(ctx context.Context, in *ListTenantStatusEventsRequest, opts ...grpc.CallOption) (*ListTenantStatusEventsResponse, error)
+	// GetPriceChangePause says whether the operator has paused every price change of the platform (the kill switch of plan 15).
+	GetPriceChangePause(ctx context.Context, in *GetPriceChangePauseRequest, opts ...grpc.CallOption) (*GetPriceChangePauseResponse, error)
+	// SetPriceChangePause pauses or resumes every price change of every tenant: while it is on, no run or retry schedules a subscription (409 plans.price_change.paused;
+	// a dry run still counts), a run in progress stops at its next batch, and the notifier holds the mail of the price changes already scheduled. A change that is
+	// already scheduled is still applied at its renewal; withdraw the price change to stop that.
+	SetPriceChangePause(ctx context.Context, in *SetPriceChangePauseRequest, opts ...grpc.CallOption) (*SetPriceChangePauseResponse, error)
 }
 
 type adminServiceClient struct {
@@ -194,6 +202,26 @@ func (c *adminServiceClient) ListTenantStatusEvents(ctx context.Context, in *Lis
 	return out, nil
 }
 
+func (c *adminServiceClient) GetPriceChangePause(ctx context.Context, in *GetPriceChangePauseRequest, opts ...grpc.CallOption) (*GetPriceChangePauseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPriceChangePauseResponse)
+	err := c.cc.Invoke(ctx, AdminService_GetPriceChangePause_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *adminServiceClient) SetPriceChangePause(ctx context.Context, in *SetPriceChangePauseRequest, opts ...grpc.CallOption) (*SetPriceChangePauseResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetPriceChangePauseResponse)
+	err := c.cc.Invoke(ctx, AdminService_SetPriceChangePause_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AdminServiceServer is the server API for AdminService service.
 // All implementations must embed UnimplementedAdminServiceServer
 // for forward compatibility.
@@ -225,6 +253,12 @@ type AdminServiceServer interface {
 	SetTenantStatus(context.Context, *SetTenantStatusRequest) (*SetTenantStatusResponse, error)
 	// ListTenantStatusEvents returns the changes of a tenant's status (and the requests waiting for a second operator), newest first, the latest 100.
 	ListTenantStatusEvents(context.Context, *ListTenantStatusEventsRequest) (*ListTenantStatusEventsResponse, error)
+	// GetPriceChangePause says whether the operator has paused every price change of the platform (the kill switch of plan 15).
+	GetPriceChangePause(context.Context, *GetPriceChangePauseRequest) (*GetPriceChangePauseResponse, error)
+	// SetPriceChangePause pauses or resumes every price change of every tenant: while it is on, no run or retry schedules a subscription (409 plans.price_change.paused;
+	// a dry run still counts), a run in progress stops at its next batch, and the notifier holds the mail of the price changes already scheduled. A change that is
+	// already scheduled is still applied at its renewal; withdraw the price change to stop that.
+	SetPriceChangePause(context.Context, *SetPriceChangePauseRequest) (*SetPriceChangePauseResponse, error)
 	mustEmbedUnimplementedAdminServiceServer()
 }
 
@@ -270,6 +304,12 @@ func (UnimplementedAdminServiceServer) SetTenantStatus(context.Context, *SetTena
 }
 func (UnimplementedAdminServiceServer) ListTenantStatusEvents(context.Context, *ListTenantStatusEventsRequest) (*ListTenantStatusEventsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTenantStatusEvents not implemented")
+}
+func (UnimplementedAdminServiceServer) GetPriceChangePause(context.Context, *GetPriceChangePauseRequest) (*GetPriceChangePauseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPriceChangePause not implemented")
+}
+func (UnimplementedAdminServiceServer) SetPriceChangePause(context.Context, *SetPriceChangePauseRequest) (*SetPriceChangePauseResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetPriceChangePause not implemented")
 }
 func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
 func (UnimplementedAdminServiceServer) testEmbeddedByValue()                      {}
@@ -508,6 +548,42 @@ func _AdminService_ListTenantStatusEvents_Handler(srv interface{}, ctx context.C
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AdminService_GetPriceChangePause_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPriceChangePauseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).GetPriceChangePause(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_GetPriceChangePause_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).GetPriceChangePause(ctx, req.(*GetPriceChangePauseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AdminService_SetPriceChangePause_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetPriceChangePauseRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServiceServer).SetPriceChangePause(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AdminService_SetPriceChangePause_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServiceServer).SetPriceChangePause(ctx, req.(*SetPriceChangePauseRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -562,6 +638,14 @@ var AdminService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTenantStatusEvents",
 			Handler:    _AdminService_ListTenantStatusEvents_Handler,
+		},
+		{
+			MethodName: "GetPriceChangePause",
+			Handler:    _AdminService_GetPriceChangePause_Handler,
+		},
+		{
+			MethodName: "SetPriceChangePause",
+			Handler:    _AdminService_SetPriceChangePause_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

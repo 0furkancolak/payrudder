@@ -39,7 +39,7 @@ func (h *Handler) ListPriceChanges(ctx context.Context, req *plansv1.ListPriceCh
 }
 
 func (h *Handler) GetPriceChange(ctx context.Context, req *plansv1.GetPriceChangeRequest) (*plansv1.GetPriceChangeResponse, error) {
-	return h.qry.GetPriceChange(ctx, req.GetId(), req.GetState())
+	return h.qry.GetPriceChange(ctx, req.GetId(), req.GetState(), req.GetPageSize(), req.GetPageToken())
 }
 
 func (h *Handler) RetryPriceChange(ctx context.Context, req *plansv1.RetryPriceChangeRequest) (*plansv1.RetryPriceChangeResponse, error) {

@@ -237,7 +237,20 @@
     "suspend": "Suspendre",
     "reinstate": "Réactiver",
     "suspended": "Suspendu",
-    "suspendConfirm": "Suspendre {n} tenant ? Ses clés d'API cessent de fonctionner immédiatement. | Suspendre {n} tenants ? Leurs clés d'API cessent de fonctionner immédiatement."
+    "suspendConfirm": "Suspendre {n} tenant ? Ses clés d'API cessent de fonctionner immédiatement. | Suspendre {n} tenants ? Leurs clés d'API cessent de fonctionner immédiatement.",
+    "pricePause": {
+      "title": "Changements de prix",
+      "running": "Actifs",
+      "paused": "En pause",
+      "hint": "L'interrupteur d'urgence pour tous les vendeurs : tant qu'il est actif, aucun changement de prix ne planifie d'abonnement (un essai à blanc compte toujours), un lot en cours s'arrête et les avis déjà en file attendent. Les changements déjà planifiés s'appliquent quand même au renouvellement ; un vendeur retire le changement de prix pour en arrêter un.",
+      "by": "Mis en pause par {who} le {date}.",
+      "reason": "Motif",
+      "reasonHint": "Conservé avec le réglage et dans le journal d'audit. 500 caractères au plus.",
+      "pause": "Mettre en pause tous les changements de prix",
+      "resume": "Reprendre les changements de prix",
+      "confirmPause": "Mettre en pause tous les changements de prix de la plateforme ? Aucun vendeur ne peut en planifier ni en relancer un avant la reprise, et les avis déjà en file attendent.",
+      "confirmResume": "Reprendre les changements de prix ? Les vendeurs peuvent de nouveau planifier et relancer, et les avis qui attendaient partent."
+    }
   },
   "tenant": {
     "fallbackTitle": "Locataire",
@@ -847,7 +860,8 @@
           "run_by_provider": "géré par un prestataire de paiement",
           "not_changeable": "ne peut pas être déplacé ainsi",
           "customer_blocked": "le client est bloqué"
-        }
+        },
+        "loadMore": "Afficher plus d'abonnements"
       },
       "prorateAfterTrial": "Facturer la première période à partir de la fin de l'essai",
       "prorateAfterTrialHelp": "Quand un essai se termine au milieu d'une période de facturation, le tarif fixe de cette période n'est facturé que de la fin de l'essai à la fin de la période. Désactivé : le tarif de toute la période est facturé, comme pour les forfaits publiés avant cette option.",
@@ -3081,7 +3095,8 @@
       },
       "price_change": {
         "not_found": "Modification de prix introuvable.",
-        "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle."
+        "withdrawn": "Cette modification de prix a été retirée. Créez-en une nouvelle.",
+        "paused": "Les changements de prix sont suspendus par l'opérateur. Réessayez plus tard."
       },
       "override": {
         "customer_required": "Indiquez pour quel client est la limite.",

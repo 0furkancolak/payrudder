@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,10 +40,21 @@ type Plans interface {
 	GetCustomer(ctx context.Context, in *plansv1.GetCustomerRequest, opts ...grpc.CallOption) (*plansv1.GetCustomerResponse, error)
 }
 
-// Admin resolves the tenant (name, environment and time zone).
+// Admin resolves the tenant (name, environment and time zone) and tells whether the operator has paused price changes.
 type Admin interface {
 	GetTenant(ctx context.Context, in *plansv1.GetTenantRequest, opts ...grpc.CallOption) (*plansv1.GetTenantResponse, error)
+	GetPriceChangePause(ctx context.Context, in *plansv1.GetPriceChangePauseRequest, opts ...grpc.CallOption) (*plansv1.GetPriceChangePauseResponse, error)
 }
+
+// While the kill switch is on the consumer waits, looking again every pauseLook, for at most heldFor before it hands the batch back (the partition is read again a
+// second later, so the wait is never longer than the group's session allows). An answer is kept for pauseLook, so a batch of a thousand notices asks once.
+const (
+	pauseLook = 3 * time.Second
+	heldFor   = 15 * time.Second
+)
+
+// errHeld is returned when the switch is still on after heldFor: nothing was sent, the offset did not move, and the batch is read again.
+var errHeld = errors.New("price change mail is held: the operator has paused price changes")
 
 // Consumer implements kafkax.PartitionHandler.
 type Consumer struct {
@@ -52,17 +64,63 @@ type Consumer struct {
 	Offsets store.Offsets
 	DLQ     kafkax.DLQ
 	Log     *slog.Logger
+	// PauseLook and HeldFor override pauseLook and heldFor (tests).
+	PauseLook, HeldFor time.Duration
+
+	mu        sync.Mutex // partitions of one poll are applied concurrently
+	pauseAt   time.Time
+	pauseSeen bool
 }
 
 // Apply sends the email of each record, in order, then advances the offset. A record that can never be processed (it does not decode, or its customer is gone)
 // goes to the DLQ; an infrastructure error returns, and the consumer retries the batch (already-sent emails are skipped by their dedup key).
 func (c *Consumer) Apply(ctx context.Context, partition int32, recs []*kgo.Record) error {
 	for _, rec := range recs {
+		// The operator's kill switch (plan 15): no price change mail goes out while it is on. The notices wait where they are, and go when it is released.
+		if err := c.holdWhilePaused(ctx); err != nil {
+			return err
+		}
 		if err := c.one(ctx, rec); err != nil {
 			return err
 		}
 	}
 	return c.Offsets.Save(ctx, partition, recs[len(recs)-1].Offset+1)
+}
+
+// paused asks whether the operator has paused price changes, at most once per look.
+func (c *Consumer) paused(ctx context.Context, look time.Duration) (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if !c.pauseAt.IsZero() && time.Since(c.pauseAt) < look {
+		return c.pauseSeen, nil
+	}
+	r, err := c.Admin.GetPriceChangePause(tenant.OutgoingContext(tenant.WithOperator(ctx)), &plansv1.GetPriceChangePauseRequest{})
+	if err != nil {
+		return false, fmt.Errorf("price change pause lookup: %w", err)
+	}
+	c.pauseAt, c.pauseSeen = time.Now(), r.GetPause().GetPaused()
+	return c.pauseSeen, nil
+}
+
+// holdWhilePaused returns when price changes are not paused. A question it cannot get an answer to is an error like any other lookup: the mail does not go out on a
+// guess that the switch is off.
+func (c *Consumer) holdWhilePaused(ctx context.Context) error {
+	look, held := cmp.Or(c.PauseLook, pauseLook), cmp.Or(c.HeldFor, heldFor)
+	deadline := time.Now().Add(held)
+	for {
+		paused, err := c.paused(ctx, look)
+		if err != nil || !paused {
+			return err
+		}
+		if !time.Now().Add(look).Before(deadline) {
+			return errHeld
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(look):
+		}
+	}
 }
 
 func (c *Consumer) dlq(ctx context.Context, rec *kgo.Record, reason string, cause error) error {
