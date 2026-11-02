@@ -242,6 +242,7 @@ services:
       PAYRUDDER_PLANS_ADDR: dns:///plans-svc:7001
       PAYRUDDER_INGEST_ADDR: dns:///ingest-svc:7002
       PAYRUDDER_AGGREGATOR_ADDR: dns:///aggregator:7003
+      PAYRUDDER_PUBLIC_URL: "{{ .Values.global.publicURL }}"   # the link in the mail that asks a customer to confirm a payment (3-D Secure)
       PAYRUDDER_SCHEDULER_INTERVAL: 1m
       PAYRUDDER_SWEEP_INTERVAL: 30s
       PAYRUDDER_STEP_TIMEOUT: 2m

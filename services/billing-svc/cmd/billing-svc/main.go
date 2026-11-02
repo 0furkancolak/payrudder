@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,6 +42,7 @@ import (
 	creditcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/credits/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/dlq"
 	einvoicecmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/einvoices/command"
+	hostedcmd "github.com/0furkancolak/payrudder/services/billing-svc/internal/hosted/command"
 	"github.com/0furkancolak/payrudder/services/billing-svc/internal/replies"
 	sagacommand "github.com/0furkancolak/payrudder/services/billing-svc/internal/sagas/command"
 	billingreset "github.com/0furkancolak/payrudder/services/billing-svc/internal/sandboxreset"
@@ -89,7 +91,13 @@ type Config struct {
 	S3AccessKey      string `env:"S3_ACCESS_KEY"`
 	S3SecretKey      string `env:"S3_SECRET_KEY"`
 	S3ForcePath      bool   `env:"S3_FORCE_PATH_STYLE"`
+	// PublicURL is the address customers reach the gateway at (https://api.example.com), the one the gateway hands out invoice links with. The mail that asks a customer to come
+	// back and confirm a payment their bank wants them present for (3-D Secure) carries a link to the invoice's page; without it the mail goes out without one.
+	PublicURL string `env:"PAYRUDDER_PUBLIC_URL"`
 }
+
+// payLinkDays is how long the link in the mail that asks the customer to confirm a payment works (default, not agreed): longer than the window the payment waits.
+const payLinkDays = 30
 
 func (c *Config) Validate() error {
 	errs := []error{c.Base.Validate()}
@@ -191,14 +199,30 @@ func start(ctx context.Context, cfg *Config, rt *app.Runtime) error {
 		s, err := tenantSettings.Tenant(ctx, id)
 		return s.OnHold(), err
 	}
+	// The link in the mail that asks a customer to confirm a payment is made by the hosted pages' own command, which needs the engine this is the config of: it is set once
+	// the modules exist, before anything runs.
+	var payLink func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error)
 	eng, err := sagacommand.NewEngine(sagacommand.Config{StepTimeout: cfg.StepTimeout, TransferPoll: cfg.TransferPoll, DunningLive: cfg.DunningLive, DunningSandbox: cfg.DunningSandbox,
-		NotFoundGrace: cfg.NotFoundGrace, NotFoundGraceSandbox: cfg.NotFoundGraceSandbox, KeyHorizon: cfg.KeyHorizon, Log: log, Tenants: tenantEnvs, Hold: onHold})
+		NotFoundGrace: cfg.NotFoundGrace, NotFoundGraceSandbox: cfg.NotFoundGraceSandbox, KeyHorizon: cfg.KeyHorizon, Log: log, Tenants: tenantEnvs, Hold: onHold,
+		PayLink: func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error) {
+			if payLink == nil || cfg.PublicURL == "" {
+				return "", nil
+			}
+			return payLink(ctx, tenantID, invoiceID)
+		}})
 	if err != nil {
 		return err
 	}
 	mods, err := newModules(cfg, log, db, eng, be)
 	if err != nil {
 		return err
+	}
+	payLink = func(ctx context.Context, tenantID, invoiceID uuid.UUID) (string, error) {
+		token, _, err := hostedcmd.CreateInvoiceLink(ctx, hostedcmd.Deps{App: appDB, System: db, Engine: eng, Dir: mods.hosted}, tenantID, invoiceID, payLinkDays)
+		if err != nil {
+			return "", err
+		}
+		return strings.TrimRight(cfg.PublicURL, "/") + "/i/" + token, nil
 	}
 	mgr, err := newRunManager(cfg, log, db, eng, be, mods, usageEndOffsets(kadm.NewClient(producer)))
 	if err != nil {

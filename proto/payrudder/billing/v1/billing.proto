@@ -552,7 +552,7 @@ message DunningInvoice {
   string provider = 5;
   string currency = 6;
   int64 total_minor = 7;
-  // The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), UNCOLLECTIBLE (given up).
+  // The saga state: PAYMENT_DECLINED (retrying), PAYMENT_UNKNOWN (outcome unknown), PAYMENT_PENDING (waiting for a bank transfer), PAYMENT_ACTION_REQUIRED (waiting for the customer to confirm the payment, 3-D Secure), UNCOLLECTIBLE (given up).
   string state = 8;
   // Retries done so far (0 = only the first charge).
   int32 dunning_attempt = 9;

@@ -65,11 +65,11 @@ WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_DECLINED' AND nex
 FOR UPDATE SKIP LOCKED;
 
 -- name: ListSagasDueForPoll :many
-SELECT tenant_id, id FROM invoice_sagas WHERE state = 'PAYMENT_PENDING' AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
+SELECT tenant_id, id FROM invoice_sagas WHERE state IN ('PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED') AND next_attempt_at <= @now::timestamptz ORDER BY next_attempt_at LIMIT @row_limit;
 
 -- name: LockSagaDueForPoll :one
 SELECT id FROM invoice_sagas
-WHERE tenant_id = @tenant_id AND id = @id AND state = 'PAYMENT_PENDING' AND next_attempt_at <= @now::timestamptz
+WHERE tenant_id = @tenant_id AND id = @id AND state IN ('PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED') AND next_attempt_at <= @now::timestamptz
 FOR UPDATE SKIP LOCKED;
 
 -- name: InsertInboxReply :execrows
@@ -82,5 +82,5 @@ SELECT state, count(*) AS sagas FROM invoice_sagas GROUP BY state;
 -- When the charge under the saga's current idempotency key was first sent: the latest entry into PAYMENT_REQUESTED that is neither a re-charge after "not found"
 -- (those keep the key) nor the re-issue of a command (from and to are the same state).
 SELECT at FROM saga_events
-WHERE tenant_id = @tenant_id AND saga_id = @saga_id AND to_state = 'PAYMENT_REQUESTED' AND from_state NOT IN ('PAYMENT_REQUESTED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING')
+WHERE tenant_id = @tenant_id AND saga_id = @saga_id AND to_state = 'PAYMENT_REQUESTED' AND from_state NOT IN ('PAYMENT_REQUESTED', 'PAYMENT_UNKNOWN', 'PAYMENT_PENDING', 'PAYMENT_ACTION_REQUIRED')
 ORDER BY seq DESC LIMIT 1;

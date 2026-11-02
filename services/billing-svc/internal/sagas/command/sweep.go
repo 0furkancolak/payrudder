@@ -218,7 +218,7 @@ func (e *Engine) reissue(ctx context.Context, tx pgx.Tx, s *saga, now time.Time)
 		eff = model.EffRender
 	case model.PaymentRequested:
 		eff = model.EffCharge
-	case model.PaymentUnknown, model.PaymentPending:
+	case model.PaymentUnknown, model.PaymentPending, model.PaymentActionRequired:
 		eff = model.EffQueryStatus
 	case model.NotifyRequested:
 		eff = model.EffNotify
@@ -279,6 +279,8 @@ func ReplyEvent(r *commandsv1.ReplyEnvelope) (model.Event, string, bool) {
 		return model.EvPaymentDeclined, "reply:PaymentDeclined", true
 	case *commandsv1.ReplyEnvelope_PaymentErrored:
 		return model.EvPaymentErrored, "reply:PaymentErrored", true
+	case *commandsv1.ReplyEnvelope_PaymentActionRequired:
+		return model.EvPaymentActionRequired, "reply:PaymentActionRequired", true
 	case *commandsv1.ReplyEnvelope_PaymentRefunded:
 		return model.EvRefunded, "reply:PaymentRefunded", true
 	case *commandsv1.ReplyEnvelope_NotificationSent:
@@ -294,6 +296,8 @@ func ReplyEvent(r *commandsv1.ReplyEnvelope) (model.Event, string, bool) {
 			return model.EvStatusDeclined, "reply:PaymentStatus(declined)", true
 		case commandsv1.PaymentStatus_STATE_PENDING:
 			return model.EvStatusPending, "reply:PaymentStatus(pending)", true
+		case commandsv1.PaymentStatus_STATE_ACTION_REQUIRED:
+			return model.EvStatusActionRequired, "reply:PaymentStatus(action_required)", true
 		case commandsv1.PaymentStatus_STATE_NOT_FOUND:
 			return model.EvStatusNotFound, "reply:PaymentStatus(not_found)", true
 		}

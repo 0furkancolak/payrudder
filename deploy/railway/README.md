@@ -216,6 +216,7 @@ Shorthand: **PGDSN(`db`, role)** = `postgres://<db>_<role>:${{init-postgres.PG_<
 | `PAYRUDDER_AGGREGATOR_ADDR` | `dns:///aggregator.railway.internal:7003` | |
 | `PAYRUDDER_KAFKA_BROKERS` | KAFKA | |
 | `PAYRUDDER_RABBITMQ_URL` | AMQP | |
+| `PAYRUDDER_PUBLIC_URL` | `https://${{gateway.RAILWAY_PUBLIC_DOMAIN}}` | optional: the link in the mail that asks a customer to confirm a payment (3-D Secure); without it the mail has no link |
 | `S3_ENDPOINT` | `http://minio.railway.internal:9000` | |
 | `S3_PUBLIC_ENDPOINT` | `https://${{minio.RAILWAY_PUBLIC_DOMAIN}}` | what a browser opens for a presigned invoice link |
 | `S3_BUCKET` | `invoices` | |

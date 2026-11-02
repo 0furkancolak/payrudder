@@ -47,10 +47,10 @@ func (e *Engine) planStep(s *saga, ev model.Event, res model.Result, now time.Ti
 		delays := e.dunningDelays(s)
 		at := now.Add(delays[min(s.DunningAttempt, len(delays)-1)]) // the table only schedules while DunningLeft, so delays is not empty
 		st.nextAttemptAt = &at
-	case model.EffSchedulePoll, model.EffAwaitTransfer:
+	case model.EffSchedulePoll, model.EffAwaitTransfer, model.EffAwaitAction:
 		// Nothing is outstanding while a payment is awaited: no step deadline, only the time of the next poll. The instructions mail is a command of its own
 		// (a new attempt, so a new command id) whose reply nobody waits for.
-		if res.Effect == model.EffAwaitTransfer {
+		if res.Effect != model.EffSchedulePoll {
 			st.attempt++
 		}
 		at := now.Add(e.cfg.TransferPoll)

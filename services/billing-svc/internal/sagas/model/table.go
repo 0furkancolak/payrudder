@@ -23,20 +23,23 @@ const (
 	PaymentDeclined  State = "PAYMENT_DECLINED"
 	PaymentUnknown   State = "PAYMENT_UNKNOWN"
 	PaymentPending   State = "PAYMENT_PENDING" // accepted, settles later (a bank transfer): no command is outstanding
-	Uncollectible    State = "UNCOLLECTIBLE"
-	NotifyRequested  State = "NOTIFY_REQUESTED"
-	NotifyFailed     State = "NOTIFY_FAILED"
-	Completed        State = "COMPLETED"
-	RefundRequested  State = "REFUND_REQUESTED"
-	RefundFailed     State = "REFUND_FAILED"
-	Refunded         State = "REFUNDED"
-	Voided           State = "VOIDED"
+	// PaymentActionRequired: the provider needs the customer to act (3-D Secure) before it charges; the customer has been mailed a link to the invoice page. No command is
+	// outstanding. The invoice is payable on its page; the status is asked on a schedule, and past the window of the pending payments the charge counts as declined.
+	PaymentActionRequired State = "PAYMENT_ACTION_REQUIRED"
+	Uncollectible         State = "UNCOLLECTIBLE"
+	NotifyRequested       State = "NOTIFY_REQUESTED"
+	NotifyFailed          State = "NOTIFY_FAILED"
+	Completed             State = "COMPLETED"
+	RefundRequested       State = "REFUND_REQUESTED"
+	RefundFailed          State = "REFUND_FAILED"
+	Refunded              State = "REFUNDED"
+	Voided                State = "VOIDED"
 	// AwaitingPayment: a link-collected invoice (phase 34) waits for its customer to pay; nothing is outstanding, so there is no deadline.
 	AwaitingPayment State = "AWAITING_PAYMENT"
 )
 
 // States lists every state.
-var States = []State{Draft, Finalized, PdfRequested, PdfRendered, PdfFailed, PaymentRequested, Paid, PaymentDeclined, PaymentUnknown, PaymentPending,
+var States = []State{Draft, Finalized, PdfRequested, PdfRendered, PdfFailed, PaymentRequested, Paid, PaymentDeclined, PaymentUnknown, PaymentPending, PaymentActionRequired,
 	Uncollectible, NotifyRequested, NotifyFailed, Completed, RefundRequested, RefundFailed, Refunded, Voided, AwaitingPayment}
 
 // Terminal states end the saga (COMPLETED can still be voided, which refunds a paid invoice).
@@ -69,21 +72,24 @@ const (
 	EvPaymentDeclinedFinal Event = "PaymentDeclinedFinal" // reply
 	EvStatusDeclinedFinal  Event = "StatusDeclinedFinal"  // PaymentStatus reply
 	EvStatusPending        Event = "StatusPending"        // PaymentStatus reply: accepted, not settled yet
-	EvPollDue              Event = "PollDue"              // pending-payment scheduler
-	EvSettled              Event = "OfflineSettlement"    // operator: the money was received outside a provider
-	EvRefunded             Event = "PaymentRefunded"      // reply
-	EvNotified             Event = "NotificationSent"     // reply
-	EvExhausted            Event = "StepExhausted"        // sweeper: retries of the step used up
-	EvDunningDue           Event = "DunningDue"           // dunning scheduler
-	EvRetry                Event = "Retry"                // operator
-	EvVoid                 Event = "Void"                 // operator
-	EvPayRequested         Event = "PayRequested"         // the customer asks to pay now on a hosted page (mock payment); counts as a retry
-	EvProviderSettled      Event = "Settled"              // a provider confirmed a payment the customer made on its hosted page (payments-worker)
+	// The provider needs the customer to act before it charges (Stripe's 3-D Secure): the reply of a charge, and the answer of a status query that finds it still waiting.
+	EvPaymentActionRequired Event = "PaymentActionRequired" // reply
+	EvStatusActionRequired  Event = "StatusActionRequired"  // PaymentStatus reply
+	EvPollDue               Event = "PollDue"               // pending-payment scheduler
+	EvSettled               Event = "OfflineSettlement"     // operator: the money was received outside a provider
+	EvRefunded              Event = "PaymentRefunded"       // reply
+	EvNotified              Event = "NotificationSent"      // reply
+	EvExhausted             Event = "StepExhausted"         // sweeper: retries of the step used up
+	EvDunningDue            Event = "DunningDue"            // dunning scheduler
+	EvRetry                 Event = "Retry"                 // operator
+	EvVoid                  Event = "Void"                  // operator
+	EvPayRequested          Event = "PayRequested"          // the customer asks to pay now on a hosted page (mock payment); counts as a retry
+	EvProviderSettled       Event = "Settled"               // a provider confirmed a payment the customer made on its hosted page (payments-worker)
 )
 
 // Events lists every event.
 var Events = []Event{EvStart, EvContinue, EvPdfRendered, EvPdfFailed, EvPaymentOK, EvPaymentDeclined, EvPaymentErrored,
-	EvStatusSucceeded, EvStatusNotFound, EvStatusDeclined, EvPaymentDeclinedFinal, EvStatusDeclinedFinal, EvStatusPending, EvPollDue, EvSettled, EvRefunded, EvNotified, EvExhausted, EvDunningDue, EvRetry, EvVoid, EvPayRequested, EvProviderSettled}
+	EvStatusSucceeded, EvStatusNotFound, EvStatusDeclined, EvPaymentDeclinedFinal, EvStatusDeclinedFinal, EvStatusPending, EvPaymentActionRequired, EvStatusActionRequired, EvPollDue, EvSettled, EvRefunded, EvNotified, EvExhausted, EvDunningDue, EvRetry, EvVoid, EvPayRequested, EvProviderSettled}
 
 // Effect is what the engine does when a transition fires.
 type Effect string
@@ -99,6 +105,7 @@ const (
 	EffScheduleDunning Effect = "schedule-dunning" // set next_attempt_at
 	EffSchedulePoll    Effect = "schedule-poll"    // set next_attempt_at to the next status poll
 	EffAwaitTransfer   Effect = "await-transfer"   // SendNotification with the payment instructions, then schedule-poll
+	EffAwaitAction     Effect = "await-action"     // SendNotification with the link to the invoice page, then schedule-poll
 	EffRecheck         Effect = "recheck"          // no command now: the sweeper asks the status again when the not-found grace period of the charge's key is over
 )
 
@@ -229,6 +236,7 @@ var Table = []Row{
 	{PaymentRequested, EvPaymentDeclinedFinal, WeCharge, Uncollectible, EffNone},
 	{PaymentRequested, EvPaymentDeclinedFinal, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentRequested, EvPaymentErrored, Always, PaymentUnknown, EffQueryStatus},
+	{PaymentRequested, EvPaymentActionRequired, Always, PaymentActionRequired, EffAwaitAction},
 	{PaymentRequested, EvExhausted, Always, PaymentUnknown, EffQueryStatus},
 
 	// The original charge's own reply may still arrive while the status query is in flight.
@@ -250,6 +258,8 @@ var Table = []Row{
 	{PaymentUnknown, EvStatusDeclined, DunningSpent, Uncollectible, EffNone},
 	{PaymentUnknown, EvStatusDeclined, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentUnknown, EvStatusPending, Always, PaymentPending, EffAwaitTransfer},
+	{PaymentUnknown, EvPaymentActionRequired, Always, PaymentActionRequired, EffAwaitAction},
+	{PaymentUnknown, EvStatusActionRequired, Always, PaymentActionRequired, EffAwaitAction},
 	{PaymentUnknown, EvRetry, Always, PaymentUnknown, EffQueryStatus},
 	{PaymentUnknown, EvExhausted, Always, PaymentUnknown, EffNone}, // parks for the operator
 
@@ -267,12 +277,27 @@ var Table = []Row{
 	{PaymentPending, EvStatusDeclinedFinal, LinkDeclined, AwaitingPayment, EffNone},
 	{PaymentPending, EvExhausted, Always, PaymentPending, EffSchedulePoll}, // a poll nobody answered: wait for the next one, do not park
 
+	// The provider wants the customer to authenticate (3-D Secure). The customer is mailed a link to the invoice page once, on entering; the status is asked on a schedule
+	// (a customer who pays on the page settles it at once, through Settled). Like a pending payment, but payable on its page, and what the status says decides.
+	{PaymentActionRequired, EvStatusActionRequired, Always, PaymentActionRequired, EffSchedulePoll},
+	{PaymentActionRequired, EvPollDue, Always, PaymentActionRequired, EffQueryStatus},
+	{PaymentActionRequired, EvRetry, Always, PaymentActionRequired, EffQueryStatus},
+	{PaymentActionRequired, EvStatusSucceeded, Always, Paid, EffNone},
+	{PaymentActionRequired, EvStatusNotFound, Always, PaymentRequested, EffCharge},
+	{PaymentActionRequired, EvStatusDeclined, DunningLeft, PaymentDeclined, EffScheduleDunning},
+	{PaymentActionRequired, EvStatusDeclined, DunningSpent, Uncollectible, EffNone},
+	{PaymentActionRequired, EvStatusDeclined, LinkDeclined, AwaitingPayment, EffNone},
+	{PaymentActionRequired, EvStatusDeclinedFinal, WeCharge, Uncollectible, EffNone},
+	{PaymentActionRequired, EvStatusDeclinedFinal, LinkDeclined, AwaitingPayment, EffNone},
+	{PaymentActionRequired, EvExhausted, Always, PaymentActionRequired, EffSchedulePoll}, // a poll nobody answered: wait for the next one, do not park
+
 	{PaymentDeclined, EvDunningDue, Always, PaymentRequested, EffChargeDunning},
 	{PaymentDeclined, EvRetry, Always, PaymentUnknown, EffQueryStatus}, // a transfer that arrived after the window: ask the ledger again
 
 	// Money received outside a provider (RecordInvoicePayment) settles an invoice whose payment is waited for, failed, or given up on.
 	{PaymentUnknown, EvSettled, Always, Paid, EffNone},
 	{PaymentPending, EvSettled, Always, Paid, EffNone},
+	{PaymentActionRequired, EvSettled, Always, Paid, EffNone},
 	{PaymentDeclined, EvSettled, Always, Paid, EffNone},
 	{NotifyRequested, EvSettled, Always, Paid, EffNone},
 	{NotifyFailed, EvSettled, Always, Paid, EffNone},
@@ -286,6 +311,7 @@ var Table = []Row{
 	{PaymentDeclined, EvProviderSettled, Always, Paid, EffNone},
 	{PaymentRequested, EvProviderSettled, Always, Paid, EffNone},
 	{PaymentUnknown, EvProviderSettled, Always, Paid, EffNone},
+	{PaymentActionRequired, EvProviderSettled, Always, Paid, EffNone},
 
 	{Paid, EvContinue, ProviderMails, Completed, EffNone},
 	{Paid, EvContinue, Always, NotifyRequested, EffNotify},
@@ -301,6 +327,7 @@ var Table = []Row{
 	{PaymentDeclined, EvVoid, Always, Voided, EffNone},
 	{AwaitingPayment, EvVoid, Always, Voided, EffNone},
 	{PaymentPending, EvVoid, Always, Voided, EffNone},
+	{PaymentActionRequired, EvVoid, Always, Voided, EffNone},
 	{NotifyRequested, EvVoid, PaidWithMoney, RefundRequested, EffRefund},
 	{NotifyRequested, EvVoid, NothingToRefund, Voided, EffNone},
 	{NotifyFailed, EvVoid, PaidWithMoney, RefundRequested, EffRefund},

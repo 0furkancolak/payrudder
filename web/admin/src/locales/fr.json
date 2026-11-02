@@ -153,7 +153,8 @@
     "dunningState": {
       "PAYMENT_DECLINED": "refusé, nouvelle tentative",
       "PAYMENT_UNKNOWN": "issue inconnue",
-      "UNCOLLECTIBLE": "abandonné"
+      "UNCOLLECTIBLE": "abandonné",
+      "PAYMENT_ACTION_REQUIRED": "en attente de la confirmation du client"
     },
     "sagaState": {
       "PAYMENT_PENDING": "virement attendu",
@@ -174,7 +175,8 @@
       "REFUND_FAILED": "remboursement en échec",
       "REFUNDED": "remboursée",
       "VOIDED": "annulée",
-      "AWAITING_PAYMENT": "en attente de paiement"
+      "AWAITING_PAYMENT": "en attente de paiement",
+      "PAYMENT_ACTION_REQUIRED": "en attente de la confirmation du client"
     },
     "paymentMethod": {
       "bank_transfer": "Virement bancaire",
