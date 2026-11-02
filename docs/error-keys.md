@@ -1,6 +1,6 @@
 # Error keys
 
-Generated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in `error.key` of every API error; translate keys, not messages.
+Generated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0020); without the variable the test fails when this file is out of date. The key is in `error.key` of every API error; translate keys, not messages.
 
 - `admin.sandbox.bad_tenant`
 - `admin.sandbox.live_refused`

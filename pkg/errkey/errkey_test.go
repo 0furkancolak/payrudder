@@ -61,7 +61,7 @@ var defaultRe = regexp.MustCompile(`return "(common\.[a-z0-9_]+)"`)
 var shapeRe = regexp.MustCompile(`^[a-z0-9_]+(\.[a-z0-9_]+){1,3}$`)
 
 // TestEveryKeyIsListed finds the keys the code returns and compares them with docs/error-keys.md, so that the list a client developer reads is the list the
-// code has. Regenerate it with: go test ./errkey -run TestEveryKeyIsListed -update-keys
+// code has. Without UPDATE_ERROR_KEYS=1 the test only compares and fails; regenerate the file with: UPDATE_ERROR_KEYS=1 go test ./pkg/errkey -run TestEveryKeyIsListed
 func TestEveryKeyIsListed(t *testing.T) {
 	root := "../.."
 	found := map[string]bool{}
@@ -102,7 +102,7 @@ func TestEveryKeyIsListed(t *testing.T) {
 		keys = append(keys, k)
 	}
 	slices.Sort(keys)
-	want := "# Error keys\n\nGenerated from the code by `go test ./pkg/errkey` (see ADR 0020). The key is in `error.key` of every API error; translate keys, not messages.\n\n"
+	want := "# Error keys\n\nGenerated from the code by `UPDATE_ERROR_KEYS=1 go test ./pkg/errkey` (see ADR 0020); without the variable the test fails when this file is out of date. The key is in `error.key` of every API error; translate keys, not messages.\n\n"
 	for _, k := range keys {
 		want += "- `" + k + "`\n"
 	}

@@ -3,7 +3,7 @@
 Status: **built**; what is left is on the [roadmap](phases/ROADMAP.md). These documents are the source of truth for the design. Code that disagrees
 with them is a bug in the code or in the docs. Fix one of them in the same PR.
 
-> **Work plans:** the owner's open requests, ordered, each with its gaps, research and acceptance criteria, are in [plans/](plans/README.md). Nothing in them is started until it is agreed.
+> **Work plans:** the owner's requests, ordered, each with its gaps, research, acceptance criteria and, at the top, what is built and what is not, are in [plans/](plans/README.md). On 2026-11-01 the owner authorised the work to run without asking: where a plan lists a decision, the default that was built is marked "default (not agreed)" and the owner may overturn it.
 
 > **Publication:** [publication.yaml](publication.yaml) says which of these documents are public (the developer site and the MCP server publish only those) and how finished each one is. A new file needs a line there; a test fails until it has one.
 
@@ -36,7 +36,7 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [einvoice-integrator-checklist.md](einvoice-integrator-checklist.md) | The eighteen questions to put to an e-invoice integrator before an adapter is written, each tied to the conformance check that proves the answer |
 | [einvoice-integrator-contract.md](einvoice-integrator-contract.md) | What an e-invoice integrator adapter must do, the conformance suite and the fake integrators it runs against, and how the generated UBL is checked against the EN 16931, Peppol BIS 3 and UBL-TR rules |
 | [18-sdks.md](18-sdks.md) | The client libraries for the tenant API and for checking webhook signatures (TypeScript, Go, Python, PHP): what each does and how it is tested |
-| [error-keys.md](error-keys.md) | Every `error.key` the API can send, generated from the code (`go test ./pkg/errkey`); a client translates keys, not messages |
+| [error-keys.md](error-keys.md) | Every `error.key` the API can send, generated from the code (`UPDATE_ERROR_KEYS=1 go test ./pkg/errkey`; plain `go test ./pkg/errkey` fails when the file is stale); a client translates keys, not messages |
 | [reconciliation.md](reconciliation.md) | The review queue of differences between invoices, payments and a provider's own reports, and why "paid" is not "settled" (settlement report, fee rules) |
 | [provider-health.md](provider-health.md) | Payment account health, the circuit breaker, and failover that cannot charge twice |
 | [hosted-pages.md](hosted-pages.md) | The pages a customer sees without signing in (portal, invoice, payment link, receipt): where each state comes from and what is still missing |
@@ -94,6 +94,16 @@ with them is a bug in the code or in the docs. Fix one of them in the same PR.
 | [0016](adr/0016-provider-capabilities-and-routing.md) | Payment providers declare capabilities; routing is a stored rule set |
 | [0017](adr/0017-advance-fixed-fees-and-change-modes.md) | Fixed fees are billed in advance; plan changes are explicit, previewed and credited |
 | [0018](adr/0018-tenant-isolation-modes.md) | Two isolation modes: pooled (RLS) and cells (schema per tenant); built in stages, the job conversion is not finished ([runbook](runbooks/cells.md)) |
+| [0019](adr/0019-license.md) | Elastic License 2.0 from this release on |
+| [0020](adr/0020-modules-cqrs-errors-config.md) | Modules with separate commands and queries, error keys, YAML defaults |
+| [0021](adr/0021-console-on-cloudflare-workers.md) | The console is served from Cloudflare Workers static assets |
+| [0022](adr/0022-payrudder-rename.md) | The product is Payrudder everywhere |
+| [0023](adr/0023-live-and-sandbox-guards.md) | Live is earned, and the environments cannot be confused |
+| [0024](adr/0024-payrudder-as-a-saas.md) | Payrudder sells itself, with its own engine |
+| [0025](adr/0025-unique-and-last-aggregations.md) | UNIQUE and LAST meter aggregations |
+| [0026](adr/0026-integration-accounts.md) | Several accounts per integration, named by a key |
+| [0027](adr/0027-event-corrections.md) | Corrections to usage events |
+| [0028](adr/0028-money-rules-credit-note-tax-surplus-trial-year.md) | Four money rules: tax on credit notes, a negative total, the trial's first period, the year of a number |
 
 ## Records
 
