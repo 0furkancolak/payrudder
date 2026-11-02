@@ -1515,6 +1515,7 @@
       },
       "providerNote": "Ein Zahlungsanbieter, der eigene Belege versendet (Paddle), sendet sie weiterhin; dieser Schalter steuert nur die Mails von Payrudder.",
       "loadMore": "Mehr anzeigen",
+      "notConnected": "Das Mail-Protokoll und die Liste der gesperrten Adressen sind in dieser Installation nicht angebunden, deshalb kann hier nichts angezeigt werden.",
       "suppressions": {
         "title": "Adressen ohne Zustellung",
         "hint": "Eine Adresse steht hier, wenn ihre Mail endgültig zurückkam, eine Beschwerde auslöste oder der Operator sie hier eingetragen hat. Bis Sie sie wieder freigeben, wird ihr keine Mail zugestellt, welche es auch sei.",

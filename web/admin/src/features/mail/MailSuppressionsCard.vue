@@ -16,7 +16,7 @@ import { useMailSuppressions, useRemoveMailSuppression } from "./api";
 /**
  * The addresses the tenant's mail is not sent to: a permanent bounce, a complaint, or the operator's word. The seller sees why each is there and can mail one again
  * (a person who fixed their mailbox); if it bounces for good again it comes back on its own. The list is the notifier's, so it says so when the notifier is not
- * connected on this deployment (the error is the server's, in the reader's language).
+ * connected on this deployment: the gateway then answers 200 with an empty list and connected=false (not an error, so the browser logs nothing).
  */
 const { t } = useI18n();
 const fmt = useFormat();
@@ -25,6 +25,7 @@ const canWrite = useCanWrite();
 const list = useMailSuppressions(tenantId);
 const remove = useRemoveMailSuppression(tenantId);
 const rows = computed(() => list.data.value?.pages.flatMap((p) => p.suppressions) ?? []);
+const connected = computed(() => list.data.value?.pages[0]?.connected !== false);
 const TONES: Record<string, Tone> = { bounce: "warning", complaint: "danger", manual: "neutral" };
 
 async function mailAgain(address: string) {
@@ -39,7 +40,8 @@ async function mailAgain(address: string) {
     <p class="text-muted-foreground px-3 pt-1 pb-3 text-sm">{{ t("billing.mail.suppressions.hint") }}</p>
     <Skeleton v-if="list.isPending.value" class="mx-3 h-8 w-64" aria-busy="true" />
     <ErrorText :error="list.error.value ?? remove.error.value" class="px-3" />
-    <p v-if="list.isSuccess.value && rows.length === 0" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-suppressions-empty">{{ t("billing.mail.suppressions.empty") }}</p>
+    <p v-if="list.isSuccess.value && !connected" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-suppressions-not-connected">{{ t("billing.mail.notConnected") }}</p>
+    <p v-else-if="list.isSuccess.value && rows.length === 0" class="text-muted-foreground px-3 pb-2 text-sm" data-testid="mail-suppressions-empty">{{ t("billing.mail.suppressions.empty") }}</p>
     <Table v-if="rows.length > 0">
       <TableHeader>
         <TableRow class="hover:bg-transparent">

@@ -2,6 +2,7 @@ import { createServer as listen, type IncomingMessage, type Server, type ServerR
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { createApi } from "./api.js";
 import { keyPrefix, type Audit } from "./audit.js";
+import { liveRefusal } from "./privacy.js";
 import { createServer } from "./server.js";
 
 /**
@@ -13,6 +14,10 @@ import { createServer } from "./server.js";
 export interface HttpOptions {
   baseUrl: string;
   allowWrites?: boolean;
+  /** Accept live keys (PAYRUDDER_MCP_ALLOW_LIVE=1); a request with one is refused otherwise. */
+  allowLive?: boolean;
+  /** Let customers' personal data reach the model (PAYRUDDER_MCP_ALLOW_PERSONAL_DATA=1); redacted otherwise. */
+  allowPersonalData?: boolean;
   /** One record per tool call, with the caller's key prefix (audit.ts). */
   audit?: Audit;
   /** Injected in tests. */
@@ -58,8 +63,10 @@ export function createHttpServer(o: HttpOptions): Server {
       if (req.method !== "POST") return reply(res, 405, "POST JSON-RPC messages to /mcp.", { Allow: "POST" });
       const key = /^Bearer (.+)$/i.exec(req.headers.authorization ?? "")?.[1]?.trim();
       if (!key || !KEY.test(key)) return reply(res, 401, "Send your Payrudder API key (qk_test_... or qk_live_...) as a bearer token.", { "WWW-Authenticate": 'Bearer realm="payrudder-mcp"' });
+      const refusal = liveRefusal(key, o.allowLive ?? false);
+      if (refusal) return reply(res, 403, refusal);
       const body = await readBody(req);
-      const server = createServer({ api: createApi({ baseUrl: o.baseUrl, apiKey: key, ...(o.fetch ? { fetch: o.fetch } : {}) }), allowWrites: o.allowWrites ?? false, transport: "http", keyHint: keyPrefix(key), ...(o.audit ? { audit: o.audit } : {}) });
+      const server = createServer({ api: createApi({ baseUrl: o.baseUrl, apiKey: key, ...(o.fetch ? { fetch: o.fetch } : {}) }), allowWrites: o.allowWrites ?? false, allowPersonalData: o.allowPersonalData ?? false, transport: "http", keyHint: keyPrefix(key), ...(o.audit ? { audit: o.audit } : {}) });
       const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
       res.on("close", () => {
         void transport.close();

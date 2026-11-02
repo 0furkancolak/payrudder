@@ -1515,6 +1515,7 @@
       },
       "providerNote": "Un proveedor de pago que envía sus propios recibos (Paddle) sigue enviándolos; este interruptor solo controla el correo de Payrudder.",
       "loadMore": "Mostrar más",
+      "notConnected": "El registro de correo y la lista de direcciones bloqueadas no están conectados en este despliegue, así que no se puede mostrar nada aquí.",
       "suppressions": {
         "title": "Direcciones a las que no enviamos",
         "hint": "Una dirección aparece aquí cuando su correo rebotó definitivamente, provocó una queja o el operador la puso aquí. Sea cual sea el correo, no se le envía hasta que vuelvas a habilitarla.",
