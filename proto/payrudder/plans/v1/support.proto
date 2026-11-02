@@ -61,6 +61,7 @@ message SupportTicket {
   string priority = 11;
   // open (waiting for the operator), pending (waiting for the person), solved or closed.
   string status = 12;
+  // The operator the ticket is assigned to (an address of the operator's staff). Never shown to the person who opened the ticket: the "My" calls leave it empty.
   string assignee = 13;
   google.protobuf.Timestamp create_time = 14;
   google.protobuf.Timestamp update_time = 15;
@@ -81,7 +82,8 @@ message SupportTicket {
   repeated string tags = 24;
 }
 
-// SupportEvent is one change of a ticket's status, priority or assignee, in the order they happened. The history is never edited.
+// SupportEvent is one change of a ticket's status, priority, assignee or tags, in the order they happened. The history is never edited. The "My" calls return only
+// the changes of status and priority (the allow-list in the plans-svc support package); a kind added later is the operator's until it is allowed there.
 message SupportEvent {
   string id = 1;
   // status, priority, assignee or tags (a list joined by commas).
@@ -135,7 +137,7 @@ message GetMySupportTicketRequest {
 message GetMySupportTicketResponse {
   SupportTicket ticket = 1;
   repeated SupportMessage messages = 2;
-  // The changes of status, priority and assignee; reading the ticket as the person who opened it clears its "unread" mark.
+  // The changes of status and priority (not the operator's assignee or tags); reading the ticket as the person who opened it clears its "unread" mark.
   repeated SupportEvent events = 3;
 }
 

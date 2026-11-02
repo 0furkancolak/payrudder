@@ -40,7 +40,8 @@ type SupportTicket struct {
 	// low, normal, high or urgent.
 	Priority string `protobuf:"bytes,11,opt,name=priority,proto3" json:"priority,omitempty"`
 	// open (waiting for the operator), pending (waiting for the person), solved or closed.
-	Status          string                 `protobuf:"bytes,12,opt,name=status,proto3" json:"status,omitempty"`
+	Status string `protobuf:"bytes,12,opt,name=status,proto3" json:"status,omitempty"`
+	// The operator the ticket is assigned to (an address of the operator's staff). Never shown to the person who opened the ticket: the "My" calls leave it empty.
 	Assignee        string                 `protobuf:"bytes,13,opt,name=assignee,proto3" json:"assignee,omitempty"`
 	CreateTime      *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
 	UpdateTime      *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
@@ -261,7 +262,8 @@ func (x *SupportTicket) GetTags() []string {
 	return nil
 }
 
-// SupportEvent is one change of a ticket's status, priority or assignee, in the order they happened. The history is never edited.
+// SupportEvent is one change of a ticket's status, priority, assignee or tags, in the order they happened. The history is never edited. The "My" calls return only
+// the changes of status and priority (the allow-list in the plans-svc support package); a kind added later is the operator's until it is allowed there.
 type SupportEvent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -732,7 +734,7 @@ type GetMySupportTicketResponse struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Ticket   *SupportTicket         `protobuf:"bytes,1,opt,name=ticket,proto3" json:"ticket,omitempty"`
 	Messages []*SupportMessage      `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
-	// The changes of status, priority and assignee; reading the ticket as the person who opened it clears its "unread" mark.
+	// The changes of status and priority (not the operator's assignee or tags); reading the ticket as the person who opened it clears its "unread" mark.
 	Events        []*SupportEvent `protobuf:"bytes,3,rep,name=events,proto3" json:"events,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

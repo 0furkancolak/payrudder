@@ -5095,7 +5095,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** A ticket with its thread and history (the operator's internal notes are not in it). Reading it as the person who opened it clears its unread mark */
+        /** A ticket with its thread and history (the operator's internal notes, tags and assignee are not in it). Reading it as the person who opened it clears its unread mark */
         get: operations["appSupportTicket"];
         put?: never;
         post?: never;
@@ -6887,6 +6887,7 @@ export interface components {
              * @enum {string}
              */
             status: "open" | "pending" | "solved" | "closed";
+            /** @description The operator the ticket is assigned to. Always empty in what the person's calls return */
             assignee: string;
             /** Format: date-time */
             create_time: string;
@@ -6910,7 +6911,7 @@ export interface components {
             /** @description The operator's own labels, at most five. Always empty in what the person's calls return */
             tags: string[];
         };
-        /** @description One change of a ticket's status, priority, assignee or tags. The history is append-only. */
+        /** @description One change of a ticket's status, priority, assignee or tags. The history is append-only. The person's calls return only the changes of status and priority. */
         SupportEvent: {
             /** Format: uuid */
             id: string;
