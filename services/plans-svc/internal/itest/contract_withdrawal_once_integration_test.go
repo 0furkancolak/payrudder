@@ -19,7 +19,7 @@ import (
 )
 
 // The hosted withdrawal function read "is there a withdrawal for this invoice?" and then inserted, so two presses of the button that raced both inserted and the customer was
-// acknowledged twice. Migration 00022 makes the database refuse the second: one open (not rejected) hosted withdrawal for an invoice.
+// acknowledged twice. Migration 00023 makes the database refuse the second: one open (not rejected) hosted withdrawal for an invoice.
 func testContractWithdrawalOpenOnce(t *testing.T) {
 	e := newEnv(t)
 	live := e.account(t, "Withdraw Once Co")[plansv1.Environment_ENVIRONMENT_LIVE].GetId()
@@ -123,14 +123,14 @@ func testContractWithdrawalOpenOnce(t *testing.T) {
 	})
 }
 
-// Migration 00022 builds a unique index. Rows that already repeat an invoice would stop it, so the later undecided ones are rejected first ("system", with the reason) and a
+// Migration 00023 builds a unique index. Rows that already repeat an invoice would stop it, so the later undecided ones are rejected first ("system", with the reason) and a
 // decided one is never touched: the earliest decided one, or else the earliest, keeps the invoice. Run on data made by the release before it.
 func TestWithdrawalMigrationRejectsDuplicatesThatWereLeftByTheRace(t *testing.T) {
 	ctx := testkit.Ctx(t)
 	pg := testkit.StartPostgres(t)
 	testkit.MigratedDB(t, pg, "plans", migrations.FS) // creates the roles the cell database is owned by
 	db := testkit.CreateCellDB(t, pg, "plans", "wdonce")
-	for v := int64(1); v <= 21; v++ {
+	for v := int64(1); v <= 22; v++ {
 		if err := pgxx.MigrateVersion(ctx, db.Migrator, migrations.FS, v, true); err != nil {
 			t.Fatal(err)
 		}
@@ -168,7 +168,7 @@ func TestWithdrawalMigrationRejectsDuplicatesThatWereLeftByTheRace(t *testing.T)
 	add("rejected", invoice, "hosted", "rejected", 40)
 	add("api1", other, "api", "received", 5)
 	add("api2", other, "api", "received", 4)
-	if err := pgxx.MigrateVersion(ctx, db.Migrator, migrations.FS, 22, true); err != nil {
+	if err := pgxx.MigrateVersion(ctx, db.Migrator, migrations.FS, 23, true); err != nil {
 		t.Fatalf("the migration over duplicates: %v", err)
 	}
 	status := func(name string) (st, by string) {
@@ -194,7 +194,7 @@ func TestWithdrawalMigrationRejectsDuplicatesThatWereLeftByTheRace(t *testing.T)
 		t.Errorf("a second open hosted withdrawal for the invoice: %v, want a unique violation", err)
 	}
 	// Down drops the index and leaves the data as it is.
-	if err := pgxx.MigrateVersion(ctx, db.Migrator, migrations.FS, 22, false); err != nil {
+	if err := pgxx.MigrateVersion(ctx, db.Migrator, migrations.FS, 23, false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := conn.Exec(ctx, `INSERT INTO contract_withdrawals (tenant_id, id, customer_id, invoice_id, source) VALUES ($1, $2, $3, $4, 'hosted')`, tenant, uuid.New(), customer, invoice); err != nil {

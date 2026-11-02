@@ -11,7 +11,7 @@
 -- +goose Up
 ALTER TABLE contract_withdrawals NO FORCE ROW LEVEL SECURITY;
 UPDATE contract_withdrawals w SET status = 'rejected', decided_at = COALESCE(w.decided_at, now()), decided_by = 'system',
-  decision_note = 'a duplicate of another withdrawal for the same invoice (migration 00022)'
+  decision_note = 'a duplicate of another withdrawal for the same invoice (migration 00023)'
 FROM (
   SELECT tenant_id, id, row_number() OVER (PARTITION BY tenant_id, invoice_id ORDER BY (status = 'received'), received_at, id) AS n
   FROM contract_withdrawals WHERE source = 'hosted' AND invoice_id IS NOT NULL AND status <> 'rejected'
